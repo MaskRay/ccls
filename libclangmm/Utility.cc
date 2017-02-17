@@ -1,6 +1,6 @@
 #include "Utility.h"
 
-std::string clang::to_string(CXString cx_string) {
+std::string clang::ToString(CXString cx_string) {
   std::string string;
   if(cx_string.data!=nullptr) {
     string=clang_getCString(cx_string);
@@ -9,7 +9,7 @@ std::string clang::to_string(CXString cx_string) {
   return string;
 }
 
-std::string clang::to_string(CXCursorKind kind) {
+std::string clang::ToString(CXCursorKind kind) {
   switch (kind) {
   case CXCursor_UnexposedDecl: return "UnexposedDecl";
   case CXCursor_StructDecl: return "StructDecl";
@@ -177,5 +177,5 @@ std::string clang::to_string(CXCursorKind kind) {
   //case CXCursor_FirstExtraDecl: return "FirstExtraDecl";
   case CXCursor_LastExtraDecl: return "LastExtraDecl";
   }
-  return "";
+  return "<unknown kind>";
 }

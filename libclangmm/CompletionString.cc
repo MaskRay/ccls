@@ -15,13 +15,13 @@ unsigned clang::CompletionString::get_num_chunks() {
 std::vector<clang::CompletionChunk> clang::CompletionString::get_chunks() {
   std::vector<CompletionChunk> res;
   for (unsigned i = 0; i < get_num_chunks(); i++) {
-    res.emplace_back(to_string(clang_getCompletionChunkText(cx_completion_sting, i)), static_cast<CompletionChunkKind> (clang_getCompletionChunkKind(cx_completion_sting, i)));
+    res.emplace_back(ToString(clang_getCompletionChunkText(cx_completion_sting, i)), static_cast<CompletionChunkKind> (clang_getCompletionChunkKind(cx_completion_sting, i)));
   }
   return res;
 }
 
 std::string clang::CompletionString::get_brief_comments() {
-  return to_string(clang_getCompletionBriefComment(cx_completion_sting));
+  return ToString(clang_getCompletionBriefComment(cx_completion_sting));
 }
 
 clang::CompletionChunk::CompletionChunk(std::string chunk, CompletionChunkKind kind) :

@@ -6,7 +6,7 @@
 clang::Diagnostic::Diagnostic(CXTranslationUnit& cx_tu, CXDiagnostic& cx_diagnostic) {
   severity=clang_getDiagnosticSeverity(cx_diagnostic);
   severity_spelling=get_severity_spelling(severity);
-  spelling=to_string(clang_getDiagnosticSpelling(cx_diagnostic));
+  spelling=ToString(clang_getDiagnosticSpelling(cx_diagnostic));
   
   SourceLocation start_location(clang_getDiagnosticLocation(cx_diagnostic));
   path=start_location.get_path();
@@ -18,7 +18,7 @@ clang::Diagnostic::Diagnostic(CXTranslationUnit& cx_tu, CXDiagnostic& cx_diagnos
   unsigned num_fix_its=clang_getDiagnosticNumFixIts(cx_diagnostic);
   for(unsigned c=0;c<num_fix_its;c++) {
     CXSourceRange fix_it_range;
-    auto source=to_string(clang_getDiagnosticFixIt(cx_diagnostic, c, &fix_it_range));
+    auto source=ToString(clang_getDiagnosticFixIt(cx_diagnostic, c, &fix_it_range));
     fix_its.emplace_back(source, SourceRange(fix_it_range).get_offsets());
   }
 }

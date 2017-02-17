@@ -3,49 +3,76 @@
 
 #include <string>
 #include <vector>
-#include <clang-c/Index.h>
+#include <type_traits>
 
+#include <clang-c/Index.h>
 #include "SourceLocation.h"
 #include "SourceRange.h"
 
 
 namespace clang {
-  class Cursor {
-  public:
 
-    class Type {
-    public:
-      Type(const CXType &cx_type) : cx_type(cx_type) {}
-      std::string get_spelling() const;
-      Type get_result() const;
-      bool operator==(const Cursor::Type& rhs) const;
-      
-      CXType cx_type;
-    };
-    
-    Cursor();
-    explicit Cursor(const CXCursor& cx_cursor);
+class Type {
+public:
+  Type(const CXType &cx_type) : cx_type(cx_type) {}
 
-    CXCursorKind get_kind() const;
-    Type get_type() const;
-    SourceLocation get_source_location() const;
-    SourceRange get_source_range() const;
-    std::string get_spelling() const;
-    std::string get_display_name() const;
-    std::string get_usr() const;
-    Cursor get_referenced() const;
-    Cursor get_canonical() const;
-    Cursor get_definition() const;
-    Cursor get_semantic_parent() const;
-    std::vector<Cursor> get_arguments() const;
-    operator bool() const;
-    bool operator==(const Cursor& rhs) const;
-    
-    bool is_valid_kind() const;
-    std::string get_type_description() const;
-    std::string get_brief_comments() const;
-    
-    CXCursor cx_cursor = clang_getNullCursor();
+  bool operator==(const Type& rhs) const;
+
+  std::string get_spelling() const;
+  Type get_result() const;
+
+  CXType cx_type;
+};
+
+enum class VisiterResult {
+  Break,
+  Continue,
+  Recurse
+};
+
+class Cursor {
+public:
+  Cursor();
+  explicit Cursor(const CXCursor& other);
+
+  operator bool() const;
+  bool operator==(const Cursor& rhs) const;
+
+  CXCursorKind get_kind() const;
+  Type get_type() const;
+  SourceLocation get_source_location() const;
+  SourceRange get_source_range() const;
+  std::string get_spelling() const;
+  std::string get_display_name() const;
+  std::string get_usr() const;
+
+  bool is_definition() const;
+
+  Cursor get_referenced() const;
+  Cursor get_canonical() const;
+  Cursor get_definition() const;
+  Cursor get_semantic_parent() const;
+  std::vector<Cursor> get_arguments() const;
+  bool is_valid_kind() const;
+  std::string get_type_description() const;
+  std::string get_comments() const;
+
+  template<typename TClientData>
+  using Visitor = VisiterResult(*)(Cursor cursor, Cursor parent, TClientData* client_data);
+
+  enum class VisitResult {
+    Completed, EndedEarly
   };
+
+  template<typename TClientData>
+  VisitResult VisitChildren(Visitor<TClientData> visitor, TClientData* client_data) const {
+    if (clang_visitChildren(cx_cursor, reinterpret_cast<CXCursorVisitor>(visitor), client_data) == 0)
+      return VisitResult::Completed;
+    return VisitResult::EndedEarly;
+  }
+
+  CXCursor cx_cursor;
+};
 }  // namespace clang
+
 #endif  // CURSOR_H_

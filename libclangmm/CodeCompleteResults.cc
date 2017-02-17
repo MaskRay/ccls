@@ -7,7 +7,7 @@ clang::CodeCompleteResults::CodeCompleteResults(CXTranslationUnit &cx_tu,
                                                 const std::string &buffer,
                                                 unsigned line_num, unsigned column) {
   CXUnsavedFile files[1];
-  auto file_path=to_string(clang_getTranslationUnitSpelling(cx_tu));
+  auto file_path=ToString(clang_getTranslationUnitSpelling(cx_tu));
   files[0].Filename = file_path.c_str();
   files[0].Contents = buffer.c_str();
   files[0].Length = buffer.size();
@@ -41,5 +41,5 @@ clang::CompletionString clang::CodeCompleteResults::get(unsigned i) const {
 }
 
 std::string clang::CodeCompleteResults::get_usr() const {
-  return to_string(clang_codeCompleteGetContainerUSR(cx_results));
+  return ToString(clang_codeCompleteGetContainerUSR(cx_results));
 }
