@@ -6,17 +6,10 @@ OUTPUT:
   "types": [],
   "functions": [{
       "id": 0,
+      "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": null,
-      "definition": "tests/function_definition.cc:1:6",
-      "declaring_type": null,
-      "base": null,
-      "derived": [],
-      "locals": [],
-      "callers": [],
-      "callees": [],
-      "uses": []
+      "definition": "tests/function_definition.cc:1:6"
     }],
   "variables": []
 }

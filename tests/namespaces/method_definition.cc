@@ -11,30 +11,20 @@ OUTPUT:
 {
   "types": [{
       "id": 0,
+      "usr": "c:@N@hello@S@Foo",
       "short_name": "Foo",
       "qualified_name": "hello::Foo",
-      "declaration": null,
       "definition": "tests/namespaces/method_definition.cc:2:7",
-      "parents": [],
-      "derived": [],
-      "types": [],
-      "funcs": [0],
-      "vars": [],
-      "uses": []
+      "funcs": [0]
     }],
   "functions": [{
       "id": 0,
+      "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "hello::Foo::foo",
       "declaration": "tests/namespaces/method_definition.cc:3:8",
       "definition": "tests/namespaces/method_definition.cc:6:11",
-      "declaring_type": 0,
-      "base": null,
-      "derived": [],
-      "locals": [],
-      "callers": [],
-      "callees": [],
-      "uses": []
+      "declaring_type": 0
     }],
   "variables": []
 }

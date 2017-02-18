@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <optional>
 #include <iostream>
 #include <cstdint>
@@ -157,7 +158,7 @@ struct ParsingDatabase {
   FuncDef* Resolve(FuncId id);
   VarDef* Resolve(VarId id);
 
-  std::string ToString(bool for_test);
+  std::string ToString();
 };
 
 TypeId ParsingDatabase::ToTypeId(const std::string& usr) {
@@ -201,64 +202,100 @@ VarDef* ParsingDatabase::Resolve(VarId id) {
   return &vars[id.local_id];
 }
 
-template<typename TWriter>
-void WriteLocation(TWriter& writer, clang::SourceLocation location) {
+
+using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
+
+void Write(Writer& writer, const char* key, clang::SourceLocation location) {
+  if (key) writer.Key(key);
   std::string s = location.ToString();
   writer.String(s.c_str());
 }
 
-template<typename TWriter>
-void WriteLocation(TWriter& writer, std::optional<clang::SourceLocation> location) {
-  if (location)
-    WriteLocation(writer, location.value());
-  else
-    writer.Null();
+void Write(Writer& writer, const char* key, std::optional<clang::SourceLocation> location) {
+  if (location) {
+    Write(writer, key, location.value());
+  }
+  //else {
+  //  if (key) writer.Key(key);
+  //  writer.Null();
+  //}
 }
 
-template<typename TWriter, typename TId>
-void WriteId(TWriter& writer, TId id) {
+void Write(Writer& writer, const char* key, const std::vector<clang::SourceLocation>& locs) {
+  if (locs.size() == 0)
+    return;
+
+  if (key) writer.Key(key);
+  writer.StartArray();
+  for (const clang::SourceLocation& loc : locs)
+    Write(writer, nullptr, loc);
+  writer.EndArray();
+}
+
+template<typename T>
+void Write(Writer& writer, const char* key, LocalId<T> id) {
+  if (key) writer.Key(key);
   writer.Uint64(id.local_id);
 }
 
-template<typename TWriter, typename TId>
-void WriteId(TWriter& writer, std::optional<TId> id) {
-  if (id)
-    WriteId(writer, id.value());
-  else
-    writer.Null();
+template<typename T>
+void Write(Writer& writer, const char* key, std::optional<LocalId<T>> id) {
+  if (id) {
+    Write(writer, key, id.value());
+  }
+  //else {
+  //  if (key) writer.Key(key);
+  //  writer.Null();
+  //}
 }
 
-template<typename TWriter, typename TRef>
-void WriteRef(TWriter& writer, TRef ref) {
+template<typename T>
+void Write(Writer& writer, const char* key, const std::vector<LocalId<T>>& ids) {
+  if (ids.size() == 0)
+    return;
+
+  if (key) writer.Key(key);
+  writer.StartArray();
+  for (LocalId<T> id : ids)
+    Write(writer, nullptr, id);
+  writer.EndArray();
+}
+
+template<typename T>
+void Write(Writer& writer, const char* key, Ref<T> ref) {
+  if (key) writer.Key(key);
   std::string s = std::to_string(ref.id.local_id) + "@" + ref.loc.ToString();
   writer.String(s.c_str());
 }
 
-template<typename TWriter, typename TId>
-void WriteIdArray(TWriter& writer, const std::vector<TId>& ids) {
+template<typename T>
+void Write(Writer& writer, const char* key, const std::vector<Ref<T>>& refs) {
+  if (refs.size() == 0)
+    return;
+
+  if (key) writer.Key(key);
   writer.StartArray();
-  for (TId id : ids)
-    WriteId(writer, id);
+  for (Ref<T> ref : refs)
+    Write(writer, nullptr, ref);
   writer.EndArray();
 }
 
-template<typename TWriter, typename TRef>
-void WriteRefArray(TWriter& writer, const std::vector<TRef>& refs) {
-  writer.StartArray();
-  for (TRef ref : refs)
-    WriteRef(writer, ref);
-  writer.EndArray();
+void Write(Writer& writer, const char* key, const std::string& value) {
+  if (value.size() == 0)
+    return;
+
+  if (key) writer.Key(key);
+  writer.String(value.c_str());
 }
 
-template<typename TWriter>
-void WriteLocationArray(TWriter& writer, const std::vector<clang::SourceLocation>& locs) {
-  writer.StartArray();
-  for (const clang::SourceLocation& loc : locs)
-    WriteLocation(writer, loc);
-  writer.EndArray();
+void Write(Writer& writer, const char* key, uint64_t value) {
+  if (key) writer.Key(key);
+  writer.Uint64(value);
 }
 
-std::string ParsingDatabase::ToString(bool for_test) {
+std::string ParsingDatabase::ToString() {
+#define WRITE(name) Write(writer, #name, def.name)
+
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   writer.SetFormatOptions(
@@ -272,50 +309,18 @@ std::string ParsingDatabase::ToString(bool for_test) {
   writer.StartArray();
   for (TypeDef& def : types) {
     writer.StartObject();
-
-    writer.String("id");
-    writer.Uint64(def.id.local_id);
-
-    if (!for_test) {
-      writer.String("usr");
-      writer.String(def.usr.c_str());
-    }
-
-    writer.String("short_name");
-    writer.String(def.short_name.c_str());
-
-    writer.String("qualified_name");
-    writer.String(def.qualified_name.c_str());
-
-    writer.String("declaration");
-    WriteLocation(writer, def.declaration);
-
-    if (!def.definition) {
-      writer.EndObject();
-      continue;
-    }
-
-    writer.String("definition");
-    WriteLocation(writer, def.definition);
-
-    writer.String("parents");
-    WriteIdArray(writer, def.parents);
-
-    writer.String("derived");
-    WriteIdArray(writer, def.derived);
-
-    writer.String("types");
-    WriteIdArray(writer, def.types);
-
-    writer.String("funcs");
-    WriteIdArray(writer, def.funcs);
-
-    writer.String("vars");
-    WriteIdArray(writer, def.vars);
-
-    writer.String("uses");
-    WriteLocationArray(writer, def.uses);
-
+    WRITE(id);
+    WRITE(usr);
+    WRITE(short_name);
+    WRITE(qualified_name);
+    WRITE(declaration);
+    WRITE(definition);
+    WRITE(parents);
+    WRITE(derived);
+    WRITE(types);
+    WRITE(funcs);
+    WRITE(vars);
+    WRITE(uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -325,54 +330,19 @@ std::string ParsingDatabase::ToString(bool for_test) {
   writer.StartArray();
   for (FuncDef& def : funcs) {
     writer.StartObject();
-
-    writer.String("id");
-    writer.Uint64(def.id.local_id);
-
-    if (!for_test) {
-      writer.String("usr");
-      writer.String(def.usr.c_str());
-    }
-
-    writer.String("short_name");
-    writer.String(def.short_name.c_str());
-
-    writer.String("qualified_name");
-    writer.String(def.qualified_name.c_str());
-
-    writer.String("declaration");
-    WriteLocation(writer, def.declaration);
-
-    if (def.definition) {
-      writer.String("definition");
-      WriteLocation(writer, def.definition);
-    }
-
-    if (def.definition || def.declaring_type) {
-      writer.String("declaring_type");
-      WriteId(writer, def.declaring_type);
-    }
-
-    if (def.definition) {
-      writer.String("base");
-      WriteId(writer, def.base);
-
-      writer.String("derived");
-      WriteIdArray(writer, def.derived);
-
-      writer.String("locals");
-      WriteIdArray(writer, def.locals);
-
-      writer.String("callers");
-      WriteRefArray(writer, def.callers);
-
-      writer.String("callees");
-      WriteRefArray(writer, def.callees);
-
-      writer.String("uses");
-      WriteLocationArray(writer, def.uses);
-    }
-
+    WRITE(id);
+    WRITE(usr);
+    WRITE(short_name);
+    WRITE(qualified_name);
+    WRITE(declaration);
+    WRITE(definition);
+    WRITE(declaring_type);
+    WRITE(base);
+    WRITE(derived);
+    WRITE(locals);
+    WRITE(callers);
+    WRITE(callees);
+    WRITE(uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -382,36 +352,15 @@ std::string ParsingDatabase::ToString(bool for_test) {
   writer.StartArray();
   for (VarDef& def : vars) {
     writer.StartObject();
-
-    writer.String("id");
-    writer.Uint64(def.id.local_id);
-
-    if (!for_test) {
-      writer.String("usr");
-      writer.String(def.usr.c_str());
-    }
-
-    writer.String("short_name");
-    writer.String(def.short_name.c_str());
-
-    writer.String("qualified_name");
-    writer.String(def.qualified_name.c_str());
-
-    writer.String("declaration");
-    WriteLocation(writer, def.declaration);
-
-    writer.String("initializations");
-    WriteLocationArray(writer, def.initializations);
-
-    writer.String("variable_type");
-    WriteId(writer, def.variable_type);
-
-    writer.String("declaring_type");
-    WriteId(writer, def.declaring_type);
-
-    writer.String("uses");
-    WriteLocationArray(writer, def.uses);
-
+    WRITE(id);
+    WRITE(usr);
+    WRITE(short_name);
+    WRITE(qualified_name);
+    WRITE(declaration);
+    WRITE(initializations);
+    WRITE(variable_type);
+    WRITE(declaring_type);
+    WRITE(uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -419,6 +368,8 @@ std::string ParsingDatabase::ToString(bool for_test) {
   writer.EndObject();
 
   return output.GetString();
+
+#undef WRITE
 }
 
 struct FileDef {
@@ -580,7 +531,6 @@ void Dump(clang::Cursor cursor) {
 
 
 void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type) {
-
   //Dump(var);
 
   VarId var_id = db->ToVarId(var.get_usr());
@@ -622,25 +572,34 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
 
 // |func_id| is the function definition that is currently being processed.
 void InsertReference(ParsingDatabase* db, FuncId func_id, clang::Cursor referencer) {
+  clang::SourceLocation loc = referencer.get_source_location();
   clang::Cursor referenced = referencer.get_referenced();
 
   switch (referenced.get_kind()) {
+  case CXCursor_CXXMethod:
   case CXCursor_FunctionDecl:
   {
     FuncId referenced_id = db->ToFuncId(referenced.get_usr());
-    clang::SourceLocation loc = referencer.get_source_location();
-    
-    FuncDef* func_def = db->Resolve(func_id);
     FuncDef* referenced_def = db->Resolve(referenced_id);
+    FuncDef* func_def = db->Resolve(func_id);
 
     func_def->callees.push_back(FuncRef(referenced_id, loc));
     referenced_def->callers.push_back(FuncRef(func_id, loc));
     referenced_def->uses.push_back(loc);
     break;
   }
+
+  case CXCursor_VarDecl:
+  {
+    VarId referenced_id = db->ToVarId(referenced.get_usr());
+    VarDef* referenced_def = db->Resolve(referenced_id);
+
+    referenced_def->uses.push_back(loc);
+    break;
+  }
   default:
-    std::cerr << "Unhandled reference from " << referencer.ToString() << " to "
-      << referenced.ToString() << std::endl;
+    std::cerr << "Unhandled reference from \"" << referencer.ToString()
+      << "\" to \"" << referenced.ToString() << "\"" << std::endl;
     break;
   }
 }
@@ -656,21 +615,27 @@ struct FuncDefinitionParam {
 };
 
 clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor parent, FuncDefinitionParam* param) {
-  //std::cout << "VistFunc got " << cursor.ToString() << std::endl;
+  //std::cout << "VistFuncDefinition got " << cursor.ToString() << std::endl;
   switch (cursor.get_kind()) {
-  // TODO: Maybe we should default to recurse?
-  /*
-  case CXCursor_CompoundStmt:
-  case CXCursor_DeclStmt:
-  case CXCursor_CallExpr:
-  case CXCursor_UnexposedExpr:
-  case CXCursor_UnaryExpr:
-    return clang::VisiterResult::Recurse;
-  */
+    // TODO: Maybe we should default to recurse?
+    /*
+    case CXCursor_CompoundStmt:
+    case CXCursor_DeclStmt:
+    case CXCursor_CallExpr:
+    case CXCursor_UnexposedExpr:
+    case CXCursor_UnaryExpr:
+      return clang::VisiterResult::Recurse;
+    */
 
+  case CXCursor_CallExpr:
+    // The called element is handled by DeclRefExpr below.
+    //InsertReference(param->db, param->func_id, cursor);
+    return clang::VisiterResult::Recurse;
+
+  case CXCursor_MemberRefExpr:
   case CXCursor_DeclRefExpr:
     InsertReference(param->db, param->func_id, cursor);
-    break;
+    return clang::VisiterResult::Continue;
 
   case CXCursor_VarDecl:
   case CXCursor_ParmDecl:
@@ -832,6 +797,7 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
     param->ns->Pop();
     break;
 
+  case CXCursor_StructDecl:
   case CXCursor_ClassDecl:
     // TODO: Cleanup Handle* param order.
     HandleClassDecl(cursor, param->db, param->ns);
@@ -900,12 +866,76 @@ void Write(const std::vector<std::string>& strs) {
   }
 }
 
+std::vector<std::string> split_string(const std::string& str, const std::string& delimiter) {
+  // http://stackoverflow.com/a/13172514
+  std::vector<std::string> strings;
 
+  std::string::size_type pos = 0;
+  std::string::size_type prev = 0;
+  while ((pos = str.find(delimiter, prev)) != std::string::npos) {
+    strings.push_back(str.substr(prev, pos - prev));
+    prev = pos + 1;
+  }
+
+  // To get the last substring (or only, if delimiter is not found)
+  strings.push_back(str.substr(prev));
+
+  return strings;
+}
+
+void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
+  std::vector<std::string> actual_output;
+  {
+    rapidjson::StringBuffer buffer;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    writer.SetFormatOptions(
+      rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+    writer.SetIndent(' ', 2);
+
+    buffer.Clear();
+    actual.Accept(writer);
+    actual_output = split_string(buffer.GetString(), "\n");
+  }
+
+  std::vector<std::string> expected_output;
+  {
+    rapidjson::StringBuffer buffer;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+    writer.SetFormatOptions(
+      rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+    writer.SetIndent(' ', 2);
+
+    buffer.Clear();
+    expected.Accept(writer);
+    expected_output = split_string(buffer.GetString(), "\n");
+  }
+
+  int len = std::min(actual_output.size(), expected_output.size());
+  for (int i = 0; i < len; ++i) {
+    if (actual_output[i] != expected_output[i]) {
+      std::cout << "Line " << i << " differs" << std::endl;
+      std::cout << "  expected: " << expected_output[i] << std::endl;
+      std::cout << "  actual:   " << actual_output[i] << std::endl;
+    }
+  }
+
+  if (actual_output.size() > len) {
+    std::cout << "Additional output in actual:" << std::endl;
+    for (int i = len; i < actual_output.size(); ++i)
+      std::cout << "  " << actual_output[i] << std::endl;
+  }
+
+  if (expected_output.size() > len) {
+    std::cout << "Additional output in expected:" << std::endl;
+    for (int i = len; i < expected_output.size(); ++i)
+      std::cout << "  " << expected_output[i] << std::endl;
+  }
+}
 
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    if (path != "tests/usage/func_usage_addr_func.cc") continue;
+    //if (path != "tests/usage/func_usage_class_inline_var_def.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
@@ -916,7 +946,7 @@ int main(int argc, char** argv) {
     // Run test.
     std::cout << "[START] " << path << std::endl;
     ParsingDatabase db = Parse(path);
-    std::string actual_output = db.ToString(true /*for_test*/);
+    std::string actual_output = db.ToString();
     rapidjson::Document actual;
     actual.Parse(actual_output.c_str());
 
@@ -929,6 +959,9 @@ int main(int argc, char** argv) {
       std::cout << expected_output;
       std::cout << "Actual output for " << path << ":" << std::endl;
       std::cout << actual_output;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      DiffDocuments(expected, actual);
       break;
     }
   }
@@ -936,3 +969,5 @@ int main(int argc, char** argv) {
   std::cin.get();
   return 0;
 }
+
+// TODO: ctor/dtor, copy ctor

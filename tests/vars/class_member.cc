@@ -6,32 +6,24 @@ OUTPUT:
 {
   "types": [{
       "id": 0,
+      "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "declaration": null,
       "definition": "tests/vars/class_member.cc:1:7",
-      "parents": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [0],
-      "uses": []
+      "vars": [0]
     }, {
-      "id": 1,
-      "short_name": "",
-      "qualified_name": "",
-      "declaration": null
+      "id": 1
     }],
   "functions": [],
   "variables": [{
       "id": 0,
+      "usr": "c:@S@Foo@FI@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
       "declaration": "tests/vars/class_member.cc:2:7",
       "initializations": ["tests/vars/class_member.cc:2:7"],
       "variable_type": 1,
-      "declaring_type": 0,
-      "uses": []
+      "declaring_type": 0
     }]
 }
 */

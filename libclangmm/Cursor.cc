@@ -165,6 +165,89 @@ std::string Cursor::get_type_description() const {
   return spelling;
 }
 
+std::string Cursor::evaluate() const {
+  CXEvalResult eval = clang_Cursor_Evaluate(cx_cursor);
+
+  std::string result;
+  auto kind = clang_EvalResult_getKind(eval);
+  switch (clang_EvalResult_getKind(eval)) {
+  case CXEval_Int:
+    result = std::to_string(clang_EvalResult_getAsInt(eval));
+    break;
+  case CXEval_Float:
+    result = std::to_string(clang_EvalResult_getAsDouble(eval));
+    break;
+  default:
+  {
+    const char* r = clang_EvalResult_getAsStr(eval);
+    if (r)
+      result = r;
+    break;
+  }
+  }
+
+  clang_EvalResult_dispose(eval);
+  return result;
+
+#if false
+  typedef enum {
+    CXEval_Int = 1,
+    CXEval_Float = 2,
+    CXEval_ObjCStrLiteral = 3,
+    CXEval_StrLiteral = 4,
+    CXEval_CFStr = 5,
+    CXEval_Other = 6,
+
+    CXEval_UnExposed = 0
+
+  } CXEvalResultKind;
+
+  /**
+  * \brief Evaluation result of a cursor
+  */
+  typedef void * CXEvalResult;
+
+  /**
+  * \brief If cursor is a statement declaration tries to evaluate the
+  * statement and if its variable, tries to evaluate its initializer,
+  * into its corresponding type.
+  */
+  CINDEX_LINKAGE CXEvalResult clang_Cursor_Evaluate(CXCursor C);
+
+  /**
+  * \brief Returns the kind of the evaluated result.
+  */
+  CINDEX_LINKAGE CXEvalResultKind clang_EvalResult_getKind(CXEvalResult E);
+
+  /**
+  * \brief Returns the evaluation result as integer if the
+  * kind is Int.
+  */
+  CINDEX_LINKAGE int clang_EvalResult_getAsInt(CXEvalResult E);
+
+  /**
+  * \brief Returns the evaluation result as double if the
+  * kind is double.
+  */
+  CINDEX_LINKAGE double clang_EvalResult_getAsDouble(CXEvalResult E);
+
+  /**
+  * \brief Returns the evaluation result as a constant string if the
+  * kind is other than Int or float. User must not free this pointer,
+  * instead call clang_EvalResult_dispose on the CXEvalResult returned
+  * by clang_Cursor_Evaluate.
+  */
+  CINDEX_LINKAGE const char* clang_EvalResult_getAsStr(CXEvalResult E);
+
+  /**
+  * \brief Disposes the created Eval memory.
+  */
+  CINDEX_LINKAGE void clang_EvalResult_dispose(CXEvalResult E);
+#endif
+
+
+}
+
 std::string Cursor::get_comments() const {
   Cursor referenced = get_referenced();
   if (referenced)

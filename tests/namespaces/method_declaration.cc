@@ -9,19 +9,15 @@ OUTPUT:
 {
   "types": [{
       "id": 0,
+      "usr": "c:@N@hello@S@Foo",
       "short_name": "Foo",
       "qualified_name": "hello::Foo",
-      "declaration": null,
       "definition": "tests/namespaces/method_declaration.cc:2:7",
-      "parents": [],
-      "derived": [],
-      "types": [],
-      "funcs": [0],
-      "vars": [],
-      "uses": []
+      "funcs": [0]
     }],
   "functions": [{
       "id": 0,
+      "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "hello::Foo::foo",
       "declaration": "tests/namespaces/method_declaration.cc:3:8",
