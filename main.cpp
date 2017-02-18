@@ -52,6 +52,8 @@ template<typename T>
 struct Ref {
   LocalId<T> id;
   clang::SourceLocation loc;
+
+  Ref(LocalId<T> id, clang::SourceLocation loc) : id(id), loc(loc) {}
 };
 using TypeRef = Ref<TypeDef>;
 using FuncRef = Ref<FuncDef>;
@@ -398,11 +400,6 @@ std::string ParsingDatabase::ToString(bool for_test) {
     writer.String("declaration");
     WriteLocation(writer, def.declaration);
 
-    if (def.initializations.size() == 0) {
-      writer.EndObject();
-      continue;
-    }
-
     writer.String("initializations");
     WriteLocationArray(writer, def.initializations);
 
@@ -491,7 +488,8 @@ struct NamespaceStack {
 
   void Push(const std::string& ns);
   void Pop();
-  std::string ComputeQualifiedPrefix();
+  std::string ComputeQualifiedName(
+    ParsingDatabase* db, std::optional<TypeId> declaring_type, std::string short_name);
 
   static NamespaceStack kEmpty;
 };
@@ -505,10 +503,17 @@ void NamespaceStack::Pop() {
   stack.pop_back();
 }
 
-std::string NamespaceStack::ComputeQualifiedPrefix() {
+std::string NamespaceStack::ComputeQualifiedName(
+  ParsingDatabase* db, std::optional<TypeId> declaring_type, std::string short_name) {
+  if (declaring_type) {
+    TypeDef* def = db->Resolve(declaring_type.value());
+    return def->qualified_name + "::" + short_name;
+  }
+
   std::string result;
   for (const std::string& ns : stack)
     result += ns + "::";
+  result += short_name;
   return result;
 }
 
@@ -520,10 +525,9 @@ std::string NamespaceStack::ComputeQualifiedPrefix() {
 
 
 
-
 std::optional<TypeId> ResolveDeclaringType(CXCursorKind kind, ParsingDatabase* db, const clang::Cursor& cursor, std::optional<TypeId> declaring_type) {
   // Resolve the declaring type for out-of-line method definitions.
-  if (!declaring_type && cursor.get_kind() == kind) {
+  if (!declaring_type) {
     clang::Cursor parent = cursor.get_semantic_parent();
     switch (parent.get_kind()) {
     case CXCursor_ClassDecl:
@@ -556,7 +560,7 @@ std::optional<TypeId> ResolveDeclaringType(CXCursorKind kind, ParsingDatabase* d
 clang::VisiterResult DumpVisitor(clang::Cursor cursor, clang::Cursor parent, int* level) {
   for (int i = 0; i < *level; ++i)
     std::cout << "  ";
-  std::cout << cursor.get_spelling() << " " << clang::ToString(cursor.get_kind()) << std::endl;
+  std::cout << clang::ToString(cursor.get_kind()) << " " << cursor.get_spelling() << std::endl;
 
   *level += 1;
   cursor.VisitChildren(&DumpVisitor, level);
@@ -577,7 +581,7 @@ void Dump(clang::Cursor cursor) {
 
 void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type) {
 
-  Dump(var);
+  //Dump(var);
 
   VarId var_id = db->ToVarId(var.get_usr());
 
@@ -587,7 +591,8 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
   //       instance alive.
   VarDef* var_def = db->Resolve(var_id);
   var_def->short_name = var.get_spelling();
-  var_def->qualified_name = ns->ComputeQualifiedPrefix() + var_def->short_name;
+  var_def->qualified_name =
+    ns->ComputeQualifiedName(db, declaring_type, var_def->short_name);
 
   if (declaring_type && !var_def->declaration) {
     db->Resolve(declaring_type.value())->vars.push_back(var_id);
@@ -599,7 +604,14 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
     var_def->declaration = var.get_source_location();
     return;
   }
+  // If we're a definition and there hasn't been a forward decl, just assign
+  // declaration location to definition location.
+  else if (!var_def->declaration) {
+    var_def->declaration = var.get_source_location();
+  }
 
+  // TODO: Figure out how to scan initializations properly. We probably need
+  //       to scan for assignment statement, or definition+ctor.
   var_def->initializations.push_back(var.get_source_location());
   var_def->variable_type = db->ToTypeId(var.get_type().get_usr());
 }
@@ -608,36 +620,69 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
 
 
 
+// |func_id| is the function definition that is currently being processed.
+void InsertReference(ParsingDatabase* db, FuncId func_id, clang::Cursor referencer) {
+  clang::Cursor referenced = referencer.get_referenced();
 
+  switch (referenced.get_kind()) {
+  case CXCursor_FunctionDecl:
+  {
+    FuncId referenced_id = db->ToFuncId(referenced.get_usr());
+    clang::SourceLocation loc = referencer.get_source_location();
+    
+    FuncDef* func_def = db->Resolve(func_id);
+    FuncDef* referenced_def = db->Resolve(referenced_id);
 
+    func_def->callees.push_back(FuncRef(referenced_id, loc));
+    referenced_def->callers.push_back(FuncRef(func_id, loc));
+    referenced_def->uses.push_back(loc);
+    break;
+  }
+  default:
+    std::cerr << "Unhandled reference from " << referencer.ToString() << " to "
+      << referenced.ToString() << std::endl;
+    break;
+  }
+}
 
 
 
 struct FuncDefinitionParam {
   ParsingDatabase* db;
   NamespaceStack* ns;
-  FuncDefinitionParam(ParsingDatabase* db, NamespaceStack* ns)
-    : db(db), ns(ns) {}
+  FuncId func_id;
+  FuncDefinitionParam(ParsingDatabase* db, NamespaceStack* ns, FuncId func_id)
+    : db(db), ns(ns), func_id(func_id) {}
 };
 
 clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor parent, FuncDefinitionParam* param) {
   //std::cout << "VistFunc got " << cursor.ToString() << std::endl;
   switch (cursor.get_kind()) {
+  // TODO: Maybe we should default to recurse?
+  /*
   case CXCursor_CompoundStmt:
   case CXCursor_DeclStmt:
+  case CXCursor_CallExpr:
+  case CXCursor_UnexposedExpr:
+  case CXCursor_UnaryExpr:
     return clang::VisiterResult::Recurse;
+  */
+
+  case CXCursor_DeclRefExpr:
+    InsertReference(param->db, param->func_id, cursor);
+    break;
 
   case CXCursor_VarDecl:
   case CXCursor_ParmDecl:
     HandleVarDecl(param->db, param->ns, cursor, std::nullopt);
-    return clang::VisiterResult::Continue;
+    return clang::VisiterResult::Recurse;
 
   case CXCursor_ReturnStmt:
-    return clang::VisiterResult::Continue;
+    return clang::VisiterResult::Recurse;
 
   default:
-    std::cerr << "Unhandled VisitFuncDefinition kind " << clang::ToString(cursor.get_kind()) << std::endl;
-    return clang::VisiterResult::Continue;
+    //std::cerr << "Unhandled VisitFuncDefinition kind " << clang::ToString(cursor.get_kind()) << std::endl;
+    return clang::VisiterResult::Recurse;
   }
 }
 
@@ -663,11 +708,8 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
   FuncDef* func_def = db->Resolve(func_id);
 
   func_def->short_name = func.get_spelling();
-  std::string type_name;
-  if (declaring_type)
-    type_name = db->Resolve(declaring_type.value())->short_name + "::";
   func_def->qualified_name =
-    ns->ComputeQualifiedPrefix() + type_name + func_def->short_name;
+    ns->ComputeQualifiedName(db, declaring_type, func_def->short_name);
 
   if (declaring_type && !func_def->declaration) {
     db->Resolve(declaring_type.value())->funcs.push_back(func_id);
@@ -699,8 +741,8 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
   //clang::Type return_type_1 = func.get_type().get_result();
   //clang::Type return_type_2 = clang_getCursorResultType(func.cx_cursor);
 
-  Dump(func);
-  FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty);
+  //Dump(func);
+  FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty, func_id);
   func.VisitChildren(&VisitFuncDefinition, &funcDefinitionParam);
 
   //CXType return_type = clang_getResultType(func.get_type());
@@ -735,6 +777,7 @@ clang::VisiterResult VisitClassDecl(clang::Cursor cursor, clang::Cursor parent, 
     break;
 
   case CXCursor_FieldDecl:
+  case CXCursor_VarDecl:
     HandleVarDecl(param->db, param->ns, cursor, param->active_type);
     break;
 
@@ -747,21 +790,23 @@ clang::VisiterResult VisitClassDecl(clang::Cursor cursor, clang::Cursor parent, 
 }
 
 void HandleClassDecl(clang::Cursor cursor, ParsingDatabase* db, NamespaceStack* ns) {
-  TypeId id = db->ToTypeId(cursor.get_usr());
-  TypeDef* def = db->Resolve(id);
+  TypeId func_id = db->ToTypeId(cursor.get_usr());
+  TypeDef* func_def = db->Resolve(func_id);
 
-  def->short_name = cursor.get_spelling();
-  def->qualified_name = ns->ComputeQualifiedPrefix() + cursor.get_spelling();
+  func_def->short_name = cursor.get_spelling();
+  // TODO: Support nested classes (pass in declaring type insteaad of nullopt!)
+  func_def->qualified_name =
+    ns->ComputeQualifiedName(db, std::nullopt, func_def->short_name);
 
   if (!cursor.is_definition()) {
-    if (!def->declaration)
-      def->declaration = cursor.get_source_location();
+    if (!func_def->declaration)
+      func_def->declaration = cursor.get_source_location();
     return;
   }
 
-  def->definition = cursor.get_source_location();
+  func_def->definition = cursor.get_source_location();
 
-  ClassDeclParam classDeclParam(db, ns, id);
+  ClassDeclParam classDeclParam(db, ns, func_id);
   cursor.VisitChildren(&VisitClassDecl, &classDeclParam);
 }
 
@@ -797,6 +842,10 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
     HandleFunc(param->db, param->ns, cursor, std::nullopt);
     break;
 
+  case CXCursor_VarDecl:
+    HandleVarDecl(param->db, param->ns, cursor, std::nullopt);
+    break;
+
   default:
     std::cerr << "Unhandled VisitFile kind " << clang::ToString(cursor.get_kind()) << std::endl;
     break;
@@ -821,9 +870,9 @@ ParsingDatabase Parse(std::string filename) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
-  //std::cout << "Start document dump" << std::endl;
-  //Dump(tu.document_cursor());
-  //std::cout << "Done document dump" << std::endl << std::endl;
+  std::cout << "Start document dump" << std::endl;
+  Dump(tu.document_cursor());
+  std::cout << "Done document dump" << std::endl << std::endl;
 
   ParsingDatabase db;
   NamespaceStack ns;
@@ -856,7 +905,7 @@ void Write(const std::vector<std::string>& strs) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    //if (path != "tests/vars/class_member.cc") continue;
+    if (path != "tests/usage/func_usage_addr_func.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

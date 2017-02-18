@@ -174,7 +174,7 @@ std::string Cursor::get_comments() const {
 }
 
 std::string Cursor::ToString() const {
-  return get_spelling() + " " + clang::ToString(get_kind());
+  return clang::ToString(get_kind()) + " " + get_spelling();
 }
 
 }  // namespace clang

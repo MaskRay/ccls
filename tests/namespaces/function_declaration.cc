@@ -10,7 +10,7 @@ OUTPUT:
       "id": 0,
       "short_name": "foo",
       "qualified_name": "hello::foo",
-      "declaration": "tests/function_declaration_in_namespace.cc:2:6"
+      "declaration": "tests/namespaces/function_declaration.cc:2:6"
     }],
   "variables": []
 }

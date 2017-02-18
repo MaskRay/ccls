@@ -12,7 +12,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "hello::Foo",
       "declaration": null,
-      "definition": "tests/method_declaration_in_namespace.cc:2:7",
+      "definition": "tests/namespaces/method_declaration.cc:2:7",
       "parents": [],
       "derived": [],
       "types": [],
@@ -24,7 +24,7 @@ OUTPUT:
       "id": 0,
       "short_name": "foo",
       "qualified_name": "hello::Foo::foo",
-      "declaration": "tests/method_declaration_in_namespace.cc:3:8",
+      "declaration": "tests/namespaces/method_declaration.cc:3:8",
       "declaring_type": 0
     }],
   "variables": []

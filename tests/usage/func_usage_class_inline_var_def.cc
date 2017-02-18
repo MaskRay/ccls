@@ -1,0 +1,8 @@
+/*
+OUTPUT:
+{
+  "types": [],
+  "functions": [],
+  "variables": []
+}
+*/

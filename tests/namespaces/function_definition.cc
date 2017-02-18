@@ -11,7 +11,7 @@ OUTPUT:
       "short_name": "foo",
       "qualified_name": "hello::foo",
       "declaration": null,
-      "definition": "tests/function_definition_in_namespace.cc:2:6",
+      "definition": "tests/namespaces/function_definition.cc:2:6",
       "declaring_type": null,
       "base": null,
       "derived": [],
