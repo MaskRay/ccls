@@ -1,3 +1,4 @@
+#if false
 #include "Tokens.h"
 #include "Utility.h"
 
@@ -34,3 +35,5 @@ std::vector<std::pair<clang::Offset, clang::Offset> > clang::Tokens::get_similar
   }
   return offsets;
 }
+
+#endif

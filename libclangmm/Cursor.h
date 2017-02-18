@@ -14,12 +14,15 @@ namespace clang {
 
 class Type {
 public:
-  Type(const CXType &cx_type) : cx_type(cx_type) {}
+  Type();
+  Type(const CXType& other);
 
   bool operator==(const Type& rhs) const;
 
+  std::string get_usr() const;
   std::string get_spelling() const;
-  Type get_result() const;
+  Type get_return_type() const;
+  std::vector<Type> get_arguments() const;
 
   CXType cx_type;
 };
@@ -41,7 +44,7 @@ public:
   CXCursorKind get_kind() const;
   Type get_type() const;
   SourceLocation get_source_location() const;
-  SourceRange get_source_range() const;
+  //SourceRange get_source_range() const;
   std::string get_spelling() const;
   std::string get_display_name() const;
   std::string get_usr() const;
@@ -56,6 +59,8 @@ public:
   bool is_valid_kind() const;
   std::string get_type_description() const;
   std::string get_comments() const;
+
+  std::string ToString() const;
 
   template<typename TClientData>
   using Visitor = VisiterResult(*)(Cursor cursor, Cursor parent, TClientData* client_data);

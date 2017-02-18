@@ -1,26 +1,48 @@
+#include <algorithm>
+#include <cassert>
+
 #include "Cursor.h"
 #include "Utility.h"
-#include <algorithm>
 
 namespace clang {
 
-static_assert(sizeof(Cursor) == sizeof(CXCursor), "Cursor must be the same size as CXCursor");
+Type::Type() : cx_type() {}
 
-std::string Type::get_spelling() const {
-  return ToString(clang_getTypeSpelling(cx_type));
-}
+Type::Type(const CXType& other) : cx_type(other) {}
 
-Type Cursor::get_type() const {
-  return Type(clang_getCursorType(cx_cursor));
-}
 
 bool Type::operator==(const Type& rhs) const {
   return clang_equalTypes(cx_type, rhs.cx_type);
 }
 
-Type Type::get_result() const {
+std::string Type::get_usr() const {
+  return clang::Cursor(clang_getTypeDeclaration(cx_type)).get_usr();
+}
+
+std::string Type::get_spelling() const {
+  return ToString(clang_getTypeSpelling(cx_type));
+}
+
+Type Type::get_return_type() const {
   return Type(clang_getResultType(cx_type));
 }
+
+std::vector<Type> Type::get_arguments() const {
+  int size = clang_getNumArgTypes(cx_type);
+  assert(size >= 0);
+  if (size < 0)
+    return std::vector<Type>();
+
+  std::vector<Type> types(size);
+  for (int i = 0; i < size; ++i)
+    types.emplace_back(clang_getArgType(cx_type, i));
+  return types;
+}
+
+
+
+static_assert(sizeof(Cursor) == sizeof(CXCursor),
+  "Cursor must be the same size as CXCursor");
 
 Cursor::Cursor() : cx_cursor(clang_getNullCursor()) {}
 
@@ -38,24 +60,30 @@ CXCursorKind Cursor::get_kind() const {
   return cx_cursor.kind;
 }
 
+Type Cursor::get_type() const {
+  return Type(clang_getCursorType(cx_cursor));
+}
+
 SourceLocation Cursor::get_source_location() const {
   return SourceLocation(clang_getCursorLocation(cx_cursor));
 }
 
+/*
 SourceRange Cursor::get_source_range() const {
   return SourceRange(clang_getCursorExtent(cx_cursor));
 }
+*/
 
 std::string Cursor::get_spelling() const {
-  return ToString(clang_getCursorSpelling(cx_cursor));
+  return clang::ToString(clang_getCursorSpelling(cx_cursor));
 }
 
 std::string Cursor::get_display_name() const {
-  return ToString(clang_getCursorDisplayName(cx_cursor));
+  return clang::ToString(clang_getCursorDisplayName(cx_cursor));
 }
 
 std::string Cursor::get_usr() const {
-  return ToString(clang_getCursorUSR(cx_cursor));
+  return clang::ToString(clang_getCursorUSR(cx_cursor));
 }
 
 bool Cursor::is_definition() const {
@@ -79,10 +107,14 @@ Cursor Cursor::get_semantic_parent() const {
 }
 
 std::vector<Cursor> Cursor::get_arguments() const {
-  auto size = clang_Cursor_getNumArguments(cx_cursor);
+  int size = clang_Cursor_getNumArguments(cx_cursor);
+  assert(size >= 0);
+  if (size < 0)
+    return std::vector<Cursor>();
+
   std::vector<Cursor> cursors(size);
-  for (int c = 0; c < size; ++c)
-    cursors.emplace_back(clang_Cursor_getArgument(cx_cursor, c));
+  for (int i = 0; i < size; ++i)
+    cursors.emplace_back(clang_Cursor_getArgument(cx_cursor, i));
   return cursors;
 }
 
@@ -93,7 +125,7 @@ bool Cursor::is_valid_kind() const {
 
   CXCursorKind kind = get_kind();
   return kind > CXCursor_UnexposedDecl &&
-         (kind < CXCursor_FirstInvalid || kind > CXCursor_LastInvalid);
+    (kind < CXCursor_FirstInvalid || kind > CXCursor_LastInvalid);
 }
 
 std::string Cursor::get_type_description() const {
@@ -102,7 +134,7 @@ std::string Cursor::get_type_description() const {
   auto referenced = clang_getCursorReferenced(cx_cursor);
   if (!clang_Cursor_isNull(referenced)) {
     auto type = clang_getCursorType(referenced);
-    spelling = ToString(clang_getTypeSpelling(type));
+    spelling = clang::ToString(clang_getTypeSpelling(type));
 
 #if CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR<32
     const std::string auto_str = "auto";
@@ -136,9 +168,13 @@ std::string Cursor::get_type_description() const {
 std::string Cursor::get_comments() const {
   Cursor referenced = get_referenced();
   if (referenced)
-    return ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor));
+    return clang::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor));
 
   return "";
+}
+
+std::string Cursor::ToString() const {
+  return get_spelling() + " " + clang::ToString(get_kind());
 }
 
 }  // namespace clang

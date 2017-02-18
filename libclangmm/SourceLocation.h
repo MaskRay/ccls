@@ -21,16 +21,14 @@ class SourceLocation {
   SourceLocation(CXTranslationUnit &tu, const std::string &filepath, unsigned offset);
   SourceLocation(CXTranslationUnit &tu, const std::string &filepath, unsigned line, unsigned column);
 public:
-  SourceLocation(const CXSourceLocation& cx_location) : cx_location(cx_location) {}
+  SourceLocation(const CXSourceLocation& cx_location);
 
-public:
-  std::string get_path();
-  clang::Offset get_offset();
+  std::string path;
+  unsigned line;
+  unsigned column;
+  unsigned offset;
 
-  CXSourceLocation cx_location;
-
-private:
-  void get_data(std::string *path, unsigned *line, unsigned *column, unsigned *offset);
+  std::string ToString() const;
 };
 
 }  // namespace clang

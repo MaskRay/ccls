@@ -1,3 +1,5 @@
+#if false
+
 #ifndef DIAGNOSTIC_H_
 #define DIAGNOSTIC_H_
 #include <string>
@@ -31,3 +33,5 @@ public:
 
 }
 #endif  // DIAGNOSTIC_H_
+
+#endif

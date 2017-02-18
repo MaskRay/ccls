@@ -1,3 +1,4 @@
+#if false
 #ifndef TOKEN_H_
 #define TOKEN_H_
 #include <clang-c/Index.h>
@@ -36,3 +37,5 @@ namespace clang {
   };
 }  // namespace clang
 #endif  // TOKEN_H_
+
+#endif

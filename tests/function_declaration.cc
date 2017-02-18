@@ -2,8 +2,14 @@ void foo(int a, int b);
 
 /*
 OUTPUT:
-Types:
-Funcs:
-  foo
-Vars:
+{
+  "types": [],
+  "functions": [{
+      "id": 0,
+      "short_name": "foo",
+      "qualified_name": "foo",
+      "declaration": "tests/function_declaration.cc:1:6"
+    }],
+  "variables": []
+}
 */

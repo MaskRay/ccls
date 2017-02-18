@@ -1,3 +1,5 @@
+void foo();
+
 void foo() {}
 
 /*
@@ -8,8 +10,8 @@ OUTPUT:
       "id": 0,
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": null,
-      "definition": "tests/function_definition.cc:1:6",
+      "declaration": "tests/function_declaration_definition.cc:1:6",
+      "definition": "tests/function_declaration_definition.cc:3:6",
       "declaring_type": null,
       "base": null,
       "derived": [],

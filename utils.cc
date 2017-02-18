@@ -52,7 +52,7 @@ std::vector<std::string> ReadLines(std::string filename) {
   return result;
 }
 
-void ParseTestExpectation(std::string filename, std::vector<std::string>* expected_output) {
+void ParseTestExpectation(std::string filename, std::string* expected_output) {
   bool in_output = false;
 
   for (std::string line : ReadLines(filename)) {
@@ -60,7 +60,7 @@ void ParseTestExpectation(std::string filename, std::vector<std::string>* expect
       break;
 
     if (in_output)
-      expected_output->push_back(line);
+      *expected_output += line + "\n";
 
     if (line == "OUTPUT:")
       in_output = true;

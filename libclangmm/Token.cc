@@ -1,3 +1,4 @@
+#if false
 #include "Token.h"
 #include "Utility.h"
 
@@ -44,3 +45,5 @@ bool clang::Token::is_identifier() const {
   }
   return false;
 }
+
+#endif

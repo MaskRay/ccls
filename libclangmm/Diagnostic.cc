@@ -1,3 +1,4 @@
+#if false
 #include "Diagnostic.h"
 #include "SourceLocation.h"
 #include "Tokens.h"
@@ -39,3 +40,5 @@ const std::string clang::Diagnostic::get_severity_spelling(unsigned severity) {
       return "";
   }
 }
+
+#endif

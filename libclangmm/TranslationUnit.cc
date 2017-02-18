@@ -89,6 +89,7 @@ CodeCompleteResults TranslationUnit::get_code_completions(const std::string &buf
   return results;
 }
 
+/*
 std::vector<Diagnostic> TranslationUnit::get_diagnostics() {
   std::vector<Diagnostic> diagnostics;
   for (unsigned c = 0; c < clang_getNumDiagnostics(cx_tu); c++) {
@@ -98,7 +99,9 @@ std::vector<Diagnostic> TranslationUnit::get_diagnostics() {
   }
   return diagnostics;
 }
+*/
 
+/*
 std::unique_ptr<Tokens> TranslationUnit::get_tokens(unsigned start_offset, unsigned end_offset) {
   auto path = ToString(clang_getTranslationUnitSpelling(cx_tu));
   SourceLocation start_location(cx_tu, path, start_offset);
@@ -114,11 +117,13 @@ std::unique_ptr<Tokens> TranslationUnit::get_tokens(unsigned start_line, unsigne
   SourceRange range(start_location, end_location);
   return std::unique_ptr<Tokens>(new Tokens(cx_tu, range));
 }
+*/
 
 Cursor TranslationUnit::document_cursor() const {
   return Cursor(clang_getTranslationUnitCursor(cx_tu));
 }
 
+/*
 Cursor TranslationUnit::get_cursor(std::string path, unsigned offset) {
   SourceLocation location(cx_tu, path, offset);
   return Cursor(clang_getCursor(cx_tu, location.cx_location));
@@ -128,5 +133,6 @@ Cursor TranslationUnit::get_cursor(std::string path, unsigned line, unsigned col
   SourceLocation location(cx_tu, path, line, column);
   return Cursor(clang_getCursor(cx_tu, location.cx_location));
 }
+*/
 
 }

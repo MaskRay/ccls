@@ -1,3 +1,4 @@
+#if false
 #ifndef TOKENS_H_
 #define TOKENS_H_
 #include <clang-c/Index.h>
@@ -24,3 +25,5 @@ namespace clang {
   };
 }  // namespace clang
 #endif  // TOKENS_H_
+
+#endif
