@@ -9,7 +9,7 @@ OUTPUT:
       "short_name": "Type",
       "qualified_name": "Type",
       "declaration": "tests/usage/type_usage_declare_static.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_static.cc:2:13"]
+      "uses": ["tests/usage/type_usage_declare_static.cc:2:8"]
     }],
   "functions": [],
   "variables": [{

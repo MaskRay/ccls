@@ -15,14 +15,14 @@ OUTPUT:
       "short_name": "ForwardType",
       "qualified_name": "ForwardType",
       "declaration": "tests/usage/type_usage_declare_field.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_field.cc:5:16"]
+      "uses": ["tests/usage/type_usage_declare_field.cc:5:3"]
     }, {
       "id": 1,
       "usr": "c:@S@ImplementedType",
       "short_name": "ImplementedType",
       "qualified_name": "ImplementedType",
       "definition": "tests/usage/type_usage_declare_field.cc:2:8",
-      "uses": ["tests/usage/type_usage_declare_field.cc:6:19"]
+      "uses": ["tests/usage/type_usage_declare_field.cc:6:3"]
     }, {
       "id": 2,
       "usr": "c:@S@Foo",

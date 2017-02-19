@@ -9,7 +9,7 @@ OUTPUT:
       "short_name": "ForwardType",
       "qualified_name": "ForwardType",
       "declaration": "tests/usage/type_usage_declare_param_unnamed.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_param_unnamed.cc:2:22"]
+      "uses": ["tests/usage/type_usage_declare_param_unnamed.cc:2:10"]
     }],
   "functions": [{
       "id": 0,

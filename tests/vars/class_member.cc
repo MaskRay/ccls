@@ -11,7 +11,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/vars/class_member.cc:1:7",
       "vars": [0],
-      "uses": ["tests/vars/class_member.cc:2:8"]
+      "uses": ["tests/vars/class_member.cc:2:3"]
     }],
   "functions": [],
   "variables": [{

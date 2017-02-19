@@ -13,7 +13,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/vars/class_static_member.cc:1:7",
       "vars": [0],
-      "uses": ["tests/vars/class_static_member.cc:2:15", "tests/vars/class_static_member.cc:4:11"]
+      "uses": ["tests/vars/class_static_member.cc:2:10", "tests/vars/class_static_member.cc:4:1"]
     }],
   "functions": [],
   "variables": [{

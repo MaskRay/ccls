@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "T",
       "qualified_name": "T",
       "definition": "tests/usage/type_usage_declare_extern.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_extern.cc:3:10"]
+      "uses": ["tests/usage/type_usage_declare_extern.cc:3:8"]
     }],
   "functions": [],
   "variables": [{

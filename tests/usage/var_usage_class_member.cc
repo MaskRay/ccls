@@ -27,7 +27,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/usage/var_usage_class_member.cc:1:7",
       "vars": [0, 1],
-      "uses": ["tests/usage/var_usage_class_member.cc:11:7"]
+      "uses": ["tests/usage/var_usage_class_member.cc:11:3"]
     }],
   "functions": [{
       "id": 0,

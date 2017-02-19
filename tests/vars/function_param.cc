@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "declaration": "tests/vars/function_param.cc:1:8",
-      "uses": ["tests/vars/function_param.cc:3:15", "tests/vars/function_param.cc:3:24"]
+      "uses": ["tests/vars/function_param.cc:3:10", "tests/vars/function_param.cc:3:19"]
     }],
   "functions": [{
       "id": 0,

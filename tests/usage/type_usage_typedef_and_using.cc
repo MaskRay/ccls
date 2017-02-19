@@ -17,7 +17,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "declaration": "tests/usage/type_usage_typedef_and_using.cc:1:8",
-      "uses": ["tests/usage/type_usage_typedef_and_using.cc:6:17"]
+      "uses": ["tests/usage/type_usage_typedef_and_using.cc:6:13"]
     }, {
       "id": 1,
       "usr": "c:@Foo1",
@@ -25,7 +25,7 @@ OUTPUT:
       "qualified_name": "Foo1",
       "definition": "tests/usage/type_usage_typedef_and_using.cc:2:7",
       "alias_of": 0,
-      "uses": ["tests/usage/type_usage_typedef_and_using.cc:7:19"]
+      "uses": ["tests/usage/type_usage_typedef_and_using.cc:7:14"]
     }, {
       "id": 2,
       "usr": "c:type_usage_typedef_and_using.cc@T@Foo2",
@@ -33,7 +33,7 @@ OUTPUT:
       "qualified_name": "Foo2",
       "definition": "tests/usage/type_usage_typedef_and_using.cc:3:13",
       "alias_of": 0,
-      "uses": ["tests/usage/type_usage_typedef_and_using.cc:8:19"]
+      "uses": ["tests/usage/type_usage_typedef_and_using.cc:8:14"]
     }, {
       "id": 3,
       "usr": "c:@Foo3",
@@ -41,7 +41,7 @@ OUTPUT:
       "qualified_name": "Foo3",
       "definition": "tests/usage/type_usage_typedef_and_using.cc:4:7",
       "alias_of": 1,
-      "uses": ["tests/usage/type_usage_typedef_and_using.cc:9:19"]
+      "uses": ["tests/usage/type_usage_typedef_and_using.cc:9:14"]
     }],
   "functions": [{
       "id": 0,

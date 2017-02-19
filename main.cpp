@@ -522,12 +522,14 @@ void InsertReference(ParsingDatabase* db, std::optional<FuncId> func_id, clang::
   clang::Cursor referenced = referencer.get_referenced();
 
   switch (referenced.get_kind()) {
+  case CXCursor_Constructor:
+  case CXCursor_Destructor:
   case CXCursor_CXXMethod:
   case CXCursor_FunctionDecl:
   {
     FuncId referenced_id = db->ToFuncId(referenced.get_usr());
     FuncDef* referenced_def = db->Resolve(referenced_id);
-    
+
     if (func_id) {
       FuncDef* func_def = db->Resolve(func_id.value());
       func_def->callees.push_back(FuncRef(referenced_id, loc));
@@ -608,35 +610,60 @@ void InsertTypeUsageAtLocation(ParsingDatabase* db, clang::Type type, const clan
 struct VarDeclVisitorParam {
   ParsingDatabase* db;
   std::optional<FuncId> func_id;
+  bool seen_type_ref = false;
 
   VarDeclVisitorParam(ParsingDatabase* db, std::optional<FuncId> func_id)
     : db(db), func_id(func_id) {}
 };
 
+// NOTE: This function does not process any of the definitions/etc defined
+//       inside of the call initializing the variable. That should be handled
+//       by the function-definition visitor!
 clang::VisiterResult VarDeclVisitor(clang::Cursor cursor, clang::Cursor parent, VarDeclVisitorParam* param) {
   switch (cursor.get_kind()) {
   case CXCursor_TemplateRef:
-  case CXCursor_TypeRef:
     InsertTypeUsageAtLocation(param->db, cursor.get_referenced().get_type(), cursor.get_source_location());
-    break;
+    return clang::VisiterResult::Continue;
 
+  case CXCursor_TypeRef:
+    // This block of code will have two TypeRef nodes:
+    //    Foo Foo::name = 3
+    // We try to avoid the second reference here by only processing the first one.
+    if (!param->seen_type_ref) {
+      param->seen_type_ref = true;
+      InsertTypeUsageAtLocation(param->db, cursor.get_referenced().get_type(), cursor.get_source_location());
+    }
+    return clang::VisiterResult::Continue;
+
+  case CXCursor_UnexposedExpr:
+  case CXCursor_UnaryOperator:
+    return clang::VisiterResult::Continue;
+    /*
+    
   case CXCursor_CallExpr:
+    // TODO: Add a test for parameters inside the call? We should probably recurse.
     InsertReference(param->db, param->func_id, cursor);
-    break;
-
+    return clang::VisiterResult::Continue;
+    */
   default:
     std::cerr << "VarDeclVisitor unhandled " << cursor.ToString() << std::endl;
-    break;
+    return clang::VisiterResult::Continue;
   }
-
-  return clang::VisiterResult::Continue;
 }
 
-void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type, std::optional<FuncId> func_id) {
+void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type, std::optional<FuncId> func_id, bool declare_variable) {
   //Dump(var);
 
   // Add a usage to the type of the variable.
-  InsertTypeUsageAtLocation(db, var.get_type(), var.get_source_location());
+  //if (var.is_definition())
+  //  InsertTypeUsageAtLocation(db, var.get_type(), var.get_source_location());
+
+  // Add usage to types.
+  VarDeclVisitorParam varDeclVisitorParam(db, func_id);
+  var.VisitChildren(&VarDeclVisitor, &varDeclVisitorParam);
+  
+  if (!declare_variable)
+    return;
 
   // Note: if there is no USR then there can be no declaring type, as all
   // member variables of a class must have a name. Only function parameters
@@ -692,9 +719,10 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
 
       //std::cout << template_param_type.get_usr() << std::endl;
     }*/
-    VarDeclVisitorParam varDeclVisitorParam(db, func_id);
-    var.VisitChildren(&VarDeclVisitor, &varDeclVisitorParam);
+    //VarDeclVisitorParam varDeclVisitorParam(db, func_id);
+    //var.VisitChildren(&VarDeclVisitor, &varDeclVisitorParam);
   }
+
 }
 
 
@@ -712,8 +740,10 @@ struct FuncDefinitionParam {
   ParsingDatabase* db;
   NamespaceStack* ns;
   FuncId func_id;
-  FuncDefinitionParam(ParsingDatabase* db, NamespaceStack* ns, FuncId func_id)
-    : db(db), ns(ns), func_id(func_id) {}
+  bool is_definition;
+
+  FuncDefinitionParam(ParsingDatabase* db, NamespaceStack* ns, FuncId func_id, bool is_definition)
+    : db(db), ns(ns), func_id(func_id), is_definition(is_definition) {}
 };
 
 clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor parent, FuncDefinitionParam* param) {
@@ -741,8 +771,9 @@ clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor par
 
   case CXCursor_VarDecl:
   case CXCursor_ParmDecl:
-    HandleVarDecl(param->db, param->ns, cursor, std::nullopt, param->func_id);
-    return clang::VisiterResult::Continue;
+    //std::cout << "!! Parsing var decl " << cursor.ToString() << std::endl;
+    HandleVarDecl(param->db, param->ns, cursor, std::nullopt, param->func_id, param->is_definition);
+    return clang::VisiterResult::Recurse;
 
   case CXCursor_ReturnStmt:
     return clang::VisiterResult::Recurse;
@@ -786,6 +817,8 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
   // Insert return type usage here instead of in the visitor. The only way to
   // do it in the visitor is to search for CXCursor_TypeRef, which does not
   // necessarily refer to the return type.
+  // TODO: Is that the case? What about a top-level visitor? Would return type
+  //       location be better?
   InsertTypeUsageAtLocation(db, func.get_type().get_return_type(), func.get_source_location());
 
   // Don't process definition/body for declarations.
@@ -797,6 +830,7 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
     // "real" variables so we don't want to add definitions for them.
 
     // We navigate using cursor arguments so we can get location data.
+    /*
     for (clang::Cursor arg : func.get_arguments()) {
       switch (arg.get_kind()) {
       case CXCursor_ParmDecl:
@@ -804,11 +838,13 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
         break;
       }
     }
-    return;
+    */
   }
 
-  func_def->definition = func.get_source_location();
-  FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty, func_id);
+  if (func.is_definition())
+    func_def->definition = func.get_source_location();
+
+  FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty, func_id, func.is_definition());
   func.VisitChildren(&VisitFuncDefinition, &funcDefinitionParam);
 }
 
@@ -867,13 +903,15 @@ clang::VisiterResult VisitClassDecl(clang::Cursor cursor, clang::Cursor parent, 
   case CXCursor_CXXAccessSpecifier:
     break;
 
+  case CXCursor_Constructor:
+  case CXCursor_Destructor:
   case CXCursor_CXXMethod:
     HandleFunc(param->db, param->ns, cursor, param->active_type);
     break;
 
   case CXCursor_FieldDecl:
   case CXCursor_VarDecl:
-    HandleVarDecl(param->db, param->ns, cursor, param->active_type, std::nullopt);
+    HandleVarDecl(param->db, param->ns, cursor, param->active_type, std::nullopt, true /*declare_variable*/);
     break;
 
   default:
@@ -953,7 +991,7 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
     break;
 
   case CXCursor_VarDecl:
-    HandleVarDecl(param->db, param->ns, cursor, std::nullopt, std::nullopt);
+    HandleVarDecl(param->db, param->ns, cursor, std::nullopt, std::nullopt, true /*declare_variable*/);
     break;
 
   default:
@@ -1079,7 +1117,9 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    if (path != "tests/usage/type_usage_as_template_parameter.cc") continue;
+    //if (path != "tests/constructors/constructor.cc") continue;
+    //if (path != "tests/usage/func_usage_addr_func.cc") continue;
+    //if (path != "tests/vars/class_static_member.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

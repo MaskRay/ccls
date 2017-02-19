@@ -12,14 +12,14 @@ OUTPUT:
       "short_name": "ForwardType",
       "qualified_name": "ForwardType",
       "declaration": "tests/usage/type_usage_declare_param.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_param.cc:4:23"]
+      "uses": ["tests/usage/type_usage_declare_param.cc:4:10"]
     }, {
       "id": 1,
       "usr": "c:@S@ImplementedType",
       "short_name": "ImplementedType",
       "qualified_name": "ImplementedType",
       "definition": "tests/usage/type_usage_declare_param.cc:2:8",
-      "uses": ["tests/usage/type_usage_declare_param.cc:4:42"]
+      "uses": ["tests/usage/type_usage_declare_param.cc:4:26"]
     }],
   "functions": [{
       "id": 0,

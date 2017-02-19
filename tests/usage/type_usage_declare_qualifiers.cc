@@ -15,7 +15,7 @@ OUTPUT:
       "short_name": "Type",
       "qualified_name": "Type",
       "definition": "tests/usage/type_usage_declare_qualifiers.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_qualifiers.cc:3:16", "tests/usage/type_usage_declare_qualifiers.cc:3:32", "tests/usage/type_usage_declare_qualifiers.cc:4:8", "tests/usage/type_usage_declare_qualifiers.cc:5:9", "tests/usage/type_usage_declare_qualifiers.cc:6:15", "tests/usage/type_usage_declare_qualifiers.cc:7:21"]
+      "uses": ["tests/usage/type_usage_declare_qualifiers.cc:3:10", "tests/usage/type_usage_declare_qualifiers.cc:3:26", "tests/usage/type_usage_declare_qualifiers.cc:4:3", "tests/usage/type_usage_declare_qualifiers.cc:5:3", "tests/usage/type_usage_declare_qualifiers.cc:6:9", "tests/usage/type_usage_declare_qualifiers.cc:7:9"]
     }],
   "functions": [{
       "id": 0,

@@ -12,7 +12,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "declaration": "tests/vars/function_local.cc:1:8",
-      "uses": ["tests/vars/function_local.cc:4:8"]
+      "uses": ["tests/vars/function_local.cc:4:3"]
     }],
   "functions": [{
       "id": 0,

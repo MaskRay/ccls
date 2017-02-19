@@ -16,7 +16,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/usage/func_usage_forward_decl_method.cc:1:8",
       "funcs": [0],
-      "uses": ["tests/usage/func_usage_forward_decl_method.cc:6:8"]
+      "uses": ["tests/usage/func_usage_forward_decl_method.cc:6:3"]
     }],
   "functions": [{
       "id": 0,

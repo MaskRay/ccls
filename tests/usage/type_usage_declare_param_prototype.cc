@@ -12,7 +12,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "declaration": "tests/usage/type_usage_declare_param_prototype.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_param_prototype.cc:3:15", "tests/usage/type_usage_declare_param_prototype.cc:3:22", "tests/usage/type_usage_declare_param_prototype.cc:4:15", "tests/usage/type_usage_declare_param_prototype.cc:4:22"]
+      "uses": ["tests/usage/type_usage_declare_param_prototype.cc:3:10", "tests/usage/type_usage_declare_param_prototype.cc:3:18", "tests/usage/type_usage_declare_param_prototype.cc:4:10", "tests/usage/type_usage_declare_param_prototype.cc:4:18"]
     }],
   "functions": [{
       "id": 0,
