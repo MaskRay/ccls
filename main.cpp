@@ -639,7 +639,7 @@ clang::VisiterResult VarDeclVisitor(clang::Cursor cursor, clang::Cursor parent, 
   case CXCursor_UnaryOperator:
     return clang::VisiterResult::Continue;
     /*
-    
+
   case CXCursor_CallExpr:
     // TODO: Add a test for parameters inside the call? We should probably recurse.
     InsertReference(param->db, param->func_id, cursor);
@@ -661,7 +661,7 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
   // Add usage to types.
   VarDeclVisitorParam varDeclVisitorParam(db, func_id);
   var.VisitChildren(&VarDeclVisitor, &varDeclVisitorParam);
-  
+
   if (!declare_variable)
     return;
 
@@ -741,14 +741,23 @@ struct FuncDefinitionParam {
   NamespaceStack* ns;
   FuncId func_id;
   bool is_definition;
+  bool has_return_type;
 
-  FuncDefinitionParam(ParsingDatabase* db, NamespaceStack* ns, FuncId func_id, bool is_definition)
-    : db(db), ns(ns), func_id(func_id), is_definition(is_definition) {}
+  FuncDefinitionParam(ParsingDatabase* db, NamespaceStack* ns, FuncId func_id, bool is_definition, bool has_return_type)
+    : db(db), ns(ns), func_id(func_id), is_definition(is_definition), has_return_type(has_return_type) {}
 };
 
 clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor parent, FuncDefinitionParam* param) {
+  if (param->has_return_type) {
+    // Foo* Foo::Bar() {} will have two TypeRef nodes.
+    assert(cursor.get_kind() == CXCursor_TypeRef);
+    InsertTypeUsageAtLocation(param->db, cursor.get_referenced().get_type(), cursor.get_source_location());
+    param->has_return_type = false;
+  }
+
   //std::cout << "VistFuncDefinition got " << cursor.ToString() << std::endl;
   switch (cursor.get_kind()) {
+
     // TODO: Maybe we should default to recurse?
     /*
     case CXCursor_CompoundStmt:
@@ -814,13 +823,6 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
     func_def->declaring_type = declaring_type;
   }
 
-  // Insert return type usage here instead of in the visitor. The only way to
-  // do it in the visitor is to search for CXCursor_TypeRef, which does not
-  // necessarily refer to the return type.
-  // TODO: Is that the case? What about a top-level visitor? Would return type
-  //       location be better?
-  InsertTypeUsageAtLocation(db, func.get_type().get_return_type(), func.get_source_location());
-
   // Don't process definition/body for declarations.
   if (!func.is_definition()) {
     func_def->declaration = func.get_source_location();
@@ -844,7 +846,11 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
   if (func.is_definition())
     func_def->definition = func.get_source_location();
 
-  FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty, func_id, func.is_definition());
+  // Ignore any fundamental types for return. Note that void is a fundamental
+  // type.
+  bool has_return_type = !func.get_type().get_return_type().is_fundamental();
+
+  FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty, func_id, func.is_definition(), has_return_type);
   func.VisitChildren(&VisitFuncDefinition, &funcDefinitionParam);
 }
 
@@ -1119,7 +1125,7 @@ int main(int argc, char** argv) {
     // TODO: Fix all existing tests.
     //if (path != "tests/constructors/constructor.cc") continue;
     //if (path != "tests/usage/func_usage_addr_func.cc") continue;
-    //if (path != "tests/vars/class_static_member.cc") continue;
+    //if (path != "tests/usage/type_usage_on_return_type.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
