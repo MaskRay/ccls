@@ -18,7 +18,8 @@ OUTPUT:
       "definition": "tests/usage/func_usage_addr_method.cc:1:8",
       "funcs": [0]
     }, {
-      "id": 1
+      "id": 1,
+      "uses": ["tests/usage/func_usage_addr_method.cc:6:8"]
     }],
   "functions": [{
     "id": 0,

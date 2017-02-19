@@ -5,7 +5,8 @@ void foo(int p) {
 OUTPUT:
 {
   "types": [{
-      "id": 0
+      "id": 0,
+      "uses": ["tests/vars/function_shadow_param.cc:1:14", "tests/vars/function_shadow_param.cc:2:7"]
     }],
   "functions": [{
       "id": 0,

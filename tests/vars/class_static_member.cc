@@ -13,7 +13,8 @@ OUTPUT:
       "definition": "tests/vars/class_static_member.cc:1:7",
       "vars": [0]
     }, {
-      "id": 1
+      "id": 1,
+      "uses": ["tests/vars/class_static_member.cc:2:14", "tests/vars/class_static_member.cc:4:10"]
     }],
   "functions": [],
   "variables": [{

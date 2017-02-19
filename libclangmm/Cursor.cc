@@ -19,8 +19,22 @@ std::string Type::get_usr() const {
   return clang::Cursor(clang_getTypeDeclaration(cx_type)).get_usr();
 }
 
+Type Type::strip_qualifiers() const {
+  //CXRefQualifierKind qualifiers = clang_Type_getCXXRefQualifier(cx_type)
+  switch (cx_type.kind) {
+  case CXType_Pointer:
+    return clang_getPointeeType(cx_type);
+  }
+
+  return cx_type;
+}
+
 std::string Type::get_spelling() const {
   return ToString(clang_getTypeSpelling(cx_type));
+}
+
+SourceLocation Cursor::get_source_location() const {
+  return SourceLocation(clang_getCursorLocation(cx_cursor));
 }
 
 Type Type::get_return_type() const {
@@ -62,10 +76,6 @@ CXCursorKind Cursor::get_kind() const {
 
 Type Cursor::get_type() const {
   return Type(clang_getCursorType(cx_cursor));
-}
-
-SourceLocation Cursor::get_source_location() const {
-  return SourceLocation(clang_getCursorLocation(cx_cursor));
 }
 
 /*

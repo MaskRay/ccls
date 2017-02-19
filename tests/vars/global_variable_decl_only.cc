@@ -2,7 +2,10 @@ extern int global;
 /*
 OUTPUT:
 {
-  "types": [],
+  "types": [{
+      "id": 0,
+      "uses": ["tests/vars/global_variable_decl_only.cc:1:12"]
+    }],
   "functions": [],
   "variables": [{
       "id": 0,

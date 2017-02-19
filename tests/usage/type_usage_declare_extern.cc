@@ -9,7 +9,8 @@ OUTPUT:
       "usr": "c:@S@T",
       "short_name": "T",
       "qualified_name": "T",
-      "definition": "tests/usage/type_usage_declare_extern.cc:1:8"
+      "definition": "tests/usage/type_usage_declare_extern.cc:1:8",
+      "uses": ["tests/usage/type_usage_declare_extern.cc:3:10"]
     }],
   "functions": [],
   "variables": [{

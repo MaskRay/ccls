@@ -20,7 +20,8 @@ OUTPUT:
       "definition": "tests/usage/func_usage_class_inline_var_def.cc:5:7",
       "vars": [0]
     }, {
-      "id": 1
+      "id": 1,
+      "uses": ["tests/usage/func_usage_class_inline_var_def.cc:6:7"]
     }],
   "functions": [{
       "id": 0,

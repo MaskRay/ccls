@@ -84,7 +84,9 @@ struct TypeDef {
   // Usages.
   std::vector<clang::SourceLocation> uses;
 
-  TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {}
+  TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
+    std::cout << "Creating type type with usr " << usr << std::endl;
+  }
 };
 
 struct FuncDef {
@@ -527,7 +529,12 @@ void Dump(clang::Cursor cursor) {
 
 
 
-
+// TODO: See if we can improve type usage reporting, for example
+//  void foo() {
+//    Foo x;
+//  }
+// The usage on |Foo| will be reported at the |x| variable location. We should
+// report it at the start of |Foo| instead. 
 
 
 void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type) {
@@ -549,6 +556,11 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
     var_def->declaring_type = declaring_type;
   }
 
+  // Add a usage to the type of the variable.
+  clang::Type var_type = var.get_type().strip_qualifiers();
+  TypeId var_type_id = db->ToTypeId(var_type.get_usr());
+  db->Resolve(var_type_id)->uses.push_back(var.get_source_location());
+
   // We don't do any additional processing for non-definitions.
   if (!var.is_definition()) {
     var_def->declaration = var.get_source_location();
@@ -563,7 +575,7 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
   // TODO: Figure out how to scan initializations properly. We probably need
   //       to scan for assignment statement, or definition+ctor.
   var_def->initializations.push_back(var.get_source_location());
-  var_def->variable_type = db->ToTypeId(var.get_type().get_usr());
+  var_def->variable_type = db->ToTypeId(var.get_type().strip_qualifiers().get_usr());
 }
 
 
@@ -935,7 +947,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    //if (path != "tests/usage/func_usage_class_inline_var_def.cc") continue;
+    //if (path != "tests/usage/type_usage_declare_extern.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

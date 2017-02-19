@@ -5,7 +5,8 @@ void foo() {
 OUTPUT:
 {
   "types": [{
-      "id": 0
+      "id": 0,
+      "uses": ["tests/vars/function_local.cc:2:7"]
     }],
   "functions": [{
       "id": 0,

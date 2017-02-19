@@ -21,6 +21,10 @@ public:
 
   std::string get_usr() const;
   std::string get_spelling() const;
+
+  // Try to resolve this type and remove qualifies, ie, Foo* will become Foo
+  Type strip_qualifiers() const;
+
   Type get_return_type() const;
   std::vector<Type> get_arguments() const;
 

@@ -15,9 +15,8 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "tests/usage/func_usage_forward_decl_method.cc:1:8",
-      "funcs": [0]
-    }, {
-      "id": 1
+      "funcs": [0],
+      "uses": ["tests/usage/func_usage_forward_decl_method.cc:6:8"]
     }],
   "functions": [{
       "id": 0,
@@ -43,7 +42,7 @@ OUTPUT:
       "qualified_name": "f",
       "declaration": "tests/usage/func_usage_forward_decl_method.cc:6:8",
       "initializations": ["tests/usage/func_usage_forward_decl_method.cc:6:8"],
-      "variable_type": 1
+      "variable_type": 0
     }]
 }
 */

@@ -3,7 +3,8 @@ static int global = 0;
 OUTPUT:
 {
   "types": [{
-      "id": 0
+      "id": 0,
+      "uses": ["tests/vars/global_variable.cc:1:12"]
     }],
   "functions": [],
   "variables": [{
