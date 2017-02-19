@@ -18,11 +18,6 @@ OUTPUT:
       "qualified_name": "foo",
       "definition": "tests/usage/type_usage_declare_param_unnamed.cc:2:6"
     }],
-  "variables": [{
-      "id": 0,
-      "declaration": "tests/usage/type_usage_declare_param_unnamed.cc:2:22",
-      "initializations": ["tests/usage/type_usage_declare_param_unnamed.cc:2:22"],
-      "variable_type": 0
-    }]
+  "variables": []
 }
 */

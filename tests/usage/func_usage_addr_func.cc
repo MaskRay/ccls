@@ -37,10 +37,6 @@ OUTPUT:
     }],
   "variables": [{
       "id": 0,
-      "declaration": "tests/usage/func_usage_addr_func.cc:1:19",
-      "initializations": ["tests/usage/func_usage_addr_func.cc:1:19"]
-    }, {
-      "id": 1,
       "usr": "c:func_usage_addr_func.cc@61@F@user#@x",
       "short_name": "x",
       "qualified_name": "x",

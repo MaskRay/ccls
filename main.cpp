@@ -85,7 +85,7 @@ struct TypeDef {
   std::vector<clang::SourceLocation> uses;
 
   TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
-    //assert(usr.size() > 0);
+    assert(usr.size() > 0);
     //std::cout << "Creating type with usr " << usr << std::endl;
   }
 };
@@ -117,7 +117,9 @@ struct FuncDef {
   // Usages.
   std::vector<clang::SourceLocation> uses;
 
-  FuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {}
+  FuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
+    assert(usr.size() > 0);
+  }
 };
 
 struct VarDef {
@@ -138,7 +140,9 @@ struct VarDef {
   // Usages.
   std::vector<clang::SourceLocation> uses;
 
-  VarDef(VarId id, const std::string& usr) : id(id), usr(usr) {}
+  VarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
+    assert(usr.size() > 0);
+  }
 };
 
 
@@ -562,24 +566,33 @@ void InsertTypeUsageAtLocation(ParsingDatabase* db, clang::Type type, const clan
 void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type) {
   //Dump(var);
 
-  VarId var_id = db->ToVarId(var.get_usr());
+  // Add a usage to the type of the variable.
+  InsertTypeUsageAtLocation(db, var.get_type(), var.get_source_location());
+
+  // Note: if there is no USR then there can be no declaring type, as all
+  // member variables of a class must have a name. Only function parameters
+  // can be nameless.
+  std::string var_usr = var.get_usr();
+  if (var_usr.size() == 0) {
+    assert(var.get_kind() == CXCursor_ParmDecl);
+    return;
+  }
+
+  VarId var_id = db->ToVarId(var_usr);
+  VarDef* var_def = db->Resolve(var_id);
 
   declaring_type = ResolveDeclaringType(CXCursor_FieldDecl, db, var, declaring_type);
-
-  // TODO: We could use RAII to verify we don't modify db while have a *Def
-  //       instance alive.
-  VarDef* var_def = db->Resolve(var_id);
-  var_def->short_name = var.get_spelling();
-  var_def->qualified_name =
-    ns->ComputeQualifiedName(db, declaring_type, var_def->short_name);
-
   if (declaring_type && !var_def->declaration) {
+    // Note: If USR is null there can be no declaring type.
     db->Resolve(declaring_type.value())->vars.push_back(var_id);
     var_def->declaring_type = declaring_type;
   }
 
-  // Add a usage to the type of the variable.
-  InsertTypeUsageAtLocation(db, var.get_type(), var.get_source_location());
+  // TODO: We could use RAII to verify we don't modify db while have a *Def
+  //       instance alive.
+  var_def->short_name = var.get_spelling();
+  var_def->qualified_name =
+    ns->ComputeQualifiedName(db, declaring_type, var_def->short_name);
 
   // We don't do any additional processing for non-definitions.
   if (!var.is_definition()) {
