@@ -16,6 +16,11 @@ bool Type::operator==(const Type& rhs) const {
 }
 
 bool Type::is_fundamental() const {
+  //switch (cx_type.kind) {
+  //case CXType_Auto:
+    //return true;
+  //}
+
   // NOTE: This will return false for pointed types. Should we call
   //       strip_qualifiers for the user?
   return cx_type.kind >= CXType_FirstBuiltin &&

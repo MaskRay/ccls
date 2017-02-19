@@ -7,9 +7,7 @@ void foo(int, int) {}
 
 OUTPUT:
 {
-  "types": [{
-      "id": 0
-    }],
+  "types": [],
   "functions": [{
       "id": 0,
       "usr": "c:@F@foo#I#I#",
@@ -20,8 +18,7 @@ OUTPUT:
   "variables": [{
       "id": 0,
       "declaration": "tests/vars/function_param_unnamed.cc:1:13",
-      "initializations": ["tests/vars/function_param_unnamed.cc:1:13", "tests/vars/function_param_unnamed.cc:1:18"],
-      "variable_type": 0
+      "initializations": ["tests/vars/function_param_unnamed.cc:1:13", "tests/vars/function_param_unnamed.cc:1:18"]
     }]
 }
 */

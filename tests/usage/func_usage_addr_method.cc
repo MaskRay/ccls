@@ -17,9 +17,6 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/usage/func_usage_addr_method.cc:1:8",
       "funcs": [0]
-    }, {
-      "id": 1,
-      "uses": ["tests/usage/func_usage_addr_method.cc:6:8"]
     }],
   "functions": [{
     "id": 0,
@@ -44,8 +41,7 @@ OUTPUT:
       "short_name": "x",
       "qualified_name": "x",
       "declaration": "tests/usage/func_usage_addr_method.cc:6:8",
-      "initializations": ["tests/usage/func_usage_addr_method.cc:6:8"],
-      "variable_type": 1
+      "initializations": ["tests/usage/func_usage_addr_method.cc:6:8"]
     }]
 }
 */

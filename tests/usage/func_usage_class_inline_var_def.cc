@@ -9,8 +9,6 @@ class Foo {
 // TODO(libclang): libclang doesn't expose the |helper| reference in the ast,
 //                 so we can't add the |helper| usage.
 
-// TODO: Remove "id" 1 output
-
 /*
 OUTPUT:
 {
@@ -21,8 +19,6 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/usage/func_usage_class_inline_var_def.cc:5:7",
       "vars": [0]
-    }, {
-      "id": 1
     }],
   "functions": [{
       "id": 0,
@@ -38,7 +34,6 @@ OUTPUT:
       "qualified_name": "Foo::x",
       "declaration": "tests/usage/func_usage_class_inline_var_def.cc:6:7",
       "initializations": ["tests/usage/func_usage_class_inline_var_def.cc:6:7"],
-      "variable_type": 1,
       "declaring_type": 0
     }]
 }

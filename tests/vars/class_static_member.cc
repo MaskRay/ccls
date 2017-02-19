@@ -1,7 +1,8 @@
 class Foo {
-  static int member;
+  static Foo* member;
 };
-int Foo::member = 0;
+Foo* Foo::member = nullptr;
+
 /*
 OUTPUT:
 {
@@ -11,9 +12,8 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "tests/vars/class_static_member.cc:1:7",
-      "vars": [0]
-    }, {
-      "id": 1
+      "vars": [0],
+      "uses": ["tests/vars/class_static_member.cc:2:15", "tests/vars/class_static_member.cc:4:11"]
     }],
   "functions": [],
   "variables": [{
@@ -21,9 +21,9 @@ OUTPUT:
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "declaration": "tests/vars/class_static_member.cc:2:14",
-      "initializations": ["tests/vars/class_static_member.cc:4:10"],
-      "variable_type": 1,
+      "declaration": "tests/vars/class_static_member.cc:2:15",
+      "initializations": ["tests/vars/class_static_member.cc:4:11"],
+      "variable_type": 0,
       "declaring_type": 0
     }]
 }

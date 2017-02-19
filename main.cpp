@@ -85,7 +85,8 @@ struct TypeDef {
   std::vector<clang::SourceLocation> uses;
 
   TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
-    std::cout << "Creating type with usr " << usr << std::endl;
+    //assert(usr.size() > 0);
+    //std::cout << "Creating type with usr " << usr << std::endl;
   }
 };
 
@@ -152,6 +153,8 @@ struct ParsingDatabase {
   std::vector<FuncDef> funcs;
   std::vector<VarDef> vars;
 
+  ParsingDatabase();
+
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);
   VarId ToVarId(const std::string& usr);
@@ -162,6 +165,8 @@ struct ParsingDatabase {
 
   std::string ToString();
 };
+
+ParsingDatabase::ParsingDatabase() {}
 
 TypeId ParsingDatabase::ToTypeId(const std::string& usr) {
   auto it = usr_to_type_id.find(usr);
@@ -296,6 +301,12 @@ void Write(Writer& writer, const char* key, uint64_t value) {
 }
 
 std::string ParsingDatabase::ToString() {
+  auto it = usr_to_type_id.find("");
+  if (it != usr_to_type_id.end()) {
+    Resolve(it->second)->short_name = "<fundamental>";
+    assert(Resolve(it->second)->uses.size() == 0);
+  }
+
 #define WRITE(name) Write(writer, #name, def.name)
 
   rapidjson::StringBuffer output;
@@ -539,7 +550,8 @@ void Dump(clang::Cursor cursor) {
 void InsertTypeUsageAtLocation(ParsingDatabase* db, clang::Type type, const clang::SourceLocation& location) {
   clang::Type raw_type = type.strip_qualifiers();
 
-  if (raw_type.is_fundamental())
+  std::string usr = raw_type.get_usr();
+  if (usr == "")
     return;
 
   // Add a usage to the type of the variable.
@@ -583,7 +595,9 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
   // TODO: Figure out how to scan initializations properly. We probably need
   //       to scan for assignment statement, or definition+ctor.
   var_def->initializations.push_back(var.get_source_location());
-  var_def->variable_type = db->ToTypeId(var.get_type().strip_qualifiers().get_usr());
+  std::string var_type_usr = var.get_type().strip_qualifiers().get_usr();
+  if (var_type_usr != "")
+    var_def->variable_type = db->ToTypeId(var_type_usr);
 }
 
 
@@ -945,7 +959,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    //if (path != "tests/method_definition.cc") continue;
+    //if (path != "tests/usage/func_usage_addr_func.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
