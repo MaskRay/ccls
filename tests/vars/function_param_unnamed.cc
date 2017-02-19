@@ -8,8 +8,7 @@ void foo(int, int) {}
 OUTPUT:
 {
   "types": [{
-      "id": 0,
-      "uses": ["tests/vars/function_param_unnamed.cc:1:13", "tests/vars/function_param_unnamed.cc:1:18"]
+      "id": 0
     }],
   "functions": [{
       "id": 0,

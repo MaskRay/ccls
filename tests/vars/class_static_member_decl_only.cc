@@ -11,9 +11,6 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/vars/class_static_member_decl_only.cc:1:7",
       "vars": [0]
-    }, {
-      "id": 1,
-      "uses": ["tests/vars/class_static_member_decl_only.cc:2:14"]
     }],
   "functions": [],
   "variables": [{

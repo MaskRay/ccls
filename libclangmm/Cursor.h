@@ -19,6 +19,9 @@ public:
 
   bool operator==(const Type& rhs) const;
 
+  // Returns true if this is a fundamental type like int.
+  bool is_fundamental() const;
+
   std::string get_usr() const;
   std::string get_spelling() const;
 

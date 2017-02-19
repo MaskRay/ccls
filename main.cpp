@@ -85,7 +85,7 @@ struct TypeDef {
   std::vector<clang::SourceLocation> uses;
 
   TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
-    std::cout << "Creating type type with usr " << usr << std::endl;
+    std::cout << "Creating type with usr " << usr << std::endl;
   }
 };
 
@@ -536,6 +536,16 @@ void Dump(clang::Cursor cursor) {
 // The usage on |Foo| will be reported at the |x| variable location. We should
 // report it at the start of |Foo| instead. 
 
+void InsertTypeUsageAtLocation(ParsingDatabase* db, clang::Type type, const clang::SourceLocation& location) {
+  clang::Type raw_type = type.strip_qualifiers();
+
+  if (raw_type.is_fundamental())
+    return;
+
+  // Add a usage to the type of the variable.
+  TypeId type_id = db->ToTypeId(raw_type.get_usr());
+  db->Resolve(type_id)->uses.push_back(location);
+}
 
 void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type) {
   //Dump(var);
@@ -557,9 +567,7 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
   }
 
   // Add a usage to the type of the variable.
-  clang::Type var_type = var.get_type().strip_qualifiers();
-  TypeId var_type_id = db->ToTypeId(var_type.get_usr());
-  db->Resolve(var_type_id)->uses.push_back(var.get_source_location());
+  InsertTypeUsageAtLocation(db, var.get_type(), var.get_source_location());
 
   // We don't do any additional processing for non-definitions.
   if (!var.is_definition()) {
@@ -693,43 +701,33 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
     func_def->declaring_type = declaring_type;
   }
 
-  // We don't do any additional processing for non-definitions.
+  // Insert return type usage here instead of in the visitor. The only way to
+  // do it in the visitor is to search for CXCursor_TypeRef, which does not
+  // necessarily refer to the return type.
+  InsertTypeUsageAtLocation(db, func.get_type().get_return_type(), func.get_source_location());
+
+  // Don't process definition/body for declarations.
   if (!func.is_definition()) {
     func_def->declaration = func.get_source_location();
+
+    // We insert type references for arguments but don't use the normal visitor
+    // because that will add a definition for the variable. These are not
+    // "real" variables so we don't want to add definitions for them.
+
+    // We navigate using cursor arguments so we can get location data.
+    for (clang::Cursor arg : func.get_arguments()) {
+      switch (arg.get_kind()) {
+      case CXCursor_ParmDecl:
+        InsertTypeUsageAtLocation(db, arg.get_type(), arg.get_source_location());
+        break;
+      }
+    }
     return;
   }
 
   func_def->definition = func.get_source_location();
-
-  //std::cout << "!! Types: ";
-  //for (clang::Cursor arg : func.get_arguments())
-  //  std::cout << arg.ToString() << ", ";
-  //std::cout << std::endl;
-
-  //std::cout << func.get_usr() << ": Set qualified name to " << db->Resolve(id)->qualified_name;
-  //std::cout << " IsDefinition? " << func.is_definition() << std::endl;
-
-  //clang::Type func_type = func.get_type();
-  //clang::Type return_type = func_type.get_return_type();
-  //std::vector<clang::Type> argument_types = func_type.get_arguments();
-
-  //auto argument_types = func.get_arguments();
-  //clang::Type cursor_type = func.get_type();
-  //clang::Type return_type_1 = func.get_type().get_result();
-  //clang::Type return_type_2 = clang_getCursorResultType(func.cx_cursor);
-
-  //Dump(func);
   FuncDefinitionParam funcDefinitionParam(db, &NamespaceStack::kEmpty, func_id);
   func.VisitChildren(&VisitFuncDefinition, &funcDefinitionParam);
-
-  //CXType return_type = clang_getResultType(func.get_type());
-  //CXType_FunctionProto
-
-  //std::cout << "!! HandleFunc " << func.get_type_description() << std::endl;
-  //std::cout << "  comment: " << func.get_comments() << std::endl;
-  //std::cout << "  spelling: " << func.get_spelling() << std::endl;
-  //for (clang::Cursor argument : func.get_arguments())
-  //  std::cout << "  arg: " << clang::ToString(argument.get_kind()) << " " << argument.get_spelling() << std::endl;
 }
 
 
@@ -925,7 +923,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
   int len = std::min(actual_output.size(), expected_output.size());
   for (int i = 0; i < len; ++i) {
     if (actual_output[i] != expected_output[i]) {
-      std::cout << "Line " << i << " differs" << std::endl;
+      std::cout << "Line " << i << " differs:" << std::endl;
       std::cout << "  expected: " << expected_output[i] << std::endl;
       std::cout << "  actual:   " << actual_output[i] << std::endl;
     }
@@ -947,7 +945,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    //if (path != "tests/usage/type_usage_declare_extern.cc") continue;
+    //if (path != "tests/method_definition.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

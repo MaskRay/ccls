@@ -12,8 +12,7 @@ OUTPUT:
       "definition": "tests/vars/class_member.cc:1:7",
       "vars": [0]
     }, {
-      "id": 1,
-      "uses": ["tests/vars/class_member.cc:2:7"]
+      "id": 1
     }],
   "functions": [],
   "variables": [{

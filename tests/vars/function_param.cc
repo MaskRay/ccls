@@ -3,8 +3,7 @@ void foo(int p0, int p1) {}
 OUTPUT:
 {
   "types": [{
-      "id": 0,
-      "uses": ["tests/vars/function_param.cc:1:14", "tests/vars/function_param.cc:1:22"]
+      "id": 0
     }],
   "functions": [{
       "id": 0,

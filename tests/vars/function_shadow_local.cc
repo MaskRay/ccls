@@ -8,8 +8,7 @@ void foo() {
 OUTPUT:
 {
   "types": [{
-      "id": 0,
-      "uses": ["tests/vars/function_shadow_local.cc:2:7", "tests/vars/function_shadow_local.cc:4:9"]
+      "id": 0
     }],
   "functions": [{
       "id": 0,

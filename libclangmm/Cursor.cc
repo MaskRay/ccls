@@ -15,6 +15,13 @@ bool Type::operator==(const Type& rhs) const {
   return clang_equalTypes(cx_type, rhs.cx_type);
 }
 
+bool Type::is_fundamental() const {
+  // NOTE: This will return false for pointed types. Should we call
+  //       strip_qualifiers for the user?
+  return cx_type.kind >= CXType_FirstBuiltin &&
+         cx_type.kind <= CXType_LastBuiltin;
+}
+
 std::string Type::get_usr() const {
   return clang::Cursor(clang_getTypeDeclaration(cx_type)).get_usr();
 }
@@ -22,6 +29,7 @@ std::string Type::get_usr() const {
 Type Type::strip_qualifiers() const {
   //CXRefQualifierKind qualifiers = clang_Type_getCXXRefQualifier(cx_type)
   switch (cx_type.kind) {
+  case CXType_LValueReference:
   case CXType_Pointer:
     return clang_getPointeeType(cx_type);
   }
@@ -165,9 +173,9 @@ std::string Cursor::get_type_description() const {
         return canonical_spelling + " &";
       else
         return canonical_spelling;
-    }
+}
 #endif
-  }
+}
 
   if (spelling.empty())
     return get_spelling();
@@ -256,7 +264,7 @@ std::string Cursor::evaluate() const {
 #endif
 
 
-}
+  }
 
 std::string Cursor::get_comments() const {
   Cursor referenced = get_referenced();
@@ -270,4 +278,4 @@ std::string Cursor::ToString() const {
   return clang::ToString(get_kind()) + " " + get_spelling();
 }
 
-}  // namespace clang
+  }  // namespace clang

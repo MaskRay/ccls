@@ -8,13 +8,11 @@ void user() {
 }
 
 /*
-// NOTE: used only has one caller!!
-
 OUTPUT:
 {
   "types": [{
       "id": 0,
-      "uses": ["tests/usage/func_usage_addr_func.cc:1:19", "tests/usage/func_usage_addr_func.cc:6:8"]
+      "uses": ["tests/usage/func_usage_addr_func.cc:6:8"]
     }],
   "functions": [{
       "id": 0,
