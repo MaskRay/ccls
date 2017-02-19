@@ -588,13 +588,6 @@ void Dump(clang::Cursor cursor) {
 
 
 
-// TODO: See if we can improve type usage reporting, for example
-//  void foo() {
-//    Foo x;
-//  }
-// The usage on |Foo| will be reported at the |x| variable location. We should
-// report it at the start of |Foo| instead. 
-
 void InsertTypeUsageAtLocation(ParsingDatabase* db, clang::Type type, const clang::SourceLocation& location) {
   clang::Type raw_type = type.strip_qualifiers();
 
@@ -1160,4 +1153,4 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-// TODO: ctor/dtor, copy ctor
+// TODO: ctor/dtor, copy ctor, class inheritance, method inheritance
