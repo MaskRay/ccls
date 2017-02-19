@@ -30,6 +30,7 @@ public:
 
   Type get_return_type() const;
   std::vector<Type> get_arguments() const;
+  std::vector<Type> get_template_arguments() const;
 
   CXType cx_type;
 };

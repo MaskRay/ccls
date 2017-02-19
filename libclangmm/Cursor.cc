@@ -67,6 +67,23 @@ std::vector<Type> Type::get_arguments() const {
 }
 
 
+std::vector<Type> Type::get_template_arguments() const {
+  /*
+  CINDEX_LINKAGE int clang_Type_getNumTemplateArguments(CXType T);
+  CINDEX_LINKAGE CXType clang_Type_getTemplateArgumentAsType(CXType T, unsigned i);
+  */
+
+  int size = clang_Type_getNumTemplateArguments(cx_type);
+  assert(size >= 0);
+  if (size < 0)
+    return std::vector<Type>();
+
+  std::vector<Type> types(size);
+  for (int i = 0; i < size; ++i)
+    types.emplace_back(clang_Type_getTemplateArgumentAsType(cx_type, i));
+  return types;
+}
+
 
 static_assert(sizeof(Cursor) == sizeof(CXCursor),
   "Cursor must be the same size as CXCursor");

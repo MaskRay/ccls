@@ -516,7 +516,44 @@ std::optional<TypeId> ResolveDeclaringType(CXCursorKind kind, ParsingDatabase* d
   return declaring_type;
 }
 
+// |func_id| is the function definition that is currently being processed.
+void InsertReference(ParsingDatabase* db, std::optional<FuncId> func_id, clang::Cursor referencer) {
+  clang::SourceLocation loc = referencer.get_source_location();
+  clang::Cursor referenced = referencer.get_referenced();
 
+  switch (referenced.get_kind()) {
+  case CXCursor_CXXMethod:
+  case CXCursor_FunctionDecl:
+  {
+    FuncId referenced_id = db->ToFuncId(referenced.get_usr());
+    FuncDef* referenced_def = db->Resolve(referenced_id);
+    
+    if (func_id) {
+      FuncDef* func_def = db->Resolve(func_id.value());
+      func_def->callees.push_back(FuncRef(referenced_id, loc));
+      referenced_def->callers.push_back(FuncRef(func_id.value(), loc));
+    }
+
+    referenced_def->uses.push_back(loc);
+    break;
+  }
+
+  case CXCursor_ParmDecl:
+  case CXCursor_FieldDecl:
+  case CXCursor_VarDecl:
+  {
+    VarId referenced_id = db->ToVarId(referenced.get_usr());
+    VarDef* referenced_def = db->Resolve(referenced_id);
+
+    referenced_def->uses.push_back(loc);
+    break;
+  }
+  default:
+    std::cerr << "Unhandled reference from \"" << referencer.ToString()
+      << "\" to \"" << referenced.ToString() << "\"" << std::endl;
+    break;
+  }
+}
 
 
 
@@ -568,7 +605,34 @@ void InsertTypeUsageAtLocation(ParsingDatabase* db, clang::Type type, const clan
   db->Resolve(type_id)->uses.push_back(location);
 }
 
-void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type) {
+struct VarDeclVisitorParam {
+  ParsingDatabase* db;
+  std::optional<FuncId> func_id;
+
+  VarDeclVisitorParam(ParsingDatabase* db, std::optional<FuncId> func_id)
+    : db(db), func_id(func_id) {}
+};
+
+clang::VisiterResult VarDeclVisitor(clang::Cursor cursor, clang::Cursor parent, VarDeclVisitorParam* param) {
+  switch (cursor.get_kind()) {
+  case CXCursor_TemplateRef:
+  case CXCursor_TypeRef:
+    InsertTypeUsageAtLocation(param->db, cursor.get_referenced().get_type(), cursor.get_source_location());
+    break;
+
+  case CXCursor_CallExpr:
+    InsertReference(param->db, param->func_id, cursor);
+    break;
+
+  default:
+    std::cerr << "VarDeclVisitor unhandled " << cursor.ToString() << std::endl;
+    break;
+  }
+
+  return clang::VisiterResult::Continue;
+}
+
+void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, std::optional<TypeId> declaring_type, std::optional<FuncId> func_id) {
   //Dump(var);
 
   // Add a usage to the type of the variable.
@@ -613,50 +677,29 @@ void HandleVarDecl(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor var, s
   // TODO: Figure out how to scan initializations properly. We probably need
   //       to scan for assignment statement, or definition+ctor.
   var_def->initializations.push_back(var.get_source_location());
+  clang::Type var_type = var.get_type().strip_qualifiers();
   std::string var_type_usr = var.get_type().strip_qualifiers().get_usr();
-  if (var_type_usr != "")
+  if (var_type_usr != "") {
     var_def->variable_type = db->ToTypeId(var_type_usr);
-}
+    /*
+    for (clang::Type template_param_type : var_type.get_template_arguments()) {
+      std::string usr = template_param_type.get_usr();
+      if (usr == "")
+        continue;
 
+      //TypeId template_param_id = db->ToTypeId(usr);
+      InsertTypeUsageAtLocation(db, template_param_type, var.get_source_location());
 
-
-
-
-// |func_id| is the function definition that is currently being processed.
-void InsertReference(ParsingDatabase* db, FuncId func_id, clang::Cursor referencer) {
-  clang::SourceLocation loc = referencer.get_source_location();
-  clang::Cursor referenced = referencer.get_referenced();
-
-  switch (referenced.get_kind()) {
-  case CXCursor_CXXMethod:
-  case CXCursor_FunctionDecl:
-  {
-    FuncId referenced_id = db->ToFuncId(referenced.get_usr());
-    FuncDef* referenced_def = db->Resolve(referenced_id);
-    FuncDef* func_def = db->Resolve(func_id);
-
-    func_def->callees.push_back(FuncRef(referenced_id, loc));
-    referenced_def->callers.push_back(FuncRef(func_id, loc));
-    referenced_def->uses.push_back(loc);
-    break;
-  }
-
-  case CXCursor_ParmDecl:
-  case CXCursor_FieldDecl:
-  case CXCursor_VarDecl:
-  {
-    VarId referenced_id = db->ToVarId(referenced.get_usr());
-    VarDef* referenced_def = db->Resolve(referenced_id);
-
-    referenced_def->uses.push_back(loc);
-    break;
-  }
-  default:
-    std::cerr << "Unhandled reference from \"" << referencer.ToString()
-      << "\" to \"" << referenced.ToString() << "\"" << std::endl;
-    break;
+      //std::cout << template_param_type.get_usr() << std::endl;
+    }*/
+    VarDeclVisitorParam varDeclVisitorParam(db, func_id);
+    var.VisitChildren(&VarDeclVisitor, &varDeclVisitorParam);
   }
 }
+
+
+
+
 
 // TODO: Should we declare variables on prototypes? ie,
 //
@@ -698,8 +741,8 @@ clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor par
 
   case CXCursor_VarDecl:
   case CXCursor_ParmDecl:
-    HandleVarDecl(param->db, param->ns, cursor, std::nullopt);
-    return clang::VisiterResult::Recurse;
+    HandleVarDecl(param->db, param->ns, cursor, std::nullopt, param->func_id);
+    return clang::VisiterResult::Continue;
 
   case CXCursor_ReturnStmt:
     return clang::VisiterResult::Recurse;
@@ -770,6 +813,12 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
 }
 
 
+
+
+
+
+
+
 struct UsingParam {
   ParsingDatabase* db;
   TypeId active_type;
@@ -798,6 +847,10 @@ clang::VisiterResult VisitUsing(clang::Cursor cursor, clang::Cursor parent, Usin
 
 
 
+
+
+
+
 struct ClassDeclParam {
   ParsingDatabase* db;
   NamespaceStack* ns;
@@ -820,7 +873,7 @@ clang::VisiterResult VisitClassDecl(clang::Cursor cursor, clang::Cursor parent, 
 
   case CXCursor_FieldDecl:
   case CXCursor_VarDecl:
-    HandleVarDecl(param->db, param->ns, cursor, param->active_type);
+    HandleVarDecl(param->db, param->ns, cursor, param->active_type, std::nullopt);
     break;
 
   default:
@@ -887,6 +940,7 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
     HandleClassDecl(cursor, param->db, param->ns, true /*is_alias*/);
     break;
 
+  case CXCursor_ClassTemplate:
   case CXCursor_StructDecl:
   case CXCursor_ClassDecl:
     // TODO: Cleanup Handle* param order.
@@ -899,7 +953,7 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
     break;
 
   case CXCursor_VarDecl:
-    HandleVarDecl(param->db, param->ns, cursor, std::nullopt);
+    HandleVarDecl(param->db, param->ns, cursor, std::nullopt, std::nullopt);
     break;
 
   default:
@@ -1025,7 +1079,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    //if (path != "tests/usage/var_usage_func_parameter.cc") continue;
+    if (path != "tests/usage/type_usage_as_template_parameter.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
