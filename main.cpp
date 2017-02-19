@@ -628,16 +628,11 @@ clang::VisiterResult VarDeclVisitor(clang::Cursor cursor, clang::Cursor parent, 
     }
     return clang::VisiterResult::Continue;
 
+  case CXCursor_CallExpr:
   case CXCursor_UnexposedExpr:
   case CXCursor_UnaryOperator:
     return clang::VisiterResult::Continue;
-    /*
 
-  case CXCursor_CallExpr:
-    // TODO: Add a test for parameters inside the call? We should probably recurse.
-    InsertReference(param->db, param->func_id, cursor);
-    return clang::VisiterResult::Continue;
-    */
   default:
     std::cerr << "VarDeclVisitor unhandled " << cursor.ToString() << std::endl;
     return clang::VisiterResult::Continue;
@@ -762,8 +757,25 @@ clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor par
     */
 
   case CXCursor_CallExpr:
-    // The called element is handled by DeclRefExpr below.
-    //InsertReference(param->db, param->func_id, cursor);
+    // When CallExpr points to a constructor, it does not have a child
+    // DeclRefExpr which also points to the constructor. Normal function calls
+    // (to a function of any type) look like this:
+    //
+    //    CallExpr func_name
+    //      ... (setup this pointer)
+    //      *RefExpr func_name
+    //      ... (setup arguments)
+    //
+    // Constructors, on the other hand, look like this:
+    //
+    //    CallExpr func_name
+    //      ... (setup arguments)
+    //
+    // We can't check the parent for a VarDecl, because a normal CallExpr could
+    // point to that. We simply check if the cursor references a constructor,
+    // and if so, insert the reference now, since it won't happen later.
+    if (cursor.get_referenced().get_kind() == CXCursor_Constructor)
+      InsertReference(param->db, param->func_id, cursor);
     return clang::VisiterResult::Recurse;
 
   case CXCursor_MemberRefExpr:
@@ -1117,6 +1129,7 @@ int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
     //if (path != "tests/constructors/constructor.cc") continue;
+    //if (path != "tests/usage/type_usage_declare_local.cc") continue;
     //if (path != "tests/usage/func_usage_addr_func.cc") continue;
     //if (path != "tests/usage/type_usage_on_return_type.cc") continue;
 

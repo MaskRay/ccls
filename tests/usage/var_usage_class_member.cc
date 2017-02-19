@@ -51,7 +51,12 @@ OUTPUT:
       "short_name": "foo",
       "qualified_name": "foo",
       "definition": "tests/usage/var_usage_class_member.cc:10:6",
-      "callees": ["0@tests/usage/var_usage_class_member.cc:14:3", "0@tests/usage/var_usage_class_member.cc:15:3", "1@tests/usage/var_usage_class_member.cc:16:3", "0@tests/usage/var_usage_class_member.cc:17:3"]
+      "callees": ["3@tests/usage/var_usage_class_member.cc:11:7", "0@tests/usage/var_usage_class_member.cc:14:3", "0@tests/usage/var_usage_class_member.cc:15:3", "1@tests/usage/var_usage_class_member.cc:16:3", "0@tests/usage/var_usage_class_member.cc:17:3"]
+    }, {
+      "id": 3,
+      "usr": "c:@S@Foo@F@Foo#",
+      "callers": ["2@tests/usage/var_usage_class_member.cc:11:7"],
+      "uses": ["tests/usage/var_usage_class_member.cc:11:7"]
     }],
   "variables": [{
       "id": 0,

@@ -45,8 +45,16 @@ OUTPUT:
       "short_name": "foo",
       "qualified_name": "foo",
       "definition": "tests/usage/usage_inside_of_call.cc:10:6",
-      "callees": ["0@tests/usage/usage_inside_of_call.cc:12:3", "1@tests/usage/usage_inside_of_call.cc:12:14"]
+      "callees": ["0@tests/usage/usage_inside_of_call.cc:12:3", "1@tests/usage/usage_inside_of_call.cc:12:14", "3@tests/usage/usage_inside_of_call.cc:12:22"]
+    }, {
+      "id": 3,
+      "usr": "c:@S@Foo@F@Foo#",
+      "callers": ["2@tests/usage/usage_inside_of_call.cc:12:22"],
+      "uses": ["tests/usage/usage_inside_of_call.cc:12:22"]
     }],
+
+
+
   "variables": [{
       "id": 0,
       "usr": "c:@S@Foo@static_var",

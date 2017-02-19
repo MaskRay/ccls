@@ -29,7 +29,13 @@ OUTPUT:
       "usr": "c:@F@Foo#",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "tests/usage/type_usage_declare_local.cc:4:6"
+      "definition": "tests/usage/type_usage_declare_local.cc:4:6",
+      "callees": ["1@tests/usage/type_usage_declare_local.cc:6:19"]
+    }, {
+      "id": 1,
+      "usr": "c:@S@ImplementedType@F@ImplementedType#",
+      "callers": ["0@tests/usage/type_usage_declare_local.cc:6:19"],
+      "uses": ["tests/usage/type_usage_declare_local.cc:6:19"]
     }],
   "variables": [{
       "id": 0,

@@ -22,7 +22,13 @@ OUTPUT:
       "usr": "c:@F@foo#&$@S@Type#&1S1_#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "tests/usage/type_usage_declare_qualifiers.cc:3:6"
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:3:6",
+      "callees": ["1@tests/usage/type_usage_declare_qualifiers.cc:4:8"]
+    }, {
+      "id": 1,
+      "usr": "c:@S@Type@F@Type#",
+      "callers": ["0@tests/usage/type_usage_declare_qualifiers.cc:4:8"],
+      "uses": ["tests/usage/type_usage_declare_qualifiers.cc:4:8"]
     }],
   "variables": [{
       "id": 0,
