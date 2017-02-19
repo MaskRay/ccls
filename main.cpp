@@ -72,6 +72,10 @@ struct TypeDef {
   std::optional<clang::SourceLocation> declaration; // Forward decl.
   std::optional<clang::SourceLocation> definition;
 
+  // If set, then this is the same underlying type as the given value (ie, this
+  // type comes from a using or typedef statement).
+  std::optional<TypeId> alias_of;
+
   // Immediate parent and immediate derived types.
   std::vector<TypeId> parents;
   std::vector<TypeId> derived;
@@ -332,6 +336,7 @@ std::string ParsingDatabase::ToString() {
     WRITE(qualified_name);
     WRITE(declaration);
     WRITE(definition);
+    WRITE(alias_of);
     WRITE(parents);
     WRITE(derived);
     WRITE(types);
@@ -636,6 +641,8 @@ void InsertReference(ParsingDatabase* db, FuncId func_id, clang::Cursor referenc
     break;
   }
 
+  case CXCursor_ParmDecl:
+  case CXCursor_FieldDecl:
   case CXCursor_VarDecl:
   {
     VarId referenced_id = db->ToVarId(referenced.get_usr());
@@ -651,6 +658,11 @@ void InsertReference(ParsingDatabase* db, FuncId func_id, clang::Cursor referenc
   }
 }
 
+// TODO: Should we declare variables on prototypes? ie,
+//
+//    foo(int* x);
+//
+// I'm inclined to say yes if we want a rename refactoring.
 
 
 struct FuncDefinitionParam {
@@ -682,7 +694,7 @@ clang::VisiterResult VisitFuncDefinition(clang::Cursor cursor, clang::Cursor par
   case CXCursor_MemberRefExpr:
   case CXCursor_DeclRefExpr:
     InsertReference(param->db, param->func_id, cursor);
-    return clang::VisiterResult::Continue;
+    return clang::VisiterResult::Recurse;
 
   case CXCursor_VarDecl:
   case CXCursor_ParmDecl:
@@ -758,6 +770,31 @@ void HandleFunc(ParsingDatabase* db, NamespaceStack* ns, clang::Cursor func, std
 }
 
 
+struct UsingParam {
+  ParsingDatabase* db;
+  TypeId active_type;
+
+  UsingParam(ParsingDatabase* db, TypeId active_type)
+    : db(db), active_type(active_type) {}
+};
+
+clang::VisiterResult VisitUsing(clang::Cursor cursor, clang::Cursor parent, UsingParam* param) {
+  ParsingDatabase* db = param->db;
+
+  switch (cursor.get_kind()) {
+  case CXCursor_TypeRef:
+  {
+    TypeId source_type = db->ToTypeId(cursor.get_referenced().get_usr());
+    db->Resolve(param->active_type)->alias_of = source_type;
+    return clang::VisiterResult::Break;
+  }
+  default:
+    std::cerr << "Unhandled VisitClassDecl kind " << clang::ToString(cursor.get_kind()) << std::endl;
+    break;
+  }
+
+  return clang::VisiterResult::Continue;
+}
 
 
 
@@ -774,6 +811,9 @@ clang::VisiterResult VisitClassDecl(clang::Cursor cursor, clang::Cursor parent, 
   ParsingDatabase* db = param->db;
 
   switch (cursor.get_kind()) {
+  case CXCursor_CXXAccessSpecifier:
+    break;
+
   case CXCursor_CXXMethod:
     HandleFunc(param->db, param->ns, cursor, param->active_type);
     break;
@@ -791,26 +831,34 @@ clang::VisiterResult VisitClassDecl(clang::Cursor cursor, clang::Cursor parent, 
   return clang::VisiterResult::Continue;
 }
 
-void HandleClassDecl(clang::Cursor cursor, ParsingDatabase* db, NamespaceStack* ns) {
-  TypeId func_id = db->ToTypeId(cursor.get_usr());
-  TypeDef* func_def = db->Resolve(func_id);
+void HandleClassDecl(clang::Cursor cursor, ParsingDatabase* db, NamespaceStack* ns, bool is_alias) {
+  TypeId type_id = db->ToTypeId(cursor.get_usr());
+  TypeDef* type_def = db->Resolve(type_id);
 
-  func_def->short_name = cursor.get_spelling();
+  type_def->short_name = cursor.get_spelling();
   // TODO: Support nested classes (pass in declaring type insteaad of nullopt!)
-  func_def->qualified_name =
-    ns->ComputeQualifiedName(db, std::nullopt, func_def->short_name);
+  type_def->qualified_name =
+    ns->ComputeQualifiedName(db, std::nullopt, type_def->short_name);
 
   if (!cursor.is_definition()) {
-    if (!func_def->declaration)
-      func_def->declaration = cursor.get_source_location();
+    if (!type_def->declaration)
+      type_def->declaration = cursor.get_source_location();
     return;
   }
 
-  func_def->definition = cursor.get_source_location();
+  type_def->definition = cursor.get_source_location();
 
-  ClassDeclParam classDeclParam(db, ns, func_id);
-  cursor.VisitChildren(&VisitClassDecl, &classDeclParam);
+  if (is_alias) {
+    UsingParam usingParam(db, type_id);
+    cursor.VisitChildren(&VisitUsing, &usingParam);
+  }
+  else {
+    ClassDeclParam classDeclParam(db, ns, type_id);
+    cursor.VisitChildren(&VisitClassDecl, &classDeclParam);
+  }
 }
+
+
 
 
 
@@ -834,10 +882,15 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
     param->ns->Pop();
     break;
 
+  case CXCursor_TypeAliasDecl:
+  case CXCursor_TypedefDecl:
+    HandleClassDecl(cursor, param->db, param->ns, true /*is_alias*/);
+    break;
+
   case CXCursor_StructDecl:
   case CXCursor_ClassDecl:
     // TODO: Cleanup Handle* param order.
-    HandleClassDecl(cursor, param->db, param->ns);
+    HandleClassDecl(cursor, param->db, param->ns, false /*is_alias*/);
     break;
 
   case CXCursor_CXXMethod:
@@ -972,7 +1025,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
-    //if (path != "tests/usage/func_usage_addr_func.cc") continue;
+    //if (path != "tests/usage/var_usage_func_parameter.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

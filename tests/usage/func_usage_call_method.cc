@@ -43,7 +43,8 @@ OUTPUT:
       "qualified_name": "f",
       "declaration": "tests/usage/func_usage_call_method.cc:6:8",
       "initializations": ["tests/usage/func_usage_call_method.cc:6:8"],
-      "variable_type": 0
+      "variable_type": 0,
+      "uses": ["tests/usage/func_usage_call_method.cc:7:3"]
     }]
 }
 */
