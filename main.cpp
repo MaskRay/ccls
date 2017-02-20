@@ -1354,10 +1354,12 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     func_def->all_uses.push_back(decl->loc);
 
+    bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
+
     // Add function usage information. We only want to do it once per
     // definition/declaration. Do it on definition since there should only ever
     // be one of those in the entire program.
-    if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
+    if ((decl->isDefinition || is_pure_virtual) && IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
       TypeDef* declaring_type_def = db->Resolve(declaring_type_id);
       func_def->declaring_type = declaring_type_id;
@@ -1370,7 +1372,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
 
 
-    if (decl->isDefinition) {
+    if (decl->isDefinition || is_pure_virtual) {
       // Mark type usage for parameters as interesting. We handle this here
       // instead of inside var declaration because clang will not emit a var
       // declaration for an unnamed parameter, but we still want to mark the
@@ -1386,6 +1388,29 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           }
           break;
         }
+      }
+
+
+      // Process inheritance.
+      //void clang_getOverriddenCursors(CXCursor cursor, CXCursor **overridden, unsigned *num_overridden);
+      //void clang_disposeOverriddenCursors(CXCursor *overridden);
+      if (clang_CXXMethod_isVirtual(decl->cursor)) {
+        CXCursor* overridden;
+        unsigned int num_overridden;
+        clang_getOverriddenCursors(decl->cursor, &overridden, &num_overridden);
+
+        // TODO: How to handle multiple parent overrides??
+        for (unsigned int i = 0; i < num_overridden; ++i) {
+          clang::Cursor parent = overridden[i];
+          FuncId parent_id = db->ToFuncId(parent.get_usr());
+          FuncDef* parent_def = db->Resolve(parent_id);
+          func_def = db->Resolve(func_id); // ToFuncId invalidated func_def
+
+          func_def->base = parent_id;
+          parent_def->derived.push_back(func_id);
+        }
+
+        clang_disposeOverriddenCursors(overridden);
       }
     }
 
