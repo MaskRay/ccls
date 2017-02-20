@@ -1252,6 +1252,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
   case CXIdxEntity_Function:
   case CXIdxEntity_CXXConstructor:
+  case CXIdxEntity_CXXDestructor:
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_CXXStaticMethod:
   {
@@ -1323,7 +1324,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     std::optional<clang::Cursor> type_ref = FindChildOfKind(decl->cursor, CXCursor_TypeRef);
     assert(type_ref.has_value());
     TypeId alias_of = db->ToTypeId(type_ref.value().get_referenced().get_usr());
-      
+
     TypeDef* type_def = db->Resolve(type_id);
 
     type_def->alias_of = alias_of;
@@ -1424,6 +1425,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_CXXStaticMethod:
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_Function:
+  case CXIdxEntity_CXXConstructor:
   {
     // TODO: Redirect container to constructor for
     //  int Gen() { return 5; }
@@ -1704,7 +1706,7 @@ int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
-    if (path == "tests/constructors/constructor.cc") continue;
+    //if (path != "tests/constructors/destructor.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
