@@ -1,5 +1,5 @@
 template<typename T>
-void accept(T) {}
+void accept(T);
 
 void foo() {
   accept(1);
@@ -15,7 +15,7 @@ OUTPUT:
       "usr": "c:@FT@>1#Taccept#t0.0#v#",
       "short_name": "accept",
       "qualified_name": "accept",
-      "definition": "tests/usage/func_usage_template_func.cc:2:6",
+      "declaration": "tests/usage/func_usage_template_func.cc:2:6",
       "callers": ["1@tests/usage/func_usage_template_func.cc:5:3", "1@tests/usage/func_usage_template_func.cc:6:3"],
       "all_uses": ["tests/usage/func_usage_template_func.cc:2:6", "tests/usage/func_usage_template_func.cc:5:3", "tests/usage/func_usage_template_func.cc:6:3"]
     }, {

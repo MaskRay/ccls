@@ -24,7 +24,8 @@ OUTPUT:
       "short_name": "S",
       "qualified_name": "S",
       "definition": "tests/usage/type_usage_as_template_parameter.cc:4:8",
-      "all_uses": ["tests/usage/type_usage_as_template_parameter.cc:4:8", "tests/usage/type_usage_as_template_parameter.cc:7:19", "tests/usage/type_usage_as_template_parameter.cc:9:12", "tests/usage/type_usage_as_template_parameter.cc:10:14"]
+      "all_uses": ["tests/usage/type_usage_as_template_parameter.cc:4:8", "tests/usage/type_usage_as_template_parameter.cc:7:19", "tests/usage/type_usage_as_template_parameter.cc:9:12", "tests/usage/type_usage_as_template_parameter.cc:10:14"],
+      "interesting_uses": ["tests/usage/type_usage_as_template_parameter.cc:7:19", "tests/usage/type_usage_as_template_parameter.cc:9:12", "tests/usage/type_usage_as_template_parameter.cc:10:14"]
     }],
   "functions": [{
       "id": 0,
