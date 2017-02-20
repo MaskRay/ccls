@@ -1015,12 +1015,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     for (unsigned int i = 0; i < class_info->numBases; ++i) {
       const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
-      TypeId parent_type_id = db->ToTypeId(clang::Cursor(base_class->cursor).get_referenced().get_usr());
-      TypeDef* parent_type_def = db->Resolve(parent_type_id);
-      TypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ToTypeId.
-
-      parent_type_def->derived.push_back(type_id);
-      type_def->parents.push_back(parent_type_id);
+      std::optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+      TypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
+      if (parent_type_id) {
+        TypeDef* parent_type_def = db->Resolve(parent_type_id.value());
+        parent_type_def->derived.push_back(type_id);
+        type_def->parents.push_back(parent_type_id.value());
+      }
     }
     break;
   }
@@ -1157,7 +1158,7 @@ ParsingDatabase Parse(std::string filename) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
-  Dump(tu.document_cursor());
+  //Dump(tu.document_cursor());
 
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
 
@@ -1296,6 +1297,7 @@ int main(int argc, char** argv) {
     //if (path != "tests/usage/func_usage_template_func.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;
     //if (path != "tests/foobar.cc") continue;
+    //if (path != "tests/inheritance/class_inherit_templated_parent.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

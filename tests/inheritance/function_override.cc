@@ -15,7 +15,8 @@ OUTPUT:
       "qualified_name": "Root",
       "definition": "tests/inheritance/function_override.cc:1:7",
       "derived": [1],
-      "all_uses": ["tests/inheritance/function_override.cc:1:7", "tests/inheritance/function_override.cc:4:24"]
+      "all_uses": ["tests/inheritance/function_override.cc:1:7", "tests/inheritance/function_override.cc:4:24"],
+      "interesting_uses": ["tests/inheritance/function_override.cc:4:24"]
     }, {
       "id": 1,
       "usr": "c:@S@Derived",

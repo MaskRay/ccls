@@ -13,7 +13,8 @@ OUTPUT:
       "qualified_name": "Root",
       "definition": "tests/inheritance/class_multiple_inherit.cc:1:7",
       "derived": [1, 2],
-      "all_uses": ["tests/inheritance/class_multiple_inherit.cc:1:7", "tests/inheritance/class_multiple_inherit.cc:2:24", "tests/inheritance/class_multiple_inherit.cc:3:24"]
+      "all_uses": ["tests/inheritance/class_multiple_inherit.cc:1:7", "tests/inheritance/class_multiple_inherit.cc:2:24", "tests/inheritance/class_multiple_inherit.cc:3:24"],
+      "interesting_uses": ["tests/inheritance/class_multiple_inherit.cc:2:24", "tests/inheritance/class_multiple_inherit.cc:3:24"]
     }, {
       "id": 1,
       "usr": "c:@S@MiddleA",
@@ -22,7 +23,8 @@ OUTPUT:
       "definition": "tests/inheritance/class_multiple_inherit.cc:2:7",
       "parents": [0],
       "derived": [3],
-      "all_uses": ["tests/inheritance/class_multiple_inherit.cc:2:7", "tests/inheritance/class_multiple_inherit.cc:4:24"]
+      "all_uses": ["tests/inheritance/class_multiple_inherit.cc:2:7", "tests/inheritance/class_multiple_inherit.cc:4:24"],
+      "interesting_uses": ["tests/inheritance/class_multiple_inherit.cc:4:24"]
     }, {
       "id": 2,
       "usr": "c:@S@MiddleB",
@@ -31,7 +33,8 @@ OUTPUT:
       "definition": "tests/inheritance/class_multiple_inherit.cc:3:7",
       "parents": [0],
       "derived": [3],
-      "all_uses": ["tests/inheritance/class_multiple_inherit.cc:3:7", "tests/inheritance/class_multiple_inherit.cc:4:40"]
+      "all_uses": ["tests/inheritance/class_multiple_inherit.cc:3:7", "tests/inheritance/class_multiple_inherit.cc:4:40"],
+      "interesting_uses": ["tests/inheritance/class_multiple_inherit.cc:4:40"]
     }, {
       "id": 3,
       "usr": "c:@S@Derived",
