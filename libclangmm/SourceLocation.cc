@@ -32,12 +32,12 @@ SourceLocation::SourceLocation(const CXIdxLoc& cx_location)
   : SourceLocation(clang_indexLoc_getCXSourceLocation(cx_location)) {
 }
 
-bool SourceLocation::operator==(const SourceLocation& o) {
-  return path == o.path && line == o.line && column == o.column;
+bool operator==(const SourceLocation& a, const SourceLocation& b) {
+  return a.path == b.path && a.line == b.line && a.column == b.column;
 }
 
-bool SourceLocation::operator!=(const SourceLocation& o) {
-  return !(*this == o);
+bool operator!=(const SourceLocation& a, const SourceLocation& b) {
+  return !(a == b);
 }
 
 std::string SourceLocation::ToString() const {

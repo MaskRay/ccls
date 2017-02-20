@@ -1193,6 +1193,25 @@ std::optional<clang::Cursor> FindChildOfKind(clang::Cursor cursor, CXCursorKind 
 
 
 
+clang::VisiterResult FindTypeVisitor(clang::Cursor cursor, clang::Cursor parent, std::optional<clang::Cursor>* result) {
+  switch (cursor.get_kind()) {
+  case CXCursor_TypeRef:
+  case CXCursor_TemplateRef:
+    *result = cursor;
+    return clang::VisiterResult::Break;
+  }
+
+  return clang::VisiterResult::Recurse;
+}
+
+std::optional<clang::Cursor> FindType(clang::Cursor cursor) {
+  std::optional<clang::Cursor> result;
+  cursor.VisitChildren(&FindTypeVisitor, &result);
+  return result;
+}
+
+
+
 
 
 
@@ -1254,6 +1273,14 @@ std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
 }
 */
 
+bool HasUsage(const std::vector<clang::SourceLocation>& usages, const clang::SourceLocation& usage) {
+  for (int i = usages.size() - 1; i >= 0; --i) {
+    if (usages[i] == usage)
+      return true;
+  }
+
+  return false;
+}
 
 // TODO: Let's switch over to the indexer api. It can index
 //        the int x = get_value() bit...
@@ -1266,14 +1293,6 @@ std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
 //        * it doesn't seem like we get any template specialization logic
 //        * we get two decls to the same template... resolved by checking parent? maybe this will break. not sure.
 
-// Insert a reference to |type_id| using the location of the first TypeRef under |cursor|.
-void InsertInterestingTypeReference(ParsingDatabase* db, TypeId type_id, clang::Cursor cursor) {
-  std::optional<clang::Cursor> child = FindChildOfKind(cursor, CXCursor_TypeRef);
-  assert(child.has_value()); // If this assert ever fails just use |cursor| loc.
-
-  TypeDef* def = db->Resolve(type_id);
-  def->interesting_uses.push_back(child.value().get_source_location());
-}
 
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {
   if (!container)
@@ -1287,6 +1306,42 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
     return false;
   }
 }
+
+std::optional<TypeId> ResolveToType(ParsingDatabase* db, clang::Type type) {
+  clang::Type var_type = type.strip_qualifiers();
+  std::string usr = var_type.get_usr();
+
+  if (usr == "")
+    return std::nullopt;
+
+  // TODO: Add a check and don't resolve template specializations that exist in source code.
+  // Resolve template specialization so that we always point to the non-specialized type.
+  clang::Cursor decl = clang_getTypeDeclaration(var_type.cx_type);
+  clang::Cursor unresolved_decl = clang_getSpecializedCursorTemplate(decl.cx_cursor);
+  std::string template_usr = clang::Cursor(unresolved_decl).get_usr();
+  if (template_usr != "")
+    usr = template_usr;
+
+  return db->ToTypeId(usr);
+}
+
+clang::SourceLocation FindLocationOfTypeSpecifier(clang::Cursor cursor) {
+  std::cout << "FindLocationOfTypeSpecifier " << std::endl;
+  Dump(cursor);
+
+  std::optional<clang::Cursor> child = FindType(cursor);
+  assert(child.has_value()); // If this assert ever fails just use |cursor| loc or figure out what type ref we are missing.
+  return child.value().get_source_location();
+}
+
+void AddInterestingUsageToType(ParsingDatabase* db, TypeId type_id, clang::SourceLocation location) {
+  TypeDef* type_def = db->Resolve(type_id);
+  type_def->interesting_uses.push_back(location);
+}
+
+
+
+
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   IndexParam* param = static_cast<IndexParam*>(client_data);
@@ -1304,6 +1359,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_Variable:
   case CXIdxEntity_CXXStaticVariable:
   {
+    clang::Cursor decl_cursor = decl->cursor;
     VarId var_id = db->ToVarId(decl->entityInfo->USR);
     VarDef* var_def = db->Resolve(var_id);
 
@@ -1321,18 +1377,18 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     var_def->all_uses.push_back(decl->loc);
 
-    // Declaring variable type information.
-    std::string var_type_usr = clang::Cursor(decl->cursor).get_type().strip_qualifiers().get_usr();
-    if (var_type_usr != "") {
-      TypeId var_type_id = db->ToTypeId(var_type_usr);
-      var_def->variable_type = var_type_id;
 
+    // Declaring variable type information.
+    std::optional<TypeId> var_type_id = ResolveToType(db, decl_cursor.get_type());
+    if (var_type_id) {
+      var_def->variable_type = var_type_id.value();
       // Insert an interesting type usage for variable declarations. Parameters
       // are handled when a function is declared because clang doesn't provide
       // parameter declarations for unnamed parameters.
-      if (decl->cursor.kind != CXCursor_ParmDecl)
-        InsertInterestingTypeReference(db, var_type_id, decl->cursor);
+      if (decl_cursor.get_kind() != CXCursor_ParmDecl)
+        AddInterestingUsageToType(db, var_type_id.value(), FindLocationOfTypeSpecifier(decl_cursor));
     }
+
 
     if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
@@ -1355,6 +1411,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_CXXStaticMethod:
   {
+    clang::Cursor decl_cursor = decl->cursor;
     FuncId func_id = db->ToFuncId(decl->entityInfo->USR);
     FuncDef* func_def = db->Resolve(func_id);
 
@@ -1383,26 +1440,27 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       declaring_type_def->funcs.push_back(func_id);
     }
 
-    std::string return_type_usr = clang::Cursor(decl->cursor).get_type().get_return_type().strip_qualifiers().get_usr();
-    if (return_type_usr != "")
-      InsertInterestingTypeReference(db, db->ToTypeId(return_type_usr), decl->cursor);
-
-
+    std::optional<TypeId> ret_type_id = ResolveToType(db, decl_cursor.get_type().get_return_type());
+    if (ret_type_id)
+      AddInterestingUsageToType(db, ret_type_id.value(), FindLocationOfTypeSpecifier(decl_cursor));
 
     if (decl->isDefinition || is_pure_virtual) {
       // Mark type usage for parameters as interesting. We handle this here
       // instead of inside var declaration because clang will not emit a var
       // declaration for an unnamed parameter, but we still want to mark the
       // usage as interesting.
-      // TODO: Do a similar thing for function decl parameter usages.
+      // TODO: Do a similar thing for function decl parameter usages. Mark
+      //       prototype params as interesting type usages but also relate mark
+      //       them as as usages on the primary variable - requires USR to be
+      //       the same. We can work around it by declaring which variables a
+      //       parameter has declared and update the USR in the definition.
       clang::Cursor cursor = decl->cursor;
       for (clang::Cursor arg : cursor.get_arguments()) {
         switch (arg.get_kind()) {
         case CXCursor_ParmDecl:
-          std::string param_type_usr = arg.get_type().strip_qualifiers().get_usr();
-          if (param_type_usr != "") {
-            InsertInterestingTypeReference(db, db->ToTypeId(param_type_usr), arg);
-          }
+          std::optional<TypeId> arg_type_id = ResolveToType(db, arg.get_type());
+          if (arg_type_id)
+            AddInterestingUsageToType(db, arg_type_id.value(), FindLocationOfTypeSpecifier(arg));
           break;
         }
       }
@@ -1615,17 +1673,8 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //param->last_type_usage_location = loc;
 
     // TODO: initializer list can many type refs...
-    bool do_break = false;
-    for (int i = referenced_def->all_uses.size() - 1; i >= 0; --i) {
-      if (referenced_def->all_uses[i] == loc) {
-        do_break = true;
-        break;
-      }
-    }
-    if (do_break)
-      break;
-
-    referenced_def->all_uses.push_back(loc);
+    if (!HasUsage(referenced_def->all_uses, loc))
+      referenced_def->all_uses.push_back(loc);
 
     /*
     //
@@ -1815,8 +1864,10 @@ int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/declaration_vs_definition/method.cc") continue;
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
-    //if (path != "tests/constructors/destructor.cc") continue;
-    //if (path != "tests/usage/usage_inside_of_call.cc") continue;
+    //if (path == "tests/constructors/constructor.cc") continue;
+    //if (path == "tests/constructors/destructor.cc") continue;
+    //if (path == "tests/usage/func_usage_call_method.cc") continue;
+    if (path != "tests/usage/type_usage_as_template_parameter_simple.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;

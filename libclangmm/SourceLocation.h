@@ -25,9 +25,6 @@ public:
   SourceLocation(const CXSourceLocation& cx_location);
   SourceLocation(const CXIdxLoc& cx_location);
 
-  bool operator==(const SourceLocation& o);
-  bool operator!=(const SourceLocation& o);
-
   std::string path;
   unsigned line = 0;
   unsigned column = 0;
@@ -35,6 +32,9 @@ public:
 
   std::string ToString() const;
 };
+
+bool operator==(const SourceLocation& a, const SourceLocation& b);
+bool operator!=(const SourceLocation& a, const SourceLocation& b);
 
 }  // namespace clang
 
