@@ -483,6 +483,7 @@ VarDef* Resolve(Database* db, VarId id) {
 }
 */
 
+#if false
 struct NamespaceStack {
   std::vector<std::string> stack;
 
@@ -602,22 +603,6 @@ void InsertReference(ParsingDatabase* db, std::optional<FuncId> func_id, clang::
 
 
 
-clang::VisiterResult DumpVisitor(clang::Cursor cursor, clang::Cursor parent, int* level) {
-  for (int i = 0; i < *level; ++i)
-    std::cout << "  ";
-  std::cout << clang::ToString(cursor.get_kind()) << " " << cursor.get_spelling() << std::endl;
-
-  *level += 1;
-  cursor.VisitChildren(&DumpVisitor, level);
-  *level -= 1;
-
-  return clang::VisiterResult::Continue;
-}
-
-void Dump(clang::Cursor cursor) {
-  int level = 0;
-  cursor.VisitChildren(&DumpVisitor, &level);
-}
 
 
 
@@ -1038,6 +1023,88 @@ clang::VisiterResult VisitFile(clang::Cursor cursor, clang::Cursor parent, FileP
 }
 
 
+ParsingDatabase Parse2(std::string filename) {
+  std::vector<std::string> args;
+
+  clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
+  clang::TranslationUnit tu(index, filename, args);
+
+  std::cout << "Start document dump" << std::endl;
+  Dump(tu.document_cursor());
+  std::cout << "Done document dump" << std::endl << std::endl;
+
+  ParsingDatabase db;
+  NamespaceStack ns;
+  FileParam file_param(&db, &ns);
+
+  tu.document_cursor().VisitChildren(&VisitFile, &file_param);
+  return db;
+}
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1067,6 +1134,23 @@ CXIdxClientContainer startedTranslationUnit(CXClientData client_data, void *rese
 
 
 
+
+clang::VisiterResult DumpVisitor(clang::Cursor cursor, clang::Cursor parent, int* level) {
+  for (int i = 0; i < *level; ++i)
+    std::cout << "  ";
+  std::cout << clang::ToString(cursor.get_kind()) << " " << cursor.get_spelling() << std::endl;
+
+  *level += 1;
+  cursor.VisitChildren(&DumpVisitor, level);
+  *level -= 1;
+
+  return clang::VisiterResult::Continue;
+}
+
+void Dump(clang::Cursor cursor) {
+  int level = 0;
+  cursor.VisitChildren(&DumpVisitor, &level);
+}
 
 
 
@@ -1590,24 +1674,6 @@ ParsingDatabase Parse(std::string filename) {
   return db;
 }
 
-
-ParsingDatabase Parse2(std::string filename) {
-  std::vector<std::string> args;
-
-  clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
-  clang::TranslationUnit tu(index, filename, args);
-
-  std::cout << "Start document dump" << std::endl;
-  Dump(tu.document_cursor());
-  std::cout << "Done document dump" << std::endl << std::endl;
-
-  ParsingDatabase db;
-  NamespaceStack ns;
-  FileParam file_param(&db, &ns);
-
-  tu.document_cursor().VisitChildren(&VisitFile, &file_param);
-  return db;
-}
 
 template<typename T>
 bool AreEqual(const std::vector<T>& a, const std::vector<T>& b) {
