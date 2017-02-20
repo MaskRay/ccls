@@ -16,7 +16,8 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "tests/usage/func_usage_call_method.cc:1:8",
-      "all_uses": ["tests/usage/func_usage_call_method.cc:1:8", "tests/usage/func_usage_call_method.cc:6:3"]
+      "all_uses": ["tests/usage/func_usage_call_method.cc:1:8", "tests/usage/func_usage_call_method.cc:6:3"],
+      "interesting_uses": ["tests/usage/func_usage_call_method.cc:6:3"]
     }],
   "functions": [{
       "id": 0,

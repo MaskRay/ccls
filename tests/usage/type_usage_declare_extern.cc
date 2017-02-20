@@ -10,7 +10,8 @@ OUTPUT:
       "short_name": "T",
       "qualified_name": "T",
       "definition": "tests/usage/type_usage_declare_extern.cc:1:8",
-      "all_uses": ["tests/usage/type_usage_declare_extern.cc:1:8", "tests/usage/type_usage_declare_extern.cc:3:8"]
+      "all_uses": ["tests/usage/type_usage_declare_extern.cc:1:8", "tests/usage/type_usage_declare_extern.cc:3:8"],
+      "interesting_uses": ["tests/usage/type_usage_declare_extern.cc:3:8"]
     }],
   "functions": [],
   "variables": [{
@@ -19,6 +20,7 @@ OUTPUT:
       "short_name": "t",
       "qualified_name": "t",
       "declaration": "tests/usage/type_usage_declare_extern.cc:3:10",
+      "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_extern.cc:3:10"]
     }]
 }

@@ -6,10 +6,8 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
-      "short_name": "Type",
-      "qualified_name": "Type",
-      "declaration": "tests/usage/type_usage_declare_static.cc:1:8",
-      "uses": ["tests/usage/type_usage_declare_static.cc:2:8"]
+      "all_uses": ["tests/usage/type_usage_declare_static.cc:1:8", "tests/usage/type_usage_declare_static.cc:2:8"],
+      "interesting_uses": ["tests/usage/type_usage_declare_static.cc:2:8"]
     }],
   "functions": [],
   "variables": [{
@@ -18,8 +16,8 @@ OUTPUT:
       "short_name": "t",
       "qualified_name": "t",
       "declaration": "tests/usage/type_usage_declare_static.cc:2:13",
-      "initializations": ["tests/usage/type_usage_declare_static.cc:2:13"],
-      "variable_type": 0
+      "variable_type": 0,
+      "all_uses": ["tests/usage/type_usage_declare_static.cc:2:13"]
     }]
 }
 */

@@ -1069,6 +1069,42 @@ CXIdxClientContainer startedTranslationUnit(CXClientData client_data, void *rese
 
 
 
+
+
+
+
+
+
+struct FindChildOfKindParam {
+  CXCursorKind target_kind;
+  std::optional<clang::Cursor> result;
+
+  FindChildOfKindParam(CXCursorKind target_kind) : target_kind(target_kind) {}
+};
+
+clang::VisiterResult FindChildOfKindVisitor(clang::Cursor cursor, clang::Cursor parent, FindChildOfKindParam* param) {
+  if (cursor.get_kind() == param->target_kind) {
+    param->result = cursor;
+    return clang::VisiterResult::Break;
+  }
+
+  return clang::VisiterResult::Recurse;
+}
+
+std::optional<clang::Cursor> FindChildOfKind(clang::Cursor cursor, CXCursorKind kind) {
+  FindChildOfKindParam param(kind);
+  cursor.VisitChildren(&FindChildOfKindVisitor, &param);
+  return param.result;
+}
+
+
+
+
+
+
+
+
+
 struct NamespaceHelper {
   std::unordered_map<std::string, std::string> container_usr_to_qualified_name;
 
@@ -1138,6 +1174,15 @@ std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
 //        * it doesn't seem like we get any template specialization logic
 //        * we get two decls to the same template... resolved by checking parent? maybe this will break. not sure.
 
+// Insert a reference to |type_id| using the location of the first TypeRef under |cursor|.
+void InsertInterestingTypeReference(ParsingDatabase* db, TypeId type_id, clang::Cursor cursor) {
+  std::optional<clang::Cursor> child = FindChildOfKind(cursor, CXCursor_TypeRef);
+  assert(child.has_value()); // If this assert ever fails just use |cursor| loc.
+
+  TypeDef* def = db->Resolve(type_id);
+  def->interesting_uses.push_back(child.value().get_source_location());
+}
+
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {
   if (!container)
     return false;
@@ -1179,10 +1224,12 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->declaration = decl->loc;
     var_def->all_uses.push_back(decl->loc);
 
-    clang::Type var_type = clang::Cursor(decl->cursor).get_type().strip_qualifiers();
-    std::string var_type_usr = var_type.get_usr();
-    if (var_type_usr != "")
-      var_def->variable_type = db->ToTypeId(var_type_usr);
+    std::string var_type_usr = clang::Cursor(decl->cursor).get_type().strip_qualifiers().get_usr();
+    if (var_type_usr != "") {
+      TypeId var_type_id = db->ToTypeId(var_type_usr);
+      var_def->variable_type = var_type_id;
+      InsertInterestingTypeReference(db, var_type_id, decl->cursor);
+    }
 
     if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
@@ -1232,7 +1279,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // (before visiting another declaration). If we only want to mark the
     // return type on the definition interesting, we could only compute this
     // if we're parsing the definition declaration.
-    func_def->needs_return_type_index = !clang::Cursor(decl->cursor).get_type().get_return_type().is_fundamental();
+    //func_def->needs_return_type_index = !clang::Cursor(decl->cursor).get_type().get_return_type().is_fundamental();
+
+    std::string return_type_usr = clang::Cursor(decl->cursor).get_type().get_return_type().strip_qualifiers().get_usr();
+    if (return_type_usr != "")
+      InsertInterestingTypeReference(db, db->ToTypeId(return_type_usr), decl->cursor);
 
     /*
     std::optional<FuncId> base;
@@ -1324,6 +1375,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     break;
   }
 
+  case CXIdxEntity_CXXStaticMethod:
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_Function:
   {
@@ -1334,6 +1386,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //  }
 
     // Don't report duplicate usages.
+    // TODO: search full history?
     clang::SourceLocation loc = ref->loc;
     if (param->last_func_usage_location == loc) break;
     param->last_func_usage_location = loc;
@@ -1381,11 +1434,23 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //  }
     //
     clang::SourceLocation loc = ref->loc;
-    if (param->last_type_usage_location == loc) break;
-    param->last_type_usage_location = loc;
+    //if (param->last_type_usage_location == loc) break;
+    //param->last_type_usage_location = loc;
+
+    // TODO: initializer list can many type refs...
+    bool do_break = false;
+    for (int i = referenced_def->all_uses.size() - 1; i >= 0; --i) {
+      if (referenced_def->all_uses[i] == loc) {
+        do_break = true;
+        break;
+      }
+    }
+    if (do_break)
+      break;
 
     referenced_def->all_uses.push_back(loc);
 
+    /*
     //
     // Variable declarations have an embedded TypeRef.
     //
@@ -1416,6 +1481,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
         referenced_def->interesting_uses.push_back(loc);
       }
     }
+    */
 
     break;
   }
@@ -1591,11 +1657,12 @@ int main(int argc, char** argv) {
     // TODO: Fix all existing tests.
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
     if (path == "tests/constructors/constructor.cc") continue;
+    if (path != "tests/usage/type_usage_on_return_type.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
     //if (path != "tests/usage/func_usage_template_func.cc") continue;
     //if (path != "tests/usage/func_usage_class_inline_var_def.cc") continue;
-    if (path != "tests/foobar.cc") continue;
+    //if (path != "tests/foobar.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
