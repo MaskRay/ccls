@@ -732,7 +732,9 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(clang::Cursor cursor, clang::C
   return clang::VisiterResult::Continue;
 }
 
-std::optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_cursor, const CXIdxContainerInfo* semantic_container, const CXIdxContainerInfo* lexical_container, bool is_interesting) {
+std::optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_cursor,
+  bool is_interesting, const CXIdxContainerInfo* semantic_container,
+  const CXIdxContainerInfo* lexical_container) {
   //
   // The general AST format for definitions follows this pattern:
   //
@@ -781,7 +783,8 @@ std::optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_
   // children, the first one will always be visited.
   if (param.previous_cursor && process_last_type_ref) {
     VisitDeclForTypeUsageVisitorHandler(param.previous_cursor.value(), &param);
-  } else {
+  }
+  else {
     // If we are not processing the last type ref, it *must* be a TypeRef (ie,
     // and not a TemplateRef).
     assert(!param.previous_cursor.has_value() ||
@@ -827,7 +830,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->all_uses.push_back(decl->loc);
 
 
-    std::optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl->semanticContainer, decl->lexicalContainer, decl_cursor.get_kind() != CXCursor_ParmDecl);
+    std::optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
     if (var_type.has_value())
       var_def->variable_type = var_type.value();
     // Declaring variable type information.
@@ -896,7 +899,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     // We don't actually need to know the return type, but we need to mark it
     // as an interesting usage.
-    ResolveDeclToType(db, decl_cursor, decl->semanticContainer, decl->lexicalContainer, true /*is_interesting*/);
+    ResolveDeclToType(db, decl_cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
     //TypeResolution ret_type = ResolveToType(db, decl_cursor.get_type().get_return_type());
     //if (ret_type.resolved_type)
@@ -918,7 +921,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         case CXCursor_ParmDecl:
           // We don't need to know the arg type, but we do want to mark it as
           // an interesting usage.
-          ResolveDeclToType(db, arg, decl->semanticContainer, decl->lexicalContainer, true /*is_interesting*/);
+          ResolveDeclToType(db, arg, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
           //TypeResolution arg_type = ResolveToType(db, arg.get_type());
           //if (arg_type.resolved_type)
@@ -965,24 +968,19 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_Typedef:
   case CXIdxEntity_CXXTypeAlias:
   {
+    std::optional<TypeId> alias_of = ResolveDeclToType(db, decl->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-
-    std::optional<clang::Cursor> type_ref = FindChildOfKind(decl->cursor, CXCursor_TypeRef);
-    assert(type_ref.has_value());
-    TypeId alias_of = db->ToTypeId(type_ref.value().get_referenced().get_usr());
-
     TypeDef* type_def = db->Resolve(type_id);
 
-    type_def->alias_of = alias_of;
-    db->Resolve(alias_of)->interesting_uses.push_back(type_ref.value().get_source_location());
+    if (alias_of)
+      type_def->alias_of = alias_of.value();
 
     type_def->short_name = decl->entityInfo->name;
     type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
 
     type_def->definition = decl->loc;
     type_def->all_uses.push_back(decl->loc);
-
-
     break;
   }
 
@@ -1159,7 +1157,7 @@ ParsingDatabase Parse(std::string filename) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
-  //Dump(tu.document_cursor());
+  Dump(tu.document_cursor());
 
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
 
@@ -1285,7 +1283,7 @@ int main(int argc, char** argv) {
 
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/declaration_vs_definition/class_member_static.cc") continue;
-    //if (path != "tests/usage/type_usage_declare_param.cc") continue;
+    //if (path != "tests/usage/type_usage_typedef_and_using_template.cc") continue;
     //if (path == "tests/constructors/constructor.cc") continue;
     //if (path == "tests/constructors/destructor.cc") continue;
     //if (path == "tests/usage/func_usage_call_method.cc") continue;
