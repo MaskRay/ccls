@@ -9,7 +9,7 @@ OUTPUT:
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": "tests/function_declaration.cc:1:6"
+      "all_uses": ["tests/function_declaration.cc:1:6"]
     }],
   "variables": []
 }

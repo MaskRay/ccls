@@ -12,6 +12,10 @@ class Foo {
 Type* Foo::Get(int) {}
 void Foo::Empty() {}
 
+// TODO: Add static
+// TODO: Add extern?
+// TODO: verify interesting usage is reported
+
 /*
 OUTPUT:
 {

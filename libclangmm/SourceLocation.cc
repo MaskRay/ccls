@@ -17,6 +17,8 @@ SourceLocation::SourceLocation(CXTranslationUnit &tu, const std::string &filepat
   //cx_location = clang_getLocation(tu, file, line, column);
 }
 
+SourceLocation::SourceLocation() {}
+
 SourceLocation::SourceLocation(const CXSourceLocation& cx_location) {
   //clang_getExpansionLocation
 
@@ -24,6 +26,18 @@ SourceLocation::SourceLocation(const CXSourceLocation& cx_location) {
   clang_getSpellingLocation(cx_location, &file, &line, &column, &offset);
   if (file != nullptr)
     path = clang::ToString(clang_getFileName(file));
+}
+
+SourceLocation::SourceLocation(const CXIdxLoc& cx_location) 
+  : SourceLocation(clang_indexLoc_getCXSourceLocation(cx_location)) {
+}
+
+bool SourceLocation::operator==(const SourceLocation& o) {
+  return path == o.path && line == o.line && column == o.column;
+}
+
+bool SourceLocation::operator!=(const SourceLocation& o) {
+  return !(*this == o);
 }
 
 std::string SourceLocation::ToString() const {

@@ -17,7 +17,8 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/constructors/constructor.cc:1:7",
       "funcs": [0],
-      "uses": ["tests/constructors/constructor.cc:7:3"]
+      "all_uses": ["tests/constructors/constructor.cc:7:3"]
+      "interesting_uses": ["tests/constructors/constructor.cc:7:3"]
     }],
   "functions": [{
       "id": 0,

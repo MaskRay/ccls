@@ -44,7 +44,7 @@ enum class VisiterResult {
 class Cursor {
 public:
   Cursor();
-  explicit Cursor(const CXCursor& other);
+  Cursor(const CXCursor& other);
 
   operator bool() const;
   bool operator==(const Cursor& rhs) const;

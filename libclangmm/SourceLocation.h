@@ -21,12 +21,17 @@ class SourceLocation {
   SourceLocation(CXTranslationUnit &tu, const std::string &filepath, unsigned offset);
   SourceLocation(CXTranslationUnit &tu, const std::string &filepath, unsigned line, unsigned column);
 public:
+  SourceLocation();
   SourceLocation(const CXSourceLocation& cx_location);
+  SourceLocation(const CXIdxLoc& cx_location);
+
+  bool operator==(const SourceLocation& o);
+  bool operator!=(const SourceLocation& o);
 
   std::string path;
-  unsigned line;
-  unsigned column;
-  unsigned offset;
+  unsigned line = 0;
+  unsigned column = 0;
+  unsigned offset = 0;
 
   std::string ToString() const;
 };
