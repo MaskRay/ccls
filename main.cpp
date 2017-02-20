@@ -161,7 +161,6 @@ struct VarDef {
   std::optional<TypeId> declaring_type;
 
   // Usages.
-  //std::vector<clang::SourceLocation> initializations; // TODO: See if we can support this.
   std::vector<clang::SourceLocation> all_uses;
 
   VarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
@@ -1814,7 +1813,6 @@ int main(int argc, char** argv) {
   */
 
   for (std::string path : GetFilesInFolder("tests")) {
-    // TODO: Fix all existing tests.
     //if (path != "tests/declaration_vs_definition/method.cc") continue;
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
     //if (path != "tests/constructors/destructor.cc") continue;
@@ -1859,4 +1857,4 @@ int main(int argc, char** argv) {
   return 0;
 }
 
-// TODO: ctor/dtor, copy ctor, class inheritance, method inheritance
+// TODO: ctor/dtor, copy ctor

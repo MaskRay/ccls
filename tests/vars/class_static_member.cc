@@ -4,9 +4,6 @@ class Foo {
 Foo* Foo::member = nullptr;
 
 /*
-// TODO: Store both declaration and definition. It is very convenient to
-//       quickly change between them.
-
 OUTPUT:
 {
   "types": [{

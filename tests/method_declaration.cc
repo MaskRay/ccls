@@ -4,11 +4,8 @@ class Foo {
 
 /*
 // NOTE: Lack of declaring_type in functions and funcs in Foo is okay, because
-//       those are processed when we find the definition for Foo::foo.
-// TODO: Verify the strategy above works well with pure virtual interfaces and
-//       the like (ie, we need to provide a good outline view). We could just
-//       add the info in the declaration if the func is pure virtual - see
-//       clang_CXXMethod_isPureVirtual
+//       those are processed when we find the definition for Foo::foo. Pure
+//       virtuals are treated specially and get added to the type immediately.
 
 OUTPUT:
 {
