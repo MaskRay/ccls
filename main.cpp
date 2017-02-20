@@ -1411,6 +1411,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   // TODO: Index entity call/ctor creation, like Foo().x = 3
 
   switch (ref->referencedEntity->kind) {
+  case CXIdxEntity_CXXStaticVariable:
   case CXIdxEntity_Variable:
   case CXIdxEntity_Field:
   {
@@ -1704,7 +1705,7 @@ int main(int argc, char** argv) {
     // TODO: Fix all existing tests.
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
     if (path == "tests/constructors/constructor.cc") continue;
-    if (path == "tests/usage/usage_inside_of_call.cc") continue;
+    //if (path != "tests/usage/usage_inside_of_call.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
