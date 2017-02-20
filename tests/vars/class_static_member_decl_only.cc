@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "tests/vars/class_static_member_decl_only.cc:1:7",
-      "vars": [0]
+      "all_uses": ["tests/vars/class_static_member_decl_only.cc:1:7"]
     }],
   "functions": [],
   "variables": [{
@@ -19,7 +19,7 @@ OUTPUT:
       "short_name": "member",
       "qualified_name": "Foo::member",
       "declaration": "tests/vars/class_static_member_decl_only.cc:2:14",
-      "declaring_type": 0
+      "all_uses": ["tests/vars/class_static_member_decl_only.cc:2:14"]
     }]
 }
 */

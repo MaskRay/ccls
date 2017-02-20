@@ -3,15 +3,15 @@ struct Foo;
 void foo() {
   Foo* a;
 }
-/*
-// TODO: Make sure usage for Foo is inserted into type section.
 
+/*
 OUTPUT:
 {
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "all_uses": ["tests/vars/function_local.cc:1:8", "tests/vars/function_local.cc:4:3"]
+      "all_uses": ["tests/vars/function_local.cc:1:8", "tests/vars/function_local.cc:4:3"],
+      "interesting_uses": ["tests/vars/function_local.cc:4:3"]
     }],
   "functions": [{
       "id": 0,

@@ -4,6 +4,9 @@ class Foo {
 Foo* Foo::member = nullptr;
 
 /*
+// TODO: Store both declaration and definition. It is very convenient to
+//       quickly change between them.
+
 OUTPUT:
 {
   "types": [{
@@ -13,7 +16,8 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/vars/class_static_member.cc:1:7",
       "vars": [0],
-      "uses": ["tests/vars/class_static_member.cc:2:10", "tests/vars/class_static_member.cc:4:1"]
+      "all_uses": ["tests/vars/class_static_member.cc:1:7", "tests/vars/class_static_member.cc:2:10", "tests/vars/class_static_member.cc:4:1", "tests/vars/class_static_member.cc:4:6"],
+      "interesting_uses": ["tests/vars/class_static_member.cc:2:10", "tests/vars/class_static_member.cc:4:1"]
     }],
   "functions": [],
   "variables": [{
@@ -21,10 +25,10 @@ OUTPUT:
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "declaration": "tests/vars/class_static_member.cc:2:15",
-      "initializations": ["tests/vars/class_static_member.cc:4:11"],
+      "declaration": "tests/vars/class_static_member.cc:4:11",
       "variable_type": 0,
-      "declaring_type": 0
+      "declaring_type": 0,
+      "all_uses": ["tests/vars/class_static_member.cc:2:15", "tests/vars/class_static_member.cc:4:11"]
     }]
 }
 */

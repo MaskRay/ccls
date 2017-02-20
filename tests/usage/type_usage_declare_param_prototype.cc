@@ -15,7 +15,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Foo",
       "all_uses": ["tests/usage/type_usage_declare_param_prototype.cc:1:8", "tests/usage/type_usage_declare_param_prototype.cc:3:10", "tests/usage/type_usage_declare_param_prototype.cc:3:18", "tests/usage/type_usage_declare_param_prototype.cc:4:10", "tests/usage/type_usage_declare_param_prototype.cc:4:18"],
-      "interesting_uses": ["tests/usage/type_usage_declare_param_prototype.cc:4:10"]
+      "interesting_uses": ["tests/usage/type_usage_declare_param_prototype.cc:4:10", "tests/usage/type_usage_declare_param_prototype.cc:4:18"]
     }],
   "functions": [{
       "id": 0,

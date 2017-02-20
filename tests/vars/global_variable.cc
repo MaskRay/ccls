@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "global",
       "qualified_name": "global",
       "declaration": "tests/vars/global_variable.cc:1:12",
-      "initializations": ["tests/vars/global_variable.cc:1:12"]
+      "all_uses": ["tests/vars/global_variable.cc:1:12"]
     }]
 }
 */

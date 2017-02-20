@@ -11,7 +11,8 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "tests/usage/var_usage_local.cc:1:6"
+      "definition": "tests/usage/var_usage_local.cc:1:6",
+      "all_uses": ["tests/usage/var_usage_local.cc:1:6"]
     }],
   "variables": [{
       "id": 0,
@@ -19,8 +20,7 @@ OUTPUT:
       "short_name": "x",
       "qualified_name": "x",
       "declaration": "tests/usage/var_usage_local.cc:2:7",
-      "initializations": ["tests/usage/var_usage_local.cc:2:7"],
-      "uses": ["tests/usage/var_usage_local.cc:3:3"]
+      "all_uses": ["tests/usage/var_usage_local.cc:2:7", "tests/usage/var_usage_local.cc:3:3"]
     }]
 }
 */

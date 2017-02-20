@@ -11,7 +11,8 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "tests/vars/class_member.cc:1:7",
       "vars": [0],
-      "uses": ["tests/vars/class_member.cc:2:3"]
+      "all_uses": ["tests/vars/class_member.cc:1:7", "tests/vars/class_member.cc:2:3"],
+      "interesting_uses": ["tests/vars/class_member.cc:2:3"]
     }],
   "functions": [],
   "variables": [{
@@ -20,9 +21,9 @@ OUTPUT:
       "short_name": "member",
       "qualified_name": "Foo::member",
       "declaration": "tests/vars/class_member.cc:2:8",
-      "initializations": ["tests/vars/class_member.cc:2:8"],
       "variable_type": 0,
-      "declaring_type": 0
+      "declaring_type": 0,
+      "all_uses": ["tests/vars/class_member.cc:2:8"]
     }]
 }
 */

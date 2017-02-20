@@ -1207,6 +1207,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
   case CXIdxEntity_Field:
   case CXIdxEntity_Variable:
+  case CXIdxEntity_CXXStaticVariable:
   {
     VarId var_id = db->ToVarId(decl->entityInfo->USR);
     VarDef* var_def = db->Resolve(var_id);
@@ -1221,11 +1222,17 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->declaration = decl->loc;
     var_def->all_uses.push_back(decl->loc);
 
+    // Declaring variable type information.
     std::string var_type_usr = clang::Cursor(decl->cursor).get_type().strip_qualifiers().get_usr();
     if (var_type_usr != "") {
       TypeId var_type_id = db->ToTypeId(var_type_usr);
       var_def->variable_type = var_type_id;
-      InsertInterestingTypeReference(db, var_type_id, decl->cursor);
+
+      // Insert an interesting type usage for variable declarations. Parameters
+      // are handled when a function is declared because clang doesn't provide
+      // parameter declarations for unnamed parameters.
+      if (decl->cursor.kind != CXCursor_ParmDecl)
+        InsertInterestingTypeReference(db, var_type_id, decl->cursor);
     }
 
     if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
@@ -1279,18 +1286,18 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
 
     if (decl->isDefinition) {
-      // Search for unnamed parameter and and mark them as interesting type
-      // usages. The clang indexer will not mark them as declarations.
+      // Mark type usage for parameters as interesting. We handle this here
+      // instead of inside var declaration because clang will not emit a var
+      // declaration for an unnamed parameter, but we still want to mark the
+      // usage as interesting.
       // TODO: Do a similar thing for function decl parameter usages.
       clang::Cursor cursor = decl->cursor;
       for (clang::Cursor arg : cursor.get_arguments()) {
         switch (arg.get_kind()) {
         case CXCursor_ParmDecl:
-          if (arg.get_spelling() == "") {
-            std::string param_type_usr = arg.get_type().strip_qualifiers().get_usr();
-            if (param_type_usr != "") {
-              InsertInterestingTypeReference(db, db->ToTypeId(param_type_usr), arg);
-            }
+          std::string param_type_usr = arg.get_type().strip_qualifiers().get_usr();
+          if (param_type_usr != "") {
+            InsertInterestingTypeReference(db, db->ToTypeId(param_type_usr), arg);
           }
           break;
         }
@@ -1401,6 +1408,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   ParsingDatabase* db = param->db;
   clang::Cursor cursor(ref->cursor);
 
+  // TODO: Index entity call/ctor creation, like Foo().x = 3
 
   switch (ref->referencedEntity->kind) {
   case CXIdxEntity_Variable:
@@ -1696,11 +1704,12 @@ int main(int argc, char** argv) {
     // TODO: Fix all existing tests.
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
     if (path == "tests/constructors/constructor.cc") continue;
-    if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
+    if (path == "tests/usage/usage_inside_of_call.cc") continue;
+    //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
     //if (path != "tests/usage/func_usage_template_func.cc") continue;
-    //if (path != "tests/usage/func_usage_class_inline_var_def.cc") continue;
+    //if (path != "tests/usage/usage_inside_of_call.cc") continue;
     //if (path != "tests/foobar.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.

@@ -16,7 +16,8 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "tests/usage/var_usage_shadowed_local.cc:1:6"
+      "definition": "tests/usage/var_usage_shadowed_local.cc:1:6",
+      "all_uses": ["tests/usage/var_usage_shadowed_local.cc:1:6"]
     }],
   "variables": [{
       "id": 0,
@@ -24,16 +25,14 @@ OUTPUT:
       "short_name": "a",
       "qualified_name": "a",
       "declaration": "tests/usage/var_usage_shadowed_local.cc:2:7",
-      "initializations": ["tests/usage/var_usage_shadowed_local.cc:2:7"],
-      "uses": ["tests/usage/var_usage_shadowed_local.cc:3:3", "tests/usage/var_usage_shadowed_local.cc:8:3"]
+      "all_uses": ["tests/usage/var_usage_shadowed_local.cc:2:7", "tests/usage/var_usage_shadowed_local.cc:3:3", "tests/usage/var_usage_shadowed_local.cc:8:3"]
     }, {
       "id": 1,
       "usr": "c:var_usage_shadowed_local.cc@43@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
       "declaration": "tests/usage/var_usage_shadowed_local.cc:5:9",
-      "initializations": ["tests/usage/var_usage_shadowed_local.cc:5:9"],
-      "uses": ["tests/usage/var_usage_shadowed_local.cc:6:5"]
+      "all_uses": ["tests/usage/var_usage_shadowed_local.cc:5:9", "tests/usage/var_usage_shadowed_local.cc:6:5"]
     }]
 }
 */
