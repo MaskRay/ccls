@@ -37,7 +37,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@a",
       "short_name": "a",
       "qualified_name": "Foo::a",
-      "declaration": "tests/usage/type_usage_declare_field.cc:5:16",
+      "definition": "tests/usage/type_usage_declare_field.cc:5:16",
       "variable_type": 0,
       "declaring_type": 2,
       "all_uses": ["tests/usage/type_usage_declare_field.cc:5:16"]
@@ -46,7 +46,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@b",
       "short_name": "b",
       "qualified_name": "Foo::b",
-      "declaration": "tests/usage/type_usage_declare_field.cc:6:19",
+      "definition": "tests/usage/type_usage_declare_field.cc:6:19",
       "variable_type": 1,
       "declaring_type": 2,
       "all_uses": ["tests/usage/type_usage_declare_field.cc:6:19"]

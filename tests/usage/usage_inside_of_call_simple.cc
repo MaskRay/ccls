@@ -15,6 +15,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
+      "declaration": "tests/usage/usage_inside_of_call_simple.cc:1:6",
       "callers": ["2@tests/usage/usage_inside_of_call_simple.cc:6:3"],
       "all_uses": ["tests/usage/usage_inside_of_call_simple.cc:1:6", "tests/usage/usage_inside_of_call_simple.cc:6:3"]
     }, {

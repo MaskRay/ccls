@@ -41,7 +41,7 @@ OUTPUT:
       "usr": "c:func_usage_addr_func.cc@61@F@user#@x",
       "short_name": "x",
       "qualified_name": "x",
-      "declaration": "tests/usage/func_usage_addr_func.cc:6:8",
+      "definition": "tests/usage/func_usage_addr_func.cc:6:8",
       "all_uses": ["tests/usage/func_usage_addr_func.cc:6:8"]
     }]
 }

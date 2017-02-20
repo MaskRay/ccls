@@ -18,14 +18,14 @@ OUTPUT:
       "usr": "c:function_shadow_param.cc@9@F@foo#I#@p",
       "short_name": "p",
       "qualified_name": "p",
-      "declaration": "tests/vars/function_shadow_param.cc:1:14",
+      "definition": "tests/vars/function_shadow_param.cc:1:14",
       "all_uses": ["tests/vars/function_shadow_param.cc:1:14"]
     }, {
       "id": 1,
       "usr": "c:function_shadow_param.cc@21@F@foo#I#@p",
       "short_name": "p",
       "qualified_name": "p",
-      "declaration": "tests/vars/function_shadow_param.cc:2:7",
+      "definition": "tests/vars/function_shadow_param.cc:2:7",
       "all_uses": ["tests/vars/function_shadow_param.cc:2:7"]
     }]
 }

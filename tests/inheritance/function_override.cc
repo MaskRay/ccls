@@ -31,6 +31,7 @@ OUTPUT:
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "qualified_name": "Root::foo",
+      "declaration": "tests/inheritance/function_override.cc:2:16",
       "derived": [1],
       "all_uses": ["tests/inheritance/function_override.cc:2:16"]
     }, {

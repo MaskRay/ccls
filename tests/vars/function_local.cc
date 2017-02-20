@@ -26,7 +26,7 @@ OUTPUT:
       "usr": "c:function_local.cc@31@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/vars/function_local.cc:4:8",
+      "definition": "tests/vars/function_local.cc:4:8",
       "variable_type": 0,
       "all_uses": ["tests/vars/function_local.cc:4:8"]
     }]

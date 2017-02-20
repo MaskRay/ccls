@@ -31,7 +31,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_qualifiers.cc@28@F@foo#&$@S@Type#&1S1_#@a0",
       "short_name": "a0",
       "qualified_name": "a0",
-      "declaration": "tests/usage/type_usage_declare_qualifiers.cc:3:16",
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:3:16",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_qualifiers.cc:3:16"]
     }, {
@@ -39,7 +39,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_qualifiers.cc@38@F@foo#&$@S@Type#&1S1_#@a1",
       "short_name": "a1",
       "qualified_name": "a1",
-      "declaration": "tests/usage/type_usage_declare_qualifiers.cc:3:32",
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:3:32",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_qualifiers.cc:3:32"]
     }, {
@@ -47,7 +47,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_qualifiers.cc@59@F@foo#&$@S@Type#&1S1_#@a2",
       "short_name": "a2",
       "qualified_name": "a2",
-      "declaration": "tests/usage/type_usage_declare_qualifiers.cc:4:8",
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:4:8",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_qualifiers.cc:4:8"]
     }, {
@@ -55,7 +55,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_qualifiers.cc@71@F@foo#&$@S@Type#&1S1_#@a3",
       "short_name": "a3",
       "qualified_name": "a3",
-      "declaration": "tests/usage/type_usage_declare_qualifiers.cc:5:9",
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:5:9",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_qualifiers.cc:5:9"]
     }, {
@@ -63,7 +63,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_qualifiers.cc@84@F@foo#&$@S@Type#&1S1_#@a4",
       "short_name": "a4",
       "qualified_name": "a4",
-      "declaration": "tests/usage/type_usage_declare_qualifiers.cc:6:15",
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:6:15",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_qualifiers.cc:6:15"]
     }, {
@@ -71,7 +71,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_qualifiers.cc@103@F@foo#&$@S@Type#&1S1_#@a5",
       "short_name": "a5",
       "qualified_name": "a5",
-      "declaration": "tests/usage/type_usage_declare_qualifiers.cc:7:21",
+      "definition": "tests/usage/type_usage_declare_qualifiers.cc:7:21",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_qualifiers.cc:7:21"]
     }]

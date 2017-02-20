@@ -35,6 +35,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "qualified_name": "accept",
+      "declaration": "tests/usage/var_usage_class_member.cc:7:6",
       "callers": ["2@tests/usage/var_usage_class_member.cc:14:3", "2@tests/usage/var_usage_class_member.cc:15:3", "2@tests/usage/var_usage_class_member.cc:17:3"],
       "all_uses": ["tests/usage/var_usage_class_member.cc:7:6", "tests/usage/var_usage_class_member.cc:14:3", "tests/usage/var_usage_class_member.cc:15:3", "tests/usage/var_usage_class_member.cc:17:3"]
     }, {
@@ -42,6 +43,7 @@ OUTPUT:
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "qualified_name": "accept",
+      "declaration": "tests/usage/var_usage_class_member.cc:8:6",
       "callers": ["2@tests/usage/var_usage_class_member.cc:16:3"],
       "all_uses": ["tests/usage/var_usage_class_member.cc:8:6", "tests/usage/var_usage_class_member.cc:16:3"]
     }, {
@@ -58,7 +60,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@x",
       "short_name": "x",
       "qualified_name": "Foo::x",
-      "declaration": "tests/usage/var_usage_class_member.cc:3:7",
+      "definition": "tests/usage/var_usage_class_member.cc:3:7",
       "declaring_type": 0,
       "all_uses": ["tests/usage/var_usage_class_member.cc:3:7", "tests/usage/var_usage_class_member.cc:12:5", "tests/usage/var_usage_class_member.cc:13:5", "tests/usage/var_usage_class_member.cc:14:12", "tests/usage/var_usage_class_member.cc:15:12", "tests/usage/var_usage_class_member.cc:16:13"]
     }, {
@@ -66,7 +68,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@y",
       "short_name": "y",
       "qualified_name": "Foo::y",
-      "declaration": "tests/usage/var_usage_class_member.cc:4:7",
+      "definition": "tests/usage/var_usage_class_member.cc:4:7",
       "declaring_type": 0,
       "all_uses": ["tests/usage/var_usage_class_member.cc:4:7", "tests/usage/var_usage_class_member.cc:17:12"]
     }, {
@@ -74,7 +76,7 @@ OUTPUT:
       "usr": "c:var_usage_class_member.cc@105@F@foo#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/usage/var_usage_class_member.cc:11:7",
+      "definition": "tests/usage/var_usage_class_member.cc:11:7",
       "variable_type": 0,
       "all_uses": ["tests/usage/var_usage_class_member.cc:11:7", "tests/usage/var_usage_class_member.cc:12:3", "tests/usage/var_usage_class_member.cc:13:3", "tests/usage/var_usage_class_member.cc:14:10", "tests/usage/var_usage_class_member.cc:15:10", "tests/usage/var_usage_class_member.cc:16:11", "tests/usage/var_usage_class_member.cc:17:10"]
     }]

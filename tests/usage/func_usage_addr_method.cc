@@ -23,6 +23,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "qualified_name": "Foo::Used",
+      "declaration": "tests/usage/func_usage_addr_method.cc:2:8",
       "callers": ["1@tests/usage/func_usage_addr_method.cc:6:18"],
       "all_uses": ["tests/usage/func_usage_addr_method.cc:2:8", "tests/usage/func_usage_addr_method.cc:6:18"]
     }, {
@@ -39,7 +40,7 @@ OUTPUT:
       "usr": "c:func_usage_addr_method.cc@53@F@user#@x",
       "short_name": "x",
       "qualified_name": "x",
-      "declaration": "tests/usage/func_usage_addr_method.cc:6:8",
+      "definition": "tests/usage/func_usage_addr_method.cc:6:8",
       "all_uses": ["tests/usage/func_usage_addr_method.cc:6:8"]
     }]
 }

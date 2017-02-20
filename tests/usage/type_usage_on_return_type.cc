@@ -39,6 +39,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "declaration": "tests/usage/type_usage_on_return_type.cc:4:7",
       "definition": "tests/usage/type_usage_on_return_type.cc:5:7",
       "all_uses": ["tests/usage/type_usage_on_return_type.cc:3:7", "tests/usage/type_usage_on_return_type.cc:4:7", "tests/usage/type_usage_on_return_type.cc:5:7"]
     }, {
@@ -46,6 +47,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Get#I#",
       "short_name": "Get",
       "qualified_name": "Foo::Get",
+      "declaration": "tests/usage/type_usage_on_return_type.cc:8:9",
       "definition": "tests/usage/type_usage_on_return_type.cc:12:12",
       "declaring_type": 1,
       "all_uses": ["tests/usage/type_usage_on_return_type.cc:8:9", "tests/usage/type_usage_on_return_type.cc:12:12"]
@@ -54,6 +56,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Empty#",
       "short_name": "Empty",
       "qualified_name": "Foo::Empty",
+      "declaration": "tests/usage/type_usage_on_return_type.cc:9:8",
       "definition": "tests/usage/type_usage_on_return_type.cc:13:11",
       "declaring_type": 1,
       "all_uses": ["tests/usage/type_usage_on_return_type.cc:9:8", "tests/usage/type_usage_on_return_type.cc:13:11"]
@@ -62,12 +65,14 @@ OUTPUT:
       "usr": "c:@F@external#",
       "short_name": "external",
       "qualified_name": "external",
+      "declaration": "tests/usage/type_usage_on_return_type.cc:15:20",
       "all_uses": ["tests/usage/type_usage_on_return_type.cc:15:20"]
     }, {
       "id": 4,
       "usr": "c:type_usage_on_return_type.cc@F@bar#",
       "short_name": "bar",
       "qualified_name": "bar",
+      "declaration": "tests/usage/type_usage_on_return_type.cc:17:14",
       "definition": "tests/usage/type_usage_on_return_type.cc:18:14",
       "all_uses": ["tests/usage/type_usage_on_return_type.cc:17:14", "tests/usage/type_usage_on_return_type.cc:18:14"]
     }],

@@ -21,6 +21,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "declaration": "tests/method_definition.cc:2:8",
       "definition": "tests/method_definition.cc:5:11",
       "declaring_type": 0,
       "all_uses": ["tests/method_definition.cc:2:8", "tests/method_definition.cc:5:11"]

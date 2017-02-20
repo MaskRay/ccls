@@ -24,7 +24,7 @@ OUTPUT:
       "usr": "c:function_param.cc@24@F@foo#*$@S@Foo#S0_#@p0",
       "short_name": "p0",
       "qualified_name": "p0",
-      "declaration": "tests/vars/function_param.cc:3:15",
+      "definition": "tests/vars/function_param.cc:3:15",
       "variable_type": 0,
       "all_uses": ["tests/vars/function_param.cc:3:15"]
     }, {
@@ -32,7 +32,7 @@ OUTPUT:
       "usr": "c:function_param.cc@33@F@foo#*$@S@Foo#S0_#@p1",
       "short_name": "p1",
       "qualified_name": "p1",
-      "declaration": "tests/vars/function_param.cc:3:24",
+      "definition": "tests/vars/function_param.cc:3:24",
       "variable_type": 0,
       "all_uses": ["tests/vars/function_param.cc:3:24"]
     }]

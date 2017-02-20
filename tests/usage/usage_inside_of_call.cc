@@ -31,6 +31,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
+      "declaration": "tests/usage/usage_inside_of_call.cc:1:6",
       "callers": ["2@tests/usage/usage_inside_of_call.cc:14:3"],
       "all_uses": ["tests/usage/usage_inside_of_call.cc:1:6", "tests/usage/usage_inside_of_call.cc:14:3"]
     }, {
@@ -38,6 +39,7 @@ OUTPUT:
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "qualified_name": "gen",
+      "declaration": "tests/usage/usage_inside_of_call.cc:3:5",
       "callers": ["2@tests/usage/usage_inside_of_call.cc:14:14"],
       "all_uses": ["tests/usage/usage_inside_of_call.cc:3:5", "tests/usage/usage_inside_of_call.cc:14:14"]
     }, {
@@ -54,7 +56,8 @@ OUTPUT:
       "usr": "c:@S@Foo@static_var",
       "short_name": "static_var",
       "qualified_name": "Foo::static_var",
-      "declaration": "tests/usage/usage_inside_of_call.cc:10:10",
+      "declaration": "tests/usage/usage_inside_of_call.cc:6:14",
+      "definition": "tests/usage/usage_inside_of_call.cc:10:10",
       "declaring_type": 0,
       "all_uses": ["tests/usage/usage_inside_of_call.cc:6:14", "tests/usage/usage_inside_of_call.cc:10:10", "tests/usage/usage_inside_of_call.cc:14:45"]
     }, {
@@ -62,7 +65,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@field_var",
       "short_name": "field_var",
       "qualified_name": "Foo::field_var",
-      "declaration": "tests/usage/usage_inside_of_call.cc:7:7",
+      "definition": "tests/usage/usage_inside_of_call.cc:7:7",
       "declaring_type": 0,
       "all_uses": ["tests/usage/usage_inside_of_call.cc:7:7", "tests/usage/usage_inside_of_call.cc:14:28"]
     }, {
@@ -70,7 +73,7 @@ OUTPUT:
       "usr": "c:usage_inside_of_call.cc@145@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/usage_inside_of_call.cc:13:7",
+      "definition": "tests/usage/usage_inside_of_call.cc:13:7",
       "all_uses": ["tests/usage/usage_inside_of_call.cc:13:7", "tests/usage/usage_inside_of_call.cc:14:10"]
     }]
 }

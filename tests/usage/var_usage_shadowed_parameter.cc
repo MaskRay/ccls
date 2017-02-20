@@ -24,14 +24,14 @@ OUTPUT:
       "usr": "c:var_usage_shadowed_parameter.cc@9@F@foo#I#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_shadowed_parameter.cc:1:14",
+      "definition": "tests/usage/var_usage_shadowed_parameter.cc:1:14",
       "all_uses": ["tests/usage/var_usage_shadowed_parameter.cc:1:14", "tests/usage/var_usage_shadowed_parameter.cc:2:3", "tests/usage/var_usage_shadowed_parameter.cc:7:3"]
     }, {
       "id": 1,
       "usr": "c:var_usage_shadowed_parameter.cc@38@F@foo#I#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_shadowed_parameter.cc:4:9",
+      "definition": "tests/usage/var_usage_shadowed_parameter.cc:4:9",
       "all_uses": ["tests/usage/var_usage_shadowed_parameter.cc:4:9", "tests/usage/var_usage_shadowed_parameter.cc:5:5"]
     }]
 }

@@ -20,6 +20,7 @@ OUTPUT:
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "hello::Foo::foo",
+      "declaration": "tests/namespaces/method_declaration.cc:3:8",
       "all_uses": ["tests/namespaces/method_declaration.cc:3:8"]
     }],
   "variables": []

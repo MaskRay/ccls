@@ -24,14 +24,14 @@ OUTPUT:
       "usr": "c:var_usage_shadowed_local.cc@16@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_shadowed_local.cc:2:7",
+      "definition": "tests/usage/var_usage_shadowed_local.cc:2:7",
       "all_uses": ["tests/usage/var_usage_shadowed_local.cc:2:7", "tests/usage/var_usage_shadowed_local.cc:3:3", "tests/usage/var_usage_shadowed_local.cc:8:3"]
     }, {
       "id": 1,
       "usr": "c:var_usage_shadowed_local.cc@43@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_shadowed_local.cc:5:9",
+      "definition": "tests/usage/var_usage_shadowed_local.cc:5:9",
       "all_uses": ["tests/usage/var_usage_shadowed_local.cc:5:9", "tests/usage/var_usage_shadowed_local.cc:6:5"]
     }]
 }

@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "qualified_name": "Foo::Used",
+      "declaration": "tests/usage/func_usage_call_method.cc:2:8",
       "callers": ["1@tests/usage/func_usage_call_method.cc:7:6"],
       "all_uses": ["tests/usage/func_usage_call_method.cc:2:8", "tests/usage/func_usage_call_method.cc:7:6"]
     }, {
@@ -40,7 +41,7 @@ OUTPUT:
       "usr": "c:func_usage_call_method.cc@53@F@user#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/usage/func_usage_call_method.cc:6:8",
+      "definition": "tests/usage/func_usage_call_method.cc:6:8",
       "variable_type": 0,
       "all_uses": ["tests/usage/func_usage_call_method.cc:6:8", "tests/usage/func_usage_call_method.cc:7:3"]
     }]

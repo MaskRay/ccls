@@ -45,7 +45,7 @@ OUTPUT:
       "usr": "c:constructor.cc@56@F@foo#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/constructors/constructor.cc:7:7",
+      "definition": "tests/constructors/constructor.cc:7:7",
       "variable_type": 0,
       "all_uses": ["tests/constructors/constructor.cc:7:7"]
     }, {
@@ -53,7 +53,7 @@ OUTPUT:
       "usr": "c:constructor.cc@66@F@foo#@f2",
       "short_name": "f2",
       "qualified_name": "f2",
-      "declaration": "tests/constructors/constructor.cc:8:8",
+      "definition": "tests/constructors/constructor.cc:8:8",
       "variable_type": 0,
       "all_uses": ["tests/constructors/constructor.cc:8:8"]
     }]

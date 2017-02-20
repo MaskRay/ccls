@@ -27,6 +27,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "qualified_name": "Foo::make",
+      "declaration": "tests/usage/type_usage_various.cc:2:8",
       "definition": "tests/usage/type_usage_various.cc:5:11",
       "declaring_type": 0,
       "all_uses": ["tests/usage/type_usage_various.cc:2:8", "tests/usage/type_usage_various.cc:5:11"]
@@ -36,7 +37,7 @@ OUTPUT:
       "usr": "c:type_usage_various.cc@58@S@Foo@F@make#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/usage/type_usage_various.cc:6:7",
+      "definition": "tests/usage/type_usage_various.cc:6:7",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_various.cc:6:7"]
     }, {

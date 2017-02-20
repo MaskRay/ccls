@@ -21,7 +21,7 @@ OUTPUT:
       "usr": "c:var_usage_static.cc@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_static.cc:1:12",
+      "definition": "tests/usage/var_usage_static.cc:1:12",
       "all_uses": ["tests/usage/var_usage_static.cc:1:12", "tests/usage/var_usage_static.cc:4:3"]
     }]
 }

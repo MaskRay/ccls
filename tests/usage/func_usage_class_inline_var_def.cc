@@ -31,7 +31,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@x",
       "short_name": "x",
       "qualified_name": "Foo::x",
-      "declaration": "tests/usage/func_usage_class_inline_var_def.cc:6:7",
+      "definition": "tests/usage/func_usage_class_inline_var_def.cc:6:7",
       "declaring_type": 0,
       "all_uses": ["tests/usage/func_usage_class_inline_var_def.cc:6:7"]
     }]

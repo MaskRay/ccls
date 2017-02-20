@@ -33,7 +33,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_param.cc@60@F@foo#*$@S@ForwardType#$@S@ImplementedType#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/usage/type_usage_declare_param.cc:4:23",
+      "definition": "tests/usage/type_usage_declare_param.cc:4:23",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_param.cc:4:23"]
     }, {
@@ -41,7 +41,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_param.cc@76@F@foo#*$@S@ForwardType#$@S@ImplementedType#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/type_usage_declare_param.cc:4:42",
+      "definition": "tests/usage/type_usage_declare_param.cc:4:42",
       "variable_type": 1,
       "all_uses": ["tests/usage/type_usage_declare_param.cc:4:42"]
     }]

@@ -70,7 +70,16 @@ struct TypeDef {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  std::optional<clang::SourceLocation> declaration; // Forward decl. TODO: remove
+
+  // While a class/type can technically have a separate declaration/definition,
+  // it doesn't really happen in practice. The declaration never contains
+  // comments or insightful information. The user always wants to jump from
+  // the declaration to the definition - never the other way around like in
+  // functions and (less often) variables.
+  //
+  // It's also difficult to identify a `class Foo;` statement with the clang
+  // indexer API (it's doable using cursor AST traversal), so we don't bother
+  // supporting the feature.
   std::optional<clang::SourceLocation> definition;
 
   // If set, then this is the same underlying type as the given value (ie, this
@@ -141,6 +150,9 @@ struct VarDef {
   std::string short_name;
   std::string qualified_name;
   std::optional<clang::SourceLocation> declaration;
+  // TODO: definitions should be a list of locations, since there can be more
+  //       than one.
+  std::optional<clang::SourceLocation> definition;
 
   // Type of the variable.
   std::optional<TypeId> variable_type;
@@ -360,7 +372,6 @@ std::string ParsingDatabase::ToString() {
     WRITE(usr);
     WRITE(short_name);
     WRITE(qualified_name);
-    WRITE(declaration);
     WRITE(definition);
     WRITE(alias_of);
     WRITE(parents);
@@ -406,6 +417,7 @@ std::string ParsingDatabase::ToString() {
     WRITE(short_name);
     WRITE(qualified_name);
     WRITE(declaration);
+    WRITE(definition);
     WRITE(variable_type);
     WRITE(declaring_type);
     //WRITE(initializations);
@@ -1303,7 +1315,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->qualified_name = ns->QualifiedName(decl->semanticContainer, var_def->short_name);
     //}
 
-    var_def->declaration = decl->loc;
+    if (decl->isDefinition)
+      var_def->definition = decl->loc;
+    else
+      var_def->declaration = decl->loc;
+
     var_def->all_uses.push_back(decl->loc);
 
     // Declaring variable type information.
@@ -1351,6 +1367,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     if (decl->isDefinition)
       func_def->definition = decl->loc;
+    else
+      func_def->declaration = decl->loc;
 
     func_def->all_uses.push_back(decl->loc);
 
@@ -1464,6 +1482,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
     // }
 
+    assert(decl->isDefinition);
     type_def->definition = decl->loc;
 
     type_def->all_uses.push_back(decl->loc);
@@ -1796,6 +1815,7 @@ int main(int argc, char** argv) {
 
   for (std::string path : GetFilesInFolder("tests")) {
     // TODO: Fix all existing tests.
+    //if (path != "tests/declaration_vs_definition/method.cc") continue;
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
     //if (path != "tests/constructors/destructor.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;

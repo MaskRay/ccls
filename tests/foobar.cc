@@ -15,6 +15,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
+      "declaration": "tests/foobar.cc:1:6",
       "callers": ["2@tests/foobar.cc:6:3"],
       "all_uses": ["tests/foobar.cc:1:6", "tests/foobar.cc:6:3"]
     }, {

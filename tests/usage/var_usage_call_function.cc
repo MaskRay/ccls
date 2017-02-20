@@ -33,7 +33,7 @@ OUTPUT:
       "usr": "c:var_usage_call_function.cc@39@F@caller#@x",
       "short_name": "x",
       "qualified_name": "x",
-      "declaration": "tests/usage/var_usage_call_function.cc:4:8",
+      "definition": "tests/usage/var_usage_call_function.cc:4:8",
       "all_uses": ["tests/usage/var_usage_call_function.cc:4:8", "tests/usage/var_usage_call_function.cc:5:3"]
     }]
 }

@@ -36,7 +36,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_local.cc@67@F@Foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/type_usage_declare_local.cc:5:16",
+      "definition": "tests/usage/type_usage_declare_local.cc:5:16",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_local.cc:5:16"]
     }, {
@@ -44,7 +44,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_local.cc@86@F@Foo#@b",
       "short_name": "b",
       "qualified_name": "b",
-      "declaration": "tests/usage/type_usage_declare_local.cc:6:19",
+      "definition": "tests/usage/type_usage_declare_local.cc:6:19",
       "variable_type": 1,
       "all_uses": ["tests/usage/type_usage_declare_local.cc:6:19"]
     }]

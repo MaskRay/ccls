@@ -25,7 +25,8 @@ OUTPUT:
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "declaration": "tests/vars/class_static_member.cc:4:11",
+      "declaration": "tests/vars/class_static_member.cc:2:15",
+      "definition": "tests/vars/class_static_member.cc:4:11",
       "variable_type": 0,
       "declaring_type": 0,
       "all_uses": ["tests/vars/class_static_member.cc:2:15", "tests/vars/class_static_member.cc:4:11"]

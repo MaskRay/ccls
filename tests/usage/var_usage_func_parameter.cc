@@ -18,7 +18,7 @@ OUTPUT:
       "usr": "c:var_usage_func_parameter.cc@9@F@foo#I#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_func_parameter.cc:1:14",
+      "definition": "tests/usage/var_usage_func_parameter.cc:1:14",
       "all_uses": ["tests/usage/var_usage_func_parameter.cc:1:14", "tests/usage/var_usage_func_parameter.cc:2:3"]
     }]
 }

@@ -12,6 +12,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "declaration": "tests/usage/func_usage_forward_decl_func.cc:1:6",
       "callers": ["1@tests/usage/func_usage_forward_decl_func.cc:4:3"],
       "all_uses": ["tests/usage/func_usage_forward_decl_func.cc:1:6", "tests/usage/func_usage_forward_decl_func.cc:4:3"]
     }, {

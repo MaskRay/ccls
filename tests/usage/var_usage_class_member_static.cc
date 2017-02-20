@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "qualified_name": "accept",
+      "declaration": "tests/usage/var_usage_class_member_static.cc:5:6",
       "callers": ["1@tests/usage/var_usage_class_member_static.cc:8:3"],
       "all_uses": ["tests/usage/var_usage_class_member_static.cc:5:6", "tests/usage/var_usage_class_member_static.cc:8:3"]
     }, {

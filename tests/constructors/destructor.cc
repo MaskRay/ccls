@@ -57,7 +57,7 @@ OUTPUT:
       "usr": "c:destructor.cc@70@F@foo#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/constructors/destructor.cc:8:7",
+      "definition": "tests/constructors/destructor.cc:8:7",
       "variable_type": 0,
       "all_uses": ["tests/constructors/destructor.cc:8:7"]
     }]

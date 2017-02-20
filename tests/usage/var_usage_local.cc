@@ -19,7 +19,7 @@ OUTPUT:
       "usr": "c:var_usage_local.cc@16@F@foo#@x",
       "short_name": "x",
       "qualified_name": "x",
-      "declaration": "tests/usage/var_usage_local.cc:2:7",
+      "definition": "tests/usage/var_usage_local.cc:2:7",
       "all_uses": ["tests/usage/var_usage_local.cc:2:7", "tests/usage/var_usage_local.cc:3:3"]
     }]
 }

@@ -20,7 +20,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "declaration": "tests/vars/class_member.cc:2:8",
+      "definition": "tests/vars/class_member.cc:2:8",
       "variable_type": 0,
       "declaring_type": 0,
       "all_uses": ["tests/vars/class_member.cc:2:8"]

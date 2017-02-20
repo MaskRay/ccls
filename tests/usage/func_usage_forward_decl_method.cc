@@ -23,6 +23,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "declaration": "tests/usage/func_usage_forward_decl_method.cc:2:8",
       "callers": ["1@tests/usage/func_usage_forward_decl_method.cc:7:6"],
       "all_uses": ["tests/usage/func_usage_forward_decl_method.cc:2:8", "tests/usage/func_usage_forward_decl_method.cc:7:6"]
     }, {
@@ -39,7 +40,7 @@ OUTPUT:
       "usr": "c:func_usage_forward_decl_method.cc@53@F@usage#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/usage/func_usage_forward_decl_method.cc:6:8",
+      "definition": "tests/usage/func_usage_forward_decl_method.cc:6:8",
       "variable_type": 0,
       "all_uses": ["tests/usage/func_usage_forward_decl_method.cc:6:8", "tests/usage/func_usage_forward_decl_method.cc:7:3"]
     }]

@@ -22,6 +22,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "declaration": "tests/usage/type_usage_declare_param_prototype.cc:3:6",
       "definition": "tests/usage/type_usage_declare_param_prototype.cc:4:6",
       "all_uses": ["tests/usage/type_usage_declare_param_prototype.cc:3:6", "tests/usage/type_usage_declare_param_prototype.cc:4:6"]
     }],
@@ -30,7 +31,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_param_prototype.cc@49@F@foo#*$@S@Foo#S0_#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "declaration": "tests/usage/type_usage_declare_param_prototype.cc:4:15",
+      "definition": "tests/usage/type_usage_declare_param_prototype.cc:4:15",
       "variable_type": 0,
       "all_uses": ["tests/usage/type_usage_declare_param_prototype.cc:4:15"]
     }]

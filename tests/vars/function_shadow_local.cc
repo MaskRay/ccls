@@ -24,14 +24,14 @@ OUTPUT:
       "usr": "c:function_shadow_local.cc@16@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/vars/function_shadow_local.cc:2:7",
+      "definition": "tests/vars/function_shadow_local.cc:2:7",
       "all_uses": ["tests/vars/function_shadow_local.cc:2:7", "tests/vars/function_shadow_local.cc:3:3", "tests/vars/function_shadow_local.cc:8:3"]
     }, {
       "id": 1,
       "usr": "c:function_shadow_local.cc@43@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/vars/function_shadow_local.cc:5:9",
+      "definition": "tests/vars/function_shadow_local.cc:5:9",
       "all_uses": ["tests/vars/function_shadow_local.cc:5:9", "tests/vars/function_shadow_local.cc:6:5"]
     }]
 }
