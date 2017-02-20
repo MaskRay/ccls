@@ -59,6 +59,7 @@ public:
 
   bool is_definition() const;
 
+  Cursor template_specialization_to_template_definition() const;
   Cursor get_referenced() const;
   Cursor get_canonical() const;
   Cursor get_definition() const;

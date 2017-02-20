@@ -130,6 +130,12 @@ bool Cursor::is_definition() const {
   return clang_isCursorDefinition(cx_cursor);
 }
 
+Cursor Cursor::template_specialization_to_template_definition() const {
+  // TODO: Should we return this same cursor if this is not a template? We
+  // can probably check USR to do that.
+  return clang_getSpecializedCursorTemplate(cx_cursor);
+}
+
 Cursor Cursor::get_referenced() const {
   return Cursor(clang_getCursorReferenced(cx_cursor));
 }
