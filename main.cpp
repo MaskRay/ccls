@@ -129,9 +129,6 @@ struct FuncDef {
   // All usages. For interesting usages, see callees.
   std::vector<clang::SourceLocation> all_uses;
 
-  // Indexer internal state. Do not expose.
-  bool needs_return_type_index = false;
-
   FuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
   }
@@ -1275,15 +1272,30 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       declaring_type_def->funcs.push_back(func_id);
     }
 
-    // Always recompute this, as we will visit the parameter references next
-    // (before visiting another declaration). If we only want to mark the
-    // return type on the definition interesting, we could only compute this
-    // if we're parsing the definition declaration.
-    //func_def->needs_return_type_index = !clang::Cursor(decl->cursor).get_type().get_return_type().is_fundamental();
-
     std::string return_type_usr = clang::Cursor(decl->cursor).get_type().get_return_type().strip_qualifiers().get_usr();
     if (return_type_usr != "")
       InsertInterestingTypeReference(db, db->ToTypeId(return_type_usr), decl->cursor);
+
+
+
+    if (decl->isDefinition) {
+      // Search for unnamed parameter and and mark them as interesting type
+      // usages. The clang indexer will not mark them as declarations.
+      // TODO: Do a similar thing for function decl parameter usages.
+      clang::Cursor cursor = decl->cursor;
+      for (clang::Cursor arg : cursor.get_arguments()) {
+        switch (arg.get_kind()) {
+        case CXCursor_ParmDecl:
+          if (arg.get_spelling() == "") {
+            std::string param_type_usr = arg.get_type().strip_qualifiers().get_usr();
+            if (param_type_usr != "") {
+              InsertInterestingTypeReference(db, db->ToTypeId(param_type_usr), arg);
+            }
+          }
+          break;
+        }
+      }
+    }
 
     /*
     std::optional<FuncId> base;
@@ -1293,6 +1305,30 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     std::vector<FuncRef> callees;
     std::vector<clang::SourceLocation> uses;
     */
+    break;
+  }
+
+  case CXIdxEntity_Typedef:
+  case CXIdxEntity_CXXTypeAlias:
+  {
+    TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
+
+    std::optional<clang::Cursor> type_ref = FindChildOfKind(decl->cursor, CXCursor_TypeRef);
+    assert(type_ref.has_value());
+    TypeId alias_of = db->ToTypeId(type_ref.value().get_referenced().get_usr());
+      
+    TypeDef* type_def = db->Resolve(type_id);
+
+    type_def->alias_of = alias_of;
+    db->Resolve(alias_of)->interesting_uses.push_back(type_ref.value().get_source_location());
+
+    type_def->short_name = decl->entityInfo->name;
+    type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
+
+    type_def->definition = decl->loc;
+    type_def->all_uses.push_back(decl->loc);
+
+
     break;
   }
 
@@ -1338,6 +1374,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
   default:
     std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << clang::SourceLocation(decl->loc).ToString() << std::endl;
+    std::cout << "     entityInfo->kind  = " << decl->entityInfo->kind << std::endl;
     std::cout << "     entityInfo->USR   = " << decl->entityInfo->USR << std::endl;
     if (decl->declAsContainer)
       std::cout << "     declAsContainer   = " << clang::Cursor(decl->declAsContainer->cursor).ToString() << std::endl;
@@ -1409,6 +1446,8 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     break;
   }
 
+  case CXIdxEntity_Typedef:
+  case CXIdxEntity_CXXTypeAlias:
   case CXIdxEntity_Struct:
   case CXIdxEntity_CXXClass:
   {
@@ -1657,7 +1696,7 @@ int main(int argc, char** argv) {
     // TODO: Fix all existing tests.
     //if (path == "tests/usage/type_usage_declare_extern.cc") continue;
     if (path == "tests/constructors/constructor.cc") continue;
-    if (path != "tests/usage/type_usage_on_return_type.cc") continue;
+    if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
     //if (path != "tests/usage/func_usage_template_func.cc") continue;
