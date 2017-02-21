@@ -12,17 +12,17 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "qualified_name": "called",
-      "definition": "tests/usage/func_usage_call_func.cc:1:6",
-      "callers": ["1@tests/usage/func_usage_call_func.cc:3:3"],
-      "all_uses": ["tests/usage/func_usage_call_func.cc:1:6", "tests/usage/func_usage_call_func.cc:3:3"]
+      "definition": "*1:1:6",
+      "callers": ["1@*1:3:3"],
+      "all_uses": ["*1:1:6", "*1:3:3"]
     }, {
       "id": 1,
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "qualified_name": "caller",
-      "definition": "tests/usage/func_usage_call_func.cc:2:6",
-      "callees": ["0@tests/usage/func_usage_call_func.cc:3:3"],
-      "all_uses": ["tests/usage/func_usage_call_func.cc:2:6"]
+      "definition": "*1:2:6",
+      "callees": ["0@*1:3:3"],
+      "all_uses": ["*1:2:6"]
     }],
   "variables": []
 }

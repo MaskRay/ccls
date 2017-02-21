@@ -9,8 +9,8 @@ OUTPUT:
       "usr": "c:global_variable.cc@global",
       "short_name": "global",
       "qualified_name": "global",
-      "definition": "tests/vars/global_variable.cc:1:12",
-      "all_uses": ["tests/vars/global_variable.cc:1:12"]
+      "definition": "*1:1:12",
+      "all_uses": ["*1:1:12"]
     }]
 }
 */

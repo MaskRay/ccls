@@ -12,19 +12,19 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "tests/method_definition.cc:1:7",
+      "definition": "*1:1:7",
       "funcs": [0],
-      "all_uses": ["tests/method_definition.cc:1:7", "tests/method_definition.cc:5:6"]
+      "all_uses": ["*1:1:7", "*1:5:6"]
     }],
   "functions": [{
       "id": 0,
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
-      "declaration": "tests/method_definition.cc:2:8",
-      "definition": "tests/method_definition.cc:5:11",
+      "declaration": "*1:2:8",
+      "definition": "*1:5:11",
       "declaring_type": 0,
-      "all_uses": ["tests/method_definition.cc:2:8", "tests/method_definition.cc:5:11"]
+      "all_uses": ["*1:2:8", "*1:5:11"]
     }],
   "variables": []
 }

@@ -12,16 +12,16 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "tests/usage/var_usage_extern.cc:3:6",
-      "all_uses": ["tests/usage/var_usage_extern.cc:3:6"]
+      "definition": "*1:3:6",
+      "all_uses": ["*1:3:6"]
     }],
   "variables": [{
       "id": 0,
       "usr": "c:@a",
       "short_name": "a",
       "qualified_name": "a",
-      "declaration": "tests/usage/var_usage_extern.cc:1:12",
-      "all_uses": ["tests/usage/var_usage_extern.cc:1:12", "tests/usage/var_usage_extern.cc:4:3"]
+      "declaration": "*1:1:12",
+      "all_uses": ["*1:1:12", "*1:4:3"]
     }]
 }
 */

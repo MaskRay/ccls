@@ -8,8 +8,8 @@ OUTPUT:
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "tests/vars/function_param_unnamed.cc:1:6",
-      "all_uses": ["tests/vars/function_param_unnamed.cc:1:6"]
+      "definition": "*1:1:6",
+      "all_uses": ["*1:1:6"]
     }],
   "variables": []
 }

@@ -14,35 +14,35 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "tests/usage/func_usage_forward_decl_method.cc:1:8",
-      "all_uses": ["tests/usage/func_usage_forward_decl_method.cc:1:8", "tests/usage/func_usage_forward_decl_method.cc:6:3"],
-      "interesting_uses": ["tests/usage/func_usage_forward_decl_method.cc:6:3"]
+      "definition": "*1:1:8",
+      "all_uses": ["*1:1:8", "*1:6:3"],
+      "interesting_uses": ["*1:6:3"]
     }],
   "functions": [{
       "id": 0,
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
-      "declaration": "tests/usage/func_usage_forward_decl_method.cc:2:8",
-      "callers": ["1@tests/usage/func_usage_forward_decl_method.cc:7:6"],
-      "all_uses": ["tests/usage/func_usage_forward_decl_method.cc:2:8", "tests/usage/func_usage_forward_decl_method.cc:7:6"]
+      "declaration": "*1:2:8",
+      "callers": ["1@*1:7:6"],
+      "all_uses": ["*1:2:8", "*1:7:6"]
     }, {
       "id": 1,
       "usr": "c:@F@usage#",
       "short_name": "usage",
       "qualified_name": "usage",
-      "definition": "tests/usage/func_usage_forward_decl_method.cc:5:6",
-      "callees": ["0@tests/usage/func_usage_forward_decl_method.cc:7:6"],
-      "all_uses": ["tests/usage/func_usage_forward_decl_method.cc:5:6"]
+      "definition": "*1:5:6",
+      "callees": ["0@*1:7:6"],
+      "all_uses": ["*1:5:6"]
     }],
   "variables": [{
       "id": 0,
       "usr": "c:func_usage_forward_decl_method.cc@53@F@usage#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "definition": "tests/usage/func_usage_forward_decl_method.cc:6:8",
+      "definition": "*1:6:8",
       "variable_type": 0,
-      "all_uses": ["tests/usage/func_usage_forward_decl_method.cc:6:8", "tests/usage/func_usage_forward_decl_method.cc:7:3"]
+      "all_uses": ["*1:6:8", "*1:7:3"]
     }]
 }
 */

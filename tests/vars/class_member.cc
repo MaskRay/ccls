@@ -9,10 +9,10 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "tests/vars/class_member.cc:1:7",
+      "definition": "*1:1:7",
       "vars": [0],
-      "all_uses": ["tests/vars/class_member.cc:1:7", "tests/vars/class_member.cc:2:3"],
-      "interesting_uses": ["tests/vars/class_member.cc:2:3"]
+      "all_uses": ["*1:1:7", "*1:2:3"],
+      "interesting_uses": ["*1:2:3"]
     }],
   "functions": [],
   "variables": [{
@@ -20,10 +20,10 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "definition": "tests/vars/class_member.cc:2:8",
+      "definition": "*1:2:8",
       "variable_type": 0,
       "declaring_type": 0,
-      "all_uses": ["tests/vars/class_member.cc:2:8"]
+      "all_uses": ["*1:2:8"]
     }]
 }
 */

@@ -9,6 +9,7 @@
 #include "libclangmm/clangmm.h"
 #include "libclangmm/Utility.h"
 
+#include "bitfield.h"
 #include "utils.h"
 
 #include <rapidjson/writer.h>
@@ -36,6 +37,99 @@ struct Id {
 };
 */
 
+
+
+// TODO: Insert interesting usage for derived types. Maybe we should change out
+//       interesting usage approach for types, and instead find a list of "uninteresting" usages.
+//       Rather, what I think we should do is this
+
+
+using FileId = int64_t;
+
+
+BEGIN_BITFIELD_TYPE(Location, uint64_t)
+Location(FileId file_id, uint32_t line, uint32_t column) {
+  interesting = true;
+  this->file_id = file_id;
+  this->line = line;
+  this->column = column;
+}
+
+std::string ToString() {
+  // Output looks like this:
+  //
+  //  *1:2:3
+  //
+  // * => interesting
+  // 1 => file id
+  // 2 => line
+  // 3 => column
+
+  std::string result;
+  if (interesting)
+    result += '*';
+  result += std::to_string(file_id);
+  result += ':';
+  result += std::to_string(line);
+  result += ':';
+  result += std::to_string(column);
+  return result;
+}
+
+ADD_BITFIELD_MEMBER(interesting, /*start:*/ 0,  /*len:*/ 1);    // 2 values
+ADD_BITFIELD_MEMBER(file_id,     /*start:*/ 1,  /*len:*/ 29);   // 536,870,912 values
+ADD_BITFIELD_MEMBER(line,        /*start:*/ 30, /*len:*/ 20);   // 1,048,576 values
+ADD_BITFIELD_MEMBER(column,      /*start:*/ 50, /*len:*/ 14);   // 16,384 values
+END_BITFIELD_TYPE()
+
+struct FileDb {
+  std::unordered_map<std::string, FileId> file_path_to_file_id;
+  std::unordered_map<FileId, std::string> file_id_to_file_path;
+
+  FileDb() {
+    // Reserve id 0 for unfound.
+    file_path_to_file_id[""] = 0;
+    file_id_to_file_path[0] = "";
+  }
+
+  Location Resolve(const CXSourceLocation& cx_loc) {
+    CXFile file;
+    unsigned int line, column, offset;
+    clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
+
+    FileId file_id;
+    if (file != nullptr) {
+      std::string path = clang::ToString(clang_getFileName(file));
+
+      auto it = file_path_to_file_id.find(path);
+      if (it != file_path_to_file_id.end()) {
+        file_id = it->second;
+      }
+      else {
+        file_id = file_path_to_file_id.size();
+        file_path_to_file_id[path] = file_id;
+        file_id_to_file_path[file_id] = path;
+      }
+    }
+
+    return Location(file_id, line, column);
+  }
+
+  Location Resolve(const CXIdxLoc& cx_idx_loc) {
+    CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
+    return Resolve(cx_loc);
+  }
+
+  Location Resolve(const CXCursor& cx_cursor) {
+    return Resolve(clang_getCursorLocation(cx_cursor));
+  }
+
+  Location Resolve(const clang::Cursor& cursor) {
+    return Resolve(cursor.cx_cursor);
+  }
+};
+
+
 template<typename T>
 struct LocalId {
   uint64_t local_id;
@@ -51,9 +145,9 @@ using VarId = LocalId<VarDef>;
 template<typename T>
 struct Ref {
   LocalId<T> id;
-  clang::SourceLocation loc;
+  Location loc;
 
-  Ref(LocalId<T> id, clang::SourceLocation loc) : id(id), loc(loc) {}
+  Ref(LocalId<T> id, Location loc) : id(id), loc(loc) {}
 };
 using TypeRef = Ref<TypeDef>;
 using FuncRef = Ref<FuncDef>;
@@ -78,7 +172,7 @@ struct TypeDef {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  std::optional<clang::SourceLocation> definition;
+  std::optional<Location> definition;
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
@@ -94,9 +188,9 @@ struct TypeDef {
   std::vector<VarId> vars;
 
   // Every usage, useful for things like renames.
-  std::vector<clang::SourceLocation> all_uses;
+  std::vector<Location> all_uses;
   // Usages that a user is probably interested in.
-  std::vector<clang::SourceLocation> interesting_uses;
+  std::vector<Location> interesting_uses;
 
   TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
@@ -110,8 +204,8 @@ struct FuncDef {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  std::optional<clang::SourceLocation> declaration;
-  std::optional<clang::SourceLocation> definition;
+  std::optional<Location> declaration;
+  std::optional<Location> definition;
 
   // Type which declares this one (ie, it is a method)
   std::optional<TypeId> declaring_type;
@@ -134,7 +228,7 @@ struct FuncDef {
   std::vector<FuncRef> callees;
 
   // All usages. For interesting usages, see callees.
-  std::vector<clang::SourceLocation> all_uses;
+  std::vector<Location> all_uses;
 
   FuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
@@ -147,10 +241,10 @@ struct VarDef {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  std::optional<clang::SourceLocation> declaration;
+  std::optional<Location> declaration;
   // TODO: definitions should be a list of locations, since there can be more
   //       than one.
-  std::optional<clang::SourceLocation> definition;
+  std::optional<Location> definition;
 
   // Type of the variable.
   std::optional<TypeId> variable_type;
@@ -159,7 +253,7 @@ struct VarDef {
   std::optional<TypeId> declaring_type;
 
   // Usages.
-  std::vector<clang::SourceLocation> all_uses;
+  std::vector<Location> all_uses;
 
   VarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
@@ -177,6 +271,8 @@ struct ParsingDatabase {
   std::vector<TypeDef> types;
   std::vector<FuncDef> funcs;
   std::vector<VarDef> vars;
+
+  FileDb file_db;
 
   ParsingDatabase();
 
@@ -254,13 +350,13 @@ VarDef* ParsingDatabase::Resolve(VarId id) {
 
 using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
 
-void Write(Writer& writer, const char* key, clang::SourceLocation location) {
+void Write(Writer& writer, const char* key, Location location) {
   if (key) writer.Key(key);
   std::string s = location.ToString();
   writer.String(s.c_str());
 }
 
-void Write(Writer& writer, const char* key, std::optional<clang::SourceLocation> location) {
+void Write(Writer& writer, const char* key, std::optional<Location> location) {
   if (location) {
     Write(writer, key, location.value());
   }
@@ -270,13 +366,13 @@ void Write(Writer& writer, const char* key, std::optional<clang::SourceLocation>
   //}
 }
 
-void Write(Writer& writer, const char* key, const std::vector<clang::SourceLocation>& locs) {
+void Write(Writer& writer, const char* key, const std::vector<Location>& locs) {
   if (locs.size() == 0)
     return;
 
   if (key) writer.Key(key);
   writer.StartArray();
-  for (const clang::SourceLocation& loc : locs)
+  for (const Location& loc : locs)
     Write(writer, nullptr, loc);
   writer.EndArray();
 }
@@ -645,8 +741,8 @@ struct IndexParam {
   // Record the last type usage location we recorded. Clang will sometimes
   // visit the same expression twice so we wan't to avoid double-reporting
   // usage information for those locations.
-  clang::SourceLocation last_type_usage_location;
-  clang::SourceLocation last_func_usage_location;
+  Location last_type_usage_location;
+  Location last_func_usage_location;
 
   IndexParam(ParsingDatabase* db, NamespaceHelper* ns) : db(db), ns(ns) {}
 };
@@ -660,7 +756,7 @@ std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
 }
 */
 
-bool HasUsage(const std::vector<clang::SourceLocation>& usages, const clang::SourceLocation& usage) {
+bool HasUsage(const std::vector<Location>& usages, const Location& usage) {
   for (int i = usages.size() - 1; i >= 0; --i) {
     if (usages[i] == usage)
       return true;
@@ -705,7 +801,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
 
   if (param->is_interesting) {
     TypeDef* ref_type_def = db->Resolve(ref_type_id);
-    ref_type_def->interesting_uses.push_back(cursor.get_source_location());
+    ref_type_def->interesting_uses.push_back(db->file_db.Resolve(cursor));
   }
 }
 
@@ -822,12 +918,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->qualified_name = ns->QualifiedName(decl->semanticContainer, var_def->short_name);
     //}
 
+    Location decl_loc = db->file_db.Resolve(decl->loc);
     if (decl->isDefinition)
-      var_def->definition = decl->loc;
+      var_def->definition = decl_loc;
     else
-      var_def->declaration = decl->loc;
+      var_def->declaration = decl_loc;
 
-    var_def->all_uses.push_back(decl->loc);
+    var_def->all_uses.push_back(decl_loc);
 
 
     std::optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
@@ -853,11 +950,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       var_def->declaring_type = declaring_type_id;
       declaring_type_def->vars.push_back(var_id);
     }
-    // std::optional<clang::SourceLocation> declaration;
-    // std::vector<clang::SourceLocation> initializations;
+    // std::optional<Location> declaration;
+    // std::vector<Location> initializations;
     // std::optional<TypeId> variable_type;
     // std::optional<TypeId> declaring_type;
-    // std::vector<clang::SourceLocation> uses;
+    // std::vector<Location> uses;
 
     break;
   }
@@ -878,12 +975,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     func_def->qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->short_name);
     //}
 
+    Location decl_loc = db->file_db.Resolve(decl->loc);
     if (decl->isDefinition)
-      func_def->definition = decl->loc;
+      func_def->definition = decl_loc;
     else
-      func_def->declaration = decl->loc;
+      func_def->declaration = decl_loc;
 
-    func_def->all_uses.push_back(decl->loc);
+    func_def->all_uses.push_back(decl_loc);
 
     bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
 
@@ -960,7 +1058,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     std::vector<VarId> locals;
     std::vector<FuncRef> callers;
     std::vector<FuncRef> callees;
-    std::vector<clang::SourceLocation> uses;
+    std::vector<Location> uses;
     */
     break;
   }
@@ -979,8 +1077,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     type_def->short_name = decl->entityInfo->name;
     type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
 
-    type_def->definition = decl->loc;
-    type_def->all_uses.push_back(decl->loc);
+    Location decl_loc = db->file_db.Resolve(decl->loc);
+    type_def->definition = decl_loc;
+    type_def->all_uses.push_back(decl_loc);
     break;
   }
 
@@ -1000,9 +1099,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // }
 
     assert(decl->isDefinition);
-    type_def->definition = decl->loc;
-
-    type_def->all_uses.push_back(decl->loc);
+    Location decl_loc = db->file_db.Resolve(decl->loc);
+    type_def->definition = decl_loc;
+    type_def->all_uses.push_back(decl_loc);
 
     //type_def->alias_of
     //type_def->funcs
@@ -1027,7 +1126,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 
   default:
-    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << clang::SourceLocation(decl->loc).ToString() << std::endl;
+    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->file_db.Resolve(decl->loc).ToString() << std::endl;
     std::cout << "     entityInfo->kind  = " << decl->entityInfo->kind << std::endl;
     std::cout << "     entityInfo->USR   = " << decl->entityInfo->USR << std::endl;
     if (decl->declAsContainer)
@@ -1064,7 +1163,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   {
     VarId var_id = db->ToVarId(ref->referencedEntity->cursor);
     VarDef* var_def = db->Resolve(var_id);
-    var_def->all_uses.push_back(ref->loc);
+    var_def->all_uses.push_back(db->file_db.Resolve(ref->loc));
     break;
   }
 
@@ -1081,7 +1180,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 
     // Don't report duplicate usages.
     // TODO: search full history?
-    clang::SourceLocation loc = ref->loc;
+    Location loc = db->file_db.Resolve(ref->loc);
     if (param->last_func_usage_location == loc) break;
     param->last_func_usage_location = loc;
 
@@ -1126,7 +1225,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //    Foo f;
     //  }
     //
-    clang::SourceLocation loc = ref->loc;
+    Location loc = db->file_db.Resolve(ref->loc);
     if (!HasUsage(referenced_def->all_uses, loc))
       referenced_def->all_uses.push_back(loc);
 
@@ -1134,11 +1233,11 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   }
 
   default:
-    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << clang::SourceLocation(ref->loc).ToString() << std::endl;
+    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->file_db.Resolve(ref->loc).ToString() << std::endl;
     std::cout << "     ref->referencedEntity->kind = " << ref->referencedEntity->kind << std::endl;
     if (ref->parentEntity)
       std::cout << "     ref->parentEntity->kind = " << ref->parentEntity->kind << std::endl;
-    std::cout << "     ref->loc          = " << clang::SourceLocation(ref->loc).ToString() << std::endl;
+    std::cout << "     ref->loc          = " << db->file_db.Resolve(ref->loc).ToString() << std::endl;
     std::cout << "     ref->kind         = " << ref->kind << std::endl;
     if (ref->parentEntity)
       std::cout << "     parentEntity      = " << clang::Cursor(ref->parentEntity->cursor).ToString() << std::endl;

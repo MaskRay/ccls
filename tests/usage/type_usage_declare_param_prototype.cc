@@ -14,26 +14,26 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "all_uses": ["tests/usage/type_usage_declare_param_prototype.cc:1:8", "tests/usage/type_usage_declare_param_prototype.cc:3:10", "tests/usage/type_usage_declare_param_prototype.cc:3:18", "tests/usage/type_usage_declare_param_prototype.cc:4:10", "tests/usage/type_usage_declare_param_prototype.cc:4:18"],
-      "interesting_uses": ["tests/usage/type_usage_declare_param_prototype.cc:4:10", "tests/usage/type_usage_declare_param_prototype.cc:4:18"]
+      "all_uses": ["*1:1:8", "*1:3:10", "*1:3:18", "*1:4:10", "*1:4:18"],
+      "interesting_uses": ["*1:4:10", "*1:4:18"]
     }],
   "functions": [{
       "id": 0,
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": "tests/usage/type_usage_declare_param_prototype.cc:3:6",
-      "definition": "tests/usage/type_usage_declare_param_prototype.cc:4:6",
-      "all_uses": ["tests/usage/type_usage_declare_param_prototype.cc:3:6", "tests/usage/type_usage_declare_param_prototype.cc:4:6"]
+      "declaration": "*1:3:6",
+      "definition": "*1:4:6",
+      "all_uses": ["*1:3:6", "*1:4:6"]
     }],
   "variables": [{
       "id": 0,
       "usr": "c:type_usage_declare_param_prototype.cc@49@F@foo#*$@S@Foo#S0_#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "definition": "tests/usage/type_usage_declare_param_prototype.cc:4:15",
+      "definition": "*1:4:15",
       "variable_type": 0,
-      "all_uses": ["tests/usage/type_usage_declare_param_prototype.cc:4:15"]
+      "all_uses": ["*1:4:15"]
     }]
 }
 */

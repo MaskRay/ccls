@@ -11,10 +11,10 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "tests/vars/class_static_member.cc:1:7",
+      "definition": "*1:1:7",
       "vars": [0],
-      "all_uses": ["tests/vars/class_static_member.cc:1:7", "tests/vars/class_static_member.cc:2:10", "tests/vars/class_static_member.cc:4:1", "tests/vars/class_static_member.cc:4:6"],
-      "interesting_uses": ["tests/vars/class_static_member.cc:2:10", "tests/vars/class_static_member.cc:4:1"]
+      "all_uses": ["*1:1:7", "*1:2:10", "*1:4:1", "*1:4:6"],
+      "interesting_uses": ["*1:2:10", "*1:4:1"]
     }],
   "functions": [],
   "variables": [{
@@ -22,11 +22,11 @@ OUTPUT:
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "declaration": "tests/vars/class_static_member.cc:2:15",
-      "definition": "tests/vars/class_static_member.cc:4:11",
+      "declaration": "*1:2:15",
+      "definition": "*1:4:11",
       "variable_type": 0,
       "declaring_type": 0,
-      "all_uses": ["tests/vars/class_static_member.cc:2:15", "tests/vars/class_static_member.cc:4:11"]
+      "all_uses": ["*1:2:15", "*1:4:11"]
     }]
 }
 */

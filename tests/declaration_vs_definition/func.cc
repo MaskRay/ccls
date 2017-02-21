@@ -13,9 +13,9 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": "tests/declaration_vs_definition/func.cc:4:6",
-      "definition": "tests/declaration_vs_definition/func.cc:3:6",
-      "all_uses": ["tests/declaration_vs_definition/func.cc:1:6", "tests/declaration_vs_definition/func.cc:2:6", "tests/declaration_vs_definition/func.cc:3:6", "tests/declaration_vs_definition/func.cc:4:6"]
+      "declaration": "*1:4:6",
+      "definition": "*1:3:6",
+      "all_uses": ["*1:1:6", "*1:2:6", "*1:3:6", "*1:4:6"]
     }],
   "variables": []
 }
