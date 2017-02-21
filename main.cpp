@@ -1052,16 +1052,24 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_Struct:
   case CXIdxEntity_CXXClass:
   {
-    ns->RegisterQualifiedName(decl->entityInfo->USR, decl->semanticContainer, decl->entityInfo->name);
-
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     TypeDef* type_def = db->Resolve(type_id);
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     // TODO: For type section, verify if this ever runs for non definitions?
     //if (!decl->isRedeclaration) {
-    type_def->short_name = decl->entityInfo->name;
+
+    // name can be null in an anonymous struct (see tests/types/anonymous_struct.cc).
+    if (decl->entityInfo->name) {
+      ns->RegisterQualifiedName(decl->entityInfo->USR, decl->semanticContainer, decl->entityInfo->name);
+      type_def->short_name = decl->entityInfo->name;
+    }
+    else {
+      type_def->short_name = "<anonymous>";
+    }
+
     type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
+
     // }
 
     assert(decl->isDefinition);
@@ -1237,6 +1245,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   }
 }
 
+static bool DUMP_AST = true;
 
 
 ParsingDatabase Parse(std::string filename) {
@@ -1245,7 +1254,8 @@ ParsingDatabase Parse(std::string filename) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
-  Dump(tu.document_cursor());
+  if (DUMP_AST)
+    Dump(tu.document_cursor());
 
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
 
@@ -1369,6 +1379,8 @@ int main(int argc, char** argv) {
   return 0;
   */
 
+  DUMP_AST = true;
+
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/declaration_vs_definition/class_member_static.cc") continue;
     //if (path != "tests/enums/enum_class_decl.cc") continue;
@@ -1385,7 +1397,7 @@ int main(int argc, char** argv) {
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;
     //if (path != "tests/foobar.cc") continue;
-    //if (path != "tests/inheritance/class_inherit_templated_parent.cc") continue;
+    //if (path != "tests/types/anonymous_struct.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
