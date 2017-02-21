@@ -17,32 +17,9 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
 
-//#include <clang-c\Index.h>
-
-// While indexing, we should refer to symbols by USR. When joining into the db, we can have optimized access.
-
 struct TypeDef;
 struct FuncDef;
 struct VarDef;
-
-/*
-template<typename T>
-struct Id {
-  uint64_t file_id;
-  uint64_t local_id;
-
-  Id() : file_id(0), local_id(0) {} // Needed for containers. Do not use directly.
-  Id(uint64_t file_id, uint64_t local_id)
-    : file_id(file_id), local_id(local_id) {}
-};
-*/
-
-
-
-// TODO: Insert interesting usage for derived types. Maybe we should change out
-//       interesting usage approach for types, and instead find a list of "uninteresting" usages.
-//       Rather, what I think we should do is this
-
 
 using FileId = int64_t;
 
@@ -1163,7 +1140,10 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_CXXConstructor:
   case CXIdxEntity_CXXDestructor:
   {
-    // TODO: Redirect container to constructor for
+    // TODO: Redirect container to constructor for the following example, ie,
+    //       we should be inserting an outgoing function call from the Foo
+    //       ctor.
+    //
     //  int Gen() { return 5; }
     //  class Foo {
     //    int x = Gen();
