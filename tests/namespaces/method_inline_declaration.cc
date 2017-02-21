@@ -14,7 +14,7 @@ OUTPUT:
       "qualified_name": "hello::Foo",
       "definition": "1:2:7",
       "funcs": [0],
-      "uses": ["1:2:7"]
+      "uses": ["*1:2:7"]
     }],
   "functions": [{
       "id": 0,

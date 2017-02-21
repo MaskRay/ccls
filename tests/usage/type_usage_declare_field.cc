@@ -19,7 +19,7 @@ OUTPUT:
       "short_name": "ImplementedType",
       "qualified_name": "ImplementedType",
       "definition": "1:2:8",
-      "uses": ["1:2:8", "*1:6:3"]
+      "uses": ["*1:2:8", "*1:6:3"]
     }, {
       "id": 2,
       "usr": "c:@S@Foo",
@@ -27,7 +27,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:4:8",
       "vars": [0, 1],
-      "uses": ["1:4:8"]
+      "uses": ["*1:4:8"]
     }],
   "functions": [],
   "variables": [{

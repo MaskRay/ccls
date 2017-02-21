@@ -13,7 +13,7 @@ OUTPUT:
       "qualified_name": "Root",
       "definition": "1:1:7",
       "derived": [1, 2],
-      "uses": ["1:1:7", "*1:2:24", "*1:3:24"]
+      "uses": ["*1:1:7", "*1:2:24", "*1:3:24"]
     }, {
       "id": 1,
       "usr": "c:@S@MiddleA",
@@ -22,7 +22,7 @@ OUTPUT:
       "definition": "1:2:7",
       "parents": [0],
       "derived": [3],
-      "uses": ["1:2:7", "*1:4:24"]
+      "uses": ["*1:2:7", "*1:4:24"]
     }, {
       "id": 2,
       "usr": "c:@S@MiddleB",
@@ -31,7 +31,7 @@ OUTPUT:
       "definition": "1:3:7",
       "parents": [0],
       "derived": [3],
-      "uses": ["1:3:7", "*1:4:40"]
+      "uses": ["*1:3:7", "*1:4:40"]
     }, {
       "id": 3,
       "usr": "c:@S@Derived",
@@ -39,7 +39,7 @@ OUTPUT:
       "qualified_name": "Derived",
       "definition": "1:4:7",
       "parents": [1, 2],
-      "uses": ["1:4:7"]
+      "uses": ["*1:4:7"]
     }],
   "functions": [],
   "variables": []

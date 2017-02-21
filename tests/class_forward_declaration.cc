@@ -12,7 +12,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:3:7",
-      "uses": ["1:1:7", "1:2:7", "1:3:7", "1:4:7"]
+      "uses": ["1:1:7", "1:2:7", "*1:3:7", "1:4:7"]
     }],
   "functions": [],
   "variables": []

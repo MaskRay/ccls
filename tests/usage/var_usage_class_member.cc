@@ -27,7 +27,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:7",
       "vars": [0, 1],
-      "uses": ["1:1:7", "*1:11:3"]
+      "uses": ["*1:1:7", "*1:11:3"]
     }],
   "functions": [{
       "id": 0,

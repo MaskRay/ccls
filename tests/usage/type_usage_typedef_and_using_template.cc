@@ -18,7 +18,7 @@ OUTPUT:
       "qualified_name": "Foo1",
       "definition": "1:4:7",
       "alias_of": 0,
-      "uses": ["1:4:7", "*1:5:13"]
+      "uses": ["*1:4:7", "*1:5:13"]
     }, {
       "id": 2,
       "usr": "c:type_usage_typedef_and_using_template.cc@T@Foo2",
@@ -26,7 +26,7 @@ OUTPUT:
       "qualified_name": "Foo2",
       "definition": "1:5:19",
       "alias_of": 0,
-      "uses": ["1:5:19"]
+      "uses": ["*1:5:19"]
     }],
   "functions": [],
   "variables": []

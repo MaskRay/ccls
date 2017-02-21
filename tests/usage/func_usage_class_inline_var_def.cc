@@ -16,7 +16,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:5:7",
       "vars": [0],
-      "uses": ["1:5:7"]
+      "uses": ["*1:5:7"]
     }],
   "functions": [{
       "id": 0,

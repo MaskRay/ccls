@@ -92,6 +92,12 @@ bool IsEqualTo(const Location& o) {
   return (wrapper.value >> 1) == (o.wrapper.value >> 1);
 }
 
+Location WithInteresting(bool interesting) {
+  Location result = *this;
+  result.interesting = interesting;
+  return result;
+}
+
 END_BITFIELD_TYPE()
 
 struct FileDb {
@@ -1058,8 +1064,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     type_def->short_name = decl->entityInfo->name;
     type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
 
-    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
-    type_def->definition = decl_loc;
+    Location decl_loc = db->file_db.Resolve(decl->loc, true /*interesting*/);
+    type_def->definition = decl_loc.WithInteresting(false);
     type_def->AddUsage(decl_loc);
     break;
   }
@@ -1082,8 +1088,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // }
 
     assert(decl->isDefinition);
-    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
-    type_def->definition = decl_loc;
+    Location decl_loc = db->file_db.Resolve(decl->loc, true /*interesting*/);
+    type_def->definition = decl_loc.WithInteresting(false);
     type_def->AddUsage(decl_loc);
 
     //type_def->alias_of

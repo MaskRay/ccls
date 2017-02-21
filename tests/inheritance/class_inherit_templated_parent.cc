@@ -22,7 +22,7 @@ OUTPUT:
       "qualified_name": "Base1",
       "definition": "1:2:7",
       "derived": [2, 5],
-      "uses": ["1:2:7", "*1:8:18", "*1:13:17"]
+      "uses": ["*1:2:7", "*1:8:18", "*1:13:17"]
     }, {
       "id": 1,
       "usr": "c:@ST>1#T@Base2",
@@ -30,7 +30,7 @@ OUTPUT:
       "qualified_name": "Base2",
       "definition": "1:5:7",
       "derived": [3, 5],
-      "uses": ["1:5:7", "*1:11:18", "*1:13:27"]
+      "uses": ["*1:5:7", "*1:11:18", "*1:13:27"]
     }, {
       "id": 2,
       "usr": "c:@ST>1#Ni@Derived1",
@@ -39,7 +39,7 @@ OUTPUT:
       "definition": "1:8:7",
       "parents": [0],
       "derived": [5],
-      "uses": ["1:8:7", "*1:13:43"]
+      "uses": ["*1:8:7", "*1:13:43"]
     }, {
       "id": 3,
       "usr": "c:@ST>1#T@Derived2",
@@ -48,7 +48,7 @@ OUTPUT:
       "definition": "1:11:7",
       "parents": [1],
       "derived": [5],
-      "uses": ["1:11:7", "*1:13:56"]
+      "uses": ["*1:11:7", "*1:13:56"]
     }, {
       "id": 4,
       "usr": "c:class_inherit_templated_parent.cc@154",
@@ -60,7 +60,7 @@ OUTPUT:
       "qualified_name": "Derived",
       "definition": "1:13:7",
       "parents": [0, 1, 2, 3],
-      "uses": ["1:13:7", "*1:13:33", "*1:13:65"]
+      "uses": ["*1:13:7", "*1:13:33", "*1:13:65"]
     }],
   "functions": [],
   "variables": []

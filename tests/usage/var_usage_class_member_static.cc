@@ -17,7 +17,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:1:8",
-      "uses": ["1:1:8", "1:8:10"]
+      "uses": ["*1:1:8", "1:8:10"]
     }],
   "functions": [{
       "id": 0,

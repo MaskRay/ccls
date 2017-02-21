@@ -100,7 +100,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:64:7",
       "funcs": [3],
-      "uses": ["1:64:7", "1:79:21"]
+      "uses": ["*1:64:7", "1:79:21"]
     }],
   "functions": [{
       "id": 0,

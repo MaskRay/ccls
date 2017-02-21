@@ -12,7 +12,7 @@ OUTPUT:
       "qualified_name": "IFoo",
       "definition": "1:1:7",
       "funcs": [0],
-      "uses": ["1:1:7"]
+      "uses": ["*1:1:7"]
     }],
   "functions": [{
       "id": 0,

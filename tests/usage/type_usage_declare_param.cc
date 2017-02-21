@@ -16,7 +16,7 @@ OUTPUT:
       "short_name": "ImplementedType",
       "qualified_name": "ImplementedType",
       "definition": "1:2:8",
-      "uses": ["1:2:8", "*1:4:26"]
+      "uses": ["*1:2:8", "*1:4:26"]
     }],
   "functions": [{
       "id": 0,

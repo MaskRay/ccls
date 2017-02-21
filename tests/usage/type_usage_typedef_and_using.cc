@@ -11,10 +11,6 @@ void accept3(Foo3*) {}
 
 /*
 
-// TODO: I think we should mark using Foo1 = foo as an interesting usage on
-//       Foo1.
-// TODO: Also mark class Foo {} as an interesting usage of Foo.
-
 OUTPUT:
 {
   "types": [{
@@ -28,7 +24,7 @@ OUTPUT:
       "qualified_name": "Foo1",
       "definition": "1:2:7",
       "alias_of": 0,
-      "uses": ["1:2:7", "*1:4:14", "*1:8:14"]
+      "uses": ["*1:2:7", "*1:4:14", "*1:8:14"]
     }, {
       "id": 2,
       "usr": "c:type_usage_typedef_and_using.cc@T@Foo2",
@@ -36,7 +32,7 @@ OUTPUT:
       "qualified_name": "Foo2",
       "definition": "1:3:13",
       "alias_of": 0,
-      "uses": ["1:3:13", "*1:9:14"]
+      "uses": ["*1:3:13", "*1:9:14"]
     }, {
       "id": 3,
       "usr": "c:@Foo3",
@@ -44,14 +40,14 @@ OUTPUT:
       "qualified_name": "Foo3",
       "definition": "1:4:7",
       "alias_of": 1,
-      "uses": ["1:4:7", "*1:10:14"]
+      "uses": ["*1:4:7", "*1:10:14"]
     }, {
       "id": 4,
       "usr": "c:@Foo4",
       "short_name": "Foo4",
       "qualified_name": "Foo4",
       "definition": "1:5:7",
-      "uses": ["1:5:7"]
+      "uses": ["*1:5:7"]
     }],
   "functions": [{
       "id": 0,
