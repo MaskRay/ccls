@@ -159,9 +159,14 @@ using FuncRef = Ref<FuncDef>;
 using VarRef = Ref<VarDef>;
 
 
-// NOTE: declaration is empty if there is no forward declaration!
+// TODO: skip as much forward-processing as possible when |is_system_def| is
+//       set to false.
+// TODO: Either eliminate the defs created as a by-product of cross-referencing,
+//       or do not emit things we don't have definitions for.
 
 struct TypeDef {
+  bool is_system_def = false;
+
   // General metadata.
   TypeId id;
   std::string usr;
@@ -202,6 +207,9 @@ struct TypeDef {
   }
 
   void AddUsage(Location loc, bool insert_if_not_present = true) {
+    if (is_system_def)
+      return;
+
     for (int i = uses.size() - 1; i >= 0; --i) {
       if (uses[i].IsEqualTo(loc)) {
         if (loc.interesting)
@@ -216,6 +224,8 @@ struct TypeDef {
 };
 
 struct FuncDef {
+  bool is_system_def = false;
+
   // General metadata.
   FuncId id;
   std::string usr;
@@ -253,6 +263,8 @@ struct FuncDef {
 };
 
 struct VarDef {
+  bool is_system_def = false;
+
   // General metadata.
   VarId id;
   std::string usr;
@@ -476,6 +488,8 @@ std::string ParsingDatabase::ToString() {
   writer.Key("types");
   writer.StartArray();
   for (TypeDef& def : types) {
+    if (def.is_system_def) continue;
+
     writer.StartObject();
     WRITE(id);
     WRITE(usr);
@@ -497,6 +511,8 @@ std::string ParsingDatabase::ToString() {
   writer.Key("functions");
   writer.StartArray();
   for (FuncDef& def : funcs) {
+    if (def.is_system_def) continue;
+
     writer.StartObject();
     WRITE(id);
     WRITE(usr);
@@ -519,6 +535,8 @@ std::string ParsingDatabase::ToString() {
   writer.Key("variables");
   writer.StartArray();
   for (VarDef& def : vars) {
+    if (def.is_system_def) continue;
+
     writer.StartObject();
     WRITE(id);
     WRITE(usr);
@@ -861,6 +879,8 @@ std::optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_
 
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
+  bool is_system_def = clang_Location_isInSystemHeader(clang_getCursorLocation(decl->cursor));
+
   IndexParam* param = static_cast<IndexParam*>(client_data);
   ParsingDatabase* db = param->db;
   NamespaceHelper* ns = param->ns;
@@ -880,6 +900,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     clang::Cursor decl_cursor = decl->cursor;
     VarId var_id = db->ToVarId(decl->entityInfo->USR);
     VarDef* var_def = db->Resolve(var_id);
+
+    var_def->is_system_def = is_system_def;
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     // TODO: Verify this gets called multiple times
@@ -920,10 +942,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_CXXDestructor:
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_CXXStaticMethod:
+  case CXIdxEntity_CXXConversionFunction:
   {
     clang::Cursor decl_cursor = decl->cursor;
     FuncId func_id = db->ToFuncId(decl->entityInfo->USR);
     FuncDef* func_def = db->Resolve(func_id);
+
+    func_def->is_system_def = is_system_def;
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     //if (!decl->isRedeclaration) {
@@ -1040,6 +1065,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     TypeDef* type_def = db->Resolve(type_id);
 
+    type_def->is_system_def = is_system_def;
+
     if (alias_of)
       type_def->alias_of = alias_of.value();
 
@@ -1059,6 +1086,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   {
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     TypeDef* type_def = db->Resolve(type_id);
+
+    type_def->is_system_def = is_system_def;
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     // TODO: For type section, verify if this ever runs for non definitions?
@@ -1147,6 +1176,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     break;
   }
 
+  case CXIdxEntity_CXXConversionFunction:
   case CXIdxEntity_CXXStaticMethod:
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_Function:
@@ -1282,7 +1312,7 @@ ParsingDatabase Parse(std::string filename) {
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
-    CXIndexOpt_IndexFunctionLocalSymbols, tu.cx_tu);
+    CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession, tu.cx_tu);
 
   clang_IndexAction_dispose(index_action);
 
@@ -1406,7 +1436,7 @@ int main(int argc, char** argv) {
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;
-    if (path != "tests/foobar.cc") continue;
+    //if (path != "tests/foobar.cc") continue;
     //if (path != "tests/types/anonymous_struct.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
@@ -1420,8 +1450,8 @@ int main(int argc, char** argv) {
     ParsingDatabase db = Parse(path);
     std::string actual_output = db.ToString();
     
-    WriteToFile("output.json", actual_output);
-    break;
+    //WriteToFile("output.json", actual_output);
+    //break;
 
     rapidjson::Document actual;
     actual.Parse(actual_output.c_str());
@@ -1442,7 +1472,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  //std::cin.get();
+  std::cin.get();
   return 0;
 }
 

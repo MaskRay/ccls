@@ -5,6 +5,7 @@ int gen() { return 1; }
 void foo() {
   called(gen() * gen());
 }
+
 /*
 OUTPUT:
 {
