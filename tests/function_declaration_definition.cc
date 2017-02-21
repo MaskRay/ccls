@@ -13,7 +13,7 @@ OUTPUT:
       "qualified_name": "foo",
       "declaration": "1:1:6",
       "definition": "1:3:6",
-      "all_uses": ["1:1:6", "1:3:6"]
+      "uses": ["1:1:6", "1:3:6"]
     }],
   "variables": []
 }

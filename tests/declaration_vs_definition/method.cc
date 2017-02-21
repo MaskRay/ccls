@@ -16,7 +16,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:7",
       "funcs": [0, 1, 2],
-      "all_uses": ["1:1:7", "1:7:6"]
+      "uses": ["1:1:7", "1:7:6"]
     }],
   "functions": [{
       "id": 0,
@@ -25,7 +25,7 @@ OUTPUT:
       "qualified_name": "Foo::declonly",
       "declaration": "1:2:8",
       "declaring_type": 0,
-      "all_uses": ["1:2:8"]
+      "uses": ["1:2:8"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@purevirtual#",
@@ -33,7 +33,7 @@ OUTPUT:
       "qualified_name": "Foo::purevirtual",
       "declaration": "1:3:16",
       "declaring_type": 0,
-      "all_uses": ["1:3:16"]
+      "uses": ["1:3:16"]
     }, {
       "id": 2,
       "usr": "c:@S@Foo@F@def#",
@@ -42,7 +42,7 @@ OUTPUT:
       "declaration": "1:4:8",
       "definition": "1:7:11",
       "declaring_type": 0,
-      "all_uses": ["1:4:8", "1:7:11"]
+      "uses": ["1:4:8", "1:7:11"]
     }],
   "variables": []
 }

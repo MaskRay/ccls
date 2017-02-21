@@ -14,11 +14,11 @@ OUTPUT:
       "short_name": "unique_ptr",
       "qualified_name": "unique_ptr",
       "definition": "1:2:7",
-      "all_uses": ["1:2:7", "*1:6:8"]
+      "uses": ["1:2:7", "*1:6:8"]
     }, {
       "id": 1,
       "usr": "c:@S@S",
-      "all_uses": ["1:4:8", "*1:6:19"]
+      "uses": ["1:4:8", "*1:6:19"]
     }],
   "functions": [],
   "variables": [{
@@ -28,7 +28,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition": "1:6:22",
       "variable_type": 0,
-      "all_uses": ["1:6:22"]
+      "uses": ["1:6:22"]
     }]
 }
 */

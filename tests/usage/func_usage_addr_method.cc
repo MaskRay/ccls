@@ -17,7 +17,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:8",
       "funcs": [0],
-      "all_uses": ["1:1:8", "1:6:13"]
+      "uses": ["1:1:8", "1:6:13"]
     }],
   "functions": [{
       "id": 0,
@@ -27,7 +27,7 @@ OUTPUT:
       "declaration": "1:2:8",
       "declaring_type": 0,
       "callers": ["1@1:6:18"],
-      "all_uses": ["1:2:8", "1:6:18"]
+      "uses": ["1:2:8", "1:6:18"]
     }, {
       "id": 1,
       "usr": "c:@F@user#",
@@ -35,7 +35,7 @@ OUTPUT:
       "qualified_name": "user",
       "definition": "1:5:6",
       "callees": ["0@1:6:18"],
-      "all_uses": ["1:5:6"]
+      "uses": ["1:5:6"]
     }],
   "variables": [{
       "id": 0,
@@ -43,7 +43,7 @@ OUTPUT:
       "short_name": "x",
       "qualified_name": "x",
       "definition": "1:6:8",
-      "all_uses": ["1:6:8"]
+      "uses": ["1:6:8"]
     }]
 }
 */

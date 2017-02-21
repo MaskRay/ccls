@@ -17,7 +17,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:1:8",
-      "all_uses": ["1:1:8", "1:8:10"]
+      "uses": ["1:1:8", "1:8:10"]
     }],
   "functions": [{
       "id": 0,
@@ -26,7 +26,7 @@ OUTPUT:
       "qualified_name": "accept",
       "declaration": "1:5:6",
       "callers": ["1@1:8:3"],
-      "all_uses": ["1:5:6", "1:8:3"]
+      "uses": ["1:5:6", "1:8:3"]
     }, {
       "id": 1,
       "usr": "c:@F@foo#",
@@ -34,7 +34,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition": "1:7:6",
       "callees": ["0@1:8:3"],
-      "all_uses": ["1:7:6"]
+      "uses": ["1:7:6"]
     }],
   "variables": [{
       "id": 0,
@@ -42,7 +42,7 @@ OUTPUT:
       "short_name": "x",
       "qualified_name": "Foo::x",
       "declaration": "1:2:14",
-      "all_uses": ["1:2:14", "1:8:15"]
+      "uses": ["1:2:14", "1:8:15"]
     }]
 }
 */

@@ -12,14 +12,14 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
-      "all_uses": ["1:1:8", "*1:5:3"]
+      "uses": ["1:1:8", "*1:5:3"]
     }, {
       "id": 1,
       "usr": "c:@S@ImplementedType",
       "short_name": "ImplementedType",
       "qualified_name": "ImplementedType",
       "definition": "1:2:8",
-      "all_uses": ["1:2:8", "*1:6:3"]
+      "uses": ["1:2:8", "*1:6:3"]
     }, {
       "id": 2,
       "usr": "c:@S@Foo",
@@ -27,7 +27,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:4:8",
       "vars": [0, 1],
-      "all_uses": ["1:4:8"]
+      "uses": ["1:4:8"]
     }],
   "functions": [],
   "variables": [{
@@ -38,7 +38,7 @@ OUTPUT:
       "definition": "1:5:16",
       "variable_type": 0,
       "declaring_type": 2,
-      "all_uses": ["1:5:16"]
+      "uses": ["1:5:16"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo@FI@b",
@@ -47,7 +47,7 @@ OUTPUT:
       "definition": "1:6:19",
       "variable_type": 1,
       "declaring_type": 2,
-      "all_uses": ["1:6:19"]
+      "uses": ["1:6:19"]
     }]
 }
 */

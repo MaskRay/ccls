@@ -16,7 +16,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:5:7",
       "vars": [0],
-      "all_uses": ["1:5:7"]
+      "uses": ["1:5:7"]
     }],
   "functions": [{
       "id": 0,
@@ -24,7 +24,7 @@ OUTPUT:
       "short_name": "helper",
       "qualified_name": "helper",
       "definition": "1:1:12",
-      "all_uses": ["1:1:12", "1:6:11"]
+      "uses": ["1:1:12", "1:6:11"]
     }],
   "variables": [{
       "id": 0,
@@ -33,7 +33,7 @@ OUTPUT:
       "qualified_name": "Foo::x",
       "definition": "1:6:7",
       "declaring_type": 0,
-      "all_uses": ["1:6:7"]
+      "uses": ["1:6:7"]
     }]
 }
 */

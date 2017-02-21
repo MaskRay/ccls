@@ -211,7 +211,7 @@ struct TypeDef {
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
-  std::vector<Location> all_uses;
+  std::vector<Location> uses;
 
   TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
@@ -219,16 +219,16 @@ struct TypeDef {
   }
 
   void AddUsage(Location loc, bool insert_if_not_present = true) {
-    for (int i = all_uses.size() - 1; i >= 0; --i) {
-      if (all_uses[i].IsEqualTo(loc)) {
+    for (int i = uses.size() - 1; i >= 0; --i) {
+      if (uses[i].IsEqualTo(loc)) {
         if (loc.interesting)
-          all_uses[i].interesting = true;
+          uses[i].interesting = true;
         return;
       }
     }
 
     if (insert_if_not_present)
-      all_uses.push_back(loc);
+      uses.push_back(loc);
   }
 };
 
@@ -262,7 +262,7 @@ struct FuncDef {
   std::vector<FuncRef> callees;
 
   // All usages. For interesting usages, see callees.
-  std::vector<Location> all_uses;
+  std::vector<Location> uses;
 
   FuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
@@ -287,7 +287,7 @@ struct VarDef {
   std::optional<TypeId> declaring_type;
 
   // Usages.
-  std::vector<Location> all_uses;
+  std::vector<Location> uses;
 
   VarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
@@ -476,7 +476,7 @@ std::string ParsingDatabase::ToString() {
   auto it = usr_to_type_id.find("");
   if (it != usr_to_type_id.end()) {
     Resolve(it->second)->short_name = "<fundamental>";
-    assert(Resolve(it->second)->all_uses.size() == 0);
+    assert(Resolve(it->second)->uses.size() == 0);
   }
 
 #define WRITE(name) Write(writer, #name, def.name)
@@ -505,7 +505,7 @@ std::string ParsingDatabase::ToString() {
     WRITE(types);
     WRITE(funcs);
     WRITE(vars);
-    WRITE(all_uses);
+    WRITE(uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -527,7 +527,7 @@ std::string ParsingDatabase::ToString() {
     WRITE(locals);
     WRITE(callers);
     WRITE(callees);
-    WRITE(all_uses);
+    WRITE(uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -545,8 +545,7 @@ std::string ParsingDatabase::ToString() {
     WRITE(definition);
     WRITE(variable_type);
     WRITE(declaring_type);
-    //WRITE(initializations);
-    WRITE(all_uses);
+    WRITE(uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -566,59 +565,6 @@ struct FileDef {
   std::vector<VarDef> vars;
 };
 
-
-/*
-struct Database {
-  std::unordered_map<std::string, TypeId> usr_to_type_id;
-  std::unordered_map<std::string, FuncId> usr_to_func_id;
-  std::unordered_map<std::string, VarId> usr_to_var_id;
-
-  std::vector<FileDef> files;
-
-  TypeId ToTypeId(const std::string& usr);
-  FuncId ToFuncId(const std::string& usr);
-  VarId ToVarId(const std::string& usr);
-};
-
-TypeId Database::ToTypeId(const std::string& usr) {
-  auto it = usr_to_type_id.find(usr);
-  assert(it != usr_to_type_id.end() && "Usr is not registered");
-  return it->second;
-}
-FuncId Database::ToFuncId(const std::string& usr) {
-  auto it = usr_to_func_id.find(usr);
-  assert(it != usr_to_func_id.end() && "Usr is not registered");
-  return it->second;
-}
-VarId Database::ToVarId(const std::string& usr) {
-  auto it = usr_to_var_id.find(usr);
-  assert(it != usr_to_var_id.end() && "Usr is not registered");
-  return it->second;
-}
-
-TypeDef* Resolve(FileDef* file, TypeId id) {
-  assert(file->id == id.file_id);
-  return &file->types[id.local_id];
-}
-FuncDef* Resolve(FileDef* file, FuncId id) {
-  assert(file->id == id.file_id);
-  return &file->funcs[id.local_id];
-}
-VarDef* Resolve(FileDef* file, VarId id) {
-  assert(file->id == id.file_id);
-  return &file->vars[id.local_id];
-}
-
-TypeDef* Resolve(Database* db, TypeId id) {
-  return Resolve(&db->files[id.file_id], id);
-}
-FuncDef* Resolve(Database* db, FuncId id) {
-  return Resolve(&db->files[id.file_id], id);
-}
-VarDef* Resolve(Database* db, VarId id) {
-  return Resolve(&db->files[id.file_id], id);
-}
-*/
 
 
 
@@ -959,7 +905,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       var_def->definition = decl_loc;
     else
       var_def->declaration = decl_loc;
-    var_def->all_uses.push_back(decl_loc);
+    var_def->uses.push_back(decl_loc);
 
 
     // Declaring variable type information. Note that we do not insert an
@@ -1002,7 +948,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       func_def->definition = decl_loc;
     else
       func_def->declaration = decl_loc;
-    func_def->all_uses.push_back(decl_loc);
+    func_def->uses.push_back(decl_loc);
 
     bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
     bool is_ctor_or_dtor = decl->entityInfo->kind == CXIdxEntity_CXXConstructor || decl->entityInfo->kind == CXIdxEntity_CXXDestructor;
@@ -1201,7 +1147,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   {
     VarId var_id = db->ToVarId(ref->referencedEntity->cursor);
     VarDef* var_def = db->Resolve(var_id);
-    var_def->all_uses.push_back(db->file_db.Resolve(ref->loc, false /*interesting*/));
+    var_def->uses.push_back(db->file_db.Resolve(ref->loc, false /*interesting*/));
     break;
   }
 
@@ -1232,11 +1178,11 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 
       caller_def->callees.push_back(FuncRef(called_id, loc));
       called_def->callers.push_back(FuncRef(caller_id, loc));
-      called_def->all_uses.push_back(loc);
+      called_def->uses.push_back(loc);
     }
     else {
       FuncDef* called_def = db->Resolve(called_id);
-      called_def->all_uses.push_back(loc);
+      called_def->uses.push_back(loc);
     }
 
     // For constructor/destructor, also add a usage against the type. Clang

@@ -11,7 +11,7 @@ OUTPUT:
       "short_name": "foo",
       "qualified_name": "foo",
       "definition": "1:1:6",
-      "all_uses": ["1:1:6"]
+      "uses": ["1:1:6"]
     }],
   "variables": [{
       "id": 0,
@@ -19,7 +19,7 @@ OUTPUT:
       "short_name": "a",
       "qualified_name": "a",
       "definition": "1:1:14",
-      "all_uses": ["1:1:14", "1:2:3"]
+      "uses": ["1:1:14", "1:2:3"]
     }]
 }
 */

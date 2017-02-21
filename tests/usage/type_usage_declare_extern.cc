@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "T",
       "qualified_name": "T",
       "definition": "1:1:8",
-      "all_uses": ["1:1:8", "*1:3:8"]
+      "uses": ["1:1:8", "*1:3:8"]
     }],
   "functions": [],
   "variables": [{
@@ -20,7 +20,7 @@ OUTPUT:
       "qualified_name": "t",
       "declaration": "1:3:10",
       "variable_type": 0,
-      "all_uses": ["1:3:10"]
+      "uses": ["1:3:10"]
     }]
 }
 */

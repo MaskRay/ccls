@@ -6,7 +6,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
-      "all_uses": ["1:1:8", "*1:2:8"]
+      "uses": ["1:1:8", "*1:2:8"]
     }],
   "functions": [],
   "variables": [{
@@ -16,7 +16,7 @@ OUTPUT:
       "qualified_name": "t",
       "definition": "1:2:13",
       "variable_type": 0,
-      "all_uses": ["1:2:13"]
+      "uses": ["1:2:13"]
     }]
 }
 */

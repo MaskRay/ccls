@@ -16,7 +16,7 @@ OUTPUT:
       "definition": "1:1:7",
       "derived": [1],
       "funcs": [0],
-      "all_uses": ["1:1:7", "*1:4:24"]
+      "uses": ["1:1:7", "*1:4:24"]
     }, {
       "id": 1,
       "usr": "c:@S@Derived",
@@ -25,7 +25,7 @@ OUTPUT:
       "definition": "1:4:7",
       "parents": [0],
       "funcs": [1],
-      "all_uses": ["1:4:7"]
+      "uses": ["1:4:7"]
     }],
   "functions": [{
       "id": 0,
@@ -35,7 +35,7 @@ OUTPUT:
       "declaration": "1:2:16",
       "declaring_type": 0,
       "derived": [1],
-      "all_uses": ["1:2:16"]
+      "uses": ["1:2:16"]
     }, {
       "id": 1,
       "usr": "c:@S@Derived@F@foo#",
@@ -44,7 +44,7 @@ OUTPUT:
       "definition": "1:5:8",
       "declaring_type": 1,
       "base": 0,
-      "all_uses": ["1:5:8"]
+      "uses": ["1:5:8"]
     }],
   "variables": []
 }

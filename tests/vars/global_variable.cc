@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "global",
       "qualified_name": "global",
       "definition": "1:1:12",
-      "all_uses": ["1:1:12"]
+      "uses": ["1:1:12"]
     }]
 }
 */

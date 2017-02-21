@@ -14,7 +14,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "all_uses": ["1:1:8", "1:3:10", "1:3:18", "*1:4:10", "*1:4:18"]
+      "uses": ["1:1:8", "1:3:10", "1:3:18", "*1:4:10", "*1:4:18"]
     }],
   "functions": [{
       "id": 0,
@@ -23,7 +23,7 @@ OUTPUT:
       "qualified_name": "foo",
       "declaration": "1:3:6",
       "definition": "1:4:6",
-      "all_uses": ["1:3:6", "1:4:6"]
+      "uses": ["1:3:6", "1:4:6"]
     }],
   "variables": [{
       "id": 0,
@@ -32,7 +32,7 @@ OUTPUT:
       "qualified_name": "f",
       "definition": "1:4:15",
       "variable_type": 0,
-      "all_uses": ["1:4:15"]
+      "uses": ["1:4:15"]
     }]
 }
 */

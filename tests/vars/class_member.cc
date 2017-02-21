@@ -11,7 +11,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:7",
       "vars": [0],
-      "all_uses": ["1:1:7", "*1:2:3"]
+      "uses": ["1:1:7", "*1:2:3"]
     }],
   "functions": [],
   "variables": [{
@@ -22,7 +22,7 @@ OUTPUT:
       "definition": "1:2:8",
       "variable_type": 0,
       "declaring_type": 0,
-      "all_uses": ["1:2:8"]
+      "uses": ["1:2:8"]
     }]
 }
 */

@@ -16,7 +16,7 @@ OUTPUT:
       "qualified_name": "called",
       "declaration": "1:1:6",
       "callers": ["2@1:6:3"],
-      "all_uses": ["1:1:6", "1:6:3"]
+      "uses": ["1:1:6", "1:6:3"]
     }, {
       "id": 1,
       "usr": "c:@F@gen#",
@@ -24,7 +24,7 @@ OUTPUT:
       "qualified_name": "gen",
       "definition": "1:3:5",
       "callers": ["2@1:6:10", "2@1:6:18"],
-      "all_uses": ["1:3:5", "1:6:10", "1:6:18"]
+      "uses": ["1:3:5", "1:6:10", "1:6:18"]
     }, {
       "id": 2,
       "usr": "c:@F@foo#",
@@ -32,7 +32,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition": "1:5:6",
       "callees": ["0@1:6:3", "1@1:6:10", "1@1:6:18"],
-      "all_uses": ["1:5:6"]
+      "uses": ["1:5:6"]
     }],
   "variables": []
 }

@@ -14,7 +14,7 @@ OUTPUT:
       "qualified_name": "hello::Foo",
       "definition": "1:2:7",
       "funcs": [0],
-      "all_uses": ["1:2:7"]
+      "uses": ["1:2:7"]
     }],
   "functions": [{
       "id": 0,
@@ -23,7 +23,7 @@ OUTPUT:
       "qualified_name": "hello::Foo::foo",
       "definition": "1:3:8",
       "declaring_type": 0,
-      "all_uses": ["1:3:8"]
+      "uses": ["1:3:8"]
     }],
   "variables": []
 }

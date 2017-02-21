@@ -23,7 +23,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:7",
       "funcs": [0, 1],
-      "all_uses": ["1:1:7", "1:3:3", "1:4:3", "*1:8:3"]
+      "uses": ["1:1:7", "1:3:3", "1:4:3", "*1:8:3"]
     }],
   "functions": [{
       "id": 0,
@@ -33,7 +33,7 @@ OUTPUT:
       "definition": "1:3:3",
       "declaring_type": 0,
       "callers": ["2@1:8:7"],
-      "all_uses": ["1:3:3", "1:8:7"]
+      "uses": ["1:3:3", "1:8:7"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@~Foo#",
@@ -41,7 +41,7 @@ OUTPUT:
       "qualified_name": "Foo::~Foo",
       "definition": "1:4:3",
       "declaring_type": 0,
-      "all_uses": ["1:4:3"]
+      "uses": ["1:4:3"]
     }, {
       "id": 2,
       "usr": "c:@F@foo#",
@@ -49,7 +49,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition": "1:7:6",
       "callees": ["0@1:8:7"],
-      "all_uses": ["1:7:6"]
+      "uses": ["1:7:6"]
     }],
   "variables": [{
       "id": 0,
@@ -58,7 +58,7 @@ OUTPUT:
       "qualified_name": "f",
       "definition": "1:8:7",
       "variable_type": 0,
-      "all_uses": ["1:8:7"]
+      "uses": ["1:8:7"]
     }]
 }
 */

@@ -12,7 +12,7 @@ OUTPUT:
       "qualified_name": "IFoo",
       "definition": "1:1:7",
       "funcs": [0],
-      "all_uses": ["1:1:7"]
+      "uses": ["1:1:7"]
     }],
   "functions": [{
       "id": 0,
@@ -21,7 +21,7 @@ OUTPUT:
       "qualified_name": "IFoo::foo",
       "definition": "1:2:16",
       "declaring_type": 0,
-      "all_uses": ["1:2:16"]
+      "uses": ["1:2:16"]
     }],
   "variables": []
 }

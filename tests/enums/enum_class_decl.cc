@@ -13,7 +13,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:12",
       "vars": [0, 1],
-      "all_uses": ["1:1:12"]
+      "uses": ["1:1:12"]
     }],
   "functions": [],
   "variables": [{
@@ -23,7 +23,7 @@ OUTPUT:
       "qualified_name": "Foo::A",
       "definition": "1:2:3",
       "declaring_type": 0,
-      "all_uses": ["1:2:3"]
+      "uses": ["1:2:3"]
     }, {
       "id": 1,
       "usr": "c:@E@Foo@B",
@@ -31,7 +31,7 @@ OUTPUT:
       "qualified_name": "Foo::B",
       "definition": "1:3:3",
       "declaring_type": 0,
-      "all_uses": ["1:3:3"]
+      "uses": ["1:3:3"]
     }]
 }
 */

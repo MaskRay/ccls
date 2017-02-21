@@ -10,7 +10,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:1:7",
-      "all_uses": ["1:1:7"]
+      "uses": ["1:1:7"]
     }],
   "functions": [],
   "variables": [{
@@ -19,7 +19,7 @@ OUTPUT:
       "short_name": "member",
       "qualified_name": "Foo::member",
       "declaration": "1:2:14",
-      "all_uses": ["1:2:14"]
+      "uses": ["1:2:14"]
     }]
 }
 */
