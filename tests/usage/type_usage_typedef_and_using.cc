@@ -10,6 +10,11 @@ void accept2(Foo2*) {}
 void accept3(Foo3*) {}
 
 /*
+
+// TODO: I think we should mark using Foo1 = foo as an interesting usage on
+//       Foo1.
+// TODO: Also mark class Foo {} as an interesting usage of Foo.
+
 OUTPUT:
 {
   "types": [{

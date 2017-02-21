@@ -48,8 +48,8 @@ using FileId = int64_t;
 
 
 BEGIN_BITFIELD_TYPE(Location, uint64_t)
-Location(FileId file_id, uint32_t line, uint32_t column) {
-  interesting = true;
+Location(bool interesting, FileId file_id, uint32_t line, uint32_t column) {
+  this->interesting = false;
   this->file_id = file_id;
   this->line = line;
   this->column = column;
@@ -66,8 +66,8 @@ std::string ToString() {
   // 3 => column
 
   std::string result;
-  if (interesting)
-    result += '*';
+  //if (interesting)
+  result += '*';
   result += std::to_string(file_id);
   result += ':';
   result += std::to_string(line);
@@ -92,7 +92,7 @@ struct FileDb {
     file_id_to_file_path[0] = "";
   }
 
-  Location Resolve(const CXSourceLocation& cx_loc) {
+  Location Resolve(const CXSourceLocation& cx_loc, bool is_interesting = false) {
     CXFile file;
     unsigned int line, column, offset;
     clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
@@ -112,20 +112,20 @@ struct FileDb {
       }
     }
 
-    return Location(file_id, line, column);
+    return Location(is_interesting, file_id, line, column);
   }
 
-  Location Resolve(const CXIdxLoc& cx_idx_loc) {
+  Location Resolve(const CXIdxLoc& cx_idx_loc, bool is_interesting = false) {
     CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
-    return Resolve(cx_loc);
+    return Resolve(cx_loc, is_interesting);
   }
 
-  Location Resolve(const CXCursor& cx_cursor) {
-    return Resolve(clang_getCursorLocation(cx_cursor));
+  Location Resolve(const CXCursor& cx_cursor, bool is_interesting = false) {
+    return Resolve(clang_getCursorLocation(cx_cursor), is_interesting);
   }
 
-  Location Resolve(const clang::Cursor& cursor) {
-    return Resolve(cursor.cx_cursor);
+  Location Resolve(const clang::Cursor& cursor, bool is_interesting = false) {
+    return Resolve(cursor.cx_cursor, is_interesting);
   }
 };
 
@@ -188,13 +188,29 @@ struct TypeDef {
   std::vector<VarId> vars;
 
   // Every usage, useful for things like renames.
+  // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Location> all_uses;
-  // Usages that a user is probably interested in.
-  std::vector<Location> interesting_uses;
 
   TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
     //std::cout << "Creating type with usr " << usr << std::endl;
+  }
+
+  void AddUsage(Location loc) {
+    Location interesting = loc;
+    interesting.interesting = true;
+    Location uninteresting = loc;
+    uninteresting.interesting = false;
+
+    for (int i = all_uses.size() - 1; i >= 0; --i) {
+      if (all_uses[i] == interesting || all_uses[i] == uninteresting) {
+        if (loc.interesting)
+          all_uses[i].interesting = true;
+        return;
+      }
+    }
+
+    all_uses.push_back(loc);
   }
 };
 
@@ -443,7 +459,6 @@ std::string ParsingDatabase::ToString() {
   if (it != usr_to_type_id.end()) {
     Resolve(it->second)->short_name = "<fundamental>";
     assert(Resolve(it->second)->all_uses.size() == 0);
-    assert(Resolve(it->second)->interesting_uses.size() == 0);
   }
 
 #define WRITE(name) Write(writer, #name, def.name)
@@ -473,7 +488,22 @@ std::string ParsingDatabase::ToString() {
     WRITE(funcs);
     WRITE(vars);
     WRITE(all_uses);
-    WRITE(interesting_uses);
+
+    bool wrote_key = false;
+    for (Location usage : def.all_uses) {
+      if (usage.interesting) {
+        if (!wrote_key) {
+          writer.Key("interesting_uses");
+          wrote_key = true;
+          writer.StartArray();
+        }
+
+        Write(writer, nullptr, usage);
+      }
+    }
+    if (wrote_key)
+      writer.EndArray();
+
     writer.EndObject();
   }
   writer.EndArray();
@@ -756,15 +786,6 @@ std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
 }
 */
 
-bool HasUsage(const std::vector<Location>& usages, const Location& usage) {
-  for (int i = usages.size() - 1; i >= 0; --i) {
-    if (usages[i] == usage)
-      return true;
-  }
-
-  return false;
-}
-
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {
   if (!container)
     return false;
@@ -801,7 +822,9 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
 
   if (param->is_interesting) {
     TypeDef* ref_type_def = db->Resolve(ref_type_id);
-    ref_type_def->interesting_uses.push_back(db->file_db.Resolve(cursor));
+    Location loc = db->file_db.Resolve(cursor);
+    loc.interesting = true;
+    ref_type_def->AddUsage(loc);
   }
 }
 
@@ -1079,7 +1102,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     Location decl_loc = db->file_db.Resolve(decl->loc);
     type_def->definition = decl_loc;
-    type_def->all_uses.push_back(decl_loc);
+    type_def->AddUsage(decl_loc);
     break;
   }
 
@@ -1101,7 +1124,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     assert(decl->isDefinition);
     Location decl_loc = db->file_db.Resolve(decl->loc);
     type_def->definition = decl_loc;
-    type_def->all_uses.push_back(decl_loc);
+    type_def->AddUsage(decl_loc);
 
     //type_def->alias_of
     //type_def->funcs
@@ -1171,6 +1194,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_CXXInstanceMethod:
   case CXIdxEntity_Function:
   case CXIdxEntity_CXXConstructor:
+  case CXIdxEntity_CXXDestructor:
   {
     // TODO: Redirect container to constructor for
     //  int Gen() { return 5; }
@@ -1199,6 +1223,21 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
       FuncDef* called_def = db->Resolve(called_id);
       called_def->all_uses.push_back(loc);
     }
+
+
+#if false
+    // For constructor/destructor, also add a usage against the type.
+    // TODO: This will also process implicit constructors which we do not want.
+    clang::Cursor ref_cursor = ref->cursor;
+    if (ref->referencedEntity->kind == CXIdxEntity_CXXConstructor ||
+        ref->referencedEntity->kind == CXIdxEntity_CXXDestructor &&
+        ref_cursor.get_spelling() != "") {
+      FuncDef* called_def = db->Resolve(called_id);
+      assert(called_def->declaring_type.has_value());
+      TypeDef* type_def = db->Resolve(called_def->declaring_type.value());
+      type_def->AddUsage(db->file_db.Resolve(ref->loc, true /*is_interesting*/));
+    }
+#endif
     break;
   }
 
@@ -1225,10 +1264,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //    Foo f;
     //  }
     //
-    Location loc = db->file_db.Resolve(ref->loc);
-    if (!HasUsage(referenced_def->all_uses, loc))
-      referenced_def->all_uses.push_back(loc);
-
+    referenced_def->AddUsage(db->file_db.Resolve(ref->loc));
     break;
   }
 
@@ -1257,7 +1293,7 @@ ParsingDatabase Parse(std::string filename) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
-  //Dump(tu.document_cursor());
+  Dump(tu.document_cursor());
 
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
 
@@ -1384,7 +1420,7 @@ int main(int argc, char** argv) {
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/declaration_vs_definition/class_member_static.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using_template.cc") continue;
-    //if (path == "tests/constructors/constructor.cc") continue;
+    //if (path != "tests/constructors/constructor.cc") continue;
     //if (path == "tests/constructors/destructor.cc") continue;
     //if (path == "tests/usage/func_usage_call_method.cc") continue;
     //if (path != "tests/usage/type_usage_as_template_parameter.cc") continue;
@@ -1392,8 +1428,9 @@ int main(int argc, char** argv) {
     //if (path != "tests/usage/type_usage_as_template_parameter_simple.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/type_usage_declare_local.cc") continue;
+    //if (path == "tests/usage/type_usage_typedef_and_using_template.cc") continue;
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
-    //if (path != "tests/usage/func_usage_template_func.cc") continue;
+    //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;
     //if (path != "tests/foobar.cc") continue;
     //if (path != "tests/inheritance/class_inherit_templated_parent.cc") continue;

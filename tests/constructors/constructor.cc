@@ -9,7 +9,13 @@ void foo() {
 }
 
 /*
-// TODO: We should mark the constructor location inside of all_usages for the type, so renames work.
+// TODO: We should mark the constructor location inside of all_usages for the
+//       type, so renames work. There's some code that sort of does this, but
+//       it also includes implicit constructors. Maybe that's ok?
+// TODO: check for implicit by comparing location to parent decl?
+// TODO: At the moment, type rename is broken because we do not capture the
+//      `new Foo()` as a reference to the Foo type.
+//
 OUTPUT:
 {
   "types": [{

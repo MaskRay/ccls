@@ -56,6 +56,7 @@ OUTPUT:
     }, {
       "id": 4,
       "usr": "c:class_inherit_templated_parent.cc@154",
+      "all_uses": ["*1:11:24"],
       "interesting_uses": ["*1:11:24"]
     }, {
       "id": 5,
