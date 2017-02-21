@@ -758,7 +758,12 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
   param->has_processed_any = true;
   ParsingDatabase* db = param->db;
 
-  TypeId ref_type_id = db->ToTypeId(cursor.get_referenced().get_usr());
+  // TODO: Something in STL (type_traits)? reports an empty USR.
+  std::string referenced_usr = cursor.get_referenced().get_usr();
+  if (referenced_usr == "")
+    return;
+
+  TypeId ref_type_id = db->ToTypeId(referenced_usr);
   if (!param->initial_type)
     param->initial_type = ref_type_id;
 
@@ -1370,6 +1375,11 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
   }
 }
 
+void WriteToFile(const std::string& filename, const std::string& content) {
+  std::ofstream file(filename);
+  file << content;
+}
+
 int main(int argc, char** argv) {
   /*
   ParsingDatabase db = Parse("tests/vars/function_local.cc");
@@ -1379,7 +1389,7 @@ int main(int argc, char** argv) {
   return 0;
   */
 
-  DUMP_AST = true;
+  DUMP_AST = false;
 
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/declaration_vs_definition/class_member_static.cc") continue;
@@ -1396,7 +1406,7 @@ int main(int argc, char** argv) {
     //if (path != "tests/usage/func_usage_addr_method.cc") continue;
     //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
     //if (path != "tests/usage/usage_inside_of_call.cc") continue;
-    //if (path != "tests/foobar.cc") continue;
+    if (path != "tests/foobar.cc") continue;
     //if (path != "tests/types/anonymous_struct.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
@@ -1409,6 +1419,10 @@ int main(int argc, char** argv) {
     std::cout << "[START] " << path << std::endl;
     ParsingDatabase db = Parse(path);
     std::string actual_output = db.ToString();
+    
+    WriteToFile("output.json", actual_output);
+    break;
+
     rapidjson::Document actual;
     actual.Parse(actual_output.c_str());
 
@@ -1428,7 +1442,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  std::cin.get();
+  //std::cin.get();
   return 0;
 }
 
