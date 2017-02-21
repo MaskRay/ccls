@@ -16,6 +16,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:1:8",
+      "funcs": [0],
       "all_uses": ["1:1:8", "*1:6:3"]
     }],
   "functions": [{
@@ -24,6 +25,7 @@ OUTPUT:
       "short_name": "Used",
       "qualified_name": "Foo::Used",
       "declaration": "1:2:8",
+      "declaring_type": 0,
       "callers": ["1@1:7:6"],
       "all_uses": ["1:2:8", "1:7:6"]
     }, {

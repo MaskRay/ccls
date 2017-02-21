@@ -15,6 +15,7 @@ OUTPUT:
       "qualified_name": "Root",
       "definition": "1:1:7",
       "derived": [1],
+      "funcs": [0],
       "all_uses": ["1:1:7", "*1:4:24"]
     }, {
       "id": 1,
@@ -32,6 +33,7 @@ OUTPUT:
       "short_name": "foo",
       "qualified_name": "Root::foo",
       "declaration": "1:2:16",
+      "declaring_type": 0,
       "derived": [1],
       "all_uses": ["1:2:16"]
     }, {

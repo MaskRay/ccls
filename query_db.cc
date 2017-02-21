@@ -73,6 +73,10 @@ struct IndexFreshenTask {};
 // separate thread.
 struct QueryTask {};
 
+
+// NOTE: When something enters a value into master db, it will have to have a
+//       ref count, since multiple parsings could enter it (unless we require
+//       that it be defined in that declaration unit!)
 struct TaskManager {
 
 };

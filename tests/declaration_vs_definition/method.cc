@@ -15,7 +15,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:1:7",
-      "funcs": [1, 2],
+      "funcs": [0, 1, 2],
       "all_uses": ["1:1:7", "1:7:6"]
     }],
   "functions": [{
@@ -24,6 +24,7 @@ OUTPUT:
       "short_name": "declonly",
       "qualified_name": "Foo::declonly",
       "declaration": "1:2:8",
+      "declaring_type": 0,
       "all_uses": ["1:2:8"]
     }, {
       "id": 1,

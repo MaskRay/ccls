@@ -47,9 +47,17 @@ struct Id {
 using FileId = int64_t;
 
 
+// TODO: Move off of this weird wrapper, use struct with custom wrappers
+//       directly.
 BEGIN_BITFIELD_TYPE(Location, uint64_t)
+
+ADD_BITFIELD_MEMBER(interesting, /*start:*/ 0,  /*len:*/ 1);    // 2 values
+ADD_BITFIELD_MEMBER(file_id,     /*start:*/ 1,  /*len:*/ 29);   // 536,870,912 values
+ADD_BITFIELD_MEMBER(line,        /*start:*/ 30, /*len:*/ 20);   // 1,048,576 values
+ADD_BITFIELD_MEMBER(column,      /*start:*/ 50, /*len:*/ 14);   // 16,384 values
+
 Location(bool interesting, FileId file_id, uint32_t line, uint32_t column) {
-  this->interesting = false;
+  this->interesting = interesting;
   this->file_id = file_id;
   this->line = line;
   this->column = column;
@@ -76,10 +84,14 @@ std::string ToString() {
   return result;
 }
 
-ADD_BITFIELD_MEMBER(interesting, /*start:*/ 0,  /*len:*/ 1);    // 2 values
-ADD_BITFIELD_MEMBER(file_id,     /*start:*/ 1,  /*len:*/ 29);   // 536,870,912 values
-ADD_BITFIELD_MEMBER(line,        /*start:*/ 30, /*len:*/ 20);   // 1,048,576 values
-ADD_BITFIELD_MEMBER(column,      /*start:*/ 50, /*len:*/ 14);   // 16,384 values
+// Compare two Locations and check if they are equal. Ignores the value of
+// |interesting|.
+// operator== doesn't seem to work properly...
+bool IsEqualTo(const Location& o) {
+  // When comparing, ignore the value of |interesting|.
+  return (wrapper.value >> 1) == (o.wrapper.value >> 1);
+}
+
 END_BITFIELD_TYPE()
 
 struct FileDb {
@@ -92,7 +104,7 @@ struct FileDb {
     file_id_to_file_path[0] = "";
   }
 
-  Location Resolve(const CXSourceLocation& cx_loc, bool is_interesting = false) {
+  Location Resolve(const CXSourceLocation& cx_loc, bool interesting) {
     CXFile file;
     unsigned int line, column, offset;
     clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
@@ -112,20 +124,20 @@ struct FileDb {
       }
     }
 
-    return Location(is_interesting, file_id, line, column);
+    return Location(interesting, file_id, line, column);
   }
 
-  Location Resolve(const CXIdxLoc& cx_idx_loc, bool is_interesting = false) {
+  Location Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
     CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
-    return Resolve(cx_loc, is_interesting);
+    return Resolve(cx_loc, interesting);
   }
 
-  Location Resolve(const CXCursor& cx_cursor, bool is_interesting = false) {
-    return Resolve(clang_getCursorLocation(cx_cursor), is_interesting);
+  Location Resolve(const CXCursor& cx_cursor, bool interesting) {
+    return Resolve(clang_getCursorLocation(cx_cursor), interesting);
   }
 
-  Location Resolve(const clang::Cursor& cursor, bool is_interesting = false) {
-    return Resolve(cursor.cx_cursor, is_interesting);
+  Location Resolve(const clang::Cursor& cursor, bool interesting) {
+    return Resolve(cursor.cx_cursor, interesting);
   }
 };
 
@@ -136,7 +148,17 @@ struct LocalId {
 
   LocalId() : local_id(0) {} // Needed for containers. Do not use directly.
   explicit LocalId(uint64_t local_id) : local_id(local_id) {}
+
+  bool operator==(const LocalId<T>& other) {
+    return local_id == other.local_id;
+  }
 };
+
+template<typename T>
+bool operator==(const LocalId<T>& a, const LocalId<T>& b) {
+  return a.local_id == b.local_id;
+}
+
 using TypeId = LocalId<TypeDef>;
 using FuncId = LocalId<FuncDef>;
 using VarId = LocalId<VarDef>;
@@ -196,21 +218,17 @@ struct TypeDef {
     //std::cout << "Creating type with usr " << usr << std::endl;
   }
 
-  void AddUsage(Location loc) {
-    Location interesting = loc;
-    interesting.interesting = true;
-    Location uninteresting = loc;
-    uninteresting.interesting = false;
-
+  void AddUsage(Location loc, bool insert_if_not_present = true) {
     for (int i = all_uses.size() - 1; i >= 0; --i) {
-      if (all_uses[i] == interesting || all_uses[i] == uninteresting) {
+      if (all_uses[i].IsEqualTo(loc)) {
         if (loc.interesting)
           all_uses[i].interesting = true;
         return;
       }
     }
 
-    all_uses.push_back(loc);
+    if (insert_if_not_present)
+      all_uses.push_back(loc);
   }
 };
 
@@ -604,6 +622,15 @@ VarDef* Resolve(Database* db, VarId id) {
 
 
 
+template<typename T>
+bool Contains(const std::vector<T>& vec, const T& element) {
+  for (const T& entry : vec) {
+    if (entry == element)
+      return true;
+  }
+  return false;
+}
+
 
 
 
@@ -806,8 +833,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
 
   if (param->is_interesting) {
     TypeDef* ref_type_def = db->Resolve(ref_type_id);
-    Location loc = db->file_db.Resolve(cursor);
-    loc.interesting = true;
+    Location loc = db->file_db.Resolve(cursor, true /*interesting*/);
     ref_type_def->AddUsage(loc);
   }
 }
@@ -925,30 +951,21 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->qualified_name = ns->QualifiedName(decl->semanticContainer, var_def->short_name);
     //}
 
-    Location decl_loc = db->file_db.Resolve(decl->loc);
+    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
     if (decl->isDefinition)
       var_def->definition = decl_loc;
     else
       var_def->declaration = decl_loc;
-
     var_def->all_uses.push_back(decl_loc);
 
 
+    // Declaring variable type information. Note that we do not insert an
+    // interesting reference for parameter declarations - that is handled when
+    // the function declaration is encountered since we won't receive ParmDecl
+    // declarations for unnamed parameters.
     std::optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
     if (var_type.has_value())
       var_def->variable_type = var_type.value();
-    // Declaring variable type information.
-    /*
-    TypeResolution var_type = ResolveToType(db, decl_cursor.get_type());
-    if (var_type.resolved_type) {
-      var_def->variable_type = var_type.resolved_type.value();
-      // Insert an interesting type usage for variable declarations. Parameters
-      // are handled when a function is declared because clang doesn't provide
-      // parameter declarations for unnamed parameters.
-      if (decl_cursor.get_kind() != CXCursor_ParmDecl)
-        AddInterestingUsageToType(db, var_type, FindLocationOfTypeSpecifier(decl_cursor));
-    }
-    */
 
 
     if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
@@ -957,11 +974,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       var_def->declaring_type = declaring_type_id;
       declaring_type_def->vars.push_back(var_id);
     }
-    // std::optional<Location> declaration;
-    // std::vector<Location> initializations;
-    // std::optional<TypeId> variable_type;
-    // std::optional<TypeId> declaring_type;
-    // std::vector<Location> uses;
 
     break;
   }
@@ -982,25 +994,38 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     func_def->qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->short_name);
     //}
 
-    Location decl_loc = db->file_db.Resolve(decl->loc);
+    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
     if (decl->isDefinition)
       func_def->definition = decl_loc;
     else
       func_def->declaration = decl_loc;
-
     func_def->all_uses.push_back(decl_loc);
 
     bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
+    bool is_ctor_or_dtor = decl->entityInfo->kind == CXIdxEntity_CXXConstructor || decl->entityInfo->kind == CXIdxEntity_CXXDestructor;
+    //bool process_declaring_type = is_pure_virtual || is_ctor_or_dtor;
 
     // Add function usage information. We only want to do it once per
     // definition/declaration. Do it on definition since there should only ever
     // be one of those in the entire program.
-    if ((decl->isDefinition || is_pure_virtual) && IsTypeDefinition(decl->semanticContainer)) {
+    if (IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
       TypeDef* declaring_type_def = db->Resolve(declaring_type_id);
       func_def->declaring_type = declaring_type_id;
-      declaring_type_def->funcs.push_back(func_id);
+
+      // Mark a type reference at the ctor/dtor location.
+      // TODO: Should it be interesting?
+      if (is_ctor_or_dtor) {
+        Location type_usage_loc = decl_loc;
+        declaring_type_def->AddUsage(type_usage_loc);
+      }
+
+      // Register function in declaring type if it hasn't been registered yet.
+      if (!Contains(declaring_type_def->funcs, func_id))
+        declaring_type_def->funcs.push_back(func_id);
     }
+
+
 
     // We don't actually need to know the return type, but we need to mark it
     // as an interesting usage.
@@ -1084,7 +1109,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     type_def->short_name = decl->entityInfo->name;
     type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
 
-    Location decl_loc = db->file_db.Resolve(decl->loc);
+    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
     type_def->definition = decl_loc;
     type_def->AddUsage(decl_loc);
     break;
@@ -1106,7 +1131,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // }
 
     assert(decl->isDefinition);
-    Location decl_loc = db->file_db.Resolve(decl->loc);
+    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
     type_def->definition = decl_loc;
     type_def->AddUsage(decl_loc);
 
@@ -1133,7 +1158,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 
   default:
-    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->file_db.Resolve(decl->loc).ToString() << std::endl;
+    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->file_db.Resolve(decl->loc, false /*interesting*/).ToString() << std::endl;
     std::cout << "     entityInfo->kind  = " << decl->entityInfo->kind << std::endl;
     std::cout << "     entityInfo->USR   = " << decl->entityInfo->USR << std::endl;
     if (decl->declAsContainer)
@@ -1170,7 +1195,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   {
     VarId var_id = db->ToVarId(ref->referencedEntity->cursor);
     VarDef* var_def = db->Resolve(var_id);
-    var_def->all_uses.push_back(db->file_db.Resolve(ref->loc));
+    var_def->all_uses.push_back(db->file_db.Resolve(ref->loc, false /*interesting*/));
     break;
   }
 
@@ -1188,7 +1213,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 
     // Don't report duplicate usages.
     // TODO: search full history?
-    Location loc = db->file_db.Resolve(ref->loc);
+    Location loc = db->file_db.Resolve(ref->loc, false /*interesting*/);
     if (param->last_func_usage_location == loc) break;
     param->last_func_usage_location = loc;
 
@@ -1208,20 +1233,23 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
       called_def->all_uses.push_back(loc);
     }
 
-
-#if false
-    // For constructor/destructor, also add a usage against the type.
-    // TODO: This will also process implicit constructors which we do not want.
+    // For constructor/destructor, also add a usage against the type. Clang
+    // will insert and visit implicit constructor references, so we also check
+    // the location of the ctor call compared to the parent call. If they are
+    // the same, this is most likely an implicit ctors.
     clang::Cursor ref_cursor = ref->cursor;
     if (ref->referencedEntity->kind == CXIdxEntity_CXXConstructor ||
-        ref->referencedEntity->kind == CXIdxEntity_CXXDestructor &&
-        ref_cursor.get_spelling() != "") {
-      FuncDef* called_def = db->Resolve(called_id);
-      assert(called_def->declaring_type.has_value());
-      TypeDef* type_def = db->Resolve(called_def->declaring_type.value());
-      type_def->AddUsage(db->file_db.Resolve(ref->loc, true /*is_interesting*/));
+        ref->referencedEntity->kind == CXIdxEntity_CXXDestructor) {
+
+      Location parent_loc = db->file_db.Resolve(ref->parentEntity->cursor, true /*interesting*/);
+      Location our_loc = db->file_db.Resolve(ref->loc, true /*is_interesting*/);
+      if (!parent_loc.IsEqualTo(our_loc)) {
+        FuncDef* called_def = db->Resolve(called_id);
+        assert(called_def->declaring_type.has_value());
+        TypeDef* type_def = db->Resolve(called_def->declaring_type.value());
+        type_def->AddUsage(our_loc);
+      }
     }
-#endif
     break;
   }
 
@@ -1248,16 +1276,16 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //    Foo f;
     //  }
     //
-    referenced_def->AddUsage(db->file_db.Resolve(ref->loc));
+    referenced_def->AddUsage(db->file_db.Resolve(ref->loc, false /*interesting*/));
     break;
   }
 
   default:
-    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->file_db.Resolve(ref->loc).ToString() << std::endl;
+    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->file_db.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
     std::cout << "     ref->referencedEntity->kind = " << ref->referencedEntity->kind << std::endl;
     if (ref->parentEntity)
       std::cout << "     ref->parentEntity->kind = " << ref->parentEntity->kind << std::endl;
-    std::cout << "     ref->loc          = " << db->file_db.Resolve(ref->loc).ToString() << std::endl;
+    std::cout << "     ref->loc          = " << db->file_db.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
     std::cout << "     ref->kind         = " << ref->kind << std::endl;
     if (ref->parentEntity)
       std::cout << "     parentEntity      = " << clang::Cursor(ref->parentEntity->cursor).ToString() << std::endl;
