@@ -23,45 +23,44 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "*1:1:7",
+      "definition": "1:1:7",
       "funcs": [0],
-      "all_uses": ["*1:1:7", "*1:7:3", "*1:8:3", "*1:8:17"],
-      "interesting_uses": ["*1:7:3", "*1:8:3"]
+      "all_uses": ["1:1:7", "*1:7:3", "*1:8:3", "1:8:17"]
     }],
   "functions": [{
       "id": 0,
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "qualified_name": "Foo::Foo",
-      "definition": "*1:3:3",
+      "definition": "1:3:3",
       "declaring_type": 0,
-      "callers": ["1@*1:7:7", "1@*1:8:17"],
-      "all_uses": ["*1:3:3", "*1:7:7", "*1:8:17"]
+      "callers": ["1@1:7:7", "1@1:8:17"],
+      "all_uses": ["1:3:3", "1:7:7", "1:8:17"]
     }, {
       "id": 1,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "*1:6:6",
-      "callees": ["0@*1:7:7", "0@*1:8:17"],
-      "all_uses": ["*1:6:6"]
+      "definition": "1:6:6",
+      "callees": ["0@1:7:7", "0@1:8:17"],
+      "all_uses": ["1:6:6"]
     }],
   "variables": [{
       "id": 0,
       "usr": "c:constructor.cc@56@F@foo#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "definition": "*1:7:7",
+      "definition": "1:7:7",
       "variable_type": 0,
-      "all_uses": ["*1:7:7"]
+      "all_uses": ["1:7:7"]
     }, {
       "id": 1,
       "usr": "c:constructor.cc@66@F@foo#@f2",
       "short_name": "f2",
       "qualified_name": "f2",
-      "definition": "*1:8:8",
+      "definition": "1:8:8",
       "variable_type": 0,
-      "all_uses": ["*1:8:8"]
+      "all_uses": ["1:8:8"]
     }]
 }
 */

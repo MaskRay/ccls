@@ -6,8 +6,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
-      "all_uses": ["*1:1:8", "*1:2:8"],
-      "interesting_uses": ["*1:2:8"]
+      "all_uses": ["1:1:8", "*1:2:8"]
     }],
   "functions": [],
   "variables": [{
@@ -15,9 +14,9 @@ OUTPUT:
       "usr": "c:type_usage_declare_static.cc@t",
       "short_name": "t",
       "qualified_name": "t",
-      "definition": "*1:2:13",
+      "definition": "1:2:13",
       "variable_type": 0,
-      "all_uses": ["*1:2:13"]
+      "all_uses": ["1:2:13"]
     }]
 }
 */

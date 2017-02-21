@@ -9,8 +9,8 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "*1:1:6",
-      "all_uses": ["*1:1:6"]
+      "definition": "1:1:6",
+      "all_uses": ["1:1:6"]
     }],
   "variables": []
 }

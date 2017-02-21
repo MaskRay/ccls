@@ -11,8 +11,8 @@ OUTPUT:
       "usr": "c:anonymous_function.cc@aN@F@foo#",
       "short_name": "foo",
       "qualified_name": "::foo",
-      "declaration": "*1:2:6",
-      "all_uses": ["*1:2:6"]
+      "declaration": "1:2:6",
+      "all_uses": ["1:2:6"]
     }],
   "variables": []
 }

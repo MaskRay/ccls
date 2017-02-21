@@ -66,8 +66,8 @@ std::string ToString() {
   // 3 => column
 
   std::string result;
-  //if (interesting)
-  result += '*';
+  if (interesting)
+    result += '*';
   result += std::to_string(file_id);
   result += ':';
   result += std::to_string(line);
@@ -488,22 +488,6 @@ std::string ParsingDatabase::ToString() {
     WRITE(funcs);
     WRITE(vars);
     WRITE(all_uses);
-
-    bool wrote_key = false;
-    for (Location usage : def.all_uses) {
-      if (usage.interesting) {
-        if (!wrote_key) {
-          writer.Key("interesting_uses");
-          wrote_key = true;
-          writer.StartArray();
-        }
-
-        Write(writer, nullptr, usage);
-      }
-    }
-    if (wrote_key)
-      writer.EndArray();
-
     writer.EndObject();
   }
   writer.EndArray();

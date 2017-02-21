@@ -20,71 +20,67 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "all_uses": ["*1:1:8", "*1:2:14", "*1:3:9", "*1:7:13"],
-      "interesting_uses": ["*1:2:14", "*1:3:9", "*1:7:13"]
+      "all_uses": ["1:1:8", "*1:2:14", "*1:3:9", "*1:7:13"]
     }, {
       "id": 1,
       "usr": "c:@Foo1",
       "short_name": "Foo1",
       "qualified_name": "Foo1",
-      "definition": "*1:2:7",
+      "definition": "1:2:7",
       "alias_of": 0,
-      "all_uses": ["*1:2:7", "*1:4:14", "*1:8:14"],
-      "interesting_uses": ["*1:4:14", "*1:8:14"]
+      "all_uses": ["1:2:7", "*1:4:14", "*1:8:14"]
     }, {
       "id": 2,
       "usr": "c:type_usage_typedef_and_using.cc@T@Foo2",
       "short_name": "Foo2",
       "qualified_name": "Foo2",
-      "definition": "*1:3:13",
+      "definition": "1:3:13",
       "alias_of": 0,
-      "all_uses": ["*1:3:13", "*1:9:14"],
-      "interesting_uses": ["*1:9:14"]
+      "all_uses": ["1:3:13", "*1:9:14"]
     }, {
       "id": 3,
       "usr": "c:@Foo3",
       "short_name": "Foo3",
       "qualified_name": "Foo3",
-      "definition": "*1:4:7",
+      "definition": "1:4:7",
       "alias_of": 1,
-      "all_uses": ["*1:4:7", "*1:10:14"],
-      "interesting_uses": ["*1:10:14"]
+      "all_uses": ["1:4:7", "*1:10:14"]
     }, {
       "id": 4,
       "usr": "c:@Foo4",
       "short_name": "Foo4",
       "qualified_name": "Foo4",
-      "definition": "*1:5:7",
-      "all_uses": ["*1:5:7"]
+      "definition": "1:5:7",
+      "all_uses": ["1:5:7"]
     }],
   "functions": [{
       "id": 0,
       "usr": "c:@F@accept#*$@S@Foo#",
       "short_name": "accept",
       "qualified_name": "accept",
-      "definition": "*1:7:6",
-      "all_uses": ["*1:7:6"]
+      "definition": "1:7:6",
+      "all_uses": ["1:7:6"]
     }, {
       "id": 1,
       "usr": "c:@F@accept1#**$@S@Foo#",
       "short_name": "accept1",
       "qualified_name": "accept1",
-      "definition": "*1:8:6",
-      "all_uses": ["*1:8:6"]
+      "definition": "1:8:6",
+      "all_uses": ["1:8:6"]
     }, {
       "id": 2,
       "usr": "c:@F@accept2#*$@S@Foo#",
       "short_name": "accept2",
       "qualified_name": "accept2",
-      "definition": "*1:9:6",
-      "all_uses": ["*1:9:6"]
+      "definition": "1:9:6",
+      "all_uses": ["1:9:6"]
     }, {
       "id": 3,
       "usr": "c:@F@accept3#**$@S@Foo#",
       "short_name": "accept3",
       "qualified_name": "accept3",
-      "definition": "*1:10:6",
-      "all_uses": ["*1:10:6"]
+      "definition": "1:10:6",
+      "all_uses": ["1:10:6"]
     }],
   "variables": []
 }

@@ -11,8 +11,8 @@ OUTPUT:
       "usr": "c:@N@hello@F@foo#I#I#",
       "short_name": "foo",
       "qualified_name": "hello::foo",
-      "declaration": "*1:2:6",
-      "all_uses": ["*1:2:6"]
+      "declaration": "1:2:6",
+      "all_uses": ["1:2:6"]
     }],
   "variables": []
 }
