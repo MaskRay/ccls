@@ -1410,7 +1410,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main(int argc, char** argv) {
+int mai2n(int argc, char** argv) {
   /*
   ParsingDatabase db = Parse("tests/vars/function_local.cc");
   std::cout << std::endl << "== Database ==" << std::endl;
