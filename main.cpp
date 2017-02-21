@@ -802,6 +802,8 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
     return false;
 
   switch (container->cursor.kind) {
+  case CXCursor_EnumDecl:
+  case CXCursor_UnionDecl:
   case CXCursor_StructDecl:
   case CXCursor_ClassDecl:
     return true;
@@ -936,6 +938,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     break;
   }
 
+  case CXIdxEntity_EnumConstant:
   case CXIdxEntity_Field:
   case CXIdxEntity_Variable:
   case CXIdxEntity_CXXStaticVariable:
@@ -1115,6 +1118,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     break;
   }
 
+  case CXIdxEntity_Enum:
+  case CXIdxEntity_Union:
   case CXIdxEntity_Struct:
   case CXIdxEntity_CXXClass:
   {
@@ -1143,15 +1148,17 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     // Add type-level inheritance information.
     CXIdxCXXClassDeclInfo const* class_info = clang_index_getCXXClassDeclInfo(decl);
-    for (unsigned int i = 0; i < class_info->numBases; ++i) {
-      const CXIdxBaseClassInfo* base_class = class_info->bases[i];
+    if (class_info) {
+      for (unsigned int i = 0; i < class_info->numBases; ++i) {
+        const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
-      std::optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
-      TypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
-      if (parent_type_id) {
-        TypeDef* parent_type_def = db->Resolve(parent_type_id.value());
-        parent_type_def->derived.push_back(type_id);
-        type_def->parents.push_back(parent_type_id.value());
+        std::optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+        TypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
+        if (parent_type_id) {
+          TypeDef* parent_type_def = db->Resolve(parent_type_id.value());
+          parent_type_def->derived.push_back(type_id);
+          type_def->parents.push_back(parent_type_id.value());
+        }
       }
     }
     break;
@@ -1186,9 +1193,8 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   ParsingDatabase* db = param->db;
   clang::Cursor cursor(ref->cursor);
 
-  // TODO: Index entity call/ctor creation, like Foo().x = 3
-
   switch (ref->referencedEntity->kind) {
+  case CXIdxEntity_EnumConstant:
   case CXIdxEntity_CXXStaticVariable:
   case CXIdxEntity_Variable:
   case CXIdxEntity_Field:
@@ -1255,6 +1261,8 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 
   case CXIdxEntity_Typedef:
   case CXIdxEntity_CXXTypeAlias:
+  case CXIdxEntity_Enum:
+  case CXIdxEntity_Union:
   case CXIdxEntity_Struct:
   case CXIdxEntity_CXXClass:
   {
@@ -1431,7 +1439,7 @@ int main(int argc, char** argv) {
 
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/declaration_vs_definition/class_member_static.cc") continue;
-    //if (path != "tests/usage/type_usage_typedef_and_using_template.cc") continue;
+    //if (path != "tests/enums/enum_class_decl.cc") continue;
     //if (path != "tests/constructors/constructor.cc") continue;
     //if (path == "tests/constructors/destructor.cc") continue;
     //if (path == "tests/usage/func_usage_call_method.cc") continue;
