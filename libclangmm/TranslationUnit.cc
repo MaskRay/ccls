@@ -4,6 +4,7 @@
 #include "Utility.h"
 #include <fstream>
 #include <sstream>
+#include <cassert>
 
 namespace clang {
 
@@ -20,20 +21,24 @@ TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   files[0].Contents = buffer.c_str();
   files[0].Length = buffer.size();
 
-  cx_tu = clang_parseTranslationUnit(index.cx_index, file_path.c_str(), args.data(),
-    args.size(), files, 1, flags);
+  CXErrorCode error_code = clang_parseTranslationUnit2(
+    index.cx_index, file_path.c_str(), args.data(), args.size(), files, 1, flags, &cx_tu);
+  assert(!error_code);
 }
 
 TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
-  const std::vector<std::string> &command_line_args,
-  unsigned flags) {
+  const std::vector<std::string> &command_line_args, unsigned flags) {
+
+  // TODO: only push defines for the time being. Might need to pass more flags.
   std::vector<const char*> args;
-  for (auto &a : command_line_args) {
-    args.push_back(a.c_str());
+  for (const std::string& a : command_line_args) {
+    if (a.size() >= 2 && a[0] == '-' && a[1] == 'D')
+      args.push_back(a.c_str());
   }
 
-  cx_tu = clang_parseTranslationUnit(index.cx_index, file_path.c_str(), args.data(),
-    args.size(), nullptr, 0, flags);
+  CXErrorCode error_code = clang_parseTranslationUnit2(
+    index.cx_index, file_path.c_str(), args.data(), args.size(), nullptr, 0, flags, &cx_tu);
+  assert(!error_code);
 }
 
 TranslationUnit::~TranslationUnit() {

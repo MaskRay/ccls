@@ -67,7 +67,7 @@ public:
   std::vector<Cursor> get_arguments() const;
   bool is_valid_kind() const;
 
-  std::string evaluate() const;
+  //std::string evaluate() const;
 
   std::string get_type_description() const;
   std::string get_comments() const;

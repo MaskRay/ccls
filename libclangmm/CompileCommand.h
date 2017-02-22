@@ -1,17 +1,16 @@
-#ifndef COMPILECOMMAND_H_
-#define COMPILECOMMAND_H_
+#pragma once
+
 #include <clang-c/CXCompilationDatabase.h>
 #include <vector>
 #include <string>
 
 namespace clang {
-  class CompileCommand {
-  public:
-    CompileCommand(const CXCompileCommand& cx_command) : cx_command(cx_command) {};
-    std::string get_command();
-    std::vector<std::string> get_command_as_args();
+class CompileCommand {
+public:
+  CompileCommand(const CXCompileCommand& cx_command);
+  std::string get_command() const;
+  std::vector<std::string> get_command_as_args() const;
 
-    CXCompileCommand cx_command;
-  };
+  CXCompileCommand cx_command;
+};
 }
-#endif  // COMPILECOMMAND_H_

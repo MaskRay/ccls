@@ -211,6 +211,7 @@ std::string Cursor::get_type_description() const {
   return spelling;
 }
 
+#if false
 std::string Cursor::evaluate() const {
   CXEvalResult eval = clang_Cursor_Evaluate(cx_cursor);
 
@@ -293,6 +294,7 @@ std::string Cursor::evaluate() const {
 
 
   }
+#endif
 
 std::string Cursor::get_comments() const {
   Cursor referenced = get_referenced();

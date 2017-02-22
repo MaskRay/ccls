@@ -1,19 +1,19 @@
-#ifndef COMPILECOMMANDS_H_
-#define COMPILECOMMANDS_H_
-#include "CompilationDatabase.h"
-#include "CompileCommand.h"
-#include <clang-c/CXCompilationDatabase.h>
+#pragma once
+
 #include <string>
 #include <vector>
+#include <clang-c/CXCompilationDatabase.h>
+
+#include "CompilationDatabase.h"
+#include "CompileCommand.h"
 
 namespace clang {
-  class CompileCommands {
-  public:
-    CompileCommands(const std::string &filename, CompilationDatabase &db);
-    std::vector<CompileCommand> get_commands();
-    ~CompileCommands();
+class CompileCommands {
+public:
+  CompileCommands(const CompilationDatabase& db);
+  std::vector<CompileCommand> get_commands();
+  ~CompileCommands();
 
-    CXCompileCommands cx_commands;
-  };
+  CXCompileCommands cx_commands;
+};
 }
-#endif  // COMPILECOMMANDS_H_

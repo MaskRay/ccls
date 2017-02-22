@@ -3,10 +3,11 @@
 #include <string>
 #include <iostream>
 
-#include "cxxopts.hpp"
-#include "optional.h"
+#include "compilation_database_loader.h"
 
-using FileId = uint64_t;
+//#include "cxxopts.hpp"
+#include "optional.h"
+#include "indexer.h"
 
 struct FileDatabase {
   std::unordered_map<std::string, FileId> filename_to_file_id;
@@ -29,10 +30,6 @@ struct File {
   // Symbols which have definitions in the file.
   std::vector<SymbolIdx> defined_symbols;
 };
-
-struct TypeDef {};
-struct FuncDef {};
-struct VarDef {};
 
 struct QueryableEntry {
   const char* const str;
@@ -169,36 +166,87 @@ std::istream& operator >> (std::istream& is, Command& obj) {
 // TODO: allow user to decide some indexer choices, ie, do we define
 // TODO: may want to run indexer in separate process to avoid indexer/compiler crashes?
 
+std::unordered_map<std::string, std::string> ParseOptions(int argc, char** argv) {
+  std::unordered_map<std::string, std::string> output;
+
+  std::string previous_arg;
+
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+
+    if (arg[0] != '-') {
+      if (previous_arg.size() == 0) {
+        std::cerr << "Invalid arguments; switches must start with -" << std::endl;
+        exit(1);
+      }
+
+      output[previous_arg] = arg;
+      previous_arg = "";
+    }
+    else {
+      output[arg] = "";
+      previous_arg = arg;
+    }
+  }
+
+  return output;
+}
+
+bool HasOption(const std::unordered_map<std::string, std::string>& options, const std::string& option) {
+  return options.find(option) != options.end();
+}
+
 int main(int argc, char** argv) {
-  // cxxopts throws exceptions... replace/rewrite lib?
-  try {
-    cxxopts::Options options("indexer", "C++ indexer powered by libclang");
+  std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
 
-    options.add_options()
-      ("h,help", "Print help (this output)")
-      ("list-commands", "Print information about the query commands")
-      ("p,project", "Path to compile_commands.json. Needed for the server, and optionally by clients if there are multiple servers running.")
-      ;
+  if (argc == 1 || options.find("--help") != options.end()) {
+    std::cout << R"help(clang-indexer help:
 
-    // Server options.
-    options.add_options("server")
-      ("server", "Flag indicating that the indexer should create an index that can be queried against using separate invocations of this binary (using the --command flag).", cxxopts::value<bool>())
-      ("cache-dir", "Path to cache index. Database cache will be restored if present. If not present, the index will be in-memory only.")
-      ("threads", "Number of threads to use for indexing and querying tasks.")
-      ;
+  General:
+    --help        Print this help information.
+    --help-commands
+                  Print all available query commands.
+    --project     Path to compile_commands.json. Needed for the server, and
+                  optionally by clients if there are multiple servers running.
+    --print-config
+                  Emit all configuration data this executable is using.
+    
 
-    // Client options.
-    options.add_options("client")
-      ("c,command", "Execute a query command against the index. See --command-help. Presence of this flag indicates that the indexer is in client mode.", cxxopts::value<Command>())
-      ("f,file", "File name to run the index query on", cxxopts::value<std::string>())
-      ("l,location", "A symbol location in the active file the query will operate on. Format is line:column, ie, 10:5, for line 10, column 5.", cxxopts::value<std::string>())
-      ("preferred-symbol-location", "When looking up symbols, try to return the either the 'declaration' or the 'definition'. Defaults to 'definition'.", cxxopts::value<PreferredSymbolLocation>())
-      ;
+  Server:
+    --server      If present, this binary will run in server mode. The binary
+                  will not return until killed or an exit is requested. The
+                  server computes and caches an index of the entire program
+                  which is then queried by short-lived client processes. A
+                  client is created by running this binary with a --command
+                  flag.
+    --cache-dir   Directory to cache the index and other useful information. If
+                  a previous cache is present, the database will try to reuse
+                  it. If this flag is not present, the database will be
+                  in-memory only.
+    --threads     Number of threads to use for indexing and querying tasks.
+                  This value is optional; a good estimate is computed by
+                  default.
 
-    options.parse(argc, argv);
+                  
+  Client:
+    --command     Execute a query command against the index. See
+                  --command-help for a listing of valid commands and a
+                  description of what they do. Presence of this flag indicates
+                  that the indexer is in client mode; this flag is mutually
+                  exclusive with --server.
+    --location    Location of the query. Some commands require only a file,
+                  other require a line and column as well. Format is
+                  filename[:line:column]. For example, "foobar.cc" and
+                  "foobar.cc:1:10" are valid inputs.
+    --preferred-symbol-location
+                  When looking up symbols, try to return either the
+                  'declaration' or the 'definition'. Defaults to 'definition'.
+)help";
+    exit(0);
+  }
 
-    if (options.count("list-commands")) {
-      std::cout << R"(Available commands:
+  if (HasOption(options, "--help-commands")) {
+    std::cout << R"(Available commands:
 
   callees:
   callers:
@@ -228,39 +276,28 @@ int main(int argc, char** argv) {
   search:
     Search for a symbol by name.
 )";
-      exit(0);
+    exit(0);
+  }
+
+  if (HasOption(options, "--project")) {
+    std::vector<CompilationEntry> entries = LoadCompilationEntriesFromDirectory(options["--project"]);
+
+
+    std::vector<ParsingDatabase> dbs;
+    for (const CompilationEntry& entry : entries) {
+      std::cout << "Parsing " << entry.filename << std::endl;
+      ParsingDatabase db = Parse(entry.filename, entry.args);
+
+      dbs.emplace_back(db);
+      std::cout << db.ToString() << std::endl << std::endl;
     }
 
-    if (argc == 1 || options.count("help")) {
-      std::cout << options.help({ "", "server", "client" }) << std::endl;
-      exit(0);
-    }
-  }
-  catch (cxxopts::OptionException exc) {
-    fail(exc.what());
+    std::cin.get();
+    exit(0);
   }
 
-  /*
-  std::string command;
-  for (int i = 0; i < argc; ++i) {
-    if (strcmp(argv[i], "--command") == 0) {
-      if ((i + 1) >= argc)
-        fail("missing --command type");
 
-      command = argv[i + 1];
-    }
-  }
-
-  if (command == "")
-    fail("missing --command switch");
-
-
-
-  if (command == "query") {
-
-  }
-
-  std::cout << "Running command " << command;
-  */
+  std::cout << "Invalid arguments. Try --help.";
+  exit(1);
   return 0;
 }

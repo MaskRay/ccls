@@ -1,18 +1,20 @@
-#ifndef COMPILATIONDATABASE_H_
-#define COMPILATIONDATABASE_H_
+#pragma once
 
-#include <clang-c/CXCompilationDatabase.h>
-#include <clang-c/Index.h>
 #include <string>
+#include <clang-c/CXCompilationDatabase.h>
 
 namespace clang {
-  class CompilationDatabase {
-  public:
-    explicit CompilationDatabase(const std::string &project_path);
-    ~CompilationDatabase();
 
-    CXCompilationDatabase cx_db;
-  };
+struct CompilationCommand {
+  std::string path;
+  std::string args;
+};
+
+class CompilationDatabase {
+public:
+  explicit CompilationDatabase(const std::string &project_path);
+  ~CompilationDatabase();
+
+  CXCompilationDatabase cx_db;
+};
 }
-
-#endif  // COMPILATIONDATABASE_H_
