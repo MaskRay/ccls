@@ -1,27 +1,46 @@
 cmake_minimum_required (VERSION 3.3.1)
 
+#
+# Project configuration
+#
 project (SuperClangIndex)
+set(CMAKE_CXX_STANDARD 11)
+file(GLOB SOURCE_FILES *.cc *.cpp libclangmm/*.cc)
+find_program(llvm_config llvm-config-3.8)
 
-set (CMAKE_CXX_STANDARD 11)
-#set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
-file (GLOB SOURCE_FILES *.cc *.cpp)
+#
+# Find clang library and include directories
+#
+execute_process(
+  COMMAND ${llvm_config} --includedir
+  OUTPUT_VARIABLE LIBCLANG_INCLUDEDIR)
+string(STRIP "${LIBCLANG_INCLUDEDIR}" LIBCLANG_INCLUDEDIR)
 
-include_directories("${PROJECT_SOURCE_DIR}/third_party")
+execute_process(
+  COMMAND ${llvm_config} --libdir
+  OUTPUT_VARIABLE LIBCLANG_LIBDIR)
+string(STRIP "${LIBCLANG_LIBDIR}" LIBCLANG_LIBDIR)
+
+find_library(LIBCLANG_LIBRARIES NAMES libclang clang
+                                PATHS ${LIBCLANG_LIBDIR})
+
+#
+# Debugging
+#
+#message("SOURCE_FILES:        " ${SOURCE_FILES} )
+#message("LIBCLANG_INCLUDEDIR: " ${LIBCLANG_INCLUDEDIR})
+#message("LIBCLANG_LIBDIR:     " ${LIBCLANG_LIBDIR})
+#message("LIBCLANG_LIBRARIES:  " ${LIBCLANG_LIBRARIES})
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
+
+
+#
+# Setup output binary.
+#
+include_directories("${PROJECT_SOURCE_DIR}/third_party/rapidjson/include")
+include_directories("${LIBCLANG_INCLUDEDIR}")
 
 add_executable (indexer ${SOURCE_FILES})
-
-find_program (llvm_config llvm-config)
-
-set (llvm_param --libdir)
-message (${llvm_config})
-execute_process (
-  COMMAND ${llvm_config} ${llvm_param}
-  OUTPUT_VARIABLE libclang_libdir)
-
-message ("Using libclang at " ${libclang_libdir})
-
-#find_package (clang COMPONENTS REQUIRED libclang)
-#ind_package (libclang REQUIRED)
-#target_link_libraries (indexer ${libclang})
-
+target_link_libraries(indexer ${LIBCLANG_LIBRARIES})
