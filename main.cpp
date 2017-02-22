@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <optional>
 #include <iostream>
 #include <cstdint>
 #include <cassert>
@@ -11,6 +10,7 @@
 
 #include "bitfield.h"
 #include "utils.h"
+#include "optional.h"
 
 #include <rapidjson/writer.h>
 #include <rapidjson/prettywriter.h>
@@ -22,6 +22,7 @@ struct FuncDef;
 struct VarDef;
 
 using FileId = int64_t;
+using namespace std::experimental;
 
 
 // TODO: Move off of this weird wrapper, use struct with custom wrappers
@@ -182,11 +183,11 @@ struct TypeDef {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  std::optional<Location> definition;
+  optional<Location> definition;
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
-  std::optional<TypeId> alias_of;
+  optional<TypeId> alias_of;
 
   // Immediate parent and immediate derived types.
   std::vector<TypeId> parents;
@@ -231,13 +232,13 @@ struct FuncDef {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  std::optional<Location> declaration;
-  std::optional<Location> definition;
+  optional<Location> declaration;
+  optional<Location> definition;
 
   // Type which declares this one (ie, it is a method)
-  std::optional<TypeId> declaring_type;
+  optional<TypeId> declaring_type;
   // Method this method overrides.
-  std::optional<FuncId> base;
+  optional<FuncId> base;
   // Methods which directly override this one.
   std::vector<FuncId> derived;
 
@@ -270,16 +271,16 @@ struct VarDef {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  std::optional<Location> declaration;
+  optional<Location> declaration;
   // TODO: definitions should be a list of locations, since there can be more
   //       than one.
-  std::optional<Location> definition;
+  optional<Location> definition;
 
   // Type of the variable.
-  std::optional<TypeId> variable_type;
+  optional<TypeId> variable_type;
 
   // Type which declares this one (ie, it is a method)
-  std::optional<TypeId> declaring_type;
+  optional<TypeId> declaring_type;
 
   // Usages.
   std::vector<Location> uses;
@@ -385,7 +386,7 @@ void Write(Writer& writer, const char* key, Location location) {
   writer.String(s.c_str());
 }
 
-void Write(Writer& writer, const char* key, std::optional<Location> location) {
+void Write(Writer& writer, const char* key, optional<Location> location) {
   if (location) {
     Write(writer, key, location.value());
   }
@@ -413,7 +414,7 @@ void Write(Writer& writer, const char* key, LocalId<T> id) {
 }
 
 template<typename T>
-void Write(Writer& writer, const char* key, std::optional<LocalId<T>> id) {
+void Write(Writer& writer, const char* key, optional<LocalId<T>> id) {
   if (id) {
     Write(writer, key, id.value());
   }
@@ -640,7 +641,7 @@ void Dump(clang::Cursor cursor) {
 
 struct FindChildOfKindParam {
   CXCursorKind target_kind;
-  std::optional<clang::Cursor> result;
+  optional<clang::Cursor> result;
 
   FindChildOfKindParam(CXCursorKind target_kind) : target_kind(target_kind) {}
 };
@@ -654,7 +655,7 @@ clang::VisiterResult FindChildOfKindVisitor(clang::Cursor cursor, clang::Cursor 
   return clang::VisiterResult::Recurse;
 }
 
-std::optional<clang::Cursor> FindChildOfKind(clang::Cursor cursor, CXCursorKind kind) {
+optional<clang::Cursor> FindChildOfKind(clang::Cursor cursor, CXCursorKind kind) {
   FindChildOfKindParam param(kind);
   cursor.VisitChildren(&FindChildOfKindVisitor, &param);
   return param.result;
@@ -664,7 +665,7 @@ std::optional<clang::Cursor> FindChildOfKind(clang::Cursor cursor, CXCursorKind 
 
 
 
-clang::VisiterResult FindTypeVisitor(clang::Cursor cursor, clang::Cursor parent, std::optional<clang::Cursor>* result) {
+clang::VisiterResult FindTypeVisitor(clang::Cursor cursor, clang::Cursor parent, optional<clang::Cursor>* result) {
   switch (cursor.get_kind()) {
   case CXCursor_TypeRef:
   case CXCursor_TemplateRef:
@@ -675,8 +676,8 @@ clang::VisiterResult FindTypeVisitor(clang::Cursor cursor, clang::Cursor parent,
   return clang::VisiterResult::Recurse;
 }
 
-std::optional<clang::Cursor> FindType(clang::Cursor cursor) {
-  std::optional<clang::Cursor> result;
+optional<clang::Cursor> FindType(clang::Cursor cursor) {
+  optional<clang::Cursor> result;
   cursor.VisitChildren(&FindTypeVisitor, &result);
   return result;
 }
@@ -765,8 +766,8 @@ struct VisitDeclForTypeUsageParam {
   ParsingDatabase* db;
   bool is_interesting;
   int has_processed_any = false;
-  std::optional<clang::Cursor> previous_cursor;
-  std::optional<TypeId> initial_type;
+  optional<clang::Cursor> previous_cursor;
+  optional<TypeId> initial_type;
 
   VisitDeclForTypeUsageParam(ParsingDatabase* db, bool is_interesting)
     : db(db), is_interesting(is_interesting) {}
@@ -815,7 +816,7 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(clang::Cursor cursor, clang::C
   return clang::VisiterResult::Continue;
 }
 
-std::optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_cursor,
+optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_cursor,
   bool is_interesting, const CXIdxContainerInfo* semantic_container,
   const CXIdxContainerInfo* lexical_container) {
   //
@@ -843,7 +844,7 @@ std::optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_
   // out-of-line w.r.t. the parent type.
   //
   //  S1* Foo::foo() {}
-  // 
+  //
   // The above example looks like this in the AST:
   //
   //  CXXMethod foo
@@ -922,7 +923,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // interesting reference for parameter declarations - that is handled when
     // the function declaration is encountered since we won't receive ParmDecl
     // declarations for unnamed parameters.
-    std::optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+    optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
     if (var_type.has_value())
       var_def->variable_type = var_type.value();
 
@@ -1047,7 +1048,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     }
 
     /*
-    std::optional<FuncId> base;
+    optional<FuncId> base;
     std::vector<FuncId> derived;
     std::vector<VarId> locals;
     std::vector<FuncRef> callers;
@@ -1060,7 +1061,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_Typedef:
   case CXIdxEntity_CXXTypeAlias:
   {
-    std::optional<TypeId> alias_of = ResolveDeclToType(db, decl->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+    optional<TypeId> alias_of = ResolveDeclToType(db, decl->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     TypeDef* type_def = db->Resolve(type_id);
@@ -1123,7 +1124,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       for (unsigned int i = 0; i < class_info->numBases; ++i) {
         const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
-        std::optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+        optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
         TypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
         if (parent_type_id) {
           TypeDef* parent_type_def = db->Resolve(parent_type_id.value());
@@ -1449,7 +1450,7 @@ int mai2n(int argc, char** argv) {
     std::cout << "[START] " << path << std::endl;
     ParsingDatabase db = Parse(path);
     std::string actual_output = db.ToString();
-    
+
     //WriteToFile("output.json", actual_output);
     //break;
 

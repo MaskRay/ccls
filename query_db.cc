@@ -1,10 +1,10 @@
 #include <cstdint>
-#include <optional>
 #include <unordered_map>
 #include <string>
 #include <iostream>
 
 #include "cxxopts.hpp"
+#include "optional.h"
 
 using FileId = uint64_t;
 
@@ -166,7 +166,7 @@ std::istream& operator >> (std::istream& is, Command& obj) {
 // TODO: allow user to store configuration as json? file in home dir; also
 //       allow local overrides (scan up dirs)
 // TODO: add opt to dump config when starting (--dump-config)
-// TODO: allow user to decide some indexer choices, ie, do we define 
+// TODO: allow user to decide some indexer choices, ie, do we define
 // TODO: may want to run indexer in separate process to avoid indexer/compiler crashes?
 
 int main(int argc, char** argv) {
