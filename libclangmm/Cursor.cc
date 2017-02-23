@@ -46,9 +46,11 @@ std::string Type::get_spelling() const {
   return ToString(clang_getTypeSpelling(cx_type));
 }
 
+/*
 SourceLocation Cursor::get_source_location() const {
   return SourceLocation(clang_getCursorLocation(cx_cursor));
 }
+*/
 
 Type Type::get_return_type() const {
   return Type(clang_getResultType(cx_type));

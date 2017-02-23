@@ -1,7 +1,6 @@
 #ifndef SOURCERANGE_H_
 #define SOURCERANGE_H_
 #include <clang-c/Index.h>
-#include "SourceLocation.h"
 #include <string>
 #include <utility>
 

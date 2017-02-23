@@ -6,7 +6,6 @@
 #include <type_traits>
 
 #include <clang-c/Index.h>
-#include "SourceLocation.h"
 #include "SourceRange.h"
 
 
@@ -51,7 +50,7 @@ public:
 
   CXCursorKind get_kind() const;
   Type get_type() const;
-  SourceLocation get_source_location() const;
+  //SourceLocation get_source_location() const;
   //SourceRange get_source_range() const;
   std::string get_spelling() const;
   std::string get_display_name() const;
