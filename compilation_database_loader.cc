@@ -13,7 +13,6 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
     exit(1);
   }
 
-
   CXCompileCommands cx_commands = clang_CompilationDatabase_getAllCompileCommands(cx_db);
 
   unsigned int num_commands = clang_CompileCommands_getSize(cx_commands);

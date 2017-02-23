@@ -1,5 +1,6 @@
 #include "utils.h"
 
+#include <iostream>
 #include <fstream>
 
 #include "tinydir.h"
@@ -65,4 +66,10 @@ void ParseTestExpectation(std::string filename, std::string* expected_output) {
     if (line == "OUTPUT:")
       in_output = true;
   }
+}
+
+
+void Fail(const std::string& message) {
+  std::cerr << "Fatal error: " << message << std::endl;
+  std::exit(1);
 }

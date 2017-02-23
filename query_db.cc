@@ -24,7 +24,7 @@ struct SymbolIdx {
   };
 };
 
-struct File {
+struct QueryableFile {
   // Symbols declared in the file.
   std::vector<SymbolIdx> declared_symbols;
   // Symbols which have definitions in the file.
@@ -37,7 +37,7 @@ struct QueryableEntry {
 
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
-struct QueryDatabase {
+struct QueryableDatabase {
   // Indicies between lookup vectors are related to symbols, ie, index 5 in
   // |qualified_names| matches index 5 in |symbols|.
   std::vector<QueryableEntry> qualified_names;
@@ -51,7 +51,7 @@ struct QueryDatabase {
   // |files| is indexed by FileId. Retrieve a FileId from a path using
   // |file_locator|.
   FileDatabase file_locator;
-  std::vector<File> files;
+  std::vector<QueryableFile> files;
 };
 
 
@@ -91,27 +91,45 @@ struct Query {
 
 };
 
-void fail(const std::string& message) {
-  std::cerr << "Fatal error: " << message << std::endl;
-  std::exit(1);
-}
 
+struct CachedIndexedFile {
+  // Path to the file indexed.
+  std::string path;
+  
+  // Full in-memory storage for the index. Empty if not loaded into memory.
+  // |path| can be used to fetch the index from disk.
+  optional<rapidjson::Document> index;
+};
+
+struct DocumentDiff {
+
+};
+// Compute a diff between |original| and |updated|.
+//rapidjson::Document DiffIndex(rapidjson::Document original, rapidjson::Document updated) {
+
+//}
+
+
+
+// NOTE: If updating this enum, make sure to also update the parser and the
+//       help text.
 enum class PreferredSymbolLocation {
   Declaration,
   Definition
 };
-std::istream& operator >> (std::istream& is, PreferredSymbolLocation& obj) {
-  std::string content;
-  is >> content;
 
-  if (content == "declaration")
-    obj = PreferredSymbolLocation::Declaration;
-  else if (content == "definition")
-    obj = PreferredSymbolLocation::Definition;
-  else
-    is.setstate(std::ios::failbit);
+bool ParsePreferredSymbolLocation(const std::string& content, PreferredSymbolLocation* obj) {
+#define PARSE_AS(name, string)      \
+  if (content == #string) {         \
+    *obj = name;                    \
+    return true;                    \
+  }
 
-  return is;
+  PARSE_AS(PreferredSymbolLocation::Declaration, "declaration");
+  PARSE_AS(PreferredSymbolLocation::Definition, "definition");
+
+  return false;
+#undef PARSE_AS
 }
 
 // NOTE: If updating this enum, make sure to also update the parser and the
@@ -127,34 +145,24 @@ enum class Command {
   Search
 };
 
-//std::ostream& operator<<(std::ostream& os, const Command& obj) {
-  // write obj to stream
-//  return os;
-//}
-std::istream& operator >> (std::istream& is, Command& obj) {
-  std::string content;
-  is >> content;
+bool ParseCommand(const std::string& content, Command* obj) {
+#define PARSE_AS(name, string)      \
+  if (content == #string) {         \
+    *obj = name;                    \
+    return true;                    \
+  }
 
-  if (content == "callees")
-    obj = Command::Callees;
-  else if (content == "callers")
-    obj = Command::Callers;
-  else if (content == "find-all-usages")
-    obj = Command::FindAllUsages;
-  else if (content == "find-interesting-usages")
-    obj = Command::FindInterestingUsages;
-  else if (content == "goto-referenced")
-    obj = Command::GotoReferenced;
-  else if (content == "hierarchy")
-    obj = Command::Hierarchy;
-  else if (content == "outline")
-    obj = Command::Outline;
-  else if (content == "search")
-    obj = Command::Search;
-  else
-    is.setstate(std::ios::failbit);
+  PARSE_AS(Command::Callees, "callees");
+  PARSE_AS(Command::Callers, "callers");
+  PARSE_AS(Command::FindAllUsages, "find-all-usages");
+  PARSE_AS(Command::FindInterestingUsages, "find-interesting-usages");
+  PARSE_AS(Command::GotoReferenced, "goto-referenced");
+  PARSE_AS(Command::Hierarchy, "hierarchy");
+  PARSE_AS(Command::Outline, "outline");
+  PARSE_AS(Command::Search, "search");
 
-  return is;
+  return false;
+#undef PARSE_AS
 }
 
 // TODO: I think we can run libclang multiple times in one process. So we might
@@ -196,7 +204,7 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options, cons
   return options.find(option) != options.end();
 }
 
-int main(int argc, char** argv) {
+int main2(int argc, char** argv) {
   std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
 
   if (argc == 1 || options.find("--help") != options.end()) {
@@ -283,10 +291,10 @@ int main(int argc, char** argv) {
     std::vector<CompilationEntry> entries = LoadCompilationEntriesFromDirectory(options["--project"]);
 
 
-    std::vector<ParsingDatabase> dbs;
+    std::vector<IndexedFile> dbs;
     for (const CompilationEntry& entry : entries) {
       std::cout << "Parsing " << entry.filename << std::endl;
-      ParsingDatabase db = Parse(entry.filename, entry.args);
+      IndexedFile db = Parse(entry.filename, entry.args);
 
       dbs.emplace_back(db);
       std::cout << db.ToString() << std::endl << std::endl;
@@ -296,6 +304,13 @@ int main(int argc, char** argv) {
     exit(0);
   }
 
+  if (HasOption(options, "--command")) {
+    Command command;
+    if (!ParseCommand(options["--command"], &command))
+      Fail("Unknown command \"" + options["--command"] + "\"; see --help-commands");
+
+
+  }
 
   std::cout << "Invalid arguments. Try --help.";
   exit(1);

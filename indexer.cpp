@@ -1,59 +1,59 @@
 #include "indexer.h"
 
-ParsingDatabase::ParsingDatabase() {}
+IndexedFile::IndexedFile() {}
 
 // TODO: Optimize for const char*?
-TypeId ParsingDatabase::ToTypeId(const std::string& usr) {
+TypeId IndexedFile::ToTypeId(const std::string& usr) {
   auto it = usr_to_type_id.find(usr);
   if (it != usr_to_type_id.end())
     return it->second;
 
   TypeId id(types.size());
-  types.push_back(TypeDef(id, usr));
+  types.push_back(IndexedTypeDef(id, usr));
   usr_to_type_id[usr] = id;
   return id;
 }
-FuncId ParsingDatabase::ToFuncId(const std::string& usr) {
+FuncId IndexedFile::ToFuncId(const std::string& usr) {
   auto it = usr_to_func_id.find(usr);
   if (it != usr_to_func_id.end())
     return it->second;
 
   FuncId id(funcs.size());
-  funcs.push_back(FuncDef(id, usr));
+  funcs.push_back(IndexedFuncDef(id, usr));
   usr_to_func_id[usr] = id;
   return id;
 }
-VarId ParsingDatabase::ToVarId(const std::string& usr) {
+VarId IndexedFile::ToVarId(const std::string& usr) {
   auto it = usr_to_var_id.find(usr);
   if (it != usr_to_var_id.end())
     return it->second;
 
   VarId id(vars.size());
-  vars.push_back(VarDef(id, usr));
+  vars.push_back(IndexedVarDef(id, usr));
   usr_to_var_id[usr] = id;
   return id;
 }
 
-TypeId ParsingDatabase::ToTypeId(const CXCursor& cursor) {
+TypeId IndexedFile::ToTypeId(const CXCursor& cursor) {
   return ToTypeId(clang::Cursor(cursor).get_usr());
 }
 
-FuncId ParsingDatabase::ToFuncId(const CXCursor& cursor) {
+FuncId IndexedFile::ToFuncId(const CXCursor& cursor) {
   return ToFuncId(clang::Cursor(cursor).get_usr());
 }
 
-VarId ParsingDatabase::ToVarId(const CXCursor& cursor) {
+VarId IndexedFile::ToVarId(const CXCursor& cursor) {
   return ToVarId(clang::Cursor(cursor).get_usr());
 }
 
 
-TypeDef* ParsingDatabase::Resolve(TypeId id) {
+IndexedTypeDef* IndexedFile::Resolve(TypeId id) {
   return &types[id.local_id];
 }
-FuncDef* ParsingDatabase::Resolve(FuncId id) {
+IndexedFuncDef* IndexedFile::Resolve(FuncId id) {
   return &funcs[id.local_id];
 }
-VarDef* ParsingDatabase::Resolve(VarId id) {
+IndexedVarDef* IndexedFile::Resolve(VarId id) {
   return &vars[id.local_id];
 }
 
@@ -148,7 +148,7 @@ void Write(Writer& writer, const char* key, uint64_t value) {
   writer.Uint64(value);
 }
 
-std::string ParsingDatabase::ToString() {
+std::string IndexedFile::ToString() {
   auto it = usr_to_type_id.find("");
   if (it != usr_to_type_id.end()) {
     Resolve(it->second)->short_name = "<fundamental>";
@@ -168,7 +168,7 @@ std::string ParsingDatabase::ToString() {
   // Types
   writer.Key("types");
   writer.StartArray();
-  for (TypeDef& def : types) {
+  for (IndexedTypeDef& def : types) {
     if (def.is_system_def) continue;
 
     writer.StartObject();
@@ -191,7 +191,7 @@ std::string ParsingDatabase::ToString() {
   // Functions
   writer.Key("functions");
   writer.StartArray();
-  for (FuncDef& def : funcs) {
+  for (IndexedFuncDef& def : funcs) {
     if (def.is_system_def) continue;
 
     writer.StartObject();
@@ -215,7 +215,7 @@ std::string ParsingDatabase::ToString() {
   // Variables
   writer.Key("variables");
   writer.StartArray();
-  for (VarDef& def : vars) {
+  for (IndexedVarDef& def : vars) {
     if (def.is_system_def) continue;
 
     writer.StartObject();
@@ -404,7 +404,7 @@ struct NamespaceHelper {
 };
 
 struct IndexParam {
-  ParsingDatabase* db;
+  IndexedFile* db;
   NamespaceHelper* ns;
 
   // Record the last type usage location we recorded. Clang will sometimes
@@ -413,7 +413,7 @@ struct IndexParam {
   Location last_type_usage_location;
   Location last_func_usage_location;
 
-  IndexParam(ParsingDatabase* db, NamespaceHelper* ns) : db(db), ns(ns) {}
+  IndexParam(IndexedFile* db, NamespaceHelper* ns) : db(db), ns(ns) {}
 };
 
 /*
@@ -443,19 +443,19 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
 
 
 struct VisitDeclForTypeUsageParam {
-  ParsingDatabase* db;
+  IndexedFile* db;
   bool is_interesting;
   int has_processed_any = false;
   optional<clang::Cursor> previous_cursor;
   optional<TypeId> initial_type;
 
-  VisitDeclForTypeUsageParam(ParsingDatabase* db, bool is_interesting)
+  VisitDeclForTypeUsageParam(IndexedFile* db, bool is_interesting)
     : db(db), is_interesting(is_interesting) {}
 };
 
 void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeUsageParam* param) {
   param->has_processed_any = true;
-  ParsingDatabase* db = param->db;
+  IndexedFile* db = param->db;
 
   // TODO: Something in STL (type_traits)? reports an empty USR.
   std::string referenced_usr = cursor.get_referenced().get_usr();
@@ -467,7 +467,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
     param->initial_type = ref_type_id;
 
   if (param->is_interesting) {
-    TypeDef* ref_type_def = db->Resolve(ref_type_id);
+    IndexedTypeDef* ref_type_def = db->Resolve(ref_type_id);
     Location loc = db->file_db.Resolve(cursor, true /*interesting*/);
     ref_type_def->AddUsage(loc);
   }
@@ -496,7 +496,7 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(clang::Cursor cursor, clang::C
   return clang::VisiterResult::Continue;
 }
 
-optional<TypeId> ResolveDeclToType(ParsingDatabase* db, clang::Cursor decl_cursor,
+optional<TypeId> ResolveDeclToType(IndexedFile* db, clang::Cursor decl_cursor,
   bool is_interesting, const CXIdxContainerInfo* semantic_container,
   const CXIdxContainerInfo* lexical_container) {
   //
@@ -563,7 +563,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   bool is_system_def = clang_Location_isInSystemHeader(clang_getCursorLocation(decl->cursor));
 
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  ParsingDatabase* db = param->db;
+  IndexedFile* db = param->db;
   NamespaceHelper* ns = param->ns;
 
   switch (decl->entityInfo->kind) {
@@ -580,7 +580,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   {
     clang::Cursor decl_cursor = decl->cursor;
     VarId var_id = db->ToVarId(decl->entityInfo->USR);
-    VarDef* var_def = db->Resolve(var_id);
+    IndexedVarDef* var_def = db->Resolve(var_id);
 
     var_def->is_system_def = is_system_def;
 
@@ -610,7 +610,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
-      TypeDef* declaring_type_def = db->Resolve(declaring_type_id);
+      IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
       var_def->declaring_type = declaring_type_id;
       declaring_type_def->vars.push_back(var_id);
     }
@@ -627,7 +627,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   {
     clang::Cursor decl_cursor = decl->cursor;
     FuncId func_id = db->ToFuncId(decl->entityInfo->USR);
-    FuncDef* func_def = db->Resolve(func_id);
+    IndexedFuncDef* func_def = db->Resolve(func_id);
 
     func_def->is_system_def = is_system_def;
 
@@ -653,7 +653,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // be one of those in the entire program.
     if (IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
-      TypeDef* declaring_type_def = db->Resolve(declaring_type_id);
+      IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
       func_def->declaring_type = declaring_type_id;
 
       // Mark a type reference at the ctor/dtor location.
@@ -716,7 +716,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         for (unsigned int i = 0; i < num_overridden; ++i) {
           clang::Cursor parent = overridden[i];
           FuncId parent_id = db->ToFuncId(parent.get_usr());
-          FuncDef* parent_def = db->Resolve(parent_id);
+          IndexedFuncDef* parent_def = db->Resolve(parent_id);
           func_def = db->Resolve(func_id); // ToFuncId invalidated func_def
 
           func_def->base = parent_id;
@@ -744,7 +744,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     optional<TypeId> alias_of = ResolveDeclToType(db, decl->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-    TypeDef* type_def = db->Resolve(type_id);
+    IndexedTypeDef* type_def = db->Resolve(type_id);
 
     type_def->is_system_def = is_system_def;
 
@@ -766,7 +766,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_CXXClass:
   {
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-    TypeDef* type_def = db->Resolve(type_id);
+    IndexedTypeDef* type_def = db->Resolve(type_id);
 
     type_def->is_system_def = is_system_def;
 
@@ -805,9 +805,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
         optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
-        TypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
+        IndexedTypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
         if (parent_type_id) {
-          TypeDef* parent_type_def = db->Resolve(parent_type_id.value());
+          IndexedTypeDef* parent_type_def = db->Resolve(parent_type_id.value());
           parent_type_def->derived.push_back(type_id);
           type_def->parents.push_back(parent_type_id.value());
         }
@@ -842,7 +842,7 @@ bool IsFunction(CXCursorKind kind) {
 
 void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  ParsingDatabase* db = param->db;
+  IndexedFile* db = param->db;
   clang::Cursor cursor(ref->cursor);
 
   switch (ref->referencedEntity->kind) {
@@ -852,7 +852,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_Field:
   {
     VarId var_id = db->ToVarId(ref->referencedEntity->cursor);
-    VarDef* var_def = db->Resolve(var_id);
+    IndexedVarDef* var_def = db->Resolve(var_id);
     var_def->uses.push_back(db->file_db.Resolve(ref->loc, false /*interesting*/));
     break;
   }
@@ -883,15 +883,15 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     FuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
     if (IsFunction(ref->container->cursor.kind)) {
       FuncId caller_id = db->ToFuncId(ref->container->cursor);
-      FuncDef* caller_def = db->Resolve(caller_id);
-      FuncDef* called_def = db->Resolve(called_id);
+      IndexedFuncDef* caller_def = db->Resolve(caller_id);
+      IndexedFuncDef* called_def = db->Resolve(called_id);
 
       caller_def->callees.push_back(FuncRef(called_id, loc));
       called_def->callers.push_back(FuncRef(caller_id, loc));
       called_def->uses.push_back(loc);
     }
     else {
-      FuncDef* called_def = db->Resolve(called_id);
+      IndexedFuncDef* called_def = db->Resolve(called_id);
       called_def->uses.push_back(loc);
     }
 
@@ -906,9 +906,9 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
       Location parent_loc = db->file_db.Resolve(ref->parentEntity->cursor, true /*interesting*/);
       Location our_loc = db->file_db.Resolve(ref->loc, true /*is_interesting*/);
       if (!parent_loc.IsEqualTo(our_loc)) {
-        FuncDef* called_def = db->Resolve(called_id);
+        IndexedFuncDef* called_def = db->Resolve(called_id);
         assert(called_def->declaring_type.has_value());
-        TypeDef* type_def = db->Resolve(called_def->declaring_type.value());
+        IndexedTypeDef* type_def = db->Resolve(called_def->declaring_type.value());
         type_def->AddUsage(our_loc);
       }
     }
@@ -923,7 +923,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_CXXClass:
   {
     TypeId referenced_id = db->ToTypeId(ref->referencedEntity->USR);
-    TypeDef* referenced_def = db->Resolve(referenced_id);
+    IndexedTypeDef* referenced_def = db->Resolve(referenced_id);
 
     //
     // The following will generate two TypeRefs to Foo, both located at the
@@ -964,7 +964,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 static bool DUMP_AST = true;
 
 
-ParsingDatabase Parse(std::string filename, std::vector<std::string> args) {
+IndexedFile Parse(std::string filename, std::vector<std::string> args) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
@@ -987,7 +987,7 @@ ParsingDatabase Parse(std::string filename, std::vector<std::string> args) {
     */
   };
 
-  ParsingDatabase db;
+  IndexedFile db;
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
@@ -1089,7 +1089,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int mai2n(int argc, char** argv) {
+int main(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -1128,7 +1128,7 @@ int mai2n(int argc, char** argv) {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    ParsingDatabase db = Parse(path, {});
+    IndexedFile db = Parse(path, {});
     std::string actual_output = db.ToString();
 
     //WriteToFile("output.json", actual_output);

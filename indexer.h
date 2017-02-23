@@ -80,11 +80,11 @@ Location WithInteresting(bool interesting) {
 
 END_BITFIELD_TYPE()
 
-struct FileDb {
+struct IndexedFileDb {
   std::unordered_map<std::string, FileId> file_path_to_file_id;
   std::unordered_map<FileId, std::string> file_id_to_file_path;
 
-  FileDb() {
+  IndexedFileDb() {
     // Reserve id 0 for unfound.
     file_path_to_file_id[""] = 0;
     file_id_to_file_path[0] = "";
@@ -167,7 +167,7 @@ using VarRef = Ref<VarDef>;
 // TODO: Either eliminate the defs created as a by-product of cross-referencing,
 //       or do not emit things we don't have definitions for.
 
-struct TypeDef {
+struct IndexedTypeDef {
   bool is_system_def = false;
 
   // General metadata.
@@ -204,7 +204,7 @@ struct TypeDef {
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Location> uses;
 
-  TypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
+  IndexedTypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
     //std::cout << "Creating type with usr " << usr << std::endl;
   }
@@ -226,7 +226,7 @@ struct TypeDef {
   }
 };
 
-struct FuncDef {
+struct IndexedFuncDef {
   bool is_system_def = false;
 
   // General metadata.
@@ -260,12 +260,12 @@ struct FuncDef {
   // All usages. For interesting usages, see callees.
   std::vector<Location> uses;
 
-  FuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
+  IndexedFuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
   }
 };
 
-struct VarDef {
+struct IndexedVarDef {
   bool is_system_def = false;
 
   // General metadata.
@@ -287,26 +287,26 @@ struct VarDef {
   // Usages.
   std::vector<Location> uses;
 
-  VarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
+  IndexedVarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
   }
 };
 
 
-struct ParsingDatabase {
+struct IndexedFile {
   // NOTE: Every Id is resolved to a file_id of 0. The correct file_id needs
   //       to get fixed up when inserting into the real db.
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
   std::unordered_map<std::string, VarId> usr_to_var_id;
 
-  std::vector<TypeDef> types;
-  std::vector<FuncDef> funcs;
-  std::vector<VarDef> vars;
+  std::vector<IndexedTypeDef> types;
+  std::vector<IndexedFuncDef> funcs;
+  std::vector<IndexedVarDef> vars;
 
-  FileDb file_db;
+  IndexedFileDb file_db;
 
-  ParsingDatabase();
+  IndexedFile();
 
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);
@@ -315,11 +315,11 @@ struct ParsingDatabase {
   FuncId ToFuncId(const CXCursor& usr);
   VarId ToVarId(const CXCursor& usr);
 
-  TypeDef* Resolve(TypeId id);
-  FuncDef* Resolve(FuncId id);
-  VarDef* Resolve(VarId id);
+  IndexedTypeDef* Resolve(TypeId id);
+  IndexedFuncDef* Resolve(FuncId id);
+  IndexedVarDef* Resolve(VarId id);
 
   std::string ToString();
 };
 
-ParsingDatabase Parse(std::string filename, std::vector<std::string> args);
+IndexedFile Parse(std::string filename, std::vector<std::string> args);
