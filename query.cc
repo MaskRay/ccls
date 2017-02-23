@@ -4,8 +4,6 @@
 #include <iostream>
 
 #include "compilation_database_loader.h"
-
-//#include "cxxopts.hpp"
 #include "optional.h"
 #include "indexer.h"
 
