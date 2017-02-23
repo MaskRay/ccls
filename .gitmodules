@@ -1,3 +1,6 @@
 [submodule "third_party/rapidjson"]
 	path = third_party/rapidjson
 	url = https://github.com/miloyip/rapidjson
+[submodule "third_party/tiny-process-library"]
+	path = third_party/tiny-process-library
+	url = https://github.com/eidheim/tiny-process-library/

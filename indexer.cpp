@@ -913,7 +913,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main(int argc, char** argv) {
+int main3(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*

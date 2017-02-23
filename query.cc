@@ -1,3 +1,5 @@
+#include "query.h"
+
 #include <cstdint>
 #include <unordered_map>
 #include <string>
@@ -54,37 +56,6 @@ struct QueryableDatabase {
 
 
 
-
-// Task running in a separate process, parsing a file into something we can
-// import.
-struct ParseTask {};
-// Completed parse task that wants to import content into the global database.
-// Runs in main process, primary thread. Stops all other threads.
-struct IndexImportTask {};
-// Completed parse task that wants to update content previously imported into
-// the global database. Runs in main process, primary thread. Stops all other
-// threads.
-//
-// Note that this task just contains a set of operations to apply to the global
-// database. The operations come from a diff based on the previously indexed
-// state in comparison to the newly indexed state.
-//
-// TODO: We may be able to run multiple freshen and import tasks in parallel if
-//       we restrict what ranges of the db they may change.
-struct IndexFreshenTask {};
-// Task running a query against the global database. Run in main process,
-// separate thread.
-struct QueryTask {};
-
-
-// NOTE: When something enters a value into master db, it will have to have a
-//       ref count, since multiple parsings could enter it (unless we require
-//       that it be defined in that declaration unit!)
-struct TaskManager {
-
-};
-
-
 struct Query {
 
 };
@@ -109,12 +80,6 @@ struct DocumentDiff {
 
 
 
-// NOTE: If updating this enum, make sure to also update the parser and the
-//       help text.
-enum class PreferredSymbolLocation {
-  Declaration,
-  Definition
-};
 
 bool ParsePreferredSymbolLocation(const std::string& content, PreferredSymbolLocation* obj) {
 #define PARSE_AS(name, string)      \
@@ -129,19 +94,6 @@ bool ParsePreferredSymbolLocation(const std::string& content, PreferredSymbolLoc
   return false;
 #undef PARSE_AS
 }
-
-// NOTE: If updating this enum, make sure to also update the parser and the
-//       help text.
-enum class Command {
-  Callees,
-  Callers,
-  FindAllUsages,
-  FindInterestingUsages,
-  GotoReferenced,
-  Hierarchy,
-  Outline,
-  Search
-};
 
 bool ParseCommand(const std::string& content, Command* obj) {
 #define PARSE_AS(name, string)      \
