@@ -1,5 +1,7 @@
 #include "indexer.h"
 
+#include "serializer.h"
+
 IndexedFile::IndexedFile() {}
 
 // TODO: Optimize for const char*?
@@ -57,195 +59,17 @@ IndexedVarDef* IndexedFile::Resolve(VarId id) {
   return &vars[id.local_id];
 }
 
-
-using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
-
-void Write(Writer& writer, const char* key, Location location) {
-  if (key) writer.Key(key);
-  std::string s = location.ToString();
-  writer.String(s.c_str());
-}
-
-void Write(Writer& writer, const char* key, optional<Location> location) {
-  if (location) {
-    Write(writer, key, location.value());
-  }
-  //else {
-  //  if (key) writer.Key(key);
-  //  writer.Null();
-  //}
-}
-
-void Write(Writer& writer, const char* key, const std::vector<Location>& locs) {
-  if (locs.size() == 0)
-    return;
-
-  if (key) writer.Key(key);
-  writer.StartArray();
-  for (const Location& loc : locs)
-    Write(writer, nullptr, loc);
-  writer.EndArray();
-}
-
-template<typename T>
-void Write(Writer& writer, const char* key, LocalId<T> id) {
-  if (key) writer.Key(key);
-  writer.Uint64(id.local_id);
-}
-
-template<typename T>
-void Write(Writer& writer, const char* key, optional<LocalId<T>> id) {
-  if (id) {
-    Write(writer, key, id.value());
-  }
-  //else {
-  //  if (key) writer.Key(key);
-  //  writer.Null();
-  //}
-}
-
-template<typename T>
-void Write(Writer& writer, const char* key, const std::vector<LocalId<T>>& ids) {
-  if (ids.size() == 0)
-    return;
-
-  if (key) writer.Key(key);
-  writer.StartArray();
-  for (LocalId<T> id : ids)
-    Write(writer, nullptr, id);
-  writer.EndArray();
-}
-
-template<typename T>
-void Write(Writer& writer, const char* key, Ref<T> ref) {
-  if (key) writer.Key(key);
-  std::string s = std::to_string(ref.id.local_id) + "@" + ref.loc.ToString();
-  writer.String(s.c_str());
-}
-
-template<typename T>
-void Write(Writer& writer, const char* key, const std::vector<Ref<T>>& refs) {
-  if (refs.size() == 0)
-    return;
-
-  if (key) writer.Key(key);
-  writer.StartArray();
-  for (Ref<T> ref : refs)
-    Write(writer, nullptr, ref);
-  writer.EndArray();
-}
-
-void Write(Writer& writer, const char* key, const std::string& value) {
-  if (value.size() == 0)
-    return;
-
-  if (key) writer.Key(key);
-  writer.String(value.c_str());
-}
-
-void Write(Writer& writer, const char* key, uint64_t value) {
-  if (key) writer.Key(key);
-  writer.Uint64(value);
-}
-
 std::string IndexedFile::ToString() {
-  auto it = usr_to_type_id.find("");
-  if (it != usr_to_type_id.end()) {
-    Resolve(it->second)->short_name = "<fundamental>";
-    assert(Resolve(it->second)->uses.size() == 0);
-  }
-
-#define WRITE(name) Write(writer, #name, def.name)
-
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   writer.SetFormatOptions(
     rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
 
-  writer.StartObject();
-
-  // Types
-  writer.Key("types");
-  writer.StartArray();
-  for (IndexedTypeDef& def : types) {
-    if (def.is_system_def) continue;
-
-    writer.StartObject();
-    WRITE(id);
-    WRITE(usr);
-    WRITE(short_name);
-    WRITE(qualified_name);
-    WRITE(definition);
-    WRITE(alias_of);
-    WRITE(parents);
-    WRITE(derived);
-    WRITE(types);
-    WRITE(funcs);
-    WRITE(vars);
-    WRITE(uses);
-    writer.EndObject();
-  }
-  writer.EndArray();
-
-  // Functions
-  writer.Key("functions");
-  writer.StartArray();
-  for (IndexedFuncDef& def : funcs) {
-    if (def.is_system_def) continue;
-
-    writer.StartObject();
-    WRITE(id);
-    WRITE(usr);
-    WRITE(short_name);
-    WRITE(qualified_name);
-    WRITE(declaration);
-    WRITE(definition);
-    WRITE(declaring_type);
-    WRITE(base);
-    WRITE(derived);
-    WRITE(locals);
-    WRITE(callers);
-    WRITE(callees);
-    WRITE(uses);
-    writer.EndObject();
-  }
-  writer.EndArray();
-
-  // Variables
-  writer.Key("variables");
-  writer.StartArray();
-  for (IndexedVarDef& def : vars) {
-    if (def.is_system_def) continue;
-
-    writer.StartObject();
-    WRITE(id);
-    WRITE(usr);
-    WRITE(short_name);
-    WRITE(qualified_name);
-    WRITE(declaration);
-    WRITE(definition);
-    WRITE(variable_type);
-    WRITE(declaring_type);
-    WRITE(uses);
-    writer.EndObject();
-  }
-  writer.EndArray();
-
-  writer.EndObject();
+  Serialize(writer, this);
 
   return output.GetString();
-
-#undef WRITE
 }
-
-struct FileDef {
-  uint64_t id;
-  std::string path;
-  std::vector<TypeDef> types;
-  std::vector<FuncDef> funcs;
-  std::vector<VarDef> vars;
-};
 
 
 
