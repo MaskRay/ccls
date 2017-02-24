@@ -24,6 +24,55 @@ struct SymbolIdx {
   };
 };
 
+template<typename T>
+struct TrackContributors {
+  std::vector<T> values;
+  std::vector<FileId> contributors;
+};
+
+// See comments in IndexedTypeDef for variable descriptions.
+struct QueryableTypeDef {
+  TypeId id;
+  std::string short_name;
+  std::string qualified_name;
+  optional<Location> definition;
+  optional<TypeId> alias_of;
+  std::vector<TypeId> parents;
+  TrackContributors<TypeId> derived;
+  std::vector<TypeId> types;
+  std::vector<FuncId> funcs;
+  std::vector<VarId> vars;
+  TrackContributors<Location> uses;
+};
+
+// See comments in IndexedFuncDef for variable descriptions.
+struct QueryableFuncDef {
+  FuncId id;
+  std::string short_name;
+  std::string qualified_name;
+  TrackContributors<Location> declarations;
+  optional<Location> definition;
+  optional<TypeId> declaring_type;
+  optional<FuncId> base;
+  TrackContributors<FuncId> derived;
+  std::vector<VarId> locals;
+  TrackContributors<FuncRef> callers;
+  std::vector<FuncRef> callees;
+  TrackContributors<Location> uses;
+};
+
+// See comments in IndexedVarDef for variable descriptions.
+struct QueryableVarDef {
+  VarId id;
+  std::string short_name;
+  std::string qualified_name;
+  TrackContributors<Location> declaration;
+  optional<Location> definition;
+  optional<TypeId> variable_type;
+  optional<TypeId> declaring_type;
+  TrackContributors<Location> uses;
+};
+
 struct QueryableFile {
   // Symbols declared in the file.
   std::vector<SymbolIdx> declared_symbols;
@@ -44,9 +93,9 @@ struct QueryableDatabase {
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage.
-  std::vector<TypeDef> types;
-  std::vector<FuncDef> funcs;
-  std::vector<VarDef> vars;
+  std::vector<QueryableTypeDef> types;
+  std::vector<QueryableFuncDef> funcs;
+  std::vector<QueryableVarDef> vars;
 
   // |files| is indexed by FileId. Retrieve a FileId from a path using
   // |file_locator|.

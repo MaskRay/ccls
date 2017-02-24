@@ -8,82 +8,107 @@
 
 #include "third_party/tiny-process-library/process.hpp"
 
-struct BaseTask {
+#include <queue>
+#include <mutex>
+#include <condition_variable>
+
+// A threadsafe-queue. http://stackoverflow.com/a/16075550
+template <class T>
+class SafeQueue {
+public:
+  // Add an element to the queue.
+  void enqueue(T t) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    queue_.push(t);
+    cv_.notify_one();
+  }
+
+  // Get the "front"-element.
+  // If the queue is empty, wait till a element is avaiable.
+  T dequeue() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    while (queue_.empty()) {
+      // release lock as long as the wait and reaquire it afterwards.
+      cv_.wait(lock);
+    }
+    T val = queue_.front();
+    queue_.pop();
+    return val;
+  }
+
+private:
+  std::queue<T> queue_;
+  mutable std::mutex mutex_;
+  std::condition_variable cv_;
+};
+
+struct Task {
   int priority = 0;
   bool writes_to_index = false;
-};
+  bool should_exit = false;
 
-// Task running in a separate process, parsing a file into something we can
-// import.
-struct IndexCreateTask : public BaseTask {
-  IndexCreateTask() {
-    writes_to_index = true;
-  }
-};
-
-// Completed parse task that wants to import content into the global database.
-// Runs in main process, primary thread. Stops all other threads.
-struct IndexImportTask : public BaseTask {
-  IndexImportTask() {
-    writes_to_index = true;
-  }
-};
-
-// Completed parse task that wants to update content previously imported into
-// the global database. Runs in main process, primary thread. Stops all other
-// threads.
-//
-// Note that this task just contains a set of operations to apply to the global
-// database. The operations come from a diff based on the previously indexed
-// state in comparison to the newly indexed state.
-//
-// TODO: We may be able to run multiple freshen and import tasks in parallel if
-//       we restrict what ranges of the db they may change.
-struct IndexFreshenTask : public BaseTask {
-  IndexFreshenTask() {
-    writes_to_index = true;
-  }
-};
-
-// Task running a query against the global database. Run in main process,
-// separate thread.
-struct QueryTask : public BaseTask {
-  QueryTask() {
-    writes_to_index = false;
+  static Task MakeExit() {
+    Task task;
+    task.should_exit = true;
+    return task;
   }
 
+  // TODO: Create index task.
+  // Task running in a separate process, parsing a file into something we can
+  // import.
+
+  // TODO: Index import task.
+  // Completed parse task that wants to import content into the global database.
+  // Runs in main process, primary thread. Stops all other threads.
+
+  // TODO: Index fresh task.
+  // Completed parse task that wants to update content previously imported into
+  // the global database. Runs in main process, primary thread. Stops all other
+  // threads.
+  //
+  // Note that this task just contains a set of operations to apply to the global
+  // database. The operations come from a diff based on the previously indexed
+  // state in comparison to the newly indexed state.
+  //
+  // TODO: We may be able to run multiple freshen and import tasks in parallel if
+  //       we restrict what ranges of the db they may change.
+
+  // TODO: QueryTask
+  // Task running a query against the global database. Run in main process,
+  // separate thread.
   Command query;
   Location location;
   std::string argument;
 };
 
-
 // NOTE: When something enters a value into master db, it will have to have a
 //       ref count, since multiple parsings could enter it (unless we require
 //       that it be defined in that declaration unit!)
 struct TaskManager {
-  // Tasks that are currently executing.
-  std::vector<BaseTask> running;
-  std::vector<BaseTask> pending;
+  SafeQueue<Task> queued_tasks;
 
   // Available threads.
   std::vector<std::thread> threads;
-  std::condition_variable wakeup_thread;
-  std::mutex mutex;
 
   TaskManager(int num_threads);
 };
 
-static void ThreadMain(int id, std::condition_variable* waiter, std::mutex* mutex) {
-  std::unique_lock<std::mutex> lock(*mutex);
-  waiter->wait(lock);
+static void ThreadMain(int id, TaskManager* tm) {
+  while (true) {
+    Task task = tm->queued_tasks.dequeue();
+    if (task.should_exit) {
+      std::cout << id << ": Exiting" << std::endl;
+      return;
+    }
 
-  std::cout << id << ": running in thread main" << std::endl;
+    std::cout << id << ": waking" << std::endl;
+  }
+
 }
 
 TaskManager::TaskManager(int num_threads) {
   for (int i = 0; i < num_threads; ++i) {
-    threads.push_back(std::thread(&ThreadMain, i, &wakeup_thread, &mutex));
+    threads.push_back(std::thread(&ThreadMain, i, this));
   }
 }
 
@@ -91,8 +116,8 @@ void Pump(TaskManager* tm) {
   //tm->threads[0].
 }
 
-int main(int argc, char** argv) {
-  TaskManager tm(10);
+int main4(int argc, char** argv) {
+  TaskManager tm(5);
 
   // TODO: looks like we will have to write shared memory support.
 
@@ -100,8 +125,8 @@ int main(int argc, char** argv) {
   //       Repeat until we encounter a writer, wait for all threads to signal
   //       they are done.
   // TODO: Let's use a thread safe queue/vector/etc instead.
-  tm.wakeup_thread.notify_one();
-  tm.wakeup_thread.notify_one();
+  for (int i = 0; i < 10; ++i)
+    tm.queued_tasks.enqueue(Task::MakeExit());
 
   for (std::thread& thread : tm.threads)
     thread.join();

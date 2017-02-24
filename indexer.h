@@ -19,13 +19,12 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/document.h>
 
-struct TypeDef;
-struct FuncDef;
-struct VarDef;
+struct IndexedTypeDef;
+struct IndexedFuncDef;
+struct IndexedVarDef;
 
 using FileId = int64_t;
 using namespace std::experimental;
-
 
 // TODO: Move off of this weird wrapper, use struct with custom wrappers
 //       directly.
@@ -145,9 +144,9 @@ bool operator==(const LocalId<T>& a, const LocalId<T>& b) {
   return a.local_id == b.local_id;
 }
 
-using TypeId = LocalId<TypeDef>;
-using FuncId = LocalId<FuncDef>;
-using VarId = LocalId<VarDef>;
+using TypeId = LocalId<IndexedTypeDef>;
+using FuncId = LocalId<IndexedFuncDef>;
+using VarId = LocalId<IndexedVarDef>;
 
 
 template<typename T>
@@ -157,9 +156,9 @@ struct Ref {
 
   Ref(LocalId<T> id, Location loc) : id(id), loc(loc) {}
 };
-using TypeRef = Ref<TypeDef>;
-using FuncRef = Ref<FuncDef>;
-using VarRef = Ref<VarDef>;
+using TypeRef = Ref<IndexedTypeDef>;
+using FuncRef = Ref<IndexedFuncDef>;
+using VarRef = Ref<IndexedVarDef>;
 
 
 // TODO: skip as much forward-processing as possible when |is_system_def| is
@@ -204,26 +203,8 @@ struct IndexedTypeDef {
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Location> uses;
 
-  IndexedTypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
-    assert(usr.size() > 0);
-    //std::cout << "Creating type with usr " << usr << std::endl;
-  }
-
-  void AddUsage(Location loc, bool insert_if_not_present = true) {
-    if (is_system_def)
-      return;
-
-    for (int i = uses.size() - 1; i >= 0; --i) {
-      if (uses[i].IsEqualTo(loc)) {
-        if (loc.interesting)
-          uses[i].interesting = true;
-        return;
-      }
-    }
-
-    if (insert_if_not_present)
-      uses.push_back(loc);
-  }
+  IndexedTypeDef(TypeId id, const std::string& usr);
+  void AddUsage(Location loc, bool insert_if_not_present = true);
 };
 
 struct IndexedFuncDef {
@@ -320,6 +301,32 @@ struct IndexedFile {
   IndexedVarDef* Resolve(VarId id);
 
   std::string ToString();
+};
+
+
+
+// TODO: Maybe instead of clearing/adding diffs, we should just clear out the
+//       entire previous index and readd the new one? That would be simpler.
+// TODO: ^^^ I don't think we can do this. It will probably stall the main
+//       indexer for far too long since we will have to iterate over tons of
+//       data.
+struct IndexedTypeDefDiff {};
+struct IndexedFuncDefDiff {};
+struct IndexedVarDefDiff {};
+
+struct IndexedFileDiff {
+  std::vector<IndexedTypeDefDiff> removed_types;
+  std::vector<IndexedFuncDefDiff> removed_funcs;
+  std::vector<IndexedVarDefDiff> removed_vars;
+
+  std::vector<IndexedTypeDefDiff> added_types;
+  std::vector<IndexedFuncDefDiff> added_funcs;
+  std::vector<IndexedVarDefDiff> added_vars;
+
+  // TODO: Instead of change, maybe we just remove and then add again? not sure.
+  std::vector<IndexedTypeDefDiff> changed_types;
+  std::vector<IndexedFuncDefDiff> changed_funcs;
+  std::vector<IndexedVarDefDiff> changed_vars;
 };
 
 IndexedFile Parse(std::string filename, std::vector<std::string> args);

@@ -2,6 +2,115 @@
 
 #include "indexer.h"
 
+#if false
+template<typename T>
+void Emit(Reader& a, const char* key, T& v) {
+  static_assert(false); // Must be specialized.
+}
+template<typename T>
+void Emit(Writer& a, const char* key, T& v) {
+  static_assert(false); // Must be specialized.
+}
+
+template<>
+void Emit(Reader& r, const char* key, int& v) {
+  v = r[key].GetInt();
+}
+
+template<>
+void Emit(Writer& w, const char* key, int &v) {
+  w.Key(key);
+  w.Int(v);
+}
+
+void StartObject(Reader& r) {}
+void StartObject(Writer& w) {
+  w.StartObject();
+}
+
+void EndObject(Reader& r) {}
+void EndObject(Writer& w) {
+  w.EndObject();
+}
+
+void StartArray(Reader& r) {}
+void StartArray(Writer& w) {
+  w.StartArray();
+}
+
+void EndArray(Reader& r) {}
+void EndArray(Writer& w) {
+  w.EndArray();
+}
+
+struct Object {
+  //Location l;
+  int a = 0, b = 0, c = 0;
+};
+
+/*
+void EmitKey(Reader& r, const char* key) {
+  w.Key(key);
+}
+void EmitKey(Writer& w, const char* key) {
+  w = w[key];
+}
+*/
+
+template<typename S>
+void Serialize(S& stream, Object& obj) {
+  StartObject(stream);
+  Emit(stream, "a", obj.a);
+  Emit(stream, "b", obj.b);
+  Emit(stream, "b", obj.c);
+  EndObject(stream);
+}
+
+/*
+template <typename C, typename T>
+C& operator&(C& stream, T& t) {
+t.serialize(stream);
+}
+*/
+
+int main(int argc, char** argv) {
+
+  rapidjson::StringBuffer output;
+  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
+  writer.SetFormatOptions(
+    rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+  writer.SetIndent(' ', 2);
+
+  Object foo;
+  foo.a = 10;
+  Serialize(writer, foo);
+  std::cout << output.GetString() << std::endl;
+
+  std::cout << "----" << std::endl;
+
+  rapidjson::Document doc;
+  //doc = doc["foo"];
+  doc.Parse(output.GetString());
+  Object foo2;
+  Serialize(doc, foo2);
+
+  std::cin.get();
+  //Reader r;
+  //foo.Serialize(r);
+
+  return 0;
+}
+#endif
+
+
+
+
+
+
+
+
+
+
 void Serialize(Writer& writer, const char* key, Location location) {
   if (key) writer.Key(key);
   std::string s = location.ToString();

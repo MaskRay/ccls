@@ -71,7 +71,26 @@ std::string IndexedFile::ToString() {
   return output.GetString();
 }
 
+IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
+  assert(usr.size() > 0);
+  //std::cout << "Creating type with usr " << usr << std::endl;
+}
 
+void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present = true) {
+  if (is_system_def)
+    return;
+
+  for (int i = uses.size() - 1; i >= 0; --i) {
+    if (uses[i].IsEqualTo(loc)) {
+      if (loc.interesting)
+        uses[i].interesting = true;
+      return;
+    }
+  }
+
+  if (insert_if_not_present)
+    uses.push_back(loc);
+}
 
 
 template<typename T>
@@ -725,7 +744,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     // the same, this is most likely an implicit ctors.
     clang::Cursor ref_cursor = ref->cursor;
     if (ref->referencedEntity->kind == CXIdxEntity_CXXConstructor ||
-        ref->referencedEntity->kind == CXIdxEntity_CXXDestructor) {
+      ref->referencedEntity->kind == CXIdxEntity_CXXDestructor) {
 
       Location parent_loc = db->file_db.Resolve(ref->parentEntity->cursor, true /*interesting*/);
       Location our_loc = db->file_db.Resolve(ref->loc, true /*is_interesting*/);
