@@ -24,7 +24,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "qualified_name": "accept",
-      "declaration": "1:5:6",
+      "declarations": ["1:5:6"],
       "callers": ["1@1:8:3"],
       "uses": ["1:5:6", "1:8:3"]
     }, {

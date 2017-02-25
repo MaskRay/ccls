@@ -128,7 +128,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
-      "declaration": "1:65:23",
+      "declarations": ["1:65:23"],
       "definition": "1:79:26",
       "declaring_type": 3,
       "uses": ["1:65:23", "1:79:26"]

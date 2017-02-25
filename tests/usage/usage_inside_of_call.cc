@@ -31,7 +31,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
-      "declaration": "1:1:6",
+      "declarations": ["1:1:6"],
       "callers": ["2@1:14:3"],
       "uses": ["1:1:6", "1:14:3"]
     }, {
@@ -39,7 +39,7 @@ OUTPUT:
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "qualified_name": "gen",
-      "declaration": "1:3:5",
+      "declarations": ["1:3:5"],
       "callers": ["2@1:14:14"],
       "uses": ["1:3:5", "1:14:14"]
     }, {

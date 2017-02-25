@@ -24,53 +24,57 @@ struct SymbolIdx {
   };
 };
 
-template<typename T>
-struct TrackContributors {
-  std::vector<T> values;
-  std::vector<FileId> contributors;
+
+
+// There are two sources of reindex updates: the (single) definition of a
+// symbol has changed, or one of many users of the symbol has changed.
+//
+// For simplicitly, if the single definition has changed, we update all of the
+// associated single-owner definition data. See |Update*DefId|.
+//
+// If one of the many symbol users submits an update, we store the update such
+// that it can be merged with other updates before actually being applied to
+// the main database. See |MergeableUpdate|.
+
+template<typename TId, typename TValue>
+struct MergeableUpdate {
+  // The type/func/var which is getting new usages.
+  TId id;
+  // Entries to add and remove.
+  std::vector<TValue> to_add;
+  std::vector<TValue> to_remove;
 };
 
-// See comments in IndexedTypeDef for variable descriptions.
 struct QueryableTypeDef {
-  TypeId id;
-  std::string short_name;
-  std::string qualified_name;
-  optional<Location> definition;
-  optional<TypeId> alias_of;
-  std::vector<TypeId> parents;
-  TrackContributors<TypeId> derived;
-  std::vector<TypeId> types;
-  std::vector<FuncId> funcs;
-  std::vector<VarId> vars;
-  TrackContributors<Location> uses;
+  TypeDefDefinitionData def;
+  std::vector<TypeId> derived;
+  std::vector<Location> uses;
+
+  using DefUpdate = TypeDefDefinitionData;
+  using DerivedUpdate = MergeableUpdate<TypeId, TypeId>;
+  using UsesUpdate = MergeableUpdate<TypeId, Location>;
 };
 
-// See comments in IndexedFuncDef for variable descriptions.
 struct QueryableFuncDef {
-  FuncId id;
-  std::string short_name;
-  std::string qualified_name;
-  TrackContributors<Location> declarations;
-  optional<Location> definition;
-  optional<TypeId> declaring_type;
-  optional<FuncId> base;
-  TrackContributors<FuncId> derived;
-  std::vector<VarId> locals;
-  TrackContributors<FuncRef> callers;
-  std::vector<FuncRef> callees;
-  TrackContributors<Location> uses;
+  FuncDefDefinitionData def;
+  std::vector<Location> declarations;
+  std::vector<FuncId> derived;
+  std::vector<FuncRef> callers;
+  std::vector<Location> uses;
+
+  using DefUpdate = FuncDefDefinitionData;
+  using DeclarationsUpdate = MergeableUpdate<FuncId, Location>;
+  using DerivedUpdate = MergeableUpdate<FuncId, FuncId>;
+  using CallersUpdate = MergeableUpdate<FuncId, FuncRef>;
+  using UsesUpdate = MergeableUpdate<FuncId, Location>;
 };
 
-// See comments in IndexedVarDef for variable descriptions.
 struct QueryableVarDef {
-  VarId id;
-  std::string short_name;
-  std::string qualified_name;
-  TrackContributors<Location> declaration;
-  optional<Location> definition;
-  optional<TypeId> variable_type;
-  optional<TypeId> declaring_type;
-  TrackContributors<Location> uses;
+  VarDefDefinitionData def;
+  std::vector<Location> uses;
+
+  using DefUpdate = VarDefDefinitionData;
+  using UsesUpdate = MergeableUpdate<VarId, Location>;
 };
 
 struct QueryableFile {

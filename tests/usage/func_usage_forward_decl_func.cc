@@ -12,7 +12,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": "1:1:6",
+      "declarations": ["1:1:6"],
       "callers": ["1@1:4:3"],
       "uses": ["1:1:6", "1:4:3"]
     }, {

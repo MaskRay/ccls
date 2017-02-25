@@ -32,7 +32,7 @@ OUTPUT:
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "qualified_name": "Root::foo",
-      "declaration": "1:2:16",
+      "declarations": ["1:2:16"],
       "declaring_type": 0,
       "derived": [1],
       "uses": ["1:2:16"]

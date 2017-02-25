@@ -34,7 +34,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "qualified_name": "accept",
-      "declaration": "1:7:6",
+      "declarations": ["1:7:6"],
       "callers": ["2@1:14:3", "2@1:15:3", "2@1:17:3"],
       "uses": ["1:7:6", "1:14:3", "1:15:3", "1:17:3"]
     }, {
@@ -42,7 +42,7 @@ OUTPUT:
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "qualified_name": "accept",
-      "declaration": "1:8:6",
+      "declarations": ["1:8:6"],
       "callers": ["2@1:16:3"],
       "uses": ["1:8:6", "1:16:3"]
     }, {

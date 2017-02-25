@@ -193,11 +193,11 @@ void Serialize(Writer& writer, const char* key, uint64_t value) {
 void Serialize(Writer& writer, IndexedFile* file) {
   auto it = file->usr_to_type_id.find("");
   if (it != file->usr_to_type_id.end()) {
-    file->Resolve(it->second)->short_name = "<fundamental>";
+    file->Resolve(it->second)->def.short_name = "<fundamental>";
     assert(file->Resolve(it->second)->uses.size() == 0);
   }
 
-#define SERIALIZE(name) Serialize(writer, #name, def.name)
+#define SERIALIZE(name, value) Serialize(writer, name, def.value)
 
   writer.StartObject();
 
@@ -208,18 +208,18 @@ void Serialize(Writer& writer, IndexedFile* file) {
     if (def.is_system_def) continue;
 
     writer.StartObject();
-    SERIALIZE(id);
-    SERIALIZE(usr);
-    SERIALIZE(short_name);
-    SERIALIZE(qualified_name);
-    SERIALIZE(definition);
-    SERIALIZE(alias_of);
-    SERIALIZE(parents);
-    SERIALIZE(derived);
-    SERIALIZE(types);
-    SERIALIZE(funcs);
-    SERIALIZE(vars);
-    SERIALIZE(uses);
+    SERIALIZE("id", def.id);
+    SERIALIZE("usr", def.usr);
+    SERIALIZE("short_name", def.short_name);
+    SERIALIZE("qualified_name", def.qualified_name);
+    SERIALIZE("definition", def.definition);
+    SERIALIZE("alias_of", def.alias_of);
+    SERIALIZE("parents", def.parents);
+    SERIALIZE("derived", derived);
+    SERIALIZE("types", def.types);
+    SERIALIZE("funcs", def.funcs);
+    SERIALIZE("vars", def.vars);
+    SERIALIZE("uses", uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -231,19 +231,19 @@ void Serialize(Writer& writer, IndexedFile* file) {
     if (def.is_system_def) continue;
 
     writer.StartObject();
-    SERIALIZE(id);
-    SERIALIZE(usr);
-    SERIALIZE(short_name);
-    SERIALIZE(qualified_name);
-    SERIALIZE(declaration);
-    SERIALIZE(definition);
-    SERIALIZE(declaring_type);
-    SERIALIZE(base);
-    SERIALIZE(derived);
-    SERIALIZE(locals);
-    SERIALIZE(callers);
-    SERIALIZE(callees);
-    SERIALIZE(uses);
+    SERIALIZE("id", def.id);
+    SERIALIZE("usr", def.usr);
+    SERIALIZE("short_name", def.short_name);
+    SERIALIZE("qualified_name", def.qualified_name);
+    SERIALIZE("declarations", declarations);
+    SERIALIZE("definition", def.definition);
+    SERIALIZE("declaring_type", def.declaring_type);
+    SERIALIZE("base", def.base);
+    SERIALIZE("derived", derived);
+    SERIALIZE("locals", def.locals);
+    SERIALIZE("callers", callers);
+    SERIALIZE("callees", def.callees);
+    SERIALIZE("uses", uses);
     writer.EndObject();
   }
   writer.EndArray();
@@ -255,15 +255,15 @@ void Serialize(Writer& writer, IndexedFile* file) {
     if (def.is_system_def) continue;
 
     writer.StartObject();
-    SERIALIZE(id);
-    SERIALIZE(usr);
-    SERIALIZE(short_name);
-    SERIALIZE(qualified_name);
-    SERIALIZE(declaration);
-    SERIALIZE(definition);
-    SERIALIZE(variable_type);
-    SERIALIZE(declaring_type);
-    SERIALIZE(uses);
+    SERIALIZE("id", def.id);
+    SERIALIZE("usr", def.usr);
+    SERIALIZE("short_name", def.short_name);
+    SERIALIZE("qualified_name", def.qualified_name);
+    SERIALIZE("declaration", def.declaration);
+    SERIALIZE("definition", def.definition);
+    SERIALIZE("variable_type", def.variable_type);
+    SERIALIZE("declaring_type", def.declaring_type);
+    SERIALIZE("uses", uses);
     writer.EndObject();
   }
   writer.EndArray();

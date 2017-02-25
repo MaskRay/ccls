@@ -15,7 +15,7 @@ OUTPUT:
       "usr": "c:@FT@>1#Taccept#t0.0#v#",
       "short_name": "accept",
       "qualified_name": "accept",
-      "declaration": "1:2:6",
+      "declarations": ["1:2:6"],
       "callers": ["1@1:5:3", "1@1:6:3"],
       "uses": ["1:2:6", "1:5:3", "1:6:3"]
     }, {

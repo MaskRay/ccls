@@ -26,7 +26,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "qualified_name": "Foo::make",
-      "declaration": "1:2:8",
+      "declarations": ["1:2:8"],
       "definition": "1:5:11",
       "declaring_type": 0,
       "uses": ["1:2:8", "1:5:11"]

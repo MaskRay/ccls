@@ -71,12 +71,12 @@ std::string IndexedFile::ToString() {
   return output.GetString();
 }
 
-IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : id(id), usr(usr) {
+IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : def(id, usr) {
   assert(usr.size() > 0);
   //std::cout << "Creating type with usr " << usr << std::endl;
 }
 
-void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present = true) {
+void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present) {
   if (is_system_def)
     return;
 
@@ -430,15 +430,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     // TODO: Verify this gets called multiple times
     //if (!decl->isRedeclaration) {
-    var_def->short_name = decl->entityInfo->name;
-    var_def->qualified_name = ns->QualifiedName(decl->semanticContainer, var_def->short_name);
+    var_def->def.short_name = decl->entityInfo->name;
+    var_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
     //}
 
     Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
     if (decl->isDefinition)
-      var_def->definition = decl_loc;
+      var_def->def.definition = decl_loc;
     else
-      var_def->declaration = decl_loc;
+      var_def->def.declaration = decl_loc;
     var_def->uses.push_back(decl_loc);
 
 
@@ -448,14 +448,14 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // declarations for unnamed parameters.
     optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
     if (var_type.has_value())
-      var_def->variable_type = var_type.value();
+      var_def->def.variable_type = var_type.value();
 
 
     if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
       IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
-      var_def->declaring_type = declaring_type_id;
-      declaring_type_def->vars.push_back(var_id);
+      var_def->def.declaring_type = declaring_type_id;
+      declaring_type_def->def.vars.push_back(var_id);
     }
 
     break;
@@ -476,15 +476,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     //if (!decl->isRedeclaration) {
-    func_def->short_name = decl->entityInfo->name;
-    func_def->qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->short_name);
+    func_def->def.short_name = decl->entityInfo->name;
+    func_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->def.short_name);
     //}
 
     Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
     if (decl->isDefinition)
-      func_def->definition = decl_loc;
+      func_def->def.definition = decl_loc;
     else
-      func_def->declaration = decl_loc;
+      func_def->declarations.push_back(decl_loc);
     func_def->uses.push_back(decl_loc);
 
     bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
@@ -497,7 +497,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     if (IsTypeDefinition(decl->semanticContainer)) {
       TypeId declaring_type_id = db->ToTypeId(decl->semanticContainer->cursor);
       IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
-      func_def->declaring_type = declaring_type_id;
+      func_def->def.declaring_type = declaring_type_id;
 
       // Mark a type reference at the ctor/dtor location.
       // TODO: Should it be interesting?
@@ -507,8 +507,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       }
 
       // Register function in declaring type if it hasn't been registered yet.
-      if (!Contains(declaring_type_def->funcs, func_id))
-        declaring_type_def->funcs.push_back(func_id);
+      if (!Contains(declaring_type_def->def.funcs, func_id))
+        declaring_type_def->def.funcs.push_back(func_id);
     }
 
 
@@ -562,7 +562,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           IndexedFuncDef* parent_def = db->Resolve(parent_id);
           func_def = db->Resolve(func_id); // ToFuncId invalidated func_def
 
-          func_def->base = parent_id;
+          func_def->def.base = parent_id;
           parent_def->derived.push_back(func_id);
         }
 
@@ -592,13 +592,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     type_def->is_system_def = is_system_def;
 
     if (alias_of)
-      type_def->alias_of = alias_of.value();
+      type_def->def.alias_of = alias_of.value();
 
-    type_def->short_name = decl->entityInfo->name;
-    type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
+    type_def->def.short_name = decl->entityInfo->name;
+    type_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
 
     Location decl_loc = db->file_db.Resolve(decl->loc, true /*interesting*/);
-    type_def->definition = decl_loc.WithInteresting(false);
+    type_def->def.definition = decl_loc.WithInteresting(false);
     type_def->AddUsage(decl_loc);
     break;
   }
@@ -620,19 +620,19 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // name can be null in an anonymous struct (see tests/types/anonymous_struct.cc).
     if (decl->entityInfo->name) {
       ns->RegisterQualifiedName(decl->entityInfo->USR, decl->semanticContainer, decl->entityInfo->name);
-      type_def->short_name = decl->entityInfo->name;
+      type_def->def.short_name = decl->entityInfo->name;
     }
     else {
-      type_def->short_name = "<anonymous>";
+      type_def->def.short_name = "<anonymous>";
     }
 
-    type_def->qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->short_name);
+    type_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
 
     // }
 
     assert(decl->isDefinition);
     Location decl_loc = db->file_db.Resolve(decl->loc, true /*interesting*/);
-    type_def->definition = decl_loc.WithInteresting(false);
+    type_def->def.definition = decl_loc.WithInteresting(false);
     type_def->AddUsage(decl_loc);
 
     //type_def->alias_of
@@ -652,7 +652,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         if (parent_type_id) {
           IndexedTypeDef* parent_type_def = db->Resolve(parent_type_id.value());
           parent_type_def->derived.push_back(type_id);
-          type_def->parents.push_back(parent_type_id.value());
+          type_def->def.parents.push_back(parent_type_id.value());
         }
       }
     }
@@ -729,7 +729,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
       IndexedFuncDef* caller_def = db->Resolve(caller_id);
       IndexedFuncDef* called_def = db->Resolve(called_id);
 
-      caller_def->callees.push_back(FuncRef(called_id, loc));
+      caller_def->def.callees.push_back(FuncRef(called_id, loc));
       called_def->callers.push_back(FuncRef(caller_id, loc));
       called_def->uses.push_back(loc);
     }
@@ -750,8 +750,8 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
       Location our_loc = db->file_db.Resolve(ref->loc, true /*is_interesting*/);
       if (!parent_loc.IsEqualTo(our_loc)) {
         IndexedFuncDef* called_def = db->Resolve(called_id);
-        assert(called_def->declaring_type.has_value());
-        IndexedTypeDef* type_def = db->Resolve(called_def->declaring_type.value());
+        assert(called_def->def.declaring_type.has_value());
+        IndexedTypeDef* type_def = db->Resolve(called_def->def.declaring_type.value());
         type_def->AddUsage(our_loc);
       }
     }
@@ -932,7 +932,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main3(int argc, char** argv) {
+int main(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*

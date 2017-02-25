@@ -21,7 +21,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "declaration": "1:3:6",
+      "declarations": ["1:3:6"],
       "definition": "1:4:6",
       "uses": ["1:3:6", "1:4:6"]
     }],

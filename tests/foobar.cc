@@ -15,7 +15,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
-      "declaration": "1:1:6",
+      "declarations": ["1:1:6"],
       "callers": ["2@1:6:3"],
       "uses": ["1:1:6", "1:6:3"]
     }, {

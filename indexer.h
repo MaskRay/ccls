@@ -166,9 +166,7 @@ using VarRef = Ref<IndexedVarDef>;
 // TODO: Either eliminate the defs created as a by-product of cross-referencing,
 //       or do not emit things we don't have definitions for.
 
-struct IndexedTypeDef {
-  bool is_system_def = false;
-
+struct TypeDefDefinitionData {
   // General metadata.
   TypeId id;
   std::string usr;
@@ -190,43 +188,66 @@ struct IndexedTypeDef {
   // type comes from a using or typedef statement).
   optional<TypeId> alias_of;
 
-  // Immediate parent and immediate derived types.
+  // Immediate parent types.
   std::vector<TypeId> parents;
-  std::vector<TypeId> derived;
 
   // Types, functions, and variables defined in this type.
   std::vector<TypeId> types;
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
 
+  TypeDefDefinitionData(TypeId id, const std::string& usr) : id(id), usr(usr) {}
+};
+
+struct IndexedTypeDef {
+  TypeDefDefinitionData def;
+
+  // Immediate derived types.
+  std::vector<TypeId> derived;
+
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Location> uses;
+
+  bool is_system_def = false;
 
   IndexedTypeDef(TypeId id, const std::string& usr);
   void AddUsage(Location loc, bool insert_if_not_present = true);
 };
 
-struct IndexedFuncDef {
-  bool is_system_def = false;
-
+struct FuncDefDefinitionData {
   // General metadata.
   FuncId id;
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  optional<Location> declaration;
   optional<Location> definition;
 
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
+
   // Method this method overrides.
   optional<FuncId> base;
-  // Methods which directly override this one.
-  std::vector<FuncId> derived;
 
   // Local variables defined in this function.
   std::vector<VarId> locals;
+
+  // Functions that this function calls.
+  std::vector<FuncRef> callees;
+
+  FuncDefDefinitionData(FuncId id, const std::string& usr) : id(id), usr(usr) {
+    assert(usr.size() > 0);
+  }
+};
+
+struct IndexedFuncDef {
+  FuncDefDefinitionData def;
+
+  // Places the function is forward-declared.
+  std::vector<Location> declarations;
+
+  // Methods which directly override this one.
+  std::vector<FuncId> derived;
 
   // Functions which call this one.
   // TODO: Functions can get called outside of just functions - for example,
@@ -235,20 +256,18 @@ struct IndexedFuncDef {
   //    - Right now those usages will not get listed here (but they should be
   //      inside of all_uses).
   std::vector<FuncRef> callers;
-  // Functions that this function calls.
-  std::vector<FuncRef> callees;
 
   // All usages. For interesting usages, see callees.
   std::vector<Location> uses;
 
-  IndexedFuncDef(FuncId id, const std::string& usr) : id(id), usr(usr) {
+  bool is_system_def = false;
+
+  IndexedFuncDef(FuncId id, const std::string& usr) : def(id, usr) {
     assert(usr.size() > 0);
   }
 };
 
-struct IndexedVarDef {
-  bool is_system_def = false;
-
+struct VarDefDefinitionData {
   // General metadata.
   VarId id;
   std::string usr;
@@ -265,10 +284,18 @@ struct IndexedVarDef {
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
 
+  VarDefDefinitionData(VarId id, const std::string& usr) : id(id), usr(usr) {}
+};
+
+struct IndexedVarDef {
+  VarDefDefinitionData def;
+
   // Usages.
   std::vector<Location> uses;
+  
+  bool is_system_def = false;
 
-  IndexedVarDef(VarId id, const std::string& usr) : id(id), usr(usr) {
+  IndexedVarDef(VarId id, const std::string& usr) : def(id, usr) {
     assert(usr.size() > 0);
   }
 };
@@ -310,6 +337,10 @@ struct IndexedFile {
 // TODO: ^^^ I don't think we can do this. It will probably stall the main
 //       indexer for far too long since we will have to iterate over tons of
 //       data.
+// TODO: Idea: when indexing and joining to the main db, allow many dbs that
+//             are joined to. So that way even if the main db is busy we can
+//             still be joining. Joining the partially joined db to the main
+//             db should be faster since we will have larger data lanes to use.
 struct IndexedTypeDefDiff {};
 struct IndexedFuncDefDiff {};
 struct IndexedVarDefDiff {};

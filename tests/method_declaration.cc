@@ -23,7 +23,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
-      "declaration": "1:2:8",
+      "declarations": ["1:2:8"],
       "declaring_type": 0,
       "uses": ["1:2:8"]
     }],

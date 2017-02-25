@@ -23,7 +23,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
       "qualified_name": "Foo::declonly",
-      "declaration": "1:2:8",
+      "declarations": ["1:2:8"],
       "declaring_type": 0,
       "uses": ["1:2:8"]
     }, {
@@ -31,7 +31,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
       "qualified_name": "Foo::purevirtual",
-      "declaration": "1:3:16",
+      "declarations": ["1:3:16"],
       "declaring_type": 0,
       "uses": ["1:3:16"]
     }, {
@@ -39,7 +39,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@def#",
       "short_name": "def",
       "qualified_name": "Foo::def",
-      "declaration": "1:4:8",
+      "declarations": ["1:4:8"],
       "definition": "1:7:11",
       "declaring_type": 0,
       "uses": ["1:4:8", "1:7:11"]

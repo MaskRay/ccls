@@ -24,7 +24,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "qualified_name": "Foo::Used",
-      "declaration": "1:2:8",
+      "declarations": ["1:2:8"],
       "declaring_type": 0,
       "callers": ["1@1:6:18"],
       "uses": ["1:2:8", "1:6:18"]
