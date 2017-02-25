@@ -23,23 +23,152 @@ struct IndexedTypeDef;
 struct IndexedFuncDef;
 struct IndexedVarDef;
 
-using FileId = int64_t;
 using namespace std::experimental;
 
+
+using GroupId = int;
+
+template<typename T>
+struct Id {
+  GroupId group;
+  uint64_t id;
+
+  Id() : id(0) {} // Needed for containers. Do not use directly.
+  Id(GroupId group, uint64_t id) : group(group), id(id) {}
+
+  bool operator==(const Id<T>& other) const {
+    assert(group == other.group && "Cannot compare Ids from different groups");
+    return id == other.id;
+  }
+
+  bool operator<(const Id<T>& other) const {
+    assert(group == other.group);
+    return id < other.id;
+  }
+};
+
+namespace std {
+  template<typename T>
+  struct hash<Id<T>> {
+    size_t operator()(const Id<T>& k) const {
+      return ((hash<uint64_t>()(k.id) ^ (hash<int>()(k.group) << 1)) >> 1);
+    }
+  };
+}
+
+
+template<typename T>
+bool operator==(const Id<T>& a, const Id<T>& b) {
+  assert(a.group == b.group && "Cannot compare Ids from different groups");
+  return a.id == b.id;
+}
+
+struct _FakeFileType {};
+using FileId = Id<_FakeFileType>;
+using TypeId = Id<IndexedTypeDef>;
+using FuncId = Id<IndexedFuncDef>;
+using VarId = Id<IndexedVarDef>;
+
+struct Location {
+  bool interesting;
+  int raw_file_group;
+  int raw_file_id;
+  int line;
+  int column;
+
+  Location() {
+    interesting = false;
+    raw_file_group = -1;
+    raw_file_id = -1;
+    line = -1;
+    column = -1;
+  }
+
+  Location(bool interesting, FileId file, uint32_t line, uint32_t column) {
+    this->interesting = interesting;
+    this->raw_file_group = file.group;
+    this->raw_file_id = file.id;
+    this->line = line;
+    this->column = column;
+  }
+
+  FileId file_id() {
+    return FileId(raw_file_id, raw_file_group);
+  }
+
+  std::string ToString() {
+    // Output looks like this:
+    //
+    //  *1:2:3
+    //
+    // * => interesting
+    // 1 => file id
+    // 2 => line
+    // 3 => column
+
+    std::string result;
+    if (interesting)
+      result += '*';
+    result += std::to_string(raw_file_id);
+    result += ':';
+    result += std::to_string(line);
+    result += ':';
+    result += std::to_string(column);
+    return result;
+  }
+
+  // Compare two Locations and check if they are equal. Ignores the value of
+  // |interesting|.
+  // operator== doesn't seem to work properly...
+  bool IsEqualTo(const Location& o) const {
+    // When comparing, ignore the value of |interesting|.
+    return
+      raw_file_group == o.raw_file_group &&
+      raw_file_id == o.raw_file_id &&
+      line == o.line &&
+      column == o.column;
+  }
+
+  bool operator==(const Location& o) const {
+    return IsEqualTo(o);
+  }
+  bool operator<(const Location& o) const {
+    return
+      interesting < o.interesting &&
+      raw_file_group < o.raw_file_group &&
+      raw_file_id < o.raw_file_id &&
+      line < o.line &&
+      column < o.column;
+  }
+
+  Location WithInteresting(bool interesting) {
+    Location result = *this;
+    result.interesting = interesting;
+    return result;
+  }
+};
+
+#if false
 // TODO: Move off of this weird wrapper, use struct with custom wrappers
 //       directly.
 BEGIN_BITFIELD_TYPE(Location, uint64_t)
 
-ADD_BITFIELD_MEMBER(interesting, /*start:*/ 0,  /*len:*/ 1);    // 2 values
-ADD_BITFIELD_MEMBER(file_id,     /*start:*/ 1,  /*len:*/ 29);   // 536,870,912 values
-ADD_BITFIELD_MEMBER(line,        /*start:*/ 30, /*len:*/ 20);   // 1,048,576 values
-ADD_BITFIELD_MEMBER(column,      /*start:*/ 50, /*len:*/ 14);   // 16,384 values
+ADD_BITFIELD_MEMBER(interesting,    /*start:*/ 0,  /*len:*/ 1);    // 2 values
+ADD_BITFIELD_MEMBER(raw_file_group, /*start:*/ 1,  /*len:*/ 4);    // 16 values, ok if they wrap around.
+ADD_BITFIELD_MEMBER(raw_file_id,    /*start:*/ 5,  /*len:*/ 25);   // 33,554,432 values
+ADD_BITFIELD_MEMBER(line,           /*start:*/ 30, /*len:*/ 20);   // 1,048,576 values
+ADD_BITFIELD_MEMBER(column,         /*start:*/ 50, /*len:*/ 14);   // 16,384 values
 
-Location(bool interesting, FileId file_id, uint32_t line, uint32_t column) {
+Location(bool interesting, FileId file, uint32_t line, uint32_t column) {
   this->interesting = interesting;
-  this->file_id = file_id;
+  this->raw_file_group = file.group;
+  this->raw_file_id = file.id;
   this->line = line;
   this->column = column;
+}
+
+FileId file_id() {
+  return FileId(raw_file_id, raw_file_group);
 }
 
 std::string ToString() {
@@ -55,7 +184,7 @@ std::string ToString() {
   std::string result;
   if (interesting)
     result += '*';
-  result += std::to_string(file_id);
+  result += std::to_string(raw_file_id);
   result += ':';
   result += std::to_string(line);
   result += ':';
@@ -78,15 +207,17 @@ Location WithInteresting(bool interesting) {
 }
 
 END_BITFIELD_TYPE()
+#endif
 
-struct IndexedFileDb {
+struct FileDb {
+  GroupId group;
   std::unordered_map<std::string, FileId> file_path_to_file_id;
   std::unordered_map<FileId, std::string> file_id_to_file_path;
 
-  IndexedFileDb() {
+  FileDb(GroupId group) : group(group) {
     // Reserve id 0 for unfound.
-    file_path_to_file_id[""] = 0;
-    file_id_to_file_path[0] = "";
+    file_path_to_file_id[""] = FileId(group, 0);
+    file_id_to_file_path[FileId(group, 0)] = "";
   }
 
   Location Resolve(const CXSourceLocation& cx_loc, bool interesting) {
@@ -103,7 +234,7 @@ struct IndexedFileDb {
         file_id = it->second;
       }
       else {
-        file_id = file_path_to_file_id.size();
+        file_id = FileId(group, file_path_to_file_id.size());
         file_path_to_file_id[path] = file_id;
         file_id_to_file_path[file_id] = path;
       }
@@ -128,34 +259,32 @@ struct IndexedFileDb {
 
 
 template<typename T>
-struct LocalId {
-  uint64_t local_id;
+struct Ref {
+  Id<T> id;
+  Location loc;
 
-  LocalId() : local_id(0) {} // Needed for containers. Do not use directly.
-  explicit LocalId(uint64_t local_id) : local_id(local_id) {}
+  Ref(Id<T> id, Location loc) : id(id), loc(loc) {}
 
-  bool operator==(const LocalId<T>& other) {
-    return local_id == other.local_id;
+  bool operator==(const Ref<T>& other) {
+    return id == other.id && loc == other.loc;
+  }
+  bool operator!=(const Ref<T>& other) {
+    return !(*this == other);
+  }
+  bool operator<(const Ref<T>& other) const {
+    return id < other.id && loc < other.loc;
   }
 };
 
 template<typename T>
-bool operator==(const LocalId<T>& a, const LocalId<T>& b) {
-  return a.local_id == b.local_id;
+bool operator==(const Ref<T>& a, const Ref<T>& b) {
+  return a.id == b.id && a.loc == b.loc;
+}
+template<typename T>
+bool operator!=(const Ref<T>& a, const Ref<T>& b) {
+  return !(a == b);
 }
 
-using TypeId = LocalId<IndexedTypeDef>;
-using FuncId = LocalId<IndexedFuncDef>;
-using VarId = LocalId<IndexedVarDef>;
-
-
-template<typename T>
-struct Ref {
-  LocalId<T> id;
-  Location loc;
-
-  Ref(LocalId<T> id, Location loc) : id(id), loc(loc) {}
-};
 using TypeRef = Ref<IndexedTypeDef>;
 using FuncRef = Ref<IndexedFuncDef>;
 using VarRef = Ref<IndexedVarDef>;
@@ -197,6 +326,24 @@ struct TypeDefDefinitionData {
   std::vector<VarId> vars;
 
   TypeDefDefinitionData(TypeId id, const std::string& usr) : id(id), usr(usr) {}
+
+  bool operator==(const TypeDefDefinitionData& other) const {
+    return
+      id == other.id &&
+      usr == other.usr &&
+      short_name == other.short_name &&
+      qualified_name == other.qualified_name &&
+      definition == other.definition &&
+      alias_of == other.alias_of &&
+      parents == other.parents &&
+      types == other.types &&
+      funcs == other.funcs &&
+      vars == other.vars;
+  }
+
+  bool operator!=(const TypeDefDefinitionData& other) const {
+    return !(*this == other);
+  }
 };
 
 struct IndexedTypeDef {
@@ -213,7 +360,20 @@ struct IndexedTypeDef {
 
   IndexedTypeDef(TypeId id, const std::string& usr);
   void AddUsage(Location loc, bool insert_if_not_present = true);
+
+  bool operator<(const IndexedTypeDef& other) const {
+    return def.id < other.def.id;
+  }
 };
+
+namespace std {
+  template <>
+  struct hash<IndexedTypeDef> {
+    size_t operator()(const IndexedTypeDef& k) const {
+      return hash<string>()(k.def.usr);
+    }
+  };
+}
 
 struct FuncDefDefinitionData {
   // General metadata.
@@ -237,6 +397,23 @@ struct FuncDefDefinitionData {
 
   FuncDefDefinitionData(FuncId id, const std::string& usr) : id(id), usr(usr) {
     assert(usr.size() > 0);
+  }
+
+  bool operator==(const FuncDefDefinitionData& other) const {
+    return
+      id == other.id &&
+      usr == other.usr &&
+      short_name == other.short_name &&
+      qualified_name == other.qualified_name &&
+      definition == other.definition &&
+      declaring_type == other.declaring_type &&
+      base == other.base &&
+      locals == other.locals &&
+      callees == other.callees;
+  }
+
+  bool operator!=(const FuncDefDefinitionData& other) const {
+    return !(*this == other);
   }
 };
 
@@ -265,7 +442,21 @@ struct IndexedFuncDef {
   IndexedFuncDef(FuncId id, const std::string& usr) : def(id, usr) {
     assert(usr.size() > 0);
   }
+
+  bool operator<(const IndexedFuncDef& other) const {
+    return def.id < other.def.id;
+  }
 };
+
+namespace std {
+  template <>
+  struct hash<IndexedFuncDef> {
+    size_t operator()(const IndexedFuncDef& k) const {
+      return hash<string>()(k.def.usr);
+    }
+  };
+}
+
 
 struct VarDefDefinitionData {
   // General metadata.
@@ -285,6 +476,22 @@ struct VarDefDefinitionData {
   optional<TypeId> declaring_type;
 
   VarDefDefinitionData(VarId id, const std::string& usr) : id(id), usr(usr) {}
+
+  bool operator==(const VarDefDefinitionData& other) const {
+    return
+      id == other.id &&
+      usr == other.usr &&
+      short_name == other.short_name &&
+      qualified_name == other.qualified_name &&
+      declaration == other.declaration &&
+      definition == other.definition &&
+      variable_type == other.variable_type &&
+      declaring_type == other.declaring_type;
+  }
+
+  bool operator!=(const VarDefDefinitionData& other) const {
+    return !(*this == other);
+  }
 };
 
 struct IndexedVarDef {
@@ -292,29 +499,47 @@ struct IndexedVarDef {
 
   // Usages.
   std::vector<Location> uses;
-  
+
   bool is_system_def = false;
 
   IndexedVarDef(VarId id, const std::string& usr) : def(id, usr) {
     assert(usr.size() > 0);
   }
+
+  bool operator<(const IndexedVarDef& other) const {
+    return def.id < other.def.id;
+  }
 };
 
+namespace std {
+  template <>
+  struct hash<IndexedVarDef> {
+    size_t operator()(const IndexedVarDef& k) const {
+      return hash<string>()(k.def.usr);
+    }
+  };
+}
 
-struct IndexedFile {
+struct UsrToIdResolver {
   // NOTE: Every Id is resolved to a file_id of 0. The correct file_id needs
   //       to get fixed up when inserting into the real db.
+  GroupId group;
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
   std::unordered_map<std::string, VarId> usr_to_var_id;
+
+  UsrToIdResolver(GroupId group) : group(group) {}
+};
+
+struct IndexedFile {
+  FileDb* file_db;
+  UsrToIdResolver* usr_to_id;
 
   std::vector<IndexedTypeDef> types;
   std::vector<IndexedFuncDef> funcs;
   std::vector<IndexedVarDef> vars;
 
-  IndexedFileDb file_db;
-
-  IndexedFile();
+  IndexedFile(UsrToIdResolver* usr_to_id, FileDb* file_db);
 
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);
@@ -332,32 +557,4 @@ struct IndexedFile {
 
 
 
-// TODO: Maybe instead of clearing/adding diffs, we should just clear out the
-//       entire previous index and readd the new one? That would be simpler.
-// TODO: ^^^ I don't think we can do this. It will probably stall the main
-//       indexer for far too long since we will have to iterate over tons of
-//       data.
-// TODO: Idea: when indexing and joining to the main db, allow many dbs that
-//             are joined to. So that way even if the main db is busy we can
-//             still be joining. Joining the partially joined db to the main
-//             db should be faster since we will have larger data lanes to use.
-struct IndexedTypeDefDiff {};
-struct IndexedFuncDefDiff {};
-struct IndexedVarDefDiff {};
-
-struct IndexedFileDiff {
-  std::vector<IndexedTypeDefDiff> removed_types;
-  std::vector<IndexedFuncDefDiff> removed_funcs;
-  std::vector<IndexedVarDefDiff> removed_vars;
-
-  std::vector<IndexedTypeDefDiff> added_types;
-  std::vector<IndexedFuncDefDiff> added_funcs;
-  std::vector<IndexedVarDefDiff> added_vars;
-
-  // TODO: Instead of change, maybe we just remove and then add again? not sure.
-  std::vector<IndexedTypeDefDiff> changed_types;
-  std::vector<IndexedFuncDefDiff> changed_funcs;
-  std::vector<IndexedVarDefDiff> changed_vars;
-};
-
-IndexedFile Parse(std::string filename, std::vector<std::string> args);
+IndexedFile Parse(UsrToIdResolver* usr_to_id, FileDb* file_db, std::string filename, std::vector<std::string> args);

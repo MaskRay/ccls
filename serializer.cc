@@ -2,110 +2,6 @@
 
 #include "indexer.h"
 
-#if false
-template<typename T>
-void Emit(Reader& a, const char* key, T& v) {
-  static_assert(false); // Must be specialized.
-}
-template<typename T>
-void Emit(Writer& a, const char* key, T& v) {
-  static_assert(false); // Must be specialized.
-}
-
-template<>
-void Emit(Reader& r, const char* key, int& v) {
-  v = r[key].GetInt();
-}
-
-template<>
-void Emit(Writer& w, const char* key, int &v) {
-  w.Key(key);
-  w.Int(v);
-}
-
-void StartObject(Reader& r) {}
-void StartObject(Writer& w) {
-  w.StartObject();
-}
-
-void EndObject(Reader& r) {}
-void EndObject(Writer& w) {
-  w.EndObject();
-}
-
-void StartArray(Reader& r) {}
-void StartArray(Writer& w) {
-  w.StartArray();
-}
-
-void EndArray(Reader& r) {}
-void EndArray(Writer& w) {
-  w.EndArray();
-}
-
-struct Object {
-  //Location l;
-  int a = 0, b = 0, c = 0;
-};
-
-/*
-void EmitKey(Reader& r, const char* key) {
-  w.Key(key);
-}
-void EmitKey(Writer& w, const char* key) {
-  w = w[key];
-}
-*/
-
-template<typename S>
-void Serialize(S& stream, Object& obj) {
-  StartObject(stream);
-  Emit(stream, "a", obj.a);
-  Emit(stream, "b", obj.b);
-  Emit(stream, "b", obj.c);
-  EndObject(stream);
-}
-
-/*
-template <typename C, typename T>
-C& operator&(C& stream, T& t) {
-t.serialize(stream);
-}
-*/
-
-int main(int argc, char** argv) {
-
-  rapidjson::StringBuffer output;
-  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-  writer.SetFormatOptions(
-    rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
-  writer.SetIndent(' ', 2);
-
-  Object foo;
-  foo.a = 10;
-  Serialize(writer, foo);
-  std::cout << output.GetString() << std::endl;
-
-  std::cout << "----" << std::endl;
-
-  rapidjson::Document doc;
-  //doc = doc["foo"];
-  doc.Parse(output.GetString());
-  Object foo2;
-  Serialize(doc, foo2);
-
-  std::cin.get();
-  //Reader r;
-  //foo.Serialize(r);
-
-  return 0;
-}
-#endif
-
-
-
-
-
 
 
 
@@ -134,26 +30,26 @@ void Serialize(Writer& writer, const char* key, const std::vector<Location>& loc
 }
 
 template<typename T>
-void Serialize(Writer& writer, const char* key, LocalId<T> id) {
+void Serialize(Writer& writer, const char* key, Id<T> id) {
   if (key) writer.Key(key);
-  writer.Uint64(id.local_id);
+  writer.Uint64(id.id);
 }
 
 template<typename T>
-void Serialize(Writer& writer, const char* key, optional<LocalId<T>> id) {
+void Serialize(Writer& writer, const char* key, optional<Id<T>> id) {
   if (id) {
     Serialize(writer, key, id.value());
   }
 }
 
 template<typename T>
-void Serialize(Writer& writer, const char* key, const std::vector<LocalId<T>>& ids) {
+void Serialize(Writer& writer, const char* key, const std::vector<Id<T>>& ids) {
   if (ids.size() == 0)
     return;
 
   if (key) writer.Key(key);
   writer.StartArray();
-  for (LocalId<T> id : ids)
+  for (Id<T> id : ids)
     Serialize(writer, nullptr, id);
   writer.EndArray();
 }
@@ -161,7 +57,7 @@ void Serialize(Writer& writer, const char* key, const std::vector<LocalId<T>>& i
 template<typename T>
 void Serialize(Writer& writer, const char* key, Ref<T> ref) {
   if (key) writer.Key(key);
-  std::string s = std::to_string(ref.id.local_id) + "@" + ref.loc.ToString();
+  std::string s = std::to_string(ref.id.id) + "@" + ref.loc.ToString();
   writer.String(s.c_str());
 }
 
@@ -191,8 +87,8 @@ void Serialize(Writer& writer, const char* key, uint64_t value) {
 }
 
 void Serialize(Writer& writer, IndexedFile* file) {
-  auto it = file->usr_to_type_id.find("");
-  if (it != file->usr_to_type_id.end()) {
+  auto it = file->usr_to_id->usr_to_type_id.find("");
+  if (it != file->usr_to_id->usr_to_type_id.end()) {
     file->Resolve(it->second)->def.short_name = "<fundamental>";
     assert(file->Resolve(it->second)->uses.size() == 0);
   }

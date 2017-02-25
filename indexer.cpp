@@ -2,37 +2,47 @@
 
 #include "serializer.h"
 
-IndexedFile::IndexedFile() {}
+IndexedFile::IndexedFile(UsrToIdResolver* usr_to_id, FileDb* file_db)
+  : usr_to_id(usr_to_id), file_db(file_db) {
+
+  // Preallocate any existing resolved ids.
+  for (const auto& entry : usr_to_id->usr_to_type_id)
+    types.push_back(IndexedTypeDef(entry.second, entry.first));
+  for (const auto& entry : usr_to_id->usr_to_func_id)
+    funcs.push_back(IndexedFuncDef(entry.second, entry.first));
+  for (const auto& entry : usr_to_id->usr_to_var_id)
+    vars.push_back(IndexedVarDef(entry.second, entry.first));
+}
 
 // TODO: Optimize for const char*?
 TypeId IndexedFile::ToTypeId(const std::string& usr) {
-  auto it = usr_to_type_id.find(usr);
-  if (it != usr_to_type_id.end())
+  auto it = usr_to_id->usr_to_type_id.find(usr);
+  if (it != usr_to_id->usr_to_type_id.end())
     return it->second;
 
-  TypeId id(types.size());
+  TypeId id(usr_to_id->group, types.size());
   types.push_back(IndexedTypeDef(id, usr));
-  usr_to_type_id[usr] = id;
+  usr_to_id->usr_to_type_id[usr] = id;
   return id;
 }
 FuncId IndexedFile::ToFuncId(const std::string& usr) {
-  auto it = usr_to_func_id.find(usr);
-  if (it != usr_to_func_id.end())
+  auto it = usr_to_id->usr_to_func_id.find(usr);
+  if (it != usr_to_id->usr_to_func_id.end())
     return it->second;
 
-  FuncId id(funcs.size());
+  FuncId id(usr_to_id->group, funcs.size());
   funcs.push_back(IndexedFuncDef(id, usr));
-  usr_to_func_id[usr] = id;
+  usr_to_id->usr_to_func_id[usr] = id;
   return id;
 }
 VarId IndexedFile::ToVarId(const std::string& usr) {
-  auto it = usr_to_var_id.find(usr);
-  if (it != usr_to_var_id.end())
+  auto it = usr_to_id->usr_to_var_id.find(usr);
+  if (it != usr_to_id->usr_to_var_id.end())
     return it->second;
 
-  VarId id(vars.size());
+  VarId id(usr_to_id->group, vars.size());
   vars.push_back(IndexedVarDef(id, usr));
-  usr_to_var_id[usr] = id;
+  usr_to_id->usr_to_var_id[usr] = id;
   return id;
 }
 
@@ -50,13 +60,13 @@ VarId IndexedFile::ToVarId(const CXCursor& cursor) {
 
 
 IndexedTypeDef* IndexedFile::Resolve(TypeId id) {
-  return &types[id.local_id];
+  return &types[id.id];
 }
 IndexedFuncDef* IndexedFile::Resolve(FuncId id) {
-  return &funcs[id.local_id];
+  return &funcs[id.id];
 }
 IndexedVarDef* IndexedFile::Resolve(VarId id) {
-  return &vars[id.local_id];
+  return &vars[id.id];
 }
 
 std::string IndexedFile::ToString() {
@@ -311,7 +321,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
 
   if (param->is_interesting) {
     IndexedTypeDef* ref_type_def = db->Resolve(ref_type_id);
-    Location loc = db->file_db.Resolve(cursor, true /*interesting*/);
+    Location loc = db->file_db->Resolve(cursor, true /*interesting*/);
     ref_type_def->AddUsage(loc);
   }
 }
@@ -434,7 +444,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     var_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
     //}
 
-    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
+    Location decl_loc = db->file_db->Resolve(decl->loc, false /*interesting*/);
     if (decl->isDefinition)
       var_def->def.definition = decl_loc;
     else
@@ -480,7 +490,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     func_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->def.short_name);
     //}
 
-    Location decl_loc = db->file_db.Resolve(decl->loc, false /*interesting*/);
+    Location decl_loc = db->file_db->Resolve(decl->loc, false /*interesting*/);
     if (decl->isDefinition)
       func_def->def.definition = decl_loc;
     else
@@ -597,7 +607,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     type_def->def.short_name = decl->entityInfo->name;
     type_def->def.qualified_name = ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
 
-    Location decl_loc = db->file_db.Resolve(decl->loc, true /*interesting*/);
+    Location decl_loc = db->file_db->Resolve(decl->loc, true /*interesting*/);
     type_def->def.definition = decl_loc.WithInteresting(false);
     type_def->AddUsage(decl_loc);
     break;
@@ -631,7 +641,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     // }
 
     assert(decl->isDefinition);
-    Location decl_loc = db->file_db.Resolve(decl->loc, true /*interesting*/);
+    Location decl_loc = db->file_db->Resolve(decl->loc, true /*interesting*/);
     type_def->def.definition = decl_loc.WithInteresting(false);
     type_def->AddUsage(decl_loc);
 
@@ -660,7 +670,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 
   default:
-    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->file_db.Resolve(decl->loc, false /*interesting*/).ToString() << std::endl;
+    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->file_db->Resolve(decl->loc, false /*interesting*/).ToString() << std::endl;
     std::cout << "     entityInfo->kind  = " << decl->entityInfo->kind << std::endl;
     std::cout << "     entityInfo->USR   = " << decl->entityInfo->USR << std::endl;
     if (decl->declAsContainer)
@@ -696,7 +706,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   {
     VarId var_id = db->ToVarId(ref->referencedEntity->cursor);
     IndexedVarDef* var_def = db->Resolve(var_id);
-    var_def->uses.push_back(db->file_db.Resolve(ref->loc, false /*interesting*/));
+    var_def->uses.push_back(db->file_db->Resolve(ref->loc, false /*interesting*/));
     break;
   }
 
@@ -718,7 +728,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 
     // Don't report duplicate usages.
     // TODO: search full history?
-    Location loc = db->file_db.Resolve(ref->loc, false /*interesting*/);
+    Location loc = db->file_db->Resolve(ref->loc, false /*interesting*/);
     if (param->last_func_usage_location == loc) break;
     param->last_func_usage_location = loc;
 
@@ -746,8 +756,8 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     if (ref->referencedEntity->kind == CXIdxEntity_CXXConstructor ||
       ref->referencedEntity->kind == CXIdxEntity_CXXDestructor) {
 
-      Location parent_loc = db->file_db.Resolve(ref->parentEntity->cursor, true /*interesting*/);
-      Location our_loc = db->file_db.Resolve(ref->loc, true /*is_interesting*/);
+      Location parent_loc = db->file_db->Resolve(ref->parentEntity->cursor, true /*interesting*/);
+      Location our_loc = db->file_db->Resolve(ref->loc, true /*is_interesting*/);
       if (!parent_loc.IsEqualTo(our_loc)) {
         IndexedFuncDef* called_def = db->Resolve(called_id);
         assert(called_def->def.declaring_type.has_value());
@@ -783,16 +793,16 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
     //    Foo f;
     //  }
     //
-    referenced_def->AddUsage(db->file_db.Resolve(ref->loc, false /*interesting*/));
+    referenced_def->AddUsage(db->file_db->Resolve(ref->loc, false /*interesting*/));
     break;
   }
 
   default:
-    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->file_db.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
+    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->file_db->Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
     std::cout << "     ref->referencedEntity->kind = " << ref->referencedEntity->kind << std::endl;
     if (ref->parentEntity)
       std::cout << "     ref->parentEntity->kind = " << ref->parentEntity->kind << std::endl;
-    std::cout << "     ref->loc          = " << db->file_db.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
+    std::cout << "     ref->loc          = " << db->file_db->Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
     std::cout << "     ref->kind         = " << ref->kind << std::endl;
     if (ref->parentEntity)
       std::cout << "     parentEntity      = " << clang::Cursor(ref->parentEntity->cursor).ToString() << std::endl;
@@ -807,7 +817,7 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 static bool DUMP_AST = true;
 
 
-IndexedFile Parse(std::string filename, std::vector<std::string> args) {
+IndexedFile Parse(UsrToIdResolver* usr_to_id, FileDb* file_db, std::string filename, std::vector<std::string> args) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 
@@ -830,7 +840,7 @@ IndexedFile Parse(std::string filename, std::vector<std::string> args) {
     */
   };
 
-  IndexedFile db;
+  IndexedFile db(usr_to_id, file_db);
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
@@ -971,7 +981,9 @@ int main(int argc, char** argv) {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {});
+    UsrToIdResolver usr_to_id(1);
+    FileDb file_db(1);
+    IndexedFile db = Parse(&usr_to_id, &file_db, path, {});
     std::string actual_output = db.ToString();
 
     //WriteToFile("output.json", actual_output);
