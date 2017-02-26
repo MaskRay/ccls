@@ -295,6 +295,7 @@ using VarRef = Ref<IndexedVarDef>;
 // TODO: Either eliminate the defs created as a by-product of cross-referencing,
 //       or do not emit things we don't have definitions for.
 
+template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId>
 struct TypeDefDefinitionData {
   // General metadata.
   TypeId id;
@@ -327,7 +328,7 @@ struct TypeDefDefinitionData {
 
   TypeDefDefinitionData(TypeId id, const std::string& usr) : id(id), usr(usr) {}
 
-  bool operator==(const TypeDefDefinitionData& other) const {
+  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId>& other) const {
     return
       id == other.id &&
       usr == other.usr &&
@@ -341,13 +342,13 @@ struct TypeDefDefinitionData {
       vars == other.vars;
   }
 
-  bool operator!=(const TypeDefDefinitionData& other) const {
+  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId>& other) const {
     return !(*this == other);
   }
 };
 
 struct IndexedTypeDef {
-  TypeDefDefinitionData def;
+  TypeDefDefinitionData<> def;
 
   // Immediate derived types.
   std::vector<TypeId> derived;
@@ -375,6 +376,7 @@ namespace std {
   };
 }
 
+template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename FuncRef = FuncRef>
 struct FuncDefDefinitionData {
   // General metadata.
   FuncId id;
@@ -399,7 +401,7 @@ struct FuncDefDefinitionData {
     assert(usr.size() > 0);
   }
 
-  bool operator==(const FuncDefDefinitionData& other) const {
+  bool operator==(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef>& other) const {
     return
       id == other.id &&
       usr == other.usr &&
@@ -412,13 +414,13 @@ struct FuncDefDefinitionData {
       callees == other.callees;
   }
 
-  bool operator!=(const FuncDefDefinitionData& other) const {
+  bool operator!=(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef>& other) const {
     return !(*this == other);
   }
 };
 
 struct IndexedFuncDef {
-  FuncDefDefinitionData def;
+  FuncDefDefinitionData<> def;
 
   // Places the function is forward-declared.
   std::vector<Location> declarations;
@@ -457,7 +459,7 @@ namespace std {
   };
 }
 
-
+template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId>
 struct VarDefDefinitionData {
   // General metadata.
   VarId id;
@@ -477,7 +479,7 @@ struct VarDefDefinitionData {
 
   VarDefDefinitionData(VarId id, const std::string& usr) : id(id), usr(usr) {}
 
-  bool operator==(const VarDefDefinitionData& other) const {
+  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId>& other) const {
     return
       id == other.id &&
       usr == other.usr &&
@@ -489,13 +491,13 @@ struct VarDefDefinitionData {
       declaring_type == other.declaring_type;
   }
 
-  bool operator!=(const VarDefDefinitionData& other) const {
+  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId>& other) const {
     return !(*this == other);
   }
 };
 
 struct IndexedVarDef {
-  VarDefDefinitionData def;
+  VarDefDefinitionData<> def;
 
   // Usages.
   std::vector<Location> uses;
@@ -520,26 +522,29 @@ namespace std {
   };
 }
 
-struct UsrToIdResolver {
+struct IdCache {
   // NOTE: Every Id is resolved to a file_id of 0. The correct file_id needs
   //       to get fixed up when inserting into the real db.
   GroupId group;
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
   std::unordered_map<std::string, VarId> usr_to_var_id;
+  std::unordered_map<TypeId, std::string> type_id_to_usr;
+  std::unordered_map<FuncId, std::string> func_id_to_usr;
+  std::unordered_map<VarId, std::string> var_id_to_usr;
 
-  UsrToIdResolver(GroupId group) : group(group) {}
+  IdCache(GroupId group) : group(group) {}
 };
 
 struct IndexedFile {
   FileDb* file_db;
-  UsrToIdResolver* usr_to_id;
+  IdCache* id_cache;
 
   std::vector<IndexedTypeDef> types;
   std::vector<IndexedFuncDef> funcs;
   std::vector<IndexedVarDef> vars;
 
-  IndexedFile(UsrToIdResolver* usr_to_id, FileDb* file_db);
+  IndexedFile(IdCache* id_cache, FileDb* file_db);
 
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);
@@ -557,4 +562,4 @@ struct IndexedFile {
 
 
 
-IndexedFile Parse(UsrToIdResolver* usr_to_id, FileDb* file_db, std::string filename, std::vector<std::string> args);
+IndexedFile Parse(IdCache* id_cache, FileDb* file_db, std::string filename, std::vector<std::string> args);

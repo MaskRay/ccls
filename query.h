@@ -23,8 +23,14 @@ enum class PreferredSymbolLocation {
 };
 
 using Usr = std::string;
+struct UsrRef {
+  Usr usr;
+  Location loc;
 
-struct IdMap;
+  bool operator==(const UsrRef& other) const {
+    return usr == other.usr && loc == other.loc;
+  }
+};
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -36,63 +42,61 @@ struct IdMap;
 // that it can be merged with other updates before actually being applied to
 // the main database. See |MergeableUpdate|.
 
-template<typename TId, typename TValue>
+template<typename TValue>
 struct MergeableUpdate {
   // The type/func/var which is getting new usages.
-  TId id;
+  Usr usr;
   // Entries to add and remove.
   std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
 };
 
-
 struct QueryableTypeDef {
-  TypeDefDefinitionData def;
-  std::vector<TypeId> derived;
+  TypeDefDefinitionData<Usr, Usr, Usr> def;
+  std::vector<Usr> derived;
   std::vector<Location> uses;
 
-  using DefUpdate = TypeDefDefinitionData;
-  using DerivedUpdate = MergeableUpdate<TypeId, TypeId>;
-  using UsesUpdate = MergeableUpdate<TypeId, Location>;
+  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr>;
+  using DerivedUpdate = MergeableUpdate<Usr>;
+  using UsesUpdate = MergeableUpdate<Location>;
 
-  QueryableTypeDef(IdMap& id_map, const IndexedTypeDef& indexed);
+  QueryableTypeDef(IdCache& id_cache, IndexedTypeDef& indexed);
 };
 
 struct QueryableFuncDef {
-  FuncDefDefinitionData def;
+  FuncDefDefinitionData<Usr, Usr, Usr, UsrRef> def;
   std::vector<Location> declarations;
-  std::vector<FuncId> derived;
-  std::vector<FuncRef> callers;
+  std::vector<Usr> derived;
+  std::vector<UsrRef> callers;
   std::vector<Location> uses;
 
-  using DefUpdate = FuncDefDefinitionData;
-  using DeclarationsUpdate = MergeableUpdate<FuncId, Location>;
-  using DerivedUpdate = MergeableUpdate<FuncId, FuncId>;
-  using CallersUpdate = MergeableUpdate<FuncId, FuncRef>;
-  using UsesUpdate = MergeableUpdate<FuncId, Location>;
+  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef>;
+  using DeclarationsUpdate = MergeableUpdate<Location>;
+  using DerivedUpdate = MergeableUpdate<Usr>;
+  using CallersUpdate = MergeableUpdate<UsrRef>;
+  using UsesUpdate = MergeableUpdate<Location>;
 
-  QueryableFuncDef(IdMap& id_map, const IndexedFuncDef& indexed);
+  QueryableFuncDef(IdCache& id_cache, IndexedFuncDef& indexed);
 };
 
 struct QueryableVarDef {
-  VarDefDefinitionData def;
+  VarDefDefinitionData<Usr, Usr, Usr> def;
   std::vector<Location> uses;
 
-  using DefUpdate = VarDefDefinitionData;
-  using UsesUpdate = MergeableUpdate<VarId, Location>;
+  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr>;
+  using UsesUpdate = MergeableUpdate<Location>;
 
-  QueryableVarDef(IdMap& id_map, const IndexedVarDef& indexed);
+  QueryableVarDef(IdCache& id_cache, IndexedVarDef& indexed);
 };
 
 
-enum class SymbolKind { Type, Func, Var };
+enum class SymbolKind { Invalid, Type, Func, Var };
 struct SymbolIdx {
   SymbolKind kind;
-  union {
-    uint64_t type_idx;
-    uint64_t func_idx;
-    uint64_t var_idx;
-  };
+  uint64_t idx;
+
+  SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
+  SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
 };
 
 

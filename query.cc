@@ -17,6 +17,7 @@
 
 // TODO: Make all copy constructors explicit.
 
+#if false
 struct IdMap {
   // TODO: id resolution is broken. We need to resolve same fundamental USR to same ID. Problem is that multiple USRs
   //       can have different source IDs.
@@ -164,13 +165,13 @@ struct IdMap {
   FileId Remap(FileId from) {
     return GenericRemap<FileId>(&remap_file_id, &group_file_id_to_usr, &usr_to_file_id, &next_file_id, from);
   }
-  TypeId Remap(TypeId from) {
+  Usr Remap(TypeId from) {
     return GenericRemap(&remap_type_id, &group_type_id_to_usr, &usr_to_type_id, &next_type_id, from);
   }
-  FuncId Remap(FuncId from) {
+  Usr Remap(FuncId from) {
     return GenericRemap(&remap_func_id, &group_func_id_to_usr, &usr_to_func_id, &next_func_id, from);
   }
-  VarId Remap(VarId from) {
+  Usr Remap(VarId from) {
     return GenericRemap(&remap_var_id, &group_var_id_to_usr, &usr_to_var_id, &next_var_id, from);
   }
   Location Remap(Location from) {
@@ -179,12 +180,12 @@ struct IdMap {
     from.raw_file_id = file.id;
     return from;
   }
-  FuncRef Remap(FuncRef from) {
+  UsrRef Remap(FuncRef from) {
     from.id = Remap(from.id);
     from.loc = Remap(from.loc);
     return from;
   }
-  TypeDefDefinitionData Remap(TypeDefDefinitionData  def) {
+  QueryableTypeDef::DefUpdate Remap(QueryableTypeDef::DefUpdate def) {
     def.id = Remap(def.id);
     if (def.definition)
       def.definition = Remap(def.definition.value());
@@ -196,7 +197,7 @@ struct IdMap {
     def.vars = Remap(def.vars);
     return def;
   }
-  FuncDefDefinitionData Remap(FuncDefDefinitionData def) {
+  QueryableFuncDef::DefUpdate Remap(QueryableFuncDef::DefUpdate def) {
     def.id = Remap(def.id);
     if (def.definition)
       def.definition = Remap(def.definition.value());
@@ -208,7 +209,7 @@ struct IdMap {
     def.callees = Remap(def.callees);
     return def;
   }
-  VarDefDefinitionData Remap(VarDefDefinitionData def) {
+  QueryableVarDef::DefUpdate Remap(QueryableVarDef::DefUpdate def) {
     def.id = Remap(def.id);
     if (def.declaration)
       def.declaration = Remap(def.declaration.value());
@@ -267,22 +268,44 @@ struct IdMap {
       result.push_back(Remap(l));
     return result;
   }
-  std::vector<TypeId> Remap(const std::vector<TypeId>& from) {
+  std::vector<Usr> Remap(const std::vector<TypeId>& from) {
     return GenericVectorRemap(&remap_type_id, &next_type_id, from);
   }
-  std::vector<FuncId> Remap(const std::vector<FuncId>& from) {
+  std::vector<Usr> Remap(const std::vector<FuncId>& from) {
     return GenericVectorRemap(&remap_func_id, &next_func_id, from);
   }
-  std::vector<VarId> Remap(const std::vector<VarId>& from) {
+  std::vector<Usr> Remap(const std::vector<VarId>& from) {
     return GenericVectorRemap(&remap_var_id, &next_var_id, from);
   }
-  std::vector<FuncRef> Remap(const std::vector<FuncRef>& from) {
-    std::vector<FuncRef> result;
+  std::vector<UsrRef> Remap(const std::vector<UsrRef>& from) {
+    std::vector<UsrRef> result;
     result.reserve(from.size());
     for (FuncRef r : from)
       result.push_back(Remap(r));
     return result;
   }
+};
+#endif
+
+
+
+
+// TODO: Switch over to QueryableLocation. Figure out if there is
+//       a good way to get the indexer using it. I don't think so
+//       since we may discover more files while indexing a file.
+//
+//       We could also reuse planned USR caching system for file
+//       paths.
+struct CachedFileDb {
+  using Id = int64_t;
+  std::vector<std::string> file_names;
+};
+
+struct QueryableLocation {
+  CachedFileDb::Id id;
+  int line;
+  int column;
+  bool is_interesting;
 };
 
 
@@ -290,38 +313,104 @@ struct IdMap {
 
 
 
-template<typename TId, typename TValue>
-MergeableUpdate<TId, TValue> MakeMergeableUpdate(IdMap* id_map, TId symbol_id, const std::vector<TValue>& removed, const std::vector<TValue>& added) {
-  MergeableUpdate<TId, TValue> update;
-  update.id = id_map->Remap(symbol_id);
-  update.to_remove = id_map->Remap(removed);
-  update.to_add = id_map->Remap(added);
-  return update;
-}
 
 // NOTE: When not inside of a |def| object, there can be duplicates of the same
 //       information if that information is contributed from separate sources.
 //       If we need to avoid this duplication in the future, we will have to
 //       add a refcount.
 
-
-QueryableTypeDef::QueryableTypeDef(IdMap& id_map, const IndexedTypeDef& indexed)
-  : def(id_map.Remap(indexed.def)) {
-  derived = id_map.Remap(indexed.derived);
-  uses = id_map.Remap(indexed.uses);
+template<typename In, typename Out>
+std::vector<Out> Transform(const std::vector<In>& input, std::function<Out(In)> op) {
+  std::vector<Out> result;
+  result.reserve(input.size());
+  for (const In& in : input)
+    result.push_back(op(in));
+  return result;
 }
 
-QueryableFuncDef::QueryableFuncDef(IdMap& id_map, const IndexedFuncDef& indexed)
-  : def(id_map.Remap(indexed.def)) {
-  declarations = id_map.Remap(indexed.declarations);
-  derived = id_map.Remap(indexed.derived);
-  callers = id_map.Remap(indexed.callers);
-  uses = id_map.Remap(indexed.uses);
+Usr MapIdToUsr(IdCache& id_cache, TypeId& id) {
+  return id_cache.type_id_to_usr[id];
+}
+Usr MapIdToUsr(IdCache& id_cache, FuncId& id) {
+  return id_cache.func_id_to_usr[id];
+}
+Usr MapIdToUsr(IdCache& id_cache, VarId& id) {
+  return id_cache.var_id_to_usr[id];
+}
+Location MapIdToUsr(IdCache& id_cache, Location& ids); // FIXME: We will need additional data to map locations.
+
+std::vector<Usr> MapIdToUsr(IdCache& id_cache, std::vector<TypeId>& ids) {
+  return Transform<TypeId, Usr>(ids, [&](TypeId id) { return id_cache.type_id_to_usr[id]; });
+}
+std::vector<Usr> MapIdToUsr(IdCache& id_cache, std::vector<FuncId>& ids) {
+  return Transform<FuncId, Usr>(ids, [&](FuncId id) { return id_cache.func_id_to_usr[id]; });
+}
+std::vector<Usr> MapIdToUsr(IdCache& id_cache, std::vector<VarId>& ids) {
+  return Transform<VarId, Usr>(ids, [&](VarId id) { return id_cache.var_id_to_usr[id]; });
+}
+std::vector<UsrRef> MapIdToUsr(IdCache& id_cache, std::vector<FuncRef>& ids) {
+  return Transform<FuncRef, UsrRef>(ids, [&](FuncRef ref) {
+    UsrRef result;
+    result.loc = ref.loc; // FIXME: Patch proper location. Fix when fixing MapIdToUsr(Location). I'm thinking we will have a GlobalLocation type.
+    result.usr = id_cache.func_id_to_usr[ref.id];
+    return result;
+  });
+}
+std::vector<Location> MapIdToUsr(IdCache& id_cache, std::vector<Location>& ids); // FIXME: We will need additional data to map locations.
+QueryableTypeDef::DefUpdate MapIdToUsr(IdCache& id_cache, TypeDefDefinitionData<>& def) {
+  QueryableTypeDef::DefUpdate result(def.usr, def.usr);
+  if (result.definition)
+    result.definition = MapIdToUsr(id_cache, def.definition.value());
+  if (result.alias_of)
+    result.alias_of = MapIdToUsr(id_cache, def.alias_of.value());
+  result.parents = MapIdToUsr(id_cache, def.parents);
+  result.types = MapIdToUsr(id_cache, def.types);
+  result.funcs = MapIdToUsr(id_cache, def.funcs);
+  result.vars = MapIdToUsr(id_cache, def.vars);
+  return result;
+}
+QueryableFuncDef::DefUpdate MapIdToUsr(IdCache& id_cache, FuncDefDefinitionData<>& def) {
+  QueryableFuncDef::DefUpdate result(def.usr, def.usr);
+  if (result.definition)
+    result.definition = MapIdToUsr(id_cache, def.definition.value());
+  if (result.declaring_type)
+    result.declaring_type = MapIdToUsr(id_cache, def.declaring_type.value());
+  if (result.base)
+    result.base = MapIdToUsr(id_cache, def.base.value());
+  result.locals = MapIdToUsr(id_cache, def.locals);
+  result.callees = MapIdToUsr(id_cache, def.callees);
+  return result;
+}
+QueryableVarDef::DefUpdate MapIdToUsr(IdCache& id_cache, VarDefDefinitionData<>& def) {
+  QueryableVarDef::DefUpdate result(def.usr, def.usr);
+  if (result.declaration)
+    result.declaration = MapIdToUsr(id_cache, def.declaration.value());
+  if (result.definition)
+    result.definition = MapIdToUsr(id_cache, def.definition.value());
+  if (result.variable_type)
+    result.variable_type = MapIdToUsr(id_cache, def.variable_type.value());
+  if (result.declaring_type)
+    result.declaring_type = MapIdToUsr(id_cache, def.declaring_type.value());
+  return result;
 }
 
-QueryableVarDef::QueryableVarDef(IdMap& id_map, const IndexedVarDef& indexed)
-  : def(id_map.Remap(indexed.def)) {
-  uses = id_map.Remap(indexed.uses);
+QueryableTypeDef::QueryableTypeDef(IdCache& id_cache, IndexedTypeDef& indexed)
+  : def(MapIdToUsr(id_cache, indexed.def)) {
+  derived = MapIdToUsr(id_cache, indexed.derived);
+  uses = MapIdToUsr(id_cache, indexed.uses);
+}
+
+QueryableFuncDef::QueryableFuncDef(IdCache& id_cache, IndexedFuncDef& indexed)
+  : def(MapIdToUsr(id_cache, indexed.def)) {
+  declarations = MapIdToUsr(id_cache, indexed.declarations);
+  derived = MapIdToUsr(id_cache, indexed.derived);
+  callers = MapIdToUsr(id_cache, indexed.callers);
+  uses = MapIdToUsr(id_cache, indexed.uses);
+}
+
+QueryableVarDef::QueryableVarDef(IdCache& id_cache, IndexedVarDef& indexed)
+  : def(MapIdToUsr(id_cache, indexed.def)) {
+  uses = MapIdToUsr(id_cache, indexed.uses);
 }
 
 struct QueryableEntry {
@@ -335,14 +424,16 @@ struct QueryableEntry {
 
 
 
+// TODO: For space reasons, it may make sense to map Usr -> offset inside of global storage. But not for intermediate or disk-storage.
+//       We can probably eliminate most of that pain by coming up with our own UsrDb concept which interns the Usr strings. We can make
+//       the pain of a global UsrDb less by
+//          (parallel)clangindex -> (main)commit USRs to global -> (parallel)transfer IDs to global USRs -> (main)import
 
-
+// TODO: remove GroupId concept.
 
 struct CachedIndexedFile {
   // Path to the file indexed.
   std::string path;
-  // GroupId of the indexed file.
-  GroupId group;
 
   // TODO: Make sure that |previous_index| and |current_index| use the same id
   // to USR mapping. This lets us greatly speed up difference computation.
@@ -352,8 +443,7 @@ struct CachedIndexedFile {
   optional<IndexedFile> previous_index;
   IndexedFile current_index;
 
-  CachedIndexedFile(const IndexedFile& indexed)
-    : group(indexed.usr_to_id->group), current_index(indexed) {}
+  CachedIndexedFile(const IndexedFile& indexed) : current_index(indexed) {}
 };
 
 template<typename T>
@@ -372,18 +462,33 @@ void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
     dest->erase(it);
 }
 
-struct IndexUpdate {
-  IdMap* id_map;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+struct IndexUpdate {
   // Type updates.
-  std::vector<TypeId> types_removed;
+  std::vector<Usr> types_removed;
   std::vector<QueryableTypeDef> types_added;
   std::vector<QueryableTypeDef::DefUpdate> types_def_changed;
   std::vector<QueryableTypeDef::DerivedUpdate> types_derived;
   std::vector<QueryableTypeDef::UsesUpdate> types_uses;
 
   // Function updates.
-  std::vector<FuncId> funcs_removed;
+  std::vector<Usr> funcs_removed;
   std::vector<QueryableFuncDef> funcs_added;
   std::vector<QueryableFuncDef::DefUpdate> funcs_def_changed;
   std::vector<QueryableFuncDef::DeclarationsUpdate> funcs_declarations;
@@ -392,14 +497,14 @@ struct IndexUpdate {
   std::vector<QueryableFuncDef::UsesUpdate> funcs_uses;
 
   // Variable updates.
-  std::vector<VarId> vars_removed;
+  std::vector<Usr> vars_removed;
   std::vector<QueryableVarDef> vars_added;
   std::vector<QueryableVarDef::DefUpdate> vars_def_changed;
   std::vector<QueryableVarDef::UsesUpdate> vars_uses;
 
-  IndexUpdate(IdMap* id_map) : id_map(id_map) {}
-  IndexUpdate(IdMap* id_map, IndexedFile& file);
+  IndexUpdate(IndexedFile& file);
 
+#if false
   void Remap(IdMap* map) {
     id_map = map;
 
@@ -427,7 +532,9 @@ struct IndexUpdate {
 
 #undef INDEX_UPDATE_REMAP
   }
+#endif
 
+#if false
   // Merges the contents of |update| into this IndexUpdate instance.
   void Merge(const IndexUpdate& update) {
 #define INDEX_UPDATE_MERGE(name) \
@@ -454,19 +561,27 @@ struct IndexUpdate {
 
 #undef INDEX_UPDATE_MERGE
   }
+#endif
 };
 
-IndexUpdate::IndexUpdate(IdMap* id_map, IndexedFile& file) : id_map(id_map) {
-  id_map->Import(file.file_db, file.usr_to_id);
-
+IndexUpdate::IndexUpdate(IndexedFile& file) {
   for (IndexedTypeDef& def : file.types)
-    types_added.push_back(QueryableTypeDef(*id_map, def));
+    types_added.push_back(QueryableTypeDef(*file.id_cache, def));
   for (IndexedFuncDef& def : file.funcs)
-    funcs_added.push_back(QueryableFuncDef(*id_map, def));
+    funcs_added.push_back(QueryableFuncDef(*file.id_cache, def));
   for (IndexedVarDef& def : file.vars)
-    vars_added.push_back(QueryableVarDef(*id_map, def));
+    vars_added.push_back(QueryableVarDef(*file.id_cache, def));
 }
 
+#if false
+template<typename TId, typename TValue>
+MergeableUpdate<TId, TValue> MakeMergeableUpdate(IdMap* id_map, TId symbol_id, const std::vector<TValue>& removed, const std::vector<TValue>& added) {
+  MergeableUpdate<TId, TValue> update;
+  update.id = id_map->Remap(symbol_id);
+  update.to_remove = id_map->Remap(removed);
+  update.to_add = id_map->Remap(added);
+  return update;
+}
 
 template<typename TValue>
 TValue* TryFind(std::unordered_set<TValue*>& set, TValue* value) {
@@ -639,6 +754,23 @@ IndexUpdate ComputeDiff(IdMap* id_map, IndexedFile& previous, IndexedFile& curre
 #undef JOIN
 }
 
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -660,39 +792,105 @@ struct QueryableDatabase {
   std::vector<QueryableFuncDef> funcs;
   std::vector<QueryableVarDef> vars;
 
-  // TypeId to index in |types| (same for funcs, vars)
-  std::unordered_map<TypeId, int> type_id_to_index;
-  std::unordered_map<FuncId, int> func_id_to_index;
-  std::unordered_map<VarId, int> var_id_to_index;
+  // Lookup symbol based on a usr.
+  std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
 
   // |files| is indexed by FileId. Retrieve a FileId from a path using
   // |file_db|.
   FileDb file_db;
   std::vector<QueryableFile> files;
 
-  // When importing data into the global db we need to remap ids from an
-  // arbitrary group into the global group.
-  IdMap id_map;
-
   QueryableDatabase(GroupId group);
 
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
+
+  void RemoveUsrs(const std::vector<Usr>& to_remove);
+  void Import(const std::vector<QueryableTypeDef>& defs);
+  void Import(const std::vector<QueryableFuncDef>& defs);
+  void Import(const std::vector<QueryableVarDef>& defs);
+  void Update(const std::vector<QueryableTypeDef::DefUpdate>& updates);
+  void Update(const std::vector<QueryableFuncDef::DefUpdate>& updates);
+  void Update(const std::vector<QueryableVarDef::DefUpdate>& updates);
 };
 
-template<typename TDef, typename TId>
-void RemoveAll(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs, const std::vector<TId>& ids_to_remove) {
-  auto to_erase = std::remove_if(defs->begin(), defs->end(), [&](const TDef& def) {
+void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
+  // TODO: Removing usrs is tricky because it means we will have to rebuild idx locations. I'm thinking we just nullify
+  //       the entry instead of actually removing the data. The index could be massive.
+
+  /*
+  usr_to_symbol.erase(std::remove_if(usr_to_symbol.begin(), usr_to_symbol.end(), [&to_remove](const std::string& usr) {
     // TODO: make ids_to_remove a set?
-    return std::find(ids_to_remove.begin(), ids_to_remove.end(), def.def.id) != ids_to_remove.end();
-  });
+    return std::find(to_remove.begin(), to_remove.end(), usr) != to_remove.end();
+  }), usr_to_symbol.end());
 
-  for (auto it = to_erase; it != defs->end(); ++it) {
-    id_map->erase(it->def.id);
+
+  types.erase(std::remove_if(types.begin(), types.end(), [&to_remove](const QueryableTypeDef& def) {
+    return false;
+  }), types.end());
+  */
+  /*
+  for (auto it = to_erase; it != usr_to_symbol.end(); ++it) {
+    switch (it->second.kind) {
+    case SymbolKind::Type:
+      types.erase(types.begin() + it->second.type_idx);
+      break;
+    case SymbolKind::Func:
+      funcs.erase(funcs.begin() + it->second.func_idx);
+      break;
+    case SymbolKind::Var:
+      vars.erase(vars.begin() + it->second.var_idx);
+      break;
+    }
   }
-
-  defs->erase(to_erase, defs->end());
+  */
 }
+
+void QueryableDatabase::Import(const std::vector<QueryableTypeDef>& defs) {
+  for (auto& def : defs) {
+    usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Type, types.size());
+    types.push_back(def);
+  }
+}
+
+void QueryableDatabase::Import(const std::vector<QueryableFuncDef>& defs) {
+  for (auto& def : defs) {
+    usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
+    funcs.push_back(def);
+  }
+}
+
+void QueryableDatabase::Import(const std::vector<QueryableVarDef>& defs) {
+  for (auto& def : defs) {
+    usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
+    vars.push_back(def);
+  }
+}
+
+void QueryableDatabase::Update(const std::vector<QueryableTypeDef::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    SymbolIdx idx = usr_to_symbol[def.usr];
+    assert(idx.kind == SymbolKind::Type);
+    types[idx.idx].def = def;
+  }
+}
+
+void QueryableDatabase::Update(const std::vector<QueryableFuncDef::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    SymbolIdx idx = usr_to_symbol[def.usr];
+    assert(idx.kind == SymbolKind::Func);
+    funcs[idx.idx].def = def;
+  }
+}
+
+void QueryableDatabase::Update(const std::vector<QueryableVarDef::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    SymbolIdx idx = usr_to_symbol[def.usr];
+    assert(idx.kind == SymbolKind::Var);
+    vars[idx.idx].def = def;
+  }
+}
+
 
 template<typename TDef, typename TId>
 void AddAll(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs, const std::vector<TDef>& to_add) {
@@ -711,40 +909,36 @@ void ApplyUpdates(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs,
   }
 }
 
-QueryableDatabase::QueryableDatabase(GroupId group) : id_map(group), file_db(group) {}
+QueryableDatabase::QueryableDatabase(GroupId group) : file_db(group) {}
 
 void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
-  id_map.Import(update->id_map);
-
 #define JOIN(a, b) a##b
-#define HANDLE_MERGEABLE(update_var_name, def_var_name, index_name, storage_name) \
+#define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
   for (auto merge_update : JOIN(update->, update_var_name)) { \
-    int index = JOIN(index_name, [merge_update.id]); \
-    auto* def = &JOIN(storage_name, [index]); \
+    SymbolIdx index = usr_to_symbol[merge_update.usr]; \
+    auto* def = &JOIN(storage_name, [index.idx]); \
     AddRange(JOIN(&def->, def_var_name), merge_update.to_add); \
     RemoveRange(JOIN(&def->, def_var_name), merge_update.to_remove); \
   }
 
-  update->Remap(&id_map);
+  RemoveUsrs(update->types_removed);
+  Import(update->types_added);
+  Update(update->types_def_changed);
+  HANDLE_MERGEABLE(types_derived, derived, types);
+  HANDLE_MERGEABLE(types_uses, uses, types);
 
-  RemoveAll(&type_id_to_index, &types, update->types_removed);
-  AddAll(&type_id_to_index, &types, update->types_added);
-  ApplyUpdates(&type_id_to_index, &types, update->types_def_changed);
-  HANDLE_MERGEABLE(types_derived, derived, type_id_to_index, types);
-  HANDLE_MERGEABLE(types_uses, uses, type_id_to_index, types);
+  RemoveUsrs(update->funcs_removed);
+  Import(update->funcs_added);
+  Update(update->funcs_def_changed);
+  HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
+  HANDLE_MERGEABLE(funcs_derived, derived, funcs);
+  HANDLE_MERGEABLE(funcs_callers, callers, funcs);
+  HANDLE_MERGEABLE(funcs_uses, uses, funcs);
 
-  RemoveAll(&func_id_to_index, &funcs, update->funcs_removed);
-  AddAll(&func_id_to_index, &funcs, update->funcs_added);
-  ApplyUpdates(&func_id_to_index, &funcs, update->funcs_def_changed);
-  HANDLE_MERGEABLE(funcs_declarations, declarations, func_id_to_index, funcs);
-  HANDLE_MERGEABLE(funcs_derived, derived, func_id_to_index, funcs);
-  HANDLE_MERGEABLE(funcs_callers, callers, func_id_to_index, funcs);
-  HANDLE_MERGEABLE(funcs_uses, uses, func_id_to_index, funcs);
-
-  RemoveAll(&var_id_to_index, &vars, update->vars_removed);
-  AddAll(&var_id_to_index, &vars, update->vars_added);
-  ApplyUpdates(&var_id_to_index, &vars, update->vars_def_changed);
-  HANDLE_MERGEABLE(vars_uses, uses, var_id_to_index, vars);
+  RemoveUsrs(update->vars_removed);
+  Import(update->vars_added);
+  Update(update->vars_def_changed);
+  HANDLE_MERGEABLE(vars_uses, uses, vars);
 
 #undef HANDLE_MERGEABLE
 #undef JOIN
@@ -761,25 +955,24 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
 int main(int argc, char** argv) {
   // TODO: Unify UserToIdResolver and FileDb
-  UsrToIdResolver usr_to_id(1);
+  IdCache id_cache(1);
   FileDb file_db(1);
 
-  IndexedFile indexed_file_a = Parse(&usr_to_id, &file_db, "full_tests/index_delta/a_v0.cc", {});
+  IndexedFile indexed_file_a = Parse(&id_cache, &file_db, "full_tests/index_delta/a_v0.cc", {});
   std::cout << indexed_file_a.ToString() << std::endl;
 
   std::cout << std::endl;
-  IndexedFile indexed_file_b = Parse(&usr_to_id, &file_db, "full_tests/index_delta/a_v1.cc", {});
+  IndexedFile indexed_file_b = Parse(&id_cache, &file_db, "full_tests/index_delta/a_v1.cc", {});
   std::cout << indexed_file_b.ToString() << std::endl;
-
   // TODO: We don't need to do ID remapping when computting a diff. Well, we need to do it for the IndexUpdate.
-  IdMap dest_ids(2);
-  IndexUpdate import(&dest_ids, indexed_file_a);
-  dest_ids.Import(indexed_file_b.file_db, indexed_file_b.usr_to_id);
-  IndexUpdate update = ComputeDiff(&dest_ids, indexed_file_a, indexed_file_b);
-
+  IndexUpdate import(indexed_file_a);
+  /*
+  dest_ids.Import(indexed_file_b.file_db, indexed_file_b.id_cache);
+  IndexUpdate update = ComputeDiff(indexed_file_a, indexed_file_b);
+  */
   QueryableDatabase db(5);
   db.ApplyIndexUpdate(&import);
-  db.ApplyIndexUpdate(&update);
+  //db.ApplyIndexUpdate(&update);
 
   return 0;
 }
