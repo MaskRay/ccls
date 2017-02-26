@@ -225,7 +225,7 @@ struct FileDb {
     unsigned int line, column, offset;
     clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
 
-    FileId file_id;
+    FileId file_id(-1, -1);
     if (file != nullptr) {
       std::string path = clang::ToString(clang_getFileName(file));
 
@@ -356,7 +356,7 @@ struct IndexedTypeDef {
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Location> uses;
 
-  bool is_system_def = false;
+  bool is_bad_def = true;
 
   IndexedTypeDef(TypeId id, const std::string& usr);
   void AddUsage(Location loc, bool insert_if_not_present = true);
@@ -437,7 +437,7 @@ struct IndexedFuncDef {
   // All usages. For interesting usages, see callees.
   std::vector<Location> uses;
 
-  bool is_system_def = false;
+  bool is_bad_def = true;
 
   IndexedFuncDef(FuncId id, const std::string& usr) : def(id, usr) {
     assert(usr.size() > 0);
@@ -500,7 +500,7 @@ struct IndexedVarDef {
   // Usages.
   std::vector<Location> uses;
 
-  bool is_system_def = false;
+  bool is_bad_def = true;
 
   IndexedVarDef(VarId id, const std::string& usr) : def(id, usr) {
     assert(usr.size() > 0);

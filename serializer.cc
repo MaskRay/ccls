@@ -101,7 +101,8 @@ void Serialize(Writer& writer, IndexedFile* file) {
   writer.Key("types");
   writer.StartArray();
   for (IndexedTypeDef& def : file->types) {
-    if (def.is_system_def) continue;
+    if (def.is_bad_def)
+      continue;
 
     writer.StartObject();
     SERIALIZE("id", def.id);
@@ -124,7 +125,8 @@ void Serialize(Writer& writer, IndexedFile* file) {
   writer.Key("functions");
   writer.StartArray();
   for (IndexedFuncDef& def : file->funcs) {
-    if (def.is_system_def) continue;
+    if (def.is_bad_def)
+      continue;
 
     writer.StartObject();
     SERIALIZE("id", def.id);
@@ -148,7 +150,8 @@ void Serialize(Writer& writer, IndexedFile* file) {
   writer.Key("variables");
   writer.StartArray();
   for (IndexedVarDef& def : file->vars) {
-    if (def.is_system_def) continue;
+    if (def.is_bad_def)
+      continue;
 
     writer.StartObject();
     SERIALIZE("id", def.id);

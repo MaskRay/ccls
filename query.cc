@@ -38,6 +38,9 @@ struct IdMap {
 
   template<typename TId>
   inline TId GenericRemap(GroupMap<TId>* map, int64_t* next_id, TId from) {
+    if (from.group == target_group)
+      return from;
+
     // PERF: If this function is a hot-spot we can pull the group computation
     // out, ie,
     //
@@ -89,6 +92,11 @@ struct IdMap {
     std::vector<TId> result;
     result.reserve(from.size());
     for (TId id : from) {
+      if (id.group == target_group) {
+        result.push_back(id);
+        continue;
+      }
+
       // Lookup the id from the group or add it.
       auto it = group.find(id);
       if (it == group.end()) {
@@ -489,7 +497,13 @@ void CompareGroups(
   while (prev_it != previous_data.end() && curr_it != current_data.end()) {
     // same id
     if (prev_it->def.id == curr_it->def.id) {
-      on_found(&*prev_it, &*curr_it);
+      if (!prev_it->is_bad_def && !curr_it->is_bad_def)
+        on_found(&*prev_it, &*curr_it);
+      else if (prev_it->is_bad_def)
+        on_added(&*curr_it);
+      else if (curr_it->is_bad_def)
+        on_removed(&*curr_it);
+
       ++prev_it;
       ++curr_it;
     }
@@ -606,7 +620,7 @@ void ApplyIndexUpdate(const IndexUpdate& update, QueryableDatabase* db) {
 
 
 
-int ma333in(int argc, char** argv) {
+int main(int argc, char** argv) {
   // TODO: Unify UserToIdResolver and FileDb
   UsrToIdResolver usr_to_id(1);
   FileDb file_db(1);

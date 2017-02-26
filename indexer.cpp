@@ -87,9 +87,6 @@ IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : def(id, usr)
 }
 
 void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present) {
-  if (is_system_def)
-    return;
-
   for (int i = uses.size() - 1; i >= 0; --i) {
     if (uses[i].IsEqualTo(loc)) {
       if (loc.interesting)
@@ -435,7 +432,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     VarId var_id = db->ToVarId(decl->entityInfo->USR);
     IndexedVarDef* var_def = db->Resolve(var_id);
 
-    var_def->is_system_def = is_system_def;
+    var_def->is_bad_def = is_system_def;
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     // TODO: Verify this gets called multiple times
@@ -482,7 +479,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     FuncId func_id = db->ToFuncId(decl->entityInfo->USR);
     IndexedFuncDef* func_def = db->Resolve(func_id);
 
-    func_def->is_system_def = is_system_def;
+    func_def->is_bad_def = is_system_def;
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     //if (!decl->isRedeclaration) {
@@ -599,7 +596,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     IndexedTypeDef* type_def = db->Resolve(type_id);
 
-    type_def->is_system_def = is_system_def;
+    type_def->is_bad_def = is_system_def;
 
     if (alias_of)
       type_def->def.alias_of = alias_of.value();
@@ -621,7 +618,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     IndexedTypeDef* type_def = db->Resolve(type_id);
 
-    type_def->is_system_def = is_system_def;
+    type_def->is_bad_def = is_system_def;
 
     // TODO: Eventually run with this if. Right now I want to iron out bugs this may shadow.
     // TODO: For type section, verify if this ever runs for non definitions?
@@ -777,7 +774,15 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   {
     TypeId referenced_id = db->ToTypeId(ref->referencedEntity->USR);
     IndexedTypeDef* referenced_def = db->Resolve(referenced_id);
-
+    
+    // We will not get a declaration visit for forward declared types. Try to mark them as non-bad 
+    // defs here so we will output usages/etc.
+    if (referenced_def->is_bad_def) {
+      bool is_system_def = clang_Location_isInSystemHeader(clang_getCursorLocation(ref->referencedEntity->cursor));
+      Location loc = db->file_db->Resolve(ref->referencedEntity->cursor, false /*interesting*/);
+      if (!is_system_def && loc.raw_file_id != -1)
+        referenced_def->is_bad_def = false;
+    }
     //
     // The following will generate two TypeRefs to Foo, both located at the
     // same spot (line 3, column 3). One of the parents will be set to
@@ -942,7 +947,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main(int argc, char** argv) {
+int main55555(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -956,7 +961,7 @@ int main(int argc, char** argv) {
   DUMP_AST = false;
 
   for (std::string path : GetFilesInFolder("tests")) {
-    //if (path != "tests/declaration_vs_definition/class_member_static.cc") continue;
+    //if (path != "tests/usage/type_usage_declare_field.cc") continue;
     //if (path != "tests/enums/enum_class_decl.cc") continue;
     //if (path != "tests/constructors/constructor.cc") continue;
     //if (path == "tests/constructors/destructor.cc") continue;

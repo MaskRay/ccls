@@ -50,10 +50,6 @@ OUTPUT:
       "derived": [5],
       "uses": ["*1:11:7", "*1:13:56"]
     }, {
-      "id": 4,
-      "usr": "c:class_inherit_templated_parent.cc@154",
-      "uses": ["*1:11:24"]
-    }, {
       "id": 5,
       "usr": "c:@S@Derived",
       "short_name": "Derived",
