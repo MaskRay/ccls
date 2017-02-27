@@ -103,6 +103,48 @@ void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present) {
     uses.push_back(loc);
 }
 
+IdCache::IdCache() {
+  // Reserve id 0 for unfound.
+  file_path_to_file_id[""] = FileId(0);
+  file_id_to_file_path[FileId(0)] = "";
+}
+
+Location IdCache::Resolve(const CXSourceLocation& cx_loc, bool interesting) {
+  CXFile file;
+  unsigned int line, column, offset;
+  clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
+
+  FileId file_id(-1);
+  if (file != nullptr) {
+    std::string path = clang::ToString(clang_getFileName(file));
+
+    auto it = file_path_to_file_id.find(path);
+    if (it != file_path_to_file_id.end()) {
+      file_id = it->second;
+    }
+    else {
+      file_id = FileId(file_path_to_file_id.size());
+      file_path_to_file_id[path] = file_id;
+      file_id_to_file_path[file_id] = path;
+    }
+  }
+
+  return Location(interesting, file_id, line, column);
+}
+
+Location IdCache::Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
+  CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
+  return Resolve(cx_loc, interesting);
+}
+
+Location IdCache::Resolve(const CXCursor& cx_cursor, bool interesting) {
+  return Resolve(clang_getCursorLocation(cx_cursor), interesting);
+}
+
+Location IdCache::Resolve(const clang::Cursor& cursor, bool interesting) {
+  return Resolve(cursor.cx_cursor, interesting);
+}
+
 
 template<typename T>
 bool Contains(const std::vector<T>& vec, const T& element) {

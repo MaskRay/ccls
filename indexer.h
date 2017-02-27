@@ -465,48 +465,11 @@ struct IdCache {
   std::unordered_map<FuncId, std::string> func_id_to_usr;
   std::unordered_map<VarId, std::string> var_id_to_usr;
 
-  IdCache() {
-    // Reserve id 0 for unfound.
-    file_path_to_file_id[""] = FileId(0);
-    file_id_to_file_path[FileId(0)] = "";
-  }
-
-  Location Resolve(const CXSourceLocation& cx_loc, bool interesting) {
-    CXFile file;
-    unsigned int line, column, offset;
-    clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
-
-    FileId file_id(-1);
-    if (file != nullptr) {
-      std::string path = clang::ToString(clang_getFileName(file));
-
-      auto it = file_path_to_file_id.find(path);
-      if (it != file_path_to_file_id.end()) {
-        file_id = it->second;
-      }
-      else {
-        file_id = FileId(file_path_to_file_id.size());
-        file_path_to_file_id[path] = file_id;
-        file_id_to_file_path[file_id] = path;
-      }
-    }
-
-    return Location(interesting, file_id, line, column);
-  }
-
-  Location Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
-    CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
-    return Resolve(cx_loc, interesting);
-  }
-
-  Location Resolve(const CXCursor& cx_cursor, bool interesting) {
-    return Resolve(clang_getCursorLocation(cx_cursor), interesting);
-  }
-
-  Location Resolve(const clang::Cursor& cursor, bool interesting) {
-    return Resolve(cursor.cx_cursor, interesting);
-  }
-
+  IdCache();
+  Location Resolve(const CXSourceLocation& cx_loc, bool interesting);
+  Location Resolve(const CXIdxLoc& cx_idx_loc, bool interesting);
+  Location Resolve(const CXCursor& cx_cursor, bool interesting);
+  Location Resolve(const clang::Cursor& cursor, bool interesting);
 };
 
 struct IndexedFile {
@@ -526,7 +489,6 @@ struct IndexedFile {
   TypeId ToTypeId(const CXCursor& usr);
   FuncId ToFuncId(const CXCursor& usr);
   VarId ToVarId(const CXCursor& usr);
-
   IndexedTypeDef* Resolve(TypeId id);
   IndexedFuncDef* Resolve(FuncId id);
   IndexedVarDef* Resolve(VarId id);
