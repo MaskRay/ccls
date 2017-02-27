@@ -23,14 +23,44 @@ enum class PreferredSymbolLocation {
 };
 
 using Usr = std::string;
+
+// TODO: Switch over to QueryableLocation. Figure out if there is
+//       a good way to get the indexer using it. I don't think so
+//       since we may discover more files while indexing a file.
+//
+//       We could also reuse planned USR caching system for file
+//       paths.
+struct QueryableLocation {
+  Usr path;
+  int line;
+  int column;
+  bool interesting;
+
+  QueryableLocation()
+    : path(""), line(-1), column(-1), interesting(false) {}
+  QueryableLocation(Usr path, int line, int column, bool interesting)
+    : path(path), line(line), column(column), interesting(interesting) {}
+
+  bool operator==(const QueryableLocation& other) const {
+    // Note: We ignore |is_interesting|.
+    return
+      path == other.path &&
+      line == other.line &&
+      column == other.column;
+  }
+};
+
+
 struct UsrRef {
   Usr usr;
-  Location loc;
+  QueryableLocation loc;
 
   bool operator==(const UsrRef& other) const {
     return usr == other.usr && loc == other.loc;
   }
 };
+
+
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -52,45 +82,45 @@ struct MergeableUpdate {
 };
 
 struct QueryableTypeDef {
-  TypeDefDefinitionData<Usr, Usr, Usr> def;
-  std::vector<Usr> derived;
-  std::vector<Location> uses;
-
-  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr>;
+  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
-  using UsesUpdate = MergeableUpdate<Location>;
+  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+
+  DefUpdate def;
+  std::vector<Usr> derived;
+  std::vector<QueryableLocation> uses;
 
   QueryableTypeDef(IdCache& id_cache, IndexedTypeDef& indexed);
 };
 
 struct QueryableFuncDef {
-  FuncDefDefinitionData<Usr, Usr, Usr, UsrRef> def;
-  std::vector<Location> declarations;
-  std::vector<Usr> derived;
-  std::vector<UsrRef> callers;
-  std::vector<Location> uses;
-
-  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef>;
-  using DeclarationsUpdate = MergeableUpdate<Location>;
+  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
+  using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using CallersUpdate = MergeableUpdate<UsrRef>;
-  using UsesUpdate = MergeableUpdate<Location>;
+  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+
+  DefUpdate def;
+  std::vector<QueryableLocation> declarations;
+  std::vector<Usr> derived;
+  std::vector<UsrRef> callers;
+  std::vector<QueryableLocation> uses;
 
   QueryableFuncDef(IdCache& id_cache, IndexedFuncDef& indexed);
 };
 
 struct QueryableVarDef {
-  VarDefDefinitionData<Usr, Usr, Usr> def;
-  std::vector<Location> uses;
+  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
+  using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
-  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr>;
-  using UsesUpdate = MergeableUpdate<Location>;
+  DefUpdate def;
+  std::vector<QueryableLocation> uses;
 
   QueryableVarDef(IdCache& id_cache, IndexedVarDef& indexed);
 };
 
 
-enum class SymbolKind { Invalid, Type, Func, Var };
+enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {
   SymbolKind kind;
   uint64_t idx;

@@ -290,23 +290,6 @@ struct IdMap {
 
 
 
-// TODO: Switch over to QueryableLocation. Figure out if there is
-//       a good way to get the indexer using it. I don't think so
-//       since we may discover more files while indexing a file.
-//
-//       We could also reuse planned USR caching system for file
-//       paths.
-struct CachedFileDb {
-  using Id = int64_t;
-  std::vector<std::string> file_names;
-};
-
-struct QueryableLocation {
-  CachedFileDb::Id id;
-  int line;
-  int column;
-  bool is_interesting;
-};
 
 
 
@@ -337,7 +320,9 @@ Usr MapIdToUsr(IdCache& id_cache, FuncId& id) {
 Usr MapIdToUsr(IdCache& id_cache, VarId& id) {
   return id_cache.var_id_to_usr[id];
 }
-Location MapIdToUsr(IdCache& id_cache, Location& ids); // FIXME: We will need additional data to map locations.
+QueryableLocation MapIdToUsr(IdCache& id_cache, Location& id) {
+  return QueryableLocation(id_cache.file_id_to_file_path[id.file_id()], id.line, id.column, id.interesting);
+}
 
 std::vector<Usr> MapIdToUsr(IdCache& id_cache, std::vector<TypeId>& ids) {
   return Transform<TypeId, Usr>(ids, [&](TypeId id) { return id_cache.type_id_to_usr[id]; });
@@ -351,12 +336,16 @@ std::vector<Usr> MapIdToUsr(IdCache& id_cache, std::vector<VarId>& ids) {
 std::vector<UsrRef> MapIdToUsr(IdCache& id_cache, std::vector<FuncRef>& ids) {
   return Transform<FuncRef, UsrRef>(ids, [&](FuncRef ref) {
     UsrRef result;
-    result.loc = ref.loc; // FIXME: Patch proper location. Fix when fixing MapIdToUsr(Location). I'm thinking we will have a GlobalLocation type.
+    result.loc = MapIdToUsr(id_cache, ref.loc);
     result.usr = id_cache.func_id_to_usr[ref.id];
     return result;
   });
 }
-std::vector<Location> MapIdToUsr(IdCache& id_cache, std::vector<Location>& ids); // FIXME: We will need additional data to map locations.
+std::vector<QueryableLocation> MapIdToUsr(IdCache& id_cache, std::vector<Location>& ids) {
+  return Transform<Location, QueryableLocation>(ids, [&](Location id) {
+    return QueryableLocation(id_cache.file_id_to_file_path[id.file_id()], id.line, id.column, id.interesting);
+  });
+}
 QueryableTypeDef::DefUpdate MapIdToUsr(IdCache& id_cache, TypeDefDefinitionData<>& def) {
   QueryableTypeDef::DefUpdate result(def.usr, def.usr);
   if (result.definition)
@@ -788,19 +777,13 @@ struct QueryableDatabase {
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage.
+  std::vector<QueryableFile> files; // File path is stored as a Usr.
   std::vector<QueryableTypeDef> types;
   std::vector<QueryableFuncDef> funcs;
   std::vector<QueryableVarDef> vars;
 
   // Lookup symbol based on a usr.
   std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
-
-  // |files| is indexed by FileId. Retrieve a FileId from a path using
-  // |file_db|.
-  FileDb file_db;
-  std::vector<QueryableFile> files;
-
-  QueryableDatabase(GroupId group);
 
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
@@ -909,8 +892,6 @@ void ApplyUpdates(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs,
   }
 }
 
-QueryableDatabase::QueryableDatabase(GroupId group) : file_db(group) {}
-
 void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 #define JOIN(a, b) a##b
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
@@ -956,13 +937,12 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 int main(int argc, char** argv) {
   // TODO: Unify UserToIdResolver and FileDb
   IdCache id_cache(1);
-  FileDb file_db(1);
 
-  IndexedFile indexed_file_a = Parse(&id_cache, &file_db, "full_tests/index_delta/a_v0.cc", {});
+  IndexedFile indexed_file_a = Parse(&id_cache, "full_tests/index_delta/a_v0.cc", {});
   std::cout << indexed_file_a.ToString() << std::endl;
 
   std::cout << std::endl;
-  IndexedFile indexed_file_b = Parse(&id_cache, &file_db, "full_tests/index_delta/a_v1.cc", {});
+  IndexedFile indexed_file_b = Parse(&id_cache, "full_tests/index_delta/a_v1.cc", {});
   std::cout << indexed_file_b.ToString() << std::endl;
   // TODO: We don't need to do ID remapping when computting a diff. Well, we need to do it for the IndexUpdate.
   IndexUpdate import(indexed_file_a);
@@ -970,7 +950,7 @@ int main(int argc, char** argv) {
   dest_ids.Import(indexed_file_b.file_db, indexed_file_b.id_cache);
   IndexUpdate update = ComputeDiff(indexed_file_a, indexed_file_b);
   */
-  QueryableDatabase db(5);
+  QueryableDatabase db;
   db.ApplyIndexUpdate(&import);
   //db.ApplyIndexUpdate(&update);
 

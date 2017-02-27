@@ -209,55 +209,6 @@ Location WithInteresting(bool interesting) {
 END_BITFIELD_TYPE()
 #endif
 
-struct FileDb {
-  GroupId group;
-  std::unordered_map<std::string, FileId> file_path_to_file_id;
-  std::unordered_map<FileId, std::string> file_id_to_file_path;
-
-  FileDb(GroupId group) : group(group) {
-    // Reserve id 0 for unfound.
-    file_path_to_file_id[""] = FileId(group, 0);
-    file_id_to_file_path[FileId(group, 0)] = "";
-  }
-
-  Location Resolve(const CXSourceLocation& cx_loc, bool interesting) {
-    CXFile file;
-    unsigned int line, column, offset;
-    clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
-
-    FileId file_id(-1, -1);
-    if (file != nullptr) {
-      std::string path = clang::ToString(clang_getFileName(file));
-
-      auto it = file_path_to_file_id.find(path);
-      if (it != file_path_to_file_id.end()) {
-        file_id = it->second;
-      }
-      else {
-        file_id = FileId(group, file_path_to_file_id.size());
-        file_path_to_file_id[path] = file_id;
-        file_id_to_file_path[file_id] = path;
-      }
-    }
-
-    return Location(interesting, file_id, line, column);
-  }
-
-  Location Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
-    CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
-    return Resolve(cx_loc, interesting);
-  }
-
-  Location Resolve(const CXCursor& cx_cursor, bool interesting) {
-    return Resolve(clang_getCursorLocation(cx_cursor), interesting);
-  }
-
-  Location Resolve(const clang::Cursor& cursor, bool interesting) {
-    return Resolve(cursor.cx_cursor, interesting);
-  }
-};
-
-
 template<typename T>
 struct Ref {
   Id<T> id;
@@ -295,7 +246,7 @@ using VarRef = Ref<IndexedVarDef>;
 // TODO: Either eliminate the defs created as a by-product of cross-referencing,
 //       or do not emit things we don't have definitions for.
 
-template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId>
+template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename Location = Location>
 struct TypeDefDefinitionData {
   // General metadata.
   TypeId id;
@@ -376,7 +327,7 @@ namespace std {
   };
 }
 
-template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename FuncRef = FuncRef>
+template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename FuncRef = FuncRef, typename Location = Location>
 struct FuncDefDefinitionData {
   // General metadata.
   FuncId id;
@@ -459,7 +410,7 @@ namespace std {
   };
 }
 
-template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId>
+template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename Location = Location>
 struct VarDefDefinitionData {
   // General metadata.
   VarId id;
@@ -526,25 +477,67 @@ struct IdCache {
   // NOTE: Every Id is resolved to a file_id of 0. The correct file_id needs
   //       to get fixed up when inserting into the real db.
   GroupId group;
+  std::unordered_map<std::string, FileId> file_path_to_file_id;
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
   std::unordered_map<std::string, VarId> usr_to_var_id;
+  std::unordered_map<FileId, std::string> file_id_to_file_path;
   std::unordered_map<TypeId, std::string> type_id_to_usr;
   std::unordered_map<FuncId, std::string> func_id_to_usr;
   std::unordered_map<VarId, std::string> var_id_to_usr;
 
-  IdCache(GroupId group) : group(group) {}
+  IdCache(GroupId group) : group(group) {
+    // Reserve id 0 for unfound.
+    file_path_to_file_id[""] = FileId(group, 0);
+    file_id_to_file_path[FileId(group, 0)] = "";
+  }
+
+  Location Resolve(const CXSourceLocation& cx_loc, bool interesting) {
+    CXFile file;
+    unsigned int line, column, offset;
+    clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
+
+    FileId file_id(-1, -1);
+    if (file != nullptr) {
+      std::string path = clang::ToString(clang_getFileName(file));
+
+      auto it = file_path_to_file_id.find(path);
+      if (it != file_path_to_file_id.end()) {
+        file_id = it->second;
+      }
+      else {
+        file_id = FileId(group, file_path_to_file_id.size());
+        file_path_to_file_id[path] = file_id;
+        file_id_to_file_path[file_id] = path;
+      }
+    }
+
+    return Location(interesting, file_id, line, column);
+  }
+
+  Location Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
+    CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
+    return Resolve(cx_loc, interesting);
+  }
+
+  Location Resolve(const CXCursor& cx_cursor, bool interesting) {
+    return Resolve(clang_getCursorLocation(cx_cursor), interesting);
+  }
+
+  Location Resolve(const clang::Cursor& cursor, bool interesting) {
+    return Resolve(cursor.cx_cursor, interesting);
+  }
+
 };
 
 struct IndexedFile {
-  FileDb* file_db;
   IdCache* id_cache;
 
   std::vector<IndexedTypeDef> types;
   std::vector<IndexedFuncDef> funcs;
   std::vector<IndexedVarDef> vars;
 
-  IndexedFile(IdCache* id_cache, FileDb* file_db);
+  IndexedFile(IdCache* id_cache);
 
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);
@@ -562,4 +555,4 @@ struct IndexedFile {
 
 
 
-IndexedFile Parse(IdCache* id_cache, FileDb* file_db, std::string filename, std::vector<std::string> args);
+IndexedFile Parse(IdCache* id_cache, std::string filename, std::vector<std::string> args);

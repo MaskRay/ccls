@@ -17,6 +17,7 @@ def configure(conf):
 # https://github.com/Andersbakken/rtags/blob/master/scripts/getclang.sh
 def download_clang():
   #'http://releases.llvm.org/3.9.0/clang+llvm-3.9.0-x86_64-apple-darwin.tar.xz'
+  pass
 
 def build(bld):
   cc_files = bld.path.ant_glob(['**/*.cpp', '**/*.cc'],

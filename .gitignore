@@ -1,6 +1,9 @@
 .vs
 Debug
 x64
+build
+waf-*
+.lock-waf*
 *.swp
 *.sln
 *.vcxproj
