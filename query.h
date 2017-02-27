@@ -232,3 +232,17 @@ struct QueryableDatabase {
   void Update(const std::vector<QueryableFuncDef::DefUpdate>& updates);
   void Update(const std::vector<QueryableVarDef::DefUpdate>& updates);
 };
+
+
+
+// TODO: For supporting vscode, lets'
+//  - have our normal daemon system
+//  - have frontend --language-server which accepts JSON RPC language server in stdin and emits language server
+//    JSON in stdout. vscode extension will run the executable this way. it will connect to daemon as normal.
+//    this means that vscode instance can be killed without actually killing core indexer process.
+//      $ indexer --language-server
+//  - maybe? have simple front end which lets user run
+//      $ indexer --action references --location foo.cc:20:5
+//
+//
+// https://github.com/Microsoft/vscode-languageserver-node/blob/master/client/src/main.ts
