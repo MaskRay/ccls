@@ -620,8 +620,7 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
 
 int main233(int argc, char** argv) {
-  // TODO: Unify UserToIdResolver and FileDb
-  IdCache id_cache(1);
+  IdCache id_cache;
 
   IndexedFile indexed_file_a = Parse(&id_cache, "full_tests/index_delta/a_v0.cc", {});
   std::cout << indexed_file_a.ToString() << std::endl;

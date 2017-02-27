@@ -21,7 +21,7 @@ TypeId IndexedFile::ToTypeId(const std::string& usr) {
   if (it != id_cache->usr_to_type_id.end())
     return it->second;
 
-  TypeId id(id_cache->group, types.size());
+  TypeId id(types.size());
   types.push_back(IndexedTypeDef(id, usr));
   id_cache->usr_to_type_id[usr] = id;
   id_cache->type_id_to_usr[id] = usr;
@@ -32,7 +32,7 @@ FuncId IndexedFile::ToFuncId(const std::string& usr) {
   if (it != id_cache->usr_to_func_id.end())
     return it->second;
 
-  FuncId id(id_cache->group, funcs.size());
+  FuncId id(funcs.size());
   funcs.push_back(IndexedFuncDef(id, usr));
   id_cache->usr_to_func_id[usr] = id;
   id_cache->func_id_to_usr[id] = usr;
@@ -43,7 +43,7 @@ VarId IndexedFile::ToVarId(const std::string& usr) {
   if (it != id_cache->usr_to_var_id.end())
     return it->second;
 
-  VarId id(id_cache->group, vars.size());
+  VarId id(vars.size());
   vars.push_back(IndexedVarDef(id, usr));
   id_cache->usr_to_var_id[usr] = id;
   id_cache->var_id_to_usr[id] = usr;
@@ -990,7 +990,7 @@ int main(int argc, char** argv) {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IdCache id_cache(1);
+    IdCache id_cache;
     IndexedFile db = Parse(&id_cache, path, {});
     std::string actual_output = db.ToString();
 

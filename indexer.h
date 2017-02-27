@@ -26,23 +26,18 @@ struct IndexedVarDef;
 using namespace std::experimental;
 
 
-using GroupId = int;
-
 template<typename T>
 struct Id {
-  GroupId group;
   uint64_t id;
 
   Id() : id(0) {} // Needed for containers. Do not use directly.
-  Id(GroupId group, uint64_t id) : group(group), id(id) {}
+  Id(uint64_t id) : id(id) {}
 
   bool operator==(const Id<T>& other) const {
-    assert(group == other.group && "Cannot compare Ids from different groups");
     return id == other.id;
   }
 
   bool operator<(const Id<T>& other) const {
-    assert(group == other.group);
     return id < other.id;
   }
 };
@@ -51,7 +46,7 @@ namespace std {
   template<typename T>
   struct hash<Id<T>> {
     size_t operator()(const Id<T>& k) const {
-      return ((hash<uint64_t>()(k.id) ^ (hash<int>()(k.group) << 1)) >> 1);
+      return hash<uint64_t>()(k.id);
     }
   };
 }
@@ -71,14 +66,12 @@ using VarId = Id<IndexedVarDef>;
 
 struct Location {
   bool interesting;
-  int raw_file_group;
   int raw_file_id;
   int line;
   int column;
 
   Location() {
     interesting = false;
-    raw_file_group = -1;
     raw_file_id = -1;
     line = -1;
     column = -1;
@@ -86,14 +79,13 @@ struct Location {
 
   Location(bool interesting, FileId file, uint32_t line, uint32_t column) {
     this->interesting = interesting;
-    this->raw_file_group = file.group;
     this->raw_file_id = file.id;
     this->line = line;
     this->column = column;
   }
 
   FileId file_id() const {
-    return FileId(raw_file_id, raw_file_group);
+    return FileId(raw_file_id);
   }
 
   std::string ToString() {
@@ -123,7 +115,6 @@ struct Location {
   bool IsEqualTo(const Location& o) const {
     // When comparing, ignore the value of |interesting|.
     return
-      raw_file_group == o.raw_file_group &&
       raw_file_id == o.raw_file_id &&
       line == o.line &&
       column == o.column;
@@ -135,7 +126,6 @@ struct Location {
   bool operator<(const Location& o) const {
     return
       interesting < o.interesting &&
-      raw_file_group < o.raw_file_group &&
       raw_file_id < o.raw_file_id &&
       line < o.line &&
       column < o.column;
@@ -466,9 +456,6 @@ namespace std {
 }
 
 struct IdCache {
-  // NOTE: Every Id is resolved to a file_id of 0. The correct file_id needs
-  //       to get fixed up when inserting into the real db.
-  GroupId group;
   std::unordered_map<std::string, FileId> file_path_to_file_id;
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
@@ -478,10 +465,10 @@ struct IdCache {
   std::unordered_map<FuncId, std::string> func_id_to_usr;
   std::unordered_map<VarId, std::string> var_id_to_usr;
 
-  IdCache(GroupId group) : group(group) {
+  IdCache() {
     // Reserve id 0 for unfound.
-    file_path_to_file_id[""] = FileId(group, 0);
-    file_id_to_file_path[FileId(group, 0)] = "";
+    file_path_to_file_id[""] = FileId(0);
+    file_id_to_file_path[FileId(0)] = "";
   }
 
   Location Resolve(const CXSourceLocation& cx_loc, bool interesting) {
@@ -489,7 +476,7 @@ struct IdCache {
     unsigned int line, column, offset;
     clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
 
-    FileId file_id(-1, -1);
+    FileId file_id(-1);
     if (file != nullptr) {
       std::string path = clang::ToString(clang_getFileName(file));
 
@@ -498,7 +485,7 @@ struct IdCache {
         file_id = it->second;
       }
       else {
-        file_id = FileId(group, file_path_to_file_id.size());
+        file_id = FileId(file_path_to_file_id.size());
         file_path_to_file_id[path] = file_id;
         file_id_to_file_path[file_id] = path;
       }
