@@ -7,7 +7,6 @@
 #include <string>
 #include <iostream>
 
-#include "function_output_iterator.hpp"
 #include "compilation_database_loader.h"
 #include "optional.h"
 #include "indexer.h"
