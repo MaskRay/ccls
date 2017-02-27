@@ -48,6 +48,14 @@ struct QueryableLocation {
       line == other.line &&
       column == other.column;
   }
+  bool operator!=(const QueryableLocation& other) const { return !(*this == other); }
+  bool operator<(const QueryableLocation& o) const {
+    return
+      path < o.path &&
+      line < o.line &&
+      column < o.column &&
+      interesting < o.interesting;
+  }
 };
 
 
@@ -55,8 +63,15 @@ struct UsrRef {
   Usr usr;
   QueryableLocation loc;
 
+  UsrRef() {}
+  UsrRef(Usr usr, QueryableLocation loc) : usr(usr), loc(loc) {}
+
   bool operator==(const UsrRef& other) const {
     return usr == other.usr && loc == other.loc;
+  }
+  bool operator!=(const UsrRef& other) const { return !(*this == other); }
+  bool operator<(const UsrRef& other) const {
+    return usr < other.usr && loc < other.loc;
   }
 };
 
@@ -79,6 +94,19 @@ struct MergeableUpdate {
   // Entries to add and remove.
   std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
+
+  MergeableUpdate(Usr usr, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
+    : usr(usr), to_add(to_add), to_remove(to_remove) {}
+};
+
+struct QueryableFile {
+  using OutlineUpdate = MergeableUpdate<UsrRef>;
+
+  Usr file_id;
+  // Outline of the file (ie, all symbols).
+  std::vector<UsrRef> outline;
+
+  QueryableFile(const IndexedFile& indexed);
 };
 
 struct QueryableTypeDef {
@@ -90,7 +118,7 @@ struct QueryableTypeDef {
   std::vector<Usr> derived;
   std::vector<QueryableLocation> uses;
 
-  QueryableTypeDef(IdCache& id_cache, IndexedTypeDef& indexed);
+  QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
 };
 
 struct QueryableFuncDef {
@@ -106,7 +134,7 @@ struct QueryableFuncDef {
   std::vector<UsrRef> callers;
   std::vector<QueryableLocation> uses;
 
-  QueryableFuncDef(IdCache& id_cache, IndexedFuncDef& indexed);
+  QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
 };
 
 struct QueryableVarDef {
@@ -116,9 +144,8 @@ struct QueryableVarDef {
   DefUpdate def;
   std::vector<QueryableLocation> uses;
 
-  QueryableVarDef(IdCache& id_cache, IndexedVarDef& indexed);
+  QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);
 };
-
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {
@@ -130,11 +157,78 @@ struct SymbolIdx {
 };
 
 
-struct QueryableFile {
-  FileId file_id;
 
-  // Symbols declared in the file.
-  std::vector<SymbolIdx> declared_symbols;
-  // Symbols which have definitions in the file.
-  std::vector<SymbolIdx> defined_symbols;
+
+
+struct IndexUpdate {
+  // File updates.
+  std::vector<Usr> files_removed;
+  std::vector<QueryableFile> files_added;
+  std::vector<QueryableFile::OutlineUpdate> files_outline;
+
+  // Type updates.
+  std::vector<Usr> types_removed;
+  std::vector<QueryableTypeDef> types_added;
+  std::vector<QueryableTypeDef::DefUpdate> types_def_changed;
+  std::vector<QueryableTypeDef::DerivedUpdate> types_derived;
+  std::vector<QueryableTypeDef::UsesUpdate> types_uses;
+
+  // Function updates.
+  std::vector<Usr> funcs_removed;
+  std::vector<QueryableFuncDef> funcs_added;
+  std::vector<QueryableFuncDef::DefUpdate> funcs_def_changed;
+  std::vector<QueryableFuncDef::DeclarationsUpdate> funcs_declarations;
+  std::vector<QueryableFuncDef::DerivedUpdate> funcs_derived;
+  std::vector<QueryableFuncDef::CallersUpdate> funcs_callers;
+  std::vector<QueryableFuncDef::UsesUpdate> funcs_uses;
+
+  // Variable updates.
+  std::vector<Usr> vars_removed;
+  std::vector<QueryableVarDef> vars_added;
+  std::vector<QueryableVarDef::DefUpdate> vars_def_changed;
+  std::vector<QueryableVarDef::UsesUpdate> vars_uses;
+
+
+  // Creates a new IndexUpdate that will import |file|.
+  explicit IndexUpdate(IndexedFile& file);
+
+  // Creates an index update assuming that |previous| is already
+  // in the index, so only the delta between |previous| and |current|
+  // will be applied.
+  IndexUpdate(IndexedFile& previous, IndexedFile& current);
+
+  // Merges the contents of |update| into this IndexUpdate instance.
+  void Merge(const IndexUpdate& update);
+};
+
+
+
+// The query database is heavily optimized for fast queries. It is stored
+// in-memory.
+struct QueryableDatabase {
+  // Indicies between lookup vectors are related to symbols, ie, index 5 in
+  // |qualified_names| matches index 5 in |symbols|.
+  std::vector<std::string> qualified_names;
+  std::vector<SymbolIdx> symbols;
+
+  // Raw data storage.
+  std::vector<QueryableFile> files; // File path is stored as a Usr.
+  std::vector<QueryableTypeDef> types;
+  std::vector<QueryableFuncDef> funcs;
+  std::vector<QueryableVarDef> vars;
+
+  // Lookup symbol based on a usr.
+  std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
+
+  // Insert the contents of |update| into |db|.
+  void ApplyIndexUpdate(IndexUpdate* update);
+
+  void RemoveUsrs(const std::vector<Usr>& to_remove);
+  void Import(const std::vector<QueryableFile>& defs);
+  void Import(const std::vector<QueryableTypeDef>& defs);
+  void Import(const std::vector<QueryableFuncDef>& defs);
+  void Import(const std::vector<QueryableVarDef>& defs);
+  void Update(const std::vector<QueryableTypeDef::DefUpdate>& updates);
+  void Update(const std::vector<QueryableFuncDef::DefUpdate>& updates);
+  void Update(const std::vector<QueryableVarDef::DefUpdate>& updates);
 };

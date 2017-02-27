@@ -105,7 +105,7 @@ void Serialize(Writer& writer, IndexedFile* file) {
       continue;
 
     writer.StartObject();
-    SERIALIZE("id", def.id);
+    SERIALIZE("id", id);
     SERIALIZE("usr", def.usr);
     SERIALIZE("short_name", def.short_name);
     SERIALIZE("qualified_name", def.qualified_name);
@@ -129,7 +129,7 @@ void Serialize(Writer& writer, IndexedFile* file) {
       continue;
 
     writer.StartObject();
-    SERIALIZE("id", def.id);
+    SERIALIZE("id", id);
     SERIALIZE("usr", def.usr);
     SERIALIZE("short_name", def.short_name);
     SERIALIZE("qualified_name", def.qualified_name);
@@ -154,7 +154,7 @@ void Serialize(Writer& writer, IndexedFile* file) {
       continue;
 
     writer.StartObject();
-    SERIALIZE("id", def.id);
+    SERIALIZE("id", id);
     SERIALIZE("usr", def.usr);
     SERIALIZE("short_name", def.short_name);
     SERIALIZE("qualified_name", def.qualified_name);

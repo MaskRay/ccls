@@ -92,7 +92,7 @@ struct Location {
     this->column = column;
   }
 
-  FileId file_id() {
+  FileId file_id() const {
     return FileId(raw_file_id, raw_file_group);
   }
 
@@ -249,7 +249,6 @@ using VarRef = Ref<IndexedVarDef>;
 template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename Location = Location>
 struct TypeDefDefinitionData {
   // General metadata.
-  TypeId id;
   std::string usr;
   std::string short_name;
   std::string qualified_name;
@@ -277,11 +276,10 @@ struct TypeDefDefinitionData {
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
 
-  TypeDefDefinitionData(TypeId id, const std::string& usr) : id(id), usr(usr) {}
+  TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId>& other) const {
+  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const {
     return
-      id == other.id &&
       usr == other.usr &&
       short_name == other.short_name &&
       qualified_name == other.qualified_name &&
@@ -293,13 +291,13 @@ struct TypeDefDefinitionData {
       vars == other.vars;
   }
 
-  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId>& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const { return !(*this == other); }
 };
 
 struct IndexedTypeDef {
   TypeDefDefinitionData<> def;
+
+  TypeId id;
 
   // Immediate derived types.
   std::vector<TypeId> derived;
@@ -314,7 +312,7 @@ struct IndexedTypeDef {
   void AddUsage(Location loc, bool insert_if_not_present = true);
 
   bool operator<(const IndexedTypeDef& other) const {
-    return def.id < other.def.id;
+    return def.usr < other.def.usr;
   }
 };
 
@@ -330,7 +328,6 @@ namespace std {
 template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename FuncRef = FuncRef, typename Location = Location>
 struct FuncDefDefinitionData {
   // General metadata.
-  FuncId id;
   std::string usr;
   std::string short_name;
   std::string qualified_name;
@@ -348,13 +345,12 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
-  FuncDefDefinitionData(FuncId id, const std::string& usr) : id(id), usr(usr) {
+  FuncDefDefinitionData(const std::string& usr) : usr(usr) {
     assert(usr.size() > 0);
   }
 
-  bool operator==(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef>& other) const {
+  bool operator==(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& other) const {
     return
-      id == other.id &&
       usr == other.usr &&
       short_name == other.short_name &&
       qualified_name == other.qualified_name &&
@@ -364,14 +360,13 @@ struct FuncDefDefinitionData {
       locals == other.locals &&
       callees == other.callees;
   }
-
-  bool operator!=(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef>& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& other) const { return !(*this == other); }
 };
 
 struct IndexedFuncDef {
   FuncDefDefinitionData<> def;
+
+  FuncId id;
 
   // Places the function is forward-declared.
   std::vector<Location> declarations;
@@ -392,12 +387,12 @@ struct IndexedFuncDef {
 
   bool is_bad_def = true;
 
-  IndexedFuncDef(FuncId id, const std::string& usr) : def(id, usr) {
+  IndexedFuncDef(FuncId id, const std::string& usr) : id(id), def(usr) {
     assert(usr.size() > 0);
   }
 
   bool operator<(const IndexedFuncDef& other) const {
-    return def.id < other.def.id;
+    return def.usr < other.def.usr;
   }
 };
 
@@ -413,7 +408,6 @@ namespace std {
 template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename Location = Location>
 struct VarDefDefinitionData {
   // General metadata.
-  VarId id;
   std::string usr;
   std::string short_name;
   std::string qualified_name;
@@ -428,11 +422,10 @@ struct VarDefDefinitionData {
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
 
-  VarDefDefinitionData(VarId id, const std::string& usr) : id(id), usr(usr) {}
+  VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId>& other) const {
+  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const {
     return
-      id == other.id &&
       usr == other.usr &&
       short_name == other.short_name &&
       qualified_name == other.qualified_name &&
@@ -441,26 +434,25 @@ struct VarDefDefinitionData {
       variable_type == other.variable_type &&
       declaring_type == other.declaring_type;
   }
-
-  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId>& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const { return !(*this == other); }
 };
 
 struct IndexedVarDef {
   VarDefDefinitionData<> def;
+
+  VarId id;
 
   // Usages.
   std::vector<Location> uses;
 
   bool is_bad_def = true;
 
-  IndexedVarDef(VarId id, const std::string& usr) : def(id, usr) {
+  IndexedVarDef(VarId id, const std::string& usr) : id(id), def(usr) {
     assert(usr.size() > 0);
   }
 
   bool operator<(const IndexedVarDef& other) const {
-    return def.id < other.def.id;
+    return def.usr < other.def.usr;
   }
 };
 
@@ -533,11 +525,13 @@ struct IdCache {
 struct IndexedFile {
   IdCache* id_cache;
 
+  std::string path;
+
   std::vector<IndexedTypeDef> types;
   std::vector<IndexedFuncDef> funcs;
   std::vector<IndexedVarDef> vars;
 
-  IndexedFile(IdCache* id_cache);
+  IndexedFile(const std::string& path, IdCache* id_cache);
 
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);

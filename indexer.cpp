@@ -2,8 +2,8 @@
 
 #include "serializer.h"
 
-IndexedFile::IndexedFile(IdCache* id_cache)
-  : id_cache(id_cache) {
+IndexedFile::IndexedFile(const std::string& path, IdCache* id_cache)
+  : path(path), id_cache(id_cache) {
 
   // TODO: Reconsider if we should still be reusing the same id_cache.
   // Preallocate any existing resolved ids.
@@ -85,7 +85,7 @@ std::string IndexedFile::ToString() {
   return output.GetString();
 }
 
-IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : def(id, usr) {
+IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : id(id), def(usr) {
   assert(usr.size() > 0);
   //std::cout << "Creating type with usr " << usr << std::endl;
 }
@@ -849,7 +849,7 @@ IndexedFile Parse(IdCache* id_cache, std::string filename, std::vector<std::stri
     */
   };
 
-  IndexedFile db(id_cache);
+  IndexedFile db(filename, id_cache);
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
@@ -951,7 +951,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main55555(int argc, char** argv) {
+int main(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
