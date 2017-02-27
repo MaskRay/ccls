@@ -536,4 +536,4 @@ struct IndexedFile {
 
 
 
-IndexedFile Parse(IdCache* id_cache, std::string filename, std::vector<std::string> args);
+IndexedFile Parse(IdCache* id_cache, std::string filename, std::vector<std::string> args, bool dump_ast = false);
