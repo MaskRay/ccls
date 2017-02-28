@@ -90,7 +90,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main(int argc, char** argv) {
+int main2222222(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -127,8 +127,7 @@ int main(int argc, char** argv) {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IdCache id_cache;
-    IndexedFile db = Parse(&id_cache, path, {}, true /*dump_ast*/);
+    IndexedFile db = Parse(path, {}, true /*dump_ast*/);
     std::string actual_output = db.ToString();
 
     //WriteToFile("output.json", actual_output);

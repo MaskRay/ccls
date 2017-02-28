@@ -87,8 +87,8 @@ void Serialize(Writer& writer, const char* key, uint64_t value) {
 }
 
 void Serialize(Writer& writer, IndexedFile* file) {
-  auto it = file->id_cache->usr_to_type_id.find("");
-  if (it != file->id_cache->usr_to_type_id.end()) {
+  auto it = file->id_cache.usr_to_type_id.find("");
+  if (it != file->id_cache.usr_to_type_id.end()) {
     file->Resolve(it->second)->def.short_name = "<fundamental>";
     assert(file->Resolve(it->second)->uses.size() == 0);
   }

@@ -37,42 +37,42 @@ std::vector<Out> Transform(const std::vector<In>& input, std::function<Out(In)> 
     result.push_back(op(in));
   return result;
 }
-Usr MapIdToUsr(IdCache& id_cache, const TypeId& id) {
-  return id_cache.type_id_to_usr[id];
+Usr MapIdToUsr(const IdCache& id_cache, const TypeId& id) {
+  return id_cache.type_id_to_usr.find(id)->second;
 }
-Usr MapIdToUsr(IdCache& id_cache, const FuncId& id) {
-  return id_cache.func_id_to_usr[id];
+Usr MapIdToUsr(const IdCache& id_cache, const FuncId& id) {
+  return id_cache.func_id_to_usr.find(id)->second;
 }
-Usr MapIdToUsr(IdCache& id_cache, const VarId& id) {
-  return id_cache.var_id_to_usr[id];
+Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
+  return id_cache.var_id_to_usr.find(id)->second;
 }
-QueryableLocation MapIdToUsr(IdCache& id_cache, const Location& id) {
-  return QueryableLocation(id_cache.file_id_to_file_path[id.file_id()], id.line, id.column, id.interesting);
+QueryableLocation MapIdToUsr(const IdCache& id_cache, const Location& id) {
+  return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
 }
 
-std::vector<Usr> MapIdToUsr(IdCache& id_cache, const std::vector<TypeId>& ids) {
-  return Transform<TypeId, Usr>(ids, [&](TypeId id) { return id_cache.type_id_to_usr[id]; });
+std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<TypeId>& ids) {
+  return Transform<TypeId, Usr>(ids, [&](TypeId id) { return id_cache.type_id_to_usr.find(id)->second; });
 }
-std::vector<Usr> MapIdToUsr(IdCache& id_cache, const std::vector<FuncId>& ids) {
-  return Transform<FuncId, Usr>(ids, [&](FuncId id) { return id_cache.func_id_to_usr[id]; });
+std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncId>& ids) {
+  return Transform<FuncId, Usr>(ids, [&](FuncId id) { return id_cache.func_id_to_usr.find(id)->second; });
 }
-std::vector<Usr> MapIdToUsr(IdCache& id_cache, const std::vector<VarId>& ids) {
-  return Transform<VarId, Usr>(ids, [&](VarId id) { return id_cache.var_id_to_usr[id]; });
+std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<VarId>& ids) {
+  return Transform<VarId, Usr>(ids, [&](VarId id) { return id_cache.var_id_to_usr.find(id)->second; });
 }
-std::vector<UsrRef> MapIdToUsr(IdCache& id_cache, const std::vector<FuncRef>& ids) {
+std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRef>& ids) {
   return Transform<FuncRef, UsrRef>(ids, [&](FuncRef ref) {
     UsrRef result;
     result.loc = MapIdToUsr(id_cache, ref.loc);
-    result.usr = id_cache.func_id_to_usr[ref.id];
+    result.usr = id_cache.func_id_to_usr.find(ref.id)->second;
     return result;
   });
 }
-std::vector<QueryableLocation> MapIdToUsr(IdCache& id_cache, const std::vector<Location>& ids) {
+std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::vector<Location>& ids) {
   return Transform<Location, QueryableLocation>(ids, [&](Location id) {
-    return QueryableLocation(id_cache.file_id_to_file_path[id.file_id()], id.line, id.column, id.interesting);
+    return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
   });
 }
-QueryableTypeDef::DefUpdate MapIdToUsr(IdCache& id_cache, const TypeDefDefinitionData<>& def) {
+QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const TypeDefDefinitionData<>& def) {
   QueryableTypeDef::DefUpdate result(def.usr);
   if (result.definition)
     result.definition = MapIdToUsr(id_cache, def.definition.value());
@@ -84,7 +84,7 @@ QueryableTypeDef::DefUpdate MapIdToUsr(IdCache& id_cache, const TypeDefDefinitio
   result.vars = MapIdToUsr(id_cache, def.vars);
   return result;
 }
-QueryableFuncDef::DefUpdate MapIdToUsr(IdCache& id_cache, const FuncDefDefinitionData<>& def) {
+QueryableFuncDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const FuncDefDefinitionData<>& def) {
   QueryableFuncDef::DefUpdate result(def.usr);
   if (result.definition)
     result.definition = MapIdToUsr(id_cache, def.definition.value());
@@ -96,7 +96,7 @@ QueryableFuncDef::DefUpdate MapIdToUsr(IdCache& id_cache, const FuncDefDefinitio
   result.callees = MapIdToUsr(id_cache, def.callees);
   return result;
 }
-QueryableVarDef::DefUpdate MapIdToUsr(IdCache& id_cache, const VarDefDefinitionData<>& def) {
+QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const VarDefDefinitionData<>& def) {
   QueryableVarDef::DefUpdate result(def.usr);
   if (result.declaration)
     result.declaration = MapIdToUsr(id_cache, def.declaration.value());
@@ -113,7 +113,7 @@ QueryableFile::QueryableFile(const IndexedFile& indexed)
   : file_id(indexed.path) {
 
   auto add_outline = [this, &indexed](Usr usr, Location location) {
-    outline.push_back(UsrRef(usr, MapIdToUsr(*indexed.id_cache, location)));
+    outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
   };
 
   for (const IndexedTypeDef& def : indexed.types) {
@@ -336,11 +336,11 @@ void CompareGroups(
 IndexUpdate::IndexUpdate(IndexedFile& file) {
   files_added.push_back(QueryableFile(file));
   for (const IndexedTypeDef& def : file.types)
-    types_added.push_back(QueryableTypeDef(*file.id_cache, def));
+    types_added.push_back(QueryableTypeDef(file.id_cache, def));
   for (const IndexedFuncDef& def : file.funcs)
-    funcs_added.push_back(QueryableFuncDef(*file.id_cache, def));
+    funcs_added.push_back(QueryableFuncDef(file.id_cache, def));
   for (const IndexedVarDef& def : file.vars)
-    vars_added.push_back(QueryableVarDef(*file.id_cache, def));
+    vars_added.push_back(QueryableVarDef(file.id_cache, def));
 }
 
 IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) {
@@ -353,8 +353,8 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     /* Check for changes. */ \
     std::vector<type> removed, added; \
     bool did_add = ComputeDifferenceForUpdate( \
-                      MapIdToUsr(*previous_file.id_cache, JOIN(previous_def->, index_name)), \
-                      MapIdToUsr(*current_file.id_cache, JOIN(current_def->, index_name)), \
+                      MapIdToUsr(previous_file.id_cache, JOIN(previous_def->, index_name)), \
+                      MapIdToUsr(current_file.id_cache, JOIN(current_def->, index_name)), \
                       &removed, &added); \
     if (did_add) {\
       std::cout << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl; \
@@ -387,11 +387,11 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     types_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_file](IndexedTypeDef* def) {
-    types_added.push_back(QueryableTypeDef(*current_file.id_cache, *def));
+    types_added.push_back(QueryableTypeDef(current_file.id_cache, *def));
   },
     /*onFound:*/[this, &previous_file, &current_file](IndexedTypeDef* previous_def, IndexedTypeDef* current_def) {
-    QueryableTypeDef::DefUpdate previous_remapped_def = MapIdToUsr(*previous_file.id_cache, previous_def->def);
-    QueryableTypeDef::DefUpdate current_remapped_def = MapIdToUsr(*current_file.id_cache, current_def->def);
+    QueryableTypeDef::DefUpdate previous_remapped_def = MapIdToUsr(previous_file.id_cache, previous_def->def);
+    QueryableTypeDef::DefUpdate current_remapped_def = MapIdToUsr(current_file.id_cache, current_def->def);
     if (previous_remapped_def != current_remapped_def)
       types_def_changed.push_back(current_remapped_def);
 
@@ -405,11 +405,11 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     funcs_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_file](IndexedFuncDef* def) {
-    funcs_added.push_back(QueryableFuncDef(*current_file.id_cache, *def));
+    funcs_added.push_back(QueryableFuncDef(current_file.id_cache, *def));
   },
     /*onFound:*/[this, &previous_file, &current_file](IndexedFuncDef* previous_def, IndexedFuncDef* current_def) {
-    QueryableFuncDef::DefUpdate previous_remapped_def = MapIdToUsr(*previous_file.id_cache, previous_def->def);
-    QueryableFuncDef::DefUpdate current_remapped_def = MapIdToUsr(*current_file.id_cache, current_def->def);
+    QueryableFuncDef::DefUpdate previous_remapped_def = MapIdToUsr(previous_file.id_cache, previous_def->def);
+    QueryableFuncDef::DefUpdate current_remapped_def = MapIdToUsr(current_file.id_cache, current_def->def);
     if (previous_remapped_def != current_remapped_def)
       funcs_def_changed.push_back(current_remapped_def);
 
@@ -425,11 +425,11 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     vars_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_file](IndexedVarDef* def) {
-    vars_added.push_back(QueryableVarDef(*current_file.id_cache, *def));
+    vars_added.push_back(QueryableVarDef(current_file.id_cache, *def));
   },
     /*onFound:*/[this, &previous_file, &current_file](IndexedVarDef* previous_def, IndexedVarDef* current_def) {
-    QueryableVarDef::DefUpdate previous_remapped_def = MapIdToUsr(*previous_file.id_cache, previous_def->def);
-    QueryableVarDef::DefUpdate current_remapped_def = MapIdToUsr(*current_file.id_cache, current_def->def);
+    QueryableVarDef::DefUpdate previous_remapped_def = MapIdToUsr(previous_file.id_cache, previous_def->def);
+    QueryableVarDef::DefUpdate current_remapped_def = MapIdToUsr(current_file.id_cache, current_def->def);
     if (previous_remapped_def != current_remapped_def)
       vars_def_changed.push_back(current_remapped_def);
 
@@ -619,13 +619,11 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
 
 int main233(int argc, char** argv) {
-  IdCache id_cache;
-
-  IndexedFile indexed_file_a = Parse(&id_cache, "full_tests/index_delta/a_v0.cc", {});
+  IndexedFile indexed_file_a = Parse("full_tests/index_delta/a_v0.cc", {});
   std::cout << indexed_file_a.ToString() << std::endl;
 
   std::cout << std::endl;
-  IndexedFile indexed_file_b = Parse(&id_cache, "full_tests/index_delta/a_v1.cc", {});
+  IndexedFile indexed_file_b = Parse("full_tests/index_delta/a_v1.cc", {});
   std::cout << indexed_file_b.ToString() << std::endl;
   // TODO: We don't need to do ID remapping when computting a diff. Well, we need to do it for the IndexUpdate.
   IndexUpdate import(indexed_file_a);

@@ -71,7 +71,7 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options, cons
   return options.find(option) != options.end();
 }
 
-int main2(int argc, char** argv) {
+int main(int argc, char** argv) {
   std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
 
   if (argc == 1 || options.find("--help") != options.end()) {
@@ -158,11 +158,13 @@ int main2(int argc, char** argv) {
     std::vector<CompilationEntry> entries = LoadCompilationEntriesFromDirectory(options["--project"]);
 
 
-    std::vector<IndexedFile> dbs;
     for (const CompilationEntry& entry : entries) {
       std::cout << "Parsing " << entry.filename << std::endl;
-      //IndexedFile db = Parse(2, entry.filename, entry.args);
-      //dbs.emplace_back(db);
+      QueryableDatabase db;
+      IndexedFile file = Parse(entry.filename, entry.args);
+
+      IndexUpdate update(file);
+      db.ApplyIndexUpdate(&update);
       //std::cout << db.ToString() << std::endl << std::endl;
     }
 

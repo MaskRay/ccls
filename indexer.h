@@ -473,7 +473,7 @@ struct IdCache {
 };
 
 struct IndexedFile {
-  IdCache* id_cache;
+  IdCache id_cache;
 
   std::string path;
 
@@ -481,7 +481,7 @@ struct IndexedFile {
   std::vector<IndexedFuncDef> funcs;
   std::vector<IndexedVarDef> vars;
 
-  IndexedFile(const std::string& path, IdCache* id_cache);
+  IndexedFile(const std::string& path);
 
   TypeId ToTypeId(const std::string& usr);
   FuncId ToFuncId(const std::string& usr);
@@ -498,4 +498,4 @@ struct IndexedFile {
 
 
 
-IndexedFile Parse(IdCache* id_cache, std::string filename, std::vector<std::string> args, bool dump_ast = false);
+IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump_ast = false);
