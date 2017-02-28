@@ -88,6 +88,10 @@ struct Location {
     return FileId(raw_file_id);
   }
 
+  explicit Location(const char* encoded) {
+    // TODO
+  }
+
   std::string ToString() {
     // Output looks like this:
     //

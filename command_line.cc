@@ -71,7 +71,7 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options, cons
   return options.find(option) != options.end();
 }
 
-int main(int argc, char** argv) {
+int main5555(int argc, char** argv) {
   std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
 
   if (argc == 1 || options.find("--help") != options.end()) {

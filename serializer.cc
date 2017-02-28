@@ -170,3 +170,37 @@ void Serialize(Writer& writer, IndexedFile* file) {
   writer.EndObject();
 #undef WRITE
 }
+
+void Deserialize(std::string& output, rapidjson::GenericValue<rapidjson::UTF8<>>& value) {
+  output = value.GetString();
+}
+
+void Deserialize(optional<Location>& output, rapidjson::GenericValue<rapidjson::UTF8<>>& value) {
+  if (!value.IsNull())
+    output = Location(value.GetString()); // TODO: Location parsing not implemented in Location type.
+}
+
+void Deserialize(Reader& reader, IndexedFile* file) {
+  auto& types = reader["types"].GetArray();
+  for (auto& type : types) {
+    TypeId id = TypeId(type["id"].GetInt64());
+    std::string usr = type["usr"].GetString();
+
+    IndexedTypeDef def(id, usr);
+    Deserialize(def.def.short_name, type["short_name"]);
+    Deserialize(def.def.qualified_name, type["qualified_name"]);
+    Deserialize(def.def.definition, type["definition"]); // TODO: What happens if entry is not present?
+    //SERIALIZE("short_name", def.short_name);
+    //SERIALIZE("qualified_name", def.qualified_name);
+    //SERIALIZE("definition", def.definition);
+    //SERIALIZE("alias_of", def.alias_of);
+    //SERIALIZE("parents", def.parents);
+    //SERIALIZE("derived", derived);
+    //SERIALIZE("types", def.types);
+    //SERIALIZE("funcs", def.funcs);
+    //SERIALIZE("vars", def.vars);
+    //SERIALIZE("uses", uses);
+
+    file->types.push_back(def);
+  }
+}

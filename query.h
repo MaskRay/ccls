@@ -157,7 +157,20 @@ struct SymbolIdx {
 };
 
 
-
+// TODO: We need to control Usr, std::vector allocation to make sure it happens on shmem. That or we
+// make IndexUpdate a POD type.
+// TODO: Instead of all of that work above, we pipe the IndexUpdate across processes as JSON.
+//       We need to verify we need multiple processes first. Maybe libclang can run in a single process...
+// TODO: Compute IndexUpdates in main process, off the blocking thread. Use separate process for running
+//       libclang. Solves memory worries.
+namespace foo2 {
+  using Usr = size_t;
+  struct UsrTable {
+    size_t allocated;
+    size_t used;
+    const char* usrs[];
+  };
+}
 
 
 struct IndexUpdate {

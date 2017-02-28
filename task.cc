@@ -5,12 +5,15 @@
 
 #include "indexer.h"
 #include "query.h"
-
+#include "optional.h"
 #include "third_party/tiny-process-library/process.hpp"
 
 #include <queue>
 #include <mutex>
 #include <condition_variable>
+
+using std::experimental::optional;
+using std::experimental::nullopt;
 
 // A threadsafe-queue. http://stackoverflow.com/a/16075550
 template <class T>
@@ -31,6 +34,18 @@ public:
       // release lock as long as the wait and reaquire it afterwards.
       cv_.wait(lock);
     }
+    T val = queue_.front();
+    queue_.pop();
+    return val;
+  }
+
+  // Get the "front"-element.
+  // Returns empty if the queue is empty.
+  optional<T> try_dequeue() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    if (queue_.empty())
+      return nullopt;
+
     T val = queue_.front();
     queue_.pop();
     return val;
@@ -116,7 +131,7 @@ void Pump(TaskManager* tm) {
   //tm->threads[0].
 }
 
-int main4(int argc, char** argv) {
+int main(int argc, char** argv) {
   TaskManager tm(5);
 
   // TODO: looks like we will have to write shared memory support.
