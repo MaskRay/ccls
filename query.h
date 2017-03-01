@@ -163,6 +163,9 @@ struct SymbolIdx {
 //       We need to verify we need multiple processes first. Maybe libclang can run in a single process...
 // TODO: Compute IndexUpdates in main process, off the blocking thread. Use separate process for running
 //       libclang. Solves memory worries.
+// TODO: Instead of passing to/from json, we can probably bass the IndexedFile type almost directly as
+// a raw memory dump - the type has almost zero pointers inside of it. We could do a little bit of fixup
+// so that passing from a separate process to the main db is really fast (no need to go through JSON).
 namespace foo2 {
   using Usr = size_t;
   struct UsrTable {

@@ -1,24 +1,10 @@
 #include "indexer.h"
-
-template<typename T>
-bool AreEqual(const std::vector<T>& a, const std::vector<T>& b) {
-  if (a.size() != b.size())
-    return false;
-
-  for (int i = 0; i < a.size(); ++i) {
-    if (a[i] != b[i])
-      return false;
-  }
-
-  return true;
-}
+#include "serializer.h"
 
 void Write(const std::vector<std::string>& strs) {
-  for (const std::string& str : strs) {
+  for (const std::string& str : strs)
     std::cout << str << std::endl;
-  }
 }
-
 
 std::string ToString(const rapidjson::Document& document) {
   rapidjson::StringBuffer buffer;
@@ -90,7 +76,16 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   file << content;
 }
 
-int main2222222(int argc, char** argv) {
+void VerifySerializeToFrom(IndexedFile* file) {
+  std::string expected = file->ToString();
+  std::string actual = Deserialize("foo.cc", Serialize(file)).ToString();
+  if (expected != actual) {
+    std::cerr << "Serialization failure" << std::endl;;
+    assert(false);
+  }
+}
+
+int main(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -103,21 +98,6 @@ int main2222222(int argc, char** argv) {
 
   for (std::string path : GetFilesInFolder("tests")) {
     //if (path != "tests/usage/type_usage_declare_field.cc") continue;
-    //if (path != "tests/enums/enum_class_decl.cc") continue;
-    //if (path != "tests/constructors/constructor.cc") continue;
-    //if (path == "tests/constructors/destructor.cc") continue;
-    //if (path == "tests/usage/func_usage_call_method.cc") continue;
-    //if (path != "tests/usage/type_usage_as_template_parameter.cc") continue;
-    //if (path != "tests/usage/type_usage_as_template_parameter_complex.cc") continue;
-    //if (path != "tests/usage/type_usage_as_template_parameter_simple.cc") continue;
-    //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
-    //if (path != "tests/usage/type_usage_declare_local.cc") continue;
-    //if (path == "tests/usage/type_usage_typedef_and_using_template.cc") continue;
-    //if (path != "tests/usage/func_usage_addr_method.cc") continue;
-    //if (path != "tests/usage/type_usage_typedef_and_using.cc") continue;
-    //if (path != "tests/usage/usage_inside_of_call.cc") continue;
-    //if (path != "tests/foobar.cc") continue;
-    //if (path != "tests/types/anonymous_struct.cc") continue;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
@@ -128,10 +108,8 @@ int main2222222(int argc, char** argv) {
     // Run test.
     std::cout << "[START] " << path << std::endl;
     IndexedFile db = Parse(path, {}, true /*dump_ast*/);
+    VerifySerializeToFrom(&db);
     std::string actual_output = db.ToString();
-
-    //WriteToFile("output.json", actual_output);
-    //break;
 
     rapidjson::Document actual;
     actual.Parse(actual_output.c_str());

@@ -88,8 +88,29 @@ struct Location {
     return FileId(raw_file_id);
   }
 
-  explicit Location(const char* encoded) {
-    // TODO
+  explicit Location(const char* encoded) : Location() {
+    int len = strlen(encoded);
+    assert(len >= 0);
+
+    if (*encoded == '*') {
+      interesting = true;
+      ++encoded;
+    }
+
+    assert(encoded);
+    raw_file_id = atoi(encoded);
+    while (*encoded && *encoded != ':')
+      ++encoded;
+    if (*encoded == ':') ++encoded;
+
+    assert(encoded);
+    line = atoi(encoded);
+    while (*encoded && *encoded != ':')
+      ++encoded;
+    if (*encoded == ':') ++encoded;
+
+    assert(encoded);
+    column = atoi(encoded);
   }
 
   std::string ToString() {
