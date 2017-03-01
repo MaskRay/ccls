@@ -1,13 +1,17 @@
+#include <cassert>>
 #include <condition_variable>
 #include <iostream>
 #include <thread>
 #include <vector>
 
+#include "compilation_database_loader.h"
 #include "indexer.h"
 #include "query.h"
 #include "optional.h"
+#include "utils.h"
 #include "third_party/tiny-process-library/process.hpp"
 
+#include <algorithm>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
@@ -60,11 +64,44 @@ private:
 struct Task {
   int priority = 0;
   bool writes_to_index = false;
-  bool should_exit = false;
+  
+  enum class Kind {
+    CreateIndex,
+    IndexImport,
+    Exit
+  };
+  Kind kind;
+
+  struct CreateIndexState {
+    CompilationEntry data;
+  };
+  struct IndexImportState {
+    std::string path;
+  };
+  struct ExitState {};
+
+  // TODO: Move into a union?
+  CreateIndexState create_index;
+  IndexImportState index_import;
+  ExitState exit;
 
   static Task MakeExit() {
     Task task;
-    task.should_exit = true;
+    task.kind = Kind::Exit;
+    return task;
+  }
+
+  static Task MakeCreateIndexTask(CompilationEntry compilation_entry) {
+    Task task;
+    task.kind = Kind::CreateIndex;
+    task.create_index.data = compilation_entry;
+    return task;
+  }
+
+  static Task MakeIndexImportTask(std::string filename) {
+    Task task;
+    task.kind = Kind::IndexImport;
+    task.index_import.path = filename;
     return task;
   }
 
@@ -91,9 +128,14 @@ struct Task {
   // TODO: QueryTask
   // Task running a query against the global database. Run in main process,
   // separate thread.
-  Command query;
-  Location location;
-  std::string argument;
+  //Command query;
+  //Location location;
+  //std::string argument;
+};
+
+struct Config {
+  // Cache directory. Always ends with /
+  std::string cache_directory;
 };
 
 // NOTE: When something enters a value into master db, it will have to have a
@@ -105,13 +147,42 @@ struct TaskManager {
   // Available threads.
   std::vector<std::thread> threads;
 
-  TaskManager(int num_threads);
+  TaskManager(int num_threads, Config* config);
 };
 
-static void ThreadMain(int id, TaskManager* tm) {
+void PostTaskToIndexer(TaskManager* tm, Task task) {
+  tm->queued_tasks.enqueue(task);
+}
+
+void RunIndexTask(Config* config, TaskManager* tm, CompilationEntry entry) {
+  IndexedFile file = Parse(entry.filename, entry.args);
+
+  std::string cleaned_file_path = entry.directory + "/" + entry.filename;
+  std::replace(cleaned_file_path.begin(), cleaned_file_path.end(), '/', '_');
+  std::replace(cleaned_file_path.begin(), cleaned_file_path.end(), '\\', '_');
+  std::string filename = config->cache_directory + cleaned_file_path;
+  WriteToFile(filename, file.ToString());
+
+  PostTaskToIndexer(tm, Task::MakeIndexImportTask(filename));
+}
+
+void LoadProject(Config* config, TaskManager* tm, std::vector<CompilationEntry> entries) {
+  for (CompilationEntry entry : entries) {
+    tm->queued_tasks.enqueue(Task::MakeCreateIndexTask(entry));
+  }
+}
+
+static void ThreadMain(int id, Config* config, TaskManager* tm) {
   while (true) {
     Task task = tm->queued_tasks.dequeue();
-    if (task.should_exit) {
+    switch (task.kind) {
+    case Task::Kind::CreateIndex:
+      RunIndexTask(config, tm, task.create_index.data);
+      break;
+    case Task::Kind::IndexImport:
+      assert(false);
+      break;
+    case Task::Kind::Exit:
       std::cout << id << ": Exiting" << std::endl;
       return;
     }
@@ -121,9 +192,9 @@ static void ThreadMain(int id, TaskManager* tm) {
 
 }
 
-TaskManager::TaskManager(int num_threads) {
+TaskManager::TaskManager(int num_threads, Config* config) {
   for (int i = 0; i < num_threads; ++i) {
-    threads.push_back(std::thread(&ThreadMain, i, this));
+    threads.push_back(std::thread(&ThreadMain, i, config, this));
   }
 }
 
@@ -131,8 +202,10 @@ void Pump(TaskManager* tm) {
   //tm->threads[0].
 }
 
-int main5555555555(int argc, char** argv) {
-  TaskManager tm(5);
+int main252525225(int argc, char** argv) {
+  Config config;
+  TaskManager tm(5, &config);
+  LoadProject(&config, &tm, LoadCompilationEntriesFromDirectory("full_tests/simple_cross_reference"));
 
   // TODO: looks like we will have to write shared memory support.
 
@@ -140,8 +213,8 @@ int main5555555555(int argc, char** argv) {
   //       Repeat until we encounter a writer, wait for all threads to signal
   //       they are done.
   // TODO: Let's use a thread safe queue/vector/etc instead.
-  for (int i = 0; i < 10; ++i)
-    tm.queued_tasks.enqueue(Task::MakeExit());
+  //for (int i = 0; i < 10; ++i)
+  //  tm.queued_tasks.enqueue(Task::MakeExit());
 
   for (std::thread& thread : tm.threads)
     thread.join();

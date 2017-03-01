@@ -8,3 +8,6 @@ std::vector<std::string> ReadLines(std::string filename);
 void ParseTestExpectation(std::string filename, std::string* expected_output);
 
 void Fail(const std::string& message);
+
+
+void WriteToFile(const std::string& filename, const std::string& content);

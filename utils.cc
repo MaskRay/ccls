@@ -73,3 +73,8 @@ void Fail(const std::string& message) {
   std::cerr << "Fatal error: " << message << std::endl;
   std::exit(1);
 }
+
+void WriteToFile(const std::string& filename, const std::string& content) {
+  std::ofstream file(filename);
+  file << content;
+}

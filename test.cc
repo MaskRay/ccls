@@ -1,5 +1,6 @@
 #include "indexer.h"
 #include "serializer.h"
+#include "utils.h"
 
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)
@@ -71,11 +72,6 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
   }
 }
 
-void WriteToFile(const std::string& filename, const std::string& content) {
-  std::ofstream file(filename);
-  file << content;
-}
-
 void VerifySerializeToFrom(IndexedFile* file) {
   std::string expected = file->ToString();
   std::string actual = Deserialize("foo.cc", Serialize(file)).ToString();
@@ -85,7 +81,7 @@ void VerifySerializeToFrom(IndexedFile* file) {
   }
 }
 
-int main(int argc, char** argv) {
+int main333(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
