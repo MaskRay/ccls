@@ -59,7 +59,7 @@ void Serialize(Writer& writer, IndexedFile* file) {
     assert(file->Resolve(it->second)->uses.size() == 0);
   }
 
-#define SERIALIZE(json_name, member_name) Serialize(writer, json_name, def.##member_name)
+#define SERIALIZE(json_name, member_name) Serialize(writer, json_name, def.member_name)
 
   writer.StartObject();
 
@@ -137,13 +137,13 @@ void Serialize(Writer& writer, IndexedFile* file) {
 #undef WRITE
 }
 
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::string& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::string& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd())
     output = it->value.GetString();
 }
 
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<std::string>& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<std::string>& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd()) {
     for (auto& entry : it->value.GetArray())
@@ -151,13 +151,13 @@ void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const cha
   }
 }
 
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Location>& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Location>& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd())
     output = Location(it->value.GetString()); // TODO: Location parsing not implemented in Location type.
 }
 
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Location>& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Location>& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd()) {
     for (auto& array_value : it->value.GetArray())
@@ -165,11 +165,11 @@ void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const cha
   }
 }
 
-void Deserialize(Reader& reader, IndexedFile* file) {
-#define DESERIALIZE(json_name, member_name) Deserialize(entry, json_name, def.##member_name)
+void Deserialize(const Reader& reader, IndexedFile* file) {
+#define DESERIALIZE(json_name, member_name) Deserialize(entry, json_name, def.member_name)
 
-  auto& types = reader["types"].GetArray();
-  for (auto& entry : types) {
+  const auto& types = reader["types"].GetArray();
+  for (const auto& entry : types) {
     TypeId id(entry["id"].GetInt64());
     std::string usr = entry["usr"].GetString();
 
@@ -188,8 +188,8 @@ void Deserialize(Reader& reader, IndexedFile* file) {
     file->types.push_back(def);
   }
 
-  auto& functions = reader["functions"].GetArray();
-  for (auto& entry : functions) {
+  const auto& functions = reader["functions"].GetArray();
+  for (const auto& entry : functions) {
     FuncId id(entry["id"].GetInt64());
     std::string usr = entry["usr"].GetString();
 
@@ -209,8 +209,8 @@ void Deserialize(Reader& reader, IndexedFile* file) {
     file->funcs.push_back(def);
   }
 
-  auto& vars = reader["variables"].GetArray();
-  for (auto& entry : vars) {
+  const auto& vars = reader["variables"].GetArray();
+  for (const auto& entry : vars) {
     VarId id(entry["id"].GetInt64());
     std::string usr = entry["usr"].GetString();
 

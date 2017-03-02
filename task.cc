@@ -1,4 +1,4 @@
-#include <cassert>>
+#include <cassert>
 #include <condition_variable>
 #include <iostream>
 #include <thread>
@@ -9,7 +9,7 @@
 #include "query.h"
 #include "optional.h"
 #include "utils.h"
-#include "third_party/tiny-process-library/process.hpp"
+//#include "third_party/tiny-process-library/process.hpp"
 
 #include <algorithm>
 #include <queue>
@@ -64,7 +64,7 @@ private:
 struct Task {
   int priority = 0;
   bool writes_to_index = false;
-  
+
   enum class Kind {
     CreateIndex,
     IndexImport,

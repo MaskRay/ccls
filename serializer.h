@@ -63,14 +63,14 @@ void Serialize(Writer& writer, IndexedFile* file);
 
 
 template<typename T>
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Id<T>>& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Id<T>>& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd())
     output = Id<T>(it->value.GetUint64());
 }
 
 template<typename T>
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Id<T>>& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Id<T>>& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd()) {
     for (auto& array_value : it->value.GetArray())
@@ -79,7 +79,7 @@ void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const cha
 }
 
 template<typename T>
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Ref<T>>& output) {
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Ref<T>>& output) {
   auto it = document.FindMember(name);
   if (it != document.MemberEnd()) {
     for (auto& array_value : it->value.GetArray()) {
@@ -90,11 +90,11 @@ void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const cha
     }
   }
 }
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::string& output);
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<std::string>& output);
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Location>& output);
-void Deserialize(rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Location>& output);
-void Deserialize(Reader& reader, IndexedFile* file);
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::string& output);
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<std::string>& output);
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Location>& output);
+void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Location>& output);
+void Deserialize(const Reader& reader, IndexedFile* file);
 
 std::string Serialize(IndexedFile* file);
 IndexedFile Deserialize(std::string path, std::string serialized);
