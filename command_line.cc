@@ -71,7 +71,102 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options, cons
   return options.find(option) != options.end();
 }
 
-int main5555(int argc, char** argv) {
+/*
+
+// Connects to a running --project-directory instance. Forks
+// and creates it if not running.
+//
+// Implements language server spec.
+indexer.exe --language-server
+
+// Holds the runtime db that the --language-server instance
+// runs queries against.
+indexer.exe --project-directory /work2/chrome/src
+
+// Created from the --project-directory (server) instance
+indexer.exe --index-file /work2/chrome/src/chrome/foo.cc
+
+// Configuration data is read from a JSON file.
+{
+  "max_threads": 40,
+  "cache_directory": "/work/indexer_cache/"
+
+}
+*/
+
+#include "ipc.h"
+
+void IndexerServerMain() {
+  IpcMessageQueue to_server("indexer_to_server");
+  IpcMessageQueue to_client("indexer_to_language_client");
+
+  while (true) {
+    std::vector<std::unique_ptr<BaseIpcMessage>> messages = to_server.PopMessage();
+
+    std::cout << "Server has " << messages.size() << " messages" << std::endl;
+    for (auto& message : messages) {
+      switch (message->kind) {
+      case JsonMessage::Kind::IsAlive:
+      {
+        IpcMessage_IsAlive response;
+        to_client.PushMessage(&response);
+        break;
+      }
+      default:
+        std::cerr << "Unhandled IPC message with kind " << static_cast<int>(message->kind) << std::endl;
+        exit(1);
+        break;
+      }
+    }
+
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(20ms);
+  }
+}
+
+void LanguageServerMain() {
+  // TODO: Encapsulate this pattern (ie, we generally want bi-directional channel/queue)
+  // TODO: Rename IpcMessageQueue to IpcDirectionalChannel
+  //       - As per above, introduce wrapper IpcBidirectionalChannel that has two IpcDirectionalChannel instances
+
+  IpcMessageQueue to_server("indexer_to_server");
+  IpcMessageQueue to_client("indexer_to_language_client");
+
+  // Discard any left-over messages from previous runs.
+  to_client.PopMessage();
+
+  // Emit an alive check. Sleep so the server has time to respond.
+  IpcMessage_IsAlive check_alive;
+  to_server.PushMessage(&check_alive);
+  using namespace std::chrono_literals;
+  std::this_thread::sleep_for(50ms); // TODO: Tune this value or make it configurable.
+
+  // Check if we got an IsAlive message back.
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = to_client.PopMessage();
+  bool has_server = false;
+  for (auto& message : messages) {
+    if (message->kind == JsonMessage::Kind::IsAlive) {
+      has_server = true;
+      break;
+    }
+  }
+
+  // No server is running. Start it.
+  if (!has_server) {
+    std::cerr << "Unable to detect running indexer server" << std::endl;
+    exit(1);
+  }
+
+  std::cout << "Found indexer server" << std::endl;
+}
+
+int main(int argc, char** argv) {
+  if (argc == 1)
+    LanguageServerMain();
+  else
+    IndexerServerMain();
+  return 0;
+
   std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
 
   if (argc == 1 || options.find("--help") != options.end()) {
