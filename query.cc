@@ -344,7 +344,6 @@ IndexUpdate::IndexUpdate(IndexedFile& file) {
 }
 
 IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) {
-#define JOIN(a, b) a##b
   // |query_name| is the name of the variable on the query type.
   // |index_name| is the name of the variable on the index type.
   // |type| is the type of the variable.
@@ -352,9 +351,10 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
   { \
     /* Check for changes. */ \
     std::vector<type> removed, added; \
+    auto previous = MapIdToUsr(previous_file.id_cache, previous_def->index_name); \
+    auto current = MapIdToUsr(current_file.id_cache, current_def->index_name); \
     bool did_add = ComputeDifferenceForUpdate( \
-                      MapIdToUsr(previous_file.id_cache, JOIN(previous_def->, index_name)), \
-                      MapIdToUsr(current_file.id_cache, JOIN(current_def->, index_name)), \
+                      previous, current, \
                       &removed, &added); \
     if (did_add) {\
       std::cout << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl; \
@@ -437,12 +437,11 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
   });
 
 #undef PROCESS_UPDATE_DIFF
-#undef JOIN
 }
 
 void IndexUpdate::Merge(const IndexUpdate& update) {
 #define INDEX_UPDATE_MERGE(name) \
-    AddRange(&name, update.##name);
+    AddRange(&name, update.name);
 
   INDEX_UPDATE_MERGE(files_removed);
   INDEX_UPDATE_MERGE(files_added);
@@ -573,13 +572,12 @@ void ApplyUpdates(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs,
 }
 
 void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
-#define JOIN(a, b) a##b
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
-  for (auto merge_update : JOIN(update->, update_var_name)) { \
+  for (auto merge_update : update->update_var_name) { \
     SymbolIdx index = usr_to_symbol[merge_update.usr]; \
-    auto* def = &JOIN(storage_name, [index.idx]); \
-    AddRange(JOIN(&def->, def_var_name), merge_update.to_add); \
-    RemoveRange(JOIN(&def->, def_var_name), merge_update.to_remove); \
+    auto* def = &storage_name[index.idx]; \
+    AddRange(&def->def_var_name, merge_update.to_add); \
+    RemoveRange(&def->def_var_name, merge_update.to_remove); \
   }
 
   RemoveUsrs(update->files_removed);
@@ -606,7 +604,6 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   HANDLE_MERGEABLE(vars_uses, uses, vars);
 
 #undef HANDLE_MERGEABLE
-#undef JOIN
 }
 
 
