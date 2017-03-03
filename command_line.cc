@@ -97,11 +97,10 @@ indexer.exe --index-file /work2/chrome/src/chrome/foo.cc
 #include "ipc.h"
 
 void IndexerServerMain() {
-  IpcMessageQueue to_server("indexer_to_server");
-  IpcMessageQueue to_client("indexer_to_language_client");
+  IpcServer ipc("language_server");
 
   while (true) {
-    std::vector<std::unique_ptr<BaseIpcMessage>> messages = to_server.PopMessage();
+    std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
 
     std::cout << "Server has " << messages.size() << " messages" << std::endl;
     for (auto& message : messages) {
@@ -109,7 +108,7 @@ void IndexerServerMain() {
       case JsonMessage::Kind::IsAlive:
       {
         IpcMessage_IsAlive response;
-        to_client.PushMessage(&response);
+        ipc.SendToClient(0, &response); // todo: make non-blocking
         break;
       }
       default:
@@ -125,24 +124,19 @@ void IndexerServerMain() {
 }
 
 void LanguageServerMain() {
-  // TODO: Encapsulate this pattern (ie, we generally want bi-directional channel/queue)
-  // TODO: Rename IpcMessageQueue to IpcDirectionalChannel
-  //       - As per above, introduce wrapper IpcBidirectionalChannel that has two IpcDirectionalChannel instances
-
-  IpcMessageQueue to_server("indexer_to_server");
-  IpcMessageQueue to_client("indexer_to_language_client");
+  IpcClient ipc("language_server", 0);
 
   // Discard any left-over messages from previous runs.
-  to_client.PopMessage();
+  ipc.TakeMessages();
 
   // Emit an alive check. Sleep so the server has time to respond.
   IpcMessage_IsAlive check_alive;
-  to_server.PushMessage(&check_alive);
+  ipc.SendToServer(&check_alive);
   using namespace std::chrono_literals;
   std::this_thread::sleep_for(50ms); // TODO: Tune this value or make it configurable.
 
   // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = to_client.PopMessage();
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
   bool has_server = false;
   for (auto& message : messages) {
     if (message->kind == JsonMessage::Kind::IsAlive) {

@@ -4,6 +4,14 @@ namespace {
   JsonMessage* as_message(char* ptr) {
     return reinterpret_cast<JsonMessage*>(ptr);
   }
+
+  std::string NameToServerName(const std::string& name) {
+    return name + "_server";
+  }
+
+  std::string NameToClientName(const std::string& name, int client_id) {
+    return name + "_server_" + std::to_string(client_id);
+  }
 }
 
 const char* JsonMessage::payload() {
@@ -52,17 +60,17 @@ void IpcMessage_CreateIndex::Deserialize(Reader& reader) {
   ::Deserialize(reader, "args", args);
 }
 
-IpcMessageQueue::IpcMessageQueue(const std::string& name) {
+IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
   local_block = new char[shmem_size];
   shared = CreatePlatformSharedMemory(name + "_memory");
   mutex = CreatePlatformMutex(name + "_mutex");
 }
 
-IpcMessageQueue::~IpcMessageQueue() {
+IpcDirectionalChannel::~IpcDirectionalChannel() {
   delete[] local_block;
 }
 
-void IpcMessageQueue::PushMessage(BaseIpcMessage* message) {
+void IpcDirectionalChannel::PushMessage(BaseIpcMessage* message) {
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   writer.SetFormatOptions(
@@ -103,7 +111,7 @@ void IpcMessageQueue::PushMessage(BaseIpcMessage* message) {
 
 }
 
-std::vector<std::unique_ptr<BaseIpcMessage>> IpcMessageQueue::PopMessage() {
+std::vector<std::unique_ptr<BaseIpcMessage>> IpcDirectionalChannel::TakeMessages() {
   size_t remaining_bytes = 0;
   // Move data from shared memory into a local buffer. Do this
   // before parsing the blocks so that other processes can begin
@@ -150,4 +158,33 @@ std::vector<std::unique_ptr<BaseIpcMessage>> IpcMessageQueue::PopMessage() {
   }
 
   return result;
+}
+
+
+
+IpcServer::IpcServer(const std::string& name)
+  : name_(name), server_(NameToServerName(name)) {}
+
+void IpcServer::SendToClient(int client_id, BaseIpcMessage* message) {
+  // Find or create the client.
+  auto it = clients_.find(client_id);
+  if (it == clients_.end())
+    clients_[client_id] = std::make_unique<IpcDirectionalChannel>(NameToClientName(name_, client_id));
+
+  clients_[client_id]->PushMessage(message);
+}
+
+std::vector<std::unique_ptr<BaseIpcMessage>> IpcServer::TakeMessages() {
+  return server_.TakeMessages();
+}
+
+IpcClient::IpcClient(const std::string& name, int client_id)
+  : server_(NameToServerName(name)), client_(NameToClientName(name, client_id)) {}
+
+void IpcClient::SendToServer(BaseIpcMessage* message) {
+  server_.PushMessage(message);
+}
+
+std::vector<std::unique_ptr<BaseIpcMessage>> IpcClient::TakeMessages() {
+  return client_.TakeMessages();
 }

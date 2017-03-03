@@ -72,15 +72,15 @@ struct IpcMessage_CreateIndex : public BaseIpcMessage {
   void Deserialize(Reader& reader) override;
 };
 
-struct IpcMessageQueue {
+struct IpcDirectionalChannel {
   // NOTE: We keep all pointers in terms of char* so pointer arithmetic is
   // always relative to bytes.
 
-  explicit IpcMessageQueue(const std::string& name);
-  ~IpcMessageQueue();
+  explicit IpcDirectionalChannel(const std::string& name);
+  ~IpcDirectionalChannel();
 
   void PushMessage(BaseIpcMessage* message);
-  std::vector<std::unique_ptr<BaseIpcMessage>> PopMessage();
+  std::vector<std::unique_ptr<BaseIpcMessage>> TakeMessages();
 
 private:
   JsonMessage* get_free_message() {
@@ -93,4 +93,27 @@ private:
 
   // Pointer to process-local memory.
   char* local_block;
+};
+
+struct IpcServer {
+  IpcServer(const std::string& name);
+
+  void SendToClient(int client_id, BaseIpcMessage* message);
+  std::vector<std::unique_ptr<BaseIpcMessage>> TakeMessages();
+
+private:
+  std::string name_;
+  IpcDirectionalChannel server_;
+  std::unordered_map<int, std::unique_ptr<IpcDirectionalChannel>> clients_;
+};
+
+struct IpcClient {
+  IpcClient(const std::string& name, int client_id);
+
+  void SendToServer(BaseIpcMessage* message);
+  std::vector<std::unique_ptr<BaseIpcMessage>> TakeMessages();
+
+private:
+  IpcDirectionalChannel server_;
+  IpcDirectionalChannel client_;
 };
