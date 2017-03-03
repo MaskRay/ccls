@@ -24,7 +24,12 @@ void JsonMessage::SetPayload(size_t payload_size, const char* payload) {
   memcpy(payload_dest, payload, payload_size);
 }
 
-BaseIpcMessage::BaseIpcMessage(BaseIpcMessage::DoNotDeriveDirectly) {}
+BaseIpcMessage::BaseIpcMessage() {
+  assert(!runtime_id_.empty() && "Message is not registered using IpcRegistry::RegisterAllocator");
+
+  runtime_id = runtime_id_;
+  hashed_runtime_id = hashed_runtime_id_;
+}
 
 BaseIpcMessage::~BaseIpcMessage() {}
 
@@ -32,8 +37,11 @@ void BaseIpcMessage::Serialize(Writer& writer) {}
 
 void BaseIpcMessage::Deserialize(Reader& reader) {}
 
+IpcMessageId BaseIpcMessage::runtime_id_;
 
-IpcRegistry IpcRegistry::Instance;
+int BaseIpcMessage::hashed_runtime_id_ = -1;
+
+IpcRegistry* IpcRegistry::instance_ = nullptr;
 
 std::unique_ptr<BaseIpcMessage> IpcRegistry::Allocate(int id) {
   return std::unique_ptr<BaseIpcMessage>((*allocators)[id]());
@@ -108,7 +116,7 @@ std::vector<std::unique_ptr<BaseIpcMessage>> IpcDirectionalChannel::TakeMessages
 
   char* message = local_block;
   while (remaining_bytes > 0) {
-    std::unique_ptr<BaseIpcMessage> base_message = IpcRegistry::Instance.Allocate(as_message(message)->message_id);
+    std::unique_ptr<BaseIpcMessage> base_message = IpcRegistry::instance()->Allocate(as_message(message)->message_id);
 
     rapidjson::Document document;
     document.Parse(as_message(message)->payload(), as_message(message)->payload_size);

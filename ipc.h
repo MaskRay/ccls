@@ -32,24 +32,24 @@ struct JsonMessage {
 using IpcMessageId = std::string;
 
 struct BaseIpcMessage {
+  BaseIpcMessage();
   virtual ~BaseIpcMessage();
 
   virtual void Serialize(Writer& writer);
   virtual void Deserialize(Reader& reader);
 
   IpcMessageId runtime_id;
-  int hashed_runtime_id;
+  int hashed_runtime_id = -1;
+
+  // Populated by IpcRegistry::RegisterAllocator.
+  static IpcMessageId runtime_id_;
+  static int hashed_runtime_id_;  
 
   /*
 private:
   template<typename T>
   friend struct IpcMessage;
   */
-
-  enum class DoNotDeriveDirectly {
-    DeriveFromIpcMessageInstead
-  };
-  BaseIpcMessage(DoNotDeriveDirectly);
 };
 
 struct IpcRegistry {
@@ -66,7 +66,8 @@ struct IpcRegistry {
   std::unique_ptr<BaseIpcMessage> Allocate(int id);
 
   static IpcRegistry* instance() {
-    // TODO: Remove static magic. Just call register explicitly.
+    if (!instance_)
+      instance_ = new IpcRegistry();
     return instance_;
   }
   static IpcRegistry* instance_;
@@ -90,24 +91,10 @@ int IpcRegistry::RegisterAllocator() {
     return new T();
   };
 
+  T::runtime_id_ = id;
+  T::hashed_runtime_id_ = hash;
+
   return hash;
-}
-
-template<typename TChild>
-struct IpcMessage : public BaseIpcMessage {
-  IpcMessage();
-
-  static int hashed_id_;
-};
-
-template<typename TChild>
-int IpcMessage<TChild>::hashed_id_ = IpcRegistry::Instance.RegisterAllocator<TChild>();
-
-template<typename TChild>
-IpcMessage<TChild>::IpcMessage()
-  : BaseIpcMessage(DoNotDeriveDirectly::DeriveFromIpcMessageInstead) {
-  runtime_id = TChild::id;
-  hashed_runtime_id = hashed_id_;
 }
 
 

@@ -96,7 +96,7 @@ indexer.exe --index-file /work2/chrome/src/chrome/foo.cc
 */
 
 
-struct IpcMessage_IsAlive : public IpcMessage<IpcMessage_IsAlive> {
+struct IpcMessage_IsAlive : public BaseIpcMessage {
   static IpcMessageId id;
 };
 
@@ -307,7 +307,7 @@ void main2() {
 }
 
 int main(int argc, char** argv) {
-  IpcMessage_IsAlive _;
+  IpcRegistry::instance()->RegisterAllocator<IpcMessage_IsAlive>();
 
   //main2();
   //return 0;
