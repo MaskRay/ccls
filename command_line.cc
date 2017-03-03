@@ -4,6 +4,7 @@
 
 #include "compilation_database_loader.h"
 #include "indexer.h"
+#include "ipc.h"
 #include "query.h"
 
 bool ParsePreferredSymbolLocation(const std::string& content, PreferredSymbolLocation* obj) {
@@ -94,7 +95,13 @@ indexer.exe --index-file /work2/chrome/src/chrome/foo.cc
 }
 */
 
-#include "ipc.h"
+
+struct IpcMessage_IsAlive : public IpcMessage<IpcMessage_IsAlive> {
+  static IpcMessageId id;
+};
+
+IpcMessageId IpcMessage_IsAlive::id = "IsAlive";
+
 
 void IndexerServerMain() {
   IpcServer ipc("language_server");
@@ -104,15 +111,13 @@ void IndexerServerMain() {
 
     std::cout << "Server has " << messages.size() << " messages" << std::endl;
     for (auto& message : messages) {
-      switch (message->kind) {
-      case JsonMessage::Kind::IsAlive:
-      {
+      if (message->runtime_id == IpcMessage_IsAlive::id) {
         IpcMessage_IsAlive response;
         ipc.SendToClient(0, &response); // todo: make non-blocking
         break;
       }
-      default:
-        std::cerr << "Unhandled IPC message with kind " << static_cast<int>(message->kind) << std::endl;
+      else {
+        std::cerr << "Unhandled IPC message with kind " << message->runtime_id << " (hash " << message->hashed_runtime_id << ")" << std::endl;
         exit(1);
         break;
       }
@@ -120,6 +125,37 @@ void IndexerServerMain() {
 
     using namespace std::chrono_literals;
     std::this_thread::sleep_for(20ms);
+  }
+}
+
+void EmitReferences(IpcClient& ipc) {
+
+}
+
+// Separate thread whose only job is to read from stdin and
+// dispatch read commands to the actual indexer program. This
+// cannot be done on the main thread because reading from std::cin
+// blocks.
+void LanguageServerStdinToServerDispatcher(IpcClient& ipc) {
+  while (true) {
+    std::string input;
+    std::cin >> input;
+
+  }
+}
+
+// Main loop for the language server. |ipc| is connected to
+// a server.
+void LanguageServerLoop(IpcClient& ipc) {
+  while (true) {
+    std::string input;
+    std::cin >> input;
+
+    std::cout << "got input " << input << std::endl << std::endl;
+
+    if (input == "references") {
+
+    }
   }
 }
 
@@ -139,7 +175,7 @@ void LanguageServerMain() {
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
   bool has_server = false;
   for (auto& message : messages) {
-    if (message->kind == JsonMessage::Kind::IsAlive) {
+    if (message->runtime_id == IpcMessage_IsAlive::id) {
       has_server = true;
       break;
     }
@@ -152,10 +188,131 @@ void LanguageServerMain() {
   }
 
   std::cout << "Found indexer server" << std::endl;
+  LanguageServerLoop(ipc);
+}
+
+
+
+
+
+#if false
+
+struct IpcMessage_IsAlive : public BaseIpcMessage {
+  IpcMessage_IsAlive();
+
+  // BaseIpcMessage:
+  void Serialize(Writer& writer) override;
+  void Deserialize(Reader& reader) override;
+};
+
+struct IpcMessage_ImportIndex : public BaseIpcMessage {
+  std::string path;
+
+  IpcMessage_ImportIndex();
+
+  // BaseMessage:
+  void Serialize(Writer& writer) override;
+  void Deserialize(Reader& reader) override;
+};
+
+struct IpcMessage_CreateIndex : public BaseIpcMessage {
+  std::string path;
+  std::vector<std::string> args;
+
+  IpcMessage_CreateIndex();
+
+  // BaseMessage:
+  void Serialize(Writer& writer) override;
+  void Deserialize(Reader& reader) override;
+};
+
+
+IpcMessage_IsAlive::IpcMessage_IsAlive() {
+  kind = JsonMessage::Kind::IsAlive;
+}
+
+void IpcMessage_IsAlive::Serialize(Writer& writer) {}
+
+void IpcMessage_IsAlive::Deserialize(Reader& reader) {}
+
+IpcMessage_ImportIndex::IpcMessage_ImportIndex() {
+  kind = JsonMessage::Kind::ImportIndex;
+}
+
+void IpcMessage_ImportIndex::Serialize(Writer& writer) {
+  writer.StartObject();
+  ::Serialize(writer, "path", path);
+  writer.EndObject();
+}
+void IpcMessage_ImportIndex::Deserialize(Reader& reader) {
+  ::Deserialize(reader, "path", path);
+}
+
+IpcMessage_CreateIndex::IpcMessage_CreateIndex() {
+  kind = JsonMessage::Kind::CreateIndex;
+}
+
+void IpcMessage_CreateIndex::Serialize(Writer& writer) {
+  writer.StartObject();
+  ::Serialize(writer, "path", path);
+  ::Serialize(writer, "args", args);
+  writer.EndObject();
+}
+void IpcMessage_CreateIndex::Deserialize(Reader& reader) {
+  ::Deserialize(reader, "path", path);
+  ::Deserialize(reader, "args", args);
+}
+
+// TODO: make it so we don't need an explicit list
+// of available ipc message types. Maybe use string or
+// a hash, not sure.
+
+struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage {
+  std::string document;
+};
+
+struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage {
+
+};
+
+
+
+
+
+
+
+struct ListSymbols : public BaseType<ListSymbols> {
+  static IpcRegistry::Id id;
+};
+
+IpcRegistry::Id ListSymbols::id = "ListSymbols";
+
+struct ListSymbol2s : public BaseType<ListSymbol2s> {
+  static IpcRegistry::Id id;
+};
+
+IpcRegistry::Id ListSymbol2s::id = "ListSymbols";
+
+#endif
+
+
+void main2() {
+  //ListSymbols l;
+  //auto& x = ListSymbols::register_;
+  //ListSymbol2s l2;
+  //auto& y = ListSymbol2s::register_;
+
+  std::cout << "main2" << std::endl;
+  std::cin.get();
 }
 
 int main(int argc, char** argv) {
-  if (argc == 1)
+  IpcMessage_IsAlive _;
+
+  //main2();
+  //return 0;
+
+  if (argc == 2)
     LanguageServerMain();
   else
     IndexerServerMain();

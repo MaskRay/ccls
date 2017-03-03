@@ -4,6 +4,7 @@
 #include <chrono>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -21,56 +22,98 @@ using Reader = rapidjson::Document;
 // completely different address.
 
 struct JsonMessage {
-  enum class Kind {
-    Invalid,
-    IsAlive,
-    CreateIndex,
-    ImportIndex,
-  };
-
-  Kind kind;
+  int message_id;
   size_t payload_size;
 
   const char* payload();
   void SetPayload(size_t payload_size, const char* payload);
 };
 
+using IpcMessageId = std::string;
+
 struct BaseIpcMessage {
-  JsonMessage::Kind kind;
-  virtual ~BaseIpcMessage() {}
+  virtual ~BaseIpcMessage();
 
-  virtual void Serialize(Writer& writer) = 0;
-  virtual void Deserialize(Reader& reader) = 0;
+  virtual void Serialize(Writer& writer);
+  virtual void Deserialize(Reader& reader);
+
+  IpcMessageId runtime_id;
+  int hashed_runtime_id;
+
+  /*
+private:
+  template<typename T>
+  friend struct IpcMessage;
+  */
+
+  enum class DoNotDeriveDirectly {
+    DeriveFromIpcMessageInstead
+  };
+  BaseIpcMessage(DoNotDeriveDirectly);
 };
 
-struct IpcMessage_IsAlive : public BaseIpcMessage {
-  IpcMessage_IsAlive();
+struct IpcRegistry {
+  using Allocator = std::function<BaseIpcMessage*()>;
 
-  // BaseIpcMessage:
-  void Serialize(Writer& writer) override;
-  void Deserialize(Reader& reader) override;
+  // Use unique_ptrs so we can initialize on first use
+  // (static init order might not be right).
+  std::unique_ptr<std::unordered_map<int, Allocator>> allocators;
+  std::unique_ptr<std::unordered_map<int, std::string>> hash_to_id;
+
+  template<typename T>
+  int RegisterAllocator();
+
+  std::unique_ptr<BaseIpcMessage> Allocate(int id);
+
+  static IpcRegistry* instance() {
+    // TODO: Remove static magic. Just call register explicitly.
+    return instance_;
+  }
+  static IpcRegistry* instance_;
 };
 
-struct IpcMessage_ImportIndex : public BaseIpcMessage {
-  std::string path;
+template<typename T>
+int IpcRegistry::RegisterAllocator() {
+  if (!allocators) {
+    allocators = std::make_unique<std::unordered_map<int, Allocator>>();
+    hash_to_id = std::make_unique<std::unordered_map<int, std::string>>();
+  }
 
-  IpcMessage_ImportIndex();
+  IpcMessageId id = T::id;
 
-  // BaseMessage:
-  void Serialize(Writer& writer) override;
-  void Deserialize(Reader& reader) override;
+  int hash = std::hash<IpcMessageId>()(id);
+  auto it = allocators->find(hash);
+  assert(allocators->find(hash) == allocators->end() && "There is already an IPC message with the given id");
+
+  (*hash_to_id)[hash] = id;
+  (*allocators)[hash] = []() {
+    return new T();
+  };
+
+  return hash;
+}
+
+template<typename TChild>
+struct IpcMessage : public BaseIpcMessage {
+  IpcMessage();
+
+  static int hashed_id_;
 };
 
-struct IpcMessage_CreateIndex : public BaseIpcMessage {
-  std::string path;
-  std::vector<std::string> args;
+template<typename TChild>
+int IpcMessage<TChild>::hashed_id_ = IpcRegistry::Instance.RegisterAllocator<TChild>();
 
-  IpcMessage_CreateIndex();
+template<typename TChild>
+IpcMessage<TChild>::IpcMessage()
+  : BaseIpcMessage(DoNotDeriveDirectly::DeriveFromIpcMessageInstead) {
+  runtime_id = TChild::id;
+  hashed_runtime_id = hashed_id_;
+}
 
-  // BaseMessage:
-  void Serialize(Writer& writer) override;
-  void Deserialize(Reader& reader) override;
-};
+
+
+
+
 
 struct IpcDirectionalChannel {
   // NOTE: We keep all pointers in terms of char* so pointer arithmetic is

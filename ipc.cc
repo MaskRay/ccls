@@ -24,40 +24,19 @@ void JsonMessage::SetPayload(size_t payload_size, const char* payload) {
   memcpy(payload_dest, payload, payload_size);
 }
 
-IpcMessage_IsAlive::IpcMessage_IsAlive() {
-  kind = JsonMessage::Kind::IsAlive;
-}
+BaseIpcMessage::BaseIpcMessage(BaseIpcMessage::DoNotDeriveDirectly) {}
 
-void IpcMessage_IsAlive::Serialize(Writer& writer) {}
+BaseIpcMessage::~BaseIpcMessage() {}
 
-void IpcMessage_IsAlive::Deserialize(Reader& reader) {}
+void BaseIpcMessage::Serialize(Writer& writer) {}
 
-IpcMessage_ImportIndex::IpcMessage_ImportIndex() {
-  kind = JsonMessage::Kind::ImportIndex;
-}
+void BaseIpcMessage::Deserialize(Reader& reader) {}
 
-void IpcMessage_ImportIndex::Serialize(Writer& writer) {
-  writer.StartObject();
-  ::Serialize(writer, "path", path);
-  writer.EndObject();
-}
-void IpcMessage_ImportIndex::Deserialize(Reader& reader) {
-  ::Deserialize(reader, "path", path);
-}
 
-IpcMessage_CreateIndex::IpcMessage_CreateIndex() {
-  kind = JsonMessage::Kind::CreateIndex;
-}
+IpcRegistry IpcRegistry::Instance;
 
-void IpcMessage_CreateIndex::Serialize(Writer& writer) {
-  writer.StartObject();
-  ::Serialize(writer, "path", path);
-  ::Serialize(writer, "args", args);
-  writer.EndObject();
-}
-void IpcMessage_CreateIndex::Deserialize(Reader& reader) {
-  ::Deserialize(reader, "path", path);
-  ::Deserialize(reader, "args", args);
+std::unique_ptr<BaseIpcMessage> IpcRegistry::Allocate(int id) {
+  return std::unique_ptr<BaseIpcMessage>((*allocators)[id]());
 }
 
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
@@ -100,12 +79,12 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessage* message) {
     if ((*shared->shared_bytes_used + sizeof(JsonMessage) + payload_size) >= shmem_size)
       continue;
 
-    get_free_message()->kind = message->kind;
+    get_free_message()->message_id = message->hashed_runtime_id;
     get_free_message()->SetPayload(payload_size, output.GetString());
 
     *shared->shared_bytes_used += sizeof(JsonMessage) + get_free_message()->payload_size;
     assert(*shared->shared_bytes_used < shmem_size);
-    get_free_message()->kind = JsonMessage::Kind::Invalid;
+    get_free_message()->message_id = -1;
     break;
   }
 
@@ -122,27 +101,14 @@ std::vector<std::unique_ptr<BaseIpcMessage>> IpcDirectionalChannel::TakeMessages
 
     memcpy(local_block, shared->shared_start, *shared->shared_bytes_used);
     *shared->shared_bytes_used = 0;
-    get_free_message()->kind = JsonMessage::Kind::Invalid;
+    get_free_message()->message_id = -1;
   }
 
   std::vector<std::unique_ptr<BaseIpcMessage>> result;
 
   char* message = local_block;
   while (remaining_bytes > 0) {
-    std::unique_ptr<BaseIpcMessage> base_message;
-    switch (as_message(message)->kind) {
-    case JsonMessage::Kind::IsAlive:
-      base_message = std::make_unique<IpcMessage_IsAlive>();
-      break;
-    case JsonMessage::Kind::CreateIndex:
-      base_message = std::make_unique<IpcMessage_CreateIndex>();
-      break;
-    case JsonMessage::Kind::ImportIndex:
-      base_message = std::make_unique<IpcMessage_ImportIndex>();
-      break;
-    default:
-      assert(false);
-    }
+    std::unique_ptr<BaseIpcMessage> base_message = IpcRegistry::Instance.Allocate(as_message(message)->message_id);
 
     rapidjson::Document document;
     document.Parse(as_message(message)->payload(), as_message(message)->payload_size);
