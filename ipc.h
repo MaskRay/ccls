@@ -31,6 +31,20 @@ struct JsonMessage {
 
 using IpcMessageId = std::string;
 
+// Usage:
+//
+//  class IpcMessage_Foo : public BaseIpcMessage {
+//    static IpcMessageId id;
+//    
+//    // BaseIpcMessage:
+//    ...
+//  }
+//  IpcMessageId IpcMessage_Foo::id = "Foo";
+//
+//
+//  main() {
+//    IpcRegistry::instance()->Register<IpcMessage_Foo>();
+//  }
 struct BaseIpcMessage {
   BaseIpcMessage();
   virtual ~BaseIpcMessage();
@@ -44,12 +58,6 @@ struct BaseIpcMessage {
   // Populated by IpcRegistry::RegisterAllocator.
   static IpcMessageId runtime_id_;
   static int hashed_runtime_id_;  
-
-  /*
-private:
-  template<typename T>
-  friend struct IpcMessage;
-  */
 };
 
 struct IpcRegistry {
@@ -61,7 +69,7 @@ struct IpcRegistry {
   std::unique_ptr<std::unordered_map<int, std::string>> hash_to_id;
 
   template<typename T>
-  int RegisterAllocator();
+  void Register();
 
   std::unique_ptr<BaseIpcMessage> Allocate(int id);
 
@@ -74,7 +82,7 @@ struct IpcRegistry {
 };
 
 template<typename T>
-int IpcRegistry::RegisterAllocator() {
+void IpcRegistry::Register() {
   if (!allocators) {
     allocators = std::make_unique<std::unordered_map<int, Allocator>>();
     hash_to_id = std::make_unique<std::unordered_map<int, std::string>>();
@@ -93,8 +101,6 @@ int IpcRegistry::RegisterAllocator() {
 
   T::runtime_id_ = id;
   T::hashed_runtime_id_ = hash;
-
-  return hash;
 }
 
 

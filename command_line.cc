@@ -103,6 +103,89 @@ struct IpcMessage_IsAlive : public BaseIpcMessage {
 IpcMessageId IpcMessage_IsAlive::id = "IsAlive";
 
 
+
+
+
+
+
+
+struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage {
+  std::string document;
+
+  // BaseIpcMessage:
+  static IpcMessageId id;
+  void Serialize(Writer& writer) override {
+    writer.String(document.c_str());
+  }
+  void Deserialize(Reader& reader) override {
+    document = reader.GetString();
+  }
+};
+IpcMessageId IpcMessage_DocumentSymbolsRequest::id = "IpcMessage_DocumentSymbolsRequest";
+
+
+// Keep all types in the language_server_api namespace in sync with language server spec.
+namespace language_server_api {
+  using DocumentUri = std::string; // TODO
+
+  struct Position {
+    // Note: these are 0-based.
+    int line;
+    int character;
+  };
+
+  struct Range {
+    Position start;
+    Position end;
+  };
+
+  struct Location {
+    DocumentUri uri;
+    Range range;
+  };
+
+  enum class SymbolKind : int {
+    File = 1,
+    Module = 2,
+    Namespace = 3,
+    Package = 4,
+    Class = 5,
+    Method = 6,
+    Property = 7,
+    Field = 8,
+    Constructor = 9,
+    Enum = 10,
+    Interface = 11,
+    Function = 12,
+    Variable = 13,
+    Constant = 14,
+    String = 15,
+    Number = 16,
+    Boolean = 17,
+    Array = 18
+  };
+  
+  struct SymbolInfo {
+    std::string name;
+    SymbolKind kind;
+    Location location;
+    std::string containerName;
+  };
+}
+
+struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage {
+  std::vector<language_server_api::SymbolInfo> symbols;
+
+  // BaseIpcMessage:
+  static IpcMessageId id;
+};
+IpcMessageId IpcMessage_DocumentSymbolsResponse::id = "IpcMessage_DocumentSymbolsResponse";
+
+
+
+
+
+
 void IndexerServerMain() {
   IpcServer ipc("language_server");
 
@@ -262,55 +345,13 @@ void IpcMessage_CreateIndex::Deserialize(Reader& reader) {
   ::Deserialize(reader, "path", path);
   ::Deserialize(reader, "args", args);
 }
-
-// TODO: make it so we don't need an explicit list
-// of available ipc message types. Maybe use string or
-// a hash, not sure.
-
-struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage {
-  std::string document;
-};
-
-struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage {
-
-};
-
-
-
-
-
-
-
-struct ListSymbols : public BaseType<ListSymbols> {
-  static IpcRegistry::Id id;
-};
-
-IpcRegistry::Id ListSymbols::id = "ListSymbols";
-
-struct ListSymbol2s : public BaseType<ListSymbol2s> {
-  static IpcRegistry::Id id;
-};
-
-IpcRegistry::Id ListSymbol2s::id = "ListSymbols";
-
 #endif
 
-
-void main2() {
-  //ListSymbols l;
-  //auto& x = ListSymbols::register_;
-  //ListSymbol2s l2;
-  //auto& y = ListSymbol2s::register_;
-
-  std::cout << "main2" << std::endl;
-  std::cin.get();
-}
-
 int main(int argc, char** argv) {
-  IpcRegistry::instance()->RegisterAllocator<IpcMessage_IsAlive>();
+  IpcRegistry::instance()->Register<IpcMessage_IsAlive>();
+  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>();
+  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>();
 
-  //main2();
-  //return 0;
 
   if (argc == 2)
     LanguageServerMain();
