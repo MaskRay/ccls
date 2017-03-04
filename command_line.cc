@@ -164,7 +164,7 @@ namespace language_server_api {
     Boolean = 17,
     Array = 18
   };
-  
+
   struct SymbolInfo {
     std::string name;
     SymbolKind kind;
@@ -187,7 +187,7 @@ IpcMessageId IpcMessage_DocumentSymbolsResponse::id = "IpcMessage_DocumentSymbol
 
 
 void IndexerServerMain() {
-  IpcServer ipc("language_server");
+  IpcServer ipc("languageserver");
 
   while (true) {
     std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
@@ -206,8 +206,7 @@ void IndexerServerMain() {
       }
     }
 
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(20ms);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 }
 
@@ -243,7 +242,7 @@ void LanguageServerLoop(IpcClient& ipc) {
 }
 
 void LanguageServerMain() {
-  IpcClient ipc("language_server", 0);
+  IpcClient ipc("languageserver", 0);
 
   // Discard any left-over messages from previous runs.
   ipc.TakeMessages();
@@ -251,8 +250,9 @@ void LanguageServerMain() {
   // Emit an alive check. Sleep so the server has time to respond.
   IpcMessage_IsAlive check_alive;
   ipc.SendToServer(&check_alive);
-  using namespace std::chrono_literals;
-  std::this_thread::sleep_for(50ms); // TODO: Tune this value or make it configurable.
+
+  // TODO: Tune this value or make it configurable.
+  std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
   // Check if we got an IsAlive message back.
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
@@ -372,7 +372,7 @@ int main(int argc, char** argv) {
                   optionally by clients if there are multiple servers running.
     --print-config
                   Emit all configuration data this executable is using.
-    
+
 
   Server:
     --server      If present, this binary will run in server mode. The binary
@@ -389,7 +389,7 @@ int main(int argc, char** argv) {
                   This value is optional; a good estimate is computed by
                   default.
 
-                  
+
   Client:
     --command     Execute a query command against the index. See
                   --command-help for a listing of valid commands and a

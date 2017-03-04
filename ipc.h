@@ -35,7 +35,7 @@ using IpcMessageId = std::string;
 //
 //  class IpcMessage_Foo : public BaseIpcMessage {
 //    static IpcMessageId id;
-//    
+//
 //    // BaseIpcMessage:
 //    ...
 //  }
@@ -57,7 +57,7 @@ struct BaseIpcMessage {
 
   // Populated by IpcRegistry::RegisterAllocator.
   static IpcMessageId runtime_id_;
-  static int hashed_runtime_id_;  
+  static int hashed_runtime_id_;
 };
 
 struct IpcRegistry {
@@ -84,8 +84,8 @@ struct IpcRegistry {
 template<typename T>
 void IpcRegistry::Register() {
   if (!allocators) {
-    allocators = std::make_unique<std::unordered_map<int, Allocator>>();
-    hash_to_id = std::make_unique<std::unordered_map<int, std::string>>();
+    allocators = MakeUnique<std::unordered_map<int, Allocator>>();
+    hash_to_id = MakeUnique<std::unordered_map<int, std::string>>();
   }
 
   IpcMessageId id = T::id;

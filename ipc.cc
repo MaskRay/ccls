@@ -6,11 +6,11 @@ namespace {
   }
 
   std::string NameToServerName(const std::string& name) {
-    return name + "_server";
+    return name + "server";
   }
 
   std::string NameToClientName(const std::string& name, int client_id) {
-    return name + "_server_" + std::to_string(client_id);
+    return name + "client" + std::to_string(client_id);
   }
 }
 
@@ -49,8 +49,8 @@ std::unique_ptr<BaseIpcMessage> IpcRegistry::Allocate(int id) {
 
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
   local_block = new char[shmem_size];
-  shared = CreatePlatformSharedMemory(name + "_memory");
-  mutex = CreatePlatformMutex(name + "_mutex");
+  shared = CreatePlatformSharedMemory(name + "memory");
+  mutex = CreatePlatformMutex(name + "mutex");
 }
 
 IpcDirectionalChannel::~IpcDirectionalChannel() {
@@ -71,13 +71,12 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessage* message) {
   bool first = true;
   bool did_log = false;
   while (true) {
-    using namespace std::chrono_literals;
     if (!first) {
       if (!did_log) {
         std::cout << "[info]: shmem full, waiting" << std::endl; // TODO: remove
         did_log = true;
       }
-      std::this_thread::sleep_for(16ms);
+      std::this_thread::sleep_for(std::chrono::milliseconds(16));
     }
     first = false;
 
@@ -143,7 +142,7 @@ void IpcServer::SendToClient(int client_id, BaseIpcMessage* message) {
   // Find or create the client.
   auto it = clients_.find(client_id);
   if (it == clients_.end())
-    clients_[client_id] = std::make_unique<IpcDirectionalChannel>(NameToClientName(name_, client_id));
+    clients_[client_id] = MakeUnique<IpcDirectionalChannel>(NameToClientName(name_, client_id));
 
   clients_[client_id]->PushMessage(message);
 }

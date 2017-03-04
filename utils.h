@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 std::vector<std::string> GetFilesInFolder(std::string folder);
 std::vector<std::string> ReadLines(std::string filename);
@@ -11,3 +12,10 @@ void Fail(const std::string& message);
 
 
 void WriteToFile(const std::string& filename, const std::string& content);
+
+// note: this implementation does not disable this overload for array types
+// See http://en.cppreference.com/w/cpp/memory/unique_ptr/make_unique#Possible_Implementatiog
+template<typename T, typename... Args>
+std::unique_ptr<T> MakeUnique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}

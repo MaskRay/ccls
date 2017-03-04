@@ -25,13 +25,21 @@ string(STRIP "${LIBCLANG_LIBDIR}" LIBCLANG_LIBDIR)
 find_library(LIBCLANG_LIBRARIES NAMES libclang clang
                                 PATHS ${LIBCLANG_LIBDIR})
 
+
+
+
+set(LIBCLANG_INCLUDEDIR "/usr/local/google/home/jdufault/super-clang-index/clang+llvm-3.9.1-x86_64-linux-gnu-ubuntu-16.04/include")
+set(LIBCLANG_LIBDIR     "/usr/local/google/home/jdufault/super-clang-index/clang+llvm-3.9.1-x86_64-linux-gnu-ubuntu-16.04/lib")
+set(LIBCLANG_LIBRARIES  "/usr/local/google/home/jdufault/super-clang-index/clang+llvm-3.9.1-x86_64-linux-gnu-ubuntu-16.04/lib/libclang.so")
+
+
 #
 # Debugging
 #
 #message("SOURCE_FILES:        " ${SOURCE_FILES} )
-#message("LIBCLANG_INCLUDEDIR: " ${LIBCLANG_INCLUDEDIR})
-#message("LIBCLANG_LIBDIR:     " ${LIBCLANG_LIBDIR})
-#message("LIBCLANG_LIBRARIES:  " ${LIBCLANG_LIBRARIES})
+message("LIBCLANG_INCLUDEDIR: " ${LIBCLANG_INCLUDEDIR})
+message("LIBCLANG_LIBDIR:     " ${LIBCLANG_LIBDIR})
+message("LIBCLANG_LIBRARIES:  " ${LIBCLANG_LIBRARIES})
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall")
 

@@ -1,3 +1,4 @@
+#if false
 #include "platform.h"
 
 #include <cassert>
@@ -59,13 +60,14 @@ struct PlatformSharedMemoryWin : public PlatformSharedMemory {
 
 
 std::unique_ptr<PlatformMutex> CreatePlatformMutex(const std::string& name) {
-  return std::make_unique<PlatformMutexWin>(name);
+  return MakeUnique<PlatformMutexWin>(name);
 }
 
 std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(PlatformMutex* mutex) {
-  return std::make_unique<PlatformScopedMutexLockWin>(static_cast<PlatformMutexWin*>(mutex)->raw_mutex);
+  return MakeUnique<PlatformScopedMutexLockWin>(static_cast<PlatformMutexWin*>(mutex)->raw_mutex);
 }
 
 std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(const std::string& name) {
-  return std::make_unique<PlatformSharedMemoryWin>(name);
+  return MakeUnique<PlatformSharedMemoryWin>(name);
 }
+#endif
