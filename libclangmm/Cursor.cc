@@ -27,6 +27,10 @@ bool Type::is_fundamental() const {
          cx_type.kind <= CXType_LastBuiltin;
 }
 
+CXCursor Type::get_declaration() const {
+  return clang_getTypeDeclaration(cx_type);
+}
+
 std::string Type::get_usr() const {
   return clang::Cursor(clang_getTypeDeclaration(cx_type)).get_usr();
 }
@@ -133,9 +137,10 @@ bool Cursor::is_definition() const {
 }
 
 Cursor Cursor::template_specialization_to_template_definition() const {
-  // TODO: Should we return this same cursor if this is not a template? We
-  // can probably check USR to do that.
-  return clang_getSpecializedCursorTemplate(cx_cursor);
+  CXCursor definition = clang_getSpecializedCursorTemplate(cx_cursor);
+  if (definition.kind == CXCursor_FirstInvalid)
+    return cx_cursor;
+  return definition;
 }
 
 Cursor Cursor::get_referenced() const {

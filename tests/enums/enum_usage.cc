@@ -24,6 +24,7 @@ OUTPUT:
       "short_name": "A",
       "qualified_name": "Foo::A",
       "definition": "1:2:3",
+      "variable_type": 0,
       "declaring_type": 0,
       "uses": ["1:2:3", "1:6:14"]
     }, {
@@ -32,6 +33,7 @@ OUTPUT:
       "short_name": "B",
       "qualified_name": "Foo::B",
       "definition": "1:3:3",
+      "variable_type": 0,
       "declaring_type": 0,
       "uses": ["1:3:3"]
     }, {

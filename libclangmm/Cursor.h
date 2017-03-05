@@ -21,6 +21,8 @@ public:
   // Returns true if this is a fundamental type like int.
   bool is_fundamental() const;
 
+  // clang::Cursor is not defined so we have to return CXCursor
+  CXCursor get_declaration() const;
   std::string get_usr() const;
   std::string get_spelling() const;
 
@@ -58,7 +60,14 @@ public:
 
   bool is_definition() const;
 
+  // If the given cursor points to a template specialization, this
+  // will return the cursor pointing to the template definition.
+  // If the given cursor is not a template specialization, this will
+  // just return the same cursor.
+  //
+  // This means it is always safe to call this method.
   Cursor template_specialization_to_template_definition() const;
+
   Cursor get_referenced() const;
   Cursor get_canonical() const;
   Cursor get_definition() const;

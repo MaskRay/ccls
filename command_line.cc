@@ -604,7 +604,7 @@ void LanguageServerMain(std::string process_name) {
 
 
 
-int main(int argc, char** argv) {
+int mai232n(int argc, char** argv) {
   // We need to write to stdout in binary mode because in Windows, writing
   // \n will implicitly write \r\n. Language server API will ignore a
   // \r\r\n split request.

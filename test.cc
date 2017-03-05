@@ -82,7 +82,7 @@ void VerifySerializeToFrom(IndexedFile* file) {
   }
 }
 
-int main222(int argc, char** argv) {
+int main(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -94,8 +94,12 @@ int main222(int argc, char** argv) {
   */
 
   for (std::string path : GetFilesInFolder("tests", true /*add_folder_to_path*/)) {
-    //if (path != "tests/usage/type_usage_declare_field.cc") continue;
-    path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
+    //if (path == "tests/foobar.cc") continue;
+    //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
+    //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
+
+    //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
+    //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;
@@ -105,7 +109,7 @@ int main222(int argc, char** argv) {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {}, true /*dump_ast*/);
+    IndexedFile db = Parse(path, {}, false /*dump_ast*/);
     VerifySerializeToFrom(&db);
     std::string actual_output = db.ToString();
 

@@ -353,12 +353,9 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
   param->has_processed_any = true;
   IndexedFile* db = param->db;
 
-  // TODO: Something in STL (type_traits)? reports an empty USR.
-  std::string referenced_usr = cursor.get_referenced().get_usr();
-  if (referenced_usr == "")
-    return;
-
+  std::string referenced_usr = cursor.get_referenced().template_specialization_to_template_definition().get_usr();
   TypeId ref_type_id = db->ToTypeId(referenced_usr);
+
   if (!param->initial_type)
     param->initial_type = ref_type_id;
 
@@ -392,7 +389,23 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(clang::Cursor cursor, clang::C
   return clang::VisiterResult::Continue;
 }
 
-optional<TypeId> ResolveDeclToType(IndexedFile* db, clang::Cursor decl_cursor,
+// Finds the cursor associated with the declaration type of |cursor|. This strips
+// qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
+// (ie, Foo<A,B> => Foo<*,*>).
+optional<TypeId> ResolveToDeclarationType(IndexedFile* db, clang::Cursor cursor) {
+  clang::Cursor declaration = cursor.get_type().strip_qualifiers().get_declaration();
+  declaration = declaration.template_specialization_to_template_definition();
+  std::string usr = declaration.get_usr();
+  if (usr != "")
+    return db->ToTypeId(usr);
+  return nullopt;
+}
+
+// Add usages to any seen TypeRef or TemplateRef under the given |decl_cursor|. This
+// returns the first seen TypeRef or TemplateRef value, which can be useful if trying
+// to figure out ie, what a using statement refers to. If trying to generally resolve
+// a cursor to a type, use ResolveToDeclarationType, which works in more scenarios.
+optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
   bool is_interesting, const CXIdxContainerInfo* semantic_container,
   const CXIdxContainerInfo* lexical_container) {
   //
@@ -415,7 +428,46 @@ optional<TypeId> ResolveDeclToType(IndexedFile* db, clang::Cursor decl_cursor,
   //    TypeRef struct S2
   //    TypeRef struct S2
   //
-
+  //
+  // Here is another example:
+  //
+  //  enum A {};
+  //  enum B {};
+  // 
+  //  template<typename T>
+  //  struct Foo {
+  //    struct Inner {};
+  //  };
+  // 
+  //  Foo<A>::Inner a;
+  //  Foo<B> b;
+  // 
+  //  =>
+  //
+  //  EnumDecl A
+  //  EnumDecl B
+  //  ClassTemplate Foo
+  //    TemplateTypeParameter T
+  //    StructDecl Inner
+  //  VarDecl a
+  //    TemplateRef Foo
+  //    TypeRef enum A
+  //    TypeRef struct Foo<enum A>::Inner
+  //    CallExpr Inner
+  //  VarDecl b
+  //    TemplateRef Foo
+  //    TypeRef enum B
+  //    CallExpr Foo
+  //
+  //
+  // Determining the actual type of the variable/declaration from just the
+  // children is tricky. Doing so would require looking up the template
+  // definition associated with a TemplateRef, figuring out how many children
+  // it has, and then skipping that many TypeRef values. This also has to work
+  // with the example below (skipping the last TypeRef). As a result, we
+  // determine variable types using |ResolveToDeclarationType|.
+  //
+  //
   // We skip the last type reference for methods/variables which are defined
   // out-of-line w.r.t. the parent type.
   //
@@ -449,7 +501,12 @@ optional<TypeId> ResolveDeclToType(IndexedFile* db, clang::Cursor decl_cursor,
   else {
     // If we are not processing the last type ref, it *must* be a TypeRef (ie,
     // and not a TemplateRef).
-    assert(!param.previous_cursor.has_value() ||
+    //
+    // We will not visit every child if the is_interseting is false, so previous_cursor
+    // may not point to the last TemplateRef.
+    assert(
+      is_interesting == false ||
+      param.previous_cursor.has_value() == false ||
       param.previous_cursor.value().get_kind() == CXCursor_TypeRef);
   }
 
@@ -496,12 +553,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       var_def->def.declaration = decl_loc;
     var_def->uses.push_back(decl_loc);
 
+    //std::cerr << std::endl << "Visiting declaration" << std::endl;
+    //Dump(decl_cursor);
 
     // Declaring variable type information. Note that we do not insert an
     // interesting reference for parameter declarations - that is handled when
     // the function declaration is encountered since we won't receive ParmDecl
     // declarations for unnamed parameters.
-    optional<TypeId> var_type = ResolveDeclToType(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+    AddDeclUsages(db, decl_cursor, decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+    optional<TypeId> var_type = ResolveToDeclarationType(db, decl_cursor);
     if (var_type.has_value())
       var_def->def.variable_type = var_type.value();
 
@@ -570,7 +630,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     // We don't actually need to know the return type, but we need to mark it
     // as an interesting usage.
-    ResolveDeclToType(db, decl_cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+    AddDeclUsages(db, decl_cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
     //TypeResolution ret_type = ResolveToType(db, decl_cursor.get_type().get_return_type());
     //if (ret_type.resolved_type)
@@ -592,7 +652,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         case CXCursor_ParmDecl:
           // We don't need to know the arg type, but we do want to mark it as
           // an interesting usage.
-          ResolveDeclToType(db, arg, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+          AddDeclUsages(db, arg, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
           //TypeResolution arg_type = ResolveToType(db, arg.get_type());
           //if (arg_type.resolved_type)
@@ -639,7 +699,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_Typedef:
   case CXIdxEntity_CXXTypeAlias:
   {
-    optional<TypeId> alias_of = ResolveDeclToType(db, decl->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+    // Note we want to fetch the first TypeRef. Running ResolveCursorType(decl->cursor) would return
+    // the type of the typedef/using, not the type of the referenced type.
+    optional<TypeId> alias_of = AddDeclUsages(db, decl->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
 
     TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
     IndexedTypeDef* type_def = db->Resolve(type_id);
@@ -702,7 +764,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       for (unsigned int i = 0; i < class_info->numBases; ++i) {
         const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
-        optional<TypeId> parent_type_id = ResolveDeclToType(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+        AddDeclUsages(db, base_class->cursor, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+        optional<TypeId> parent_type_id = ResolveToDeclarationType(db, base_class->cursor);
         IndexedTypeDef* type_def = db->Resolve(type_id); // type_def ptr could be invalidated by ResolveDeclToType.
         if (parent_type_id) {
           IndexedTypeDef* parent_type_def = db->Resolve(parent_type_id.value());
@@ -749,9 +812,13 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_Variable:
   case CXIdxEntity_Field:
   {
-    VarId var_id = db->ToVarId(ref->referencedEntity->cursor);
+    clang::Cursor referenced = ref->referencedEntity->cursor;
+    referenced = referenced.template_specialization_to_template_definition();
+
+    VarId var_id = db->ToVarId(referenced.get_usr());
     IndexedVarDef* var_def = db->Resolve(var_id);
-    var_def->uses.push_back(db->id_cache.Resolve(ref->loc, false /*interesting*/));
+    Location loc = db->id_cache.Resolve(ref->loc, false /*interesting*/);
+    var_def->uses.push_back(loc);
     break;
   }
 
@@ -805,9 +872,13 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
       Location our_loc = db->id_cache.Resolve(ref->loc, true /*is_interesting*/);
       if (!parent_loc.IsEqualTo(our_loc)) {
         IndexedFuncDef* called_def = db->Resolve(called_id);
+        // I suspect it is possible for the declaring type to be null
+        // when the class is invalid.
+        //if (called_def->def.declaring_type) {
         assert(called_def->def.declaring_type.has_value());
         IndexedTypeDef* type_def = db->Resolve(called_def->def.declaring_type.value());
         type_def->AddUsage(our_loc);
+        //}
       }
     }
     break;
@@ -820,7 +891,10 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   case CXIdxEntity_Struct:
   case CXIdxEntity_CXXClass:
   {
-    TypeId referenced_id = db->ToTypeId(ref->referencedEntity->USR);
+    clang::Cursor referenced = ref->referencedEntity->cursor;
+    referenced = referenced.template_specialization_to_template_definition();
+    TypeId referenced_id = db->ToTypeId(referenced.get_usr());
+
     IndexedTypeDef* referenced_def = db->Resolve(referenced_id);
 
     // We will not get a declaration visit for forward declared types. Try to mark them as non-bad 
@@ -895,7 +969,7 @@ IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
-    CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession, tu.cx_tu);
+    CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations, tu.cx_tu);
 
   clang_IndexAction_dispose(index_action);
 
