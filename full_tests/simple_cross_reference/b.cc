@@ -1,7 +1,9 @@
 #include "a.h"
 
 #if RANDOM_DEFINE
-static void LocaB() {
+static void LocalB() {
   Common();
 }
 #endif  // RANDOM_DEFINE
+
+static void LocalC() {}

@@ -2,11 +2,16 @@
   {
     "directory" : "full_tests/simple_cross_reference",
     "command" : "clang -c -o a.o a.cc",
-    "file" : "full_tests/simple_cross_reference/a.cc"
+    "file" : "a.cc"
   },
   {
     "directory" : "full_tests/simple_cross_reference",
     "command" : "clang -DRANDOM_DEFINE -c -o b.o b.cc",
-    "file" : "full_tests/simple_cross_reference/b.cc"
+    "file" : "b.cc"
+  },
+  {
+    "directory" : "full_tests/simple_cross_reference",
+    "command" : "clang -DRANDOM_DEFINE -c -o b.o b.cc",
+    "file" : "test.cc"
   }
 ]
