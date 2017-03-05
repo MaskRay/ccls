@@ -106,6 +106,10 @@ bool Cursor::operator==(const Cursor& rhs) const {
   return clang_equalCursors(cx_cursor, rhs.cx_cursor);
 }
 
+bool Cursor::operator!=(const Cursor& rhs) const {
+  return !(*this == rhs);
+}
+
 CXCursorKind Cursor::get_kind() const {
   return cx_cursor.kind;
 }

@@ -9,6 +9,9 @@ struct Foo {
 Foo<A>::Inner a;
 Foo<B> b;
 
+//#include <string>
+
+
 
 #if false
 // We could store how many template parameters Foo has and then skip that many TypeRefs...,

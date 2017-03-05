@@ -94,7 +94,7 @@ int main(int argc, char** argv) {
   */
 
   for (std::string path : GetFilesInFolder("tests", true /*add_folder_to_path*/)) {
-    //if (path == "tests/foobar.cc") continue;
+    //if (path != "tests/usage/var_usage_cstyle_cast.cc") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
     //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
 

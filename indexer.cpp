@@ -354,6 +354,10 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor, VisitDeclForTypeU
   IndexedFile* db = param->db;
 
   std::string referenced_usr = cursor.get_referenced().template_specialization_to_template_definition().get_usr();
+  // TODO: things in STL cause this to be empty. Figure out why and document it.
+  if (referenced_usr == "")
+    return;
+
   TypeId ref_type_id = db->ToTypeId(referenced_usr);
 
   if (!param->initial_type)
@@ -384,7 +388,24 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(clang::Cursor cursor, clang::C
     }
 
     param->previous_cursor = cursor;
+    break;
+
+
+    // We do not want to recurse for everything, since if we do that we will end
+    // up visiting method definition bodies/etc. Instead, we only recurse for
+    // things that can logically appear as part of an inline variable initializer,
+    // ie,
+    //
+    //  class Foo {
+    //   int x = (Foo)3;
+    //  }
+  case CXCursor_CallExpr:
+  case CXCursor_CStyleCastExpr:
+  case CXCursor_CXXStaticCastExpr:
+  case CXCursor_CXXReinterpretCastExpr:
+    return clang::VisiterResult::Recurse;
   }
+
 
   return clang::VisiterResult::Continue;
 }
@@ -408,6 +429,10 @@ optional<TypeId> ResolveToDeclarationType(IndexedFile* db, clang::Cursor cursor)
 optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
   bool is_interesting, const CXIdxContainerInfo* semantic_container,
   const CXIdxContainerInfo* lexical_container) {
+
+  //std::cerr << std::endl << "AddDeclUsages " << decl_cursor.get_spelling() << std::endl;
+  //Dump(decl_cursor);
+
   //
   // The general AST format for definitions follows this pattern:
   //
@@ -534,6 +559,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   case CXIdxEntity_CXXStaticVariable:
   {
     clang::Cursor decl_cursor = decl->cursor;
+
+    // Do not index implicit template instantiations.
+    if (decl_cursor != decl_cursor.template_specialization_to_template_definition())
+      break;
+
+    std::string decl_usr = decl_cursor.get_usr();
+
     VarId var_id = db->ToVarId(decl->entityInfo->USR);
     IndexedVarDef* var_def = db->Resolve(var_id);
 
@@ -969,7 +1001,7 @@ IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
-    CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations, tu.cx_tu);
+    CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession, tu.cx_tu);
 
   clang_IndexAction_dispose(index_action);
 

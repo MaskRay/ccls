@@ -47,8 +47,9 @@ public:
   Cursor();
   Cursor(const CXCursor& other);
 
-  operator bool() const;
+  explicit operator bool() const;
   bool operator==(const Cursor& rhs) const;
+  bool operator!=(const Cursor& rhs) const;
 
   CXCursorKind get_kind() const;
   Type get_type() const;
