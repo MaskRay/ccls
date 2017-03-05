@@ -230,7 +230,7 @@ void Deserialize(const Reader& reader, IndexedFile* file) {
 
 std::string Serialize(IndexedFile* file) {
   rapidjson::StringBuffer output;
-  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
+  Writer writer(output);
   writer.SetFormatOptions(
     rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);

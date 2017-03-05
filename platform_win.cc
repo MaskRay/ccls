@@ -1,9 +1,10 @@
-#if false
 #include "platform.h"
 
 #include <cassert>
 #include <string>
 #include <Windows.h>
+
+#include "utils.h"
 
 struct PlatformMutexWin : public PlatformMutex {
   HANDLE raw_mutex = INVALID_HANDLE_VALUE;
@@ -70,4 +71,3 @@ std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(PlatformM
 std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(const std::string& name) {
   return MakeUnique<PlatformSharedMemoryWin>(name);
 }
-#endif

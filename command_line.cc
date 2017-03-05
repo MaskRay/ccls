@@ -1,11 +1,21 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <thread>
 
 #include "compilation_database_loader.h"
 #include "indexer.h"
 #include "ipc.h"
 #include "query.h"
+#include "language_server_api.h"
+
+#include <rapidjson/istreamwrapper.h>
+#include <rapidjson/ostreamwrapper.h>
+
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#endif
 
 bool ParsePreferredSymbolLocation(const std::string& content, PreferredSymbolLocation* obj) {
 #define PARSE_AS(name, string)      \
@@ -96,7 +106,7 @@ indexer.exe --index-file /work2/chrome/src/chrome/foo.cc
 */
 
 
-struct IpcMessage_IsAlive : public BaseIpcMessage {
+struct IpcMessage_IsAlive : public BaseIpcMessage<IpcMessage_IsAlive> {
   static IpcMessageId id;
 };
 
@@ -109,7 +119,12 @@ IpcMessageId IpcMessage_IsAlive::id = "IsAlive";
 
 
 
-struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage {
+
+
+
+
+
+struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage<IpcMessage_DocumentSymbolsRequest> {
   std::string document;
 
   // BaseIpcMessage:
@@ -123,58 +138,8 @@ struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage {
 };
 IpcMessageId IpcMessage_DocumentSymbolsRequest::id = "IpcMessage_DocumentSymbolsRequest";
 
-
-// Keep all types in the language_server_api namespace in sync with language server spec.
-namespace language_server_api {
-  using DocumentUri = std::string; // TODO
-
-  struct Position {
-    // Note: these are 0-based.
-    int line;
-    int character;
-  };
-
-  struct Range {
-    Position start;
-    Position end;
-  };
-
-  struct Location {
-    DocumentUri uri;
-    Range range;
-  };
-
-  enum class SymbolKind : int {
-    File = 1,
-    Module = 2,
-    Namespace = 3,
-    Package = 4,
-    Class = 5,
-    Method = 6,
-    Property = 7,
-    Field = 8,
-    Constructor = 9,
-    Enum = 10,
-    Interface = 11,
-    Function = 12,
-    Variable = 13,
-    Constant = 14,
-    String = 15,
-    Number = 16,
-    Boolean = 17,
-    Array = 18
-  };
-
-  struct SymbolInfo {
-    std::string name;
-    SymbolKind kind;
-    Location location;
-    std::string containerName;
-  };
-}
-
-struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage {
-  std::vector<language_server_api::SymbolInfo> symbols;
+struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage<IpcMessage_DocumentSymbolsResponse> {
+  std::vector<language_server_api::SymbolInformation> symbols;
 
   // BaseIpcMessage:
   static IpcMessageId id;
@@ -185,22 +150,22 @@ IpcMessageId IpcMessage_DocumentSymbolsResponse::id = "IpcMessage_DocumentSymbol
 
 
 
-
-void IndexerServerMain() {
+void QueryDbMain() {
   IpcServer ipc("languageserver");
 
   while (true) {
-    std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
+    std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc.TakeMessages();
 
-    std::cout << "Server has " << messages.size() << " messages" << std::endl;
     for (auto& message : messages) {
-      if (message->runtime_id == IpcMessage_IsAlive::id) {
+      std::cout << "Processing message " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+
+      if (message->runtime_id() == IpcMessage_IsAlive::id) {
         IpcMessage_IsAlive response;
         ipc.SendToClient(0, &response); // todo: make non-blocking
         break;
       }
       else {
-        std::cerr << "Unhandled IPC message with kind " << message->runtime_id << " (hash " << message->hashed_runtime_id << ")" << std::endl;
+        std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
         exit(1);
         break;
       }
@@ -226,20 +191,129 @@ void LanguageServerStdinToServerDispatcher(IpcClient& ipc) {
   }
 }
 
+
+void ParseRpc(const std::string& method, const rapidjson::GenericValue<rapidjson::UTF8<>>& params) {
+}
+
+std::unique_ptr<language_server_api::InMessage> ParseMessage() {
+  int content_length = -1;
+  int iteration = 0;
+  while (true) {
+    if (++iteration > 10) {
+      assert(false && "bad parser state");
+      exit(1);
+    }
+
+    std::string line;
+    std::getline(std::cin, line);
+    //std::cin >> line;
+
+    if (line.compare(0, 14, "Content-Length") == 0) {
+      content_length = atoi(line.c_str() + 16);
+    }
+
+    if (line == "\r")
+      break;
+  }
+
+  assert(content_length >= 0);
+
+  std::string content;
+  content.reserve(content_length);
+  for (int i = 0; i < content_length; ++i) {
+    char c;
+    std::cin >> c;
+    content += c;
+  }
+
+  rapidjson::Document document;
+  document.Parse(content.c_str(), content_length);
+  assert(!document.HasParseError());
+
+  return language_server_api::MessageRegistry::instance()->Parse(document);
+
+  /*
+  std::string id;
+  if (document["id"].IsString())
+  id = document["id"].GetString();
+  else
+  id = std::to_string(document["id"].GetInt());
+  std::string method = document["method"].GetString();
+  auto& params = document["params"];
+
+
+  // Send initialize response.
+  {
+    std::string content =
+      R"foo({
+      "jsonrpc": "2.0",
+      "id": 0,
+      "result": {
+        "capabilities": {
+          "documentSymbolProvider": true
+        }
+      }
+    })foo";
+    std::cout << "Content-Length: " << content.size();
+    std::cout << (char)13 << char(10) << char(13) << char(10);
+    std::cout << content;
+  }
+  */
+}
+
+
+
 // Main loop for the language server. |ipc| is connected to
 // a server.
-void LanguageServerLoop(IpcClient& ipc) {
+void LanguageServerLoop(IpcClient* ipc) {
+  using namespace language_server_api;
+
   while (true) {
-    std::string input;
-    std::cin >> input;
+    std::unique_ptr<InMessage> message = ParseMessage();
 
-    std::cout << "got input " << input << std::endl << std::endl;
+    // Message parsing can fail if we don't recognize the method.
+    if (!message)
+      continue;
 
-    if (input == "references") {
+    std::cerr << "[info]: Got message of type " << MethodIdToString(message->method_id) << std::endl;
+    switch (message->method_id) {
+    case MethodId::Initialize:
+    {
+      // TODO: response should take id as input.
+      // TODO: message should not have top-level id.
+      auto response = Out_InitializeResponse();
+      response.id = message->id.value();
+      response.result.capabilities.documentSymbolProvider = true;
+      response.Send();
+      break;
+    }
 
+    case MethodId::TextDocumentDocumentSymbol:
+    {
+      auto response = Out_DocumentSymbolResponse();
+      response.id = message->id.value();
+
+      for (int i = 0; i < 2500; ++i) {
+        SymbolInformation info;
+        info.containerName = "fooContainer";
+        info.kind = language_server_api::SymbolKind::Field;
+        info.location.range.start.line = 5;
+        info.location.range.end.character = 20;
+        info.location.range.end.line = 5;
+        info.location.range.end.character = 25;
+        info.name = "Foobar";
+        response.result.push_back(info);
+      }
+
+      response.Send();
+      break;
+    }
     }
   }
 }
+
+
+
 
 void LanguageServerMain() {
   IpcClient ipc("languageserver", 0);
@@ -255,23 +329,44 @@ void LanguageServerMain() {
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
   // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc.TakeMessages();
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc.TakeMessages();
   bool has_server = false;
   for (auto& message : messages) {
-    if (message->runtime_id == IpcMessage_IsAlive::id) {
+    if (message->runtime_id() == IpcMessage_IsAlive::id) {
       has_server = true;
       break;
     }
   }
 
   // No server is running. Start it.
-  if (!has_server) {
-    std::cerr << "Unable to detect running indexer server" << std::endl;
-    exit(1);
-  }
+  //if (!has_server) {
+  //  std::cerr << "Unable to detect running indexer server" << std::endl;
+  //  exit(1);
+  //}
 
-  std::cout << "Found indexer server" << std::endl;
-  LanguageServerLoop(ipc);
+  std::thread stdio_reader(&LanguageServerLoop, &ipc);
+
+  //std::cout << "Found indexer server" << std::endl;
+  //LanguageServerLoop(ipc);
+
+  // TODO: This is used for debugging, so we can attach to the client.
+
+
+  //std::cout << "garbagelkadklasldk" << std::endl;
+
+  bool should_break = true;
+  while (should_break)
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //std::this_thread::sleep_for(std::chrono::seconds(4));
+
+
+  //std::cout.flush();
+  /*
+  language_server_api::ShowMessageOutNotification show;
+  show.type = language_server_api::MessageType::Info;
+  show.message = "hello";
+  show.Send();
+  */
 }
 
 
@@ -348,18 +443,39 @@ void IpcMessage_CreateIndex::Deserialize(Reader& reader) {
 #endif
 
 int main(int argc, char** argv) {
+  // We need to write to stdout in binary mode because in Windows, writing
+  // \n will implicitly write \r\n. Language server API will ignore a
+  // \r\r\n split request.
+#ifdef _WIN32
+  _setmode(_fileno(stdout), O_BINARY);
+  _setmode(_fileno(stdin), O_BINARY);
+#endif
+
+  std::cerr << "Starting language server" << std::endl;
+
   IpcRegistry::instance()->Register<IpcMessage_IsAlive>();
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>();
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>();
 
-
-  if (argc == 2)
-    LanguageServerMain();
-  else
-    IndexerServerMain();
-  return 0;
+  language_server_api::MessageRegistry::instance()->Register<language_server_api::In_CancelRequest>();
+  language_server_api::MessageRegistry::instance()->Register<language_server_api::In_InitializeRequest>();
+  language_server_api::MessageRegistry::instance()->Register<language_server_api::In_InitializedNotification>();
+  language_server_api::MessageRegistry::instance()->Register<language_server_api::In_DocumentSymbolRequest>();
 
   std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
+
+  if (HasOption(options, "--language-server")) {
+    LanguageServerMain();
+    return 0;
+  }
+  if (HasOption(options, "--querydb")) {
+    QueryDbMain();
+    return 0;
+  }
+
+
+  LanguageServerMain();
+  return 0;
 
   if (argc == 1 || options.find("--help") != options.end()) {
     std::cout << R"help(clang-indexer help:

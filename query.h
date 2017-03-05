@@ -166,6 +166,7 @@ struct SymbolIdx {
 // TODO: Instead of passing to/from json, we can probably bass the IndexedFile type almost directly as
 // a raw memory dump - the type has almost zero pointers inside of it. We could do a little bit of fixup
 // so that passing from a separate process to the main db is really fast (no need to go through JSON).
+/*
 namespace foo2 {
   using Usr = size_t;
   struct UsrTable {
@@ -174,7 +175,7 @@ namespace foo2 {
     const char* usrs[];
   };
 }
-
+*/
 
 struct IndexUpdate {
   // File updates.

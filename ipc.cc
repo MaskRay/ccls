@@ -24,27 +24,14 @@ void JsonMessage::SetPayload(size_t payload_size, const char* payload) {
   memcpy(payload_dest, payload, payload_size);
 }
 
-BaseIpcMessage::BaseIpcMessage() {
-  assert(!runtime_id_.empty() && "Message is not registered using IpcRegistry::RegisterAllocator");
+void BaseIpcMessageElided::Serialize(Writer& writer) {}
 
-  runtime_id = runtime_id_;
-  hashed_runtime_id = hashed_runtime_id_;
-}
-
-BaseIpcMessage::~BaseIpcMessage() {}
-
-void BaseIpcMessage::Serialize(Writer& writer) {}
-
-void BaseIpcMessage::Deserialize(Reader& reader) {}
-
-IpcMessageId BaseIpcMessage::runtime_id_;
-
-int BaseIpcMessage::hashed_runtime_id_ = -1;
+void BaseIpcMessageElided::Deserialize(Reader& reader) {}
 
 IpcRegistry* IpcRegistry::instance_ = nullptr;
 
-std::unique_ptr<BaseIpcMessage> IpcRegistry::Allocate(int id) {
-  return std::unique_ptr<BaseIpcMessage>((*allocators)[id]());
+std::unique_ptr<BaseIpcMessageElided> IpcRegistry::Allocate(int id) {
+  return std::unique_ptr<BaseIpcMessageElided>((*allocators)[id]());
 }
 
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
@@ -57,13 +44,15 @@ IpcDirectionalChannel::~IpcDirectionalChannel() {
   delete[] local_block;
 }
 
-void IpcDirectionalChannel::PushMessage(BaseIpcMessage* message) {
+void IpcDirectionalChannel::PushMessage(BaseIpcMessageElided* message) {
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   writer.SetFormatOptions(
     rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
   message->Serialize(writer);
+
+  //std::cout << "Sending message with id " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
 
   size_t payload_size = strlen(output.GetString());
   assert(payload_size < shmem_size && "Increase shared memory size, payload will never fit");
@@ -86,7 +75,7 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessage* message) {
     if ((*shared->shared_bytes_used + sizeof(JsonMessage) + payload_size) >= shmem_size)
       continue;
 
-    get_free_message()->message_id = message->hashed_runtime_id;
+    get_free_message()->message_id = message->hashed_runtime_id();
     get_free_message()->SetPayload(payload_size, output.GetString());
 
     *shared->shared_bytes_used += sizeof(JsonMessage) + get_free_message()->payload_size;
@@ -97,7 +86,7 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessage* message) {
 
 }
 
-std::vector<std::unique_ptr<BaseIpcMessage>> IpcDirectionalChannel::TakeMessages() {
+std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcDirectionalChannel::TakeMessages() {
   size_t remaining_bytes = 0;
   // Move data from shared memory into a local buffer. Do this
   // before parsing the blocks so that other processes can begin
@@ -111,11 +100,11 @@ std::vector<std::unique_ptr<BaseIpcMessage>> IpcDirectionalChannel::TakeMessages
     get_free_message()->message_id = -1;
   }
 
-  std::vector<std::unique_ptr<BaseIpcMessage>> result;
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> result;
 
   char* message = local_block;
   while (remaining_bytes > 0) {
-    std::unique_ptr<BaseIpcMessage> base_message = IpcRegistry::instance()->Allocate(as_message(message)->message_id);
+    std::unique_ptr<BaseIpcMessageElided> base_message = IpcRegistry::instance()->Allocate(as_message(message)->message_id);
 
     rapidjson::Document document;
     document.Parse(as_message(message)->payload(), as_message(message)->payload_size);
@@ -138,7 +127,7 @@ std::vector<std::unique_ptr<BaseIpcMessage>> IpcDirectionalChannel::TakeMessages
 IpcServer::IpcServer(const std::string& name)
   : name_(name), server_(NameToServerName(name)) {}
 
-void IpcServer::SendToClient(int client_id, BaseIpcMessage* message) {
+void IpcServer::SendToClient(int client_id, BaseIpcMessageElided* message) {
   // Find or create the client.
   auto it = clients_.find(client_id);
   if (it == clients_.end())
@@ -147,17 +136,17 @@ void IpcServer::SendToClient(int client_id, BaseIpcMessage* message) {
   clients_[client_id]->PushMessage(message);
 }
 
-std::vector<std::unique_ptr<BaseIpcMessage>> IpcServer::TakeMessages() {
+std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcServer::TakeMessages() {
   return server_.TakeMessages();
 }
 
 IpcClient::IpcClient(const std::string& name, int client_id)
   : server_(NameToServerName(name)), client_(NameToClientName(name, client_id)) {}
 
-void IpcClient::SendToServer(BaseIpcMessage* message) {
+void IpcClient::SendToServer(BaseIpcMessageElided* message) {
   server_.PushMessage(message);
 }
 
-std::vector<std::unique_ptr<BaseIpcMessage>> IpcClient::TakeMessages() {
+std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcClient::TakeMessages() {
   return client_.TakeMessages();
 }

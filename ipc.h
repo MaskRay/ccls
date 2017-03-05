@@ -31,9 +31,17 @@ struct JsonMessage {
 
 using IpcMessageId = std::string;
 
+struct BaseIpcMessageElided {
+  virtual IpcMessageId runtime_id() const = 0;
+  virtual int hashed_runtime_id() const = 0;
+
+  virtual void Serialize(Writer& writer);
+  virtual void Deserialize(Reader& reader);
+};
+
 // Usage:
 //
-//  class IpcMessage_Foo : public BaseIpcMessage {
+//  class IpcMessage_Foo : public BaseIpcMessage<IpcMessage_Foo> {
 //    static IpcMessageId id;
 //
 //    // BaseIpcMessage:
@@ -45,23 +53,29 @@ using IpcMessageId = std::string;
 //  main() {
 //    IpcRegistry::instance()->Register<IpcMessage_Foo>();
 //  }
-struct BaseIpcMessage {
+//
+// Note: This is a template so that the statics are stored separately
+// per type.
+template<typename T>
+struct BaseIpcMessage : BaseIpcMessageElided {
   BaseIpcMessage();
   virtual ~BaseIpcMessage();
-
-  virtual void Serialize(Writer& writer);
-  virtual void Deserialize(Reader& reader);
-
-  IpcMessageId runtime_id;
-  int hashed_runtime_id = -1;
 
   // Populated by IpcRegistry::RegisterAllocator.
   static IpcMessageId runtime_id_;
   static int hashed_runtime_id_;
+
+  // BaseIpcMessageElided:
+  IpcMessageId runtime_id() const override {
+    return runtime_id_;
+  }
+  int hashed_runtime_id() const override {
+    return hashed_runtime_id_;
+  }
 };
 
 struct IpcRegistry {
-  using Allocator = std::function<BaseIpcMessage*()>;
+  using Allocator = std::function<BaseIpcMessageElided*()>;
 
   // Use unique_ptrs so we can initialize on first use
   // (static init order might not be right).
@@ -71,7 +85,7 @@ struct IpcRegistry {
   template<typename T>
   void Register();
 
-  std::unique_ptr<BaseIpcMessage> Allocate(int id);
+  std::unique_ptr<BaseIpcMessageElided> Allocate(int id);
 
   static IpcRegistry* instance() {
     if (!instance_)
@@ -115,8 +129,8 @@ struct IpcDirectionalChannel {
   explicit IpcDirectionalChannel(const std::string& name);
   ~IpcDirectionalChannel();
 
-  void PushMessage(BaseIpcMessage* message);
-  std::vector<std::unique_ptr<BaseIpcMessage>> TakeMessages();
+  void PushMessage(BaseIpcMessageElided* message);
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
 
 private:
   JsonMessage* get_free_message() {
@@ -134,8 +148,8 @@ private:
 struct IpcServer {
   IpcServer(const std::string& name);
 
-  void SendToClient(int client_id, BaseIpcMessage* message);
-  std::vector<std::unique_ptr<BaseIpcMessage>> TakeMessages();
+  void SendToClient(int client_id, BaseIpcMessageElided* message);
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
 
 private:
   std::string name_;
@@ -146,10 +160,34 @@ private:
 struct IpcClient {
   IpcClient(const std::string& name, int client_id);
 
-  void SendToServer(BaseIpcMessage* message);
-  std::vector<std::unique_ptr<BaseIpcMessage>> TakeMessages();
+  void SendToServer(BaseIpcMessageElided* message);
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
 
 private:
   IpcDirectionalChannel server_;
   IpcDirectionalChannel client_;
 };
+
+
+
+
+
+
+
+
+
+
+
+template<typename T>
+BaseIpcMessage<T>::BaseIpcMessage() {
+  assert(!runtime_id_.empty() && "Message is not registered using IpcRegistry::RegisterAllocator");
+}
+
+template<typename T>
+BaseIpcMessage<T>::~BaseIpcMessage() {}
+
+template<typename T>
+IpcMessageId BaseIpcMessage<T>::runtime_id_;
+
+template<typename T>
+int BaseIpcMessage<T>::hashed_runtime_id_ = -1;
