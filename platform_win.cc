@@ -71,3 +71,22 @@ std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(PlatformM
 std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(const std::string& name) {
   return MakeUnique<PlatformSharedMemoryWin>(name);
 }
+
+// See http://stackoverflow.com/a/19535628
+std::string GetWorkingDirectory() {
+  char result[MAX_PATH];
+  return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
+}
+
+/*
+// linux
+#include <string>
+#include <limits.h>
+#include <unistd.h>
+
+std::string getexepath() {
+  char result[ PATH_MAX ];
+  ssize_t count = readlink( "/proc/self/exe", result, PATH_MAX );
+  return std::string( result, (count > 0) ? count : 0 );
+}
+*/

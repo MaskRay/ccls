@@ -74,9 +74,11 @@ std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::ve
 }
 QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const TypeDefDefinitionData<>& def) {
   QueryableTypeDef::DefUpdate result(def.usr);
-  if (result.definition)
+  result.short_name = def.short_name;
+  result.qualified_name = def.qualified_name;
+  if (def.definition)
     result.definition = MapIdToUsr(id_cache, def.definition.value());
-  if (result.alias_of)
+  if (def.alias_of)
     result.alias_of = MapIdToUsr(id_cache, def.alias_of.value());
   result.parents = MapIdToUsr(id_cache, def.parents);
   result.types = MapIdToUsr(id_cache, def.types);
@@ -86,11 +88,13 @@ QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const TypeDefDef
 }
 QueryableFuncDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const FuncDefDefinitionData<>& def) {
   QueryableFuncDef::DefUpdate result(def.usr);
-  if (result.definition)
+  result.short_name = def.short_name;
+  result.qualified_name = def.qualified_name;
+  if (def.definition)
     result.definition = MapIdToUsr(id_cache, def.definition.value());
-  if (result.declaring_type)
+  if (def.declaring_type)
     result.declaring_type = MapIdToUsr(id_cache, def.declaring_type.value());
-  if (result.base)
+  if (def.base)
     result.base = MapIdToUsr(id_cache, def.base.value());
   result.locals = MapIdToUsr(id_cache, def.locals);
   result.callees = MapIdToUsr(id_cache, def.callees);
@@ -98,13 +102,15 @@ QueryableFuncDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const FuncDefDef
 }
 QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const VarDefDefinitionData<>& def) {
   QueryableVarDef::DefUpdate result(def.usr);
-  if (result.declaration)
+  result.short_name = def.short_name;
+  result.qualified_name = def.qualified_name;
+  if (def.declaration)
     result.declaration = MapIdToUsr(id_cache, def.declaration.value());
-  if (result.definition)
+  if (def.definition)
     result.definition = MapIdToUsr(id_cache, def.definition.value());
-  if (result.variable_type)
+  if (def.variable_type)
     result.variable_type = MapIdToUsr(id_cache, def.variable_type.value());
-  if (result.declaring_type)
+  if (def.declaring_type)
     result.declaring_type = MapIdToUsr(id_cache, def.declaring_type.value());
   return result;
 }
@@ -112,8 +118,10 @@ QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const VarDefDefin
 QueryableFile::QueryableFile(const IndexedFile& indexed)
   : file_id(indexed.path) {
 
-  auto add_outline = [this, &indexed](Usr usr, Location location) {
-    outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
+  FileId local_file_id = indexed.id_cache.file_path_to_file_id.find(indexed.path)->second;
+  auto add_outline = [this, &indexed, local_file_id](Usr usr, Location location) {
+    if (location.file_id() == local_file_id)
+      outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
   };
 
   for (const IndexedTypeDef& def : indexed.types) {
@@ -357,7 +365,7 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
                       previous, current, \
                       &removed, &added); \
     if (did_add) {\
-      std::cout << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl; \
+      std::cerr << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl; \
       query_name.push_back(MergeableUpdate<type>(current_def->def.usr, removed, added)); \
     } \
   }
@@ -376,7 +384,7 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
       current_queryable_file.outline,
       &removed, &added);
     if (did_add) {
-      std::cout << "Adding mergeable update on outline (" << current_file.path << ")" << std::endl;
+      std::cerr << "Adding mergeable update on outline (" << current_file.path << ")" << std::endl;
       files_outline.push_back(MergeableUpdate<UsrRef>(current_file.path, removed, added));
     }
   } while (false); // do while false instead of just {} to appease Visual Studio code formatter.
@@ -617,11 +625,11 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
 int main233(int argc, char** argv) {
   IndexedFile indexed_file_a = Parse("full_tests/index_delta/a_v0.cc", {});
-  std::cout << indexed_file_a.ToString() << std::endl;
+  std::cerr << indexed_file_a.ToString() << std::endl;
 
-  std::cout << std::endl;
+  std::cerr << std::endl;
   IndexedFile indexed_file_b = Parse("full_tests/index_delta/a_v1.cc", {});
-  std::cout << indexed_file_b.ToString() << std::endl;
+  std::cerr << indexed_file_b.ToString() << std::endl;
   // TODO: We don't need to do ID remapping when computting a diff. Well, we need to do it for the IndexUpdate.
   IndexUpdate import(indexed_file_a);
   /*

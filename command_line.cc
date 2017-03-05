@@ -2,12 +2,15 @@
 #include <string>
 #include <unordered_map>
 #include <thread>
+#include <vector>
 
 #include "compilation_database_loader.h"
 #include "indexer.h"
 #include "ipc.h"
 #include "query.h"
 #include "language_server_api.h"
+
+#include "third_party/tiny-process-library/process.hpp"
 
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -16,40 +19,6 @@
 #include <io.h>
 #include <fcntl.h>
 #endif
-
-bool ParsePreferredSymbolLocation(const std::string& content, PreferredSymbolLocation* obj) {
-#define PARSE_AS(name, string)      \
-  if (content == #string) {         \
-    *obj = name;                    \
-    return true;                    \
-  }
-
-  PARSE_AS(PreferredSymbolLocation::Declaration, "declaration");
-  PARSE_AS(PreferredSymbolLocation::Definition, "definition");
-
-  return false;
-#undef PARSE_AS
-}
-
-bool ParseCommand(const std::string& content, Command* obj) {
-#define PARSE_AS(name, string)      \
-  if (content == #string) {         \
-    *obj = name;                    \
-    return true;                    \
-  }
-
-  PARSE_AS(Command::Callees, "callees");
-  PARSE_AS(Command::Callers, "callers");
-  PARSE_AS(Command::FindAllUsages, "find-all-usages");
-  PARSE_AS(Command::FindInterestingUsages, "find-interesting-usages");
-  PARSE_AS(Command::GotoReferenced, "goto-referenced");
-  PARSE_AS(Command::Hierarchy, "hierarchy");
-  PARSE_AS(Command::Outline, "outline");
-  PARSE_AS(Command::Search, "search");
-
-  return false;
-#undef PARSE_AS
-}
 
 
 std::unordered_map<std::string, std::string> ParseOptions(int argc, char** argv) {
@@ -82,118 +51,7 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options, cons
   return options.find(option) != options.end();
 }
 
-/*
 
-// Connects to a running --project-directory instance. Forks
-// and creates it if not running.
-//
-// Implements language server spec.
-indexer.exe --language-server
-
-// Holds the runtime db that the --language-server instance
-// runs queries against.
-indexer.exe --project-directory /work2/chrome/src
-
-// Created from the --project-directory (server) instance
-indexer.exe --index-file /work2/chrome/src/chrome/foo.cc
-
-// Configuration data is read from a JSON file.
-{
-  "max_threads": 40,
-  "cache_directory": "/work/indexer_cache/"
-
-}
-*/
-
-
-struct IpcMessage_IsAlive : public BaseIpcMessage<IpcMessage_IsAlive> {
-  static IpcMessageId id;
-};
-
-IpcMessageId IpcMessage_IsAlive::id = "IsAlive";
-
-
-
-
-
-
-
-
-
-
-
-
-
-struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage<IpcMessage_DocumentSymbolsRequest> {
-  std::string document;
-
-  // BaseIpcMessage:
-  static IpcMessageId id;
-  void Serialize(Writer& writer) override {
-    writer.String(document.c_str());
-  }
-  void Deserialize(Reader& reader) override {
-    document = reader.GetString();
-  }
-};
-IpcMessageId IpcMessage_DocumentSymbolsRequest::id = "IpcMessage_DocumentSymbolsRequest";
-
-struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage<IpcMessage_DocumentSymbolsResponse> {
-  std::vector<language_server_api::SymbolInformation> symbols;
-
-  // BaseIpcMessage:
-  static IpcMessageId id;
-};
-IpcMessageId IpcMessage_DocumentSymbolsResponse::id = "IpcMessage_DocumentSymbolsResponse";
-
-
-
-
-
-void QueryDbMain() {
-  IpcServer ipc("languageserver");
-
-  while (true) {
-    std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc.TakeMessages();
-
-    for (auto& message : messages) {
-      std::cout << "Processing message " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
-
-      if (message->runtime_id() == IpcMessage_IsAlive::id) {
-        IpcMessage_IsAlive response;
-        ipc.SendToClient(0, &response); // todo: make non-blocking
-        break;
-      }
-      else {
-        std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
-        exit(1);
-        break;
-      }
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(20));
-  }
-}
-
-void EmitReferences(IpcClient& ipc) {
-
-}
-
-// Separate thread whose only job is to read from stdin and
-// dispatch read commands to the actual indexer program. This
-// cannot be done on the main thread because reading from std::cin
-// blocks.
-void LanguageServerStdinToServerDispatcher(IpcClient& ipc) {
-  while (true) {
-    std::string input;
-    std::cin >> input;
-
-  }
-}
-
-
-void ParseRpc(const std::string& method, const rapidjson::GenericValue<rapidjson::UTF8<>>& params) {
-}
 
 std::unique_ptr<language_server_api::InMessage> ParseMessage() {
   int content_length = -1;
@@ -216,7 +74,11 @@ std::unique_ptr<language_server_api::InMessage> ParseMessage() {
       break;
   }
 
-  assert(content_length >= 0);
+  // bad input that is not a message.
+  if (content_length < 0) {
+    std::cerr << "parsing command failed (no Content-Length header)" << std::endl;
+    return nullptr;
+  }
 
   std::string content;
   content.reserve(content_length);
@@ -231,41 +93,322 @@ std::unique_ptr<language_server_api::InMessage> ParseMessage() {
   assert(!document.HasParseError());
 
   return language_server_api::MessageRegistry::instance()->Parse(document);
-
-  /*
-  std::string id;
-  if (document["id"].IsString())
-  id = document["id"].GetString();
-  else
-  id = std::to_string(document["id"].GetInt());
-  std::string method = document["method"].GetString();
-  auto& params = document["params"];
-
-
-  // Send initialize response.
-  {
-    std::string content =
-      R"foo({
-      "jsonrpc": "2.0",
-      "id": 0,
-      "result": {
-        "capabilities": {
-          "documentSymbolProvider": true
-        }
-      }
-    })foo";
-    std::cout << "Content-Length: " << content.size();
-    std::cout << (char)13 << char(10) << char(13) << char(10);
-    std::cout << content;
-  }
-  */
 }
 
 
 
-// Main loop for the language server. |ipc| is connected to
-// a server.
-void LanguageServerLoop(IpcClient* ipc) {
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+struct IpcMessage_Quit : public BaseIpcMessage<IpcMessage_Quit> {
+  static IpcMessageId kId;
+};
+IpcMessageId IpcMessage_Quit::kId = "Quit";
+
+
+struct IpcMessage_IsAlive : public BaseIpcMessage<IpcMessage_IsAlive> {
+  static IpcMessageId kId;
+};
+IpcMessageId IpcMessage_IsAlive::kId = "IsAlive";
+
+
+
+
+
+struct IpcMessage_OpenProject : public BaseIpcMessage<IpcMessage_OpenProject> {
+  static IpcMessageId kId;
+
+  std::string project_path;
+
+  // BaseIpcMessage:
+  void Serialize(Writer& writer) override {
+    writer.String(project_path.c_str(), project_path.size());
+  }
+  void Deserialize(Reader& reader) override {
+    project_path = reader.GetString();
+  }
+};
+IpcMessageId IpcMessage_OpenProject::kId = "OpenProject";
+
+
+
+
+
+
+
+
+struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage<IpcMessage_DocumentSymbolsRequest> {
+  language_server_api::RequestId id;
+  std::string document;
+
+  // BaseIpcMessage:
+  static IpcMessageId kId;
+  void Serialize(Writer& writer) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    writer.StartObject();
+    SERIALIZE_MEMBER(id);
+    SERIALIZE_MEMBER(document);
+    writer.EndObject();
+  }
+  void Deserialize(Reader& reader) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    DESERIALIZE_MEMBER(id);
+    DESERIALIZE_MEMBER(document);
+  }
+};
+IpcMessageId IpcMessage_DocumentSymbolsRequest::kId = "IpcMessage_DocumentSymbolsRequest";
+
+struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage<IpcMessage_DocumentSymbolsResponse> {
+  language_server_api::RequestId id;
+  std::vector<language_server_api::SymbolInformation> symbols;
+
+  // BaseIpcMessage:
+  static IpcMessageId kId;
+  void Serialize(Writer& writer) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    writer.StartObject();
+    SERIALIZE_MEMBER(id);
+    SERIALIZE_MEMBER(symbols);
+    writer.EndObject();
+  }
+  void Deserialize(Reader& reader) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    DESERIALIZE_MEMBER(id);
+    DESERIALIZE_MEMBER(symbols);
+  }
+};
+IpcMessageId IpcMessage_DocumentSymbolsResponse::kId = "IpcMessage_DocumentSymbolsResponse";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
+  using namespace language_server_api;
+
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc->TakeMessages();
+
+  for (auto& message : messages) {
+    std::cerr << "Processing message " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+
+    if (IpcMessage_Quit::kId == message->runtime_id()) {
+      break;
+    }
+
+    else if (IpcMessage_IsAlive::kId == message->runtime_id()) {
+      IpcMessage_IsAlive response;
+      ipc->SendToClient(0, &response); // todo: make non-blocking
+    }
+
+    else if (IpcMessage_OpenProject::kId == message->runtime_id()) {
+      IpcMessage_OpenProject* msg = static_cast<IpcMessage_OpenProject*>(message.get());
+      std::string path = msg->project_path;
+
+
+      std::vector<CompilationEntry> entries = LoadCompilationEntriesFromDirectory(path);
+      for (int i = 0; i < entries.size(); ++i) {
+        const CompilationEntry& entry = entries[i];
+        std::string filepath = path + "/" + entry.filename;
+        std::cerr << "[" << i << "/" << (entries.size() - 1) << "] Parsing file " << filepath << std::endl;
+        IndexedFile file = Parse(filepath, entry.args);
+        IndexUpdate update(file);
+        db->ApplyIndexUpdate(&update);
+      }
+      std::cerr << "Done" << std::endl;
+    }
+
+
+    else if (IpcMessage_DocumentSymbolsRequest::kId == message->runtime_id()) {
+      auto msg = static_cast<IpcMessage_DocumentSymbolsRequest*>(message.get());
+
+      IpcMessage_DocumentSymbolsResponse response;
+      response.id = msg->id;
+
+      std::cerr << "Wanted file " << msg->document << std::endl;
+      for (auto& file : db->files) {
+        std::cerr << " - Have file " << file.file_id << std::endl;
+
+        // TODO: make sure we normalize ids!
+        // TODO: hashmap lookup.
+        if (file.file_id == msg->document) {
+          std::cerr << "Found file" << std::endl;
+
+
+          for (UsrRef ref : file.outline) {
+            SymbolIdx symbol = db->usr_to_symbol[ref.usr];
+
+            SymbolInformation info;
+            info.location.range.start.line = ref.loc.line - 1; // TODO: cleanup indexer to negate by 1.
+            info.location.range.start.character = ref.loc.column - 1; // TODO: cleanup indexer to negate by 1.
+            // TODO: store range information.
+            info.location.range.end.line = info.location.range.start.line;
+            info.location.range.end.character = info.location.range.start.character;
+
+            // TODO: cleanup namespace/naming so there is only one SymbolKind.
+            switch (symbol.kind) {
+            case ::SymbolKind::Type:
+            {
+              QueryableTypeDef& def = db->types[symbol.idx];
+              info.name = def.def.qualified_name;
+              info.kind = language_server_api::SymbolKind::Class;
+              break;
+            }
+            case ::SymbolKind::Func:
+            {
+              QueryableFuncDef& def = db->funcs[symbol.idx];
+              info.name = def.def.qualified_name;
+              if (def.def.declaring_type.has_value()) {
+                info.kind = language_server_api::SymbolKind::Method;
+                Usr declaring = def.def.declaring_type.value();
+                info.containerName = db->types[db->usr_to_symbol[declaring].idx].def.qualified_name;
+              }
+              else {
+                info.kind = language_server_api::SymbolKind::Function;
+              }
+              break;
+            }
+            case ::SymbolKind::Var:
+            {
+              QueryableVarDef& def = db->vars[symbol.idx];
+              info.name = def.def.qualified_name;
+              info.kind = language_server_api::SymbolKind::Variable;
+              break;
+            }
+            };
+
+            // TODO
+            //info.containerName = "fooey";
+
+            response.symbols.push_back(info);
+
+          }
+          break;
+        }
+      }
+
+
+
+
+      ipc->SendToClient(0, &response);
+    }
+
+
+    else {
+      std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+      exit(1);
+    }
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+// TODO: global lock on stderr output.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Separate thread whose only job is to read from stdin and
+// dispatch read commands to the actual indexer program. This
+// cannot be done on the main thread because reading from std::cin
+// blocks.
+//
+// |ipc| is connected to a server.
+void LanguageServerStdinLoop(IpcClient* ipc) {
   using namespace language_server_api;
 
   while (true) {
@@ -279,8 +422,15 @@ void LanguageServerLoop(IpcClient* ipc) {
     switch (message->method_id) {
     case MethodId::Initialize:
     {
-      // TODO: response should take id as input.
-      // TODO: message should not have top-level id.
+      auto request = static_cast<In_InitializeRequest*>(message.get());
+      if (request->params.rootUri) {
+        std::string project_path = request->params.rootUri->GetPath();
+        std::cerr << "Initialize in directory " << project_path << std::endl;
+        IpcMessage_OpenProject open_project;
+        open_project.project_path = project_path;
+        ipc->SendToServer(&open_project);
+      }
+
       auto response = Out_InitializeResponse();
       response.id = message->id.value();
       response.result.capabilities.documentSymbolProvider = true;
@@ -290,157 +440,169 @@ void LanguageServerLoop(IpcClient* ipc) {
 
     case MethodId::TextDocumentDocumentSymbol:
     {
-      auto response = Out_DocumentSymbolResponse();
-      response.id = message->id.value();
+      // TODO: response should take id as input.
+      // TODO: message should not have top-level id.
+      auto request = static_cast<In_DocumentSymbolRequest*>(message.get());
 
-      for (int i = 0; i < 2500; ++i) {
-        SymbolInformation info;
-        info.containerName = "fooContainer";
-        info.kind = language_server_api::SymbolKind::Field;
-        info.location.range.start.line = 5;
-        info.location.range.end.character = 20;
-        info.location.range.end.line = 5;
-        info.location.range.end.character = 25;
-        info.name = "Foobar";
-        response.result.push_back(info);
-      }
-
-      response.Send();
+      IpcMessage_DocumentSymbolsRequest ipc_request;
+      ipc_request.id = request->id.value();
+      ipc_request.document = request->params.textDocument.uri.GetPath();
+      std::cerr << "Request textDocument=" << ipc_request.document << std::endl;
+      ipc->SendToServer(&ipc_request);
       break;
     }
     }
   }
 }
 
+void LanguageServerMainLoop(IpcClient* ipc) {
+  using namespace language_server_api;
+
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc->TakeMessages();
+  for (auto& message : messages) {
+    if (IpcMessage_Quit::kId == message->runtime_id()) {
+      exit(0);
+    }
 
 
+    else if (IpcMessage_DocumentSymbolsResponse::kId == message->runtime_id()) {
+      auto msg = static_cast<IpcMessage_DocumentSymbolsResponse*>(message.get());
 
-void LanguageServerMain() {
-  IpcClient ipc("languageserver", 0);
+      auto response = Out_DocumentSymbolResponse();
+      response.id = msg->id;
+      response.result = msg->symbols;
+      response.Send();
+      std::cerr << "Send symbol response to client (" << response.result.size() << " symbols)" << std::endl;
+    }
+
+    else {
+      std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+      exit(1);
+    }
+  }
+}
+
+void LanguageServerMain(std::string process_name) {
+  IpcClient client_ipc("languageserver", 0);
 
   // Discard any left-over messages from previous runs.
-  ipc.TakeMessages();
+  client_ipc.TakeMessages();
 
   // Emit an alive check. Sleep so the server has time to respond.
   IpcMessage_IsAlive check_alive;
-  ipc.SendToServer(&check_alive);
+  client_ipc.SendToServer(&check_alive);
 
   // TODO: Tune this value or make it configurable.
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
   // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc.TakeMessages();
+  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = client_ipc.TakeMessages();
   bool has_server = false;
   for (auto& message : messages) {
-    if (message->runtime_id() == IpcMessage_IsAlive::id) {
+    if (message->runtime_id() == IpcMessage_IsAlive::kId) {
       has_server = true;
       break;
     }
   }
 
   // No server is running. Start it.
-  //if (!has_server) {
-  //  std::cerr << "Unable to detect running indexer server" << std::endl;
-  //  exit(1);
-  //}
+#if false
+  if (!has_server) {
+    if (process_name.empty())
+      return;
 
-  std::thread stdio_reader(&LanguageServerLoop, &ipc);
+    Process p(process_name + " --querydb", "",
+      /*stdout*/[](const char* bytes, size_t n) {
+      for (int i = 0; i < n; ++i)
+        std::cerr << bytes[i];
+    },
+      /*stderr*/[](const char* bytes, size_t n) {
+      for (int i = 0; i < n; ++i)
+        std::cerr << bytes[i];
+},
+/*open_stdin*/false);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // Pass empty process name so we only try to start the querydb once.
+    LanguageServerMain("");
+    return;
+}
+#endif
 
-  //std::cout << "Found indexer server" << std::endl;
-  //LanguageServerLoop(ipc);
-
-  // TODO: This is used for debugging, so we can attach to the client.
-
-
-  //std::cout << "garbagelkadklasldk" << std::endl;
-
-  bool should_break = true;
-  while (should_break)
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // for debugging attach
   //std::this_thread::sleep_for(std::chrono::seconds(4));
 
 
-  //std::cout.flush();
-  /*
-  language_server_api::ShowMessageOutNotification show;
-  show.type = language_server_api::MessageType::Info;
-  show.message = "hello";
-  show.Send();
-  */
+  std::thread stdio_reader(&LanguageServerStdinLoop, &client_ipc);
+
+
+  // No server. Run it in-process.
+  if (!has_server) {
+
+    QueryableDatabase db;
+    IpcServer server_ipc("languageserver");
+
+    while (true) {
+      QueryDbMainLoop(&server_ipc, &db);
+      LanguageServerMainLoop(&client_ipc);
+      // TODO: use a condition variable.
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+  }
+
+  else {
+    while (true) {
+      LanguageServerMainLoop(&client_ipc);
+      // TODO: use a condition variable.
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+  }
 }
 
 
 
 
 
-#if false
-
-struct IpcMessage_IsAlive : public BaseIpcMessage {
-  IpcMessage_IsAlive();
-
-  // BaseIpcMessage:
-  void Serialize(Writer& writer) override;
-  void Deserialize(Reader& reader) override;
-};
-
-struct IpcMessage_ImportIndex : public BaseIpcMessage {
-  std::string path;
-
-  IpcMessage_ImportIndex();
-
-  // BaseMessage:
-  void Serialize(Writer& writer) override;
-  void Deserialize(Reader& reader) override;
-};
-
-struct IpcMessage_CreateIndex : public BaseIpcMessage {
-  std::string path;
-  std::vector<std::string> args;
-
-  IpcMessage_CreateIndex();
-
-  // BaseMessage:
-  void Serialize(Writer& writer) override;
-  void Deserialize(Reader& reader) override;
-};
 
 
-IpcMessage_IsAlive::IpcMessage_IsAlive() {
-  kind = JsonMessage::Kind::IsAlive;
-}
 
-void IpcMessage_IsAlive::Serialize(Writer& writer) {}
 
-void IpcMessage_IsAlive::Deserialize(Reader& reader) {}
 
-IpcMessage_ImportIndex::IpcMessage_ImportIndex() {
-  kind = JsonMessage::Kind::ImportIndex;
-}
 
-void IpcMessage_ImportIndex::Serialize(Writer& writer) {
-  writer.StartObject();
-  ::Serialize(writer, "path", path);
-  writer.EndObject();
-}
-void IpcMessage_ImportIndex::Deserialize(Reader& reader) {
-  ::Deserialize(reader, "path", path);
-}
 
-IpcMessage_CreateIndex::IpcMessage_CreateIndex() {
-  kind = JsonMessage::Kind::CreateIndex;
-}
 
-void IpcMessage_CreateIndex::Serialize(Writer& writer) {
-  writer.StartObject();
-  ::Serialize(writer, "path", path);
-  ::Serialize(writer, "args", args);
-  writer.EndObject();
-}
-void IpcMessage_CreateIndex::Deserialize(Reader& reader) {
-  ::Deserialize(reader, "path", path);
-  ::Deserialize(reader, "args", args);
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 int main(int argc, char** argv) {
   // We need to write to stdout in binary mode because in Windows, writing
@@ -451,9 +613,13 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdin), O_BINARY);
 #endif
 
-  std::cerr << "Starting language server" << std::endl;
+
+
+  IpcRegistry::instance()->Register<IpcMessage_Quit>();
 
   IpcRegistry::instance()->Register<IpcMessage_IsAlive>();
+  IpcRegistry::instance()->Register<IpcMessage_OpenProject>();
+
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>();
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>();
 
@@ -462,128 +628,34 @@ int main(int argc, char** argv) {
   language_server_api::MessageRegistry::instance()->Register<language_server_api::In_InitializedNotification>();
   language_server_api::MessageRegistry::instance()->Register<language_server_api::In_DocumentSymbolRequest>();
 
+
+
+
+
+
   std::unordered_map<std::string, std::string> options = ParseOptions(argc, argv);
 
   if (HasOption(options, "--language-server")) {
-    LanguageServerMain();
+    std::cerr << "Running language server" << std::endl;
+    LanguageServerMain(argv[0]);
     return 0;
   }
-  if (HasOption(options, "--querydb")) {
-    QueryDbMain();
-    return 0;
-  }
-
-
-  LanguageServerMain();
-  return 0;
-
-  if (argc == 1 || options.find("--help") != options.end()) {
-    std::cout << R"help(clang-indexer help:
-
-  General:
-    --help        Print this help information.
-    --help-commands
-                  Print all available query commands.
-    --project     Path to compile_commands.json. Needed for the server, and
-                  optionally by clients if there are multiple servers running.
-    --print-config
-                  Emit all configuration data this executable is using.
-
-
-  Server:
-    --server      If present, this binary will run in server mode. The binary
-                  will not return until killed or an exit is requested. The
-                  server computes and caches an index of the entire program
-                  which is then queried by short-lived client processes. A
-                  client is created by running this binary with a --command
-                  flag.
-    --cache-dir   Directory to cache the index and other useful information. If
-                  a previous cache is present, the database will try to reuse
-                  it. If this flag is not present, the database will be
-                  in-memory only.
-    --threads     Number of threads to use for indexing and querying tasks.
-                  This value is optional; a good estimate is computed by
-                  default.
-
-
-  Client:
-    --command     Execute a query command against the index. See
-                  --command-help for a listing of valid commands and a
-                  description of what they do. Presence of this flag indicates
-                  that the indexer is in client mode; this flag is mutually
-                  exclusive with --server.
-    --location    Location of the query. Some commands require only a file,
-                  other require a line and column as well. Format is
-                  filename[:line:column]. For example, "foobar.cc" and
-                  "foobar.cc:1:10" are valid inputs.
-    --preferred-symbol-location
-                  When looking up symbols, try to return either the
-                  'declaration' or the 'definition'. Defaults to 'definition'.
-)help";
-    exit(0);
-  }
-
-  if (HasOption(options, "--help-commands")) {
-    std::cout << R"(Available commands:
-
-  callees:
-  callers:
-    Emit all functions (with location) that this function calls ("callees") or
-    that call this function ("callers"). Requires a location.
-
-  find-all-usages:
-    Emit every usage of the given symbol. This is intended to support a rename
-    refactoring. This output contains many uninteresting usages of symbols;
-    prefer find-interesting-usges. Requires a location.
-
-  find-interesting-usages:
-    Emit only usages of the given symbol which are semantically interesting.
-    Requires a location.
-
-  goto-referenced:
-    Find an associated reference (either definition or declaration) for the
-    given symbol. Requires a location.
-
-  hierarchy:
-    List the type hierarchy (ie, inherited and derived members) for the given
-    method or type. Requires a location.
-
-  outline:
-    Emit a file outline, listing all of the symbols in the file.
-
-  search:
-    Search for a symbol by name.
-)";
-    exit(0);
-  }
-
-  if (HasOption(options, "--project")) {
-    std::vector<CompilationEntry> entries = LoadCompilationEntriesFromDirectory(options["--project"]);
-
-
-    for (const CompilationEntry& entry : entries) {
-      std::cout << "Parsing " << entry.filename << std::endl;
-      QueryableDatabase db;
-      IndexedFile file = Parse(entry.filename, entry.args);
-
-      IndexUpdate update(file);
-      db.ApplyIndexUpdate(&update);
-      //std::cout << db.ToString() << std::endl << std::endl;
+  else if (HasOption(options, "--querydb")) {
+    std::cerr << "Running querydb" << std::endl;
+    QueryableDatabase db;
+    IpcServer ipc("languageserver");
+    while (true) {
+      QueryDbMainLoop(&ipc, &db);
+      // TODO: use a condition variable.
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
-
-    std::cin.get();
-    exit(0);
+    return 0;
+  }
+  else {
+    std::cerr << "Running language server" << std::endl;
+    LanguageServerMain(argv[0]);
+    return 0;
   }
 
-  if (HasOption(options, "--command")) {
-    Command command;
-    if (!ParseCommand(options["--command"], &command))
-      Fail("Unknown command \"" + options["--command"] + "\"; see --help-commands");
-
-
-  }
-
-  std::cout << "Invalid arguments. Try --help.";
-  exit(1);
-  return 0;
+  return 1;
 }

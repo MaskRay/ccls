@@ -1,6 +1,7 @@
 #include "indexer.h"
 #include "serializer.h"
 #include "utils.h"
+#include "platform.h"
 
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)
@@ -81,7 +82,7 @@ void VerifySerializeToFrom(IndexedFile* file) {
   }
 }
 
-int main333(int argc, char** argv) {
+int main222(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -92,8 +93,9 @@ int main333(int argc, char** argv) {
   return 0;
   */
 
-  for (std::string path : GetFilesInFolder("tests")) {
+  for (std::string path : GetFilesInFolder("tests", true /*add_folder_to_path*/)) {
     //if (path != "tests/usage/type_usage_declare_field.cc") continue;
+    path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
 
     // Parse expected output from the test, parse it into JSON document.
     std::string expected_output;

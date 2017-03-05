@@ -87,7 +87,7 @@ std::string IndexedFile::ToString() {
 
 IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : id(id), def(usr) {
   assert(usr.size() > 0);
-  //std::cout << "Creating type with usr " << usr << std::endl;
+  //std::cerr << "Creating type with usr " << usr << std::endl;
 }
 
 void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present) {
@@ -196,8 +196,8 @@ CXIdxClientContainer startedTranslationUnit(CXClientData client_data, void *rese
 
 clang::VisiterResult DumpVisitor(clang::Cursor cursor, clang::Cursor parent, int* level) {
   for (int i = 0; i < *level; ++i)
-    std::cout << "  ";
-  std::cout << clang::ToString(cursor.get_kind()) << " " << cursor.get_spelling() << std::endl;
+    std::cerr << "  ";
+  std::cerr << clang::ToString(cursor.get_kind()) << " " << cursor.get_spelling() << std::endl;
 
   *level += 1;
   cursor.VisitChildren(&DumpVisitor, level);
@@ -432,6 +432,8 @@ optional<TypeId> ResolveDeclToType(IndexedFile* db, clang::Cursor decl_cursor,
   //  The second TypeRef is an uninteresting usage.
   bool process_last_type_ref = true;
   if (IsTypeDefinition(semantic_container) && !IsTypeDefinition(lexical_container)) {
+    //if (!decl_cursor.is_definition())
+    //  decl_cursor = decl_cursor.get_definition();
     assert(decl_cursor.is_definition());
     process_last_type_ref = false;
   }
@@ -713,15 +715,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 
   default:
-    std::cout << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->id_cache.Resolve(decl->loc, false /*interesting*/).ToString() << std::endl;
-    std::cout << "     entityInfo->kind  = " << decl->entityInfo->kind << std::endl;
-    std::cout << "     entityInfo->USR   = " << decl->entityInfo->USR << std::endl;
+    std::cerr << "!! Unhandled indexDeclaration:     " << clang::Cursor(decl->cursor).ToString() << " at " << db->id_cache.Resolve(decl->loc, false /*interesting*/).ToString() << std::endl;
+    std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind << std::endl;
+    std::cerr << "     entityInfo->USR   = " << decl->entityInfo->USR << std::endl;
     if (decl->declAsContainer)
-      std::cout << "     declAsContainer   = " << clang::Cursor(decl->declAsContainer->cursor).ToString() << std::endl;
+      std::cerr << "     declAsContainer   = " << clang::Cursor(decl->declAsContainer->cursor).ToString() << std::endl;
     if (decl->semanticContainer)
-      std::cout << "     semanticContainer = " << clang::Cursor(decl->semanticContainer->cursor).ToString() << std::endl;
+      std::cerr << "     semanticContainer = " << clang::Cursor(decl->semanticContainer->cursor).ToString() << std::endl;
     if (decl->lexicalContainer)
-      std::cout << "     lexicalContainer  = " << clang::Cursor(decl->lexicalContainer->cursor).get_usr() << std::endl;
+      std::cerr << "     lexicalContainer  = " << clang::Cursor(decl->lexicalContainer->cursor).get_usr() << std::endl;
     break;
   }
 }
@@ -849,18 +851,18 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   }
 
   default:
-    std::cout << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->id_cache.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
-    std::cout << "     ref->referencedEntity->kind = " << ref->referencedEntity->kind << std::endl;
+    std::cerr << "!! Unhandled indexEntityReference: " << cursor.ToString() << " at " << db->id_cache.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
+    std::cerr << "     ref->referencedEntity->kind = " << ref->referencedEntity->kind << std::endl;
     if (ref->parentEntity)
-      std::cout << "     ref->parentEntity->kind = " << ref->parentEntity->kind << std::endl;
-    std::cout << "     ref->loc          = " << db->id_cache.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
-    std::cout << "     ref->kind         = " << ref->kind << std::endl;
+      std::cerr << "     ref->parentEntity->kind = " << ref->parentEntity->kind << std::endl;
+    std::cerr << "     ref->loc          = " << db->id_cache.Resolve(ref->loc, false /*interesting*/).ToString() << std::endl;
+    std::cerr << "     ref->kind         = " << ref->kind << std::endl;
     if (ref->parentEntity)
-      std::cout << "     parentEntity      = " << clang::Cursor(ref->parentEntity->cursor).ToString() << std::endl;
+      std::cerr << "     parentEntity      = " << clang::Cursor(ref->parentEntity->cursor).ToString() << std::endl;
     if (ref->referencedEntity)
-      std::cout << "     referencedEntity  = " << clang::Cursor(ref->referencedEntity->cursor).ToString() << std::endl;
+      std::cerr << "     referencedEntity  = " << clang::Cursor(ref->referencedEntity->cursor).ToString() << std::endl;
     if (ref->container)
-      std::cout << "     container         = " << clang::Cursor(ref->container->cursor).ToString() << std::endl;
+      std::cerr << "     container         = " << clang::Cursor(ref->container->cursor).ToString() << std::endl;
     break;
   }
 }

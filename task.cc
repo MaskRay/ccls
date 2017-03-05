@@ -183,11 +183,11 @@ static void ThreadMain(int id, Config* config, TaskManager* tm) {
       assert(false);
       break;
     case Task::Kind::Exit:
-      std::cout << id << ": Exiting" << std::endl;
+      std::cerr << id << ": Exiting" << std::endl;
       return;
     }
 
-    std::cout << id << ": waking" << std::endl;
+    std::cerr << id << ": waking" << std::endl;
   }
 
 }

@@ -5,7 +5,7 @@
 
 #include "tinydir.h"
 
-std::vector<std::string> GetFilesInFolder(std::string folder) {
+std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to_path) {
   std::vector<std::string> result;
 
   tinydir_dir dir;
@@ -21,10 +21,16 @@ std::vector<std::string> GetFilesInFolder(std::string folder) {
       goto bail;
     }
 
-    std::string full_path = folder + "/" + file.name;
+    std::string full_path;
+    if (add_folder_to_path)
+      full_path = folder + "/";
+    full_path += file.name;
     if (file.is_dir) {
-      if (strcmp(file.name, ".") != 0 && strcmp(file.name, "..") != 0) {
-        for (std::string nested_file : GetFilesInFolder(full_path))
+      // Ignore all dot directories.
+      // Note that we must always ignore the '.' and '..' directories, otherwise
+      // this will loop infinitely.
+      if (file.name[0] != '.') {
+        for (std::string nested_file : GetFilesInFolder(full_path, true /*add_folder_to_path*/))
           result.push_back(nested_file);
       }
     }

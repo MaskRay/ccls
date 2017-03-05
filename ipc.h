@@ -15,6 +15,7 @@
 using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
 using Reader = rapidjson::Document;
 
+// TODO: We need to add support for payloads larger than the maximum shared memory buffer size.
 
 // Messages are funky objects. They contain potentially variable amounts of
 // data and are passed between processes. This means that they need to be
@@ -42,12 +43,12 @@ struct BaseIpcMessageElided {
 // Usage:
 //
 //  class IpcMessage_Foo : public BaseIpcMessage<IpcMessage_Foo> {
-//    static IpcMessageId id;
+//    static IpcMessageId kId;
 //
 //    // BaseIpcMessage:
 //    ...
 //  }
-//  IpcMessageId IpcMessage_Foo::id = "Foo";
+//  IpcMessageId IpcMessage_Foo::kId = "Foo";
 //
 //
 //  main() {
@@ -102,7 +103,7 @@ void IpcRegistry::Register() {
     hash_to_id = MakeUnique<std::unordered_map<int, std::string>>();
   }
 
-  IpcMessageId id = T::id;
+  IpcMessageId id = T::kId;
 
   int hash = std::hash<IpcMessageId>()(id);
   auto it = allocators->find(hash);
@@ -162,6 +163,8 @@ struct IpcClient {
 
   void SendToServer(BaseIpcMessageElided* message);
   std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
+
+  IpcDirectionalChannel* client() { return &client_; }
 
 private:
   IpcDirectionalChannel server_;

@@ -5,12 +5,42 @@
 
 #include "libclangmm/Utility.h"
 
+#include "utils.h"
+
+// See http://stackoverflow.com/a/2072890
+bool EndsWith(const std::string& value, const std::string& ending) {
+  if (ending.size() > value.size())
+    return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& project_directory) {
+  std::vector<CompilationEntry> result;
+
+  std::vector<std::string> files = GetFilesInFolder(project_directory, false /*add_folder_to_path*/);
+
+  for (const std::string& file : files) {
+    if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") ||
+      EndsWith(file, ".c") || EndsWith(file, ".h") ||
+      EndsWith(file, ".hpp")) {
+
+      CompilationEntry entry;
+      entry.directory = ".";
+      entry.filename = file;
+      entry.args = {};
+      result.push_back(entry);
+    }
+  }
+
+  return result;
+}
+
 std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory) {
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(project_directory.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
-    std::cerr << "[FATAL]: Unable to load compile_commands.json located at \"" << project_directory << "\"";
-    exit(1);
+    std::cerr << "Unable to load compile_commands.json located at \"" << project_directory << "\"; using directory listing instead." << std::endl;
+    return LoadFromDirectoryListing(project_directory);
   }
 
   CXCompileCommands cx_commands = clang_CompilationDatabase_getAllCompileCommands(cx_db);

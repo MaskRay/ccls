@@ -52,7 +52,7 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessageElided* message) {
   writer.SetIndent(' ', 2);
   message->Serialize(writer);
 
-  //std::cout << "Sending message with id " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+  //std::cerr << "Sending message with id " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
 
   size_t payload_size = strlen(output.GetString());
   assert(payload_size < shmem_size && "Increase shared memory size, payload will never fit");
@@ -62,7 +62,7 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessageElided* message) {
   while (true) {
     if (!first) {
       if (!did_log) {
-        std::cout << "[info]: shmem full, waiting" << std::endl; // TODO: remove
+        std::cerr << "[info]: shmem full, waiting" << std::endl; // TODO: remove
         did_log = true;
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(16));

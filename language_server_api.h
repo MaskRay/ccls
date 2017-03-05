@@ -512,15 +512,33 @@ namespace language_server_api {
   // Keep all types in the language_server_api namespace in sync with language server spec.
   // TODO
   struct DocumentUri {
-    std::string path;
+    std::string raw_uri;
+
+    std::string GetPath() {
+      // TODO: make this not a hack.
+      std::string result = raw_uri;
+
+      size_t index = result.find("%3A");
+      if (index != -1) {
+        result.replace(result.begin() + index, result.begin() + index + 3, ":");
+      }
+
+      index = result.find("file://");
+      if (index != -1) {
+        result.replace(result.begin() + index, result.begin() + index + 8, "");
+      }
+
+      std::replace(result.begin(), result.end(), '\\', '/');
+      return result;
+    }
   };
 
   void Serialize(Writer& writer, const DocumentUri& value) {
-    Serialize(writer, value.path);
+    Serialize(writer, value.raw_uri);
   }
 
   void Deserialize(const Reader& reader, DocumentUri& value) {
-    Deserialize(reader, value.path);
+    Deserialize(reader, value.raw_uri);
   }
 
 
@@ -1344,7 +1362,7 @@ namespace language_server_api {
 
   struct In_DocumentSymbolRequest : public InRequestMessage {
     const static MethodId kMethod = MethodId::TextDocumentDocumentSymbol;
-    
+
     DocumentSymbolParams params;
 
     In_DocumentSymbolRequest(optional<RequestId> id, const Reader& reader)
@@ -1449,9 +1467,9 @@ namespace language_server_api {
   };
 
 
-#undef SERIALIZE_MEMBER
-#undef SERIALIZE_MEMBER2
-#undef DESERIALIZE_MEMBER
+//#undef SERIALIZE_MEMBER
+//#undef SERIALIZE_MEMBER2
+//#undef DESERIALIZE_MEMBER
 
 
 
