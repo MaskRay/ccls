@@ -229,6 +229,58 @@ IpcMessageId IpcMessage_DocumentSymbolsResponse::kId = "IpcMessage_DocumentSymbo
 
 
 
+struct IpcMessage_WorkspaceSymbolsRequest : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsRequest> {
+  language_server_api::RequestId id;
+  std::string query;
+
+  // BaseIpcMessage:
+  static IpcMessageId kId;
+  void Serialize(Writer& writer) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    writer.StartObject();
+    SERIALIZE_MEMBER(id);
+    SERIALIZE_MEMBER(query);
+    writer.EndObject();
+  }
+  void Deserialize(Reader& reader) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    DESERIALIZE_MEMBER(id);
+    DESERIALIZE_MEMBER(query);
+  }
+};
+IpcMessageId IpcMessage_WorkspaceSymbolsRequest::kId = "IpcMessage_WorkspaceSymbolsRequest";
+
+struct IpcMessage_WorkspaceSymbolsResponse : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsResponse> {
+  language_server_api::RequestId id;
+  std::vector<language_server_api::SymbolInformation> symbols;
+
+  // BaseIpcMessage:
+  static IpcMessageId kId;
+  void Serialize(Writer& writer) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    writer.StartObject();
+    SERIALIZE_MEMBER(id);
+    SERIALIZE_MEMBER(symbols);
+    writer.EndObject();
+  }
+  void Deserialize(Reader& reader) override {
+    using namespace language_server_api;
+    auto& value = *this;
+
+    DESERIALIZE_MEMBER(id);
+    DESERIALIZE_MEMBER(symbols);
+  }
+};
+IpcMessageId IpcMessage_WorkspaceSymbolsResponse::kId = "IpcMessage_WorkspaceSymbolsResponse";
+
+
+
 
 
 
@@ -363,6 +415,90 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
       ipc->SendToClient(0, &response);
     }
 
+    else if (IpcMessage_WorkspaceSymbolsRequest::kId == message->runtime_id()) {
+      auto msg = static_cast<IpcMessage_WorkspaceSymbolsRequest*>(message.get());
+
+      IpcMessage_WorkspaceSymbolsResponse response;
+      response.id = msg->id;
+
+      std::cerr << "- Considering " << db->qualified_names.size() << " candidates " << std::endl;
+
+      for (int i = 0; i < db->qualified_names.size(); ++i) {
+        const std::string& name = db->qualified_names[i];
+        //std::cerr << "- Considering " << name << std::endl;
+
+        if (name.find(msg->query) != std::string::npos) {
+
+          SymbolInformation info;
+          info.name = name;
+
+          SymbolIdx symbol = db->symbols[i];
+
+          // TODO: dedup this code w/ above (ie, add ctor to convert symbol to SymbolInformation)
+          switch (symbol.kind) {
+            // TODO: file
+          case ::SymbolKind::Type:
+          {
+            QueryableTypeDef& def = db->types[symbol.idx];
+            info.name = def.def.qualified_name;
+            info.kind = language_server_api::SymbolKind::Class;
+
+            if (def.def.definition.has_value()) {
+              info.location.range.start.line = def.def.definition->line - 1;
+              info.location.range.start.character = def.def.definition->column - 1;
+            }
+            break;
+          }
+          case ::SymbolKind::Func:
+          {
+            QueryableFuncDef& def = db->funcs[symbol.idx];
+            info.name = def.def.qualified_name;
+            if (def.def.declaring_type.has_value()) {
+              info.kind = language_server_api::SymbolKind::Method;
+              Usr declaring = def.def.declaring_type.value();
+              info.containerName = db->types[db->usr_to_symbol[declaring].idx].def.qualified_name;
+            }
+            else {
+              info.kind = language_server_api::SymbolKind::Function;
+            }
+
+            if (def.def.definition.has_value()) {
+              info.location.range.start.line = def.def.definition->line - 1;
+              info.location.range.start.character = def.def.definition->column - 1;
+            }
+            break;
+          }
+          case ::SymbolKind::Var:
+          {
+            QueryableVarDef& def = db->vars[symbol.idx];
+            info.name = def.def.qualified_name;
+            info.kind = language_server_api::SymbolKind::Variable;
+
+            if (def.def.definition.has_value()) {
+              info.location.range.start.line = def.def.definition->line - 1;
+              info.location.range.start.character = def.def.definition->column - 1;
+            }
+            break;
+          }
+          };
+
+
+
+
+          // TODO: store range information.
+          info.location.range.end.line = info.location.range.start.line;
+          info.location.range.end.character = info.location.range.start.character;
+
+          response.symbols.push_back(info);
+
+        }
+
+
+      }
+
+
+      ipc->SendToClient(0, &response);
+    }
 
     else {
       std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
@@ -425,7 +561,7 @@ void LanguageServerStdinLoop(IpcClient* ipc) {
       auto request = static_cast<In_InitializeRequest*>(message.get());
       if (request->params.rootUri) {
         std::string project_path = request->params.rootUri->GetPath();
-        std::cerr << "Initialize in directory " << project_path << std::endl;
+        std::cerr << "Initialize in directory " << project_path << " with uri " << request->params.rootUri->raw_uri << std::endl;
         IpcMessage_OpenProject open_project;
         open_project.project_path = project_path;
         ipc->SendToServer(&open_project);
@@ -434,6 +570,7 @@ void LanguageServerStdinLoop(IpcClient* ipc) {
       auto response = Out_InitializeResponse();
       response.id = message->id.value();
       response.result.capabilities.documentSymbolProvider = true;
+      response.result.capabilities.workspaceSymbolProvider = true;
       response.Send();
       break;
     }
@@ -448,6 +585,17 @@ void LanguageServerStdinLoop(IpcClient* ipc) {
       ipc_request.id = request->id.value();
       ipc_request.document = request->params.textDocument.uri.GetPath();
       std::cerr << "Request textDocument=" << ipc_request.document << std::endl;
+      ipc->SendToServer(&ipc_request);
+      break;
+    }
+
+    case MethodId::WorkspaceSymbol:
+    {
+      auto request = static_cast<In_WorkspaceSymbolRequest*>(message.get());
+      IpcMessage_WorkspaceSymbolsRequest ipc_request;
+      ipc_request.id = request->id.value();
+      ipc_request.query = request->params.query;
+      std::cerr << "Request query=" << ipc_request.query << std::endl;
       ipc->SendToServer(&ipc_request);
       break;
     }
@@ -469,6 +617,16 @@ void LanguageServerMainLoop(IpcClient* ipc) {
       auto msg = static_cast<IpcMessage_DocumentSymbolsResponse*>(message.get());
 
       auto response = Out_DocumentSymbolResponse();
+      response.id = msg->id;
+      response.result = msg->symbols;
+      response.Send();
+      std::cerr << "Send symbol response to client (" << response.result.size() << " symbols)" << std::endl;
+    }
+
+    else if (IpcMessage_WorkspaceSymbolsResponse::kId == message->runtime_id()) {
+      auto msg = static_cast<IpcMessage_WorkspaceSymbolsResponse*>(message.get());
+
+      auto response = Out_WorkspaceSymbolResponse();
       response.id = msg->id;
       response.result = msg->symbols;
       response.Send();
@@ -519,8 +677,8 @@ void LanguageServerMain(std::string process_name) {
       /*stderr*/[](const char* bytes, size_t n) {
       for (int i = 0; i < n; ++i)
         std::cerr << bytes[i];
-},
-/*open_stdin*/false);
+  },
+      /*open_stdin*/false);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // Pass empty process name so we only try to start the querydb once.
     LanguageServerMain("");
@@ -621,10 +779,14 @@ int main(int argc, char** argv) {
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>();
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>();
 
+  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsRequest>();
+  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>();
+
   language_server_api::MessageRegistry::instance()->Register<language_server_api::In_CancelRequest>();
   language_server_api::MessageRegistry::instance()->Register<language_server_api::In_InitializeRequest>();
   language_server_api::MessageRegistry::instance()->Register<language_server_api::In_InitializedNotification>();
   language_server_api::MessageRegistry::instance()->Register<language_server_api::In_DocumentSymbolRequest>();
+  language_server_api::MessageRegistry::instance()->Register<language_server_api::In_WorkspaceSymbolRequest>();
 
 
 

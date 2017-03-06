@@ -349,6 +349,7 @@ namespace language_server_api {
     Initialize,
     Initialized,
     TextDocumentDocumentSymbol,
+    WorkspaceSymbol,
   };
 
   const char* MethodIdToString(MethodId id) {
@@ -361,6 +362,8 @@ namespace language_server_api {
       return "initialized";
     case MethodId::TextDocumentDocumentSymbol:
       return "textDocument/documentSymbol";
+    case MethodId::WorkspaceSymbol:
+      return "workspace/symbol";
     default:
       exit(1);
     }
@@ -1386,6 +1389,37 @@ namespace language_server_api {
 
 
 
+
+
+
+  struct WorkspaceSymbolParams {
+    std::string query;
+  };
+
+  void Deserialize(const Reader& reader, WorkspaceSymbolParams& value) {
+    DESERIALIZE_MEMBER(query);
+  }
+
+  struct In_WorkspaceSymbolRequest : public InRequestMessage {
+    const static MethodId kMethod = MethodId::WorkspaceSymbol;
+
+    WorkspaceSymbolParams params;
+
+    In_WorkspaceSymbolRequest(optional<RequestId> id, const Reader& reader)
+      : InRequestMessage(kMethod, id, reader) {
+      Deserialize(reader, params);
+    }
+  };
+
+
+  struct Out_WorkspaceSymbolResponse : public OutResponseMessage {
+    std::vector<SymbolInformation> result;
+
+    // OutResponseMessage:
+    void WriteResult(Writer& writer) override {
+      Serialize(writer, result);
+    }
+  };
 
 
 

@@ -507,10 +507,13 @@ void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
   //       the entry instead of actually removing the data. The index could be massive.
   for (Usr usr : to_remove)
     usr_to_symbol[usr].kind = SymbolKind::Invalid;
+  // TODO: also remove from qualified_names?
 }
 
 void QueryableDatabase::Import(const std::vector<QueryableFile>& defs) {
   for (auto& def : defs) {
+    qualified_names.push_back(def.file_id);
+    symbols.push_back(SymbolIdx(SymbolKind::File, files.size()));
     usr_to_symbol[def.file_id] = SymbolIdx(SymbolKind::File, files.size());
     files.push_back(def);
   }
@@ -518,6 +521,8 @@ void QueryableDatabase::Import(const std::vector<QueryableFile>& defs) {
 
 void QueryableDatabase::Import(const std::vector<QueryableTypeDef>& defs) {
   for (auto& def : defs) {
+    qualified_names.push_back(def.def.qualified_name);
+    symbols.push_back(SymbolIdx(SymbolKind::Type, types.size()));
     usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Type, types.size());
     types.push_back(def);
   }
@@ -525,6 +530,8 @@ void QueryableDatabase::Import(const std::vector<QueryableTypeDef>& defs) {
 
 void QueryableDatabase::Import(const std::vector<QueryableFuncDef>& defs) {
   for (auto& def : defs) {
+    qualified_names.push_back(def.def.qualified_name);
+    symbols.push_back(SymbolIdx(SymbolKind::Func, funcs.size()));
     usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
     funcs.push_back(def);
   }
@@ -532,6 +539,8 @@ void QueryableDatabase::Import(const std::vector<QueryableFuncDef>& defs) {
 
 void QueryableDatabase::Import(const std::vector<QueryableVarDef>& defs) {
   for (auto& def : defs) {
+    qualified_names.push_back(def.def.qualified_name);
+    symbols.push_back(SymbolIdx(SymbolKind::Var, vars.size()));
     usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
     vars.push_back(def);
   }
@@ -558,24 +567,6 @@ void QueryableDatabase::Update(const std::vector<QueryableVarDef::DefUpdate>& up
     SymbolIdx idx = usr_to_symbol[def.usr];
     assert(idx.kind == SymbolKind::Var);
     vars[idx.idx].def = def;
-  }
-}
-
-
-template<typename TDef, typename TId>
-void AddAll(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs, const std::vector<TDef>& to_add) {
-  for (const TDef& def : to_add) {
-    (*id_map)[def.def.id] = defs->size();
-    defs->push_back(def);
-  }
-}
-
-template<typename TDef, typename TId>
-void ApplyUpdates(std::unordered_map<TId, int>* id_map, std::vector<TDef>* defs, const std::vector<typename TDef::DefUpdate>& updates) {
-  for (const typename TDef::DefUpdate& def : updates) {
-    TId id = def.id;
-    int index = (*id_map)[id];
-    (*defs)[index].def = def;
   }
 }
 
