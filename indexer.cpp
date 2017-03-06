@@ -558,6 +558,8 @@ optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
 }
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
+  // TODO: we can minimize processing for cursors which return false for clang_Location_isFromMainFile (ie, only add usages)
+
   bool is_system_def = clang_Location_isInSystemHeader(clang_getCursorLocation(decl->cursor));
   if (is_system_def)
     return;
