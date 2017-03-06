@@ -94,9 +94,10 @@ int main(int argc, char** argv) {
   */
 
   for (std::string path : GetFilesInFolder("tests", true /*add_folder_to_path*/)) {
-    //if (path != "tests/usage/var_usage_cstyle_cast.cc") continue;
+    //if (path != "tests/templates/func_specialized_template_param.cc") continue;
+    //if (path != "tests/constructors/invalid_reference.cc") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
-    //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
+    if (path == "tests/stl.cc") continue;
 
     //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
     //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;

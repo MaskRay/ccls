@@ -509,9 +509,25 @@ optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
   //  The second TypeRef is an uninteresting usage.
   bool process_last_type_ref = true;
   if (IsTypeDefinition(semantic_container) && !IsTypeDefinition(lexical_container)) {
-    //if (!decl_cursor.is_definition())
-    //  decl_cursor = decl_cursor.get_definition();
-    assert(decl_cursor.is_definition());
+    
+    //
+    // In some code, such as the following example, we receive a cursor which is not
+    // a definition and is not associated with a definition due to an error condition.
+    // In this case, it is the Foo::Foo constructor.
+    //
+    //  struct Foo {};
+    //
+    //  template<class T>
+    //  Foo::Foo() {}
+    //
+    if (!decl_cursor.is_definition()) {
+      // TODO: I don't think this resolution ever works.
+      clang::Cursor def = decl_cursor.get_definition();
+      if (def.get_kind() != CXCursor_FirstInvalid) {
+        std::cerr << "Successful resolution of decl usage to definition" << std::endl;
+        decl_cursor = def;
+      }
+    }
     process_last_type_ref = false;
   }
 
@@ -683,8 +699,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         switch (arg.get_kind()) {
         case CXCursor_ParmDecl:
           // We don't need to know the arg type, but we do want to mark it as
-          // an interesting usage.
-          AddDeclUsages(db, arg, true /*is_interesting*/, decl->semanticContainer, decl->lexicalContainer);
+          // an interesting usage. Note that we use semanticContainer twice
+          // because a parameter is not really part of the lexical container.
+          AddDeclUsages(db, arg, true /*is_interesting*/, decl->semanticContainer, decl->semanticContainer);
 
           //TypeResolution arg_type = ResolveToType(db, arg.get_type());
           //if (arg_type.resolved_type)

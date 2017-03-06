@@ -8,33 +8,6 @@ struct Foo {
 
 Foo<A>::Inner a;
 Foo<B> b;
-
-//#include <string>
-
-
-
-#if false
-// We could store how many template parameters Foo has and then skip that many TypeRefs...,
-// if there was still a TypeRef after (and we are not ignoring it) then we know
-// that is the variable type.
-
-EnumDecl A
-EnumDecl B
-ClassTemplate Foo
-  TemplateTypeParameter T
-  StructDecl Inner
-VarDecl a
-  TemplateRef Foo
-  TypeRef enum A
-  TypeRef struct Foo<enum A>::Inner
-  CallExpr Inner
-VarDecl b
-  TemplateRef Foo
-  TypeRef enum B
-  CallExpr Foo
-#endif
-
-
 /*
 OUTPUT:
 {
@@ -115,34 +88,6 @@ namespace ns {
 }
 #endif
 
-// TODO: we are not marking interesting usage for a CStyleCastExpr
-// TODO: we are resoling templates in a weird way (should be 1 type)
-#if false
-Namespace ns
-  EnumDecl VarType
-  ClassTemplate Holder
-    TemplateTypeParameter _
-    VarDecl static_var
-      TypeRef enum ns::VarType
-      CStyleCastExpr
-        TypeRef enum ns::VarType
-        IntegerLiteral
-  VarDecl static_var
-    TemplateTypeParameter _
-    TypeRef enum ns::VarType
-    TemplateRef Holder
-    TypeRef _
-  VarDecl Foo
-    UnexposedExpr static_var
-      UnexposedExpr static_var
-        DeclRefExpr static_var
-          TemplateRef Holder
-  VarDecl static_var
-    TypeRef enum ns::VarType
-    TemplateRef Holder
-#endif
-
-
 /*
 OUTPUT:
 {
@@ -218,53 +163,3 @@ OUTPUT:
 
 
 
-
-
-
-
-
-
-//#include <string>
-//#include <xiosbase>
-
-//#include <sstream>
-//#include <algorithm>
-//#include <vector>
-//#include <string>
-//#include <cstddef>
-//#include <sstream>
-//#include <iomanip>
-//#include <limits>
-//#include <vector>
-//#include <cstddef>
-//#include <tuple>
-//#include <type_traits>
-//#include <string>
-//#include <string>
-//#include <type_traits>
-//#include <iterator>
-//#include <vector>
-//#include <string>
-//#include <stdlib.h>
-//#include <string>
-//#include <vector>
-//#include <string>
-//#include <cstddef>
-//#include <cmath>
-//#include <limits>
-//#include <type_traits>
-//#include <set>
-//#include <string>
-//#include <vector>
-//#include <iosfwd>
-//#include <streambuf>
-//#include <ostream>
-//#include <fstream>
-//#include <memory>
-//#include <vector>
-//#include <string>
-//#include <stdexcept>
-//#include <string>
-//#include <vector>
-//#include <sstream>
-//#include <algorithm>
