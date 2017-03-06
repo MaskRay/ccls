@@ -12,7 +12,7 @@
     "**/.git": true,
     "**/.svn": true,
     "**/.hg": true,
-    "**/.DS_Store": true,
-    "third_party/": true
+    "**/.DS_Store": true
+    // "third_party/": true
   }
 }

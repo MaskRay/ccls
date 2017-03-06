@@ -1,11 +1,12 @@
 #include "utils.h"
 
+#include <cassert>
 #include <iostream>
 #include <fstream>
 
 #include "tinydir.h"
 
-std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to_path) {
+static std::vector<std::string> GetFilesInFolderHelper(std::string folder, std::string output_prefix) {
   std::vector<std::string> result;
 
   tinydir_dir dir;
@@ -21,21 +22,17 @@ std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to
       goto bail;
     }
 
-    std::string full_path;
-    if (add_folder_to_path)
-      full_path = folder + "/";
-    full_path += file.name;
-    if (file.is_dir) {
-      // Ignore all dot directories.
-      // Note that we must always ignore the '.' and '..' directories, otherwise
-      // this will loop infinitely.
-      if (file.name[0] != '.') {
-        for (std::string nested_file : GetFilesInFolder(full_path, true /*add_folder_to_path*/))
+    // Skip all dot files.
+    if (file.name[0] != '.') {
+      if (file.is_dir) {
+        // Note that we must always ignore the '.' and '..' directories, otherwise
+        // this will loop infinitely. The above check handles that for us.
+        for (std::string nested_file : GetFilesInFolderHelper(file.path, output_prefix + file.name + "/"))
           result.push_back(nested_file);
       }
-    }
-    else {
-      result.push_back(full_path);
+      else {
+        result.push_back(output_prefix + file.name);
+      }
     }
 
     if (tinydir_next(&dir) == -1) {
@@ -47,6 +44,14 @@ std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to
 bail:
   tinydir_close(&dir);
   return result;
+}
+
+std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to_path) {
+  assert(folder.size() > 0);
+  if (folder[folder.size() - 1] != '/')
+    folder += '/';
+
+  return GetFilesInFolderHelper(folder, add_folder_to_path ? folder : "");
 }
 
 std::vector<std::string> ReadLines(std::string filename) {

@@ -613,8 +613,6 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdin), O_BINARY);
 #endif
 
-
-
   IpcRegistry::instance()->Register<IpcMessage_Quit>();
 
   IpcRegistry::instance()->Register<IpcMessage_IsAlive>();
