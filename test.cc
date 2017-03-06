@@ -82,7 +82,7 @@ void VerifySerializeToFrom(IndexedFile* file) {
   }
 }
 
-int main(int argc, char** argv) {
+int main23(int argc, char** argv) {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
     //if (path != "tests/constructors/invalid_reference.cc") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
     //if (path != "tests/namespaces/namespace_reference.cc") continue;
-    if (path == "tests/stl.cc") continue;
+    //if (path != "tests/stl.cc") continue;
 
     //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
     //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;

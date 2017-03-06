@@ -1,5 +1,7 @@
 #include "indexer.h"
 
+#include <chrono>
+
 #include "serializer.h"
 
 IndexedFile::IndexedFile(const std::string& path)
@@ -555,9 +557,10 @@ optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
   return param.initial_type;
 }
 
-
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   bool is_system_def = clang_Location_isInSystemHeader(clang_getCursorLocation(decl->cursor));
+  if (is_system_def)
+    return;
 
   IndexParam* param = static_cast<IndexParam*>(client_data);
   IndexedFile* db = param->db;
@@ -861,6 +864,10 @@ bool IsFunction(CXCursorKind kind) {
 }
 
 void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
+  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->cursor)) ||
+    clang_Location_isInSystemHeader(clang_getCursorLocation(ref->referencedEntity->cursor)))
+    return;
+
   IndexParam* param = static_cast<IndexParam*>(client_data);
   IndexedFile* db = param->db;
   clang::Cursor cursor(ref->cursor);
@@ -1007,6 +1014,28 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 }
 
 
+void emptyIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {}
+void emptyIndexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {}
+
+struct Timer {
+  using Clock = std::chrono::high_resolution_clock;
+  std::chrono::time_point<Clock> start_;
+
+  Timer() {
+    Reset();
+  }
+
+  void Reset() {
+    start_ = Clock::now();
+  }
+
+  void PrintElapsed() {
+    std::chrono::time_point<Clock> end = Clock::now();
+
+    std::cerr << "Indexing took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_).count() << "ms" << std::endl;
+  }
+};
+
 IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump_ast) {
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
@@ -1018,6 +1047,7 @@ IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump
 
   IndexerCallbacks callbacks[] = {
     { &abortQuery, &diagnostic, &enteredMainFile, &ppIncludedFile, &importedASTFile, &startedTranslationUnit, &indexDeclaration, &indexEntityReference }
+    //{ &abortQuery, &diagnostic, &enteredMainFile, &ppIncludedFile, &importedASTFile, &startedTranslationUnit, &emptyIndexDeclaration, &emptyIndexEntityReference }
     /*
     callbacks.abortQuery = &abortQuery;
     callbacks.diagnostic = &diagnostic;
@@ -1033,8 +1063,11 @@ IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump
   IndexedFile db(filename);
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
+
+  Timer time;
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
     CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession, tu.cx_tu);
+  time.PrintElapsed();
 
   clang_IndexAction_dispose(index_action);
 
