@@ -509,7 +509,7 @@ optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
   //  The second TypeRef is an uninteresting usage.
   bool process_last_type_ref = true;
   if (IsTypeDefinition(semantic_container) && !IsTypeDefinition(lexical_container)) {
-    
+
     //
     // In some code, such as the following example, we receive a cursor which is not
     // a definition and is not associated with a definition due to an error condition.
@@ -549,7 +549,7 @@ optional<TypeId> AddDeclUsages(IndexedFile* db, clang::Cursor decl_cursor,
       is_interesting == false ||
       param.previous_cursor.has_value() == false ||
       (param.previous_cursor.value().get_kind() == CXCursor_TypeRef ||
-       param.previous_cursor.value().get_kind() == CXCursor_TemplateRef));
+        param.previous_cursor.value().get_kind() == CXCursor_TemplateRef));
   }
 
   return param.initial_type;
@@ -639,7 +639,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     IndexedFuncDef* func_def = db->Resolve(func_id);
 
     Location decl_loc = db->id_cache.Resolve(decl->loc, false /*interesting*/);
-    
+
     func_def->uses.push_back(decl_loc);
     // We don't actually need to know the return type, but we need to mark it
     // as an interesting usage.
@@ -866,6 +866,12 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
   clang::Cursor cursor(ref->cursor);
 
   switch (ref->referencedEntity->kind) {
+  case CXIdxEntity_CXXNamespace:
+  {
+    // We don't index namespace usages.
+    break;
+  }
+
   case CXIdxEntity_EnumConstant:
   case CXIdxEntity_CXXStaticVariable:
   case CXIdxEntity_Variable:

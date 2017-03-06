@@ -97,7 +97,7 @@ int main(int argc, char** argv) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
     //if (path != "tests/constructors/invalid_reference.cc") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
-    //if (path != "tests/foobar.cc") continue;
+    //if (path != "tests/namespaces/namespace_reference.cc") continue;
     if (path == "tests/stl.cc") continue;
 
     //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
