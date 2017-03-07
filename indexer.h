@@ -229,6 +229,8 @@ struct Ref {
   Id<T> id;
   Location loc;
 
+  Ref() {} // For serialization.
+
   Ref(Id<T> id, Location loc) : id(id), loc(loc) {}
 
   bool operator==(const Ref<T>& other) {
@@ -323,6 +325,8 @@ struct IndexedTypeDef {
 
   bool is_bad_def = true;
 
+  IndexedTypeDef() : def("") {} // For serialization
+
   IndexedTypeDef(TypeId id, const std::string& usr);
   void AddUsage(Location loc, bool insert_if_not_present = true);
 
@@ -402,6 +406,8 @@ struct IndexedFuncDef {
 
   bool is_bad_def = true;
 
+  IndexedFuncDef() : def("") {} // For serialization
+
   IndexedFuncDef(FuncId id, const std::string& usr) : id(id), def(usr) {
     assert(usr.size() > 0);
   }
@@ -461,6 +467,8 @@ struct IndexedVarDef {
   std::vector<Location> uses;
 
   bool is_bad_def = true;
+
+  IndexedVarDef() : def("") {} // For serialization
 
   IndexedVarDef(VarId id, const std::string& usr) : id(id), def(usr) {
     assert(usr.size() > 0);

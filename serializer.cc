@@ -5,246 +5,209 @@
 
 
 
-void Serialize(Writer& writer, const char* key, Location location) {
-  if (key) writer.Key(key);
-  std::string s = location.ToString();
-  writer.String(s.c_str());
+
+// int
+void Reflect(Reader& visitor, int& value) {
+  value = visitor.GetInt();
+}
+void Reflect(Writer& visitor, int& value) {
+  visitor.Int(value);
 }
 
-void Serialize(Writer& writer, const char* key, optional<Location> location) {
-  if (location)
-    Serialize(writer, key, location.value());
+
+// bool
+void Reflect(Reader& visitor, bool& value) {
+  value = visitor.GetBool();
+}
+void Reflect(Writer& visitor, bool& value) {
+  visitor.Bool(value);
 }
 
-void Serialize(Writer& writer, const char* key, const std::vector<Location>& locs) {
-  if (locs.size() == 0)
-    return;
 
-  if (key) writer.Key(key);
-  writer.StartArray();
-  for (const Location& loc : locs)
-    Serialize(writer, nullptr, loc);
-  writer.EndArray();
+// std::string
+void Reflect(Reader& visitor, std::string& value) {
+  value = visitor.GetString();
+}
+void Reflect(Writer& visitor, std::string& value) {
+  visitor.String(value.c_str(), value.size());
 }
 
-void Serialize(Writer& writer, const char* key, const std::string& value) {
-  if (value.size() == 0)
-    return;
 
-  if (key) writer.Key(key);
-  writer.String(value.c_str());
+// Location
+void Reflect(Reader& visitor, Location& value) {
+  value = Location(visitor.GetString());
+}
+void Reflect(Writer& visitor, Location& value) {
+  std::string output = value.ToString();
+  visitor.String(output.c_str(), output.size());
 }
 
-void Serialize(Writer& writer, const char* key, const std::vector<std::string>& value) {
-  if (value.size() == 0)
-    return;
 
-  if (key) writer.Key(key);
-
-  writer.StartArray();
-  for (const std::string& s : value)
-    writer.String(s.c_str());
-  writer.EndArray();
+// Id<T>
+template<typename T>
+void Reflect(Reader& visitor, Id<T>& id) {
+  id.id = visitor.GetUint64();
+}
+template<typename T>
+void Reflect(Writer& visitor, Id<T>& value) {
+  visitor.Uint64(value.id);
 }
 
-void Serialize(Writer& writer, const char* key, uint64_t value) {
-  if (key) writer.Key(key);
-  writer.Uint64(value);
+
+// Ref<IndexedFuncDef>
+void Reflect(Reader& visitor, Ref<IndexedFuncDef>& value) {
+  const char* str_value = visitor.GetString();
+  uint64_t id = atoi(str_value);
+  const char* loc_string = strchr(str_value, '@') + 1;
+
+  value.id = Id<IndexedFuncDef>(id);
+  value.loc = Location(loc_string);
+}
+void Reflect(Writer& visitor, Ref<IndexedFuncDef>& value) {
+  std::string s = std::to_string(value.id.id) + "@" + value.loc.ToString();
+  visitor.String(s.c_str());
 }
 
-void Serialize(Writer& writer, IndexedFile* file) {
-  auto it = file->id_cache.usr_to_type_id.find("");
-  if (it != file->id_cache.usr_to_type_id.end()) {
-    file->Resolve(it->second)->def.short_name = "<fundamental>";
-    assert(file->Resolve(it->second)->uses.size() == 0);
+
+
+
+
+
+
+
+// IndexedTypeDef
+bool ReflectMemberStart(Reader& reader, IndexedTypeDef& value) {
+  value.is_bad_def = false;
+  return true;
+}
+bool ReflectMemberStart(Writer& writer, IndexedTypeDef& value) {
+  if (value.is_bad_def)
+    return false;
+  DefaultReflectMemberStart(writer);
+  return true;
+}
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER2("id", value.id);
+  REFLECT_MEMBER2("usr", value.def.usr);
+  REFLECT_MEMBER2("short_name", value.def.short_name);
+  REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
+  REFLECT_MEMBER2("definition", value.def.definition);
+  REFLECT_MEMBER2("alias_of", value.def.alias_of);
+  REFLECT_MEMBER2("parents", value.def.parents);
+  REFLECT_MEMBER2("derived", value.derived);
+  REFLECT_MEMBER2("types", value.def.types);
+  REFLECT_MEMBER2("funcs", value.def.funcs);
+  REFLECT_MEMBER2("vars", value.def.vars);
+  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER_END();
+}
+
+
+// IndexedFuncDef
+bool ReflectMemberStart(Reader& reader, IndexedFuncDef& value) {
+  value.is_bad_def = false;
+  return true;
+}
+bool ReflectMemberStart(Writer& writer, IndexedFuncDef& value) {
+  if (value.is_bad_def)
+    return false;
+  DefaultReflectMemberStart(writer);
+  return true;
+}
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER2("id", value.id);
+  REFLECT_MEMBER2("usr", value.def.usr);
+  REFLECT_MEMBER2("short_name", value.def.short_name);
+  REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
+  REFLECT_MEMBER2("declarations", value.declarations);
+  REFLECT_MEMBER2("definition", value.def.definition);
+  REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
+  REFLECT_MEMBER2("base", value.def.base);
+  REFLECT_MEMBER2("derived", value.derived);
+  REFLECT_MEMBER2("locals", value.def.locals);
+  REFLECT_MEMBER2("callers", value.callers);
+  REFLECT_MEMBER2("callees", value.def.callees);
+  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER_END();
+}
+
+
+// IndexedVarDef
+bool ReflectMemberStart(Reader& reader, IndexedVarDef& value) {
+  value.is_bad_def = false;
+  return true;
+}
+bool ReflectMemberStart(Writer& writer, IndexedVarDef& value) {
+  if (value.is_bad_def)
+    return false;
+  DefaultReflectMemberStart(writer);
+  return true;
+}
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IndexedVarDef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER2("id", value.id);
+  REFLECT_MEMBER2("usr", value.def.usr);
+  REFLECT_MEMBER2("short_name", value.def.short_name);
+  REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
+  REFLECT_MEMBER2("declaration", value.def.declaration);
+  REFLECT_MEMBER2("definition", value.def.definition);
+  REFLECT_MEMBER2("variable_type", value.def.variable_type);
+  REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
+  REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER_END();
+}
+
+
+// IndexedFile
+bool ReflectMemberStart(Writer& visitor, IndexedFile& value) {
+  auto it = value.id_cache.usr_to_type_id.find("");
+  if (it != value.id_cache.usr_to_type_id.end()) {
+    value.Resolve(it->second)->def.short_name = "<fundamental>";
+    assert(value.Resolve(it->second)->uses.size() == 0);
   }
 
-#define SERIALIZE(json_name, member_name) Serialize(writer, json_name, def.member_name)
-
-  writer.StartObject();
-
-  // Types
-  writer.Key("types");
-  writer.StartArray();
-  for (IndexedTypeDef& def : file->types) {
-    if (def.is_bad_def)
-      continue;
-
-    writer.StartObject();
-    SERIALIZE("id", id);
-    SERIALIZE("usr", def.usr);
-    SERIALIZE("short_name", def.short_name);
-    SERIALIZE("qualified_name", def.qualified_name);
-    SERIALIZE("definition", def.definition);
-    SERIALIZE("alias_of", def.alias_of);
-    SERIALIZE("parents", def.parents);
-    SERIALIZE("derived", derived);
-    SERIALIZE("types", def.types);
-    SERIALIZE("funcs", def.funcs);
-    SERIALIZE("vars", def.vars);
-    SERIALIZE("uses", uses);
-    writer.EndObject();
-  }
-  writer.EndArray();
-
-  // Functions
-  writer.Key("functions");
-  writer.StartArray();
-  for (IndexedFuncDef& def : file->funcs) {
-    if (def.is_bad_def)
-      continue;
-
-    writer.StartObject();
-    SERIALIZE("id", id);
-    SERIALIZE("usr", def.usr);
-    SERIALIZE("short_name", def.short_name);
-    SERIALIZE("qualified_name", def.qualified_name);
-    SERIALIZE("declarations", declarations);
-    SERIALIZE("definition", def.definition);
-    SERIALIZE("declaring_type", def.declaring_type);
-    SERIALIZE("base", def.base);
-    SERIALIZE("derived", derived);
-    SERIALIZE("locals", def.locals);
-    SERIALIZE("callers", callers);
-    SERIALIZE("callees", def.callees);
-    SERIALIZE("uses", uses);
-    writer.EndObject();
-  }
-  writer.EndArray();
-
-  // Variables
-  writer.Key("variables");
-  writer.StartArray();
-  for (IndexedVarDef& def : file->vars) {
-    if (def.is_bad_def)
-      continue;
-
-    writer.StartObject();
-    SERIALIZE("id", id);
-    SERIALIZE("usr", def.usr);
-    SERIALIZE("short_name", def.short_name);
-    SERIALIZE("qualified_name", def.qualified_name);
-    SERIALIZE("declaration", def.declaration);
-    SERIALIZE("definition", def.definition);
-    SERIALIZE("variable_type", def.variable_type);
-    SERIALIZE("declaring_type", def.declaring_type);
-    SERIALIZE("uses", uses);
-    writer.EndObject();
-  }
-  writer.EndArray();
-
-  writer.EndObject();
-#undef WRITE
+  DefaultReflectMemberStart(visitor);
+  return true;
+}
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IndexedFile& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER2("types", value.types);
+  REFLECT_MEMBER2("functions", value.funcs);
+  REFLECT_MEMBER2("variables", value.vars);
+  REFLECT_MEMBER_END();
 }
 
-void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::string& output) {
-  auto it = document.FindMember(name);
-  if (it != document.MemberEnd())
-    output = it->value.GetString();
-}
 
-void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<std::string>& output) {
-  auto it = document.FindMember(name);
-  if (it != document.MemberEnd()) {
-    for (auto& entry : it->value.GetArray())
-      output.push_back(entry.GetString());
-  }
-}
 
-void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, optional<Location>& output) {
-  auto it = document.FindMember(name);
-  if (it != document.MemberEnd())
-    output = Location(it->value.GetString()); // TODO: Location parsing not implemented in Location type.
-}
 
-void Deserialize(const rapidjson::GenericValue<rapidjson::UTF8<>>& document, const char* name, std::vector<Location>& output) {
-  auto it = document.FindMember(name);
-  if (it != document.MemberEnd()) {
-    for (auto& array_value : it->value.GetArray())
-      output.push_back(Location(array_value.GetString()));
-  }
-}
 
-void Deserialize(const Reader& reader, IndexedFile* file) {
-#define DESERIALIZE(json_name, member_name) Deserialize(entry, json_name, def.member_name)
 
-  const auto& types = reader["types"].GetArray();
-  for (const auto& entry : types) {
-    TypeId id(entry["id"].GetInt64());
-    std::string usr = entry["usr"].GetString();
 
-    IndexedTypeDef def(id, usr);
-    def.is_bad_def = false;
-    DESERIALIZE("short_name", def.short_name);
-    DESERIALIZE("qualified_name", def.qualified_name);
-    DESERIALIZE("definition", def.definition);
-    DESERIALIZE("alias_of", def.alias_of);
-    DESERIALIZE("parents", def.parents);
-    DESERIALIZE("derived", derived);
-    DESERIALIZE("types", def.types);
-    DESERIALIZE("funcs", def.funcs);
-    DESERIALIZE("vars", def.vars);
-    DESERIALIZE("uses", uses);
-    file->types.push_back(def);
-  }
-
-  const auto& functions = reader["functions"].GetArray();
-  for (const auto& entry : functions) {
-    FuncId id(entry["id"].GetInt64());
-    std::string usr = entry["usr"].GetString();
-
-    IndexedFuncDef def(id, usr);
-    def.is_bad_def = false;
-    DESERIALIZE("short_name", def.short_name);
-    DESERIALIZE("qualified_name", def.qualified_name);
-    DESERIALIZE("declarations", declarations);
-    DESERIALIZE("definition", def.definition);
-    DESERIALIZE("declaring_type", def.declaring_type);
-    DESERIALIZE("base", def.base);
-    DESERIALIZE("derived", derived);
-    DESERIALIZE("locals", def.locals);
-    DESERIALIZE("callers", callers);
-    DESERIALIZE("callees", def.callees);
-    DESERIALIZE("uses", uses);
-    file->funcs.push_back(def);
-  }
-
-  const auto& vars = reader["variables"].GetArray();
-  for (const auto& entry : vars) {
-    VarId id(entry["id"].GetInt64());
-    std::string usr = entry["usr"].GetString();
-
-    IndexedVarDef def(id, usr);
-    def.is_bad_def = false;
-    DESERIALIZE("short_name", def.short_name);
-    DESERIALIZE("qualified_name", def.qualified_name);
-    DESERIALIZE("declaration", def.declaration);
-    DESERIALIZE("definition", def.definition);
-    DESERIALIZE("variable_type", def.variable_type);
-    DESERIALIZE("declaring_type", def.declaring_type);
-    DESERIALIZE("uses", uses);
-    file->vars.push_back(def);
-  }
-#undef DESERIALIZE
-}
-
-std::string Serialize(IndexedFile* file) {
+std::string Serialize(IndexedFile& file) {
   rapidjson::StringBuffer output;
+  //rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   Writer writer(output);
   writer.SetFormatOptions(
     rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
 
-  Serialize(writer, file);
+  Reflect(writer, file);
 
   return output.GetString();
 }
 
 IndexedFile Deserialize(std::string path, std::string serialized) {
-  rapidjson::Document document;
-  document.Parse(serialized.c_str());
+  rapidjson::Document reader;
+  reader.Parse(serialized.c_str());
 
   IndexedFile file(path);
-  Deserialize(document, &file);
+  Reflect(reader, file);
+
   return file;
 }

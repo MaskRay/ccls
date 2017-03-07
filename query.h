@@ -1,6 +1,7 @@
 #pragma once
 
 #include "indexer.h"
+#include "serializer.h"
 
 // NOTE: If updating this enum, make sure to also update the parser and the
 //       help text.

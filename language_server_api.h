@@ -1,145 +1,19 @@
 #pragma once
 
+#if false
+
 #include <iostream>
 #include <unordered_map>
 #include <unordered_set>
 
 #include <rapidjson/writer.h>
 #include "optional.h"
+#include "serializer.h"
 
 using std::experimental::optional;
 using std::experimental::nullopt;
 
 namespace language_server_api {
-
-  // TODO: Cleanup serializer.h/cc as well.
-
-#define SERIALIZE_MEMBER(name) \
-    SerializeMember(writer, #name, value.name)
-#define SERIALIZE_MEMBER2(name, value) \
-    SerializeMember(writer, #name, value)
-#define DESERIALIZE_MEMBER(name) \
-    DeserializeMember(reader, #name, value.name)
-
-  using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
-  using Writer = rapidjson::Writer<rapidjson::StringBuffer>;
-
-  // Special templates used by (DE)SERIALIZE_MEMBER macros.
-  template<typename T>
-  void SerializeMember(Writer& writer, const char* name, const T& value) {
-    writer.Key(name);
-    Serialize(writer, value);
-  }
-  template<typename T>
-  void SerializeMember(Writer& writer, const char* name, const optional<T>& value) {
-    if (value.has_value()) {
-      writer.Key(name);
-      Serialize(writer, value.value());
-    }
-  }
-  template<typename T>
-  void DeserializeMember(const Reader& reader, const char* name, T& value) {
-    auto it = reader.FindMember(name);
-    if (it != reader.MemberEnd())
-      Deserialize(it->value, value);
-  }
-
-
-
-
-  // Start normal serialization routines.
-  void Serialize(Writer& writer, int value) {
-    writer.Int(value);
-  }
-
-  void Serialize(Writer& writer, const std::string& value) {
-    writer.String(value.c_str(), value.size());
-  }
-
-  template<typename T>
-  void Serialize(Writer& writer, const std::vector<T>& values) {
-    writer.StartArray();
-    for (const auto& value : values)
-      Serialize(writer, value);
-    writer.EndArray();
-  }
-
-
-  void Deserialize(const Reader& reader, int& value) {
-    value = reader.GetInt();
-  }
-
-  void Deserialize(const Reader& reader, bool& value) {
-    value = reader.GetBool();
-  }
-
-  void Deserialize(const Reader& reader, std::string& value) {
-    value = std::string(reader.GetString());
-  }
-
-  template<typename T>
-  void Deserialize(const Reader& reader, std::vector<T>& value) {
-    for (const auto& entry : reader.GetArray()) {
-      T entry_value;
-      Deserialize(entry, entry_value);
-      value.push_back(entry_value);
-    }
-  }
-
-  template<typename T>
-  void Deserialize(const Reader& reader, optional<T>& value) {
-    T real_value;
-    Deserialize(reader, real_value);
-    value = real_value;
-  }
-
-
-
-
-
-#if false
-  void Deserialize(const Reader& reader, DocumentUri& output) {
-    //static var driveLetterPathRe = ~/^\/[a-zA-Z]:/;
-    //static var uriRe = ~/^(([^:\/?#]+?):)?(\/\/([^\/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/;
-
-    /** ported from VSCode sources **/
-    public static function toFsPath(uri:DocumentUri) :FsPath{
-      if (!uriRe.match(uri.toString()) || uriRe.matched(2) != "file")
-      throw 'Invalid uri: $uri';
-
-    var path = uriRe.matched(5).urlDecode();
-    if (driveLetterPathRe.match(path))
-      return new FsPath(path.charAt(1).toLowerCase() + path.substr(2));
-    else
-      return new FsPath(path);
-    }
-  }
-#endif
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   /////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////
@@ -156,11 +30,11 @@ namespace language_server_api {
 
   void Serialize(Writer& writer, const RequestId& value) {
     if (value.id0) {
-      Serialize(writer, value.id0.value());
+      ::Serialize(writer, value.id0.value());
     }
     else {
       assert(value.id1.has_value());
-      Serialize(writer, value.id1.value());
+      ::Serialize(writer, value.id1.value());
     }
   }
 
@@ -242,7 +116,7 @@ namespace language_server_api {
       auto& value = *this;
 
       writer.StartObject();
-      SERIALIZE_MEMBER2(code, static_cast<int>(code));
+      SERIALIZE_MEMBER2("code", static_cast<int>(code));
       SERIALIZE_MEMBER(message);
       if (data) {
         writer.Key("data");
@@ -393,10 +267,10 @@ namespace language_server_api {
 
       optional<RequestId> id;
       if (reader.FindMember("id") != reader.MemberEnd())
-        Deserialize(reader["id"], id);
+        ::Deserialize(reader["id"], id);
 
       std::string method;
-      Deserialize(reader["method"], method);
+      ::Deserialize(reader["method"], method);
 
       if (allocators.find(method) == allocators.end()) {
         std::cerr << "Unable to find registered handler for method \"" << method << "\"" << std::endl;
@@ -537,11 +411,11 @@ namespace language_server_api {
   };
 
   void Serialize(Writer& writer, const DocumentUri& value) {
-    Serialize(writer, value.raw_uri);
+    ::Serialize(writer, value.raw_uri);
   }
 
   void Deserialize(const Reader& reader, DocumentUri& value) {
-    Deserialize(reader, value.raw_uri);
+    ::Deserialize(reader, value.raw_uri);
   }
 
 
@@ -1380,7 +1254,7 @@ namespace language_server_api {
 
     // OutResponseMessage:
     void WriteResult(Writer& writer) override {
-      Serialize(writer, result);
+      ::Serialize(writer, result);
     }
   };
 
@@ -1417,7 +1291,7 @@ namespace language_server_api {
 
     // OutResponseMessage:
     void WriteResult(Writer& writer) override {
-      Serialize(writer, result);
+      ::Serialize(writer, result);
     }
   };
 
@@ -1508,3 +1382,4 @@ namespace language_server_api {
 
 
 }
+#endif

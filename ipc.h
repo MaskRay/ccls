@@ -12,9 +12,6 @@
 #include "platform.h"
 #include "serializer.h"
 
-using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
-using Reader = rapidjson::Document;
-
 // TODO: We need to add support for payloads larger than the maximum shared memory buffer size.
 
 // Messages are funky objects. They contain potentially variable amounts of

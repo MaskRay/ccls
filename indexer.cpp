@@ -76,15 +76,7 @@ IndexedVarDef* IndexedFile::Resolve(VarId id) {
 }
 
 std::string IndexedFile::ToString() {
-  rapidjson::StringBuffer output;
-  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-  writer.SetFormatOptions(
-    rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
-  writer.SetIndent(' ', 2);
-
-  Serialize(writer, this);
-
-  return output.GetString();
+  return Serialize(*this);
 }
 
 IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr) : id(id), def(usr) {
