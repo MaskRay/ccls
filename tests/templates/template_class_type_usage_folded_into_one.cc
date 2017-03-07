@@ -59,8 +59,7 @@ OUTPUT:
       "definition": "1:6:10",
       "uses": ["*1:6:10", "*1:9:9", "*1:10:9"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@a",
       "short_name": "a",

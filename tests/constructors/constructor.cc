@@ -20,7 +20,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:1:7", "1:3:3", "*1:7:3", "*1:8:3", "*1:8:17"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
@@ -38,7 +38,7 @@ OUTPUT:
       "callees": ["0@1:7:7", "0@1:8:17"],
       "uses": ["1:6:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:constructor.cc@56@F@foo#@f",
       "short_name": "f",

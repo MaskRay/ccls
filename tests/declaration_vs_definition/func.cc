@@ -8,7 +8,7 @@ void foo();
 OUTPUT:
 {
   "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
@@ -16,8 +16,7 @@ OUTPUT:
       "declarations": ["1:1:6", "1:2:6", "1:4:6"],
       "definition": "1:3:6",
       "uses": ["1:1:6", "1:2:6", "1:3:6", "1:4:6"]
-    }],
-  "variables": []
+    }]
 }
 
 */

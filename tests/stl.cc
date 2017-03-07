@@ -134,9 +134,5 @@
 
 /*
 OUTPUT:
-{
-  "types": [],
-  "functions": [],
-  "variables": []
-}
+{}
 */

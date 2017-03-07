@@ -13,7 +13,7 @@ int b = foo<bool>();
 OUTPUT:
 {
   "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
       "short_name": "foo",
@@ -21,7 +21,7 @@ OUTPUT:
       "definition": "1:2:12",
       "uses": ["1:2:12", "1:6:9", "1:7:9"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@a",
       "short_name": "a",

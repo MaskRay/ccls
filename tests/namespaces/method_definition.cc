@@ -18,7 +18,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:2:7", "1:6:6"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
@@ -28,6 +28,6 @@ OUTPUT:
       "declaring_type": 0,
       "uses": ["1:3:8", "1:6:11"]
     }],
-  "variables": []
+  "vars": []
 }
 */

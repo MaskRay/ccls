@@ -24,7 +24,6 @@ OUTPUT:
       "definition": "1:3:8",
       "declaring_type": 0,
       "uses": ["1:3:8"]
-    }],
-  "variables": []
+    }]
 }
 */

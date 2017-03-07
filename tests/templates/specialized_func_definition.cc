@@ -24,7 +24,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:2:7", "*1:7:6", "1:9:6"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@ST>1#T@Template@F@Foo#",
       "short_name": "Foo",
@@ -33,7 +33,6 @@ OUTPUT:
       "definition": "1:7:19",
       "declaring_type": 0,
       "uses": ["1:3:8", "1:7:19", "1:9:22"]
-    }],
-  "variables": []
+    }]
 }
 */

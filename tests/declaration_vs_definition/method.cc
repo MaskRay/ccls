@@ -18,7 +18,7 @@ OUTPUT:
       "funcs": [0, 1, 2],
       "uses": ["*1:1:7", "1:7:6"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
@@ -44,6 +44,6 @@ OUTPUT:
       "declaring_type": 0,
       "uses": ["1:4:8", "1:7:11"]
     }],
-  "variables": []
+  "vars": []
 }
 */

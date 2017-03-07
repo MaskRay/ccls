@@ -33,8 +33,7 @@ OUTPUT:
       "vars": [0],
       "uses": ["*1:5:10", "*1:10:26", "1:13:13", "1:14:14"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@N@ns@ST>1#T@Holder@static_var",
       "short_name": "static_var",

@@ -17,8 +17,8 @@ OUTPUT:
       "definition": "1:3:9",
       "uses": ["*1:3:9", "*1:5:3", "*1:6:3"]
     }],
-  "functions": [],
-  "variables": [{
+  "funcs": [],
+  "vars": [{
       "id": 0,
       "usr": "c:@N@ns@a",
       "short_name": "a",

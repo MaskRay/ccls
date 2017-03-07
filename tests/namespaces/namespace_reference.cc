@@ -12,8 +12,7 @@ void Runner() {
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@N@ns@F@Accept#I#",
       "short_name": "Accept",

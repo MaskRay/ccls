@@ -20,7 +20,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:2:8", "1:8:9", "1:9:9"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@ST>1#T@Foo@F@foo#S",
       "short_name": "foo",
@@ -29,7 +29,7 @@ OUTPUT:
       "declaring_type": 0,
       "uses": ["1:3:14", "1:8:19", "1:9:20"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@a",
       "short_name": "a",

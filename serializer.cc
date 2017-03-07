@@ -168,9 +168,9 @@ bool ReflectMemberStart(Writer& visitor, IndexedFile& value) {
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexedFile& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("types", value.types);
-  REFLECT_MEMBER2("functions", value.funcs);
-  REFLECT_MEMBER2("variables", value.vars);
+  REFLECT_MEMBER(types);
+  REFLECT_MEMBER(funcs);
+  REFLECT_MEMBER(vars);
   REFLECT_MEMBER_END();
 }
 

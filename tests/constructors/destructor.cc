@@ -25,7 +25,7 @@ OUTPUT:
       "funcs": [0, 1],
       "uses": ["*1:1:7", "1:3:3", "1:4:3", "*1:8:3"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
@@ -51,7 +51,7 @@ OUTPUT:
       "callees": ["0@1:8:7"],
       "uses": ["1:7:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:destructor.cc@70@F@foo#@f",
       "short_name": "f",
