@@ -45,6 +45,24 @@ void ReflectMemberEnd(TVisitor& visitor, T& value) {
 }
 */
 
+
+
+// int
+void Reflect(Reader& visitor, int& value);
+void Reflect(Writer& visitor, int& value);
+// bool
+void Reflect(Reader& visitor, bool& value);
+void Reflect(Writer& visitor, bool& value);
+// std::string
+void Reflect(Reader& visitor, std::string& value);
+void Reflect(Writer& visitor, std::string& value);
+
+
+
+
+
+
+
 // Writer:
 template<typename T>
 void Reflect(Writer& visitor, std::vector<T>& values) {

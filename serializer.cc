@@ -1,11 +1,6 @@
 #include "serializer.h"
 
 
-
-
-
-
-
 // int
 void Reflect(Reader& visitor, int& value) {
   value = visitor.GetInt();
@@ -13,8 +8,6 @@ void Reflect(Reader& visitor, int& value) {
 void Reflect(Writer& visitor, int& value) {
   visitor.Int(value);
 }
-
-
 // bool
 void Reflect(Reader& visitor, bool& value) {
   value = visitor.GetBool();
@@ -22,8 +15,6 @@ void Reflect(Reader& visitor, bool& value) {
 void Reflect(Writer& visitor, bool& value) {
   visitor.Bool(value);
 }
-
-
 // std::string
 void Reflect(Reader& visitor, std::string& value) {
   value = visitor.GetString();
