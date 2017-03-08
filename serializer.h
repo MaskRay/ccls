@@ -122,7 +122,7 @@ void Reflect(Reader& visitor, std::vector<T>& values) {
   }
 }
 template<typename T>
-void Reflect(Reader& visitor, optional<T> value) {
+void Reflect(Reader& visitor, optional<T>& value) {
   T real_value;
   Reflect(visitor, real_value);
   value = real_value;

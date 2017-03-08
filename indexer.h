@@ -365,7 +365,7 @@ struct FuncDefDefinitionData {
   std::vector<FuncRef> callees;
 
   FuncDefDefinitionData(const std::string& usr) : usr(usr) {
-    assert(usr.size() > 0);
+    //assert(usr.size() > 0);
   }
 
   bool operator==(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& other) const {
@@ -409,7 +409,7 @@ struct IndexedFuncDef {
   IndexedFuncDef() : def("") {} // For serialization
 
   IndexedFuncDef(FuncId id, const std::string& usr) : id(id), def(usr) {
-    assert(usr.size() > 0);
+    //assert(usr.size() > 0);
   }
 
   bool operator<(const IndexedFuncDef& other) const {
@@ -471,7 +471,7 @@ struct IndexedVarDef {
   IndexedVarDef() : def("") {} // For serialization
 
   IndexedVarDef(VarId id, const std::string& usr) : id(id), def(usr) {
-    assert(usr.size() > 0);
+    //assert(usr.size() > 0);
   }
 
   bool operator<(const IndexedVarDef& other) const {
