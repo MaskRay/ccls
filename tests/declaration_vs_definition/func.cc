@@ -7,7 +7,6 @@ void foo();
 // Note: we always use the latest seen ("most local") definition/declaration.
 OUTPUT:
 {
-  "types": [],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",

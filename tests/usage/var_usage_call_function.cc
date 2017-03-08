@@ -10,7 +10,6 @@ void caller() {
 /*
 OUTPUT:
 {
-  "types": [],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@called#",

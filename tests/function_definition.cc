@@ -3,7 +3,6 @@ void foo() {}
 /*
 OUTPUT:
 {
-  "types": [],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",

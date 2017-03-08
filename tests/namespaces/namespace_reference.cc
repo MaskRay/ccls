@@ -29,7 +29,7 @@ OUTPUT:
       "callees": ["0@1:7:7", "0@1:9:3"],
       "uses": ["1:6:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@N@ns@Foo",
       "short_name": "Foo",

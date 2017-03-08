@@ -33,7 +33,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": "c:type_usage_various.cc@58@S@Foo@F@make#@f",
+      "usr": "c:type_usage_various.cc@57@S@Foo@F@make#@f",
       "short_name": "f",
       "qualified_name": "f",
       "definition": "1:6:7",

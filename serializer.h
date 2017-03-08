@@ -110,6 +110,7 @@ void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
   visitor.Key(name);
   Reflect(visitor, value);
 }
+void ReflectMember(Writer& visitor, const char* name, std::string& value);
 
 // Reader:
 template<typename T>

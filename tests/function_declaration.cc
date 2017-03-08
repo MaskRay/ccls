@@ -3,7 +3,6 @@ void foo(int a, int b);
 /*
 OUTPUT:
 {
-  "types": [],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#I#I#",

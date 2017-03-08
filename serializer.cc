@@ -24,6 +24,15 @@ void Reflect(Writer& visitor, std::string& value) {
 }
 
 
+// ReflectMember
+void ReflectMember(Writer& visitor, const char* name, std::string& value) {
+  if (value.empty())
+    return;
+  visitor.Key(name);
+  Reflect(visitor, value);
+}
+
+
 // Location
 void Reflect(Reader& visitor, Location& value) {
   value = Location(visitor.GetString());

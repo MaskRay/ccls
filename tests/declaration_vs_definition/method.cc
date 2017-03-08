@@ -43,7 +43,6 @@ OUTPUT:
       "definition": "1:7:11",
       "declaring_type": 0,
       "uses": ["1:4:8", "1:7:11"]
-    }],
-  "vars": []
+    }]
 }
 */
