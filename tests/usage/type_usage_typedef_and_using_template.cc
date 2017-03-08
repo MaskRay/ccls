@@ -27,8 +27,6 @@ OUTPUT:
       "definition": "1:5:19",
       "alias_of": 0,
       "uses": ["*1:5:19"]
-    }],
-  "functions": [],
-  "variables": []
+    }]
 }
 */

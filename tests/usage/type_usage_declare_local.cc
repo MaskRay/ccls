@@ -21,7 +21,7 @@ OUTPUT:
       "definition": "1:2:8",
       "uses": ["*1:2:8", "*1:6:3"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@Foo#",
       "short_name": "Foo",
@@ -29,7 +29,7 @@ OUTPUT:
       "definition": "1:4:6",
       "uses": ["1:4:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_local.cc@67@F@Foo#@a",
       "short_name": "a",

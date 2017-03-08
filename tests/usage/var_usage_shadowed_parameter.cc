@@ -10,8 +10,7 @@ void foo(int a) {
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#I#",
       "short_name": "foo",
@@ -19,7 +18,7 @@ OUTPUT:
       "definition": "1:1:6",
       "uses": ["1:1:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:var_usage_shadowed_parameter.cc@9@F@foo#I#@a",
       "short_name": "a",

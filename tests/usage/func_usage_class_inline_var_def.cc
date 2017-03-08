@@ -18,7 +18,7 @@ OUTPUT:
       "vars": [0],
       "uses": ["*1:5:7"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:func_usage_class_inline_var_def.cc@F@helper#",
       "short_name": "helper",
@@ -26,7 +26,7 @@ OUTPUT:
       "definition": "1:1:12",
       "uses": ["1:1:12", "1:6:11"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@FI@x",
       "short_name": "x",

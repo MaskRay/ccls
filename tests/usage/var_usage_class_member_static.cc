@@ -19,7 +19,7 @@ OUTPUT:
       "definition": "1:1:8",
       "uses": ["*1:1:8", "1:8:10"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
@@ -36,7 +36,7 @@ OUTPUT:
       "callees": ["0@1:8:3"],
       "uses": ["1:7:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@x",
       "short_name": "x",

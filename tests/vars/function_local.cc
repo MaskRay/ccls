@@ -12,7 +12,7 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "uses": ["1:1:8", "*1:4:3"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
@@ -20,7 +20,7 @@ OUTPUT:
       "definition": "1:3:6",
       "uses": ["1:3:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:function_local.cc@31@F@foo#@a",
       "short_name": "a",

@@ -2,9 +2,7 @@ extern int global;
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@global",
       "short_name": "global",

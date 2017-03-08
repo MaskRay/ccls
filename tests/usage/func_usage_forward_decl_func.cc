@@ -7,7 +7,7 @@ void usage() {
 OUTPUT:
 {
   "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
@@ -23,7 +23,6 @@ OUTPUT:
       "definition": "1:3:6",
       "callees": ["0@1:4:3"],
       "uses": ["1:3:6"]
-    }],
-  "variables": []
+    }]
 }
 */

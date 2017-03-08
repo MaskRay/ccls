@@ -19,7 +19,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:1:8", "1:6:13"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
@@ -37,7 +37,7 @@ OUTPUT:
       "callees": ["0@1:6:18"],
       "uses": ["1:5:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:func_usage_addr_method.cc@53@F@user#@x",
       "short_name": "x",

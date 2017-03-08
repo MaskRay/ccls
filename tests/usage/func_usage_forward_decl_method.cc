@@ -18,7 +18,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:1:8", "*1:6:3"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
@@ -36,7 +36,7 @@ OUTPUT:
       "callees": ["0@1:7:6"],
       "uses": ["1:5:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:func_usage_forward_decl_method.cc@53@F@usage#@f",
       "short_name": "f",

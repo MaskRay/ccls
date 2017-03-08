@@ -5,8 +5,7 @@ void foo() {
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
@@ -14,7 +13,7 @@ OUTPUT:
       "definition": "1:1:6",
       "uses": ["1:1:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:var_usage_local.cc@16@F@foo#@x",
       "short_name": "x",

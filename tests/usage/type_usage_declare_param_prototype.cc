@@ -16,7 +16,7 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "uses": ["1:1:8", "1:3:10", "1:3:18", "*1:4:10", "*1:4:18"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
@@ -25,7 +25,7 @@ OUTPUT:
       "definition": "1:4:6",
       "uses": ["1:3:6", "1:4:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_param_prototype.cc@49@F@foo#*$@S@Foo#S0_#@f",
       "short_name": "f",

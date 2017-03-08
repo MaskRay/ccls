@@ -9,8 +9,7 @@ void foo() {
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@FT@>1#Taccept#t0.0#v#",
       "short_name": "accept",
@@ -26,7 +25,6 @@ OUTPUT:
       "definition": "1:4:6",
       "callees": ["0@1:5:3", "0@1:6:3"],
       "uses": ["1:4:6"]
-    }],
-  "variables": []
+    }]
 }
 */

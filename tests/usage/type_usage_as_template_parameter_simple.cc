@@ -20,8 +20,7 @@ OUTPUT:
       "usr": "c:@S@S",
       "uses": ["1:4:8", "*1:6:19"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_as_template_parameter_simple.cc@foo",
       "short_name": "foo",

@@ -10,8 +10,7 @@ void user() {
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@consume#*v#",
       "short_name": "consume",
@@ -36,7 +35,7 @@ OUTPUT:
       "callees": ["1@1:6:13", "0@1:7:3", "1@1:7:12"],
       "uses": ["1:5:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:func_usage_addr_func.cc@61@F@user#@x",
       "short_name": "x",

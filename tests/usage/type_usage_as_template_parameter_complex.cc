@@ -102,7 +102,7 @@ OUTPUT:
       "funcs": [3],
       "uses": ["*1:64:7", "1:79:21"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@as_return_type#*$@S@unique_ptr>#$@S@S1#$@S@S2#",
       "short_name": "as_return_type",
@@ -133,7 +133,7 @@ OUTPUT:
       "declaring_type": 3,
       "uses": ["1:65:23", "1:79:26"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@f",
       "short_name": "f",

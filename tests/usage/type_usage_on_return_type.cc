@@ -33,7 +33,7 @@ OUTPUT:
       "funcs": [1, 2],
       "uses": ["*1:7:7", "1:12:7", "1:13:6"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
@@ -74,7 +74,6 @@ OUTPUT:
       "declarations": ["1:17:14"],
       "definition": "1:18:14",
       "uses": ["1:17:14", "1:18:14"]
-    }],
-  "variables": []
+    }]
 }
 */

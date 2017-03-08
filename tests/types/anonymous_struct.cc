@@ -23,8 +23,7 @@ OUTPUT:
       "vars": [0, 1, 2],
       "uses": ["*1:2:3"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@U@vector3@Sa@FI@x",
       "short_name": "x",

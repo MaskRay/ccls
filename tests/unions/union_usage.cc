@@ -21,7 +21,7 @@ OUTPUT:
       "vars": [0, 1],
       "uses": ["*1:1:7", "*1:6:1", "*1:8:10"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@act#*$@U@Foo#",
       "short_name": "act",
@@ -29,7 +29,7 @@ OUTPUT:
       "definition": "1:8:6",
       "uses": ["1:8:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@U@Foo@FI@a",
       "short_name": "a",

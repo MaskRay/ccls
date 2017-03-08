@@ -49,7 +49,7 @@ OUTPUT:
       "definition": "1:5:7",
       "uses": ["*1:5:7"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@accept#*$@S@Foo#",
       "short_name": "accept",
@@ -77,7 +77,6 @@ OUTPUT:
       "qualified_name": "accept3",
       "definition": "1:10:6",
       "uses": ["1:10:6"]
-    }],
-  "variables": []
+    }]
 }
 */

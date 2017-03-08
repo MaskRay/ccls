@@ -8,8 +8,7 @@ OUTPUT:
       "usr": "c:@S@Type",
       "uses": ["1:1:8", "*1:2:8"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_static.cc@t",
       "short_name": "t",

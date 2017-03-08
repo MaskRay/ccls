@@ -25,7 +25,7 @@ OUTPUT:
       "definition": "1:4:8",
       "uses": ["*1:4:8", "*1:7:19", "*1:9:12", "*1:10:14"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@return_type#",
       "short_name": "return_type",
@@ -33,7 +33,7 @@ OUTPUT:
       "definition": "1:9:16",
       "uses": ["1:9:16"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_as_template_parameter.cc@f0",
       "short_name": "f0",

@@ -2,9 +2,7 @@ static int global = 0;
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:global_variable.cc@global",
       "short_name": "global",

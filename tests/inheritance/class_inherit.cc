@@ -20,8 +20,6 @@ OUTPUT:
       "definition": "1:2:7",
       "parents": [0],
       "uses": ["*1:2:7"]
-    }],
-  "functions": [],
-  "variables": []
+    }]
 }
 */

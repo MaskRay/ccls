@@ -57,8 +57,6 @@ OUTPUT:
       "definition": "1:13:7",
       "parents": [0, 1, 2, 3],
       "uses": ["*1:13:7", "*1:13:33", "*1:13:65"]
-    }],
-  "functions": [],
-  "variables": []
+    }]
 }
 */

@@ -11,7 +11,7 @@ void caller() {
 OUTPUT:
 {
   "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@called#",
       "short_name": "called",
@@ -28,7 +28,7 @@ OUTPUT:
       "callees": ["0@1:4:13", "0@1:7:3"],
       "uses": ["1:3:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:var_usage_call_function.cc@39@F@caller#@x",
       "short_name": "x",

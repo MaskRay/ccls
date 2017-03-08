@@ -12,8 +12,7 @@ OUTPUT:
       "definition": "1:1:8",
       "uses": ["*1:1:8", "*1:3:8"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@t",
       "short_name": "t",

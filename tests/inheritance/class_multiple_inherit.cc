@@ -40,8 +40,6 @@ OUTPUT:
       "definition": "1:4:7",
       "parents": [1, 2],
       "uses": ["*1:4:7"]
-    }],
-  "functions": [],
-  "variables": []
+    }]
 }
 */

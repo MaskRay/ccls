@@ -17,7 +17,7 @@ OUTPUT:
       "definition": "1:1:8",
       "uses": ["*1:1:8", "*1:3:10", "*1:3:26", "*1:4:3", "*1:5:3", "*1:6:9", "*1:7:9"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#&$@S@Type#&1S1_#",
       "short_name": "foo",
@@ -25,7 +25,7 @@ OUTPUT:
       "definition": "1:3:6",
       "uses": ["1:3:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_qualifiers.cc@28@F@foo#&$@S@Type#&1S1_#@a0",
       "short_name": "a0",

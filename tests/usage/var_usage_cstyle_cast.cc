@@ -26,8 +26,7 @@ OUTPUT:
       "vars": [0],
       "uses": ["*1:3:8", "1:7:15"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@S@Holder@static_var",
       "short_name": "static_var",

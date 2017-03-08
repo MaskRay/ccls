@@ -27,7 +27,7 @@ OUTPUT:
       "funcs": [1],
       "uses": ["*1:4:7"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
@@ -45,7 +45,6 @@ OUTPUT:
       "declaring_type": 1,
       "base": 0,
       "uses": ["1:5:8"]
-    }],
-  "variables": []
+    }]
 }
 */

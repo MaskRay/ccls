@@ -2,7 +2,7 @@ class Foo {
   Foo* make();
 };
 
-Foo* Foo::make() { 
+Foo* Foo::make() {
   Foo f;
   return nullptr;
 }
@@ -21,7 +21,7 @@ OUTPUT:
       "funcs": [0],
       "uses": ["*1:1:7", "*1:2:3", "*1:5:1", "1:5:6", "*1:6:3", "*1:10:8"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
@@ -31,7 +31,7 @@ OUTPUT:
       "declaring_type": 0,
       "uses": ["1:2:8", "1:5:11"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_various.cc@58@S@Foo@F@make#@f",
       "short_name": "f",

@@ -26,7 +26,7 @@ OUTPUT:
       "vars": [1, 0],
       "uses": ["*1:5:8", "1:10:5", "1:14:22", "1:14:40"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@called#I#",
       "short_name": "called",
@@ -51,7 +51,7 @@ OUTPUT:
       "callees": ["0@1:14:3", "1@1:14:14"],
       "uses": ["1:12:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@static_var",
       "short_name": "static_var",

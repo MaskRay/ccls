@@ -6,8 +6,7 @@ void caller() {
 /*
 OUTPUT:
 {
-  "types": [],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@called#",
       "short_name": "called",
@@ -23,7 +22,6 @@ OUTPUT:
       "definition": "1:2:6",
       "callees": ["0@1:3:3"],
       "uses": ["1:2:6"]
-    }],
-  "variables": []
+    }]
 }
 */

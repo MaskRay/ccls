@@ -29,7 +29,7 @@ OUTPUT:
       "vars": [0, 1],
       "uses": ["*1:1:7", "*1:11:3"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
@@ -54,7 +54,7 @@ OUTPUT:
       "callees": ["0@1:14:3", "0@1:15:3", "1@1:16:3", "0@1:17:3"],
       "uses": ["1:10:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@FI@x",
       "short_name": "x",

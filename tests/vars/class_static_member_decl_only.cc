@@ -12,8 +12,7 @@ OUTPUT:
       "definition": "1:1:7",
       "uses": ["*1:1:7"]
     }],
-  "functions": [],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@member",
       "short_name": "member",

@@ -18,7 +18,7 @@ OUTPUT:
       "definition": "1:2:8",
       "uses": ["*1:2:8", "*1:4:26"]
     }],
-  "functions": [{
+  "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#*$@S@ForwardType#$@S@ImplementedType#",
       "short_name": "foo",
@@ -26,7 +26,7 @@ OUTPUT:
       "definition": "1:4:6",
       "uses": ["1:4:6"]
     }],
-  "variables": [{
+  "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_param.cc@60@F@foo#*$@S@ForwardType#$@S@ImplementedType#@f",
       "short_name": "f",
