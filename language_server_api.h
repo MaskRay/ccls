@@ -1,7 +1,5 @@
 #pragma once
 
-#if false
-
 #include <iostream>
 #include <unordered_map>
 #include <unordered_set>
@@ -27,27 +25,28 @@ namespace language_server_api {
     optional<int> id0;
     optional<std::string> id1;
   };
+}
 
-  void Serialize(Writer& writer, const RequestId& value) {
-    if (value.id0) {
-      ::Serialize(writer, value.id0.value());
-    }
-    else {
-      assert(value.id1.has_value());
-      ::Serialize(writer, value.id1.value());
-    }
+void Reflect(Writer& visitor, language_server_api::RequestId& value) {
+  if (value.id0) {
+    Reflect(visitor, value.id0.value());
   }
-
-  void Deserialize(const Reader& reader, RequestId& id) {
-    if (reader.IsInt())
-      id.id0 = reader.GetInt();
-    else if (reader.IsString())
-      id.id1 = std::string(reader.GetString());
-    else
-      std::cerr << "Unable to deserialize id" << std::endl;
+  else {
+    assert(value.id1.has_value());
+    Reflect(visitor, value.id1.value());
   }
+}
 
+void Reflect(Reader& visitor, language_server_api::RequestId& id) {
+  if (visitor.IsInt())
+    Reflect(visitor, id.id0);
+  else if (visitor.IsString())
+    Reflect(visitor, id.id1);
+  else
+    std::cerr << "Unable to deserialize id" << std::endl;
+}
 
+namespace language_server_api {
 
   struct OutMessage {
     // Write out the body of the message. The writer expects object key/value
@@ -75,17 +74,18 @@ namespace language_server_api {
     RequestId id;
 
     virtual std::string Method() = 0;
-    virtual void SerializeParams(Writer& writer) = 0;
+    virtual void SerializeParams(Writer& visitor) = 0;
 
     // Message:
-    void WriteMessageBody(Writer& writer) override {
+    void WriteMessageBody(Writer& visitor) override {
       auto& value = *this;
+      auto method = Method();
 
-      SERIALIZE_MEMBER(id);
-      SERIALIZE_MEMBER2("method", Method());
+      REFLECT_MEMBER(id);
+      REFLECT_MEMBER2("method", method);
 
-      writer.Key("params");
-      SerializeParams(writer);
+      visitor.Key("params");
+      SerializeParams(visitor);
     }
   };
 
@@ -112,17 +112,18 @@ namespace language_server_api {
     std::string message;
     std::unique_ptr<Data> data;
 
-    void Write(Writer& writer) {
+    void Write(Writer& visitor) {
       auto& value = *this;
+      int code = static_cast<int>(this->code);
 
-      writer.StartObject();
-      SERIALIZE_MEMBER2("code", static_cast<int>(code));
-      SERIALIZE_MEMBER(message);
+      visitor.StartObject();
+      REFLECT_MEMBER2("code", code);
+      REFLECT_MEMBER(message);
       if (data) {
-        writer.Key("data");
-        data->Write(writer);
+        visitor.Key("data");
+        data->Write(visitor);
       }
-      writer.EndObject();
+      visitor.EndObject();
     }
   };
 
@@ -132,22 +133,22 @@ namespace language_server_api {
     virtual optional<ResponseError> Error() {
       return nullopt;
     }
-    virtual void WriteResult(Writer& writer) = 0;
+    virtual void WriteResult(Writer& visitor) = 0;
 
     // Message:
-    void WriteMessageBody(Writer& writer) override {
+    void WriteMessageBody(Writer& visitor) override {
       auto& value = *this;
 
-      SERIALIZE_MEMBER(id);
+      REFLECT_MEMBER(id);
 
       optional<ResponseError> error = Error();
       if (error) {
-        writer.Key("error");
-        error->Write(writer);
+        visitor.Key("error");
+        error->Write(visitor);
       }
       else {
-        writer.Key("result");
-        WriteResult(writer);
+        visitor.Key("result");
+        WriteResult(visitor);
       }
     }
   };
@@ -157,13 +158,13 @@ namespace language_server_api {
     virtual void SerializeParams(Writer& writer) = 0;
 
     // Message:
-    void WriteMessageBody(Writer& writer) override {
-      writer.Key("method");
+    void WriteMessageBody(Writer& visitor) override {
+      visitor.Key("method");
       std::string method = Method();
-      writer.Key(method.c_str(), method.size());
+      Reflect(visitor, method);
 
-      writer.Key("params");
-      SerializeParams(writer);
+      visitor.Key("params");
+      SerializeParams(visitor);
     }
   };
 
@@ -260,17 +261,17 @@ namespace language_server_api {
       };
     }
 
-    std::unique_ptr<InMessage> Parse(const Reader& reader) {
-      std::string jsonrpc = reader["jsonrpc"].GetString();
+    std::unique_ptr<InMessage> Parse(const Reader& visitor) {
+      std::string jsonrpc = visitor["jsonrpc"].GetString();
       if (jsonrpc != "2.0")
         exit(1);
 
       optional<RequestId> id;
-      if (reader.FindMember("id") != reader.MemberEnd())
-        ::Deserialize(reader["id"], id);
+      if (visitor.FindMember("id") != visitor.MemberEnd())
+        ::Deserialize(visitor["id"], id);
 
       std::string method;
-      ::Deserialize(reader["method"], method);
+      ::Deserialize(visitor["method"], method);
 
       if (allocators.find(method) == allocators.end()) {
         std::cerr << "Unable to find registered handler for method \"" << method << "\"" << std::endl;
@@ -283,8 +284,8 @@ namespace language_server_api {
       // We run the allocator with actual params object or a null
       // params object if there are no params. Unifying the two ifs is
       // tricky because the second allocator param is a reference.
-      if (reader.FindMember("params") != reader.MemberEnd()) {
-        const Reader& params = reader["params"];
+      if (visitor.FindMember("params") != visitor.MemberEnd()) {
+        const Reader& params = visitor["params"];
         return allocator(id, params);
       }
       else {
@@ -410,12 +411,9 @@ namespace language_server_api {
     }
   };
 
-  void Serialize(Writer& writer, const DocumentUri& value) {
-    ::Serialize(writer, value.raw_uri);
-  }
-
-  void Deserialize(const Reader& reader, DocumentUri& value) {
-    ::Deserialize(reader, value.raw_uri);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, DocumentUri& value) {
+    Reflect(visitor, value.raw_uri);
   }
 
 
@@ -425,16 +423,12 @@ namespace language_server_api {
     int character = 0;
   };
 
-  void Serialize(Writer& writer, const Position& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(line);
-    SERIALIZE_MEMBER(character);
-    writer.EndObject();
-  }
-
-  void Deserialize(const Reader& reader, Position& value) {
-    DESERIALIZE_MEMBER(line);
-    DESERIALIZE_MEMBER(character);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, Position& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(line);
+    REFLECT_MEMBER(character);
+    REFLECT_MEMBER_END();
   }
 
 
@@ -443,34 +437,28 @@ namespace language_server_api {
     Position end;
   };
 
-  void Serialize(Writer& writer, const Range& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(start);
-    SERIALIZE_MEMBER(end);
-    writer.EndObject();
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, Range& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(start);
+    REFLECT_MEMBER(end);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, Range& value) {
-    DESERIALIZE_MEMBER(start);
-    DESERIALIZE_MEMBER(end);
-  }
 
   struct Location {
     DocumentUri uri;
     Range range;
   };
 
-  void Serialize(Writer& writer, const Location& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(uri);
-    SERIALIZE_MEMBER(range);
-    writer.EndObject();
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, Location& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(uri);
+    REFLECT_MEMBER(range);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, Location& value) {
-    DESERIALIZE_MEMBER(uri);
-    DESERIALIZE_MEMBER(range);
-  }
 
   enum class SymbolKind : int {
     File = 1,
@@ -493,11 +481,11 @@ namespace language_server_api {
     Array = 18
   };
 
-  void Serialize(Writer& writer, const SymbolKind& value) {
+  void Reflect(Writer& writer, SymbolKind& value) {
     writer.Int(static_cast<int>(value));
   }
 
-  void Deserialize(const Reader& reader, SymbolKind& value) {
+  void Reflect(Reader& reader, SymbolKind& value) {
     value = static_cast<SymbolKind>(reader.GetInt());
   }
 
@@ -509,20 +497,14 @@ namespace language_server_api {
     std::string containerName;
   };
 
-  void Serialize(Writer& writer, const SymbolInformation& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(name);
-    SERIALIZE_MEMBER(kind);
-    SERIALIZE_MEMBER(location);
-    SERIALIZE_MEMBER(containerName);
-    writer.EndObject();
-  }
-
-  void Deserialize(const Reader& reader, SymbolInformation& value) {
-    DESERIALIZE_MEMBER(name);
-    DESERIALIZE_MEMBER(kind);
-    DESERIALIZE_MEMBER(location);
-    DESERIALIZE_MEMBER(containerName);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, SymbolInformation& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(name);
+    REFLECT_MEMBER(kind);
+    REFLECT_MEMBER(location);
+    REFLECT_MEMBER(containerName);
+    REFLECT_MEMBER_END();
   }
 
 
@@ -535,19 +517,15 @@ namespace language_server_api {
     std::vector<std::string> arguments;
   };
 
-  void Serialize(Writer& writer, const Command& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(title);
-    SERIALIZE_MEMBER(command);
-    SERIALIZE_MEMBER(arguments);
-    writer.EndObject();
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, Command& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(title);
+    REFLECT_MEMBER(command);
+    REFLECT_MEMBER(arguments);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, Command& value) {
-    DESERIALIZE_MEMBER(title);
-    DESERIALIZE_MEMBER(command);
-    DESERIALIZE_MEMBER(arguments);
-  }
 
   // TODO: TextDocumentEdit
   // TODO: WorkspaceEdit
@@ -709,22 +687,32 @@ namespace language_server_api {
     optional<GenericDynamicReg> executeCommand;
   };
 
-  void Deserialize(const Reader& reader, WorkspaceClientCapabilites::WorkspaceEdit& value) {
-    DESERIALIZE_MEMBER(documentChanges);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, WorkspaceClientCapabilites::WorkspaceEdit& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(documentChanges);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, WorkspaceClientCapabilites::GenericDynamicReg& value) {
-    DESERIALIZE_MEMBER(dynamicRegistration);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, WorkspaceClientCapabilites::GenericDynamicReg& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(dynamicRegistration);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, WorkspaceClientCapabilites& value) {
-    DESERIALIZE_MEMBER(applyEdit);
-    DESERIALIZE_MEMBER(workspaceEdit);
-    DESERIALIZE_MEMBER(didChangeConfiguration);
-    DESERIALIZE_MEMBER(didChangeWatchedFiles);
-    DESERIALIZE_MEMBER(symbol);
-    DESERIALIZE_MEMBER(executeCommand);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, WorkspaceClientCapabilites& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(applyEdit);
+    REFLECT_MEMBER(workspaceEdit);
+    REFLECT_MEMBER(didChangeConfiguration);
+    REFLECT_MEMBER(didChangeWatchedFiles);
+    REFLECT_MEMBER(symbol);
+    REFLECT_MEMBER(executeCommand);
+    REFLECT_MEMBER_END();
   }
+
 
   // Text document specific client capabilities.
   struct TextDocumentClientCapabilities {
@@ -812,42 +800,57 @@ namespace language_server_api {
     optional<GenericDynamicReg> rename;
   };
 
-  void Deserialize(const Reader& reader, TextDocumentClientCapabilities::Synchronization& value) {
-    DESERIALIZE_MEMBER(dynamicRegistration);
-    DESERIALIZE_MEMBER(willSave);
-    DESERIALIZE_MEMBER(willSaveWaitUntil);
-    DESERIALIZE_MEMBER(didSave);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, TextDocumentClientCapabilities::Synchronization& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(dynamicRegistration);
+    REFLECT_MEMBER(willSave);
+    REFLECT_MEMBER(willSaveWaitUntil);
+    REFLECT_MEMBER(didSave);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, TextDocumentClientCapabilities::Completion& value) {
-    DESERIALIZE_MEMBER(dynamicRegistration);
-    DESERIALIZE_MEMBER(completionItem);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, TextDocumentClientCapabilities::Completion& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(dynamicRegistration);
+    REFLECT_MEMBER(completionItem);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, TextDocumentClientCapabilities::Completion::CompletionItem& value) {
-    DESERIALIZE_MEMBER(snippetSupport);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, TextDocumentClientCapabilities::Completion::CompletionItem& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(snippetSupport);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, TextDocumentClientCapabilities::GenericDynamicReg& value) {
-    DESERIALIZE_MEMBER(dynamicRegistration);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, TextDocumentClientCapabilities::GenericDynamicReg& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(dynamicRegistration);
+    REFLECT_MEMBER_END();
   }
 
-  void Deserialize(const Reader& reader, TextDocumentClientCapabilities& value) {
-    DESERIALIZE_MEMBER(synchronization);
-    DESERIALIZE_MEMBER(completion);
-    DESERIALIZE_MEMBER(hover);
-    DESERIALIZE_MEMBER(signatureHelp);
-    DESERIALIZE_MEMBER(references);
-    DESERIALIZE_MEMBER(documentHighlight);
-    DESERIALIZE_MEMBER(documentSymbol);
-    DESERIALIZE_MEMBER(formatting);
-    DESERIALIZE_MEMBER(rangeFormatting);
-    DESERIALIZE_MEMBER(onTypeFormatting);
-    DESERIALIZE_MEMBER(definition);
-    DESERIALIZE_MEMBER(codeAction);
-    DESERIALIZE_MEMBER(codeLens);
-    DESERIALIZE_MEMBER(documentLink);
-    DESERIALIZE_MEMBER(rename);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, TextDocumentClientCapabilities& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(synchronization);
+    REFLECT_MEMBER(completion);
+    REFLECT_MEMBER(hover);
+    REFLECT_MEMBER(signatureHelp);
+    REFLECT_MEMBER(references);
+    REFLECT_MEMBER(documentHighlight);
+    REFLECT_MEMBER(documentSymbol);
+    REFLECT_MEMBER(formatting);
+    REFLECT_MEMBER(rangeFormatting);
+    REFLECT_MEMBER(onTypeFormatting);
+    REFLECT_MEMBER(definition);
+    REFLECT_MEMBER(codeAction);
+    REFLECT_MEMBER(codeLens);
+    REFLECT_MEMBER(documentLink);
+    REFLECT_MEMBER(rename);
+    REFLECT_MEMBER_END();
   }
 
   struct ClientCapabilities {
@@ -863,9 +866,12 @@ namespace language_server_api {
     // experimental?: any; // TODO
   };
 
-  void Deserialize(const Reader& reader, ClientCapabilities& value) {
-    DESERIALIZE_MEMBER(workspace);
-    DESERIALIZE_MEMBER(textDocument);
+  template<typename TVisitor>
+  void Deserialize(TVisitor& visitor, ClientCapabilities& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(workspace);
+    REFLECT_MEMBER(textDocument);
+    REFLECT_MEMBER_END();
   }
 
   struct InitializeParams {
@@ -912,12 +918,15 @@ namespace language_server_api {
       value = InitializeParams::Trace::Verbose;
   }
 
-  void Deserialize(const Reader& reader, InitializeParams& value) {
-    DESERIALIZE_MEMBER(processId);
-    DESERIALIZE_MEMBER(rootPath);
-    DESERIALIZE_MEMBER(rootUri);
-    DESERIALIZE_MEMBER(capabilities);
-    DESERIALIZE_MEMBER(trace);
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, InitializeParams& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(processId);
+    REFLECT_MEMBER(rootPath);
+    REFLECT_MEMBER(rootUri);
+    REFLECT_MEMBER(capabilities);
+    REFLECT_MEMBER(trace);
+    REFLECT_MEMBER_END();
   }
 
 
@@ -942,10 +951,11 @@ namespace language_server_api {
     bool retry;
   };
 
-  void Serialize(Writer& writer, const InitializeError& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(retry);
-    writer.EndObject();
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, InitializeError& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(retry);
+    REFLECT_MEMBER_END();
   }
 
   // Defines how the host (editor) should sync document changes to the language server.
@@ -963,7 +973,7 @@ namespace language_server_api {
     Incremental = 2
   };
 
-  void Serialize(Writer& writer, const TextDocumentSyncKind& value) {
+  void Reflect(Writer& writer, TextDocumentSyncKind& value) {
     writer.Int(static_cast<int>(value));
   }
 
@@ -977,11 +987,12 @@ namespace language_server_api {
     std::vector<std::string> triggerCharacters;
   };
 
-  void Serialize(Writer& writer, const CompletionOptions& value) {
-    writer.StartObject();
-    SERIALIZE_MEMBER(resolveProvider);
-    SERIALIZE_MEMBER(triggerCharacters);
-    writer.EndObject();
+  template<typename TVisitor>
+  void Reflect(TVisitor& visitor, CompletionOptions& value) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(resolveProvider);
+    REFLECT_MEMBER(triggerCharacters);
+    REFLECT_MEMBER_END();
   }
 
   // Signature help options.
@@ -990,7 +1001,9 @@ namespace language_server_api {
     std::vector<std::string> triggerCharacters;
   };
 
-  void Serialize(Writer& writer, const SignatureHelpOptions& value) {
+  template<typename TVisitor>
+  void Serialize(TVisitor& visitor, SignatureHelpOptions& value) {
+    REFLECT_MEMBER_START();
     writer.StartObject();
     SERIALIZE_MEMBER(triggerCharacters);
     writer.EndObject();
@@ -1382,4 +1395,3 @@ namespace language_server_api {
 
 
 }
-#endif
