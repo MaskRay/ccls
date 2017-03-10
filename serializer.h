@@ -156,7 +156,6 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 
 
 
-
 #if false
 
 void Serialize(Writer& writer, int value);

@@ -1,3 +1,5 @@
+#include "test.h"
+
 #include "indexer.h"
 #include "serializer.h"
 #include "utils.h"
@@ -82,7 +84,7 @@ void VerifySerializeToFrom(IndexedFile& file) {
   }
 }
 
-int main(int argc, char** argv) {
+void RunTests() {
   // TODO: Assert that we need to be on clang >= 3.9.1
 
   /*
@@ -95,7 +97,7 @@ int main(int argc, char** argv) {
 
   for (std::string path : GetFilesInFolder("tests", true /*add_folder_to_path*/)) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
-    //if (path != "tests/constructors/invalid_reference.cc") continue;
+    if (path != "tests/outline/outline.cc") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
     //if (path != "tests/namespaces/namespace_reference.cc") continue;
     //if (path != "tests/stl.cc") continue;
@@ -111,7 +113,7 @@ int main(int argc, char** argv) {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {}, false /*dump_ast*/);
+    IndexedFile db = Parse(path, {}, true /*dump_ast*/);
     VerifySerializeToFrom(db);
     std::string actual_output = db.ToString();
 
@@ -135,7 +137,6 @@ int main(int argc, char** argv) {
   }
 
   std::cin.get();
-  return 0;
 }
 
 // TODO: ctor/dtor, copy ctor

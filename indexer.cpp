@@ -284,7 +284,7 @@ struct NamespaceHelper {
       // Anonymous namespaces are not processed by indexDeclaration. If we
       // encounter one insert it into map.
       if (container->cursor.kind == CXCursor_Namespace) {
-        assert(clang::Cursor(container->cursor).get_spelling() == "");
+        //assert(clang::Cursor(container->cursor).get_spelling() == "");
         container_usr_to_qualified_name[container_usr] = "::";
         return "::" + unqualified_name;
       }
@@ -940,11 +940,11 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
         IndexedFuncDef* called_def = db->Resolve(called_id);
         // I suspect it is possible for the declaring type to be null
         // when the class is invalid.
-        //if (called_def->def.declaring_type) {
-        assert(called_def->def.declaring_type.has_value());
-        IndexedTypeDef* type_def = db->Resolve(called_def->def.declaring_type.value());
-        type_def->AddUsage(our_loc);
-        //}
+        if (called_def->def.declaring_type) {
+          //assert(called_def->def.declaring_type.has_value());
+          IndexedTypeDef* type_def = db->Resolve(called_def->def.declaring_type.value());
+          type_def->AddUsage(our_loc);
+        }
       }
     }
     break;
