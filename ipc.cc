@@ -1,6 +1,26 @@
 #include "ipc.h"
 
+
+
+
 namespace {
+  struct JsonMessage {
+    int message_id;
+    size_t payload_size;
+
+    const char* payload();
+    void SetPayload(size_t payload_size, const char* payload);
+  };
+
+  JsonMessage* get_free_message(IpcDirectionalChannel* channel) {
+    return reinterpret_cast<JsonMessage*>(channel->shared->shared_start + *channel->shared->shared_bytes_used);
+  }
+  // Messages are funky objects. They contain potentially variable amounts of
+  // data and are passed between processes. This means that they need to be
+  // fully relocatable, ie, it is possible to memmove them in memory to a
+  // completely different address.
+
+
   JsonMessage* as_message(char* ptr) {
     return reinterpret_cast<JsonMessage*>(ptr);
   }
@@ -75,12 +95,12 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessageElided* message) {
     if ((*shared->shared_bytes_used + sizeof(JsonMessage) + payload_size) >= shmem_size)
       continue;
 
-    get_free_message()->message_id = message->hashed_runtime_id();
-    get_free_message()->SetPayload(payload_size, output.GetString());
+    get_free_message(this)->message_id = message->hashed_runtime_id();
+    get_free_message(this)->SetPayload(payload_size, output.GetString());
 
-    *shared->shared_bytes_used += sizeof(JsonMessage) + get_free_message()->payload_size;
+    *shared->shared_bytes_used += sizeof(JsonMessage) + get_free_message(this)->payload_size;
     assert(*shared->shared_bytes_used < shmem_size);
-    get_free_message()->message_id = -1;
+    get_free_message(this)->message_id = -1;
     break;
   }
 
@@ -97,7 +117,7 @@ std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcDirectionalChannel::TakeMe
 
     memcpy(local_block, shared->shared_start, *shared->shared_bytes_used);
     *shared->shared_bytes_used = 0;
-    get_free_message()->message_id = -1;
+    get_free_message(this)->message_id = -1;
   }
 
   std::vector<std::unique_ptr<BaseIpcMessageElided>> result;

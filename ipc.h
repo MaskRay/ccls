@@ -14,18 +14,6 @@
 
 // TODO: We need to add support for payloads larger than the maximum shared memory buffer size.
 
-// Messages are funky objects. They contain potentially variable amounts of
-// data and are passed between processes. This means that they need to be
-// fully relocatable, ie, it is possible to memmove them in memory to a
-// completely different address.
-
-struct JsonMessage {
-  int message_id;
-  size_t payload_size;
-
-  const char* payload();
-  void SetPayload(size_t payload_size, const char* payload);
-};
 
 using IpcMessageId = std::string;
 
@@ -129,11 +117,6 @@ struct IpcDirectionalChannel {
 
   void PushMessage(BaseIpcMessageElided* message);
   std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
-
-private:
-  JsonMessage* get_free_message() {
-    return reinterpret_cast<JsonMessage*>(shared->shared_start + *shared->shared_bytes_used);
-  }
 
   // Pointer to process shared memory and process shared mutex.
   std::unique_ptr<PlatformSharedMemory> shared;

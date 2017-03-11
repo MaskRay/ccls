@@ -384,6 +384,19 @@ struct In_CancelRequest : public InNotificationMessage {
 struct lsDocumentUri {
   std::string raw_uri;
 
+  void SetPath(const std::string& path) {
+    // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
+    raw_uri = path;
+
+    size_t index = raw_uri.find(":");
+    if (index != -1) {
+      raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
+    }
+
+    raw_uri = "file:///" + raw_uri;
+    //std::cerr << "Set uri to " << raw_uri << " from " << path;
+  }
+
   std::string GetPath() {
     // TODO: make this not a hack.
     std::string result = raw_uri;

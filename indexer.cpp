@@ -237,12 +237,7 @@ int abortQuery(CXClientData client_data, void *reserved) {
 void diagnostic(CXClientData client_data, CXDiagnosticSet diagnostics, void *reserved) {
   IndexParam* param = static_cast<IndexParam*>(client_data);
 
-  std::cerr << "!! Got diagnostic" << std::endl;
-  /**
-  * \brief Determine the number of diagnostics in a CXDiagnosticSet.
-  */
-  //CINDEX_LINKAGE unsigned clang_getNumDiagnosticsInSet(CXDiagnosticSet Diags);
-
+  // Print any diagnostics to std::cerr
   for (unsigned i = 0; i < clang_getNumDiagnosticsInSet(diagnostics); ++i) {
     CXDiagnostic diagnostic = clang_getDiagnosticInSet(diagnostics, i);
     
@@ -253,18 +248,6 @@ void diagnostic(CXClientData client_data, CXDiagnosticSet diagnostics, void *res
 
     clang_disposeDiagnostic(diagnostic);
   }
-  /**
-  * \brief Retrieve a diagnostic associated with the given CXDiagnosticSet.
-  *
-  * \param Diags the CXDiagnosticSet to query.
-  * \param Index the zero-based diagnostic number to retrieve.
-  *
-  * \returns the requested diagnostic. This diagnostic must be freed
-  * via a call to \c clang_disposeDiagnostic().
-  */
- // CINDEX_LINKAGE CXDiagnostic clang_getDiagnosticInSet(CXDiagnosticSet Diags,
-  //  unsigned Index);
-
 }
 
 CXIdxClientFile enteredMainFile(CXClientData client_data, CXFile mainFile, void *reserved) {

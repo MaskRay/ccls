@@ -436,6 +436,7 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
             info.kind = lsSymbolKind::Class;
 
             if (def.def.definition.has_value()) {
+              info.location.uri.SetPath(def.def.definition->path);
               info.location.range.start.line = def.def.definition->line - 1;
               info.location.range.start.character = def.def.definition->column - 1;
             }
@@ -455,6 +456,7 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
             }
 
             if (def.def.definition.has_value()) {
+              info.location.uri.SetPath(def.def.definition->path);
               info.location.range.start.line = def.def.definition->line - 1;
               info.location.range.start.character = def.def.definition->column - 1;
             }
@@ -467,6 +469,7 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
             info.kind = lsSymbolKind::Variable;
 
             if (def.def.definition.has_value()) {
+              info.location.uri.SetPath(def.def.definition->path);
               info.location.range.start.line = def.def.definition->line - 1;
               info.location.range.start.character = def.def.definition->column - 1;
             }
