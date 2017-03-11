@@ -14,11 +14,11 @@
 namespace clang {
   class TranslationUnit {
   public:
-    TranslationUnit(Index &index,
-                    const std::string &file_path,
-                    const std::vector<std::string> &command_line_args,
-                    const std::string &buffer,
-                    unsigned flags=DefaultFlags());
+    //TranslationUnit(Index &index,
+    //                const std::string &file_path,
+    //                const std::vector<std::string> &command_line_args,
+    //                const std::string &buffer,
+    //                unsigned flags=DefaultFlags());
     TranslationUnit(Index &index,
                     const std::string &file_path,
                     const std::vector<std::string> &command_line_args,

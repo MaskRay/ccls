@@ -7,11 +7,12 @@
 
 namespace clang {
 
+  /*
 TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   const std::vector<std::string> &command_line_args,
   const std::string &buffer, unsigned flags) {
   std::vector<const char*> args;
-  for (auto &a : command_line_args) {
+  for (auto& a : command_line_args) {
     args.push_back(a.c_str());
   }
 
@@ -24,6 +25,7 @@ TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
     index.cx_index, file_path.c_str(), args.data(), args.size(), files, 1, flags, &cx_tu);
   assert(!error_code);
 }
+*/
 
 TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   const std::vector<std::string> &command_line_args, unsigned flags) {
@@ -31,7 +33,7 @@ TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   // TODO: only push defines for the time being. Might need to pass more flags.
   std::vector<const char*> args;
   for (const std::string& a : command_line_args) {
-    if (a.size() >= 2 && a[0] == '-' && a[1] == 'D')
+    //if (a.size() >= 2 && a[0] == '-' && a[1] == 'D')
       args.push_back(a.c_str());
   }
 
