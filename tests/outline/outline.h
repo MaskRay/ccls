@@ -1,6 +1,8 @@
 #include <vector>
 
 struct MergeableUpdate {
+  int a;
+  int b;
   std::vector<int> to_add;
 };
 
