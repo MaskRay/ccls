@@ -14,11 +14,23 @@ bool EndsWith(const std::string& value, const std::string& ending) {
   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
+bool StartsWith(const std::string& value, const std::string& start) {
+  return std::equal(start.begin(), start.end(), value.begin());
+}
+
 std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& project_directory) {
   std::vector<CompilationEntry> result;
 
-  std::vector<std::string> files = GetFilesInFolder(project_directory, false /*add_folder_to_path*/);
+  std::vector<std::string> args;
+  for (const std::string& line : ReadLines(project_directory + "/clang_args")) {
+    if (line.empty() || StartsWith(line, "#"))
+      continue;
+    std::cerr << "Adding argument " << line << std::endl;
+    args.push_back(line);
+  }
 
+
+  std::vector<std::string> files = GetFilesInFolder(project_directory, true /*recursive*/, false /*add_folder_to_path*/);
   for (const std::string& file : files) {
     if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") ||
       EndsWith(file, ".c") || EndsWith(file, ".h") ||
