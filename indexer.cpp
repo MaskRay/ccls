@@ -97,6 +97,28 @@ void IndexedTypeDef::AddUsage(Location loc, bool insert_if_not_present) {
     uses.push_back(loc);
 }
 
+
+std::string Location::ToPrettyString(IdCache* id_cache) {
+  // Output looks like this:
+  //
+  //  *1:2:3
+  //
+  // * => interesting
+  // 1 => file id
+  // 2 => line
+  // 3 => column
+
+  std::string result;
+  if (interesting)
+    result += '*';
+  result += id_cache->file_id_to_file_path[raw_file_id];
+  result += ':';
+  result += std::to_string(line);
+  result += ':';
+  result += std::to_string(column);
+  return result;
+}
+
 IdCache::IdCache() {
   // Reserve id 0 for unfound.
   file_path_to_file_id[""] = FileId(0);
@@ -154,7 +176,53 @@ bool Contains(const std::vector<T>& vec, const T& element) {
 
 
 
+struct NamespaceHelper {
+  std::unordered_map<std::string, std::string> container_usr_to_qualified_name;
 
+  void RegisterQualifiedName(std::string usr, const CXIdxContainerInfo* container, std::string qualified_name) {
+    if (container) {
+      std::string container_usr = clang::Cursor(container->cursor).get_usr();
+      auto it = container_usr_to_qualified_name.find(container_usr);
+      if (it != container_usr_to_qualified_name.end()) {
+        container_usr_to_qualified_name[usr] = it->second + qualified_name + "::";
+        return;
+      }
+    }
+
+    container_usr_to_qualified_name[usr] = qualified_name + "::";
+  }
+
+  std::string QualifiedName(const CXIdxContainerInfo* container, std::string unqualified_name) {
+    if (container) {
+      std::string container_usr = clang::Cursor(container->cursor).get_usr();
+      auto it = container_usr_to_qualified_name.find(container_usr);
+      if (it != container_usr_to_qualified_name.end())
+        return it->second + unqualified_name;
+
+      // Anonymous namespaces are not processed by indexDeclaration. If we
+      // encounter one insert it into map.
+      if (container->cursor.kind == CXCursor_Namespace) {
+        //assert(clang::Cursor(container->cursor).get_spelling() == "");
+        container_usr_to_qualified_name[container_usr] = "::";
+        return "::" + unqualified_name;
+      }
+    }
+    return unqualified_name;
+  }
+};
+
+struct IndexParam {
+  IndexedFile* db;
+  NamespaceHelper* ns;
+
+  // Record the last type usage location we recorded. Clang will sometimes
+  // visit the same expression twice so we wan't to avoid double-reporting
+  // usage information for those locations.
+  Location last_type_usage_location;
+  Location last_func_usage_location;
+
+  IndexParam(IndexedFile* db, NamespaceHelper* ns) : db(db), ns(ns) {}
+};
 
 
 
@@ -166,7 +234,38 @@ int abortQuery(CXClientData client_data, void *reserved) {
   // 0 -> continue
   return 0;
 }
-void diagnostic(CXClientData client_data, CXDiagnosticSet, void *reserved) {}
+void diagnostic(CXClientData client_data, CXDiagnosticSet diagnostics, void *reserved) {
+  IndexParam* param = static_cast<IndexParam*>(client_data);
+
+  std::cerr << "!! Got diagnostic" << std::endl;
+  /**
+  * \brief Determine the number of diagnostics in a CXDiagnosticSet.
+  */
+  //CINDEX_LINKAGE unsigned clang_getNumDiagnosticsInSet(CXDiagnosticSet Diags);
+
+  for (unsigned i = 0; i < clang_getNumDiagnosticsInSet(diagnostics); ++i) {
+    CXDiagnostic diagnostic = clang_getDiagnosticInSet(diagnostics, i);
+    
+    std::string spelling = clang::ToString(clang_getDiagnosticSpelling(diagnostic));
+    Location location = param->db->id_cache.Resolve(clang_getDiagnosticLocation(diagnostic), false /*interesting*/);
+
+    std::cerr << location.ToPrettyString(&param->db->id_cache) << ": " << spelling << std::endl;
+
+    clang_disposeDiagnostic(diagnostic);
+  }
+  /**
+  * \brief Retrieve a diagnostic associated with the given CXDiagnosticSet.
+  *
+  * \param Diags the CXDiagnosticSet to query.
+  * \param Index the zero-based diagnostic number to retrieve.
+  *
+  * \returns the requested diagnostic. This diagnostic must be freed
+  * via a call to \c clang_disposeDiagnostic().
+  */
+ // CINDEX_LINKAGE CXDiagnostic clang_getDiagnosticInSet(CXDiagnosticSet Diags,
+  //  unsigned Index);
+
+}
 
 CXIdxClientFile enteredMainFile(CXClientData client_data, CXFile mainFile, void *reserved) {
   return nullptr;
@@ -258,53 +357,6 @@ optional<clang::Cursor> FindType(clang::Cursor cursor) {
 
 
 
-struct NamespaceHelper {
-  std::unordered_map<std::string, std::string> container_usr_to_qualified_name;
-
-  void RegisterQualifiedName(std::string usr, const CXIdxContainerInfo* container, std::string qualified_name) {
-    if (container) {
-      std::string container_usr = clang::Cursor(container->cursor).get_usr();
-      auto it = container_usr_to_qualified_name.find(container_usr);
-      if (it != container_usr_to_qualified_name.end()) {
-        container_usr_to_qualified_name[usr] = it->second + qualified_name + "::";
-        return;
-      }
-    }
-
-    container_usr_to_qualified_name[usr] = qualified_name + "::";
-  }
-
-  std::string QualifiedName(const CXIdxContainerInfo* container, std::string unqualified_name) {
-    if (container) {
-      std::string container_usr = clang::Cursor(container->cursor).get_usr();
-      auto it = container_usr_to_qualified_name.find(container_usr);
-      if (it != container_usr_to_qualified_name.end())
-        return it->second + unqualified_name;
-
-      // Anonymous namespaces are not processed by indexDeclaration. If we
-      // encounter one insert it into map.
-      if (container->cursor.kind == CXCursor_Namespace) {
-        //assert(clang::Cursor(container->cursor).get_spelling() == "");
-        container_usr_to_qualified_name[container_usr] = "::";
-        return "::" + unqualified_name;
-      }
-    }
-    return unqualified_name;
-  }
-};
-
-struct IndexParam {
-  IndexedFile* db;
-  NamespaceHelper* ns;
-
-  // Record the last type usage location we recorded. Clang will sometimes
-  // visit the same expression twice so we wan't to avoid double-reporting
-  // usage information for those locations.
-  Location last_type_usage_location;
-  Location last_func_usage_location;
-
-  IndexParam(IndexedFile* db, NamespaceHelper* ns) : db(db), ns(ns) {}
-};
 
 /*
 std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
@@ -1031,6 +1083,12 @@ struct Timer {
 };
 
 IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump_ast) {
+  args.push_back("-std=c++11");
+  args.push_back("-fms-compatibility");
+  args.push_back("-fdelayed-template-parsing");
+  //args.push_back("-isystem C:\\Users\\jacob\\Desktop\\superindex\\indexer\\libcxx-3.9.1\\include");
+  //args.push_back("--sysroot C:\\Users\\jacob\\Desktop\\superindex\\indexer\\libcxx-3.9.1");
+
   clang::Index index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   clang::TranslationUnit tu(index, filename, args);
 

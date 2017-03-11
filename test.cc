@@ -95,9 +95,9 @@ void RunTests() {
   return 0;
   */
 
-  for (std::string path : GetFilesInFolder("tests", true /*add_folder_to_path*/)) {
+  for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
-    if (path != "tests/outline/outline.cc") continue;
+    if (path != "tests/outline/outline2.h") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
     //if (path != "tests/namespaces/namespace_reference.cc") continue;
     //if (path != "tests/stl.cc") continue;
@@ -113,7 +113,7 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {}, true /*dump_ast*/);
+    IndexedFile db = Parse(path, {}, false /*dump_ast*/);
     VerifySerializeToFrom(db);
     std::string actual_output = db.ToString();
 

@@ -6,7 +6,7 @@
 
 #include "tinydir.h"
 
-static std::vector<std::string> GetFilesInFolderHelper(std::string folder, std::string output_prefix) {
+static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
   std::vector<std::string> result;
 
   tinydir_dir dir;
@@ -25,10 +25,12 @@ static std::vector<std::string> GetFilesInFolderHelper(std::string folder, std::
     // Skip all dot files.
     if (file.name[0] != '.') {
       if (file.is_dir) {
-        // Note that we must always ignore the '.' and '..' directories, otherwise
-        // this will loop infinitely. The above check handles that for us.
-        for (std::string nested_file : GetFilesInFolderHelper(file.path, output_prefix + file.name + "/"))
-          result.push_back(nested_file);
+        if (recursive) {
+          // Note that we must always ignore the '.' and '..' directories, otherwise
+          // this will loop infinitely. The above check handles that for us.
+          for (std::string nested_file : GetFilesInFolderHelper(file.path, true /*recursive*/, output_prefix + file.name + "/"))
+            result.push_back(nested_file);
+        }
       }
       else {
         result.push_back(output_prefix + file.name);
@@ -46,12 +48,12 @@ bail:
   return result;
 }
 
-std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to_path) {
+std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path) {
   assert(folder.size() > 0);
   if (folder[folder.size() - 1] != '/')
     folder += '/';
 
-  return GetFilesInFolderHelper(folder, add_folder_to_path ? folder : "");
+  return GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "");
 }
 
 // http://stackoverflow.com/a/6089413

@@ -5,7 +5,7 @@
 #include <memory>
 
 // Finds all files in the given folder. This is recursive.
-std::vector<std::string> GetFilesInFolder(std::string folder, bool add_folder_to_path);
+std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
 std::vector<std::string> ReadLines(std::string filename);
 void ParseTestExpectation(std::string filename, std::string* expected_output);
 

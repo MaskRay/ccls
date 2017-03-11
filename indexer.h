@@ -64,6 +64,8 @@ using TypeId = Id<IndexedTypeDef>;
 using FuncId = Id<IndexedFuncDef>;
 using VarId = Id<IndexedVarDef>;
 
+class IdCache;
+
 struct Location {
   bool interesting;
   int raw_file_id;
@@ -112,6 +114,8 @@ struct Location {
     assert(encoded);
     column = atoi(encoded);
   }
+
+  std::string ToPrettyString(IdCache* id_cache);
 
   std::string ToString() {
     // Output looks like this:
