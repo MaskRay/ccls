@@ -134,147 +134,117 @@ std::unique_ptr<InMessage> ParseMessage() {
 
 
 
+template<typename T>
+struct BaseIpcMessage : public IpcMessage {
+  BaseIpcMessage() : IpcMessage(T::kIpcId) {}
 
+  // IpcMessage:
+  void Serialize(Writer& writer) override {
+    T& value = *static_cast<T*>(this);
+    Reflect(writer, value);
+  }
+  void Deserialize(Reader& reader) override {
+    T& value = *static_cast<T*>(this);
+    Reflect(reader, value);
+  }
+};
 
 
 struct IpcMessage_Quit : public BaseIpcMessage<IpcMessage_Quit> {
-  static IpcMessageId kId;
+  static constexpr IpcId kIpcId = IpcId::Quit;
 };
-IpcMessageId IpcMessage_Quit::kId = "Quit";
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_Quit& value) {}
 
 
 struct IpcMessage_IsAlive : public BaseIpcMessage<IpcMessage_IsAlive> {
-  static IpcMessageId kId;
+  static constexpr IpcId kIpcId = IpcId::IsAlive;
 };
-IpcMessageId IpcMessage_IsAlive::kId = "IsAlive";
-
-
-
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_IsAlive& value) {}
 
 
 struct IpcMessage_OpenProject : public BaseIpcMessage<IpcMessage_OpenProject> {
-  static IpcMessageId kId;
-
+  static constexpr IpcId kIpcId = IpcId::OpenProject;
   std::string project_path;
-
-  // BaseIpcMessage:
-  void Serialize(Writer& writer) override {
-    writer.String(project_path.c_str(), project_path.size());
-  }
-  void Deserialize(Reader& reader) override {
-    project_path = reader.GetString();
-  }
 };
-IpcMessageId IpcMessage_OpenProject::kId = "OpenProject";
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_OpenProject& value) {
+  Reflect(visitor, value.project_path);
+}
 
 
 
 
 
 
+
+struct IpcMessage_LanguageServerRequest : public BaseIpcMessage<IpcMessage_LanguageServerRequest> {
+  static constexpr IpcId kIpcId = IpcId::LanguageServerRequest;
+  // TODO: provide a way to get the request state.
+  lsMethodId method_id;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_LanguageServerRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(method_id);
+  REFLECT_MEMBER_END();
+}
 
 
 struct IpcMessage_DocumentSymbolsRequest : public BaseIpcMessage<IpcMessage_DocumentSymbolsRequest> {
-  RequestId id;
+  static constexpr IpcId kIpcId = IpcId::DocumentSymbolsRequest;
+  RequestId request_id;
   std::string document;
-
-  // BaseIpcMessage:
-  static IpcMessageId kId;
-  void Serialize(Writer& visitor) override {
-    // TODO: dedup
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(document);
-    REFLECT_MEMBER_END();
-  }
-  void Deserialize(Reader& visitor) override {
-    // TODO: dedup
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(document);
-    REFLECT_MEMBER_END();
-  }
 };
-IpcMessageId IpcMessage_DocumentSymbolsRequest::kId = "IpcMessage_DocumentSymbolsRequest";
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_DocumentSymbolsRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(document);
+  REFLECT_MEMBER_END();
+}
+
 
 struct IpcMessage_DocumentSymbolsResponse : public BaseIpcMessage<IpcMessage_DocumentSymbolsResponse> {
-  RequestId id;
+  static constexpr IpcId kIpcId = IpcId::DocumentSymbolsResponse;
+  RequestId request_id;
   std::vector<lsSymbolInformation> symbols;
-
-  // BaseIpcMessage:
-  static IpcMessageId kId;
-  void Serialize(Writer& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(symbols);
-    REFLECT_MEMBER_END();
-  }
-  void Deserialize(Reader& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(symbols);
-    REFLECT_MEMBER_END();
-  }
 };
-IpcMessageId IpcMessage_DocumentSymbolsResponse::kId = "IpcMessage_DocumentSymbolsResponse";
-
-
-
-
-
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_DocumentSymbolsResponse& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(symbols);
+  REFLECT_MEMBER_END();
+}
 
 struct IpcMessage_WorkspaceSymbolsRequest : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsRequest> {
-  RequestId id;
+  static constexpr IpcId kIpcId = IpcId::WorkspaceSymbolsRequest;
+  RequestId request_id;
   std::string query;
-
-  // BaseIpcMessage:
-  static IpcMessageId kId;
-  void Serialize(Writer& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(query);
-    REFLECT_MEMBER_END();
-  }
-  void Deserialize(Reader& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(query);
-    REFLECT_MEMBER_END();
-  }
 };
-IpcMessageId IpcMessage_WorkspaceSymbolsRequest::kId = "IpcMessage_WorkspaceSymbolsRequest";
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_WorkspaceSymbolsRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(query);
+  REFLECT_MEMBER_END();
+}
+
 
 struct IpcMessage_WorkspaceSymbolsResponse : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsResponse> {
-  RequestId id;
+  static constexpr IpcId kIpcId = IpcId::WorkspaceSymbolsResponse;
+  RequestId request_id;
   std::vector<lsSymbolInformation> symbols;
-
-  // BaseIpcMessage:
-  static IpcMessageId kId;
-  void Serialize(Writer& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(symbols);
-    REFLECT_MEMBER_END();
-  }
-  void Deserialize(Reader& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER(symbols);
-    REFLECT_MEMBER_END();
-  }
 };
-IpcMessageId IpcMessage_WorkspaceSymbolsResponse::kId = "IpcMessage_WorkspaceSymbolsResponse";
-
-
-
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_WorkspaceSymbolsResponse& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(symbols);
+  REFLECT_MEMBER_END();
+}
 
 
 
@@ -301,21 +271,23 @@ IpcMessageId IpcMessage_WorkspaceSymbolsResponse::kId = "IpcMessage_WorkspaceSym
 
 
 void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc->TakeMessages();
+  std::vector<std::unique_ptr<IpcMessage>> messages = ipc->TakeMessages();
 
   for (auto& message : messages) {
-    std::cerr << "Processing message " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+    std::cerr << "Processing message " << static_cast<int>(message->ipc_id) << std::endl;
 
-    if (IpcMessage_Quit::kId == message->runtime_id()) {
+    switch (message->ipc_id) {
+    case IpcId::Quit: {
       break;
     }
 
-    else if (IpcMessage_IsAlive::kId == message->runtime_id()) {
+    case IpcId::IsAlive: {
       IpcMessage_IsAlive response;
       ipc->SendToClient(0, &response); // todo: make non-blocking
+      break;
     }
 
-    else if (IpcMessage_OpenProject::kId == message->runtime_id()) {
+    case IpcId::OpenProject: {
       IpcMessage_OpenProject* msg = static_cast<IpcMessage_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
@@ -330,14 +302,14 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
         db->ApplyIndexUpdate(&update);
       }
       std::cerr << "Done" << std::endl;
+      break;
     }
 
-
-    else if (IpcMessage_DocumentSymbolsRequest::kId == message->runtime_id()) {
+    case IpcId::DocumentSymbolsRequest: {
       auto msg = static_cast<IpcMessage_DocumentSymbolsRequest*>(message.get());
 
       IpcMessage_DocumentSymbolsResponse response;
-      response.id = msg->id;
+      response.request_id = msg->request_id;
 
       std::cerr << "Wanted file " << msg->document << std::endl;
       for (auto& file : db->files) {
@@ -355,7 +327,7 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
             lsSymbolInformation info;
             info.location.range.start.line = ref.loc.line - 1; // TODO: cleanup indexer to negate by 1.
             info.location.range.start.character = ref.loc.column - 1; // TODO: cleanup indexer to negate by 1.
-            // TODO: store range information.
+                                                                      // TODO: store range information.
             info.location.range.end.line = info.location.range.start.line;
             info.location.range.end.character = info.location.range.start.character;
 
@@ -405,13 +377,15 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
 
 
       ipc->SendToClient(0, &response);
+
+      break;
     }
 
-    else if (IpcMessage_WorkspaceSymbolsRequest::kId == message->runtime_id()) {
+    case IpcId::WorkspaceSymbolsRequest: {
       auto msg = static_cast<IpcMessage_WorkspaceSymbolsRequest*>(message.get());
 
       IpcMessage_WorkspaceSymbolsResponse response;
-      response.id = msg->id;
+      response.request_id = msg->request_id;
 
       std::cerr << "- Considering " << db->qualified_names.size() << " candidates " << std::endl;
 
@@ -493,11 +467,13 @@ void QueryDbMainLoop(IpcServer* ipc, QueryableDatabase* db) {
 
 
       ipc->SendToClient(0, &response);
+      break;
     }
 
-    else {
-      std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+    default: {
+      std::cerr << "Unhandled IPC message with kind " << static_cast<int>(message->ipc_id) << std::endl;
       exit(1);
+    }
     }
   }
 }
@@ -575,7 +551,7 @@ void LanguageServerStdinLoop(IpcClient* ipc) {
       auto request = static_cast<In_DocumentSymbolRequest*>(message.get());
 
       IpcMessage_DocumentSymbolsRequest ipc_request;
-      ipc_request.id = request->id.value();
+      ipc_request.request_id = request->id.value();
       ipc_request.document = request->params.textDocument.uri.GetPath();
       std::cerr << "Request textDocument=" << ipc_request.document << std::endl;
       ipc->SendToServer(&ipc_request);
@@ -586,7 +562,7 @@ void LanguageServerStdinLoop(IpcClient* ipc) {
     {
       auto request = static_cast<In_WorkspaceSymbolRequest*>(message.get());
       IpcMessage_WorkspaceSymbolsRequest ipc_request;
-      ipc_request.id = request->id.value();
+      ipc_request.request_id = request->id.value();
       ipc_request.query = request->params.query;
       std::cerr << "Request query=" << ipc_request.query << std::endl;
       ipc->SendToServer(&ipc_request);
@@ -597,36 +573,40 @@ void LanguageServerStdinLoop(IpcClient* ipc) {
 }
 
 void LanguageServerMainLoop(IpcClient* ipc) {
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = ipc->TakeMessages();
+  std::vector<std::unique_ptr<IpcMessage>> messages = ipc->TakeMessages();
   for (auto& message : messages) {
-    if (IpcMessage_Quit::kId == message->runtime_id()) {
+    switch (message->ipc_id) {
+    case IpcId::Quit: {
       exit(0);
+      break;
     }
 
-
-    else if (IpcMessage_DocumentSymbolsResponse::kId == message->runtime_id()) {
+    case IpcId::DocumentSymbolsResponse: {
       auto msg = static_cast<IpcMessage_DocumentSymbolsResponse*>(message.get());
 
       auto response = Out_DocumentSymbolResponse();
-      response.id = msg->id;
+      response.id = msg->request_id;
       response.result = msg->symbols;
       response.Send();
       std::cerr << "Send symbol response to client (" << response.result.size() << " symbols)" << std::endl;
+      break;
     }
 
-    else if (IpcMessage_WorkspaceSymbolsResponse::kId == message->runtime_id()) {
+    case IpcId::WorkspaceSymbolsResponse: {
       auto msg = static_cast<IpcMessage_WorkspaceSymbolsResponse*>(message.get());
 
       auto response = Out_WorkspaceSymbolResponse();
-      response.id = msg->id;
+      response.id = msg->request_id;
       response.result = msg->symbols;
       response.Send();
       std::cerr << "Send symbol response to client (" << response.result.size() << " symbols)" << std::endl;
+      break;
     }
 
-    else {
-      std::cerr << "Unhandled IPC message with kind " << message->runtime_id() << " (hash " << message->hashed_runtime_id() << ")" << std::endl;
+    default: {
+      std::cerr << "Unhandled IPC message with kind " << static_cast<int>(message->ipc_id) << std::endl;
       exit(1);
+    }
     }
   }
 }
@@ -645,10 +625,10 @@ void LanguageServerMain(std::string process_name) {
   std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
   // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> messages = client_ipc.TakeMessages();
+  std::vector<std::unique_ptr<IpcMessage>> messages = client_ipc.TakeMessages();
   bool has_server = false;
   for (auto& message : messages) {
-    if (message->runtime_id() == IpcMessage_IsAlive::kId) {
+    if (IpcId::IsAlive == message->ipc_id) {
       has_server = true;
       break;
     }
@@ -668,13 +648,13 @@ void LanguageServerMain(std::string process_name) {
       /*stderr*/[](const char* bytes, size_t n) {
       for (int i = 0; i < n; ++i)
         std::cerr << bytes[i];
-  },
+    },
       /*open_stdin*/false);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     // Pass empty process name so we only try to start the querydb once.
     LanguageServerMain("");
     return;
-}
+  }
 #endif
 
   // for debugging attach
@@ -767,16 +747,14 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdin), O_BINARY);
 #endif
 
-  IpcRegistry::instance()->Register<IpcMessage_Quit>();
+  IpcRegistry::instance()->Register<IpcMessage_Quit>(IpcId::Quit);
+  IpcRegistry::instance()->Register<IpcMessage_IsAlive>(IpcId::IsAlive);
+  IpcRegistry::instance()->Register<IpcMessage_OpenProject>(IpcId::OpenProject);
 
-  IpcRegistry::instance()->Register<IpcMessage_IsAlive>();
-  IpcRegistry::instance()->Register<IpcMessage_OpenProject>();
-
-  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>();
-  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>();
-
-  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsRequest>();
-  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>();
+  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>(IpcId::DocumentSymbolsRequest);
+  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>(IpcId::DocumentSymbolsResponse);
+  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsRequest>(IpcId::WorkspaceSymbolsRequest);
+  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>(IpcId::WorkspaceSymbolsResponse);
 
   MessageRegistry::instance()->Register<In_CancelRequest>();
   MessageRegistry::instance()->Register<In_InitializeRequest>();

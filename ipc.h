@@ -15,63 +15,46 @@
 // TODO: We need to add support for payloads larger than the maximum shared memory buffer size.
 
 
-using IpcMessageId = std::string;
+enum class IpcId : int {
+  // Invalid request id.
+  Invalid = 0,
 
-struct BaseIpcMessageElided {
-  virtual IpcMessageId runtime_id() const = 0;
-  virtual int hashed_runtime_id() const = 0;
+  Quit = 1,
+  IsAlive,
+  OpenProject,
 
-  virtual void Serialize(Writer& writer);
-  virtual void Deserialize(Reader& reader);
+  // This is a language server request. The actual request method
+  // id is embedded within the request state.
+  LanguageServerRequest,
+  // TODO: remove
+  DocumentSymbolsRequest,
+  DocumentSymbolsResponse,
+  WorkspaceSymbolsRequest,
+  WorkspaceSymbolsResponse
 };
 
-// Usage:
-//
-//  class IpcMessage_Foo : public BaseIpcMessage<IpcMessage_Foo> {
-//    static IpcMessageId kId;
-//
-//    // BaseIpcMessage:
-//    ...
-//  }
-//  IpcMessageId IpcMessage_Foo::kId = "Foo";
-//
-//
-//  main() {
-//    IpcRegistry::instance()->Register<IpcMessage_Foo>();
-//  }
-//
-// Note: This is a template so that the statics are stored separately
-// per type.
-template<typename T>
-struct BaseIpcMessage : BaseIpcMessageElided {
-  BaseIpcMessage();
-  virtual ~BaseIpcMessage();
 
-  // Populated by IpcRegistry::RegisterAllocator.
-  static IpcMessageId runtime_id_;
-  static int hashed_runtime_id_;
+struct IpcMessage {
+  IpcMessage(IpcId ipc_id) : ipc_id(ipc_id) {}
+  virtual ~IpcMessage() {}
 
-  // BaseIpcMessageElided:
-  IpcMessageId runtime_id() const override {
-    return runtime_id_;
-  }
-  int hashed_runtime_id() const override {
-    return hashed_runtime_id_;
-  }
+  const IpcId ipc_id;
+
+  virtual void Serialize(Writer& writer) = 0;
+  virtual void Deserialize(Reader& reader) = 0;
 };
 
 struct IpcRegistry {
-  using Allocator = std::function<BaseIpcMessageElided*()>;
+  using Allocator = std::function<IpcMessage*()>;
 
   // Use unique_ptrs so we can initialize on first use
   // (static init order might not be right).
-  std::unique_ptr<std::unordered_map<int, Allocator>> allocators;
-  std::unique_ptr<std::unordered_map<int, std::string>> hash_to_id;
+  std::unique_ptr<std::unordered_map<IpcId, Allocator>> allocators;
 
   template<typename T>
-  void Register();
+  void Register(IpcId id);
 
-  std::unique_ptr<BaseIpcMessageElided> Allocate(int id);
+  std::unique_ptr<IpcMessage> Allocate(IpcId id);
 
   static IpcRegistry* instance() {
     if (!instance_)
@@ -82,25 +65,16 @@ struct IpcRegistry {
 };
 
 template<typename T>
-void IpcRegistry::Register() {
-  if (!allocators) {
-    allocators = MakeUnique<std::unordered_map<int, Allocator>>();
-    hash_to_id = MakeUnique<std::unordered_map<int, std::string>>();
-  }
+void IpcRegistry::Register(IpcId id) {
+  if (!allocators)
+    allocators = MakeUnique<std::unordered_map<IpcId, Allocator>>();
 
-  IpcMessageId id = T::kId;
+  assert(allocators->find(id) == allocators->end() &&
+         "There is already an IPC message with the given id");
 
-  int hash = std::hash<IpcMessageId>()(id);
-  auto it = allocators->find(hash);
-  assert(allocators->find(hash) == allocators->end() && "There is already an IPC message with the given id");
-
-  (*hash_to_id)[hash] = id;
-  (*allocators)[hash] = []() {
+  (*allocators)[id] = [id]() {
     return new T();
   };
-
-  T::runtime_id_ = id;
-  T::hashed_runtime_id_ = hash;
 }
 
 
@@ -115,8 +89,8 @@ struct IpcDirectionalChannel {
   explicit IpcDirectionalChannel(const std::string& name);
   ~IpcDirectionalChannel();
 
-  void PushMessage(BaseIpcMessageElided* message);
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
+  void PushMessage(IpcMessage* message);
+  std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
   // Pointer to process shared memory and process shared mutex.
   std::unique_ptr<PlatformSharedMemory> shared;
@@ -129,8 +103,8 @@ struct IpcDirectionalChannel {
 struct IpcServer {
   IpcServer(const std::string& name);
 
-  void SendToClient(int client_id, BaseIpcMessageElided* message);
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
+  void SendToClient(int client_id, IpcMessage* message);
+  std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
 private:
   std::string name_;
@@ -141,8 +115,8 @@ private:
 struct IpcClient {
   IpcClient(const std::string& name, int client_id);
 
-  void SendToServer(BaseIpcMessageElided* message);
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> TakeMessages();
+  void SendToServer(IpcMessage* message);
+  std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
   IpcDirectionalChannel* client() { return &client_; }
 
@@ -150,27 +124,3 @@ private:
   IpcDirectionalChannel server_;
   IpcDirectionalChannel client_;
 };
-
-
-
-
-
-
-
-
-
-
-
-template<typename T>
-BaseIpcMessage<T>::BaseIpcMessage() {
-  assert(!runtime_id_.empty() && "Message is not registered using IpcRegistry::RegisterAllocator");
-}
-
-template<typename T>
-BaseIpcMessage<T>::~BaseIpcMessage() {}
-
-template<typename T>
-IpcMessageId BaseIpcMessage<T>::runtime_id_;
-
-template<typename T>
-int BaseIpcMessage<T>::hashed_runtime_id_ = -1;

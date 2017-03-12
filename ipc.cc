@@ -1,15 +1,19 @@
 #include "ipc.h"
-
-
-
+#include "serializer.h"
 
 namespace {
   struct JsonMessage {
-    int message_id;
+    IpcId ipc_id;
     size_t payload_size;
 
-    const char* payload();
-    void SetPayload(size_t payload_size, const char* payload);
+    const char* payload() {
+      return reinterpret_cast<const char*>(this) + sizeof(JsonMessage);
+    }
+    void SetPayload(size_t payload_size, const char* payload) {
+      char* payload_dest = reinterpret_cast<char*>(this) + sizeof(JsonMessage);
+      this->payload_size = payload_size;
+      memcpy(payload_dest, payload, payload_size);
+    }
   };
 
   JsonMessage* get_free_message(IpcDirectionalChannel* channel) {
@@ -34,24 +38,10 @@ namespace {
   }
 }
 
-const char* JsonMessage::payload() {
-  return reinterpret_cast<const char*>(this) + sizeof(JsonMessage);
-}
-
-void JsonMessage::SetPayload(size_t payload_size, const char* payload) {
-  char* payload_dest = reinterpret_cast<char*>(this) + sizeof(JsonMessage);
-  this->payload_size = payload_size;
-  memcpy(payload_dest, payload, payload_size);
-}
-
-void BaseIpcMessageElided::Serialize(Writer& writer) {}
-
-void BaseIpcMessageElided::Deserialize(Reader& reader) {}
-
 IpcRegistry* IpcRegistry::instance_ = nullptr;
 
-std::unique_ptr<BaseIpcMessageElided> IpcRegistry::Allocate(int id) {
-  return std::unique_ptr<BaseIpcMessageElided>((*allocators)[id]());
+std::unique_ptr<IpcMessage> IpcRegistry::Allocate(IpcId id) {
+  return std::unique_ptr<IpcMessage>((*allocators)[id]());
 }
 
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
@@ -64,7 +54,9 @@ IpcDirectionalChannel::~IpcDirectionalChannel() {
   delete[] local_block;
 }
 
-void IpcDirectionalChannel::PushMessage(BaseIpcMessageElided* message) {
+void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
+  assert(message->ipc_id != IpcId::Invalid);
+
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   writer.SetFormatOptions(
@@ -95,18 +87,18 @@ void IpcDirectionalChannel::PushMessage(BaseIpcMessageElided* message) {
     if ((*shared->shared_bytes_used + sizeof(JsonMessage) + payload_size) >= shmem_size)
       continue;
 
-    get_free_message(this)->message_id = message->hashed_runtime_id();
+    get_free_message(this)->ipc_id = message->ipc_id;
     get_free_message(this)->SetPayload(payload_size, output.GetString());
 
     *shared->shared_bytes_used += sizeof(JsonMessage) + get_free_message(this)->payload_size;
     assert(*shared->shared_bytes_used < shmem_size);
-    get_free_message(this)->message_id = -1;
+    get_free_message(this)->ipc_id = IpcId::Invalid;
     break;
   }
 
 }
 
-std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcDirectionalChannel::TakeMessages() {
+std::vector<std::unique_ptr<IpcMessage>> IpcDirectionalChannel::TakeMessages() {
   size_t remaining_bytes = 0;
   // Move data from shared memory into a local buffer. Do this
   // before parsing the blocks so that other processes can begin
@@ -117,14 +109,14 @@ std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcDirectionalChannel::TakeMe
 
     memcpy(local_block, shared->shared_start, *shared->shared_bytes_used);
     *shared->shared_bytes_used = 0;
-    get_free_message(this)->message_id = -1;
+    get_free_message(this)->ipc_id = IpcId::Invalid;
   }
 
-  std::vector<std::unique_ptr<BaseIpcMessageElided>> result;
+  std::vector<std::unique_ptr<IpcMessage>> result;
 
   char* message = local_block;
   while (remaining_bytes > 0) {
-    std::unique_ptr<BaseIpcMessageElided> base_message = IpcRegistry::instance()->Allocate(as_message(message)->message_id);
+    std::unique_ptr<IpcMessage> base_message = IpcRegistry::instance()->Allocate(as_message(message)->ipc_id);
 
     rapidjson::Document document;
     document.Parse(as_message(message)->payload(), as_message(message)->payload_size);
@@ -147,7 +139,7 @@ std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcDirectionalChannel::TakeMe
 IpcServer::IpcServer(const std::string& name)
   : name_(name), server_(NameToServerName(name)) {}
 
-void IpcServer::SendToClient(int client_id, BaseIpcMessageElided* message) {
+void IpcServer::SendToClient(int client_id, IpcMessage* message) {
   // Find or create the client.
   auto it = clients_.find(client_id);
   if (it == clients_.end())
@@ -156,17 +148,17 @@ void IpcServer::SendToClient(int client_id, BaseIpcMessageElided* message) {
   clients_[client_id]->PushMessage(message);
 }
 
-std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcServer::TakeMessages() {
+std::vector<std::unique_ptr<IpcMessage>> IpcServer::TakeMessages() {
   return server_.TakeMessages();
 }
 
 IpcClient::IpcClient(const std::string& name, int client_id)
   : server_(NameToServerName(name)), client_(NameToClientName(name, client_id)) {}
 
-void IpcClient::SendToServer(BaseIpcMessageElided* message) {
+void IpcClient::SendToServer(IpcMessage* message) {
   server_.PushMessage(message);
 }
 
-std::vector<std::unique_ptr<BaseIpcMessageElided>> IpcClient::TakeMessages() {
+std::vector<std::unique_ptr<IpcMessage>> IpcClient::TakeMessages() {
   return client_.TakeMessages();
 }

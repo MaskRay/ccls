@@ -18,6 +18,21 @@ using std::experimental::nullopt;
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
+enum class lsMethodId : int {
+  // Language server specific requests.
+  CancelRequest = 0,
+  Initialize,
+  Initialized,
+  TextDocumentDocumentSymbol,
+  WorkspaceSymbol,
+};
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, lsMethodId& value) {
+  int value0 = static_cast<int>(value);
+  Reflect(visitor, value0);
+  value = static_cast<lsMethodId>(value0);
+}
 
 struct RequestId {
   optional<int> id0;
@@ -25,11 +40,12 @@ struct RequestId {
 };
 
 void Reflect(Writer& visitor, RequestId& value) {
+  assert(value.id0.has_value() || value.id1.has_value());
+
   if (value.id0) {
     Reflect(visitor, value.id0.value());
   }
   else {
-    assert(value.id1.has_value());
     Reflect(visitor, value.id1.value());
   }
 }
@@ -214,14 +230,6 @@ struct OutNotificationMessage : public OutMessage {
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-enum class lsMethodId {
-  CancelRequest,
-  Initialize,
-  Initialized,
-  TextDocumentDocumentSymbol,
-  WorkspaceSymbol,
-};
-
 const char* MethodIdToString(lsMethodId id) {
   switch (id) {
   case lsMethodId::CancelRequest:
@@ -303,18 +311,18 @@ struct InMessage {
   const lsMethodId method_id;
   optional<RequestId> id;
 
-  InMessage(lsMethodId method_id, optional<RequestId> id, Reader& reader)
+  InMessage(lsMethodId  method_id, optional<RequestId> id, Reader& reader)
     // We verify there are no duplicate hashes inside of MessageRegistry.
     : method_id(method_id), id(id) {}
 };
 
 struct InRequestMessage : public InMessage {
-  InRequestMessage(lsMethodId method, optional<RequestId> id, Reader& reader)
+  InRequestMessage(lsMethodId  method, optional<RequestId> id, Reader& reader)
     : InMessage(method, id, reader) {}
 };
 
 struct InNotificationMessage : public InMessage {
-  InNotificationMessage(lsMethodId method, optional<RequestId> id, Reader& reader)
+  InNotificationMessage(lsMethodId  method, optional<RequestId> id, Reader& reader)
     : InMessage(method, id, reader) {}
 };
 
