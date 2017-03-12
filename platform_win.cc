@@ -34,7 +34,6 @@ struct PlatformScopedMutexLockWin : public PlatformScopedMutexLock {
 
 struct PlatformSharedMemoryWin : public PlatformSharedMemory {
   HANDLE shmem_;
-  void* shared_start_real_;
 
   PlatformSharedMemoryWin(const std::string& name) {
     shmem_ = CreateFileMapping(
@@ -46,15 +45,12 @@ struct PlatformSharedMemoryWin : public PlatformSharedMemory {
       name.c_str()
     );
 
-    shared_start_real_ = MapViewOfFile(shmem_, FILE_MAP_ALL_ACCESS, 0, 0, shmem_size);
-
-    shared_bytes_used = reinterpret_cast<size_t*>(shared_start_real_);
-    *shared_bytes_used = 0;
-    shared_start = reinterpret_cast<char*>(shared_bytes_used + 1);
+    shared = MapViewOfFile(shmem_, FILE_MAP_ALL_ACCESS, 0, 0, shmem_size);
   }
 
   ~PlatformSharedMemoryWin() override {
-    UnmapViewOfFile(shared_start_real_);
+    UnmapViewOfFile(shared);
+    shared = nullptr;
   }
 };
 

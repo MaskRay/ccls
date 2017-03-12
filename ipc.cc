@@ -2,6 +2,12 @@
 #include "serializer.h"
 
 namespace {
+  // JSON-encoded message that is passed across shared memory.
+  //
+  // Messages are funky objects. They contain potentially variable amounts of
+  // data and are passed between processes. This means that they need to be
+  // fully relocatable, ie, it is possible to memmove them in memory to a
+  // completely different address.
   struct JsonMessage {
     IpcId ipc_id;
     size_t payload_size;
@@ -15,19 +21,6 @@ namespace {
       memcpy(payload_dest, payload, payload_size);
     }
   };
-
-  JsonMessage* get_free_message(IpcDirectionalChannel* channel) {
-    return reinterpret_cast<JsonMessage*>(channel->shared->shared_start + *channel->shared->shared_bytes_used);
-  }
-  // Messages are funky objects. They contain potentially variable amounts of
-  // data and are passed between processes. This means that they need to be
-  // fully relocatable, ie, it is possible to memmove them in memory to a
-  // completely different address.
-
-
-  JsonMessage* as_message(char* ptr) {
-    return reinterpret_cast<JsonMessage*>(ptr);
-  }
 
   std::string NameToServerName(const std::string& name) {
     return name + "server";
@@ -44,15 +37,70 @@ std::unique_ptr<IpcMessage> IpcRegistry::Allocate(IpcId id) {
   return std::unique_ptr<IpcMessage>((*allocators)[id]());
 }
 
+struct IpcDirectionalChannel::MessageBuffer {
+  MessageBuffer(void* buffer, size_t buffer_size) {
+    real_buffer = buffer;
+    real_buffer_size = buffer_size;
+    new(real_buffer) Metadata();
+  }
+
+  // Pointer to the start of the actual buffer and the
+  // amount of storage actually available.
+  void* real_buffer;
+  size_t real_buffer_size;
+
+  template<typename T>
+  T* Offset(size_t offset) {
+    return static_cast<T>(static_cast<char*>(real_buffer) + offset);
+  }
+
+  // Number of bytes available in buffer_start. Note that this
+  // is smaller than the total buffer size, since there is some
+  // metadata stored at the start of the buffer.
+  size_t buffer_size;
+
+  struct Metadata {
+    // The number of bytes that are currently used in the buffer minus the
+    // size of this Metadata struct.
+    size_t bytes_used = 0;
+    int next_partial_message_id = 0;
+    int num_outstanding_partial_messages = 0;
+  };
+
+  Metadata* metadata() {
+    return Offset<Metadata>(0);
+  }
+
+  // First json message.
+  JsonMessage* first_message() {
+    return Offset<JsonMessage>(sizeof(Metadata));
+  }
+
+  // First free, writable json message. Make sure to increase *bytes_used()
+  // by any written size.
+  JsonMessage* free_message() {
+    return Offset<JsonMessage>(sizeof(Metadata) + metadata()->bytes_used);
+  }
+};
+
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
-  local_block = new char[shmem_size];
   shared = CreatePlatformSharedMemory(name + "memory");
   mutex = CreatePlatformMutex(name + "mutex");
+  local = std::unique_ptr<void>(new char[shmem_size]);
+ 
+  shared_buffer = MakeUnique<MessageBuffer>(shared->shared);
+  local_buffer = MakeUnique<MessageBuffer>(local.get());
 }
 
-IpcDirectionalChannel::~IpcDirectionalChannel() {
-  delete[] local_block;
-}
+IpcDirectionalChannel::~IpcDirectionalChannel() {}
+
+// TODO:
+//  We need to send partial payloads. But other payloads may appear in
+//  the middle of the payload.
+//
+//  
+//  int partial_payload_id = 0
+//  int num_uncompleted_payloads = 0
 
 void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
   assert(message->ipc_id != IpcId::Invalid);
@@ -84,15 +132,15 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
     std::unique_ptr<PlatformScopedMutexLock> lock = CreatePlatformScopedMutexLock(mutex.get());
 
     // Try again later when there is room in shared memory.
-    if ((*shared->shared_bytes_used + sizeof(JsonMessage) + payload_size) >= shmem_size)
+    if ((shared_buffer->metadata()->bytes_used + sizeof(MessageBuffer::Metadata) + sizeof(JsonMessage) + payload_size) >= shmem_size)
       continue;
 
-    get_free_message(this)->ipc_id = message->ipc_id;
-    get_free_message(this)->SetPayload(payload_size, output.GetString());
+    shared_buffer->free_message()->ipc_id = message->ipc_id;
+    shared_buffer->free_message()->SetPayload(payload_size, output.GetString());
 
-    *shared->shared_bytes_used += sizeof(JsonMessage) + get_free_message(this)->payload_size;
-    assert(*shared->shared_bytes_used < shmem_size);
-    get_free_message(this)->ipc_id = IpcId::Invalid;
+    shared_buffer->metadata()->bytes_used += sizeof(JsonMessage) + shared_buffer->free_message()->payload_size;
+    assert((shared_buffer->metadata()->bytes_used + sizeof(MessageBuffer::Metadata)) < shmem_size);
+    shared_buffer->free_message()->ipc_id = IpcId::Invalid;
     break;
   }
 
