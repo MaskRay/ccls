@@ -92,7 +92,7 @@ struct IpcDirectionalChannel {
   void PushMessage(IpcMessage* message);
   std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
-  class MessageBuffer;
+  struct MessageBuffer;
 
 
   // Pointer to process shared memory and process shared mutex.
@@ -100,7 +100,7 @@ struct IpcDirectionalChannel {
   std::unique_ptr<PlatformMutex> mutex;
 
   // Pointer to process-local memory.
-  std::unique_ptr<void> local;
+  std::unique_ptr<char> local;
 
   std::unique_ptr<MessageBuffer> shared_buffer;
   std::unique_ptr<MessageBuffer> local_buffer;

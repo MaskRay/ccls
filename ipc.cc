@@ -51,7 +51,7 @@ struct IpcDirectionalChannel::MessageBuffer {
 
   template<typename T>
   T* Offset(size_t offset) {
-    return static_cast<T>(static_cast<char*>(real_buffer) + offset);
+    return reinterpret_cast<T*>(static_cast<char*>(real_buffer) + offset);
   }
 
   // Number of bytes available in buffer_start. Note that this
@@ -71,25 +71,31 @@ struct IpcDirectionalChannel::MessageBuffer {
     return Offset<Metadata>(0);
   }
 
+  JsonMessage* message_at_offset(size_t offset) {
+    return Offset<JsonMessage>(sizeof(Metadata) + offset);
+  }
+
   // First json message.
   JsonMessage* first_message() {
-    return Offset<JsonMessage>(sizeof(Metadata));
+    return message_at_offset(0);
   }
 
   // First free, writable json message. Make sure to increase *bytes_used()
   // by any written size.
   JsonMessage* free_message() {
-    return Offset<JsonMessage>(sizeof(Metadata) + metadata()->bytes_used);
+    return message_at_offset(metadata()->bytes_used);
   }
 };
 
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
   shared = CreatePlatformSharedMemory(name + "memory");
   mutex = CreatePlatformMutex(name + "mutex");
-  local = std::unique_ptr<void>(new char[shmem_size]);
+  local = std::unique_ptr<char>(new char[shmem_size]);
  
-  shared_buffer = MakeUnique<MessageBuffer>(shared->shared);
-  local_buffer = MakeUnique<MessageBuffer>(local.get());
+  // TODO: connecting a client will allocate reset shared state on the
+  // buffer. We need to store if we "initialized".
+  shared_buffer = MakeUnique<MessageBuffer>(shared->shared, shmem_size);
+  local_buffer = MakeUnique<MessageBuffer>(local.get(), shmem_size);
 }
 
 IpcDirectionalChannel::~IpcDirectionalChannel() {}
@@ -140,6 +146,7 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
 
     shared_buffer->metadata()->bytes_used += sizeof(JsonMessage) + shared_buffer->free_message()->payload_size;
     assert((shared_buffer->metadata()->bytes_used + sizeof(MessageBuffer::Metadata)) < shmem_size);
+    assert(shared_buffer->metadata()->bytes_used >= 0);
     shared_buffer->free_message()->ipc_id = IpcId::Invalid;
     break;
   }
@@ -153,30 +160,31 @@ std::vector<std::unique_ptr<IpcMessage>> IpcDirectionalChannel::TakeMessages() {
   // posting data as soon as possible.
   {
     std::unique_ptr<PlatformScopedMutexLock> lock = CreatePlatformScopedMutexLock(mutex.get());
-    remaining_bytes = *shared->shared_bytes_used;
+    assert(shared_buffer->metadata()->bytes_used <= shmem_size);
+    remaining_bytes = shared_buffer->metadata()->bytes_used;
 
-    memcpy(local_block, shared->shared_start, *shared->shared_bytes_used);
-    *shared->shared_bytes_used = 0;
-    get_free_message(this)->ipc_id = IpcId::Invalid;
+    memcpy(local.get(), shared->shared, sizeof(MessageBuffer::Metadata) + shared_buffer->metadata()->bytes_used);
+    shared_buffer->metadata()->bytes_used = 0;
+    shared_buffer->free_message()->ipc_id = IpcId::Invalid;
   }
 
   std::vector<std::unique_ptr<IpcMessage>> result;
 
-  char* message = local_block;
+  size_t offset = 0;
   while (remaining_bytes > 0) {
-    std::unique_ptr<IpcMessage> base_message = IpcRegistry::instance()->Allocate(as_message(message)->ipc_id);
+    JsonMessage* message = local_buffer->message_at_offset(offset);
+    std::cerr << "remaining_bytes=" << remaining_bytes << ", offset=" << offset << ", message->payload_size=" << message->payload_size << std::endl;
+    offset += message->payload_size;
+    remaining_bytes -= sizeof(JsonMessage) + message->payload_size;
 
     rapidjson::Document document;
-    document.Parse(as_message(message)->payload(), as_message(message)->payload_size);
+    document.Parse(message->payload(), message->payload_size);
     bool has_error = document.HasParseError();
     auto error = document.GetParseError();
 
+    std::unique_ptr<IpcMessage> base_message = IpcRegistry::instance()->Allocate(message->ipc_id);
     base_message->Deserialize(document);
-
     result.emplace_back(std::move(base_message));
-
-    remaining_bytes -= sizeof(JsonMessage) + as_message(message)->payload_size;
-    message = message + sizeof(JsonMessage) + as_message(message)->payload_size;
   }
 
   return result;

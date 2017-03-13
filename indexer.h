@@ -64,7 +64,7 @@ using TypeId = Id<IndexedTypeDef>;
 using FuncId = Id<IndexedFuncDef>;
 using VarId = Id<IndexedVarDef>;
 
-class IdCache;
+struct IdCache;
 
 struct Location {
   bool interesting;
