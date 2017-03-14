@@ -1,3 +1,4 @@
+#ifdef _MSC_VER
 #include "platform.h"
 
 #include <cassert>
@@ -86,3 +87,4 @@ std::string getexepath() {
   return std::string( result, (count > 0) ? count : 0 );
 }
 */
+#endif

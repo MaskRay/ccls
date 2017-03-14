@@ -54,7 +54,6 @@ struct PlatformScopedMutexLockLinux : public PlatformScopedMutexLock {
 struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
   std::string name_;
   int fd_;
-  void* shared_start_real_;
 
   PlatformSharedMemoryLinux(const std::string& name) : name_(name) {
     std::cout << "PlatformSharedMemoryLinux name=" << name << std::endl;
@@ -71,11 +70,11 @@ struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
    //
     //shmem_size
     std::cout << "3" << std::endl;
-    shared_start_real_ = mmap(nullptr /*kernel assigned starting address*/,
+    shared = mmap(nullptr /*kernel assigned starting address*/,
          shmem_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0 /*offset*/);
     std::cout << "mmap errno=" << errno << std::endl;
     std::cout << "fd_ = " << fd_ << std::endl;
-    std::cout << "shared_start_real_ = " << shared_start_real_ << std::endl;
+    std::cout << "shared = " << shared << std::endl;
     std::cout << "4" << std::endl;
 
     /*
@@ -85,18 +84,11 @@ struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
 
       sem_init(sem, 1, 1);
      */
-
-    std::cout << "4a" << std::endl;
-    shared_bytes_used = reinterpret_cast<size_t*>(shared_start_real_);
-    std::cout << "4b" << std::endl;
-    *shared_bytes_used = 0;
-    std::cout << "4c" << std::endl;
-    shared_start = reinterpret_cast<char*>(shared_bytes_used + 1);
-    std::cout << "5" << std::endl;
   }
 
   ~PlatformSharedMemoryLinux() override {
-    munmap(shared_start_real_, shmem_size);
+    munmap(shared, shmem_size);
+    shared = nullptr;
     shm_unlink(name_.c_str());
   }
 };

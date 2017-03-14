@@ -11,6 +11,7 @@
 
 #include "platform.h"
 #include "serializer.h"
+#include "utils.h"
 
 // TODO: We need to add support for payloads larger than the maximum shared memory buffer size.
 
@@ -36,6 +37,14 @@ enum class IpcId : int {
   WorkspaceSymbolsResponse
 };
 
+namespace std {
+  template <>
+  struct hash<IpcId> {
+    size_t operator()(const IpcId& k) const {
+      return hash<int>()(static_cast<int>(k));
+    }
+  };
+}
 
 struct IpcMessage {
   IpcMessage(IpcId ipc_id) : ipc_id(ipc_id) {}
