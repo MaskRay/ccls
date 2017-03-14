@@ -97,10 +97,10 @@ void RunTests() {
 
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
-    //if (path != "tests/outline/outline2.cc") continue;
+    //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
     //if (path == "tests/inheritance/class_inherit_templated_parent.cc") continue;
     //if (path != "tests/namespaces/namespace_reference.cc") continue;
-    //if (path != "tests/stl.cc") continue;
+    //if (path != "tests/templates/implicit_variable_instantiation.cc") continue;
 
     //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
     //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;

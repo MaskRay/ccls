@@ -332,7 +332,6 @@ struct IndexedTypeDef {
   IndexedTypeDef() : def("") {} // For serialization
 
   IndexedTypeDef(TypeId id, const std::string& usr);
-  void AddUsage(Location loc, bool insert_if_not_present = true);
 
   bool operator<(const IndexedTypeDef& other) const {
     return def.usr < other.def.usr;

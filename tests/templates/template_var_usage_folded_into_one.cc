@@ -7,8 +7,7 @@ T var = 3;
 int a = var<A>;
 int b = var<B>;
 
-// TODO: No usages of types on var.
-//       libclang doesn't expose the info. File a bug.
+// NOTE: libclang before 4.0 doesn't expose template usage on |var|.
 
 #if false
 EnumDecl A
@@ -48,11 +47,11 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": "c:@var",
+      "usr": "c:@VT>1#T@var",
       "short_name": "var",
       "qualified_name": "var",
       "definition": "1:5:3",
-      "uses": ["1:5:3"]
+      "uses": ["1:5:3", "1:7:9", "1:8:9"]
     }, {
       "id": 1,
       "usr": "c:@a",
