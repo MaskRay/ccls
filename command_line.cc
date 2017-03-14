@@ -663,27 +663,24 @@ void LanguageServerMain(std::string process_name) {
 
   std::thread stdio_reader(&LanguageServerStdinLoop, &client_ipc);
 
-
-  // No server. Run it in-process.
   if (!has_server) {
-
-    QueryableDatabase db;
-    IpcServer server_ipc("languageserver");
-
-    while (true) {
-      QueryDbMainLoop(&server_ipc, &db);
-      LanguageServerMainLoop(&client_ipc);
-      // TODO: use a condition variable.
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    }
+    // No server. Run it in-process.
+    new std::thread([&]() {
+      IpcServer server_ipc("languageserver");
+      QueryableDatabase db;
+      while (true) {
+        QueryDbMainLoop(&server_ipc, &db);
+        // TODO: use a condition variable.
+        std::this_thread::sleep_for(std::chrono::microseconds(0));
+      }
+    });
   }
 
-  else {
-    while (true) {
-      LanguageServerMainLoop(&client_ipc);
-      // TODO: use a condition variable.
-      std::this_thread::sleep_for(std::chrono::milliseconds(20));
-    }
+  // Run language client.
+  while (true) {
+    LanguageServerMainLoop(&client_ipc);
+    // TODO: use a condition variable.
+    std::this_thread::sleep_for(std::chrono::microseconds(0));
   }
 }
 
@@ -734,6 +731,10 @@ void LanguageServerMain(std::string process_name) {
 
 
 int main(int argc, char** argv) {
+  bool loop = false;
+  while (loop)
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
   if (argc == 1) {
     RunTests();
     return 0;

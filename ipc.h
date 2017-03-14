@@ -93,7 +93,11 @@ struct IpcDirectionalChannel {
   std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
   struct MessageBuffer;
+  struct ResizableBuffer;
 
+  ResizableBuffer* CreateOrFindResizableBuffer(int id);
+  void RemoveResizableBuffer(int id);
+  std::unordered_map<int, std::unique_ptr<ResizableBuffer>> resizable_buffers;
 
   // Pointer to process shared memory and process shared mutex.
   std::unique_ptr<PlatformSharedMemory> shared;
