@@ -630,7 +630,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor, clang
     VarId ref_id = db->ToVarId(ref_usr);
     IndexedVarDef* ref_def = db->Resolve(ref_id);
     Location loc = db->id_cache.Resolve(cursor, false /*interesting*/);
-    std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr << " at " << loc.ToString() << std::endl;
+    //std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr << " at " << loc.ToString() << std::endl;
     AddUsage(ref_def->uses, loc);
     break;
   }
@@ -1117,25 +1117,6 @@ void indexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* re
 void emptyIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {}
 void emptyIndexEntityReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {}
 
-struct Timer {
-  using Clock = std::chrono::high_resolution_clock;
-  std::chrono::time_point<Clock> start_;
-
-  Timer() {
-    Reset();
-  }
-
-  void Reset() {
-    start_ = Clock::now();
-  }
-
-  void PrintElapsed() {
-    std::chrono::time_point<Clock> end = Clock::now();
-
-    std::cerr << "Indexing took " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start_).count() << "ms" << std::endl;
-  }
-};
-
 IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump_ast) {
   args.push_back("-std=c++11");
   args.push_back("-fms-compatibility");
@@ -1170,10 +1151,8 @@ IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump
   NamespaceHelper ns;
   IndexParam param(&db, &ns);
 
-  Timer time;
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
     CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession, tu.cx_tu);
-  time.PrintElapsed();
 
   clang_IndexAction_dispose(index_action);
 

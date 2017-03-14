@@ -2,8 +2,13 @@
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
+#include <vector>
+#include <string>
 
-#include "indexer.h"
+#include "optional.h"
+
+using std::experimental::optional;
+using std::experimental::nullopt;
 
 using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
 using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;

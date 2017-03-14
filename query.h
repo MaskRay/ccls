@@ -59,6 +59,15 @@ struct QueryableLocation {
   }
 };
 
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, QueryableLocation& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(path);
+  REFLECT_MEMBER(line);
+  REFLECT_MEMBER(column);
+  REFLECT_MEMBER(interesting);
+  REFLECT_MEMBER_END();
+}
 
 struct UsrRef {
   Usr usr;
@@ -76,7 +85,13 @@ struct UsrRef {
   }
 };
 
-
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, UsrRef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(loc);
+  REFLECT_MEMBER_END();
+}
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -96,9 +111,19 @@ struct MergeableUpdate {
   std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
 
+  MergeableUpdate() {} // For reflection
   MergeableUpdate(Usr usr, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
     : usr(usr), to_add(to_add), to_remove(to_remove) {}
 };
+
+template<typename TVisitor, typename TValue>
+void Reflect(TVisitor& visitor, MergeableUpdate<TValue>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(to_add);
+  REFLECT_MEMBER(to_remove);
+  REFLECT_MEMBER_END();
+}
 
 struct QueryableFile {
   using OutlineUpdate = MergeableUpdate<UsrRef>;
@@ -107,8 +132,17 @@ struct QueryableFile {
   // Outline of the file (ie, all symbols).
   std::vector<UsrRef> outline;
 
+  QueryableFile() {} // For serialization.
   QueryableFile(const IndexedFile& indexed);
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, QueryableFile& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(file_id);
+  REFLECT_MEMBER(outline);
+  REFLECT_MEMBER_END();
+}
 
 struct QueryableTypeDef {
   using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
@@ -119,8 +153,18 @@ struct QueryableTypeDef {
   std::vector<Usr> derived;
   std::vector<QueryableLocation> uses;
 
+  QueryableTypeDef() : def("") {} // For serialization.
   QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, QueryableTypeDef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(def);
+  REFLECT_MEMBER(derived);
+  REFLECT_MEMBER(uses);
+  REFLECT_MEMBER_END();
+}
 
 struct QueryableFuncDef {
   using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
@@ -135,8 +179,20 @@ struct QueryableFuncDef {
   std::vector<UsrRef> callers;
   std::vector<QueryableLocation> uses;
 
+  QueryableFuncDef() : def("") {} // For serialization.
   QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, QueryableFuncDef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(def);
+  REFLECT_MEMBER(declarations);
+  REFLECT_MEMBER(derived);
+  REFLECT_MEMBER(callers);
+  REFLECT_MEMBER(uses);
+  REFLECT_MEMBER_END();
+}
 
 struct QueryableVarDef {
   using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
@@ -145,8 +201,17 @@ struct QueryableVarDef {
   DefUpdate def;
   std::vector<QueryableLocation> uses;
 
+  QueryableVarDef() : def("") {} // For serialization.
   QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, QueryableVarDef& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(def);
+  REFLECT_MEMBER(uses);
+  REFLECT_MEMBER_END();
+}
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {
@@ -219,6 +284,30 @@ struct IndexUpdate {
   void Merge(const IndexUpdate& update);
 };
 
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IndexUpdate& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(files_removed);
+  REFLECT_MEMBER(files_added);
+  REFLECT_MEMBER(files_outline);
+  REFLECT_MEMBER(types_removed);
+  REFLECT_MEMBER(types_added);
+  REFLECT_MEMBER(types_def_changed);
+  REFLECT_MEMBER(types_derived);
+  REFLECT_MEMBER(types_uses);
+  REFLECT_MEMBER(funcs_removed);
+  REFLECT_MEMBER(funcs_added);
+  REFLECT_MEMBER(funcs_def_changed);
+  REFLECT_MEMBER(funcs_declarations);
+  REFLECT_MEMBER(funcs_derived);
+  REFLECT_MEMBER(funcs_callers);
+  REFLECT_MEMBER(funcs_uses);
+  REFLECT_MEMBER(vars_removed);
+  REFLECT_MEMBER(vars_added);
+  REFLECT_MEMBER(vars_def_changed);
+  REFLECT_MEMBER(vars_uses);
+  REFLECT_MEMBER_END();
+}
 
 
 // The query database is heavily optimized for fast queries. It is stored

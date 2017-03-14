@@ -39,7 +39,7 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
       CompilationEntry entry;
       entry.directory = ".";
       entry.filename = file;
-      entry.args = {};
+      entry.args = args;
       result.push_back(entry);
     }
   }

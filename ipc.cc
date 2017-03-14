@@ -1,5 +1,6 @@
 #include "ipc.h"
 #include "serializer.h"
+#include "utils.h"
 
 namespace {
   // The absolute smallest partial payload we should send. This must be >0, ie, 1 is the
@@ -230,6 +231,7 @@ void IpcDispatch(PlatformMutex* mutex, std::function<DispatchResult()> action) {
         std::cerr << "[info]: shmem full, waiting (" << log_count++ << ")" << std::endl; // TODO: remove
       }
       ++log_iteration_count;
+      // TODO: See if we can figure out a way to use condition variables cross-process.
       std::this_thread::sleep_for(std::chrono::microseconds(0));
     }
     first = false;
@@ -263,6 +265,7 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
   int partial_message_id = 0; // TODO
 
   std::cerr << "Starting dispatch of payload with size " << payload_size << std::endl;
+  int count = 0;
 
   IpcDispatch(mutex.get(), [&]() {
     assert(payload_size > 0);
@@ -280,7 +283,11 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
       shared_buffer->free_message()->Setup(message->ipc_id, partial_message_id, true /*has_more_chunks*/, sent_payload_size, payload);
       shared_buffer->metadata()->bytes_used += sizeof(JsonMessage) + sent_payload_size;
       shared_buffer->free_message()->ipc_id = IpcId::Invalid;
-      std::cerr << "Sending partial message with payload_size=" << sent_payload_size << std::endl;
+
+      if (count++ > 50) {
+        std::cerr << "x50 Sending partial message with payload_size=" << sent_payload_size << std::endl;
+        count = 0;
+      }
 
       // Prepare for next time.
       payload_size -= sent_payload_size;
@@ -293,7 +300,7 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
       shared_buffer->free_message()->Setup(message->ipc_id, partial_message_id, false /*has_more_chunks*/, payload_size, payload);
       shared_buffer->metadata()->bytes_used += sizeof(JsonMessage) + payload_size;
       shared_buffer->free_message()->ipc_id = IpcId::Invalid;
-      std::cerr << "Sending full message with payload_size=" << payload_size << std::endl;
+      //std::cerr << "Sending full message with payload_size=" << payload_size << std::endl;
 
       return DispatchResult::Break;
     }
@@ -312,55 +319,53 @@ void AddIpcMessageFromJsonMessage(std::vector<std::unique_ptr<IpcMessage>>& resu
 }
 
 std::vector<std::unique_ptr<IpcMessage>> IpcDirectionalChannel::TakeMessages() {
-  size_t remaining_bytes = 0;
-  // Move data from shared memory into a local buffer. Do this
-  // before parsing the blocks so that other processes can begin
-  // posting data as soon as possible.
-  {
-    std::unique_ptr<PlatformScopedMutexLock> lock = CreatePlatformScopedMutexLock(mutex.get());
-    assert(shared_buffer->metadata()->bytes_used <= shmem_size);
-    remaining_bytes = shared_buffer->metadata()->bytes_used;
-
-    memcpy(local.get(), shared->shared, sizeof(MessageBuffer::Metadata) + shared_buffer->metadata()->bytes_used);
-    shared_buffer->metadata()->bytes_used = 0;
-    shared_buffer->free_message()->ipc_id = IpcId::Invalid;
-  }
-
   std::vector<std::unique_ptr<IpcMessage>> result;
 
-  for (JsonMessage* message : *local_buffer) {
-    std::cerr << "Got message with payload_size=" << message->payload_size << std::endl;
+  do {
+    // Move data from shared memory into a local buffer. Do this
+    // before parsing the blocks so that other processes can begin
+    // posting data as soon as possible.
+    {
+      std::unique_ptr<PlatformScopedMutexLock> lock = CreatePlatformScopedMutexLock(mutex.get());
+      assert(shared_buffer->metadata()->bytes_used <= shmem_size);
+      memcpy(local.get(), shared->shared, sizeof(MessageBuffer::Metadata) + shared_buffer->metadata()->bytes_used);
+      shared_buffer->metadata()->bytes_used = 0;
+      shared_buffer->free_message()->ipc_id = IpcId::Invalid;
+    }
 
-    if (message->partial_message_id != 0) {
-      auto* buf = CreateOrFindResizableBuffer(message->partial_message_id);
-      buf->Append(message->payload(), message->payload_size);
-      if (!message->has_more_chunks) {
-        AddIpcMessageFromJsonMessage(result, message->ipc_id, buf->memory, buf->size);
-        RemoveResizableBuffer(message->partial_message_id);
+    // Parse blocks from shared memory.
+    for (JsonMessage* message : *local_buffer) {
+      //std::cerr << "Got message with payload_size=" << message->payload_size << std::endl;
+
+      if (message->partial_message_id != 0) {
+        auto* buf = CreateOrFindResizableBuffer(message->partial_message_id);
+        buf->Append(message->payload(), message->payload_size);
+        if (!message->has_more_chunks) {
+          AddIpcMessageFromJsonMessage(result, message->ipc_id, buf->memory, buf->size);
+          RemoveResizableBuffer(message->partial_message_id);
+        }
+      }
+      else {
+        assert(!message->has_more_chunks);
+        AddIpcMessageFromJsonMessage(result, message->ipc_id, message->payload(), message->payload_size);
       }
     }
-    else {
-      assert(!message->has_more_chunks);
-      AddIpcMessageFromJsonMessage(result, message->ipc_id, message->payload(), message->payload_size);
-    }
-  }
-  local_buffer->metadata()->bytes_used = 0;
+    local_buffer->metadata()->bytes_used = 0;
+
+    // Let other threads run. We still want to run as fast as possible, though.
+    std::this_thread::sleep_for(std::chrono::microseconds(0));
+  } while (resizable_buffers.size() > 0);
 
   return result;
 }
 
 
 
-IpcServer::IpcServer(const std::string& name)
-  : name_(name), server_(NameToServerName(name)) {}
+IpcServer::IpcServer(const std::string& name, int client_id)
+  : server_(NameToServerName(name)), client_(NameToClientName(name, client_id)) {}
 
-void IpcServer::SendToClient(int client_id, IpcMessage* message) {
-  // Find or create the client.
-  auto it = clients_.find(client_id);
-  if (it == clients_.end())
-    clients_[client_id] = MakeUnique<IpcDirectionalChannel>(NameToClientName(name_, client_id));
-
-  clients_[client_id]->PushMessage(message);
+void IpcServer::SendToClient(IpcMessage* message) {
+  client_.PushMessage(message);
 }
 
 std::vector<std::unique_ptr<IpcMessage>> IpcServer::TakeMessages() {

@@ -13,6 +13,7 @@
 #include "bitfield.h"
 #include "utils.h"
 #include "optional.h"
+#include "serializer.h"
 
 #include <rapidjson/writer.h>
 #include <rapidjson/prettywriter.h>
@@ -297,6 +298,7 @@ struct TypeDefDefinitionData {
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
 
+  TypeDefDefinitionData() {} // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
   bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const {
@@ -314,6 +316,21 @@ struct TypeDefDefinitionData {
 
   bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const { return !(*this == other); }
 };
+template<typename TVisitor, typename TypeId, typename FuncId, typename VarId, typename Location>
+void Reflect(TVisitor& visitor, TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(short_name);
+  REFLECT_MEMBER(qualified_name);
+  REFLECT_MEMBER(definition);
+  REFLECT_MEMBER(alias_of);
+  REFLECT_MEMBER(parents);
+  REFLECT_MEMBER(types);
+  REFLECT_MEMBER(funcs);
+  REFLECT_MEMBER(vars);
+  REFLECT_MEMBER_END();
+}
+
 
 struct IndexedTypeDef {
   TypeDefDefinitionData<> def;
@@ -367,6 +384,7 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
+  FuncDefDefinitionData() {} // For reflection.
   FuncDefDefinitionData(const std::string& usr) : usr(usr) {
     //assert(usr.size() > 0);
   }
@@ -384,6 +402,20 @@ struct FuncDefDefinitionData {
   }
   bool operator!=(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& other) const { return !(*this == other); }
 };
+
+template<typename TVisitor, typename TypeId, typename FuncId, typename VarId, typename FuncRef, typename Location>
+void Reflect(TVisitor& visitor, FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(short_name);
+  REFLECT_MEMBER(qualified_name);
+  REFLECT_MEMBER(definition);
+  REFLECT_MEMBER(declaring_type);
+  REFLECT_MEMBER(base);
+  REFLECT_MEMBER(locals);
+  REFLECT_MEMBER(callees);
+  REFLECT_MEMBER_END();
+}
 
 struct IndexedFuncDef {
   FuncDefDefinitionData<> def;
@@ -409,8 +441,7 @@ struct IndexedFuncDef {
 
   bool is_bad_def = true;
 
-  IndexedFuncDef() : def("") {} // For serialization
-
+  IndexedFuncDef() {} // For reflection.
   IndexedFuncDef(FuncId id, const std::string& usr) : id(id), def(usr) {
     //assert(usr.size() > 0);
   }
@@ -446,6 +477,7 @@ struct VarDefDefinitionData {
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
 
+  VarDefDefinitionData() {} // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
   bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const {
@@ -460,6 +492,18 @@ struct VarDefDefinitionData {
   }
   bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const { return !(*this == other); }
 };
+
+template<typename TVisitor, typename TypeId, typename FuncId, typename VarId, typename Location>
+void Reflect(TVisitor& visitor, VarDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(short_name);
+  REFLECT_MEMBER(qualified_name);
+  REFLECT_MEMBER(definition);
+  REFLECT_MEMBER(variable_type);
+  REFLECT_MEMBER(declaring_type);
+  REFLECT_MEMBER_END();
+}
 
 struct IndexedVarDef {
   VarDefDefinitionData<> def;

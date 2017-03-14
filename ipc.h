@@ -23,6 +23,9 @@ enum class IpcId : int {
   IsAlive,
   OpenProject,
 
+  IndexTranslationUnitRequest,
+  IndexTranslationUnitResponse,
+
   // This is a language server request. The actual request method
   // id is embedded within the request state.
   LanguageServerRequest,
@@ -111,15 +114,14 @@ struct IpcDirectionalChannel {
 };
 
 struct IpcServer {
-  IpcServer(const std::string& name);
+  IpcServer(const std::string& name, int client_id);
 
-  void SendToClient(int client_id, IpcMessage* message);
+  void SendToClient(IpcMessage* message);
   std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
 private:
-  std::string name_;
   IpcDirectionalChannel server_;
-  std::unordered_map<int, std::unique_ptr<IpcDirectionalChannel>> clients_;
+  IpcDirectionalChannel client_;
 };
 
 struct IpcClient {

@@ -1,5 +1,7 @@
 #include "serializer.h"
 
+#include "indexer.h"
+
 
 // int
 void Reflect(Reader& visitor, int& value) {
