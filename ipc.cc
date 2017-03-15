@@ -45,14 +45,18 @@ namespace {
 IpcRegistry* IpcRegistry::instance_ = nullptr;
 
 std::unique_ptr<IpcMessage> IpcRegistry::Allocate(IpcId id) {
-  return std::unique_ptr<IpcMessage>((*allocators)[id]());
+  assert(allocators_);
+  auto it = allocators_->find(id);
+  assert(it != allocators_->end() && "No registered allocator for id");
+  return std::unique_ptr<IpcMessage>(it->second());
 }
 
 struct IpcDirectionalChannel::MessageBuffer {
-  MessageBuffer(void* buffer, size_t buffer_size) {
+  MessageBuffer(void* buffer, size_t buffer_size, bool initialize) {
     real_buffer = buffer;
     real_buffer_size = buffer_size;
-    new(real_buffer) Metadata();
+    if (initialize)
+      new(real_buffer) Metadata();
   }
 
   // Pointer to the start of the actual buffer and the
@@ -201,15 +205,15 @@ void IpcDirectionalChannel::RemoveResizableBuffer(int id) {
   resizable_buffers.erase(id);
 }
 
-IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name) {
+IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name, bool initialize_shared_memory) {
   shared = CreatePlatformSharedMemory(name + "memory");
   mutex = CreatePlatformMutex(name + "mutex");
   local = std::unique_ptr<char>(new char[shmem_size]);
 
   // TODO: connecting a client will allocate reset shared state on the
   // buffer. We need to store if we "initialized".
-  shared_buffer = MakeUnique<MessageBuffer>(shared->shared, shmem_size);
-  local_buffer = MakeUnique<MessageBuffer>(local.get(), shmem_size);
+  shared_buffer = MakeUnique<MessageBuffer>(shared->shared, shmem_size, initialize_shared_memory);
+  local_buffer = MakeUnique<MessageBuffer>(local.get(), shmem_size, true /*initialize*/);
 }
 
 IpcDirectionalChannel::~IpcDirectionalChannel() {}
@@ -361,11 +365,16 @@ std::vector<std::unique_ptr<IpcMessage>> IpcDirectionalChannel::TakeMessages() {
 
 
 
-IpcServer::IpcServer(const std::string& name, int client_id)
-  : server_(NameToServerName(name)), client_(NameToClientName(name, client_id)) {}
+IpcServer::IpcServer(const std::string& name, int num_clients)
+  : server_(NameToServerName(name), true /*initialize_shared_memory*/) {
 
-void IpcServer::SendToClient(IpcMessage* message) {
-  client_.PushMessage(message);
+  for (int i = 0; i < num_clients; ++i) {
+    clients_.push_back(MakeUnique<IpcDirectionalChannel>(NameToClientName(name, i), true /*initialize_shared_memory*/));
+  }
+}
+
+void IpcServer::SendToClient(int client_id, IpcMessage* message) {
+  clients_[client_id]->PushMessage(message);
 }
 
 std::vector<std::unique_ptr<IpcMessage>> IpcServer::TakeMessages() {
@@ -373,7 +382,8 @@ std::vector<std::unique_ptr<IpcMessage>> IpcServer::TakeMessages() {
 }
 
 IpcClient::IpcClient(const std::string& name, int client_id)
-  : server_(NameToServerName(name)), client_(NameToClientName(name, client_id)) {}
+  : server_(NameToServerName(name), false /*initialize_shared_memory*/),
+    client_(NameToClientName(name, client_id), false /*initialize_shared_memory*/) {}
 
 void IpcClient::SendToServer(IpcMessage* message) {
   server_.PushMessage(message);

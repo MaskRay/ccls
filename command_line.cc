@@ -21,6 +21,11 @@
 #include <fcntl.h>
 #endif
 
+const char* kIpcIndexerName = "indexer";
+const char* kIpcLanguageClientName = "language_client";
+
+const int kNumIndexers = 8 - 1;
+
 std::unordered_map<std::string, std::string> ParseOptions(int argc, char** argv) {
   std::unordered_map<std::string, std::string> output;
 
@@ -204,6 +209,7 @@ struct IpcMessage_IndexTranslationUnitResponse : public BaseIpcMessage<IpcMessag
   static constexpr IpcId kIpcId = IpcId::IndexTranslationUnitResponse;
   IndexUpdate update;
 
+  IpcMessage_IndexTranslationUnitResponse() {}
   explicit IpcMessage_IndexTranslationUnitResponse(IndexUpdate& update) : update(update) {}
 };
 template<typename TVisitor>
@@ -310,10 +316,10 @@ struct Timer {
 };
 
 
-void IndexMainLoop(IpcClient* ipc) {
-  std::vector<std::unique_ptr<IpcMessage>> messages = ipc->TakeMessages();
+void IndexMainLoop(IpcClient* client) {
+  std::vector<std::unique_ptr<IpcMessage>> messages = client->TakeMessages();
   for (auto& message : messages) {
-    std::cerr << "Processing message " << static_cast<int>(message->ipc_id) << std::endl;
+    //std::cerr << "Processing message " << static_cast<int>(message->ipc_id) << std::endl;
 
     switch (message->ipc_id) {
     case IpcId::Quit: {
@@ -335,7 +341,7 @@ void IndexMainLoop(IpcClient* ipc) {
       std::cerr << "Creating index update took " << time.ElapsedMilliseconds() << "ms" << std::endl;
 
       time.Reset();
-      ipc->SendToServer(&response);
+      client->SendToServer(&response);
       std::cerr << "Sending to server took " << time.ElapsedMilliseconds() << "ms" << std::endl;
 
       break;
@@ -345,10 +351,7 @@ void IndexMainLoop(IpcClient* ipc) {
 }
 
 void IndexMain(int id) {
-  return;
-
-  IpcClient client_ipc("indexer", id);
-
+  IpcClient client_ipc(kIpcIndexerName, id);
   while (true) {
     IndexMainLoop(&client_ipc);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -367,11 +370,41 @@ void IndexMain(int id) {
 
 
 
-void QueryDbMainLoop(IpcServer* client, std::vector<std::unique_ptr<IpcServer>>& indexers, QueryableDatabase* db) {
-  std::vector<std::unique_ptr<IpcMessage>> messages = client->TakeMessages();
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void QueryDbMainLoop(IpcServer* language_client, IpcServer* indexers, QueryableDatabase* db) {
+  std::vector<std::unique_ptr<IpcMessage>> messages = language_client->TakeMessages();
   for (auto& message : messages) {
-    std::cerr << "Processing message " << static_cast<int>(message->ipc_id) << std::endl;
+    //std::cerr << "Processing message " << static_cast<int>(message->ipc_id) << std::endl;
 
     switch (message->ipc_id) {
     case IpcId::Quit: {
@@ -380,7 +413,7 @@ void QueryDbMainLoop(IpcServer* client, std::vector<std::unique_ptr<IpcServer>>&
 
     case IpcId::IsAlive: {
       IpcMessage_IsAlive response;
-      client->SendToClient(&response); // todo: make non-blocking
+      language_client->SendToClient(0, &response); // todo: make non-blocking
       break;
     }
 
@@ -395,24 +428,16 @@ void QueryDbMainLoop(IpcServer* client, std::vector<std::unique_ptr<IpcServer>>&
         std::string filepath = path + "/" + entry.filename;
         std::cerr << "[" << i << "/" << (entries.size() - 1) << "] Dispatching index request for file " << filepath << std::endl;
 
-        // TODO: indexers should steal work. load balance.
+        // TODO: indexers should steal work and load balance.
         IpcMessage_IndexTranslationUnitRequest request;
         request.path = filepath;
         request.args = entry.args;
-        indexers[i % indexers.size()]->SendToClient(&request);
+        indexers->SendToClient(i % indexers->num_clients(), &request);
         //IndexedFile file = Parse(filepath, entry.args);
         //IndexUpdate update(file);
         //db->ApplyIndexUpdate(&update);
       }
       std::cerr << "Done" << std::endl;
-      break;
-    }
-
-    case IpcId::IndexTranslationUnitResponse: {
-      IpcMessage_IndexTranslationUnitResponse* msg = static_cast<IpcMessage_IndexTranslationUnitResponse*>(message.get());
-      Timer time;
-      db->ApplyIndexUpdate(&msg->update);
-      std::cerr << "Applying index update took " << time.ElapsedMilliseconds() << "ms" << std::endl;
       break;
     }
 
@@ -487,7 +512,7 @@ void QueryDbMainLoop(IpcServer* client, std::vector<std::unique_ptr<IpcServer>>&
 
 
 
-      client->SendToClient(&response);
+      language_client->SendToClient(0, &response);
 
       break;
     }
@@ -577,7 +602,27 @@ void QueryDbMainLoop(IpcServer* client, std::vector<std::unique_ptr<IpcServer>>&
       }
 
 
-      client->SendToClient(&response);
+      language_client->SendToClient(0, &response);
+      break;
+    }
+
+    default: {
+      std::cerr << "Unhandled IPC message with kind " << static_cast<int>(message->ipc_id) << std::endl;
+      exit(1);
+    }
+    }
+  }
+
+  messages = indexers->TakeMessages();
+  for (auto& message : messages) {
+    //std::cerr << "Processing message " << static_cast<int>(message->ipc_id) << std::endl;
+    switch (message->ipc_id) {
+
+    case IpcId::IndexTranslationUnitResponse: {
+      IpcMessage_IndexTranslationUnitResponse* msg = static_cast<IpcMessage_IndexTranslationUnitResponse*>(message.get());
+      Timer time;
+      db->ApplyIndexUpdate(&msg->update);
+      std::cerr << "Applying index update took " << time.ElapsedMilliseconds() << "ms" << std::endl;
       break;
     }
 
@@ -588,6 +633,54 @@ void QueryDbMainLoop(IpcServer* client, std::vector<std::unique_ptr<IpcServer>>&
     }
   }
 }
+
+void QueryDbMain() {
+  std::cerr << "Running QueryDb" << std::endl;
+  IpcServer language_client(kIpcLanguageClientName, 1 /*num_clients*/);
+  IpcServer indexers(kIpcIndexerName, kNumIndexers);
+  QueryableDatabase db;
+
+  std::cerr << "!! starting processes" << std::endl;
+  // Start indexer processes.
+  for (int i = 0; i < kNumIndexers; ++i) {
+    //new Process(process_name + " --indexer " + std::to_string(i + 1));
+    new std::thread([i]() {
+      IndexMain(i);
+    });
+  }
+  std::cerr << "!! done processes" << std::endl;
+
+  // Pump query db main loop.
+  while (true) {
+    QueryDbMainLoop(&language_client, &indexers, &db);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -722,10 +815,8 @@ void LanguageServerMainLoop(IpcClient* ipc) {
   }
 }
 
-const int kNumIndexers = 8 - 1;
-
 void LanguageServerMain(std::string process_name) {
-  IpcClient client_ipc("languageserver", 0);
+  IpcClient client_ipc(kIpcLanguageClientName, 0);
 
   // Discard any left-over messages from previous runs.
   client_ipc.TakeMessages();
@@ -767,109 +858,77 @@ void LanguageServerMain(std::string process_name) {
     // Pass empty process name so we only try to start the querydb once.
     LanguageServerMain("");
     return;
-  }
+}
 #endif
 
   // for debugging attach
   //std::this_thread::sleep_for(std::chrono::seconds(4));
 
 
-  std::thread stdio_reader(&LanguageServerStdinLoop, &client_ipc);
 
 
 
   if (!has_server) {
-    std::vector<std::unique_ptr<IpcServer>> server_indexers;
-    IpcServer server_ipc("languageserver", 0);
-    QueryableDatabase db;
-
     // No server. Run it in-process.
     new std::thread([&]() {
-
-      std::cerr << "!! starting processes" << std::endl;
-      // Start indexer processes.
-      // TODO: make sure to handle this when running querydb out of process.
-      for (int i = 0; i < kNumIndexers; ++i) {
-        server_indexers.emplace_back(MakeUnique<IpcServer>("indexer", i + 1));
-        //new Process(process_name + " --indexer " + std::to_string(i + 1));
-        new std::thread([i]() {
-          IndexMain(i + 1);
-        });
-      }
-      std::cerr << "!! done processes" << std::endl;
-
-
-      
-      while (true) {
-        QueryDbMainLoop(&server_ipc, server_indexers, &db);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
+      QueryDbMain();
     });
   }
 
   // Run language client.
+  std::thread stdio_reader(&LanguageServerStdinLoop, &client_ipc);
   while (true) {
     LanguageServerMainLoop(&client_ipc);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-int main(int argc, char** argv) {
-  bool loop = false;
-  while (loop)
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-  if (argc == 1) {
-    RunTests();
-    return 0;
   }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void PreMain() {
   // We need to write to stdout in binary mode because in Windows, writing
   // \n will implicitly write \r\n. Language server API will ignore a
   // \r\r\n split request.
@@ -878,21 +937,40 @@ int main(int argc, char** argv) {
   _setmode(_fileno(stdin), O_BINARY);
 #endif
 
-  IpcRegistry::instance()->Register<IpcMessage_Quit>(IpcId::Quit);
-  IpcRegistry::instance()->Register<IpcMessage_IsAlive>(IpcId::IsAlive);
-  IpcRegistry::instance()->Register<IpcMessage_OpenProject>(IpcId::OpenProject);
+  IpcRegistry::instance()->Register<IpcMessage_Quit>(IpcMessage_Quit::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_IsAlive>(IpcMessage_IsAlive::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_OpenProject>(IpcMessage_OpenProject::kIpcId);
 
-  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>(IpcId::DocumentSymbolsRequest);
-  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>(IpcId::DocumentSymbolsResponse);
-  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsRequest>(IpcId::WorkspaceSymbolsRequest);
-  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>(IpcId::WorkspaceSymbolsResponse);
+  IpcRegistry::instance()->Register<IpcMessage_IndexTranslationUnitRequest>(IpcMessage_IndexTranslationUnitRequest::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_IndexTranslationUnitResponse>(IpcMessage_IndexTranslationUnitResponse::kIpcId);
+
+  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>(IpcMessage_DocumentSymbolsRequest::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>(IpcMessage_DocumentSymbolsResponse::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsRequest>(IpcMessage_WorkspaceSymbolsRequest::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>(IpcMessage_WorkspaceSymbolsResponse::kIpcId);
 
   MessageRegistry::instance()->Register<In_CancelRequest>();
   MessageRegistry::instance()->Register<In_InitializeRequest>();
   MessageRegistry::instance()->Register<In_InitializedNotification>();
   MessageRegistry::instance()->Register<In_DocumentSymbolRequest>();
   MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
+}
 
+int main(int argc, char** argv) {
+  bool loop = false;
+  while (loop)
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+  PreMain();
+
+  if (argc == 1) {
+    QueryDbMain();
+    return 0;
+  }
+  if (argc == 1) {
+    RunTests();
+    return 0;
+  }
 
 
 
@@ -909,7 +987,7 @@ int main(int argc, char** argv) {
   else if (HasOption(options, "--querydb")) {
     std::cerr << "Running querydb" << std::endl;
     QueryableDatabase db;
-    IpcServer ipc("languageserver");
+    IpcServer ipc(kIpcServername);
     while (true) {
       QueryDbMainLoop(&ipc, &db);
       // TODO: use a condition variable.

@@ -61,7 +61,7 @@ struct IpcRegistry {
 
   // Use unique_ptrs so we can initialize on first use
   // (static init order might not be right).
-  std::unique_ptr<std::unordered_map<IpcId, Allocator>> allocators;
+  std::unique_ptr<std::unordered_map<IpcId, Allocator>> allocators_;
 
   template<typename T>
   void Register(IpcId id);
@@ -78,13 +78,13 @@ struct IpcRegistry {
 
 template<typename T>
 void IpcRegistry::Register(IpcId id) {
-  if (!allocators)
-    allocators = MakeUnique<std::unordered_map<IpcId, Allocator>>();
+  if (!allocators_)
+    allocators_ = MakeUnique<std::unordered_map<IpcId, Allocator>>();
 
-  assert(allocators->find(id) == allocators->end() &&
+  assert(allocators_->find(id) == allocators_->end() &&
          "There is already an IPC message with the given id");
 
-  (*allocators)[id] = [id]() {
+  (*allocators_)[id] = [id]() {
     return new T();
   };
 }
@@ -98,7 +98,7 @@ struct IpcDirectionalChannel {
   // NOTE: We keep all pointers in terms of char* so pointer arithmetic is
   // always relative to bytes.
 
-  explicit IpcDirectionalChannel(const std::string& name);
+  explicit IpcDirectionalChannel(const std::string& name, bool initialize_shared_memory);
   ~IpcDirectionalChannel();
 
   void PushMessage(IpcMessage* message);
@@ -123,14 +123,16 @@ struct IpcDirectionalChannel {
 };
 
 struct IpcServer {
-  IpcServer(const std::string& name, int client_id);
+  IpcServer(const std::string& name, int num_clients);
 
-  void SendToClient(IpcMessage* message);
+  void SendToClient(int client_id, IpcMessage* message);
   std::vector<std::unique_ptr<IpcMessage>> TakeMessages();
 
+  int num_clients() const { return clients_.size(); }
+
 private:
-  IpcDirectionalChannel server_;
-  IpcDirectionalChannel client_;
+  IpcDirectionalChannel server_; // Local / us.
+  std::vector<std::unique_ptr<IpcDirectionalChannel>> clients_;
 };
 
 struct IpcClient {

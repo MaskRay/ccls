@@ -512,37 +512,77 @@ void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
 
 void QueryableDatabase::Import(const std::vector<QueryableFile>& defs) {
   for (auto& def : defs) {
-    qualified_names.push_back(def.file_id);
-    symbols.push_back(SymbolIdx(SymbolKind::File, files.size()));
-    usr_to_symbol[def.file_id] = SymbolIdx(SymbolKind::File, files.size());
-    files.push_back(def);
+    auto it = usr_to_symbol.find(def.file_id);
+    if (it == usr_to_symbol.end()) {
+      qualified_names.push_back(def.file_id);
+      symbols.push_back(SymbolIdx(SymbolKind::File, files.size()));
+      usr_to_symbol[def.file_id] = SymbolIdx(SymbolKind::File, files.size());
+
+      files.push_back(def);
+    }
+    else {
+      QueryableFile& existing = files[it->second.idx];
+      // Replace the entire file. We don't ever want to merge files.
+      existing = def;
+    }
   }
 }
 
 void QueryableDatabase::Import(const std::vector<QueryableTypeDef>& defs) {
   for (auto& def : defs) {
-    qualified_names.push_back(def.def.qualified_name);
-    symbols.push_back(SymbolIdx(SymbolKind::Type, types.size()));
-    usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Type, types.size());
-    types.push_back(def);
+    auto it = usr_to_symbol.find(def.def.usr);
+    if (it == usr_to_symbol.end()) {
+      qualified_names.push_back(def.def.qualified_name);
+      symbols.push_back(SymbolIdx(SymbolKind::Type, types.size()));
+      usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Type, types.size());
+      types.push_back(def);
+    }
+    else {
+      QueryableTypeDef& existing = types[it->second.idx];
+      if (def.def.definition)
+        existing.def = def.def;
+      AddRange(&existing.derived, def.derived);
+      AddRange(&existing.uses, def.uses);
+    }
   }
 }
 
 void QueryableDatabase::Import(const std::vector<QueryableFuncDef>& defs) {
   for (auto& def : defs) {
-    qualified_names.push_back(def.def.qualified_name);
-    symbols.push_back(SymbolIdx(SymbolKind::Func, funcs.size()));
-    usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
-    funcs.push_back(def);
+    auto it = usr_to_symbol.find(def.def.usr);
+    if (it == usr_to_symbol.end()) {
+      qualified_names.push_back(def.def.qualified_name);
+      symbols.push_back(SymbolIdx(SymbolKind::Func, funcs.size()));
+      usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
+      funcs.push_back(def);
+    }
+    else {
+      QueryableFuncDef& existing = funcs[it->second.idx];
+      if (def.def.definition)
+        existing.def = def.def;
+      AddRange(&existing.callers, def.callers);
+      AddRange(&existing.declarations, def.declarations);
+      AddRange(&existing.derived, def.derived);
+      AddRange(&existing.uses, def.uses);
+    }
   }
 }
 
 void QueryableDatabase::Import(const std::vector<QueryableVarDef>& defs) {
   for (auto& def : defs) {
-    qualified_names.push_back(def.def.qualified_name);
-    symbols.push_back(SymbolIdx(SymbolKind::Var, vars.size()));
-    usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
-    vars.push_back(def);
+    auto it = usr_to_symbol.find(def.def.usr);
+    if (it == usr_to_symbol.end()) {
+      qualified_names.push_back(def.def.qualified_name);
+      symbols.push_back(SymbolIdx(SymbolKind::Var, vars.size()));
+      usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
+      vars.push_back(def);
+    }
+    else {
+      QueryableVarDef& existing = vars[it->second.idx];
+      if (def.def.definition)
+        existing.def = def.def;
+      AddRange(&existing.uses, def.uses);
+    }
   }
 }
 

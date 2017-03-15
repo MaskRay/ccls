@@ -271,6 +271,7 @@ struct IndexUpdate {
   std::vector<QueryableVarDef::DefUpdate> vars_def_changed;
   std::vector<QueryableVarDef::UsesUpdate> vars_uses;
 
+  IndexUpdate() {}
 
   // Creates a new IndexUpdate that will import |file|.
   explicit IndexUpdate(IndexedFile& file);

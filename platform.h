@@ -12,6 +12,7 @@ struct PlatformScopedMutexLock {
 struct PlatformSharedMemory {
   virtual ~PlatformSharedMemory() {}
   void* shared;
+  std::string name;
 };
 
 const int shmem_size = 1024 * 1024 * 32;  // number of chars/bytes (32mb)

@@ -37,6 +37,8 @@ struct PlatformSharedMemoryWin : public PlatformSharedMemory {
   HANDLE shmem_;
 
   PlatformSharedMemoryWin(const std::string& name) {
+    this->name = name;
+
     shmem_ = CreateFileMapping(
       INVALID_HANDLE_VALUE,
       NULL,
