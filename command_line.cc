@@ -276,6 +276,62 @@ void Reflect(TVisitor& visitor, IpcMessage_WorkspaceSymbolsRequest& value) {
 }
 
 
+struct IpcMessage_DocumentCodeLensRequest : public BaseIpcMessage<IpcMessage_DocumentCodeLensRequest> {
+  static constexpr IpcId kIpcId = IpcId::DocumentCodeLensRequest;
+  RequestId request_id;
+  std::string document;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_DocumentCodeLensRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(document);
+  REFLECT_MEMBER_END();
+}
+
+struct IpcMessage_DocumentCodeLensResponse : public BaseIpcMessage<IpcMessage_DocumentCodeLensResponse> {
+  static constexpr IpcId kIpcId = IpcId::DocumentCodeLensResponse;
+  RequestId request_id;
+  std::vector<TCodeLens> code_lens;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_DocumentCodeLensResponse& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(code_lens);
+  REFLECT_MEMBER_END();
+}
+
+
+struct IpcMessage_CodeLensResolveRequest : public BaseIpcMessage<IpcMessage_CodeLensResolveRequest> {
+  static constexpr IpcId kIpcId = IpcId::CodeLensResolveRequest;
+  RequestId request_id;
+  TCodeLens code_lens;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_CodeLensResolveRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(code_lens);
+  REFLECT_MEMBER_END();
+}
+
+struct IpcMessage_CodeLensResolveResponse : public BaseIpcMessage<IpcMessage_CodeLensResolveResponse> {
+  static constexpr IpcId kIpcId = IpcId::CodeLensResolveResponse;
+  RequestId request_id;
+  TCodeLens code_lens;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, IpcMessage_CodeLensResolveResponse& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(request_id);
+  REFLECT_MEMBER(code_lens);
+  REFLECT_MEMBER_END();
+}
+
+
+
+
 struct IpcMessage_WorkspaceSymbolsResponse : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsResponse> {
   static constexpr IpcId kIpcId = IpcId::WorkspaceSymbolsResponse;
   RequestId request_id;
@@ -394,12 +450,29 @@ void IndexMain(int id) {
 
 
 
+QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
+  //std::cerr << "Wanted file " << msg->document << std::endl;
+  // TODO: hashmap lookup.
+  for (auto& file : db->files) {
+    //std::cerr << " - Have file " << file.file_id << std::endl;
+    if (file.file_id == filename) {
+      std::cerr << "Found file " << filename << std::endl;
+      return &file;
+    }
+  }
+
+  std::cerr << "Unable to find file " << filename << std::endl;
+  return nullptr;
+}
 
 
 
 
-
-
+lsLocation GetLsLocation(QueryableLocation& location) {
+  return lsLocation(
+    lsDocumentUri::FromPath(location.path),
+    lsRange(lsPosition(location.line - 1, location.column - 1)));
+}
 
 void QueryDbMainLoop(IpcServer* language_client, IpcServer* indexers, QueryableDatabase* db) {
   std::vector<std::unique_ptr<IpcMessage>> messages = language_client->TakeMessages();
@@ -447,73 +520,121 @@ void QueryDbMainLoop(IpcServer* language_client, IpcServer* indexers, QueryableD
       IpcMessage_DocumentSymbolsResponse response;
       response.request_id = msg->request_id;
 
-      std::cerr << "Wanted file " << msg->document << std::endl;
-      for (auto& file : db->files) {
-        std::cerr << " - Have file " << file.file_id << std::endl;
+      QueryableFile* file = FindFile(db, msg->document);
+      if (file) {
+        for (UsrRef ref : file->outline) {
+          SymbolIdx symbol = db->usr_to_symbol[ref.usr];
 
-        // TODO: make sure we normalize ids!
-        // TODO: hashmap lookup.
-        if (file.file_id == msg->document) {
-          std::cerr << "Found file" << std::endl;
+          lsSymbolInformation info;
+          info.location.range.start.line = ref.loc.line - 1; // TODO: cleanup indexer to negate by 1.
+          info.location.range.start.character = ref.loc.column - 1; // TODO: cleanup indexer to negate by 1.
+                                                                    // TODO: store range information.
+          info.location.range.end.line = info.location.range.start.line;
+          info.location.range.end.character = info.location.range.start.character;
 
-
-          for (UsrRef ref : file.outline) {
-            SymbolIdx symbol = db->usr_to_symbol[ref.usr];
-
-            lsSymbolInformation info;
-            info.location.range.start.line = ref.loc.line - 1; // TODO: cleanup indexer to negate by 1.
-            info.location.range.start.character = ref.loc.column - 1; // TODO: cleanup indexer to negate by 1.
-                                                                      // TODO: store range information.
-            info.location.range.end.line = info.location.range.start.line;
-            info.location.range.end.character = info.location.range.start.character;
-
-            // TODO: cleanup namespace/naming so there is only one SymbolKind.
-            switch (symbol.kind) {
-            case ::SymbolKind::Type:
-            {
-              QueryableTypeDef& def = db->types[symbol.idx];
-              info.name = def.def.qualified_name;
-              info.kind = lsSymbolKind::Class;
-              break;
-            }
-            case SymbolKind::Func:
-            {
-              QueryableFuncDef& def = db->funcs[symbol.idx];
-              info.name = def.def.qualified_name;
-              if (def.def.declaring_type.has_value()) {
-                info.kind = lsSymbolKind::Method;
-                Usr declaring = def.def.declaring_type.value();
-                info.containerName = db->types[db->usr_to_symbol[declaring].idx].def.qualified_name;
-              }
-              else {
-                info.kind = lsSymbolKind::Function;
-              }
-              break;
-            }
-            case ::SymbolKind::Var:
-            {
-              QueryableVarDef& def = db->vars[symbol.idx];
-              info.name = def.def.qualified_name;
-              info.kind = lsSymbolKind::Variable;
-              break;
-            }
-            };
-
-            // TODO
-            //info.containerName = "fooey";
-
-            response.symbols.push_back(info);
-
+          // TODO: cleanup namespace/naming so there is only one SymbolKind.
+          switch (symbol.kind) {
+          case ::SymbolKind::Type: {
+            QueryableTypeDef& def = db->types[symbol.idx];
+            info.name = def.def.qualified_name;
+            info.kind = lsSymbolKind::Class;
+            break;
           }
-          break;
+          case SymbolKind::Func: {
+            QueryableFuncDef& def = db->funcs[symbol.idx];
+            info.name = def.def.qualified_name;
+            if (def.def.declaring_type.has_value()) {
+              info.kind = lsSymbolKind::Method;
+              Usr declaring = def.def.declaring_type.value();
+              info.containerName = db->types[db->usr_to_symbol[declaring].idx].def.qualified_name;
+            }
+            else {
+              info.kind = lsSymbolKind::Function;
+            }
+            break;
+          }
+          case ::SymbolKind::Var: {
+            QueryableVarDef& def = db->vars[symbol.idx];
+            info.name = def.def.qualified_name;
+            info.kind = lsSymbolKind::Variable;
+            break;
+          }
+          };
+
+          response.symbols.push_back(info);
         }
       }
 
+      language_client->SendToClient(0, &response);
+      break;
+    }
 
+    case IpcId::DocumentCodeLensRequest: {
+      auto msg = static_cast<IpcMessage_DocumentCodeLensRequest*>(message.get());
+
+      IpcMessage_DocumentCodeLensResponse response;
+      response.request_id = msg->request_id;
+
+      lsDocumentUri file_as_uri;
+      file_as_uri.SetPath(msg->document);
+
+      QueryableFile* file = FindFile(db, msg->document);
+      if (file) {
+
+        for (UsrRef ref : file->outline) {
+          SymbolIdx symbol = db->usr_to_symbol[ref.usr];
+
+          TCodeLens code_lens;
+          code_lens.range.start.line = ref.loc.line - 1; // TODO: cleanup indexer to negate by 1.
+          code_lens.range.start.character = ref.loc.column - 1; // TODO: cleanup indexer to negate by 1.
+                                                                    // TODO: store range information.
+          code_lens.range.end.line = code_lens.range.start.line;
+          code_lens.range.end.character = code_lens.range.start.character;
+
+          code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+          code_lens.command->command = "superindex.showReferences";
+          code_lens.command->arguments.uri = file_as_uri;
+          code_lens.command->arguments.position = code_lens.range.start;
+
+
+          switch (symbol.kind) {
+          case SymbolKind::Type: {
+            QueryableTypeDef& def = db->types[symbol.idx];
+            for (QueryableLocation& usage : def.uses) {
+              if (!usage.interesting)
+                continue;
+              code_lens.command->arguments.locations.push_back(GetLsLocation(usage));
+            }
+            break;
+          }
+          case SymbolKind::Func: {
+            QueryableFuncDef& def = db->funcs[symbol.idx];
+            for (QueryableLocation& usage : def.uses)
+              code_lens.command->arguments.locations.push_back(GetLsLocation(usage));
+            break;
+          }
+          case SymbolKind::Var: {
+            QueryableVarDef& def = db->vars[symbol.idx];
+            for (QueryableLocation& usage : def.uses)
+              code_lens.command->arguments.locations.push_back(GetLsLocation(usage));
+            break;
+          }
+          };
+
+          // TODO: we are getting too many references
+          int num_usages = code_lens.command->arguments.locations.size();
+          code_lens.command->title = std::to_string(num_usages) + " reference";
+          if (num_usages != 1)
+            code_lens.command->title += "s";
+
+          response.code_lens.push_back(code_lens);
+        }
+
+
+      }
 
 
       language_client->SendToClient(0, &response);
-
       break;
     }
 
@@ -588,19 +709,13 @@ void QueryDbMainLoop(IpcServer* language_client, IpcServer* indexers, QueryableD
           };
 
 
-
-
           // TODO: store range information.
           info.location.range.end.line = info.location.range.start.line;
           info.location.range.end.character = info.location.range.start.character;
 
           response.symbols.push_back(info);
-
         }
-
-
       }
-
 
       language_client->SendToClient(0, &response);
       break;
@@ -743,6 +858,9 @@ void LanguageServerStdinLoop(IpcClient* server) {
       auto response = Out_InitializeResponse();
       response.id = message->id.value();
       response.result.capabilities.documentSymbolProvider = true;
+      //response.result.capabilities.referencesProvider = true;
+      response.result.capabilities.codeLensProvider = lsCodeLensOptions();
+      response.result.capabilities.codeLensProvider->resolveProvider = false;
       response.result.capabilities.workspaceSymbolProvider = true;
       response.Send();
       break;
@@ -758,6 +876,18 @@ void LanguageServerStdinLoop(IpcClient* server) {
       ipc_request.request_id = request->id.value();
       ipc_request.document = request->params.textDocument.uri.GetPath();
       std::cerr << "Request textDocument=" << ipc_request.document << std::endl;
+      server->SendToServer(&ipc_request);
+      break;
+    }
+
+    case lsMethodId::TextDocumentCodeLens:
+    {
+      auto request = static_cast<In_DocumentCodeLensRequest*>(message.get());
+
+      IpcMessage_DocumentCodeLensRequest ipc_request;
+      ipc_request.request_id = request->id.value();
+      ipc_request.document = request->params.textDocument.uri.GetPath();
+      std::cerr << "Request codeLens on textDocument=" << ipc_request.document << std::endl;
       server->SendToServer(&ipc_request);
       break;
     }
@@ -792,7 +922,18 @@ void LanguageServerMainLoop(IpcClient* ipc) {
       response.id = msg->request_id;
       response.result = msg->symbols;
       response.Send();
-      std::cerr << "Send symbol response to client (" << response.result.size() << " symbols)" << std::endl;
+      std::cerr << "Sent symbol response to client (" << response.result.size() << " symbols)" << std::endl;
+      break;
+    }
+
+    case IpcId::DocumentCodeLensResponse: {
+      auto msg = static_cast<IpcMessage_DocumentCodeLensResponse*>(message.get());
+
+      auto response = Out_DocumentCodeLensResponse();
+      response.id = msg->request_id;
+      response.result = msg->code_lens;
+      response.Send();
+      std::cerr << "Sent code lens response to client (" << response.result.size() << " symbols)" << std::endl;
       break;
     }
 
@@ -858,7 +999,7 @@ void LanguageServerMain(std::string process_name) {
     // Pass empty process name so we only try to start the querydb once.
     LanguageServerMain("");
     return;
-}
+  }
 #endif
 
   // for debugging attach
@@ -946,6 +1087,11 @@ void PreMain() {
 
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsRequest>(IpcMessage_DocumentSymbolsRequest::kIpcId);
   IpcRegistry::instance()->Register<IpcMessage_DocumentSymbolsResponse>(IpcMessage_DocumentSymbolsResponse::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_DocumentCodeLensRequest>(IpcMessage_DocumentCodeLensRequest::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_DocumentCodeLensResponse>(IpcMessage_DocumentCodeLensResponse::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_CodeLensResolveRequest>(IpcMessage_CodeLensResolveRequest::kIpcId);
+  IpcRegistry::instance()->Register<IpcMessage_CodeLensResolveResponse>(IpcMessage_CodeLensResolveResponse::kIpcId);
+
   IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsRequest>(IpcMessage_WorkspaceSymbolsRequest::kIpcId);
   IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>(IpcMessage_WorkspaceSymbolsResponse::kIpcId);
 
@@ -953,6 +1099,7 @@ void PreMain() {
   MessageRegistry::instance()->Register<In_InitializeRequest>();
   MessageRegistry::instance()->Register<In_InitializedNotification>();
   MessageRegistry::instance()->Register<In_DocumentSymbolRequest>();
+  MessageRegistry::instance()->Register<In_DocumentCodeLensRequest>();
   MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
 }
 

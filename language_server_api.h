@@ -24,6 +24,8 @@ enum class lsMethodId : int {
   Initialize,
   Initialized,
   TextDocumentDocumentSymbol,
+  TextDocumentCodeLens,
+  CodeLensResolve,
   WorkspaceSymbol,
 };
 
@@ -240,6 +242,10 @@ const char* MethodIdToString(lsMethodId id) {
     return "initialized";
   case lsMethodId::TextDocumentDocumentSymbol:
     return "textDocument/documentSymbol";
+  case lsMethodId::TextDocumentCodeLens:
+    return "textDocument/codeLens";
+  case lsMethodId::CodeLensResolve:
+    return "codeLens/resolve";
   case lsMethodId::WorkspaceSymbol:
     return "workspace/symbol";
   default:
@@ -392,6 +398,14 @@ struct In_CancelRequest : public InNotificationMessage {
 struct lsDocumentUri {
   std::string raw_uri;
 
+  lsDocumentUri() {}
+
+  static lsDocumentUri FromPath(const std::string& path) {
+    lsDocumentUri result;
+    result.SetPath(path);
+    return result;
+  }
+
   void SetPath(const std::string& path) {
     // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
     raw_uri = path;
@@ -434,6 +448,9 @@ struct lsPosition {
   // Note: these are 0-based.
   int line = 0;
   int character = 0;
+
+  lsPosition() {}
+  lsPosition(int line, int character) : line(line), character(character) {}
 };
 
 template<typename TVisitor>
@@ -448,6 +465,9 @@ void Reflect(TVisitor& visitor, lsPosition& value) {
 struct lsRange {
   lsPosition start;
   lsPosition end;
+
+  lsRange() {}
+  lsRange(lsPosition position) : start(position), end(position) {}
 };
 
 template<typename TVisitor>
@@ -462,6 +482,9 @@ void Reflect(TVisitor& visitor, lsRange& value) {
 struct lsLocation {
   lsDocumentUri uri;
   lsRange range;
+
+  lsLocation() {}
+  lsLocation(lsDocumentUri uri, lsRange range) : uri(uri), range(range) {}
 };
 
 template<typename TVisitor>
@@ -520,18 +543,18 @@ void Reflect(TVisitor& visitor, lsSymbolInformation& value) {
   REFLECT_MEMBER_END();
 }
 
-
+template<typename T>
 struct lsCommand {
   // Title of the command (ie, 'save')
   std::string title;
   // Actual command identifier.
   std::string command;
-  // Arguments to run the command with. Could be JSON objects.
-  std::vector<std::string> arguments;
+  // Arguments to run the command with.
+  T arguments;
 };
 
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, lsCommand& value) {
+template<typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, lsCommand<T>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(title);
   REFLECT_MEMBER(command);
@@ -539,6 +562,26 @@ void Reflect(TVisitor& visitor, lsCommand& value) {
   REFLECT_MEMBER_END();
 }
 
+
+template<typename TData, typename TCommandArguments>
+struct lsCodeLens {
+  // The range in which this code lens is valid. Should only span a single line.
+  lsRange range;
+  // The command this code lens represents.
+  optional<lsCommand<TCommandArguments>> command;
+  // A data entry field that is preserved on a code lens item between
+  // a code lens and a code lens resolve request.
+  TData data;
+};
+
+template<typename TVisitor, typename TData, typename TCommandArguments>
+void Reflect(TVisitor& visitor, lsCodeLens<TData, TCommandArguments>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(range);
+  REFLECT_MEMBER(command);
+  REFLECT_MEMBER(data);
+  REFLECT_MEMBER_END();
+}
 
 // TODO: TextDocumentEdit
 // TODO: WorkspaceEdit
@@ -800,8 +843,13 @@ struct lsTextDocumentClientCapabilities {
   // Capabilities specific to the `textDocument/codeAction`
   optional<lsGenericDynamicReg> codeAction;
 
+  struct CodeLensRegistrationOptions : public lsGenericDynamicReg {
+    // Code lens has a resolve provider as well.
+    bool resolveProvider;
+  };
+
   // Capabilities specific to the `textDocument/codeLens`
-  optional<lsGenericDynamicReg> codeLens;
+  optional<CodeLensRegistrationOptions> codeLens;
 
   // Capabilities specific to the `textDocument/documentLink`
   optional<lsGenericDynamicReg> documentLink;
@@ -839,6 +887,14 @@ template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsTextDocumentClientCapabilities::lsGenericDynamicReg& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(dynamicRegistration);
+  REFLECT_MEMBER_END();
+}
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, lsTextDocumentClientCapabilities::CodeLensRegistrationOptions& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(dynamicRegistration);
+  REFLECT_MEMBER(resolveProvider);
   REFLECT_MEMBER_END();
 }
 
@@ -1281,7 +1337,6 @@ struct In_DocumentSymbolRequest : public InRequestMessage {
   }
 };
 
-
 struct Out_DocumentSymbolResponse : public OutResponseMessage {
   std::vector<lsSymbolInformation> result;
 
@@ -1291,6 +1346,93 @@ struct Out_DocumentSymbolResponse : public OutResponseMessage {
   }
 };
 
+
+
+
+
+struct lsDocumentCodeLensParams {
+  lsTextDocumentIdentifier textDocument;
+};
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, lsDocumentCodeLensParams& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(textDocument);
+  REFLECT_MEMBER_END();
+}
+
+struct lsCodeLensUserData {};
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, lsCodeLensUserData& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_END();
+}
+
+struct lsCodeLensCommandArguments {
+  lsDocumentUri uri;
+  lsPosition position;
+  std::vector<lsLocation> locations;
+};
+
+void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
+  visitor.StartArray();
+  Reflect(visitor, value.uri);
+  Reflect(visitor, value.position);
+  Reflect(visitor, value.locations);
+  visitor.EndArray();
+}
+
+void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
+  auto it = visitor.Begin();
+  Reflect(*it, value.uri);
+  ++it;
+  Reflect(*it, value.position);
+  ++it;
+  Reflect(*it, value.locations);
+}
+
+using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
+
+struct In_DocumentCodeLensRequest : public InRequestMessage {
+  const static lsMethodId kMethod = lsMethodId::TextDocumentCodeLens;
+
+  lsDocumentCodeLensParams params;
+
+  In_DocumentCodeLensRequest(optional<RequestId> id, Reader& reader)
+    : InRequestMessage(kMethod, id, reader) {
+    Reflect(reader, params);
+  }
+};
+
+struct Out_DocumentCodeLensResponse : public OutResponseMessage {
+  std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
+
+  // OutResponseMessage:
+  void WriteResult(Writer& writer) override {
+    ::Reflect(writer, result);
+  }
+};
+
+struct In_DocumentCodeLensResolveRequest : public InRequestMessage {
+  const static lsMethodId kMethod = lsMethodId::CodeLensResolve;
+
+  TCodeLens params;
+
+  In_DocumentCodeLensResolveRequest(optional<RequestId> id, Reader& reader)
+    : InRequestMessage(kMethod, id, reader) {
+    Reflect(reader, params);
+  }
+};
+
+struct Out_DocumentCodeLensResolveResponse : public OutResponseMessage {
+  TCodeLens result;
+
+  // OutResponseMessage:
+  void WriteResult(Writer& writer) override {
+    ::Reflect(writer, result);
+  }
+};
 
 
 
@@ -1320,7 +1462,6 @@ struct In_WorkspaceSymbolRequest : public InRequestMessage {
     Reflect(reader, params);
   }
 };
-
 
 struct Out_WorkspaceSymbolResponse : public OutResponseMessage {
   std::vector<lsSymbolInformation> result;

@@ -33,6 +33,10 @@ enum class IpcId : int {
   // TODO: remove
   DocumentSymbolsRequest,
   DocumentSymbolsResponse,
+  DocumentCodeLensRequest,
+  DocumentCodeLensResponse,
+  CodeLensResolveRequest,
+  CodeLensResolveResponse,
   WorkspaceSymbolsRequest,
   WorkspaceSymbolsResponse
 };
