@@ -286,7 +286,7 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
       size_t sent_payload_size = shared_buffer->bytes_available() - sizeof(JsonMessage);
       shared_buffer->free_message()->Setup(message->ipc_id, partial_message_id, true /*has_more_chunks*/, sent_payload_size, payload);
       shared_buffer->metadata()->bytes_used += sizeof(JsonMessage) + sent_payload_size;
-      shared_buffer->free_message()->ipc_id = IpcId::Invalid;
+      //shared_buffer->free_message()->ipc_id = IpcId::Invalid; // Note: free_message() may be past writable memory.
 
       if (count++ > 50) {
         std::cerr << "x50 Sending partial message with payload_size=" << sent_payload_size << std::endl;

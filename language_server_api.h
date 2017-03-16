@@ -7,6 +7,7 @@
 #include <rapidjson/writer.h>
 #include "optional.h"
 #include "serializer.h"
+#include "utils.h"
 
 using std::experimental::optional;
 using std::experimental::nullopt;
@@ -406,6 +407,10 @@ struct lsDocumentUri {
     return result;
   }
 
+  bool operator==(const lsDocumentUri& other) const {
+    return raw_uri == other.raw_uri;
+  }
+
   void SetPath(const std::string& path) {
     // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
     raw_uri = path;
@@ -437,6 +442,7 @@ struct lsDocumentUri {
     return result;
   }
 };
+MAKE_HASHABLE(lsDocumentUri, t.raw_uri);
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsDocumentUri& value) {
@@ -451,7 +457,12 @@ struct lsPosition {
 
   lsPosition() {}
   lsPosition(int line, int character) : line(line), character(character) {}
+
+  bool operator==(const lsPosition& other) const {
+    return line == other.line && character == other.character;
+  }
 };
+MAKE_HASHABLE(lsPosition, t.line, t.character);
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsPosition& value) {
@@ -468,7 +479,12 @@ struct lsRange {
 
   lsRange() {}
   lsRange(lsPosition position) : start(position), end(position) {}
+
+  bool operator==(const lsRange& other) const {
+    return start == other.start && end == other.end;
+  }
 };
+MAKE_HASHABLE(lsRange, t.start, t.end);
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsRange& value) {
@@ -485,7 +501,12 @@ struct lsLocation {
 
   lsLocation() {}
   lsLocation(lsDocumentUri uri, lsRange range) : uri(uri), range(range) {}
+
+  bool operator==(const lsLocation& other) const {
+    return uri == other.uri && range == other.range;
+  }
 };
+MAKE_HASHABLE(lsLocation, t.uri, t.range);
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsLocation& value) {

@@ -469,11 +469,80 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
 
 
 
-lsLocation GetLsLocation(QueryableLocation& location) {
+lsLocation GetLsLocation(const QueryableLocation& location) {
   return lsLocation(
     lsDocumentUri::FromPath(location.path),
     lsRange(lsPosition(location.line - 1, location.column - 1)));
 }
+
+void AddCodeLens(std::vector<TCodeLens>* result, QueryableLocation loc, const std::vector<QueryableLocation>& uses, bool only_interesting, const char* singular, const char* plural) {
+  TCodeLens code_lens;
+  code_lens.range.start.line = loc.line - 1; // TODO: cleanup indexer to negate by 1.
+  code_lens.range.start.character = loc.column - 1; // TODO: cleanup indexer to negate by 1.
+                                                        // TODO: store range information.
+  code_lens.range.end.line = code_lens.range.start.line;
+  code_lens.range.end.character = code_lens.range.start.character;
+
+  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+  code_lens.command->command = "superindex.showReferences";
+  code_lens.command->arguments.uri = lsDocumentUri::FromPath(loc.path);
+  code_lens.command->arguments.position = code_lens.range.start;
+
+  // Add unique uses.
+  std::unordered_set<lsLocation> unique_uses;
+  for (const QueryableLocation& use : uses) {
+    if (only_interesting && !use.interesting) continue;
+    unique_uses.insert(GetLsLocation(use));
+  }
+  code_lens.command->arguments.locations.assign(unique_uses.begin(), unique_uses.end());
+
+  // User visible label
+  int num_usages = unique_uses.size();
+  code_lens.command->title = std::to_string(num_usages) + " ";
+  if (num_usages == 1)
+    code_lens.command->title += singular;
+  else
+    code_lens.command->title += plural;
+
+  if (unique_uses.size() > 0)
+    result->push_back(code_lens);
+}
+
+void AddCodeLens(std::vector<TCodeLens>* result, QueryableLocation loc, const std::vector<UsrRef>& uses, bool only_interesting, const char* singular, const char* plural) {
+  std::vector<QueryableLocation> uses0;
+  uses0.reserve(uses.size());
+  for (const UsrRef& use : uses)
+    uses0.push_back(use.loc);
+  AddCodeLens(result, loc, uses0, only_interesting, singular, plural);
+}
+
+void AddCodeLens(std::vector<TCodeLens>* result, QueryableDatabase* db, QueryableLocation loc, const std::vector<Usr>& usrs, bool only_interesting, const char* singular, const char* plural) {
+  std::vector<QueryableLocation> uses0;
+  uses0.reserve(usrs.size());
+  for (const Usr& usr : usrs) {
+    SymbolIdx symbol = db->usr_to_symbol[usr];
+    switch (symbol.kind) {
+    case SymbolKind::Type: {
+      QueryableTypeDef* def = &db->types[symbol.idx];
+      if (def->def.definition)
+        uses0.push_back(def->def.definition.value());
+      break;
+    }
+    case SymbolKind::Func: {
+      QueryableFuncDef* def = &db->funcs[symbol.idx];
+      if (def->def.definition)
+        uses0.push_back(def->def.definition.value());
+      break;
+    }
+    case SymbolKind::Var: {
+      assert(false && "unexpected");
+      break;
+    }
+    }
+  }
+  AddCodeLens(result, loc, uses0, only_interesting, singular, plural);
+}
+
 
 void QueryDbMainLoop(IpcServer* language_client, IpcServer* indexers, QueryableDatabase* db) {
   std::vector<std::unique_ptr<IpcMessage>> messages = language_client->TakeMessages();
@@ -581,57 +650,30 @@ void QueryDbMainLoop(IpcServer* language_client, IpcServer* indexers, QueryableD
 
       QueryableFile* file = FindFile(db, msg->document);
       if (file) {
-
         for (UsrRef ref : file->outline) {
           SymbolIdx symbol = db->usr_to_symbol[ref.usr];
-
-          TCodeLens code_lens;
-          code_lens.range.start.line = ref.loc.line - 1; // TODO: cleanup indexer to negate by 1.
-          code_lens.range.start.character = ref.loc.column - 1; // TODO: cleanup indexer to negate by 1.
-                                                                    // TODO: store range information.
-          code_lens.range.end.line = code_lens.range.start.line;
-          code_lens.range.end.character = code_lens.range.start.character;
-
-          code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-          code_lens.command->command = "superindex.showReferences";
-          code_lens.command->arguments.uri = file_as_uri;
-          code_lens.command->arguments.position = code_lens.range.start;
-
-
           switch (symbol.kind) {
           case SymbolKind::Type: {
             QueryableTypeDef& def = db->types[symbol.idx];
-            for (QueryableLocation& usage : def.uses) {
-              if (!usage.interesting)
-                continue;
-              code_lens.command->arguments.locations.push_back(GetLsLocation(usage));
-            }
+            AddCodeLens(&response.code_lens, ref.loc, def.uses, true/*only_interesting*/, "reference", "references");
+            AddCodeLens(&response.code_lens, db, ref.loc, def.derived, false /*only_interesting*/, "derived", "derived");
             break;
           }
           case SymbolKind::Func: {
             QueryableFuncDef& def = db->funcs[symbol.idx];
-            for (QueryableLocation& usage : def.uses)
-              code_lens.command->arguments.locations.push_back(GetLsLocation(usage));
+            AddCodeLens(&response.code_lens, ref.loc, def.uses, false /*only_interesting*/, "reference", "references");
+            AddCodeLens(&response.code_lens, ref.loc, def.callers, false /*only_interesting*/, "caller", "callers");
+            AddCodeLens(&response.code_lens, ref.loc, def.def.callees, false /*only_interesting*/, "callee", "callees");
+            AddCodeLens(&response.code_lens, db, ref.loc, def.derived, false /*only_interesting*/, "derived", "derived");
             break;
           }
           case SymbolKind::Var: {
             QueryableVarDef& def = db->vars[symbol.idx];
-            for (QueryableLocation& usage : def.uses)
-              code_lens.command->arguments.locations.push_back(GetLsLocation(usage));
+            AddCodeLens(&response.code_lens, ref.loc, def.uses, false /*only_interesting*/, "reference", "references");
             break;
           }
           };
-
-          // TODO: we are getting too many references
-          int num_usages = code_lens.command->arguments.locations.size();
-          code_lens.command->title = std::to_string(num_usages) + " reference";
-          if (num_usages != 1)
-            code_lens.command->title += "s";
-
-          response.code_lens.push_back(code_lens);
         }
-
-
       }
 
 
@@ -968,7 +1010,7 @@ void LanguageServerMain(std::string process_name) {
   client_ipc.SendToServer(&check_alive);
 
   // TODO: Tune this value or make it configurable.
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Check if we got an IsAlive message back.
   std::vector<std::unique_ptr<IpcMessage>> messages = client_ipc.TakeMessages();
@@ -1023,7 +1065,7 @@ void LanguageServerMain(std::string process_name) {
     LanguageServerMainLoop(&client_ipc);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
-  }
+}
 
 
 
@@ -1111,10 +1153,10 @@ int main(int argc, char** argv) {
 
   PreMain();
 
-  if (argc == 1) {
-    QueryDbMain();
-    return 0;
-  }
+  //if (argc == 1) {
+  //  QueryDbMain();
+  //  return 0;
+  //}
   if (argc == 1) {
     RunTests();
     return 0;
