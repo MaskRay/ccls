@@ -393,7 +393,8 @@ void IndexMainLoop(IpcClient* client) {
       std::cerr << "Parsing/indexing took " << time.ElapsedMilliseconds() << "ms" << std::endl;
 
       time.Reset();
-      auto response = IpcMessage_IndexTranslationUnitResponse(IndexUpdate(file));
+      IndexUpdate update(file);
+      auto response = IpcMessage_IndexTranslationUnitResponse(update);
       std::cerr << "Creating index update took " << time.ElapsedMilliseconds() << "ms" << std::endl;
 
       time.Reset();
