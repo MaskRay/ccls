@@ -4,6 +4,7 @@ x64
 build
 waf-*
 .lock-waf*
+.waf*
 *.swp
 *.sln
 *.vcxproj
