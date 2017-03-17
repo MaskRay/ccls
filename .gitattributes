@@ -1,0 +1,6 @@
+# By default, use platform specific endings.
+* text eol=auto
+
+# Tests must always be crlf
+full_tests/** text eol=crlf
+tests/** text eol=crlf
