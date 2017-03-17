@@ -72,6 +72,7 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
       entry.args.push_back(clang::ToString(clang_CompileCommand_getArg(cx_command, j)));
     }
 
+
     result.push_back(entry);
   }
 

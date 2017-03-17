@@ -26,34 +26,26 @@ struct IndexedVarDef;
 
 using namespace std::experimental;
 
-
-template<typename T>
+template <typename T>
 struct Id {
   uint64_t id;
 
-  Id() : id(0) {} // Needed for containers. Do not use directly.
+  Id() : id(0) {}  // Needed for containers. Do not use directly.
   Id(uint64_t id) : id(id) {}
 
-  bool operator==(const Id<T>& other) const {
-    return id == other.id;
-  }
+  bool operator==(const Id<T>& other) const { return id == other.id; }
 
-  bool operator<(const Id<T>& other) const {
-    return id < other.id;
-  }
+  bool operator<(const Id<T>& other) const { return id < other.id; }
 };
 
 namespace std {
-  template<typename T>
-  struct hash<Id<T>> {
-    size_t operator()(const Id<T>& k) const {
-      return hash<uint64_t>()(k.id);
-    }
-  };
+template <typename T>
+struct hash<Id<T>> {
+  size_t operator()(const Id<T>& k) const { return hash<uint64_t>()(k.id); }
+};
 }
 
-
-template<typename T>
+template <typename T>
 bool operator==(const Id<T>& a, const Id<T>& b) {
   assert(a.group == b.group && "Cannot compare Ids from different groups");
   return a.id == b.id;
@@ -87,9 +79,7 @@ struct Location {
     this->column = column;
   }
 
-  FileId file_id() const {
-    return FileId(raw_file_id);
-  }
+  FileId file_id() const { return FileId(raw_file_id); }
 
   explicit Location(const char* encoded) : Location() {
     int len = strlen(encoded);
@@ -104,13 +94,15 @@ struct Location {
     raw_file_id = atoi(encoded);
     while (*encoded && *encoded != ':')
       ++encoded;
-    if (*encoded == ':') ++encoded;
+    if (*encoded == ':')
+      ++encoded;
 
     assert(encoded);
     line = atoi(encoded);
     while (*encoded && *encoded != ':')
       ++encoded;
-    if (*encoded == ':') ++encoded;
+    if (*encoded == ':')
+      ++encoded;
 
     assert(encoded);
     column = atoi(encoded);
@@ -144,21 +136,13 @@ struct Location {
   // operator== doesn't seem to work properly...
   bool IsEqualTo(const Location& o) const {
     // When comparing, ignore the value of |interesting|.
-    return
-      raw_file_id == o.raw_file_id &&
-      line == o.line &&
-      column == o.column;
+    return raw_file_id == o.raw_file_id && line == o.line && column == o.column;
   }
 
-  bool operator==(const Location& o) const {
-    return IsEqualTo(o);
-  }
+  bool operator==(const Location& o) const { return IsEqualTo(o); }
   bool operator<(const Location& o) const {
-    return
-      interesting < o.interesting &&
-      raw_file_id < o.raw_file_id &&
-      line < o.line &&
-      column < o.column;
+    return interesting < o.interesting && raw_file_id < o.raw_file_id &&
+           line < o.line && column < o.column;
   }
 
   Location WithInteresting(bool interesting) {
@@ -229,31 +213,29 @@ Location WithInteresting(bool interesting) {
 END_BITFIELD_TYPE()
 #endif
 
-template<typename T>
+template <typename T>
 struct Ref {
   Id<T> id;
   Location loc;
 
-  Ref() {} // For serialization.
+  Ref() {}  // For serialization.
 
   Ref(Id<T> id, Location loc) : id(id), loc(loc) {}
 
   bool operator==(const Ref<T>& other) {
     return id == other.id && loc == other.loc;
   }
-  bool operator!=(const Ref<T>& other) {
-    return !(*this == other);
-  }
+  bool operator!=(const Ref<T>& other) { return !(*this == other); }
   bool operator<(const Ref<T>& other) const {
     return id < other.id && loc < other.loc;
   }
 };
 
-template<typename T>
+template <typename T>
 bool operator==(const Ref<T>& a, const Ref<T>& b) {
   return a.id == b.id && a.loc == b.loc;
 }
-template<typename T>
+template <typename T>
 bool operator!=(const Ref<T>& a, const Ref<T>& b) {
   return !(a == b);
 }
@@ -262,13 +244,15 @@ using TypeRef = Ref<IndexedTypeDef>;
 using FuncRef = Ref<IndexedFuncDef>;
 using VarRef = Ref<IndexedVarDef>;
 
-
 // TODO: skip as much forward-processing as possible when |is_system_def| is
 //       set to false.
 // TODO: Either eliminate the defs created as a by-product of cross-referencing,
 //       or do not emit things we don't have definitions for.
 
-template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename Location = Location>
+template <typename TypeId = TypeId,
+          typename FuncId = FuncId,
+          typename VarId = VarId,
+          typename Location = Location>
 struct TypeDefDefinitionData {
   // General metadata.
   std::string usr;
@@ -298,26 +282,30 @@ struct TypeDefDefinitionData {
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
 
-  TypeDefDefinitionData() {} // For reflection.
+  TypeDefDefinitionData() {}  // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const {
-    return
-      usr == other.usr &&
-      short_name == other.short_name &&
-      qualified_name == other.qualified_name &&
-      definition == other.definition &&
-      alias_of == other.alias_of &&
-      parents == other.parents &&
-      types == other.types &&
-      funcs == other.funcs &&
-      vars == other.vars;
+  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>&
+                      other) const {
+    return usr == other.usr && short_name == other.short_name &&
+           qualified_name == other.qualified_name &&
+           definition == other.definition && alias_of == other.alias_of &&
+           parents == other.parents && types == other.types &&
+           funcs == other.funcs && vars == other.vars;
   }
 
-  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const { return !(*this == other); }
+  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>&
+                      other) const {
+    return !(*this == other);
+  }
 };
-template<typename TVisitor, typename TypeId, typename FuncId, typename VarId, typename Location>
-void Reflect(TVisitor& visitor, TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
+template <typename TVisitor,
+          typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename Location>
+void Reflect(TVisitor& visitor,
+             TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -330,7 +318,6 @@ void Reflect(TVisitor& visitor, TypeDefDefinitionData<TypeId, FuncId, VarId, Loc
   REFLECT_MEMBER(vars);
   REFLECT_MEMBER_END();
 }
-
 
 struct IndexedTypeDef {
   TypeDefDefinitionData<> def;
@@ -346,7 +333,7 @@ struct IndexedTypeDef {
 
   bool is_bad_def = true;
 
-  IndexedTypeDef() : def("") {} // For serialization
+  IndexedTypeDef() : def("") {}  // For serialization
 
   IndexedTypeDef(TypeId id, const std::string& usr);
 
@@ -356,15 +343,19 @@ struct IndexedTypeDef {
 };
 
 namespace std {
-  template <>
-  struct hash<IndexedTypeDef> {
-    size_t operator()(const IndexedTypeDef& k) const {
-      return hash<string>()(k.def.usr);
-    }
-  };
+template <>
+struct hash<IndexedTypeDef> {
+  size_t operator()(const IndexedTypeDef& k) const {
+    return hash<string>()(k.def.usr);
+  }
+};
 }
 
-template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename FuncRef = FuncRef, typename Location = Location>
+template <typename TypeId = TypeId,
+          typename FuncId = FuncId,
+          typename VarId = VarId,
+          typename FuncRef = FuncRef,
+          typename Location = Location>
 struct FuncDefDefinitionData {
   // General metadata.
   std::string usr;
@@ -384,27 +375,36 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
-  FuncDefDefinitionData() {} // For reflection.
+  FuncDefDefinitionData() {}  // For reflection.
   FuncDefDefinitionData(const std::string& usr) : usr(usr) {
-    //assert(usr.size() > 0);
+    // assert(usr.size() > 0);
   }
 
-  bool operator==(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& other) const {
-    return
-      usr == other.usr &&
-      short_name == other.short_name &&
-      qualified_name == other.qualified_name &&
-      definition == other.definition &&
-      declaring_type == other.declaring_type &&
-      base == other.base &&
-      locals == other.locals &&
-      callees == other.callees;
+  bool operator==(
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>&
+          other) const {
+    return usr == other.usr && short_name == other.short_name &&
+           qualified_name == other.qualified_name &&
+           definition == other.definition &&
+           declaring_type == other.declaring_type && base == other.base &&
+           locals == other.locals && callees == other.callees;
   }
-  bool operator!=(const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& other) const { return !(*this == other); }
+  bool operator!=(
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>&
+          other) const {
+    return !(*this == other);
+  }
 };
 
-template<typename TVisitor, typename TypeId, typename FuncId, typename VarId, typename FuncRef, typename Location>
-void Reflect(TVisitor& visitor, FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& value) {
+template <typename TVisitor,
+          typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename FuncRef,
+          typename Location>
+void Reflect(
+    TVisitor& visitor,
+    FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -441,9 +441,9 @@ struct IndexedFuncDef {
 
   bool is_bad_def = true;
 
-  IndexedFuncDef() {} // For reflection.
+  IndexedFuncDef() {}  // For reflection.
   IndexedFuncDef(FuncId id, const std::string& usr) : id(id), def(usr) {
-    //assert(usr.size() > 0);
+    // assert(usr.size() > 0);
   }
 
   bool operator<(const IndexedFuncDef& other) const {
@@ -452,15 +452,18 @@ struct IndexedFuncDef {
 };
 
 namespace std {
-  template <>
-  struct hash<IndexedFuncDef> {
-    size_t operator()(const IndexedFuncDef& k) const {
-      return hash<string>()(k.def.usr);
-    }
-  };
+template <>
+struct hash<IndexedFuncDef> {
+  size_t operator()(const IndexedFuncDef& k) const {
+    return hash<string>()(k.def.usr);
+  }
+};
 }
 
-template<typename TypeId = TypeId, typename FuncId = FuncId, typename VarId = VarId, typename Location = Location>
+template <typename TypeId = TypeId,
+          typename FuncId = FuncId,
+          typename VarId = VarId,
+          typename Location = Location>
 struct VarDefDefinitionData {
   // General metadata.
   std::string usr;
@@ -477,24 +480,30 @@ struct VarDefDefinitionData {
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
 
-  VarDefDefinitionData() {} // For reflection.
+  VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const {
-    return
-      usr == other.usr &&
-      short_name == other.short_name &&
-      qualified_name == other.qualified_name &&
-      declaration == other.declaration &&
-      definition == other.definition &&
-      variable_type == other.variable_type &&
-      declaring_type == other.declaring_type;
+  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>&
+                      other) const {
+    return usr == other.usr && short_name == other.short_name &&
+           qualified_name == other.qualified_name &&
+           declaration == other.declaration && definition == other.definition &&
+           variable_type == other.variable_type &&
+           declaring_type == other.declaring_type;
   }
-  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>& other) const { return !(*this == other); }
+  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>&
+                      other) const {
+    return !(*this == other);
+  }
 };
 
-template<typename TVisitor, typename TypeId, typename FuncId, typename VarId, typename Location>
-void Reflect(TVisitor& visitor, VarDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
+template <typename TVisitor,
+          typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename Location>
+void Reflect(TVisitor& visitor,
+             VarDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -515,10 +524,10 @@ struct IndexedVarDef {
 
   bool is_bad_def = true;
 
-  IndexedVarDef() : def("") {} // For serialization
+  IndexedVarDef() : def("") {}  // For serialization
 
   IndexedVarDef(VarId id, const std::string& usr) : id(id), def(usr) {
-    //assert(usr.size() > 0);
+    // assert(usr.size() > 0);
   }
 
   bool operator<(const IndexedVarDef& other) const {
@@ -527,12 +536,12 @@ struct IndexedVarDef {
 };
 
 namespace std {
-  template <>
-  struct hash<IndexedVarDef> {
-    size_t operator()(const IndexedVarDef& k) const {
-      return hash<string>()(k.def.usr);
-    }
-  };
+template <>
+struct hash<IndexedVarDef> {
+  size_t operator()(const IndexedVarDef& k) const {
+    return hash<string>()(k.def.usr);
+  }
+};
 }
 
 struct IdCache {
@@ -576,6 +585,6 @@ struct IndexedFile {
   std::string ToString();
 };
 
-
-
-IndexedFile Parse(std::string filename, std::vector<std::string> args, bool dump_ast = false);
+IndexedFile Parse(std::string filename,
+                  std::vector<std::string> args,
+                  bool dump_ast = false);

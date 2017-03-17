@@ -1,0 +1,6 @@
+-std=c++11
+-Ithird_party/rapidjson/include
+-IC:/Program Files/LLVM/include
+-std=c++11
+-fms-compatibility
+-fdelayed-template-parsing
