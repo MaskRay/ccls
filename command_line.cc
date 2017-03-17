@@ -13,6 +13,9 @@
 
 #include "third_party/tiny-process-library/process.hpp"
 
+#define DOCTEST_CONFIG_IMPLEMENT
+#include "third_party/doctest/doctest/doctest.h"
+
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 
@@ -1023,6 +1026,10 @@ void PreMain() {
   MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
 }
 
+TEST_CASE("helo") {
+  CHECK(1 == 1);
+}
+
 int main(int argc, char** argv) {
   bool loop = false;
   while (loop)
@@ -1035,7 +1042,13 @@ int main(int argc, char** argv) {
   //  return 0;
   //}
   if (argc == 1) {
-    RunTests();
+    doctest::Context context;
+    context.applyCommandLine(argc, argv);
+    int res = context.run();
+    if (context.shouldExit())
+        return res;
+
+    //RunTests();
     return 0;
   }
 

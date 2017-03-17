@@ -4,3 +4,6 @@
 [submodule "third_party/tiny-process-library"]
 	path = third_party/tiny-process-library
 	url = https://github.com/eidheim/tiny-process-library/
+[submodule "third_party/doctest"]
+	path = third_party/doctest
+	url = https://github.com/onqtam/doctest
