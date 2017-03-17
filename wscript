@@ -33,9 +33,10 @@ def build(bld):
       source=cc_files,
       cxxflags=['-std=c++11'],
       includes=['third_party/rapidjson/include',
-                '/usr/local/google/home/jdufault/super-clang-index/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04/include'],
+                '/usr/local/google/home/jdufault/super-clang-index/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04/include'],
       lib=['clang', 'rt', 'pthread'],
-      libpath=['/usr/local/google/home/jdufault/super-clang-index/clang+llvm-3.9.0-x86_64-linux-gnu-ubuntu-14.04/lib'],
+      libpath=['/usr/local/google/home/jdufault/super-clang-index/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04/lib'],
+      rpath=['/usr/local/google/home/jdufault/super-clang-index/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04/lib'],
       target='app')
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
