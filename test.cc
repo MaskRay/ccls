@@ -3,7 +3,7 @@
 #include "indexer.h"
 #include "serializer.h"
 #include "utils.h"
-#include "platform.h"
+#include "src/platform.h"
 
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)

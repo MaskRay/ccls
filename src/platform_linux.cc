@@ -1,3 +1,4 @@
+#if defined(__linux__) || defined(__APPLE__)
 #include "platform.h"
 
 #include "utils.h"
@@ -123,3 +124,4 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(const std::stri
   std::string name2 = "/" + name;
   return MakeUnique<PlatformSharedMemoryLinux>(name2);
 }
+#endif

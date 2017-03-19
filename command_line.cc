@@ -13,7 +13,6 @@
 
 #include "third_party/tiny-process-library/process.hpp"
 
-#define DOCTEST_CONFIG_IMPLEMENT
 #include "third_party/doctest/doctest/doctest.h"
 
 #include <rapidjson/istreamwrapper.h>
@@ -1024,10 +1023,6 @@ void PreMain() {
   MessageRegistry::instance()->Register<In_DocumentSymbolRequest>();
   MessageRegistry::instance()->Register<In_DocumentCodeLensRequest>();
   MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
-}
-
-TEST_CASE("helo") {
-  CHECK(1 == 1);
 }
 
 int main(int argc, char** argv) {

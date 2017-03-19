@@ -9,7 +9,7 @@
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 
-#include "platform.h"
+#include "src/platform.h"
 #include "serializer.h"
 #include "utils.h"
 
@@ -38,7 +38,9 @@ enum class IpcId : int {
   CodeLensResolveRequest,
   CodeLensResolveResponse,
   WorkspaceSymbolsRequest,
-  WorkspaceSymbolsResponse
+  WorkspaceSymbolsResponse,
+
+  Test
 };
 
 namespace std {

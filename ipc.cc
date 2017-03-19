@@ -2,44 +2,48 @@
 #include "serializer.h"
 #include "utils.h"
 
+#include "third_party/doctest/doctest/doctest.h"
+
 namespace {
-  // The absolute smallest partial payload we should send. This must be >0, ie, 1 is the
-  // minimum. Keep a reasonably high value so we don't send needlessly send tiny payloads.
-  const int kMinimumPartialPayloadSize = 128;
+// The absolute smallest partial payload we should send. This must be >0, ie, 1 is the
+// minimum. Keep a reasonably high value so we don't send needlessly send tiny payloads.
+const int kMinimumPartialPayloadSize = 128;
 
-  // JSON-encoded message that is passed across shared memory.
-  //
-  // Messages are funky objects. They contain potentially variable amounts of
-  // data and are passed between processes. This means that they need to be
-  // fully relocatable, ie, it is possible to memmove them in memory to a
-  // completely different address.
-  struct JsonMessage {
-    IpcId ipc_id;
-    int partial_message_id;
-    bool has_more_chunks;
-    size_t payload_size;
-    void* payload() {
-      return reinterpret_cast<char*>(this) + sizeof(JsonMessage);
-    }
+const int kBufferSize = 1024 * 1024 * 32;  // number of chars/bytes (32mb) in the message buffer.
 
-    void Setup(IpcId ipc_id, int partial_message_id, bool has_more_chunks, size_t payload_size, const char* payload) {
-      this->ipc_id = ipc_id;
-      this->partial_message_id = partial_message_id;
-      this->has_more_chunks = has_more_chunks;
-      this->payload_size = payload_size;
-
-      char* payload_dest = reinterpret_cast<char*>(this) + sizeof(JsonMessage);
-      memcpy(payload_dest, payload, payload_size);
-    }
-  };
-
-  std::string NameToServerName(const std::string& name) {
-    return name + "server";
+// JSON-encoded message that is passed across shared memory.
+//
+// Messages are funky objects. They contain potentially variable amounts of
+// data and are passed between processes. This means that they need to be
+// fully relocatable, ie, it is possible to memmove them in memory to a
+// completely different address.
+struct JsonMessage {
+  IpcId ipc_id;
+  int partial_message_id;
+  bool has_more_chunks;
+  size_t payload_size;
+  void* payload() {
+    return reinterpret_cast<char*>(this) + sizeof(JsonMessage);
   }
 
-  std::string NameToClientName(const std::string& name, int client_id) {
-    return name + "client" + std::to_string(client_id);
+  void Setup(IpcId ipc_id, int partial_message_id, bool has_more_chunks, size_t payload_size, const char* payload) {
+    this->ipc_id = ipc_id;
+    this->partial_message_id = partial_message_id;
+    this->has_more_chunks = has_more_chunks;
+    this->payload_size = payload_size;
+
+    char* payload_dest = reinterpret_cast<char*>(this) + sizeof(JsonMessage);
+    memcpy(payload_dest, payload, payload_size);
   }
+};
+
+std::string NameToServerName(const std::string& name) {
+  return name + "server";
+}
+
+std::string NameToClientName(const std::string& name, int client_id) {
+  return name + "client" + std::to_string(client_id);
+}
 }
 
 IpcRegistry* IpcRegistry::instance_ = nullptr;
@@ -206,14 +210,14 @@ void IpcDirectionalChannel::RemoveResizableBuffer(int id) {
 }
 
 IpcDirectionalChannel::IpcDirectionalChannel(const std::string& name, bool initialize_shared_memory) {
-  shared = CreatePlatformSharedMemory(name + "memory");
+  shared = CreatePlatformSharedMemory(name + "memory", kBufferSize);
   mutex = CreatePlatformMutex(name + "mutex");
-  local = std::unique_ptr<char>(new char[shmem_size]);
+  local = std::unique_ptr<char>(new char[kBufferSize]);
 
   // TODO: connecting a client will allocate reset shared state on the
   // buffer. We need to store if we "initialized".
-  shared_buffer = MakeUnique<MessageBuffer>(shared->shared, shmem_size, initialize_shared_memory);
-  local_buffer = MakeUnique<MessageBuffer>(local.get(), shmem_size, true /*initialize*/);
+  shared_buffer = MakeUnique<MessageBuffer>(shared->data, kBufferSize, initialize_shared_memory);
+  local_buffer = MakeUnique<MessageBuffer>(local.get(), kBufferSize, true /*initialize*/);
 }
 
 IpcDirectionalChannel::~IpcDirectionalChannel() {}
@@ -249,7 +253,7 @@ void IpcDispatch(PlatformMutex* mutex, std::function<DispatchResult()> action) {
 
 void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
   assert(message->ipc_id != IpcId::Invalid);
-  assert(shmem_size > sizeof(JsonMessage) + kMinimumPartialPayloadSize);
+  assert(kBufferSize > sizeof(JsonMessage) + kMinimumPartialPayloadSize);
 
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
@@ -331,8 +335,8 @@ std::vector<std::unique_ptr<IpcMessage>> IpcDirectionalChannel::TakeMessages() {
     // posting data as soon as possible.
     {
       std::unique_ptr<PlatformScopedMutexLock> lock = CreatePlatformScopedMutexLock(mutex.get());
-      assert(shared_buffer->metadata()->bytes_used <= shmem_size);
-      memcpy(local.get(), shared->shared, sizeof(MessageBuffer::Metadata) + shared_buffer->metadata()->bytes_used);
+      assert(shared_buffer->metadata()->bytes_used <= kBufferSize);
+      memcpy(local.get(), shared->data, sizeof(MessageBuffer::Metadata) + shared_buffer->metadata()->bytes_used);
       shared_buffer->metadata()->bytes_used = 0;
       shared_buffer->free_message()->ipc_id = IpcId::Invalid;
     }
@@ -383,7 +387,7 @@ std::vector<std::unique_ptr<IpcMessage>> IpcServer::TakeMessages() {
 
 IpcClient::IpcClient(const std::string& name, int client_id)
   : server_(NameToServerName(name), false /*initialize_shared_memory*/),
-    client_(NameToClientName(name, client_id), false /*initialize_shared_memory*/) {}
+  client_(NameToClientName(name, client_id), false /*initialize_shared_memory*/) {}
 
 void IpcClient::SendToServer(IpcMessage* message) {
   server_.PushMessage(message);
@@ -392,3 +396,41 @@ void IpcClient::SendToServer(IpcMessage* message) {
 std::vector<std::unique_ptr<IpcMessage>> IpcClient::TakeMessages() {
   return client_.TakeMessages();
 }
+
+
+
+
+
+template<typename T>
+struct TestIpcMessage : IpcMessage {
+  T data;
+
+  TestIpcMessage() : IpcMessage(IpcId::Test) {}
+  ~TestIpcMessage() override {}
+
+  // IpcMessage:
+  void Serialize(Writer& writer) override {
+    Reflect(writer, data);
+  }
+  void Deserialize(Reader& reader) override {
+    Reflect(reader, data);
+  }
+};
+
+#if false
+TEST_CASE("foo") {
+  IpcRegistry::instance()->Register<TestIpcMessage<std::string>>(IpcId::Test);
+
+  IpcDirectionalChannel channel0("indexertestmemory", true /*initialize_shared_memory*/);
+  IpcDirectionalChannel channel1("indexertestmemory", false /*initialize_shared_memory*/);
+
+  TestIpcMessage<std::string> m;
+  m.data = "hey there";
+
+  channel0.PushMessage(&m);
+  std::vector<std::unique_ptr<IpcMessage>> messages = channel1.TakeMessages();
+  REQUIRE(messages.size() == 1);
+  REQUIRE(messages[0]->ipc_id == m.ipc_id);
+  REQUIRE(reinterpret_cast<TestIpcMessage<std::string>*>(messages[0].get())->data == m.data);
+}
+#endif
