@@ -16,6 +16,6 @@ struct ResizableBuffer {
   // than |size|.
   size_t size;
 
-private:
+ private:
   size_t capacity_;
 };

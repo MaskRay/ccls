@@ -27,4 +27,3 @@ struct Buffer {
   void* data = nullptr;
   size_t capacity = 0;
 };
-

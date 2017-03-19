@@ -27,7 +27,7 @@ void ResizableBuffer::Append(void* content, size_t content_size) {
   assert(capacity_ >= 0);
 
   size_t new_size = size + content_size;
-  
+
   // Grow buffer capacity if needed.
   if (new_size >= capacity_) {
     size_t new_capacity = capacity_ * 2;
@@ -91,7 +91,7 @@ TEST_CASE("reset does not reallocate") {
 
   while (b.size < kInitialCapacity)
     b.Append(&b, sizeof(b));
-  
+
   void* buffer = b.buffer;
   b.Reset();
   REQUIRE(b.buffer == buffer);

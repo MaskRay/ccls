@@ -33,15 +33,15 @@ struct BufferLocal : public Buffer {
 
 struct ScopedLockPlatform : public ScopedLock {
   ScopedLockPlatform(PlatformMutex* mutex)
-    : guard(CreatePlatformScopedMutexLock(mutex)) {}
+      : guard(CreatePlatformScopedMutexLock(mutex)) {}
 
   std::unique_ptr<PlatformScopedMutexLock> guard;
 };
 
 struct BufferPlatform : public Buffer {
   explicit BufferPlatform(const std::string& name, size_t capacity)
-    : memory_(CreatePlatformSharedMemory(name + "_mem", capacity)),
-      mutex_(CreatePlatformMutex(name + "_mtx")) {
+      : memory_(CreatePlatformSharedMemory(name + "_mem", capacity)),
+        mutex_(CreatePlatformMutex(name + "_mtx")) {
     this->data = memory_->data;
     this->capacity = memory_->capacity;
   }
@@ -65,7 +65,8 @@ std::unique_ptr<Buffer> Buffer::Create(size_t capacity) {
   return MakeUnique<BufferLocal>(capacity);
 }
 
-std::unique_ptr<Buffer> Buffer::CreateSharedBuffer(const std::string& name, size_t capacity) {
+std::unique_ptr<Buffer> Buffer::CreateSharedBuffer(const std::string& name,
+                                                   size_t capacity) {
   return MakeUnique<BufferPlatform>(name, capacity);
 }
 
@@ -82,10 +83,8 @@ TEST_CASE("create") {
 }
 
 TEST_CASE("lock") {
-  auto buffers = {
-    Buffer::Create(sizeof(int)),
-    Buffer::CreateSharedBuffer("indexertest", sizeof(int))
-  };
+  auto buffers = {Buffer::Create(sizeof(int)),
+                  Buffer::CreateSharedBuffer("indexertest", sizeof(int))};
 
   for (auto& b : buffers) {
     int* data = reinterpret_cast<int*>(b->data);

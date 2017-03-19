@@ -22,7 +22,7 @@ struct Message {
 struct MessageQueue {
   // Create a new MessageQueue using |buffer| as the backing data storage.
   // This does *not* take ownership over the memory stored in |buffer|.
-  // 
+  //
   // If |buffer_has_data| is true, then it is assumed that |buffer| contains
   // data and has already been initialized. It is a perfectly acceptable
   // use-case to have multiple completely separate MessageQueue
@@ -52,14 +52,13 @@ struct MessageQueue {
   // Take the first available message from the queue.
   std::unique_ptr<Message> DequeueFirst();
 
-private:
+ private:
   struct BufferMetadata;
 
   BufferMetadata* Metadata();
 
   std::unique_ptr<Buffer> buffer_;
 };
-
 
 /*
 // TODO: We convert IpcMessage <-> Message as a user-level operation.

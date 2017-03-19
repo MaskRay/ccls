@@ -8,8 +8,6 @@
 #include <pthread.h>
 #include <iostream>
 
-
-
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,36 +17,31 @@
 #include <errno.h>
 #include <signal.h>
 
-#include <fcntl.h>           /* For O_* constants */
-#include <sys/stat.h>        /* For mode constants */
+#include <fcntl.h>    /* For O_* constants */
+#include <sys/stat.h> /* For mode constants */
 #include <semaphore.h>
 #include <sys/mman.h>
-#include <sys/stat.h>        /* For mode constants */
-#include <fcntl.h>           /* For O_* constants */
+#include <sys/stat.h> /* For mode constants */
+#include <fcntl.h>    /* For O_* constants */
 
 struct PlatformMutexLinux : public PlatformMutex {
   sem_t* sem_ = nullptr;
 
   PlatformMutexLinux(const std::string& name) {
     std::cerr << "PlatformMutexLinux name=" << name << std::endl;
-    sem_ = sem_open(name.c_str(), O_CREAT, 0666 /*permission*/, 1 /*initial_value*/);
+    sem_ = sem_open(name.c_str(), O_CREAT, 0666 /*permission*/,
+                    1 /*initial_value*/);
   }
 
-  ~PlatformMutexLinux() override {
-    sem_close(sem_);
-  }
+  ~PlatformMutexLinux() override { sem_close(sem_); }
 };
 
 struct PlatformScopedMutexLockLinux : public PlatformScopedMutexLock {
   sem_t* sem_ = nullptr;
 
-  PlatformScopedMutexLockLinux(sem_t* sem) : sem_(sem) {
-    sem_wait(sem_);
-  }
+  PlatformScopedMutexLockLinux(sem_t* sem) : sem_(sem) { sem_wait(sem_); }
 
-  ~PlatformScopedMutexLockLinux() override {
-    sem_post(sem_);
-  }
+  ~PlatformScopedMutexLockLinux() override { sem_post(sem_); }
 };
 
 void* checked(void* result, const char* expr) {
@@ -87,17 +80,18 @@ struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
     // Otherwise, we just open existing shared memory. We don't need to
     // create or initialize it.
     else {
-      fd_ = CHECKED(shm_open(name_.c_str(),
-                             O_RDWR, /* memory is read/write, create if needed */
-                             S_IRUSR | S_IWUSR /* user read/write */));
+      fd_ = CHECKED(shm_open(
+          name_.c_str(), O_RDWR, /* memory is read/write, create if needed */
+          S_IRUSR | S_IWUSR /* user read/write */));
     }
 
     // Map the shared memory to an address.
-    shared = CHECKED(mmap(nullptr /*kernel assigned starting address*/,
-                          shmem_size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                          fd_, 0 /*offset*/));
+    shared =
+        CHECKED(mmap(nullptr /*kernel assigned starting address*/, shmem_size,
+                     PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0 /*offset*/));
 
-    std::cout << "Open shared memory name=" << name << ", fd=" << fd_ << ", shared=" << shared << std::endl;
+    std::cout << "Open shared memory name=" << name << ", fd=" << fd_
+              << ", shared=" << shared << std::endl;
   }
 
   ~PlatformSharedMemoryLinux() override {
@@ -110,17 +104,19 @@ struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
 
 #undef CHECKED
 
-
 std::unique_ptr<PlatformMutex> CreatePlatformMutex(const std::string& name) {
   std::string name2 = "/" + name;
   return MakeUnique<PlatformMutexLinux>(name2);
 }
 
-std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(PlatformMutex* mutex) {
-  return MakeUnique<PlatformScopedMutexLockLinux>(static_cast<PlatformMutexLinux*>(mutex)->sem_);
+std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(
+    PlatformMutex* mutex) {
+  return MakeUnique<PlatformScopedMutexLockLinux>(
+      static_cast<PlatformMutexLinux*>(mutex)->sem_);
 }
 
-std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(const std::string& name) {
+std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
+    const std::string& name) {
   std::string name2 = "/" + name;
   return MakeUnique<PlatformSharedMemoryLinux>(name2);
 }

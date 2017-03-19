@@ -4,9 +4,7 @@
 
 #include "../third_party/doctest/doctest/doctest.h"
 
-
 TEST_SUITE("Platform");
-
 
 TEST_CASE("Mutex lock/unlock (single process)") {
   auto m1 = CreatePlatformMutex("indexer-platformmutexttest");
