@@ -270,7 +270,7 @@ void IpcDirectionalChannel::PushMessage(IpcMessage* message) {
   if (payload_size == 0)
     return;
 
-  int partial_message_id = 0; // TODO
+  int partial_message_id = 0;
 
   std::cerr << "Starting dispatch of payload with size " << payload_size << std::endl;
   int count = 0;

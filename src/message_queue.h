@@ -11,6 +11,9 @@ struct Message {
 
   // Total size of the message (including metadata that this object stores).
   size_t total_size;
+
+  // Size of the extra message data immediately following the message payload.
+  size_t message_size() const { return total_size - sizeof(Message); }
 };
 
 // A MessageQueue is a FIFO container storing messages in an arbitrary memory
@@ -55,7 +58,12 @@ struct MessageQueue {
  private:
   struct BufferMetadata;
 
-  BufferMetadata* Metadata();
+  BufferMetadata* metadata() const;
+  // Returns the number of bytes currently available in the buffer.
+  size_t BytesAvailableInBuffer() const;
+  Message* first_message_in_buffer() const;
+  // First free message in the buffer.
+  Message* free_message_in_buffer() const;
 
   std::unique_ptr<Buffer> buffer_;
 };
