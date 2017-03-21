@@ -2,26 +2,27 @@
 
 #include <vector>
 #include <memory>
+#include <unordered_map>
 
 #include "buffer.h"
 
+class ResizableBuffer;
+
 struct Message {
-  // Unique message identifier.
-  uint8_t message_id;
+  Message(void* data, size_t size);
 
-  // Total size of the message (including metadata that this object stores).
-  size_t total_size;
-
-  // Size of the extra message data immediately following the message payload.
-  size_t message_size() const { return total_size - sizeof(Message); }
+  void* data;
+  size_t size;
 };
 
 // A MessageQueue is a FIFO container storing messages in an arbitrary memory
-// buffer.
+// buffer that is cross-thread and cross-process safe. This means:
 //  - Multiple separate MessageQueues instantiations can point to the
-//    same underlying buffer
-//  - Buffer is fully relocatable, ie, it can have multiple different
+//    same underlying buffer and use it at the same time.
+//  - The buffer is fully relocatable, ie, it can have multiple different
 //    addresses (as is the case for memory shared across processes).
+//
+// There can be multiple writers, but there can only be one reader.
 struct MessageQueue {
   // Create a new MessageQueue using |buffer| as the backing data storage.
   // This does *not* take ownership over the memory stored in |buffer|.
@@ -44,28 +45,22 @@ struct MessageQueue {
   void Enqueue(const Message& message);
 
   // Take all messages from the queue.
-  //
-  // note:
-  //  We could make this allocation free by returning raw pointers to the
-  //  internal process-local buffer, but that is pretty haphazard and likely
-  //  to cause a very confusing crash. The extra memory allocations here from
-  //  unique_ptr going to make a performance difference.
-  std::vector<std::unique_ptr<Message>> DequeueAll();
-
-  // Take the first available message from the queue.
-  std::unique_ptr<Message> DequeueFirst();
+  std::vector<std::unique_ptr<Buffer>> DequeueAll();
 
  private:
   struct BufferMetadata;
+
+  void CopyPayloadToBuffer(uint32_t partial_id, void* payload, size_t payload_size, bool has_more_chunks);
 
   BufferMetadata* metadata() const;
   // Returns the number of bytes currently available in the buffer.
   size_t BytesAvailableInBuffer() const;
   Message* first_message_in_buffer() const;
   // First free message in the buffer.
-  Message* free_message_in_buffer() const;
+  void* first_free_address_in_buffer() const;
 
   std::unique_ptr<Buffer> buffer_;
+  std::unique_ptr<Buffer> local_buffer_;
 };
 
 /*
