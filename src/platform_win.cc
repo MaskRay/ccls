@@ -53,13 +53,13 @@ struct PlatformScopedMutexLockWin : public PlatformScopedMutexLock {
 
   PlatformScopedMutexLockWin(HANDLE raw_mutex) : raw_mutex(raw_mutex) {
     DWORD result = WaitForSingleObject(raw_mutex, INFINITE);
-    assert(result != WAIT_FAILED);
-    CheckForError({} /*allow*/);
+    assert(result == WAIT_OBJECT_0);
+    CheckForError({ ERROR_NO_MORE_FILES, ERROR_ALREADY_EXISTS } /*allow*/);
   }
 
   ~PlatformScopedMutexLockWin() override {
     ReleaseMutex(raw_mutex);
-    CheckForError({} /*allow*/);
+    CheckForError({ ERROR_NO_MORE_FILES, ERROR_ALREADY_EXISTS } /*allow*/);
   }
 };
 
