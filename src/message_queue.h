@@ -50,7 +50,10 @@ struct MessageQueue {
  private:
   struct BufferMetadata;
 
-  void CopyPayloadToBuffer(uint32_t partial_id, void* payload, size_t payload_size, bool has_more_chunks);
+  void CopyPayloadToBuffer(uint32_t partial_id,
+                           void* payload,
+                           size_t payload_size,
+                           bool has_more_chunks);
 
   BufferMetadata* metadata() const;
   // Returns the number of bytes currently available in the buffer.
