@@ -1,6 +1,8 @@
 #include "buffer.h"
 
+#include <cstdlib>
 #include <mutex>
+#include <thread>
 
 #include "platform.h"
 #include "../utils.h"

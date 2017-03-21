@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 // Points to a generic block of memory that can be resized. This class owns
 // and has the only pointer to the underlying memory buffer.
 struct ResizableBuffer {
