@@ -77,7 +77,7 @@ std::string IndexedFile::ToString() {
 }
 
 IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr)
-    : id(id), def(usr) {
+    : def(usr), id(id) {
   assert(usr.size() > 0);
   // std::cerr << "Creating type with usr " << usr << std::endl;
 }

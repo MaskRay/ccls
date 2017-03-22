@@ -6,7 +6,7 @@
 
 #include "buffer.h"
 
-class ResizableBuffer;
+struct ResizableBuffer;
 
 struct Message {
   Message(void* data, size_t size);

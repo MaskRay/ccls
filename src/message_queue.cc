@@ -82,18 +82,20 @@ enum class RepeatResult { RunAgain, Break };
 // Run |action| an arbitrary number of times.
 void Repeat(std::function<RepeatResult()> action) {
   bool first = true;
+#if defined(MESSAGE_QUEUE_LOG)
   int log_iteration_count = 0;
   int log_count = 0;
+#endif
   while (true) {
     if (!first) {
+#if defined(MESSAGE_QUEUE_LOG)
       if (log_iteration_count > 1000) {
         log_iteration_count = 0;
-#if defined(MESSAGE_QUEUE_LOG)
         std::cerr << "[info]: Buffer full, waiting (" << log_count++ << ")"
                   << std::endl;
-#endif
       }
       ++log_iteration_count;
+#endif
       // TODO: See if we can figure out a way to use condition variables
       // cross-process.
       std::this_thread::sleep_for(std::chrono::microseconds(0));
@@ -107,7 +109,7 @@ void Repeat(std::function<RepeatResult()> action) {
 }
 
 ResizableBuffer* CreateOrFindResizableBuffer(
-    std::unordered_map<int, std::unique_ptr<ResizableBuffer>>&
+    std::unordered_map<uint32_t, std::unique_ptr<ResizableBuffer>>&
         resizable_buffers,
     uint32_t id) {
   auto it = resizable_buffers.find(id);
@@ -119,7 +121,7 @@ ResizableBuffer* CreateOrFindResizableBuffer(
 std::unique_ptr<Buffer> MakeBuffer(void* content, size_t size) {
   auto buffer = Buffer::Create(size);
   memcpy(buffer->data, content, size);
-  return std::move(buffer);
+  return buffer;
 }
 
 }  // namespace
@@ -227,7 +229,8 @@ void MessageQueue::Enqueue(const Message& message) {
 }
 
 std::vector<std::unique_ptr<Buffer>> MessageQueue::DequeueAll() {
-  std::unordered_map<int, std::unique_ptr<ResizableBuffer>> resizable_buffers;
+  std::unordered_map<uint32_t, std::unique_ptr<ResizableBuffer>>
+      resizable_buffers;
 
   std::vector<std::unique_ptr<Buffer>> result;
 

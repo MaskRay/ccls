@@ -60,10 +60,11 @@ using VarId = Id<IndexedVarDef>;
 struct IdCache;
 
 struct Location {
+  // TODO: cleanup types (make this type smaller).
   bool interesting;
-  int raw_file_id;
-  int line;
-  int column;
+  int64_t raw_file_id;
+  int32_t line;
+  int32_t column;
 
   Location() {
     interesting = false;
@@ -72,7 +73,7 @@ struct Location {
     column = -1;
   }
 
-  Location(bool interesting, FileId file, uint32_t line, uint32_t column) {
+  Location(bool interesting, FileId file, int32_t line, int32_t column) {
     this->interesting = interesting;
     this->raw_file_id = file.id;
     this->line = line;
@@ -82,16 +83,13 @@ struct Location {
   FileId file_id() const { return FileId(raw_file_id); }
 
   explicit Location(const char* encoded) : Location() {
-    int len = strlen(encoded);
-    assert(len >= 0);
-
     if (*encoded == '*') {
       interesting = true;
       ++encoded;
     }
 
     assert(encoded);
-    raw_file_id = atoi(encoded);
+    raw_file_id = strtol(encoded, nullptr, 10);
     while (*encoded && *encoded != ':')
       ++encoded;
     if (*encoded == ':')
@@ -442,7 +440,7 @@ struct IndexedFuncDef {
   bool is_bad_def = true;
 
   IndexedFuncDef() {}  // For reflection.
-  IndexedFuncDef(FuncId id, const std::string& usr) : id(id), def(usr) {
+  IndexedFuncDef(FuncId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -526,7 +524,7 @@ struct IndexedVarDef {
 
   IndexedVarDef() : def("") {}  // For serialization
 
-  IndexedVarDef(VarId id, const std::string& usr) : id(id), def(usr) {
+  IndexedVarDef(VarId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
