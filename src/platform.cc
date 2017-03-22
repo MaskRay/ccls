@@ -4,6 +4,12 @@
 
 #include "../third_party/doctest/doctest/doctest.h"
 
+PlatformMutex::~PlatformMutex() = default;
+
+PlatformScopedMutexLock::~PlatformScopedMutexLock() = default;
+
+PlatformSharedMemory::~PlatformSharedMemory() = default;
+
 TEST_SUITE("Platform");
 
 TEST_CASE("Mutex lock/unlock (single process)") {

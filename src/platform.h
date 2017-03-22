@@ -4,13 +4,13 @@
 #include <string>
 
 struct PlatformMutex {
-  virtual ~PlatformMutex() {}
+  virtual ~PlatformMutex();
 };
 struct PlatformScopedMutexLock {
-  virtual ~PlatformScopedMutexLock() {}
+  virtual ~PlatformScopedMutexLock();
 };
 struct PlatformSharedMemory {
-  virtual ~PlatformSharedMemory() {}
+  virtual ~PlatformSharedMemory();
   void* data;
   size_t capacity;
   std::string name;
