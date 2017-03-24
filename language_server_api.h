@@ -62,127 +62,6 @@ void Reflect(Reader& visitor, RequestId& id) {
     std::cerr << "Unable to deserialize id" << std::endl;
 }
 
-struct OutMessage {
-  // Write out the body of the message. The writer expects object key/value
-  // pairs.
-  virtual void WriteMessageBody(Writer& writer) = 0;
-
-  // Send the message to the language client by writing it to stdout.
-  void Send() {
-    rapidjson::StringBuffer output;
-    Writer writer(output);
-    writer.StartObject();
-    writer.Key("jsonrpc");
-    writer.String("2.0");
-    WriteMessageBody(writer);
-    writer.EndObject();
-
-    std::cout << "Content-Length: " << output.GetSize();
-    std::cout << (char)13 << char(10) << char(13) << char(10);
-    std::cout << output.GetString();
-    std::cout.flush();
-  }
-};
-
-struct OutRequestMessage : public OutMessage {
-  RequestId id;
-
-  virtual std::string Method() = 0;
-  virtual void SerializeParams(Writer& visitor) = 0;
-
-  // Message:
-  void WriteMessageBody(Writer& visitor) override {
-    auto& value = *this;
-    auto method = Method();
-
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER2("method", method);
-
-    visitor.Key("params");
-    SerializeParams(visitor);
-  }
-};
-
-
-struct lsResponseError {
-  struct Data {
-    virtual void Write(Writer& writer) = 0;
-  };
-
-  enum class lsErrorCodes : int {
-    ParseError = -32700,
-    InvalidRequest = -32600,
-    MethodNotFound = -32601,
-    InvalidParams = -32602,
-    InternalError = -32603,
-    serverErrorStart = -32099,
-    serverErrorEnd = -32000,
-    ServerNotInitialized = -32002,
-    UnknownErrorCode = -32001
-  };
-
-  lsErrorCodes code;
-  // Short description.
-  std::string message;
-  std::unique_ptr<Data> data;
-
-  void Write(Writer& visitor) {
-    auto& value = *this;
-    int code = static_cast<int>(this->code);
-
-    visitor.StartObject();
-    REFLECT_MEMBER2("code", code);
-    REFLECT_MEMBER(message);
-    if (data) {
-      visitor.Key("data");
-      data->Write(visitor);
-    }
-    visitor.EndObject();
-  }
-};
-
-struct OutResponseMessage : public OutMessage {
-  RequestId id;
-
-  virtual optional<lsResponseError> Error() {
-    return nullopt;
-  }
-  virtual void WriteResult(Writer& visitor) = 0;
-
-  // Message:
-  void WriteMessageBody(Writer& visitor) override {
-    auto& value = *this;
-
-    REFLECT_MEMBER(id);
-
-    optional<lsResponseError> error = Error();
-    if (error) {
-      visitor.Key("error");
-      error->Write(visitor);
-    }
-    else {
-      visitor.Key("result");
-      WriteResult(visitor);
-    }
-  }
-};
-
-struct OutNotificationMessage : public OutMessage {
-  virtual std::string Method() = 0;
-  virtual void SerializeParams(Writer& writer) = 0;
-
-  // Message:
-  void WriteMessageBody(Writer& visitor) override {
-    visitor.Key("method");
-    std::string method = Method();
-    ::Reflect(visitor, method);
-
-    visitor.Key("params");
-    SerializeParams(visitor);
-  }
-};
-
-
 
 
 
@@ -313,8 +192,9 @@ MessageRegistry* MessageRegistry::instance() {
   return instance_;
 }
 
+struct lsBaseMessage {};
 
-struct InMessage {
+struct InMessage : public lsBaseMessage {
   const lsMethodId method_id;
   optional<RequestId> id;
 
@@ -331,6 +211,126 @@ struct InRequestMessage : public InMessage {
 struct InNotificationMessage : public InMessage {
   InNotificationMessage(lsMethodId  method, optional<RequestId> id, Reader& reader)
     : InMessage(method, id, reader) {}
+};
+
+struct OutMessage : public lsBaseMessage {
+  // Write out the body of the message. The writer expects object key/value
+  // pairs.
+  virtual void WriteMessageBody(Writer& writer) = 0;
+
+  // Send the message to the language client by writing it to stdout.
+  void Send() {
+    rapidjson::StringBuffer output;
+    Writer writer(output);
+    writer.StartObject();
+    writer.Key("jsonrpc");
+    writer.String("2.0");
+    WriteMessageBody(writer);
+    writer.EndObject();
+
+    std::cout << "Content-Length: " << output.GetSize();
+    std::cout << (char)13 << char(10) << char(13) << char(10);
+    std::cout << output.GetString();
+    std::cout.flush();
+  }
+};
+
+struct OutRequestMessage : public OutMessage {
+  RequestId id;
+
+  virtual std::string Method() = 0;
+  virtual void SerializeParams(Writer& visitor) = 0;
+
+  // Message:
+  void WriteMessageBody(Writer& visitor) override {
+    auto& value = *this;
+    auto method = Method();
+
+    REFLECT_MEMBER(id);
+    REFLECT_MEMBER2("method", method);
+
+    visitor.Key("params");
+    SerializeParams(visitor);
+  }
+};
+
+
+struct lsResponseError {
+  struct Data {
+    virtual void Write(Writer& writer) = 0;
+  };
+
+  enum class lsErrorCodes : int {
+    ParseError = -32700,
+    InvalidRequest = -32600,
+    MethodNotFound = -32601,
+    InvalidParams = -32602,
+    InternalError = -32603,
+    serverErrorStart = -32099,
+    serverErrorEnd = -32000,
+    ServerNotInitialized = -32002,
+    UnknownErrorCode = -32001
+  };
+
+  lsErrorCodes code;
+  // Short description.
+  std::string message;
+  std::unique_ptr<Data> data;
+
+  void Write(Writer& visitor) {
+    auto& value = *this;
+    int code = static_cast<int>(this->code);
+
+    visitor.StartObject();
+    REFLECT_MEMBER2("code", code);
+    REFLECT_MEMBER(message);
+    if (data) {
+      visitor.Key("data");
+      data->Write(visitor);
+    }
+    visitor.EndObject();
+  }
+};
+
+struct OutResponseMessage : public OutMessage {
+  RequestId id;
+
+  virtual optional<lsResponseError> Error() {
+    return nullopt;
+  }
+  virtual void WriteResult(Writer& visitor) = 0;
+
+  // Message:
+  void WriteMessageBody(Writer& visitor) override {
+    auto& value = *this;
+
+    REFLECT_MEMBER(id);
+
+    optional<lsResponseError> error = Error();
+    if (error) {
+      visitor.Key("error");
+      error->Write(visitor);
+    }
+    else {
+      visitor.Key("result");
+      WriteResult(visitor);
+    }
+  }
+};
+
+struct OutNotificationMessage : public OutMessage {
+  virtual std::string Method() = 0;
+  virtual void SerializeParams(Writer& writer) = 0;
+
+  // Message:
+  void WriteMessageBody(Writer& visitor) override {
+    visitor.Key("method");
+    std::string method = Method();
+    ::Reflect(visitor, method);
+
+    visitor.Key("params");
+    SerializeParams(visitor);
+  }
 };
 
 
@@ -1357,6 +1357,11 @@ struct In_DocumentSymbolRequest : public InRequestMessage {
     Reflect(reader, params);
   }
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_DocumentSymbolRequest& value) {
+  Reflect(visitor, value.params);
+}
 
 struct Out_DocumentSymbolResponse : public OutResponseMessage {
   std::vector<lsSymbolInformation> result;

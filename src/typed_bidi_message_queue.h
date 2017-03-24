@@ -26,7 +26,7 @@ struct TypedBidiMessageQueue {
 
   void RegisterId(TId id,
                   const Serializer& serializer,
-                  const Deserializer& deseriaizer) {
+                  const Deserializer& deserializer) {
     assert(serializers_.find(id) == serializers_.end() &&
            deserializers_.find(id) == deserializers_.end() &&
            "Duplicate registration");

@@ -1027,17 +1027,28 @@ void PreMain() {
   MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
 }
 
-struct MyMessageType {
-  static const lsMethodId id = lsMethodId::CancelRequest;
-};
-
 int main(int argc, char** argv) {
   // TODO: real impl
   const int kQueueSize = 128;
-  TypedBidiMessageQueue<lsMethodId, MyMessageType> t("foo", kQueueSize);
-  MyMessageType mm;
-  t.SendMessage(&t.for_client, lsMethodId::Initialize, &mm);
-  t.GetMessages(&t.for_client);
+  TypedBidiMessageQueue<lsMethodId, lsBaseMessage> t("foo", kQueueSize);
+
+  // TODO: We can make this entire function a template.
+  t.RegisterId(In_DocumentSymbolRequest::kMethod,
+    [](Writer& visitor, lsBaseMessage& message) {
+      In_DocumentSymbolRequest& m = static_cast<In_DocumentSymbolRequest&>(message);
+      Reflect(visitor, m);
+    }, [](Reader& visitor) {
+      auto m = MakeUnique<In_DocumentSymbolRequest>();
+      Reflect(visitor, *m);
+      return m;
+    });
+
+  //struct In_DocumentSymbolRequest : public InRequestMessage {
+  //  const static lsMethodId kMethod = lsMethodId::TextDocumentDocumentSymbol;
+
+  //MyMessageType mm;
+  //t.SendMessage(&t.for_client, lsMethodId::Initialize, &mm);
+  //t.GetMessages(&t.for_client);
 
   bool loop = false;
   while (loop)
