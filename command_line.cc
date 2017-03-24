@@ -11,6 +11,8 @@
 #include "language_server_api.h"
 #include "test.h"
 
+#include "src/typed_bidi_message_queue.h"
+
 #include "third_party/tiny-process-library/process.hpp"
 
 #include "third_party/doctest/doctest/doctest.h"
@@ -1025,7 +1027,18 @@ void PreMain() {
   MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
 }
 
+struct MyMessageType {
+  static const lsMethodId id = lsMethodId::CancelRequest;
+};
+
 int main(int argc, char** argv) {
+  // TODO: real impl
+  const int kQueueSize = 128;
+  TypedBidiMessageQueue<lsMethodId, MyMessageType> t("foo", kQueueSize);
+  MyMessageType mm;
+  t.SendMessage(&t.for_client, lsMethodId::Initialize, &mm);
+  t.GetMessages(&t.for_client);
+
   bool loop = false;
   while (loop)
     std::this_thread::sleep_for(std::chrono::milliseconds(10));

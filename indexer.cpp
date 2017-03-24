@@ -1204,6 +1204,18 @@ void emptyIndexEntityReference(CXClientData client_data,
 IndexedFile Parse(std::string filename,
                   std::vector<std::string> args,
                   bool dump_ast) {
+  // TODO!!
+  // TODO!!
+  // TODO!!
+  // TODO!!: Strip useless defs from IndexedFile before returning
+  // TODO!!: Strip useless defs from IndexedFile before returning
+  // TODO!!: Strip useless defs from IndexedFile before returning
+  // TODO!!: Strip useless defs from IndexedFile before returning
+  // TODO!!: Strip useless defs from IndexedFile before returning
+  // TODO!!: Strip useless defs from IndexedFile before returning
+  // TODO!!
+  // TODO!!
+  // TODO!!
   clang_toggleCrashRecovery(1);
 
   args.push_back("-std=c++11");
