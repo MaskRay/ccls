@@ -37,7 +37,7 @@ struct IndexTranslationUnitResponse {
 };
 
 // TODO: Rename TypedBidiMessageQueue to IpcTransport?
-using IpcMessageQueue = TypedBidiMessageQueue<lsMethodId, InMessage>;
+using IpcMessageQueue = TypedBidiMessageQueue<lsMethodId, BaseIpcMessage>;
 using IndexRequestQueue = ThreadedQueue<IndexTranslationUnitRequest>;
 using IndexResponseQueue = ThreadedQueue<IndexTranslationUnitResponse>;
 
@@ -79,7 +79,7 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options,
   return options.find(option) != options.end();
 }
 
-std::unique_ptr<InMessage> ParseMessage() {
+std::unique_ptr<BaseIpcMessage> ParseMessage() {
   int content_length = -1;
   int iteration = 0;
   while (true) {
@@ -134,51 +134,46 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
   return result;
 }
 
-template <typename T>
-struct BaseIpcMessage : public InMessage {
-  BaseIpcMessage() : InMessage(T::kMethod) {}
-};
-
-struct IpcMessage_Quit : public BaseIpcMessage<IpcMessage_Quit> {
+struct Ipc_Quit : public IpcMessage<Ipc_Quit> {
   static constexpr lsMethodId kMethod = lsMethodId::Quit;
 };
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_Quit& value) {}
+void Reflect(TVisitor& visitor, Ipc_Quit& value) {}
 
-struct IpcMessage_IsAlive : public BaseIpcMessage<IpcMessage_IsAlive> {
+struct Ipc_IsAlive : public IpcMessage<Ipc_IsAlive> {
   static constexpr lsMethodId kMethod = lsMethodId::IsAlive;
 };
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_IsAlive& value) {}
+void Reflect(TVisitor& visitor, Ipc_IsAlive& value) {}
 
-struct IpcMessage_OpenProject : public BaseIpcMessage<IpcMessage_OpenProject> {
+struct Ipc_OpenProject : public IpcMessage<Ipc_OpenProject> {
   static constexpr lsMethodId kMethod = lsMethodId::OpenProject;
   std::string project_path;
 };
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_OpenProject& value) {
+void Reflect(TVisitor& visitor, Ipc_OpenProject& value) {
   Reflect(visitor, value.project_path);
 }
 
-struct IpcMessage_Cout : public BaseIpcMessage<IpcMessage_Cout> {
+struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
   static constexpr lsMethodId kMethod = lsMethodId::Cout;
   std::string content;
 
-  IpcMessage_Cout() {}
-  IpcMessage_Cout(lsOutMessage& message) {
+  Ipc_Cout() {}
+  Ipc_Cout(lsOutMessage& message) {
     std::ostringstream out;
     message.Send(out);
     content = out.str();
   }
 };
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_Cout& value) {
+void Reflect(TVisitor& visitor, Ipc_Cout& value) {
   Reflect(visitor, value.content);
 }
 
 void SendOutMessageToClient(IpcMessageQueue* queue, lsOutMessage& response) {
-  IpcMessage_Cout out(response);
-  queue->SendMessage(&queue->for_client, IpcMessage_Cout::kMethod, out);
+  Ipc_Cout out(response);
+  queue->SendMessage(&queue->for_client, Ipc_Cout::kMethod, out);
 }
 
 
@@ -186,7 +181,7 @@ void SendOutMessageToClient(IpcMessageQueue* queue, lsOutMessage& response) {
 template<typename T>
 void RegisterId(IpcMessageQueue* t) {
   t->RegisterId(T::kMethod,
-    [](Writer& visitor, InMessage& message) {
+    [](Writer& visitor, BaseIpcMessage& message) {
     T& m = static_cast<T&>(message);
     Reflect(visitor, m);
   }, [](Reader& visitor) {
@@ -198,143 +193,29 @@ void RegisterId(IpcMessageQueue* t) {
 
 std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, size_t buffer_size) {
   auto ipc = MakeUnique<IpcMessageQueue>(name, buffer_size);
-  RegisterId<In_CancelRequest>(ipc.get());
-  RegisterId<In_InitializeRequest>(ipc.get());
-  RegisterId<In_InitializedNotification>(ipc.get());
-  RegisterId<In_DocumentSymbolRequest>(ipc.get());
-  RegisterId<In_DocumentCodeLensRequest>(ipc.get());
-  RegisterId<In_DocumentCodeLensResolveRequest>(ipc.get());
-  RegisterId<In_WorkspaceSymbolRequest>(ipc.get());
-  RegisterId<IpcMessage_Quit>(ipc.get());
-  RegisterId<IpcMessage_IsAlive>(ipc.get());
-  RegisterId<IpcMessage_OpenProject>(ipc.get());
-  RegisterId<IpcMessage_Cout>(ipc.get());
+  RegisterId<Ipc_CancelRequest>(ipc.get());
+  RegisterId<Ipc_InitializeRequest>(ipc.get());
+  RegisterId<Ipc_InitializedNotification>(ipc.get());
+  RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
+  RegisterId<Ipc_TextDocumentCodeLens>(ipc.get());
+  RegisterId<Ipc_CodeLensResolve>(ipc.get());
+  RegisterId<Ipc_WorkspaceSymbol>(ipc.get());
+  RegisterId<Ipc_Quit>(ipc.get());
+  RegisterId<Ipc_IsAlive>(ipc.get());
+  RegisterId<Ipc_OpenProject>(ipc.get());
+  RegisterId<Ipc_Cout>(ipc.get());
   return ipc;
 }
 
 void RegisterMessageTypes() {
-  MessageRegistry::instance()->Register<In_CancelRequest>();
-  MessageRegistry::instance()->Register<In_InitializeRequest>();
-  MessageRegistry::instance()->Register<In_InitializedNotification>();
-  MessageRegistry::instance()->Register<In_DocumentSymbolRequest>();
-  MessageRegistry::instance()->Register<In_DocumentCodeLensRequest>();
-  MessageRegistry::instance()->Register<In_DocumentCodeLensResolveRequest>();
-  MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
+  MessageRegistry::instance()->Register<Ipc_CancelRequest>();
+  MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
+  MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
+  MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
+  MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
 }
-
-#if false
-struct IpcMessage_DocumentSymbolsRequest
-  : public BaseIpcMessage<IpcMessage_DocumentSymbolsRequest> {
-  static constexpr IpcId kIpcId = IpcId::DocumentSymbolsRequest;
-  RequestId request_id;
-  std::string document;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_DocumentSymbolsRequest& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(document);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_DocumentSymbolsResponse
-  : public BaseIpcMessage<IpcMessage_DocumentSymbolsResponse> {
-  static constexpr IpcId kIpcId = IpcId::DocumentSymbolsResponse;
-  RequestId request_id;
-  std::vector<lsSymbolInformation> symbols;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_DocumentSymbolsResponse& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(symbols);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_WorkspaceSymbolsRequest
-  : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsRequest> {
-  static constexpr IpcId kIpcId = IpcId::WorkspaceSymbolsRequest;
-  RequestId request_id;
-  std::string query;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_WorkspaceSymbolsRequest& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(query);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_DocumentCodeLensRequest
-  : public BaseIpcMessage<IpcMessage_DocumentCodeLensRequest> {
-  static constexpr IpcId kIpcId = IpcId::DocumentCodeLensRequest;
-  RequestId request_id;
-  std::string document;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_DocumentCodeLensRequest& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(document);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_DocumentCodeLensResponse
-  : public BaseIpcMessage<IpcMessage_DocumentCodeLensResponse> {
-  static constexpr IpcId kIpcId = IpcId::DocumentCodeLensResponse;
-  RequestId request_id;
-  std::vector<TCodeLens> code_lens;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_DocumentCodeLensResponse& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(code_lens);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_CodeLensResolveRequest
-  : public BaseIpcMessage<IpcMessage_CodeLensResolveRequest> {
-  static constexpr IpcId kIpcId = IpcId::CodeLensResolveRequest;
-  RequestId request_id;
-  TCodeLens code_lens;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_CodeLensResolveRequest& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(code_lens);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_CodeLensResolveResponse
-  : public BaseIpcMessage<IpcMessage_CodeLensResolveResponse> {
-  static constexpr IpcId kIpcId = IpcId::CodeLensResolveResponse;
-  RequestId request_id;
-  TCodeLens code_lens;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_CodeLensResolveResponse& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(code_lens);
-  REFLECT_MEMBER_END();
-}
-
-struct IpcMessage_WorkspaceSymbolsResponse
-  : public BaseIpcMessage<IpcMessage_WorkspaceSymbolsResponse> {
-  static constexpr IpcId kIpcId = IpcId::WorkspaceSymbolsResponse;
-  RequestId request_id;
-  std::vector<lsSymbolInformation> symbols;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, IpcMessage_WorkspaceSymbolsResponse& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(request_id);
-  REFLECT_MEMBER(symbols);
-  REFLECT_MEMBER_END();
-}
-#endif
 
 void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
   while (true) {
@@ -489,7 +370,7 @@ void QueryDbMainLoop(
   IpcMessageQueue* language_client,
   IndexRequestQueue* index_requests,
   IndexResponseQueue* index_responses) {
-  std::vector<std::unique_ptr<InMessage>> messages = language_client->GetMessages(&language_client->for_server);
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = language_client->GetMessages(&language_client->for_server);
   for (auto& message : messages) {
     // std::cerr << "Processing message " << static_cast<int>(message->ipc_id)
     // << std::endl;
@@ -502,14 +383,13 @@ void QueryDbMainLoop(
     }
 
     case lsMethodId::IsAlive: {
-      IpcMessage_IsAlive response;
+      Ipc_IsAlive response;
       language_client->SendMessage(&language_client->for_client, response.method_id, response);
       break;
     }
 
     case lsMethodId::OpenProject: {
-      IpcMessage_OpenProject* msg =
-        static_cast<IpcMessage_OpenProject*>(message.get());
+      Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
       std::vector<CompilationEntry> entries =
@@ -531,9 +411,9 @@ void QueryDbMainLoop(
     }
 
     case lsMethodId::TextDocumentDocumentSymbol: {
-      auto msg = static_cast<In_DocumentSymbolRequest*>(message.get());
+      auto msg = static_cast<Ipc_TextDocumentDocumentSymbol*>(message.get());
 
-      Out_DocumentSymbolResponse response;
+      Out_TextDocumentDocumentSymbol response;
       response.id = msg->id;
 
       QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
@@ -596,9 +476,9 @@ void QueryDbMainLoop(
     }
 
     case lsMethodId::TextDocumentCodeLens: {
-      auto msg = static_cast<In_DocumentCodeLensRequest*>(message.get());
+      auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
 
-      Out_DocumentCodeLensResponse response;
+      Out_TextDocumentCodeLens response;
       response.id = msg->id;
 
       lsDocumentUri file_as_uri = msg->params.textDocument.uri;
@@ -651,9 +531,9 @@ void QueryDbMainLoop(
     }
 
     case lsMethodId::WorkspaceSymbol: {
-      auto msg = static_cast<In_WorkspaceSymbolRequest*>(message.get());
+      auto msg = static_cast<Ipc_WorkspaceSymbol*>(message.get());
 
-      Out_WorkspaceSymbolResponse response;
+      Out_WorkspaceSymbol response;
       response.id = msg->id;
 
 
@@ -797,7 +677,7 @@ void QueryDbMain() {
 // |ipc| is connected to a server.
 void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
   while (true) {
-    std::unique_ptr<InMessage> message = ParseMessage();
+    std::unique_ptr<BaseIpcMessage> message = ParseMessage();
 
     // Message parsing can fail if we don't recognize the method.
     if (!message)
@@ -809,15 +689,15 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       // TODO: For simplicitly lets just proxy the initialize request like
       // all other requests so that stdin loop thread becomes super simple.
     case lsMethodId::Initialize: {
-      auto request = static_cast<In_InitializeRequest*>(message.get());
+      auto request = static_cast<Ipc_InitializeRequest*>(message.get());
       if (request->params.rootUri) {
         std::string project_path = request->params.rootUri->GetPath();
         std::cerr << "Initialize in directory " << project_path
           << " with uri " << request->params.rootUri->raw_uri
           << std::endl;
-        IpcMessage_OpenProject open_project;
+        Ipc_OpenProject open_project;
         open_project.project_path = project_path;
-        ipc->SendMessage(&ipc->for_server, IpcMessage_OpenProject::kMethod, open_project);
+        ipc->SendMessage(&ipc->for_server, Ipc_OpenProject::kMethod, open_project);
       }
 
       auto response = Out_InitializeResponse();
@@ -842,7 +722,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
 }
 
 void LanguageServerMainLoop(IpcMessageQueue* ipc) {
-  std::vector<std::unique_ptr<InMessage>> messages = ipc->GetMessages(&ipc->for_client);
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(&ipc->for_client);
   for (auto& message : messages) {
     switch (message->method_id) {
     case lsMethodId::Quit: {
@@ -852,7 +732,7 @@ void LanguageServerMainLoop(IpcMessageQueue* ipc) {
     }
 
     case lsMethodId::Cout: {
-      auto msg = static_cast<IpcMessage_Cout*>(message.get());
+      auto msg = static_cast<Ipc_Cout*>(message.get());
       std::cout << msg->content;
       std::cout.flush();
       break;
@@ -869,14 +749,14 @@ void LanguageServerMainLoop(IpcMessageQueue* ipc) {
 
 bool IsQueryDbProcessRunning(IpcMessageQueue* ipc) {
   // Emit an alive check. Sleep so the server has time to respond.
-  IpcMessage_IsAlive check_alive;
+  Ipc_IsAlive check_alive;
   SendMessage(*ipc, &ipc->for_server, check_alive);
 
   // TODO: Tune this value or make it configurable.
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<InMessage>> messages = ipc->GetMessages(&ipc->for_client);
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(&ipc->for_client);
   for (auto& message : messages) {
     if (lsMethodId::IsAlive == message->method_id)
       return true;

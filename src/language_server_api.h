@@ -142,13 +142,13 @@ const char* MethodIdToString(lsMethodId id) {
   }
 }
 
-struct InMessage;
+struct BaseIpcMessage;
 
 struct MessageRegistry {
   static MessageRegistry* instance_;
   static MessageRegistry* instance();
 
-  using Allocator = std::function<std::unique_ptr<InMessage>(Reader& visitor)>;
+  using Allocator = std::function<std::unique_ptr<BaseIpcMessage>(Reader& visitor)>;
   std::unordered_map<std::string, Allocator> allocators;
 
   template<typename T>
@@ -161,7 +161,7 @@ struct MessageRegistry {
     };
   }
 
-  std::unique_ptr<InMessage> Parse(Reader& visitor) {
+  std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor) {
     std::string jsonrpc = visitor["jsonrpc"].GetString();
     if (jsonrpc != "2.0")
       exit(1);
@@ -187,17 +187,14 @@ MessageRegistry* MessageRegistry::instance() {
   return instance_;
 }
 
-struct InMessage {
+struct BaseIpcMessage {
   const lsMethodId method_id;
-  InMessage(lsMethodId method_id) : method_id(method_id) {}
+  BaseIpcMessage(lsMethodId method_id) : method_id(method_id) {}
 };
 
-struct InRequestMessage : public InMessage {
-  InRequestMessage(lsMethodId  method) : InMessage(method) {}
-};
-
-struct InNotificationMessage : public InMessage {
-  InNotificationMessage(lsMethodId  method) : InMessage(method) {}
+template <typename T>
+struct IpcMessage : public BaseIpcMessage {
+  IpcMessage() : BaseIpcMessage(T::kMethod) {}
 };
 
 struct lsOutMessage {
@@ -333,20 +330,6 @@ struct OutNotificationMessage : public lsOutMessage {
 
 
 
-struct In_CancelRequest : public InNotificationMessage {
-  static const lsMethodId kMethod = lsMethodId::CancelRequest;
-
-  RequestId id;
-
-  In_CancelRequest() : InNotificationMessage(kMethod) {}
-};
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_CancelRequest& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(id);
-  REFLECT_MEMBER_END();
-}
 
 
 
@@ -1261,17 +1244,15 @@ void Reflect(TVisitor& visitor, lsInitializeResult& value) {
 }
 
 
-struct In_InitializeRequest : public InRequestMessage {
+struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest>{
   const static lsMethodId kMethod = lsMethodId::Initialize;
 
   RequestId id;
   lsInitializeParams params;
-
-  In_InitializeRequest() : InRequestMessage(kMethod) {}
 };
 
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_InitializeRequest& value) {
+void Reflect(TVisitor& visitor, Ipc_InitializeRequest& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER(params);
@@ -1287,16 +1268,13 @@ struct Out_InitializeResponse : public OutResponseMessage {
   }
 };
 
-struct In_InitializedNotification : public InNotificationMessage {
+struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification>{
   const static lsMethodId kMethod = lsMethodId::Initialized;
 
   RequestId id;
-
-  In_InitializedNotification() : InNotificationMessage(kMethod) {}
 };
-
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_InitializedNotification& value) {
+void Reflect(TVisitor& visitor, Ipc_InitializedNotification& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER_END();
@@ -1344,12 +1322,21 @@ void Reflect(TVisitor& visitor, In_InitializedNotification& value) {
 
 
 
+struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
+  static const lsMethodId kMethod = lsMethodId::CancelRequest;
+  RequestId id;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Ipc_CancelRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER_END();
+}
 
 
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsDocumentSymbolParams& value) {
   REFLECT_MEMBER_START();
@@ -1357,24 +1344,22 @@ void Reflect(TVisitor& visitor, lsDocumentSymbolParams& value) {
   REFLECT_MEMBER_END();
 }
 
-struct In_DocumentSymbolRequest : public InRequestMessage {
+struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocumentSymbol>{
   const static lsMethodId kMethod = lsMethodId::TextDocumentDocumentSymbol;
 
   RequestId id;
   lsDocumentSymbolParams params;
-
-  In_DocumentSymbolRequest() : InRequestMessage(kMethod) {}
 };
-
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_DocumentSymbolRequest& value) {
+void Reflect(TVisitor& visitor, Ipc_TextDocumentDocumentSymbol& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
 
-struct Out_DocumentSymbolResponse : public OutResponseMessage {
+// TODO: refactor OutResponseMessage so we have a normal Reflect visitor (ie, remove 'hidden' base state)
+struct Out_TextDocumentDocumentSymbol : public OutResponseMessage {
   std::vector<lsSymbolInformation> result;
 
   // OutResponseMessage:
@@ -1390,7 +1375,6 @@ struct Out_DocumentSymbolResponse : public OutResponseMessage {
 struct lsDocumentCodeLensParams {
   lsTextDocumentIdentifier textDocument;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsDocumentCodeLensParams& value) {
   REFLECT_MEMBER_START();
@@ -1431,24 +1415,22 @@ void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
 
-struct In_DocumentCodeLensRequest : public InRequestMessage {
+struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens>{
   const static lsMethodId kMethod = lsMethodId::TextDocumentCodeLens;
 
   RequestId id;
   lsDocumentCodeLensParams params;
-
-  In_DocumentCodeLensRequest() : InRequestMessage(kMethod) {}
 };
 
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_DocumentCodeLensRequest& value) {
+void Reflect(TVisitor& visitor, Ipc_TextDocumentCodeLens& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
 
-struct Out_DocumentCodeLensResponse : public OutResponseMessage {
+struct Out_TextDocumentCodeLens : public OutResponseMessage {
   std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
 
   // OutResponseMessage:
@@ -1457,24 +1439,22 @@ struct Out_DocumentCodeLensResponse : public OutResponseMessage {
   }
 };
 
-struct In_DocumentCodeLensResolveRequest : public InRequestMessage {
+struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve>{
   const static lsMethodId kMethod = lsMethodId::CodeLensResolve;
 
   RequestId id;
   TCodeLens params;
-
-  In_DocumentCodeLensResolveRequest() : InRequestMessage(kMethod) {}
 };
 
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_DocumentCodeLensResolveRequest& value) {
+void Reflect(TVisitor& visitor, Ipc_CodeLensResolve& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
 
-struct Out_DocumentCodeLensResolveResponse : public OutResponseMessage {
+struct Out_CodeLensResolve : public OutResponseMessage {
   TCodeLens result;
 
   // OutResponseMessage:
@@ -1501,24 +1481,22 @@ void Reflect(TVisitor& visitor, lsWorkspaceSymbolParams& value) {
   REFLECT_MEMBER_END();
 }
 
-struct In_WorkspaceSymbolRequest : public InRequestMessage {
+struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol >{
   const static lsMethodId kMethod = lsMethodId::WorkspaceSymbol;
 
   RequestId id;
   lsWorkspaceSymbolParams params;
-
-  In_WorkspaceSymbolRequest() : InRequestMessage(kMethod) {}
 };
 
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, In_WorkspaceSymbolRequest& value) {
+void Reflect(TVisitor& visitor, Ipc_WorkspaceSymbol& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
 
-struct Out_WorkspaceSymbolResponse : public OutResponseMessage {
+struct Out_WorkspaceSymbol : public OutResponseMessage {
   std::vector<lsSymbolInformation> result;
 
   // OutResponseMessage:
