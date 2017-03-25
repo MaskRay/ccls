@@ -1,6 +1,6 @@
 #include "resizable_buffer.h"
 
-#include "../third_party/doctest/doctest/doctest.h"
+#include <doctest/doctest.h>
 
 #include <cassert>
 #include <cstdint>

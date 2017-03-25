@@ -4,7 +4,7 @@
 #include <iostream>
 #include <fstream>
 
-#include "../third_party/tinydir.h"
+#include <tinydir.h>
 
 static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
   std::vector<std::string> result;

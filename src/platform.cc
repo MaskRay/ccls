@@ -2,7 +2,7 @@
 
 #include <thread>
 
-#include "../third_party/doctest/doctest/doctest.h"
+#include <doctest/doctest.h>
 
 PlatformMutex::~PlatformMutex() = default;
 

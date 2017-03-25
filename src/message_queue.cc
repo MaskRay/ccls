@@ -5,10 +5,11 @@
 #include <iostream>
 #include <thread>
 
+#include <doctest/doctest.h>
+
 #include "platform.h"
 #include "resizable_buffer.h"
 #include "utils.h"
-#include "../third_party/doctest/doctest/doctest.h"
 
 // TODO: figure out a logging solution
 //#define MESSAGE_QUEUE_LOG

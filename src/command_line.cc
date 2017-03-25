@@ -4,6 +4,10 @@
 #include <thread>
 #include <vector>
 
+#include <doctest/doctest.h>
+#include <rapidjson/istreamwrapper.h>
+#include <rapidjson/ostreamwrapper.h>
+
 // TODO: cleanup includes
 #include "compilation_database_loader.h"
 #include "indexer.h"
@@ -14,11 +18,7 @@
 #include "threaded_queue.h"
 #include "typed_bidi_message_queue.h"
 
-#include "../third_party/doctest/doctest/doctest.h"
-
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/ostreamwrapper.h>
-
+// TODO: move to platform
 #ifdef _WIN32
 #include <io.h>
 #include <fcntl.h>

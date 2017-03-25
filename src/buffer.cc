@@ -1,12 +1,13 @@
 #include "buffer.h"
 
+#include "platform.h"
+#include "utils.h"
+
+#include <doctest/doctest.h>
+
 #include <cstdlib>
 #include <mutex>
 #include <thread>
-
-#include "platform.h"
-#include "utils.h"
-#include "../third_party/doctest/doctest/doctest.h"
 
 namespace {
 
