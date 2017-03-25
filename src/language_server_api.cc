@@ -1,27 +1,5 @@
 #include "language_server_api.h"
 
-const char* IpcIdToString(IpcId id) {
-  switch (id) {
-  case IpcId::CancelRequest:
-    return "$/cancelRequest";
-  case IpcId::Initialize:
-    return "initialize";
-  case IpcId::Initialized:
-    return "initialized";
-  case IpcId::TextDocumentDocumentSymbol:
-    return "textDocument/documentSymbol";
-  case IpcId::TextDocumentCodeLens:
-    return "textDocument/codeLens";
-  case IpcId::CodeLensResolve:
-    return "codeLens/resolve";
-  case IpcId::WorkspaceSymbol:
-    return "workspace/symbol";
-  default:
-    assert(false);
-    exit(1);
-  }
-}
-
 void Reflect(Writer& visitor, lsRequestId& value) {
   assert(value.id0.has_value() || value.id1.has_value());
 
@@ -110,9 +88,6 @@ MessageRegistry* MessageRegistry::instance() {
 
   return instance_;
 }
-
-BaseIpcMessage::BaseIpcMessage(IpcId method_id)
-  : method_id(method_id) {}
 
 void lsResponseError::Write(Writer& visitor) {
   auto& value = *this;

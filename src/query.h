@@ -58,16 +58,7 @@ struct QueryableLocation {
       interesting < o.interesting;
   }
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, QueryableLocation& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(path);
-  REFLECT_MEMBER(line);
-  REFLECT_MEMBER(column);
-  REFLECT_MEMBER(interesting);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(QueryableLocation, path, line, column, interesting);
 
 struct UsrRef {
   Usr usr;
@@ -84,14 +75,7 @@ struct UsrRef {
     return usr < other.usr && loc < other.loc;
   }
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, UsrRef& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
-  REFLECT_MEMBER(loc);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(UsrRef, usr, loc);
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -135,14 +119,7 @@ struct QueryableFile {
   QueryableFile() {} // For serialization.
   QueryableFile(const IndexedFile& indexed);
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, QueryableFile& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(file_id);
-  REFLECT_MEMBER(outline);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(QueryableFile, file_id, outline);
 
 struct QueryableTypeDef {
   using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
@@ -156,15 +133,7 @@ struct QueryableTypeDef {
   QueryableTypeDef() : def("") {} // For serialization.
   QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, QueryableTypeDef& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(def);
-  REFLECT_MEMBER(derived);
-  REFLECT_MEMBER(uses);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(QueryableTypeDef, def, derived, uses);
 
 struct QueryableFuncDef {
   using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
@@ -182,17 +151,7 @@ struct QueryableFuncDef {
   QueryableFuncDef() : def("") {} // For serialization.
   QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, QueryableFuncDef& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(def);
-  REFLECT_MEMBER(declarations);
-  REFLECT_MEMBER(derived);
-  REFLECT_MEMBER(callers);
-  REFLECT_MEMBER(uses);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(QueryableFuncDef, def, declarations, derived, callers, uses);
 
 struct QueryableVarDef {
   using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
@@ -204,14 +163,7 @@ struct QueryableVarDef {
   QueryableVarDef() : def("") {} // For serialization.
   QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, QueryableVarDef& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(def);
-  REFLECT_MEMBER(uses);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(QueryableVarDef, def, uses);
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {
@@ -284,31 +236,26 @@ struct IndexUpdate {
   // Merges the contents of |update| into this IndexUpdate instance.
   void Merge(const IndexUpdate& update);
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, IndexUpdate& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(files_removed);
-  REFLECT_MEMBER(files_added);
-  REFLECT_MEMBER(files_outline);
-  REFLECT_MEMBER(types_removed);
-  REFLECT_MEMBER(types_added);
-  REFLECT_MEMBER(types_def_changed);
-  REFLECT_MEMBER(types_derived);
-  REFLECT_MEMBER(types_uses);
-  REFLECT_MEMBER(funcs_removed);
-  REFLECT_MEMBER(funcs_added);
-  REFLECT_MEMBER(funcs_def_changed);
-  REFLECT_MEMBER(funcs_declarations);
-  REFLECT_MEMBER(funcs_derived);
-  REFLECT_MEMBER(funcs_callers);
-  REFLECT_MEMBER(funcs_uses);
-  REFLECT_MEMBER(vars_removed);
-  REFLECT_MEMBER(vars_added);
-  REFLECT_MEMBER(vars_def_changed);
-  REFLECT_MEMBER(vars_uses);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(IndexUpdate,
+  files_removed,
+  files_added,
+  files_outline,
+  types_removed,
+  types_added,
+  types_def_changed,
+  types_derived,
+  types_uses,
+  funcs_removed,
+  funcs_added,
+  funcs_def_changed,
+  funcs_declarations,
+  funcs_derived,
+  funcs_callers,
+  funcs_uses,
+  vars_removed,
+  vars_added,
+  vars_def_changed,
+  vars_uses);
 
 
 // The query database is heavily optimized for fast queries. It is stored

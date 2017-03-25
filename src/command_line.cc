@@ -92,36 +92,6 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
   return result;
 }
 
-struct Ipc_Quit : public IpcMessage<Ipc_Quit> {
-  static constexpr IpcId kIpcId = IpcId::Quit;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, Ipc_Quit& value) {}
-
-struct Ipc_IsAlive : public IpcMessage<Ipc_IsAlive> {
-  static constexpr IpcId kIpcId = IpcId::IsAlive;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, Ipc_IsAlive& value) {}
-
-struct Ipc_OpenProject : public IpcMessage<Ipc_OpenProject> {
-  static constexpr IpcId kIpcId = IpcId::OpenProject;
-  std::string project_path;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, Ipc_OpenProject& value) {
-  Reflect(visitor, value.project_path);
-}
-
-struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
-  static constexpr IpcId kIpcId = IpcId::Cout;
-  std::string content;
-};
-template <typename TVisitor>
-void Reflect(TVisitor& visitor, Ipc_Cout& value) {
-  Reflect(visitor, value.content);
-}
-
 template<typename T>
 void SendOutMessageToClient(IpcMessageQueue* queue, T& response) {
   std::ostringstream sstream;
@@ -131,8 +101,6 @@ void SendOutMessageToClient(IpcMessageQueue* queue, T& response) {
   out.content = sstream.str();
   queue->SendMessage(&queue->for_client, Ipc_Cout::kIpcId, out);
 }
-
-
 
 template<typename T>
 void RegisterId(IpcMessageQueue* t) {
@@ -767,7 +735,7 @@ int main(int argc, char** argv) {
     if (context.shouldExit())
       return res;
 
-    //RunTests();
+    RunTests();
     return 0;
   }
   else if (options.find("--help") != options.end()) {

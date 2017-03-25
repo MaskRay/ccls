@@ -1,5 +1,6 @@
 #pragma once
 
+#include <macro_map.h>
 #include <optional.h>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -37,6 +38,40 @@ struct IndexedFile;
     Reflect(visitor, value0); \
     value = static_cast<type>(value0); \
   }
+
+#define _MAPPABLE_REFLECT_MEMBER(name) \
+  REFLECT_MEMBER(name);
+
+#define MAKE_REFLECT_EMPTY_STRUCT(type, ...) \
+  template<typename TVisitor> \
+  void Reflect(TVisitor& visitor, type& value) { \
+    REFLECT_MEMBER_START(); \
+    REFLECT_MEMBER_END(); \
+  }
+
+#define MAKE_REFLECT_STRUCT(type, ...) \
+  template<typename TVisitor> \
+  void Reflect(TVisitor& visitor, type& value) { \
+    REFLECT_MEMBER_START(); \
+    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__) \
+    REFLECT_MEMBER_END(); \
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 // API:
@@ -157,157 +192,6 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
     Reflect(child_visitor, value);
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#if false
-
-void Serialize(Writer& writer, int value);
-void Serialize(Writer& writer, const std::string& value);
-void Serialize(Writer& writer, Location location);
-void Serialize(Writer& writer, uint64_t value);
-void Serialize(Writer& writer, IndexedFile& file);
-
-template<typename T>
-void Serialize(Writer& writer, Id<T> id) {
-  writer.Uint64(id.id);
-}
-
-template<typename T>
-void Serialize(Writer& writer, optional<T> value) {
-  if (value)
-    Serialize(writer, value.value());
-  else
-    writer.Null();
-}
-
-template<typename T>
-void Serialize(Writer& writer, const std::vector<T>& values) {
-  writer.StartArray();
-  for (const T& value : values)
-    Serialize(writer, value);
-  writer.EndArray();
-}
-
-template<typename T>
-void Serialize(Writer& writer, Ref<T> ref) {
-  std::string s = std::to_string(ref.id.id) + "@" + ref.loc.ToString();
-  writer.String(s.c_str());
-}
-
-template<typename T>
-void Serialize(Writer& writer, const char* key, const std::vector<Ref<T>>& refs) {
-  if (refs.size() == 0)
-    return;
-
-  if (key) writer.Key(key);
-  writer.StartArray();
-  for (Ref<T> ref : refs)
-    Serialize(writer, nullptr, ref);
-  writer.EndArray();
-}
-
-
-
-
-
-#define SERIALIZE_MEMBER(name) \
-    SerializeMember(writer, #name, value.name)
-#define SERIALIZE_MEMBER2(name, value) \
-    SerializeMember(writer, name, value)
-#define DESERIALIZE_MEMBER(name) \
-    DeserializeMember(reader, #name, value.name)
-#define DESERIALIZE_MEMBER2(name, value) \
-    DeserializeMember(reader, name, value)
-
-// Special templates used by (DE)SERIALIZE_MEMBER macros.
-template<typename T>
-void SerializeMember(Writer& writer, const char* name, const T& value) {
-  writer.Key(name);
-  Serialize(writer, value);
-}
-template<typename T>
-void SerializeMember(Writer& writer, const char* name, const std::vector<T>& value) {
-  if (value.empty())
-    return;
-  writer.Key(name);
-  Serialize(writer, value);
-}
-template<typename T>
-void SerializeMember(Writer& writer, const char* name, const optional<T>& value) {
-  if (!value)
-    return;
-  writer.Key(name);
-  Serialize(writer, value.value());
-}
-
-void SerializeMember(Writer& writer, const char* name, const std::string& value);
-
-template<typename T>
-void DeserializeMember(const Reader& reader, const char* name, T& value) {
-  auto it = reader.FindMember(name);
-  if (it != reader.MemberEnd())
-    Deserialize(it->value, value);
-}
-
-
-
-
-
-
-
-template<typename T>
-void Deserialize(const Reader& reader, Id<T>& output) {
-  output = Id<T>(reader.GetUint64());
-}
-
-template<typename T>
-void Deserialize(const Reader& reader, Ref<T>& output) {
-  const char* str_value = reader.GetString();
-  uint64_t id = atoi(str_value);
-  const char* loc_string = strchr(str_value, '@') + 1;
-
-  output.id = Id<T>(id);
-  output.loc = Location(loc_string);
-}
-
-template<typename T>
-void Deserialize(const Reader& reader, std::vector<T>& value) {
-  for (const auto& entry : reader.GetArray()) {
-    T entry_value;
-    Deserialize(entry, entry_value);
-    value.push_back(entry_value);
-  }
-}
-
-template<typename T>
-void Deserialize(const Reader& reader, optional<T>& value) {
-  T real_value;
-  Deserialize(reader, real_value);
-  value = real_value;
-}
-
-void Deserialize(const Reader& reader, int& value);
-void Deserialize(const Reader& reader, bool& value);
-void Deserialize(const Reader& reader, std::string& value);
-void Deserialize(const Reader& reader, Location& output);
-void Deserialize(const Reader& reader, IndexedTypeDef& value);
-void Deserialize(const Reader& reader, IndexedFuncDef& value);
-void Deserialize(const Reader& reader, IndexedVarDef& value);
-void Deserialize(const Reader& reader, IndexedFile& file);
-
-#endif
 
 std::string Serialize(IndexedFile& file);
 IndexedFile Deserialize(std::string path, std::string serialized);
