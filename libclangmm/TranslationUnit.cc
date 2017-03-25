@@ -4,10 +4,11 @@
 #include <fstream>
 #include <sstream>
 #include <cassert>
+#include <iostream>
 
 namespace clang {
 
-  /*
+/*
 TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   const std::vector<std::string> &command_line_args,
   const std::string &buffer, unsigned flags) {
@@ -34,12 +35,27 @@ TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   std::vector<const char*> args;
   for (const std::string& a : command_line_args) {
     //if (a.size() >= 2 && a[0] == '-' && a[1] == 'D')
-      args.push_back(a.c_str());
+    args.push_back(a.c_str());
   }
 
   CXErrorCode error_code = clang_parseTranslationUnit2(
     index.cx_index, file_path.c_str(), args.data(), args.size(), nullptr, 0, flags, &cx_tu);
-  assert(!error_code);
+  switch (error_code) {
+  case CXError_Success:
+    break;
+  case CXError_Failure:
+    std::cerr << "libclang generic failure for " << file_path << std::endl;
+    break;
+  case CXError_Crashed:
+    std::cerr << "libclang crashed for " << file_path << std::endl;
+    break;
+  case CXError_InvalidArguments:
+    std::cerr << "libclang had invalid arguments for " << file_path << std::endl;
+    break;
+  case CXError_ASTReadError:
+    std::cerr << "libclang had ast read error for " << file_path << std::endl;
+    break;
+  }
 }
 
 TranslationUnit::~TranslationUnit() {

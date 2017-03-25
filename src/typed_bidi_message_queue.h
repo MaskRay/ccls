@@ -35,17 +35,16 @@ struct TypedBidiMessageQueue {
     deserializers_[id] = deserializer;
   }
 
-  void SendMessage(MessageQueue* destination, TId id, TMessage* message) {
+  void SendMessage(MessageQueue* destination, TId id, TMessage& message) {
     // Create writer.
     rapidjson::StringBuffer output;
     rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
     writer.SetIndent(' ', 0);
 
     // Serialize the message.
-    assert(serializers_.find(message->id) != serializers_.end() &&
-           "No registered serializer");
+    assert(serializers_.find(id) != serializers_.end() && "No registered serializer");
     const Serializer& serializer = serializers_.find(id)->second;
-    serializer(writer, *message);
+    serializer(writer, message);
 
     // Send message.
     void* payload = malloc(sizeof(MessageHeader) + output.GetSize());

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -28,6 +29,12 @@ enum class lsMethodId : int {
   TextDocumentCodeLens,
   CodeLensResolve,
   WorkspaceSymbol,
+
+  // Internal implementation detail.
+  Quit,
+  IsAlive,
+  OpenProject,
+  Cout
 };
 MAKE_ENUM_HASHABLE(lsMethodId);
 
@@ -140,14 +147,16 @@ struct MessageRegistry {
   static MessageRegistry* instance_;
   static MessageRegistry* instance();
 
-  using Allocator = std::function<std::unique_ptr<InMessage>(optional<RequestId> id, Reader& params)>;
+  using Allocator = std::function<std::unique_ptr<InMessage>(Reader& visitor)>;
   std::unordered_map<std::string, Allocator> allocators;
 
   template<typename T>
   void Register() {
     std::string method_name = MethodIdToString(T::kMethod);
-    allocators[method_name] = [](optional<RequestId> id, Reader& params) {
-      return MakeUnique<T>(id, params);
+    allocators[method_name] = [](Reader& visitor) {
+      auto result = MakeUnique<T>();
+      Reflect(visitor, *result);
+      return result;
     };
   }
 
@@ -155,9 +164,6 @@ struct MessageRegistry {
     std::string jsonrpc = visitor["jsonrpc"].GetString();
     if (jsonrpc != "2.0")
       exit(1);
-
-    optional<RequestId> id;
-    ReflectMember(visitor, "id", id);
 
     std::string method;
     ReflectMember(visitor, "method", method);
@@ -168,20 +174,7 @@ struct MessageRegistry {
     }
 
     Allocator& allocator = allocators[method];
-
-
-    // We run the allocator with actual params object or a null
-    // params object if there are no params. Unifying the two ifs is
-    // tricky because the second allocator param is a reference.
-    if (visitor.FindMember("params") != visitor.MemberEnd()) {
-      Reader& params = visitor["params"];
-      return allocator(id, params);
-    }
-    else {
-      Reader params;
-      params.SetNull();
-      return allocator(id, params);
-    }
+    return allocator(visitor);
   }
 };
 
@@ -197,8 +190,6 @@ struct lsBaseMessage {};
 
 struct InMessage : public lsBaseMessage {
   const lsMethodId method_id;
-  optional<RequestId> id;
-
   InMessage(lsMethodId method_id) : method_id(method_id) {}
 };
 
@@ -216,7 +207,7 @@ struct OutMessage : public lsBaseMessage {
   virtual void WriteMessageBody(Writer& writer) = 0;
 
   // Send the message to the language client by writing it to stdout.
-  void Send() {
+  void Send(std::ostream& out) {
     rapidjson::StringBuffer output;
     Writer writer(output);
     writer.StartObject();
@@ -225,10 +216,10 @@ struct OutMessage : public lsBaseMessage {
     WriteMessageBody(writer);
     writer.EndObject();
 
-    std::cout << "Content-Length: " << output.GetSize();
-    std::cout << (char)13 << char(10) << char(13) << char(10);
-    std::cout << output.GetString();
-    std::cout.flush();
+    out << "Content-Length: " << output.GetSize();
+    out << (char)13 << char(10) << char(13) << char(10);
+    out << output.GetString();
+    out.flush();
   }
 };
 
@@ -345,6 +336,8 @@ struct OutNotificationMessage : public OutMessage {
 
 struct In_CancelRequest : public InNotificationMessage {
   static const lsMethodId kMethod = lsMethodId::CancelRequest;
+
+  RequestId id;
 
   In_CancelRequest() : InNotificationMessage(kMethod) {}
 };
@@ -1282,6 +1275,8 @@ void Reflect(TVisitor& visitor, lsInitializeResult& value) {
 
 struct In_InitializeRequest : public InRequestMessage {
   const static lsMethodId kMethod = lsMethodId::Initialize;
+
+  RequestId id;
   lsInitializeParams params;
 
   In_InitializeRequest() : InRequestMessage(kMethod) {}
@@ -1306,6 +1301,8 @@ struct Out_InitializeResponse : public OutResponseMessage {
 
 struct In_InitializedNotification : public InNotificationMessage {
   const static lsMethodId kMethod = lsMethodId::Initialized;
+  
+  RequestId id;
 
   In_InitializedNotification() : InNotificationMessage(kMethod) {}
 };
@@ -1375,6 +1372,7 @@ void Reflect(TVisitor& visitor, lsDocumentSymbolParams& value) {
 struct In_DocumentSymbolRequest : public InRequestMessage {
   const static lsMethodId kMethod = lsMethodId::TextDocumentDocumentSymbol;
 
+  RequestId id;
   lsDocumentSymbolParams params;
 
   In_DocumentSymbolRequest() : InRequestMessage(kMethod) {}
@@ -1448,6 +1446,7 @@ using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
 struct In_DocumentCodeLensRequest : public InRequestMessage {
   const static lsMethodId kMethod = lsMethodId::TextDocumentCodeLens;
 
+  RequestId id;
   lsDocumentCodeLensParams params;
 
   In_DocumentCodeLensRequest() : InRequestMessage(kMethod) {}
@@ -1473,6 +1472,7 @@ struct Out_DocumentCodeLensResponse : public OutResponseMessage {
 struct In_DocumentCodeLensResolveRequest : public InRequestMessage {
   const static lsMethodId kMethod = lsMethodId::CodeLensResolve;
 
+  RequestId id;
   TCodeLens params;
 
   In_DocumentCodeLensResolveRequest() : InRequestMessage(kMethod) {}
@@ -1516,6 +1516,7 @@ void Reflect(TVisitor& visitor, lsWorkspaceSymbolParams& value) {
 struct In_WorkspaceSymbolRequest : public InRequestMessage {
   const static lsMethodId kMethod = lsMethodId::WorkspaceSymbol;
 
+  RequestId id;
   lsWorkspaceSymbolParams params;
 
   In_WorkspaceSymbolRequest() : InRequestMessage(kMethod) {}

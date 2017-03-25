@@ -343,12 +343,18 @@ void CompareGroups(
 
 IndexUpdate::IndexUpdate(IndexedFile& file) {
   files_added.push_back(QueryableFile(file));
-  for (const IndexedTypeDef& def : file.types)
+  for (const IndexedTypeDef& def : file.types) {
+    if (def.is_bad_def) continue;
     types_added.push_back(QueryableTypeDef(file.id_cache, def));
-  for (const IndexedFuncDef& def : file.funcs)
+  }
+  for (const IndexedFuncDef& def : file.funcs) {
+    if (def.is_bad_def) continue;
     funcs_added.push_back(QueryableFuncDef(file.id_cache, def));
-  for (const IndexedVarDef& def : file.vars)
+  }
+  for (const IndexedVarDef& def : file.vars) {
+    if (def.is_bad_def) continue;
     vars_added.push_back(QueryableVarDef(file.id_cache, def));
+  }
 }
 
 IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) {
