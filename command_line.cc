@@ -1039,20 +1039,33 @@ void PreMain() {
       IpcMessage_WorkspaceSymbolsRequest::kIpcId);
   IpcRegistry::instance()->Register<IpcMessage_WorkspaceSymbolsResponse>(
       IpcMessage_WorkspaceSymbolsResponse::kIpcId);
-
-  MessageRegistry::instance()->Register<In_CancelRequest>();
-  MessageRegistry::instance()->Register<In_InitializeRequest>();
-  MessageRegistry::instance()->Register<In_InitializedNotification>();
-  MessageRegistry::instance()->Register<In_DocumentSymbolRequest>();
-  MessageRegistry::instance()->Register<In_DocumentCodeLensRequest>();
-  MessageRegistry::instance()->Register<In_WorkspaceSymbolRequest>();
 }
 
-int main(int argc, char** argv) {
-  // TODO: real impl
+template<typename T>
+void RegisterId(TypedBidiMessageQueue<lsMethodId, lsBaseMessage>& t) {
+  t.RegisterId(T::kMethod,
+    [](Writer& visitor, lsBaseMessage& message) {
+      T& m = static_cast<T&>(message);
+      Reflect(visitor, m);
+    }, [](Reader& visitor) {
+      auto m = MakeUnique<T>();
+      Reflect(visitor, *m);
+      return m;
+    });
+}
+
+int main(int argc, char** argv) {j
+  // TODO: real queue size
   const int kQueueSize = 128;
   TypedBidiMessageQueue<lsMethodId, lsBaseMessage> t("foo", kQueueSize);
+  RegisterId<In_CancelRequest>(t);
+  RegisterId<In_InitializeRequest>(t);
+  RegisterId<In_InitializedNotification>(t);
+  RegisterId<In_DocumentSymbolRequest>(t);
+  RegisterId<In_DocumentCodeLensRequest>(t);
+  RegisterId<In_WorkspaceSymbolRequest>(t);
 
+  /*
   // TODO: We can make this entire function a template.
   t.RegisterId(In_DocumentSymbolRequest::kMethod,
     [](Writer& visitor, lsBaseMessage& message) {
@@ -1063,6 +1076,7 @@ int main(int argc, char** argv) {
       Reflect(visitor, *m);
       return m;
     });
+  */
 
   //struct In_DocumentSymbolRequest : public InRequestMessage {
   //  const static lsMethodId kMethod = lsMethodId::TextDocumentDocumentSymbol;

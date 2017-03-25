@@ -199,19 +199,15 @@ struct InMessage : public lsBaseMessage {
   const lsMethodId method_id;
   optional<RequestId> id;
 
-  InMessage(lsMethodId  method_id, optional<RequestId> id, Reader& reader)
-    // We verify there are no duplicate hashes inside of MessageRegistry.
-    : method_id(method_id), id(id) {}
+  InMessage(lsMethodId method_id) : method_id(method_id) {}
 };
 
 struct InRequestMessage : public InMessage {
-  InRequestMessage(lsMethodId  method, optional<RequestId> id, Reader& reader)
-    : InMessage(method, id, reader) {}
+  InRequestMessage(lsMethodId  method) : InMessage(method) {}
 };
 
 struct InNotificationMessage : public InMessage {
-  InNotificationMessage(lsMethodId  method, optional<RequestId> id, Reader& reader)
-    : InMessage(method, id, reader) {}
+  InNotificationMessage(lsMethodId  method) : InMessage(method) {}
 };
 
 struct OutMessage : public lsBaseMessage {
@@ -350,9 +346,15 @@ struct OutNotificationMessage : public OutMessage {
 struct In_CancelRequest : public InNotificationMessage {
   static const lsMethodId kMethod = lsMethodId::CancelRequest;
 
-  In_CancelRequest(optional<RequestId> id, Reader& reader)
-    : InNotificationMessage(kMethod, id, reader) {}
+  In_CancelRequest() : InNotificationMessage(kMethod) {}
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_CancelRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER_END();
+}
 
 
 
@@ -1006,6 +1008,20 @@ void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
     value = lsInitializeParams::lsTrace::Verbose;
 }
 
+void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
+  switch (value) {
+    case lsInitializeParams::lsTrace::Off:
+      writer.String("off");
+      break;
+    case lsInitializeParams::lsTrace::Messages:
+      writer.String("messages");
+      break;
+    case lsInitializeParams::lsTrace::Verbose:
+      writer.String("verbose");
+      break;
+  }
+}
+
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsInitializeParams& value) {
   REFLECT_MEMBER_START();
@@ -1268,12 +1284,16 @@ struct In_InitializeRequest : public InRequestMessage {
   const static lsMethodId kMethod = lsMethodId::Initialize;
   lsInitializeParams params;
 
-  In_InitializeRequest(optional<RequestId> id, Reader& reader)
-    : InRequestMessage(kMethod, id, reader) {
-    Reflect(reader, params);
-    std::cerr << "done" << std::endl;
-  }
+  In_InitializeRequest() : InRequestMessage(kMethod) {}
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_InitializeRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
+}
 
 struct Out_InitializeResponse : public OutResponseMessage {
   lsInitializeResult result;
@@ -1287,10 +1307,15 @@ struct Out_InitializeResponse : public OutResponseMessage {
 struct In_InitializedNotification : public InNotificationMessage {
   const static lsMethodId kMethod = lsMethodId::Initialized;
 
-  In_InitializedNotification(optional<RequestId> id, Reader& reader)
-    : InNotificationMessage(kMethod, id, reader) {}
+  In_InitializedNotification() : InNotificationMessage(kMethod) {}
 };
 
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_InitializedNotification& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER_END();
+}
 
 
 
@@ -1352,15 +1377,15 @@ struct In_DocumentSymbolRequest : public InRequestMessage {
 
   lsDocumentSymbolParams params;
 
-  In_DocumentSymbolRequest(optional<RequestId> id, Reader& reader)
-    : InRequestMessage(kMethod, id, reader) {
-    Reflect(reader, params);
-  }
+  In_DocumentSymbolRequest() : InRequestMessage(kMethod) {}
 };
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, In_DocumentSymbolRequest& value) {
-  Reflect(visitor, value.params);
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
 }
 
 struct Out_DocumentSymbolResponse : public OutResponseMessage {
@@ -1425,11 +1450,16 @@ struct In_DocumentCodeLensRequest : public InRequestMessage {
 
   lsDocumentCodeLensParams params;
 
-  In_DocumentCodeLensRequest(optional<RequestId> id, Reader& reader)
-    : InRequestMessage(kMethod, id, reader) {
-    Reflect(reader, params);
-  }
+  In_DocumentCodeLensRequest() : InRequestMessage(kMethod) {}
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_DocumentCodeLensRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
+}
 
 struct Out_DocumentCodeLensResponse : public OutResponseMessage {
   std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
@@ -1445,11 +1475,16 @@ struct In_DocumentCodeLensResolveRequest : public InRequestMessage {
 
   TCodeLens params;
 
-  In_DocumentCodeLensResolveRequest(optional<RequestId> id, Reader& reader)
-    : InRequestMessage(kMethod, id, reader) {
-    Reflect(reader, params);
-  }
+  In_DocumentCodeLensResolveRequest() : InRequestMessage(kMethod) {}
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_DocumentCodeLensResolveRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
+}
 
 struct Out_DocumentCodeLensResolveResponse : public OutResponseMessage {
   TCodeLens result;
@@ -1483,11 +1518,16 @@ struct In_WorkspaceSymbolRequest : public InRequestMessage {
 
   lsWorkspaceSymbolParams params;
 
-  In_WorkspaceSymbolRequest(optional<RequestId> id, Reader& reader)
-    : InRequestMessage(kMethod, id, reader) {
-    Reflect(reader, params);
-  }
+  In_WorkspaceSymbolRequest() : InRequestMessage(kMethod) {}
 };
+
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, In_WorkspaceSymbolRequest& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
+}
 
 struct Out_WorkspaceSymbolResponse : public OutResponseMessage {
   std::vector<lsSymbolInformation> result;
