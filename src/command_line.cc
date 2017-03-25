@@ -37,13 +37,13 @@ struct IndexTranslationUnitResponse {
 };
 
 // TODO: Rename TypedBidiMessageQueue to IpcTransport?
-using IpcMessageQueue = TypedBidiMessageQueue<lsMethodId, BaseIpcMessage>;
+using IpcMessageQueue = TypedBidiMessageQueue<IpcId, BaseIpcMessage>;
 using IndexRequestQueue = ThreadedQueue<IndexTranslationUnitRequest>;
 using IndexResponseQueue = ThreadedQueue<IndexTranslationUnitResponse>;
 
 template<typename TMessage>
 void SendMessage(IpcMessageQueue& t, MessageQueue* destination, TMessage& message) {
-  t.SendMessage(destination, TMessage::kMethod, message);
+  t.SendMessage(destination, TMessage::kIpcId, message);
 }
 
 std::unordered_map<std::string, std::string> ParseOptions(int argc,
@@ -79,48 +79,6 @@ bool HasOption(const std::unordered_map<std::string, std::string>& options,
   return options.find(option) != options.end();
 }
 
-std::unique_ptr<BaseIpcMessage> ParseMessage() {
-  int content_length = -1;
-  int iteration = 0;
-  while (true) {
-    if (++iteration > 10) {
-      assert(false && "bad parser state");
-      exit(1);
-    }
-
-    std::string line;
-    std::getline(std::cin, line);
-    // std::cin >> line;
-
-    if (line.compare(0, 14, "Content-Length") == 0) {
-      content_length = atoi(line.c_str() + 16);
-    }
-
-    if (line == "\r")
-      break;
-  }
-
-  // bad input that is not a message.
-  if (content_length < 0) {
-    std::cerr << "parsing command failed (no Content-Length header)"
-      << std::endl;
-    return nullptr;
-  }
-
-  std::string content;
-  content.reserve(content_length);
-  for (int i = 0; i < content_length; ++i) {
-    char c;
-    std::cin >> c;
-    content += c;
-  }
-
-  rapidjson::Document document;
-  document.Parse(content.c_str(), content_length);
-  assert(!document.HasParseError());
-
-  return MessageRegistry::instance()->Parse(document);
-}
 
 std::string Join(const std::vector<std::string>& elements, std::string sep) {
   bool first = true;
@@ -135,19 +93,19 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
 }
 
 struct Ipc_Quit : public IpcMessage<Ipc_Quit> {
-  static constexpr lsMethodId kMethod = lsMethodId::Quit;
+  static constexpr IpcId kIpcId = IpcId::Quit;
 };
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_Quit& value) {}
 
 struct Ipc_IsAlive : public IpcMessage<Ipc_IsAlive> {
-  static constexpr lsMethodId kMethod = lsMethodId::IsAlive;
+  static constexpr IpcId kIpcId = IpcId::IsAlive;
 };
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_IsAlive& value) {}
 
 struct Ipc_OpenProject : public IpcMessage<Ipc_OpenProject> {
-  static constexpr lsMethodId kMethod = lsMethodId::OpenProject;
+  static constexpr IpcId kIpcId = IpcId::OpenProject;
   std::string project_path;
 };
 template <typename TVisitor>
@@ -156,7 +114,7 @@ void Reflect(TVisitor& visitor, Ipc_OpenProject& value) {
 }
 
 struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
-  static constexpr lsMethodId kMethod = lsMethodId::Cout;
+  static constexpr IpcId kIpcId = IpcId::Cout;
   std::string content;
 };
 template <typename TVisitor>
@@ -171,14 +129,14 @@ void SendOutMessageToClient(IpcMessageQueue* queue, T& response) {
 
   Ipc_Cout out;
   out.content = sstream.str();
-  queue->SendMessage(&queue->for_client, Ipc_Cout::kMethod, out);
+  queue->SendMessage(&queue->for_client, Ipc_Cout::kIpcId, out);
 }
 
 
 
 template<typename T>
 void RegisterId(IpcMessageQueue* t) {
-  t->RegisterId(T::kMethod,
+  t->RegisterId(T::kIpcId,
     [](Writer& visitor, BaseIpcMessage& message) {
     T& m = static_cast<T&>(message);
     Reflect(visitor, m);
@@ -374,19 +332,19 @@ void QueryDbMainLoop(
     // << std::endl;
 
     switch (message->method_id) {
-    case lsMethodId::Quit: {
+    case IpcId::Quit: {
       std::cerr << "Got quit message (exiting)" << std::endl;
       exit(0);
       break;
     }
 
-    case lsMethodId::IsAlive: {
+    case IpcId::IsAlive: {
       Ipc_IsAlive response;
       language_client->SendMessage(&language_client->for_client, response.method_id, response);
       break;
     }
 
-    case lsMethodId::OpenProject: {
+    case IpcId::OpenProject: {
       Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
@@ -408,7 +366,7 @@ void QueryDbMainLoop(
       break;
     }
 
-    case lsMethodId::TextDocumentDocumentSymbol: {
+    case IpcId::TextDocumentDocumentSymbol: {
       auto msg = static_cast<Ipc_TextDocumentDocumentSymbol*>(message.get());
 
       Out_TextDocumentDocumentSymbol response;
@@ -473,7 +431,7 @@ void QueryDbMainLoop(
       break;
     }
 
-    case lsMethodId::TextDocumentCodeLens: {
+    case IpcId::TextDocumentCodeLens: {
       auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
 
       Out_TextDocumentCodeLens response;
@@ -528,7 +486,7 @@ void QueryDbMainLoop(
       break;
     }
 
-    case lsMethodId::WorkspaceSymbol: {
+    case IpcId::WorkspaceSymbol: {
       auto msg = static_cast<Ipc_WorkspaceSymbol*>(message.get());
 
       Out_WorkspaceSymbol response;
@@ -675,7 +633,7 @@ void QueryDbMain() {
 // |ipc| is connected to a server.
 void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
   while (true) {
-    std::unique_ptr<BaseIpcMessage> message = ParseMessage();
+    std::unique_ptr<BaseIpcMessage> message = MessageRegistry::instance()->ReadMessageFromStdin();
 
     // Message parsing can fail if we don't recognize the method.
     if (!message)
@@ -686,7 +644,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     switch (message->method_id) {
       // TODO: For simplicitly lets just proxy the initialize request like
       // all other requests so that stdin loop thread becomes super simple.
-    case lsMethodId::Initialize: {
+    case IpcId::Initialize: {
       auto request = static_cast<Ipc_InitializeRequest*>(message.get());
       if (request->params.rootUri) {
         std::string project_path = request->params.rootUri->GetPath();
@@ -695,7 +653,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
           << std::endl;
         Ipc_OpenProject open_project;
         open_project.project_path = project_path;
-        ipc->SendMessage(&ipc->for_server, Ipc_OpenProject::kMethod, open_project);
+        ipc->SendMessage(&ipc->for_server, Ipc_OpenProject::kIpcId, open_project);
       }
 
       auto response = Out_InitializeResponse();
@@ -709,9 +667,9 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       break;
     }
 
-    case lsMethodId::TextDocumentDocumentSymbol:
-    case lsMethodId::TextDocumentCodeLens:
-    case lsMethodId::WorkspaceSymbol: {
+    case IpcId::TextDocumentDocumentSymbol:
+    case IpcId::TextDocumentCodeLens:
+    case IpcId::WorkspaceSymbol: {
       ipc->SendMessage(&ipc->for_server, message->method_id, *message.get());
       break;
     }
@@ -723,13 +681,13 @@ void LanguageServerMainLoop(IpcMessageQueue* ipc) {
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(&ipc->for_client);
   for (auto& message : messages) {
     switch (message->method_id) {
-    case lsMethodId::Quit: {
+    case IpcId::Quit: {
       std::cerr << "Got quit message (exiting)" << std::endl;
       exit(0);
       break;
     }
 
-    case lsMethodId::Cout: {
+    case IpcId::Cout: {
       auto msg = static_cast<Ipc_Cout*>(message.get());
       std::cout << msg->content;
       std::cout.flush();
@@ -756,7 +714,7 @@ bool IsQueryDbProcessRunning(IpcMessageQueue* ipc) {
   // Check if we got an IsAlive message back.
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(&ipc->for_client);
   for (auto& message : messages) {
-    if (lsMethodId::IsAlive == message->method_id)
+    if (IpcId::IsAlive == message->method_id)
       return true;
   }
 

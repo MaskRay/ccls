@@ -6,6 +6,7 @@
 #include <optional.h>
 #include <rapidjson/writer.h>
 
+#include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
@@ -21,7 +22,7 @@ using std::experimental::nullopt;
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
-enum class lsMethodId : int {
+enum class IpcId : int {
   // Language server specific requests.
   CancelRequest = 0,
   Initialize,
@@ -37,13 +38,13 @@ enum class lsMethodId : int {
   OpenProject,
   Cout
 };
-MAKE_ENUM_HASHABLE(lsMethodId);
+MAKE_ENUM_HASHABLE(IpcId);
 
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, lsMethodId& value) {
+void Reflect(TVisitor& visitor, IpcId& value) {
   int value0 = static_cast<int>(value);
   Reflect(visitor, value0);
-  value = static_cast<lsMethodId>(value0);
+  value = static_cast<IpcId>(value0);
 }
 
 struct RequestId {
@@ -121,23 +122,24 @@ void Reflect(Reader& visitor, RequestId& id) {
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-const char* MethodIdToString(lsMethodId id) {
+const char* MethodIdToString(IpcId id) {
   switch (id) {
-  case lsMethodId::CancelRequest:
+  case IpcId::CancelRequest:
     return "$/cancelRequest";
-  case lsMethodId::Initialize:
+  case IpcId::Initialize:
     return "initialize";
-  case lsMethodId::Initialized:
+  case IpcId::Initialized:
     return "initialized";
-  case lsMethodId::TextDocumentDocumentSymbol:
+  case IpcId::TextDocumentDocumentSymbol:
     return "textDocument/documentSymbol";
-  case lsMethodId::TextDocumentCodeLens:
+  case IpcId::TextDocumentCodeLens:
     return "textDocument/codeLens";
-  case lsMethodId::CodeLensResolve:
+  case IpcId::CodeLensResolve:
     return "codeLens/resolve";
-  case lsMethodId::WorkspaceSymbol:
+  case IpcId::WorkspaceSymbol:
     return "workspace/symbol";
   default:
+    assert(false);
     exit(1);
   }
 }
@@ -153,12 +155,55 @@ struct MessageRegistry {
 
   template<typename T>
   void Register() {
-    std::string method_name = MethodIdToString(T::kMethod);
+    std::string method_name = MethodIdToString(T::kIpcId);
     allocators[method_name] = [](Reader& visitor) {
       auto result = MakeUnique<T>();
       Reflect(visitor, *result);
       return result;
     };
+  }
+
+  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin() {
+    int content_length = -1;
+    int iteration = 0;
+    while (true) {
+      if (++iteration > 10) {
+        assert(false && "bad parser state");
+        exit(1);
+      }
+
+      std::string line;
+      std::getline(std::cin, line);
+      // std::cin >> line;
+
+      if (line.compare(0, 14, "Content-Length") == 0) {
+        content_length = atoi(line.c_str() + 16);
+      }
+
+      if (line == "\r")
+        break;
+    }
+
+    // bad input that is not a message.
+    if (content_length < 0) {
+      std::cerr << "parsing command failed (no Content-Length header)"
+        << std::endl;
+      return nullptr;
+    }
+
+    std::string content;
+    content.reserve(content_length);
+    for (int i = 0; i < content_length; ++i) {
+      char c;
+      std::cin >> c;
+      content += c;
+    }
+
+    rapidjson::Document document;
+    document.Parse(content.c_str(), content_length);
+    assert(!document.HasParseError());
+
+    return Parse(document);
   }
 
   std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor) {
@@ -188,13 +233,13 @@ MessageRegistry* MessageRegistry::instance() {
 }
 
 struct BaseIpcMessage {
-  const lsMethodId method_id;
-  BaseIpcMessage(lsMethodId method_id) : method_id(method_id) {}
+  const IpcId method_id;
+  BaseIpcMessage(IpcId method_id) : method_id(method_id) {}
 };
 
 template <typename T>
 struct IpcMessage : public BaseIpcMessage {
-  IpcMessage() : BaseIpcMessage(T::kMethod) {}
+  IpcMessage() : BaseIpcMessage(T::kIpcId) {}
 };
 
 template<typename TDerived>
@@ -1182,8 +1227,8 @@ void Reflect(TVisitor& visitor, lsInitializeResult& value) {
 }
 
 
-struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest>{
-  const static lsMethodId kMethod = lsMethodId::Initialize;
+struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
+  const static IpcId kIpcId = IpcId::Initialize;
 
   RequestId id;
   lsInitializeParams params;
@@ -1209,8 +1254,8 @@ void Reflect(TVisitor& visitor, Out_InitializeResponse& value) {
   REFLECT_MEMBER_END();
 }
 
-struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification>{
-  const static lsMethodId kMethod = lsMethodId::Initialized;
+struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification> {
+  const static IpcId kIpcId = IpcId::Initialized;
 
   RequestId id;
 };
@@ -1264,7 +1309,7 @@ void Reflect(TVisitor& visitor, Ipc_InitializedNotification& value) {
 
 // Cancel an existing request.
 struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
-  static const lsMethodId kMethod = lsMethodId::CancelRequest;
+  static const IpcId kIpcId = IpcId::CancelRequest;
   RequestId id;
 };
 template<typename TVisitor>
@@ -1284,8 +1329,8 @@ void Reflect(TVisitor& visitor, lsDocumentSymbolParams& value) {
   REFLECT_MEMBER(textDocument);
   REFLECT_MEMBER_END();
 }
-struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocumentSymbol>{
-  const static lsMethodId kMethod = lsMethodId::TextDocumentDocumentSymbol;
+struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocumentSymbol> {
+  const static IpcId kIpcId = IpcId::TextDocumentDocumentSymbol;
 
   RequestId id;
   lsDocumentSymbolParams params;
@@ -1297,7 +1342,7 @@ void Reflect(TVisitor& visitor, Ipc_TextDocumentDocumentSymbol& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocumentSymbol>{
+struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
   RequestId id;
   std::vector<lsSymbolInformation> result;
 };
@@ -1347,9 +1392,8 @@ void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
   Reflect(*it, value.locations);
 }
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
-struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens>{
-  const static lsMethodId kMethod = lsMethodId::TextDocumentCodeLens;
-
+struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
+  const static IpcId kIpcId = IpcId::TextDocumentCodeLens;
   RequestId id;
   lsDocumentCodeLensParams params;
 };
@@ -1372,8 +1416,8 @@ void Reflect(TVisitor& visitor, Out_TextDocumentCodeLens& value) {
   REFLECT_MEMBER(result);
   REFLECT_MEMBER_END();
 }
-struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve>{
-  const static lsMethodId kMethod = lsMethodId::CodeLensResolve;
+struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve> {
+  const static IpcId kIpcId = IpcId::CodeLensResolve;
 
   RequestId id;
   TCodeLens params;
@@ -1408,8 +1452,8 @@ void Reflect(TVisitor& visitor, lsWorkspaceSymbolParams& value) {
   REFLECT_MEMBER(query);
   REFLECT_MEMBER_END();
 }
-struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol >{
-  const static lsMethodId kMethod = lsMethodId::WorkspaceSymbol;
+struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol > {
+  const static IpcId kIpcId = IpcId::WorkspaceSymbol;
   RequestId id;
   lsWorkspaceSymbolParams params;
 };
@@ -1461,20 +1505,11 @@ struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
   enum class DisplayType {
     Show, Log
   };
-
   DisplayType display_type = DisplayType::Show;
-  
   std::string method() {
-    switch (display_type) {
-    case Out_ShowLogMessage::DisplayType::Show:
-      return "window/showMessage";
-      break;
-    case Out_ShowLogMessage::DisplayType::Log:
+    if (display_type == DisplayType::Log)
       return "window/logMessage";
-      break;
-    }
-    assert(false);
-    return "window/logMessage";
+    return "window/showMessage";
   }
 
   Out_ShowLogMessageParams params;
