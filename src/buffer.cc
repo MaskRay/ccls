@@ -5,7 +5,7 @@
 #include <thread>
 
 #include "platform.h"
-#include "../utils.h"
+#include "utils.h"
 #include "../third_party/doctest/doctest/doctest.h"
 
 namespace {

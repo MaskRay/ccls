@@ -6,7 +6,7 @@
 
 #include "buffer.h"
 #include "message_queue.h"
-#include "../serializer.h"
+#include "serializer.h"
 
 // TypedBidiMessageQueue provides a type-safe server/client implementation on
 // top of a couple MessageQueue instances.

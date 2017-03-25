@@ -4,17 +4,17 @@
 #include <thread>
 #include <vector>
 
+// TODO: cleanup includes
 #include "compilation_database_loader.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
 #include "test.h"
+#include "timer.h"
+#include "threaded_queue.h"
+#include "typed_bidi_message_queue.h"
 
-#include "src/timer.h"
-#include "src/threaded_queue.h"
-#include "src/typed_bidi_message_queue.h"
-
-#include "third_party/doctest/doctest/doctest.h"
+#include "../third_party/doctest/doctest/doctest.h"
 
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>

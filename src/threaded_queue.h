@@ -6,7 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 
-#include "../optional.h"
+#include "optional.h"
 
 // A threadsafe-queue. http://stackoverflow.com/a/16075550
 template <class T>

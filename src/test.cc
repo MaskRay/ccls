@@ -1,9 +1,9 @@
 #include "test.h"
 
 #include "indexer.h"
+#include "platform.h"
 #include "serializer.h"
 #include "utils.h"
-#include "src/platform.h"
 
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)

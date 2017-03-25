@@ -1,7 +1,7 @@
 #if defined(__linux__) || defined(__APPLE__)
 #include "platform.h"
 
-#include "../utils.h"
+#include "utils.h"
 
 #include <cassert>
 #include <string>

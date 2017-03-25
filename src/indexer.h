@@ -10,7 +10,6 @@
 #include "libclangmm/clangmm.h"
 #include "libclangmm/Utility.h"
 
-#include "bitfield.h"
 #include "utils.h"
 #include "optional.h"
 #include "serializer.h"
