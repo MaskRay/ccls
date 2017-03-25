@@ -474,6 +474,13 @@ void AddCodeLens(std::vector<TCodeLens>* result,
         break;
       }
       case SymbolKind::Var: {
+        QueryableVarDef* def = &db->vars[symbol.idx];
+        if (def->def.definition)
+          uses0.push_back(def->def.definition.value());
+        break;
+      }
+      case SymbolKind::File:
+      case SymbolKind::Invalid: {
         assert(false && "unexpected");
         break;
       }
@@ -553,7 +560,7 @@ void QueryDbMainLoop(IpcServer* language_client,
 
             // TODO: cleanup namespace/naming so there is only one SymbolKind.
             switch (symbol.kind) {
-              case ::SymbolKind::Type: {
+              case SymbolKind::Type: {
                 QueryableTypeDef& def = db->types[symbol.idx];
                 info.name = def.def.qualified_name;
                 info.kind = lsSymbolKind::Class;
@@ -573,10 +580,15 @@ void QueryDbMainLoop(IpcServer* language_client,
                 }
                 break;
               }
-              case ::SymbolKind::Var: {
+              case SymbolKind::Var: {
                 QueryableVarDef& def = db->vars[symbol.idx];
                 info.name = def.def.qualified_name;
                 info.kind = lsSymbolKind::Variable;
+                break;
+              }
+              case SymbolKind::File:
+              case SymbolKind::Invalid: {
+                assert(false && "unexpected");
                 break;
               }
             };
@@ -633,6 +645,11 @@ void QueryDbMainLoop(IpcServer* language_client,
                             "references");
                 break;
               }
+              case SymbolKind::File:
+              case SymbolKind::Invalid: {
+                assert(false && "unexpected");
+                break;
+              }
             };
           }
         }
@@ -665,7 +682,7 @@ void QueryDbMainLoop(IpcServer* language_client,
             // SymbolInformation)
             switch (symbol.kind) {
               // TODO: file
-              case ::SymbolKind::Type: {
+              case SymbolKind::Type: {
                 QueryableTypeDef& def = db->types[symbol.idx];
                 info.name = def.def.qualified_name;
                 info.kind = lsSymbolKind::Class;
@@ -678,7 +695,7 @@ void QueryDbMainLoop(IpcServer* language_client,
                 }
                 break;
               }
-              case ::SymbolKind::Func: {
+              case SymbolKind::Func: {
                 QueryableFuncDef& def = db->funcs[symbol.idx];
                 info.name = def.def.qualified_name;
                 if (def.def.declaring_type.has_value()) {
@@ -699,7 +716,7 @@ void QueryDbMainLoop(IpcServer* language_client,
                 }
                 break;
               }
-              case ::SymbolKind::Var: {
+              case SymbolKind::Var: {
                 QueryableVarDef& def = db->vars[symbol.idx];
                 info.name = def.def.qualified_name;
                 info.kind = lsSymbolKind::Variable;
@@ -710,6 +727,10 @@ void QueryDbMainLoop(IpcServer* language_client,
                   info.location.range.start.character =
                       def.def.definition->column - 1;
                 }
+                break;
+              }
+              case SymbolKind::Invalid: {
+                assert(false && "unexpected");
                 break;
               }
             };
