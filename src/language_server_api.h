@@ -197,46 +197,25 @@ struct IpcMessage : public BaseIpcMessage {
   IpcMessage() : BaseIpcMessage(T::kMethod) {}
 };
 
+template<typename TDerived>
 struct lsOutMessage {
-  // Write out the body of the message. The writer expects object key/value
-  // pairs.
-  virtual void WriteMessageBody(Writer& writer) = 0;
+  // All derived types need to reflect on the |jsonrpc| member.
+  std::string jsonrpc = "2.0";
 
   // Send the message to the language client by writing it to stdout.
-  void Send(std::ostream& out) {
+  void Write(std::ostream& out) {
     rapidjson::StringBuffer output;
     Writer writer(output);
-    writer.StartObject();
-    writer.Key("jsonrpc");
-    writer.String("2.0");
-    WriteMessageBody(writer);
-    writer.EndObject();
+    auto that = static_cast<TDerived*>(this);
+    Reflect(writer, *that);
 
     out << "Content-Length: " << output.GetSize();
-    out << (char)13 << char(10) << char(13) << char(10);
+    out << (char)13 << char(10) << char(13) << char(10); // CRLFCRLF
     out << output.GetString();
     out.flush();
   }
 };
 
-struct OutRequestMessage : public lsOutMessage {
-  RequestId id;
-
-  virtual std::string Method() = 0;
-  virtual void SerializeParams(Writer& visitor) = 0;
-
-  // Message:
-  void WriteMessageBody(Writer& visitor) override {
-    auto& value = *this;
-    auto method = Method();
-
-    REFLECT_MEMBER(id);
-    REFLECT_MEMBER2("method", method);
-
-    visitor.Key("params");
-    SerializeParams(visitor);
-  }
-};
 
 
 struct lsResponseError {
@@ -273,47 +252,6 @@ struct lsResponseError {
       data->Write(visitor);
     }
     visitor.EndObject();
-  }
-};
-
-struct OutResponseMessage : public lsOutMessage {
-  RequestId id;
-
-  virtual optional<lsResponseError> Error() {
-    return nullopt;
-  }
-  virtual void WriteResult(Writer& visitor) = 0;
-
-  // Message:
-  void WriteMessageBody(Writer& visitor) override {
-    auto& value = *this;
-
-    REFLECT_MEMBER(id);
-
-    optional<lsResponseError> error = Error();
-    if (error) {
-      visitor.Key("error");
-      error->Write(visitor);
-    }
-    else {
-      visitor.Key("result");
-      WriteResult(visitor);
-    }
-  }
-};
-
-struct OutNotificationMessage : public lsOutMessage {
-  virtual std::string Method() = 0;
-  virtual void SerializeParams(Writer& writer) = 0;
-
-  // Message:
-  void WriteMessageBody(Writer& visitor) override {
-    visitor.Key("method");
-    std::string method = Method();
-    ::Reflect(visitor, method);
-
-    visitor.Key("params");
-    SerializeParams(visitor);
   }
 };
 
@@ -1250,7 +1188,6 @@ struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest>{
   RequestId id;
   lsInitializeParams params;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_InitializeRequest& value) {
   REFLECT_MEMBER_START();
@@ -1259,14 +1196,18 @@ void Reflect(TVisitor& visitor, Ipc_InitializeRequest& value) {
   REFLECT_MEMBER_END();
 }
 
-struct Out_InitializeResponse : public OutResponseMessage {
+struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
+  RequestId id;
   lsInitializeResult result;
-
-  // OutResponseMessage:
-  void WriteResult(Writer& writer) override {
-    Reflect(writer, result);
-  }
 };
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_InitializeResponse& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(result);
+  REFLECT_MEMBER_END();
+}
 
 struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification>{
   const static lsMethodId kMethod = lsMethodId::Initialized;
@@ -1321,7 +1262,7 @@ void Reflect(TVisitor& visitor, Ipc_InitializedNotification& value) {
 
 
 
-
+// Cancel an existing request.
 struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
   static const lsMethodId kMethod = lsMethodId::CancelRequest;
   RequestId id;
@@ -1333,7 +1274,7 @@ void Reflect(TVisitor& visitor, Ipc_CancelRequest& value) {
   REFLECT_MEMBER_END();
 }
 
-
+// List symbols in a document.
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
 };
@@ -1343,7 +1284,6 @@ void Reflect(TVisitor& visitor, lsDocumentSymbolParams& value) {
   REFLECT_MEMBER(textDocument);
   REFLECT_MEMBER_END();
 }
-
 struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocumentSymbol>{
   const static lsMethodId kMethod = lsMethodId::TextDocumentDocumentSymbol;
 
@@ -1357,21 +1297,20 @@ void Reflect(TVisitor& visitor, Ipc_TextDocumentDocumentSymbol& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-
-// TODO: refactor OutResponseMessage so we have a normal Reflect visitor (ie, remove 'hidden' base state)
-struct Out_TextDocumentDocumentSymbol : public OutResponseMessage {
+struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocumentSymbol>{
+  RequestId id;
   std::vector<lsSymbolInformation> result;
-
-  // OutResponseMessage:
-  void WriteResult(Writer& writer) override {
-    ::Reflect(writer, result);
-  }
 };
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_TextDocumentDocumentSymbol& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(result);
+  REFLECT_MEMBER_END();
+}
 
-
-
-
-
+// List code lens in a document.
 struct lsDocumentCodeLensParams {
   lsTextDocumentIdentifier textDocument;
 };
@@ -1381,21 +1320,17 @@ void Reflect(TVisitor& visitor, lsDocumentCodeLensParams& value) {
   REFLECT_MEMBER(textDocument);
   REFLECT_MEMBER_END();
 }
-
 struct lsCodeLensUserData {};
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsCodeLensUserData& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER_END();
 }
-
 struct lsCodeLensCommandArguments {
   lsDocumentUri uri;
   lsPosition position;
   std::vector<lsLocation> locations;
 };
-
 void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
   visitor.StartArray();
   Reflect(visitor, value.uri);
@@ -1403,7 +1338,6 @@ void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
   Reflect(visitor, value.locations);
   visitor.EndArray();
 }
-
 void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
   auto it = visitor.Begin();
   Reflect(*it, value.uri);
@@ -1412,16 +1346,13 @@ void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
   ++it;
   Reflect(*it, value.locations);
 }
-
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
-
 struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens>{
   const static lsMethodId kMethod = lsMethodId::TextDocumentCodeLens;
 
   RequestId id;
   lsDocumentCodeLensParams params;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_TextDocumentCodeLens& value) {
   REFLECT_MEMBER_START();
@@ -1429,23 +1360,24 @@ void Reflect(TVisitor& visitor, Ipc_TextDocumentCodeLens& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-
-struct Out_TextDocumentCodeLens : public OutResponseMessage {
+struct Out_TextDocumentCodeLens : public lsOutMessage<Out_TextDocumentCodeLens> {
+  RequestId id;
   std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
-
-  // OutResponseMessage:
-  void WriteResult(Writer& writer) override {
-    ::Reflect(writer, result);
-  }
 };
-
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_TextDocumentCodeLens& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(result);
+  REFLECT_MEMBER_END();
+}
 struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve>{
   const static lsMethodId kMethod = lsMethodId::CodeLensResolve;
 
   RequestId id;
   TCodeLens params;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_CodeLensResolve& value) {
   REFLECT_MEMBER_START();
@@ -1453,41 +1385,34 @@ void Reflect(TVisitor& visitor, Ipc_CodeLensResolve& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-
-struct Out_CodeLensResolve : public OutResponseMessage {
+struct Out_CodeLensResolve : public lsOutMessage<Out_CodeLensResolve> {
+  RequestId id;
   TCodeLens result;
-
-  // OutResponseMessage:
-  void WriteResult(Writer& writer) override {
-    ::Reflect(writer, result);
-  }
 };
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_CodeLensResolve& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(result);
+  REFLECT_MEMBER_END();
+}
 
-
-
-
-
-
-
-
+// Search for symbols in the workspace.
 struct lsWorkspaceSymbolParams {
   std::string query;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsWorkspaceSymbolParams& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(query);
   REFLECT_MEMBER_END();
 }
-
 struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol >{
   const static lsMethodId kMethod = lsMethodId::WorkspaceSymbol;
-
   RequestId id;
   lsWorkspaceSymbolParams params;
 };
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_WorkspaceSymbol& value) {
   REFLECT_MEMBER_START();
@@ -1495,92 +1420,70 @@ void Reflect(TVisitor& visitor, Ipc_WorkspaceSymbol& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-
-struct Out_WorkspaceSymbol : public OutResponseMessage {
+struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
+  RequestId id;
   std::vector<lsSymbolInformation> result;
-
-  // OutResponseMessage:
-  void WriteResult(Writer& writer) override {
-    ::Reflect(writer, result);
-  }
 };
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_WorkspaceSymbol& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(result);
+  REFLECT_MEMBER_END();
+}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+// Show a message to the user.
 enum class lsMessageType : int {
   Error = 1,
   Warning = 2,
   Info = 3,
   Log = 4
 };
-
 template<typename TWriter>
 void Reflect(TWriter& writer, lsMessageType& value) {
   int value0 = static_cast<int>(value);
   Reflect(writer, value0);
   value = static_cast<lsMessageType>(value0);
 }
-
-struct ShowMessageOutNotification : public OutNotificationMessage {
+struct Out_ShowLogMessageParams {
   lsMessageType type = lsMessageType::Error;
   std::string message;
-
-  // OutNotificationMessage:
-  std::string Method() override {
-    return "window/showMessage";
-  }
-  void SerializeParams(Writer& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(type);
-    REFLECT_MEMBER(message);
-    REFLECT_MEMBER_END();
-  }
 };
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_ShowLogMessageParams& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(type);
+  REFLECT_MEMBER(message);
+  REFLECT_MEMBER_END();
+}
+struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
+  enum class DisplayType {
+    Show, Log
+  };
 
-struct LogMessageOutNotification : public OutNotificationMessage {
-  lsMessageType type = lsMessageType::Error;
-  std::string message;
-
-  // OutNotificationMessage:
-  std::string Method() override {
+  DisplayType display_type = DisplayType::Show;
+  
+  std::string method() {
+    switch (display_type) {
+    case Out_ShowLogMessage::DisplayType::Show:
+      return "window/showMessage";
+      break;
+    case Out_ShowLogMessage::DisplayType::Log:
+      return "window/logMessage";
+      break;
+    }
+    assert(false);
     return "window/logMessage";
   }
-  void SerializeParams(Writer& visitor) override {
-    auto& value = *this;
-    REFLECT_MEMBER_START();
-    REFLECT_MEMBER(type);
-    REFLECT_MEMBER(message);
-    REFLECT_MEMBER_END();
-  }
+
+  Out_ShowLogMessageParams params;
 };
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER2("method", value.method());
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
+}

@@ -158,21 +158,19 @@ void Reflect(TVisitor& visitor, Ipc_OpenProject& value) {
 struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
   static constexpr lsMethodId kMethod = lsMethodId::Cout;
   std::string content;
-
-  Ipc_Cout() {}
-  Ipc_Cout(lsOutMessage& message) {
-    std::ostringstream out;
-    message.Send(out);
-    content = out.str();
-  }
 };
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_Cout& value) {
   Reflect(visitor, value.content);
 }
 
-void SendOutMessageToClient(IpcMessageQueue* queue, lsOutMessage& response) {
-  Ipc_Cout out(response);
+template<typename T>
+void SendOutMessageToClient(IpcMessageQueue* queue, T& response) {
+  std::ostringstream sstream;
+  response.Write(sstream);
+
+  Ipc_Cout out;
+  out.content = sstream.str();
   queue->SendMessage(&queue->for_client, Ipc_Cout::kMethod, out);
 }
 
@@ -707,7 +705,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       response.result.capabilities.codeLensProvider = lsCodeLensOptions();
       response.result.capabilities.codeLensProvider->resolveProvider = false;
       response.result.capabilities.workspaceSymbolProvider = true;
-      response.Send(std::cout);
+      response.Write(std::cout);
       break;
     }
 
