@@ -1,11 +1,12 @@
 #pragma once
 
+#include <optional.h>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
+
 #include <vector>
 #include <string>
 
-#include "optional.h"
 
 using std::experimental::optional;
 using std::experimental::nullopt;

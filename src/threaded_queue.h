@@ -1,12 +1,14 @@
 #pragma once
 
-// TODO: cleanup includes.
+#include <optional.h>
+
 #include <algorithm>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
 
-#include "optional.h"
+// TODO: cleanup includes.
+
 
 // A threadsafe-queue. http://stackoverflow.com/a/16075550
 template <class T>
@@ -20,7 +22,7 @@ public:
   }
 
   // Get the "front"-element.
-  // If the queue is empty, wait till a element is avaiable.
+  // If the queue is empty, wait untill an element is avaiable.
   T Dequeue() {
     std::unique_lock<std::mutex> lock(mutex_);
     while (queue_.empty()) {
@@ -32,8 +34,8 @@ public:
     return val;
   }
 
-  // Get the "front"-element.
-  // Returns empty if the queue is empty.
+  // Get the first element from the queue without blocking. Returns a null
+  // value if the queue is empty.
   optional<T> TryDequeue() {
     std::unique_lock<std::mutex> lock(mutex_);
     if (queue_.empty())
@@ -44,7 +46,7 @@ public:
     return val;
   }
 
-private:
+ private:
   std::queue<T> queue_;
   mutable std::mutex mutex_;
   std::condition_variable cv_;

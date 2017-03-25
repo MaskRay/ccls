@@ -1,5 +1,10 @@
 #include "query.h"
 
+#include "compilation_database_loader.h"
+#include "indexer.h"
+
+#include <optional.h>
+
 #include <cstdint>
 #include <functional>
 #include <unordered_set>
@@ -7,17 +12,7 @@
 #include <string>
 #include <iostream>
 
-#include "compilation_database_loader.h"
-#include "optional.h"
-#include "indexer.h"
-
-//#define CATCH_CONFIG_MAIN
-//#include "catch.hpp"
-
 // TODO: Make all copy constructors explicit.
-
-
-
 
 
 

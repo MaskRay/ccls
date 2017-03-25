@@ -31,10 +31,8 @@ TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
 TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
   const std::vector<std::string> &command_line_args, unsigned flags) {
 
-  // TODO: only push defines for the time being. Might need to pass more flags.
   std::vector<const char*> args;
   for (const std::string& a : command_line_args) {
-    //if (a.size() >= 2 && a[0] == '-' && a[1] == 'D')
     args.push_back(a.c_str());
   }
 

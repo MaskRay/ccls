@@ -1,23 +1,22 @@
 #pragma once
 
+#include "utils.h"
+#include "serializer.h"
+#include "libclangmm/clangmm.h"
+#include "libclangmm/Utility.h"
+
+#include <optional.h>
+#include <rapidjson/writer.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/document.h>
+
 #include <algorithm>
 #include <iostream>
 #include <cstdint>
 #include <cassert>
 #include <fstream>
 #include <unordered_map>
-
-#include "libclangmm/clangmm.h"
-#include "libclangmm/Utility.h"
-
-#include "utils.h"
-#include "optional.h"
-#include "serializer.h"
-
-#include <rapidjson/writer.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/document.h>
 
 struct IndexedTypeDef;
 struct IndexedFuncDef;

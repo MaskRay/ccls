@@ -1,14 +1,15 @@
 #pragma once
 
+#include "serializer.h"
+#include "utils.h"
+
+#include <optional.h>
+#include <rapidjson/writer.h>
+
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
-
-#include <rapidjson/writer.h>
-#include "optional.h"
-#include "serializer.h"
-#include "utils.h"
 
 using std::experimental::optional;
 using std::experimental::nullopt;
