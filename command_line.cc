@@ -14,7 +14,6 @@
 #include "src/threaded_queue.h"
 #include "src/typed_bidi_message_queue.h"
 
-#include "third_party/tiny-process-library/process.hpp"
 #include "third_party/doctest/doctest/doctest.h"
 
 #include <rapidjson/istreamwrapper.h>
