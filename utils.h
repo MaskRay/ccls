@@ -50,3 +50,12 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest) {
             }\
         };\
     }
+
+#define MAKE_ENUM_HASHABLE(type) \
+    namespace std {\
+        template<> struct hash<type> {\
+            std::size_t operator()(const type &t) const {\
+                return hash<int>()(static_cast<int>(t));\
+            }\
+        };\
+    }

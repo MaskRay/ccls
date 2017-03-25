@@ -29,6 +29,7 @@ enum class lsMethodId : int {
   CodeLensResolve,
   WorkspaceSymbol,
 };
+MAKE_ENUM_HASHABLE(lsMethodId);
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsMethodId& value) {
@@ -1269,7 +1270,6 @@ struct In_InitializeRequest : public InRequestMessage {
 
   In_InitializeRequest(optional<RequestId> id, Reader& reader)
     : InRequestMessage(kMethod, id, reader) {
-    auto type = reader.GetType();
     Reflect(reader, params);
     std::cerr << "done" << std::endl;
   }
