@@ -187,9 +187,7 @@ MessageRegistry* MessageRegistry::instance() {
   return instance_;
 }
 
-struct lsBaseMessage {};
-
-struct InMessage : public lsBaseMessage {
+struct InMessage {
   const lsMethodId method_id;
   InMessage(lsMethodId method_id) : method_id(method_id) {}
 };
@@ -202,7 +200,7 @@ struct InNotificationMessage : public InMessage {
   InNotificationMessage(lsMethodId  method) : InMessage(method) {}
 };
 
-struct OutMessage : public lsBaseMessage {
+struct lsOutMessage {
   // Write out the body of the message. The writer expects object key/value
   // pairs.
   virtual void WriteMessageBody(Writer& writer) = 0;
@@ -224,7 +222,7 @@ struct OutMessage : public lsBaseMessage {
   }
 };
 
-struct OutRequestMessage : public OutMessage {
+struct OutRequestMessage : public lsOutMessage {
   RequestId id;
 
   virtual std::string Method() = 0;
@@ -281,7 +279,7 @@ struct lsResponseError {
   }
 };
 
-struct OutResponseMessage : public OutMessage {
+struct OutResponseMessage : public lsOutMessage {
   RequestId id;
 
   virtual optional<lsResponseError> Error() {
@@ -307,7 +305,7 @@ struct OutResponseMessage : public OutMessage {
   }
 };
 
-struct OutNotificationMessage : public OutMessage {
+struct OutNotificationMessage : public lsOutMessage {
   virtual std::string Method() = 0;
   virtual void SerializeParams(Writer& writer) = 0;
 
@@ -1004,15 +1002,15 @@ void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
 
 void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
   switch (value) {
-    case lsInitializeParams::lsTrace::Off:
-      writer.String("off");
-      break;
-    case lsInitializeParams::lsTrace::Messages:
-      writer.String("messages");
-      break;
-    case lsInitializeParams::lsTrace::Verbose:
-      writer.String("verbose");
-      break;
+  case lsInitializeParams::lsTrace::Off:
+    writer.String("off");
+    break;
+  case lsInitializeParams::lsTrace::Messages:
+    writer.String("messages");
+    break;
+  case lsInitializeParams::lsTrace::Verbose:
+    writer.String("verbose");
+    break;
   }
 }
 
@@ -1027,20 +1025,6 @@ void Reflect(TVisitor& visitor, lsInitializeParams& value) {
   REFLECT_MEMBER_END();
 }
 
-
-#if false
-/**
- * Known error codes for an `InitializeError`;
- */
-export namespace lsInitializeError {
-  /**
-   * If the protocol version provided by the client can't be handled by the server.
-   * @deprecated This initialize error got replaced by client capabilities. There is
-   * no version handshake in version 3.0x
-   */
-  export const unknownProtocolVersion : number = 1;
-}
-#endif
 
 struct lsInitializeError {
   // Indicates whether the client should retry to send the
@@ -1071,8 +1055,11 @@ enum class lsTextDocumentSyncKind {
   Incremental = 2
 };
 
-void Reflect(Writer& writer, lsTextDocumentSyncKind& value) {
-  writer.Int(static_cast<int>(value));
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, lsTextDocumentSyncKind& value) {
+  int value0 = static_cast<int>(value);
+  Reflect(visitor, value0);
+  value = static_cast<lsTextDocumentSyncKind>(value0);
 }
 
 // Completion options.
@@ -1302,7 +1289,7 @@ struct Out_InitializeResponse : public OutResponseMessage {
 
 struct In_InitializedNotification : public InNotificationMessage {
   const static lsMethodId kMethod = lsMethodId::Initialized;
-  
+
   RequestId id;
 
   In_InitializedNotification() : InNotificationMessage(kMethod) {}

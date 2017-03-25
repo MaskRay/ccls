@@ -165,7 +165,7 @@ struct IpcMessage_Cout : public BaseIpcMessage<IpcMessage_Cout> {
   std::string content;
 
   IpcMessage_Cout() {}
-  IpcMessage_Cout(OutMessage& message) {
+  IpcMessage_Cout(lsOutMessage& message) {
     std::ostringstream out;
     message.Send(out);
     content = out.str();
@@ -176,7 +176,7 @@ void Reflect(TVisitor& visitor, IpcMessage_Cout& value) {
   Reflect(visitor, value.content);
 }
 
-void SendOutMessageToClient(IpcMessageQueue* queue, OutMessage& response) {
+void SendOutMessageToClient(IpcMessageQueue* queue, lsOutMessage& response) {
   IpcMessage_Cout out(response);
   queue->SendMessage(&queue->for_client, IpcMessage_Cout::kMethod, out);
 }
@@ -186,7 +186,7 @@ void SendOutMessageToClient(IpcMessageQueue* queue, OutMessage& response) {
 template<typename T>
 void RegisterId(IpcMessageQueue* t) {
   t->RegisterId(T::kMethod,
-    [](Writer& visitor, lsBaseMessage& message) {
+    [](Writer& visitor, InMessage& message) {
     T& m = static_cast<T&>(message);
     Reflect(visitor, m);
   }, [](Reader& visitor) {

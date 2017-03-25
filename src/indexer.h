@@ -338,14 +338,7 @@ struct IndexedTypeDef {
   }
 };
 
-namespace std {
-template <>
-struct hash<IndexedTypeDef> {
-  size_t operator()(const IndexedTypeDef& k) const {
-    return hash<string>()(k.def.usr);
-  }
-};
-}
+MAKE_HASHABLE(IndexedTypeDef, t.def.usr);
 
 template <typename TypeId = TypeId,
           typename FuncId = FuncId,
@@ -446,15 +439,7 @@ struct IndexedFuncDef {
     return def.usr < other.def.usr;
   }
 };
-
-namespace std {
-template <>
-struct hash<IndexedFuncDef> {
-  size_t operator()(const IndexedFuncDef& k) const {
-    return hash<string>()(k.def.usr);
-  }
-};
-}
+MAKE_HASHABLE(IndexedFuncDef, t.def.usr);
 
 template <typename TypeId = TypeId,
           typename FuncId = FuncId,
@@ -530,15 +515,7 @@ struct IndexedVarDef {
     return def.usr < other.def.usr;
   }
 };
-
-namespace std {
-template <>
-struct hash<IndexedVarDef> {
-  size_t operator()(const IndexedVarDef& k) const {
-    return hash<string>()(k.def.usr);
-  }
-};
-}
+MAKE_HASHABLE(IndexedVarDef, t.def.usr);
 
 struct IdCache {
   std::unordered_map<std::string, FileId> file_path_to_file_id;
