@@ -30,6 +30,15 @@ struct IndexedFile;
     ReflectMember(visitor, name, value)
 
 
+#define MAKE_REFLECT_TYPE_PROXY(type, as_type) \
+  template<typename TVisitor> \
+  void Reflect(TVisitor& visitor, type& value) { \
+    auto value0 = static_cast<as_type>(value); \
+    Reflect(visitor, value0); \
+    value = static_cast<type>(value0); \
+  }
+
+
 // API:
 /*
 template<typename TVisitor, typename T>

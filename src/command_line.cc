@@ -640,7 +640,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       continue;
 
     std::cerr << "[info]: Got message of type "
-      << MethodIdToString(message->method_id) << std::endl;
+      << IpcIdToString(message->method_id) << std::endl;
     switch (message->method_id) {
       // TODO: For simplicitly lets just proxy the initialize request like
       // all other requests so that stdin loop thread becomes super simple.

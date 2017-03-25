@@ -38,39 +38,16 @@ enum class IpcId : int {
   OpenProject,
   Cout
 };
-MAKE_ENUM_HASHABLE(IpcId);
+MAKE_ENUM_HASHABLE(IpcId)
+MAKE_REFLECT_TYPE_PROXY(IpcId, int)
+const char* IpcIdToString(IpcId id);
 
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, IpcId& value) {
-  int value0 = static_cast<int>(value);
-  Reflect(visitor, value0);
-  value = static_cast<IpcId>(value0);
-}
-
-struct RequestId {
+struct lsRequestId {
   optional<int> id0;
   optional<std::string> id1;
 };
-
-void Reflect(Writer& visitor, RequestId& value) {
-  assert(value.id0.has_value() || value.id1.has_value());
-
-  if (value.id0) {
-    Reflect(visitor, value.id0.value());
-  }
-  else {
-    Reflect(visitor, value.id1.value());
-  }
-}
-
-void Reflect(Reader& visitor, RequestId& id) {
-  if (visitor.IsInt())
-    Reflect(visitor, id.id0);
-  else if (visitor.IsString())
-    Reflect(visitor, id.id1);
-  else
-    std::cerr << "Unable to deserialize id" << std::endl;
-}
+void Reflect(Writer& visitor, lsRequestId& value);
+void Reflect(Reader& visitor, lsRequestId& id);
 
 
 
@@ -122,28 +99,6 @@ void Reflect(Reader& visitor, RequestId& id) {
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-const char* MethodIdToString(IpcId id) {
-  switch (id) {
-  case IpcId::CancelRequest:
-    return "$/cancelRequest";
-  case IpcId::Initialize:
-    return "initialize";
-  case IpcId::Initialized:
-    return "initialized";
-  case IpcId::TextDocumentDocumentSymbol:
-    return "textDocument/documentSymbol";
-  case IpcId::TextDocumentCodeLens:
-    return "textDocument/codeLens";
-  case IpcId::CodeLensResolve:
-    return "codeLens/resolve";
-  case IpcId::WorkspaceSymbol:
-    return "workspace/symbol";
-  default:
-    assert(false);
-    exit(1);
-  }
-}
-
 struct BaseIpcMessage;
 
 struct MessageRegistry {
@@ -155,7 +110,7 @@ struct MessageRegistry {
 
   template<typename T>
   void Register() {
-    std::string method_name = MethodIdToString(T::kIpcId);
+    std::string method_name = IpcIdToString(T::kIpcId);
     allocators[method_name] = [](Reader& visitor) {
       auto result = MakeUnique<T>();
       Reflect(visitor, *result);
@@ -163,78 +118,14 @@ struct MessageRegistry {
     };
   }
 
-  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin() {
-    int content_length = -1;
-    int iteration = 0;
-    while (true) {
-      if (++iteration > 10) {
-        assert(false && "bad parser state");
-        exit(1);
-      }
-
-      std::string line;
-      std::getline(std::cin, line);
-      // std::cin >> line;
-
-      if (line.compare(0, 14, "Content-Length") == 0) {
-        content_length = atoi(line.c_str() + 16);
-      }
-
-      if (line == "\r")
-        break;
-    }
-
-    // bad input that is not a message.
-    if (content_length < 0) {
-      std::cerr << "parsing command failed (no Content-Length header)"
-        << std::endl;
-      return nullptr;
-    }
-
-    std::string content;
-    content.reserve(content_length);
-    for (int i = 0; i < content_length; ++i) {
-      char c;
-      std::cin >> c;
-      content += c;
-    }
-
-    rapidjson::Document document;
-    document.Parse(content.c_str(), content_length);
-    assert(!document.HasParseError());
-
-    return Parse(document);
-  }
-
-  std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor) {
-    std::string jsonrpc = visitor["jsonrpc"].GetString();
-    if (jsonrpc != "2.0")
-      exit(1);
-
-    std::string method;
-    ReflectMember(visitor, "method", method);
-
-    if (allocators.find(method) == allocators.end()) {
-      std::cerr << "Unable to find registered handler for method \"" << method << "\"" << std::endl;
-      return nullptr;
-    }
-
-    Allocator& allocator = allocators[method];
-    return allocator(visitor);
-  }
+  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin();
+  std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor);
 };
 
-MessageRegistry* MessageRegistry::instance_ = nullptr;
-MessageRegistry* MessageRegistry::instance() {
-  if (!instance_)
-    instance_ = new MessageRegistry();
-
-  return instance_;
-}
 
 struct BaseIpcMessage {
   const IpcId method_id;
-  BaseIpcMessage(IpcId method_id) : method_id(method_id) {}
+  BaseIpcMessage(IpcId method_id);
 };
 
 template <typename T>
@@ -285,19 +176,7 @@ struct lsResponseError {
   std::string message;
   std::unique_ptr<Data> data;
 
-  void Write(Writer& visitor) {
-    auto& value = *this;
-    int code = static_cast<int>(this->code);
-
-    visitor.StartObject();
-    REFLECT_MEMBER2("code", code);
-    REFLECT_MEMBER(message);
-    if (data) {
-      visitor.Key("data");
-      data->Write(visitor);
-    }
-    visitor.EndObject();
-  }
+  void Write(Writer& visitor);
 };
 
 
@@ -358,50 +237,15 @@ struct lsResponseError {
 /////////////////////////////////////////////////////////////////////////////
 
 struct lsDocumentUri {
+  static lsDocumentUri FromPath(const std::string& path);
+
+  lsDocumentUri();
+  bool operator==(const lsDocumentUri& other) const;
+  
+  void SetPath(const std::string& path);
+  std::string GetPath();
+
   std::string raw_uri;
-
-  lsDocumentUri() {}
-
-  static lsDocumentUri FromPath(const std::string& path) {
-    lsDocumentUri result;
-    result.SetPath(path);
-    return result;
-  }
-
-  bool operator==(const lsDocumentUri& other) const {
-    return raw_uri == other.raw_uri;
-  }
-
-  void SetPath(const std::string& path) {
-    // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
-    raw_uri = path;
-
-    size_t index = raw_uri.find(":");
-    if (index != -1) {
-      raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
-    }
-
-    raw_uri = "file:///" + raw_uri;
-    //std::cerr << "Set uri to " << raw_uri << " from " << path;
-  }
-
-  std::string GetPath() {
-    // TODO: make this not a hack.
-    std::string result = raw_uri;
-
-    size_t index = result.find("%3A");
-    if (index != -1) {
-      result.replace(result.begin() + index, result.begin() + index + 3, ":");
-    }
-
-    index = result.find("file://");
-    if (index != -1) {
-      result.replace(result.begin() + index, result.begin() + index + 8, "");
-    }
-
-    std::replace(result.begin(), result.end(), '\\', '/');
-    return result;
-  }
 };
 MAKE_HASHABLE(lsDocumentUri, t.raw_uri);
 
@@ -412,19 +256,16 @@ void Reflect(TVisitor& visitor, lsDocumentUri& value) {
 
 
 struct lsPosition {
+  lsPosition();
+  lsPosition(int line, int character);
+
+  bool operator==(const lsPosition& other) const;
+
   // Note: these are 0-based.
   int line = 0;
   int character = 0;
-
-  lsPosition() {}
-  lsPosition(int line, int character) : line(line), character(character) {}
-
-  bool operator==(const lsPosition& other) const {
-    return line == other.line && character == other.character;
-  }
 };
 MAKE_HASHABLE(lsPosition, t.line, t.character);
-
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsPosition& value) {
   REFLECT_MEMBER_START();
@@ -435,15 +276,13 @@ void Reflect(TVisitor& visitor, lsPosition& value) {
 
 
 struct lsRange {
+  lsRange();
+  lsRange(lsPosition position);
+
+  bool operator==(const lsRange& other) const;
+
   lsPosition start;
   lsPosition end;
-
-  lsRange() {}
-  lsRange(lsPosition position) : start(position), end(position) {}
-
-  bool operator==(const lsRange& other) const {
-    return start == other.start && end == other.end;
-  }
 };
 MAKE_HASHABLE(lsRange, t.start, t.end);
 
@@ -457,18 +296,15 @@ void Reflect(TVisitor& visitor, lsRange& value) {
 
 
 struct lsLocation {
+  lsLocation();
+  lsLocation(lsDocumentUri uri, lsRange range);
+
+  bool operator==(const lsLocation& other) const;
+
   lsDocumentUri uri;
   lsRange range;
-
-  lsLocation() {}
-  lsLocation(lsDocumentUri uri, lsRange range) : uri(uri), range(range) {}
-
-  bool operator==(const lsLocation& other) const {
-    return uri == other.uri && range == other.range;
-  }
 };
-MAKE_HASHABLE(lsLocation, t.uri, t.range);
-
+MAKE_HASHABLE(lsLocation, t.uri, t.range)
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsLocation& value) {
   REFLECT_MEMBER_START();
@@ -498,15 +334,7 @@ enum class lsSymbolKind : int {
   Boolean = 17,
   Array = 18
 };
-
-void Reflect(Writer& writer, lsSymbolKind& value) {
-  writer.Int(static_cast<int>(value));
-}
-
-void Reflect(Reader& reader, lsSymbolKind& value) {
-  value = static_cast<lsSymbolKind>(reader.GetInt());
-}
-
+MAKE_REFLECT_TYPE_PROXY(lsSymbolKind, int)
 
 struct lsSymbolInformation {
   std::string name;
@@ -955,30 +783,8 @@ struct lsInitializeParams {
   // The initial trace setting. If omitted trace is disabled ('off').
   lsTrace trace = lsTrace::Off;
 };
-
-void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
-  std::string v = reader.GetString();
-  if (v == "off")
-    value = lsInitializeParams::lsTrace::Off;
-  else if (v == "messages")
-    value = lsInitializeParams::lsTrace::Messages;
-  else if (v == "verbose")
-    value = lsInitializeParams::lsTrace::Verbose;
-}
-
-void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
-  switch (value) {
-  case lsInitializeParams::lsTrace::Off:
-    writer.String("off");
-    break;
-  case lsInitializeParams::lsTrace::Messages:
-    writer.String("messages");
-    break;
-  case lsInitializeParams::lsTrace::Verbose:
-    writer.String("verbose");
-    break;
-  }
-}
+void Reflect(Reader& reader, lsInitializeParams::lsTrace& value);
+void Reflect(Writer& writer, lsInitializeParams::lsTrace& value);
 
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, lsInitializeParams& value) {
@@ -1020,13 +826,7 @@ enum class lsTextDocumentSyncKind {
   // send.
   Incremental = 2
 };
-
-template<typename TVisitor>
-void Reflect(TVisitor& visitor, lsTextDocumentSyncKind& value) {
-  int value0 = static_cast<int>(value);
-  Reflect(visitor, value0);
-  value = static_cast<lsTextDocumentSyncKind>(value0);
-}
+MAKE_REFLECT_TYPE_PROXY(lsTextDocumentSyncKind, int)
 
 // Completion options.
 struct lsCompletionOptions {
@@ -1230,7 +1030,7 @@ void Reflect(TVisitor& visitor, lsInitializeResult& value) {
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
 
-  RequestId id;
+  lsRequestId id;
   lsInitializeParams params;
 };
 template<typename TVisitor>
@@ -1242,7 +1042,7 @@ void Reflect(TVisitor& visitor, Ipc_InitializeRequest& value) {
 }
 
 struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
-  RequestId id;
+  lsRequestId id;
   lsInitializeResult result;
 };
 template<typename TVisitor>
@@ -1257,7 +1057,7 @@ void Reflect(TVisitor& visitor, Out_InitializeResponse& value) {
 struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification> {
   const static IpcId kIpcId = IpcId::Initialized;
 
-  RequestId id;
+  lsRequestId id;
 };
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_InitializedNotification& value) {
@@ -1310,7 +1110,7 @@ void Reflect(TVisitor& visitor, Ipc_InitializedNotification& value) {
 // Cancel an existing request.
 struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
   static const IpcId kIpcId = IpcId::CancelRequest;
-  RequestId id;
+  lsRequestId id;
 };
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, Ipc_CancelRequest& value) {
@@ -1332,7 +1132,7 @@ void Reflect(TVisitor& visitor, lsDocumentSymbolParams& value) {
 struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocumentSymbol> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentSymbol;
 
-  RequestId id;
+  lsRequestId id;
   lsDocumentSymbolParams params;
 };
 template<typename TVisitor>
@@ -1343,7 +1143,7 @@ void Reflect(TVisitor& visitor, Ipc_TextDocumentDocumentSymbol& value) {
   REFLECT_MEMBER_END();
 }
 struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
-  RequestId id;
+  lsRequestId id;
   std::vector<lsSymbolInformation> result;
 };
 template<typename TVisitor>
@@ -1376,25 +1176,12 @@ struct lsCodeLensCommandArguments {
   lsPosition position;
   std::vector<lsLocation> locations;
 };
-void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
-  visitor.StartArray();
-  Reflect(visitor, value.uri);
-  Reflect(visitor, value.position);
-  Reflect(visitor, value.locations);
-  visitor.EndArray();
-}
-void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
-  auto it = visitor.Begin();
-  Reflect(*it, value.uri);
-  ++it;
-  Reflect(*it, value.position);
-  ++it;
-  Reflect(*it, value.locations);
-}
+void Reflect(Writer& visitor, lsCodeLensCommandArguments& value);
+void Reflect(Reader& visitor, lsCodeLensCommandArguments& value);
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
 struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
   const static IpcId kIpcId = IpcId::TextDocumentCodeLens;
-  RequestId id;
+  lsRequestId id;
   lsDocumentCodeLensParams params;
 };
 template<typename TVisitor>
@@ -1405,7 +1192,7 @@ void Reflect(TVisitor& visitor, Ipc_TextDocumentCodeLens& value) {
   REFLECT_MEMBER_END();
 }
 struct Out_TextDocumentCodeLens : public lsOutMessage<Out_TextDocumentCodeLens> {
-  RequestId id;
+  lsRequestId id;
   std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
 };
 template<typename TVisitor>
@@ -1419,7 +1206,7 @@ void Reflect(TVisitor& visitor, Out_TextDocumentCodeLens& value) {
 struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve> {
   const static IpcId kIpcId = IpcId::CodeLensResolve;
 
-  RequestId id;
+  lsRequestId id;
   TCodeLens params;
 };
 template<typename TVisitor>
@@ -1430,7 +1217,7 @@ void Reflect(TVisitor& visitor, Ipc_CodeLensResolve& value) {
   REFLECT_MEMBER_END();
 }
 struct Out_CodeLensResolve : public lsOutMessage<Out_CodeLensResolve> {
-  RequestId id;
+  lsRequestId id;
   TCodeLens result;
 };
 template<typename TVisitor>
@@ -1454,7 +1241,7 @@ void Reflect(TVisitor& visitor, lsWorkspaceSymbolParams& value) {
 }
 struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol > {
   const static IpcId kIpcId = IpcId::WorkspaceSymbol;
-  RequestId id;
+  lsRequestId id;
   lsWorkspaceSymbolParams params;
 };
 template<typename TVisitor>
@@ -1465,7 +1252,7 @@ void Reflect(TVisitor& visitor, Ipc_WorkspaceSymbol& value) {
   REFLECT_MEMBER_END();
 }
 struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
-  RequestId id;
+  lsRequestId id;
   std::vector<lsSymbolInformation> result;
 };
 template<typename TVisitor>
@@ -1484,12 +1271,7 @@ enum class lsMessageType : int {
   Info = 3,
   Log = 4
 };
-template<typename TWriter>
-void Reflect(TWriter& writer, lsMessageType& value) {
-  int value0 = static_cast<int>(value);
-  Reflect(writer, value0);
-  value = static_cast<lsMessageType>(value0);
-}
+MAKE_REFLECT_TYPE_PROXY(lsMessageType, int)
 struct Out_ShowLogMessageParams {
   lsMessageType type = lsMessageType::Error;
   std::string message;
@@ -1506,12 +1288,8 @@ struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
     Show, Log
   };
   DisplayType display_type = DisplayType::Show;
-  std::string method() {
-    if (display_type == DisplayType::Log)
-      return "window/logMessage";
-    return "window/showMessage";
-  }
-
+  
+  std::string method();
   Out_ShowLogMessageParams params;
 };
 template<typename TVisitor>
