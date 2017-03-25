@@ -23,4 +23,5 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
     const std::string& name,
     size_t size);
 
+void PlatformInit();
 std::string GetWorkingDirectory();

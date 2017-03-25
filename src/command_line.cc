@@ -1,33 +1,30 @@
+// TODO: cleanup includes
+#include "compilation_database_loader.h"
+#include "indexer.h"
+#include "query.h"
+#include "language_server_api.h"
+#include "platform.h"
+#include "test.h"
+#include "timer.h"
+#include "threaded_queue.h"
+#include "typed_bidi_message_queue.h"
+
+#include <doctest/doctest.h>
+#include <rapidjson/istreamwrapper.h>
+#include <rapidjson/ostreamwrapper.h>
+
 #include <iostream>
 #include <string>
 #include <unordered_map>
 #include <thread>
 #include <vector>
 
-#include <doctest/doctest.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/ostreamwrapper.h>
-
-// TODO: cleanup includes
-#include "compilation_database_loader.h"
-#include "indexer.h"
-#include "query.h"
-#include "language_server_api.h"
-#include "test.h"
-#include "timer.h"
-#include "threaded_queue.h"
-#include "typed_bidi_message_queue.h"
-
-// TODO: move to platform
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#endif
-
+namespace {
 const char* kIpcLanguageClientName = "language_client";
 
 const int kNumIndexers = 8 - 1;
 const int kQueueSizeBytes = 1024 * 1024 * 32;
+}
 
 struct IndexTranslationUnitRequest {
   std::string path;
@@ -910,22 +907,12 @@ void LanguageServerMain(std::string process_name) {
   }
 }
 
-void PreMain() {
-  // We need to write to stdout in binary mode because in Windows, writing
-  // \n will implicitly write \r\n. Language server API will ignore a
-  // \r\r\n split request.
-#ifdef _WIN32
-  _setmode(_fileno(stdout), O_BINARY);
-  _setmode(_fileno(stdin), O_BINARY);
-#endif
-}
-
 int main(int argc, char** argv) {
   bool loop = false;
   while (loop)
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  PreMain();
+  PlatformInit();
   RegisterMessageTypes();
 
   // if (argc == 1) {

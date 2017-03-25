@@ -1,12 +1,15 @@
 #if defined(_WIN32)
 #include "platform.h"
 
+#include "utils.h"
+
+#include <fcntl.h>
+#include <io.h>
+#include <Windows.h>
+
 #include <cassert>
 #include <iostream>
 #include <string>
-#include <Windows.h>
-
-#include "utils.h"
 
 namespace {
 
@@ -106,6 +109,14 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
     const std::string& name,
     size_t size) {
   return MakeUnique<PlatformSharedMemoryWin>(name, size);
+}
+
+void PlatformInit() {
+  // We need to write to stdout in binary mode because in Windows, writing
+  // \n will implicitly write \r\n. Language server API will ignore a
+  // \r\r\n split request.
+  _setmode(_fileno(stdout), O_BINARY);
+  _setmode(_fileno(stdin), O_BINARY);
 }
 
 // See http://stackoverflow.com/a/19535628

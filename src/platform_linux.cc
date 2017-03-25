@@ -118,6 +118,9 @@ std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(
       static_cast<PlatformMutexLinux*>(mutex)->sem_);
 }
 
+void PlatformInit() {
+}
+
 std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
     const std::string& name, size_t size) {
   std::string name2 = "/" + name;
