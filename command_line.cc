@@ -1054,7 +1054,7 @@ void RegisterId(TypedBidiMessageQueue<lsMethodId, lsBaseMessage>& t) {
     });
 }
 
-int main(int argc, char** argv) {j
+int main(int argc, char** argv) {
   // TODO: real queue size
   const int kQueueSize = 128;
   TypedBidiMessageQueue<lsMethodId, lsBaseMessage> t("foo", kQueueSize);
