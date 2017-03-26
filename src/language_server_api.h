@@ -688,14 +688,14 @@ struct lsCompletionOptions {
   bool resolveProvider = false;
 
   // The characters that trigger completion automatically.
-  std::vector<std::string> triggerCharacters;
+  NonElidedVector<std::string> triggerCharacters;
 };
 MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 
 // Signature help options.
 struct lsSignatureHelpOptions {
   // The characters that trigger signature help automatically.
-  std::vector<std::string> triggerCharacters;
+  NonElidedVector<std::string> triggerCharacters;
 };
 MAKE_REFLECT_STRUCT(lsSignatureHelpOptions, triggerCharacters);
 
@@ -712,7 +712,7 @@ struct lsDocumentOnTypeFormattingOptions {
   std::string firstTriggerCharacter;
 
   // More trigger characters.
-  std::vector<std::string> moreTriggerCharacter;
+  NonElidedVector<std::string> moreTriggerCharacter;
 };
 MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter, moreTriggerCharacter);
 
@@ -726,7 +726,7 @@ MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
 // Execute command options.
 struct lsExecuteCommandOptions {
   // The commands to be executed on the server
-  std::vector<std::string> commands;
+  NonElidedVector<std::string> commands;
 };
 MAKE_REFLECT_STRUCT(lsExecuteCommandOptions, commands);
 
@@ -897,7 +897,7 @@ struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocume
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentSymbol, id, params);
 struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
   lsRequestId id;
-  std::vector<lsSymbolInformation> result;
+  NonElidedVector<lsSymbolInformation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
 
@@ -911,7 +911,7 @@ MAKE_REFLECT_EMPTY_STRUCT(lsCodeLensUserData);
 struct lsCodeLensCommandArguments {
   lsDocumentUri uri;
   lsPosition position;
-  std::vector<lsLocation> locations;
+  NonElidedVector<lsLocation> locations;
 };
 void Reflect(Writer& visitor, lsCodeLensCommandArguments& value);
 void Reflect(Reader& visitor, lsCodeLensCommandArguments& value);
@@ -924,7 +924,7 @@ struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeLens, id, params);
 struct Out_TextDocumentCodeLens : public lsOutMessage<Out_TextDocumentCodeLens> {
   lsRequestId id;
-  std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
+  NonElidedVector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
 struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve> {
@@ -953,7 +953,7 @@ struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol > {
 MAKE_REFLECT_STRUCT(Ipc_WorkspaceSymbol, id, params);
 struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
   lsRequestId id;
-  std::vector<lsSymbolInformation> result;
+  NonElidedVector<lsSymbolInformation> result;
 };
 MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 

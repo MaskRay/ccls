@@ -16,7 +16,6 @@ using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
 using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
 struct IndexedFile;
 
-
 #define REFLECT_MEMBER_START() \
     if (!ReflectMemberStart(visitor, value)) return
 #define REFLECT_MEMBER_START1(value) \
@@ -64,6 +63,9 @@ struct IndexedFile;
 
 
 
+
+template<typename T>
+struct NonElidedVector : public std::vector<T> {};
 
 
 
@@ -147,6 +149,14 @@ template<typename T>
 void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
   if (values.empty())
     return;
+  visitor.Key(name);
+  visitor.StartArray();
+  for (auto& value : values)
+    Reflect(visitor, value);
+  visitor.EndArray();
+}
+template<typename T>
+void ReflectMember(Writer& visitor, const char* name, NonElidedVector<T>& values) {
   visitor.Key(name);
   visitor.StartArray();
   for (auto& value : values)
