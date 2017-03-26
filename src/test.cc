@@ -114,7 +114,7 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {"-IC:/Users/jacob/Desktop/superindex/src"}, false /*dump_ast*/);
+    IndexedFile db = Parse(path, {}, false /*dump_ast*/);
     VerifySerializeToFrom(db);
     std::string actual_output = db.ToString();
 

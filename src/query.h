@@ -3,26 +3,6 @@
 #include "indexer.h"
 #include "serializer.h"
 
-// NOTE: If updating this enum, make sure to also update the parser and the
-//       help text.
-enum class Command {
-  Callees,
-  Callers,
-  FindAllUsages,
-  FindInterestingUsages,
-  GotoReferenced,
-  Hierarchy,
-  Outline,
-  Search
-};
-
-// NOTE: If updating this enum, make sure to also update the parser and the
-//       help text.
-enum class PreferredSymbolLocation {
-  Declaration,
-  Definition
-};
-
 using Usr = std::string;
 
 // TODO: Switch over to QueryableLocation. Figure out if there is
