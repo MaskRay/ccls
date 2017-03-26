@@ -10,6 +10,14 @@ const char* IpcIdToString(IpcId id) {
     return "initialize";
   case IpcId::Initialized:
     return "initialized";
+  case IpcId::TextDocumentDidOpen:
+    return "textDocument/didOpen";
+  case IpcId::TextDocumentDidChange:
+    return "textDocument/didChange";
+  case IpcId::TextDocumentDidClose:
+    return "textDocument/didClose";
+  case IpcId::TextDocumentCompletion:
+    return "textDocument/completion";
   case IpcId::TextDocumentDocumentSymbol:
     return "textDocument/documentSymbol";
   case IpcId::TextDocumentCodeLens:

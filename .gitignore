@@ -2,6 +2,7 @@
 Debug
 x64
 build
+libcxx
 waf-*
 .lock-waf*
 .waf*

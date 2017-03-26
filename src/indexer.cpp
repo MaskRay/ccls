@@ -1205,6 +1205,7 @@ void emptyIndexEntityReference(CXClientData client_data,
 IndexedFile Parse(std::string filename,
                   std::vector<std::string> args,
                   bool dump_ast) {
+  clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
 
   args.push_back("-std=c++11");

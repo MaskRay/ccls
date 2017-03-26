@@ -120,6 +120,10 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_CancelRequest>(ipc.get());
   RegisterId<Ipc_InitializeRequest>(ipc.get());
   RegisterId<Ipc_InitializedNotification>(ipc.get());
+  RegisterId<Ipc_TextDocumentDidOpen>(ipc.get());
+  RegisterId<Ipc_TextDocumentDidChange>(ipc.get());
+  RegisterId<Ipc_TextDocumentDidClose>(ipc.get());
+  RegisterId<Ipc_TextDocumentComplete>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
   RegisterId<Ipc_TextDocumentCodeLens>(ipc.get());
   RegisterId<Ipc_CodeLensResolve>(ipc.get());
@@ -135,6 +139,10 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CancelRequest>();
   MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
   MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
@@ -331,6 +339,40 @@ void QueryDbMainLoop(
         index_requests->Enqueue(request);
       }
       std::cerr << "Done" << std::endl;
+      break;
+    }
+
+    case IpcId::TextDocumentDidOpen: {
+      auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
+      std::cerr << "Opening " << msg->params.textDocument.uri.GetPath() << std::endl;
+      break;
+    }
+    case IpcId::TextDocumentDidChange: {
+      auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
+      std::cerr << "Changing " << msg->params.textDocument.uri.GetPath() << std::endl;
+      break;
+    }
+    case IpcId::TextDocumentDidClose: {
+      auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
+      std::cerr << "Closing " << msg->params.textDocument.uri.GetPath() << std::endl;
+      break;
+    }
+
+    case IpcId::TextDocumentCompletion: {
+      auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
+      Out_TextDocumentComplete response;
+      response.id = msg->id;
+      response.result.isIncomplete = false;
+
+      std::cerr << "!! Code complete";
+      for (int i = 0; i < 50; ++i) {
+        lsCompletionItem item;
+        item.label = "Entry#" + std::to_string(i);
+        item.documentation = "this is my doc " + std::to_string(i);
+        response.result.items.push_back(item);
+      }
+
+      SendOutMessageToClient(language_client, response);
       break;
     }
 
@@ -624,22 +666,66 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
         ipc->SendMessage(&ipc->for_server, Ipc_OpenProject::kIpcId, open_project);
       }
 
+      // TODO: query request->params.capabilities.textDocument and support only things
+      // the client supports.
+
       auto response = Out_InitializeResponse();
       response.id = request->id;
-      response.result.capabilities.documentSymbolProvider = true;
-      // response.result.capabilities.referencesProvider = true;
+
+      //response.result.capabilities.textDocumentSync = lsTextDocumentSyncOptions();
+      //response.result.capabilities.textDocumentSync->openClose = true;
+      //response.result.capabilities.textDocumentSync->change = lsTextDocumentSyncKind::Full;
+      //response.result.capabilities.textDocumentSync->willSave = true;
+      //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
+      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental;
+
+      response.result.capabilities.completionProvider = lsCompletionOptions();
+      response.result.capabilities.completionProvider->resolveProvider = false;
+      response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
+
       response.result.capabilities.codeLensProvider = lsCodeLensOptions();
       response.result.capabilities.codeLensProvider->resolveProvider = false;
+
+      response.result.capabilities.documentSymbolProvider = true;
+
       response.result.capabilities.workspaceSymbolProvider = true;
+
+      response.Write(std::cerr);
       response.Write(std::cout);
       break;
     }
 
+    case IpcId::Initialized: {
+      // TODO: don't send output until we get this notification
+      break;
+    }
+
+    case IpcId::CancelRequest: {
+      // TODO: support cancellation
+      break;
+    }
+
+    case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
-    case IpcId::WorkspaceSymbol: {
+    case IpcId::WorkspaceSymbol:
+      break;
+
+    case IpcId::TextDocumentDidOpen:
+    case IpcId::TextDocumentDidChange:
+    case IpcId::TextDocumentDidClose: {
+      //case IpcId::TextDocumentCompletion:
+      //case IpcId::TextDocumentDocumentSymbol:
+      //case IpcId::TextDocumentCodeLens:
+      //case IpcId::WorkspaceSymbol: {
       ipc->SendMessage(&ipc->for_server, message->method_id, *message.get());
       break;
+    }
+
+    default: {
+      std::cerr << "Unhandled IPC message with kind "
+        << static_cast<int>(message->method_id) << std::endl;
+      exit(1);
     }
     }
   }

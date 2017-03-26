@@ -309,7 +309,6 @@ void Reflect(TVisitor& visitor, lsCommand<T>& value) {
   REFLECT_MEMBER_END();
 }
 
-
 template<typename TData, typename TCommandArguments>
 struct lsCodeLens {
   // The range in which this code lens is valid. Should only span a single line.
@@ -329,25 +328,172 @@ void Reflect(TVisitor& visitor, lsCodeLens<TData, TCommandArguments>& value) {
   REFLECT_MEMBER_END();
 }
 
-// TODO: TextDocumentEdit
-// TODO: WorkspaceEdit
-
 struct lsTextDocumentIdentifier {
   lsDocumentUri uri;
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
 
-// TODO: TextDocumentItem
-// TODO: VersionedTextDocumentIdentifier
-// TODO: TextDocumentPositionParams
-// TODO: DocumentFilter 
-// TODO: DocumentSelector 
+struct lsVersionedTextDocumentIdentifier {
+  lsDocumentUri uri;
+  // The version number of this document.
+  int version;
+};
+MAKE_REFLECT_STRUCT(lsVersionedTextDocumentIdentifier, uri, version);
+
+struct lsTextDocumentPositionParams {
+  // The text document.
+  lsTextDocumentIdentifier textDocument;
+
+  // The position inside the text document.
+  lsPosition position;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentPositionParams, textDocument, position);
+
+// Defines whether the insert text in a completion item should be interpreted as
+// plain text or a snippet.
+enum class lsInsertTextFormat {
+  // The primary text to be inserted is treated as a plain string.
+  PlainText = 1,
+
+  // The primary text to be inserted is treated as a snippet.
+  //
+  // A snippet can define tab stops and placeholders with `$1`, `$2`
+  // and `${3:foo}`. `$0` defines the final tab stop, it defaults to
+  // the end of the snippet. Placeholders with equal identifiers are linked,
+  // that is typing in one will update others too.
+  //
+  // See also: https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md
+  Snippet = 2
+};
+MAKE_REFLECT_TYPE_PROXY(lsInsertTextFormat, int);
+
+// The kind of a completion entry.
+enum class lsCompletionItemKind {
+  Text = 1,
+  Method = 2,
+  Function = 3,
+  Constructor = 4,
+  Field = 5,
+  Variable = 6,
+  Class = 7,
+  Interface = 8,
+  Module = 9,
+  Property = 10,
+  Unit = 11,
+  Value = 12,
+  Enum = 13,
+  Keyword = 14,
+  Snippet = 15,
+  Color = 16,
+  File = 17,
+  Reference = 18
+};
+MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind, int);
+
+struct lsCompletionItem {
+  // The label of this completion item. By default
+  // also the text that is inserted when selecting
+  // this completion.
+  std::string label;
+
+  // The kind of this completion item. Based of the kind
+  // an icon is chosen by the editor.
+  lsCompletionItemKind kind = lsCompletionItemKind::Text;
+
+  // A human-readable string with additional information
+  // about this item, like type or symbol information.
+  std::string detail;
+
+  // A human-readable string that represents a doc-comment.
+  std::string documentation;
+
+  // A string that shoud be used when comparing this item
+  // with other items. When `falsy` the label is used.
+  std::string sortText;
+
+  // A string that should be used when filtering a set of
+  // completion items. When `falsy` the label is used.
+  std::string filterText;
+
+  // A string that should be inserted a document when selecting
+  // this completion. When `falsy` the label is used.
+  std::string insertText;
+
+  // The format of the insert text. The format applies to both the `insertText` property
+  // and the `newText` property of a provided `textEdit`.
+  lsInsertTextFormat insertTextFormat;
+
+  // An edit which is applied to a document when selecting this completion. When an edit is provided the value of
+  // `insertText` is ignored.
+  //
+  // *Note:* The range of the edit must be a single line range and it must contain the position at which completion
+  // has been requested.
+  // TextEdit textEdit;
+
+  // An optional array of additional text edits that are applied when
+  // selecting this completion. Edits must not overlap with the main edit
+  // nor with themselves.
+  // std::vector<TextEdit> additionalTextEdits;
+
+  // An optional command that is executed *after* inserting this completion. *Note* that
+  // additional modifications to the current document should be described with the
+  // additionalTextEdits-property.
+  // Command command;
+
+  // An data entry field that is preserved on a completion item between
+  // a completion and a completion resolve request.
+  // data ? : any
+};
+MAKE_REFLECT_STRUCT(lsCompletionItem,
+  label,
+  kind,
+  detail,
+  documentation,
+  sortText,
+  filterText,
+  insertText,
+  insertTextFormat);
 
 
+struct lsTextDocumentItem {
+  // The text document's URI.
+  lsDocumentUri uri;
 
+  // The text document's language identifier.
+  std::string languageId;
 
+  // The version number of this document (it will strictly increase after each
+  // change, including undo/redo).
+  int version;
 
+  // The content of the opened text document.
+  std::string text;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentItem, uri, languageId, version, text);
 
+struct lsTextEdit {
+  // The range of the text document to be manipulated. To insert
+  // text into a document create a range where start === end.
+  lsRange range;
+
+  // The string to be inserted. For delete operations use an
+  // empty string.
+  std::string newText;
+};
+MAKE_REFLECT_STRUCT(lsTextEdit, range, newText);
+
+struct lsTextDocumentEdit {
+  // The text document to change.
+  lsVersionedTextDocumentIdentifier textDocument;
+
+  // The edits to be applied.
+  std::vector<lsTextEdit> edits;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentEdit, textDocument, edits);
+
+// TODO: WorkspaceEdit
+// TODO: DocumentFilter
+// TODO: DocumentSelector
 
 
 
@@ -589,21 +735,21 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion::lsCompletion
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg, dynamicRegistration);
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::CodeLensRegistrationOptions, dynamicRegistration, resolveProvider);
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities,
-    synchronization,
-    completion,
-    hover,
-    signatureHelp,
-    references,
-    documentHighlight,
-    documentSymbol,
-    formatting,
-    rangeFormatting,
-    onTypeFormatting,
-    definition,
-    codeAction,
-    codeLens,
-    documentLink,
-    rename);
+  synchronization,
+  completion,
+  hover,
+  signatureHelp,
+  references,
+  documentHighlight,
+  documentSymbol,
+  formatting,
+  rangeFormatting,
+  onTypeFormatting,
+  definition,
+  codeAction,
+  codeLens,
+  documentLink,
+  rename);
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
@@ -688,7 +834,7 @@ struct lsCompletionOptions {
   bool resolveProvider = false;
 
   // The characters that trigger completion automatically.
-  NonElidedVector<std::string> triggerCharacters;
+  std::vector<std::string> triggerCharacters;
 };
 MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 
@@ -742,11 +888,11 @@ struct lsTextDocumentSyncOptions {
   bool openClose = false;
   // Change notificatins are sent to the server. See TextDocumentSyncKind.None, TextDocumentSyncKind.Full
   // and TextDocumentSyncKindIncremental.
-  optional<lsTextDocumentSyncKind> change;
+  lsTextDocumentSyncKind change = lsTextDocumentSyncKind::Incremental;
   // Will save notifications are sent to the server.
-  bool willSave = false;
+  optional<bool> willSave;
   // Will save wait until requests are sent to the server.
-  bool willSaveWaitUntil = false;
+  optional<bool> willSaveWaitUntil;
   // Save notifications are sent to the server.
   optional<lsSaveOptions> save;
 };
@@ -755,7 +901,10 @@ MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions, openClose, change, willSave, will
 struct lsServerCapabilities {
   // Defines how text documents are synced. Is either a detailed structure defining each notification or
   // for backwards compatibility the TextDocumentSyncKind number.
-  optional<lsTextDocumentSyncOptions> textDocumentSync;
+  // TODO: It seems like the new API is broken and doesn't work.
+  // optional<lsTextDocumentSyncOptions> textDocumentSync;
+  lsTextDocumentSyncKind textDocumentSync;
+
   // The server provides hover support.
   bool hoverProvider = false;
   // The server provides completion support.
@@ -790,29 +939,23 @@ struct lsServerCapabilities {
   optional<lsExecuteCommandOptions> executeCommandProvider;
 };
 MAKE_REFLECT_STRUCT(lsServerCapabilities,
-    textDocumentSync,
-    hoverProvider,
-    completionProvider,
-    signatureHelpProvider,
-    definitionProvider,
-    referencesProvider,
-    documentHighlightProvider,
-    documentSymbolProvider,
-    workspaceSymbolProvider,
-    codeActionProvider,
-    codeLensProvider,
-    documentFormattingProvider,
-    documentRangeFormattingProvider,
-    documentOnTypeFormattingProvider,
-    renameProvider,
-    documentLinkProvider,
-    executeCommandProvider);
-
-struct lsInitializeResult {
-  // The capabilities the language server provides.
-  lsServerCapabilities capabilities;
-};
-MAKE_REFLECT_STRUCT(lsInitializeResult, capabilities);
+  textDocumentSync,
+  hoverProvider,
+  completionProvider,
+  signatureHelpProvider,
+  definitionProvider,
+  referencesProvider,
+  documentHighlightProvider,
+  documentSymbolProvider,
+  workspaceSymbolProvider,
+  codeActionProvider,
+  codeLensProvider,
+  documentFormattingProvider,
+  documentRangeFormattingProvider,
+  documentOnTypeFormattingProvider,
+  renameProvider,
+  documentLinkProvider,
+  executeCommandProvider);
 
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
@@ -823,9 +966,13 @@ struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
 MAKE_REFLECT_STRUCT(Ipc_InitializeRequest, id, params);
 
 struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
+  struct InitializeResult {
+    lsServerCapabilities capabilities;
+  };
   lsRequestId id;
-  lsInitializeResult result;
+  InitializeResult result;
 };
+MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
 MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
 
 struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification> {
@@ -882,6 +1029,83 @@ struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
   lsRequestId id;
 };
 MAKE_REFLECT_STRUCT(Ipc_CancelRequest, id);
+
+
+
+
+
+// Open, update, close file
+struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
+  struct Params {
+    lsTextDocumentItem textDocument;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentDidOpen;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen::Params, textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen, params);
+struct Ipc_TextDocumentDidChange : public IpcMessage<Ipc_TextDocumentDidChange> {
+  struct lsTextDocumentContentChangeEvent {
+    // The range of the document that changed.
+    lsRange range;
+    // The length of the range that got replaced.
+    int rangeLength = 0;
+    // The new text of the range/document.
+    std::string text;
+  };
+
+  struct Params {
+    lsVersionedTextDocumentIdentifier textDocument;
+    std::vector<lsTextDocumentContentChangeEvent> contentChanges;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentDidChange;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent, range, rangeLength, text);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange::Params, textDocument, contentChanges);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange, params);
+struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {
+  struct Params {
+    lsTextDocumentItem textDocument;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentDidClose;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose::Params, textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose, params);
+
+
+
+
+
+
+
+
+// Code completion
+struct Ipc_TextDocumentComplete : public IpcMessage<Ipc_TextDocumentComplete> {
+  const static IpcId kIpcId = IpcId::TextDocumentCompletion;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentComplete, id, params);
+struct lsTextDocumentCompleteResult {
+  // This list it not complete. Further typing should result in recomputing
+  // this list.
+  bool isIncomplete = false;
+  // The completion items.
+  NonElidedVector<lsCompletionItem> items;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentCompleteResult, isIncomplete, items);
+struct Out_TextDocumentComplete : public lsOutMessage<Out_TextDocumentComplete> {
+  lsRequestId id;
+  lsTextDocumentCompleteResult result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
+
 
 // List symbols in a document.
 struct lsDocumentSymbolParams {

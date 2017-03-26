@@ -34,6 +34,7 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
     std::string line;
     std::getline(std::cin, line);
     // std::cin >> line;
+    // std::cerr << "Read line " << line;
 
     if (line.compare(0, 14, "Content-Length") == 0) {
       content_length = atoi(line.c_str() + 16);
@@ -50,11 +51,12 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
     return nullptr;
   }
 
+  // TODO: maybe use std::cin.read(c, content_length)
   std::string content;
   content.reserve(content_length);
   for (int i = 0; i < content_length; ++i) {
     char c;
-    std::cin >> c;
+    std::cin.read(&c, 1);
     content += c;
   }
 
