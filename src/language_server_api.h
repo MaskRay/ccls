@@ -212,7 +212,7 @@ struct lsDocumentUri {
   bool operator==(const lsDocumentUri& other) const;
 
   void SetPath(const std::string& path);
-  std::string GetPath();
+  std::string GetPath() const;
 
   std::string raw_uri;
 };
@@ -413,15 +413,15 @@ struct lsCompletionItem {
 
   // A string that should be used when filtering a set of
   // completion items. When `falsy` the label is used.
-  std::string filterText;
+  //std::string filterText;
 
   // A string that should be inserted a document when selecting
   // this completion. When `falsy` the label is used.
-  std::string insertText;
+  //std::string insertText;
 
   // The format of the insert text. The format applies to both the `insertText` property
   // and the `newText` property of a provided `textEdit`.
-  lsInsertTextFormat insertTextFormat;
+  //lsInsertTextFormat insertTextFormat;
 
   // An edit which is applied to a document when selecting this completion. When an edit is provided the value of
   // `insertText` is ignored.
@@ -449,10 +449,7 @@ MAKE_REFLECT_STRUCT(lsCompletionItem,
   kind,
   detail,
   documentation,
-  sortText,
-  filterText,
-  insertText,
-  insertTextFormat);
+  sortText);
 
 
 struct lsTextDocumentItem {
@@ -1050,7 +1047,7 @@ struct Ipc_TextDocumentDidChange : public IpcMessage<Ipc_TextDocumentDidChange> 
     // The range of the document that changed.
     lsRange range;
     // The length of the range that got replaced.
-    int rangeLength = 0;
+    int rangeLength = -1;
     // The new text of the range/document.
     std::string text;
   };

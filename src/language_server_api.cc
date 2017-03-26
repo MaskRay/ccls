@@ -130,7 +130,7 @@ void lsDocumentUri::SetPath(const std::string& path) {
   //std::cerr << "Set uri to " << raw_uri << " from " << path;
 }
 
-std::string lsDocumentUri::GetPath() {
+std::string lsDocumentUri::GetPath() const {
   // TODO: make this not a hack.
   std::string result = raw_uri;
 

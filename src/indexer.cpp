@@ -1218,7 +1218,7 @@ IndexedFile Parse(std::string filename,
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
-  clang::TranslationUnit tu(index, filename, args);
+  clang::TranslationUnit tu(index, filename, args, {} /*unsaved_files*/, CXTranslationUnit_None);
 
   if (dump_ast)
     Dump(tu.document_cursor());

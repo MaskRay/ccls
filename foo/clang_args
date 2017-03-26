@@ -1,0 +1,13 @@
+-xc++
+-std=c++11
+-IC:/Users/jacob/Desktop/superindex/indexer/third_party
+-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest/doctest
+-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include
+-IC:/Program Files/LLVM/include
+
+#--sysrootC:/Users/jacob/Desktop/superindex/indexer/libcxx
+#-IC:/Users/jacob/Desktop/superindex/indexer/libcxx/include
+#-FC:/Users/jacob/Desktop/superindex/indexer/libcxx/include
+
+-fms-compatibility
+-fdelayed-template-parsing

@@ -15,6 +15,8 @@ bool EndsWith(const std::string& value, const std::string& ending) {
 }
 
 bool StartsWith(const std::string& value, const std::string& start) {
+  if (start.size() > value.size())
+    return false;
   return std::equal(start.begin(), start.end(), value.begin());
 }
 
@@ -30,14 +32,14 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
   }
 
 
-  std::vector<std::string> files = GetFilesInFolder(project_directory, true /*recursive*/, false /*add_folder_to_path*/);
+  std::vector<std::string> files = GetFilesInFolder(project_directory, true /*recursive*/, true /*add_folder_to_path*/);
   for (const std::string& file : files) {
     if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") ||
       EndsWith(file, ".c") || EndsWith(file, ".h") ||
       EndsWith(file, ".hpp")) {
 
       CompilationEntry entry;
-      entry.directory = ".";
+      entry.directory = project_directory;
       entry.filename = file;
       entry.args = args;
       result.push_back(entry);

@@ -8,50 +8,44 @@
 
 namespace clang {
 
-/*
-TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
-  const std::vector<std::string> &command_line_args,
-  const std::string &buffer, unsigned flags) {
-  std::vector<const char*> args;
-  for (auto& a : command_line_args) {
-    args.push_back(a.c_str());
-  }
-
-  CXUnsavedFile files[1];
-  files[0].Filename = file_path.c_str();
-  files[0].Contents = buffer.c_str();
-  files[0].Length = buffer.size();
-
-  CXErrorCode error_code = clang_parseTranslationUnit2(
-    index.cx_index, file_path.c_str(), args.data(), args.size(), files, 1, flags, &cx_tu);
-  assert(!error_code);
-}
-*/
-
-TranslationUnit::TranslationUnit(Index &index, const std::string &file_path,
-  const std::vector<std::string> &command_line_args, unsigned flags) {
+TranslationUnit::TranslationUnit(
+  Index &index,
+  const std::string& filepath,
+  const std::vector<std::string>& arguments,
+  std::vector<CXUnsavedFile> unsaved_files,
+  unsigned flags) {
 
   std::vector<const char*> args;
-  for (const std::string& a : command_line_args) {
+  for (const std::string& a : arguments) {
     args.push_back(a.c_str());
   }
 
   CXErrorCode error_code = clang_parseTranslationUnit2(
-    index.cx_index, file_path.c_str(), args.data(), args.size(), nullptr, 0, flags, &cx_tu);
+    index.cx_index,
+    filepath.c_str(),
+    args.data(), args.size(),
+    unsaved_files.data(), unsaved_files.size(),
+    flags, &cx_tu);
+  
   switch (error_code) {
   case CXError_Success:
+    did_fail = false;
     break;
   case CXError_Failure:
-    std::cerr << "libclang generic failure for " << file_path << std::endl;
+    std::cerr << "libclang generic failure for " << filepath << std::endl;
+    did_fail = true;
     break;
   case CXError_Crashed:
-    std::cerr << "libclang crashed for " << file_path << std::endl;
+    std::cerr << "libclang crashed for " << filepath << std::endl;
+    did_fail = true;
     break;
   case CXError_InvalidArguments:
-    std::cerr << "libclang had invalid arguments for " << file_path << std::endl;
+    std::cerr << "libclang had invalid arguments for " << filepath << std::endl;
+    did_fail = true;
     break;
   case CXError_ASTReadError:
-    std::cerr << "libclang had ast read error for " << file_path << std::endl;
+    std::cerr << "libclang had ast read error for " << filepath << std::endl;
+    did_fail = true;
     break;
   }
 }
@@ -60,51 +54,33 @@ TranslationUnit::~TranslationUnit() {
   clang_disposeTranslationUnit(cx_tu);
 }
 
-void TranslationUnit::parse(Index &index, const std::string &file_path,
-  const std::vector<std::string> &command_line_args,
-  const std::map<std::string, std::string>  &buffers, unsigned flags) {
-  std::vector<CXUnsavedFile> files;
-  for (auto &buffer : buffers) {
-    CXUnsavedFile file;
-    file.Filename = buffer.first.c_str();
-    file.Contents = buffer.second.c_str();
-    file.Length = buffer.second.size();
-    files.push_back(file);
+void TranslationUnit::ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved, unsigned flags) {
+  int error_code = clang_reparseTranslationUnit(cx_tu, unsaved.size(), unsaved.data(), flags);
+  switch (error_code) {
+  case CXError_Success:
+    did_fail = false;
+    break;
+  case CXError_Failure:
+    std::cerr << "libclang reparse generic failure" << std::endl;
+    did_fail = true;
+    break;
+  case CXError_Crashed:
+    std::cerr << "libclang reparse crashed " << std::endl;
+    did_fail = true;
+    break;
+  case CXError_InvalidArguments:
+    std::cerr << "libclang reparse had invalid arguments" << std::endl;
+    did_fail = true;
+    break;
+  case CXError_ASTReadError:
+    std::cerr << "libclang reparse had ast read error" << std::endl;
+    did_fail = true;
+    break;
   }
-  std::vector<const char*> args;
-  for (auto &a : command_line_args) {
-    args.push_back(a.c_str());
-  }
-  cx_tu = clang_parseTranslationUnit(index.cx_index, file_path.c_str(), args.data(),
-    args.size(), files.data(), files.size(), flags);
 }
 
-int TranslationUnit::ReparseTranslationUnit(const std::string &buffer, unsigned flags) {
-  CXUnsavedFile files[1];
-
-  auto file_path = ToString(clang_getTranslationUnitSpelling(cx_tu));
-
-  files[0].Filename = file_path.c_str();
-  files[0].Contents = buffer.c_str();
-  files[0].Length = buffer.size();
-
-  return clang_reparseTranslationUnit(cx_tu, 1, files, flags);
-}
-
-unsigned TranslationUnit::DefaultFlags() {
-  auto flags =
-    CXTranslationUnit_CacheCompletionResults |
-    CXTranslationUnit_PrecompiledPreamble |
-    CXTranslationUnit_Incomplete |
-    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion;
-#if CINDEX_VERSION_MAJOR>0 || (CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR>=35)
-  flags |= CXTranslationUnit_KeepGoing;
-#endif
-  return flags;
-}
-
-CodeCompleteResults TranslationUnit::get_code_completions(const std::string &buffer,
-  unsigned line_number, unsigned column) {
+CodeCompleteResults TranslationUnit::get_code_completions(
+  const std::string& buffer, unsigned line_number, unsigned column) {
   CodeCompleteResults results(cx_tu, buffer, line_number, column);
   return results;
 }

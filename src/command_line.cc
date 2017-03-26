@@ -1,13 +1,16 @@
 // TODO: cleanup includes
+#include "code_completion.h"
 #include "compilation_database_loader.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
+#include "project.h"
 #include "platform.h"
 #include "test.h"
 #include "timer.h"
 #include "threaded_queue.h"
 #include "typed_bidi_message_queue.h"
+#include "working_files.h"
 
 #include <doctest/doctest.h>
 #include <rapidjson/istreamwrapper.h>
@@ -187,7 +190,7 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   for (auto& file : db->files) {
     // std::cerr << " - Have file " << file.file_id << std::endl;
     if (file.file_id == filename) {
-      std::cerr << "Found file " << filename << std::endl;
+      //std::cerr << "Found file " << filename << std::endl;
       return &file;
     }
   }
@@ -301,7 +304,11 @@ void QueryDbMainLoop(
   QueryableDatabase* db,
   IpcMessageQueue* language_client,
   IndexRequestQueue* index_requests,
-  IndexResponseQueue* index_responses) {
+  IndexResponseQueue* index_responses,
+  Project* project,
+  WorkingFiles* working_files,
+  CompletionManager* completion_manager) {
+
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = language_client->GetMessages(&language_client->for_server);
   for (auto& message : messages) {
     // std::cerr << "Processing message " << static_cast<int>(message->ipc_id)
@@ -324,12 +331,12 @@ void QueryDbMainLoop(
       Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
-      std::vector<CompilationEntry> entries =
-        LoadCompilationEntriesFromDirectory(path);
-      for (int i = 0; i < entries.size(); ++i) {
-        const CompilationEntry& entry = entries[i];
-        std::string filepath = path + "/" + entry.filename;
-        std::cerr << "[" << i << "/" << (entries.size() - 1)
+      project->entries = LoadCompilationEntriesFromDirectory(path);
+      for (int i = 0; i < project->entries.size(); ++i) {
+        const CompilationEntry& entry = project->entries[i];
+        std::string filepath = entry.filename;
+
+        std::cerr << "[" << i << "/" << (project->entries.size() - 1)
           << "] Dispatching index request for file " << filepath
           << std::endl;
 
@@ -344,17 +351,20 @@ void QueryDbMainLoop(
 
     case IpcId::TextDocumentDidOpen: {
       auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
-      std::cerr << "Opening " << msg->params.textDocument.uri.GetPath() << std::endl;
+      //std::cerr << "Opening " << msg->params.textDocument.uri.GetPath() << std::endl;
+      working_files->OnOpen(msg->params);
       break;
     }
     case IpcId::TextDocumentDidChange: {
       auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
-      std::cerr << "Changing " << msg->params.textDocument.uri.GetPath() << std::endl;
+      working_files->OnChange(msg->params);
+      //std::cerr << "Changing " << msg->params.textDocument.uri.GetPath() << std::endl;
       break;
     }
     case IpcId::TextDocumentDidClose: {
       auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
       std::cerr << "Closing " << msg->params.textDocument.uri.GetPath() << std::endl;
+      //working_files->OnClose(msg->params);
       break;
     }
 
@@ -363,16 +373,12 @@ void QueryDbMainLoop(
       Out_TextDocumentComplete response;
       response.id = msg->id;
       response.result.isIncomplete = false;
+      response.result.items = completion_manager->CodeComplete(msg->params);
 
-      std::cerr << "!! Code complete";
-      for (int i = 0; i < 50; ++i) {
-        lsCompletionItem item;
-        item.label = "Entry#" + std::to_string(i);
-        item.documentation = "this is my doc " + std::to_string(i);
-        response.result.items.push_back(item);
-      }
-
-      SendOutMessageToClient(language_client, response);
+      Timer timer;
+      response.Write(std::cout);
+      std::cerr << "Writing completion results to stdout took " << timer.ElapsedMilliseconds() << "ms" << std::endl;
+      //SendOutMessageToClient(language_client, response);
       break;
     }
 
@@ -617,6 +623,9 @@ void QueryDbMain() {
   std::unique_ptr<IpcMessageQueue> ipc = BuildIpcMessageQueue(kIpcLanguageClientName, kQueueSizeBytes);
   IndexRequestQueue index_request_queue;
   IndexResponseQueue index_response_queue;
+  Project project;
+  WorkingFiles working_files;
+  CompletionManager completion_manager(&project, &working_files);
 
   // Start indexer threads.
   for (int i = 0; i < kNumIndexers; ++i) {
@@ -628,7 +637,7 @@ void QueryDbMain() {
   // Run query db main loop.
   QueryableDatabase db;
   while (true) {
-    QueryDbMainLoop(&db, ipc.get(), &index_request_queue, &index_response_queue);
+    QueryDbMainLoop(&db, ipc.get(), &index_request_queue, &index_response_queue, &project, &working_files, &completion_manager);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
@@ -649,8 +658,8 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     if (!message)
       continue;
 
-    std::cerr << "[info]: Got message of type "
-      << IpcIdToString(message->method_id) << std::endl;
+    //std::cerr << "[info]: Got message of type "
+    //  << IpcIdToString(message->method_id) << std::endl;
     switch (message->method_id) {
       // TODO: For simplicitly lets just proxy the initialize request like
       // all other requests so that stdin loop thread becomes super simple.
@@ -677,11 +686,11 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       //response.result.capabilities.textDocumentSync->change = lsTextDocumentSyncKind::Full;
       //response.result.capabilities.textDocumentSync->willSave = true;
       //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
-      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental;
+      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Full; // TODO: use incremental at some point
 
       response.result.capabilities.completionProvider = lsCompletionOptions();
       response.result.capabilities.completionProvider->resolveProvider = false;
-      response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
+      response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->", ":", ">" };
 
       response.result.capabilities.codeLensProvider = lsCodeLensOptions();
       response.result.capabilities.codeLensProvider->resolveProvider = false;
@@ -705,19 +714,13 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       break;
     }
 
+    case IpcId::TextDocumentDidOpen:
+    case IpcId::TextDocumentDidChange:
+    case IpcId::TextDocumentDidClose: {
     case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
-      break;
-
-    case IpcId::TextDocumentDidOpen:
-    case IpcId::TextDocumentDidChange:
-    case IpcId::TextDocumentDidClose: {
-      //case IpcId::TextDocumentCompletion:
-      //case IpcId::TextDocumentDocumentSymbol:
-      //case IpcId::TextDocumentCodeLens:
-      //case IpcId::WorkspaceSymbol: {
       ipc->SendMessage(&ipc->for_server, message->method_id, *message.get());
       break;
     }
