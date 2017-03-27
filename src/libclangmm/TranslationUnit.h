@@ -23,7 +23,7 @@ namespace clang {
     
     bool did_fail = false;
 
-    void ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved, unsigned flags);
+    void ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved);
 
     clang::CodeCompleteResults get_code_completions(const std::string &buffer,
                                                     unsigned line_number, unsigned column);

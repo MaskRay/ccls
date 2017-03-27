@@ -13,7 +13,7 @@ using std::experimental::optional;
 using std::experimental::nullopt;
 
 using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
-using Writer = rapidjson::PrettyWriter<rapidjson::StringBuffer>;
+using Writer = rapidjson::Writer<rapidjson::StringBuffer>;
 struct IndexedFile;
 
 #define REFLECT_MEMBER_START() \

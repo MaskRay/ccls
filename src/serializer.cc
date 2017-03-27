@@ -193,8 +193,8 @@ void Reflect(TVisitor& visitor, IndexedFile& value) {
 
 std::string Serialize(IndexedFile& file) {
   rapidjson::StringBuffer output;
-  //rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-  Writer writer(output);
+  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
+  //Writer writer(output);
   writer.SetFormatOptions(
     rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);

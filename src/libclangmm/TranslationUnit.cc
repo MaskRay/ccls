@@ -54,8 +54,8 @@ TranslationUnit::~TranslationUnit() {
   clang_disposeTranslationUnit(cx_tu);
 }
 
-void TranslationUnit::ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved, unsigned flags) {
-  int error_code = clang_reparseTranslationUnit(cx_tu, unsaved.size(), unsaved.data(), flags);
+void TranslationUnit::ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved) {
+  int error_code = clang_reparseTranslationUnit(cx_tu, unsaved.size(), unsaved.data(), clang_defaultReparseOptions(cx_tu));
   switch (error_code) {
   case CXError_Success:
     did_fail = false;

@@ -7,14 +7,23 @@
 
 namespace {
 unsigned Flags() {
+  /*
   return
-    CXTranslationUnit_Incomplete |
+    //CXTranslationUnit_Incomplete |
     CXTranslationUnit_PrecompiledPreamble |
     CXTranslationUnit_CacheCompletionResults |
     //CXTranslationUnit_ForSerialization |
-    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion;
-  CXTranslationUnit_CreatePreambleOnFirstParse |
+    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
+    //CXTranslationUnit_CreatePreambleOnFirstParse |
     CXTranslationUnit_KeepGoing;
+    */
+
+  return
+    CXTranslationUnit_CacheCompletionResults |
+    CXTranslationUnit_PrecompiledPreamble |
+    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
+    //CXTranslationUnit_CreatePreambleOnFirstParse |
+    CXTranslationUnit_DetailedPreprocessingRecord;
 }
 
 bool StartsWith(const std::string& value, const std::string& start) {
@@ -46,6 +55,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   case CXCursor_ParmDecl:
     return lsCompletionItemKind::Variable;
 
+  case CXCursor_UnionDecl:
   case CXCursor_ClassTemplate:
   case CXCursor_ClassTemplatePartialSpecialization:
   case CXCursor_ClassDecl:
@@ -76,7 +86,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     //return lsCompletionItemKind::Reference;
 
   case CXCursor_NotImplemented:
-    break;
+    return lsCompletionItemKind::Text;
 
   default:
     std::cerr << "Unhandled completion kind " << cursor_kind << std::endl;
@@ -182,24 +192,30 @@ CompletionSession::CompletionSession(const CompilationEntry& file, WorkingFiles*
   // TODO: I think we crash when there are syntax errors.
   active_index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
-  if (active->did_fail) {
-    std::cerr << "Failed to create translation unit; trying again..." << std::endl;
-    active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
-  }
+  std::cerr << "Done creating active; did_fail=" << active->did_fail << std::endl;
+  //if (active->did_fail) {
+  //  std::cerr << "Failed to create translation unit; trying again..." << std::endl;
+  //  active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
+  //}
 
   // Despite requesting clang create a precompiled header on the first parse in
   // Flags() via CXTranslationUnit_CreatePreambleOnFirstParse, it doesn't seem
   // to do so. Immediately reparsing will create one which reduces
   // clang_codeCompleteAt timing from 200ms to 20ms on simple files.
-  if (!active->did_fail)
-    Refresh(working_files);
+  // TODO: figure out why this is crashing so much
+  if (!active->did_fail) {
+    std::cerr << "Start reparse" << std::endl;
+    active->ReparseTranslationUnit(unsaved);
+
+    std::cerr << "Done reparse" << std::endl;
+  }
 }
 
 CompletionSession::~CompletionSession() {}
 
-void CompletionSession::Refresh(WorkingFiles* working_files) {
+void CompletionSession::Refresh(std::vector<CXUnsavedFile>& unsaved) {
   // TODO: Do this off the code completion thread so we don't block completions.
-  active->ReparseTranslationUnit(working_files->AsUnsavedFiles(), Flags());
+  active->ReparseTranslationUnit(unsaved);
 }
 
 CompletionManager::CompletionManager(Project* project, WorkingFiles* working_files) : project(project), working_files(working_files) {}
@@ -267,7 +283,6 @@ NonElidedVector<lsCompletionItem> CompletionManager::CodeComplete(const lsTextDo
 
 
     // Get the primary text to insert.
-
     int num_chunks = clang_getNumCompletionChunks(result.CompletionString);
     for (unsigned i = 0; i < num_chunks; ++i) {
       CXCompletionChunkKind kind = clang_getCompletionChunkKind(result.CompletionString, i);
@@ -276,7 +291,6 @@ NonElidedVector<lsCompletionItem> CompletionManager::CodeComplete(const lsTextDo
         break;
       }
     }
-
     ls_completion_item.detail = BuildDetailString(result.CompletionString);
 
     // Get docs.

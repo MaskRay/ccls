@@ -25,7 +25,7 @@ struct CompletionSession {
   ~CompletionSession();
 
   // Refresh file index.
-  void Refresh(WorkingFiles* working_files);
+  void Refresh(std::vector<CXUnsavedFile>& unsaved);
 };
 
 struct CompletionManager {

@@ -31,6 +31,7 @@ DWORD CheckForError(std::vector<DWORD> allow) {
 
   std::cerr << "Windows error code=" << error << ", message=" << message
             << std::endl;
+
   assert(false);  // debugger break
   exit(1);
 }
