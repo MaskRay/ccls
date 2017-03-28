@@ -182,6 +182,8 @@ CompletionSession::CompletionSession(const CompilationEntry& file, WorkingFiles*
   std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
 
   std::vector<std::string> args = file.args;
+  args.push_back("-x");
+  args.push_back("c++");
   args.push_back("-fparse-all-comments");
 
   std::string sent_args = "";

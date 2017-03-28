@@ -10,6 +10,7 @@
 
 #include <unistd.h>
 #include <stdio.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <semaphore.h>
 #include <time.h>
@@ -105,8 +106,6 @@ struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
   }
 };
 
-#undef CHECKED
-
 std::unique_ptr<PlatformMutex> CreatePlatformMutex(const std::string& name) {
   std::string name2 = "/" + name;
   return MakeUnique<PlatformMutexLinux>(name2);
@@ -118,12 +117,24 @@ std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(
       static_cast<PlatformMutexLinux*>(mutex)->sem_);
 }
 
-void PlatformInit() {
-}
-
 std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
     const std::string& name, size_t size) {
   std::string name2 = "/" + name;
   return MakeUnique<PlatformSharedMemoryLinux>(name2, size);
 }
+
+void PlatformInit() {
+}
+
+std::string NormalizePath(const std::string& path) {
+  errno = 0;
+  char name[PATH_MAX + 1];
+  realpath(path.c_str(), name);
+  if (errno)
+    return path;
+  return name;
+}
+
+#undef CHECKED
+
 #endif

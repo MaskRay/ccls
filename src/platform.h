@@ -25,3 +25,4 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 
 void PlatformInit();
 std::string GetWorkingDirectory();
+std::string NormalizePath(const std::string& path);
