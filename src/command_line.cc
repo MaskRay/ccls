@@ -332,6 +332,7 @@ void QueryDbMainLoop(
       std::string path = msg->project_path;
 
       project->entries = LoadCompilationEntriesFromDirectory(path);
+      std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
       for (int i = 0; i < project->entries.size(); ++i) {
         const CompilationEntry& entry = project->entries[i];
         std::string filepath = entry.filename;

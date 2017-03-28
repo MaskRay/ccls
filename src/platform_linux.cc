@@ -93,7 +93,7 @@ struct PlatformSharedMemoryLinux : public PlatformSharedMemory {
                      PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0 /*offset*/));
     capacity = size;
 
-    std::cout << "Open shared memory name=" << name << ", fd=" << fd_
+    std::cerr << "Open shared memory name=" << name << ", fd=" << fd_
               << ", shared=" << data << ", capacity=" << capacity << std::endl;
   }
 

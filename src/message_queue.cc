@@ -1,6 +1,7 @@
 #include "message_queue.h"
 
 #include <cassert>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <thread>

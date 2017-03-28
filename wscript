@@ -89,7 +89,11 @@ def build(bld):
   bld.program(
       source=cc_files,
       cxxflags=['-std=c++11', '-Wall'],
-      includes=['third_party/rapidjson/include', CLANG_INCLUDE_DIR],
+      includes=[
+        'third_party/',
+        'third_party/doctest/',
+        'third_party/rapidjson/include',
+        CLANG_INCLUDE_DIR],
       lib=['clang', 'rt', 'pthread'],
       libpath=[CLANG_LIB_DIR],
       rpath=[CLANG_LIB_DIR],
