@@ -1208,13 +1208,10 @@ IndexedFile Parse(std::string filename,
   //clang_enableStackTraces();
   //clang_toggleCrashRecovery(1);
 
-  args.push_back("-std=c++11");
+#if defined(_WIN32)
   args.push_back("-fms-compatibility");
   args.push_back("-fdelayed-template-parsing");
-  // args.push_back("-isystem
-  // C:\\Users\\jacob\\Desktop\\superindex\\indexer\\libcxx-3.9.1\\include");
-  // args.push_back("--sysroot
-  // C:\\Users\\jacob\\Desktop\\superindex\\indexer\\libcxx-3.9.1");
+#endif
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);

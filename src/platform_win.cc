@@ -125,4 +125,19 @@ std::string GetWorkingDirectory() {
   char result[MAX_PATH];
   return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
 }
+
+std::string NormalizePath(const std::string& path) {
+  DWORD retval = 0;
+  BOOL success = false;
+  TCHAR buffer[MAX_PATH] = TEXT("");
+  TCHAR buf[MAX_PATH] = TEXT("");
+  TCHAR** lpp_part = { NULL };
+
+  retval = GetFullPathName(path.c_str(), MAX_PATH, buffer, lpp_part);
+  // fail, return original
+  if (retval == 0)
+    return path;
+
+  return buffer;
+}
 #endif

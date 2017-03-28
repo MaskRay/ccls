@@ -41,8 +41,7 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
       EndsWith(file, ".hpp")) {
 
       CompilationEntry entry;
-      entry.directory = project_directory;
-      entry.filename = file;
+      entry.filename = NormalizePath(file);
       entry.args = args;
       result.push_back(entry);
     }
@@ -145,11 +144,10 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
     CompilationEntry entry;
 
     // TODO: remove ComplationEntry::directory
-    entry.directory = clang::ToString(clang_CompileCommand_getDirectory(cx_command));
-    entry.filename = clang::ToString(clang_CompileCommand_getFilename(cx_command));
-
-    std::string normalized = entry.directory + "/" + entry.filename;
-    entry.filename = NormalizePath(normalized);
+    std::string directory = clang::ToString(clang_CompileCommand_getDirectory(cx_command));
+    std::string relative_filename = clang::ToString(clang_CompileCommand_getFilename(cx_command));
+    std::string absolute_filename = directory + "/" + relative_filename;
+    entry.filename = NormalizePath(absolute_filename);
 
     unsigned int num_args = clang_CompileCommand_getNumArgs(cx_command);
     entry.args.reserve(num_args);

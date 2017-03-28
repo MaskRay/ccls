@@ -126,7 +126,12 @@ void lsDocumentUri::SetPath(const std::string& path) {
     raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
   }
 
+  // TODO: proper fix
+#if defined(_WIN32)
+  raw_uri = "file:///" + raw_uri;
+#else
   raw_uri = "file://" + raw_uri;
+#endif
   //std::cerr << "Set uri to " << raw_uri << " from " << path;
 }
 
@@ -141,7 +146,12 @@ std::string lsDocumentUri::GetPath() const {
 
   index = result.find("file://");
   if (index != -1) {
+// TODO: proper fix
+#if defined(_WIN32)
+    result.replace(result.begin() + index, result.begin() + index + 8, "");
+#else
     result.replace(result.begin() + index, result.begin() + index + 7, "");
+#endif
   }
 
   std::replace(result.begin(), result.end(), '\\', '/');

@@ -4,7 +4,6 @@
 #include <vector>
 
 struct CompilationEntry {
-  std::string directory;
   std::string filename;
   std::vector<std::string> args;
 };
