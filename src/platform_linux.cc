@@ -48,6 +48,7 @@ struct PlatformScopedMutexLockLinux : public PlatformScopedMutexLock {
 void* checked(void* result, const char* expr) {
   if (!result) {
     std::cerr << "FAIL errno=" << errno << " in |" << expr << "|" << std::endl;
+    std::cerr << "errno => " << strerror(errno) << std::endl;
     exit(1);
   }
   return result;
@@ -56,6 +57,7 @@ void* checked(void* result, const char* expr) {
 int checked(int result, const char* expr) {
   if (result == -1) {
     std::cerr << "FAIL errno=" << errno << " in |" << expr << "|" << std::endl;
+    std::cerr << "errno => " << strerror(errno) << std::endl;
     exit(1);
   }
   return result;

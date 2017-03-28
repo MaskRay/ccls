@@ -94,7 +94,10 @@ def build(bld):
         'third_party/doctest/',
         'third_party/rapidjson/include',
         CLANG_INCLUDE_DIR],
-      lib=['clang', 'rt', 'pthread'],
+      lib=[
+        'clang',
+        #'rt',
+        'pthread'],
       libpath=[CLANG_LIB_DIR],
       rpath=[CLANG_LIB_DIR],
       target='app')

@@ -26,7 +26,7 @@ namespace {
 const char* kIpcLanguageClientName = "language_client";
 
 const int kNumIndexers = 8 - 1;
-const int kQueueSizeBytes = 1024 * 1024 * 32;
+const int kQueueSizeBytes = 1024 * 8;
 }
 
 struct IndexTranslationUnitRequest {

@@ -4,6 +4,7 @@
 -IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest/doctest
 -IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include
 -IC:/Program Files/LLVM/include
+-I/usr/local/Cellar/llvm/3.9.1/include
 
 #--sysrootC:/Users/jacob/Desktop/superindex/indexer/libcxx
 #-IC:/Users/jacob/Desktop/superindex/indexer/libcxx/include

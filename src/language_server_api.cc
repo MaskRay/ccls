@@ -126,7 +126,7 @@ void lsDocumentUri::SetPath(const std::string& path) {
     raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
   }
 
-  raw_uri = "file:///" + raw_uri;
+  raw_uri = "file://" + raw_uri;
   //std::cerr << "Set uri to " << raw_uri << " from " << path;
 }
 
@@ -141,7 +141,7 @@ std::string lsDocumentUri::GetPath() const {
 
   index = result.find("file://");
   if (index != -1) {
-    result.replace(result.begin() + index, result.begin() + index + 8, "");
+    result.replace(result.begin() + index, result.begin() + index + 7, "");
   }
 
   std::replace(result.begin(), result.end(), '\\', '/');

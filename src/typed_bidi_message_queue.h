@@ -18,10 +18,10 @@ struct TypedBidiMessageQueue {
 
   TypedBidiMessageQueue(const std::string& name, size_t buffer_size)
       : for_server(
-            Buffer::CreateSharedBuffer(name + "_for_server", buffer_size),
+            Buffer::CreateSharedBuffer(name + "_fs", buffer_size),
             false /*buffer_has_data*/),
         for_client(
-            Buffer::CreateSharedBuffer(name + "_for_client", buffer_size),
+            Buffer::CreateSharedBuffer(name + "_fc", buffer_size),
             true /*buffer_has_data*/) {}
 
   void RegisterId(TId id,
