@@ -122,7 +122,7 @@ void lsDocumentUri::SetPath(const std::string& path) {
   raw_uri = path;
 
   size_t index = raw_uri.find(":");
-  if (index != -1) {
+  if (index == 1) { // widows drive letters must always be 1 char
     raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
   }
 

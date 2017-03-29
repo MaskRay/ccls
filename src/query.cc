@@ -32,30 +32,47 @@ std::vector<Out> Transform(const std::vector<In>& input, std::function<Out(In)> 
     result.push_back(op(in));
   return result;
 }
+
+// TODO: These functions are failing. Investigate why.
 Usr MapIdToUsr(const IdCache& id_cache, const TypeId& id) {
+  assert(id_cache.type_id_to_usr.find(id) != id_cache.type_id_to_usr.end());
   return id_cache.type_id_to_usr.find(id)->second;
 }
 Usr MapIdToUsr(const IdCache& id_cache, const FuncId& id) {
+  assert(id_cache.func_id_to_usr.find(id) != id_cache.func_id_to_usr.end());
   return id_cache.func_id_to_usr.find(id)->second;
 }
 Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
+  assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
   return id_cache.var_id_to_usr.find(id)->second;
 }
 QueryableLocation MapIdToUsr(const IdCache& id_cache, const Location& id) {
+  assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
   return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
 }
 
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<TypeId>& ids) {
-  return Transform<TypeId, Usr>(ids, [&](TypeId id) { return id_cache.type_id_to_usr.find(id)->second; });
+  return Transform<TypeId, Usr>(ids, [&](TypeId id) {
+    assert(id_cache.type_id_to_usr.find(id) != id_cache.type_id_to_usr.end());
+    return id_cache.type_id_to_usr.find(id)->second;
+  });
 }
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncId>& ids) {
-  return Transform<FuncId, Usr>(ids, [&](FuncId id) { return id_cache.func_id_to_usr.find(id)->second; });
+  return Transform<FuncId, Usr>(ids, [&](FuncId id) {
+    assert(id_cache.func_id_to_usr.find(id) != id_cache.func_id_to_usr.end());
+    return id_cache.func_id_to_usr.find(id)->second;
+  });
 }
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<VarId>& ids) {
-  return Transform<VarId, Usr>(ids, [&](VarId id) { return id_cache.var_id_to_usr.find(id)->second; });
+  return Transform<VarId, Usr>(ids, [&](VarId id) {
+    assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
+    return id_cache.var_id_to_usr.find(id)->second;
+  });
 }
 std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRef>& ids) {
   return Transform<FuncRef, UsrRef>(ids, [&](FuncRef ref) {
+    assert(id_cache.func_id_to_usr.find(ref.id) != id_cache.func_id_to_usr.end());
+
     UsrRef result;
     result.loc = MapIdToUsr(id_cache, ref.loc);
     result.usr = id_cache.func_id_to_usr.find(ref.id)->second;
@@ -64,6 +81,7 @@ std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRe
 }
 std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::vector<Location>& ids) {
   return Transform<Location, QueryableLocation>(ids, [&](Location id) {
+    assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
     return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
   });
 }
