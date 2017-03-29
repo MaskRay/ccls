@@ -142,7 +142,8 @@ std::vector<std::string> GetPlatformClangArguments() {
   return {
     "-stdlib=libc++",
     "-nostdinc++",
-    "-I/usr/local/Cellar/llvm/3.9.1/include"
+    //"-I/usr/local/Cellar/llvm/3.9.1/include",
+    "-I/Users/jdufault/Personal/super-clang-index/libcxx/include"
   };
 }
 #undef CHECKED

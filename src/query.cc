@@ -131,10 +131,17 @@ QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const VarDefDefin
 QueryableFile::QueryableFile(const IndexedFile& indexed)
   : file_id(indexed.path) {
 
+  // TODO: investigate this
+  //std::cerr << "Adding QueryableFile for " << indexed.path
+  //          << ", file_path_to_file_id.size()=" << indexed.id_cache.file_path_to_file_id.size() << std::endl;
+  //for (auto& entry : indexed.id_cache.file_path_to_file_id)
+  //  std::cerr << "-" << entry.first << std::endl;
+  //assert(indexed.id_cache.file_path_to_file_id.find(indexed.path) !=
+  //       indexed.id_cache.file_path_to_file_id.end());
   auto it = indexed.id_cache.file_path_to_file_id.find(indexed.path);
   if (it == indexed.id_cache.file_path_to_file_id.end()) {
     // TODO: investigate
-    std::cerr << "Unable to find cached file " << indexed.path << std::endl;
+    std::cerr << "!!! FIXME !!! Unable to find cached file " << indexed.path << std::endl;
     return;
   }
 
