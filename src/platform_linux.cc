@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <limits.h>
+#include <string.h>
 #include <stdlib.h>
 #include <semaphore.h>
 #include <time.h>
