@@ -311,8 +311,7 @@ void QueryDbMainLoop(
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = language_client->GetMessages(&language_client->for_server);
   for (auto& message : messages) {
-    // std::cerr << "Processing message " << static_cast<int>(message->ipc_id)
-    // << std::endl;
+    std::cerr << "[querydb] Processing message " << static_cast<int>(message->method_id) << std::endl;
 
     switch (message->method_id) {
     case IpcId::Quit: {
@@ -392,58 +391,62 @@ void QueryDbMainLoop(
       response.id = msg->id;
 
       QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-      if (file) {
-        for (UsrRef ref : file->outline) {
-          SymbolIdx symbol = db->usr_to_symbol[ref.usr];
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
 
-          lsSymbolInformation info;
-          info.location.range.start.line =
-            ref.loc.line - 1;  // TODO: cleanup indexer to negate by 1.
-          info.location.range.start.character =
-            ref.loc.column - 1;  // TODO: cleanup indexer to negate by 1.
-                                 // TODO: store range information.
-          info.location.range.end.line = info.location.range.start.line;
-          info.location.range.end.character =
-            info.location.range.start.character;
+      std::cerr << "File outline size is " << file->outline.size() << std::endl;
+      for (UsrRef ref : file->outline) {
+        SymbolIdx symbol = db->usr_to_symbol[ref.usr];
 
-          // TODO: cleanup namespace/naming so there is only one SymbolKind.
-          switch (symbol.kind) {
-          case SymbolKind::Type: {
-            QueryableTypeDef& def = db->types[symbol.idx];
-            info.name = def.def.qualified_name;
-            info.kind = lsSymbolKind::Class;
-            break;
-          }
-          case SymbolKind::Func: {
-            QueryableFuncDef& def = db->funcs[symbol.idx];
-            info.name = def.def.qualified_name;
-            if (def.def.declaring_type.has_value()) {
-              info.kind = lsSymbolKind::Method;
-              Usr declaring = def.def.declaring_type.value();
-              info.containerName =
-                db->types[db->usr_to_symbol[declaring].idx]
-                .def.qualified_name;
-            }
-            else {
-              info.kind = lsSymbolKind::Function;
-            }
-            break;
-          }
-          case SymbolKind::Var: {
-            QueryableVarDef& def = db->vars[symbol.idx];
-            info.name = def.def.qualified_name;
-            info.kind = lsSymbolKind::Variable;
-            break;
-          }
-          case SymbolKind::File:
-          case SymbolKind::Invalid: {
-            assert(false && "unexpected");
-            break;
-          }
-          };
+        lsSymbolInformation info;
+        info.location.range.start.line =
+          ref.loc.line - 1;  // TODO: cleanup indexer to negate by 1.
+        info.location.range.start.character =
+          ref.loc.column - 1;  // TODO: cleanup indexer to negate by 1.
+                               // TODO: store range information.
+        info.location.range.end.line = info.location.range.start.line;
+        info.location.range.end.character =
+          info.location.range.start.character;
 
-          response.result.push_back(info);
+        // TODO: cleanup namespace/naming so there is only one SymbolKind.
+        switch (symbol.kind) {
+        case SymbolKind::Type: {
+          QueryableTypeDef& def = db->types[symbol.idx];
+          info.name = def.def.qualified_name;
+          info.kind = lsSymbolKind::Class;
+          break;
         }
+        case SymbolKind::Func: {
+          QueryableFuncDef& def = db->funcs[symbol.idx];
+          info.name = def.def.qualified_name;
+          if (def.def.declaring_type.has_value()) {
+            info.kind = lsSymbolKind::Method;
+            Usr declaring = def.def.declaring_type.value();
+            info.containerName =
+              db->types[db->usr_to_symbol[declaring].idx]
+              .def.qualified_name;
+          }
+          else {
+            info.kind = lsSymbolKind::Function;
+          }
+          break;
+        }
+        case SymbolKind::Var: {
+          QueryableVarDef& def = db->vars[symbol.idx];
+          info.name = def.def.qualified_name;
+          info.kind = lsSymbolKind::Variable;
+          break;
+        }
+        case SymbolKind::File:
+        case SymbolKind::Invalid: {
+          assert(false && "unexpected");
+          break;
+        }
+        };
+
+        response.result.push_back(info);
       }
 
       SendOutMessageToClient(language_client, response);
@@ -459,46 +462,49 @@ void QueryDbMainLoop(
       lsDocumentUri file_as_uri = msg->params.textDocument.uri;
 
       QueryableFile* file = FindFile(db, file_as_uri.GetPath());
-      if (file) {
-        for (UsrRef ref : file->outline) {
-          SymbolIdx symbol = db->usr_to_symbol[ref.usr];
-          switch (symbol.kind) {
-          case SymbolKind::Type: {
-            QueryableTypeDef& def = db->types[symbol.idx];
-            AddCodeLens(&response.result, ref.loc, def.uses,
-              true /*only_interesting*/, "reference",
-              "references");
-            AddCodeLens(&response.result, db, ref.loc, def.derived,
-              false /*only_interesting*/, "derived", "derived");
-            break;
-          }
-          case SymbolKind::Func: {
-            QueryableFuncDef& def = db->funcs[symbol.idx];
-            AddCodeLens(&response.result, ref.loc, def.uses,
-              false /*only_interesting*/, "reference",
-              "references");
-            AddCodeLens(&response.result, ref.loc, def.callers,
-              false /*only_interesting*/, "caller", "callers");
-            AddCodeLens(&response.result, ref.loc, def.def.callees,
-              false /*only_interesting*/, "callee", "callees");
-            AddCodeLens(&response.result, db, ref.loc, def.derived,
-              false /*only_interesting*/, "derived", "derived");
-            break;
-          }
-          case SymbolKind::Var: {
-            QueryableVarDef& def = db->vars[symbol.idx];
-            AddCodeLens(&response.result, ref.loc, def.uses,
-              false /*only_interesting*/, "reference",
-              "references");
-            break;
-          }
-          case SymbolKind::File:
-          case SymbolKind::Invalid: {
-            assert(false && "unexpected");
-            break;
-          }
-          };
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
+
+      for (UsrRef ref : file->outline) {
+        SymbolIdx symbol = db->usr_to_symbol[ref.usr];
+        switch (symbol.kind) {
+        case SymbolKind::Type: {
+          QueryableTypeDef& def = db->types[symbol.idx];
+          AddCodeLens(&response.result, ref.loc, def.uses,
+            true /*only_interesting*/, "reference",
+            "references");
+          AddCodeLens(&response.result, db, ref.loc, def.derived,
+            false /*only_interesting*/, "derived", "derived");
+          break;
         }
+        case SymbolKind::Func: {
+          QueryableFuncDef& def = db->funcs[symbol.idx];
+          AddCodeLens(&response.result, ref.loc, def.uses,
+            false /*only_interesting*/, "reference",
+            "references");
+          AddCodeLens(&response.result, ref.loc, def.callers,
+            false /*only_interesting*/, "caller", "callers");
+          AddCodeLens(&response.result, ref.loc, def.def.callees,
+            false /*only_interesting*/, "callee", "callees");
+          AddCodeLens(&response.result, db, ref.loc, def.derived,
+            false /*only_interesting*/, "derived", "derived");
+          break;
+        }
+        case SymbolKind::Var: {
+          QueryableVarDef& def = db->vars[symbol.idx];
+          AddCodeLens(&response.result, ref.loc, def.uses,
+            false /*only_interesting*/, "reference",
+            "references");
+          break;
+        }
+        case SymbolKind::File:
+        case SymbolKind::Invalid: {
+          assert(false && "unexpected");
+          break;
+        }
+        };
       }
 
       SendOutMessageToClient(language_client, response);
@@ -693,7 +699,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
 
       response.result.capabilities.completionProvider = lsCompletionOptions();
       response.result.capabilities.completionProvider->resolveProvider = false;
-      response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->", ":", ">" };
+      response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
 
       response.result.capabilities.codeLensProvider = lsCodeLensOptions();
       response.result.capabilities.codeLensProvider->resolveProvider = false;
@@ -724,6 +730,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
+      std::cerr << "Spending message " << (int)message->method_id << std::endl;
       ipc->SendMessage(&ipc->for_server, message->method_id, *message.get());
       break;
     }

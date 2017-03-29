@@ -1,6 +1,7 @@
 #include "TranslationUnit.h"
 #include "Tokens.h"
 #include "Utility.h"
+#include "../platform.h"
 #include <fstream>
 #include <sstream>
 #include <cassert>
@@ -16,9 +17,12 @@ TranslationUnit::TranslationUnit(
   unsigned flags) {
 
   std::vector<const char*> args;
-  for (const std::string& a : arguments) {
+  for (const std::string& a : arguments)
     args.push_back(a.c_str());
-  }
+
+  std::vector<std::string> platform_args = GetPlatformClangArguments();
+  for (const auto& arg : platform_args)
+    args.push_back(arg.c_str());
 
   CXErrorCode error_code = clang_parseTranslationUnit2(
     index.cx_index,

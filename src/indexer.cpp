@@ -666,9 +666,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   IndexedFile* db = param->db;
   NamespaceHelper* ns = param->ns;
 
-  // std::cerr << "DECL kind=" << decl->entityInfo->kind << " at " <<
-  // db->id_cache.Resolve(decl->cursor, false).ToPrettyString(&db->id_cache) <<
-  // std::endl;
+
+  //std::cerr << "DECL kind=" << decl->entityInfo->kind << " at " << db->id_cache.Resolve(decl->cursor, false).ToPrettyString(&db->id_cache) << std::endl;
 
   switch (decl->entityInfo->kind) {
     case CXIdxEntity_CXXNamespace: {
@@ -1197,21 +1196,11 @@ void indexEntityReference(CXClientData client_data,
   }
 }
 
-void emptyIndexDeclaration(CXClientData client_data,
-                           const CXIdxDeclInfo* decl) {}
-void emptyIndexEntityReference(CXClientData client_data,
-                               const CXIdxEntityRefInfo* ref) {}
-
 IndexedFile Parse(std::string filename,
                   std::vector<std::string> args,
                   bool dump_ast) {
-  //clang_enableStackTraces();
-  //clang_toggleCrashRecovery(1);
-
-#if defined(_WIN32)
-  args.push_back("-fms-compatibility");
-  args.push_back("-fdelayed-template-parsing");
-#endif
+  clang_enableStackTraces();
+  clang_toggleCrashRecovery(1);
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);

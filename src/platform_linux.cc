@@ -137,6 +137,14 @@ std::string NormalizePath(const std::string& path) {
   return name;
 }
 
+std::vector<std::string> GetPlatformClangArguments() {
+  // TODO: use install config variable for path?
+  return {
+    "-stdlib=libc++",
+    "-nostdinc++",
+    "-I/usr/local/Cellar/llvm/3.9.1/include"
+  };
+}
 #undef CHECKED
 
 #endif

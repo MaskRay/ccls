@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 struct PlatformMutex {
   virtual ~PlatformMutex();
@@ -26,3 +27,6 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 void PlatformInit();
 std::string GetWorkingDirectory();
 std::string NormalizePath(const std::string& path);
+
+// Returns any clang arguments that are specific to the current platform.
+std::vector<std::string> GetPlatformClangArguments();
