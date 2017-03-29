@@ -113,7 +113,14 @@ QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const VarDefDefin
 QueryableFile::QueryableFile(const IndexedFile& indexed)
   : file_id(indexed.path) {
 
-  FileId local_file_id = indexed.id_cache.file_path_to_file_id.find(indexed.path)->second;
+  auto it = indexed.id_cache.file_path_to_file_id.find(indexed.path);
+  if (it == indexed.id_cache.file_path_to_file_id.end()) {
+    // TODO: investigate
+    std::cerr << "Unable to find cached file " << indexed.path << std::endl;
+    return;
+  }
+
+  FileId local_file_id = it->second;
   auto add_outline = [this, &indexed, local_file_id](Usr usr, Location location) {
     if (location.file_id() == local_file_id)
       outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));

@@ -9,9 +9,9 @@
 -IC:/Program Files/LLVM/include
 
 # Use libcxx
--stdlib=libc++
--nostdinc++
--IC:/Users/jacob/Desktop/superindex/indexer/libcxx/include
+#-stdlib=libc++
+#-nostdinc++
+#-IC:/Users/jacob/Desktop/superindex/indexer/libcxx/include
 #-fms-compatibility
 #-fdelayed-template-parsing
 
