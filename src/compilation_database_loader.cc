@@ -143,7 +143,6 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
     CXCompileCommand cx_command = clang_CompileCommands_getCommand(cx_commands, i);
     CompilationEntry entry;
 
-    // TODO: remove ComplationEntry::directory
     std::string directory = clang::ToString(clang_CompileCommand_getDirectory(cx_command));
     std::string relative_filename = clang::ToString(clang_CompileCommand_getFilename(cx_command));
     std::string absolute_filename = directory + "/" + relative_filename;

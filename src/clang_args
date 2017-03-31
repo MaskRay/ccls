@@ -4,15 +4,15 @@
 
 # Includes
 # Windows
-#-IC:/Users/jacob/Desktop/superindex/indexer/third_party
-#-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest
-#-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include
-#-IC:/Program Files/LLVM/include
+-IC:/Users/jacob/Desktop/superindex/indexer/third_party
+-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest
+-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include
+-IC:/Program Files/LLVM/include
 # OSX
--I/Users/jdufault/Personal/super-clang-index/third_party
--I/Users/jdufault/Personal/super-clang-index/third_party/doctest
--I/Users/jdufault/Personal/super-clang-index/third_party/rapidjson/include
--I/Users/jdufault/Personal/super-clang-index/build/clang+llvm-4.0.0-x86_64-apple-darwin/include
+#-I/Users/jdufault/Personal/super-clang-index/third_party
+#-I/Users/jdufault/Personal/super-clang-index/third_party/doctest
+#-I/Users/jdufault/Personal/super-clang-index/third_party/rapidjson/include
+#-I/Users/jdufault/Personal/super-clang-index/build/clang+llvm-4.0.0-x86_64-apple-darwin/include
 
 # Use libcxx
 #-stdlib=libc++

@@ -94,6 +94,21 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   }
 }
 
+std::string BuildLabelString(CXCompletionString completion_string) {
+  std::string label;
+
+  int num_chunks = clang_getNumCompletionChunks(completion_string);
+  for (unsigned i = 0; i < num_chunks; ++i) {
+    CXCompletionChunkKind kind = clang_getCompletionChunkKind(completion_string, i);
+    if (kind == CXCompletionChunk_TypedText) {
+      label += clang::ToString(clang_getCompletionChunkText(completion_string, i));
+      break;
+    }
+  }
+
+  return label;
+}
+
 std::string BuildDetailString(CXCompletionString completion_string) {
   std::string detail;
 
@@ -249,13 +264,12 @@ NonElidedVector<lsCompletionItem> CompletionManager::CodeComplete(const lsTextDo
     std::cerr << "Code completion failed" << std::endl;
     return ls_result;
   }
-  std::cerr << "clang_codeCompleteAt took " << timer.ElapsedMilliseconds() << "ms; got " << cx_results->NumResults << " results" << std::endl;
+  timer.ResetAndPrint("clangCodeCompleteAt");
+  std::cerr << "Got " << cx_results->NumResults << " results" << std::endl;
 
   // TODO: for comments we could hack the unsaved buffer and transform // into ///
 
-  timer.Reset();
   ls_result.reserve(cx_results->NumResults);
-  std::cerr << "Reserving results took " << timer.ElapsedMilliseconds() << "ms" << std::endl;
 
   timer.Reset();
   for (int i = 0; i < cx_results->NumResults; ++i) {
@@ -281,26 +295,14 @@ NonElidedVector<lsCompletionItem> CompletionManager::CodeComplete(const lsTextDo
     // TODO: fill in more data
     lsCompletionItem ls_completion_item;
 
+    // kind/label/detail/docs
     ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-
-
-    // Get the primary text to insert.
-    int num_chunks = clang_getNumCompletionChunks(result.CompletionString);
-    for (unsigned i = 0; i < num_chunks; ++i) {
-      CXCompletionChunkKind kind = clang_getCompletionChunkKind(result.CompletionString, i);
-      if (kind == CXCompletionChunk_TypedText) {
-        ls_completion_item.label += clang::ToString(clang_getCompletionChunkText(result.CompletionString, i));
-        break;
-      }
-    }
+    ls_completion_item.label = BuildLabelString(result.CompletionString);
     ls_completion_item.detail = BuildDetailString(result.CompletionString);
-
-    // Get docs.
     ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
 
-    // Set priority, and make some adjustments.
+    // Priority
     int priority = clang_getCompletionPriority(result.CompletionString);
-
     if (result.CursorKind == CXCursor_Destructor) {
       priority *= 100;
       //std::cerr << "Bumping[destructor] " << ls_completion_item.label << std::endl;
@@ -321,29 +323,12 @@ NonElidedVector<lsCompletionItem> CompletionManager::CodeComplete(const lsTextDo
 
     ls_result.push_back(ls_completion_item);
   }
-  std::cerr << "Building completion results took " << timer.ElapsedMilliseconds() << "ms" << std::endl;
+  timer.ResetAndPrint("Building completion results");
 
-  timer.Reset();
   clang_disposeCodeCompleteResults(cx_results);
-  std::cerr << "clang_disposeCodeCompleteResults took " << timer.ElapsedMilliseconds() << "ms" << std::endl;
-
-  // Score completions by priority.
-  /*
-  timer.Reset();
-  std::sort(
-    ls_result.begin(), ls_result.end(),
-    [](const lsCompletionItem& a, const lsCompletionItem& b) {
-      return a.priority_ < b.priority_;
-    });
-  std::cerr << "Sorting completion results took " << timer.ElapsedMilliseconds() << "ms" << std::endl;
-  */
-  //std::cerr << std::endl;
-  //for (auto& result : ls_result) {
-  //  std::cerr << "SORTED priority=" << result.priority_ << ", sortText=" << result.sortText << ", label=" << result.label << std::endl;
-  //}
+  timer.ResetAndPrint("clang_disposeCodeCompleteResults ");
 
   return ls_result;
-  //clang_codeCompleteAt()
 
   // we should probably main two translation units, one for
   // serving current requests, and one that is reparsing (follow qtcreator)

@@ -168,19 +168,14 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
 
     Timer time;
     IndexedFile file = Parse(request->path, request->args);
-    std::cerr << "Parsing/indexing took " << time.ElapsedMilliseconds()
-      << "ms" << std::endl;
+    time.ResetAndPrint("Parsing/indexing");
 
-    time.Reset();
     IndexUpdate update(file);
     IndexTranslationUnitResponse response(update);
-    std::cerr << "Creating index update took " << time.ElapsedMilliseconds()
-      << "ms" << std::endl;
+    time.ResetAndPrint("Creating index update/response");
 
-    time.Reset();
     responses->Enqueue(response);
-    std::cerr << "Sending to server took " << time.ElapsedMilliseconds()
-      << "ms" << std::endl;
+    time.ResetAndPrint("Sending update to server");
   }
 }
 
@@ -212,11 +207,9 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   const char* singular,
   const char* plural) {
   TCodeLens code_lens;
-  code_lens.range.start.line =
-    loc.line - 1;  // TODO: cleanup indexer to negate by 1.
-  code_lens.range.start.character =
-    loc.column - 1;  // TODO: cleanup indexer to negate by 1.
-                     // TODO: store range information.
+  code_lens.range.start.line = loc.line - 1;
+  code_lens.range.start.character = loc.column - 1;
+  // TODO: store range information.
   code_lens.range.end.line = code_lens.range.start.line;
   code_lens.range.end.character = code_lens.range.start.character;
 
@@ -379,7 +372,7 @@ void QueryDbMainLoop(
 
       Timer timer;
       response.Write(std::cout);
-      std::cerr << "Writing completion results to stdout took " << timer.ElapsedMilliseconds() << "ms" << std::endl;
+      timer.ResetAndPrint("Writing completion results");
       //SendOutMessageToClient(language_client, response);
       break;
     }
@@ -620,8 +613,7 @@ void QueryDbMainLoop(
 
     Timer time;
     db->ApplyIndexUpdate(&response->update);
-    std::cerr << "Applying index update took " << time.ElapsedMilliseconds()
-      << "ms" << std::endl;
+    time.ResetAndPrint("Applying index update");
   }
 }
 

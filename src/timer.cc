@@ -1,11 +1,18 @@
 #include "timer.h"
 
+#include <iostream>
+
 Timer::Timer() {
   Reset();
 }
 
 void Timer::Reset() {
   start = Clock::now();
+}
+
+void Timer::ResetAndPrint(const std::string& message) {
+  std::cerr << message << " took " << ElapsedMilliseconds() << "ms" << std::endl;
+  Reset();
 }
 
 long long Timer::ElapsedMilliseconds() {

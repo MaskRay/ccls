@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <string>
 
 struct Timer {
   using Clock = std::chrono::high_resolution_clock;
@@ -10,6 +11,8 @@ struct Timer {
 
   // Restart/reset the timer.
   void Reset();
+  // Resets timer and prints a message like "<foo> took 5ms"
+  void ResetAndPrint(const std::string& message);
 
   // Return the number of milliseconds since the timer was last reset.
   long long ElapsedMilliseconds();
