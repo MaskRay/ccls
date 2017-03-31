@@ -1,6 +1,5 @@
 #include "query.h"
 
-#include "compilation_database_loader.h"
 #include "indexer.h"
 
 #include <optional.h>

@@ -1,6 +1,5 @@
 // TODO: cleanup includes
 #include "code_completion.h"
-#include "compilation_database_loader.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
@@ -323,7 +322,7 @@ void QueryDbMainLoop(
       Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
-      project->entries = LoadCompilationEntriesFromDirectory(path);
+      project->Load(path);
       std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
       //for (int i = 0; i < 10; ++i)
         //std::cerr << project->entries[i].filename << std::endl;
