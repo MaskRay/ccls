@@ -15,6 +15,7 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -151,6 +152,28 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
 }
 
+void WriteToCache(std::string filename, IndexedFile& file) {
+  // TODO/FIXME
+  const char* kCacheDirectory = "C:/Users/jacob/Desktop/superindex/indexer/CACHE/";
+  
+  
+  std::replace(filename.begin(), filename.end(), '\\', '_');
+  std::replace(filename.begin(), filename.end(), '/', '_');
+  std::replace(filename.begin(), filename.end(), ':', '_');
+  std::replace(filename.begin(), filename.end(), '.', '_');
+  std::string cache_file = kCacheDirectory + filename + ".json";
+
+  std::string indexed_content = Serialize(file);
+
+
+  std::cerr << "Caching to " << cache_file << std::endl;
+  std::ofstream cache;
+  cache.open(cache_file);
+  assert(cache.good());
+  cache << indexed_content;
+  cache.close();
+}
+
 void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
   while (true) {
     // Try to get a request. If there isn't one, sleep for a little while.
@@ -169,12 +192,17 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
     IndexedFile file = Parse(request->path, request->args);
     time.ResetAndPrint("Parsing/indexing");
 
+    // TODO: Check cache for existing index; compute diff if there is one.
     IndexUpdate update(file);
     IndexTranslationUnitResponse response(update);
     time.ResetAndPrint("Creating index update/response");
 
     responses->Enqueue(response);
     time.ResetAndPrint("Sending update to server");
+
+    // Cache file so we can diff it later.
+    WriteToCache(request->path, file);
+    time.ResetAndPrint("Cache index update to disk");
   }
 }
 

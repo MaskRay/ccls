@@ -1199,6 +1199,9 @@ void indexEntityReference(CXClientData client_data,
 IndexedFile Parse(std::string filename,
                   std::vector<std::string> args,
                   bool dump_ast) {
+  // TODO: We are currently emitting too much information for things not in the main file. If we're
+  // not in the main file, we should only emit references.
+
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
 
