@@ -6,6 +6,19 @@
 
 #include <tinydir.h>
 
+// See http://stackoverflow.com/a/2072890
+bool EndsWith(const std::string& value, const std::string& ending) {
+  if (ending.size() > value.size())
+    return false;
+  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+}
+
+bool StartsWith(const std::string& value, const std::string& start) {
+  if (start.size() > value.size())
+    return false;
+  return std::equal(start.begin(), start.end(), value.begin());
+}
+
 static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
   std::vector<std::string> result;
 

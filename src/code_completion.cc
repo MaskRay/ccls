@@ -26,12 +26,6 @@ unsigned Flags() {
     CXTranslationUnit_DetailedPreprocessingRecord;
 }
 
-bool StartsWith(const std::string& value, const std::string& start) {
-  if (start.size() > value.size())
-    return false;
-  return std::equal(start.begin(), start.end(), value.begin());
-}
-
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
 

@@ -5,6 +5,10 @@
 #include <vector>
 #include <memory>
 
+// Returns true if |value| starts/ends with |start| or |ending|.
+bool StartsWith(const std::string& value, const std::string& start);
+bool EndsWith(const std::string& value, const std::string& ending);
+
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
 std::vector<std::string> ReadLines(std::string filename);
