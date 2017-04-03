@@ -18,6 +18,8 @@ const char* IpcIdToString(IpcId id) {
     return "textDocument/didClose";
   case IpcId::TextDocumentCompletion:
     return "textDocument/completion";
+  case IpcId::TextDocumentDefinition:
+    return "textDocument/definition";
   case IpcId::TextDocumentDocumentSymbol:
     return "textDocument/documentSymbol";
   case IpcId::TextDocumentCodeLens:

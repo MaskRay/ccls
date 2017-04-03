@@ -1103,6 +1103,19 @@ struct Out_TextDocumentComplete : public lsOutMessage<Out_TextDocumentComplete> 
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
+// Goto definition
+struct Ipc_TextDocumentDefinition : public IpcMessage<Ipc_TextDocumentDefinition> {
+  const static IpcId kIpcId = IpcId::TextDocumentDefinition;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDefinition, id, params);
+struct Out_TextDocumentDefinition : public lsOutMessage<Out_TextDocumentDefinition> {
+  lsRequestId id;
+  NonElidedVector<lsLocation> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
 // List symbols in a document.
 struct lsDocumentSymbolParams {

@@ -95,15 +95,18 @@ void Reflect(TVisitor& visitor, MergeableUpdate<TValue>& value) {
 
 struct QueryableFile {
   using OutlineUpdate = MergeableUpdate<UsrRef>;
+  using AllSymboslUpdate = MergeableUpdate<UsrRef>;
 
   Usr file_id;
-  // Outline of the file (ie, all symbols).
+  // Outline of the file (ie, for code lens).
   std::vector<UsrRef> outline;
+  // Every symbol found in the file (ie, for goto definition)
+  std::vector<UsrRef> all_symbols;
 
   QueryableFile() {} // For serialization.
   QueryableFile(const IndexedFile& indexed);
 };
-MAKE_REFLECT_STRUCT(QueryableFile, file_id, outline);
+MAKE_REFLECT_STRUCT(QueryableFile, file_id, outline, all_symbols);
 
 struct QueryableTypeDef {
   using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
@@ -186,6 +189,7 @@ struct IndexUpdate {
   std::vector<Usr> files_removed;
   std::vector<QueryableFile> files_added;
   std::vector<QueryableFile::OutlineUpdate> files_outline;
+  std::vector<QueryableFile::AllSymboslUpdate> files_all_symbols;
 
   // Type updates.
   std::vector<Usr> types_removed;
@@ -227,6 +231,7 @@ MAKE_REFLECT_STRUCT(IndexUpdate,
   files_removed,
   files_added,
   files_outline,
+  files_all_symbols,
   types_removed,
   types_added,
   types_def_changed,

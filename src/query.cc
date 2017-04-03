@@ -151,23 +151,44 @@ QueryableFile::QueryableFile(const IndexedFile& indexed)
     if (location.file_id() == local_file_id)
       outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
   };
+  auto add_all_symbols = [this, &indexed, local_file_id](Usr usr, Location location) {
+    if (location.file_id() == local_file_id)
+      all_symbols.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
+  };
 
   for (const IndexedTypeDef& def : indexed.types) {
-    if (def.def.definition.has_value())
+    if (def.def.definition.has_value()) {
       add_outline(def.def.usr, def.def.definition.value());
+      add_all_symbols(def.def.usr, def.def.definition.value());
+    }
+    for (const Location& use : def.uses)
+      add_all_symbols(def.def.usr, use);
   }
   for (const IndexedFuncDef& def : indexed.funcs) {
-    for (Location decl : def.declarations)
-      add_outline(def.def.usr, decl);
-    if (def.def.definition.has_value())
+    if (def.def.definition.has_value()) {
       add_outline(def.def.usr, def.def.definition.value());
+      add_all_symbols(def.def.usr, def.def.definition.value());
+    }
+    for (Location decl : def.declarations) {
+      add_outline(def.def.usr, decl);
+      add_all_symbols(def.def.usr, decl);
+    }
+    for (const Location& use : def.uses)
+      add_all_symbols(def.def.usr, use);
   }
   for (const IndexedVarDef& def : indexed.vars) {
-    if (def.def.definition.has_value())
+    if (def.def.definition.has_value()) {
       add_outline(def.def.usr, def.def.definition.value());
+      add_all_symbols(def.def.usr, def.def.definition.value());
+    }
+    for (const Location& use : def.uses)
+      add_all_symbols(def.def.usr, use);
   }
 
   std::sort(outline.begin(), outline.end(), [](const UsrRef& a, const UsrRef& b) {
+    return a.loc < b.loc;
+  });
+  std::sort(all_symbols.begin(), all_symbols.end(), [](const UsrRef& a, const UsrRef& b) {
     return a.loc < b.loc;
   });
 }
@@ -488,6 +509,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
   INDEX_UPDATE_MERGE(files_removed);
   INDEX_UPDATE_MERGE(files_added);
   INDEX_UPDATE_MERGE(files_outline);
+  INDEX_UPDATE_MERGE(files_all_symbols);
 
   INDEX_UPDATE_MERGE(types_removed);
   INDEX_UPDATE_MERGE(types_added);

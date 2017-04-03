@@ -135,6 +135,7 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_TextDocumentDidChange>(ipc.get());
   RegisterId<Ipc_TextDocumentDidClose>(ipc.get());
   RegisterId<Ipc_TextDocumentComplete>(ipc.get());
+  RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
   RegisterId<Ipc_TextDocumentCodeLens>(ipc.get());
   RegisterId<Ipc_CodeLensResolve>(ipc.get());
@@ -154,6 +155,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
@@ -344,6 +346,36 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
+optional<QueryableLocation> GetDefinitionOfUsr(QueryableDatabase* db, const Usr& usr) {
+  SymbolIdx symbol = db->usr_to_symbol[usr];
+  switch (symbol.kind) {
+  case SymbolKind::Type: {
+    QueryableTypeDef* def = &db->types[symbol.idx];
+    if (def->def.definition)
+      return def->def.definition.value();
+    break;
+  }
+  case SymbolKind::Func: {
+    QueryableFuncDef* def = &db->funcs[symbol.idx];
+    if (def->def.definition)
+      return def->def.definition.value();
+    break;
+  }
+  case SymbolKind::Var: {
+    QueryableVarDef* def = &db->vars[symbol.idx];
+    if (def->def.definition)
+      return def->def.definition.value();
+    break;
+  }
+  case SymbolKind::File:
+  case SymbolKind::Invalid: {
+    assert(false && "unexpected");
+    break;
+  }
+  }
+  return nullopt;
+}
+
 void AddCodeLens(std::vector<TCodeLens>* result,
   QueryableDatabase* db,
   QueryableLocation loc,
@@ -355,32 +387,9 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   std::vector<QueryableLocation> uses0;
   uses0.reserve(usrs.size());
   for (const Usr& usr : usrs) {
-    SymbolIdx symbol = db->usr_to_symbol[usr];
-    switch (symbol.kind) {
-    case SymbolKind::Type: {
-      QueryableTypeDef* def = &db->types[symbol.idx];
-      if (def->def.definition)
-        uses0.push_back(def->def.definition.value());
-      break;
-    }
-    case SymbolKind::Func: {
-      QueryableFuncDef* def = &db->funcs[symbol.idx];
-      if (def->def.definition)
-        uses0.push_back(def->def.definition.value());
-      break;
-    }
-    case SymbolKind::Var: {
-      QueryableVarDef* def = &db->vars[symbol.idx];
-      if (def->def.definition)
-        uses0.push_back(def->def.definition.value());
-      break;
-    }
-    case SymbolKind::File:
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
-    }
-    }
+    optional<QueryableLocation> loc = GetDefinitionOfUsr(db, usr);
+    if (loc)
+      uses0.push_back(loc.value());
   }
   AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
@@ -456,6 +465,7 @@ void QueryDbMainLoop(
     }
 
     case IpcId::TextDocumentCompletion: {
+      // TODO: better performance
       auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
       Out_TextDocumentComplete response;
       response.id = msg->id;
@@ -466,6 +476,48 @@ void QueryDbMainLoop(
       response.Write(std::cout);
       timer.ResetAndPrint("Writing completion results");
       //SendOutMessageToClient(language_client, response);
+      break;
+    }
+
+    case IpcId::TextDocumentDefinition: {
+      auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
+
+      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
+
+      Out_TextDocumentDefinition response;
+      response.id = msg->id;
+
+      // TODO: Edge cases (whitespace, etc) will work a lot better
+      // if we store range information instead of hacking it.
+      int target_line = msg->params.position.line + 1;
+      int target_column = msg->params.position.character + 1;
+      int best_dist = INT_MAX;
+      for (const UsrRef& ref : file->all_symbols) {
+        if (ref.loc.line == target_line) {
+          if (ref.loc.column > target_column)
+            continue;
+
+          int dist = target_column - ref.loc.column;
+          if (dist < best_dist) {
+            optional<QueryableLocation> location = GetDefinitionOfUsr(db, ref.usr);
+
+            if (location) {
+              best_dist = dist;
+              response.result.clear();
+              response.result.push_back(GetLsLocation(location.value()));
+            }
+
+            if (dist == 0)
+              break;
+          }
+        }
+      }
+
+      SendOutMessageToClient(language_client, response);
       break;
     }
 
@@ -575,9 +627,9 @@ void QueryDbMainLoop(
           //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
           //  "references");
           AddCodeLens(&response.result, ref.loc.OffsetColumn(1), def.callers,
-            false /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
-          AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
-            false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
+            true /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
+          //AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
+          //  false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
           AddCodeLens(&response.result, db, ref.loc.OffsetColumn(3), def.derived,
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
           break;
@@ -793,6 +845,8 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       response.result.capabilities.codeLensProvider = lsCodeLensOptions();
       response.result.capabilities.codeLensProvider->resolveProvider = false;
 
+      response.result.capabilities.definitionProvider = true;
+
       response.result.capabilities.documentSymbolProvider = true;
 
       response.result.capabilities.workspaceSymbolProvider = true;
@@ -816,6 +870,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDidChange:
     case IpcId::TextDocumentDidClose: {
     case IpcId::TextDocumentCompletion:
+    case IpcId::TextDocumentDefinition:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
@@ -903,7 +958,7 @@ int main(int argc, char** argv) {
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  std::this_thread::sleep_for(std::chrono::seconds(3));
+  //std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
   RegisterMessageTypes();
