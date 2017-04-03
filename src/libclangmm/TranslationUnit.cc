@@ -24,6 +24,11 @@ TranslationUnit::TranslationUnit(
   for (const auto& arg : platform_args)
     args.push_back(arg.c_str());
 
+  std::cerr << "Parsing " << filepath << " with args ";
+  for (const auto& arg : args)
+    std::cerr << arg << " ";
+  std::cerr << std::endl;
+
   CXErrorCode error_code = clang_parseTranslationUnit2(
     index.cx_index,
     filepath.c_str(),

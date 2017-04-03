@@ -15,6 +15,7 @@ OUTPUT:
       "short_name": "Type",
       "qualified_name": "Type",
       "definition": "1:1:8",
+      "instantiations": [0, 1, 2, 3, 4, 5],
       "uses": ["*1:1:8", "*1:3:10", "*1:3:26", "*1:4:3", "*1:5:3", "*1:6:9", "*1:7:9"]
     }],
   "funcs": [{

@@ -22,7 +22,7 @@ std::string ToString(const rapidjson::Document& document) {
   return buffer.GetString();
 }
 
-std::vector<std::string> split_string(const std::string& str, const std::string& delimiter) {
+std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter) {
   // http://stackoverflow.com/a/13172514
   std::vector<std::string> strings;
 
@@ -40,22 +40,30 @@ std::vector<std::string> split_string(const std::string& str, const std::string&
 }
 
 
-void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
-  std::vector<std::string> actual_output;
-  {
-    std::string buffer = ToString(actual);
-    actual_output = split_string(buffer, "\n");
-  }
+void DiffDocuments(std::string path, rapidjson::Document& expected, rapidjson::Document& actual) {
+  std::string joined_actual_output = ToString(actual);
+  std::vector<std::string> actual_output = SplitString(joined_actual_output, "\n");
+  std::string joined_expected_output = ToString(expected);
+  std::vector<std::string> expected_output = SplitString(joined_expected_output, "\n");
 
-  std::vector<std::string> expected_output;
-  {
-    std::string buffer = ToString(expected);
-    expected_output = split_string(buffer, "\n");
-  }
+
+  std::cout << "[FAILED] " << path << std::endl;
+  std::cout << "Expected output for " << path << ":" << std::endl;
+  std::cout << joined_expected_output << std::endl;
+  std::cout << "Actual output for " << path << ":" << std::endl;
+  std::cout << joined_actual_output << std::endl;
+  std::cout << std::endl;
+
+  int max_diff = 5;
 
   int len = std::min(actual_output.size(), expected_output.size());
   for (int i = 0; i < len; ++i) {
     if (actual_output[i] != expected_output[i]) {
+      if (--max_diff < 0) {
+        std::cout << "(... more lines may differ ...)" << std::endl;
+        break;
+      }
+
       std::cout << "Line " << i << " differs:" << std::endl;
       std::cout << "  expected: " << expected_output[i] << std::endl;
       std::cout << "  actual:   " << actual_output[i] << std::endl;
@@ -78,7 +86,7 @@ void DiffDocuments(rapidjson::Document& expected, rapidjson::Document& actual) {
 void VerifySerializeToFrom(IndexedFile& file) {
   return; // TODO: reenable
   std::string expected = file.ToString();
-  std::string actual = Deserialize("foo.cc", Serialize(file)).ToString();
+  std::string actual = Deserialize("foo.cc", Serialize(file)).value().ToString();
   if (expected != actual) {
     std::cerr << "Serialization failure" << std::endl;;
     assert(false);
@@ -99,9 +107,11 @@ void RunTests() {
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
     //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
-    //if (path != "tests/foo2.cc") continue;
-    //if (path != "tests/namespaces/namespace_reference.cc") continue;
+    //if (path != "tests/multi_file/header.h") continue;
+    //if (path != "tests/multi_file/impl.cc") continue;
+    //if (path != "tests/inheritance/class_inherit_templated_parent.cc") continue;
     //if (path != "tests/templates/implicit_variable_instantiation.cc") continue;
+    //if (path != "tests/_empty_test.cc") continue;
 
     //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
     //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
@@ -114,7 +124,14 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {}, false /*dump_ast*/);
+    IndexedFile db = Parse(path, {
+        "-xc++",
+        "-std=c++11",
+        "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",
+        "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest/",
+        "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include",
+        "-IC:/Users/jacob/Desktop/superindex/indexer/src"
+      }, false /*dump_ast*/);
     VerifySerializeToFrom(db);
     std::string actual_output = db.ToString();
 
@@ -125,14 +142,7 @@ void RunTests() {
       std::cout << "[PASSED] " << path << std::endl;
     }
     else {
-      std::cout << "[FAILED] " << path << std::endl;
-      std::cout << "Expected output for " << path << ":" << std::endl;
-      std::cout << expected_output;
-      std::cout << "Actual output for " << path << ":" << std::endl;
-      std::cout << actual_output;
-      std::cout << std::endl;
-      std::cout << std::endl;
-      DiffDocuments(expected, actual);
+      DiffDocuments(path, expected, actual);
       break;
     }
   }

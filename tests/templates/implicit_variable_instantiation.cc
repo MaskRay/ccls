@@ -23,6 +23,7 @@ OUTPUT:
       "short_name": "VarType",
       "qualified_name": "ns::VarType",
       "definition": "1:2:8",
+      "instantiations": [0],
       "uses": ["*1:2:8", "*1:6:22", "*1:6:44", "*1:10:18"]
     }, {
       "id": 1,

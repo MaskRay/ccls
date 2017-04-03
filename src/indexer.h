@@ -323,15 +323,26 @@ struct IndexedTypeDef {
   // Immediate derived types.
   std::vector<TypeId> derived;
 
+  // Declared variables of this type.
+  // TODO: this needs a lot more work and lots of tests.
+  // TODO: add instantiation on ctor / dtor, do not add instantiation if type is ptr
+  std::vector<VarId> instantiations;
+
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Location> uses;
 
-  bool is_bad_def = true;
-
   IndexedTypeDef() : def("") {}  // For serialization
 
   IndexedTypeDef(TypeId id, const std::string& usr);
+
+  bool HasInterestingState() const {
+    return
+      def.definition ||
+      !derived.empty() ||
+      !instantiations.empty() ||
+      !uses.empty();
+  }
 
   bool operator<(const IndexedTypeDef& other) const {
     return def.usr < other.def.usr;
@@ -428,11 +439,19 @@ struct IndexedFuncDef {
   // All usages. For interesting usages, see callees.
   std::vector<Location> uses;
 
-  bool is_bad_def = true;
-
   IndexedFuncDef() {}  // For reflection.
   IndexedFuncDef(FuncId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
+  }
+
+  bool HasInterestingState() const {
+    return
+      def.definition ||
+      !def.callees.empty() ||
+      !declarations.empty() ||
+      !derived.empty() ||
+      !callers.empty() ||
+      !uses.empty();
   }
 
   bool operator<(const IndexedFuncDef& other) const {
@@ -503,12 +522,16 @@ struct IndexedVarDef {
   // Usages.
   std::vector<Location> uses;
 
-  bool is_bad_def = true;
-
   IndexedVarDef() : def("") {}  // For serialization
 
   IndexedVarDef(VarId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
+  }
+
+  bool HasInterestingState() const {
+    return
+      def.definition ||
+      !uses.empty();
   }
 
   bool operator<(const IndexedVarDef& other) const {
@@ -518,6 +541,7 @@ struct IndexedVarDef {
 MAKE_HASHABLE(IndexedVarDef, t.def.usr);
 
 struct IdCache {
+  std::string primary_file;
   std::unordered_map<std::string, FileId> file_path_to_file_id;
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
@@ -527,11 +551,14 @@ struct IdCache {
   std::unordered_map<FuncId, std::string> func_id_to_usr;
   std::unordered_map<VarId, std::string> var_id_to_usr;
 
-  IdCache();
-  Location Resolve(const CXSourceLocation& cx_loc, bool interesting);
-  Location Resolve(const CXIdxLoc& cx_idx_loc, bool interesting);
-  Location Resolve(const CXCursor& cx_cursor, bool interesting);
-  Location Resolve(const clang::Cursor& cursor, bool interesting);
+  IdCache(const std::string& primary_file);
+  Location ForceResolve(const CXSourceLocation& cx_loc, bool interesting);
+  Location ForceResolve(const CXIdxLoc& cx_idx_loc, bool interesting);
+  Location ForceResolve(const CXCursor& cx_cursor, bool interesting);
+  optional<Location> Resolve(const CXSourceLocation& cx_loc, bool interesting);
+  optional<Location> Resolve(const CXIdxLoc& cx_idx_loc, bool interesting);
+  optional<Location> Resolve(const CXCursor& cx_cursor, bool interesting);
+  optional<Location> Resolve(const clang::Cursor& cursor, bool interesting);
 };
 
 struct IndexedFile {

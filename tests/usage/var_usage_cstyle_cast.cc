@@ -16,6 +16,7 @@ OUTPUT:
       "short_name": "VarType",
       "qualified_name": "VarType",
       "definition": "1:1:6",
+      "instantiations": [0],
       "uses": ["*1:1:6", "*1:4:20", "*1:4:42", "*1:7:7"]
     }, {
       "id": 1,

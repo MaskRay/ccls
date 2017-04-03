@@ -13,6 +13,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:2:7",
+      "instantiations": [0, 1],
       "uses": ["*1:2:7", "*1:4:1", "*1:5:1"]
     }],
   "vars": [{

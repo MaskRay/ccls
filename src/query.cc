@@ -46,8 +46,10 @@ Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
   return id_cache.var_id_to_usr.find(id)->second;
 }
 QueryableLocation MapIdToUsr(const IdCache& id_cache, const Location& id) {
-  assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
-  return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
+  assert(id.raw_file_id == 1);
+  return QueryableLocation(id_cache.primary_file, id.line, id.column, id.interesting);
+  //assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
+  //return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
 }
 
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<TypeId>& ids) {
@@ -173,6 +175,7 @@ QueryableFile::QueryableFile(const IndexedFile& indexed)
 QueryableTypeDef::QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed)
   : def(MapIdToUsr(id_cache, indexed.def)) {
   derived = MapIdToUsr(id_cache, indexed.derived);
+  instantiations = MapIdToUsr(id_cache, indexed.instantiations);
   uses = MapIdToUsr(id_cache, indexed.uses);
 }
 
@@ -314,12 +317,12 @@ void CompareGroups(
   while (prev_it != previous_data.end() && curr_it != current_data.end()) {
     // same id
     if (prev_it->def.usr == curr_it->def.usr) {
-      if (!prev_it->is_bad_def && !curr_it->is_bad_def)
+      //if (!prev_it->is_bad_def && !curr_it->is_bad_def)
         on_found(&*prev_it, &*curr_it);
-      else if (prev_it->is_bad_def)
-        on_added(&*curr_it);
-      else if (curr_it->is_bad_def)
-        on_removed(&*curr_it);
+      //else if (prev_it->is_bad_def)
+      //  on_added(&*curr_it);
+      //else if (curr_it->is_bad_def)
+      //  on_removed(&*curr_it);
 
       ++prev_it;
       ++curr_it;
@@ -368,17 +371,16 @@ void CompareGroups(
 
 
 IndexUpdate::IndexUpdate(IndexedFile& file) {
+  // TODO: Do not add empty data (ie, def has nothing but USR)
+
   files_added.push_back(QueryableFile(file));
   for (const IndexedTypeDef& def : file.types) {
-    if (def.is_bad_def) continue;
     types_added.push_back(QueryableTypeDef(file.id_cache, def));
   }
   for (const IndexedFuncDef& def : file.funcs) {
-    if (def.is_bad_def) continue;
     funcs_added.push_back(QueryableFuncDef(file.id_cache, def));
   }
   for (const IndexedVarDef& def : file.vars) {
-    if (def.is_bad_def) continue;
     vars_added.push_back(QueryableVarDef(file.id_cache, def));
   }
 }
@@ -491,6 +493,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
   INDEX_UPDATE_MERGE(types_added);
   INDEX_UPDATE_MERGE(types_def_changed);
   INDEX_UPDATE_MERGE(types_derived);
+  INDEX_UPDATE_MERGE(types_instantiations);
   INDEX_UPDATE_MERGE(types_uses);
 
   INDEX_UPDATE_MERGE(funcs_removed);

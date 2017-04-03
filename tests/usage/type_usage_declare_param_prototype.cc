@@ -14,6 +14,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
+      "instantiations": [0],
       "uses": ["1:1:8", "1:3:10", "1:3:18", "*1:4:10", "*1:4:18"]
     }],
   "funcs": [{

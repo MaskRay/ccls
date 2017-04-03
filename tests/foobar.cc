@@ -31,6 +31,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition": "1:5:8",
+      "instantiations": [1],
       "uses": ["*1:5:8", "*1:9:1", "*1:10:1"]
     }, {
       "id": 3,
@@ -38,6 +39,7 @@ OUTPUT:
       "short_name": "Inner",
       "qualified_name": "Foo::Inner",
       "definition": "1:6:10",
+      "instantiations": [0],
       "uses": ["*1:6:10", "*1:9:9"]
     }],
   "vars": [{

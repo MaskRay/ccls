@@ -5,7 +5,7 @@
 
 #include "serializer.h"
 
-IndexedFile::IndexedFile(const std::string& path) : path(path) {
+IndexedFile::IndexedFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
   // Preallocate any existing resolved ids.
   for (const auto& entry : id_cache.usr_to_type_id)
@@ -119,13 +119,13 @@ std::string Location::ToPrettyString(IdCache* id_cache) {
   return result;
 }
 
-IdCache::IdCache() {
+IdCache::IdCache(const std::string& primary_file) : primary_file(primary_file) {
   // Reserve id 0 for unfound.
   file_path_to_file_id[""] = FileId(0);
   file_id_to_file_path[FileId(0)] = "";
 }
 
-Location IdCache::Resolve(const CXSourceLocation& cx_loc, bool interesting) {
+Location IdCache::ForceResolve(const CXSourceLocation& cx_loc, bool interesting) {
   CXFile file;
   unsigned int line, column, offset;
   clang_getSpellingLocation(cx_loc, &file, &line, &column, &offset);
@@ -137,7 +137,8 @@ Location IdCache::Resolve(const CXSourceLocation& cx_loc, bool interesting) {
     auto it = file_path_to_file_id.find(path);
     if (it != file_path_to_file_id.end()) {
       file_id = it->second;
-    } else {
+    }
+    else {
       file_id = FileId(file_path_to_file_id.size());
       file_path_to_file_id[path] = file_id;
       file_id_to_file_path[file_id] = path;
@@ -147,16 +148,32 @@ Location IdCache::Resolve(const CXSourceLocation& cx_loc, bool interesting) {
   return Location(interesting, file_id, line, column);
 }
 
-Location IdCache::Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
+Location IdCache::ForceResolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
+  CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
+  return ForceResolve(cx_loc, interesting);
+}
+
+Location IdCache::ForceResolve(const CXCursor& cx_cursor, bool interesting) {
+  return ForceResolve(clang_getCursorLocation(cx_cursor), interesting);
+}
+
+
+optional<Location> IdCache::Resolve(const CXSourceLocation& cx_loc, bool interesting) {
+  if (!clang_Location_isFromMainFile(cx_loc))
+    return nullopt;
+  return ForceResolve(cx_loc, interesting);
+}
+
+optional<Location> IdCache::Resolve(const CXIdxLoc& cx_idx_loc, bool interesting) {
   CXSourceLocation cx_loc = clang_indexLoc_getCXSourceLocation(cx_idx_loc);
   return Resolve(cx_loc, interesting);
 }
 
-Location IdCache::Resolve(const CXCursor& cx_cursor, bool interesting) {
+optional<Location> IdCache::Resolve(const CXCursor& cx_cursor, bool interesting) {
   return Resolve(clang_getCursorLocation(cx_cursor), interesting);
 }
 
-Location IdCache::Resolve(const clang::Cursor& cursor, bool interesting) {
+optional<Location> IdCache::Resolve(const clang::Cursor& cursor, bool interesting) {
   return Resolve(cursor.cx_cursor, interesting);
 }
 
@@ -236,7 +253,7 @@ void diagnostic(CXClientData client_data,
 
     std::string spelling =
         clang::ToString(clang_getDiagnosticSpelling(diagnostic));
-    Location location = param->db->id_cache.Resolve(
+    Location location = param->db->id_cache.ForceResolve(
         clang_getDiagnosticLocation(diagnostic), false /*interesting*/);
 
     std::cerr << location.ToPrettyString(&param->db->id_cache) << ": "
@@ -386,8 +403,11 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
 
   if (param->is_interesting) {
     IndexedTypeDef* ref_type_def = db->Resolve(ref_type_id);
-    Location loc = db->id_cache.Resolve(cursor, true /*interesting*/);
-    AddUsage(ref_type_def->uses, loc);
+    // TODO: Should we even be visiting this if the file is not from the main
+    // def? Try adding assert on |loc| later.
+    optional<Location> loc = db->id_cache.Resolve(cursor, true /*interesting*/);
+    if (loc)
+      AddUsage(ref_type_def->uses, loc.value());
   }
 }
 
@@ -451,13 +471,10 @@ optional<TypeId> ResolveToDeclarationType(IndexedFile* db,
 }
 
 // Add usages to any seen TypeRef or TemplateRef under the given |decl_cursor|.
-// This
-// returns the first seen TypeRef or TemplateRef value, which can be useful if
-// trying
-// to figure out ie, what a using statement refers to. If trying to generally
-// resolve
-// a cursor to a type, use ResolveToDeclarationType, which works in more
-// scenarios.
+// This returns the first seen TypeRef or TemplateRef value, which can be
+// useful if trying to figure out ie, what a using statement refers to. If
+// trying to generally resolve a cursor to a type, use
+// ResolveToDeclarationType, which works in more scenarios.
 optional<TypeId> AddDeclTypeUsages(
     IndexedFile* db,
     clang::Cursor decl_cursor,
@@ -638,12 +655,14 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       if (ref_usr == "")
         break;
 
-      VarId ref_id = db->ToVarId(ref_usr);
-      IndexedVarDef* ref_def = db->Resolve(ref_id);
-      Location loc = db->id_cache.Resolve(cursor, false /*interesting*/);
+      optional<Location> loc = db->id_cache.Resolve(cursor, false /*interesting*/);
       // std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr
       // << " at " << loc.ToString() << std::endl;
-      AddUsage(ref_def->uses, loc);
+      if (loc) {
+        VarId ref_id = db->ToVarId(ref_usr);
+        IndexedVarDef* ref_def = db->Resolve(ref_id);
+        AddUsage(ref_def->uses, loc.value());
+      }
       break;
   }
 
@@ -680,6 +699,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Field:
     case CXIdxEntity_Variable:
     case CXIdxEntity_CXXStaticVariable: {
+      optional<Location> decl_loc =
+        db->id_cache.Resolve(decl->loc, false /*interesting*/);
+      if (!decl_loc)
+        break;
+
       clang::Cursor decl_cursor = decl->cursor;
 
       // Do not index implicit template instantiations.
@@ -692,8 +716,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       VarId var_id = db->ToVarId(decl->entityInfo->USR);
       IndexedVarDef* var_def = db->Resolve(var_id);
 
-      var_def->is_bad_def = is_system_def;
-
       // TODO: Eventually run with this if. Right now I want to iron out bugs
       // this may shadow.
       // TODO: Verify this gets called multiple times
@@ -703,13 +725,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
       //}
 
-      Location decl_loc =
-          db->id_cache.Resolve(decl->loc, false /*interesting*/);
       if (decl->isDefinition)
-        var_def->def.definition = decl_loc;
+        var_def->def.definition = decl_loc.value();
       else
-        var_def->def.declaration = decl_loc;
-      AddUsage(var_def->uses, decl_loc);
+        var_def->def.declaration = decl_loc.value();
+      AddUsage(var_def->uses, decl_loc.value());
 
       // std::cerr << std::endl << "Visiting declaration" << std::endl;
       // Dump(decl_cursor);
@@ -725,13 +745,25 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           db, decl_cursor,
           decl_cursor.get_kind() != CXCursor_ParmDecl /*is_interesting*/,
           decl->semanticContainer, decl->lexicalContainer);
-      optional<TypeId> var_type = ResolveToDeclarationType(db, decl_cursor);
-      if (var_type.has_value())
-        var_def->def.variable_type = var_type.value();
 
+      // We don't need to assign declaring type multiple times if this variable
+      // has already been seen.
+      if (!decl->isRedeclaration) {
+        optional<TypeId> var_type = ResolveToDeclarationType(db, decl_cursor);
+        if (var_type.has_value()) {
+          // Don't treat enum definition variables as instantiations.
+          bool is_enum_member = decl->semanticContainer && decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
+          if (!is_enum_member)
+            db->Resolve(var_type.value())->instantiations.push_back(var_id.id);
+
+          var_def->def.variable_type = var_type.value();
+        }
+      }
+
+      // TODO: Refactor handlers so more things are under 'if (!decl->isRedeclaration)'
       if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
         TypeId declaring_type_id =
-            db->ToTypeId(decl->semanticContainer->cursor);
+          db->ToTypeId(decl->semanticContainer->cursor);
         IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
         var_def->def.declaring_type = declaring_type_id;
         declaring_type_def->def.vars.push_back(var_id);
@@ -746,6 +778,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXInstanceMethod:
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXConversionFunction: {
+      optional<Location> decl_loc =
+        db->id_cache.Resolve(decl->loc, false /*interesting*/);
+      if (!decl_loc)
+        break;
+
       clang::Cursor decl_cursor = decl->cursor;
       clang::Cursor resolved =
           decl_cursor.template_specialization_to_template_definition();
@@ -753,10 +790,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       FuncId func_id = db->ToFuncId(resolved.cx_cursor);
       IndexedFuncDef* func_def = db->Resolve(func_id);
 
-      Location decl_loc =
-          db->id_cache.Resolve(decl->loc, false /*interesting*/);
-
-      AddUsage(func_def->uses, decl_loc);
+      AddUsage(func_def->uses, decl_loc.value());
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
       AddDeclTypeUsages(db, decl_cursor, true /*is_interesting*/,
@@ -766,9 +800,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // hacking the 'declarations' field by
       // adding a definition when we really don't have one.
       if (decl->isDefinition && !func_def->def.definition.has_value())
-        func_def->def.definition = decl_loc;
+        func_def->def.definition = decl_loc.value();
       else
-        func_def->declarations.push_back(decl_loc);
+        func_def->declarations.push_back(decl_loc.value());
 
       // If decl_cursor != resolved, then decl_cursor is a template
       // specialization. We
@@ -776,8 +810,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // that
       // scenario.
       if (decl_cursor == resolved) {
-        func_def->is_bad_def = is_system_def;
-
         // TODO: Eventually run with this if. Right now I want to iron out bugs
         // this may shadow.
         // if (!decl->isRedeclaration) {
@@ -805,7 +837,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // Mark a type reference at the ctor/dtor location.
           // TODO: Should it be interesting?
           if (is_ctor_or_dtor) {
-            Location type_usage_loc = decl_loc;
+            Location type_usage_loc = decl_loc.value();
             AddUsage(declaring_type_def->uses, type_usage_loc);
           }
 
@@ -895,6 +927,10 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     case CXIdxEntity_Typedef:
     case CXIdxEntity_CXXTypeAlias: {
+      optional<Location> decl_loc = db->id_cache.Resolve(decl->loc, true /*interesting*/);
+      if (!decl_loc)
+        break;
+
       // Note we want to fetch the first TypeRef. Running
       // ResolveCursorType(decl->cursor) would return
       // the type of the typedef/using, not the type of the referenced type.
@@ -905,8 +941,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
       IndexedTypeDef* type_def = db->Resolve(type_id);
 
-      type_def->is_bad_def = is_system_def;
-
       if (alias_of)
         type_def->def.alias_of = alias_of.value();
 
@@ -914,9 +948,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type_def->def.qualified_name =
           ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
 
-      Location decl_loc = db->id_cache.Resolve(decl->loc, true /*interesting*/);
-      type_def->def.definition = decl_loc.WithInteresting(false);
-      AddUsage(type_def->uses, decl_loc);
+      type_def->def.definition = decl_loc.value().WithInteresting(false);
+      AddUsage(type_def->uses, decl_loc.value());
       break;
     }
 
@@ -924,10 +957,12 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
+      optional<Location> decl_loc = db->id_cache.Resolve(decl->loc, true /*interesting*/);
+      if (!decl_loc)
+        break;
+
       TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
       IndexedTypeDef* type_def = db->Resolve(type_id);
-
-      type_def->is_bad_def = is_system_def;
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
       // this may shadow.
@@ -951,9 +986,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // }
 
       assert(decl->isDefinition);
-      Location decl_loc = db->id_cache.Resolve(decl->loc, true /*interesting*/);
-      type_def->def.definition = decl_loc.WithInteresting(false);
-      AddUsage(type_def->uses, decl_loc);
+      type_def->def.definition = decl_loc.value().WithInteresting(false);
+      AddUsage(type_def->uses, decl_loc.value());
 
       // type_def->alias_of
       // type_def->funcs
@@ -972,9 +1006,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                             decl->semanticContainer, decl->lexicalContainer);
           optional<TypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
-          IndexedTypeDef* type_def =
-              db->Resolve(type_id);  // type_def ptr could be invalidated by
-                                     // ResolveDeclToType.
+          // type_def ptr could be invalidated by ResolveToDeclarationType.
+          IndexedTypeDef* type_def = db->Resolve(type_id);
           if (parent_type_id) {
             IndexedTypeDef* parent_type_def =
                 db->Resolve(parent_type_id.value());
@@ -990,7 +1023,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       std::cerr
           << "!! Unhandled indexDeclaration:     "
           << clang::Cursor(decl->cursor).ToString() << " at "
-          << db->id_cache.Resolve(decl->loc, false /*interesting*/).ToString()
+          << db->id_cache.ForceResolve(decl->loc, false /*interesting*/).ToString()
           << std::endl;
       std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind
                 << std::endl;
@@ -1024,9 +1057,16 @@ bool IsFunction(CXCursorKind kind) {
 
 void indexEntityReference(CXClientData client_data,
                           const CXIdxEntityRefInfo* ref) {
-  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->cursor)) ||
-      clang_Location_isInSystemHeader(
-          clang_getCursorLocation(ref->referencedEntity->cursor)))
+//  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->cursor)) ||
+//      clang_Location_isInSystemHeader(
+//          clang_getCursorLocation(ref->referencedEntity->cursor)))
+//    return;
+
+  // Don't index references that are not from the main file.
+  if (!clang_Location_isFromMainFile(clang_getCursorLocation(ref->cursor)))
+    return;
+  // Don't index references to system headers.
+  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->referencedEntity->cursor)))
     return;
 
   IndexParam* param = static_cast<IndexParam*>(client_data);
@@ -1047,13 +1087,16 @@ void indexEntityReference(CXClientData client_data,
     case CXIdxEntity_CXXStaticVariable:
     case CXIdxEntity_Variable:
     case CXIdxEntity_Field: {
+      optional<Location> loc = db->id_cache.Resolve(ref->loc, false /*interesting*/);
+      if (!loc)
+        break;
+
       clang::Cursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
 
       VarId var_id = db->ToVarId(referenced.get_usr());
       IndexedVarDef* var_def = db->Resolve(var_id);
-      Location loc = db->id_cache.Resolve(ref->loc, false /*interesting*/);
-      AddUsage(var_def->uses, loc);
+      AddUsage(var_def->uses, loc.value());
       break;
     }
 
@@ -1074,10 +1117,14 @@ void indexEntityReference(CXClientData client_data,
 
       // Don't report duplicate usages.
       // TODO: search full history?
-      Location loc = db->id_cache.Resolve(ref->loc, false /*interesting*/);
-      if (param->last_func_usage_location == loc)
+      optional<Location> loc = db->id_cache.Resolve(ref->loc, false /*interesting*/);
+      if (!loc)
         break;
-      param->last_func_usage_location = loc;
+
+      // TODO: cleanup/remove this
+      if (param->last_func_usage_location == loc.value())
+        break;
+      param->last_func_usage_location = loc.value();
 
       // Note: be careful, calling db->ToFuncId invalidates the FuncDef* ptrs.
       FuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
@@ -1086,12 +1133,12 @@ void indexEntityReference(CXClientData client_data,
         IndexedFuncDef* caller_def = db->Resolve(caller_id);
         IndexedFuncDef* called_def = db->Resolve(called_id);
 
-        caller_def->def.callees.push_back(FuncRef(called_id, loc));
-        called_def->callers.push_back(FuncRef(caller_id, loc));
-        AddUsage(called_def->uses, loc);
+        caller_def->def.callees.push_back(FuncRef(called_id, loc.value()));
+        called_def->callers.push_back(FuncRef(caller_id, loc.value()));
+        AddUsage(called_def->uses, loc.value());
       } else {
         IndexedFuncDef* called_def = db->Resolve(called_id);
-        AddUsage(called_def->uses, loc);
+        AddUsage(called_def->uses, loc.value());
       }
 
       // For constructor/destructor, also add a usage against the type. Clang
@@ -1101,11 +1148,9 @@ void indexEntityReference(CXClientData client_data,
       clang::Cursor ref_cursor = ref->cursor;
       if (ref->referencedEntity->kind == CXIdxEntity_CXXConstructor ||
           ref->referencedEntity->kind == CXIdxEntity_CXXDestructor) {
-        Location parent_loc = db->id_cache.Resolve(ref->parentEntity->cursor,
+        Location parent_loc = db->id_cache.ForceResolve(ref->parentEntity->cursor,
                                                    true /*interesting*/);
-        Location our_loc =
-            db->id_cache.Resolve(ref->loc, true /*is_interesting*/);
-        if (!parent_loc.IsEqualTo(our_loc)) {
+        if (!parent_loc.IsEqualTo(loc.value())) {
           IndexedFuncDef* called_def = db->Resolve(called_id);
           // I suspect it is possible for the declaring type to be null
           // when the class is invalid.
@@ -1113,7 +1158,7 @@ void indexEntityReference(CXClientData client_data,
             // assert(called_def->def.declaring_type.has_value());
             IndexedTypeDef* type_def =
                 db->Resolve(called_def->def.declaring_type.value());
-            AddUsage(type_def->uses, our_loc);
+            AddUsage(type_def->uses, loc.value().WithInteresting(true));
           }
         }
       }
@@ -1126,23 +1171,16 @@ void indexEntityReference(CXClientData client_data,
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
+      optional<Location> loc = db->id_cache.Resolve(ref->loc, false /*interesting*/);
+      if (!loc)
+        break;
+
       clang::Cursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
       TypeId referenced_id = db->ToTypeId(referenced.get_usr());
 
       IndexedTypeDef* referenced_def = db->Resolve(referenced_id);
 
-      // We will not get a declaration visit for forward declared types. Try to
-      // mark them as non-bad
-      // defs here so we will output usages/etc.
-      if (referenced_def->is_bad_def) {
-        bool is_system_def = clang_Location_isInSystemHeader(
-            clang_getCursorLocation(ref->referencedEntity->cursor));
-        Location loc = db->id_cache.Resolve(ref->referencedEntity->cursor,
-                                            false /*interesting*/);
-        if (!is_system_def && loc.raw_file_id != -1)
-          referenced_def->is_bad_def = false;
-      }
       //
       // The following will generate two TypeRefs to Foo, both located at the
       // same spot (line 3, column 3). One of the parents will be set to
@@ -1159,8 +1197,7 @@ void indexEntityReference(CXClientData client_data,
       //    Foo f;
       //  }
       //
-      AddUsage(referenced_def->uses,
-               db->id_cache.Resolve(ref->loc, false /*interesting*/));
+      AddUsage(referenced_def->uses, loc.value());
       break;
     }
 
@@ -1168,7 +1205,7 @@ void indexEntityReference(CXClientData client_data,
       std::cerr
           << "!! Unhandled indexEntityReference: " << cursor.ToString()
           << " at "
-          << db->id_cache.Resolve(ref->loc, false /*interesting*/).ToString()
+          << db->id_cache.ForceResolve(ref->loc, false /*interesting*/).ToString()
           << std::endl;
       std::cerr << "     ref->referencedEntity->kind = "
                 << ref->referencedEntity->kind << std::endl;
@@ -1177,7 +1214,7 @@ void indexEntityReference(CXClientData client_data,
                   << ref->parentEntity->kind << std::endl;
       std::cerr
           << "     ref->loc          = "
-          << db->id_cache.Resolve(ref->loc, false /*interesting*/).ToString()
+          << db->id_cache.ForceResolve(ref->loc, false /*interesting*/).ToString()
           << std::endl;
       std::cerr << "     ref->kind         = " << ref->kind << std::endl;
       if (ref->parentEntity)
@@ -1239,8 +1276,7 @@ IndexedFile Parse(std::string filename,
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
-                             CXIndexOpt_IndexFunctionLocalSymbols |
-                                 CXIndexOpt_SkipParsedBodiesInSession,
+                             CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations,
                              tu.cx_tu);
   std::cerr << "!! [END] Indexing " << filename << std::endl;
   clang_IndexAction_dispose(index_action);

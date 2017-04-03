@@ -14,6 +14,7 @@ OUTPUT:
       "short_name": "unique_ptr",
       "qualified_name": "unique_ptr",
       "definition": "1:2:7",
+      "instantiations": [0],
       "uses": ["*1:2:7", "*1:6:8"]
     }, {
       "id": 1,

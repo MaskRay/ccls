@@ -22,6 +22,16 @@ OUTPUT:
       "definition": "1:6:8",
       "vars": [0, 1, 2],
       "uses": ["*1:6:8", "*1:12:13"]
+    }, {
+      "id": 1,
+      "usr": "c:@N@std@T@string",
+      "instantiations": [0, 1],
+      "uses": ["*1:7:8", "*1:8:8", "*1:9:20"]
+    }, {
+      "id": 2,
+      "usr": "c:@N@std@ST>2#T#T@vector",
+      "instantiations": [2],
+      "uses": ["*1:9:8", "*1:12:6"]
     }],
   "funcs": [{
       "id": 0,

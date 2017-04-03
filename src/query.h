@@ -22,6 +22,10 @@ struct QueryableLocation {
   QueryableLocation(Usr path, int line, int column, bool interesting)
     : path(path), line(line), column(column), interesting(interesting) {}
 
+  QueryableLocation OffsetColumn(int offset) const {
+    return QueryableLocation(path, line, column + offset, interesting);
+  }
+
   bool operator==(const QueryableLocation& other) const {
     // Note: We ignore |is_interesting|.
     return
@@ -104,16 +108,18 @@ MAKE_REFLECT_STRUCT(QueryableFile, file_id, outline);
 struct QueryableTypeDef {
   using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
+  using InstantiationsUpdate = MergeableUpdate<Usr>;
   using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
   std::vector<Usr> derived;
+  std::vector<Usr> instantiations;
   std::vector<QueryableLocation> uses;
 
   QueryableTypeDef() : def("") {} // For serialization.
   QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
 };
-MAKE_REFLECT_STRUCT(QueryableTypeDef, def, derived, uses);
+MAKE_REFLECT_STRUCT(QueryableTypeDef, def, derived, instantiations, uses);
 
 struct QueryableFuncDef {
   using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
@@ -186,6 +192,7 @@ struct IndexUpdate {
   std::vector<QueryableTypeDef> types_added;
   std::vector<QueryableTypeDef::DefUpdate> types_def_changed;
   std::vector<QueryableTypeDef::DerivedUpdate> types_derived;
+  std::vector<QueryableTypeDef::InstantiationsUpdate> types_instantiations;
   std::vector<QueryableTypeDef::UsesUpdate> types_uses;
 
   // Function updates.

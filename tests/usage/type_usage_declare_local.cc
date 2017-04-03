@@ -12,6 +12,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
+      "instantiations": [0],
       "uses": ["1:1:8", "*1:5:3"]
     }, {
       "id": 1,
@@ -19,6 +20,7 @@ OUTPUT:
       "short_name": "ImplementedType",
       "qualified_name": "ImplementedType",
       "definition": "1:2:8",
+      "instantiations": [1],
       "uses": ["*1:2:8", "*1:6:3"]
     }],
   "funcs": [{

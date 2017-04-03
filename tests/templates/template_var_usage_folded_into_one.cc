@@ -44,6 +44,10 @@ OUTPUT:
       "qualified_name": "B",
       "definition": "1:2:6",
       "uses": ["*1:2:6", "1:8:13"]
+    }, {
+      "id": 2,
+      "usr": "c:template_var_usage_folded_into_one.cc@35",
+      "uses": ["*1:5:1"]
     }],
   "vars": [{
       "id": 0,

@@ -40,6 +40,9 @@ void Reflect(Reader& visitor, Location& value) {
   value = Location(visitor.GetString());
 }
 void Reflect(Writer& visitor, Location& value) {
+  // We only ever want to emit id=1 files.
+  assert(value.raw_file_id == 1);
+
   std::string output = value.ToString();
   visitor.String(output.c_str(), output.size());
 }
@@ -76,15 +79,22 @@ void Reflect(Writer& visitor, Ref<IndexedFuncDef>& value) {
 
 
 
+// TODO: Move this to indexer.cpp
+// TODO: Rename indexer.cpp to indexer.cc
+// TODO: Do not serialize a USR if it has no usages/etc outside of USR info.
 
 // IndexedTypeDef
 bool ReflectMemberStart(Reader& reader, IndexedTypeDef& value) {
-  value.is_bad_def = false;
+  //value.is_bad_def = false;
   return true;
 }
 bool ReflectMemberStart(Writer& writer, IndexedTypeDef& value) {
-  if (value.is_bad_def)
-    return false;
+  if (!value.HasInterestingState())
+    std::cerr << "bad";
+  assert(value.HasInterestingState());
+
+  //if (value.is_bad_def)
+  //  return false;
   DefaultReflectMemberStart(writer);
   return true;
 }
@@ -102,6 +112,7 @@ void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
   REFLECT_MEMBER2("types", value.def.types);
   REFLECT_MEMBER2("funcs", value.def.funcs);
   REFLECT_MEMBER2("vars", value.def.vars);
+  REFLECT_MEMBER2("instantiations", value.instantiations);
   REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }
@@ -109,12 +120,16 @@ void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
 
 // IndexedFuncDef
 bool ReflectMemberStart(Reader& reader, IndexedFuncDef& value) {
-  value.is_bad_def = false;
+  //value.is_bad_def = false;
   return true;
 }
 bool ReflectMemberStart(Writer& writer, IndexedFuncDef& value) {
-  if (value.is_bad_def)
-    return false;
+  if (!value.HasInterestingState())
+    std::cerr << "bad";
+  assert(value.HasInterestingState());
+  
+  //if (value.is_bad_def)
+  //  return false;
   DefaultReflectMemberStart(writer);
   return true;
 }
@@ -140,12 +155,16 @@ void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
 
 // IndexedVarDef
 bool ReflectMemberStart(Reader& reader, IndexedVarDef& value) {
-  value.is_bad_def = false;
+  //value.is_bad_def = false;
   return true;
 }
 bool ReflectMemberStart(Writer& writer, IndexedVarDef& value) {
-  if (value.is_bad_def)
-    return false;
+  if (!value.HasInterestingState())
+    std::cerr << "bad";
+  assert(value.HasInterestingState());
+
+  //if (value.is_bad_def)
+  //  return false;
   DefaultReflectMemberStart(writer);
   return true;
 }
@@ -204,9 +223,11 @@ std::string Serialize(IndexedFile& file) {
   return output.GetString();
 }
 
-IndexedFile Deserialize(std::string path, std::string serialized) {
+optional<IndexedFile> Deserialize(std::string path, std::string serialized) {
   rapidjson::Document reader;
   reader.Parse(serialized.c_str());
+  if (reader.HasParseError())
+    return nullopt;
 
   IndexedFile file(path);
   Reflect(reader, file);

@@ -6,6 +6,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
+      "instantiations": [0],
       "uses": ["1:1:8", "*1:2:8"]
     }],
   "vars": [{

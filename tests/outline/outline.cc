@@ -17,6 +17,11 @@ OUTPUT:
       "definition": "1:3:8",
       "vars": [0, 1, 2],
       "uses": ["*1:3:8"]
+    }, {
+      "id": 1,
+      "usr": "c:@N@std@ST>2#T#T@vector",
+      "instantiations": [2],
+      "uses": ["*1:6:8"]
     }],
   "vars": [{
       "id": 0,

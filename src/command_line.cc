@@ -30,8 +30,16 @@ const int kQueueSizeBytes = 1024 * 8;
 }
 
 struct IndexTranslationUnitRequest {
+  enum class Type {
+    Import,
+    Update
+  };
+
   std::string path;
   std::vector<std::string> args;
+  Type type;
+
+  IndexTranslationUnitRequest(Type type) : type(type) {}
 };
 
 struct IndexTranslationUnitResponse {
@@ -152,23 +160,39 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
 }
 
-void WriteToCache(std::string filename, IndexedFile& file) {
+std::string GetCachedFileName(std::string source_file) {
   // TODO/FIXME
   const char* kCacheDirectory = "C:/Users/jacob/Desktop/superindex/indexer/CACHE/";
-  
-  
-  std::replace(filename.begin(), filename.end(), '\\', '_');
-  std::replace(filename.begin(), filename.end(), '/', '_');
-  std::replace(filename.begin(), filename.end(), ':', '_');
-  std::replace(filename.begin(), filename.end(), '.', '_');
-  std::string cache_file = kCacheDirectory + filename + ".json";
+  std::replace(source_file.begin(), source_file.end(), '\\', '_');
+  std::replace(source_file.begin(), source_file.end(), '/', '_');
+  std::replace(source_file.begin(), source_file.end(), ':', '_');
+  std::replace(source_file.begin(), source_file.end(), '.', '_');
+  return kCacheDirectory + source_file + ".json";
+}
 
+optional<IndexedFile> LoadCachedFile(std::string filename) {
+  // TODO FIXME FIXME FIXME
+  return nullopt;
+
+  std::string cache_file = GetCachedFileName(filename);
+
+  std::ifstream cache;
+  cache.open(GetCachedFileName(filename));
+  if (!cache.good())
+    return nullopt;
+
+  std::string file_content = std::string(
+    std::istreambuf_iterator<char>(cache),
+    std::istreambuf_iterator<char>());
+
+  return Deserialize(filename, file_content);
+}
+
+void WriteToCache(std::string filename, IndexedFile& file) {
   std::string indexed_content = Serialize(file);
 
-
-  std::cerr << "Caching to " << cache_file << std::endl;
   std::ofstream cache;
-  cache.open(cache_file);
+  cache.open(GetCachedFileName(filename));
   assert(cache.good());
   cache << indexed_content;
   cache.close();
@@ -184,24 +208,60 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
       continue;
     }
 
+
+    Timer time;
+
+    // If the index update is an import, then we will load the previous index
+    // into memory if we have a previous index. After that, we dispatch an
+    // update request to get the latest version.
+    if (request->type == IndexTranslationUnitRequest::Type::Import) {
+      request->type = IndexTranslationUnitRequest::Type::Update;
+
+      // TODO: we're not serializing out the files cache. We only ever want to import references
+      // from the primary file though, so that should be ok. We need to cleanup indexer output.
+      optional<IndexedFile> old_index = LoadCachedFile(request->path);
+      if (old_index.has_value()) {
+        IndexUpdate update(old_index.value());
+        IndexTranslationUnitResponse response(update);
+        responses->Enqueue(response);
+        time.ResetAndPrint("Loading cached index");
+        requests->Enqueue(request.value());
+        continue;
+      }
+    }
+
+    assert(request->type == IndexTranslationUnitRequest::Type::Update);
+
     // Parse request and send a response.
     std::cerr << "Parsing file " << request->path << " with args "
       << Join(request->args, ", ") << std::endl;
 
-    Timer time;
-    IndexedFile file = Parse(request->path, request->args);
+    IndexedFile new_index = Parse(request->path, request->args);
     time.ResetAndPrint("Parsing/indexing");
 
-    // TODO: Check cache for existing index; compute diff if there is one.
-    IndexUpdate update(file);
-    IndexTranslationUnitResponse response(update);
-    time.ResetAndPrint("Creating index update/response");
-
-    responses->Enqueue(response);
-    time.ResetAndPrint("Sending update to server");
+    // If we have a cached index, that means it is already imported, which
+    // means we want to apply a delta update.
+    optional<IndexedFile> old_index = LoadCachedFile(request->path);
+    time.ResetAndPrint("Loading previous index");
+    if (old_index) {
+      // Apply delta update.
+      IndexUpdate update(old_index.value(), new_index);
+      IndexTranslationUnitResponse response(update);
+      time.ResetAndPrint("Creating delta index update/response");
+      responses->Enqueue(response);
+      time.ResetAndPrint("Sending update to server");
+    }
+    else {
+      // Apply full update.
+      IndexUpdate update(new_index);
+      IndexTranslationUnitResponse response(update);
+      time.ResetAndPrint("Creating index update/response");
+      responses->Enqueue(response);
+      time.ResetAndPrint("Sending update to server");
+    }
 
     // Cache file so we can diff it later.
-    WriteToCache(request->path, file);
+    WriteToCache(request->path, new_index);
     time.ResetAndPrint("Cache index update to disk");
   }
 }
@@ -230,6 +290,7 @@ lsLocation GetLsLocation(const QueryableLocation& location) {
 void AddCodeLens(std::vector<TCodeLens>* result,
   QueryableLocation loc,
   const std::vector<QueryableLocation>& uses,
+  bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
@@ -248,6 +309,8 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
   for (const QueryableLocation& use : uses) {
+    if (exclude_loc && use == loc)
+      continue;
     if (only_interesting && !use.interesting)
       continue;
     unique_uses.insert(GetLsLocation(use));
@@ -263,13 +326,14 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   else
     code_lens.command->title += plural;
 
-  if (unique_uses.size() > 0)
+  if (exclude_loc || unique_uses.size() > 0)
     result->push_back(code_lens);
 }
 
 void AddCodeLens(std::vector<TCodeLens>* result,
   QueryableLocation loc,
   const std::vector<UsrRef>& uses,
+  bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
@@ -277,13 +341,14 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   uses0.reserve(uses.size());
   for (const UsrRef& use : uses)
     uses0.push_back(use.loc);
-  AddCodeLens(result, loc, uses0, only_interesting, singular, plural);
+  AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
 void AddCodeLens(std::vector<TCodeLens>* result,
   QueryableDatabase* db,
   QueryableLocation loc,
   const std::vector<Usr>& usrs,
+  bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
@@ -317,7 +382,7 @@ void AddCodeLens(std::vector<TCodeLens>* result,
     }
     }
   }
-  AddCodeLens(result, loc, uses0, only_interesting, singular, plural);
+  AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
 void QueryDbMainLoop(
@@ -362,7 +427,7 @@ void QueryDbMainLoop(
           << "] Dispatching index request for file " << filepath
           << std::endl;
 
-        IndexTranslationUnitRequest request;
+        IndexTranslationUnitRequest request(IndexTranslationUnitRequest::Type::Import);
         request.path = filepath;
         request.args = entry.args;
         index_requests->Enqueue(request);
@@ -488,34 +553,39 @@ void QueryDbMainLoop(
       }
 
       for (UsrRef ref : file->outline) {
+        // NOTE: We OffsetColumn so that the code lens always show up in a
+        // predictable order. Otherwise, the client may randomize it.
+
         SymbolIdx symbol = db->usr_to_symbol[ref.usr];
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];
-          AddCodeLens(&response.result, ref.loc, def.uses,
-            true /*only_interesting*/, "reference",
+          AddCodeLens(&response.result, ref.loc.OffsetColumn(0), def.uses,
+            false /*exclude_loc*/, true /*only_interesting*/, "reference",
             "references");
-          AddCodeLens(&response.result, db, ref.loc, def.derived,
-            false /*only_interesting*/, "derived", "derived");
+          AddCodeLens(&response.result, db, ref.loc.OffsetColumn(1), def.derived,
+            false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
+          AddCodeLens(&response.result, db, ref.loc.OffsetColumn(2), def.instantiations,
+            false /*exclude_loc*/, false /*only_interesting*/, "instantiation", "instantiations");
           break;
         }
         case SymbolKind::Func: {
           QueryableFuncDef& def = db->funcs[symbol.idx];
-          AddCodeLens(&response.result, ref.loc, def.uses,
-            false /*only_interesting*/, "reference",
-            "references");
-          AddCodeLens(&response.result, ref.loc, def.callers,
-            false /*only_interesting*/, "caller", "callers");
-          AddCodeLens(&response.result, ref.loc, def.def.callees,
-            false /*only_interesting*/, "callee", "callees");
-          AddCodeLens(&response.result, db, ref.loc, def.derived,
-            false /*only_interesting*/, "derived", "derived");
+          //AddCodeLens(&response.result, ref.loc.OffsetColumn(0), def.uses,
+          //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
+          //  "references");
+          AddCodeLens(&response.result, ref.loc.OffsetColumn(1), def.callers,
+            false /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
+          AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
+            false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
+          AddCodeLens(&response.result, db, ref.loc.OffsetColumn(3), def.derived,
+            false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
           break;
         }
         case SymbolKind::Var: {
           QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(&response.result, ref.loc, def.uses,
-            false /*only_interesting*/, "reference",
+          AddCodeLens(&response.result, ref.loc.OffsetColumn(0), def.uses,
+            true /*exclude_loc*/, false /*only_interesting*/, "reference",
             "references");
           break;
         }
@@ -830,9 +900,10 @@ void LanguageServerMain(std::string process_name) {
 }
 
 int main(int argc, char** argv) {
-  bool loop = false;
-  while (loop)
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  //bool loop = true;
+  //while (loop)
+  //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
   RegisterMessageTypes();

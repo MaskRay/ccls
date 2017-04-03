@@ -15,6 +15,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:12",
       "vars": [0, 1],
+      "instantiations": [2],
       "uses": ["*1:1:12", "*1:6:1", "1:6:9"]
     }],
   "vars": [{

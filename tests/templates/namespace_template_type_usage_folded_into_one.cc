@@ -15,6 +15,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "ns::Foo",
       "definition": "1:3:9",
+      "instantiations": [0, 1],
       "uses": ["*1:3:9", "*1:5:3", "*1:6:3"]
     }],
   "vars": [{

@@ -19,6 +19,7 @@ OUTPUT:
       "qualified_name": "Foo",
       "definition": "1:1:7",
       "funcs": [0],
+      "instantiations": [0, 1],
       "uses": ["*1:1:7", "*1:2:3", "*1:5:1", "1:5:6", "*1:6:3", "*1:10:8"]
     }],
   "funcs": [{
