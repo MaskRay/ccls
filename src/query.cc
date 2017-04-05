@@ -45,9 +45,10 @@ Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
   assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
   return id_cache.var_id_to_usr.find(id)->second;
 }
-QueryableLocation MapIdToUsr(const IdCache& id_cache, const Location& id) {
-  assert(id.raw_file_id == 1);
-  return QueryableLocation(id_cache.primary_file, id.line, id.column, id.interesting);
+QueryableRange MapIdToUsr(const IdCache& id_cache, const Range& id) {
+  QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.start.interesting);
+  QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.end.interesting);
+  return QueryableRange(start, end);
   //assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
   //return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
 }
@@ -80,18 +81,21 @@ std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRe
     return result;
   });
 }
-std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::vector<Location>& ids) {
-  return Transform<Location, QueryableLocation>(ids, [&](Location id) {
-    assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
-    return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
+std::vector<QueryableRange> MapIdToUsr(const IdCache& id_cache, const std::vector<Range>& ids) {
+  return Transform<Range, QueryableRange>(ids, [&](Range id) {
+    QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.start.interesting);
+    QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.end.interesting);
+    return QueryableRange(start, end);
   });
 }
-QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const TypeDefDefinitionData<>& def) {
+QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedTypeDef::Def& def) {
   QueryableTypeDef::DefUpdate result(def.usr);
   result.short_name = def.short_name;
   result.qualified_name = def.qualified_name;
-  if (def.definition)
-    result.definition = MapIdToUsr(id_cache, def.definition.value());
+  if (def.definition_spelling)
+    result.definition_spelling = MapIdToUsr(id_cache, def.definition_spelling.value());
+  if (def.definition_extent)
+    result.definition_extent = MapIdToUsr(id_cache, def.definition_extent.value());
   if (def.alias_of)
     result.alias_of = MapIdToUsr(id_cache, def.alias_of.value());
   result.parents = MapIdToUsr(id_cache, def.parents);
@@ -100,12 +104,14 @@ QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const TypeDefDef
   result.vars = MapIdToUsr(id_cache, def.vars);
   return result;
 }
-QueryableFuncDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const FuncDefDefinitionData<>& def) {
+QueryableFuncDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedFuncDef::Def& def) {
   QueryableFuncDef::DefUpdate result(def.usr);
   result.short_name = def.short_name;
   result.qualified_name = def.qualified_name;
-  if (def.definition)
-    result.definition = MapIdToUsr(id_cache, def.definition.value());
+  if (def.definition_spelling)
+    result.definition_spelling = MapIdToUsr(id_cache, def.definition_spelling.value());
+  if (def.definition_extent)
+    result.definition_extent = MapIdToUsr(id_cache, def.definition_extent.value());
   if (def.declaring_type)
     result.declaring_type = MapIdToUsr(id_cache, def.declaring_type.value());
   if (def.base)
@@ -114,14 +120,16 @@ QueryableFuncDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const FuncDefDef
   result.callees = MapIdToUsr(id_cache, def.callees);
   return result;
 }
-QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const VarDefDefinitionData<>& def) {
+QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedVarDef::Def& def) {
   QueryableVarDef::DefUpdate result(def.usr);
   result.short_name = def.short_name;
   result.qualified_name = def.qualified_name;
   if (def.declaration)
     result.declaration = MapIdToUsr(id_cache, def.declaration.value());
-  if (def.definition)
-    result.definition = MapIdToUsr(id_cache, def.definition.value());
+  if (def.definition_spelling)
+    result.definition_spelling = MapIdToUsr(id_cache, def.definition_spelling.value());
+  if (def.definition_extent)
+    result.definition_extent = MapIdToUsr(id_cache, def.definition_extent.value());
   if (def.variable_type)
     result.variable_type = MapIdToUsr(id_cache, def.variable_type.value());
   if (def.declaring_type)
@@ -139,57 +147,47 @@ QueryableFile::QueryableFile(const IndexedFile& indexed)
   //  std::cerr << "-" << entry.first << std::endl;
   //assert(indexed.id_cache.file_path_to_file_id.find(indexed.path) !=
   //       indexed.id_cache.file_path_to_file_id.end());
-  auto it = indexed.id_cache.file_path_to_file_id.find(indexed.path);
-  if (it == indexed.id_cache.file_path_to_file_id.end()) {
-    // TODO: investigate
-    std::cerr << "!!! FIXME !!! Unable to find cached file " << indexed.path << std::endl;
-    return;
-  }
-
-  FileId local_file_id = it->second;
-  auto add_outline = [this, &indexed, local_file_id](Usr usr, Location location) {
-    if (location.file_id() == local_file_id)
-      outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
+  auto add_outline = [this, &indexed](Usr usr, Range range) {
+    outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, range)));
   };
-  auto add_all_symbols = [this, &indexed, local_file_id](Usr usr, Location location) {
-    if (location.file_id() == local_file_id)
-      all_symbols.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, location)));
+  auto add_all_symbols = [this, &indexed](Usr usr, Range range) {
+    all_symbols.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, range)));
   };
 
   for (const IndexedTypeDef& def : indexed.types) {
-    if (def.def.definition.has_value()) {
-      add_outline(def.def.usr, def.def.definition.value());
-      add_all_symbols(def.def.usr, def.def.definition.value());
-    }
-    for (const Location& use : def.uses)
+    if (def.def.definition_spelling.has_value())
+      add_all_symbols(def.def.usr, def.def.definition_spelling.value());
+    if (def.def.definition_extent.has_value())
+      add_outline(def.def.usr, def.def.definition_extent.value());
+    for (const Range& use : def.uses)
       add_all_symbols(def.def.usr, use);
   }
   for (const IndexedFuncDef& def : indexed.funcs) {
-    if (def.def.definition.has_value()) {
-      add_outline(def.def.usr, def.def.definition.value());
-      add_all_symbols(def.def.usr, def.def.definition.value());
-    }
-    for (Location decl : def.declarations) {
+    if (def.def.definition_spelling.has_value())
+      add_all_symbols(def.def.usr, def.def.definition_spelling.value());
+    if (def.def.definition_extent.has_value())
+      add_outline(def.def.usr, def.def.definition_extent.value());
+    for (Range decl : def.declarations) {
       add_outline(def.def.usr, decl);
       add_all_symbols(def.def.usr, decl);
     }
-    for (const Location& use : def.uses)
+    for (const Range& use : def.uses)
       add_all_symbols(def.def.usr, use);
   }
   for (const IndexedVarDef& def : indexed.vars) {
-    if (def.def.definition.has_value()) {
-      add_outline(def.def.usr, def.def.definition.value());
-      add_all_symbols(def.def.usr, def.def.definition.value());
-    }
-    for (const Location& use : def.uses)
+    if (def.def.definition_spelling.has_value())
+      add_all_symbols(def.def.usr, def.def.definition_spelling.value());
+    if (def.def.definition_extent.has_value())
+      add_outline(def.def.usr, def.def.definition_extent.value());
+    for (const Range& use : def.uses)
       add_all_symbols(def.def.usr, use);
   }
 
   std::sort(outline.begin(), outline.end(), [](const UsrRef& a, const UsrRef& b) {
-    return a.loc < b.loc;
+    return a.loc.start < b.loc.start;
   });
   std::sort(all_symbols.begin(), all_symbols.end(), [](const UsrRef& a, const UsrRef& b) {
-    return a.loc < b.loc;
+    return a.loc.start < b.loc.start;
   });
 }
 
@@ -339,7 +337,7 @@ void CompareGroups(
     // same id
     if (prev_it->def.usr == curr_it->def.usr) {
       //if (!prev_it->is_bad_def && !curr_it->is_bad_def)
-        on_found(&*prev_it, &*curr_it);
+      on_found(&*prev_it, &*curr_it);
       //else if (prev_it->is_bad_def)
       //  on_added(&*curr_it);
       //else if (curr_it->is_bad_def)
@@ -459,7 +457,7 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
       types_def_changed.push_back(current_remapped_def);
 
     PROCESS_UPDATE_DIFF(types_derived, derived, Usr);
-    PROCESS_UPDATE_DIFF(types_uses, uses, QueryableLocation);
+    PROCESS_UPDATE_DIFF(types_uses, uses, QueryableRange);
   });
 
   // Functions
@@ -476,10 +474,10 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     if (previous_remapped_def != current_remapped_def)
       funcs_def_changed.push_back(current_remapped_def);
 
-    PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableLocation);
+    PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableRange);
     PROCESS_UPDATE_DIFF(funcs_derived, derived, Usr);
     PROCESS_UPDATE_DIFF(funcs_callers, callers, UsrRef);
-    PROCESS_UPDATE_DIFF(funcs_uses, uses, QueryableLocation);
+    PROCESS_UPDATE_DIFF(funcs_uses, uses, QueryableRange);
   });
 
   // Variables
@@ -496,7 +494,7 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     if (previous_remapped_def != current_remapped_def)
       vars_def_changed.push_back(current_remapped_def);
 
-    PROCESS_UPDATE_DIFF(vars_uses, uses, QueryableLocation);
+    PROCESS_UPDATE_DIFF(vars_uses, uses, QueryableRange);
   });
 
 #undef PROCESS_UPDATE_DIFF
@@ -596,7 +594,7 @@ void QueryableDatabase::Import(const std::vector<QueryableTypeDef>& defs) {
     }
     else {
       QueryableTypeDef& existing = types[it->second.idx];
-      if (def.def.definition)
+      if (def.def.definition_extent)
         existing.def = def.def;
       AddRange(&existing.derived, def.derived);
       AddRange(&existing.uses, def.uses);
@@ -615,7 +613,7 @@ void QueryableDatabase::Import(const std::vector<QueryableFuncDef>& defs) {
     }
     else {
       QueryableFuncDef& existing = funcs[it->second.idx];
-      if (def.def.definition)
+      if (def.def.definition_extent)
         existing.def = def.def;
       AddRange(&existing.callers, def.callers);
       AddRange(&existing.declarations, def.declarations);
@@ -636,7 +634,7 @@ void QueryableDatabase::Import(const std::vector<QueryableVarDef>& defs) {
     }
     else {
       QueryableVarDef& existing = vars[it->second.idx];
-      if (def.def.definition)
+      if (def.def.definition_extent)
         existing.def = def.def;
       AddRange(&existing.uses, def.uses);
     }

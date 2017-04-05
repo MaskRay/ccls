@@ -13,22 +13,22 @@ OUTPUT:
       "usr": "c:@ST>1#T@unique_ptr",
       "short_name": "unique_ptr",
       "qualified_name": "unique_ptr",
-      "definition": "1:2:7",
+      "definition": "2:7",
       "instantiations": [0],
-      "uses": ["*1:2:7", "*1:6:8"]
+      "uses": ["*2:7", "*6:8"]
     }, {
       "id": 1,
       "usr": "c:@S@S",
-      "uses": ["1:4:8", "*1:6:19"]
+      "uses": ["4:8", "*6:19"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:type_usage_as_template_parameter_simple.cc@foo",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "1:6:22",
+      "definition": "6:22",
       "variable_type": 0,
-      "uses": ["1:6:22"]
+      "uses": ["6:22"]
     }]
 }
 */

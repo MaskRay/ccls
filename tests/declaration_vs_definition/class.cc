@@ -13,8 +13,8 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "1:3:7",
-      "uses": ["1:1:7", "1:2:7", "*1:3:7", "1:4:7"]
+      "definition": "3:7",
+      "uses": ["1:7", "2:7", "*3:7", "4:7"]
     }]
 }
 */

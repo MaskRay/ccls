@@ -15,26 +15,26 @@ OUTPUT:
       "usr": "c:@ST>1#T@Template",
       "short_name": "Template",
       "qualified_name": "Template",
-      "definition": "1:2:7",
-      "uses": ["*1:2:7", "1:5:12", "*1:8:15"]
+      "definition": "2:7",
+      "uses": ["*2:7", "5:12", "*8:15"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "1:4:8",
+      "definition": "4:8",
       "funcs": [0],
-      "uses": ["*1:4:8", "1:8:6"]
+      "uses": ["*4:8", "8:6"]
     }],
   "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@Bar#&$@S@Template>#d#",
       "short_name": "Bar",
       "qualified_name": "Foo::Bar",
-      "declarations": ["1:5:8"],
-      "definition": "1:8:11",
+      "declarations": ["5:8"],
+      "definition": "8:11",
       "declaring_type": 1,
-      "uses": ["1:5:8", "1:8:11"]
+      "uses": ["5:8", "8:11"]
     }]
 }
 */

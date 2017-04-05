@@ -44,19 +44,41 @@ struct QueryableLocation {
 };
 MAKE_REFLECT_STRUCT(QueryableLocation, path, line, column, interesting);
 
+struct QueryableRange {
+  QueryableLocation start;
+  QueryableLocation end;
+
+  QueryableRange() {}
+  QueryableRange(QueryableLocation start, QueryableLocation end) : start(start), end(end) {}
+
+  QueryableRange OffsetStartColumn(int offset) const {
+    return QueryableRange(start.OffsetColumn(offset), end);
+  }
+
+  bool operator==(const QueryableRange& other) const {
+    // Note: We ignore |is_interesting|.
+    return start == other.start && end == other.end;
+  }
+  bool operator!=(const QueryableRange& other) const { return !(*this == other); }
+  bool operator<(const QueryableRange& o) const {
+    return start < o.start;
+  }
+};
+MAKE_REFLECT_STRUCT(QueryableRange, start, end);
+
 struct UsrRef {
   Usr usr;
-  QueryableLocation loc;
+  QueryableRange loc;
 
   UsrRef() {}
-  UsrRef(Usr usr, QueryableLocation loc) : usr(usr), loc(loc) {}
+  UsrRef(Usr usr, QueryableRange loc) : usr(usr), loc(loc) {}
 
   bool operator==(const UsrRef& other) const {
-    return usr == other.usr && loc == other.loc;
+    return usr == other.usr && loc.start == other.loc.start;
   }
   bool operator!=(const UsrRef& other) const { return !(*this == other); }
   bool operator<(const UsrRef& other) const {
-    return usr < other.usr && loc < other.loc;
+    return usr < other.usr && loc.start < other.loc.start;
   }
 };
 MAKE_REFLECT_STRUCT(UsrRef, usr, loc);
@@ -109,15 +131,15 @@ struct QueryableFile {
 MAKE_REFLECT_STRUCT(QueryableFile, file_id, outline, all_symbols);
 
 struct QueryableTypeDef {
-  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
+  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableRange, QueryableRange>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using InstantiationsUpdate = MergeableUpdate<Usr>;
-  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+  using UsesUpdate = MergeableUpdate<QueryableRange>;
 
   DefUpdate def;
   std::vector<Usr> derived;
   std::vector<Usr> instantiations;
-  std::vector<QueryableLocation> uses;
+  std::vector<QueryableRange> uses;
 
   QueryableTypeDef() : def("") {} // For serialization.
   QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
@@ -125,17 +147,17 @@ struct QueryableTypeDef {
 MAKE_REFLECT_STRUCT(QueryableTypeDef, def, derived, instantiations, uses);
 
 struct QueryableFuncDef {
-  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
-  using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
+  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableRange, QueryableRange>;
+  using DeclarationsUpdate = MergeableUpdate<QueryableRange>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using CallersUpdate = MergeableUpdate<UsrRef>;
-  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+  using UsesUpdate = MergeableUpdate<QueryableRange>;
 
   DefUpdate def;
-  std::vector<QueryableLocation> declarations;
+  std::vector<QueryableRange> declarations;
   std::vector<Usr> derived;
   std::vector<UsrRef> callers;
-  std::vector<QueryableLocation> uses;
+  std::vector<QueryableRange> uses;
 
   QueryableFuncDef() : def("") {} // For serialization.
   QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
@@ -143,11 +165,11 @@ struct QueryableFuncDef {
 MAKE_REFLECT_STRUCT(QueryableFuncDef, def, declarations, derived, callers, uses);
 
 struct QueryableVarDef {
-  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
-  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableRange, QueryableRange>;
+  using UsesUpdate = MergeableUpdate<QueryableRange>;
 
   DefUpdate def;
-  std::vector<QueryableLocation> uses;
+  std::vector<QueryableRange> uses;
 
   QueryableVarDef() : def("") {} // For serialization.
   QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);

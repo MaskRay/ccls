@@ -166,7 +166,7 @@ bool lsPosition::operator==(const lsPosition& other) const {
 }
 
 lsRange::lsRange() {}
-lsRange::lsRange(lsPosition position) : start(position), end(position) {}
+lsRange::lsRange(lsPosition start, lsPosition end) : start(start), end(end) {}
 
 bool lsRange::operator==(const lsRange& other) const {
   return start == other.start && end == other.end;

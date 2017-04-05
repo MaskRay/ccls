@@ -1,7 +1,8 @@
 #pragma once
 
-#include "utils.h"
+#include "position.h"
 #include "serializer.h"
+#include "utils.h"
 #include "libclangmm/clangmm.h"
 #include "libclangmm/Utility.h"
 
@@ -50,173 +51,20 @@ bool operator==(const Id<T>& a, const Id<T>& b) {
 }
 
 struct _FakeFileType {};
-using FileId = Id<_FakeFileType>;
 using TypeId = Id<IndexedTypeDef>;
 using FuncId = Id<IndexedFuncDef>;
 using VarId = Id<IndexedVarDef>;
 
 struct IdCache;
 
-struct Location {
-  // TODO: cleanup types (make this type smaller).
-  bool interesting;
-  int64_t raw_file_id;
-  int32_t line;
-  int32_t column;
-
-  Location() {
-    interesting = false;
-    raw_file_id = -1;
-    line = -1;
-    column = -1;
-  }
-
-  Location(bool interesting, FileId file, int32_t line, int32_t column) {
-    this->interesting = interesting;
-    this->raw_file_id = file.id;
-    this->line = line;
-    this->column = column;
-  }
-
-  FileId file_id() const { return FileId(raw_file_id); }
-
-  explicit Location(const char* encoded) : Location() {
-    if (*encoded == '*') {
-      interesting = true;
-      ++encoded;
-    }
-
-    assert(encoded);
-    raw_file_id = strtol(encoded, nullptr, 10);
-    while (*encoded && *encoded != ':')
-      ++encoded;
-    if (*encoded == ':')
-      ++encoded;
-
-    assert(encoded);
-    line = atoi(encoded);
-    while (*encoded && *encoded != ':')
-      ++encoded;
-    if (*encoded == ':')
-      ++encoded;
-
-    assert(encoded);
-    column = atoi(encoded);
-  }
-
-  std::string ToPrettyString(IdCache* id_cache);
-
-  std::string ToString() {
-    // Output looks like this:
-    //
-    //  *1:2:3
-    //
-    // * => interesting
-    // 1 => file id
-    // 2 => line
-    // 3 => column
-
-    std::string result;
-    if (interesting)
-      result += '*';
-    result += std::to_string(raw_file_id);
-    result += ':';
-    result += std::to_string(line);
-    result += ':';
-    result += std::to_string(column);
-    return result;
-  }
-
-  // Compare two Locations and check if they are equal. Ignores the value of
-  // |interesting|.
-  // operator== doesn't seem to work properly...
-  bool IsEqualTo(const Location& o) const {
-    // When comparing, ignore the value of |interesting|.
-    return raw_file_id == o.raw_file_id && line == o.line && column == o.column;
-  }
-
-  bool operator==(const Location& o) const { return IsEqualTo(o); }
-  bool operator<(const Location& o) const {
-    return interesting < o.interesting && raw_file_id < o.raw_file_id &&
-           line < o.line && column < o.column;
-  }
-
-  Location WithInteresting(bool interesting) {
-    Location result = *this;
-    result.interesting = interesting;
-    return result;
-  }
-};
-
-#if false
-// TODO: Move off of this weird wrapper, use struct with custom wrappers
-//       directly.
-BEGIN_BITFIELD_TYPE(Location, uint64_t)
-
-ADD_BITFIELD_MEMBER(interesting,    /*start:*/ 0,  /*len:*/ 1);    // 2 values
-ADD_BITFIELD_MEMBER(raw_file_group, /*start:*/ 1,  /*len:*/ 4);    // 16 values, ok if they wrap around.
-ADD_BITFIELD_MEMBER(raw_file_id,    /*start:*/ 5,  /*len:*/ 25);   // 33,554,432 values
-ADD_BITFIELD_MEMBER(line,           /*start:*/ 30, /*len:*/ 20);   // 1,048,576 values
-ADD_BITFIELD_MEMBER(column,         /*start:*/ 50, /*len:*/ 14);   // 16,384 values
-
-Location(bool interesting, FileId file, uint32_t line, uint32_t column) {
-  this->interesting = interesting;
-  this->raw_file_group = file.group;
-  this->raw_file_id = file.id;
-  this->line = line;
-  this->column = column;
-}
-
-FileId file_id() {
-  return FileId(raw_file_id, raw_file_group);
-}
-
-std::string ToString() {
-  // Output looks like this:
-  //
-  //  *1:2:3
-  //
-  // * => interesting
-  // 1 => file id
-  // 2 => line
-  // 3 => column
-
-  std::string result;
-  if (interesting)
-    result += '*';
-  result += std::to_string(raw_file_id);
-  result += ':';
-  result += std::to_string(line);
-  result += ':';
-  result += std::to_string(column);
-  return result;
-}
-
-// Compare two Locations and check if they are equal. Ignores the value of
-// |interesting|.
-// operator== doesn't seem to work properly...
-bool IsEqualTo(const Location& o) {
-  // When comparing, ignore the value of |interesting|.
-  return (wrapper.value >> 1) == (o.wrapper.value >> 1);
-}
-
-Location WithInteresting(bool interesting) {
-  Location result = *this;
-  result.interesting = interesting;
-  return result;
-}
-
-END_BITFIELD_TYPE()
-#endif
-
 template <typename T>
 struct Ref {
   Id<T> id;
-  Location loc;
+  Range loc;
 
   Ref() {}  // For serialization.
 
-  Ref(Id<T> id, Location loc) : id(id), loc(loc) {}
+  Ref(Id<T> id, Range loc) : id(id), loc(loc) {}
 
   bool operator==(const Ref<T>& other) {
     return id == other.id && loc == other.loc;
@@ -245,10 +93,11 @@ using VarRef = Ref<IndexedVarDef>;
 // TODO: Either eliminate the defs created as a by-product of cross-referencing,
 //       or do not emit things we don't have definitions for.
 
-template <typename TypeId = TypeId,
-          typename FuncId = FuncId,
-          typename VarId = VarId,
-          typename Location = Location>
+template <typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename Position,
+          typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
   std::string usr;
@@ -264,7 +113,17 @@ struct TypeDefDefinitionData {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  optional<Location> definition;
+  optional<Position> definition_spelling;
+  optional<Range> definition_extent;
+
+  // TODO: change |definition| to be a Position, and have an |extents| field which
+  // stores the range of the definition body. Also do this for methods.
+  // TODO: cleanup Range, Position, etc to take less memory. Model vscode api of
+  // Location, Range, Position.
+  // TODO: drop paths from everything in the index. We never store things outside
+  // of the main file.
+  // TODO: fix tests, the change to ranges is breaking them. Breaking currently
+  // coming from marking
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
@@ -281,16 +140,18 @@ struct TypeDefDefinitionData {
   TypeDefDefinitionData() {}  // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>&
+  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
-           definition == other.definition && alias_of == other.alias_of &&
+           definition_spelling == other.definition_spelling &&
+           definition_extent == other.definition_extent &&
+           alias_of == other.alias_of &&
            parents == other.parents && types == other.types &&
            funcs == other.funcs && vars == other.vars;
   }
 
-  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Location>&
+  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
                       other) const {
     return !(*this == other);
   }
@@ -299,9 +160,10 @@ template <typename TVisitor,
           typename TypeId,
           typename FuncId,
           typename VarId,
-          typename Location>
+          typename Position,
+          typename Range>
 void Reflect(TVisitor& visitor,
-             TypeDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
+             TypeDefDefinitionData<TypeId, FuncId, VarId, Position, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -316,7 +178,8 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexedTypeDef {
-  TypeDefDefinitionData<> def;
+  using Def = TypeDefDefinitionData<TypeId, FuncId, VarId, Range, Range>;
+  Def def;
 
   TypeId id;
 
@@ -330,7 +193,7 @@ struct IndexedTypeDef {
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
-  std::vector<Location> uses;
+  std::vector<Range> uses;
 
   IndexedTypeDef() : def("") {}  // For serialization
 
@@ -338,7 +201,8 @@ struct IndexedTypeDef {
 
   bool HasInterestingState() const {
     return
-      def.definition ||
+      def.definition_spelling ||
+      def.definition_extent ||
       !derived.empty() ||
       !instantiations.empty() ||
       !uses.empty();
@@ -351,17 +215,19 @@ struct IndexedTypeDef {
 
 MAKE_HASHABLE(IndexedTypeDef, t.def.usr);
 
-template <typename TypeId = TypeId,
-          typename FuncId = FuncId,
-          typename VarId = VarId,
-          typename FuncRef = FuncRef,
-          typename Location = Location>
+template <typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename FuncRef,
+          typename Position,
+          typename Range>
 struct FuncDefDefinitionData {
   // General metadata.
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  optional<Location> definition;
+  optional<Position> definition_spelling;
+  optional<Range> definition_extent;
 
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
@@ -381,16 +247,17 @@ struct FuncDefDefinitionData {
   }
 
   bool operator==(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>&
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Position, Range>&
           other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
-           definition == other.definition &&
+           definition_spelling == other.definition_spelling &&
+           definition_extent == other.definition_extent &&
            declaring_type == other.declaring_type && base == other.base &&
            locals == other.locals && callees == other.callees;
   }
   bool operator!=(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>&
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Position, Range>&
           other) const {
     return !(*this == other);
   }
@@ -401,10 +268,11 @@ template <typename TVisitor,
           typename FuncId,
           typename VarId,
           typename FuncRef,
-          typename Location>
+          typename Position,
+          typename Range>
 void Reflect(
     TVisitor& visitor,
-    FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Location>& value) {
+    FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Position, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -418,12 +286,13 @@ void Reflect(
 }
 
 struct IndexedFuncDef {
-  FuncDefDefinitionData<> def;
+  using Def = FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range, Range>;
+  Def def;
 
   FuncId id;
 
   // Places the function is forward-declared.
-  std::vector<Location> declarations;
+  std::vector<Range> declarations;
 
   // Methods which directly override this one.
   std::vector<FuncId> derived;
@@ -437,7 +306,7 @@ struct IndexedFuncDef {
   std::vector<FuncRef> callers;
 
   // All usages. For interesting usages, see callees.
-  std::vector<Location> uses;
+  std::vector<Range> uses;
 
   IndexedFuncDef() {}  // For reflection.
   IndexedFuncDef(FuncId id, const std::string& usr) : def(usr), id(id) {
@@ -446,7 +315,8 @@ struct IndexedFuncDef {
 
   bool HasInterestingState() const {
     return
-      def.definition ||
+      def.definition_spelling ||
+      def.definition_extent ||
       !def.callees.empty() ||
       !declarations.empty() ||
       !derived.empty() ||
@@ -460,19 +330,21 @@ struct IndexedFuncDef {
 };
 MAKE_HASHABLE(IndexedFuncDef, t.def.usr);
 
-template <typename TypeId = TypeId,
-          typename FuncId = FuncId,
-          typename VarId = VarId,
-          typename Location = Location>
+template <typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename Position,
+          typename Range>
 struct VarDefDefinitionData {
   // General metadata.
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  optional<Location> declaration;
-  // TODO: definitions should be a list of locations, since there can be more
-  //       than one.
-  optional<Location> definition;
+  optional<Range> declaration;
+  // TODO: definitions should be a list of ranges, since there can be more
+  //       than one - when??
+  optional<Position> definition_spelling;
+  optional<Range> definition_extent;
 
   // Type of the variable.
   optional<TypeId> variable_type;
@@ -483,15 +355,17 @@ struct VarDefDefinitionData {
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>&
+  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
-           declaration == other.declaration && definition == other.definition &&
+           declaration == other.declaration &&
+           definition_spelling == other.definition_spelling &&
+           definition_extent == other.definition_extent &&
            variable_type == other.variable_type &&
            declaring_type == other.declaring_type;
   }
-  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Location>&
+  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
                       other) const {
     return !(*this == other);
   }
@@ -501,26 +375,29 @@ template <typename TVisitor,
           typename TypeId,
           typename FuncId,
           typename VarId,
-          typename Location>
+          typename Position,
+          typename Range>
 void Reflect(TVisitor& visitor,
-             VarDefDefinitionData<TypeId, FuncId, VarId, Location>& value) {
+             VarDefDefinitionData<TypeId, FuncId, VarId, Position, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(qualified_name);
-  REFLECT_MEMBER(definition);
+  REFLECT_MEMBER(definition_spelling);
+  REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER_END();
 }
 
 struct IndexedVarDef {
-  VarDefDefinitionData<> def;
+  using Def = VarDefDefinitionData<TypeId, FuncId, VarId, Range, Range>;
+  Def def;
 
   VarId id;
 
   // Usages.
-  std::vector<Location> uses;
+  std::vector<Range> uses;
 
   IndexedVarDef() : def("") {}  // For serialization
 
@@ -530,7 +407,8 @@ struct IndexedVarDef {
 
   bool HasInterestingState() const {
     return
-      def.definition ||
+      def.definition_spelling ||
+      def.definition_extent ||
       !uses.empty();
   }
 
@@ -542,23 +420,24 @@ MAKE_HASHABLE(IndexedVarDef, t.def.usr);
 
 struct IdCache {
   std::string primary_file;
-  std::unordered_map<std::string, FileId> file_path_to_file_id;
   std::unordered_map<std::string, TypeId> usr_to_type_id;
   std::unordered_map<std::string, FuncId> usr_to_func_id;
   std::unordered_map<std::string, VarId> usr_to_var_id;
-  std::unordered_map<FileId, std::string> file_id_to_file_path;
   std::unordered_map<TypeId, std::string> type_id_to_usr;
   std::unordered_map<FuncId, std::string> func_id_to_usr;
   std::unordered_map<VarId, std::string> var_id_to_usr;
 
   IdCache(const std::string& primary_file);
-  Location ForceResolve(const CXSourceLocation& cx_loc, bool interesting);
-  Location ForceResolve(const CXIdxLoc& cx_idx_loc, bool interesting);
-  Location ForceResolve(const CXCursor& cx_cursor, bool interesting);
-  optional<Location> Resolve(const CXSourceLocation& cx_loc, bool interesting);
-  optional<Location> Resolve(const CXIdxLoc& cx_idx_loc, bool interesting);
-  optional<Location> Resolve(const CXCursor& cx_cursor, bool interesting);
-  optional<Location> Resolve(const clang::Cursor& cursor, bool interesting);
+
+  Range ForceResolve(const CXSourceRange& range, bool interesting);
+
+  Range ForceResolveSpelling(const CXCursor& cx_cursor, bool interesting);
+  optional<Range> ResolveSpelling(const CXCursor& cx_cursor, bool interesting);
+  optional<Range> ResolveSpelling(const clang::Cursor& cursor, bool interesting);
+
+  Range ForceResolveExtent(const CXCursor& cx_cursor, bool interesting);
+  optional<Range> ResolveExtent(const CXCursor& cx_cursor, bool interesting);
+  optional<Range> ResolveExtent(const clang::Cursor& cursor, bool interesting);
 };
 
 struct IndexedFile {

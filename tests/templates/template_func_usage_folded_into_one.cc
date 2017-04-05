@@ -17,23 +17,23 @@ OUTPUT:
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "1:2:12",
-      "uses": ["1:2:12", "1:6:9", "1:7:9"]
+      "definition": "2:12",
+      "uses": ["2:12", "6:9", "7:9"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:@a",
       "short_name": "a",
       "qualified_name": "a",
-      "definition": "1:6:5",
-      "uses": ["1:6:5"]
+      "definition": "6:5",
+      "uses": ["6:5"]
     }, {
       "id": 1,
       "usr": "c:@b",
       "short_name": "b",
       "qualified_name": "b",
-      "definition": "1:7:5",
-      "uses": ["1:7:5"]
+      "definition": "7:5",
+      "uses": ["7:5"]
     }]
 }
 */

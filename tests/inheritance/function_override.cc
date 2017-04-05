@@ -13,38 +13,38 @@ OUTPUT:
       "usr": "c:@S@Root",
       "short_name": "Root",
       "qualified_name": "Root",
-      "definition": "1:1:7",
+      "definition": "1:7",
       "derived": [1],
       "funcs": [0],
-      "uses": ["*1:1:7", "*1:4:24"]
+      "uses": ["*1:7", "*4:24"]
     }, {
       "id": 1,
       "usr": "c:@S@Derived",
       "short_name": "Derived",
       "qualified_name": "Derived",
-      "definition": "1:4:7",
+      "definition": "4:7",
       "parents": [0],
       "funcs": [1],
-      "uses": ["*1:4:7"]
+      "uses": ["*4:7"]
     }],
   "funcs": [{
       "id": 0,
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "qualified_name": "Root::foo",
-      "declarations": ["1:2:16"],
+      "declarations": ["2:16"],
       "declaring_type": 0,
       "derived": [1],
-      "uses": ["1:2:16"]
+      "uses": ["2:16"]
     }, {
       "id": 1,
       "usr": "c:@S@Derived@F@foo#",
       "short_name": "foo",
       "qualified_name": "Derived::foo",
-      "definition": "1:5:8",
+      "definition": "5:8",
       "declaring_type": 1,
       "base": 0,
-      "uses": ["1:5:8"]
+      "uses": ["5:8"]
     }]
 }
 */

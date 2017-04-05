@@ -103,6 +103,55 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
   return result;
 }
 
+
+optional<QueryableRange> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const Usr& usr) {
+  SymbolIdx symbol = db->usr_to_symbol[usr];
+  switch (symbol.kind) {
+  case SymbolKind::Type: {
+    QueryableTypeDef* def = &db->types[symbol.idx];
+    return def->def.definition_spelling;
+  }
+  case SymbolKind::Func: {
+    QueryableFuncDef* def = &db->funcs[symbol.idx];
+    return def->def.definition_spelling;
+  }
+  case SymbolKind::Var: {
+    QueryableVarDef* def = &db->vars[symbol.idx];
+    return def->def.definition_spelling;
+  }
+  case SymbolKind::File:
+  case SymbolKind::Invalid: {
+    assert(false && "unexpected");
+    break;
+  }
+  }
+  return nullopt;
+}
+
+optional<QueryableRange> GetDefinitionExtentOfUsr(QueryableDatabase* db, const Usr& usr) {
+  SymbolIdx symbol = db->usr_to_symbol[usr];
+  switch (symbol.kind) {
+  case SymbolKind::Type: {
+    QueryableTypeDef* def = &db->types[symbol.idx];
+    return def->def.definition_extent;
+  }
+  case SymbolKind::Func: {
+    QueryableFuncDef* def = &db->funcs[symbol.idx];
+    return def->def.definition_extent;
+  }
+  case SymbolKind::Var: {
+    QueryableVarDef* def = &db->vars[symbol.idx];
+    return def->def.definition_extent;
+  }
+  case SymbolKind::File:
+  case SymbolKind::Invalid: {
+    assert(false && "unexpected");
+    break;
+  }
+  }
+  return nullopt;
+}
+
 template<typename T>
 void SendOutMessageToClient(IpcMessageQueue* queue, T& response) {
   std::ostringstream sstream;
@@ -283,37 +332,38 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   return nullptr;
 }
 
-lsLocation GetLsLocation(const QueryableLocation& location) {
+lsRange GetLsRange(const QueryableRange& location) {
+  return lsRange(
+      lsPosition(location.start.line - 1, location.start.column - 1),
+      lsPosition(location.end.line - 1, location.end.column - 1));
+}
+
+lsLocation GetLsLocation(const QueryableRange& location) {
   return lsLocation(
-    lsDocumentUri::FromPath(location.path),
-    lsRange(lsPosition(location.line - 1, location.column - 1)));
+    lsDocumentUri::FromPath(location.start.path),
+    GetLsRange(location));
 }
 
 void AddCodeLens(std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<QueryableLocation>& uses,
+  QueryableRange loc,
+  const std::vector<QueryableRange>& uses,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
   TCodeLens code_lens;
-  code_lens.range.start.line = loc.line - 1;
-  code_lens.range.start.character = loc.column - 1;
-  // TODO: store range information.
-  code_lens.range.end.line = code_lens.range.start.line;
-  code_lens.range.end.character = code_lens.range.start.character;
-
+  code_lens.range = GetLsRange(loc);
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "superindex.showReferences";
-  code_lens.command->arguments.uri = lsDocumentUri::FromPath(loc.path);
+  code_lens.command->arguments.uri = lsDocumentUri::FromPath(loc.start.path);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
-  for (const QueryableLocation& use : uses) {
+  for (const QueryableRange& use : uses) {
     if (exclude_loc && use == loc)
       continue;
-    if (only_interesting && !use.interesting)
+    if (only_interesting && !use.start.interesting)
       continue;
     unique_uses.insert(GetLsLocation(use));
   }
@@ -321,7 +371,7 @@ void AddCodeLens(std::vector<TCodeLens>* result,
     unique_uses.end());
 
   // User visible label
-  int num_usages = unique_uses.size();
+  size_t num_usages = unique_uses.size();
   code_lens.command->title = std::to_string(num_usages) + " ";
   if (num_usages == 1)
     code_lens.command->title += singular;
@@ -333,61 +383,31 @@ void AddCodeLens(std::vector<TCodeLens>* result,
 }
 
 void AddCodeLens(std::vector<TCodeLens>* result,
-  QueryableLocation loc,
+  QueryableRange loc,
   const std::vector<UsrRef>& uses,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
-  std::vector<QueryableLocation> uses0;
+  std::vector<QueryableRange> uses0;
   uses0.reserve(uses.size());
   for (const UsrRef& use : uses)
     uses0.push_back(use.loc);
   AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
-optional<QueryableLocation> GetDefinitionOfUsr(QueryableDatabase* db, const Usr& usr) {
-  SymbolIdx symbol = db->usr_to_symbol[usr];
-  switch (symbol.kind) {
-  case SymbolKind::Type: {
-    QueryableTypeDef* def = &db->types[symbol.idx];
-    if (def->def.definition)
-      return def->def.definition.value();
-    break;
-  }
-  case SymbolKind::Func: {
-    QueryableFuncDef* def = &db->funcs[symbol.idx];
-    if (def->def.definition)
-      return def->def.definition.value();
-    break;
-  }
-  case SymbolKind::Var: {
-    QueryableVarDef* def = &db->vars[symbol.idx];
-    if (def->def.definition)
-      return def->def.definition.value();
-    break;
-  }
-  case SymbolKind::File:
-  case SymbolKind::Invalid: {
-    assert(false && "unexpected");
-    break;
-  }
-  }
-  return nullopt;
-}
-
 void AddCodeLens(std::vector<TCodeLens>* result,
   QueryableDatabase* db,
-  QueryableLocation loc,
+  QueryableRange loc,
   const std::vector<Usr>& usrs,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
-  std::vector<QueryableLocation> uses0;
+  std::vector<QueryableRange> uses0;
   uses0.reserve(usrs.size());
   for (const Usr& usr : usrs) {
-    optional<QueryableLocation> loc = GetDefinitionOfUsr(db, usr);
+    optional<QueryableRange> loc = GetDefinitionSpellingOfUsr(db, usr);
     if (loc)
       uses0.push_back(loc.value());
   }
@@ -495,25 +515,14 @@ void QueryDbMainLoop(
       // if we store range information instead of hacking it.
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
-      int best_dist = INT_MAX;
+
       for (const UsrRef& ref : file->all_symbols) {
-        if (ref.loc.line == target_line) {
-          if (ref.loc.column > target_column)
-            continue;
-
-          int dist = target_column - ref.loc.column;
-          if (dist < best_dist) {
-            optional<QueryableLocation> location = GetDefinitionOfUsr(db, ref.usr);
-
-            if (location) {
-              best_dist = dist;
-              response.result.clear();
-              response.result.push_back(GetLsLocation(location.value()));
-            }
-
-            if (dist == 0)
-              break;
-          }
+        if (ref.loc.start.line >= target_line && ref.loc.end.line <= target_line &&
+            ref.loc.start.column <= target_column && ref.loc.end.column >= target_column) {
+          optional<QueryableRange> location = GetDefinitionSpellingOfUsr(db, ref.usr);
+          if (location)
+            response.result.push_back(GetLsLocation(location.value()));
+          break;
         }
       }
 
@@ -538,14 +547,7 @@ void QueryDbMainLoop(
         SymbolIdx symbol = db->usr_to_symbol[ref.usr];
 
         lsSymbolInformation info;
-        info.location.range.start.line =
-          ref.loc.line - 1;  // TODO: cleanup indexer to negate by 1.
-        info.location.range.start.character =
-          ref.loc.column - 1;  // TODO: cleanup indexer to negate by 1.
-                               // TODO: store range information.
-        info.location.range.end.line = info.location.range.start.line;
-        info.location.range.end.character =
-          info.location.range.start.character;
+        info.location = GetLsLocation(ref.loc);
 
         // TODO: cleanup namespace/naming so there is only one SymbolKind.
         switch (symbol.kind) {
@@ -612,31 +614,34 @@ void QueryDbMainLoop(
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];
-          AddCodeLens(&response.result, ref.loc.OffsetColumn(0), def.uses,
-            false /*exclude_loc*/, true /*only_interesting*/, "reference",
-            "references");
-          AddCodeLens(&response.result, db, ref.loc.OffsetColumn(1), def.derived,
+          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
+            false /*exclude_loc*/, false /*only_interesting*/, "ref",
+            "refs");
+          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(1), def.uses,
+            false /*exclude_loc*/, true /*only_interesting*/, "iref",
+            "irefs");
+          AddCodeLens(&response.result, db, ref.loc.OffsetStartColumn(2), def.derived,
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
-          AddCodeLens(&response.result, db, ref.loc.OffsetColumn(2), def.instantiations,
+          AddCodeLens(&response.result, db, ref.loc.OffsetStartColumn(3), def.instantiations,
             false /*exclude_loc*/, false /*only_interesting*/, "instantiation", "instantiations");
           break;
         }
         case SymbolKind::Func: {
           QueryableFuncDef& def = db->funcs[symbol.idx];
-          //AddCodeLens(&response.result, ref.loc.OffsetColumn(0), def.uses,
+          //AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
           //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
           //  "references");
-          AddCodeLens(&response.result, ref.loc.OffsetColumn(1), def.callers,
+          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(1), def.callers,
             true /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
           //AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
           //  false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
-          AddCodeLens(&response.result, db, ref.loc.OffsetColumn(3), def.derived,
+          AddCodeLens(&response.result, db, ref.loc.OffsetStartColumn(3), def.derived,
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
           break;
         }
         case SymbolKind::Var: {
           QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(&response.result, ref.loc.OffsetColumn(0), def.uses,
+          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
             true /*exclude_loc*/, false /*only_interesting*/, "reference",
             "references");
           break;
@@ -683,11 +688,9 @@ void QueryDbMainLoop(
             info.name = def.def.qualified_name;
             info.kind = lsSymbolKind::Class;
 
-            if (def.def.definition.has_value()) {
-              info.location.uri.SetPath(def.def.definition->path);
-              info.location.range.start.line = def.def.definition->line - 1;
-              info.location.range.start.character =
-                def.def.definition->column - 1;
+            if (def.def.definition_extent.has_value()) {
+              info.location.uri.SetPath(def.def.definition_extent->start.path);
+              info.location.range = GetLsRange(def.def.definition_extent.value());
             }
             break;
           }
@@ -705,11 +708,8 @@ void QueryDbMainLoop(
               info.kind = lsSymbolKind::Function;
             }
 
-            if (def.def.definition.has_value()) {
-              info.location.uri.SetPath(def.def.definition->path);
-              info.location.range.start.line = def.def.definition->line - 1;
-              info.location.range.start.character =
-                def.def.definition->column - 1;
+            if (def.def.definition_extent.has_value()) {
+              info.location = GetLsLocation(def.def.definition_extent.value());
             }
             break;
           }
@@ -718,11 +718,8 @@ void QueryDbMainLoop(
             info.name = def.def.qualified_name;
             info.kind = lsSymbolKind::Variable;
 
-            if (def.def.definition.has_value()) {
-              info.location.uri.SetPath(def.def.definition->path);
-              info.location.range.start.line = def.def.definition->line - 1;
-              info.location.range.start.character =
-                def.def.definition->column - 1;
+            if (def.def.definition_extent.has_value()) {
+              info.location = GetLsLocation(def.def.definition_extent.value());
             }
             break;
           }
@@ -731,11 +728,6 @@ void QueryDbMainLoop(
             break;
           }
           };
-
-          // TODO: store range information.
-          info.location.range.end.line = info.location.range.start.line;
-          info.location.range.end.character =
-            info.location.range.start.character;
 
           response.result.push_back(info);
         }

@@ -239,7 +239,7 @@ MAKE_REFLECT_STRUCT(lsPosition, line, character);
 
 struct lsRange {
   lsRange();
-  lsRange(lsPosition position);
+  lsRange(lsPosition start, lsPosition end);
 
   bool operator==(const lsRange& other) const;
 

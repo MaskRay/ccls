@@ -35,18 +35,24 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
 }
 
 
-// Location
-void Reflect(Reader& visitor, Location& value) {
-  value = Location(visitor.GetString());
+// Position
+void Reflect(Reader& visitor, Position& value) {
+  value = Position(visitor.GetString());
 }
-void Reflect(Writer& visitor, Location& value) {
-  // We only ever want to emit id=1 files.
-  assert(value.raw_file_id == 1);
-
+void Reflect(Writer& visitor, Position& value) {
   std::string output = value.ToString();
   visitor.String(output.c_str(), output.size());
 }
 
+
+// Range
+void Reflect(Reader& visitor, Range& value) {
+  value = Range(visitor.GetString());
+}
+void Reflect(Writer& visitor, Range& value) {
+  std::string output = value.ToString();
+  visitor.String(output.c_str(), output.size());
+}
 
 // Id<T>
 template<typename T>
@@ -66,7 +72,7 @@ void Reflect(Reader& visitor, Ref<IndexedFuncDef>& value) {
   const char* loc_string = strchr(str_value, '@') + 1;
 
   value.id = Id<IndexedFuncDef>(id);
-  value.loc = Location(loc_string);
+  value.loc = Range(loc_string);
 }
 void Reflect(Writer& visitor, Ref<IndexedFuncDef>& value) {
   std::string s = std::to_string(value.id.id) + "@" + value.loc.ToString();
@@ -105,7 +111,9 @@ void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
   REFLECT_MEMBER2("usr", value.def.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
-  REFLECT_MEMBER2("definition", value.def.definition);
+  REFLECT_MEMBER2("definition", value.def.definition_spelling);
+  //REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
+  //REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("alias_of", value.def.alias_of);
   REFLECT_MEMBER2("parents", value.def.parents);
   REFLECT_MEMBER2("derived", value.derived);
@@ -141,7 +149,9 @@ void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
   REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("definition", value.def.definition);
+  REFLECT_MEMBER2("definition", value.def.definition_spelling);
+  //REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
+  //REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("base", value.def.base);
   REFLECT_MEMBER2("derived", value.derived);
@@ -176,7 +186,9 @@ void Reflect(TVisitor& visitor, IndexedVarDef& value) {
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
   REFLECT_MEMBER2("declaration", value.def.declaration);
-  REFLECT_MEMBER2("definition", value.def.definition);
+  REFLECT_MEMBER2("definition", value.def.definition_spelling);
+  //REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
+  //REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("uses", value.uses);
