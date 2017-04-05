@@ -84,9 +84,8 @@ void DiffDocuments(std::string path, rapidjson::Document& expected, rapidjson::D
 }
 
 void VerifySerializeToFrom(IndexedFile& file) {
-  return; // TODO: reenable
   std::string expected = file.ToString();
-  std::string actual = Deserialize("foo.cc", Serialize(file)).value().ToString();
+  std::string actual = Deserialize("--.cc", Serialize(file)).value().ToString();
   if (expected != actual) {
     std::cerr << "Serialization failure" << std::endl;;
     assert(false);
