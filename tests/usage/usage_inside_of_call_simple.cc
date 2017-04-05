@@ -14,25 +14,27 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
-      "declarations": ["1:6"],
-      "callers": ["2@6:3"],
-      "uses": ["1:6", "6:3"]
+      "declarations": ["1:6-1:12"],
+      "callers": ["2@6:3-6:9"],
+      "uses": ["1:6-1:12", "6:3-6:9"]
     }, {
       "id": 1,
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "qualified_name": "gen",
-      "definition": "3:5",
-      "callers": ["2@6:10", "2@6:18"],
-      "uses": ["3:5", "6:10", "6:18"]
+      "definition_spelling": "3:5-3:8",
+      "definition_extent": "3:1-3:24",
+      "callers": ["2@6:10-6:13", "2@6:18-6:21"],
+      "uses": ["3:5-3:8", "6:10-6:13", "6:18-6:21"]
     }, {
       "id": 2,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "5:6",
-      "callees": ["0@6:3", "1@6:10", "1@6:18"],
-      "uses": ["5:6"]
+      "definition_spelling": "5:6-5:9",
+      "definition_extent": "5:1-7:2",
+      "callees": ["0@6:3-6:9", "1@6:10-6:13", "1@6:18-6:21"],
+      "uses": ["5:6-5:9"]
     }]
 }
 */

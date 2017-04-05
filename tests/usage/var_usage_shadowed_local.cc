@@ -15,23 +15,26 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "1:6",
-      "uses": ["1:6"]
+      "definition_spelling": "1:6-1:9",
+      "definition_extent": "1:1-9:2",
+      "uses": ["1:6-1:9"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:var_usage_shadowed_local.cc@16@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "definition": "2:7",
-      "uses": ["2:7", "3:3", "8:3"]
+      "definition_spelling": "2:7-2:8",
+      "definition_extent": "2:3-2:8",
+      "uses": ["2:7-2:8", "3:3-3:4", "8:3-8:4"]
     }, {
       "id": 1,
       "usr": "c:var_usage_shadowed_local.cc@43@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
-      "definition": "5:9",
-      "uses": ["5:9", "6:5"]
+      "definition_spelling": "5:9-5:10",
+      "definition_extent": "5:5-5:10",
+      "uses": ["5:9-5:10", "6:5-6:6"]
     }]
 }
 */

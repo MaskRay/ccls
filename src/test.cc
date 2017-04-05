@@ -143,7 +143,12 @@ void RunTests() {
     }
     else {
       DiffDocuments(path, expected, actual);
-      break;
+      std::cout << std::endl;
+      std::cout << std::endl;
+      std::cout << "[Enter to continue next test]";
+      std::cin.get();
+      std::cin.get();
+      //break;
     }
   }
 

@@ -7,16 +7,17 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Type",
       "instantiations": [0],
-      "uses": ["1:8", "*2:8"]
+      "uses": ["1:8-1:12", "*2:8-2:12"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_static.cc@t",
       "short_name": "t",
       "qualified_name": "t",
-      "definition": "2:13",
+      "definition_spelling": "2:13-2:14",
+      "definition_extent": "2:1-2:14",
       "variable_type": 0,
-      "uses": ["2:13"]
+      "uses": ["2:13-2:14"]
     }]
 }
 */

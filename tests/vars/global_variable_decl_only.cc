@@ -7,8 +7,8 @@ OUTPUT:
       "usr": "c:@global",
       "short_name": "global",
       "qualified_name": "global",
-      "declaration": "1:12",
-      "uses": ["1:12"]
+      "declaration": "1:12-1:18",
+      "uses": ["1:12-1:18"]
     }]
 }
 */

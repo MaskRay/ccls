@@ -9,18 +9,19 @@ OUTPUT:
       "usr": "c:@S@T",
       "short_name": "T",
       "qualified_name": "T",
-      "definition": "1:8",
+      "definition_spelling": "1:8-1:9",
+      "definition_extent": "1:1-1:12",
       "instantiations": [0],
-      "uses": ["*1:8", "*3:8"]
+      "uses": ["*1:8-1:9", "*3:8-3:9"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:@t",
       "short_name": "t",
       "qualified_name": "t",
-      "declaration": "3:10",
+      "declaration": "3:10-3:11",
       "variable_type": 0,
-      "uses": ["3:10"]
+      "uses": ["3:10-3:11"]
     }]
 }
 */

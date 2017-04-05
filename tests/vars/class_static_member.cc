@@ -11,21 +11,23 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "1:7",
+      "definition_spelling": "1:7-1:10",
+      "definition_extent": "1:1-3:2",
       "vars": [0],
       "instantiations": [0],
-      "uses": ["*1:7", "*2:10", "*4:1", "4:6"]
+      "uses": ["*1:7-1:10", "*2:10-2:13", "*4:1-4:4", "4:6-4:9"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
-      "declaration": "2:15",
-      "definition": "4:11",
+      "declaration": "2:15-2:21",
+      "definition_spelling": "4:11-4:17",
+      "definition_extent": "4:1-4:27",
       "variable_type": 0,
       "declaring_type": 0,
-      "uses": ["2:15", "4:11"]
+      "uses": ["2:15-2:21", "4:11-4:17"]
     }]
 }
 */

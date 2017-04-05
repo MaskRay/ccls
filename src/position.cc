@@ -82,7 +82,7 @@ Range::Range(Position start, Position end) : start(start), end(end) {}
 
 Range::Range(const char* encoded) : start(encoded) {
   end = start;
-  /*
+
   assert(encoded);
   while (*encoded && *encoded != '-')
     ++encoded;
@@ -96,18 +96,17 @@ Range::Range(const char* encoded) : start(encoded) {
   if (*encoded == ':')
     ++encoded;
   end.column = atoi(encoded);
-  */
 }
 
 std::string Range::ToString() {
   std::string output;
   output += start.ToString();
-  /*
+
   output += "-";
   output += std::to_string(end.line);
   output += ":";
   output += std::to_string(end.column);
-  */
+
   return output;
 }
 

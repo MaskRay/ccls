@@ -9,32 +9,35 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Foo",
       "instantiations": [0, 1],
-      "uses": ["1:8", "*3:10", "*3:19"]
+      "uses": ["1:8-1:11", "*3:10-3:13", "*3:19-3:22"]
     }],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "qualified_name": "foo",
-      "definition": "3:6",
-      "uses": ["3:6"]
+      "definition_spelling": "3:6-3:9",
+      "definition_extent": "3:1-3:30",
+      "uses": ["3:6-3:9"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:function_param.cc@24@F@foo#*$@S@Foo#S0_#@p0",
       "short_name": "p0",
       "qualified_name": "p0",
-      "definition": "3:15",
+      "definition_spelling": "3:15-3:17",
+      "definition_extent": "3:10-3:17",
       "variable_type": 0,
-      "uses": ["3:15"]
+      "uses": ["3:15-3:17"]
     }, {
       "id": 1,
       "usr": "c:function_param.cc@33@F@foo#*$@S@Foo#S0_#@p1",
       "short_name": "p1",
       "qualified_name": "p1",
-      "definition": "3:24",
+      "definition_spelling": "3:24-3:26",
+      "definition_extent": "3:19-3:26",
       "variable_type": 0,
-      "uses": ["3:24"]
+      "uses": ["3:24-3:26"]
     }]
 }
 */

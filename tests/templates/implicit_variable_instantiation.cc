@@ -22,42 +22,47 @@ OUTPUT:
       "usr": "c:@N@ns@E@VarType",
       "short_name": "VarType",
       "qualified_name": "ns::VarType",
-      "definition": "2:8",
+      "definition_spelling": "2:8-2:15",
+      "definition_extent": "2:3-2:18",
       "instantiations": [0],
-      "uses": ["*2:8", "*6:22", "*6:44", "*10:18"]
+      "uses": ["*2:8-2:15", "*6:22-6:29", "*6:44-6:51", "*10:18-10:25"]
     }, {
       "id": 1,
       "usr": "c:@N@ns@ST>1#T@Holder",
       "short_name": "Holder",
       "qualified_name": "ns::Holder",
-      "definition": "5:10",
+      "definition_spelling": "5:10-5:16",
+      "definition_extent": "5:3-7:4",
       "vars": [0],
-      "uses": ["*5:10", "*10:26", "13:13", "14:14"]
+      "uses": ["*5:10-5:16", "*10:26-10:32", "13:13-13:19", "14:14-14:20"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:@N@ns@ST>1#T@Holder@static_var",
       "short_name": "static_var",
       "qualified_name": "ns::Holder::static_var",
-      "declaration": "6:30",
-      "definition": "10:37",
+      "declaration": "6:30-6:40",
+      "definition_spelling": "10:37-10:47",
+      "definition_extent": "9:3-10:47",
       "variable_type": 0,
       "declaring_type": 1,
-      "uses": ["6:30", "10:37", "13:26", "14:27"]
+      "uses": ["6:30-6:40", "10:37-10:47", "13:26-13:36", "14:27-14:37"]
     }, {
       "id": 1,
       "usr": "c:@N@ns@Foo",
       "short_name": "Foo",
       "qualified_name": "ns::Foo",
-      "definition": "13:7",
-      "uses": ["13:7"]
+      "definition_spelling": "13:7-13:10",
+      "definition_extent": "13:3-13:36",
+      "uses": ["13:7-13:10"]
     }, {
       "id": 2,
       "usr": "c:@N@ns@Foo2",
       "short_name": "Foo2",
       "qualified_name": "ns::Foo2",
-      "definition": "14:7",
-      "uses": ["14:7"]
+      "definition_spelling": "14:7-14:11",
+      "definition_extent": "14:3-14:37",
+      "uses": ["14:7-14:11"]
     }]
 }
 */

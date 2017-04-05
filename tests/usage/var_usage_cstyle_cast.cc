@@ -15,28 +15,31 @@ OUTPUT:
       "usr": "c:@E@VarType",
       "short_name": "VarType",
       "qualified_name": "VarType",
-      "definition": "1:6",
+      "definition_spelling": "1:6-1:13",
+      "definition_extent": "1:1-1:16",
       "instantiations": [0],
-      "uses": ["*1:6", "*4:20", "*4:42", "*7:7"]
+      "uses": ["*1:6-1:13", "*4:20-4:27", "*4:42-4:49", "*7:7-7:14"]
     }, {
       "id": 1,
       "usr": "c:@S@Holder",
       "short_name": "Holder",
       "qualified_name": "Holder",
-      "definition": "3:8",
+      "definition_spelling": "3:8-3:14",
+      "definition_extent": "3:1-5:2",
       "vars": [0],
-      "uses": ["*3:8", "7:15"]
+      "uses": ["*3:8-3:14", "7:15-7:21"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:@S@Holder@static_var",
       "short_name": "static_var",
       "qualified_name": "Holder::static_var",
-      "declaration": "4:28",
-      "definition": "7:23",
+      "declaration": "4:28-4:38",
+      "definition_spelling": "7:23-7:33",
+      "definition_extent": "7:1-7:33",
       "variable_type": 0,
       "declaring_type": 1,
-      "uses": ["4:28", "7:23"]
+      "uses": ["4:28-4:38", "7:23-7:33"]
     }]
 }
 */

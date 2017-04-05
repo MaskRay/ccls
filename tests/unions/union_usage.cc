@@ -19,43 +19,48 @@ OUTPUT:
       "usr": "c:@U@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "1:7",
+      "definition_spelling": "1:7-1:10",
+      "definition_extent": "1:1-4:2",
       "vars": [0, 1],
       "instantiations": [2],
-      "uses": ["*1:7", "*6:1", "*8:10"]
+      "uses": ["*1:7-1:10", "*6:1-6:4", "*8:10-8:13"]
     }],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@act#*$@U@Foo#",
       "short_name": "act",
       "qualified_name": "act",
-      "definition": "8:6",
-      "uses": ["8:6"]
+      "definition_spelling": "8:6-8:9",
+      "definition_extent": "8:1-10:2",
+      "uses": ["8:6-8:9"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:@U@Foo@FI@a",
       "short_name": "a",
       "qualified_name": "Foo::a",
-      "definition": "2:7",
+      "definition_spelling": "2:7-2:8",
+      "definition_extent": "2:3-2:12",
       "declaring_type": 0,
-      "uses": ["2:7", "9:5"]
+      "uses": ["2:7-2:8", "9:5-9:6"]
     }, {
       "id": 1,
       "usr": "c:@U@Foo@FI@b",
       "short_name": "b",
       "qualified_name": "Foo::b",
-      "definition": "3:8",
+      "definition_spelling": "3:8-3:9",
+      "definition_extent": "3:3-3:13",
       "declaring_type": 0,
-      "uses": ["3:8"]
+      "uses": ["3:8-3:9"]
     }, {
       "id": 2,
       "usr": "c:@f",
       "short_name": "f",
       "qualified_name": "f",
-      "definition": "6:5",
+      "definition_spelling": "6:5-6:6",
+      "definition_extent": "6:1-6:6",
       "variable_type": 0,
-      "uses": ["6:5", "9:3"]
+      "uses": ["6:5-6:6", "9:3-9:4"]
     }]
 }
 */

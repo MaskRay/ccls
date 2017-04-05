@@ -15,37 +15,40 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "1:8",
+      "definition_spelling": "1:8-1:11",
+      "definition_extent": "1:1-3:2",
       "funcs": [0],
       "instantiations": [0],
-      "uses": ["*1:8", "*6:3"]
+      "uses": ["*1:8-1:11", "*6:3-6:6"]
     }],
   "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "qualified_name": "Foo::Used",
-      "declarations": ["2:8"],
+      "declarations": ["2:8-2:12"],
       "declaring_type": 0,
-      "callers": ["1@7:6"],
-      "uses": ["2:8", "7:6"]
+      "callers": ["1@7:6-7:10"],
+      "uses": ["2:8-2:12", "7:6-7:10"]
     }, {
       "id": 1,
       "usr": "c:@F@user#",
       "short_name": "user",
       "qualified_name": "user",
-      "definition": "5:6",
-      "callees": ["0@7:6"],
-      "uses": ["5:6"]
+      "definition_spelling": "5:6-5:10",
+      "definition_extent": "5:1-8:2",
+      "callees": ["0@7:6-7:10"],
+      "uses": ["5:6-5:10"]
     }],
   "vars": [{
       "id": 0,
       "usr": "c:func_usage_call_method.cc@53@F@user#@f",
       "short_name": "f",
       "qualified_name": "f",
-      "definition": "6:8",
+      "definition_spelling": "6:8-6:9",
+      "definition_extent": "6:3-6:19",
       "variable_type": 0,
-      "uses": ["6:8", "7:3"]
+      "uses": ["6:8-6:9", "7:3-7:4"]
     }]
 }
 */

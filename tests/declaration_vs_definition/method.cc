@@ -14,35 +14,37 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "qualified_name": "Foo",
-      "definition": "1:7",
+      "definition_spelling": "1:7-1:10",
+      "definition_extent": "1:1-5:2",
       "funcs": [0, 1, 2],
-      "uses": ["*1:7", "7:6"]
+      "uses": ["*1:7-1:10", "7:6-7:9"]
     }],
   "funcs": [{
       "id": 0,
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
       "qualified_name": "Foo::declonly",
-      "declarations": ["2:8"],
+      "declarations": ["2:8-2:16"],
       "declaring_type": 0,
-      "uses": ["2:8"]
+      "uses": ["2:8-2:16"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
       "qualified_name": "Foo::purevirtual",
-      "declarations": ["3:16"],
+      "declarations": ["3:16-3:27"],
       "declaring_type": 0,
-      "uses": ["3:16"]
+      "uses": ["3:16-3:27"]
     }, {
       "id": 2,
       "usr": "c:@S@Foo@F@def#",
       "short_name": "def",
       "qualified_name": "Foo::def",
-      "declarations": ["4:8"],
-      "definition": "7:11",
+      "declarations": ["4:8-4:11"],
+      "definition_spelling": "7:11-7:14",
+      "definition_extent": "7:1-7:19",
       "declaring_type": 0,
-      "uses": ["4:8", "7:11"]
+      "uses": ["4:8-4:11", "7:11-7:14"]
     }]
 }
 */

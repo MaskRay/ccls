@@ -111,9 +111,8 @@ void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
   REFLECT_MEMBER2("usr", value.def.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
-  REFLECT_MEMBER2("definition", value.def.definition_spelling);
-  //REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
-  //REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
+  REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
+  REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("alias_of", value.def.alias_of);
   REFLECT_MEMBER2("parents", value.def.parents);
   REFLECT_MEMBER2("derived", value.derived);
@@ -149,9 +148,8 @@ void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
   REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("definition", value.def.definition_spelling);
-  //REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
-  //REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
+  REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
+  REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("base", value.def.base);
   REFLECT_MEMBER2("derived", value.derived);
@@ -186,9 +184,8 @@ void Reflect(TVisitor& visitor, IndexedVarDef& value) {
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
   REFLECT_MEMBER2("declaration", value.def.declaration);
-  REFLECT_MEMBER2("definition", value.def.definition_spelling);
-  //REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
-  //REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
+  REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
+  REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("uses", value.uses);
