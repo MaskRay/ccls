@@ -42,7 +42,6 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
 static const char *kValueArgs[] = {
   "--param",
   "-G",
-  "-I",
   "-MF",
   "-MQ",
   "-MT",
@@ -165,6 +164,11 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
       }
 
 
+      if (StartsWith(arg, "-I")) {
+        std::string path =  directory + "/" + arg.substr(2);
+        path = NormalizePath(path);
+        arg = "-I" + path;
+      }
 
       entry.args.push_back(arg);
 
