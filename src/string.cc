@@ -74,4 +74,12 @@ StringView StringDb::GetString(const std::string& str) {
   return StringView(it.first->c_str(), it.first->length());
 }
 
+StringView StringDb::GetString(CXString cx_string) {
+  assert(cx_string.data);
+
+  StringView result string=clang_getCString(cx_string);
+  clang_disposeString(cx_string);
+
+}
+
 
