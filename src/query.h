@@ -106,7 +106,7 @@ struct QueryableFile {
 };
 
 struct QueryableTypeDef {
-  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation, QueryableLocation>;
+  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using InstantiationsUpdate = MergeableUpdate<Usr>;
   using UsesUpdate = MergeableUpdate<QueryableLocation>;
@@ -121,7 +121,7 @@ struct QueryableTypeDef {
 };
 
 struct QueryableFuncDef {
-  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation, QueryableLocation>;
+  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
   using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using CallersUpdate = MergeableUpdate<UsrRef>;
@@ -138,7 +138,7 @@ struct QueryableFuncDef {
 };
 
 struct QueryableVarDef {
-  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation, QueryableLocation>;
+  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
   using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;

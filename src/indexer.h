@@ -96,7 +96,6 @@ using VarRef = Ref<IndexedVarDef>;
 template <typename TypeId,
           typename FuncId,
           typename VarId,
-          typename Position,
           typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
@@ -113,17 +112,8 @@ struct TypeDefDefinitionData {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  optional<Position> definition_spelling;
+  optional<Range> definition_spelling;
   optional<Range> definition_extent;
-
-  // TODO: change |definition| to be a Position, and have an |extents| field which
-  // stores the range of the definition body. Also do this for methods.
-  // TODO: cleanup Range, Position, etc to take less memory. Model vscode api of
-  // Location, Range, Position.
-  // TODO: drop paths from everything in the index. We never store things outside
-  // of the main file.
-  // TODO: fix tests, the change to ranges is breaking them. Breaking currently
-  // coming from marking
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
@@ -140,7 +130,7 @@ struct TypeDefDefinitionData {
   TypeDefDefinitionData() {}  // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
+  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
@@ -151,7 +141,7 @@ struct TypeDefDefinitionData {
            funcs == other.funcs && vars == other.vars;
   }
 
-  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
+  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return !(*this == other);
   }
@@ -160,10 +150,9 @@ template <typename TVisitor,
           typename TypeId,
           typename FuncId,
           typename VarId,
-          typename Position,
           typename Range>
 void Reflect(TVisitor& visitor,
-             TypeDefDefinitionData<TypeId, FuncId, VarId, Position, Range>& value) {
+             TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -178,7 +167,7 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexedTypeDef {
-  using Def = TypeDefDefinitionData<TypeId, FuncId, VarId, Range, Range>;
+  using Def = TypeDefDefinitionData<TypeId, FuncId, VarId, Range>;
   Def def;
 
   TypeId id;
@@ -219,14 +208,13 @@ template <typename TypeId,
           typename FuncId,
           typename VarId,
           typename FuncRef,
-          typename Position,
           typename Range>
 struct FuncDefDefinitionData {
   // General metadata.
   std::string usr;
   std::string short_name;
   std::string qualified_name;
-  optional<Position> definition_spelling;
+  optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
   // Type which declares this one (ie, it is a method)
@@ -247,7 +235,7 @@ struct FuncDefDefinitionData {
   }
 
   bool operator==(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Position, Range>&
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>&
           other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
@@ -257,7 +245,7 @@ struct FuncDefDefinitionData {
            locals == other.locals && callees == other.callees;
   }
   bool operator!=(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Position, Range>&
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>&
           other) const {
     return !(*this == other);
   }
@@ -268,11 +256,10 @@ template <typename TVisitor,
           typename FuncId,
           typename VarId,
           typename FuncRef,
-          typename Position,
           typename Range>
 void Reflect(
     TVisitor& visitor,
-    FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Position, Range>& value) {
+    FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -286,7 +273,7 @@ void Reflect(
 }
 
 struct IndexedFuncDef {
-  using Def = FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range, Range>;
+  using Def = FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>;
   Def def;
 
   FuncId id;
@@ -333,7 +320,6 @@ MAKE_HASHABLE(IndexedFuncDef, t.def.usr);
 template <typename TypeId,
           typename FuncId,
           typename VarId,
-          typename Position,
           typename Range>
 struct VarDefDefinitionData {
   // General metadata.
@@ -343,7 +329,7 @@ struct VarDefDefinitionData {
   optional<Range> declaration;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
-  optional<Position> definition_spelling;
+  optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
   // Type of the variable.
@@ -355,7 +341,7 @@ struct VarDefDefinitionData {
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
+  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
@@ -365,7 +351,7 @@ struct VarDefDefinitionData {
            variable_type == other.variable_type &&
            declaring_type == other.declaring_type;
   }
-  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Position, Range>&
+  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return !(*this == other);
   }
@@ -375,10 +361,9 @@ template <typename TVisitor,
           typename TypeId,
           typename FuncId,
           typename VarId,
-          typename Position,
           typename Range>
 void Reflect(TVisitor& visitor,
-             VarDefDefinitionData<TypeId, FuncId, VarId, Position, Range>& value) {
+             VarDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
@@ -391,7 +376,7 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexedVarDef {
-  using Def = VarDefDefinitionData<TypeId, FuncId, VarId, Range, Range>;
+  using Def = VarDefDefinitionData<TypeId, FuncId, VarId, Range>;
   Def def;
 
   VarId id;
