@@ -17,12 +17,6 @@
 
 
 
-
-// NOTE: When not inside of a |def| object, there can be duplicates of the same
-//       information if that information is contributed from separate sources.
-//       If we need to avoid this duplication in the future, we will have to
-//       add a refcount.
-
 template<typename In, typename Out>
 std::vector<Out> Transform(const std::vector<In>& input, std::function<Out(In)> op) {
   std::vector<Out> result;
@@ -137,21 +131,15 @@ QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedVarD
   return result;
 }
 
-QueryableFile::QueryableFile(const IndexedFile& indexed)
-  : file_id(indexed.path) {
+QueryableFile::Def BuildFileDef(const IndexedFile& indexed) {
+  QueryableFile::Def def;
+  def.usr = indexed.path;
 
-  // TODO: investigate this
-  //std::cerr << "Adding QueryableFile for " << indexed.path
-  //          << ", file_path_to_file_id.size()=" << indexed.id_cache.file_path_to_file_id.size() << std::endl;
-  //for (auto& entry : indexed.id_cache.file_path_to_file_id)
-  //  std::cerr << "-" << entry.first << std::endl;
-  //assert(indexed.id_cache.file_path_to_file_id.find(indexed.path) !=
-  //       indexed.id_cache.file_path_to_file_id.end());
-  auto add_outline = [this, &indexed](Usr usr, Range range) {
-    outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, range)));
+  auto add_outline = [&def, &indexed](Usr usr, Range range) {
+    def.outline.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, range)));
   };
-  auto add_all_symbols = [this, &indexed](Usr usr, Range range) {
-    all_symbols.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, range)));
+  auto add_all_symbols = [&def, &indexed](Usr usr, Range range) {
+    def.all_symbols.push_back(UsrRef(usr, MapIdToUsr(indexed.id_cache, range)));
   };
 
   for (const IndexedTypeDef& def : indexed.types) {
@@ -183,13 +171,18 @@ QueryableFile::QueryableFile(const IndexedFile& indexed)
       add_all_symbols(def.def.usr, use);
   }
 
-  std::sort(outline.begin(), outline.end(), [](const UsrRef& a, const UsrRef& b) {
+  std::sort(def.outline.begin(), def.outline.end(), [](const UsrRef& a, const UsrRef& b) {
     return a.loc.start < b.loc.start;
   });
-  std::sort(all_symbols.begin(), all_symbols.end(), [](const UsrRef& a, const UsrRef& b) {
+  std::sort(def.all_symbols.begin(), def.all_symbols.end(), [](const UsrRef& a, const UsrRef& b) {
     return a.loc.start < b.loc.start;
   });
+
+  return def;
 }
+
+QueryableFile::QueryableFile(const IndexedFile& indexed)
+  : def(BuildFileDef(indexed)) {}
 
 QueryableTypeDef::QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed)
   : def(MapIdToUsr(id_cache, indexed.def)) {
@@ -223,8 +216,6 @@ QueryableVarDef::QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed
 //       We can probably eliminate most of that pain by coming up with our own UsrDb concept which interns the Usr strings. We can make
 //       the pain of a global UsrDb less by
 //          (parallel)clangindex -> (main)commit USRs to global -> (parallel)transfer IDs to global USRs -> (main)import
-
-// TODO: remove GroupId concept.
 
 struct CachedIndexedFile {
   // Path to the file indexed.
@@ -388,20 +379,49 @@ void CompareGroups(
 
 
 
-
+#if false
 IndexUpdate::IndexUpdate(IndexedFile& file) {
-  // TODO: Do not add empty data (ie, def has nothing but USR)
+  // TODO: use delta constructor with an empty file.
 
-  files_added.push_back(QueryableFile(file));
-  for (const IndexedTypeDef& def : file.types) {
-    types_added.push_back(QueryableTypeDef(file.id_cache, def));
+  auto file_def = BuildFileDef(file);
+  files_def_update.push_back(file_def);
+
+  for (const IndexedTypeDef& indexed : file.types) {
+    QueryableTypeDef query(file.id_cache, indexed);
+    types_def_update.push_back(query.def);
+    types_derived.push_back(QueryableTypeDef::DerivedUpdate(query.def.usr, query.derived));
+    types_instantiations.push_back(QueryableTypeDef::InstantiationsUpdate(query.def.usr, query.instantiations));
+    types_uses.push_back(QueryableTypeDef::UsesUpdate(query.def.usr, query.uses));
   }
-  for (const IndexedFuncDef& def : file.funcs) {
-    funcs_added.push_back(QueryableFuncDef(file.id_cache, def));
+
+  for (const IndexedFuncDef& indexed : file.funcs) {
+    QueryableFuncDef query(file.id_cache, indexed);
+    funcs_def_update.push_back(query.def);
+    funcs_declarations.push_back(QueryableFuncDef::DeclarationsUpdate(query.def.usr, query.declarations));
+    funcs_derived.push_back(QueryableFuncDef::DerivedUpdate(query.def.usr, query.derived));
+    funcs_callers.push_back(QueryableFuncDef::CallersUpdate(query.def.usr, query.callers));
+    funcs_uses.push_back(QueryableFuncDef::UsesUpdate(query.def.usr, query.uses));
   }
-  for (const IndexedVarDef& def : file.vars) {
-    vars_added.push_back(QueryableVarDef(file.id_cache, def));
+
+  for (const IndexedVarDef& indexed : file.vars) {
+    QueryableVarDef query(file.id_cache, indexed);
+    vars_def_update.push_back(query.def);
+    vars_uses.push_back(QueryableVarDef::UsesUpdate(query.def.usr, query.uses));
   }
+}
+#endif
+
+// static
+IndexUpdate IndexUpdate::CreateImport(IndexedFile& file) {
+  // Return standard diff constructor but with an empty file so everything is
+  // added.
+  IndexedFile previous(file.path);
+  return IndexUpdate(previous, file);
+}
+
+// static
+IndexUpdate IndexUpdate::CreateDelta(IndexedFile& current, IndexedFile& updated) {
+  return IndexUpdate(current, updated);
 }
 
 IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) {
@@ -423,24 +443,8 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     } \
   }
 
-
   // File
-  do {
-    // Outline is a special property and needs special handling, because it is a computed property
-    // of the IndexedFile (ie, to view it we need to construct a QueryableFile instance).
-    assert(previous_file.path == current_file.path);
-    QueryableFile previous_queryable_file(previous_file);
-    QueryableFile current_queryable_file(previous_file);
-    std::vector<UsrRef> removed, added;
-    bool did_add = ComputeDifferenceForUpdate(
-      previous_queryable_file.outline,
-      current_queryable_file.outline,
-      &removed, &added);
-    if (did_add) {
-      std::cerr << "Adding mergeable update on outline (" << current_file.path << ")" << std::endl;
-      files_outline.push_back(MergeableUpdate<UsrRef>(current_file.path, removed, added));
-    }
-  } while (false); // do while false instead of just {} to appease Visual Studio code formatter.
+  files_def_update.push_back(BuildFileDef(current_file));
 
   // Types
   CompareGroups<IndexedTypeDef>(previous_file.types, current_file.types,
@@ -448,15 +452,20 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     types_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_file](IndexedTypeDef* def) {
-    types_added.push_back(QueryableTypeDef(current_file.id_cache, *def));
+    QueryableTypeDef query(current_file.id_cache, *def);
+    types_def_update.push_back(query.def);
+    types_derived.push_back(QueryableTypeDef::DerivedUpdate(query.def.usr, query.derived));
+    types_instantiations.push_back(QueryableTypeDef::InstantiationsUpdate(query.def.usr, query.instantiations));
+    types_uses.push_back(QueryableTypeDef::UsesUpdate(query.def.usr, query.uses));
   },
     /*onFound:*/[this, &previous_file, &current_file](IndexedTypeDef* previous_def, IndexedTypeDef* current_def) {
     QueryableTypeDef::DefUpdate previous_remapped_def = MapIdToUsr(previous_file.id_cache, previous_def->def);
     QueryableTypeDef::DefUpdate current_remapped_def = MapIdToUsr(current_file.id_cache, current_def->def);
     if (previous_remapped_def != current_remapped_def)
-      types_def_changed.push_back(current_remapped_def);
+      types_def_update.push_back(current_remapped_def);
 
     PROCESS_UPDATE_DIFF(types_derived, derived, Usr);
+    PROCESS_UPDATE_DIFF(types_instantiations, instantiations, Usr);
     PROCESS_UPDATE_DIFF(types_uses, uses, QueryableRange);
   });
 
@@ -466,13 +475,18 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     funcs_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_file](IndexedFuncDef* def) {
-    funcs_added.push_back(QueryableFuncDef(current_file.id_cache, *def));
+    QueryableFuncDef query(current_file.id_cache, *def);
+    funcs_def_update.push_back(query.def);
+    funcs_declarations.push_back(QueryableFuncDef::DeclarationsUpdate(query.def.usr, query.declarations));
+    funcs_derived.push_back(QueryableFuncDef::DerivedUpdate(query.def.usr, query.derived));
+    funcs_callers.push_back(QueryableFuncDef::CallersUpdate(query.def.usr, query.callers));
+    funcs_uses.push_back(QueryableFuncDef::UsesUpdate(query.def.usr, query.uses));
   },
     /*onFound:*/[this, &previous_file, &current_file](IndexedFuncDef* previous_def, IndexedFuncDef* current_def) {
     QueryableFuncDef::DefUpdate previous_remapped_def = MapIdToUsr(previous_file.id_cache, previous_def->def);
     QueryableFuncDef::DefUpdate current_remapped_def = MapIdToUsr(current_file.id_cache, current_def->def);
     if (previous_remapped_def != current_remapped_def)
-      funcs_def_changed.push_back(current_remapped_def);
+      funcs_def_update.push_back(current_remapped_def);
 
     PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableRange);
     PROCESS_UPDATE_DIFF(funcs_derived, derived, Usr);
@@ -486,13 +500,15 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     vars_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_file](IndexedVarDef* def) {
-    vars_added.push_back(QueryableVarDef(current_file.id_cache, *def));
+    QueryableVarDef query(current_file.id_cache, *def);
+    vars_def_update.push_back(query.def);
+    vars_uses.push_back(QueryableVarDef::UsesUpdate(query.def.usr, query.uses));
   },
     /*onFound:*/[this, &previous_file, &current_file](IndexedVarDef* previous_def, IndexedVarDef* current_def) {
     QueryableVarDef::DefUpdate previous_remapped_def = MapIdToUsr(previous_file.id_cache, previous_def->def);
     QueryableVarDef::DefUpdate current_remapped_def = MapIdToUsr(current_file.id_cache, current_def->def);
     if (previous_remapped_def != current_remapped_def)
-      vars_def_changed.push_back(current_remapped_def);
+      vars_def_update.push_back(current_remapped_def);
 
     PROCESS_UPDATE_DIFF(vars_uses, uses, QueryableRange);
   });
@@ -505,34 +521,27 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
     AddRange(&name, update.name);
 
   INDEX_UPDATE_MERGE(files_removed);
-  INDEX_UPDATE_MERGE(files_added);
-  INDEX_UPDATE_MERGE(files_outline);
-  INDEX_UPDATE_MERGE(files_all_symbols);
+  INDEX_UPDATE_MERGE(files_def_update);
 
   INDEX_UPDATE_MERGE(types_removed);
-  INDEX_UPDATE_MERGE(types_added);
-  INDEX_UPDATE_MERGE(types_def_changed);
+  INDEX_UPDATE_MERGE(types_def_update);
   INDEX_UPDATE_MERGE(types_derived);
   INDEX_UPDATE_MERGE(types_instantiations);
   INDEX_UPDATE_MERGE(types_uses);
 
   INDEX_UPDATE_MERGE(funcs_removed);
-  INDEX_UPDATE_MERGE(funcs_added);
-  INDEX_UPDATE_MERGE(funcs_def_changed);
+  INDEX_UPDATE_MERGE(funcs_def_update);
   INDEX_UPDATE_MERGE(funcs_declarations);
   INDEX_UPDATE_MERGE(funcs_derived);
   INDEX_UPDATE_MERGE(funcs_callers);
   INDEX_UPDATE_MERGE(funcs_uses);
 
   INDEX_UPDATE_MERGE(vars_removed);
-  INDEX_UPDATE_MERGE(vars_added);
-  INDEX_UPDATE_MERGE(vars_def_changed);
+  INDEX_UPDATE_MERGE(vars_def_update);
   INDEX_UPDATE_MERGE(vars_uses);
 
 #undef INDEX_UPDATE_MERGE
 }
-
-
 
 
 
@@ -565,107 +574,93 @@ void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
   // TODO: also remove from qualified_names?
 }
 
-void QueryableDatabase::Import(const std::vector<QueryableFile>& defs) {
-  for (auto& def : defs) {
-    auto it = usr_to_symbol.find(def.file_id);
+void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    auto it = usr_to_symbol.find(def.usr);
     if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.file_id);
+      qualified_names.push_back(def.usr);
       symbols.push_back(SymbolIdx(SymbolKind::File, files.size()));
-      usr_to_symbol[def.file_id] = SymbolIdx(SymbolKind::File, files.size());
+      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::File, files.size());
 
-      files.push_back(def);
+      QueryableFile query;
+      query.def = def;
+      files.push_back(query);
     }
     else {
       QueryableFile& existing = files[it->second.idx];
-      // Replace the entire file. We don't ever want to merge files.
-      existing = def;
+      existing.def = def;
     }
   }
 }
 
-void QueryableDatabase::Import(const std::vector<QueryableTypeDef>& defs) {
-  for (auto& def : defs) {
-    auto it = usr_to_symbol.find(def.def.usr);
+void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    auto it = usr_to_symbol.find(def.usr);
     if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.def.qualified_name);
+      qualified_names.push_back(def.qualified_name);
       symbols.push_back(SymbolIdx(SymbolKind::Type, types.size()));
-      usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Type, types.size());
-      types.push_back(def);
+      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Type, types.size());
+
+      QueryableTypeDef query;
+      query.def = def;
+      types.push_back(query);
     }
     else {
       QueryableTypeDef& existing = types[it->second.idx];
-      if (def.def.definition_extent)
-        existing.def = def.def;
-      AddRange(&existing.derived, def.derived);
-      AddRange(&existing.uses, def.uses);
+      if (def.definition_extent)
+        existing.def = def;
     }
   }
 }
 
-void QueryableDatabase::Import(const std::vector<QueryableFuncDef>& defs) {
-  for (auto& def : defs) {
-    auto it = usr_to_symbol.find(def.def.usr);
+void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    auto it = usr_to_symbol.find(def.usr);
     if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.def.qualified_name);
+      qualified_names.push_back(def.qualified_name);
       symbols.push_back(SymbolIdx(SymbolKind::Func, funcs.size()));
-      usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
-      funcs.push_back(def);
+      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
+
+      QueryableFuncDef query;
+      query.def = def;
+      funcs.push_back(query);
     }
     else {
       QueryableFuncDef& existing = funcs[it->second.idx];
-      if (def.def.definition_extent)
-        existing.def = def.def;
-      AddRange(&existing.callers, def.callers);
-      AddRange(&existing.declarations, def.declarations);
-      AddRange(&existing.derived, def.derived);
-      AddRange(&existing.uses, def.uses);
+      if (def.definition_extent)
+        existing.def = def;
     }
   }
 }
 
-void QueryableDatabase::Import(const std::vector<QueryableVarDef>& defs) {
-  for (auto& def : defs) {
-    auto it = usr_to_symbol.find(def.def.usr);
+void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates) {
+  for (auto& def : updates) {
+    auto it = usr_to_symbol.find(def.usr);
     if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.def.qualified_name);
+      qualified_names.push_back(def.qualified_name);
       symbols.push_back(SymbolIdx(SymbolKind::Var, vars.size()));
-      usr_to_symbol[def.def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
-      vars.push_back(def);
+      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
+
+      QueryableVarDef query;
+      query.def = def;
+      vars.push_back(query);
     }
     else {
       QueryableVarDef& existing = vars[it->second.idx];
-      if (def.def.definition_extent)
-        existing.def = def.def;
-      AddRange(&existing.uses, def.uses);
+      if (def.definition_extent)
+        existing.def = def;
     }
-  }
-}
-
-void QueryableDatabase::Update(const std::vector<QueryableTypeDef::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    SymbolIdx idx = usr_to_symbol[def.usr];
-    assert(idx.kind == SymbolKind::Type);
-    types[idx.idx].def = def;
-  }
-}
-
-void QueryableDatabase::Update(const std::vector<QueryableFuncDef::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    SymbolIdx idx = usr_to_symbol[def.usr];
-    assert(idx.kind == SymbolKind::Func);
-    funcs[idx.idx].def = def;
-  }
-}
-
-void QueryableDatabase::Update(const std::vector<QueryableVarDef::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    SymbolIdx idx = usr_to_symbol[def.usr];
-    assert(idx.kind == SymbolKind::Var);
-    vars[idx.idx].def = def;
   }
 }
 
 void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
+#define HANDLE_REPLACEMENT(update_var_name, def_var_name, storage_name) \
+  for (auto replacement_update : update->update_var_name) { \
+    SymbolIdx index = usr_to_symbol[replacement_update.usr]; \
+    auto* def = &storage_name[index.idx]; \
+    def->def_var_name = replacement_update.entries; \
+  }
+
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
   for (auto merge_update : update->update_var_name) { \
     SymbolIdx index = usr_to_symbol[merge_update.usr]; \
@@ -675,26 +670,22 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   }
 
   RemoveUsrs(update->files_removed);
-  Import(update->files_added);
-  HANDLE_MERGEABLE(files_outline, outline, files);
+  ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(update->types_removed);
-  Import(update->types_added);
-  Update(update->types_def_changed);
+  ImportOrUpdate(update->types_def_update);
   HANDLE_MERGEABLE(types_derived, derived, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
   RemoveUsrs(update->funcs_removed);
-  Import(update->funcs_added);
-  Update(update->funcs_def_changed);
+  ImportOrUpdate(update->funcs_def_update);
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
   HANDLE_MERGEABLE(funcs_derived, derived, funcs);
   HANDLE_MERGEABLE(funcs_callers, callers, funcs);
   HANDLE_MERGEABLE(funcs_uses, uses, funcs);
 
   RemoveUsrs(update->vars_removed);
-  Import(update->vars_added);
-  Update(update->vars_def_changed);
+  ImportOrUpdate(update->vars_def_update);
   HANDLE_MERGEABLE(vars_uses, uses, vars);
 
 #undef HANDLE_MERGEABLE
@@ -704,30 +695,6 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
 
 
-
-
-
-
-
-int main233(int argc, char** argv) {
-  IndexedFile indexed_file_a = Parse("full_tests/index_delta/a_v0.cc", {});
-  std::cerr << indexed_file_a.ToString() << std::endl;
-
-  std::cerr << std::endl;
-  IndexedFile indexed_file_b = Parse("full_tests/index_delta/a_v1.cc", {});
-  std::cerr << indexed_file_b.ToString() << std::endl;
-  // TODO: We don't need to do ID remapping when computting a diff. Well, we need to do it for the IndexUpdate.
-  IndexUpdate import(indexed_file_a);
-  /*
-  dest_ids.Import(indexed_file_b.file_db, indexed_file_b.id_cache);
-  IndexUpdate update = ComputeDiff(indexed_file_a, indexed_file_b);
-  */
-  QueryableDatabase db;
-  db.ApplyIndexUpdate(&import);
-  //db.ApplyIndexUpdate(&update);
-
-  return 0;
-}
 
 
 

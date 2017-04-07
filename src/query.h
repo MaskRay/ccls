@@ -5,6 +5,9 @@
 
 using Usr = std::string;
 
+// TODO: in types, store refs separately from irefs. Then we can drop
+// 'interesting' from location when that is cleaned up.
+
 // TODO: Switch over to QueryableLocation. Figure out if there is
 //       a good way to get the indexer using it. I don't think so
 //       since we may discover more files while indexing a file.
@@ -42,7 +45,6 @@ struct QueryableLocation {
       interesting < o.interesting;
   }
 };
-MAKE_REFLECT_STRUCT(QueryableLocation, path, line, column, interesting);
 
 struct QueryableRange {
   QueryableLocation start;
@@ -64,7 +66,6 @@ struct QueryableRange {
     return start < o.start;
   }
 };
-MAKE_REFLECT_STRUCT(QueryableRange, start, end);
 
 struct UsrRef {
   Usr usr;
@@ -81,7 +82,6 @@ struct UsrRef {
     return usr < other.usr && loc.start < other.loc.start;
   }
 };
-MAKE_REFLECT_STRUCT(UsrRef, usr, loc);
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -101,34 +101,39 @@ struct MergeableUpdate {
   std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
 
-  MergeableUpdate() {} // For reflection
+  MergeableUpdate(Usr usr, const std::vector<TValue>& to_add)
+    : usr(usr), to_add(to_add) {}
   MergeableUpdate(Usr usr, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
     : usr(usr), to_add(to_add), to_remove(to_remove) {}
 };
 
-template<typename TVisitor, typename TValue>
-void Reflect(TVisitor& visitor, MergeableUpdate<TValue>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
-  REFLECT_MEMBER(to_add);
-  REFLECT_MEMBER(to_remove);
-  REFLECT_MEMBER_END();
-}
+template<typename TValue>
+struct ReplacementUpdate {
+  // The type/func/var which is getting new usages.
+  Usr usr;
+  // New entries.
+  std::vector<TValue> values;
+
+  ReplacementUpdate(Usr usr, const std::vector<TValue>& entries)
+    : usr(usr), entries(entries) {}
+};
 
 struct QueryableFile {
-  using OutlineUpdate = MergeableUpdate<UsrRef>;
-  using AllSymboslUpdate = MergeableUpdate<UsrRef>;
+  struct Def {
+    Usr usr;
+    // Outline of the file (ie, for code lens).
+    std::vector<UsrRef> outline;
+    // Every symbol found in the file (ie, for goto definition)
+    std::vector<UsrRef> all_symbols;
+  };
 
-  Usr file_id;
-  // Outline of the file (ie, for code lens).
-  std::vector<UsrRef> outline;
-  // Every symbol found in the file (ie, for goto definition)
-  std::vector<UsrRef> all_symbols;
+  using DefUpdate = Def;
 
-  QueryableFile() {} // For serialization.
+  DefUpdate def;
+
+  QueryableFile() {}
   QueryableFile(const IndexedFile& indexed);
 };
-MAKE_REFLECT_STRUCT(QueryableFile, file_id, outline, all_symbols);
 
 struct QueryableTypeDef {
   using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableRange, QueryableRange>;
@@ -141,10 +146,9 @@ struct QueryableTypeDef {
   std::vector<Usr> instantiations;
   std::vector<QueryableRange> uses;
 
-  QueryableTypeDef() : def("") {} // For serialization.
+  QueryableTypeDef() : def("") {}
   QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
 };
-MAKE_REFLECT_STRUCT(QueryableTypeDef, def, derived, instantiations, uses);
 
 struct QueryableFuncDef {
   using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableRange, QueryableRange>;
@@ -159,10 +163,9 @@ struct QueryableFuncDef {
   std::vector<UsrRef> callers;
   std::vector<QueryableRange> uses;
 
-  QueryableFuncDef() : def("") {} // For serialization.
+  QueryableFuncDef() : def("") {}
   QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
 };
-MAKE_REFLECT_STRUCT(QueryableFuncDef, def, declarations, derived, callers, uses);
 
 struct QueryableVarDef {
   using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableRange, QueryableRange>;
@@ -171,10 +174,9 @@ struct QueryableVarDef {
   DefUpdate def;
   std::vector<QueryableRange> uses;
 
-  QueryableVarDef() : def("") {} // For serialization.
+  QueryableVarDef() : def("") {}
   QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);
 };
-MAKE_REFLECT_STRUCT(QueryableVarDef, def, uses);
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {
@@ -186,45 +188,29 @@ struct SymbolIdx {
 };
 
 
-// TODO: We need to control Usr, std::vector allocation to make sure it happens on shmem. That or we
-// make IndexUpdate a POD type.
-// TODO: Instead of all of that work above, we pipe the IndexUpdate across processes as JSON.
-//       We need to verify we need multiple processes first. Maybe libclang can run in a single process...
-// TODO: Compute IndexUpdates in main process, off the blocking thread. Use separate process for running
-//       libclang. Solves memory worries.
-// TODO: Instead of passing to/from json, we can probably bass the IndexedFile type almost directly as
-// a raw memory dump - the type has almost zero pointers inside of it. We could do a little bit of fixup
-// so that passing from a separate process to the main db is really fast (no need to go through JSON).
-/*
-namespace foo2 {
-  using Usr = size_t;
-  struct UsrTable {
-    size_t allocated;
-    size_t used;
-    const char* usrs[];
-  };
-}
-*/
-
 struct IndexUpdate {
+  // Creates a new IndexUpdate that will import |file|.
+  static IndexUpdate CreateImport(IndexedFile& file);
+  static IndexUpdate CreateDelta(IndexedFile& current, IndexedFile& updated);
+
+  // Merge |update| into this update; this can reduce overhead / index update
+  // work can be parallelized.
+  void Merge(const IndexUpdate& update);
+
   // File updates.
   std::vector<Usr> files_removed;
-  std::vector<QueryableFile> files_added;
-  std::vector<QueryableFile::OutlineUpdate> files_outline;
-  std::vector<QueryableFile::AllSymboslUpdate> files_all_symbols;
+  std::vector<QueryableFile::DefUpdate> files_def_update;
 
   // Type updates.
   std::vector<Usr> types_removed;
-  std::vector<QueryableTypeDef> types_added;
-  std::vector<QueryableTypeDef::DefUpdate> types_def_changed;
+  std::vector<QueryableTypeDef::DefUpdate> types_def_update;
   std::vector<QueryableTypeDef::DerivedUpdate> types_derived;
   std::vector<QueryableTypeDef::InstantiationsUpdate> types_instantiations;
   std::vector<QueryableTypeDef::UsesUpdate> types_uses;
 
   // Function updates.
   std::vector<Usr> funcs_removed;
-  std::vector<QueryableFuncDef> funcs_added;
-  std::vector<QueryableFuncDef::DefUpdate> funcs_def_changed;
+  std::vector<QueryableFuncDef::DefUpdate> funcs_def_update;
   std::vector<QueryableFuncDef::DeclarationsUpdate> funcs_declarations;
   std::vector<QueryableFuncDef::DerivedUpdate> funcs_derived;
   std::vector<QueryableFuncDef::CallersUpdate> funcs_callers;
@@ -232,44 +218,15 @@ struct IndexUpdate {
 
   // Variable updates.
   std::vector<Usr> vars_removed;
-  std::vector<QueryableVarDef> vars_added;
-  std::vector<QueryableVarDef::DefUpdate> vars_def_changed;
+  std::vector<QueryableVarDef::DefUpdate> vars_def_update;
   std::vector<QueryableVarDef::UsesUpdate> vars_uses;
 
-  IndexUpdate() {}
-
-  // Creates a new IndexUpdate that will import |file|.
-  explicit IndexUpdate(IndexedFile& file);
-
+ private:
   // Creates an index update assuming that |previous| is already
   // in the index, so only the delta between |previous| and |current|
   // will be applied.
   IndexUpdate(IndexedFile& previous, IndexedFile& current);
-
-  // Merges the contents of |update| into this IndexUpdate instance.
-  void Merge(const IndexUpdate& update);
 };
-MAKE_REFLECT_STRUCT(IndexUpdate,
-  files_removed,
-  files_added,
-  files_outline,
-  files_all_symbols,
-  types_removed,
-  types_added,
-  types_def_changed,
-  types_derived,
-  types_uses,
-  funcs_removed,
-  funcs_added,
-  funcs_def_changed,
-  funcs_declarations,
-  funcs_derived,
-  funcs_callers,
-  funcs_uses,
-  vars_removed,
-  vars_added,
-  vars_def_changed,
-  vars_uses);
 
 
 // The query database is heavily optimized for fast queries. It is stored
@@ -293,13 +250,10 @@ struct QueryableDatabase {
   void ApplyIndexUpdate(IndexUpdate* update);
 
   void RemoveUsrs(const std::vector<Usr>& to_remove);
-  void Import(const std::vector<QueryableFile>& defs);
-  void Import(const std::vector<QueryableTypeDef>& defs);
-  void Import(const std::vector<QueryableFuncDef>& defs);
-  void Import(const std::vector<QueryableVarDef>& defs);
-  void Update(const std::vector<QueryableTypeDef::DefUpdate>& updates);
-  void Update(const std::vector<QueryableFuncDef::DefUpdate>& updates);
-  void Update(const std::vector<QueryableVarDef::DefUpdate>& updates);
+  void ImportOrUpdate(const std::vector<QueryableFile::DefUpdate>& updates);
+  void ImportOrUpdate(const std::vector<QueryableTypeDef::DefUpdate>& updates);
+  void ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates);
+  void ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates);
 };
 
 

@@ -272,7 +272,7 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
       // from the primary file though, so that should be ok. We need to cleanup indexer output.
       optional<IndexedFile> old_index = LoadCachedFile(request->path);
       if (old_index.has_value()) {
-        IndexUpdate update(old_index.value());
+        IndexUpdate update = IndexUpdate::CreateImport(old_index.value());
         IndexTranslationUnitResponse response(update);
         responses->Enqueue(response);
         time.ResetAndPrint("Loading cached index");
@@ -296,7 +296,7 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
     time.ResetAndPrint("Loading previous index");
     if (old_index) {
       // Apply delta update.
-      IndexUpdate update(old_index.value(), new_index);
+      IndexUpdate update = IndexUpdate::CreateDelta(old_index.value(), new_index);
       IndexTranslationUnitResponse response(update);
       time.ResetAndPrint("Creating delta index update/response");
       responses->Enqueue(response);
@@ -304,7 +304,7 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
     }
     else {
       // Apply full update.
-      IndexUpdate update(new_index);
+      IndexUpdate update = IndexUpdate::CreateImport(new_index);
       IndexTranslationUnitResponse response(update);
       time.ResetAndPrint("Creating index update/response");
       responses->Enqueue(response);
@@ -322,7 +322,7 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   // TODO: hashmap lookup.
   for (auto& file : db->files) {
     // std::cerr << " - Have file " << file.file_id << std::endl;
-    if (file.file_id == filename) {
+    if (file.def.usr == filename) {
       //std::cerr << "Found file " << filename << std::endl;
       return &file;
     }
@@ -516,7 +516,7 @@ void QueryDbMainLoop(
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
 
-      for (const UsrRef& ref : file->all_symbols) {
+      for (const UsrRef& ref : file->def.all_symbols) {
         if (ref.loc.start.line >= target_line && ref.loc.end.line <= target_line &&
             ref.loc.start.column <= target_column && ref.loc.end.column >= target_column) {
           optional<QueryableRange> location = GetDefinitionSpellingOfUsr(db, ref.usr);
@@ -542,8 +542,8 @@ void QueryDbMainLoop(
         break;
       }
 
-      std::cerr << "File outline size is " << file->outline.size() << std::endl;
-      for (UsrRef ref : file->outline) {
+      std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
+      for (UsrRef ref : file->def.outline) {
         SymbolIdx symbol = db->usr_to_symbol[ref.usr];
 
         lsSymbolInformation info;
@@ -606,7 +606,7 @@ void QueryDbMainLoop(
         break;
       }
 
-      for (UsrRef ref : file->outline) {
+      for (UsrRef ref : file->def.outline) {
         // NOTE: We OffsetColumn so that the code lens always show up in a
         // predictable order. Otherwise, the client may randomize it.
 
@@ -950,7 +950,7 @@ int main(int argc, char** argv) {
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  //std::this_thread::sleep_for(std::chrono::seconds(3));
+  std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
   RegisterMessageTypes();
