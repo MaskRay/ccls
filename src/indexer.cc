@@ -86,9 +86,6 @@ IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr)
 void AddUsage(std::vector<Range>& uses,
               Range loc,
               bool insert_if_not_present = true) {
-  if (loc.start.column == 7 && loc.start.line == 7)
-    std::cerr << "break;";
-
   // TODO: think about if we need to also consider |uses[i].end|
   // First thought makes me think no, we don't.
   for (int i = uses.size() - 1; i >= 0; --i) {

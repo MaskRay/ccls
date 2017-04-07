@@ -27,6 +27,7 @@ const char* kIpcLanguageClientName = "language_client";
 
 const int kNumIndexers = 8 - 1;
 const int kQueueSizeBytes = 1024 * 8;
+const int kMaxWorkspaceSearchResults = 1000;
 }
 
 struct IndexTranslationUnitRequest {
@@ -670,6 +671,11 @@ void QueryDbMainLoop(
 
       std::string query = msg->params.query;
       for (int i = 0; i < db->qualified_names.size(); ++i) {
+        if (response.result.size() > kMaxWorkspaceSearchResults) {
+          std::cerr << "Query exceeded maximum number of responses (" << kMaxWorkspaceSearchResults << "), output may not contain all results";
+          break;
+        }
+
         const std::string& name = db->qualified_names[i];
         // std::cerr << "- Considering " << name << std::endl;
 
@@ -682,6 +688,11 @@ void QueryDbMainLoop(
           // TODO: dedup this code w/ above (ie, add ctor to convert symbol to
           // SymbolInformation)
           switch (symbol.kind) {
+          case SymbolKind::File: {
+            QueryableFile& def = db->files[symbol.idx];
+            info.location.uri.SetPath(def.def.usr);
+            break;
+          }
             // TODO: file
           case SymbolKind::Type: {
             QueryableTypeDef& def = db->types[symbol.idx];
@@ -948,7 +959,7 @@ int main(int argc, char** argv) {
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  std::this_thread::sleep_for(std::chrono::seconds(3));
+  //std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
   RegisterMessageTypes();
