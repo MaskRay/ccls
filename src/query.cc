@@ -40,8 +40,8 @@ Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
   return id_cache.var_id_to_usr.find(id)->second;
 }
 QueryableRange MapIdToUsr(const IdCache& id_cache, const Range& id) {
-  QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.start.interesting);
-  QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.end.interesting);
+  QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.interesting);
+  QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.interesting);
   return QueryableRange(start, end);
   //assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
   //return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
@@ -77,8 +77,8 @@ std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRe
 }
 std::vector<QueryableRange> MapIdToUsr(const IdCache& id_cache, const std::vector<Range>& ids) {
   return Transform<Range, QueryableRange>(ids, [&](Range id) {
-    QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.start.interesting);
-    QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.end.interesting);
+    QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.interesting);
+    QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.interesting);
     return QueryableRange(start, end);
   });
 }
@@ -378,38 +378,6 @@ void CompareGroups(
 
 
 
-
-#if false
-IndexUpdate::IndexUpdate(IndexedFile& file) {
-  // TODO: use delta constructor with an empty file.
-
-  auto file_def = BuildFileDef(file);
-  files_def_update.push_back(file_def);
-
-  for (const IndexedTypeDef& indexed : file.types) {
-    QueryableTypeDef query(file.id_cache, indexed);
-    types_def_update.push_back(query.def);
-    types_derived.push_back(QueryableTypeDef::DerivedUpdate(query.def.usr, query.derived));
-    types_instantiations.push_back(QueryableTypeDef::InstantiationsUpdate(query.def.usr, query.instantiations));
-    types_uses.push_back(QueryableTypeDef::UsesUpdate(query.def.usr, query.uses));
-  }
-
-  for (const IndexedFuncDef& indexed : file.funcs) {
-    QueryableFuncDef query(file.id_cache, indexed);
-    funcs_def_update.push_back(query.def);
-    funcs_declarations.push_back(QueryableFuncDef::DeclarationsUpdate(query.def.usr, query.declarations));
-    funcs_derived.push_back(QueryableFuncDef::DerivedUpdate(query.def.usr, query.derived));
-    funcs_callers.push_back(QueryableFuncDef::CallersUpdate(query.def.usr, query.callers));
-    funcs_uses.push_back(QueryableFuncDef::UsesUpdate(query.def.usr, query.uses));
-  }
-
-  for (const IndexedVarDef& indexed : file.vars) {
-    QueryableVarDef query(file.id_cache, indexed);
-    vars_def_update.push_back(query.def);
-    vars_uses.push_back(QueryableVarDef::UsesUpdate(query.def.usr, query.uses));
-  }
-}
-#endif
 
 // static
 IndexUpdate IndexUpdate::CreateImport(IndexedFile& file) {

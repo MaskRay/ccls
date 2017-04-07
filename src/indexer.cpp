@@ -93,8 +93,8 @@ void AddUsage(std::vector<Range>& uses,
   // First thought makes me think no, we don't.
   for (int i = uses.size() - 1; i >= 0; --i) {
     if (uses[i].start == loc.start) {
-      if (loc.start.interesting)
-        uses[i].start.interesting = true;
+      if (loc.interesting)
+        uses[i].interesting = true;
       return;
     }
   }
@@ -115,9 +115,9 @@ Range IdCache::ForceResolve(const CXSourceRange& range, bool interesting) {
   unsigned int end_line, end_column;
   clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
 
-  return Range(
-    Position(interesting, start_line, start_column) /*start*/,
-    Position(interesting, end_line, end_column) /*end*/);
+  return Range(interesting,
+    Position(start_line, start_column) /*start*/,
+    Position(end_line, end_column) /*end*/);
 }
 
 Range IdCache::ForceResolveSpelling(const CXCursor& cx_cursor, bool interesting) {

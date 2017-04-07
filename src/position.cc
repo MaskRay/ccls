@@ -1,23 +1,25 @@
 #include "position.h"
 
+namespace {
+// Skips until the character immediately following |skip_after|.
+const char* SkipAfter(const char* input, char skip_after) {
+  while (*input && *input != skip_after)
+    ++input;
+  ++input;
+  return input;
+}
+}  // namespace
+
 Position::Position() {}
 
-Position::Position(bool interesting, int32_t line, int32_t column)
-  : interesting(interesting), line(line), column(column) {}
+Position::Position(int32_t line, int32_t column)
+  : line(line), column(column) {}
 
 Position::Position(const char* encoded) {
-  if (*encoded == '*') {
-    interesting = true;
-    ++encoded;
-  }
-
   assert(encoded);
   line = atoi(encoded);
-  while (*encoded && *encoded != ':')
-    ++encoded;
-  if (*encoded == ':')
-    ++encoded;
 
+  encoded = SkipAfter(encoded, ':');
   assert(encoded);
   column = atoi(encoded);
 }
@@ -25,15 +27,12 @@ Position::Position(const char* encoded) {
 std::string Position::ToString() {
   // Output looks like this:
   //
-  //  *1:2
+  //  1:2
   //
-  // * => interesting
   // 1 => line
   // 2 => column
 
   std::string result;
-  if (interesting)
-    result += '*';
   result += std::to_string(line);
   result += ':';
   result += std::to_string(column);
@@ -43,26 +42,18 @@ std::string Position::ToString() {
 std::string Position::ToPrettyString(const std::string& filename) {
   // Output looks like this:
   //
-  //  *1:2
+  //  1:2:3
   //
-  // * => interesting
-  // 1 => line
-  // 2 => column
+  // 1 => filename
+  // 2 => line
+  // 3 => column
 
   std::string result;
-  if (interesting)
-    result += '*';
   result += filename;
   result += ':';
   result += std::to_string(line);
   result += ':';
   result += std::to_string(column);
-  return result;
-}
-
-Position Position::WithInteresting(bool interesting) {
-  Position result = *this;
-  result.interesting = interesting;
   return result;
 }
 
@@ -73,45 +64,66 @@ bool Position::operator==(const Position& that) const {
 bool Position::operator!=(const Position& that) const { return !(*this == that); }
 
 bool Position::operator<(const Position& that) const {
-  return interesting < that.interesting && line < that.line && column < that.column;
+  return line < that.line && column < that.column;
 }
 
 Range::Range() {}
 
-Range::Range(Position start, Position end) : start(start), end(end) {}
+Range::Range(bool interesting, Position start, Position end) : interesting(interesting), start(start), end(end) {}
 
-Range::Range(const char* encoded) : start(encoded) {
+Range::Range(const char* encoded) {
   end = start;
 
+  if (*encoded == '*') {
+    interesting = true;
+    ++encoded;
+  }
+
+  start.line = atoi(encoded);
+
+  encoded = SkipAfter(encoded, ':');
   assert(encoded);
-  while (*encoded && *encoded != '-')
-    ++encoded;
-  if (*encoded == '-')
-    ++encoded;
+  start.column = atoi(encoded);
+
+  encoded = SkipAfter(encoded, '-');
+  assert(encoded);
   end.line = atoi(encoded);
 
+  encoded = SkipAfter(encoded, ':');
   assert(encoded);
-  while (*encoded && *encoded != ':')
-    ++encoded;
-  if (*encoded == ':')
-    ++encoded;
   end.column = atoi(encoded);
 }
 
 std::string Range::ToString() {
-  std::string output;
-  output += start.ToString();
+  // Output looks like this:
+  //
+  //  *1:2-3:4
+  //
+  // * => if present, range is interesting
+  // 1 => start line
+  // 2 => start column
+  // 3 => end line
+  // 4 => end column
 
-  output += "-";
+  std::string output;
+
+  if (interesting)
+    output += '*';
+  output += std::to_string(start.line);
+  output += ':';
+  output += std::to_string(start.column);
+  output += '-';
   output += std::to_string(end.line);
-  output += ":";
+  output += ':';
   output += std::to_string(end.column);
 
   return output;
 }
 
 Range Range::WithInteresting(bool interesting) {
-  return Range(start.WithInteresting(interesting), end.WithInteresting(interesting));
+  Range result = *this;
+  result.interesting = interesting;
+  return result;
 }
 
 bool Range::operator==(const Range& that) const {
