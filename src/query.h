@@ -20,26 +20,7 @@ using QueryVarId = Id<QueryableVarDef>;
 
 
 
-struct IdMap {
-  // TODO threading model
-  //  - [querydb] Create IdMap mapping from every id registered in local_ids
-  //  - [indexer] Create IndexUpdate using IdMap cached state
-  //  - [querydb] Apply IndexUpdate
-  //
-  // Then lookup in cached_* should *never* fail.
-
-  const IdCache& local_ids;
-
-  IdMap(const IdCache& local_ids) : local_ids(local_ids) {}
-
-  // TODO
-private:
-  QueryFileId index_file_id;
-  std::unordered_map<IndexTypeId, QueryTypeId> cached_type_ids_;
-  std::unordered_map<IndexFuncId, QueryFuncId> cached_func_ids_;
-  std::unordered_map<IndexVarId, QueryVarId> cached_var_ids_;
-};
-
+struct IdMap;
 
 
 
@@ -136,7 +117,8 @@ struct QueryableFile {
 
   DefUpdate def;
 
-  QueryableFile() {}
+  QueryableFile(const Usr& usr) { def.usr = usr; }
+  QueryableFile(const Def& def) : def(def) {}
   QueryableFile(const IdMap& id_map, const IndexedFile& indexed);
 };
 
@@ -151,7 +133,8 @@ struct QueryableTypeDef {
   std::vector<Usr> instantiations;
   std::vector<QueryableLocation> uses;
 
-  QueryableTypeDef() : def("") {}
+  QueryableTypeDef(const Usr& usr) : def(usr) {}
+  QueryableTypeDef(const DefUpdate& def) : def(def) {}
   QueryableTypeDef(const IdMap& id_map, const IndexedTypeDef& indexed);
 };
 
@@ -168,7 +151,8 @@ struct QueryableFuncDef {
   std::vector<UsrRef> callers;
   std::vector<QueryableLocation> uses;
 
-  QueryableFuncDef() : def("") {}
+  QueryableFuncDef(const Usr& usr) : def(usr) {}
+  QueryableFuncDef(const DefUpdate& def) : def(def) {}
   QueryableFuncDef(const IdMap& id_map, const IndexedFuncDef& indexed);
 };
 
@@ -179,7 +163,8 @@ struct QueryableVarDef {
   DefUpdate def;
   std::vector<QueryableLocation> uses;
 
-  QueryableVarDef() : def("") {}
+  QueryableVarDef(const Usr& usr) : def(usr) {}
+  QueryableVarDef(const DefUpdate& def) : def(def) {}
   QueryableVarDef(const IdMap& id_map, const IndexedVarDef& indexed);
 };
 
@@ -259,4 +244,27 @@ struct QueryableDatabase {
   void ImportOrUpdate(const std::vector<QueryableTypeDef::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates);
+};
+
+
+
+
+struct IdMap {
+  // TODO threading model
+  //  - [querydb] Create IdMap mapping from every id registered in local_ids
+  //  - [indexer] Create IndexUpdate using IdMap cached state
+  //  - [querydb] Apply IndexUpdate
+  //
+  // Then lookup in cached_* should *never* fail.
+
+  const IdCache& local_ids;
+
+  IdMap(QueryableDatabase* query_db, const IdCache& local_ids);
+
+  // TODO
+private:
+  QueryFileId index_file_id;
+  std::unordered_map<IndexTypeId, QueryTypeId> cached_type_ids_;
+  std::unordered_map<IndexFuncId, QueryFuncId> cached_func_ids_;
+  std::unordered_map<IndexVarId, QueryVarId> cached_var_ids_;
 };

@@ -345,6 +345,139 @@ void CompareGroups(
 
 
 
+// TODO: consider having separate lookup maps so they are smaller (maybe
+// lookups will go faster).
+
+QueryFileId GetQueryFileIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
+  auto it = query_db->usr_to_symbol.find(usr);
+  if (it != query_db->usr_to_symbol.end()) {
+    assert(it->second.kind == SymbolKind::File);
+    return it->second.idx;
+  }
+
+  int idx = query_db->files.size();
+  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::File, idx);
+  query_db->files.push_back(QueryableFile(usr));
+  return idx;
+}
+
+QueryTypeId GetQueryTypeIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
+  auto it = query_db->usr_to_symbol.find(usr);
+  if (it != query_db->usr_to_symbol.end()) {
+    assert(it->second.kind == SymbolKind::Type);
+    return it->second.idx;
+  }
+
+  int idx = query_db->types.size();
+  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Type, idx);
+  query_db->types.push_back(QueryableTypeDef(usr));
+  return idx;
+}
+
+QueryFuncId GetQueryFuncIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
+  auto it = query_db->usr_to_symbol.find(usr);
+  if (it != query_db->usr_to_symbol.end()) {
+    assert(it->second.kind == SymbolKind::Func);
+    return it->second.idx;
+  }
+
+  int idx = query_db->funcs.size();
+  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Func, idx);
+  query_db->funcs.push_back(QueryableFuncDef(usr));
+  return idx;
+}
+
+QueryVarId GetQueryVarIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
+  auto it = query_db->usr_to_symbol.find(usr);
+  if (it != query_db->usr_to_symbol.end()) {
+    assert(it->second.kind == SymbolKind::Var);
+    return it->second.idx;
+  }
+
+  int idx = query_db->vars.size();
+  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Var, idx);
+  query_db->vars.push_back(QueryableVarDef(usr));
+  return idx;
+}
+
+
+#if false
+int GetOrAddSymbol(QueryableDatabase* query_db, SymbolKind kind, const Usr& usr) {
+  // TODO: consider having separate lookup maps so they are smaller (maybe
+  // lookups will go faster).
+  auto it = query_db->usr_to_symbol.find(usr);
+
+  // Found; return existing symbol.
+  if (it != query_db->usr_to_symbol.end()) {
+    assert(it->second.kind == kind);
+    return it->second.idx;
+  }
+
+  // Not found; add a new symbol.
+  switch (kind) {
+  case SymbolKind::File: {
+    int idx = query_db->files.size();
+    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
+    query_db->files.push_back(QueryableFile(usr));
+    return idx;
+  }
+  case SymbolKind::Type: {
+    int idx = query_db->types.size();
+    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
+    query_db->types.push_back(QueryableTypeDef(usr));
+    return idx;
+  }
+  case SymbolKind::Func: {
+    int idx = query_db->funcs.size();
+    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
+    query_db->funcs.push_back(QueryableFuncDef(usr));
+    return idx;
+  }
+  case SymbolKind::Var: {
+    int idx = query_db->vars.size();
+    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
+    query_db->vars.push_back(QueryableVarDef(usr));
+    return idx;
+  }
+  case SymbolKind::Invalid: {
+    assert(false);
+    return -1;
+  }
+  }
+
+  assert(false);
+  return -1;
+}
+#endif
+
+IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
+  : local_ids(local_ids) {
+  assert(query_db); // TODO: remove after testing.
+
+  index_file_id = GetQueryFileIdFromUsr(query_db, local_ids.primary_file);
+  
+  cached_type_ids_.reserve(local_ids.type_id_to_usr.size());
+  for (const auto& entry : local_ids.type_id_to_usr)
+    cached_type_ids_[entry.first] = GetQueryTypeIdFromUsr(query_db, entry.second);
+
+  cached_func_ids_.reserve(local_ids.func_id_to_usr.size());
+  for (const auto& entry : local_ids.func_id_to_usr)
+    cached_func_ids_[entry.first] = GetQueryFuncIdFromUsr(query_db, entry.second);
+
+  cached_var_ids_.reserve(local_ids.var_id_to_usr.size());
+  for (const auto& entry : local_ids.var_id_to_usr)
+    cached_var_ids_[entry.first] = GetQueryVarIdFromUsr(query_db, entry.second);
+}
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -525,10 +658,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdat
       qualified_names.push_back(def.usr);
       symbols.push_back(SymbolIdx(SymbolKind::File, files.size()));
       usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::File, files.size());
-
-      QueryableFile query;
-      query.def = def;
-      files.push_back(query);
+      files.push_back(QueryableFile(def));
     }
     else {
       QueryableFile& existing = files[it->second.idx];
@@ -544,10 +674,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUp
       qualified_names.push_back(def.qualified_name);
       symbols.push_back(SymbolIdx(SymbolKind::Type, types.size()));
       usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Type, types.size());
-
-      QueryableTypeDef query;
-      query.def = def;
-      types.push_back(query);
+      types.push_back(QueryableTypeDef(def));
     }
     else {
       QueryableTypeDef& existing = types[it->second.idx];
@@ -564,10 +691,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUp
       qualified_names.push_back(def.qualified_name);
       symbols.push_back(SymbolIdx(SymbolKind::Func, funcs.size()));
       usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
-
-      QueryableFuncDef query;
-      query.def = def;
-      funcs.push_back(query);
+      funcs.push_back(QueryableFuncDef(def));
     }
     else {
       QueryableFuncDef& existing = funcs[it->second.idx];
@@ -584,10 +708,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
       qualified_names.push_back(def.qualified_name);
       symbols.push_back(SymbolIdx(SymbolKind::Var, vars.size()));
       usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
-
-      QueryableVarDef query;
-      query.def = def;
-      vars.push_back(query);
+      vars.push_back(QueryableVarDef(def));
     }
     else {
       QueryableVarDef& existing = vars[it->second.idx];

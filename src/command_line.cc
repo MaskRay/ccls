@@ -279,7 +279,7 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
         // TODO/FIXME/TODO
         // TODO/FIXME/TODO
         // TODO: We need to create IdMap on QueryDb thread.
-        IdMap old_id_map(old_index->id_cache);
+        IdMap old_id_map(nullptr, old_index->id_cache);
         // TODO/FIXME/TODO
         // TODO/FIXME/TODO
         // TODO/FIXME/TODO
@@ -314,8 +314,8 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
       // TODO/FIXME/TODO
       // TODO/FIXME/TODO
       // TODO: We need to create IdMap on QueryDb thread.
-      IdMap old_id_map(old_index->id_cache);
-      IdMap new_id_map(new_index.id_cache);
+      IdMap old_id_map(nullptr, old_index->id_cache);
+      IdMap new_id_map(nullptr, new_index.id_cache);
       // TODO/FIXME/TODO
       // TODO/FIXME/TODO
       // TODO/FIXME/TODO
@@ -336,7 +336,7 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
       // TODO/FIXME/TODO
       // TODO/FIXME/TODO
       // TODO: We need to create IdMap on QueryDb thread.
-      IdMap new_id_map(new_index.id_cache);
+      IdMap new_id_map(nullptr, new_index.id_cache);
       // TODO/FIXME/TODO
       // TODO/FIXME/TODO
       // TODO/FIXME/TODO
