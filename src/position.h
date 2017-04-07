@@ -38,8 +38,3 @@ struct Range {
   bool operator!=(const Range& that) const;
   bool operator<(const Range& that) const;
 };
-
-struct Location {
-  std::string path;
-  Range range;
-};

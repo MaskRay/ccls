@@ -16,70 +16,46 @@ using Usr = std::string;
 //       paths.
 struct QueryableLocation {
   Usr path;
-  int line;
-  int column;
-  bool interesting;
-
+  Range range;
+  
   QueryableLocation()
-    : path(""), line(-1), column(-1), interesting(false) {}
-  QueryableLocation(Usr path, int line, int column, bool interesting)
-    : path(path), line(line), column(column), interesting(interesting) {}
+    : path("") {}
+  QueryableLocation(Usr path, Range range)
+    : path(path), range(range) {}
 
-  QueryableLocation OffsetColumn(int offset) const {
-    return QueryableLocation(path, line, column + offset, interesting);
+  QueryableLocation OffsetStartColumn(int offset) const {
+    QueryableLocation result = *this;
+    result.range.start.column += offset;
+    return result;
   }
 
   bool operator==(const QueryableLocation& other) const {
     // Note: We ignore |is_interesting|.
     return
       path == other.path &&
-      line == other.line &&
-      column == other.column;
+      range == other.range;
   }
   bool operator!=(const QueryableLocation& other) const { return !(*this == other); }
   bool operator<(const QueryableLocation& o) const {
     return
       path < o.path &&
-      line < o.line &&
-      column < o.column &&
-      interesting < o.interesting;
-  }
-};
-
-struct QueryableRange {
-  QueryableLocation start;
-  QueryableLocation end;
-
-  QueryableRange() {}
-  QueryableRange(QueryableLocation start, QueryableLocation end) : start(start), end(end) {}
-
-  QueryableRange OffsetStartColumn(int offset) const {
-    return QueryableRange(start.OffsetColumn(offset), end);
-  }
-
-  bool operator==(const QueryableRange& other) const {
-    // Note: We ignore |is_interesting|.
-    return start == other.start && end == other.end;
-  }
-  bool operator!=(const QueryableRange& other) const { return !(*this == other); }
-  bool operator<(const QueryableRange& o) const {
-    return start < o.start;
+      range < o.range;
   }
 };
 
 struct UsrRef {
   Usr usr;
-  QueryableRange loc;
+  QueryableLocation loc;
 
   UsrRef() {}
-  UsrRef(Usr usr, QueryableRange loc) : usr(usr), loc(loc) {}
+  UsrRef(Usr usr, QueryableLocation loc) : usr(usr), loc(loc) {}
 
   bool operator==(const UsrRef& other) const {
-    return usr == other.usr && loc.start == other.loc.start;
+    return usr == other.usr && loc.range.start == other.loc.range.start;
   }
   bool operator!=(const UsrRef& other) const { return !(*this == other); }
   bool operator<(const UsrRef& other) const {
-    return usr < other.usr && loc.start < other.loc.start;
+    return usr < other.usr && loc.range.start < other.loc.range.start;
   }
 };
 
@@ -136,43 +112,43 @@ struct QueryableFile {
 };
 
 struct QueryableTypeDef {
-  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableRange, QueryableRange>;
+  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation, QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using InstantiationsUpdate = MergeableUpdate<Usr>;
-  using UsesUpdate = MergeableUpdate<QueryableRange>;
+  using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
   std::vector<Usr> derived;
   std::vector<Usr> instantiations;
-  std::vector<QueryableRange> uses;
+  std::vector<QueryableLocation> uses;
 
   QueryableTypeDef() : def("") {}
   QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
 };
 
 struct QueryableFuncDef {
-  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableRange, QueryableRange>;
-  using DeclarationsUpdate = MergeableUpdate<QueryableRange>;
+  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation, QueryableLocation>;
+  using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<Usr>;
   using CallersUpdate = MergeableUpdate<UsrRef>;
-  using UsesUpdate = MergeableUpdate<QueryableRange>;
+  using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
-  std::vector<QueryableRange> declarations;
+  std::vector<QueryableLocation> declarations;
   std::vector<Usr> derived;
   std::vector<UsrRef> callers;
-  std::vector<QueryableRange> uses;
+  std::vector<QueryableLocation> uses;
 
   QueryableFuncDef() : def("") {}
   QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
 };
 
 struct QueryableVarDef {
-  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableRange, QueryableRange>;
-  using UsesUpdate = MergeableUpdate<QueryableRange>;
+  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation, QueryableLocation>;
+  using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
-  std::vector<QueryableRange> uses;
+  std::vector<QueryableLocation> uses;
 
   QueryableVarDef() : def("") {}
   QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);

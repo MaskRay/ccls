@@ -39,12 +39,8 @@ Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
   assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
   return id_cache.var_id_to_usr.find(id)->second;
 }
-QueryableRange MapIdToUsr(const IdCache& id_cache, const Range& id) {
-  QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.interesting);
-  QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.interesting);
-  return QueryableRange(start, end);
-  //assert(id_cache.file_id_to_file_path.find(id.file_id()) != id_cache.file_id_to_file_path.end());
-  //return QueryableLocation(id_cache.file_id_to_file_path.find(id.file_id())->second, id.line, id.column, id.interesting);
+QueryableLocation MapIdToUsr(const IdCache& id_cache, const Range& range) {
+  return QueryableLocation(id_cache.primary_file, range);
 }
 
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<TypeId>& ids) {
@@ -75,11 +71,9 @@ std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRe
     return result;
   });
 }
-std::vector<QueryableRange> MapIdToUsr(const IdCache& id_cache, const std::vector<Range>& ids) {
-  return Transform<Range, QueryableRange>(ids, [&](Range id) {
-    QueryableLocation start(id_cache.primary_file, id.start.line, id.start.column, id.interesting);
-    QueryableLocation end(id_cache.primary_file, id.end.line, id.end.column, id.interesting);
-    return QueryableRange(start, end);
+std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::vector<Range>& ids) {
+  return Transform<Range, QueryableLocation>(ids, [&](Range range) {
+    return QueryableLocation(id_cache.primary_file, range);
   });
 }
 QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedTypeDef::Def& def) {
@@ -172,10 +166,10 @@ QueryableFile::Def BuildFileDef(const IndexedFile& indexed) {
   }
 
   std::sort(def.outline.begin(), def.outline.end(), [](const UsrRef& a, const UsrRef& b) {
-    return a.loc.start < b.loc.start;
+    return a.loc.range.start < b.loc.range.start;
   });
   std::sort(def.all_symbols.begin(), def.all_symbols.end(), [](const UsrRef& a, const UsrRef& b) {
-    return a.loc.start < b.loc.start;
+    return a.loc.range.start < b.loc.range.start;
   });
 
   return def;
@@ -434,7 +428,7 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
 
     PROCESS_UPDATE_DIFF(types_derived, derived, Usr);
     PROCESS_UPDATE_DIFF(types_instantiations, instantiations, Usr);
-    PROCESS_UPDATE_DIFF(types_uses, uses, QueryableRange);
+    PROCESS_UPDATE_DIFF(types_uses, uses, QueryableLocation);
   });
 
   // Functions
@@ -456,10 +450,10 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     if (previous_remapped_def != current_remapped_def)
       funcs_def_update.push_back(current_remapped_def);
 
-    PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableRange);
+    PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableLocation);
     PROCESS_UPDATE_DIFF(funcs_derived, derived, Usr);
     PROCESS_UPDATE_DIFF(funcs_callers, callers, UsrRef);
-    PROCESS_UPDATE_DIFF(funcs_uses, uses, QueryableRange);
+    PROCESS_UPDATE_DIFF(funcs_uses, uses, QueryableLocation);
   });
 
   // Variables
@@ -478,7 +472,7 @@ IndexUpdate::IndexUpdate(IndexedFile& previous_file, IndexedFile& current_file) 
     if (previous_remapped_def != current_remapped_def)
       vars_def_update.push_back(current_remapped_def);
 
-    PROCESS_UPDATE_DIFF(vars_uses, uses, QueryableRange);
+    PROCESS_UPDATE_DIFF(vars_uses, uses, QueryableLocation);
   });
 
 #undef PROCESS_UPDATE_DIFF

@@ -104,7 +104,7 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
 }
 
 
-optional<QueryableRange> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const Usr& usr) {
+optional<QueryableLocation> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const Usr& usr) {
   SymbolIdx symbol = db->usr_to_symbol[usr];
   switch (symbol.kind) {
   case SymbolKind::Type: {
@@ -128,7 +128,7 @@ optional<QueryableRange> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const
   return nullopt;
 }
 
-optional<QueryableRange> GetDefinitionExtentOfUsr(QueryableDatabase* db, const Usr& usr) {
+optional<QueryableLocation> GetDefinitionExtentOfUsr(QueryableDatabase* db, const Usr& usr) {
   SymbolIdx symbol = db->usr_to_symbol[usr];
   switch (symbol.kind) {
   case SymbolKind::Type: {
@@ -332,38 +332,38 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   return nullptr;
 }
 
-lsRange GetLsRange(const QueryableRange& location) {
+lsRange GetLsRange(const Range& location) {
   return lsRange(
       lsPosition(location.start.line - 1, location.start.column - 1),
       lsPosition(location.end.line - 1, location.end.column - 1));
 }
 
-lsLocation GetLsLocation(const QueryableRange& location) {
+lsLocation GetLsLocation(const QueryableLocation& location) {
   return lsLocation(
-    lsDocumentUri::FromPath(location.start.path),
-    GetLsRange(location));
+    lsDocumentUri::FromPath(location.path),
+    GetLsRange(location.range));
 }
 
 void AddCodeLens(std::vector<TCodeLens>* result,
-  QueryableRange loc,
-  const std::vector<QueryableRange>& uses,
+  QueryableLocation loc,
+  const std::vector<QueryableLocation>& uses,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
   TCodeLens code_lens;
-  code_lens.range = GetLsRange(loc);
+  code_lens.range = GetLsRange(loc.range);
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "superindex.showReferences";
-  code_lens.command->arguments.uri = lsDocumentUri::FromPath(loc.start.path);
+  code_lens.command->arguments.uri = lsDocumentUri::FromPath(loc.path);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
-  for (const QueryableRange& use : uses) {
+  for (const QueryableLocation& use : uses) {
     if (exclude_loc && use == loc)
       continue;
-    if (only_interesting && !use.start.interesting)
+    if (only_interesting && !use.range.interesting)
       continue;
     unique_uses.insert(GetLsLocation(use));
   }
@@ -383,13 +383,13 @@ void AddCodeLens(std::vector<TCodeLens>* result,
 }
 
 void AddCodeLens(std::vector<TCodeLens>* result,
-  QueryableRange loc,
+  QueryableLocation loc,
   const std::vector<UsrRef>& uses,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
-  std::vector<QueryableRange> uses0;
+  std::vector<QueryableLocation> uses0;
   uses0.reserve(uses.size());
   for (const UsrRef& use : uses)
     uses0.push_back(use.loc);
@@ -398,16 +398,16 @@ void AddCodeLens(std::vector<TCodeLens>* result,
 
 void AddCodeLens(std::vector<TCodeLens>* result,
   QueryableDatabase* db,
-  QueryableRange loc,
+  QueryableLocation loc,
   const std::vector<Usr>& usrs,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
-  std::vector<QueryableRange> uses0;
+  std::vector<QueryableLocation> uses0;
   uses0.reserve(usrs.size());
   for (const Usr& usr : usrs) {
-    optional<QueryableRange> loc = GetDefinitionSpellingOfUsr(db, usr);
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfUsr(db, usr);
     if (loc)
       uses0.push_back(loc.value());
   }
@@ -517,9 +517,9 @@ void QueryDbMainLoop(
       int target_column = msg->params.position.character + 1;
 
       for (const UsrRef& ref : file->def.all_symbols) {
-        if (ref.loc.start.line >= target_line && ref.loc.end.line <= target_line &&
-            ref.loc.start.column <= target_column && ref.loc.end.column >= target_column) {
-          optional<QueryableRange> location = GetDefinitionSpellingOfUsr(db, ref.usr);
+        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
+            ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+          optional<QueryableLocation> location = GetDefinitionSpellingOfUsr(db, ref.usr);
           if (location)
             response.result.push_back(GetLsLocation(location.value()));
           break;
@@ -688,10 +688,8 @@ void QueryDbMainLoop(
             info.name = def.def.qualified_name;
             info.kind = lsSymbolKind::Class;
 
-            if (def.def.definition_extent.has_value()) {
-              info.location.uri.SetPath(def.def.definition_extent->start.path);
-              info.location.range = GetLsRange(def.def.definition_extent.value());
-            }
+            if (def.def.definition_extent.has_value())
+              info.location = GetLsLocation(def.def.definition_extent.value());
             break;
           }
           case SymbolKind::Func: {
