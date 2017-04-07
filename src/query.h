@@ -15,6 +15,34 @@ using QueryTypeId = Id<QueryableTypeDef>;
 using QueryFuncId = Id<QueryableFuncDef>;
 using QueryVarId = Id<QueryableVarDef>;
 
+
+
+
+
+
+struct IdMap {
+  // TODO threading model
+  //  - [querydb] Create IdMap mapping from every id registered in local_ids
+  //  - [indexer] Create IndexUpdate using IdMap cached state
+  //  - [querydb] Apply IndexUpdate
+  //
+  // Then lookup in cached_* should *never* fail.
+
+  const IdCache& local_ids;
+
+  IdMap(const IdCache& local_ids) : local_ids(local_ids) {}
+
+  // TODO
+private:
+  QueryFileId index_file_id;
+  std::unordered_map<IndexTypeId, QueryTypeId> cached_type_ids_;
+  std::unordered_map<IndexFuncId, QueryFuncId> cached_func_ids_;
+  std::unordered_map<IndexVarId, QueryVarId> cached_var_ids_;
+};
+
+
+
+
 // TODO: in types, store refs separately from irefs. Then we can drop
 // 'interesting' from location when that is cleaned up.
 
@@ -109,7 +137,7 @@ struct QueryableFile {
   DefUpdate def;
 
   QueryableFile() {}
-  QueryableFile(const IndexedFile& indexed);
+  QueryableFile(const IdMap& id_map, const IndexedFile& indexed);
 };
 
 struct QueryableTypeDef {
@@ -124,7 +152,7 @@ struct QueryableTypeDef {
   std::vector<QueryableLocation> uses;
 
   QueryableTypeDef() : def("") {}
-  QueryableTypeDef(IdCache& id_cache, const IndexedTypeDef& indexed);
+  QueryableTypeDef(const IdMap& id_map, const IndexedTypeDef& indexed);
 };
 
 struct QueryableFuncDef {
@@ -141,7 +169,7 @@ struct QueryableFuncDef {
   std::vector<QueryableLocation> uses;
 
   QueryableFuncDef() : def("") {}
-  QueryableFuncDef(IdCache& id_cache, const IndexedFuncDef& indexed);
+  QueryableFuncDef(const IdMap& id_map, const IndexedFuncDef& indexed);
 };
 
 struct QueryableVarDef {
@@ -152,7 +180,7 @@ struct QueryableVarDef {
   std::vector<QueryableLocation> uses;
 
   QueryableVarDef() : def("") {}
-  QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed);
+  QueryableVarDef(const IdMap& id_map, const IndexedVarDef& indexed);
 };
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
@@ -167,8 +195,8 @@ struct SymbolIdx {
 
 struct IndexUpdate {
   // Creates a new IndexUpdate that will import |file|.
-  static IndexUpdate CreateImport(IndexedFile& file);
-  static IndexUpdate CreateDelta(IndexedFile& current, IndexedFile& updated);
+  static IndexUpdate CreateImport(const IdMap& id_map, IndexedFile& file);
+  static IndexUpdate CreateDelta(const IdMap& current_id_map, const IdMap& previous_id_map, IndexedFile& current, IndexedFile& updated);
 
   // Merge |update| into this update; this can reduce overhead / index update
   // work can be parallelized.
@@ -202,7 +230,7 @@ struct IndexUpdate {
   // Creates an index update assuming that |previous| is already
   // in the index, so only the delta between |previous| and |current|
   // will be applied.
-  IndexUpdate(IndexedFile& previous, IndexedFile& current);
+  IndexUpdate(const IdMap& current_id_map, const IdMap& previous_id_map, IndexedFile& previous, IndexedFile& current);
 };
 
 

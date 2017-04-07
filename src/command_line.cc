@@ -273,7 +273,19 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
       // from the primary file though, so that should be ok. We need to cleanup indexer output.
       optional<IndexedFile> old_index = LoadCachedFile(request->path);
       if (old_index.has_value()) {
-        IndexUpdate update = IndexUpdate::CreateImport(old_index.value());
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO: We need to create IdMap on QueryDb thread.
+        IdMap old_id_map(old_index->id_cache);
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        // TODO/FIXME/TODO
+        IndexUpdate update = IndexUpdate::CreateImport(old_id_map, old_index.value());
         IndexTranslationUnitResponse response(update);
         responses->Enqueue(response);
         time.ResetAndPrint("Loading cached index");
@@ -296,16 +308,43 @@ void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
     optional<IndexedFile> old_index = LoadCachedFile(request->path);
     time.ResetAndPrint("Loading previous index");
     if (old_index) {
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO: We need to create IdMap on QueryDb thread.
+      IdMap old_id_map(old_index->id_cache);
+      IdMap new_id_map(new_index.id_cache);
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+
       // Apply delta update.
-      IndexUpdate update = IndexUpdate::CreateDelta(old_index.value(), new_index);
+      IndexUpdate update = IndexUpdate::CreateDelta(old_id_map, new_id_map, old_index.value(), new_index);
       IndexTranslationUnitResponse response(update);
       time.ResetAndPrint("Creating delta index update/response");
       responses->Enqueue(response);
       time.ResetAndPrint("Sending update to server");
     }
     else {
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO: We need to create IdMap on QueryDb thread.
+      IdMap new_id_map(new_index.id_cache);
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+      // TODO/FIXME/TODO
+
       // Apply full update.
-      IndexUpdate update = IndexUpdate::CreateImport(new_index);
+      IndexUpdate update = IndexUpdate::CreateImport(new_id_map, new_index);
       IndexTranslationUnitResponse response(update);
       time.ResetAndPrint("Creating index update/response");
       responses->Enqueue(response);
