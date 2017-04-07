@@ -78,11 +78,9 @@ std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexVarI
 std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRef>& ids) {
   return Transform<FuncRef, UsrRef>(ids, [&](FuncRef ref) {
     assert(id_cache.func_id_to_usr.find(ref.id) != id_cache.func_id_to_usr.end());
-
-    UsrRef result;
-    result.loc = MapIdToUsr(id_cache, ref.loc);
-    result.usr = id_cache.func_id_to_usr.find(ref.id)->second;
-    return result;
+    return UsrRef(
+      id_cache.func_id_to_usr.find(ref.id)->second /*usr*/,
+      MapIdToUsr(id_cache, ref.loc) /*loc*/);
   });
 }
 std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::vector<Range>& ids) {

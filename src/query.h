@@ -22,8 +22,6 @@ struct QueryableLocation {
   Usr path;
   Range range;
   
-  QueryableLocation()
-    : path("") {}
   QueryableLocation(Usr path, Range range)
     : path(path), range(range) {}
 
@@ -51,7 +49,6 @@ struct UsrRef {
   Usr usr;
   QueryableLocation loc;
 
-  UsrRef() {}
   UsrRef(Usr usr, QueryableLocation loc) : usr(usr), loc(loc) {}
 
   bool operator==(const UsrRef& other) const {
