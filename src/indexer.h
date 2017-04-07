@@ -50,10 +50,9 @@ bool operator==(const Id<T>& a, const Id<T>& b) {
   return a.id == b.id;
 }
 
-struct _FakeFileType {};
-using TypeId = Id<IndexedTypeDef>;
-using FuncId = Id<IndexedFuncDef>;
-using VarId = Id<IndexedVarDef>;
+using IndexTypeId = Id<IndexedTypeDef>;
+using IndexFuncId = Id<IndexedFuncDef>;
+using IndexVarId = Id<IndexedVarDef>;
 
 struct IdCache;
 
@@ -167,18 +166,18 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexedTypeDef {
-  using Def = TypeDefDefinitionData<TypeId, FuncId, VarId, Range>;
+  using Def = TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
   Def def;
 
-  TypeId id;
+  IndexTypeId id;
 
   // Immediate derived types.
-  std::vector<TypeId> derived;
+  std::vector<IndexTypeId> derived;
 
   // Declared variables of this type.
   // TODO: this needs a lot more work and lots of tests.
   // TODO: add instantiation on ctor / dtor, do not add instantiation if type is ptr
-  std::vector<VarId> instantiations;
+  std::vector<IndexVarId> instantiations;
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
@@ -186,7 +185,7 @@ struct IndexedTypeDef {
 
   IndexedTypeDef() : def("") {}  // For serialization
 
-  IndexedTypeDef(TypeId id, const std::string& usr);
+  IndexedTypeDef(IndexTypeId id, const std::string& usr);
 
   bool HasInterestingState() const {
     return
@@ -273,16 +272,16 @@ void Reflect(
 }
 
 struct IndexedFuncDef {
-  using Def = FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>;
+  using Def = FuncDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, FuncRef, Range>;
   Def def;
 
-  FuncId id;
+  IndexFuncId id;
 
   // Places the function is forward-declared.
   std::vector<Range> declarations;
 
   // Methods which directly override this one.
-  std::vector<FuncId> derived;
+  std::vector<IndexFuncId> derived;
 
   // Functions which call this one.
   // TODO: Functions can get called outside of just functions - for example,
@@ -296,7 +295,7 @@ struct IndexedFuncDef {
   std::vector<Range> uses;
 
   IndexedFuncDef() {}  // For reflection.
-  IndexedFuncDef(FuncId id, const std::string& usr) : def(usr), id(id) {
+  IndexedFuncDef(IndexFuncId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -376,17 +375,17 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexedVarDef {
-  using Def = VarDefDefinitionData<TypeId, FuncId, VarId, Range>;
+  using Def = VarDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
   Def def;
 
-  VarId id;
+  IndexVarId id;
 
   // Usages.
   std::vector<Range> uses;
 
   IndexedVarDef() : def("") {}  // For serialization
 
-  IndexedVarDef(VarId id, const std::string& usr) : def(usr), id(id) {
+  IndexedVarDef(IndexVarId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -405,12 +404,12 @@ MAKE_HASHABLE(IndexedVarDef, t.def.usr);
 
 struct IdCache {
   std::string primary_file;
-  std::unordered_map<std::string, TypeId> usr_to_type_id;
-  std::unordered_map<std::string, FuncId> usr_to_func_id;
-  std::unordered_map<std::string, VarId> usr_to_var_id;
-  std::unordered_map<TypeId, std::string> type_id_to_usr;
-  std::unordered_map<FuncId, std::string> func_id_to_usr;
-  std::unordered_map<VarId, std::string> var_id_to_usr;
+  std::unordered_map<std::string, IndexTypeId> usr_to_type_id;
+  std::unordered_map<std::string, IndexFuncId> usr_to_func_id;
+  std::unordered_map<std::string, IndexVarId> usr_to_var_id;
+  std::unordered_map<IndexTypeId, std::string> type_id_to_usr;
+  std::unordered_map<IndexFuncId, std::string> func_id_to_usr;
+  std::unordered_map<IndexVarId, std::string> var_id_to_usr;
 
   IdCache(const std::string& primary_file);
 
@@ -436,15 +435,15 @@ struct IndexedFile {
 
   IndexedFile(const std::string& path);
 
-  TypeId ToTypeId(const std::string& usr);
-  FuncId ToFuncId(const std::string& usr);
-  VarId ToVarId(const std::string& usr);
-  TypeId ToTypeId(const CXCursor& usr);
-  FuncId ToFuncId(const CXCursor& usr);
-  VarId ToVarId(const CXCursor& usr);
-  IndexedTypeDef* Resolve(TypeId id);
-  IndexedFuncDef* Resolve(FuncId id);
-  IndexedVarDef* Resolve(VarId id);
+  IndexTypeId ToTypeId(const std::string& usr);
+  IndexFuncId ToFuncId(const std::string& usr);
+  IndexVarId ToVarId(const std::string& usr);
+  IndexTypeId ToTypeId(const CXCursor& usr);
+  IndexFuncId ToFuncId(const CXCursor& usr);
+  IndexVarId ToVarId(const CXCursor& usr);
+  IndexedTypeDef* Resolve(IndexTypeId id);
+  IndexedFuncDef* Resolve(IndexFuncId id);
+  IndexedVarDef* Resolve(IndexVarId id);
 
   std::string ToString();
 };

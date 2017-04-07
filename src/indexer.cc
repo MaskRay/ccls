@@ -17,59 +17,59 @@ IndexedFile::IndexedFile(const std::string& path) : id_cache(path), path(path) {
 }
 
 // TODO: Optimize for const char*?
-TypeId IndexedFile::ToTypeId(const std::string& usr) {
+IndexTypeId IndexedFile::ToTypeId(const std::string& usr) {
   auto it = id_cache.usr_to_type_id.find(usr);
   if (it != id_cache.usr_to_type_id.end())
     return it->second;
 
-  TypeId id(types.size());
+  IndexTypeId id(types.size());
   types.push_back(IndexedTypeDef(id, usr));
   id_cache.usr_to_type_id[usr] = id;
   id_cache.type_id_to_usr[id] = usr;
   return id;
 }
-FuncId IndexedFile::ToFuncId(const std::string& usr) {
+IndexFuncId IndexedFile::ToFuncId(const std::string& usr) {
   auto it = id_cache.usr_to_func_id.find(usr);
   if (it != id_cache.usr_to_func_id.end())
     return it->second;
 
-  FuncId id(funcs.size());
+  IndexFuncId id(funcs.size());
   funcs.push_back(IndexedFuncDef(id, usr));
   id_cache.usr_to_func_id[usr] = id;
   id_cache.func_id_to_usr[id] = usr;
   return id;
 }
-VarId IndexedFile::ToVarId(const std::string& usr) {
+IndexVarId IndexedFile::ToVarId(const std::string& usr) {
   auto it = id_cache.usr_to_var_id.find(usr);
   if (it != id_cache.usr_to_var_id.end())
     return it->second;
 
-  VarId id(vars.size());
+  IndexVarId id(vars.size());
   vars.push_back(IndexedVarDef(id, usr));
   id_cache.usr_to_var_id[usr] = id;
   id_cache.var_id_to_usr[id] = usr;
   return id;
 }
 
-TypeId IndexedFile::ToTypeId(const CXCursor& cursor) {
+IndexTypeId IndexedFile::ToTypeId(const CXCursor& cursor) {
   return ToTypeId(clang::Cursor(cursor).get_usr());
 }
 
-FuncId IndexedFile::ToFuncId(const CXCursor& cursor) {
+IndexFuncId IndexedFile::ToFuncId(const CXCursor& cursor) {
   return ToFuncId(clang::Cursor(cursor).get_usr());
 }
 
-VarId IndexedFile::ToVarId(const CXCursor& cursor) {
+IndexVarId IndexedFile::ToVarId(const CXCursor& cursor) {
   return ToVarId(clang::Cursor(cursor).get_usr());
 }
 
-IndexedTypeDef* IndexedFile::Resolve(TypeId id) {
+IndexedTypeDef* IndexedFile::Resolve(IndexTypeId id) {
   return &types[id.id];
 }
-IndexedFuncDef* IndexedFile::Resolve(FuncId id) {
+IndexedFuncDef* IndexedFile::Resolve(IndexFuncId id) {
   return &funcs[id.id];
 }
-IndexedVarDef* IndexedFile::Resolve(VarId id) {
+IndexedVarDef* IndexedFile::Resolve(IndexVarId id) {
   return &vars[id.id];
 }
 
@@ -77,7 +77,7 @@ std::string IndexedFile::ToString() {
   return Serialize(*this);
 }
 
-IndexedTypeDef::IndexedTypeDef(TypeId id, const std::string& usr)
+IndexedTypeDef::IndexedTypeDef(IndexTypeId id, const std::string& usr)
     : def(usr), id(id) {
   assert(usr.size() > 0);
   // std::cerr << "Creating type with usr " << usr << std::endl;
@@ -355,7 +355,7 @@ struct VisitDeclForTypeUsageParam {
   bool is_interesting;
   int has_processed_any = false;
   optional<clang::Cursor> previous_cursor;
-  optional<TypeId> initial_type;
+  optional<IndexTypeId> initial_type;
 
   VisitDeclForTypeUsageParam(IndexedFile* db, bool is_interesting)
       : db(db), is_interesting(is_interesting) {}
@@ -374,7 +374,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
   if (referenced_usr == "")
     return;
 
-  TypeId ref_type_id = db->ToTypeId(referenced_usr);
+  IndexTypeId ref_type_id = db->ToTypeId(referenced_usr);
 
   if (!param->initial_type)
     param->initial_type = ref_type_id;
@@ -437,7 +437,7 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
 // strips
 // qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
 // (ie, Foo<A,B> => Foo<*,*>).
-optional<TypeId> ResolveToDeclarationType(IndexedFile* db,
+optional<IndexTypeId> ResolveToDeclarationType(IndexedFile* db,
                                           clang::Cursor cursor) {
   clang::Cursor declaration =
       cursor.get_type().strip_qualifiers().get_declaration();
@@ -453,7 +453,7 @@ optional<TypeId> ResolveToDeclarationType(IndexedFile* db,
 // useful if trying to figure out ie, what a using statement refers to. If
 // trying to generally resolve a cursor to a type, use
 // ResolveToDeclarationType, which works in more scenarios.
-optional<TypeId> AddDeclTypeUsages(
+optional<IndexTypeId> AddDeclTypeUsages(
     IndexedFile* db,
     clang::Cursor decl_cursor,
     bool is_interesting,
@@ -637,7 +637,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       // std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr
       // << " at " << loc.ToString() << std::endl;
       if (loc) {
-        VarId ref_id = db->ToVarId(ref_usr);
+        IndexVarId ref_id = db->ToVarId(ref_usr);
         IndexedVarDef* ref_def = db->Resolve(ref_id);
         AddUsage(ref_def->uses, loc.value());
       }
@@ -705,7 +705,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       std::string decl_usr = decl_cursor.get_usr();
 
-      VarId var_id = db->ToVarId(decl->entityInfo->USR);
+      IndexVarId var_id = db->ToVarId(decl->entityInfo->USR);
       IndexedVarDef* var_def = db->Resolve(var_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
@@ -744,7 +744,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // We don't need to assign declaring type multiple times if this variable
       // has already been seen.
       if (!decl->isRedeclaration) {
-        optional<TypeId> var_type = ResolveToDeclarationType(db, decl_cursor);
+        optional<IndexTypeId> var_type = ResolveToDeclarationType(db, decl_cursor);
         if (var_type.has_value()) {
           // Don't treat enum definition variables as instantiations.
           bool is_enum_member = decl->semanticContainer && decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
@@ -757,7 +757,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // TODO: Refactor handlers so more things are under 'if (!decl->isRedeclaration)'
       if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
-        TypeId declaring_type_id =
+        IndexTypeId declaring_type_id =
           db->ToTypeId(decl->semanticContainer->cursor);
         IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
         var_def->def.declaring_type = declaring_type_id;
@@ -781,7 +781,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       clang::Cursor resolved =
           decl_cursor.template_specialization_to_template_definition();
 
-      FuncId func_id = db->ToFuncId(resolved.cx_cursor);
+      IndexFuncId func_id = db->ToFuncId(resolved.cx_cursor);
       IndexedFuncDef* func_def = db->Resolve(func_id);
 
       AddUsage(func_def->uses, decl_loc_spelling.value());
@@ -826,7 +826,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // ever
         // be one of those in the entire program.
         if (IsTypeDefinition(decl->semanticContainer)) {
-          TypeId declaring_type_id =
+          IndexTypeId declaring_type_id =
               db->ToTypeId(decl->semanticContainer->cursor);
           IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
           func_def->def.declaring_type = declaring_type_id;
@@ -898,7 +898,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             // TODO: How to handle multiple parent overrides??
             for (unsigned int i = 0; i < num_overridden; ++i) {
               clang::Cursor parent = overridden[i];
-              FuncId parent_id = db->ToFuncId(parent.get_usr());
+              IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
               IndexedFuncDef* parent_def = db->Resolve(parent_id);
               func_def = db->Resolve(func_id);  // ToFuncId invalidated func_def
 
@@ -931,11 +931,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // Note we want to fetch the first TypeRef. Running
       // ResolveCursorType(decl->cursor) would return
       // the type of the typedef/using, not the type of the referenced type.
-      optional<TypeId> alias_of =
+      optional<IndexTypeId> alias_of =
           AddDeclTypeUsages(db, decl->cursor, true /*is_interesting*/,
                             decl->semanticContainer, decl->lexicalContainer);
 
-      TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
+      IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
       IndexedTypeDef* type_def = db->Resolve(type_id);
 
       if (alias_of)
@@ -959,7 +959,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (!decl_loc_spelling)
         break;
 
-      TypeId type_id = db->ToTypeId(decl->entityInfo->USR);
+      IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
       IndexedTypeDef* type_def = db->Resolve(type_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
@@ -1003,7 +1003,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
           AddDeclTypeUsages(db, base_class->cursor, true /*is_interesting*/,
                             decl->semanticContainer, decl->lexicalContainer);
-          optional<TypeId> parent_type_id =
+          optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
           // type_def ptr could be invalidated by ResolveToDeclarationType.
           IndexedTypeDef* type_def = db->Resolve(type_id);
@@ -1095,7 +1095,7 @@ void indexEntityReference(CXClientData client_data,
       clang::Cursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
 
-      VarId var_id = db->ToVarId(referenced.get_usr());
+      IndexVarId var_id = db->ToVarId(referenced.get_usr());
       IndexedVarDef* var_def = db->Resolve(var_id);
       AddUsage(var_def->uses, loc_spelling.value());
       break;
@@ -1127,9 +1127,9 @@ void indexEntityReference(CXClientData client_data,
       param->last_func_usage_location = loc_spelling.value();
 
       // Note: be careful, calling db->ToFuncId invalidates the FuncDef* ptrs.
-      FuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
+      IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
       if (IsFunction(ref->container->cursor.kind)) {
-        FuncId caller_id = db->ToFuncId(ref->container->cursor);
+        IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
         IndexedFuncDef* caller_def = db->Resolve(caller_id);
         IndexedFuncDef* called_def = db->Resolve(called_id);
 
@@ -1183,7 +1183,7 @@ void indexEntityReference(CXClientData client_data,
 
       clang::Cursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
-      TypeId referenced_id = db->ToTypeId(referenced.get_usr());
+      IndexTypeId referenced_id = db->ToTypeId(referenced.get_usr());
 
       IndexedTypeDef* referenced_def = db->Resolve(referenced_id);
 

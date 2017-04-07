@@ -5,6 +5,16 @@
 
 using Usr = std::string;
 
+struct QueryableFile;
+struct QueryableTypeDef;
+struct QueryableFuncDef;
+struct QueryableVarDef;
+
+using QueryFileId = Id<QueryableFile>;
+using QueryTypeId = Id<QueryableTypeDef>;
+using QueryFuncId = Id<QueryableFuncDef>;
+using QueryVarId = Id<QueryableVarDef>;
+
 // TODO: in types, store refs separately from irefs. Then we can drop
 // 'interesting' from location when that is cleaned up.
 

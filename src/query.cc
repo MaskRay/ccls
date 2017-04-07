@@ -14,6 +14,21 @@
 // TODO: Make all copy constructors explicit.
 
 
+struct IdGlobalizer {
+  // TODO threading model
+  //  - [querydb] Create IdGlobalizer mapping from every id registered in local_ids
+  //  - [indexer] Create IndexUpdate using IdGlobalizer cached state
+  //  - [querydb] Apply IndexUpdate
+  //
+  // Then lookup in cached_* should *never* fail.
+
+  const IdCache& local_ids;
+  QueryFileId index_file_id;
+  std::unordered_map<IndexTypeId, QueryTypeId> cached_type_ids_;
+  std::unordered_map<IndexFuncId, QueryFuncId> cached_func_ids_;
+  std::unordered_map<IndexVarId, QueryVarId> cached_var_ids_;
+};
+
 
 
 
@@ -26,37 +41,36 @@ std::vector<Out> Transform(const std::vector<In>& input, std::function<Out(In)> 
   return result;
 }
 
-// TODO: These functions are failing. Investigate why.
-Usr MapIdToUsr(const IdCache& id_cache, const TypeId& id) {
+
+Usr MapIdToUsr(const IdCache& id_cache, const IndexTypeId& id) {
   assert(id_cache.type_id_to_usr.find(id) != id_cache.type_id_to_usr.end());
   return id_cache.type_id_to_usr.find(id)->second;
 }
-Usr MapIdToUsr(const IdCache& id_cache, const FuncId& id) {
+Usr MapIdToUsr(const IdCache& id_cache, const IndexFuncId& id) {
   assert(id_cache.func_id_to_usr.find(id) != id_cache.func_id_to_usr.end());
   return id_cache.func_id_to_usr.find(id)->second;
 }
-Usr MapIdToUsr(const IdCache& id_cache, const VarId& id) {
+Usr MapIdToUsr(const IdCache& id_cache, const IndexVarId& id) {
   assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
   return id_cache.var_id_to_usr.find(id)->second;
 }
 QueryableLocation MapIdToUsr(const IdCache& id_cache, const Range& range) {
   return QueryableLocation(id_cache.primary_file, range);
 }
-
-std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<TypeId>& ids) {
-  return Transform<TypeId, Usr>(ids, [&](TypeId id) {
+std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexTypeId>& ids) {
+  return Transform<IndexTypeId, Usr>(ids, [&](IndexTypeId id) {
     assert(id_cache.type_id_to_usr.find(id) != id_cache.type_id_to_usr.end());
     return id_cache.type_id_to_usr.find(id)->second;
   });
 }
-std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncId>& ids) {
-  return Transform<FuncId, Usr>(ids, [&](FuncId id) {
+std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexFuncId>& ids) {
+  return Transform<IndexFuncId, Usr>(ids, [&](IndexFuncId id) {
     assert(id_cache.func_id_to_usr.find(id) != id_cache.func_id_to_usr.end());
     return id_cache.func_id_to_usr.find(id)->second;
   });
 }
-std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<VarId>& ids) {
-  return Transform<VarId, Usr>(ids, [&](VarId id) {
+std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexVarId>& ids) {
+  return Transform<IndexVarId, Usr>(ids, [&](IndexVarId id) {
     assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
     return id_cache.var_id_to_usr.find(id)->second;
   });
@@ -299,7 +313,7 @@ bool ComputeDifferenceForUpdate(
     previous.begin(), previous.end(),
     current.begin(), current.end(),
     std::back_inserter(*removed));
-  // Returns the elmeents in |current| that are not in |previous|.
+  // Returns the elements in |current| that are not in |previous|.
   std::set_difference(
     current.begin(), current.end(),
     previous.begin(), previous.end(),
@@ -321,13 +335,7 @@ void CompareGroups(
   while (prev_it != previous_data.end() && curr_it != current_data.end()) {
     // same id
     if (prev_it->def.usr == curr_it->def.usr) {
-      //if (!prev_it->is_bad_def && !curr_it->is_bad_def)
       on_found(&*prev_it, &*curr_it);
-      //else if (prev_it->is_bad_def)
-      //  on_added(&*curr_it);
-      //else if (curr_it->is_bad_def)
-      //  on_removed(&*curr_it);
-
       ++prev_it;
       ++curr_it;
     }
@@ -665,11 +673,6 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 //             are joined to. So that way even if the main db is busy we can
 //             still be joining. Joining the partially joined db to the main
 //             db should be faster since we will have larger data lanes to use.
-// TODO: I think we can run libclang multiple times in one process. So we might
-//       only need two processes. Still, for perf reasons it would be good if
-//       we could stay in one process. We could probably just use shared
-//       memory. May want to run libclang in separate process to protect from
-//       crashes/issues there.
 // TODO: allow user to store configuration as json? file in home dir; also
 //       allow local overrides (scan up dirs)
 // TODO: add opt to dump config when starting (--dump-config)
