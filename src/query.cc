@@ -32,14 +32,7 @@ struct IdGlobalizer {
 
 
 
-template<typename In, typename Out>
-std::vector<Out> Transform(const std::vector<In>& input, std::function<Out(In)> op) {
-  std::vector<Out> result;
-  result.reserve(input.size());
-  for (const In& in : input)
-    result.push_back(op(in));
-  return result;
-}
+
 
 
 Usr MapIdToUsr(const IdCache& id_cache, const IndexTypeId& id) {
@@ -57,37 +50,42 @@ Usr MapIdToUsr(const IdCache& id_cache, const IndexVarId& id) {
 QueryableLocation MapIdToUsr(const IdCache& id_cache, const Range& range) {
   return QueryableLocation(id_cache.primary_file, range);
 }
+UsrRef MapIdToUsr(const IdCache& id_cache, const FuncRef& id) {
+  assert(id_cache.func_id_to_usr.find(id.id) != id_cache.func_id_to_usr.end());
+  return UsrRef(
+    id_cache.func_id_to_usr.find(id.id)->second /*usr*/,
+    MapIdToUsr(id_cache, id.loc) /*loc*/);
+}
+
+// Mapps for vectors of elements. We have to explicitly instantiate each
+// template instance because C++ cannot deduce the return type template
+// parameter.
+template<typename In, typename Out>
+std::vector<Out> Transform(const IdCache& id_cache, const std::vector<In>& input) {
+  std::vector<Out> result;
+  result.reserve(input.size());
+  for (const In& in : input)
+    result.push_back(MapIdToUsr(id_cache, in));
+  return result;
+}
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexTypeId>& ids) {
-  return Transform<IndexTypeId, Usr>(ids, [&](IndexTypeId id) {
-    assert(id_cache.type_id_to_usr.find(id) != id_cache.type_id_to_usr.end());
-    return id_cache.type_id_to_usr.find(id)->second;
-  });
+  return Transform<IndexTypeId, Usr>(id_cache, ids);
 }
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexFuncId>& ids) {
-  return Transform<IndexFuncId, Usr>(ids, [&](IndexFuncId id) {
-    assert(id_cache.func_id_to_usr.find(id) != id_cache.func_id_to_usr.end());
-    return id_cache.func_id_to_usr.find(id)->second;
-  });
+  return Transform<IndexFuncId, Usr>(id_cache, ids);
 }
 std::vector<Usr> MapIdToUsr(const IdCache& id_cache, const std::vector<IndexVarId>& ids) {
-  return Transform<IndexVarId, Usr>(ids, [&](IndexVarId id) {
-    assert(id_cache.var_id_to_usr.find(id) != id_cache.var_id_to_usr.end());
-    return id_cache.var_id_to_usr.find(id)->second;
-  });
+  return Transform<IndexVarId, Usr>(id_cache, ids);
 }
 std::vector<UsrRef> MapIdToUsr(const IdCache& id_cache, const std::vector<FuncRef>& ids) {
-  return Transform<FuncRef, UsrRef>(ids, [&](FuncRef ref) {
-    assert(id_cache.func_id_to_usr.find(ref.id) != id_cache.func_id_to_usr.end());
-    return UsrRef(
-      id_cache.func_id_to_usr.find(ref.id)->second /*usr*/,
-      MapIdToUsr(id_cache, ref.loc) /*loc*/);
-  });
+  return Transform<FuncRef, UsrRef>(id_cache, ids);
 }
 std::vector<QueryableLocation> MapIdToUsr(const IdCache& id_cache, const std::vector<Range>& ids) {
-  return Transform<Range, QueryableLocation>(ids, [&](Range range) {
-    return QueryableLocation(id_cache.primary_file, range);
-  });
+  return Transform<Range, QueryableLocation>(id_cache, ids);
 }
+
+
+
 QueryableTypeDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedTypeDef::Def& def) {
   QueryableTypeDef::DefUpdate result(def.usr);
   result.short_name = def.short_name;
@@ -136,6 +134,18 @@ QueryableVarDef::DefUpdate MapIdToUsr(const IdCache& id_cache, const IndexedVarD
     result.declaring_type = MapIdToUsr(id_cache, def.declaring_type.value());
   return result;
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 QueryableFile::Def BuildFileDef(const IndexedFile& indexed) {
   QueryableFile::Def def;
@@ -218,25 +228,7 @@ QueryableVarDef::QueryableVarDef(IdCache& id_cache, const IndexedVarDef& indexed
 
 
 
-// TODO: For space reasons, it may make sense to map Usr -> offset inside of global storage. But not for intermediate or disk-storage.
-//       We can probably eliminate most of that pain by coming up with our own UsrDb concept which interns the Usr strings. We can make
-//       the pain of a global UsrDb less by
-//          (parallel)clangindex -> (main)commit USRs to global -> (parallel)transfer IDs to global USRs -> (main)import
 
-struct CachedIndexedFile {
-  // Path to the file indexed.
-  std::string path;
-
-  // TODO: Make sure that |previous_index| and |current_index| use the same id
-  // to USR mapping. This lets us greatly speed up difference computation.
-
-  // The previous index. This is used for index updates, so we only apply a
-  // an update diff when changing the global db.
-  optional<IndexedFile> previous_index;
-  IndexedFile current_index;
-
-  CachedIndexedFile(const IndexedFile& indexed) : current_index(indexed) {}
-};
 
 template<typename T>
 void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
