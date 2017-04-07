@@ -8,12 +8,6 @@ using Usr = std::string;
 // TODO: in types, store refs separately from irefs. Then we can drop
 // 'interesting' from location when that is cleaned up.
 
-// TODO: Switch over to QueryableLocation. Figure out if there is
-//       a good way to get the indexer using it. I don't think so
-//       since we may discover more files while indexing a file.
-//
-//       We could also reuse planned USR caching system for file
-//       paths.
 struct QueryableLocation {
   Usr path;
   Range range;
@@ -231,17 +225,3 @@ struct QueryableDatabase {
   void ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates);
 };
-
-
-
-// TODO: For supporting vscode, lets'
-//  - have our normal daemon system
-//  - have frontend --language-server which accepts JSON RPC language server in stdin and emits language server
-//    JSON in stdout. vscode extension will run the executable this way. it will connect to daemon as normal.
-//    this means that vscode instance can be killed without actually killing core indexer process.
-//      $ indexer --language-server
-//  - maybe? have simple front end which lets user run
-//      $ indexer --action references --location foo.cc:20:5
-//
-//
-// https://github.com/Microsoft/vscode-languageserver-node/blob/master/client/src/main.ts
