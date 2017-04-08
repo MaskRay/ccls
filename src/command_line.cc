@@ -1,5 +1,6 @@
 // TODO: cleanup includes
 #include "code_completion.h"
+#include "file_consumer.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
@@ -289,8 +290,9 @@ void WriteToCache(std::string filename, IndexedFile& file) {
 }
 
 
-bool IndexMain_DoIndex(Index_DoIndexQueue* queue_do_index,
-  Index_DoIdMapQueue* queue_do_id_map) {
+bool IndexMain_DoIndex(FileConsumer* file_consumer,
+                       Index_DoIndexQueue* queue_do_index,
+                       Index_DoIdMapQueue* queue_do_id_map) {
   optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
   if (!index_request)
     return false;
@@ -319,15 +321,12 @@ bool IndexMain_DoIndex(Index_DoIndexQueue* queue_do_index,
   }
 
   // Parse request and send a response.
-  std::cerr << "Parsing file " << index_request->path << " with args "
-    << Join(index_request->args, ", ") << std::endl;
-
-  // TODO: parse should return unique_ptr. Then we can eliminate copy below. Make sure to not
-  // reuse moved pointer in WriteToCache if we do so.
-  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(index_request->path, index_request->args);
+  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(file_consumer, index_request->path, index_request->args);
   time.ResetAndPrint("Parsing/indexing");
 
   for (auto& current_index : indexes) {
+    std::cerr << "Got index for " << current_index->path << std::endl;
+
     std::unique_ptr<IndexedFile> old_index = LoadCachedFile(current_index->path);
     time.ResetAndPrint("Loading cached index");
 
@@ -364,16 +363,21 @@ bool IndexMain_DoCreateIndexUpdate(Index_OnIdMappedQueue* queue_on_id_mapped,
   return true;
 }
 
-void IndexMain(Index_DoIndexQueue* queue_do_index,
+void IndexMain(
+  FileConsumer::SharedState* file_consumer_shared,
+  Index_DoIndexQueue* queue_do_index,
   Index_DoIdMapQueue* queue_do_id_map,
   Index_OnIdMappedQueue* queue_on_id_mapped,
   Index_OnIndexedQueue* queue_on_indexed) {
+
+  FileConsumer file_consumer(file_consumer_shared);
+
   while (true) {
     // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
     //       better icache behavior. We need to have some threads spinning on both though
     //       otherwise memory usage will get bad.
 
-    if (!IndexMain_DoIndex(queue_do_index, queue_do_id_map) &&
+    if (!IndexMain_DoIndex(&file_consumer, queue_do_index, queue_do_id_map) &&
       !IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed)) {
       // TODO: use CV to wakeup?
       std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -646,7 +650,6 @@ void QueryDbMainLoop(
         request.args = entry.args;
         queue_do_index->Enqueue(std::move(request));
       }
-      std::cerr << "Done" << std::endl;
       break;
     }
 
@@ -952,8 +955,8 @@ void QueryDbMainLoop(
 
     assert(request->current);
     response.current_id_map = MakeUnique<IdMap>(db, request->current->id_cache);
+    time.ResetAndPrint("Create IdMap " + request->current->path);
     response.current_index = std::move(request->current);
-    time.ResetAndPrint("Create IdMap");
 
     queue_on_id_mapped->Enqueue(std::move(response));
   }
@@ -982,11 +985,12 @@ void QueryDbMain() {
   Project project;
   WorkingFiles working_files;
   CompletionManager completion_manager(&project, &working_files);
+  FileConsumer::SharedState file_consumer_shared;
 
   // Start indexer threads.
   for (int i = 0; i < kNumIndexers; ++i) {
     new std::thread([&]() {
-      IndexMain(&queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
+      IndexMain(&file_consumer_shared, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
     });
   }
 

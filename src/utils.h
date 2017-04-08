@@ -1,9 +1,10 @@
 #pragma once
 
 #include <functional>
-#include <string>
-#include <vector>
 #include <memory>
+#include <string>
+#include <unordered_map>>
+#include <vector>
 
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(const std::string& value, const std::string& start);
@@ -12,7 +13,7 @@ bool EndsWith(const std::string& value, const std::string& ending);
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
 std::vector<std::string> ReadLines(std::string filename);
-void ParseTestExpectation(std::string filename, std::string* expected_output);
+std::unordered_map<std::string, std::string> ParseTestExpectation(std::string filename);
 
 void Fail(const std::string& message);
 

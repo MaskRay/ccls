@@ -3,6 +3,7 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <unordered_map>
 
 #include <tinydir.h>
 
@@ -112,19 +113,54 @@ std::vector<std::string> ReadLines(std::string filename) {
   return result;
 }
 
-void ParseTestExpectation(std::string filename, std::string* expected_output) {
+std::unordered_map<std::string, std::string> ParseTestExpectation(std::string filename) {
   bool in_output = false;
+
+#if false
+  #include "bar.h"
+
+  void foo();
+
+  /*
+  // if no name is given assume to be this file name
+  // no output section means we don't check that index.
+  OUTPUT: bar.cc
+  {}
+
+  OUTPUT: bar.h
+  {}
+  */
+#endif
+
+  std::unordered_map<std::string, std::string> result;
+
+  std::string active_output_filename;
+  std::string active_output_contents;
 
   for (std::string line : ReadLines(filename)) {
     if (line == "*/")
       break;
 
-    if (in_output)
-      *expected_output += line + "\n";
+    if (StartsWith(line, "OUTPUT:")) {
+      if (in_output) {
+        result[active_output_filename] = active_output_contents;
+      }
 
-    if (line == "OUTPUT:")
+      if (line.size() > 7)
+        active_output_filename = line.substr(8);
+      else
+        active_output_filename = filename;
+      active_output_contents = "";
+
       in_output = true;
+    }
+    else if (in_output)
+      active_output_contents += line + "\n";
   }
+
+  if (in_output)
+    result[active_output_filename] = active_output_contents;
+  return result;
 }
 
 

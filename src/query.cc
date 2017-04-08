@@ -284,7 +284,6 @@ void CompareGroups(
 
 // TODO: consider having separate lookup maps so they are smaller (maybe
 // lookups will go faster).
-
 QueryFileId GetQueryFileIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end()) {
@@ -336,7 +335,6 @@ QueryVarId GetQueryVarIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   query_db->vars.push_back(QueryableVarDef(usr));
   return QueryVarId(idx);
 }
-
 
 IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
@@ -624,6 +622,7 @@ void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdate>& updates) {
   for (auto& def : updates) {
+    std::cerr << "Importing def for " << def.usr << std::endl;
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 

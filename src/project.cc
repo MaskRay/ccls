@@ -23,7 +23,7 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
 
   std::vector<std::string> files = GetFilesInFolder(project_directory, true /*recursive*/, true /*add_folder_to_path*/);
   for (const std::string& file : files) {
-    if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") || EndsWith(file, ".c") || EndsWith(file, ".h")) {
+    if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") || EndsWith(file, ".c")) {
       CompilationEntry entry;
       entry.filename = NormalizePath(file);
       entry.args = args;

@@ -40,17 +40,16 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
 }
 
 
-void DiffDocuments(std::string path, rapidjson::Document& expected, rapidjson::Document& actual) {
+void DiffDocuments(std::string path, std::string path_section, rapidjson::Document& expected, rapidjson::Document& actual) {
   std::string joined_actual_output = ToString(actual);
   std::vector<std::string> actual_output = SplitString(joined_actual_output, "\n");
   std::string joined_expected_output = ToString(expected);
   std::vector<std::string> expected_output = SplitString(joined_expected_output, "\n");
 
-
-  std::cout << "[FAILED] " << path << std::endl;
-  std::cout << "Expected output for " << path << ":" << std::endl;
+  std::cout << "[FAILED] " << path << " (section " << path_section << ")" << std::endl;
+  std::cout << "Expected output for " << path << " (section " << path_section << "):" << std::endl;
   std::cout << joined_expected_output << std::endl;
-  std::cout << "Actual output for " << path << ":" << std::endl;
+  std::cout << "Actual output for " << path << " (section " << path_section << "):" << std::endl;
   std::cout << joined_actual_output << std::endl;
   std::cout << std::endl;
 
@@ -92,16 +91,28 @@ void VerifySerializeToFrom(IndexedFile* file) {
   }
 }
 
+std::string FindExpectedOutputForFilename(std::string filename, const std::unordered_map<std::string, std::string>& expected) {
+  for (const auto& entry : expected) {
+    if (EndsWith(entry.first, filename))
+      return entry.second;
+  }
+
+  std::cerr << "Couldn't find expected output for " << filename << std::endl;
+  std::cin.get();
+  std::cin.get();
+  return "{}";
+}
+
+IndexedFile* FindDbForPathEnding(const std::string& path, const std::vector<std::unique_ptr<IndexedFile>>& dbs) {
+  for (auto& db : dbs) {
+    if (EndsWith(db->path, path))
+      return db.get();
+  }
+  return nullptr;
+}
+
 void RunTests() {
   // TODO: Assert that we need to be on clang >= 3.9.1
-
-  /*
-  ParsingDatabase db = Parse("tests/vars/function_local.cc");
-  std::cout << std::endl << "== Database ==" << std::endl;
-  std::cout << db.ToString();
-  std::cin.get();
-  return 0;
-  */
 
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
@@ -116,14 +127,14 @@ void RunTests() {
     //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
 
     // Parse expected output from the test, parse it into JSON document.
-    std::string expected_output;
-    ParseTestExpectation(path, &expected_output);
-    rapidjson::Document expected;
-    expected.Parse(expected_output.c_str());
+    std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
+
+    FileConsumer::SharedState file_consumer_shared;
+    FileConsumer file_consumer(&file_consumer_shared);
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(path, {
+    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(&file_consumer, path, {
         "-xc++",
         "-std=c++11",
         "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",
@@ -132,37 +143,36 @@ void RunTests() {
         "-IC:/Users/jacob/Desktop/superindex/indexer/src"
       }, false /*dump_ast*/);
 
-    // TODO: Supporting tests for more than just primary indexed file.
+    for (auto& entry : all_expected_output) {
+      const std::string& expected_path = entry.first;
+      const std::string& expected_output = entry.second;
 
-    // Find primary file.
-    std::unique_ptr<IndexedFile> db;
-    for (auto& i : dbs) {
-      if (i->path == path) {
-        db = std::move(i);
-        break;
+      // Get output from index operation.
+      IndexedFile* db = FindDbForPathEnding(expected_path, dbs);
+      std::string actual_output = "{}";
+      if (db) {
+        VerifySerializeToFrom(db);
+        actual_output = db->ToString();
       }
-    }
 
-    // TODO: Always pass IndexedFile by pointer, ie, search and remove all IndexedFile& refs.
-    // TODO: Rename IndexedFile to IndexFile
+      // Compare output via rapidjson::Document to ignore any formatting
+      // differences.
+      rapidjson::Document actual;
+      actual.Parse(actual_output.c_str());
+      rapidjson::Document expected;
+      expected.Parse(expected_output.c_str());
 
-    VerifySerializeToFrom(db.get());
-    std::string actual_output = db->ToString();
-
-    rapidjson::Document actual;
-    actual.Parse(actual_output.c_str());
-
-    if (actual == expected) {
-      std::cout << "[PASSED] " << path << std::endl;
-    }
-    else {
-      DiffDocuments(path, expected, actual);
-      std::cout << std::endl;
-      std::cout << std::endl;
-      std::cout << "[Enter to continue next test]";
-      std::cin.get();
-      std::cin.get();
-      //break;
+      if (actual == expected) {
+        std::cout << "[PASSED] " << path << std::endl;
+      }
+      else {
+        DiffDocuments(path, expected_path, expected, actual);
+        std::cout << std::endl;
+        std::cout << std::endl;
+        std::cout << "[Enter to continue]";
+        std::cin.get();
+        std::cin.get();
+      }
     }
   }
 
@@ -170,3 +180,6 @@ void RunTests() {
 }
 
 // TODO: ctor/dtor, copy ctor
+// TODO: Always pass IndexedFile by pointer, ie, search and remove all IndexedFile& refs.
+// TODO: Rename IndexedFile to IndexFile
+

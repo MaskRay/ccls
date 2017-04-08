@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 
+#include "platform.h"
 #include "serializer.h"
 
 IndexedFile::IndexedFile(const std::string& path) : id_cache(path), path(path) {
@@ -131,8 +132,8 @@ Range IdCache::ForceResolveSpelling(const CXCursor& cx_cursor, bool interesting)
 
 optional<Range> IdCache::ResolveSpelling(const CXCursor& cx_cursor, bool interesting) {
   CXSourceLocation cx_loc = clang_getCursorLocation(cx_cursor);
-  if (!clang_Location_isFromMainFile(cx_loc))
-    return nullopt;
+  //if (!clang_Location_isFromMainFile(cx_loc))
+  //  return nullopt;
   return ForceResolveSpelling(cx_cursor, interesting);
 }
 
@@ -147,8 +148,8 @@ Range IdCache::ForceResolveExtent(const CXCursor& cx_cursor, bool interesting) {
 
 optional<Range> IdCache::ResolveExtent(const CXCursor& cx_cursor, bool interesting) {
   CXSourceLocation cx_loc = clang_getCursorLocation(cx_cursor);
-  if (!clang_Location_isFromMainFile(cx_loc))
-    return nullopt;
+  //if (!clang_Location_isFromMainFile(cx_loc))
+  //  return nullopt;
   return ForceResolveExtent(cx_cursor, interesting);
 }
 
@@ -205,14 +206,14 @@ struct NamespaceHelper {
 };
 
 struct IndexParam {
-  IndexedFile* db;
+  FileConsumer* file_consumer;
   NamespaceHelper* ns;
 
   // Record last func usage we reported, as clang will record the reference
   // twice. We don't want to double report.
   Range last_func_usage_location;
 
-  IndexParam(IndexedFile* db, NamespaceHelper* ns) : db(db), ns(ns) {}
+  IndexParam(FileConsumer* file_consumer, NamespaceHelper* ns) : file_consumer(file_consumer), ns(ns) {}
 };
 
 int abortQuery(CXClientData client_data, void* reserved) {
@@ -240,7 +241,7 @@ void diagnostic(CXClientData client_data,
     // Fetch path, print.
     if (file != nullptr) {
       std::string path = clang::ToString(clang_getFileName(file));
-      std::cerr << path << ':';
+      std::cerr << NormalizePath(path) << ':';
     }
     std::cerr << line << ':' << column << ": " << spelling << std::endl;
 
@@ -672,17 +673,22 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
 // INDEX SPELLING
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
-  // TODO: we can minimize processing for cursors which return false for
-  // clang_Location_isFromMainFile (ie, only add usages)
-  bool is_system_def =
-      clang_Location_isInSystemHeader(clang_getCursorLocation(decl->cursor));
-  if (is_system_def)
+  // TODO: allow user to configure if they want STL index.
+  if (clang_Location_isInSystemHeader(clang_indexLoc_getCXSourceLocation(decl->loc)))
     return;
 
   assert(AreEqualLocations(decl->loc, decl->cursor));
 
+  // TODO: Use clang_getFileUniqueID
+  CXFile file;
+  clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc), &file, nullptr, nullptr, nullptr);
+  std::string filename = clang::ToString(clang_getFileName(file));
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  IndexedFile* db = param->db;
+  IndexedFile* db = param->file_consumer->TryConsumeFile(filename);
+  if (!db)
+    return;
+
+
   NamespaceHelper* ns = param->ns;
 
 
@@ -1070,14 +1076,26 @@ bool IsFunctionCallContext(CXCursorKind kind) {
 
 void indexEntityReference(CXClientData client_data,
                           const CXIdxEntityRefInfo* ref) {
+  // Don't index references from or to system headers.
+  if (clang_Location_isInSystemHeader(clang_indexLoc_getCXSourceLocation(ref->loc)) ||
+      clang_Location_isInSystemHeader(clang_getCursorLocation(ref->referencedEntity->cursor)))
+    return;
+
   //assert(AreEqualLocations(ref->loc, ref->cursor));
 
 //  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->cursor)) ||
 //      clang_Location_isInSystemHeader(
 //          clang_getCursorLocation(ref->referencedEntity->cursor)))
 //    return;
+
+  // TODO: Use clang_getFileUniqueID
+  CXFile file;
+  clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file, nullptr, nullptr, nullptr);
+  std::string filename = clang::ToString(clang_getFileName(file));
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  IndexedFile* db = param->db;
+  IndexedFile* db = param->file_consumer->TryConsumeFile(filename);
+  if (!db)
+    return;
 
   // ref->cursor mainFile=0
   // ref->loc mainFile=1
@@ -1089,11 +1107,9 @@ void indexEntityReference(CXClientData client_data,
   //std::cerr << "mainFile: " << mainFile << ", loc: " << loc_spelling.ToString() << std::endl;
 
   // Don't index references that are not from the main file.
-  if (!clang_Location_isFromMainFile(clang_getCursorLocation(ref->cursor)))
-    return;
-  // Don't index references to system headers.
-  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->referencedEntity->cursor)))
-    return;
+  //if (!clang_Location_isFromMainFile(clang_getCursorLocation(ref->cursor)))
+  //  return;
+
 
 
   clang::Cursor cursor(ref->cursor);
@@ -1263,7 +1279,7 @@ void indexEntityReference(CXClientData client_data,
   }
 }
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(std::string filename, std::vector<std::string> args, bool dump_ast) {
+std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std::string filename, std::vector<std::string> args, bool dump_ast) {
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
 
@@ -1295,9 +1311,8 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(std::string filename, std::vecto
       */
   };
 
-  auto db = MakeUnique<IndexedFile>(filename);
   NamespaceHelper ns;
-  IndexParam param(db.get(), &ns);
+  IndexParam param(file_consumer, &ns);
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
@@ -1306,7 +1321,11 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(std::string filename, std::vecto
   std::cerr << "!! [END] Indexing " << filename << std::endl;
   clang_IndexAction_dispose(index_action);
 
-  std::vector<std::unique_ptr<IndexedFile>> result;
-  result.emplace_back(std::move(db));
-  return std::move(result);
+  auto result = param.file_consumer->TakeLocalState();
+  for (auto& entry : result) {
+    // TODO: only store the path on one of these.
+    entry->path = NormalizePath(entry->path);
+    entry->id_cache.primary_file = entry->path;
+  }
+  return result;
 }
