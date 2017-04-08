@@ -209,7 +209,7 @@ struct QueryableFuncDef {
 };
 
 struct QueryableVarDef {
-  using DefUpdate = VarDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
+  using DefUpdate = VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryableLocation>;
   using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;

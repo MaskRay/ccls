@@ -103,16 +103,11 @@ QueryableVarDef::DefUpdate MapIdToUsr(const IdMap& id_map, const IndexedVarDef::
   QueryableVarDef::DefUpdate result(def.usr);
   result.short_name = def.short_name;
   result.qualified_name = def.qualified_name;
-  if (def.declaration)
-    result.declaration = MapIdToUsr(id_map, def.declaration.value());
-  if (def.definition_spelling)
-    result.definition_spelling = MapIdToUsr(id_map, def.definition_spelling.value());
-  if (def.definition_extent)
-    result.definition_extent = MapIdToUsr(id_map, def.definition_extent.value());
-  if (def.variable_type)
-    result.variable_type = MapIdToUsr(id_map, def.variable_type.value());
-  if (def.declaring_type)
-    result.declaring_type = MapIdToUsr(id_map, def.declaring_type.value());
+  result.declaration = id_map.ToQuery(def.declaration);
+  result.definition_spelling = id_map.ToQuery(def.definition_spelling);
+  result.definition_extent = id_map.ToQuery(def.definition_extent);
+  result.variable_type = id_map.ToQuery(def.variable_type);
+  result.declaring_type = id_map.ToQuery(def.declaring_type);
   return result;
 }
 
