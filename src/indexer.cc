@@ -111,7 +111,7 @@ void AddUsage(std::vector<Range>& uses,
 IdCache::IdCache(const std::string& primary_file)
   : primary_file(primary_file) {}
 
-Range IdCache::ForceResolve(const CXSourceRange& range, bool interesting) {
+Range IdCache::Resolve(const CXSourceRange& range, bool interesting) {
   CXSourceLocation start = clang_getRangeStart(range);
   CXSourceLocation end = clang_getRangeEnd(range);
 
@@ -125,36 +125,14 @@ Range IdCache::ForceResolve(const CXSourceRange& range, bool interesting) {
     Position(end_line, end_column) /*end*/);
 }
 
-Range IdCache::ForceResolveSpelling(const CXCursor& cx_cursor, bool interesting) {
+Range IdCache::ResolveSpelling(const CXCursor& cx_cursor, bool interesting) {
   CXSourceRange cx_range = clang_Cursor_getSpellingNameRange(cx_cursor, 0, 0);
-  return ForceResolve(cx_range, interesting);
+  return Resolve(cx_range, interesting);
 }
 
-optional<Range> IdCache::ResolveSpelling(const CXCursor& cx_cursor, bool interesting) {
-  CXSourceLocation cx_loc = clang_getCursorLocation(cx_cursor);
-  //if (!clang_Location_isFromMainFile(cx_loc))
-  //  return nullopt;
-  return ForceResolveSpelling(cx_cursor, interesting);
-}
-
-optional<Range> IdCache::ResolveSpelling(const clang::Cursor& cursor, bool interesting) {
-  return ResolveSpelling(cursor.cx_cursor, interesting);
-}
-
-Range IdCache::ForceResolveExtent(const CXCursor& cx_cursor, bool interesting) {
+Range IdCache::ResolveExtent(const CXCursor& cx_cursor, bool interesting) {
   CXSourceRange cx_range = clang_getCursorExtent(cx_cursor);
-  return ForceResolve(cx_range, interesting);
-}
-
-optional<Range> IdCache::ResolveExtent(const CXCursor& cx_cursor, bool interesting) {
-  CXSourceLocation cx_loc = clang_getCursorLocation(cx_cursor);
-  //if (!clang_Location_isFromMainFile(cx_loc))
-  //  return nullopt;
-  return ForceResolveExtent(cx_cursor, interesting);
-}
-
-optional<Range> IdCache::ResolveExtent(const clang::Cursor& cursor, bool interesting) {
-  return ResolveExtent(cursor.cx_cursor, interesting);
+  return Resolve(cx_range, interesting);
 }
 
 template <typename T>
@@ -391,9 +369,8 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
     IndexedTypeDef* ref_type_def = db->Resolve(ref_type_id);
     // TODO: Should we even be visiting this if the file is not from the main
     // def? Try adding assert on |loc| later.
-    optional<Range> loc = db->id_cache.ResolveSpelling(cursor, true /*interesting*/);
-    if (loc)
-      AddUsage(ref_type_def->uses, loc.value());
+    Range loc = db->id_cache.ResolveSpelling(cursor.cx_cursor, true /*interesting*/);
+    AddUsage(ref_type_def->uses, loc);
   }
 }
 
@@ -641,14 +618,12 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       if (ref_usr == "")
         break;
 
-      optional<Range> loc = db->id_cache.ResolveSpelling(cursor, false /*interesting*/);
+      Range loc = db->id_cache.ResolveSpelling(cursor.cx_cursor, false /*interesting*/);
       // std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr
       // << " at " << loc.ToString() << std::endl;
-      if (loc) {
-        IndexVarId ref_id = db->ToVarId(ref_usr);
-        IndexedVarDef* ref_def = db->Resolve(ref_id);
-        AddUsage(ref_def->uses, loc.value());
-      }
+      IndexVarId ref_id = db->ToVarId(ref_usr);
+      IndexedVarDef* ref_def = db->Resolve(ref_id);
+      AddUsage(ref_def->uses, loc);
       break;
   }
 
@@ -731,11 +706,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       //}
 
       if (decl->isDefinition) {
-        var_def->def.definition_spelling = db->id_cache.ForceResolveSpelling(decl->cursor, false /*interesting*/);
-        var_def->def.definition_extent = db->id_cache.ForceResolveExtent(decl->cursor, false /*interesting*/);;
+        var_def->def.definition_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
+        var_def->def.definition_extent = db->id_cache.ResolveExtent(decl->cursor, false /*interesting*/);;
       }
       else {
-        var_def->def.declaration = db->id_cache.ForceResolveSpelling(decl->cursor, false /*interesting*/);
+        var_def->def.declaration = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
       }
       AddUsage(var_def->uses, decl_loc_spelling.value());
 
@@ -807,11 +782,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // hacking the 'declarations' field by
       // adding a definition when we really don't have one.
       if (decl->isDefinition && !func_def->def.definition_extent.has_value()) {
-        func_def->def.definition_spelling = db->id_cache.ForceResolveSpelling(decl->cursor, false /*interesting*/);
-        func_def->def.definition_extent = db->id_cache.ForceResolveExtent(decl->cursor, false /*interesting*/);
+        func_def->def.definition_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
+        func_def->def.definition_extent = db->id_cache.ResolveExtent(decl->cursor, false /*interesting*/);
       }
       else {
-        func_def->declarations.push_back(db->id_cache.ForceResolveSpelling(decl->cursor, false /*interesting*/));
+        func_def->declarations.push_back(db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/));
       }
 
       // If decl_cursor != resolved, then decl_cursor is a template
@@ -1035,7 +1010,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       std::cerr
           << "!! Unhandled indexDeclaration:     "
           << clang::Cursor(decl->cursor).ToString() << " at "
-          << db->id_cache.ForceResolveSpelling(decl->cursor, false /*interesting*/).start.ToString()
+          << db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/).start.ToString()
           << std::endl;
       std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind
                 << std::endl;
@@ -1194,8 +1169,7 @@ void indexEntityReference(CXClientData client_data,
         //unsigned int line, column, offset;
         //clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file, &line, &column, &offset);
 
-        Range parent_loc = db->id_cache.ForceResolveSpelling(ref->parentEntity->cursor,
-                                                             true /*interesting*/);
+        Range parent_loc = db->id_cache.ResolveSpelling(ref->parentEntity->cursor, true /*interesting*/);
         if (parent_loc.start != loc_spelling->start) {
           IndexedFuncDef* called_def = db->Resolve(called_id);
           // I suspect it is possible for the declaring type to be null
@@ -1251,7 +1225,7 @@ void indexEntityReference(CXClientData client_data,
       std::cerr
           << "!! Unhandled indexEntityReference: " << cursor.ToString()
           << " at "
-          << db->id_cache.ForceResolveSpelling(ref->cursor, false /*interesting*/).start.ToString()
+          << db->id_cache.ResolveSpelling(ref->cursor, false /*interesting*/).start.ToString()
           << std::endl;
       std::cerr << "     ref->referencedEntity->kind = "
                 << ref->referencedEntity->kind << std::endl;
@@ -1260,7 +1234,7 @@ void indexEntityReference(CXClientData client_data,
                   << ref->parentEntity->kind << std::endl;
       std::cerr
           << "     ref->loc          = "
-          << db->id_cache.ForceResolveSpelling(ref->cursor, false /*interesting*/).start.ToString()
+          << db->id_cache.ResolveSpelling(ref->cursor, false /*interesting*/).start.ToString()
           << std::endl;
       std::cerr << "     ref->kind         = " << ref->kind << std::endl;
       if (ref->parentEntity)

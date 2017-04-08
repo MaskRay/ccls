@@ -414,15 +414,9 @@ struct IdCache {
 
   IdCache(const std::string& primary_file);
 
-  Range ForceResolve(const CXSourceRange& range, bool interesting);
-
-  Range ForceResolveSpelling(const CXCursor& cx_cursor, bool interesting);
-  optional<Range> ResolveSpelling(const CXCursor& cx_cursor, bool interesting);
-  optional<Range> ResolveSpelling(const clang::Cursor& cursor, bool interesting);
-
-  Range ForceResolveExtent(const CXCursor& cx_cursor, bool interesting);
-  optional<Range> ResolveExtent(const CXCursor& cx_cursor, bool interesting);
-  optional<Range> ResolveExtent(const clang::Cursor& cursor, bool interesting);
+  Range Resolve(const CXSourceRange& range, bool interesting);
+  Range ResolveSpelling(const CXCursor& cx_cursor, bool interesting);
+  Range ResolveExtent(const CXCursor& cx_cursor, bool interesting);
 };
 
 struct IndexedFile {
