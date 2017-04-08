@@ -88,15 +88,16 @@ def build(bld):
                                excl=['libcxx/*', '*tests/*', 'third_party/*'])
   bld.program(
       source=cc_files,
-      cxxflags=['-std=c++11', '-Wall'],
+      cxxflags=['-O3', '-std=c++11', '-Wall'],
       includes=[
         'third_party/',
         'third_party/doctest/',
         'third_party/rapidjson/include',
+        'third_party/sparsehash/src',
         CLANG_INCLUDE_DIR],
       lib=[
         'clang',
-        #'rt',
+        'rt',
         'pthread'],
       libpath=[CLANG_LIB_DIR],
       rpath=[CLANG_LIB_DIR],

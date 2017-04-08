@@ -3,6 +3,8 @@
 #include "indexer.h"
 #include "serializer.h"
 
+#include <sparsehash/dense_hash_map>
+
 using Usr = std::string;
 
 struct QueryableFile;
@@ -234,7 +236,12 @@ struct QueryableDatabase {
   std::vector<QueryableVarDef> vars;
 
   // Lookup symbol based on a usr.
-  std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
+  google::dense_hash_map<Usr, SymbolIdx> usr_to_symbol;
+
+  QueryableDatabase() {
+    usr_to_symbol.set_empty_key("");
+  }
+  //std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
 
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);

@@ -4,3 +4,6 @@
 [submodule "third_party/doctest"]
 	path = third_party/doctest
 	url = https://github.com/onqtam/doctest
+[submodule "third_party/sparsehash"]
+	path = third_party/sparsehash
+	url = https://github.com/sparsehash/sparsehash
