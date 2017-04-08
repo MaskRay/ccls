@@ -56,6 +56,38 @@ struct QueryableLocation {
   }
 };
 
+enum class SymbolKind { Invalid, File, Type, Func, Var };
+struct SymbolIdx {
+  SymbolKind kind;
+  size_t idx;
+
+  SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
+  SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
+
+  bool operator==(const SymbolIdx& that) const {
+    return kind == that.kind && idx == that.idx;
+  }
+  bool operator!=(const SymbolIdx& that) const { return !(*this == that); }
+  bool operator<(const SymbolIdx& that) const {
+    return kind < that.kind || idx < that.idx;
+  }
+};
+
+struct SymbolRef {
+  SymbolIdx idx;
+  QueryableLocation loc;
+
+  SymbolRef(SymbolIdx idx, QueryableLocation loc) : idx(idx), loc(loc) {}
+
+  bool operator==(const SymbolRef& that) const {
+    return idx == that.idx && loc == that.loc;
+  }
+  bool operator!=(const SymbolRef& that) const { return !(*this == that); }
+  bool operator<(const SymbolRef& that) const {
+    return idx < that.idx && loc.range.start < that.loc.range.start;
+  }
+};
+
 struct UsrRef {
   Usr usr;
   QueryableLocation loc;
@@ -110,15 +142,15 @@ struct QueryableFile {
   struct Def {
     Usr usr;
     // Outline of the file (ie, for code lens).
-    std::vector<UsrRef> outline;
+    std::vector<SymbolRef> outline;
     // Every symbol found in the file (ie, for goto definition)
-    std::vector<UsrRef> all_symbols;
+    std::vector<SymbolRef> all_symbols;
   };
 
   using DefUpdate = Def;
 
   DefUpdate def;
-  int qualified_name_idx = -1;
+  size_t qualified_name_idx = -1;
 
   QueryableFile(const Usr& usr) { def.usr = usr; }
   QueryableFile(const Def& def) : def(def) {}
@@ -135,7 +167,7 @@ struct QueryableTypeDef {
   std::vector<Usr> derived;
   std::vector<Usr> instantiations;
   std::vector<QueryableLocation> uses;
-  int qualified_name_idx = -1;
+  size_t qualified_name_idx = -1;
 
   QueryableTypeDef(const Usr& usr) : def(usr) {}
   QueryableTypeDef(const DefUpdate& def) : def(def) {}
@@ -154,7 +186,7 @@ struct QueryableFuncDef {
   std::vector<Usr> derived;
   std::vector<UsrRef> callers;
   std::vector<QueryableLocation> uses;
-  int qualified_name_idx = -1;
+  size_t qualified_name_idx = -1;
 
   QueryableFuncDef(const Usr& usr) : def(usr) {}
   QueryableFuncDef(const DefUpdate& def) : def(def) {}
@@ -167,22 +199,12 @@ struct QueryableVarDef {
 
   DefUpdate def;
   std::vector<QueryableLocation> uses;
-  int qualified_name_idx = -1;
+  size_t qualified_name_idx = -1;
 
   QueryableVarDef(const Usr& usr) : def(usr) {}
   QueryableVarDef(const DefUpdate& def) : def(def) {}
   QueryableVarDef(const IdMap& id_map, const IndexedVarDef& indexed);
 };
-
-enum class SymbolKind { Invalid, File, Type, Func, Var };
-struct SymbolIdx {
-  SymbolKind kind;
-  uint64_t idx;
-
-  SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
-  SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
-};
-
 
 struct IndexUpdate {
   // Creates a new IndexUpdate based on the delta from previous to current. If
@@ -272,10 +294,18 @@ struct IdMap {
 
   IdMap(QueryableDatabase* query_db, const IdCache& local_ids);
 
+  QueryTypeId ToQuery(IndexTypeId id) const;
+  QueryFuncId ToQuery(IndexFuncId id) const;
+  QueryVarId ToQuery(IndexVarId id) const;
+  SymbolIdx ToSymbol(IndexTypeId id) const;
+  SymbolIdx ToSymbol(IndexFuncId id) const;
+  SymbolIdx ToSymbol(IndexVarId id) const;
+
   // TODO
 private:
   QueryFileId index_file_id;
-  std::unordered_map<IndexTypeId, QueryTypeId> cached_type_ids_;
-  std::unordered_map<IndexFuncId, QueryFuncId> cached_func_ids_;
-  std::unordered_map<IndexVarId, QueryVarId> cached_var_ids_;
+  // TODO: make these type safe
+  google::dense_hash_map<size_t, size_t> cached_type_ids_; // IndexTypeId -> QueryTypeId
+  google::dense_hash_map<size_t, size_t> cached_func_ids_; // IndexFuncId -> QueryFuncId
+  google::dense_hash_map<size_t, size_t> cached_var_ids_;  // IndexVarId  -> QueryVarId
 };

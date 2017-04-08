@@ -56,7 +56,7 @@ void DiffDocuments(std::string path, rapidjson::Document& expected, rapidjson::D
 
   int max_diff = 5;
 
-  int len = std::min(actual_output.size(), expected_output.size());
+  size_t len = std::min(actual_output.size(), expected_output.size());
   for (int i = 0; i < len; ++i) {
     if (actual_output[i] != expected_output[i]) {
       if (--max_diff < 0) {

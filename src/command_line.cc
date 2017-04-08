@@ -124,8 +124,7 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
 }
 
 
-optional<QueryableLocation> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const Usr& usr) {
-  SymbolIdx symbol = db->usr_to_symbol[usr];
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
   case SymbolKind::Type: {
     QueryableTypeDef* def = &db->types[symbol.idx];
@@ -146,6 +145,10 @@ optional<QueryableLocation> GetDefinitionSpellingOfUsr(QueryableDatabase* db, co
   }
   }
   return nullopt;
+}
+
+optional<QueryableLocation> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const Usr& usr) {
+  return GetDefinitionSpellingOfSymbol(db, db->usr_to_symbol[usr]);
 }
 
 optional<QueryableLocation> GetDefinitionExtentOfUsr(QueryableDatabase* db, const Usr& usr) {
@@ -555,10 +558,10 @@ void QueryDbMainLoop(
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
 
-      for (const UsrRef& ref : file->def.all_symbols) {
+      for (const SymbolRef& ref : file->def.all_symbols) {
         if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
             ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
-          optional<QueryableLocation> location = GetDefinitionSpellingOfUsr(db, ref.usr);
+          optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
           if (location)
             response.result.push_back(GetLsLocation(location.value()));
           break;
@@ -582,13 +585,12 @@ void QueryDbMainLoop(
       }
 
       std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
-      for (UsrRef ref : file->def.outline) {
-        SymbolIdx symbol = db->usr_to_symbol[ref.usr];
+      for (SymbolRef ref : file->def.outline) {
+        SymbolIdx symbol = ref.idx;
 
         lsSymbolInformation info;
         info.location = GetLsLocation(ref.loc);
 
-        // TODO: cleanup namespace/naming so there is only one SymbolKind.
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];
@@ -645,11 +647,11 @@ void QueryDbMainLoop(
         break;
       }
 
-      for (UsrRef ref : file->def.outline) {
+      for (SymbolRef ref : file->def.outline) {
         // NOTE: We OffsetColumn so that the code lens always show up in a
         // predictable order. Otherwise, the client may randomize it.
 
-        SymbolIdx symbol = db->usr_to_symbol[ref.usr];
+        SymbolIdx symbol = ref.idx;
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];

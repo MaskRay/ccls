@@ -135,46 +135,46 @@ QueryableFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed)
   QueryableFile::Def def;
   def.usr = indexed.path;
 
-  auto add_outline = [&def, &id_map](Usr usr, Range range) {
-    def.outline.push_back(UsrRef(usr, MapIdToUsr(id_map, range)));
+  auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
+    def.outline.push_back(SymbolRef(idx, MapIdToUsr(id_map, range)));
   };
-  auto add_all_symbols = [&def, &id_map](Usr usr, Range range) {
-    def.all_symbols.push_back(UsrRef(usr, MapIdToUsr(id_map, range)));
+  auto add_all_symbols = [&def, &id_map](SymbolIdx idx, Range range) {
+    def.all_symbols.push_back(SymbolRef(idx, MapIdToUsr(id_map, range)));
   };
 
   for (const IndexedTypeDef& def : indexed.types) {
     if (def.def.definition_spelling.has_value())
-      add_all_symbols(def.def.usr, def.def.definition_spelling.value());
+      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
     if (def.def.definition_extent.has_value())
-      add_outline(def.def.usr, def.def.definition_extent.value());
+      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
     for (const Range& use : def.uses)
-      add_all_symbols(def.def.usr, use);
+      add_all_symbols(id_map.ToSymbol(def.id), use);
   }
   for (const IndexedFuncDef& def : indexed.funcs) {
     if (def.def.definition_spelling.has_value())
-      add_all_symbols(def.def.usr, def.def.definition_spelling.value());
+      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
     if (def.def.definition_extent.has_value())
-      add_outline(def.def.usr, def.def.definition_extent.value());
+      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
     for (Range decl : def.declarations) {
-      add_outline(def.def.usr, decl);
-      add_all_symbols(def.def.usr, decl);
+      add_outline(id_map.ToSymbol(def.id), decl);
+      add_all_symbols(id_map.ToSymbol(def.id), decl);
     }
     for (const Range& use : def.uses)
-      add_all_symbols(def.def.usr, use);
+      add_all_symbols(id_map.ToSymbol(def.id), use);
   }
   for (const IndexedVarDef& def : indexed.vars) {
     if (def.def.definition_spelling.has_value())
-      add_all_symbols(def.def.usr, def.def.definition_spelling.value());
+      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
     if (def.def.definition_extent.has_value())
-      add_outline(def.def.usr, def.def.definition_extent.value());
+      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
     for (const Range& use : def.uses)
-      add_all_symbols(def.def.usr, use);
+      add_all_symbols(id_map.ToSymbol(def.id), use);
   }
 
-  std::sort(def.outline.begin(), def.outline.end(), [](const UsrRef& a, const UsrRef& b) {
+  std::sort(def.outline.begin(), def.outline.end(), [](const SymbolRef& a, const SymbolRef& b) {
     return a.loc.range.start < b.loc.range.start;
   });
-  std::sort(def.all_symbols.begin(), def.all_symbols.end(), [](const UsrRef& a, const UsrRef& b) {
+  std::sort(def.all_symbols.begin(), def.all_symbols.end(), [](const SymbolRef& a, const SymbolRef& b) {
     return a.loc.range.start < b.loc.range.start;
   });
 
@@ -352,123 +352,101 @@ QueryFileId GetQueryFileIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end()) {
     assert(it->second.kind == SymbolKind::File);
-    return it->second.idx;
+    return QueryFileId(it->second.idx);
   }
 
-  int idx = query_db->files.size();
+  size_t idx = query_db->files.size();
   query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::File, idx);
   query_db->files.push_back(QueryableFile(usr));
-  return idx;
+  return QueryFileId(idx);
 }
 
 QueryTypeId GetQueryTypeIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end()) {
     assert(it->second.kind == SymbolKind::Type);
-    return it->second.idx;
+    return QueryTypeId(it->second.idx);
   }
 
-  int idx = query_db->types.size();
+  size_t idx = query_db->types.size();
   query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Type, idx);
   query_db->types.push_back(QueryableTypeDef(usr));
-  return idx;
+  return QueryTypeId(idx);
 }
 
 QueryFuncId GetQueryFuncIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end()) {
     assert(it->second.kind == SymbolKind::Func);
-    return it->second.idx;
+    return QueryFuncId(it->second.idx);
   }
 
-  int idx = query_db->funcs.size();
+  size_t idx = query_db->funcs.size();
   query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Func, idx);
   query_db->funcs.push_back(QueryableFuncDef(usr));
-  return idx;
+  return QueryFuncId(idx);
 }
 
 QueryVarId GetQueryVarIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end()) {
     assert(it->second.kind == SymbolKind::Var);
-    return it->second.idx;
+    return QueryVarId(it->second.idx);
   }
 
-  int idx = query_db->vars.size();
+  size_t idx = query_db->vars.size();
   query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Var, idx);
   query_db->vars.push_back(QueryableVarDef(usr));
-  return idx;
+  return QueryVarId(idx);
 }
 
-
-#if false
-int GetOrAddSymbol(QueryableDatabase* query_db, SymbolKind kind, const Usr& usr) {
-  // TODO: consider having separate lookup maps so they are smaller (maybe
-  // lookups will go faster).
-  auto it = query_db->usr_to_symbol.find(usr);
-
-  // Found; return existing symbol.
-  if (it != query_db->usr_to_symbol.end()) {
-    assert(it->second.kind == kind);
-    return it->second.idx;
-  }
-
-  // Not found; add a new symbol.
-  switch (kind) {
-  case SymbolKind::File: {
-    int idx = query_db->files.size();
-    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
-    query_db->files.push_back(QueryableFile(usr));
-    return idx;
-  }
-  case SymbolKind::Type: {
-    int idx = query_db->types.size();
-    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
-    query_db->types.push_back(QueryableTypeDef(usr));
-    return idx;
-  }
-  case SymbolKind::Func: {
-    int idx = query_db->funcs.size();
-    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
-    query_db->funcs.push_back(QueryableFuncDef(usr));
-    return idx;
-  }
-  case SymbolKind::Var: {
-    int idx = query_db->vars.size();
-    query_db->usr_to_symbol[usr] = SymbolIdx(kind, idx);
-    query_db->vars.push_back(QueryableVarDef(usr));
-    return idx;
-  }
-  case SymbolKind::Invalid: {
-    assert(false);
-    return -1;
-  }
-  }
-
-  assert(false);
-  return -1;
-}
-#endif
 
 IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
   index_file_id = GetQueryFileIdFromUsr(query_db, local_ids.primary_file);
 
-  cached_type_ids_.reserve(local_ids.type_id_to_usr.size());
+  cached_type_ids_.set_empty_key(-1);
+  cached_type_ids_.resize(local_ids.type_id_to_usr.size());
   for (const auto& entry : local_ids.type_id_to_usr)
-    cached_type_ids_[entry.first] = GetQueryTypeIdFromUsr(query_db, entry.second);
+    cached_type_ids_[entry.first.id] = GetQueryTypeIdFromUsr(query_db, entry.second).id;
 
-  cached_func_ids_.reserve(local_ids.func_id_to_usr.size());
+  cached_func_ids_.set_empty_key(-1);
+  cached_func_ids_.resize(local_ids.func_id_to_usr.size());
   for (const auto& entry : local_ids.func_id_to_usr)
-    cached_func_ids_[entry.first] = GetQueryFuncIdFromUsr(query_db, entry.second);
+    cached_func_ids_[entry.first.id] = GetQueryFuncIdFromUsr(query_db, entry.second).id;
 
-  cached_var_ids_.reserve(local_ids.var_id_to_usr.size());
+  cached_var_ids_.set_empty_key(-1);
+  cached_var_ids_.resize(local_ids.var_id_to_usr.size());
   for (const auto& entry : local_ids.var_id_to_usr)
-    cached_var_ids_[entry.first] = GetQueryVarIdFromUsr(query_db, entry.second);
+    cached_var_ids_[entry.first.id] = GetQueryVarIdFromUsr(query_db, entry.second).id;
 }
 
+QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
+  assert(cached_type_ids_.find(id.id) != cached_type_ids_.end());
+  return QueryTypeId(cached_type_ids_.find(id.id)->second);
+}
 
+QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
+  assert(cached_func_ids_.find(id.id) != cached_func_ids_.end());
+  return QueryFuncId(cached_func_ids_.find(id.id)->second);
+}
 
+QueryVarId IdMap::ToQuery(IndexVarId id) const {
+  assert(cached_var_ids_.find(id.id) != cached_var_ids_.end());
+  return QueryVarId(cached_var_ids_.find(id.id)->second);
+}
+
+SymbolIdx IdMap::ToSymbol(IndexTypeId id) const {
+  return SymbolIdx(SymbolKind::Type, ToQuery(id).id);
+}
+
+SymbolIdx IdMap::ToSymbol(IndexFuncId id) const {
+  return SymbolIdx(SymbolKind::Func, ToQuery(id).id);
+}
+
+SymbolIdx IdMap::ToSymbol(IndexVarId id) const {
+  return SymbolIdx(SymbolKind::Var, ToQuery(id).id);
+}
 
 
 
@@ -633,7 +611,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
 
 
-void UpdateQualifiedName(QueryableDatabase* db, int* qualified_name_index, SymbolKind kind, int symbol_index, const std::string& name) {
+void UpdateQualifiedName(QueryableDatabase* db, size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
   if (*qualified_name_index == -1) {
     db->qualified_names.push_back(name);
     db->symbols.push_back(SymbolIdx(kind, symbol_index));
