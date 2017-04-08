@@ -1263,12 +1263,7 @@ void indexEntityReference(CXClientData client_data,
   }
 }
 
-IndexedFile Parse(std::string filename,
-                  std::vector<std::string> args,
-                  bool dump_ast) {
-  // TODO: We are currently emitting too much information for things not in the main file. If we're
-  // not in the main file, we should only emit references.
-
+std::vector<std::unique_ptr<IndexedFile>> Parse(std::string filename, std::vector<std::string> args, bool dump_ast) {
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
 
@@ -1300,9 +1295,9 @@ IndexedFile Parse(std::string filename,
       */
   };
 
-  IndexedFile db(filename);
+  auto db = MakeUnique<IndexedFile>(filename);
   NamespaceHelper ns;
-  IndexParam param(&db, &ns);
+  IndexParam param(db.get(), &ns);
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
@@ -1311,5 +1306,7 @@ IndexedFile Parse(std::string filename,
   std::cerr << "!! [END] Indexing " << filename << std::endl;
   clang_IndexAction_dispose(index_action);
 
-  return db;
+  std::vector<std::unique_ptr<IndexedFile>> result;
+  result.emplace_back(std::move(db));
+  return std::move(result);
 }

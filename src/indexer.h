@@ -448,6 +448,4 @@ struct IndexedFile {
   std::string ToString();
 };
 
-IndexedFile Parse(std::string filename,
-                  std::vector<std::string> args,
-                  bool dump_ast = false);
+std::vector<std::unique_ptr<IndexedFile>> Parse(std::string filename, std::vector<std::string> args, bool dump_ast = false);

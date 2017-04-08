@@ -72,20 +72,20 @@ void DiffDocuments(std::string path, rapidjson::Document& expected, rapidjson::D
 
   if (actual_output.size() > len) {
     std::cout << "Additional output in actual:" << std::endl;
-    for (int i = len; i < actual_output.size(); ++i)
+    for (size_t i = len; i < actual_output.size(); ++i)
       std::cout << "  " << actual_output[i] << std::endl;
   }
 
   if (expected_output.size() > len) {
     std::cout << "Additional output in expected:" << std::endl;
-    for (int i = len; i < expected_output.size(); ++i)
+    for (size_t i = len; i < expected_output.size(); ++i)
       std::cout << "  " << expected_output[i] << std::endl;
   }
 }
 
-void VerifySerializeToFrom(IndexedFile& file) {
-  std::string expected = file.ToString();
-  std::string actual = Deserialize("--.cc", Serialize(file)).value().ToString();
+void VerifySerializeToFrom(IndexedFile* file) {
+  std::string expected = file->ToString();
+  std::string actual = Deserialize("--.cc", Serialize(*file)).value().ToString();
   if (expected != actual) {
     std::cerr << "Serialization failure" << std::endl;;
     assert(false);
@@ -123,7 +123,7 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    IndexedFile db = Parse(path, {
+    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(path, {
         "-xc++",
         "-std=c++11",
         "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",
@@ -131,8 +131,23 @@ void RunTests() {
         "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include",
         "-IC:/Users/jacob/Desktop/superindex/indexer/src"
       }, false /*dump_ast*/);
-    VerifySerializeToFrom(db);
-    std::string actual_output = db.ToString();
+
+    // TODO: Supporting tests for more than just primary indexed file.
+
+    // Find primary file.
+    std::unique_ptr<IndexedFile> db;
+    for (auto& i : dbs) {
+      if (i->path == path) {
+        db = std::move(i);
+        break;
+      }
+    }
+
+    // TODO: Always pass IndexedFile by pointer, ie, search and remove all IndexedFile& refs.
+    // TODO: Rename IndexedFile to IndexFile
+
+    VerifySerializeToFrom(db.get());
+    std::string actual_output = db->ToString();
 
     rapidjson::Document actual;
     actual.Parse(actual_output.c_str());
