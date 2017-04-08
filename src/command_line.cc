@@ -123,6 +123,18 @@ std::string Join(const std::vector<std::string>& elements, std::string sep) {
   return result;
 }
 
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
+  QueryableTypeDef* def = &db->types[id.id];
+  return def->def.definition_spelling;
+}
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
+  QueryableFuncDef* def = &db->funcs[id.id];
+  return def->def.definition_spelling;
+}
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
+  QueryableVarDef* def = &db->vars[id.id];
+  return def->def.definition_spelling;
+}
 
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
@@ -389,6 +401,26 @@ lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& locatio
     GetLsRange(location.range));
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void AddCodeLens(
   QueryableDatabase* db,
   std::vector<TCodeLens>* result,
@@ -429,6 +461,7 @@ void AddCodeLens(
     result->push_back(code_lens);
 }
 
+// TODO: clean these overrides up...
 void AddCodeLens(
   QueryableDatabase* db,
   std::vector<TCodeLens>* result,
@@ -463,6 +496,65 @@ void AddCodeLens(
   }
   AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
+
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
+  QueryableLocation loc,
+  const std::vector<QueryTypeId>& usrs,
+  bool exclude_loc,
+  bool only_interesting,
+  const char* singular,
+  const char* plural) {
+  std::vector<QueryableLocation> uses0;
+  uses0.reserve(usrs.size());
+  for (const QueryTypeId& usr : usrs) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
+    if (loc)
+      uses0.push_back(loc.value());
+  }
+  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
+}
+
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
+  QueryableLocation loc,
+  const std::vector<QueryVarId>& usrs,
+  bool exclude_loc,
+  bool only_interesting,
+  const char* singular,
+  const char* plural) {
+  std::vector<QueryableLocation> uses0;
+  uses0.reserve(usrs.size());
+  for (const QueryVarId& usr : usrs) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
+    if (loc)
+      uses0.push_back(loc.value());
+  }
+  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 void QueryDbMainLoop(
   QueryableDatabase* db,

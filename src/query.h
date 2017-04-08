@@ -158,14 +158,14 @@ struct QueryableFile {
 };
 
 struct QueryableTypeDef {
-  using DefUpdate = TypeDefDefinitionData<Usr, Usr, Usr, QueryableLocation>;
-  using DerivedUpdate = MergeableUpdate<Usr>;
-  using InstantiationsUpdate = MergeableUpdate<Usr>;
+  using DefUpdate = TypeDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryableLocation>;
+  using DerivedUpdate = MergeableUpdate<QueryTypeId>;
+  using InstantiationsUpdate = MergeableUpdate<QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
-  std::vector<Usr> derived;
-  std::vector<Usr> instantiations;
+  std::vector<QueryTypeId> derived;
+  std::vector<QueryVarId> instantiations;
   std::vector<QueryableLocation> uses;
   size_t qualified_name_idx = -1;
 
@@ -295,13 +295,22 @@ struct IdMap {
 
   IdMap(QueryableDatabase* query_db, const IdCache& local_ids);
 
+  QueryableLocation ToQuery(Range range) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
+  optional<QueryableLocation> ToQuery(optional<Range> range) const;
+  optional<QueryTypeId> ToQuery(optional<IndexTypeId> id) const;
+  optional<QueryFuncId> ToQuery(optional<IndexFuncId> id) const;
+  optional<QueryVarId> ToQuery(optional<IndexVarId> id) const;
+  std::vector<QueryableLocation> ToQuery(std::vector<Range> ranges) const;
+  std::vector<QueryTypeId> ToQuery(std::vector<IndexTypeId> ids) const;
+  std::vector<QueryFuncId> ToQuery(std::vector<IndexFuncId> ids) const;
+  std::vector<QueryVarId> ToQuery(std::vector<IndexVarId> ids) const;
+
   SymbolIdx ToSymbol(IndexTypeId id) const;
   SymbolIdx ToSymbol(IndexFuncId id) const;
   SymbolIdx ToSymbol(IndexVarId id) const;
-
 private:
   // TODO: make these type safe
   google::dense_hash_map<size_t, size_t> cached_type_ids_; // IndexTypeId -> QueryTypeId

@@ -15,18 +15,17 @@
 
 
 
-
-
-
-
+// TODO: remove
 Usr MapIdToUsr(const IdMap& id_map, const IndexTypeId& id) {
   assert(id_map.local_ids.type_id_to_usr.find(id) != id_map.local_ids.type_id_to_usr.end());
   return id_map.local_ids.type_id_to_usr.find(id)->second;
 }
+// TODO: remove
 Usr MapIdToUsr(const IdMap& id_map, const IndexFuncId& id) {
   assert(id_map.local_ids.func_id_to_usr.find(id) != id_map.local_ids.func_id_to_usr.end());
   return id_map.local_ids.func_id_to_usr.find(id)->second;
 }
+// TODO: remove
 Usr MapIdToUsr(const IdMap& id_map, const IndexVarId& id) {
   assert(id_map.local_ids.var_id_to_usr.find(id) != id_map.local_ids.var_id_to_usr.end());
   return id_map.local_ids.var_id_to_usr.find(id)->second;
@@ -34,6 +33,7 @@ Usr MapIdToUsr(const IdMap& id_map, const IndexVarId& id) {
 QueryableLocation MapIdToUsr(const IdMap& id_map, const Range& range) {
   return QueryableLocation(id_map.primary_file, range);
 }
+// TODO: remove
 UsrRef MapIdToUsr(const IdMap& id_map, const FuncRef& id) {
   assert(id_map.local_ids.func_id_to_usr.find(id.id) != id_map.local_ids.func_id_to_usr.end());
   return UsrRef(
@@ -52,15 +52,19 @@ std::vector<Out> Transform(const IdMap& id_map, const std::vector<In>& input) {
     result.push_back(MapIdToUsr(id_map, in));
   return result;
 }
+// TODO: remove
 std::vector<Usr> MapIdToUsr(const IdMap& id_map, const std::vector<IndexTypeId>& ids) {
   return Transform<IndexTypeId, Usr>(id_map, ids);
 }
+// TODO: remove
 std::vector<Usr> MapIdToUsr(const IdMap& id_map, const std::vector<IndexFuncId>& ids) {
   return Transform<IndexFuncId, Usr>(id_map, ids);
 }
+// TODO: remove
 std::vector<Usr> MapIdToUsr(const IdMap& id_map, const std::vector<IndexVarId>& ids) {
   return Transform<IndexVarId, Usr>(id_map, ids);
 }
+// TODO: remove
 std::vector<UsrRef> MapIdToUsr(const IdMap& id_map, const std::vector<FuncRef>& ids) {
   return Transform<FuncRef, UsrRef>(id_map, ids);
 }
@@ -74,16 +78,13 @@ QueryableTypeDef::DefUpdate MapIdToUsr(const IdMap& id_map, const IndexedTypeDef
   QueryableTypeDef::DefUpdate result(def.usr);
   result.short_name = def.short_name;
   result.qualified_name = def.qualified_name;
-  if (def.definition_spelling)
-    result.definition_spelling = MapIdToUsr(id_map, def.definition_spelling.value());
-  if (def.definition_extent)
-    result.definition_extent = MapIdToUsr(id_map, def.definition_extent.value());
-  if (def.alias_of)
-    result.alias_of = MapIdToUsr(id_map, def.alias_of.value());
-  result.parents = MapIdToUsr(id_map, def.parents);
-  result.types = MapIdToUsr(id_map, def.types);
-  result.funcs = MapIdToUsr(id_map, def.funcs);
-  result.vars = MapIdToUsr(id_map, def.vars);
+  result.definition_spelling = id_map.ToQuery(def.definition_spelling);
+  result.definition_extent = id_map.ToQuery(def.definition_extent);
+  result.alias_of = id_map.ToQuery(def.alias_of);
+  result.parents = id_map.ToQuery(def.parents);
+  result.types = id_map.ToQuery(def.types);
+  result.funcs = id_map.ToQuery(def.funcs);
+  result.vars = id_map.ToQuery(def.vars);
   return result;
 }
 QueryableFuncDef::DefUpdate MapIdToUsr(const IdMap& id_map, const IndexedFuncDef::Def& def) {
@@ -186,9 +187,9 @@ QueryableFile::QueryableFile(const IdMap& id_map, const IndexedFile& indexed)
 
 QueryableTypeDef::QueryableTypeDef(const IdMap& id_map, const IndexedTypeDef& indexed)
   : def(MapIdToUsr(id_map, indexed.def)) {
-  derived = MapIdToUsr(id_map, indexed.derived);
-  instantiations = MapIdToUsr(id_map, indexed.instantiations);
-  uses = MapIdToUsr(id_map, indexed.uses);
+  derived = id_map.ToQuery(indexed.derived);
+  instantiations = id_map.ToQuery(indexed.instantiations);
+  uses = id_map.ToQuery(indexed.uses);
 }
 
 QueryableFuncDef::QueryableFuncDef(const IdMap& id_map, const IndexedFuncDef& indexed)
@@ -421,29 +422,71 @@ IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
     cached_var_ids_[entry.first.id] = GetQueryVarIdFromUsr(query_db, entry.second).id;
 }
 
+QueryableLocation IdMap::ToQuery(Range range) const {
+  return QueryableLocation(primary_file, range);
+}
+
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id.id) != cached_type_ids_.end());
   return QueryTypeId(cached_type_ids_.find(id.id)->second);
 }
-
 QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
   assert(cached_func_ids_.find(id.id) != cached_func_ids_.end());
   return QueryFuncId(cached_func_ids_.find(id.id)->second);
 }
-
 QueryVarId IdMap::ToQuery(IndexVarId id) const {
   assert(cached_var_ids_.find(id.id) != cached_var_ids_.end());
   return QueryVarId(cached_var_ids_.find(id.id)->second);
 }
 
+optional<QueryableLocation> IdMap::ToQuery(optional<Range> range) const {
+  if (!range)
+    return nullopt;
+  return ToQuery(range.value());
+}
+optional<QueryTypeId> IdMap::ToQuery(optional<IndexTypeId> id) const {
+  if (!id)
+    return nullopt;
+  return ToQuery(id.value());
+}
+optional<QueryFuncId> IdMap::ToQuery(optional<IndexFuncId> id) const {
+  if (!id)
+    return nullopt;
+  return ToQuery(id.value());
+}
+optional<QueryVarId> IdMap::ToQuery(optional<IndexVarId> id) const {
+  if (!id)
+    return nullopt;
+  return ToQuery(id.value());
+}
+
+template<typename In, typename Out>
+std::vector<Out> ToQueryTransform(const IdMap& id_map, const std::vector<In>& input) {
+  std::vector<Out> result;
+  result.reserve(input.size());
+  for (const In& in : input)
+    result.push_back(id_map.ToQuery(in));
+  return result;
+}
+std::vector<QueryableLocation> IdMap::ToQuery(std::vector<Range> ranges) const {
+  return ToQueryTransform<Range, QueryableLocation>(*this, ranges);
+}
+std::vector<QueryTypeId> IdMap::ToQuery(std::vector<IndexTypeId> ids) const {
+  return ToQueryTransform<IndexTypeId, QueryTypeId>(*this, ids);
+}
+std::vector<QueryFuncId> IdMap::ToQuery(std::vector<IndexFuncId> ids) const {
+  return ToQueryTransform<IndexFuncId, QueryFuncId>(*this, ids);
+}
+std::vector<QueryVarId> IdMap::ToQuery(std::vector<IndexVarId> ids) const {
+  return ToQueryTransform<IndexVarId, QueryVarId>(*this, ids);
+}
+
 SymbolIdx IdMap::ToSymbol(IndexTypeId id) const {
   return SymbolIdx(SymbolKind::Type, ToQuery(id).id);
 }
-
 SymbolIdx IdMap::ToSymbol(IndexFuncId id) const {
   return SymbolIdx(SymbolKind::Func, ToQuery(id).id);
 }
-
 SymbolIdx IdMap::ToSymbol(IndexVarId id) const {
   return SymbolIdx(SymbolKind::Var, ToQuery(id).id);
 }
@@ -493,6 +536,21 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     } \
   }
 
+  // TODO: unify with PROCESS_UPDATE_DIFF once we don't need MapIdToUsr.
+#define PROCESS_UPDATE_DIFF2(query_name, index_name, type) \
+  { \
+    /* Check for changes. */ \
+    std::vector<type> removed, added; \
+    auto previous = previous_id_map.ToQuery(previous_def->index_name); \
+    auto current = current_id_map.ToQuery(current_def->index_name); \
+    bool did_add = ComputeDifferenceForUpdate( \
+                      previous, current, \
+                      &removed, &added); \
+    if (did_add) {\
+      std::cerr << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl; \
+      query_name.push_back(MergeableUpdate<type>(current_def->def.usr, removed, added)); \
+    } \
+  }
   // File
   files_def_update.push_back(BuildFileDef(current_id_map, current_file));
 
@@ -514,9 +572,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     if (previous_remapped_def != current_remapped_def)
       types_def_update.push_back(current_remapped_def);
 
-    PROCESS_UPDATE_DIFF(types_derived, derived, Usr);
-    PROCESS_UPDATE_DIFF(types_instantiations, instantiations, Usr);
-    PROCESS_UPDATE_DIFF(types_uses, uses, QueryableLocation);
+    PROCESS_UPDATE_DIFF2(types_derived, derived, QueryTypeId);
+    PROCESS_UPDATE_DIFF2(types_instantiations, instantiations, QueryVarId);
+    PROCESS_UPDATE_DIFF2(types_uses, uses, QueryableLocation);
   });
 
   // Functions
