@@ -30,7 +30,7 @@ const int kQueueSizeBytes = 1024 * 8;
 const int kMaxWorkspaceSearchResults = 1000;
 }
 
-struct IndexTranslationUnitRequest {
+struct Index_DoIndex {
   enum class Type {
     Import,
     Update
@@ -40,18 +40,37 @@ struct IndexTranslationUnitRequest {
   std::vector<std::string> args;
   Type type;
 
-  IndexTranslationUnitRequest(Type type) : type(type) {}
+  Index_DoIndex(Type type) : type(type) {}
 };
 
-struct IndexTranslationUnitResponse {
+struct Index_DoIdMap {
+  std::unique_ptr<IndexedFile> previous;
+  std::unique_ptr<IndexedFile> current;
+
+  explicit Index_DoIdMap(std::unique_ptr<IndexedFile> previous,
+                         std::unique_ptr<IndexedFile> current)
+    : previous(std::move(previous)),
+      current(std::move(current)) {}
+};
+
+struct Index_OnIdMapped {
+  std::unique_ptr<IndexedFile> previous_index;
+  std::unique_ptr<IndexedFile> current_index;
+  std::unique_ptr<IdMap> previous_id_map;
+  std::unique_ptr<IdMap> current_id_map;
+};
+
+struct Index_OnIndexed {
   IndexUpdate update;
-  explicit IndexTranslationUnitResponse(IndexUpdate& update) : update(update) {}
+  explicit Index_OnIndexed(IndexUpdate& update) : update(update) {}
 };
 
 // TODO: Rename TypedBidiMessageQueue to IpcTransport?
 using IpcMessageQueue = TypedBidiMessageQueue<IpcId, BaseIpcMessage>;
-using IndexRequestQueue = ThreadedQueue<IndexTranslationUnitRequest>;
-using IndexResponseQueue = ThreadedQueue<IndexTranslationUnitResponse>;
+using Index_DoIndexQueue = ThreadedQueue<std::unique_ptr<Index_DoIndex>>;
+using Index_DoIdMapQueue = ThreadedQueue<std::unique_ptr<Index_DoIdMap>>;
+using Index_OnIdMappedQueue = ThreadedQueue<std::unique_ptr<Index_OnIdMapped>>;
+using Index_OnIndexedQueue = ThreadedQueue<std::unique_ptr<Index_OnIndexed>>;
 
 template<typename TMessage>
 void SendMessage(IpcMessageQueue& t, MessageQueue* destination, TMessage& message) {
@@ -222,22 +241,26 @@ std::string GetCachedFileName(std::string source_file) {
   return kCacheDirectory + source_file + ".json";
 }
 
-optional<IndexedFile> LoadCachedFile(std::string filename) {
+std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename) {
   // TODO FIXME FIXME FIXME
-  return nullopt;
+  return nullptr;
 
   std::string cache_file = GetCachedFileName(filename);
 
   std::ifstream cache;
   cache.open(GetCachedFileName(filename));
   if (!cache.good())
-    return nullopt;
+    return nullptr;
 
   std::string file_content = std::string(
     std::istreambuf_iterator<char>(cache),
     std::istreambuf_iterator<char>());
 
-  return Deserialize(filename, file_content);
+  optional<IndexedFile> indexed = Deserialize(filename, file_content);
+  if (indexed)
+    return MakeUnique<IndexedFile>(indexed.value());
+
+  return nullptr;
 }
 
 void WriteToCache(std::string filename, IndexedFile& file) {
@@ -250,110 +273,84 @@ void WriteToCache(std::string filename, IndexedFile& file) {
   cache.close();
 }
 
-void IndexMain(IndexRequestQueue* requests, IndexResponseQueue* responses) {
-  while (true) {
-    // Try to get a request. If there isn't one, sleep for a little while.
-    optional<IndexTranslationUnitRequest> request = requests->TryDequeue();
-    if (!request) {
-      // TODO: use CV to wakeup?
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      continue;
-    }
+
+bool IndexMain_DoIndex(Index_DoIndexQueue* queue_do_index,
+                       Index_DoIdMapQueue* queue_do_id_map) {
+  optional<std::unique_ptr<Index_DoIndex>> opt_index_request = queue_do_index->TryDequeue();
+  if (!opt_index_request)
+    return false;
+  std::unique_ptr<Index_DoIndex> index_request = std::move(opt_index_request.value());
+
+  Timer time;
+
+  std::unique_ptr<IndexedFile> old_index = LoadCachedFile(index_request->path);
+  time.ResetAndPrint("Loading cached index");
 
 
-    Timer time;
+  // If the index update is an import, then we will load the previous index
+  // into memory if we have a previous index. After that, we dispatch an
+  // update request to get the latest version.
+  if (old_index && index_request->type == Index_DoIndex::Type::Import) {
+    auto response = MakeUnique<Index_DoIdMap>(nullptr /*previous*/, std::move(old_index) /*current*/);
+    queue_do_id_map->Enqueue(std::move(response));
 
-    // If the index update is an import, then we will load the previous index
-    // into memory if we have a previous index. After that, we dispatch an
-    // update request to get the latest version.
-    if (request->type == IndexTranslationUnitRequest::Type::Import) {
-      request->type = IndexTranslationUnitRequest::Type::Update;
-
-      // TODO: we're not serializing out the files cache. We only ever want to import references
-      // from the primary file though, so that should be ok. We need to cleanup indexer output.
-      optional<IndexedFile> old_index = LoadCachedFile(request->path);
-      if (old_index.has_value()) {
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO: We need to create IdMap on QueryDb thread.
-        IdMap old_id_map(nullptr, old_index->id_cache);
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        // TODO/FIXME/TODO
-        IndexUpdate update = IndexUpdate::CreateImport(old_id_map, old_index.value());
-        IndexTranslationUnitResponse response(update);
-        responses->Enqueue(response);
-        time.ResetAndPrint("Loading cached index");
-        requests->Enqueue(request.value());
-        continue;
-      }
-    }
-
-    assert(request->type == IndexTranslationUnitRequest::Type::Update);
-
+    index_request->type = Index_DoIndex::Type::Update;
+    queue_do_index->Enqueue(std::move(index_request));
+  }
+  else {
     // Parse request and send a response.
-    std::cerr << "Parsing file " << request->path << " with args "
-      << Join(request->args, ", ") << std::endl;
+    std::cerr << "Parsing file " << index_request->path << " with args "
+      << Join(index_request->args, ", ") << std::endl;
 
-    IndexedFile new_index = Parse(request->path, request->args);
+    // TODO: parse should return unique_ptr. Then we can eliminate copy below. Make sure to not
+    // reuse moved pointer in WriteToCache if we do so.
+    IndexedFile current_index = Parse(index_request->path, index_request->args);
+
     time.ResetAndPrint("Parsing/indexing");
 
-    // If we have a cached index, that means it is already imported, which
-    // means we want to apply a delta update.
-    optional<IndexedFile> old_index = LoadCachedFile(request->path);
-    time.ResetAndPrint("Loading previous index");
-    if (old_index) {
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO: We need to create IdMap on QueryDb thread.
-      IdMap old_id_map(nullptr, old_index->id_cache);
-      IdMap new_id_map(nullptr, new_index.id_cache);
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-
-      // Apply delta update.
-      IndexUpdate update = IndexUpdate::CreateDelta(old_id_map, new_id_map, old_index.value(), new_index);
-      IndexTranslationUnitResponse response(update);
-      time.ResetAndPrint("Creating delta index update/response");
-      responses->Enqueue(response);
-      time.ResetAndPrint("Sending update to server");
-    }
-    else {
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO: We need to create IdMap on QueryDb thread.
-      IdMap new_id_map(nullptr, new_index.id_cache);
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-      // TODO/FIXME/TODO
-
-      // Apply full update.
-      IndexUpdate update = IndexUpdate::CreateImport(new_id_map, new_index);
-      IndexTranslationUnitResponse response(update);
-      time.ResetAndPrint("Creating index update/response");
-      responses->Enqueue(response);
-      time.ResetAndPrint("Sending update to server");
-    }
+    auto response = MakeUnique<Index_DoIdMap>(std::move(old_index) /*previous*/, MakeUnique<IndexedFile>(current_index) /*current*/);
+    queue_do_id_map->Enqueue(std::move(response));
 
     // Cache file so we can diff it later.
-    WriteToCache(request->path, new_index);
+    WriteToCache(index_request->path, current_index);
     time.ResetAndPrint("Cache index update to disk");
+  }
+
+  return true;
+}
+
+bool IndexMain_DoCreateIndexUpdate(Index_OnIdMappedQueue* queue_on_id_mapped,
+                                   Index_OnIndexedQueue* queue_on_indexed) {
+  optional<std::unique_ptr<Index_OnIdMapped>> opt_response = queue_on_id_mapped->TryDequeue();
+  if (!opt_response)
+    return false;
+  std::unique_ptr<Index_OnIdMapped> response = std::move(opt_response.value());
+
+  Timer time;
+  IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
+                                                response->previous_index.get(), response->current_index.get());
+  time.ResetAndPrint("Creating delta IndexUpdate");
+  auto reply = MakeUnique<Index_OnIndexed>(update);
+  queue_on_indexed->Enqueue(std::move(reply));
+  time.ResetAndPrint("Sending update to server");
+
+  return true;
+}
+
+void IndexMain(Index_DoIndexQueue* queue_do_index,
+               Index_DoIdMapQueue* queue_do_id_map,
+               Index_OnIdMappedQueue* queue_on_id_mapped,
+               Index_OnIndexedQueue* queue_on_indexed) {
+  while (true) {
+    // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
+    //       better icache behavior. We need to have some threads spinning on both though
+    //       otherwise memory usage will get bad.
+
+    if (!IndexMain_DoIndex(queue_do_index, queue_do_id_map) &&
+        !IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed)) {
+      // TODO: use CV to wakeup?
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
   }
 }
 
@@ -457,8 +454,10 @@ void AddCodeLens(std::vector<TCodeLens>* result,
 void QueryDbMainLoop(
   QueryableDatabase* db,
   IpcMessageQueue* language_client,
-  IndexRequestQueue* index_requests,
-  IndexResponseQueue* index_responses,
+  Index_DoIndexQueue* queue_do_index,
+  Index_DoIdMapQueue* queue_do_id_map,
+  Index_OnIdMappedQueue* queue_on_id_mapped,
+  Index_OnIndexedQueue* queue_on_indexed,
   Project* project,
   WorkingFiles* working_files,
   CompletionManager* completion_manager) {
@@ -496,10 +495,10 @@ void QueryDbMainLoop(
           << "] Dispatching index request for file " << filepath
           << std::endl;
 
-        IndexTranslationUnitRequest request(IndexTranslationUnitRequest::Type::Import);
-        request.path = filepath;
-        request.args = entry.args;
-        index_requests->Enqueue(request);
+        auto request = MakeUnique<Index_DoIndex>(Index_DoIndex::Type::Import);
+        request->path = filepath;
+        request->args = entry.args;
+        queue_do_index->Enqueue(std::move(request));
       }
       std::cerr << "Done" << std::endl;
       break;
@@ -711,7 +710,7 @@ void QueryDbMainLoop(
       std::string query = msg->params.query;
       for (int i = 0; i < db->qualified_names.size(); ++i) {
         if (response.result.size() > kMaxWorkspaceSearchResults) {
-          std::cerr << "Query exceeded maximum number of responses (" << kMaxWorkspaceSearchResults << "), output may not contain all results";
+          std::cerr << "Query exceeded maximum number of responses (" << kMaxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
           break;
         }
 
@@ -729,6 +728,8 @@ void QueryDbMainLoop(
           switch (symbol.kind) {
           case SymbolKind::File: {
             QueryableFile& def = db->files[symbol.idx];
+            info.name = def.def.usr;
+            info.kind = lsSymbolKind::File;
             info.location.uri.SetPath(def.def.usr);
             break;
           }
@@ -795,10 +796,32 @@ void QueryDbMainLoop(
 
   // TODO: consider rate-limiting and checking for IPC messages so we don't block
   // requests / we can serve partial requests.
+
+
   while (true) {
-    optional<IndexTranslationUnitResponse> response = index_responses->TryDequeue();
-    if (!response)
+    optional<std::unique_ptr<Index_DoIdMap>> opt_request = queue_do_id_map->TryDequeue();
+    if (!opt_request)
       break;
+    std::unique_ptr<Index_DoIdMap> request = std::move(opt_request.value());
+
+    auto response = MakeUnique<Index_OnIdMapped>();
+    Timer time;
+    if (request->previous) {
+      response->previous_id_map = MakeUnique<IdMap>(db, request->previous->id_cache);
+      response->previous_index = std::move(request->previous);
+    }
+    response->current_id_map = MakeUnique<IdMap>(db, request->current->id_cache);
+    response->current_index = std::move(request->current);
+    time.ResetAndPrint("Create IdMap");
+
+    queue_on_id_mapped->Enqueue(std::move(response));
+  }
+
+  while (true) {
+    optional<std::unique_ptr<Index_OnIndexed>> opt_response = queue_on_indexed->TryDequeue();
+    if (!opt_response)
+      break;
+    std::unique_ptr<Index_OnIndexed> response = std::move(opt_response.value());
 
     Timer time;
     db->ApplyIndexUpdate(&response->update);
@@ -811,8 +834,11 @@ void QueryDbMain() {
 
   // Create queues.
   std::unique_ptr<IpcMessageQueue> ipc = BuildIpcMessageQueue(kIpcLanguageClientName, kQueueSizeBytes);
-  IndexRequestQueue index_request_queue;
-  IndexResponseQueue index_response_queue;
+  Index_DoIndexQueue queue_do_index;
+  Index_DoIdMapQueue queue_do_id_map;
+  Index_OnIdMappedQueue queue_on_id_mapped;
+  Index_OnIndexedQueue queue_on_indexed;
+
   Project project;
   WorkingFiles working_files;
   CompletionManager completion_manager(&project, &working_files);
@@ -820,14 +846,14 @@ void QueryDbMain() {
   // Start indexer threads.
   for (int i = 0; i < kNumIndexers; ++i) {
     new std::thread([&]() {
-      IndexMain(&index_request_queue, &index_response_queue);
+      IndexMain(&queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
     });
   }
 
   // Run query db main loop.
   QueryableDatabase db;
   while (true) {
-    QueryDbMainLoop(&db, ipc.get(), &index_request_queue, &index_response_queue, &project, &working_files, &completion_manager);
+    QueryDbMainLoop(&db, ipc.get(), &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &working_files, &completion_manager);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }

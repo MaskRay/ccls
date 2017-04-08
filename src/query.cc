@@ -452,10 +452,8 @@ int GetOrAddSymbol(QueryableDatabase* query_db, SymbolKind kind, const Usr& usr)
 
 IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
-  assert(query_db); // TODO: remove after testing.
-
   index_file_id = GetQueryFileIdFromUsr(query_db, local_ids.primary_file);
-  
+
   cached_type_ids_.reserve(local_ids.type_id_to_usr.size());
   for (const auto& entry : local_ids.type_id_to_usr)
     cached_type_ids_[entry.first] = GetQueryTypeIdFromUsr(query_db, entry.second);
@@ -489,19 +487,16 @@ IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
 
 
 // static
-IndexUpdate IndexUpdate::CreateImport(const IdMap& id_map, IndexedFile& file) {
-  // Return standard diff constructor but with an empty file so everything is
-  // added.
-  IndexedFile previous(file.path);
-  return IndexUpdate(id_map, id_map, previous, file);
+IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexedFile* previous, IndexedFile* current) {
+  if (!previous_id_map) {
+    assert(!previous);
+    IndexedFile previous(current->path);
+    return IndexUpdate(*current_id_map, *current_id_map, previous, *current);
+  }
+  return IndexUpdate(*previous_id_map, *current_id_map, *previous, *current);
 }
 
-// static
-IndexUpdate IndexUpdate::CreateDelta(const IdMap& current_id_map, const IdMap& previous_id_map, IndexedFile& current, IndexedFile& updated) {
-  return IndexUpdate(current_id_map, previous_id_map, current, updated);
-}
-
-IndexUpdate::IndexUpdate(const IdMap& current_id_map, const IdMap& previous_id_map, IndexedFile& previous_file, IndexedFile& current_file) {
+IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexedFile& previous_file, IndexedFile& current_file) {
   // |query_name| is the name of the variable on the query type.
   // |index_name| is the name of the variable on the index type.
   // |type| is the type of the variable.
@@ -638,7 +633,16 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
 
 
-
+void UpdateQualifiedName(QueryableDatabase* db, int* qualified_name_index, SymbolKind kind, int symbol_index, const std::string& name) {
+  if (*qualified_name_index == -1) {
+    db->qualified_names.push_back(name);
+    db->symbols.push_back(SymbolIdx(kind, symbol_index));
+    *qualified_name_index = db->qualified_names.size() - 1;
+  }
+  else {
+    db->qualified_names[*qualified_name_index] = name;
+  }
+}
 
 
 
@@ -654,67 +658,53 @@ void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdate>& updates) {
   for (auto& def : updates) {
     auto it = usr_to_symbol.find(def.usr);
-    if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.usr);
-      symbols.push_back(SymbolIdx(SymbolKind::File, files.size()));
-      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::File, files.size());
-      files.push_back(QueryableFile(def));
-    }
-    else {
-      QueryableFile& existing = files[it->second.idx];
-      existing.def = def;
-    }
+    assert(it != usr_to_symbol.end());
+
+    QueryableFile& existing = files[it->second.idx];
+    existing.def = def;
+    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.usr);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUpdate>& updates) {
   for (auto& def : updates) {
+    if (!def.definition_extent)
+      continue;
+
     auto it = usr_to_symbol.find(def.usr);
-    if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.qualified_name);
-      symbols.push_back(SymbolIdx(SymbolKind::Type, types.size()));
-      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Type, types.size());
-      types.push_back(QueryableTypeDef(def));
-    }
-    else {
-      QueryableTypeDef& existing = types[it->second.idx];
-      if (def.definition_extent)
-        existing.def = def;
-    }
+    assert(it != usr_to_symbol.end());
+
+    QueryableTypeDef& existing = types[it->second.idx];
+    existing.def = def;
+    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.usr);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates) {
   for (auto& def : updates) {
+    if (!def.definition_extent)
+      continue;
+
     auto it = usr_to_symbol.find(def.usr);
-    if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.qualified_name);
-      symbols.push_back(SymbolIdx(SymbolKind::Func, funcs.size()));
-      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Func, funcs.size());
-      funcs.push_back(QueryableFuncDef(def));
-    }
-    else {
-      QueryableFuncDef& existing = funcs[it->second.idx];
-      if (def.definition_extent)
-        existing.def = def;
-    }
+    assert(it != usr_to_symbol.end());
+
+    QueryableFuncDef& existing = funcs[it->second.idx];
+    existing.def = def;
+    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.usr);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates) {
   for (auto& def : updates) {
+    if (!def.definition_extent)
+      continue;
+
     auto it = usr_to_symbol.find(def.usr);
-    if (it == usr_to_symbol.end()) {
-      qualified_names.push_back(def.qualified_name);
-      symbols.push_back(SymbolIdx(SymbolKind::Var, vars.size()));
-      usr_to_symbol[def.usr] = SymbolIdx(SymbolKind::Var, vars.size());
-      vars.push_back(QueryableVarDef(def));
-    }
-    else {
-      QueryableVarDef& existing = vars[it->second.idx];
-      if (def.definition_extent)
-        existing.def = def;
-    }
+    assert(it != usr_to_symbol.end());
+
+    QueryableVarDef& existing = vars[it->second.idx];
+    existing.def = def;
+    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.usr);
   }
 }
 

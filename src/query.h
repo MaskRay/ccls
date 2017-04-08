@@ -118,6 +118,7 @@ struct QueryableFile {
   using DefUpdate = Def;
 
   DefUpdate def;
+  int qualified_name_idx = -1;
 
   QueryableFile(const Usr& usr) { def.usr = usr; }
   QueryableFile(const Def& def) : def(def) {}
@@ -134,6 +135,7 @@ struct QueryableTypeDef {
   std::vector<Usr> derived;
   std::vector<Usr> instantiations;
   std::vector<QueryableLocation> uses;
+  int qualified_name_idx = -1;
 
   QueryableTypeDef(const Usr& usr) : def(usr) {}
   QueryableTypeDef(const DefUpdate& def) : def(def) {}
@@ -152,6 +154,7 @@ struct QueryableFuncDef {
   std::vector<Usr> derived;
   std::vector<UsrRef> callers;
   std::vector<QueryableLocation> uses;
+  int qualified_name_idx = -1;
 
   QueryableFuncDef(const Usr& usr) : def(usr) {}
   QueryableFuncDef(const DefUpdate& def) : def(def) {}
@@ -164,6 +167,7 @@ struct QueryableVarDef {
 
   DefUpdate def;
   std::vector<QueryableLocation> uses;
+  int qualified_name_idx = -1;
 
   QueryableVarDef(const Usr& usr) : def(usr) {}
   QueryableVarDef(const DefUpdate& def) : def(def) {}
@@ -181,9 +185,9 @@ struct SymbolIdx {
 
 
 struct IndexUpdate {
-  // Creates a new IndexUpdate that will import |file|.
-  static IndexUpdate CreateImport(const IdMap& id_map, IndexedFile& file);
-  static IndexUpdate CreateDelta(const IdMap& current_id_map, const IdMap& previous_id_map, IndexedFile& current, IndexedFile& updated);
+  // Creates a new IndexUpdate based on the delta from previous to current. If
+  // no delta computation should be done just pass null for previous.
+  static IndexUpdate CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexedFile* previous, IndexedFile* current);
 
   // Merge |update| into this update; this can reduce overhead / index update
   // work can be parallelized.
@@ -217,7 +221,7 @@ struct IndexUpdate {
   // Creates an index update assuming that |previous| is already
   // in the index, so only the delta between |previous| and |current|
   // will be applied.
-  IndexUpdate(const IdMap& current_id_map, const IdMap& previous_id_map, IndexedFile& previous, IndexedFile& current);
+  IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexedFile& previous, IndexedFile& current);
 };
 
 

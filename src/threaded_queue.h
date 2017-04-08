@@ -15,9 +15,9 @@ template <class T>
 class ThreadedQueue {
 public:
   // Add an element to the queue.
-  void Enqueue(T t) {
+  void Enqueue(T&& t) {
     std::lock_guard<std::mutex> lock(mutex_);
-    queue_.push(t);
+    queue_.push(std::move(t));
     cv_.notify_one();
   }
 
@@ -29,7 +29,8 @@ public:
       // release lock as long as the wait and reaquire it afterwards.
       cv_.wait(lock);
     }
-    T val = queue_.front();
+    
+    auto val = std::move(queue_.front());
     queue_.pop();
     return val;
   }
@@ -41,7 +42,7 @@ public:
     if (queue_.empty())
       return nullopt;
 
-    T val = queue_.front();
+    auto val = std::move(queue_.front());
     queue_.pop();
     return val;
   }
