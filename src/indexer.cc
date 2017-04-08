@@ -1051,10 +1051,17 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 }
 
-bool IsFunction(CXCursorKind kind) {
+bool IsFunctionCallContext(CXCursorKind kind) {
   switch (kind) {
-    case CXCursor_CXXMethod:
     case CXCursor_FunctionDecl:
+    case CXCursor_CXXMethod:
+    case CXCursor_Constructor:
+    case CXCursor_Destructor:
+    case CXCursor_ConversionFunction:
+    case CXCursor_FunctionTemplate:
+    case CXCursor_OverloadedDeclRef:
+    // TODO: we need to test lambdas
+    case CXCursor_LambdaExpr:
       return true;
   }
 
@@ -1069,6 +1076,17 @@ void indexEntityReference(CXClientData client_data,
 //      clang_Location_isInSystemHeader(
 //          clang_getCursorLocation(ref->referencedEntity->cursor)))
 //    return;
+  IndexParam* param = static_cast<IndexParam*>(client_data);
+  IndexedFile* db = param->db;
+
+  // ref->cursor mainFile=0
+  // ref->loc mainFile=1
+  // ref->referencedEntity mainFile=1
+  //
+  // Regardless, we need to do more advanced location processing to handle multiple output IndexedFile instances.
+  //bool mainFile = clang_Location_isFromMainFile(clang_indexLoc_getCXSourceLocation(ref->loc));
+  //Range loc_spelling = param->db->id_cache.ForceResolveSpelling(ref->cursor, false /*interesting*/);
+  //std::cerr << "mainFile: " << mainFile << ", loc: " << loc_spelling.ToString() << std::endl;
 
   // Don't index references that are not from the main file.
   if (!clang_Location_isFromMainFile(clang_getCursorLocation(ref->cursor)))
@@ -1077,8 +1095,7 @@ void indexEntityReference(CXClientData client_data,
   if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->referencedEntity->cursor)))
     return;
 
-  IndexParam* param = static_cast<IndexParam*>(client_data);
-  IndexedFile* db = param->db;
+
   clang::Cursor cursor(ref->cursor);
 
   // std::cerr << "REF kind=" << ref->referencedEntity->kind << " at " <<
@@ -1135,7 +1152,7 @@ void indexEntityReference(CXClientData client_data,
 
       // Note: be careful, calling db->ToFuncId invalidates the FuncDef* ptrs.
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
-      if (IsFunction(ref->container->cursor.kind)) {
+      if (IsFunctionCallContext(ref->container->cursor.kind)) {
         IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
         IndexedFuncDef* caller_def = db->Resolve(caller_id);
         IndexedFuncDef* called_def = db->Resolve(called_id);
@@ -1257,7 +1274,7 @@ IndexedFile Parse(std::string filename,
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
-  clang::TranslationUnit tu(index, filename, args, {} /*unsaved_files*/, CXTranslationUnit_None);
+  clang::TranslationUnit tu(index, filename, args, {} /*unsaved_files*/, CXTranslationUnit_KeepGoing);
 
   if (dump_ast)
     Dump(tu.document_cursor());

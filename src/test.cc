@@ -108,7 +108,7 @@ void RunTests() {
     //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
     //if (path != "tests/multi_file/header.h") continue;
     //if (path != "tests/multi_file/impl.cc") continue;
-    //if (path != "tests/constructors/constructor.cc") continue;
+    //if (path != "tests/usage/func_called_from_macro_argument.cc") continue;
     //if (path != "tests/templates/implicit_variable_instantiation.cc") continue;
     //if (path != "tests/_empty_test.cc") continue;
 
