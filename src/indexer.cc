@@ -1140,8 +1140,8 @@ void indexEntityReference(CXClientData client_data,
         IndexedFuncDef* caller_def = db->Resolve(caller_id);
         IndexedFuncDef* called_def = db->Resolve(called_id);
 
-        caller_def->def.callees.push_back(FuncRef(called_id, loc_spelling.value()));
-        called_def->callers.push_back(FuncRef(caller_id, loc_spelling.value()));
+        caller_def->def.callees.push_back(IndexFuncRef(called_id, loc_spelling.value()));
+        called_def->callers.push_back(IndexFuncRef(caller_id, loc_spelling.value()));
         AddUsage(called_def->uses, loc_spelling.value());
       } else {
         IndexedFuncDef* called_def = db->Resolve(called_id);

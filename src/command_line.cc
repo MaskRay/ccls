@@ -482,6 +482,22 @@ void AddCodeLens(
   QueryableDatabase* db,
   std::vector<TCodeLens>* result,
   QueryableLocation loc,
+  const std::vector<QueryFuncRef>& uses,
+  bool exclude_loc,
+  bool only_interesting,
+  const char* singular,
+  const char* plural) {
+  std::vector<QueryableLocation> uses0;
+  uses0.reserve(uses.size());
+  for (const QueryFuncRef& use : uses)
+    uses0.push_back(use.loc);
+  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
+}
+
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
+  QueryableLocation loc,
   const std::vector<Usr>& usrs,
   bool exclude_loc,
   bool only_interesting,
@@ -509,6 +525,25 @@ void AddCodeLens(
   std::vector<QueryableLocation> uses0;
   uses0.reserve(usrs.size());
   for (const QueryTypeId& usr : usrs) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
+    if (loc)
+      uses0.push_back(loc.value());
+  }
+  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
+}
+
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
+  QueryableLocation loc,
+  const std::vector<QueryFuncId>& usrs,
+  bool exclude_loc,
+  bool only_interesting,
+  const char* singular,
+  const char* plural) {
+  std::vector<QueryableLocation> uses0;
+  uses0.reserve(usrs.size());
+  for (const QueryFuncId& usr : usrs) {
     optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
     if (loc)
       uses0.push_back(loc.value());
@@ -705,10 +740,7 @@ void QueryDbMainLoop(
           info.name = def.def.qualified_name;
           if (def.def.declaring_type.has_value()) {
             info.kind = lsSymbolKind::Method;
-            Usr declaring = def.def.declaring_type.value();
-            info.containerName =
-              db->types[db->usr_to_symbol[declaring].idx]
-              .def.qualified_name;
+            info.containerName = db->types[def.def.declaring_type->id].def.qualified_name;
           }
           else {
             info.kind = lsSymbolKind::Function;
@@ -852,10 +884,7 @@ void QueryDbMainLoop(
             info.name = def.def.qualified_name;
             if (def.def.declaring_type.has_value()) {
               info.kind = lsSymbolKind::Method;
-              Usr declaring = def.def.declaring_type.value();
-              info.containerName =
-                db->types[db->usr_to_symbol[declaring].idx]
-                .def.qualified_name;
+              info.containerName = db->types[def.def.declaring_type->id].def.qualified_name;
             }
             else {
               info.kind = lsSymbolKind::Function;

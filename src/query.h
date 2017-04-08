@@ -88,6 +88,21 @@ struct SymbolRef {
   }
 };
 
+struct QueryFuncRef {
+  QueryFuncId id;
+  QueryableLocation loc;
+
+  QueryFuncRef(QueryFuncId id, QueryableLocation loc) : id(id), loc(loc) {}
+
+  bool operator==(const QueryFuncRef& that) const {
+    return id == that.id && loc == that.loc;
+  }
+  bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
+  bool operator<(const QueryFuncRef& that) const {
+    return id < that.id && loc.range.start < that.loc.range.start;
+  }
+};
+
 struct UsrRef {
   Usr usr;
   QueryableLocation loc;
@@ -175,16 +190,16 @@ struct QueryableTypeDef {
 };
 
 struct QueryableFuncDef {
-  using DefUpdate = FuncDefDefinitionData<Usr, Usr, Usr, UsrRef, QueryableLocation>;
+  using DefUpdate = FuncDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryFuncRef, QueryableLocation>;
   using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
-  using DerivedUpdate = MergeableUpdate<Usr>;
-  using CallersUpdate = MergeableUpdate<UsrRef>;
+  using DerivedUpdate = MergeableUpdate<QueryFuncId>;
+  using CallersUpdate = MergeableUpdate<QueryFuncRef>;
   using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
   std::vector<QueryableLocation> declarations;
-  std::vector<Usr> derived;
-  std::vector<UsrRef> callers;
+  std::vector<QueryFuncId> derived;
+  std::vector<QueryFuncRef> callers;
   std::vector<QueryableLocation> uses;
   size_t qualified_name_idx = -1;
 
@@ -299,14 +314,17 @@ struct IdMap {
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
+  QueryFuncRef ToQuery(IndexFuncRef ref) const;
   optional<QueryableLocation> ToQuery(optional<Range> range) const;
   optional<QueryTypeId> ToQuery(optional<IndexTypeId> id) const;
   optional<QueryFuncId> ToQuery(optional<IndexFuncId> id) const;
   optional<QueryVarId> ToQuery(optional<IndexVarId> id) const;
+  optional<QueryFuncRef> ToQuery(optional<IndexFuncRef> ref) const;
   std::vector<QueryableLocation> ToQuery(std::vector<Range> ranges) const;
   std::vector<QueryTypeId> ToQuery(std::vector<IndexTypeId> ids) const;
   std::vector<QueryFuncId> ToQuery(std::vector<IndexFuncId> ids) const;
   std::vector<QueryVarId> ToQuery(std::vector<IndexVarId> ids) const;
+  std::vector<QueryFuncRef> ToQuery(std::vector<IndexFuncRef> refs) const;
 
   SymbolIdx ToSymbol(IndexTypeId id) const;
   SymbolIdx ToSymbol(IndexFuncId id) const;

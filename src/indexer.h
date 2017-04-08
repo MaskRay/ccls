@@ -83,9 +83,9 @@ bool operator!=(const Ref<T>& a, const Ref<T>& b) {
   return !(a == b);
 }
 
-using TypeRef = Ref<IndexedTypeDef>;
-using FuncRef = Ref<IndexedFuncDef>;
-using VarRef = Ref<IndexedVarDef>;
+using IndexTypeRef = Ref<IndexedTypeDef>;
+using IndexFuncRef = Ref<IndexedFuncDef>;
+using IndexVarRef = Ref<IndexedVarDef>;
 
 // TODO: skip as much forward-processing as possible when |is_system_def| is
 //       set to false.
@@ -272,7 +272,7 @@ void Reflect(
 }
 
 struct IndexedFuncDef {
-  using Def = FuncDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, FuncRef, Range>;
+  using Def = FuncDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, IndexFuncRef, Range>;
   Def def;
 
   IndexFuncId id;
@@ -289,7 +289,7 @@ struct IndexedFuncDef {
   //       or in class initializer list (redirect to class ctor?)
   //    - Right now those usages will not get listed here (but they should be
   //      inside of all_uses).
-  std::vector<FuncRef> callers;
+  std::vector<IndexFuncRef> callers;
 
   // All usages. For interesting usages, see callees.
   std::vector<Range> uses;
