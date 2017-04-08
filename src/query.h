@@ -30,10 +30,10 @@ struct IdMap;
 // 'interesting' from location when that is cleaned up.
 
 struct QueryableLocation {
-  Usr path;
+  QueryFileId path;
   Range range;
 
-  QueryableLocation(Usr path, Range range)
+  QueryableLocation(QueryFileId path, Range range)
     : path(path), range(range) {}
 
   QueryableLocation OffsetStartColumn(int offset) const {
@@ -291,6 +291,7 @@ struct IdMap {
   // Then lookup in cached_* should *never* fail.
 
   const IdCache& local_ids;
+  QueryFileId primary_file;
 
   IdMap(QueryableDatabase* query_db, const IdCache& local_ids);
 
@@ -301,9 +302,7 @@ struct IdMap {
   SymbolIdx ToSymbol(IndexFuncId id) const;
   SymbolIdx ToSymbol(IndexVarId id) const;
 
-  // TODO
 private:
-  QueryFileId index_file_id;
   // TODO: make these type safe
   google::dense_hash_map<size_t, size_t> cached_type_ids_; // IndexTypeId -> QueryTypeId
   google::dense_hash_map<size_t, size_t> cached_func_ids_; // IndexFuncId -> QueryFuncId

@@ -378,13 +378,20 @@ lsRange GetLsRange(const Range& location) {
       lsPosition(location.end.line - 1, location.end.column - 1));
 }
 
-lsLocation GetLsLocation(const QueryableLocation& location) {
+lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
+  std::string path = db->files[file_id.id].def.usr;
+  return lsDocumentUri::FromPath(path);
+}
+
+lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& location) {
   return lsLocation(
-    lsDocumentUri::FromPath(location.path),
+    GetLsDocumentUri(db, location.path),
     GetLsRange(location.range));
 }
 
-void AddCodeLens(std::vector<TCodeLens>* result,
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
   QueryableLocation loc,
   const std::vector<QueryableLocation>& uses,
   bool exclude_loc,
@@ -395,7 +402,7 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   code_lens.range = GetLsRange(loc.range);
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "superindex.showReferences";
-  code_lens.command->arguments.uri = lsDocumentUri::FromPath(loc.path);
+  code_lens.command->arguments.uri = GetLsDocumentUri(db, loc.path);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
@@ -405,7 +412,7 @@ void AddCodeLens(std::vector<TCodeLens>* result,
       continue;
     if (only_interesting && !use.range.interesting)
       continue;
-    unique_uses.insert(GetLsLocation(use));
+    unique_uses.insert(GetLsLocation(db, use));
   }
   code_lens.command->arguments.locations.assign(unique_uses.begin(),
     unique_uses.end());
@@ -422,7 +429,9 @@ void AddCodeLens(std::vector<TCodeLens>* result,
     result->push_back(code_lens);
 }
 
-void AddCodeLens(std::vector<TCodeLens>* result,
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
   QueryableLocation loc,
   const std::vector<UsrRef>& uses,
   bool exclude_loc,
@@ -433,11 +442,12 @@ void AddCodeLens(std::vector<TCodeLens>* result,
   uses0.reserve(uses.size());
   for (const UsrRef& use : uses)
     uses0.push_back(use.loc);
-  AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
+  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
-void AddCodeLens(std::vector<TCodeLens>* result,
+void AddCodeLens(
   QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
   QueryableLocation loc,
   const std::vector<Usr>& usrs,
   bool exclude_loc,
@@ -451,7 +461,7 @@ void AddCodeLens(std::vector<TCodeLens>* result,
     if (loc)
       uses0.push_back(loc.value());
   }
-  AddCodeLens(result, loc, uses0, exclude_loc, only_interesting, singular, plural);
+  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
 void QueryDbMainLoop(
@@ -563,7 +573,7 @@ void QueryDbMainLoop(
             ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
           optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
           if (location)
-            response.result.push_back(GetLsLocation(location.value()));
+            response.result.push_back(GetLsLocation(db, location.value()));
           break;
         }
       }
@@ -589,7 +599,7 @@ void QueryDbMainLoop(
         SymbolIdx symbol = ref.idx;
 
         lsSymbolInformation info;
-        info.location = GetLsLocation(ref.loc);
+        info.location = GetLsLocation(db, ref.loc);
 
         switch (symbol.kind) {
         case SymbolKind::Type: {
@@ -655,15 +665,15 @@ void QueryDbMainLoop(
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];
-          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(0), def.uses,
             false /*exclude_loc*/, false /*only_interesting*/, "ref",
             "refs");
-          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(1), def.uses,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), def.uses,
             false /*exclude_loc*/, true /*only_interesting*/, "iref",
             "irefs");
-          AddCodeLens(&response.result, db, ref.loc.OffsetStartColumn(2), def.derived,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(2), def.derived,
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
-          AddCodeLens(&response.result, db, ref.loc.OffsetStartColumn(3), def.instantiations,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), def.instantiations,
             false /*exclude_loc*/, false /*only_interesting*/, "instantiation", "instantiations");
           break;
         }
@@ -672,17 +682,17 @@ void QueryDbMainLoop(
           //AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
           //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
           //  "references");
-          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(1), def.callers,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), def.callers,
             true /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
           //AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
           //  false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
-          AddCodeLens(&response.result, db, ref.loc.OffsetStartColumn(3), def.derived,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), def.derived,
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
           break;
         }
         case SymbolKind::Var: {
           QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(0), def.uses,
             true /*exclude_loc*/, false /*only_interesting*/, "reference",
             "references");
           break;
@@ -742,7 +752,7 @@ void QueryDbMainLoop(
             info.kind = lsSymbolKind::Class;
 
             if (def.def.definition_extent.has_value())
-              info.location = GetLsLocation(def.def.definition_extent.value());
+              info.location = GetLsLocation(db, def.def.definition_extent.value());
             break;
           }
           case SymbolKind::Func: {
@@ -760,7 +770,7 @@ void QueryDbMainLoop(
             }
 
             if (def.def.definition_extent.has_value()) {
-              info.location = GetLsLocation(def.def.definition_extent.value());
+              info.location = GetLsLocation(db, def.def.definition_extent.value());
             }
             break;
           }
@@ -770,7 +780,7 @@ void QueryDbMainLoop(
             info.kind = lsSymbolKind::Variable;
 
             if (def.def.definition_extent.has_value()) {
-              info.location = GetLsLocation(def.def.definition_extent.value());
+              info.location = GetLsLocation(db, def.def.definition_extent.value());
             }
             break;
           }

@@ -86,6 +86,13 @@ IndexedTypeDef::IndexedTypeDef(IndexTypeId id, const std::string& usr)
 void AddUsage(std::vector<Range>& uses,
               Range loc,
               bool insert_if_not_present = true) {
+  // cannot sub 1 from size_t in loop below; check explicitly here
+  if (uses.empty()) {
+    if (insert_if_not_present)
+      uses.push_back(loc);
+    return;
+  }
+
   // TODO: think about if we need to also consider |uses[i].end|
   // First thought makes me think no, we don't.
   for (int i = uses.size() - 1; i >= 0; --i) {
@@ -749,7 +756,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // Don't treat enum definition variables as instantiations.
           bool is_enum_member = decl->semanticContainer && decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
           if (!is_enum_member)
-            db->Resolve(var_type.value())->instantiations.push_back(var_id.id);
+            db->Resolve(var_type.value())->instantiations.push_back(var_id);
 
           var_def->def.variable_type = var_type.value();
         }

@@ -32,7 +32,7 @@ Usr MapIdToUsr(const IdMap& id_map, const IndexVarId& id) {
   return id_map.local_ids.var_id_to_usr.find(id)->second;
 }
 QueryableLocation MapIdToUsr(const IdMap& id_map, const Range& range) {
-  return QueryableLocation(id_map.local_ids.primary_file, range);
+  return QueryableLocation(id_map.primary_file, range);
 }
 UsrRef MapIdToUsr(const IdMap& id_map, const FuncRef& id) {
   assert(id_map.local_ids.func_id_to_usr.find(id.id) != id_map.local_ids.func_id_to_usr.end());
@@ -403,7 +403,7 @@ QueryVarId GetQueryVarIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
 
 IdMap::IdMap(QueryableDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
-  index_file_id = GetQueryFileIdFromUsr(query_db, local_ids.primary_file);
+  primary_file = GetQueryFileIdFromUsr(query_db, local_ids.primary_file);
 
   cached_type_ids_.set_empty_key(-1);
   cached_type_ids_.resize(local_ids.type_id_to_usr.size());
