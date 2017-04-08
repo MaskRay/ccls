@@ -74,9 +74,7 @@ struct TypedBidiMessageQueue {
       document.Parse(
           reinterpret_cast<const char*>(buffer->data) + sizeof(MessageHeader),
           buffer->capacity - sizeof(MessageHeader));
-      bool has_error = document.HasParseError();
-      auto error = document.GetParseError();
-      if (has_error) {
+      if (document.HasParseError()) {
         std::cerr << "[FATAL]: Unable to parse IPC message" << std::endl;
         exit(1);
       }

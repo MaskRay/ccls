@@ -30,7 +30,7 @@ struct IdMap;
 struct QueryableLocation {
   Usr path;
   Range range;
-  
+
   QueryableLocation(Usr path, Range range)
     : path(path), range(range) {}
 
@@ -100,8 +100,8 @@ struct ReplacementUpdate {
   // New entries.
   std::vector<TValue> values;
 
-  ReplacementUpdate(Usr usr, const std::vector<TValue>& entries)
-    : usr(usr), entries(entries) {}
+  ReplacementUpdate(Usr usr, const std::vector<TValue>& values)
+    : usr(usr), values(values) {}
 };
 
 struct QueryableFile {
