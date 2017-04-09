@@ -3,7 +3,7 @@
 #include <memory>
 #include <string>
 
-class IndexedFile;
+struct IndexedFile;
 
 std::string GetCachedFileName(std::string source_file);
 

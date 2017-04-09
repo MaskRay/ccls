@@ -351,23 +351,6 @@ void AddCodeLens(
     result->push_back(code_lens);
 }
 
-// TODO: clean these overrides up...
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<UsrRef>& uses,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  std::vector<QueryableLocation> uses0;
-  uses0.reserve(uses.size());
-  for (const UsrRef& use : uses)
-    uses0.push_back(use.loc);
-  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
-}
-
 void AddCodeLens(
   QueryableDatabase* db,
   std::vector<TCodeLens>* result,

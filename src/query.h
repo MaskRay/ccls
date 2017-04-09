@@ -103,21 +103,6 @@ struct QueryFuncRef {
   }
 };
 
-struct UsrRef {
-  Usr usr;
-  QueryableLocation loc;
-
-  UsrRef(Usr usr, QueryableLocation loc) : usr(usr), loc(loc) {}
-
-  bool operator==(const UsrRef& other) const {
-    return usr == other.usr && loc.range.start == other.loc.range.start;
-  }
-  bool operator!=(const UsrRef& other) const { return !(*this == other); }
-  bool operator<(const UsrRef& other) const {
-    return usr < other.usr && loc.range.start < other.loc.range.start;
-  }
-};
-
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
 //
