@@ -89,7 +89,86 @@ lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& locatio
     GetLsRange(location.range));
 }
 
+
+void AddCodeLens(
+  QueryableDatabase* db,
+  std::vector<TCodeLens>* result,
+  QueryableLocation loc,
+  const std::vector<QueryableLocation>& uses,
+  bool exclude_loc,
+  bool only_interesting,
+  const char* singular,
+  const char* plural) {
+  TCodeLens code_lens;
+  code_lens.range = GetLsRange(loc.range);
+  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+  code_lens.command->command = "superindex.showReferences";
+  code_lens.command->arguments.uri = GetLsDocumentUri(db, loc.path);
+  code_lens.command->arguments.position = code_lens.range.start;
+
+  // Add unique uses.
+  std::unordered_set<lsLocation> unique_uses;
+  for (const QueryableLocation& use : uses) {
+    if (exclude_loc && use == loc)
+      continue;
+    if (only_interesting && !use.range.interesting)
+      continue;
+    unique_uses.insert(GetLsLocation(db, use));
+  }
+  code_lens.command->arguments.locations.assign(unique_uses.begin(),
+    unique_uses.end());
+
+  // User visible label
+  size_t num_usages = unique_uses.size();
+  code_lens.command->title = std::to_string(num_usages) + " ";
+  if (num_usages == 1)
+    code_lens.command->title += singular;
+  else
+    code_lens.command->title += plural;
+
+  if (exclude_loc || unique_uses.size() > 0)
+    result->push_back(code_lens);
 }
+
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncRef>& refs) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(refs.size());
+  for (const QueryFuncRef& ref : refs)
+    locs.push_back(ref.loc);
+  return locs;
+}
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryTypeId>& ids) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(ids.size());
+  for (const QueryTypeId& id : ids) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(loc.value());
+  }
+  return locs;
+}
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncId>& ids) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(ids.size());
+  for (const QueryFuncId& id : ids) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(loc.value());
+  }
+  return locs;
+}
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryVarId>& ids) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(ids.size());
+  for (const QueryVarId& id : ids) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(loc.value());
+  }
+  return locs;
+}
+
+}  // namespace
 
 struct Index_DoIndex {
   enum class Type {
@@ -311,118 +390,6 @@ void IndexMain(
 
 
 
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<QueryableLocation>& uses,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  TCodeLens code_lens;
-  code_lens.range = GetLsRange(loc.range);
-  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-  code_lens.command->command = "superindex.showReferences";
-  code_lens.command->arguments.uri = GetLsDocumentUri(db, loc.path);
-  code_lens.command->arguments.position = code_lens.range.start;
-
-  // Add unique uses.
-  std::unordered_set<lsLocation> unique_uses;
-  for (const QueryableLocation& use : uses) {
-    if (exclude_loc && use == loc)
-      continue;
-    if (only_interesting && !use.range.interesting)
-      continue;
-    unique_uses.insert(GetLsLocation(db, use));
-  }
-  code_lens.command->arguments.locations.assign(unique_uses.begin(),
-    unique_uses.end());
-
-  // User visible label
-  size_t num_usages = unique_uses.size();
-  code_lens.command->title = std::to_string(num_usages) + " ";
-  if (num_usages == 1)
-    code_lens.command->title += singular;
-  else
-    code_lens.command->title += plural;
-
-  if (exclude_loc || unique_uses.size() > 0)
-    result->push_back(code_lens);
-}
-
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<QueryFuncRef>& uses,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  std::vector<QueryableLocation> uses0;
-  uses0.reserve(uses.size());
-  for (const QueryFuncRef& use : uses)
-    uses0.push_back(use.loc);
-  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
-}
-
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<QueryTypeId>& usrs,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  std::vector<QueryableLocation> uses0;
-  uses0.reserve(usrs.size());
-  for (const QueryTypeId& usr : usrs) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
-    if (loc)
-      uses0.push_back(loc.value());
-  }
-  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
-}
-
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<QueryFuncId>& usrs,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  std::vector<QueryableLocation> uses0;
-  uses0.reserve(usrs.size());
-  for (const QueryFuncId& usr : usrs) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
-    if (loc)
-      uses0.push_back(loc.value());
-  }
-  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
-}
-
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<QueryVarId>& usrs,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  std::vector<QueryableLocation> uses0;
-  uses0.reserve(usrs.size());
-  for (const QueryVarId& usr : usrs) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, usr);
-    if (loc)
-      uses0.push_back(loc.value());
-  }
-  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
-}
 
 
 
@@ -648,9 +615,9 @@ void QueryDbMainLoop(
           AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), def.uses,
             false /*exclude_loc*/, true /*only_interesting*/, "iref",
             "irefs");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(2), def.derived,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(2), ToQueryableLocation(db, def.derived),
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), def.instantiations,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), ToQueryableLocation(db, def.instantiations),
             false /*exclude_loc*/, false /*only_interesting*/, "instantiation", "instantiations");
           break;
         }
@@ -659,11 +626,11 @@ void QueryDbMainLoop(
           //AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
           //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
           //  "references");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), def.callers,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), ToQueryableLocation(db, def.callers),
             true /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
           //AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
           //  false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), def.derived,
+          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), ToQueryableLocation(db, def.derived),
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
           break;
         }
