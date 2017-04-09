@@ -56,11 +56,11 @@ struct QueryableLocation {
   }
 };
 
-class QueryableFile;
-class QueryableTypeDef;
-class QueryableFuncDef;
-class QueryableVarDef;
-class QueryableDatabase;
+struct QueryableFile;
+struct QueryableTypeDef;
+struct QueryableFuncDef;
+struct QueryableVarDef;
+struct QueryableDatabase;
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {

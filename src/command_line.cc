@@ -82,10 +82,21 @@ optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db,
   return nullopt;
 }
 
-lsRange GetLsRange(const Range& location) {
+lsRange GetLsRange(WorkingFile* working_file, const Range& location) {
+  if (!working_file) {
+    return lsRange(
+      lsPosition(location.start.line - 1, location.start.column - 1),
+      lsPosition(location.end.line - 1, location.end.column - 1));
+  }
+
   return lsRange(
-    lsPosition(location.start.line - 1, location.start.column - 1),
-    lsPosition(location.end.line - 1, location.end.column - 1));
+    lsPosition(working_file->GetBufferLineFromDiskLine(location.start.line) - 1, location.start.column - 1),
+    lsPosition(working_file->GetBufferLineFromDiskLine(location.end.line) - 1, location.end.column - 1));
+}
+
+lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id, std::string* path) {
+  *path = db->files[file_id.id].def.usr;
+  return lsDocumentUri::FromPath(*path);
 }
 
 lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
@@ -93,15 +104,16 @@ lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
   return lsDocumentUri::FromPath(path);
 }
 
-lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& location) {
-  return lsLocation(
-    GetLsDocumentUri(db, location.path),
-    GetLsRange(location.range));
+lsLocation GetLsLocation(QueryableDatabase* db, WorkingFiles* working_files, const QueryableLocation& location) {
+  std::string path;
+  lsDocumentUri uri = GetLsDocumentUri(db, location.path, &path);
+  lsRange range = GetLsRange(working_files->GetFileByFilename(path), location.range);
+  return lsLocation(uri, range);
 }
 
 // Returns a symbol. The symbol will have the location pointing to the
 // definition.
-lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, SymbolIdx symbol) {
+lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
   lsSymbolInformation info;
 
   switch (symbol.kind) {
@@ -117,7 +129,7 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, SymbolIdx symbol) {
       info.name = def->def.qualified_name;
       info.kind = lsSymbolKind::Class;
       if (def->def.definition_extent.has_value())
-        info.location = GetLsLocation(db, def->def.definition_extent.value());
+        info.location = GetLsLocation(db, working_files, def->def.definition_extent.value());
       break;
     }
     case SymbolKind::Func: {
@@ -132,7 +144,7 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, SymbolIdx symbol) {
       }
 
       if (def->def.definition_extent.has_value()) {
-        info.location = GetLsLocation(db, def->def.definition_extent.value());
+        info.location = GetLsLocation(db, working_files, def->def.definition_extent.value());
       }
       break;
     }
@@ -142,7 +154,7 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, SymbolIdx symbol) {
       info.kind = lsSymbolKind::Variable;
 
       if (def->def.definition_extent.has_value()) {
-        info.location = GetLsLocation(db, def->def.definition_extent.value());
+        info.location = GetLsLocation(db, working_files, def->def.definition_extent.value());
       }
       break;
     }
@@ -158,15 +170,17 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, SymbolIdx symbol) {
 
 void AddCodeLens(
   QueryableDatabase* db,
+  WorkingFiles* working_files,
   std::vector<TCodeLens>* result,
   QueryableLocation loc,
+  WorkingFile* working_file,
   const std::vector<QueryableLocation>& uses,
   bool exclude_loc,
   bool only_interesting,
   const char* singular,
   const char* plural) {
   TCodeLens code_lens;
-  code_lens.range = GetLsRange(loc.range);
+  code_lens.range = GetLsRange(working_file, loc.range);
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "superindex.showReferences";
   code_lens.command->arguments.uri = GetLsDocumentUri(db, loc.path);
@@ -179,7 +193,7 @@ void AddCodeLens(
       continue;
     if (only_interesting && !use.range.interesting)
       continue;
-    unique_uses.insert(GetLsLocation(db, use));
+    unique_uses.insert(GetLsLocation(db, working_files, use));
   }
   code_lens.command->arguments.locations.assign(unique_uses.begin(),
     unique_uses.end());
@@ -235,6 +249,28 @@ std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const 
 }
 
 }  // namespace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 struct Index_DoIndex {
   enum class Type {
@@ -539,6 +575,21 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentDidChange: {
       auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
       working_files->OnChange(msg->params);
+
+      
+      // Send an index update request.
+      // TODO: we should only do this when we save. Figure out a way to handle code lens (dynamic offsets?)
+
+#if false
+      Index_DoIndex request(Index_DoIndex::Type::Update);
+      //WorkingFile* changed = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+      optional<CompilationEntry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
+      request.path = msg->params.textDocument.uri.GetPath();
+      if (entry)
+        request.args = entry->args;
+      queue_do_index->Enqueue(std::move(request));
+#endif
+
       //std::cerr << "Changing " << msg->params.textDocument.uri.GetPath() << std::endl;
       break;
     }
@@ -586,7 +637,7 @@ void QueryDbMainLoop(
           ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
           optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
           if (location)
-            response.result.push_back(GetLsLocation(db, location.value()));
+            response.result.push_back(GetLsLocation(db, working_files, location.value()));
           break;
         }
       }
@@ -609,8 +660,8 @@ void QueryDbMainLoop(
 
       std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
       for (SymbolRef ref : file->def.outline) {
-        lsSymbolInformation info = GetSymbolInfo(db, ref.idx);
-        info.location = GetLsLocation(db, ref.loc);
+        lsSymbolInformation info = GetSymbolInfo(db, working_files, ref.idx);
+        info.location = GetLsLocation(db, working_files, ref.loc);
         response.result.push_back(info);
       }
 
@@ -631,6 +682,7 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
+      WorkingFile* working_file = working_files->GetFileByFilename(file->def.usr);
 
       for (SymbolRef ref : file->def.outline) {
         // NOTE: We OffsetColumn so that the code lens always show up in a
@@ -640,15 +692,15 @@ void QueryDbMainLoop(
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(0), def.uses,
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(0), working_file, def.uses,
             false /*exclude_loc*/, false /*only_interesting*/, "ref",
             "refs");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), def.uses,
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(1), working_file, def.uses,
             false /*exclude_loc*/, true /*only_interesting*/, "iref",
             "irefs");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(2), ToQueryableLocation(db, def.derived),
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(2), working_file, ToQueryableLocation(db, def.derived),
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), ToQueryableLocation(db, def.instantiations),
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(3), working_file, ToQueryableLocation(db, def.instantiations),
             false /*exclude_loc*/, false /*only_interesting*/, "instantiation", "instantiations");
           break;
         }
@@ -657,17 +709,17 @@ void QueryDbMainLoop(
           //AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
           //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
           //  "references");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(1), ToQueryableLocation(db, def.callers),
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(1), working_file, ToQueryableLocation(db, def.callers),
             true /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
           //AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
           //  false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(3), ToQueryableLocation(db, def.derived),
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(3), working_file, ToQueryableLocation(db, def.derived),
             false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
           break;
         }
         case SymbolKind::Var: {
           QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(db, &response.result, ref.loc.OffsetStartColumn(0), def.uses,
+          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(0), working_file, def.uses,
             true /*exclude_loc*/, false /*only_interesting*/, "reference",
             "references");
           break;
@@ -702,7 +754,7 @@ void QueryDbMainLoop(
         }
 
         if (db->qualified_names[i].find(query) != std::string::npos)
-          response.result.push_back(GetSymbolInfo(db, db->symbols[i]));
+          response.result.push_back(GetSymbolInfo(db, working_files, db->symbols[i]));
       }
 
       SendOutMessageToClient(language_client, response);
@@ -827,7 +879,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       //response.result.capabilities.textDocumentSync->change = lsTextDocumentSyncKind::Full;
       //response.result.capabilities.textDocumentSync->willSave = true;
       //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
-      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Full; // TODO: use incremental at some point
+      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental; // TODO: use incremental at some point
 
       response.result.capabilities.completionProvider = lsCompletionOptions();
       response.result.capabilities.completionProvider->resolveProvider = false;
@@ -970,7 +1022,7 @@ int main(int argc, char** argv) {
     if (context.shouldExit())
       return res;
 
-    RunTests();
+    //RunTests();
     return 0;
   }
   else if (options.find("--help") != options.end()) {
