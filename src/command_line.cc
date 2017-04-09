@@ -1,9 +1,11 @@
 // TODO: cleanup includes
+#include "cache.h"
 #include "code_completion.h"
 #include "file_consumer.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
+#include "options.h"
 #include "project.h"
 #include "platform.h"
 #include "test.h"
@@ -24,11 +26,69 @@
 #include <vector>
 
 namespace {
+
 const char* kIpcLanguageClientName = "language_client";
 
 const int kNumIndexers = 8 - 1;
 const int kQueueSizeBytes = 1024 * 8;
 const int kMaxWorkspaceSearchResults = 1000;
+
+
+QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
+  auto it = db->usr_to_symbol.find(filename);
+  if (it != db->usr_to_symbol.end())
+    return &db->files[it->second.idx];
+
+  std::cerr << "Unable to find file " << filename << std::endl;
+  return nullptr;
+}
+
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
+  QueryableTypeDef* def = &db->types[id.id];
+  return def->def.definition_spelling;
+}
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
+  QueryableFuncDef* def = &db->funcs[id.id];
+  return def->def.definition_spelling;
+}
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
+  QueryableVarDef* def = &db->vars[id.id];
+  return def->def.definition_spelling;
+}
+optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+  case SymbolKind::Type:
+    return db->types[symbol.idx].def.definition_spelling;
+  case SymbolKind::Func:
+    return db->funcs[symbol.idx].def.definition_spelling;
+  case SymbolKind::Var:
+    return db->vars[symbol.idx].def.definition_spelling;
+  case SymbolKind::File:
+  case SymbolKind::Invalid: {
+    assert(false && "unexpected");
+    break;
+  }
+  }
+  return nullopt;
+}
+
+lsRange GetLsRange(const Range& location) {
+  return lsRange(
+    lsPosition(location.start.line - 1, location.start.column - 1),
+    lsPosition(location.end.line - 1, location.end.column - 1));
+}
+
+lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
+  std::string path = db->files[file_id.id].def.usr;
+  return lsDocumentUri::FromPath(path);
+}
+
+lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& location) {
+  return lsLocation(
+    GetLsDocumentUri(db, location.path),
+    GetLsRange(location.range));
+}
+
 }
 
 struct Index_DoIndex {
@@ -76,116 +136,6 @@ using Index_OnIndexedQueue = ThreadedQueue<Index_OnIndexed>;
 template<typename TMessage>
 void SendMessage(IpcMessageQueue& t, MessageQueue* destination, TMessage& message) {
   t.SendMessage(destination, TMessage::kIpcId, message);
-}
-
-std::unordered_map<std::string, std::string> ParseOptions(int argc,
-  char** argv) {
-  std::unordered_map<std::string, std::string> output;
-
-  std::string previous_arg;
-
-  for (int i = 1; i < argc; ++i) {
-    std::string arg = argv[i];
-
-    if (arg[0] != '-') {
-      if (previous_arg.size() == 0) {
-        std::cerr << "Invalid arguments; switches must start with -"
-          << std::endl;
-        exit(1);
-      }
-
-      output[previous_arg] = arg;
-      previous_arg = "";
-    }
-    else {
-      output[arg] = "";
-      previous_arg = arg;
-    }
-  }
-
-  return output;
-}
-
-bool HasOption(const std::unordered_map<std::string, std::string>& options,
-  const std::string& option) {
-  return options.find(option) != options.end();
-}
-
-
-std::string Join(const std::vector<std::string>& elements, std::string sep) {
-  bool first = true;
-  std::string result;
-  for (const auto& element : elements) {
-    if (!first)
-      result += ", ";
-    first = false;
-    result += element;
-  }
-  return result;
-}
-
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
-  QueryableTypeDef* def = &db->types[id.id];
-  return def->def.definition_spelling;
-}
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
-  QueryableFuncDef* def = &db->funcs[id.id];
-  return def->def.definition_spelling;
-}
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
-  QueryableVarDef* def = &db->vars[id.id];
-  return def->def.definition_spelling;
-}
-
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
-  switch (symbol.kind) {
-  case SymbolKind::Type: {
-    QueryableTypeDef* def = &db->types[symbol.idx];
-    return def->def.definition_spelling;
-  }
-  case SymbolKind::Func: {
-    QueryableFuncDef* def = &db->funcs[symbol.idx];
-    return def->def.definition_spelling;
-  }
-  case SymbolKind::Var: {
-    QueryableVarDef* def = &db->vars[symbol.idx];
-    return def->def.definition_spelling;
-  }
-  case SymbolKind::File:
-  case SymbolKind::Invalid: {
-    assert(false && "unexpected");
-    break;
-  }
-  }
-  return nullopt;
-}
-
-optional<QueryableLocation> GetDefinitionSpellingOfUsr(QueryableDatabase* db, const Usr& usr) {
-  return GetDefinitionSpellingOfSymbol(db, db->usr_to_symbol[usr]);
-}
-
-optional<QueryableLocation> GetDefinitionExtentOfUsr(QueryableDatabase* db, const Usr& usr) {
-  SymbolIdx symbol = db->usr_to_symbol[usr];
-  switch (symbol.kind) {
-  case SymbolKind::Type: {
-    QueryableTypeDef* def = &db->types[symbol.idx];
-    return def->def.definition_extent;
-  }
-  case SymbolKind::Func: {
-    QueryableFuncDef* def = &db->funcs[symbol.idx];
-    return def->def.definition_extent;
-  }
-  case SymbolKind::Var: {
-    QueryableVarDef* def = &db->vars[symbol.idx];
-    return def->def.definition_extent;
-  }
-  case SymbolKind::File:
-  case SymbolKind::Invalid: {
-    assert(false && "unexpected");
-    break;
-  }
-  }
-  return nullopt;
 }
 
 template<typename T>
@@ -246,49 +196,6 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
 }
-
-std::string GetCachedFileName(std::string source_file) {
-  // TODO/FIXME
-  const char* kCacheDirectory = "C:/Users/jacob/Desktop/superindex/indexer/CACHE/";
-  std::replace(source_file.begin(), source_file.end(), '\\', '_');
-  std::replace(source_file.begin(), source_file.end(), '/', '_');
-  std::replace(source_file.begin(), source_file.end(), ':', '_');
-  std::replace(source_file.begin(), source_file.end(), '.', '_');
-  return kCacheDirectory + source_file + ".json";
-}
-
-std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename) {
-  // TODO FIXME FIXME FIXME
-  return nullptr;
-
-  std::string cache_file = GetCachedFileName(filename);
-
-  std::ifstream cache;
-  cache.open(GetCachedFileName(filename));
-  if (!cache.good())
-    return nullptr;
-
-  std::string file_content = std::string(
-    std::istreambuf_iterator<char>(cache),
-    std::istreambuf_iterator<char>());
-
-  optional<IndexedFile> indexed = Deserialize(filename, file_content);
-  if (indexed)
-    return MakeUnique<IndexedFile>(indexed.value());
-
-  return nullptr;
-}
-
-void WriteToCache(std::string filename, IndexedFile& file) {
-  std::string indexed_content = Serialize(file);
-
-  std::ofstream cache;
-  cache.open(GetCachedFileName(filename));
-  assert(cache.good());
-  cache << indexed_content;
-  cache.close();
-}
-
 
 bool IndexMain_DoIndex(FileConsumer* file_consumer,
                        Index_DoIndexQueue* queue_do_index,
@@ -385,33 +292,6 @@ void IndexMain(
   }
 }
 
-QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
-  auto it = db->usr_to_symbol.find(filename);
-  if (it != db->usr_to_symbol.end())
-    return &db->files[it->second.idx];
-
-  std::cerr << "Unable to find file " << filename << std::endl;
-  return nullptr;
-}
-
-lsRange GetLsRange(const Range& location) {
-  return lsRange(
-    lsPosition(location.start.line - 1, location.start.column - 1),
-    lsPosition(location.end.line - 1, location.end.column - 1));
-}
-
-lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
-  std::string path = db->files[file_id.id].def.usr;
-  return lsDocumentUri::FromPath(path);
-}
-
-lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& location) {
-  return lsLocation(
-    GetLsDocumentUri(db, location.path),
-    GetLsRange(location.range));
-}
-
-
 
 
 
@@ -501,25 +381,6 @@ void AddCodeLens(
   uses0.reserve(uses.size());
   for (const QueryFuncRef& use : uses)
     uses0.push_back(use.loc);
-  AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
-}
-
-void AddCodeLens(
-  QueryableDatabase* db,
-  std::vector<TCodeLens>* result,
-  QueryableLocation loc,
-  const std::vector<Usr>& usrs,
-  bool exclude_loc,
-  bool only_interesting,
-  const char* singular,
-  const char* plural) {
-  std::vector<QueryableLocation> uses0;
-  uses0.reserve(usrs.size());
-  for (const Usr& usr : usrs) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfUsr(db, usr);
-    if (loc)
-      uses0.push_back(loc.value());
-  }
   AddCodeLens(db, result, loc, uses0, exclude_loc, only_interesting, singular, plural);
 }
 
