@@ -33,7 +33,6 @@ const int kNumIndexers = 8 - 1;
 const int kQueueSizeBytes = 1024 * 8;
 const int kMaxWorkspaceSearchResults = 1000;
 
-
 QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   auto it = db->usr_to_symbol.find(filename);
   if (it != db->usr_to_symbol.end())
@@ -82,12 +81,44 @@ optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db,
   return nullopt;
 }
 
-lsRange GetLsRange(WorkingFile* working_file, const Range& location) {
+optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
+  return GetQueryable(db, id)->def.definition_extent;
+}
+optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
+  return GetQueryable(db, id)->def.definition_extent;
+}
+optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
+  return GetQueryable(db, id)->def.definition_extent;
+}
+optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+  case SymbolKind::File:
+    // TODO: If line 1 is deleted the file won't show up in, ie, workspace symbol search results.
+    return QueryableLocation(QueryFileId(symbol.idx), Range(false /*is_interesting*/, Position(1, 1), Position(1, 1)));
+  case SymbolKind::Type:
+    return db->types[symbol.idx].def.definition_extent;
+  case SymbolKind::Func:
+    return db->funcs[symbol.idx].def.definition_extent;
+  case SymbolKind::Var:
+    return db->vars[symbol.idx].def.definition_extent;
+  case SymbolKind::Invalid: {
+    assert(false && "unexpected");
+    break;
+  }
+  }
+  return nullopt;
+}
+
+optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
     return lsRange(
       lsPosition(location.start.line - 1, location.start.column - 1),
       lsPosition(location.end.line - 1, location.end.column - 1));
   }
+
+  // TODO: Should we also consider location.end.line?
+  if (working_file->IsDeletedDiskLine(location.start.line))
+    return nullopt;
 
   return lsRange(
     lsPosition(working_file->GetBufferLineFromDiskLine(location.start.line) - 1, location.start.column - 1),
@@ -104,15 +135,16 @@ lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
   return lsDocumentUri::FromPath(path);
 }
 
-lsLocation GetLsLocation(QueryableDatabase* db, WorkingFiles* working_files, const QueryableLocation& location) {
+optional<lsLocation> GetLsLocation(QueryableDatabase* db, WorkingFiles* working_files, const QueryableLocation& location) {
   std::string path;
   lsDocumentUri uri = GetLsDocumentUri(db, location.path, &path);
-  lsRange range = GetLsRange(working_files->GetFileByFilename(path), location.range);
-  return lsLocation(uri, range);
+  optional<lsRange> range = GetLsRange(working_files->GetFileByFilename(path), location.range);
+  if (!range)
+    return nullopt;
+  return lsLocation(uri, *range);
 }
 
-// Returns a symbol. The symbol will have the location pointing to the
-// definition.
+// Returns a symbol. The symbol will have *NOT* have a location assigned.
 lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
   lsSymbolInformation info;
 
@@ -121,15 +153,12 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
       QueryableFile* def = symbol.ResolveFile(db);
       info.name = def->def.usr;
       info.kind = lsSymbolKind::File;
-      info.location.uri.SetPath(def->def.usr);
       break;
     }
     case SymbolKind::Type: {
       QueryableTypeDef* def = symbol.ResolveType(db);
       info.name = def->def.qualified_name;
       info.kind = lsSymbolKind::Class;
-      if (def->def.definition_extent.has_value())
-        info.location = GetLsLocation(db, working_files, def->def.definition_extent.value());
       break;
     }
     case SymbolKind::Func: {
@@ -142,20 +171,12 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
       else {
         info.kind = lsSymbolKind::Function;
       }
-
-      if (def->def.definition_extent.has_value()) {
-        info.location = GetLsLocation(db, working_files, def->def.definition_extent.value());
-      }
       break;
     }
     case SymbolKind::Var: {
       QueryableVarDef* def = symbol.ResolveVar(db);
       info.name = def->def.qualified_name;
       info.kind = lsSymbolKind::Variable;
-
-      if (def->def.definition_extent.has_value()) {
-        info.location = GetLsLocation(db, working_files, def->def.definition_extent.value());
-      }
       break;
     }
     case SymbolKind::Invalid: {
@@ -180,7 +201,10 @@ void AddCodeLens(
   const char* singular,
   const char* plural) {
   TCodeLens code_lens;
-  code_lens.range = GetLsRange(working_file, loc.range);
+  optional<lsRange> range = GetLsRange(working_file, loc.range);
+  if (!range)
+    return;
+  code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "superindex.showReferences";
   code_lens.command->arguments.uri = GetLsDocumentUri(db, loc.path);
@@ -193,7 +217,10 @@ void AddCodeLens(
       continue;
     if (only_interesting && !use.range.interesting)
       continue;
-    unique_uses.insert(GetLsLocation(db, working_files, use));
+    optional<lsLocation> location = GetLsLocation(db, working_files, use);
+    if (!location)
+      continue;
+    unique_uses.insert(*location);
   }
   code_lens.command->arguments.locations.assign(unique_uses.begin(),
     unique_uses.end());
@@ -527,7 +554,7 @@ void QueryDbMainLoop(
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = language_client->GetMessages(&language_client->for_server);
   for (auto& message : messages) {
-    std::cerr << "[querydb] Processing message " << static_cast<int>(message->method_id) << std::endl;
+    //std::cerr << "[querydb] Processing message " << static_cast<int>(message->method_id) << std::endl;
 
     switch (message->method_id) {
     case IpcId::Quit: {
@@ -636,8 +663,11 @@ void QueryDbMainLoop(
         if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
           ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
           optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          if (location)
-            response.result.push_back(GetLsLocation(db, working_files, location.value()));
+          if (location) {
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, location.value());
+            if (ls_location)
+              response.result.push_back(*ls_location);
+          }
           break;
         }
       }
@@ -661,7 +691,10 @@ void QueryDbMainLoop(
       std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
       for (SymbolRef ref : file->def.outline) {
         lsSymbolInformation info = GetSymbolInfo(db, working_files, ref.idx);
-        info.location = GetLsLocation(db, working_files, ref.loc);
+        optional<lsLocation> location = GetLsLocation(db, working_files, ref.loc);
+        if (!location)
+          continue;
+        info.location = *location;
         response.result.push_back(info);
       }
 
@@ -753,8 +786,17 @@ void QueryDbMainLoop(
           break;
         }
 
-        if (db->qualified_names[i].find(query) != std::string::npos)
-          response.result.push_back(GetSymbolInfo(db, working_files, db->symbols[i]));
+        if (db->qualified_names[i].find(query) != std::string::npos) {
+          lsSymbolInformation info = GetSymbolInfo(db, working_files, db->symbols[i]);
+          optional<QueryableLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
+          if (!location)
+            continue;
+          optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
+          if (!ls_location)
+            continue;
+          info.location = *ls_location;
+          response.result.push_back(info);
+        }
       }
 
       SendOutMessageToClient(language_client, response);
@@ -917,7 +959,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
-      std::cerr << "Spending message " << (int)message->method_id << std::endl;
+      //std::cerr << "Sending message " << (int)message->method_id << std::endl;
       ipc->SendMessage(&ipc->for_server, message->method_id, *message.get());
       break;
     }

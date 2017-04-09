@@ -27,23 +27,19 @@ int LineCount(std::string::const_iterator start, const std::string::const_iterat
   return count;
 }
 
-bool IsNextTokenNewline(const std::string& str, int start) {
-  while (start < str.size()) {
-    // Peek a token ahead for \r\n. We cannot check a token back because
-    // isalpha('\r') returns false.
-    if ((start + 1 < str.size()) && str[start] == '\r' && str[start + 1] == '\n')
-      return true;
+bool IsPreviousTokenNewline(const std::string& str, int start) {
+  return start == 0 || str[start - 1] == '\n';
+}
 
-    if (str[start] == '\n')
-      return true;
-
-    if (!isalpha(str[start]))
-      return false;
-
-    ++start;
+int DetermineDiskLineForChange(WorkingFile* f, int start_offset, int buffer_line, int line_delta) {
+  // If we're adding a newline that means we will introduce a new virtual newline
+  // below. That's the case *except* if we are moving the current line down.
+  if (!IsPreviousTokenNewline(f->content, start_offset)) {
+    //std::cerr << " Applying newline workaround" << std::endl;
+    ++buffer_line;
   }
 
-  return true;
+  return f->GetDiskLineFromBufferLine(buffer_line);
 }
 
 }  // namespace
@@ -186,7 +182,7 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
     return;
   }
 
-  // TODO: we should probably pay attention to versioning.
+  //std::cerr << "VERSION " << change.textDocument.version << std::endl;
 
   for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
     //std::cerr << "Applying rangeLength=" << diff.rangeLength;
@@ -197,26 +193,28 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
     }
     else {
       int start_offset = GetOffsetForPosition(diff.range.start, file->content);
-      int previous_line_count = diff.range.end.line - diff.range.start.line;
-      int replace_line_count = LineCount(diff.text.begin(), diff.text.end());
+      int old_line_count = diff.range.end.line - diff.range.start.line;
+      int new_line_count = LineCount(diff.text.begin(), diff.text.end());
 
-      int line_delta = replace_line_count - previous_line_count;
+      assert(old_line_count == LineCount(file->content.begin() + start_offset, file->content.begin() + start_offset + diff.rangeLength + 1));
+
+      int line_delta = new_line_count - old_line_count;
       if (line_delta != 0) {
+        //std::cerr << " diff.range.start.line=" << diff.range.start.line+1 << ", diff.range.start.character=" << diff.range.start.character << std::endl;
+        //std::cerr << " diff.range.end.line=" << diff.range.end.line+1 << ", diff.range.end.character=" << diff.range.end.character << std::endl;
+        //std::cerr << " old_line_count=" << old_line_count << ", new_line_count=" << new_line_count << std::endl;
+        //std::cerr << " disk_line(diff.range.start.line)=" << file->GetDiskLineFromBufferLine(diff.range.start.line+1) << std::endl;
+        //std::cerr << " disk_line(diff.range.end.line)=" << file->GetDiskLineFromBufferLine(diff.range.end.line+1) << std::endl;
+
         // language server stores line counts starting at 0, we start at 1
         int buffer_line = diff.range.start.line + 1;
-
-        // If we're adding a newline but not actually shifting any of the
-        // contents of this line, we should mark the text prepended on the next
-        // line.
-        if (IsNextTokenNewline(file->content, start_offset))
-          ++buffer_line;
-
-        int disk_line = file->GetDiskLineFromBufferLine(buffer_line);
+        int disk_line = DetermineDiskLineForChange(file, start_offset, buffer_line, line_delta);
 
         bool found = false;
         for (int i = 0; i < file->changes.size(); ++i) {
           auto& change = file->changes[i];
-          if (change.disk_line == disk_line) {
+          if (disk_line == change.disk_line ||
+             (line_delta >= 1 && disk_line - 1 == change.disk_line && change.delta < 0) /* handles joining two lines and then resplitting them */ ) {
             change.delta += line_delta;
             found = true;
           }
@@ -227,14 +225,16 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
         if (!found)
           file->changes.push_back(WorkingFile::Change(disk_line, line_delta));
 
-        //std::cerr << "(changes.size()=" << file->changes.size() << ") Inserted delta=" << line_delta << " at disk_line=" << disk_line << " with buffer_line=" << buffer_line << std::endl;
-        //for (auto& change : file->changes)
-        //  std::cerr << "  disk_line=" << change.disk_line << " delta=" << change.delta << std::endl;
-
         std::sort(file->changes.begin(), file->changes.end(),
           [](const WorkingFile::Change& a, const WorkingFile::Change& b) {
           return a.disk_line < b.disk_line;
         });
+
+        //std::cerr << " APPLIED" << std::endl;
+        //std::cerr << " Inserted delta=" << line_delta << " at disk_line=" << disk_line << " with buffer_line=" << buffer_line << std::endl;
+        //std::cerr << " changes.size()=" << file->changes.size() << std::endl;
+        //for (auto& change : file->changes)
+        //  std::cerr << "  disk_line=" << change.disk_line << " delta=" << change.delta << std::endl;
       }
 
 
@@ -555,6 +555,68 @@ TEST_CASE("deleted_line past-start") {
   CHECK(f.IsDeletedDiskLine(3) == true);
   CHECK(f.IsDeletedDiskLine(4) == true);
   CHECK(f.IsDeletedDiskLine(5) == false);
+}
+
+TEST_CASE("wip") {
+  /*
+    VERSION 4
+     diff.range.start.line=2, diff.range.start.character=0
+     diff.range.end.line=  3, diff.range.end.character=  0
+     diff.text=""
+     Applying newline workaround
+     APPLIED
+     Inserted delta=-1 at disk_line=4 with buffer_line=4
+     changes.size()=1
+      disk_line=4 delta=-1
+
+
+    VERSION 7
+     diff.range.start.line=2, diff.range.start.character=0
+     diff.range.end.line=  2, diff.range.end.character=  0
+     diff.text="daaa\n"
+     Applying newline workaround
+     APPLIED
+     Inserted delta=1 at disk_line=5 with buffer_line=4
+     changes.size()=2
+      disk_line=4 delta=-1
+      disk_line=5 delta=1
+  */
+
+  WorkingFile f("", "");
+
+  /*
+  delete line 4
+  buffer line 4 -> disk line 5
+  */
+
+  f.changes.push_back(WorkingFile::Change(4, -1));
+
+  CHECK(f.GetDiskLineFromBufferLine(4) == 5);
+}
+
+TEST_CASE("DetermineDiskLineForChange") {
+  // aaa
+  // bbb
+  WorkingFile f("", "aaa\nbbb");
+
+  // Adding a line so we have
+  //  aaa
+  //
+  //  bbb
+  CHECK(DetermineDiskLineForChange(&f, 3 /*start_offset*/, 1 /*buffer_line*/, 1 /*line_delta*/) == 2);
+
+  // Adding a line so we have
+  //  
+  //  aaa
+  //  bbb
+  CHECK(DetermineDiskLineForChange(&f, 0 /*start_offset*/, 1 /*buffer_line*/, 1 /*line_delta*/) == 1);
+
+  // Adding a line so we have
+  //  a
+  //  aa
+  //  bbb
+  CHECK(DetermineDiskLineForChange(&f, 1 /*start_offset*/, 1 /*buffer_line*/, 1 /*line_delta*/) == 2);
+
 }
 
 TEST_SUITE_END();
