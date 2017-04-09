@@ -43,17 +43,27 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   return nullptr;
 }
 
+QueryableFile* GetQueryable(QueryableDatabase* db, const QueryFileId& id) {
+  return &db->files[id.id];
+}
+QueryableTypeDef* GetQueryable(QueryableDatabase* db, const QueryTypeId& id) {
+  return &db->types[id.id];
+}
+QueryableFuncDef* GetQueryable(QueryableDatabase* db, const QueryFuncId& id) {
+  return &db->funcs[id.id];
+}
+QueryableVarDef* GetQueryable(QueryableDatabase* db, const QueryVarId& id) {
+  return &db->vars[id.id];
+}
+
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
-  QueryableTypeDef* def = &db->types[id.id];
-  return def->def.definition_spelling;
+  return GetQueryable(db, id)->def.definition_spelling;
 }
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
-  QueryableFuncDef* def = &db->funcs[id.id];
-  return def->def.definition_spelling;
+  return GetQueryable(db, id)->def.definition_spelling;
 }
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
-  QueryableVarDef* def = &db->vars[id.id];
-  return def->def.definition_spelling;
+  return GetQueryable(db, id)->def.definition_spelling;
 }
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
@@ -87,6 +97,62 @@ lsLocation GetLsLocation(QueryableDatabase* db, const QueryableLocation& locatio
   return lsLocation(
     GetLsDocumentUri(db, location.path),
     GetLsRange(location.range));
+}
+
+// Returns a symbol. The symbol will have the location pointing to the
+// definition.
+lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, SymbolIdx symbol) {
+  lsSymbolInformation info;
+
+  switch (symbol.kind) {
+    case SymbolKind::File: {
+      QueryableFile* def = symbol.ResolveFile(db);
+      info.name = def->def.usr;
+      info.kind = lsSymbolKind::File;
+      info.location.uri.SetPath(def->def.usr);
+      break;
+    }
+    case SymbolKind::Type: {
+      QueryableTypeDef* def = symbol.ResolveType(db);
+      info.name = def->def.qualified_name;
+      info.kind = lsSymbolKind::Class;
+      if (def->def.definition_extent.has_value())
+        info.location = GetLsLocation(db, def->def.definition_extent.value());
+      break;
+    }
+    case SymbolKind::Func: {
+      QueryableFuncDef* def = symbol.ResolveFunc(db);
+      info.name = def->def.qualified_name;
+      if (def->def.declaring_type.has_value()) {
+        info.kind = lsSymbolKind::Method;
+        info.containerName = db->types[def->def.declaring_type->id].def.qualified_name;
+      }
+      else {
+        info.kind = lsSymbolKind::Function;
+      }
+
+      if (def->def.definition_extent.has_value()) {
+        info.location = GetLsLocation(db, def->def.definition_extent.value());
+      }
+      break;
+    }
+    case SymbolKind::Var: {
+      QueryableVarDef* def = symbol.ResolveVar(db);
+      info.name = def->def.qualified_name;
+      info.kind = lsSymbolKind::Variable;
+
+      if (def->def.definition_extent.has_value()) {
+        info.location = GetLsLocation(db, def->def.definition_extent.value());
+      }
+      break;
+    }
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
+  };
+
+  return info;
 }
 
 
@@ -543,43 +609,8 @@ void QueryDbMainLoop(
 
       std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
       for (SymbolRef ref : file->def.outline) {
-        SymbolIdx symbol = ref.idx;
-
-        lsSymbolInformation info;
+        lsSymbolInformation info = GetSymbolInfo(db, ref.idx);
         info.location = GetLsLocation(db, ref.loc);
-
-        switch (symbol.kind) {
-        case SymbolKind::Type: {
-          QueryableTypeDef& def = db->types[symbol.idx];
-          info.name = def.def.qualified_name;
-          info.kind = lsSymbolKind::Class;
-          break;
-        }
-        case SymbolKind::Func: {
-          QueryableFuncDef& def = db->funcs[symbol.idx];
-          info.name = def.def.qualified_name;
-          if (def.def.declaring_type.has_value()) {
-            info.kind = lsSymbolKind::Method;
-            info.containerName = db->types[def.def.declaring_type->id].def.qualified_name;
-          }
-          else {
-            info.kind = lsSymbolKind::Function;
-          }
-          break;
-        }
-        case SymbolKind::Var: {
-          QueryableVarDef& def = db->vars[symbol.idx];
-          info.name = def.def.qualified_name;
-          info.kind = lsSymbolKind::Variable;
-          break;
-        }
-        case SymbolKind::File:
-        case SymbolKind::Invalid: {
-          assert(false && "unexpected");
-          break;
-        }
-        };
-
         response.result.push_back(info);
       }
 
@@ -670,69 +701,8 @@ void QueryDbMainLoop(
           break;
         }
 
-        const std::string& name = db->qualified_names[i];
-        // std::cerr << "- Considering " << name << std::endl;
-
-        if (name.find(query) != std::string::npos) {
-          lsSymbolInformation info;
-          info.name = name;
-
-          SymbolIdx symbol = db->symbols[i];
-
-          // TODO: dedup this code w/ above (ie, add ctor to convert symbol to
-          // SymbolInformation)
-          switch (symbol.kind) {
-          case SymbolKind::File: {
-            QueryableFile& def = db->files[symbol.idx];
-            info.name = def.def.usr;
-            info.kind = lsSymbolKind::File;
-            info.location.uri.SetPath(def.def.usr);
-            break;
-          }
-                                 // TODO: file
-          case SymbolKind::Type: {
-            QueryableTypeDef& def = db->types[symbol.idx];
-            info.name = def.def.qualified_name;
-            info.kind = lsSymbolKind::Class;
-
-            if (def.def.definition_extent.has_value())
-              info.location = GetLsLocation(db, def.def.definition_extent.value());
-            break;
-          }
-          case SymbolKind::Func: {
-            QueryableFuncDef& def = db->funcs[symbol.idx];
-            info.name = def.def.qualified_name;
-            if (def.def.declaring_type.has_value()) {
-              info.kind = lsSymbolKind::Method;
-              info.containerName = db->types[def.def.declaring_type->id].def.qualified_name;
-            }
-            else {
-              info.kind = lsSymbolKind::Function;
-            }
-
-            if (def.def.definition_extent.has_value()) {
-              info.location = GetLsLocation(db, def.def.definition_extent.value());
-            }
-            break;
-          }
-          case SymbolKind::Var: {
-            QueryableVarDef& def = db->vars[symbol.idx];
-            info.name = def.def.qualified_name;
-            info.kind = lsSymbolKind::Variable;
-
-            if (def.def.definition_extent.has_value()) {
-              info.location = GetLsLocation(db, def.def.definition_extent.value());
-            }
-            break;
-          }
-          case SymbolKind::Invalid: {
-            assert(false && "unexpected");
-            break;
-          }
-          };
-
-          response.result.push_back(info);
-        }
+        if (db->qualified_names[i].find(query) != std::string::npos)
+          response.result.push_back(GetSymbolInfo(db, db->symbols[i]));
       }
 
       SendOutMessageToClient(language_client, response);

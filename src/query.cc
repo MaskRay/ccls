@@ -171,7 +171,22 @@ void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
 
 
 
-
+QueryableFile* SymbolIdx::ResolveFile(QueryableDatabase* db) const {
+  assert(kind == SymbolKind::File);
+  return &db->files[idx];
+}
+QueryableTypeDef* SymbolIdx::ResolveType(QueryableDatabase* db) const {
+  assert(kind == SymbolKind::Type);
+  return &db->types[idx];
+}
+QueryableFuncDef* SymbolIdx::ResolveFunc(QueryableDatabase* db) const {
+  assert(kind == SymbolKind::Func);
+  return &db->funcs[idx];
+}
+QueryableVarDef* SymbolIdx::ResolveVar(QueryableDatabase* db) const {
+  assert(kind == SymbolKind::Var);
+  return &db->vars[idx];
+}
 
 
 

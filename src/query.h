@@ -56,6 +56,12 @@ struct QueryableLocation {
   }
 };
 
+class QueryableFile;
+class QueryableTypeDef;
+class QueryableFuncDef;
+class QueryableVarDef;
+class QueryableDatabase;
+
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 struct SymbolIdx {
   SymbolKind kind;
@@ -71,6 +77,11 @@ struct SymbolIdx {
   bool operator<(const SymbolIdx& that) const {
     return kind < that.kind || idx < that.idx;
   }
+
+  QueryableFile* ResolveFile(QueryableDatabase* db) const;
+  QueryableTypeDef* ResolveType(QueryableDatabase* db) const;
+  QueryableFuncDef* ResolveFunc(QueryableDatabase* db) const;
+  QueryableVarDef* ResolveVar(QueryableDatabase* db) const;
 };
 
 struct SymbolRef {
