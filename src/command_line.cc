@@ -628,6 +628,10 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentDidSave: {
       auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
 
+      WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+      if (working_file)
+        working_file->changes.clear();
+
       // Send an index update request.
       Index_DoIndex request(Index_DoIndex::Type::Update);
       optional<CompilationEntry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
