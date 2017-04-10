@@ -13,12 +13,16 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
   std::vector<CompilationEntry> result;
 
   std::vector<std::string> args;
+  std::cerr << "Using arguments: ";
   for (const std::string& line : ReadLines(project_directory + "/clang_args")) {
     if (line.empty() || StartsWith(line, "#"))
       continue;
-    std::cerr << "Adding argument " << line << std::endl;
+    if (!args.empty())
+      std::cerr << ", ";
+    std::cerr << line;
     args.push_back(line);
   }
+  std::cerr << std::endl;
 
 
   std::vector<std::string> files = GetFilesInFolder(project_directory, true /*recursive*/, true /*add_folder_to_path*/);

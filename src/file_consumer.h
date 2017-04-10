@@ -27,6 +27,9 @@ struct FileConsumer {
   // Returns IndexedFile for the file or nullptr.
   IndexedFile* TryConsumeFile(const std::string& file);
 
+  // Forcibly create a local file, even if it has already been parsed.
+  void ForceLocal(const std::string& file);
+
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexedFile>> TakeLocalState();
 

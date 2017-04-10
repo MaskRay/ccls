@@ -15,9 +15,6 @@ std::string GetCachedFileName(std::string source_file) {
 }
 
 std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename) {
-  // TODO FIXME FIXME FIXME
-  return nullptr;
-
   std::string cache_file = GetCachedFileName(filename);
 
   std::ifstream cache;

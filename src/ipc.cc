@@ -16,6 +16,8 @@ const char* IpcIdToString(IpcId id) {
     return "textDocument/didChange";
   case IpcId::TextDocumentDidClose:
     return "textDocument/didClose";
+  case IpcId::TextDocumentDidSave:
+    return "textDocument/didSave";
   case IpcId::TextDocumentCompletion:
     return "textDocument/completion";
   case IpcId::TextDocumentDefinition:

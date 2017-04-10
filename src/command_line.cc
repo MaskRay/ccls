@@ -377,6 +377,7 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_TextDocumentDidOpen>(ipc.get());
   RegisterId<Ipc_TextDocumentDidChange>(ipc.get());
   RegisterId<Ipc_TextDocumentDidClose>(ipc.get());
+  RegisterId<Ipc_TextDocumentDidSave>(ipc.get());
   RegisterId<Ipc_TextDocumentComplete>(ipc.get());
   RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
@@ -397,6 +398,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
@@ -414,6 +416,17 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
 
   Timer time;
 
+  // TODO TODO TODO TODO TODO
+  // TODO TODO TODO TODO TODO
+  // TODO TODO TODO TODO TODO
+  // TODO TODO TODO TODO TODO
+  // We're not loading cached header files on restore. We should store the
+  // list of headers associated with a cc file in the cache and then load
+  // them here.
+  // TODO TODO TODO TODO TODO
+  // TODO TODO TODO TODO TODO
+  // TODO TODO TODO TODO TODO
+  // TODO TODO TODO TODO TODO
 
 
 
@@ -423,7 +436,7 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
   if (index_request->type == Index_DoIndex::Type::Import) {
     index_request->type = Index_DoIndex::Type::Update;
     std::unique_ptr<IndexedFile> old_index = LoadCachedFile(index_request->path);
-    time.ResetAndPrint("Loading cached index");
+    time.ResetAndPrint("Loading cached index " + index_request->path);
 
     // If import fails just do a standard update.
     if (old_index) {
@@ -437,7 +450,7 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
 
   // Parse request and send a response.
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(file_consumer, index_request->path, index_request->args);
-  time.ResetAndPrint("Parsing/indexing");
+  time.ResetAndPrint("Parsing/indexing " + index_request->path);
 
   for (auto& current_index : indexes) {
     std::cerr << "Got index for " << current_index->path << std::endl;
@@ -450,7 +463,7 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
     // of the current 4).
 
     // Cache file so we can diff it later.
-    WriteToCache(index_request->path, *current_index);
+    WriteToCache(current_index->path, *current_index);
     time.ResetAndPrint("Cache index update to disk");
 
     // Send response to create id map.
@@ -602,28 +615,26 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentDidChange: {
       auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
       working_files->OnChange(msg->params);
-
-      
-      // Send an index update request.
-      // TODO: we should only do this when we save. Figure out a way to handle code lens (dynamic offsets?)
-
-#if false
-      Index_DoIndex request(Index_DoIndex::Type::Update);
-      //WorkingFile* changed = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
-      optional<CompilationEntry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
-      request.path = msg->params.textDocument.uri.GetPath();
-      if (entry)
-        request.args = entry->args;
-      queue_do_index->Enqueue(std::move(request));
-#endif
-
       //std::cerr << "Changing " << msg->params.textDocument.uri.GetPath() << std::endl;
       break;
     }
     case IpcId::TextDocumentDidClose: {
       auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
       std::cerr << "Closing " << msg->params.textDocument.uri.GetPath() << std::endl;
-      //working_files->OnClose(msg->params);
+      working_files->OnClose(msg->params);
+      break;
+    }
+
+    case IpcId::TextDocumentDidSave: {
+      auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
+
+      // Send an index update request.
+      Index_DoIndex request(Index_DoIndex::Type::Update);
+      optional<CompilationEntry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
+      request.path = msg->params.textDocument.uri.GetPath();
+      if (entry)
+        request.args = entry->args;
+      queue_do_index->Enqueue(std::move(request));
       break;
     }
 
@@ -848,7 +859,7 @@ void QueryDbMainLoop(
 }
 
 void QueryDbMain() {
-  std::cerr << "Running QueryDb" << std::endl;
+  //std::cerr << "Running QueryDb" << std::endl;
 
   // Create queues.
   std::unique_ptr<IpcMessageQueue> ipc = BuildIpcMessageQueue(kIpcLanguageClientName, kQueueSizeBytes);
@@ -921,7 +932,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       //response.result.capabilities.textDocumentSync->change = lsTextDocumentSyncKind::Full;
       //response.result.capabilities.textDocumentSync->willSave = true;
       //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
-      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental; // TODO: use incremental at some point
+      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental;
 
       response.result.capabilities.completionProvider = lsCompletionOptions();
       response.result.capabilities.completionProvider->resolveProvider = false;
@@ -936,7 +947,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
 
       response.result.capabilities.workspaceSymbolProvider = true;
 
-      response.Write(std::cerr);
+      //response.Write(std::cerr);
       response.Write(std::cout);
       break;
     }
@@ -953,12 +964,13 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
 
     case IpcId::TextDocumentDidOpen:
     case IpcId::TextDocumentDidChange:
-    case IpcId::TextDocumentDidClose: {
+    case IpcId::TextDocumentDidClose:
+    case IpcId::TextDocumentDidSave:
     case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDefinition:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
-    case IpcId::WorkspaceSymbol:
+    case IpcId::WorkspaceSymbol: {
       //std::cerr << "Sending message " << (int)message->method_id << std::endl;
       ipc->SendMessage(&ipc->for_server, message->method_id, *message.get());
       break;
@@ -1043,7 +1055,7 @@ int main(int argc, char** argv) {
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  //std::this_thread::sleep_for(std::chrono::seconds(3));
+  std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
   RegisterMessageTypes();
@@ -1092,17 +1104,17 @@ int main(int argc, char** argv) {
     exit(0);
   }
   else if (HasOption(options, "--language-server")) {
-    std::cerr << "Running language server" << std::endl;
+    //std::cerr << "Running language server" << std::endl;
     LanguageServerMain(argv[0]);
     return 0;
   }
   else if (HasOption(options, "--querydb")) {
-    std::cerr << "Running querydb" << std::endl;
+    //std::cerr << "Running querydb" << std::endl;
     QueryDbMain();
     return 0;
   }
   else {
-    std::cerr << "Running language server" << std::endl;
+    //std::cerr << "Running language server" << std::endl;
     LanguageServerMain(argv[0]);
     return 0;
   }

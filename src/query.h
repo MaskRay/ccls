@@ -67,7 +67,7 @@ struct SymbolIdx {
   SymbolKind kind;
   size_t idx;
 
-  SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
+  explicit SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
   SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
 
   bool operator==(const SymbolIdx& that) const {

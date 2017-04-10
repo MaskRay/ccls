@@ -5,15 +5,6 @@
 
 FileConsumer::FileConsumer(SharedState* shared_state) : shared_(shared_state) {}
 
-std::vector<std::unique_ptr<IndexedFile>> FileConsumer::TakeLocalState() {
-  std::vector<std::unique_ptr<IndexedFile>> result;
-  for (auto& entry : local_) {
-    if (entry.second)
-      result.push_back(std::move(entry.second));
-  }
-  return result;
-}
-
 IndexedFile* FileConsumer::TryConsumeFile(const std::string& file) {
   // Try to find cached local result.
   auto it = local_.find(file);
@@ -28,4 +19,19 @@ IndexedFile* FileConsumer::TryConsumeFile(const std::string& file) {
   }
   local_[file] = did_insert ? MakeUnique<IndexedFile>(file) : nullptr;
   return local_[file].get();
+}
+
+void FileConsumer::ForceLocal(const std::string& file) {
+  auto it = local_.find(file);
+  if (it == local_.end())
+    local_[file] = MakeUnique<IndexedFile>(file);
+}
+
+std::vector<std::unique_ptr<IndexedFile>> FileConsumer::TakeLocalState() {
+  std::vector<std::unique_ptr<IndexedFile>> result;
+  for (auto& entry : local_) {
+    if (entry.second)
+      result.push_back(std::move(entry.second));
+  }
+  return result;
 }

@@ -1254,6 +1254,8 @@ void indexEntityReference(CXClientData client_data,
 }
 
 std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std::string filename, std::vector<std::string> args, bool dump_ast) {
+  //return {};
+
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
 
@@ -1287,6 +1289,8 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std
 
   NamespaceHelper ns;
   IndexParam param(file_consumer, &ns);
+
+  file_consumer->ForceLocal(filename);
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),

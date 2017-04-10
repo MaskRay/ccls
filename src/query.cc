@@ -299,9 +299,10 @@ void CompareGroups(
 
 // TODO: consider having separate lookup maps so they are smaller (maybe
 // lookups will go faster).
+// TODO: Figure out where the invalid SymbolKinds are coming from.
 QueryFileId GetQueryFileIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end()) {
+  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
     assert(it->second.kind == SymbolKind::File);
     return QueryFileId(it->second.idx);
   }
@@ -314,7 +315,7 @@ QueryFileId GetQueryFileIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
 
 QueryTypeId GetQueryTypeIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end()) {
+  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
     assert(it->second.kind == SymbolKind::Type);
     return QueryTypeId(it->second.idx);
   }
@@ -327,7 +328,7 @@ QueryTypeId GetQueryTypeIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
 
 QueryFuncId GetQueryFuncIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end()) {
+  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
     assert(it->second.kind == SymbolKind::Func);
     return QueryFuncId(it->second.idx);
   }
@@ -340,7 +341,7 @@ QueryFuncId GetQueryFuncIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
 
 QueryVarId GetQueryVarIdFromUsr(QueryableDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end()) {
+  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
     assert(it->second.kind == SymbolKind::Var);
     return QueryVarId(it->second.idx);
   }
@@ -491,8 +492,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
                       previous, current, \
                       &removed, &added); \
     if (did_add) {\
-      std::cerr << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl; \
-      query_name.push_back(MergeableUpdate<type>(current_def->def.usr, removed, added)); \
+      /*std::cerr << "Adding mergeable update on " << current_def->def.short_name << " (" << current_def->def.usr << ") for field " << #index_name << std::endl;*/ \
+      query_name.push_back(MergeableUpdate<type>(current_def->def.usr, added, removed)); \
     } \
   }
   // File

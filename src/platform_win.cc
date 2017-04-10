@@ -41,7 +41,7 @@ struct PlatformMutexWin : public PlatformMutex {
   HANDLE raw_mutex = INVALID_HANDLE_VALUE;
 
   PlatformMutexWin(const std::string& name) {
-    std::cerr << "[win] Creating mutex with name " << name << std::endl;
+    //std::cerr << "[win] Creating mutex with name " << name << std::endl;
     raw_mutex = CreateMutex(nullptr, false /*initial_owner*/, name.c_str());
     CheckForError({ ERROR_ALREADY_EXISTS });
   }
@@ -72,8 +72,8 @@ struct PlatformSharedMemoryWin : public PlatformSharedMemory {
   HANDLE shmem_;
 
   PlatformSharedMemoryWin(const std::string& name, size_t capacity) {
-    std::cerr << "[win] Creating shared memory with name " << name
-      << " and capacity " << capacity << std::endl;
+    //std::cerr << "[win] Creating shared memory with name " << name
+    //  << " and capacity " << capacity << std::endl;
     this->name = name;
 
     shmem_ = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0,

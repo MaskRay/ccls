@@ -240,6 +240,22 @@ optional<IndexedFile> Deserialize(std::string path, std::string serialized) {
 
   IndexedFile file(path);
   Reflect(reader, file);
+  
+  // Restore non-serialized state.
+  file.path = path;
+  file.id_cache.primary_file = file.path;
+  for (const auto& type : file.types) {
+    file.id_cache.type_id_to_usr[type.id] = type.def.usr;
+    file.id_cache.usr_to_type_id[type.def.usr] = type.id;
+  }
+  for (const auto& func : file.funcs) {
+    file.id_cache.func_id_to_usr[func.id] = func.def.usr;
+    file.id_cache.usr_to_func_id[func.def.usr] = func.id;
+  }
+  for (const auto& var : file.vars) {
+    file.id_cache.var_id_to_usr[var.id] = var.def.usr;
+    file.id_cache.usr_to_var_id[var.def.usr] = var.id;
+  }
 
   return file;
 }
