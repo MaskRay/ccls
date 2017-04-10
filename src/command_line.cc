@@ -55,6 +55,43 @@ QueryableVarDef* GetQueryable(QueryableDatabase* db, const QueryVarId& id) {
   return &db->vars[id.id];
 }
 
+#if false
+optional<QueryableLocation> GetDeclarationOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    case SymbolKind::Type:
+      return db->types[symbol.idx].def.definition_spelling;
+    case SymbolKind::Func:
+      return db->funcs[symbol.idx].;
+    case SymbolKind::Var:
+      return db->vars[symbol.idx].uses;
+    case SymbolKind::File:
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
+  }
+  return {};
+}
+#endif
+
+std::vector<QueryableLocation> GetUsesOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    case SymbolKind::Type:
+      return db->types[symbol.idx].uses;
+    case SymbolKind::Func:
+      return db->funcs[symbol.idx].uses;
+    case SymbolKind::Var:
+      return db->vars[symbol.idx].uses;
+    case SymbolKind::File:
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
+  }
+  return {};
+}
+
+
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
   return GetQueryable(db, id)->def.definition_spelling;
 }
@@ -380,6 +417,7 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_TextDocumentDidSave>(ipc.get());
   RegisterId<Ipc_TextDocumentComplete>(ipc.get());
   RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
+  RegisterId<Ipc_TextDocumentReferences>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
   RegisterId<Ipc_TextDocumentCodeLens>(ipc.get());
   RegisterId<Ipc_CodeLensResolve>(ipc.get());
@@ -401,6 +439,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
@@ -669,6 +708,39 @@ void QueryDbMainLoop(
       Out_TextDocumentDefinition response;
       response.id = msg->id;
 
+      int target_line = msg->params.position.line + 1;
+      int target_column = msg->params.position.character + 1;
+
+      for (const SymbolRef& ref : file->def.all_symbols) {
+        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
+            ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+          // Found symbol. Return definition.
+          optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
+          if (location) {
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, location.value());
+            if (ls_location)
+              response.result.push_back(*ls_location);
+          }
+          break;
+        }
+      }
+
+      SendOutMessageToClient(language_client, response);
+      break;
+    }
+
+    case IpcId::TextDocumentReferences: {
+      auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
+
+      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
+
+      Out_TextDocumentReferences response;
+      response.id = msg->id;
+
       // TODO: Edge cases (whitespace, etc) will work a lot better
       // if we store range information instead of hacking it.
       int target_line = msg->params.position.line + 1;
@@ -676,10 +748,22 @@ void QueryDbMainLoop(
 
       for (const SymbolRef& ref : file->def.all_symbols) {
         if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
-          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
-          optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          if (location) {
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, location.value());
+            ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+
+          optional<QueryableLocation> excluded_declaration;
+          if (!msg->params.context.includeDeclaration) {
+            std::cerr << "Excluding declaration in references" << std::endl;
+            excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
+          }
+
+          // Found symbol. Return references.
+          std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+          response.result.reserve(uses.size());
+          for (const QueryableLocation& use : uses) {
+            if (excluded_declaration.has_value() && use == *excluded_declaration)
+              continue;
+
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
             if (ls_location)
               response.result.push_back(*ls_location);
           }
@@ -946,9 +1030,8 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       response.result.capabilities.codeLensProvider->resolveProvider = false;
 
       response.result.capabilities.definitionProvider = true;
-
+      response.result.capabilities.referencesProvider = true;
       response.result.capabilities.documentSymbolProvider = true;
-
       response.result.capabilities.workspaceSymbolProvider = true;
 
       //response.Write(std::cerr);
@@ -972,6 +1055,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDidSave:
     case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDefinition:
+    case IpcId::TextDocumentReferences:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol: {
@@ -1080,7 +1164,7 @@ int main(int argc, char** argv) {
     if (context.shouldExit())
       return res;
 
-    //RunTests();
+    RunTests();
     return 0;
   }
   else if (options.find("--help") != options.end()) {

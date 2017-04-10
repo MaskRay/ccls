@@ -7,7 +7,6 @@ void caller() {
 }
 
 /*
-// TODO FIXME: called() has no callers.
 OUTPUT:
 {
   "funcs": [{

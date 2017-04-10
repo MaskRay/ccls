@@ -1131,6 +1131,32 @@ struct Out_TextDocumentDefinition : public lsOutMessage<Out_TextDocumentDefiniti
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
+// References
+struct Ipc_TextDocumentReferences : public IpcMessage<Ipc_TextDocumentReferences> {
+  struct lsReferenceContext {
+    // Include the declaration of the current symbol.
+    bool includeDeclaration;
+  };
+  struct lsReferenceParams : public lsTextDocumentPositionParams {
+    lsTextDocumentIdentifier textDocument;
+    lsPosition position;
+    lsReferenceContext context;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentReferences;
+
+  lsRequestId id;
+  lsReferenceParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext, includeDeclaration);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceParams, textDocument, position, context);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences, id, params);
+struct Out_TextDocumentReferences : public lsOutMessage<Out_TextDocumentReferences> {
+  lsRequestId id;
+  NonElidedVector<lsLocation> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
+
 // List symbols in a document.
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;

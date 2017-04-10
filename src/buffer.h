@@ -8,7 +8,7 @@ struct ScopedLock {
 };
 
 // Points to a generic block of memory. Note that |data| is relocatable, ie,
-// multiple Buffer instantations may point to the same underlying block of
+// multiple Buffer instantiations may point to the same underlying block of
 // memory but the data pointer has different values.
 struct Buffer {
   // Create a new buffer of the given capacity using process-local memory.
