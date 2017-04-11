@@ -36,6 +36,18 @@ const int kNumIndexers = 8 - 1;
 const int kQueueSizeBytes = 1024 * 8;
 const int kMaxWorkspaceSearchResults = 1000;
 
+QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename, QueryFileId* file_id) {
+  auto it = db->usr_to_symbol.find(filename);
+  if (it != db->usr_to_symbol.end()) {
+    *file_id = QueryFileId(it->second.idx);
+    return &db->files[it->second.idx];
+  }
+
+  std::cerr << "Unable to find file " << filename << std::endl;
+  *file_id = QueryFileId(-1);
+  return nullptr;
+}
+
 QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   auto it = db->usr_to_symbol.find(filename);
   if (it != db->usr_to_symbol.end())
@@ -132,21 +144,36 @@ optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, c
 }
 optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
-  case SymbolKind::File:
-    // TODO: If line 1 is deleted the file won't show up in, ie, workspace symbol search results.
-    return QueryableLocation(QueryFileId(symbol.idx), Range(false /*is_interesting*/, Position(1, 1), Position(1, 1)));
-  case SymbolKind::Type:
-    return db->types[symbol.idx].def.definition_extent;
-  case SymbolKind::Func:
-    return db->funcs[symbol.idx].def.definition_extent;
-  case SymbolKind::Var:
-    return db->vars[symbol.idx].def.definition_extent;
-  case SymbolKind::Invalid: {
-    assert(false && "unexpected");
-    break;
-  }
+    case SymbolKind::File:
+      // TODO: If line 1 is deleted the file won't show up in, ie, workspace symbol search results.
+      return QueryableLocation(QueryFileId(symbol.idx), Range(false /*is_interesting*/, Position(1, 1), Position(1, 1)));
+    case SymbolKind::Type:
+      return db->types[symbol.idx].def.definition_extent;
+    case SymbolKind::Func:
+      return db->funcs[symbol.idx].def.definition_extent;
+    case SymbolKind::Var:
+      return db->vars[symbol.idx].def.definition_extent;
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
   }
   return nullopt;
+}
+
+std::vector<QueryableLocation> GetDeclarationsOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    case SymbolKind::Func:
+      return db->funcs[symbol.idx].declarations;
+    case SymbolKind::Var: {
+      optional<QueryableLocation> declaration = db->vars[symbol.idx].def.declaration;
+      if (declaration)
+        return { *declaration };
+      break;
+    }
+  }
+
+  return {};
 }
 
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
@@ -738,7 +765,8 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentDefinition: {
       auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
 
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      QueryFileId file_id;
+      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -751,19 +779,37 @@ void QueryDbMainLoop(
       int target_column = msg->params.position.character + 1;
 
       for (const SymbolRef& ref : file->def.all_symbols) {
-        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
-            ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+        if (ref.loc.range.Contains(target_line, target_column)) {
           // Found symbol. Return definition.
-          optional<QueryableLocation> spelling = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          if (spelling) {
+          optional<QueryableLocation> definition_spelling = GetDefinitionSpellingOfSymbol(db, ref.idx);
+          if (definition_spelling) {
+
+            // If the cursor is currently at the definition we should goto the declaration if possible.
+            if (definition_spelling->path == file_id && definition_spelling->range.Contains(target_line, target_column)) {
+              // Goto declaration.
+
+              std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbol(db, ref.idx);
+              for (auto declaration : declarations) {
+                optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
+                if (ls_declaration)
+                  response.result.push_back(*ls_declaration);
+              }
+
+              if (!response.result.empty())
+                break;
+            }
+
+
+            // Goto definition.
+
             // We use spelling start and extent end because this causes vscode
             // to highlight the entire definition when previewing / hoving with
             // the mouse.
             optional<QueryableLocation> extent = GetDefinitionExtentOfSymbol(db, ref.idx);
             if (extent)
-              spelling->range.end = extent->range.end;
+              definition_spelling->range.end = extent->range.end;
 
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, spelling.value());
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, definition_spelling.value());
             if (ls_location)
               response.result.push_back(*ls_location);
           }

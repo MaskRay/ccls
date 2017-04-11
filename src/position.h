@@ -31,6 +31,8 @@ struct Range {
   Range(bool interesting, Position start, Position end);
   explicit Range(const char* encoded);
 
+  bool Contains(int line, int column) const;
+
   std::string ToString();
   Range WithInteresting(bool interesting);
 
