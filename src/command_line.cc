@@ -951,8 +951,6 @@ void QueryDbMainLoop(
     }
 
     case IpcId::TextDocumentCodeLens: {
-      // TODO: add code lens for
-      //  - jump to parent method for functions
       auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
 
       Out_TextDocumentCodeLens response;
@@ -991,27 +989,6 @@ void QueryDbMainLoop(
 
           int offset = 0;
 
-          /*
-          // TODO: See if we can get this working.
-          optional<QueryableLocation> base_definition = GetBaseDefinitionSpelling(db, func);
-          if (base_definition) {
-            optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_definition);
-            if (ls_base) {
-              optional<lsRange> range = GetLsRange(common.working_file, ref.loc.range);
-              if (range) {
-                TCodeLens code_lens;
-                code_lens.range = *range;
-                code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-                code_lens.command->command = "superindex.goto";
-                code_lens.command->arguments.uri = GetLsDocumentUri(db, ref.loc.path);
-                code_lens.command->arguments.position = code_lens.range.start;
-                code_lens.command->arguments.locations.push_back(*ls_base);
-                response.result.push_back(code_lens);
-              }
-            }
-          }
-          */
-
           std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, func);
           std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, func);
           if (base_callers.empty() && derived_callers.empty()) {
@@ -1027,11 +1004,32 @@ void QueryDbMainLoop(
           }
 
           AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.derived), "derived", "derived");
+
+          // "Base"
+          optional<QueryableLocation> base_definition = GetBaseDefinitionSpelling(db, func);
+          if (base_definition) {
+            optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_definition);
+            if (ls_base) {
+              optional<lsRange> range = GetLsRange(common.working_file, ref.loc.range);
+              if (range) {
+                TCodeLens code_lens;
+                code_lens.range = *range;
+                code_lens.range.start.character += offset++;
+                code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+                code_lens.command->title = "Base";
+                code_lens.command->command = "superindex.goto";
+                code_lens.command->arguments.uri = ls_base->uri;
+                code_lens.command->arguments.position = ls_base->range.start;
+                response.result.push_back(code_lens);
+              }
+            }
+          }
+
           break;
         }
         case SymbolKind::Var: {
           QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), def.uses, "reference", "references", true /*exclude_loc*/, false /*only_interesting*/);
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), def.uses, "ref", "refs", true /*exclude_loc*/, false /*only_interesting*/);
           break;
         }
         case SymbolKind::File:

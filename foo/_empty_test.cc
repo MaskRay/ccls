@@ -27,7 +27,9 @@ int foo() {
 
 float MyBar::MemberFunc(int a, char b, std::vector<int> foo) {
   this->x = 100;
-  return 0;
+  this->MemberFunc(0, 0, {});
+
+  return ::foo();
 }
 
 
