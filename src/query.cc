@@ -638,7 +638,6 @@ void QueryableDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdate>& updates) {
   for (auto& def : updates) {
-    std::cerr << "Importing def for " << def.usr << std::endl;
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 

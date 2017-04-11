@@ -19,6 +19,7 @@ OUTPUT: simple_header.h
 
 OUTPUT: simple_impl.cc
 {
+  "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/simple_header.h"],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@impl#",

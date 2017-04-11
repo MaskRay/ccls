@@ -24,11 +24,13 @@ struct FileConsumer {
   // Returns true if this instance owns given |file|. This will also attempt to
   // take ownership over |file|.
   //
-  // Returns IndexedFile for the file or nullptr.
-  IndexedFile* TryConsumeFile(const std::string& file);
+  // Returns IndexedFile for the file or nullptr. |is_first_ownership| is set
+  // to true iff the function just took ownership over the file. Otherwise it
+  // is set to false.
+  IndexedFile* TryConsumeFile(const std::string& file, bool* is_first_ownership);
 
   // Forcibly create a local file, even if it has already been parsed.
-  void ForceLocal(const std::string& file);
+  IndexedFile* ForceLocal(const std::string& file);
 
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexedFile>> TakeLocalState();

@@ -424,6 +424,7 @@ struct IndexedFile {
 
   std::string path;
 
+  std::vector<std::string> dependencies;
   std::vector<IndexedTypeDef> types;
   std::vector<IndexedFuncDef> funcs;
   std::vector<IndexedVarDef> vars;

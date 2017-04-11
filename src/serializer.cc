@@ -207,6 +207,7 @@ bool ReflectMemberStart(Writer& visitor, IndexedFile& value) {
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexedFile& value) {
   REFLECT_MEMBER_START();
+  REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);
   REFLECT_MEMBER(vars);

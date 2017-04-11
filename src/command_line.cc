@@ -25,6 +25,9 @@
 #include <thread>
 #include <vector>
 
+// TODO: provide a feature like 'https://github.com/goldsborough/clang-expand', ie, a fully linear view of a function with
+//       inline function calls expanded. We can probably use vscode decorators to achieve it.
+
 namespace {
 
 const char* kIpcLanguageClientName = "language_client";
@@ -475,10 +478,19 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
   if (index_request->type == Index_DoIndex::Type::Import) {
     index_request->type = Index_DoIndex::Type::Update;
     std::unique_ptr<IndexedFile> old_index = LoadCachedFile(index_request->path);
-    time.ResetAndPrint("Loading cached index " + index_request->path);
+    time.ResetAndPrint("Reading cached index from disk " + index_request->path);
 
     // If import fails just do a standard update.
     if (old_index) {
+      for (auto& dependency_path : old_index->dependencies) {
+        std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
+        Index_DoIndex dep_index_request(Index_DoIndex::Type::Import);
+        dep_index_request.path = dependency_path;
+        dep_index_request.args = index_request->args;
+        queue_do_index->Enqueue(std::move(dep_index_request));
+      }
+
+
       Index_DoIdMap response(nullptr, std::move(old_index));
       queue_do_id_map->Enqueue(std::move(response));
 
@@ -513,8 +525,9 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
   return true;
 }
 
-bool IndexMain_DoCreateIndexUpdate(Index_OnIdMappedQueue* queue_on_id_mapped,
-  Index_OnIndexedQueue* queue_on_indexed) {
+bool IndexMain_DoCreateIndexUpdate(
+    Index_OnIdMappedQueue* queue_on_id_mapped,
+    Index_OnIndexedQueue* queue_on_indexed) {
   optional<Index_OnIdMapped> response = queue_on_id_mapped->TryDequeue();
   if (!response)
     return false;
@@ -528,6 +541,24 @@ bool IndexMain_DoCreateIndexUpdate(Index_OnIdMappedQueue* queue_on_id_mapped,
   time.ResetAndPrint("Sending update to server");
 
   return true;
+}
+
+void IndexJoinIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
+  optional<Index_OnIndexed> root = queue_on_indexed->TryDequeue();
+  if (!root)
+    return;
+
+  while (true) {
+    optional<Index_OnIndexed> to_join = queue_on_indexed->TryDequeue();
+    if (!to_join) {
+      queue_on_indexed->Enqueue(std::move(*root));
+      return;
+    }
+
+    Timer time;
+    root->update.Merge(to_join->update);
+    time.ResetAndPrint("Indexer joining two querydb updates");
+  }
 }
 
 void IndexMain(
@@ -544,10 +575,18 @@ void IndexMain(
     //       better icache behavior. We need to have some threads spinning on both though
     //       otherwise memory usage will get bad.
 
+    int count = 0;
+
     if (!IndexMain_DoIndex(&file_consumer, queue_do_index, queue_do_id_map) &&
       !IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed)) {
+
+      //if (count++ > 2) {
+      //  count = 0;
+        IndexJoinIndexUpdates(queue_on_indexed);
+      //}
+
       // TODO: use CV to wakeup?
-      std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
   }
 }
@@ -715,9 +754,16 @@ void QueryDbMainLoop(
         if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
             ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
           // Found symbol. Return definition.
-          optional<QueryableLocation> location = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          if (location) {
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, location.value());
+          optional<QueryableLocation> spelling = GetDefinitionSpellingOfSymbol(db, ref.idx);
+          if (spelling) {
+            // We use spelling start and extent end because this causes vscode
+            // to highlight the entire definition when previewing / hoving with
+            // the mouse.
+            optional<QueryableLocation> extent = GetDefinitionExtentOfSymbol(db, ref.idx);
+            if (extent)
+              spelling->range.end = extent->range.end;
+
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, spelling.value());
             if (ls_location)
               response.result.push_back(*ls_location);
           }
@@ -1143,7 +1189,7 @@ int main(int argc, char** argv) {
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  std::this_thread::sleep_for(std::chrono::seconds(3));
+  //std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
   RegisterMessageTypes();

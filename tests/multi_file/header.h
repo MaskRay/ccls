@@ -1,12 +1,5 @@
 #pragma once
 
-#include "../../third_party/doctest/doctest/doctest.h"
-#include "../../third_party/macro_map.h"
-#include "../../third_party/optional.h"
-#include <rapidjson/rapidjson.h>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-
 struct Base {};
 
 struct SameFileDerived : Base {};

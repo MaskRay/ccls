@@ -184,14 +184,19 @@ struct NamespaceHelper {
 };
 
 struct IndexParam {
+  // Only use this when strictly needed (ie, primary translation unit is
+  // needed). Most logic should get the IndexedFile instance via
+  // |file_consumer|.
+  IndexedFile* primary_file;
+
   FileConsumer* file_consumer;
-  NamespaceHelper* ns;
+  NamespaceHelper ns;
 
   // Record last func usage we reported, as clang will record the reference
   // twice. We don't want to double report.
   Range last_func_usage_location;
 
-  IndexParam(FileConsumer* file_consumer, NamespaceHelper* ns) : file_consumer(file_consumer), ns(ns) {}
+  IndexParam(FileConsumer* file_consumer) : file_consumer(file_consumer) {}
 };
 
 int abortQuery(CXClientData client_data, void* reserved) {
@@ -234,7 +239,9 @@ CXIdxClientFile enteredMainFile(CXClientData client_data,
 }
 
 CXIdxClientFile ppIncludedFile(CXClientData client_data,
-                               const CXIdxIncludedFileInfo*) {
+                               const CXIdxIncludedFileInfo* file) {
+  // Clang include logic is broken. This function is never
+  // called and clang_findIncludesInFile doesn't work.
   return nullptr;
 }
 
@@ -311,15 +318,6 @@ optional<clang::Cursor> FindType(clang::Cursor cursor) {
   cursor.VisitChildren(&FindTypeVisitor, &result);
   return result;
 }
-
-/*
-std::string GetNamespacePrefx(const CXIdxDeclInfo* decl) {
-  const CXIdxContainerInfo* container = decl->lexicalContainer;
-  while (container) {
-
-  }
-}
-*/
 
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {
   if (!container)
@@ -647,6 +645,62 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
 // TODO TODO TODO TODO
 // INDEX SPELLING
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   // TODO: allow user to configure if they want STL index.
   if (clang_Location_isInSystemHeader(clang_indexLoc_getCXSourceLocation(decl->loc)))
@@ -657,14 +711,17 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc), &file, nullptr, nullptr, nullptr);
-  std::string filename = clang::ToString(clang_getFileName(file));
+  std::string filename = NormalizePath(clang::ToString(clang_getFileName(file)));
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  IndexedFile* db = param->file_consumer->TryConsumeFile(filename);
+  bool is_first_time_visiting_file = false;
+  IndexedFile* db = param->file_consumer->TryConsumeFile(filename, &is_first_time_visiting_file);
   if (!db)
     return;
 
+  if (is_first_time_visiting_file)
+    param->primary_file->dependencies.push_back(db->path);
 
-  NamespaceHelper* ns = param->ns;
+  NamespaceHelper* ns = &param->ns;
 
 
   //std::cerr << "DECL kind=" << decl->entityInfo->kind << " at " << db->id_cache.Resolve(decl->cursor, false).ToPrettyString(&db->id_cache) << std::endl;
@@ -1049,6 +1106,53 @@ bool IsFunctionCallContext(CXCursorKind kind) {
   return false;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void indexEntityReference(CXClientData client_data,
                           const CXIdxEntityRefInfo* ref) {
   // Don't index references from or to system headers.
@@ -1066,11 +1170,15 @@ void indexEntityReference(CXClientData client_data,
   // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file, nullptr, nullptr, nullptr);
-  std::string filename = clang::ToString(clang_getFileName(file));
+  std::string filename = NormalizePath(clang::ToString(clang_getFileName(file)));
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  IndexedFile* db = param->file_consumer->TryConsumeFile(filename);
+  bool is_first_time_visiting_file = false;
+  IndexedFile* db = param->file_consumer->TryConsumeFile(filename, &is_first_time_visiting_file);
   if (!db)
     return;
+
+  if (is_first_time_visiting_file)
+    param->primary_file->dependencies.push_back(db->path);
 
   // ref->cursor mainFile=0
   // ref->loc mainFile=1
@@ -1253,8 +1361,40 @@ void indexEntityReference(CXClientData client_data,
   }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std::string filename, std::vector<std::string> args, bool dump_ast) {
-  //return {};
+  filename = NormalizePath(filename);
+  return {};
 
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
@@ -1266,42 +1406,31 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std
   if (dump_ast)
     Dump(tu.document_cursor());
 
-  CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
 
   IndexerCallbacks callbacks[] = {
       {&abortQuery, &diagnostic, &enteredMainFile, &ppIncludedFile,
        &importedASTFile, &startedTranslationUnit, &indexDeclaration,
        &indexEntityReference}
-      //{ &abortQuery, &diagnostic, &enteredMainFile, &ppIncludedFile,
-      //&importedASTFile, &startedTranslationUnit, &emptyIndexDeclaration,
-      //&emptyIndexEntityReference }
-      /*
-      callbacks.abortQuery = &abortQuery;
-      callbacks.diagnostic = &diagnostic;
-      callbacks.enteredMainFile = &enteredMainFile;
-      callbacks.ppIncludedFile = &ppIncludedFile;
-      callbacks.importedASTFile = &importedASTFile;
-      callbacks.startedTranslationUnit = &startedTranslationUnit;
-      callbacks.indexDeclaration = &indexDeclaration;
-      callbacks.indexEntityReference = &indexEntityReference;
-      */
   };
 
-  NamespaceHelper ns;
-  IndexParam param(file_consumer, &ns);
+  IndexParam param(file_consumer);
 
-  file_consumer->ForceLocal(filename);
+  param.primary_file = file_consumer->ForceLocal(filename);
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
+  CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
                              CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations,
                              tu.cx_tu);
-  std::cerr << "!! [END] Indexing " << filename << std::endl;
   clang_IndexAction_dispose(index_action);
+  std::cerr << "!! [END] Indexing " << filename << std::endl;
 
   auto result = param.file_consumer->TakeLocalState();
   for (auto& entry : result) {
     // TODO: only store the path on one of these.
+    // TODO: These NormalizePath call should be not needed.
+    assert(entry->path == NormalizePath(entry->path));
+    assert(entry->id_cache.primary_file == entry->path);
     entry->path = NormalizePath(entry->path);
     entry->id_cache.primary_file = entry->path;
   }
