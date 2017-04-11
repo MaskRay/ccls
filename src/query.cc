@@ -151,21 +151,6 @@ QueryableVarDef::QueryableVarDef(const IdMap& id_map, const IndexedVarDef& index
 
 
 
-template<typename T>
-void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
-  for (const T& e : to_add)
-    dest->push_back(e);
-}
-
-template<typename T>
-void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
-  auto it = std::remove_if(dest->begin(), dest->end(), [&](const T& t) {
-    // TODO: make to_remove a set?
-    return std::find(to_remove.begin(), to_remove.end(), t) != to_remove.end();
-  });
-  if (it != dest->end())
-    dest->erase(it);
-}
 
 
 
@@ -643,7 +628,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdat
 
     QueryableFile& existing = files[it->second.idx];
     existing.def = def;
-    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.usr);
+    //UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.usr);
   }
 }
 
@@ -685,7 +670,8 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
 
     QueryableVarDef& existing = vars[it->second.idx];
     existing.def = def;
-    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.usr);
+    if (def.declaring_type)
+      UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.usr);
   }
 }
 

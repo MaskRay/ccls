@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <memory>
+#include <queue>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -27,6 +28,27 @@ std::unique_ptr<T> MakeUnique(Args&&... args) {
     return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
+template<typename T>
+void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
+  for (const T& e : to_add)
+    dest->push_back(e);
+}
+
+template<typename T>
+void PushRange(std::queue<T>* dest, const std::vector<T>& to_add) {
+  for (const T& e : to_add)
+    dest->push(e);
+}
+
+template<typename T>
+void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
+  auto it = std::remove_if(dest->begin(), dest->end(), [&](const T& t) {
+    // TODO: make to_remove a set?
+    return std::find(to_remove.begin(), to_remove.end(), t) != to_remove.end();
+  });
+  if (it != dest->end())
+    dest->erase(it);
+}
 
 // http://stackoverflow.com/a/38140932
 //

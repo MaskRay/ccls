@@ -1394,7 +1394,7 @@ void indexEntityReference(CXClientData client_data,
 
 std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std::string filename, std::vector<std::string> args, bool dump_ast) {
   filename = NormalizePath(filename);
-  return {};
+  //return {};
 
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);

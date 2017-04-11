@@ -25,8 +25,12 @@
 #include <thread>
 #include <vector>
 
-// TODO: provide a feature like 'https://github.com/goldsborough/clang-expand', ie, a fully linear view of a function with
-//       inline function calls expanded. We can probably use vscode decorators to achieve it.
+// TODO: provide a feature like 'https://github.com/goldsborough/clang-expand',
+// ie, a fully linear view of a function with inline function calls expanded.
+// We can probably use vscode decorators to achieve it.
+
+// TODO: we are not marking calls when an implicit ctors gets run. See
+// GetDefinitionExtentOfSymbol as a good example.
 
 namespace {
 
@@ -186,6 +190,42 @@ std::vector<QueryableLocation> GetDeclarationsOfSymbolForGotoDefinition(Queryabl
   return {};
 }
 
+optional<QueryableLocation> GetBaseDefinitionSpelling(QueryableDatabase* db, QueryableFuncDef& func) {
+  if (!func.def.base)
+    return nullopt;
+  return db->funcs[func.def.base->id].def.definition_spelling;
+}
+
+std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryableDatabase* db, QueryableFuncDef& root) {
+  std::vector<QueryFuncRef> callers;
+
+  optional<QueryFuncId> func_id = root.def.base;
+  while (func_id) {
+    QueryableFuncDef& def = db->funcs[func_id->id];
+    AddRange(&callers, def.callers);
+    func_id = def.def.base;
+  }
+
+  return callers;
+}
+
+std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryableDatabase* db, QueryableFuncDef& root) {
+  std::vector<QueryFuncRef> callers;
+
+  std::queue<QueryFuncId> queue;
+  PushRange(&queue, root.derived);
+
+  while (!queue.empty()) {
+    QueryableFuncDef& def = db->funcs[queue.front().id];
+    queue.pop();
+    PushRange(&queue, def.derived);
+
+    AddRange(&callers, def.callers);
+  }
+
+  return callers;
+}
+
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
     return lsRange(
@@ -265,26 +305,29 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
   return info;
 }
 
+struct CommonCodeLensParams {
+  std::vector<TCodeLens>* result;
+  QueryableDatabase* db;
+  WorkingFiles* working_files;
+  WorkingFile* working_file;
+};
 
 void AddCodeLens(
-  QueryableDatabase* db,
-  WorkingFiles* working_files,
-  std::vector<TCodeLens>* result,
+  CommonCodeLensParams* common,
   QueryableLocation loc,
-  WorkingFile* working_file,
   const std::vector<QueryableLocation>& uses,
-  bool exclude_loc,
-  bool only_interesting,
   const char* singular,
-  const char* plural) {
+  const char* plural,
+  bool exclude_loc = false,
+  bool only_interesting = false) {
   TCodeLens code_lens;
-  optional<lsRange> range = GetLsRange(working_file, loc.range);
+  optional<lsRange> range = GetLsRange(common->working_file, loc.range);
   if (!range)
     return;
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "superindex.showReferences";
-  code_lens.command->arguments.uri = GetLsDocumentUri(db, loc.path);
+  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, loc.path);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
@@ -294,7 +337,7 @@ void AddCodeLens(
       continue;
     if (only_interesting && !use.range.interesting)
       continue;
-    optional<lsLocation> location = GetLsLocation(db, working_files, use);
+    optional<lsLocation> location = GetLsLocation(common->db, common->working_files, use);
     if (!location)
       continue;
     unique_uses.insert(*location);
@@ -311,7 +354,7 @@ void AddCodeLens(
     code_lens.command->title += plural;
 
   if (exclude_loc || unique_uses.size() > 0)
-    result->push_back(code_lens);
+    common->result->push_back(code_lens);
 }
 
 std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncRef>& refs) {
@@ -908,6 +951,8 @@ void QueryDbMainLoop(
     }
 
     case IpcId::TextDocumentCodeLens: {
+      // TODO: add code lens for
+      //  - jump to parent method for functions
       auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
 
       Out_TextDocumentCodeLens response;
@@ -920,7 +965,11 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
-      WorkingFile* working_file = working_files->GetFileByFilename(file->def.usr);
+      CommonCodeLensParams common;
+      common.result = &response.result;
+      common.db = db;
+      common.working_files = working_files;
+      common.working_file = working_files->GetFileByFilename(file->def.usr);
 
       for (SymbolRef ref : file->def.outline) {
         // NOTE: We OffsetColumn so that the code lens always show up in a
@@ -930,36 +979,59 @@ void QueryDbMainLoop(
         switch (symbol.kind) {
         case SymbolKind::Type: {
           QueryableTypeDef& def = db->types[symbol.idx];
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(0), working_file, def.uses,
-            false /*exclude_loc*/, false /*only_interesting*/, "ref",
-            "refs");
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(1), working_file, def.uses,
-            false /*exclude_loc*/, true /*only_interesting*/, "iref",
-            "irefs");
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(2), working_file, ToQueryableLocation(db, def.derived),
-            false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(3), working_file, ToQueryableLocation(db, def.instantiations),
-            false /*exclude_loc*/, false /*only_interesting*/, "instantiation", "instantiations");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), def.uses, "ref", "refs");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(1), def.uses, "iref", "irefs", false /*exclude_loc*/, true /*only_interesting*/);
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryableLocation(db, def.derived), "derived", "derived");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(3), ToQueryableLocation(db, def.instantiations), "instantiation", "instantiations");
           break;
         }
         case SymbolKind::Func: {
-          QueryableFuncDef& def = db->funcs[symbol.idx];
-          //AddCodeLens(&response.result, ref.loc.OffsetStartColumn(0), def.uses,
-          //  false /*exclude_loc*/, false /*only_interesting*/, "reference",
-          //  "references");
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(1), working_file, ToQueryableLocation(db, def.callers),
-            true /*exclude_loc*/, false /*only_interesting*/, "caller", "callers");
-          //AddCodeLens(&response.result, ref.loc.OffsetColumn(2), def.def.callees,
-          //  false /*exclude_loc*/, false /*only_interesting*/, "callee", "callees");
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(3), working_file, ToQueryableLocation(db, def.derived),
-            false /*exclude_loc*/, false /*only_interesting*/, "derived", "derived");
+          QueryableFuncDef& func = db->funcs[symbol.idx];
+
+
+          int offset = 0;
+
+          /*
+          // TODO: See if we can get this working.
+          optional<QueryableLocation> base_definition = GetBaseDefinitionSpelling(db, func);
+          if (base_definition) {
+            optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_definition);
+            if (ls_base) {
+              optional<lsRange> range = GetLsRange(common.working_file, ref.loc.range);
+              if (range) {
+                TCodeLens code_lens;
+                code_lens.range = *range;
+                code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+                code_lens.command->command = "superindex.goto";
+                code_lens.command->arguments.uri = GetLsDocumentUri(db, ref.loc.path);
+                code_lens.command->arguments.position = code_lens.range.start;
+                code_lens.command->arguments.locations.push_back(*ls_base);
+                response.result.push_back(code_lens);
+              }
+            }
+          }
+          */
+
+          std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, func);
+          std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, func);
+          if (base_callers.empty() && derived_callers.empty()) {
+            // set exclude_loc to true to force the code lens to show up
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.callers), "call", "calls", true /*exclude_loc*/);
+          }
+          else {
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.callers), "direct call", "direct calls");
+            if (!base_callers.empty())
+              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, base_callers), "base call", "base calls");
+            if (!derived_callers.empty())
+              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, derived_callers), "derived call", "derived calls");
+          }
+
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.derived), "derived", "derived");
           break;
         }
         case SymbolKind::Var: {
           QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(db, working_files, &response.result, ref.loc.OffsetStartColumn(0), working_file, def.uses,
-            true /*exclude_loc*/, false /*only_interesting*/, "reference",
-            "references");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), def.uses, "reference", "references", true /*exclude_loc*/, false /*only_interesting*/);
           break;
         }
         case SymbolKind::File:
@@ -1004,6 +1076,7 @@ void QueryDbMainLoop(
         }
       }
 
+      std::cerr << "- Found " << response.result.size() << " results" << std::endl;
       SendOutMessageToClient(language_client, response);
       break;
     }
