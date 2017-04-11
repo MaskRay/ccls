@@ -86,6 +86,14 @@ def build(bld):
 
   cc_files = bld.path.ant_glob(['**/*.cpp', '**/*.cc'],
                                excl=['libcxx/*', '*tests/*', 'third_party/*'])
+
+  lib = ['clang']
+  if sys.platform == 'linux' or sys.platform == 'linux2':
+    lib.append('rt')
+    lib.append('pthread')
+  elif sys.platform == 'darwin':
+    lib.append('pthread')
+
   bld.program(
       source=cc_files,
       cxxflags=['-O3', '-std=c++11', '-Wall'],
@@ -95,10 +103,7 @@ def build(bld):
         'third_party/rapidjson/include',
         'third_party/sparsehash/src',
         CLANG_INCLUDE_DIR],
-      lib=[
-        'clang',
-        'rt',
-        'pthread'],
+      lib=lib,
       libpath=[CLANG_LIB_DIR],
       rpath=[CLANG_LIB_DIR],
       target='app')
