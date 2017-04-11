@@ -161,8 +161,18 @@ optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, c
   return nullopt;
 }
 
-std::vector<QueryableLocation> GetDeclarationsOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+std::vector<QueryableLocation> GetDeclarationsOfSymbolForGotoDefinition(QueryableDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
+    case SymbolKind::Type: {
+      // Returning the definition spelling of a type is a hack (and is why the
+      // function has the postfix `ForGotoDefintion`, but it lets the user
+      // jump to the start of a type if clicking goto-definition on the same
+      // type from within the type definition.
+      optional<QueryableLocation> declaration = db->types[symbol.idx].def.definition_spelling;
+      if (declaration)
+        return { *declaration };
+      break;
+    }
     case SymbolKind::Func:
       return db->funcs[symbol.idx].declarations;
     case SymbolKind::Var: {
@@ -781,38 +791,42 @@ void QueryDbMainLoop(
       for (const SymbolRef& ref : file->def.all_symbols) {
         if (ref.loc.range.Contains(target_line, target_column)) {
           // Found symbol. Return definition.
+
+
           optional<QueryableLocation> definition_spelling = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          if (definition_spelling) {
+          if (!definition_spelling)
+            break;
 
-            // If the cursor is currently at the definition we should goto the declaration if possible.
-            if (definition_spelling->path == file_id && definition_spelling->range.Contains(target_line, target_column)) {
-              // Goto declaration.
+          // We use spelling start and extent end because this causes vscode
+          // to highlight the entire definition when previewing / hoving with
+          // the mouse.
+          optional<QueryableLocation> extent = GetDefinitionExtentOfSymbol(db, ref.idx);
+          if (extent)
+            definition_spelling->range.end = extent->range.end;
 
-              std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbol(db, ref.idx);
-              for (auto declaration : declarations) {
-                optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
-                if (ls_declaration)
-                  response.result.push_back(*ls_declaration);
-              }
 
-              if (!response.result.empty())
-                break;
+          // If the cursor is currently at or in the definition we should goto the declaration if possible.
+          if (definition_spelling->path == file_id && definition_spelling->range.Contains(target_line, target_column)) {
+            // Goto declaration.
+
+            std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
+            for (auto declaration : declarations) {
+              optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
+              if (ls_declaration)
+                response.result.push_back(*ls_declaration);
             }
 
-
-            // Goto definition.
-
-            // We use spelling start and extent end because this causes vscode
-            // to highlight the entire definition when previewing / hoving with
-            // the mouse.
-            optional<QueryableLocation> extent = GetDefinitionExtentOfSymbol(db, ref.idx);
-            if (extent)
-              definition_spelling->range.end = extent->range.end;
-
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, definition_spelling.value());
-            if (ls_location)
-              response.result.push_back(*ls_location);
+            if (!response.result.empty())
+              break;
           }
+
+
+          // Goto definition.
+
+
+          optional<lsLocation> ls_location = GetLsLocation(db, working_files, definition_spelling.value());
+          if (ls_location)
+            response.result.push_back(*ls_location);
           break;
         }
       }
