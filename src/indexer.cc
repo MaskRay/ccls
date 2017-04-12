@@ -711,10 +711,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc), &file, nullptr, nullptr, nullptr);
-  std::string filename = NormalizePath(clang::ToString(clang_getFileName(file)));
   IndexParam* param = static_cast<IndexParam*>(client_data);
   bool is_first_time_visiting_file = false;
-  IndexedFile* db = param->file_consumer->TryConsumeFile(filename, &is_first_time_visiting_file);
+  IndexedFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
   if (!db)
     return;
 
@@ -1170,10 +1169,9 @@ void indexEntityReference(CXClientData client_data,
   // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file, nullptr, nullptr, nullptr);
-  std::string filename = NormalizePath(clang::ToString(clang_getFileName(file)));
   IndexParam* param = static_cast<IndexParam*>(client_data);
   bool is_first_time_visiting_file = false;
-  IndexedFile* db = param->file_consumer->TryConsumeFile(filename, &is_first_time_visiting_file);
+  IndexedFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
   if (!db)
     return;
 
@@ -1415,7 +1413,8 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std
 
   IndexParam param(file_consumer);
 
-  param.primary_file = file_consumer->ForceLocal(filename);
+  CXFile file = clang_getFile(tu.cx_tu, filename.c_str());
+  param.primary_file = file_consumer->ForceLocal(file);
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
