@@ -40,6 +40,11 @@ const int kNumIndexers = 8 - 1;
 const int kQueueSizeBytes = 1024 * 8;
 const int kMaxWorkspaceSearchResults = 1000;
 
+void PushBack(NonElidedVector<lsLocation>* result, optional<lsLocation> location) {
+  if (location)
+    result->push_back(*location);
+}
+
 QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename, QueryFileId* file_id) {
   auto it = db->usr_to_symbol.find(filename);
   if (it != db->usr_to_symbol.end()) {
@@ -839,21 +844,25 @@ void QueryDbMainLoop(
         if (ref.loc.range.Contains(target_line, target_column)) {
           // Found symbol. Return definition.
 
+          // Special cases which are handled:
+          //  - symbol has declaration but no definition (ie, pure virtual)
+          //  - start at spelling but end at extent for better mouse tooltip
+          //  - goto declaration while in definition of recursive type
 
-          optional<QueryableLocation> definition_spelling = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          if (!definition_spelling)
-            break;
-
+          optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
+ 
           // We use spelling start and extent end because this causes vscode
           // to highlight the entire definition when previewing / hoving with
           // the mouse.
-          optional<QueryableLocation> extent = GetDefinitionExtentOfSymbol(db, ref.idx);
-          if (extent)
-            definition_spelling->range.end = extent->range.end;
-
+          optional<QueryableLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
+          if (def_loc && def_extent)
+            def_loc->range.end = def_extent->range.end;
 
           // If the cursor is currently at or in the definition we should goto the declaration if possible.
-          if (definition_spelling->path == file_id && definition_spelling->range.Contains(target_line, target_column)) {
+          // We also want to use delcarations if we're pointing to, ie, a pure virtual function which has
+          // no definition.
+          if (!def_loc || (def_loc->path == file_id &&
+                           def_loc->range.Contains(target_line, target_column))) {
             // Goto declaration.
 
             std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
@@ -862,18 +871,13 @@ void QueryDbMainLoop(
               if (ls_declaration)
                 response.result.push_back(*ls_declaration);
             }
-
+            // We found some declarations. Break so we don't add the definition location.
             if (!response.result.empty())
               break;
           }
 
-
-          // Goto definition.
-
-
-          optional<lsLocation> ls_location = GetLsLocation(db, working_files, definition_spelling.value());
-          if (ls_location)
-            response.result.push_back(*ls_location);
+          if (def_loc)
+            PushBack(&response.result, GetLsLocation(db, working_files, *def_loc));
           break;
         }
       }
