@@ -190,10 +190,14 @@ std::vector<QueryableLocation> GetDeclarationsOfSymbolForGotoDefinition(Queryabl
   return {};
 }
 
-optional<QueryableLocation> GetBaseDefinitionSpelling(QueryableDatabase* db, QueryableFuncDef& func) {
+optional<QueryableLocation> GetBaseDefinitionOrDeclarationSpelling(QueryableDatabase* db, QueryableFuncDef& func) {
   if (!func.def.base)
     return nullopt;
-  return db->funcs[func.def.base->id].def.definition_spelling;
+  QueryableFuncDef& base = db->funcs[func.def.base->id];
+  auto def = base.def.definition_spelling;
+  if (!def && !base.declarations.empty())
+    def = base.declarations[0];
+  return def;
 }
 
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryableDatabase* db, QueryableFuncDef& root) {
@@ -1006,9 +1010,9 @@ void QueryDbMainLoop(
           AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.derived), "derived", "derived");
 
           // "Base"
-          optional<QueryableLocation> base_definition = GetBaseDefinitionSpelling(db, func);
-          if (base_definition) {
-            optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_definition);
+          optional<QueryableLocation> base_loc = GetBaseDefinitionOrDeclarationSpelling(db, func);
+          if (base_loc) {
+            optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_loc);
             if (ls_base) {
               optional<lsRange> range = GetLsRange(common.working_file, ref.loc.range);
               if (range) {
