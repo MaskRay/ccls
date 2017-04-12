@@ -8,6 +8,8 @@
 
 namespace {
 
+const bool kIndexStdDeclarations = true;
+
 void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
   if (!result->empty() && (*result)[result->size() - 1] == ref)
     return;
@@ -710,7 +712,7 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   // TODO: allow user to configure if they want STL index.
-  if (clang_Location_isInSystemHeader(clang_indexLoc_getCXSourceLocation(decl->loc)))
+  if (!kIndexStdDeclarations && clang_Location_isInSystemHeader(clang_indexLoc_getCXSourceLocation(decl->loc)))
     return;
 
   assert(AreEqualLocations(decl->loc, decl->cursor));
