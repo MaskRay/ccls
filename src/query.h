@@ -195,6 +195,9 @@ struct QueryableFuncDef {
   DefUpdate def;
   std::vector<QueryableLocation> declarations;
   std::vector<QueryFuncId> derived;
+  // TODO: It seems like callers is always the same as uses except callers does
+  // not include the definition or declaration. We should get a large space
+  // saving by removing it.
   std::vector<QueryFuncRef> callers;
   std::vector<QueryableLocation> uses;
   size_t qualified_name_idx = -1;

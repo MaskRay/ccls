@@ -6,6 +6,17 @@
 #include "platform.h"
 #include "serializer.h"
 
+namespace {
+
+void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
+  if (!result->empty() && (*result)[result->size() - 1] == ref)
+    return;
+  result->push_back(ref);
+}
+
+}  // namespace
+
+
 IndexedFile::IndexedFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
   // Preallocate any existing resolved ids.
@@ -191,10 +202,6 @@ struct IndexParam {
 
   FileConsumer* file_consumer;
   NamespaceHelper ns;
-
-  // Record last func usage we reported, as clang will record the reference
-  // twice. We don't want to double report.
-  Range last_func_usage_location;
 
   IndexParam(FileConsumer* file_consumer) : file_consumer(file_consumer) {}
 };
@@ -1242,11 +1249,6 @@ void indexEntityReference(CXClientData client_data,
       if (!loc_spelling)
         break;
 
-      // Don't report duplicate usages.
-      if (param->last_func_usage_location == loc_spelling.value())
-        break;
-      param->last_func_usage_location = loc_spelling.value();
-
       // Note: be careful, calling db->ToFuncId invalidates the FuncDef* ptrs.
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
       if (IsFunctionCallContext(ref->container->cursor.kind)) {
@@ -1254,8 +1256,8 @@ void indexEntityReference(CXClientData client_data,
         IndexedFuncDef* caller_def = db->Resolve(caller_id);
         IndexedFuncDef* called_def = db->Resolve(called_id);
 
-        caller_def->def.callees.push_back(IndexFuncRef(called_id, loc_spelling.value()));
-        called_def->callers.push_back(IndexFuncRef(caller_id, loc_spelling.value()));
+        AddFuncRef(&caller_def->def.callees, IndexFuncRef(called_id, loc_spelling.value()));
+        AddFuncRef(&called_def->callers, IndexFuncRef(caller_id, loc_spelling.value()));
         AddUsage(called_def->uses, loc_spelling.value());
       } else {
         IndexedFuncDef* called_def = db->Resolve(called_id);
