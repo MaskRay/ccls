@@ -1072,8 +1072,13 @@ void QueryDbMainLoop(
         if (db->qualified_names[i].find(query) != std::string::npos) {
           lsSymbolInformation info = GetSymbolInfo(db, working_files, db->symbols[i]);
           optional<QueryableLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
-          if (!location)
-            continue;
+          if (!location) {
+            auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, db->symbols[i]);
+            if (decls.empty())
+              continue;
+            location = decls[0];
+          }
+
           optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
           if (!ls_location)
             continue;

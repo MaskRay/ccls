@@ -93,8 +93,8 @@ QueryableFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed)
     if (def.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
     for (Range decl : def.declarations) {
-      add_outline(id_map.ToSymbol(def.id), decl);
       add_all_symbols(id_map.ToSymbol(def.id), decl);
+      add_outline(id_map.ToSymbol(def.id), decl);
     }
     for (const Range& use : def.uses)
       add_all_symbols(id_map.ToSymbol(def.id), use);
@@ -599,7 +599,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
 
 
-void UpdateQualifiedName(QueryableDatabase* db, size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
+void SetQualifiedNameForWorkspaceSearch(QueryableDatabase* db, size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
   if (*qualified_name_index == -1) {
     db->qualified_names.push_back(name);
     db->symbols.push_back(SymbolIdx(kind, symbol_index));
@@ -628,13 +628,13 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdat
 
     QueryableFile& existing = files[it->second.idx];
     existing.def = def;
-    //UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.usr);
+    //SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.usr);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUpdate>& updates) {
   for (auto& def : updates) {
-    if (!def.definition_extent)
+    if (def.qualified_name.empty())
       continue;
 
     auto it = usr_to_symbol.find(def.usr);
@@ -642,13 +642,13 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUp
 
     QueryableTypeDef& existing = types[it->second.idx];
     existing.def = def;
-    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.usr);
+    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.usr);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates) {
   for (auto& def : updates) {
-    if (!def.definition_extent)
+    if (def.qualified_name.empty())
       continue;
 
     auto it = usr_to_symbol.find(def.usr);
@@ -656,13 +656,13 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUp
 
     QueryableFuncDef& existing = funcs[it->second.idx];
     existing.def = def;
-    UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.usr);
+    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.usr);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates) {
   for (auto& def : updates) {
-    if (!def.definition_extent)
+    if (def.qualified_name.empty())
       continue;
 
     auto it = usr_to_symbol.find(def.usr);
@@ -671,7 +671,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
     QueryableVarDef& existing = vars[it->second.idx];
     existing.def = def;
     if (def.declaring_type)
-      UpdateQualifiedName(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.usr);
+      SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.usr);
   }
 }
 
