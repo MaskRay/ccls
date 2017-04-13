@@ -365,6 +365,7 @@ QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   return QueryTypeId(cached_type_ids_.find(id.id)->second);
 }
 QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
+  if (id.id == -1) return QueryFuncId(-1);
   assert(cached_func_ids_.find(id.id) != cached_func_ids_.end());
   return QueryFuncId(cached_func_ids_.find(id.id)->second);
 }

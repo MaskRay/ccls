@@ -859,6 +859,7 @@ void QueryDbMainLoop(
           //  - start at spelling but end at extent for better mouse tooltip
           //  - goto declaration while in definition of recursive type
 
+          // TODO: Goto definition broken on Buffer::CreateSharedBuffer.
           optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
 
           // We use spelling start and extent end because this causes vscode
@@ -888,7 +889,9 @@ void QueryDbMainLoop(
 
           if (def_loc)
             PushBack(&response.result, GetLsLocation(db, working_files, *def_loc));
-          break;
+          
+          if (!response.result.empty())
+            break;
         }
       }
 

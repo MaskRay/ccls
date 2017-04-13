@@ -28,10 +28,10 @@ using namespace std::experimental;
 
 template <typename T>
 struct Id {
-  uint64_t id;
+  size_t id;
 
   Id() : id(0) {}  // Needed for containers. Do not use directly.
-  explicit Id(uint64_t id) : id(id) {}
+  explicit Id(size_t id) : id(id) {}
 
   bool operator==(const Id<T>& other) const { return id == other.id; }
 
