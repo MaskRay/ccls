@@ -29,7 +29,7 @@ OUTPUT:
       "definition_spelling": "3:14-3:17",
       "definition_extent": "3:3-5:4",
       "declaring_type": 0,
-      "uses": ["3:14-3:17", "8:19-8:22", "9:20-9:23"]
+      "callers": ["-1@8:19-8:22", "-1@9:20-9:23"]
     }],
   "vars": [{
       "id": 0,

@@ -12,8 +12,7 @@ OUTPUT: simple_header.h
       "usr": "c:@F@header#",
       "short_name": "header",
       "qualified_name": "header",
-      "declarations": ["3:6-3:12"],
-      "uses": ["3:6-3:12"]
+      "declarations": ["3:6-3:12"]
     }]
 }
 
@@ -27,13 +26,11 @@ OUTPUT: simple_impl.cc
       "qualified_name": "impl",
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
-      "callees": ["1@4:3-4:9"],
-      "uses": ["3:6-3:10"]
+      "callees": ["1@4:3-4:9"]
     }, {
       "id": 1,
       "usr": "c:@F@header#",
-      "callers": ["0@4:3-4:9"],
-      "uses": ["4:3-4:9"]
+      "callers": ["0@4:3-4:9"]
     }]
 }
 */

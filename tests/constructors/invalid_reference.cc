@@ -23,8 +23,7 @@ OUTPUT:
       "qualified_name": "Foo::Foo",
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:11",
-      "declaring_type": 0,
-      "uses": ["4:6-4:9"]
+      "declaring_type": 0
     }]
 }
 */

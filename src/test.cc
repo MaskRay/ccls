@@ -142,6 +142,35 @@ void RunTests() {
         "-IC:/Users/jacob/Desktop/superindex/indexer/src"
     }, false /*dump_ast*/);
 
+#if false
+    for (auto& db : dbs) {
+      assert(db);
+      if (!db) {
+        std::cerr << "no db!!!" << std::endl;
+        continue;
+      }
+
+      for (auto& func : db->funcs) {
+        if (!func.HasInterestingState())
+          continue;
+
+
+        if (func.uses.size() !=
+          (func.callers.size() + func.declarations.size() + (func.def.definition_spelling.has_value() ? 1 : 0))) {
+
+          std::cout << "func.def.usr = " << func.def.usr << std::endl;
+          std::cout << "func.uses.size() = " << func.uses.size() << std::endl;
+          std::cout << "func.callers.size() = " << func.callers.size() << std::endl;
+          std::cout << "func.declarations.size() = " << func.declarations.size() << std::endl;
+          std::cout << "func.definition_spelling.has_value() = " << func.def.definition_spelling.has_value() << std::endl;
+
+          std::cerr << "err" << std::endl;
+
+        }
+      }
+    }
+#endif
+
     for (auto& entry : all_expected_output) {
       const std::string& expected_path = entry.first;
       const std::string& expected_output = entry.second;

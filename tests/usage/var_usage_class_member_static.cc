@@ -26,8 +26,7 @@ OUTPUT:
       "short_name": "accept",
       "qualified_name": "accept",
       "declarations": ["5:6-5:12"],
-      "callers": ["1@8:3-8:9"],
-      "uses": ["5:6-5:12", "8:3-8:9"]
+      "callers": ["1@8:3-8:9"]
     }, {
       "id": 1,
       "usr": "c:@F@foo#",
@@ -35,8 +34,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
-      "callees": ["0@8:3-8:9"],
-      "uses": ["7:6-7:9"]
+      "callees": ["0@8:3-8:9"]
     }],
   "vars": [{
       "id": 0,

@@ -32,7 +32,7 @@ OUTPUT:
       "definition_spelling": "5:16-5:19",
       "definition_extent": "5:5-7:6",
       "declaring_type": 0,
-      "uses": ["5:16-5:19", "10:21-10:24", "11:22-11:25"]
+      "callers": ["-1@10:21-10:24", "-1@11:22-11:25"]
     }],
   "vars": [{
       "id": 0,

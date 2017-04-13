@@ -36,8 +36,7 @@ OUTPUT:
       "qualified_name": "Root::foo",
       "declarations": ["2:16-2:19"],
       "declaring_type": 0,
-      "derived": [1],
-      "uses": ["2:16-2:19"]
+      "derived": [1]
     }, {
       "id": 1,
       "usr": "c:@S@Derived@F@foo#",
@@ -46,8 +45,7 @@ OUTPUT:
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:3-5:25",
       "declaring_type": 1,
-      "base": 0,
-      "uses": ["5:8-5:11"]
+      "base": 0
     }]
 }
 */

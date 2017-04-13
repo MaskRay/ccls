@@ -25,8 +25,7 @@ OUTPUT:
       "declarations": ["2:8-2:11"],
       "definition_spelling": "5:11-5:14",
       "definition_extent": "5:1-5:19",
-      "declaring_type": 0,
-      "uses": ["2:8-2:11", "5:11-5:14"]
+      "declaring_type": 0
     }]
 }
 */

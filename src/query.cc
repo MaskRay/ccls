@@ -96,8 +96,8 @@ QueryableFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed)
       add_all_symbols(id_map.ToSymbol(def.id), decl);
       add_outline(id_map.ToSymbol(def.id), decl);
     }
-    for (const Range& use : def.uses)
-      add_all_symbols(id_map.ToSymbol(def.id), use);
+    for (const IndexFuncRef& caller : def.callers)
+      add_all_symbols(id_map.ToSymbol(def.id), caller.loc);
   }
   for (const IndexedVarDef& def : indexed.vars) {
     if (def.def.definition_spelling.has_value())
@@ -133,7 +133,6 @@ QueryableFuncDef::QueryableFuncDef(const IdMap& id_map, const IndexedFuncDef& in
   declarations = id_map.ToQuery(indexed.declarations);
   derived = id_map.ToQuery(indexed.derived);
   callers = id_map.ToQuery(indexed.callers);
-  uses = id_map.ToQuery(indexed.uses);
 }
 
 QueryableVarDef::QueryableVarDef(const IdMap& id_map, const IndexedVarDef& indexed)
@@ -374,7 +373,7 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id.id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc));
+  return QueryFuncRef(ToQuery(ref.id_), ToQuery(ref.loc));
 }
 
 optional<QueryableLocation> IdMap::ToQuery(optional<Range> range) const {
@@ -518,7 +517,6 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     funcs_declarations.push_back(QueryableFuncDef::DeclarationsUpdate(query.def.usr, query.declarations));
     funcs_derived.push_back(QueryableFuncDef::DerivedUpdate(query.def.usr, query.derived));
     funcs_callers.push_back(QueryableFuncDef::CallersUpdate(query.def.usr, query.callers));
-    funcs_uses.push_back(QueryableFuncDef::UsesUpdate(query.def.usr, query.uses));
   },
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedFuncDef* previous_def, IndexedFuncDef* current_def) {
     QueryableFuncDef::DefUpdate previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
@@ -529,7 +527,6 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableLocation);
     PROCESS_UPDATE_DIFF(funcs_derived, derived, QueryFuncId);
     PROCESS_UPDATE_DIFF(funcs_callers, callers, QueryFuncRef);
-    PROCESS_UPDATE_DIFF(funcs_uses, uses, QueryableLocation);
   });
 
   // Variables
@@ -572,7 +569,6 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
   INDEX_UPDATE_MERGE(funcs_declarations);
   INDEX_UPDATE_MERGE(funcs_derived);
   INDEX_UPDATE_MERGE(funcs_callers);
-  INDEX_UPDATE_MERGE(funcs_uses);
 
   INDEX_UPDATE_MERGE(vars_removed);
   INDEX_UPDATE_MERGE(vars_def_update);
@@ -704,7 +700,6 @@ void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
   HANDLE_MERGEABLE(funcs_derived, derived, funcs);
   HANDLE_MERGEABLE(funcs_callers, callers, funcs);
-  HANDLE_MERGEABLE(funcs_uses, uses, funcs);
 
   RemoveUsrs(update->vars_removed);
   ImportOrUpdate(update->vars_def_update);

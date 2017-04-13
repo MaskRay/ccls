@@ -33,8 +33,7 @@ OUTPUT:
       "short_name": "return_type",
       "qualified_name": "return_type",
       "definition_spelling": "9:16-9:27",
-      "definition_extent": "9:1-12:2",
-      "uses": ["9:16-9:27"]
+      "definition_extent": "9:1-12:2"
     }],
   "vars": [{
       "id": 0,

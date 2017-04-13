@@ -26,7 +26,7 @@ OUTPUT:
       "qualified_name": "helper",
       "definition_spelling": "1:12-1:18",
       "definition_extent": "1:1-3:2",
-      "uses": ["1:12-1:18", "6:11-6:17"]
+      "callers": ["-1@6:11-6:17"]
     }],
   "vars": [{
       "id": 0,

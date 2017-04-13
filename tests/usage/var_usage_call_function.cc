@@ -17,8 +17,7 @@ OUTPUT:
       "qualified_name": "called",
       "definition_spelling": "1:6-1:12",
       "definition_extent": "1:1-1:17",
-      "callers": ["1@4:13-4:19", "1@7:3-7:9"],
-      "uses": ["1:6-1:12", "4:13-4:19", "7:3-7:9"]
+      "callers": ["1@4:13-4:19", "1@7:3-7:9"]
     }, {
       "id": 1,
       "usr": "c:@F@caller#",
@@ -26,8 +25,7 @@ OUTPUT:
       "qualified_name": "caller",
       "definition_spelling": "3:6-3:12",
       "definition_extent": "3:1-8:2",
-      "callees": ["0@4:13-4:19", "0@7:3-7:9"],
-      "uses": ["3:6-3:12"]
+      "callees": ["0@4:13-4:19", "0@7:3-7:9"]
     }],
   "vars": [{
       "id": 0,

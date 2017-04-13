@@ -1,3 +1,4 @@
+#if false
 /*
 abc
 daaa
@@ -8,6 +9,19 @@ abaa
 #include <string>
 
 #include "a.h"
+
+
+struct iface {
+  virtual void foo() = 0;
+};
+struct impl : public iface {
+  void foo() override {}
+};
+
+void doit() {
+  iface* f;
+  f->foo();
+}
 
 struct Middle : public Parent {
   void foo() override {}
@@ -94,3 +108,4 @@ void caller() {
   foo();
   foo();
 }
+#endif

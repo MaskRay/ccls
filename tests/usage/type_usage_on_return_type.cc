@@ -41,8 +41,7 @@ OUTPUT:
       "qualified_name": "foo",
       "declarations": ["3:7-3:10", "4:7-4:10"],
       "definition_spelling": "5:7-5:10",
-      "definition_extent": "5:1-5:15",
-      "uses": ["3:7-3:10", "4:7-4:10", "5:7-5:10"]
+      "definition_extent": "5:1-5:15"
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@Get#I#",
@@ -51,8 +50,7 @@ OUTPUT:
       "declarations": ["8:9-8:12"],
       "definition_spelling": "12:12-12:15",
       "definition_extent": "12:1-12:23",
-      "declaring_type": 1,
-      "uses": ["8:9-8:12", "12:12-12:15"]
+      "declaring_type": 1
     }, {
       "id": 2,
       "usr": "c:@S@Foo@F@Empty#",
@@ -61,15 +59,13 @@ OUTPUT:
       "declarations": ["9:8-9:13"],
       "definition_spelling": "13:11-13:16",
       "definition_extent": "13:1-13:21",
-      "declaring_type": 1,
-      "uses": ["9:8-9:13", "13:11-13:16"]
+      "declaring_type": 1
     }, {
       "id": 3,
       "usr": "c:@F@external#",
       "short_name": "external",
       "qualified_name": "external",
-      "declarations": ["15:20-15:28"],
-      "uses": ["15:20-15:28"]
+      "declarations": ["15:20-15:28"]
     }, {
       "id": 4,
       "usr": "c:type_usage_on_return_type.cc@F@bar#",
@@ -77,8 +73,7 @@ OUTPUT:
       "qualified_name": "bar",
       "declarations": ["17:14-17:17"],
       "definition_spelling": "18:14-18:17",
-      "definition_extent": "18:1-18:22",
-      "uses": ["17:14-17:17", "18:14-18:17"]
+      "definition_extent": "18:1-18:22"
     }]
 }
 */

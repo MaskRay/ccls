@@ -37,16 +37,14 @@ OUTPUT:
       "short_name": "accept",
       "qualified_name": "accept",
       "declarations": ["7:6-7:12"],
-      "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"],
-      "uses": ["7:6-7:12", "14:3-14:9", "15:3-15:9", "17:3-17:9"]
+      "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"]
     }, {
       "id": 1,
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "qualified_name": "accept",
       "declarations": ["8:6-8:12"],
-      "callers": ["2@16:3-16:9"],
-      "uses": ["8:6-8:12", "16:3-16:9"]
+      "callers": ["2@16:3-16:9"]
     }, {
       "id": 2,
       "usr": "c:@F@foo#",
@@ -54,8 +52,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition_spelling": "10:6-10:9",
       "definition_extent": "10:1-18:2",
-      "callees": ["0@14:3-14:9", "0@15:3-15:9", "1@16:3-16:9", "0@17:3-17:9"],
-      "uses": ["10:6-10:9"]
+      "callees": ["0@14:3-14:9", "0@15:3-15:9", "1@16:3-16:9", "0@17:3-17:9"]
     }],
   "vars": [{
       "id": 0,

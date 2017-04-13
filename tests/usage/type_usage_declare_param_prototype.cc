@@ -24,8 +24,7 @@ OUTPUT:
       "qualified_name": "foo",
       "declarations": ["3:6-3:9"],
       "definition_spelling": "4:6-4:9",
-      "definition_extent": "4:1-4:26",
-      "uses": ["3:6-3:9", "4:6-4:9"]
+      "definition_extent": "4:1-4:26"
     }],
   "vars": [{
       "id": 0,

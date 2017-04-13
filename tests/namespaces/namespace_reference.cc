@@ -19,8 +19,7 @@ OUTPUT:
       "qualified_name": "ns::Accept",
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:3-3:24",
-      "callers": ["1@7:7-7:13", "1@9:3-9:9"],
-      "uses": ["3:8-3:14", "7:7-7:13", "9:3-9:9"]
+      "callers": ["1@7:7-7:13", "1@9:3-9:9"]
     }, {
       "id": 1,
       "usr": "c:@F@Runner#",
@@ -28,8 +27,7 @@ OUTPUT:
       "qualified_name": "Runner",
       "definition_spelling": "6:6-6:12",
       "definition_extent": "6:1-10:2",
-      "callees": ["0@7:7-7:13", "0@9:3-9:9"],
-      "uses": ["6:6-6:12"]
+      "callees": ["0@7:7-7:13", "0@9:3-9:9"]
     }],
   "vars": [{
       "id": 0,

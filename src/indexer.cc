@@ -97,7 +97,20 @@ IndexedTypeDef::IndexedTypeDef(IndexTypeId id, const std::string& usr)
   // std::cerr << "Creating type with usr " << usr << std::endl;
 }
 
-void AddUsage(std::vector<Range>& uses,
+void RemoveItem(std::vector<Range>& ranges,
+                Range to_remove) {
+  auto it = std::find(ranges.begin(), ranges.end(), to_remove);
+  if (it != ranges.end())
+    ranges.erase(it);
+}
+
+void UniqueAdd(std::vector<IndexFuncRef>& refs,
+               IndexFuncRef ref) {
+  if (std::find(refs.begin(), refs.end(), ref) != refs.end())
+    refs.push_back(ref);
+}
+
+void UniqueAdd(std::vector<Range>& uses,
               Range loc,
               bool insert_if_not_present = true) {
   // cannot sub 1 from size_t in loop below; check explicitly here
@@ -377,7 +390,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
     // TODO: Should we even be visiting this if the file is not from the main
     // def? Try adding assert on |loc| later.
     Range loc = db->id_cache.ResolveSpelling(cursor.cx_cursor, true /*interesting*/);
-    AddUsage(ref_type_def->uses, loc);
+    UniqueAdd(ref_type_def->uses, loc);
   }
 }
 
@@ -630,7 +643,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       // << " at " << loc.ToString() << std::endl;
       IndexVarId ref_id = db->ToVarId(ref_usr);
       IndexedVarDef* ref_def = db->Resolve(ref_id);
-      AddUsage(ref_def->uses, loc);
+      UniqueAdd(ref_def->uses, loc);
       break;
   }
 
@@ -777,7 +790,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       else {
         var_def->def.declaration = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
       }
-      AddUsage(var_def->uses, decl_loc_spelling.value());
+      UniqueAdd(var_def->uses, decl_loc_spelling.value());
 
       // std::cerr << std::endl << "Visiting declaration" << std::endl;
       // Dump(decl_cursor);
@@ -837,7 +850,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       IndexFuncId func_id = db->ToFuncId(resolved.cx_cursor);
       IndexedFuncDef* func_def = db->Resolve(func_id);
 
-      AddUsage(func_def->uses, decl_loc_spelling.value());
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
       AddDeclTypeUsages(db, decl_cursor, true /*is_interesting*/,
@@ -849,9 +861,14 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && !func_def->def.definition_extent.has_value()) {
         func_def->def.definition_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
         func_def->def.definition_extent = db->id_cache.ResolveExtent(decl->cursor, false /*interesting*/);
+
+        RemoveItem(func_def->declarations, *func_def->def.definition_spelling);
       }
       else {
-        func_def->declarations.push_back(db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/));
+        Range decl_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
+        // Only add the declaration if it's not already a definition.
+        if (!func_def->def.definition_spelling || *func_def->def.definition_spelling != decl_spelling)
+          UniqueAdd(func_def->declarations, decl_spelling);
       }
 
       // If decl_cursor != resolved, then decl_cursor is a template
@@ -888,7 +905,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // TODO: Should it be interesting?
           if (is_ctor_or_dtor) {
             Range type_usage_loc = decl_loc_spelling.value();
-            AddUsage(declaring_type_def->uses, type_usage_loc);
+            UniqueAdd(declaring_type_def->uses, type_usage_loc);
           }
 
           // Register function in declaring type if it hasn't been registered
@@ -1000,7 +1017,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type_def->def.definition_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
       type_def->def.definition_extent = db->id_cache.ResolveExtent(decl->cursor, false /*interesting*/);
-      AddUsage(type_def->uses, decl_loc_spelling.value());
+      UniqueAdd(type_def->uses, decl_loc_spelling.value());
       break;
     }
 
@@ -1039,7 +1056,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       assert(decl->isDefinition);
       type_def->def.definition_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
       type_def->def.definition_extent = db->id_cache.ResolveExtent(decl->cursor, false /*interesting*/);
-      AddUsage(type_def->uses, decl_loc_spelling.value());
+      UniqueAdd(type_def->uses, decl_loc_spelling.value());
 
       // type_def->alias_of
       // type_def->funcs
@@ -1227,7 +1244,7 @@ void indexEntityReference(CXClientData client_data,
 
       IndexVarId var_id = db->ToVarId(referenced.get_usr());
       IndexedVarDef* var_def = db->Resolve(var_id);
-      AddUsage(var_def->uses, loc_spelling.value());
+      UniqueAdd(var_def->uses, loc_spelling.value());
       break;
     }
 
@@ -1260,10 +1277,9 @@ void indexEntityReference(CXClientData client_data,
 
         AddFuncRef(&caller_def->def.callees, IndexFuncRef(called_id, loc_spelling.value()));
         AddFuncRef(&called_def->callers, IndexFuncRef(caller_id, loc_spelling.value()));
-        AddUsage(called_def->uses, loc_spelling.value());
       } else {
         IndexedFuncDef* called_def = db->Resolve(called_id);
-        AddUsage(called_def->uses, loc_spelling.value());
+        AddFuncRef(&called_def->callers, IndexFuncRef(loc_spelling.value()));
       }
 
       // For constructor/destructor, also add a usage against the type. Clang
@@ -1288,7 +1304,7 @@ void indexEntityReference(CXClientData client_data,
             // assert(called_def->def.declaring_type.has_value());
             IndexedTypeDef* type_def =
                 db->Resolve(called_def->def.declaring_type.value());
-            AddUsage(type_def->uses, loc_spelling.value().WithInteresting(true), false /*insert_if_not_present*/);
+            UniqueAdd(type_def->uses, loc_spelling.value().WithInteresting(true), false /*insert_if_not_present*/);
           }
         }
       }
@@ -1327,7 +1343,7 @@ void indexEntityReference(CXClientData client_data,
       //    Foo f;
       //  }
       //
-      AddUsage(referenced_def->uses, loc_spelling.value());
+      UniqueAdd(referenced_def->uses, loc_spelling.value());
       break;
     }
 

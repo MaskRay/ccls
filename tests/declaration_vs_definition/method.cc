@@ -25,16 +25,14 @@ OUTPUT:
       "short_name": "declonly",
       "qualified_name": "Foo::declonly",
       "declarations": ["2:8-2:16"],
-      "declaring_type": 0,
-      "uses": ["2:8-2:16"]
+      "declaring_type": 0
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
       "qualified_name": "Foo::purevirtual",
       "declarations": ["3:16-3:27"],
-      "declaring_type": 0,
-      "uses": ["3:16-3:27"]
+      "declaring_type": 0
     }, {
       "id": 2,
       "usr": "c:@S@Foo@F@def#",
@@ -43,8 +41,7 @@ OUTPUT:
       "declarations": ["4:8-4:11"],
       "definition_spelling": "7:11-7:14",
       "definition_extent": "7:1-7:19",
-      "declaring_type": 0,
-      "uses": ["4:8-4:11", "7:11-7:14"]
+      "declaring_type": 0
     }]
 }
 */

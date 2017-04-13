@@ -58,8 +58,7 @@ OUTPUT: header.h
       "short_name": "Foo1",
       "qualified_name": "Foo1",
       "definition_spelling": "10:6-10:10",
-      "definition_extent": "10:1-10:15",
-      "uses": ["10:6-10:10"]
+      "definition_extent": "10:1-10:15"
     }],
   "vars": [{
       "id": 0,
@@ -120,13 +119,11 @@ OUTPUT: impl.cc
       "qualified_name": "Impl",
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
-      "callees": ["1@4:3-4:7"],
-      "uses": ["3:6-3:10"]
+      "callees": ["1@4:3-4:7"]
     }, {
       "id": 1,
       "usr": "c:@FT@>1#TFoo1#v#",
-      "callers": ["0@4:3-4:7"],
-      "uses": ["4:3-4:7"]
+      "callers": ["0@4:3-4:7"]
     }]
 }
 */

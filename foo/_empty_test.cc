@@ -1,3 +1,4 @@
+#if false
 #include <string>
 #include <vector>
 
@@ -31,9 +32,4 @@ float MyBar::MemberFunc(int a, char b, std::vector<int> foo) {
 
   return ::foo();
 }
-
-
-/*
-OUTPUT:
-{}
-*/
+#endif

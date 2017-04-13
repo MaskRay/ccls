@@ -33,16 +33,14 @@ OUTPUT:
       "short_name": "called",
       "qualified_name": "called",
       "declarations": ["1:6-1:12"],
-      "callers": ["2@14:3-14:9"],
-      "uses": ["1:6-1:12", "14:3-14:9"]
+      "callers": ["2@14:3-14:9"]
     }, {
       "id": 1,
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "qualified_name": "gen",
       "declarations": ["3:5-3:8"],
-      "callers": ["2@14:14-14:17"],
-      "uses": ["3:5-3:8", "14:14-14:17"]
+      "callers": ["2@14:14-14:17"]
     }, {
       "id": 2,
       "usr": "c:@F@foo#",
@@ -50,8 +48,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition_spelling": "12:6-12:9",
       "definition_extent": "12:1-15:2",
-      "callees": ["0@14:3-14:9", "1@14:14-14:17"],
-      "uses": ["12:6-12:9"]
+      "callees": ["0@14:3-14:9", "1@14:14-14:17"]
     }],
   "vars": [{
       "id": 0,

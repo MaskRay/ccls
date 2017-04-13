@@ -110,24 +110,21 @@ OUTPUT:
       "short_name": "as_return_type",
       "qualified_name": "as_return_type",
       "definition_spelling": "33:37-33:51",
-      "definition_extent": "33:1-33:92",
-      "uses": ["33:37-33:51"]
+      "definition_extent": "33:1-33:92"
     }, {
       "id": 1,
       "usr": "c:@F@no_return_type#I#",
       "short_name": "no_return_type",
       "qualified_name": "no_return_type",
       "definition_spelling": "40:6-40:20",
-      "definition_extent": "40:1-40:28",
-      "uses": ["40:6-40:20"]
+      "definition_extent": "40:1-40:28"
     }, {
       "id": 2,
       "usr": "c:@F@empty#",
       "short_name": "empty",
       "qualified_name": "empty",
       "definition_spelling": "53:6-53:11",
-      "definition_extent": "53:1-55:2",
-      "uses": ["53:6-53:11"]
+      "definition_extent": "53:1-55:2"
     }, {
       "id": 3,
       "usr": "c:@S@Foo@F@foo#",
@@ -136,8 +133,7 @@ OUTPUT:
       "declarations": ["65:23-65:26"],
       "definition_spelling": "79:26-79:29",
       "definition_extent": "79:1-79:51",
-      "declaring_type": 3,
-      "uses": ["65:23-65:26", "79:26-79:29"]
+      "declaring_type": 3
     }],
   "vars": [{
       "id": 0,

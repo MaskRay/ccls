@@ -10,8 +10,7 @@ OUTPUT:
       "usr": "c:anonymous_function.cc@aN@F@foo#",
       "short_name": "foo",
       "qualified_name": "::foo",
-      "declarations": ["2:6-2:9"],
-      "uses": ["2:6-2:9"]
+      "declarations": ["2:6-2:9"]
     }]
 }
 */

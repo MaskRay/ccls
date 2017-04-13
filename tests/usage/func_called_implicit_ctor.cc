@@ -28,8 +28,7 @@ OUTPUT:
       "qualified_name": "Wrapper::Wrapper",
       "declarations": ["2:3-2:10"],
       "declaring_type": 0,
-      "callers": ["2@8:10-8:16"],
-      "uses": ["2:3-2:10", "8:10-8:16"]
+      "callers": ["2@8:10-8:16"]
     }, {
       "id": 1,
       "usr": "c:@F@called#",
@@ -37,8 +36,7 @@ OUTPUT:
       "qualified_name": "called",
       "definition_spelling": "5:5-5:11",
       "definition_extent": "5:1-5:27",
-      "callers": ["2@8:10-8:16"],
-      "uses": ["5:5-5:11", "8:10-8:16"]
+      "callers": ["2@8:10-8:16"]
     }, {
       "id": 2,
       "usr": "c:@F@caller#",
@@ -46,8 +44,7 @@ OUTPUT:
       "qualified_name": "caller",
       "definition_spelling": "7:9-7:15",
       "definition_extent": "7:1-9:2",
-      "callees": ["0@8:10-8:16", "1@8:10-8:16"],
-      "uses": ["7:9-7:15"]
+      "callees": ["0@8:10-8:16", "1@8:10-8:16"]
     }]
 }
 */

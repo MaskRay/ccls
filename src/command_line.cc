@@ -99,22 +99,6 @@ optional<QueryableLocation> GetDeclarationOfSymbol(QueryableDatabase* db, const 
 }
 #endif
 
-std::vector<QueryableLocation> GetUsesOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
-  switch (symbol.kind) {
-    case SymbolKind::Type:
-      return db->types[symbol.idx].uses;
-    case SymbolKind::Func:
-      return db->funcs[symbol.idx].uses;
-    case SymbolKind::Var:
-      return db->vars[symbol.idx].uses;
-    case SymbolKind::File:
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
-    }
-  }
-  return {};
-}
 
 
 optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
@@ -141,6 +125,71 @@ optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db,
   }
   }
   return nullopt;
+}
+
+
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncRef>& refs) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(refs.size());
+  for (const QueryFuncRef& ref : refs)
+    locs.push_back(ref.loc);
+  return locs;
+}
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryTypeId>& ids) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(ids.size());
+  for (const QueryTypeId& id : ids) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(loc.value());
+  }
+  return locs;
+}
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncId>& ids) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(ids.size());
+  for (const QueryFuncId& id : ids) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(loc.value());
+  }
+  return locs;
+}
+std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryVarId>& ids) {
+  std::vector<QueryableLocation> locs;
+  locs.reserve(ids.size());
+  for (const QueryVarId& id : ids) {
+    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(loc.value());
+  }
+  return locs;
+}
+
+
+
+std::vector<QueryableLocation> GetUsesOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    case SymbolKind::Type:
+      return db->types[symbol.idx].uses;
+    case SymbolKind::Func: {
+      // TODO: the vector allocation could be avoided.
+      const QueryableFuncDef& func = db->funcs[symbol.idx];
+      std::vector<QueryableLocation> result = ToQueryableLocation(db, func.callers);
+      AddRange(&result, func.declarations);
+      if (func.def.definition_spelling)
+        result.push_back(*func.def.definition_spelling);
+      return result;
+    }
+    case SymbolKind::Var:
+      return db->vars[symbol.idx].uses;
+    case SymbolKind::File:
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
+  }
+  return {};
 }
 
 optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
@@ -365,44 +414,6 @@ void AddCodeLens(
 
   if (exclude_loc || unique_uses.size() > 0)
     common->result->push_back(code_lens);
-}
-
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncRef>& refs) {
-  std::vector<QueryableLocation> locs;
-  locs.reserve(refs.size());
-  for (const QueryFuncRef& ref : refs)
-    locs.push_back(ref.loc);
-  return locs;
-}
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryTypeId>& ids) {
-  std::vector<QueryableLocation> locs;
-  locs.reserve(ids.size());
-  for (const QueryTypeId& id : ids) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(loc.value());
-  }
-  return locs;
-}
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncId>& ids) {
-  std::vector<QueryableLocation> locs;
-  locs.reserve(ids.size());
-  for (const QueryFuncId& id : ids) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(loc.value());
-  }
-  return locs;
-}
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryVarId>& ids) {
-  std::vector<QueryableLocation> locs;
-  locs.reserve(ids.size());
-  for (const QueryVarId& id : ids) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(loc.value());
-  }
-  return locs;
 }
 
 }  // namespace

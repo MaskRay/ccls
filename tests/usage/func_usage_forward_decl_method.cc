@@ -27,8 +27,7 @@ OUTPUT:
       "qualified_name": "Foo::foo",
       "declarations": ["2:8-2:11"],
       "declaring_type": 0,
-      "callers": ["1@7:6-7:9"],
-      "uses": ["2:8-2:11", "7:6-7:9"]
+      "callers": ["1@7:6-7:9"]
     }, {
       "id": 1,
       "usr": "c:@F@usage#",
@@ -36,8 +35,7 @@ OUTPUT:
       "qualified_name": "usage",
       "definition_spelling": "5:6-5:11",
       "definition_extent": "5:1-8:2",
-      "callees": ["0@7:6-7:9"],
-      "uses": ["5:6-5:11"]
+      "callees": ["0@7:6-7:9"]
     }],
   "vars": [{
       "id": 0,

@@ -23,8 +23,7 @@ OUTPUT:
       "short_name": "foo",
       "qualified_name": "hello::Foo::foo",
       "declarations": ["3:8-3:11"],
-      "declaring_type": 0,
-      "uses": ["3:8-3:11"]
+      "declaring_type": 0
     }]
 }
 */

@@ -22,8 +22,7 @@ OUTPUT:
       "qualified_name": "IFoo::foo",
       "definition_spelling": "2:16-2:19",
       "definition_extent": "2:3-2:28",
-      "declaring_type": 0,
-      "uses": ["2:16-2:19"]
+      "declaring_type": 0
     }]
 }
 */

@@ -68,15 +68,21 @@ void Reflect(Writer& visitor, Id<T>& value) {
 // Ref<IndexedFuncDef>
 void Reflect(Reader& visitor, Ref<IndexedFuncDef>& value) {
   const char* str_value = visitor.GetString();
-  uint64_t id = atoi(str_value);
+  uint64_t id = atol(str_value);
   const char* loc_string = strchr(str_value, '@') + 1;
 
-  value.id = Id<IndexedFuncDef>(id);
+  value.id_ = Id<IndexedFuncDef>(id);
   value.loc = Range(loc_string);
 }
 void Reflect(Writer& visitor, Ref<IndexedFuncDef>& value) {
-  std::string s = std::to_string(value.id.id) + "@" + value.loc.ToString();
-  visitor.String(s.c_str());
+  if (value.id_.id == -1) {
+    std::string s = "-1@" + value.loc.ToString();
+    visitor.String(s.c_str());
+  }
+  else {
+    std::string s = std::to_string(value.id_.id) + "@" + value.loc.ToString();
+    visitor.String(s.c_str());
+  }
 }
 
 
@@ -156,7 +162,6 @@ void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
   REFLECT_MEMBER2("locals", value.def.locals);
   REFLECT_MEMBER2("callers", value.callers);
   REFLECT_MEMBER2("callees", value.def.callees);
-  REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }
 

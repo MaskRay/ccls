@@ -59,15 +59,24 @@ struct IdCache;
 
 template <typename T>
 struct Ref {
-  Id<T> id;
+  Id<T> id() const {
+    assert(has_id());
+    return id_;
+  }
+  bool has_id() const {
+    return id_.id != -1;
+  }
+
+  Id<T> id_;
   Range loc;
 
   Ref() {}  // For serialization.
 
-  Ref(Id<T> id, Range loc) : id(id), loc(loc) {}
+  Ref(Id<T> id, Range loc) : id_(id), loc(loc) {}
+  Ref(Range loc) : id_(Id<T>(-1)), loc(loc) {}
 
   bool operator==(const Ref<T>& other) {
-    return id == other.id && loc == other.loc;
+    return id_ == other.id_ && loc == other.loc;
   }
   bool operator!=(const Ref<T>& other) { return !(*this == other); }
   bool operator<(const Ref<T>& other) const {
@@ -77,16 +86,14 @@ struct Ref {
 
 template <typename T>
 bool operator==(const Ref<T>& a, const Ref<T>& b) {
-  return a.id == b.id && a.loc == b.loc;
+  return a.id_ == b.id_ && a.loc == b.loc;
 }
 template <typename T>
 bool operator!=(const Ref<T>& a, const Ref<T>& b) {
   return !(a == b);
 }
 
-using IndexTypeRef = Ref<IndexedTypeDef>;
 using IndexFuncRef = Ref<IndexedFuncDef>;
-using IndexVarRef = Ref<IndexedVarDef>;
 
 // TODO: skip as much forward-processing as possible when |is_system_def| is
 //       set to false.
@@ -284,16 +291,12 @@ struct IndexedFuncDef {
   // Methods which directly override this one.
   std::vector<IndexFuncId> derived;
 
-  // Functions which call this one.
-  // TODO: Functions can get called outside of just functions - for example,
-  //       they can get called in static context (maybe redirect to main?)
-  //       or in class initializer list (redirect to class ctor?)
-  //    - Right now those usages will not get listed here (but they should be
-  //      inside of all_uses).
+  // Calls/usages of this function. If the call is coming from outside a
+  // function context then the FuncRef will not have an associated id.
+  //
+  // To get all usages, also include the ranges inside of declarations and
+  // def.definition_spelling.
   std::vector<IndexFuncRef> callers;
-
-  // All usages. For interesting usages, see callees.
-  std::vector<Range> uses;
 
   IndexedFuncDef() {}  // For reflection.
   IndexedFuncDef(IndexFuncId id, const std::string& usr) : def(usr), id(id) {
@@ -307,8 +310,7 @@ struct IndexedFuncDef {
       !def.callees.empty() ||
       !declarations.empty() ||
       !derived.empty() ||
-      !callers.empty() ||
-      !uses.empty();
+      !callers.empty();
   }
 
   bool operator<(const IndexedFuncDef& other) const {

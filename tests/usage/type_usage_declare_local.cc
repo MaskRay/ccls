@@ -30,8 +30,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Foo",
       "definition_spelling": "4:6-4:9",
-      "definition_extent": "4:1-7:2",
-      "uses": ["4:6-4:9"]
+      "definition_extent": "4:1-7:2"
     }],
   "vars": [{
       "id": 0,

@@ -15,8 +15,7 @@ OUTPUT:
       "short_name": "called",
       "qualified_name": "called",
       "declarations": ["1:6-1:12"],
-      "callers": ["2@6:3-6:9"],
-      "uses": ["1:6-1:12", "6:3-6:9"]
+      "callers": ["2@6:3-6:9"]
     }, {
       "id": 1,
       "usr": "c:@F@gen#",
@@ -24,8 +23,7 @@ OUTPUT:
       "qualified_name": "gen",
       "definition_spelling": "3:5-3:8",
       "definition_extent": "3:1-3:24",
-      "callers": ["2@6:10-6:13", "2@6:18-6:21"],
-      "uses": ["3:5-3:8", "6:10-6:13", "6:18-6:21"]
+      "callers": ["2@6:10-6:13", "2@6:18-6:21"]
     }, {
       "id": 2,
       "usr": "c:@F@foo#",
@@ -33,8 +31,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition_spelling": "5:6-5:9",
       "definition_extent": "5:1-7:2",
-      "callees": ["0@6:3-6:9", "1@6:10-6:13", "1@6:18-6:21"],
-      "uses": ["5:6-5:9"]
+      "callees": ["0@6:3-6:9", "1@6:10-6:13", "1@6:18-6:21"]
     }]
 }
 */

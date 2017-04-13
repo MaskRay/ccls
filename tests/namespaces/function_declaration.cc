@@ -10,8 +10,7 @@ OUTPUT:
       "usr": "c:@N@hello@F@foo#I#I#",
       "short_name": "foo",
       "qualified_name": "hello::foo",
-      "declarations": ["2:6-2:9"],
-      "uses": ["2:6-2:9"]
+      "declarations": ["2:6-2:9"]
     }]
 }
 */

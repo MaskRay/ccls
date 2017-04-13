@@ -19,7 +19,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition_spelling": "2:12-2:15",
       "definition_extent": "2:1-4:2",
-      "uses": ["2:12-2:15", "6:9-6:12", "7:9-7:12"]
+      "callers": ["-1@6:9-6:12", "-1@7:9-7:12"]
     }],
   "vars": [{
       "id": 0,

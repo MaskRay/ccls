@@ -27,8 +27,7 @@ OUTPUT:
       "declarations": ["3:8-3:11"],
       "definition_spelling": "6:11-6:14",
       "definition_extent": "6:1-6:19",
-      "declaring_type": 0,
-      "uses": ["3:8-3:11", "6:11-6:14"]
+      "declaring_type": 0
     }]
 }
 */

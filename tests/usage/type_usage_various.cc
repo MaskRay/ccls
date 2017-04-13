@@ -31,8 +31,7 @@ OUTPUT:
       "declarations": ["2:8-2:12"],
       "definition_spelling": "5:11-5:15",
       "definition_extent": "5:1-8:2",
-      "declaring_type": 0,
-      "uses": ["2:8-2:12", "5:11-5:15"]
+      "declaring_type": 0
     }],
   "vars": [{
       "id": 0,

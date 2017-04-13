@@ -100,17 +100,25 @@ struct SymbolRef {
 };
 
 struct QueryFuncRef {
-  QueryFuncId id;
+  QueryFuncId id() const {
+    assert(has_id());
+    return id_;
+  }
+  bool has_id() const {
+    return id_.id != -1;
+  }
+
+  QueryFuncId id_;
   QueryableLocation loc;
 
-  QueryFuncRef(QueryFuncId id, QueryableLocation loc) : id(id), loc(loc) {}
+  QueryFuncRef(QueryFuncId id, QueryableLocation loc) : id_(id), loc(loc) {}
 
   bool operator==(const QueryFuncRef& that) const {
-    return id == that.id && loc == that.loc;
+    return id_ == that.id_ && loc == that.loc;
   }
   bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
   bool operator<(const QueryFuncRef& that) const {
-    return id < that.id && loc.range.start < that.loc.range.start;
+    return id_ < that.id_ && loc.range.start < that.loc.range.start;
   }
 };
 
@@ -190,16 +198,11 @@ struct QueryableFuncDef {
   using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncRef>;
-  using UsesUpdate = MergeableUpdate<QueryableLocation>;
 
   DefUpdate def;
   std::vector<QueryableLocation> declarations;
   std::vector<QueryFuncId> derived;
-  // TODO: It seems like callers is always the same as uses except callers does
-  // not include the definition or declaration. We should get a large space
-  // saving by removing it.
   std::vector<QueryFuncRef> callers;
-  std::vector<QueryableLocation> uses;
   size_t qualified_name_idx = -1;
 
   QueryableFuncDef(const Usr& usr) : def(usr) {}
@@ -246,7 +249,6 @@ struct IndexUpdate {
   std::vector<QueryableFuncDef::DeclarationsUpdate> funcs_declarations;
   std::vector<QueryableFuncDef::DerivedUpdate> funcs_derived;
   std::vector<QueryableFuncDef::CallersUpdate> funcs_callers;
-  std::vector<QueryableFuncDef::UsesUpdate> funcs_uses;
 
   // Variable updates.
   std::vector<Usr> vars_removed;

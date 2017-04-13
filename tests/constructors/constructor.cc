@@ -30,8 +30,7 @@ OUTPUT:
       "definition_spelling": "3:3-3:6",
       "definition_extent": "3:3-3:11",
       "declaring_type": 0,
-      "callers": ["1@7:7-7:8", "1@8:17-8:20"],
-      "uses": ["3:3-3:6", "7:7-7:8", "8:17-8:20"]
+      "callers": ["1@7:7-7:8", "1@8:17-8:20"]
     }, {
       "id": 1,
       "usr": "c:@F@foo#",
@@ -39,8 +38,7 @@ OUTPUT:
       "qualified_name": "foo",
       "definition_spelling": "6:6-6:9",
       "definition_extent": "6:1-9:2",
-      "callees": ["0@7:7-7:8", "0@8:17-8:20"],
-      "uses": ["6:6-6:9"]
+      "callees": ["0@7:7-7:8", "0@8:17-8:20"]
     }],
   "vars": [{
       "id": 0,
