@@ -638,6 +638,9 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUp
     assert(it != usr_to_symbol.end());
 
     QueryableTypeDef& existing = types[it->second.idx];
+    if (existing.def.definition_spelling && !def.definition_spelling)
+      continue;
+
     existing.def = def;
     SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.qualified_name);
   }
@@ -652,6 +655,9 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUp
     assert(it != usr_to_symbol.end());
 
     QueryableFuncDef& existing = funcs[it->second.idx];
+    if (existing.def.definition_spelling && !def.definition_spelling)
+      continue;
+
     existing.def = def;
     SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.qualified_name);
   }
@@ -666,6 +672,9 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
     assert(it != usr_to_symbol.end());
 
     QueryableVarDef& existing = vars[it->second.idx];
+    if (existing.def.definition_spelling && !def.definition_spelling)
+      continue;
+
     existing.def = def;
     if (def.declaring_type)
       SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.qualified_name);
