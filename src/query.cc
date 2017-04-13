@@ -628,7 +628,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdat
 
     QueryableFile& existing = files[it->second.idx];
     existing.def = def;
-    //SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.usr);
+    //SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.qualified_name);
   }
 }
 
@@ -642,7 +642,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUp
 
     QueryableTypeDef& existing = types[it->second.idx];
     existing.def = def;
-    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.usr);
+    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.qualified_name);
   }
 }
 
@@ -656,7 +656,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUp
 
     QueryableFuncDef& existing = funcs[it->second.idx];
     existing.def = def;
-    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.usr);
+    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.qualified_name);
   }
 }
 
@@ -671,7 +671,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
     QueryableVarDef& existing = vars[it->second.idx];
     existing.def = def;
     if (def.declaring_type)
-      SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.usr);
+      SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.qualified_name);
   }
 }
 
