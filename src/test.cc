@@ -130,11 +130,10 @@ void RunTests() {
     std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
 
     FileConsumer::SharedState file_consumer_shared;
-    FileConsumer file_consumer(&file_consumer_shared);
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(&file_consumer, path, {
+    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(&file_consumer_shared, path, {
         "-xc++",
         "-std=c++11",
         "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",

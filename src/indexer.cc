@@ -1394,7 +1394,7 @@ void indexEntityReference(CXClientData client_data,
 
 
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std::string filename, std::vector<std::string> args, bool dump_ast) {
+std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast) {
   filename = NormalizePath(filename);
   //return {};
 
@@ -1415,10 +1415,11 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std
        &indexEntityReference}
   };
 
-  IndexParam param(file_consumer);
+  FileConsumer file_consumer(file_consumer_shared);
+  IndexParam param(&file_consumer);
 
   CXFile file = clang_getFile(tu.cx_tu, filename.c_str());
-  param.primary_file = file_consumer->ForceLocal(file);
+  param.primary_file = file_consumer.ForceLocal(file);
 
   std::cerr << "!! [START] Indexing " << filename << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);

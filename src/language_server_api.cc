@@ -126,6 +126,10 @@ void lsDocumentUri::SetPath(const std::string& path) {
     raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
   }
 
+  raw_uri = ReplaceAll(raw_uri, " ", "%20");
+  raw_uri = ReplaceAll(raw_uri, "(", "%28");
+  raw_uri = ReplaceAll(raw_uri, ")", "%29");
+
   // TODO: proper fix
 #if defined(_WIN32)
   raw_uri = "file:///" + raw_uri;
@@ -136,8 +140,15 @@ void lsDocumentUri::SetPath(const std::string& path) {
 }
 
 std::string lsDocumentUri::GetPath() const {
+  // c:/Program%20Files%20%28x86%29/Microsoft%20Visual%20Studio%2014.0/VC/include/vcruntime.
+  // C:/Program Files (x86)
+
   // TODO: make this not a hack.
   std::string result = raw_uri;
+
+  result = ReplaceAll(result, "%20", " ");
+  result = ReplaceAll(result, "%28", "(");
+  result = ReplaceAll(result, "%29", ")");
 
   size_t index = result.find("%3A");
   if (index != -1) {

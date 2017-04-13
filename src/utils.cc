@@ -20,6 +20,26 @@ bool StartsWith(const std::string& value, const std::string& start) {
   return std::equal(start.begin(), start.end(), value.begin());
 }
 
+// See http://stackoverflow.com/a/29752943
+std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to) {
+  std::string result;
+  result.reserve(source.length());  // avoids a few memory allocations
+
+  std::string::size_type last_pos = 0;
+  std::string::size_type find_pos;
+
+  while (std::string::npos != (find_pos = source.find(from, last_pos))) {
+    result.append(source, last_pos, find_pos - last_pos);
+    result += to;
+    last_pos = find_pos + from.length();
+  }
+
+  // Care for the rest after last occurrence
+  result += source.substr(last_pos);
+
+  return result;
+}
+
 static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
   std::vector<std::string> result;
 

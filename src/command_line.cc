@@ -58,6 +58,7 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename, Quer
 }
 
 QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
+  // TODO: consider calling NormalizePath here. It might add too much latency though.
   auto it = db->usr_to_symbol.find(filename);
   if (it != db->usr_to_symbol.end())
     return &db->files[it->second.idx];
@@ -538,7 +539,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
 }
 
-bool IndexMain_DoIndex(FileConsumer* file_consumer,
+bool IndexMain_DoIndex(FileConsumer::SharedState* file_consumer_shared,
                        Index_DoIndexQueue* queue_do_index,
                        Index_DoIdMapQueue* queue_do_id_map) {
   optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
@@ -589,7 +590,7 @@ bool IndexMain_DoIndex(FileConsumer* file_consumer,
   }
 
   // Parse request and send a response.
-  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(file_consumer, index_request->path, index_request->args);
+  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(file_consumer_shared, index_request->path, index_request->args);
   time.ResetAndPrint("Parsing/indexing " + index_request->path);
 
   for (auto& current_index : indexes) {
@@ -657,8 +658,6 @@ void IndexMain(
   Index_OnIdMappedQueue* queue_on_id_mapped,
   Index_OnIndexedQueue* queue_on_indexed) {
 
-  FileConsumer file_consumer(file_consumer_shared);
-
   while (true) {
     // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
     //       better icache behavior. We need to have some threads spinning on both though
@@ -666,7 +665,7 @@ void IndexMain(
 
     int count = 0;
 
-    if (!IndexMain_DoIndex(&file_consumer, queue_do_index, queue_do_id_map) &&
+    if (!IndexMain_DoIndex(file_consumer_shared, queue_do_index, queue_do_id_map) &&
       !IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed)) {
 
       //if (count++ > 2) {
@@ -850,7 +849,7 @@ void QueryDbMainLoop(
           //  - goto declaration while in definition of recursive type
 
           optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
- 
+
           // We use spelling start and extent end because this causes vscode
           // to highlight the entire definition when previewing / hoving with
           // the mouse.

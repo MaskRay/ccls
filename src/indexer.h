@@ -444,4 +444,4 @@ struct IndexedFile {
   std::string ToString();
 };
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer* file_consumer, std::string filename, std::vector<std::string> args, bool dump_ast = false);
+std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast = false);
