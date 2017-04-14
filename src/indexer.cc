@@ -1444,7 +1444,8 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
-  clang::TranslationUnit tu(index, filename, args, {} /*unsaved_files*/, CXTranslationUnit_KeepGoing);
+  std::vector<CXUnsavedFile> unsaved_files;
+  clang::TranslationUnit tu(index, filename, args, unsaved_files, CXTranslationUnit_KeepGoing);
 
   if (dump_ast)
     Dump(tu.document_cursor());
