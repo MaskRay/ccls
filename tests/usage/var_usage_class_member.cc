@@ -36,6 +36,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "qualified_name": "accept",
+      "hover": "void (int)",
       "declarations": ["7:6-7:12"],
       "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"]
     }, {
@@ -43,6 +44,7 @@ OUTPUT:
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "qualified_name": "accept",
+      "hover": "void (int *)",
       "declarations": ["8:6-8:12"],
       "callers": ["2@16:3-16:9"]
     }, {
@@ -50,6 +52,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void ()",
       "definition_spelling": "10:6-10:9",
       "definition_extent": "10:1-18:2",
       "callees": ["0@14:3-14:9", "0@15:3-15:9", "1@16:3-16:9", "0@17:3-17:9"]
@@ -59,6 +62,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@x",
       "short_name": "x",
       "qualified_name": "Foo::x",
+      "hover": "int",
       "definition_spelling": "3:7-3:8",
       "definition_extent": "3:3-3:8",
       "declaring_type": 0,
@@ -68,6 +72,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@y",
       "short_name": "y",
       "qualified_name": "Foo::y",
+      "hover": "int",
       "definition_spelling": "4:7-4:8",
       "definition_extent": "4:3-4:8",
       "declaring_type": 0,
@@ -77,6 +82,7 @@ OUTPUT:
       "usr": "c:var_usage_class_member.cc@105@F@foo#@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "Foo",
       "definition_spelling": "11:7-11:8",
       "definition_extent": "11:3-11:8",
       "variable_type": 0,

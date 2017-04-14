@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:func_usage_class_inline_var_def.cc@F@helper#",
       "short_name": "helper",
       "qualified_name": "helper",
+      "hover": "int ()",
       "definition_spelling": "1:12-1:18",
       "definition_extent": "1:1-3:2",
       "callers": ["-1@6:11-6:17"]
@@ -33,6 +34,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@x",
       "short_name": "x",
       "qualified_name": "Foo::x",
+      "hover": "int",
       "definition_spelling": "6:7-6:8",
       "definition_extent": "6:3-6:19",
       "declaring_type": 0,

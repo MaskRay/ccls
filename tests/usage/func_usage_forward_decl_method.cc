@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "hover": "void ()",
       "declarations": ["2:8-2:11"],
       "declaring_type": 0,
       "callers": ["1@7:6-7:9"]
@@ -33,6 +34,7 @@ OUTPUT:
       "usr": "c:@F@usage#",
       "short_name": "usage",
       "qualified_name": "usage",
+      "hover": "void ()",
       "definition_spelling": "5:6-5:11",
       "definition_extent": "5:1-8:2",
       "callees": ["0@7:6-7:9"]
@@ -42,6 +44,7 @@ OUTPUT:
       "usr": "c:func_usage_forward_decl_method.cc@53@F@usage#@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "Foo *",
       "definition_spelling": "6:8-6:9",
       "definition_extent": "6:3-6:19",
       "variable_type": 0,

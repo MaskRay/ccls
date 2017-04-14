@@ -18,8 +18,10 @@ OUTPUT:
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
+      "hover": "int",
       "declaration": "2:14-2:20",
       "uses": ["2:14-2:20"]
     }]
 }
+
 */

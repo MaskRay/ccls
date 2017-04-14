@@ -31,6 +31,7 @@ OUTPUT:
       "short_name": "Foo",
       "qualified_name": "Template::Foo",
       "declarations": ["3:8-3:11", "9:22-9:25"],
+      "hover": "void ()",
       "definition_spelling": "7:19-7:22",
       "definition_extent": "6:1-7:24",
       "declaring_type": 0

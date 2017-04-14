@@ -20,6 +20,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
+      "hover": "Foo *",
       "definition_spelling": "2:8-2:14",
       "definition_extent": "2:3-2:14",
       "variable_type": 0,

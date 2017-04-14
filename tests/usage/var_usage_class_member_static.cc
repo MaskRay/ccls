@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "qualified_name": "accept",
+      "hover": "void (int)",
       "declarations": ["5:6-5:12"],
       "callers": ["1@8:3-8:9"]
     }, {
@@ -32,6 +33,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void ()",
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
       "callees": ["0@8:3-8:9"]
@@ -41,6 +43,7 @@ OUTPUT:
       "usr": "c:@S@Foo@x",
       "short_name": "x",
       "qualified_name": "Foo::x",
+      "hover": "int",
       "declaration": "2:14-2:15",
       "uses": ["2:14-2:15", "8:15-8:16"]
     }]

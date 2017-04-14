@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "hover": "void ()",
       "declarations": ["2:8-2:11"],
       "declaring_type": 0
     }]

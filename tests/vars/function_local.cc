@@ -18,6 +18,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void ()",
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-5:2"
     }],
@@ -26,6 +27,7 @@ OUTPUT:
       "usr": "c:function_local.cc@31@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "Foo *",
       "definition_spelling": "4:8-4:9",
       "definition_extent": "4:3-4:9",
       "variable_type": 0,

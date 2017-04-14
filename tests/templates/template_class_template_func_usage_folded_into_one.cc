@@ -27,6 +27,7 @@ OUTPUT:
       "usr": "c:@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "hover": "int ()",
       "definition_spelling": "4:14-4:17",
       "definition_extent": "4:3-6:4",
       "declaring_type": 0,
@@ -37,6 +38,7 @@ OUTPUT:
       "usr": "c:@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "int",
       "definition_spelling": "9:5-9:6",
       "definition_extent": "9:1-9:31",
       "uses": ["9:5-9:6"]
@@ -45,6 +47,7 @@ OUTPUT:
       "usr": "c:@b",
       "short_name": "b",
       "qualified_name": "b",
+      "hover": "int",
       "definition_spelling": "10:5-10:6",
       "definition_extent": "10:1-10:33",
       "uses": ["10:5-10:6"]

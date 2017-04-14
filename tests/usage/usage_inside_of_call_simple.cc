@@ -14,6 +14,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
+      "hover": "void (int)",
       "declarations": ["1:6-1:12"],
       "callers": ["2@6:3-6:9"]
     }, {
@@ -21,6 +22,7 @@ OUTPUT:
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "qualified_name": "gen",
+      "hover": "int ()",
       "definition_spelling": "3:5-3:8",
       "definition_extent": "3:1-3:24",
       "callers": ["2@6:10-6:13", "2@6:18-6:21"]
@@ -29,6 +31,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void ()",
       "definition_spelling": "5:6-5:9",
       "definition_extent": "5:1-7:2",
       "callees": ["0@6:3-6:9", "1@6:10-6:13", "1@6:18-6:21"]

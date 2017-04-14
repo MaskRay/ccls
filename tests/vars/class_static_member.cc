@@ -22,6 +22,7 @@ OUTPUT:
       "usr": "c:@S@Foo@member",
       "short_name": "member",
       "qualified_name": "Foo::member",
+      "hover": "Foo *",
       "declaration": "2:15-2:21",
       "definition_spelling": "4:11-4:17",
       "definition_extent": "4:1-4:27",
@@ -30,4 +31,5 @@ OUTPUT:
       "uses": ["2:15-2:21", "4:11-4:17"]
     }]
 }
+
 */

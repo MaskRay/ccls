@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "hello::Foo::foo",
+      "hover": "void ()",
       "declarations": ["3:8-3:11"],
       "definition_spelling": "6:11-6:14",
       "definition_extent": "6:1-6:19",

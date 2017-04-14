@@ -16,6 +16,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void (Foo *, Foo *)",
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-3:30"
     }],
@@ -24,6 +25,7 @@ OUTPUT:
       "usr": "c:function_param.cc@24@F@foo#*$@S@Foo#S0_#@p0",
       "short_name": "p0",
       "qualified_name": "p0",
+      "hover": "Foo *",
       "definition_spelling": "3:15-3:17",
       "definition_extent": "3:10-3:17",
       "variable_type": 0,
@@ -33,6 +35,7 @@ OUTPUT:
       "usr": "c:function_param.cc@33@F@foo#*$@S@Foo#S0_#@p1",
       "short_name": "p1",
       "qualified_name": "p1",
+      "hover": "Foo *",
       "definition_spelling": "3:24-3:26",
       "definition_extent": "3:19-3:26",
       "variable_type": 0,

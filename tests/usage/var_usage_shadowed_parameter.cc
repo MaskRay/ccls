@@ -15,6 +15,7 @@ OUTPUT:
       "usr": "c:@F@foo#I#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void (int)",
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-8:2"
     }],
@@ -23,6 +24,7 @@ OUTPUT:
       "usr": "c:var_usage_shadowed_parameter.cc@9@F@foo#I#@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "int",
       "definition_spelling": "1:14-1:15",
       "definition_extent": "1:10-1:15",
       "uses": ["1:14-1:15", "2:3-2:4", "7:3-7:4"]
@@ -31,6 +33,7 @@ OUTPUT:
       "usr": "c:var_usage_shadowed_parameter.cc@38@F@foo#I#@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "int",
       "definition_spelling": "4:9-4:10",
       "definition_extent": "4:5-4:10",
       "uses": ["4:9-4:10", "5:5-5:6"]

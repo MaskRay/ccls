@@ -109,6 +109,7 @@ OUTPUT:
       "usr": "c:@F@as_return_type#*$@S@unique_ptr>#$@S@S1#$@S@S2#",
       "short_name": "as_return_type",
       "qualified_name": "as_return_type",
+      "hover": "unique_ptr<unique_ptr<S1, S2>, S2> *(unique_ptr<S1, S2> *)",
       "definition_spelling": "33:37-33:51",
       "definition_extent": "33:1-33:92"
     }, {
@@ -116,6 +117,7 @@ OUTPUT:
       "usr": "c:@F@no_return_type#I#",
       "short_name": "no_return_type",
       "qualified_name": "no_return_type",
+      "hover": "void (int)",
       "definition_spelling": "40:6-40:20",
       "definition_extent": "40:1-40:28"
     }, {
@@ -123,6 +125,7 @@ OUTPUT:
       "usr": "c:@F@empty#",
       "short_name": "empty",
       "qualified_name": "empty",
+      "hover": "void ()",
       "definition_spelling": "53:6-53:11",
       "definition_extent": "53:1-55:2"
     }, {
@@ -130,6 +133,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "hover": "unique_ptr<S1, S2> *()",
       "declarations": ["65:23-65:26"],
       "definition_spelling": "79:26-79:29",
       "definition_extent": "79:1-79:51",
@@ -140,6 +144,7 @@ OUTPUT:
       "usr": "c:@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "unique_ptr<unique_ptr<S1, S2>, S2>",
       "declaration": "15:43-15:44",
       "variable_type": 0,
       "uses": ["15:43-15:44"]
@@ -148,6 +153,7 @@ OUTPUT:
       "usr": "c:type_usage_as_template_parameter_complex.cc@1062@F@empty#@local",
       "short_name": "local",
       "qualified_name": "local",
+      "hover": "unique_ptr<unique_ptr<S1, S2>, S2> *",
       "definition_spelling": "54:39-54:44",
       "definition_extent": "54:3-54:44",
       "variable_type": 0,

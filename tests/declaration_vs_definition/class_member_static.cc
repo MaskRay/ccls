@@ -22,6 +22,7 @@ OUTPUT:
       "usr": "c:@S@Foo@foo",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "hover": "int",
       "declaration": "2:14-2:17",
       "definition_spelling": "5:10-5:13",
       "definition_extent": "5:1-5:13",

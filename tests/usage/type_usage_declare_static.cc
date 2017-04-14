@@ -14,6 +14,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_static.cc@t",
       "short_name": "t",
       "qualified_name": "t",
+      "hover": "Type",
       "definition_spelling": "2:13-2:14",
       "definition_extent": "2:1-2:14",
       "variable_type": 0,

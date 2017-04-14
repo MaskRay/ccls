@@ -22,6 +22,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void (Foo *, Foo *)",
       "declarations": ["3:6-3:9"],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:26"
@@ -31,6 +32,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_param_prototype.cc@49@F@foo#*$@S@Foo#S0_#@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "Foo *",
       "definition_spelling": "4:15-4:16",
       "definition_extent": "4:10-4:16",
       "variable_type": 0,

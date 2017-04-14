@@ -29,6 +29,7 @@ OUTPUT:
       "usr": "c:@N@ns@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "qualified_name": "ns::Foo::foo",
+      "hover": "int ()",
       "definition_spelling": "5:16-5:19",
       "definition_extent": "5:5-7:6",
       "declaring_type": 0,
@@ -39,6 +40,7 @@ OUTPUT:
       "usr": "c:@N@ns@a",
       "short_name": "a",
       "qualified_name": "ns::a",
+      "hover": "int",
       "definition_spelling": "10:7-10:8",
       "definition_extent": "10:3-10:33",
       "uses": ["10:7-10:8"]
@@ -47,6 +49,7 @@ OUTPUT:
       "usr": "c:@N@ns@b",
       "short_name": "b",
       "qualified_name": "ns::b",
+      "hover": "int",
       "definition_spelling": "11:7-11:8",
       "definition_extent": "11:3-11:35",
       "uses": ["11:7-11:8"]

@@ -17,6 +17,7 @@ OUTPUT:
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "int ()",
       "definition_spelling": "2:12-2:15",
       "definition_extent": "2:1-4:2",
       "callers": ["-1@6:9-6:12", "-1@7:9-7:12"]
@@ -26,6 +27,7 @@ OUTPUT:
       "usr": "c:@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "int",
       "definition_spelling": "6:5-6:6",
       "definition_extent": "6:1-6:19",
       "uses": ["6:5-6:6"]
@@ -34,6 +36,7 @@ OUTPUT:
       "usr": "c:@b",
       "short_name": "b",
       "qualified_name": "b",
+      "hover": "int",
       "definition_spelling": "7:5-7:6",
       "definition_extent": "7:1-7:20",
       "uses": ["7:5-7:6"]

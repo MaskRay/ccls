@@ -34,6 +34,7 @@ OUTPUT:
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "qualified_name": "Root::foo",
+      "hover": "void ()",
       "declarations": ["2:16-2:19"],
       "declaring_type": 0,
       "derived": [1]
@@ -42,6 +43,7 @@ OUTPUT:
       "usr": "c:@S@Derived@F@foo#",
       "short_name": "foo",
       "qualified_name": "Derived::foo",
+      "hover": "void ()",
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:3-5:25",
       "declaring_type": 1,

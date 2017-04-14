@@ -32,6 +32,7 @@ OUTPUT:
       "usr": "c:@F@return_type#",
       "short_name": "return_type",
       "qualified_name": "return_type",
+      "hover": "unique_ptr<S> *()",
       "definition_spelling": "9:16-9:27",
       "definition_extent": "9:1-12:2"
     }],
@@ -40,6 +41,7 @@ OUTPUT:
       "usr": "c:type_usage_as_template_parameter.cc@f0",
       "short_name": "f0",
       "qualified_name": "f0",
+      "hover": "unique_ptr<bool>",
       "definition_spelling": "6:25-6:27",
       "definition_extent": "6:1-6:27",
       "variable_type": 0,
@@ -49,6 +51,7 @@ OUTPUT:
       "usr": "c:type_usage_as_template_parameter.cc@f1",
       "short_name": "f1",
       "qualified_name": "f1",
+      "hover": "unique_ptr<S>",
       "definition_spelling": "7:22-7:24",
       "definition_extent": "7:1-7:24",
       "variable_type": 0,
@@ -58,11 +61,11 @@ OUTPUT:
       "usr": "c:type_usage_as_template_parameter.cc@150@F@return_type#@local",
       "short_name": "local",
       "qualified_name": "local",
+      "hover": "unique_ptr<S> *",
       "definition_spelling": "10:18-10:23",
       "definition_extent": "10:3-10:23",
       "variable_type": 0,
       "uses": ["10:18-10:23"]
     }]
 }
-
 */

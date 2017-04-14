@@ -56,6 +56,7 @@ OUTPUT:
       "usr": "c:@VT>1#T@var",
       "short_name": "var",
       "qualified_name": "var",
+      "hover": "T",
       "definition_spelling": "5:3-5:6",
       "definition_extent": "5:1-5:10",
       "uses": ["5:3-5:6", "7:9-7:12", "8:9-8:12"]
@@ -64,6 +65,7 @@ OUTPUT:
       "usr": "c:@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "int",
       "definition_spelling": "7:5-7:6",
       "definition_extent": "7:1-7:15",
       "uses": ["7:5-7:6"]
@@ -72,6 +74,7 @@ OUTPUT:
       "usr": "c:@b",
       "short_name": "b",
       "qualified_name": "b",
+      "hover": "int",
       "definition_spelling": "8:5-8:6",
       "definition_extent": "8:1-8:15",
       "uses": ["8:5-8:6"]

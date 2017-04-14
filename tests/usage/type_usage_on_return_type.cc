@@ -39,6 +39,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "Type *()",
       "declarations": ["3:7-3:10", "4:7-4:10"],
       "definition_spelling": "5:7-5:10",
       "definition_extent": "5:1-5:15"
@@ -47,6 +48,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Get#I#",
       "short_name": "Get",
       "qualified_name": "Foo::Get",
+      "hover": "Type *(int)",
       "declarations": ["8:9-8:12"],
       "definition_spelling": "12:12-12:15",
       "definition_extent": "12:1-12:23",
@@ -56,6 +58,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Empty#",
       "short_name": "Empty",
       "qualified_name": "Foo::Empty",
+      "hover": "void ()",
       "declarations": ["9:8-9:13"],
       "definition_spelling": "13:11-13:16",
       "definition_extent": "13:1-13:21",
@@ -65,12 +68,14 @@ OUTPUT:
       "usr": "c:@F@external#",
       "short_name": "external",
       "qualified_name": "external",
+      "hover": "const Type &()",
       "declarations": ["15:20-15:28"]
     }, {
       "id": 4,
       "usr": "c:type_usage_on_return_type.cc@F@bar#",
       "short_name": "bar",
       "qualified_name": "bar",
+      "hover": "Type *()",
       "declarations": ["17:14-17:17"],
       "definition_spelling": "18:14-18:17",
       "definition_extent": "18:1-18:22"

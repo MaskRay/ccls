@@ -26,6 +26,7 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "qualified_name": "called",
+      "hover": "void ()",
       "definition_spelling": "1:6-1:12",
       "definition_extent": "1:1-1:17",
       "callers": ["1@8:3-8:9"]
@@ -34,6 +35,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "qualified_name": "Foo::Foo",
+      "hover": "void ()",
       "declarations": ["4:3-4:6"],
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",

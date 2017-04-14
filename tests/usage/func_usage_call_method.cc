@@ -26,6 +26,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "qualified_name": "Foo::Used",
+      "hover": "void ()",
       "declarations": ["2:8-2:12"],
       "declaring_type": 0,
       "callers": ["1@7:6-7:10"]
@@ -34,6 +35,7 @@ OUTPUT:
       "usr": "c:@F@user#",
       "short_name": "user",
       "qualified_name": "user",
+      "hover": "void ()",
       "definition_spelling": "5:6-5:10",
       "definition_extent": "5:1-8:2",
       "callees": ["0@7:6-7:10"]
@@ -43,6 +45,7 @@ OUTPUT:
       "usr": "c:func_usage_call_method.cc@53@F@user#@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "Foo *",
       "definition_spelling": "6:8-6:9",
       "definition_extent": "6:3-6:19",
       "variable_type": 0,

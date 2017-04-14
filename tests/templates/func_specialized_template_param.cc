@@ -33,6 +33,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Bar#&$@S@Template>#d#",
       "short_name": "Bar",
       "qualified_name": "Foo::Bar",
+      "hover": "void (Template<double> &)",
       "declarations": ["5:8-5:11"],
       "definition_spelling": "8:11-8:14",
       "definition_extent": "8:1-8:36",

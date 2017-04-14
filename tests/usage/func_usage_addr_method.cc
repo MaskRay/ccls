@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "qualified_name": "Foo::Used",
+      "hover": "void ()",
       "declarations": ["2:8-2:12"],
       "declaring_type": 0,
       "callers": ["1@6:18-6:22"]
@@ -33,6 +34,7 @@ OUTPUT:
       "usr": "c:@F@user#",
       "short_name": "user",
       "qualified_name": "user",
+      "hover": "void ()",
       "definition_spelling": "5:6-5:10",
       "definition_extent": "5:1-7:2",
       "callees": ["0@6:18-6:22"]
@@ -42,6 +44,7 @@ OUTPUT:
       "usr": "c:func_usage_addr_method.cc@53@F@user#@x",
       "short_name": "x",
       "qualified_name": "x",
+      "hover": "void (Foo::*)()",
       "definition_spelling": "6:8-6:9",
       "definition_extent": "6:3-6:22",
       "uses": ["6:8-6:9"]

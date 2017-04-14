@@ -19,6 +19,7 @@ OUTPUT:
       "usr": "c:@t",
       "short_name": "t",
       "qualified_name": "t",
+      "hover": "T",
       "declaration": "3:10-3:11",
       "variable_type": 0,
       "uses": ["3:10-3:11"]

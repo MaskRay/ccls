@@ -34,6 +34,7 @@ OUTPUT:
       "usr": "c:@S@Holder@static_var",
       "short_name": "static_var",
       "qualified_name": "Holder::static_var",
+      "hover": "const VarType",
       "declaration": "4:28-4:38",
       "definition_spelling": "7:23-7:33",
       "definition_extent": "7:1-7:33",

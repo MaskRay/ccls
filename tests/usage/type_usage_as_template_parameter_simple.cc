@@ -27,6 +27,7 @@ OUTPUT:
       "usr": "c:type_usage_as_template_parameter_simple.cc@foo",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "unique_ptr<S>",
       "definition_spelling": "6:22-6:25",
       "definition_extent": "6:1-6:25",
       "variable_type": 0,

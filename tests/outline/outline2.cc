@@ -40,6 +40,7 @@ OUTPUT:
       "usr": "c:@F@LoadCompilationEntriesFromDirectory#&1$@N@std@S@basic_string>#C#$@N@std@S@char_traits>#C#$@N@std@S@allocator>#C#",
       "short_name": "LoadCompilationEntriesFromDirectory",
       "qualified_name": "LoadCompilationEntriesFromDirectory",
+      "hover": "std::vector<CompilationEntry> (const std::string &)",
       "declarations": ["12:31-12:66"]
     }],
   "vars": [{
@@ -47,6 +48,7 @@ OUTPUT:
       "usr": "c:@S@CompilationEntry@FI@directory",
       "short_name": "directory",
       "qualified_name": "CompilationEntry::directory",
+      "hover": "std::string",
       "definition_spelling": "7:15-7:24",
       "definition_extent": "7:3-7:24",
       "variable_type": 1,
@@ -57,6 +59,7 @@ OUTPUT:
       "usr": "c:@S@CompilationEntry@FI@filename",
       "short_name": "filename",
       "qualified_name": "CompilationEntry::filename",
+      "hover": "std::string",
       "definition_spelling": "8:15-8:23",
       "definition_extent": "8:3-8:23",
       "variable_type": 1,
@@ -67,6 +70,7 @@ OUTPUT:
       "usr": "c:@S@CompilationEntry@FI@args",
       "short_name": "args",
       "qualified_name": "CompilationEntry::args",
+      "hover": "std::vector<std::string>",
       "definition_spelling": "9:28-9:32",
       "definition_extent": "9:3-9:32",
       "variable_type": 2,

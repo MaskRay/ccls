@@ -32,6 +32,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "qualified_name": "called",
+      "hover": "void (int)",
       "declarations": ["1:6-1:12"],
       "callers": ["2@14:3-14:9"]
     }, {
@@ -39,6 +40,7 @@ OUTPUT:
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "qualified_name": "gen",
+      "hover": "int ()",
       "declarations": ["3:5-3:8"],
       "callers": ["2@14:14-14:17"]
     }, {
@@ -46,6 +48,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void ()",
       "definition_spelling": "12:6-12:9",
       "definition_extent": "12:1-15:2",
       "callees": ["0@14:3-14:9", "1@14:14-14:17"]
@@ -55,6 +58,7 @@ OUTPUT:
       "usr": "c:@S@Foo@static_var",
       "short_name": "static_var",
       "qualified_name": "Foo::static_var",
+      "hover": "int",
       "declaration": "6:14-6:24",
       "definition_spelling": "10:10-10:20",
       "definition_extent": "10:1-10:24",
@@ -65,6 +69,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@field_var",
       "short_name": "field_var",
       "qualified_name": "Foo::field_var",
+      "hover": "int",
       "definition_spelling": "7:7-7:16",
       "definition_extent": "7:3-7:16",
       "declaring_type": 0,
@@ -74,6 +79,7 @@ OUTPUT:
       "usr": "c:usage_inside_of_call.cc@145@F@foo#@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "int",
       "definition_spelling": "13:7-13:8",
       "definition_extent": "13:3-13:12",
       "uses": ["13:7-13:8", "14:10-14:11"]

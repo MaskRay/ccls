@@ -28,6 +28,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "qualified_name": "Foo::make",
+      "hover": "Foo *()",
       "declarations": ["2:8-2:12"],
       "definition_spelling": "5:11-5:15",
       "definition_extent": "5:1-8:2",
@@ -38,6 +39,7 @@ OUTPUT:
       "usr": "c:type_usage_various.cc@57@S@Foo@F@make#@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "Foo",
       "definition_spelling": "6:7-6:8",
       "definition_extent": "6:3-6:8",
       "variable_type": 0,
@@ -47,6 +49,7 @@ OUTPUT:
       "usr": "c:@foo",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "Foo",
       "declaration": "10:12-10:15",
       "variable_type": 0,
       "uses": ["10:12-10:15"]

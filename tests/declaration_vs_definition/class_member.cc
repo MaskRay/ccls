@@ -20,6 +20,7 @@ OUTPUT:
       "usr": "c:@S@Foo@FI@foo",
       "short_name": "foo",
       "qualified_name": "Foo::foo",
+      "hover": "int",
       "definition_spelling": "2:7-2:10",
       "definition_extent": "2:3-2:10",
       "declaring_type": 0,

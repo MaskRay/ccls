@@ -12,6 +12,7 @@ OUTPUT: simple_header.h
       "usr": "c:@F@header#",
       "short_name": "header",
       "qualified_name": "header",
+      "hover": "void ()",
       "declarations": ["3:6-3:12"]
     }]
 }
@@ -24,6 +25,7 @@ OUTPUT: simple_impl.cc
       "usr": "c:@F@impl#",
       "short_name": "impl",
       "qualified_name": "impl",
+      "hover": "void ()",
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
       "callees": ["1@4:3-4:9"]

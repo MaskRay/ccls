@@ -41,6 +41,7 @@ OUTPUT:
       "usr": "c:@N@ns@ST>1#T@Holder@static_var",
       "short_name": "static_var",
       "qualified_name": "ns::Holder::static_var",
+      "hover": "const ns::VarType",
       "declaration": "6:30-6:40",
       "definition_spelling": "10:37-10:47",
       "definition_extent": "9:3-10:47",
@@ -52,6 +53,7 @@ OUTPUT:
       "usr": "c:@N@ns@Foo",
       "short_name": "Foo",
       "qualified_name": "ns::Foo",
+      "hover": "int",
       "definition_spelling": "13:7-13:10",
       "definition_extent": "13:3-13:36",
       "uses": ["13:7-13:10"]
@@ -60,6 +62,7 @@ OUTPUT:
       "usr": "c:@N@ns@Foo2",
       "short_name": "Foo2",
       "qualified_name": "ns::Foo2",
+      "hover": "int",
       "definition_spelling": "14:7-14:11",
       "definition_extent": "14:3-14:37",
       "uses": ["14:7-14:11"]

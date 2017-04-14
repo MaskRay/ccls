@@ -26,6 +26,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@ForwardType#$@S@ImplementedType#",
       "short_name": "foo",
       "qualified_name": "foo",
+      "hover": "void (ForwardType *, ImplementedType)",
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:47"
     }],
@@ -34,6 +35,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_param.cc@60@F@foo#*$@S@ForwardType#$@S@ImplementedType#@f",
       "short_name": "f",
       "qualified_name": "f",
+      "hover": "ForwardType *",
       "definition_spelling": "4:23-4:24",
       "definition_extent": "4:10-4:24",
       "variable_type": 0,
@@ -43,6 +45,7 @@ OUTPUT:
       "usr": "c:type_usage_declare_param.cc@76@F@foo#*$@S@ForwardType#$@S@ImplementedType#@a",
       "short_name": "a",
       "qualified_name": "a",
+      "hover": "ImplementedType",
       "definition_spelling": "4:42-4:43",
       "definition_extent": "4:26-4:43",
       "variable_type": 1,
