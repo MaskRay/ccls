@@ -167,6 +167,7 @@ void WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
 
   // The file may already be open.
   if (WorkingFile* file = GetFileByFilename(filename)) {
+    file->version = open.textDocument.version;
     file->content = content;
     return;
   }
@@ -182,6 +183,7 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
     return;
   }
 
+  file->version = change.textDocument.version;
   //std::cerr << "VERSION " << change.textDocument.version << std::endl;
 
   for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff : change.contentChanges) {

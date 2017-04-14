@@ -14,6 +14,7 @@ enum class IpcId : int {
   TextDocumentDidChange,
   TextDocumentDidClose,
   TextDocumentDidSave,
+  TextDocumentRename,
   TextDocumentCompletion,
   TextDocumentDefinition,
   TextDocumentDocumentHighlight,

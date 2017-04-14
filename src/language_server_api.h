@@ -336,7 +336,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
 struct lsVersionedTextDocumentIdentifier {
   lsDocumentUri uri;
   // The version number of this document.
-  int version;
+  int version = 0;
 };
 MAKE_REFLECT_STRUCT(lsVersionedTextDocumentIdentifier, uri, version);
 
@@ -488,6 +488,17 @@ struct lsTextDocumentEdit {
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentEdit, textDocument, edits);
 
+struct lsWorkspaceEdit {
+  // Holds changes to existing resources.
+  // changes ? : { [uri:string]: TextEdit[]; };
+
+  // An array of `TextDocumentEdit`s to express changes to specific a specific
+  // version of a text document. Whether a client supports versioned document
+  // edits is expressed via `WorkspaceClientCapabilites.versionedWorkspaceEdit`.
+  std::vector<lsTextDocumentEdit> documentChanges;
+};
+MAKE_REFLECT_STRUCT(lsWorkspaceEdit, documentChanges);
+
 // A document highlight kind.
 enum class lsDocumentHighlightKind {
   // A textual occurrence.
@@ -511,7 +522,6 @@ struct lsDocumentHighlight {
 };
 MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind);
 
-// TODO: WorkspaceEdit
 // TODO: DocumentFilter
 // TODO: DocumentSelector
 
@@ -1113,6 +1123,35 @@ struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave, params);
+
+
+
+// Rename
+struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
+  struct Params {
+    // The document to format.
+    lsTextDocumentIdentifier textDocument;
+
+    // The position at which this request was sent.
+    lsPosition position;
+
+    // The new name of the symbol. If the given name is not valid the
+    // request must return a [ResponseError](#ResponseError) with an
+    // appropriate message set.
+    std::string newName;
+  };
+  const static IpcId kIpcId = IpcId::TextDocumentRename;
+
+  lsRequestId id;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename::Params, textDocument, position, newName);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename, id, params);
+struct Out_TextDocumentRename : public lsOutMessage<Out_TextDocumentRename> {
+  lsRequestId id;
+  lsWorkspaceEdit result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
 
 
 

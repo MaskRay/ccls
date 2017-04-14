@@ -356,6 +356,7 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
     }
     case SymbolKind::Func: {
       QueryableFuncDef* def = symbol.ResolveFunc(db);
+      
       info.name = def->def.qualified_name;
       if (def->def.declaring_type.has_value()) {
         info.kind = lsSymbolKind::Method;
@@ -368,7 +369,7 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
     }
     case SymbolKind::Var: {
       QueryableVarDef* def = symbol.ResolveVar(db);
-      info.name = def->def.qualified_name;
+      info.name += def->def.qualified_name;
       info.kind = lsSymbolKind::Variable;
       break;
     }
@@ -431,6 +432,38 @@ void AddCodeLens(
 
   if (exclude_loc || unique_uses.size() > 0)
     common->result->push_back(code_lens);
+}
+
+lsWorkspaceEdit BuildWorkspaceEdit(QueryableDatabase* db, WorkingFiles* working_files, const std::vector<QueryableLocation>& locations, const std::string& new_text) {
+  std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
+
+  for (auto& location : locations) {
+    optional<lsLocation> ls_location = GetLsLocation(db, working_files, location);
+    if (!ls_location)
+      continue;
+    
+    if (path_to_edit.find(location.path) == path_to_edit.end()) {
+      path_to_edit[location.path] = lsTextDocumentEdit();
+
+      const std::string& path = db->files[location.path.id].def.usr;
+      path_to_edit[location.path].textDocument.uri = lsDocumentUri::FromPath(path);
+      
+      WorkingFile* working_file = working_files->GetFileByFilename(path);
+      if (working_file)
+        path_to_edit[location.path].textDocument.version = working_file->version;
+    }
+
+    lsTextEdit edit;
+    edit.range = ls_location->range;
+    edit.newText = new_text;
+    path_to_edit[location.path].edits.push_back(edit);
+  }
+
+
+  lsWorkspaceEdit edit;
+  for (const auto& changes : path_to_edit)
+    edit.documentChanges.push_back(changes.second);
+  return edit;
 }
 
 }  // namespace
@@ -536,6 +569,7 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_TextDocumentDidChange>(ipc.get());
   RegisterId<Ipc_TextDocumentDidClose>(ipc.get());
   RegisterId<Ipc_TextDocumentDidSave>(ipc.get());
+  RegisterId<Ipc_TextDocumentRename>(ipc.get());
   RegisterId<Ipc_TextDocumentComplete>(ipc.get());
   RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentHighlight>(ipc.get());
@@ -560,6 +594,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentRename>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentHighlight>();
@@ -837,6 +872,37 @@ void QueryDbMainLoop(
       if (entry)
         request.args = entry->args;
       queue_do_index->Enqueue(std::move(request));
+      break;
+    }
+
+    case IpcId::TextDocumentRename: {
+      auto msg = static_cast<Ipc_TextDocumentRename*>(message.get());
+
+      QueryFileId file_id;
+      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
+      Out_TextDocumentRename response;
+      response.id = msg->id;
+
+      // TODO: consider refactoring into FindSymbolsAtLocation(file);
+      int target_line = msg->params.position.line + 1;
+      int target_column = msg->params.position.character + 1;
+      for (const SymbolRef& ref : file->def.all_symbols) {
+        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
+          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+
+          // Found symbol. Return references to rename.
+          std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+          response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
+          break;
+        }
+      }
+
+      response.Write(std::cerr);
+      SendOutMessageToClient(language_client, response);
       break;
     }
 
@@ -1320,6 +1386,8 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
       response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental;
 
+      response.result.capabilities.renameProvider = true;
+
       response.result.capabilities.completionProvider = lsCompletionOptions();
       response.result.capabilities.completionProvider->resolveProvider = false;
       response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
@@ -1354,6 +1422,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDidChange:
     case IpcId::TextDocumentDidClose:
     case IpcId::TextDocumentDidSave:
+    case IpcId::TextDocumentRename:
     case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDefinition:
     case IpcId::TextDocumentDocumentHighlight:

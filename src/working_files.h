@@ -39,6 +39,7 @@ struct WorkingFile {
     Change(int disk_line, int delta);
   };
 
+  int version = 0;
   std::string filename;
   std::string content;
   std::vector<Change> changes;

@@ -783,6 +783,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
       var_def->def.hover = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
 
+      // Include type in qualified name.
+      if (!var_def->def.hover.empty())
+        var_def->def.qualified_name = var_def->def.hover + " " + var_def->def.qualified_name;
       //}
 
       if (decl->isDefinition) {
@@ -889,6 +892,19 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
         // TODO: we should build this ourselves. It doesn't include parameter names for functions.
         func_def->def.hover = decl_cursor.get_type_description();
+
+
+        // Update qualified name to include function signature
+        // TODO: make this less hideous
+        auto it = std::find(func_def->def.hover.begin(), func_def->def.hover.end(), '(');
+        if (it != func_def->def.hover.end()) {
+          std::string new_qualified_name;
+          new_qualified_name.resize(func_def->def.hover.size() + func_def->def.qualified_name.size() + 1);
+          std::copy(func_def->def.hover.begin(), it, new_qualified_name.begin());
+          std::copy(func_def->def.qualified_name.begin(), func_def->def.qualified_name.end(), new_qualified_name.begin() + std::distance(func_def->def.hover.begin(), it));
+          std::copy(it, func_def->def.hover.end(), new_qualified_name.begin() + std::distance(func_def->def.hover.begin(), it) + func_def->def.qualified_name.size());
+          func_def->def.qualified_name = new_qualified_name;
+        }
 
         // TODO: return type
         //decl_cursor.get_type_description()
