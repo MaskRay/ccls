@@ -781,6 +781,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       var_def->def.short_name = decl->entityInfo->name;
       var_def->def.qualified_name =
           ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
+      var_def->def.hover = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
+
       //}
 
       if (decl->isDefinition) {
@@ -884,6 +886,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         func_def->def.qualified_name = ns->QualifiedName(
             decl->semanticContainer, func_def->def.short_name);
         //}
+
+        // TODO: we should build this ourselves. It doesn't include parameter names for functions.
+        func_def->def.hover = decl_cursor.get_type_description();
+
+        // TODO: return type
+        //decl_cursor.get_type_description()
+        //func_def->def.return_type = 
 
         bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
         bool is_ctor_or_dtor =

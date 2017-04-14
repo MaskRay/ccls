@@ -22,6 +22,8 @@ const char* IpcIdToString(IpcId id) {
     return "textDocument/completion";
   case IpcId::TextDocumentDefinition:
     return "textDocument/definition";
+  case IpcId::TextDocumentHover:
+    return "textDocument/hover";
   case IpcId::TextDocumentReferences:
     return "textDocument/references";
   case IpcId::TextDocumentDocumentSymbol:

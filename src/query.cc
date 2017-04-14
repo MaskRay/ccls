@@ -36,6 +36,7 @@ QueryableFuncDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::D
   QueryableFuncDef::DefUpdate result(func.usr);
   result.short_name = func.short_name;
   result.qualified_name = func.qualified_name;
+  result.hover = func.hover;
   result.definition_spelling = id_map.ToQuery(func.definition_spelling);
   result.definition_extent = id_map.ToQuery(func.definition_extent);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
@@ -50,6 +51,7 @@ QueryableVarDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def
   QueryableVarDef::DefUpdate result(var.usr);
   result.short_name = var.short_name;
   result.qualified_name = var.qualified_name;
+  result.hover = var.hover;
   result.declaration = id_map.ToQuery(var.declaration);
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);

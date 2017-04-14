@@ -128,6 +128,23 @@ optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db,
 }
 
 
+std::string GetHoverForSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+  case SymbolKind::Type:
+    return db->types[symbol.idx].def.qualified_name;
+  case SymbolKind::Func:
+    return db->funcs[symbol.idx].def.hover;
+  case SymbolKind::Var:
+    return db->vars[symbol.idx].def.hover;
+  case SymbolKind::File:
+  case SymbolKind::Invalid: {
+    assert(false && "unexpected");
+    break;
+  }
+  }
+  return "";
+}
+
 std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncRef>& refs) {
   std::vector<QueryableLocation> locs;
   locs.reserve(refs.size());
@@ -521,6 +538,7 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_TextDocumentDidSave>(ipc.get());
   RegisterId<Ipc_TextDocumentComplete>(ipc.get());
   RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
+  RegisterId<Ipc_TextDocumentHover>(ipc.get());
   RegisterId<Ipc_TextDocumentReferences>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
   RegisterId<Ipc_TextDocumentCodeLens>(ipc.get());
@@ -543,6 +561,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
@@ -899,6 +918,38 @@ void QueryDbMainLoop(
       break;
     }
 
+    case IpcId::TextDocumentHover: {
+      auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
+
+      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
+      Out_TextDocumentHover response;
+      response.id = msg->id;
+
+      int target_line = msg->params.position.line + 1;
+      int target_column = msg->params.position.character + 1;
+      for (const SymbolRef& ref : file->def.all_symbols) {
+        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
+          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+
+          // Found symbol. Return references.
+          optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.usr), ref.loc.range);
+          if (!ls_range)
+            continue;
+
+          response.result.contents = GetHoverForSymbol(db, ref.idx);
+          response.result.range = *ls_range;
+          break;
+        }
+      }
+
+      SendOutMessageToClient(language_client, response);
+      break;
+    }
+
     case IpcId::TextDocumentReferences: {
       auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
 
@@ -911,11 +962,9 @@ void QueryDbMainLoop(
       Out_TextDocumentReferences response;
       response.id = msg->id;
 
-      // TODO: Edge cases (whitespace, etc) will work a lot better
-      // if we store range information instead of hacking it.
+      // TODO: consider refactoring into FindSymbolsAtLocation(file);
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
-
       for (const SymbolRef& ref : file->def.all_symbols) {
         if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
             ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
@@ -1233,7 +1282,10 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       response.result.capabilities.codeLensProvider->resolveProvider = false;
 
       response.result.capabilities.definitionProvider = true;
+      response.result.capabilities.hoverProvider = true;
+
       response.result.capabilities.referencesProvider = true;
+
       response.result.capabilities.documentSymbolProvider = true;
       response.result.capabilities.workspaceSymbolProvider = true;
 
@@ -1258,6 +1310,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDidSave:
     case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDefinition:
+    case IpcId::TextDocumentHover:
     case IpcId::TextDocumentReferences:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:

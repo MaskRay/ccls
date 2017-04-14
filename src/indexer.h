@@ -221,6 +221,7 @@ struct FuncDefDefinitionData {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
+  std::string hover;
   optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
@@ -246,6 +247,7 @@ struct FuncDefDefinitionData {
           other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
+           hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            declaring_type == other.declaring_type && base == other.base &&
@@ -271,6 +273,7 @@ void Reflect(
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(qualified_name);
+  REFLECT_MEMBER(hover);
   REFLECT_MEMBER(definition);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(base);
@@ -328,6 +331,7 @@ struct VarDefDefinitionData {
   std::string usr;
   std::string short_name;
   std::string qualified_name;
+  std::string hover;
   optional<Range> declaration;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
@@ -347,6 +351,7 @@ struct VarDefDefinitionData {
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
            qualified_name == other.qualified_name &&
+           hover == other.hover &&
            declaration == other.declaration &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
@@ -370,6 +375,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(qualified_name);
+  REFLECT_MEMBER(hover);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);

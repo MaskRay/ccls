@@ -134,7 +134,7 @@ struct MessageQueue::BufferMetadata {
   // Reset buffer.
   void reset() { total_message_bytes_ = 0; }
 
-  // Total number of used bytes exluding the sizeof this metadata object.
+  // Total number of used bytes excluding the sizeof this metadata object.
   void add_used_bytes(size_t used_bytes) { total_message_bytes_ += used_bytes; }
 
   // The total number of bytes in use.

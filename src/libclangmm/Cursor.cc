@@ -186,6 +186,11 @@ bool Cursor::is_valid_kind() const {
 }
 
 std::string Cursor::get_type_description() const {
+  auto type = clang_getCursorType(cx_cursor);
+  return clang::ToString(clang_getTypeSpelling(type));
+
+
+
   std::string spelling;
 
   auto referenced = clang_getCursorReferenced(cx_cursor);

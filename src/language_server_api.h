@@ -1131,6 +1131,26 @@ struct Out_TextDocumentDefinition : public lsOutMessage<Out_TextDocumentDefiniti
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
+// Hover
+struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {
+  const static IpcId kIpcId = IpcId::TextDocumentHover;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentHover, id, params);
+struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
+  struct Result {
+    std::string contents;
+    optional<lsRange> range;
+  };
+
+  lsRequestId id;
+  Result result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
+MAKE_REFLECT_STRUCT(Out_TextDocumentHover, jsonrpc, id, result);
+
 // References
 struct Ipc_TextDocumentReferences : public IpcMessage<Ipc_TextDocumentReferences> {
   struct lsReferenceContext {
