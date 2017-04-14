@@ -146,17 +146,6 @@ struct MergeableUpdate {
     : usr(usr), to_add(to_add), to_remove(to_remove) {}
 };
 
-template<typename TValue>
-struct ReplacementUpdate {
-  // The type/func/var which is getting new usages.
-  Usr usr;
-  // New entries.
-  std::vector<TValue> values;
-
-  ReplacementUpdate(Usr usr, const std::vector<TValue>& values)
-    : usr(usr), values(values) {}
-};
-
 struct QueryableFile {
   struct Def {
     Usr usr;
@@ -172,8 +161,6 @@ struct QueryableFile {
   size_t qualified_name_idx = -1;
 
   QueryableFile(const Usr& usr) { def.usr = usr; }
-  QueryableFile(const Def& def) : def(def) {}
-  QueryableFile(const IdMap& id_map, const IndexedFile& indexed);
 };
 
 struct QueryableTypeDef {
@@ -189,8 +176,6 @@ struct QueryableTypeDef {
   size_t qualified_name_idx = -1;
 
   QueryableTypeDef(const Usr& usr) : def(usr) {}
-  QueryableTypeDef(const DefUpdate& def) : def(def) {}
-  QueryableTypeDef(const IdMap& id_map, const IndexedTypeDef& indexed);
 };
 
 struct QueryableFuncDef {
@@ -207,7 +192,6 @@ struct QueryableFuncDef {
 
   QueryableFuncDef(const Usr& usr) : def(usr) {}
   QueryableFuncDef(const DefUpdate& def) : def(def) {}
-  QueryableFuncDef(const IdMap& id_map, const IndexedFuncDef& indexed);
 };
 
 struct QueryableVarDef {
@@ -219,8 +203,6 @@ struct QueryableVarDef {
   size_t qualified_name_idx = -1;
 
   QueryableVarDef(const Usr& usr) : def(usr) {}
-  QueryableVarDef(const DefUpdate& def) : def(def) {}
-  QueryableVarDef(const IdMap& id_map, const IndexedVarDef& indexed);
 };
 
 struct IndexUpdate {

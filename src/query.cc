@@ -16,42 +16,45 @@
 
 namespace {
 
-QueryableTypeDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::Def& def) {
-  QueryableTypeDef::DefUpdate result(def.usr);
-  result.short_name = def.short_name;
-  result.qualified_name = def.qualified_name;
-  result.definition_spelling = id_map.ToQuery(def.definition_spelling);
-  result.definition_extent = id_map.ToQuery(def.definition_extent);
-  result.alias_of = id_map.ToQuery(def.alias_of);
-  result.parents = id_map.ToQuery(def.parents);
-  result.types = id_map.ToQuery(def.types);
-  result.funcs = id_map.ToQuery(def.funcs);
-  result.vars = id_map.ToQuery(def.vars);
+QueryableTypeDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::Def& type) {
+  assert(!type.short_name.empty());
+  QueryableTypeDef::DefUpdate result(type.usr);
+  result.short_name = type.short_name;
+  result.qualified_name = type.qualified_name;
+  result.definition_spelling = id_map.ToQuery(type.definition_spelling);
+  result.definition_extent = id_map.ToQuery(type.definition_extent);
+  result.alias_of = id_map.ToQuery(type.alias_of);
+  result.parents = id_map.ToQuery(type.parents);
+  result.types = id_map.ToQuery(type.types);
+  result.funcs = id_map.ToQuery(type.funcs);
+  result.vars = id_map.ToQuery(type.vars);
   return result;
 }
 
-QueryableFuncDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::Def& def) {
-  QueryableFuncDef::DefUpdate result(def.usr);
-  result.short_name = def.short_name;
-  result.qualified_name = def.qualified_name;
-  result.definition_spelling = id_map.ToQuery(def.definition_spelling);
-  result.definition_extent = id_map.ToQuery(def.definition_extent);
-  result.declaring_type = id_map.ToQuery(def.declaring_type);
-  result.base = id_map.ToQuery(def.base);
-  result.locals = id_map.ToQuery(def.locals);
-  result.callees = id_map.ToQuery(def.callees);
+QueryableFuncDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::Def& func) {
+  assert(!func.short_name.empty());
+  QueryableFuncDef::DefUpdate result(func.usr);
+  result.short_name = func.short_name;
+  result.qualified_name = func.qualified_name;
+  result.definition_spelling = id_map.ToQuery(func.definition_spelling);
+  result.definition_extent = id_map.ToQuery(func.definition_extent);
+  result.declaring_type = id_map.ToQuery(func.declaring_type);
+  result.base = id_map.ToQuery(func.base);
+  result.locals = id_map.ToQuery(func.locals);
+  result.callees = id_map.ToQuery(func.callees);
   return result;
 }
 
-QueryableVarDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def& def) {
-  QueryableVarDef::DefUpdate result(def.usr);
-  result.short_name = def.short_name;
-  result.qualified_name = def.qualified_name;
-  result.declaration = id_map.ToQuery(def.declaration);
-  result.definition_spelling = id_map.ToQuery(def.definition_spelling);
-  result.definition_extent = id_map.ToQuery(def.definition_extent);
-  result.variable_type = id_map.ToQuery(def.variable_type);
-  result.declaring_type = id_map.ToQuery(def.declaring_type);
+QueryableVarDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def& var) {
+  assert(!var.short_name.empty());
+  QueryableVarDef::DefUpdate result(var.usr);
+  result.short_name = var.short_name;
+  result.qualified_name = var.qualified_name;
+  result.declaration = id_map.ToQuery(var.declaration);
+  result.definition_spelling = id_map.ToQuery(var.definition_spelling);
+  result.definition_extent = id_map.ToQuery(var.definition_extent);
+  result.variable_type = id_map.ToQuery(var.variable_type);
+  result.declaring_type = id_map.ToQuery(var.declaring_type);
   return result;
 }
 
@@ -117,30 +120,6 @@ QueryableFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed)
 
   return def;
 }
-
-QueryableFile::QueryableFile(const IdMap& id_map, const IndexedFile& indexed)
-  : def(BuildFileDef(id_map, indexed)) {}
-
-QueryableTypeDef::QueryableTypeDef(const IdMap& id_map, const IndexedTypeDef& indexed)
-  : def(ToQuery(id_map, indexed.def)) {
-  derived = id_map.ToQuery(indexed.derived);
-  instantiations = id_map.ToQuery(indexed.instantiations);
-  uses = id_map.ToQuery(indexed.uses);
-}
-
-QueryableFuncDef::QueryableFuncDef(const IdMap& id_map, const IndexedFuncDef& indexed)
-  : def(ToQuery(id_map, indexed.def)) {
-  declarations = id_map.ToQuery(indexed.declarations);
-  derived = id_map.ToQuery(indexed.derived);
-  callers = id_map.ToQuery(indexed.callers);
-}
-
-QueryableVarDef::QueryableVarDef(const IdMap& id_map, const IndexedVarDef& indexed)
-  : def(ToQuery(id_map, indexed.def)) {
-  uses = id_map.ToQuery(indexed.uses);
-}
-
-
 
 
 
@@ -489,18 +468,21 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     /*onRemoved:*/[this](IndexedTypeDef* def) {
     types_removed.push_back(def->def.usr);
   },
-    /*onAdded:*/[this, &current_id_map](IndexedTypeDef* def) {
-    QueryableTypeDef query(current_id_map, *def);
-    types_def_update.push_back(query.def);
-    types_derived.push_back(QueryableTypeDef::DerivedUpdate(query.def.usr, query.derived));
-    types_instantiations.push_back(QueryableTypeDef::InstantiationsUpdate(query.def.usr, query.instantiations));
-    types_uses.push_back(QueryableTypeDef::UsesUpdate(query.def.usr, query.uses));
+    /*onAdded:*/[this, &current_id_map](IndexedTypeDef* type) {
+    if (!type->def.short_name.empty())
+      types_def_update.push_back(ToQuery(current_id_map, type->def));
+    if (!type->derived.empty())
+      types_derived.push_back(QueryableTypeDef::DerivedUpdate(type->def.usr, current_id_map.ToQuery(type->derived)));
+    if (!type->instantiations.empty())
+      types_instantiations.push_back(QueryableTypeDef::InstantiationsUpdate(type->def.usr, current_id_map.ToQuery(type->instantiations)));
+    if (!type->uses.empty())
+      types_uses.push_back(QueryableTypeDef::UsesUpdate(type->def.usr, current_id_map.ToQuery(type->uses)));
   },
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedTypeDef* previous_def, IndexedTypeDef* current_def) {
-    QueryableTypeDef::DefUpdate previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
-    QueryableTypeDef::DefUpdate current_remapped_def = ToQuery(current_id_map, current_def->def);
-    if (previous_remapped_def != current_remapped_def)
-      types_def_update.push_back(current_remapped_def);
+    optional<QueryableTypeDef::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
+    optional<QueryableTypeDef::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
+    if (current_remapped_def && previous_remapped_def != current_remapped_def)
+      types_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(types_derived, derived, QueryTypeId);
     PROCESS_UPDATE_DIFF(types_instantiations, instantiations, QueryVarId);
@@ -512,18 +494,21 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     /*onRemoved:*/[this](IndexedFuncDef* def) {
     funcs_removed.push_back(def->def.usr);
   },
-    /*onAdded:*/[this, &current_id_map](IndexedFuncDef* def) {
-    QueryableFuncDef query(current_id_map, *def);
-    funcs_def_update.push_back(query.def);
-    funcs_declarations.push_back(QueryableFuncDef::DeclarationsUpdate(query.def.usr, query.declarations));
-    funcs_derived.push_back(QueryableFuncDef::DerivedUpdate(query.def.usr, query.derived));
-    funcs_callers.push_back(QueryableFuncDef::CallersUpdate(query.def.usr, query.callers));
+    /*onAdded:*/[this, &current_id_map](IndexedFuncDef* func) {
+    if (!func->def.short_name.empty())
+      funcs_def_update.push_back(ToQuery(current_id_map, func->def));
+    if (!func->declarations.empty())
+      funcs_declarations.push_back(QueryableFuncDef::DeclarationsUpdate(func->def.usr, current_id_map.ToQuery(func->declarations)));
+    if (!func->derived.empty())
+      funcs_derived.push_back(QueryableFuncDef::DerivedUpdate(func->def.usr, current_id_map.ToQuery(func->derived)));
+    if (!func->callers.empty())
+      funcs_callers.push_back(QueryableFuncDef::CallersUpdate(func->def.usr, current_id_map.ToQuery(func->callers)));
   },
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedFuncDef* previous_def, IndexedFuncDef* current_def) {
-    QueryableFuncDef::DefUpdate previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
-    QueryableFuncDef::DefUpdate current_remapped_def = ToQuery(current_id_map, current_def->def);
-    if (previous_remapped_def != current_remapped_def)
-      funcs_def_update.push_back(current_remapped_def);
+    optional<QueryableFuncDef::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
+    optional<QueryableFuncDef::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
+    if (current_remapped_def && previous_remapped_def != current_remapped_def)
+      funcs_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(funcs_declarations, declarations, QueryableLocation);
     PROCESS_UPDATE_DIFF(funcs_derived, derived, QueryFuncId);
@@ -535,16 +520,17 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     /*onRemoved:*/[this](IndexedVarDef* def) {
     vars_removed.push_back(def->def.usr);
   },
-    /*onAdded:*/[this, &current_id_map](IndexedVarDef* def) {
-    QueryableVarDef query(current_id_map, *def);
-    vars_def_update.push_back(query.def);
-    vars_uses.push_back(QueryableVarDef::UsesUpdate(query.def.usr, query.uses));
+    /*onAdded:*/[this, &current_id_map](IndexedVarDef* var) {
+    if (!var->def.short_name.empty())
+      vars_def_update.push_back(ToQuery(current_id_map, var->def));
+    if (!var->uses.empty())
+      vars_uses.push_back(QueryableVarDef::UsesUpdate(var->def.usr, current_id_map.ToQuery(var->uses)));
   },
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedVarDef* previous_def, IndexedVarDef* current_def) {
-    QueryableVarDef::DefUpdate previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
-    QueryableVarDef::DefUpdate current_remapped_def = ToQuery(current_id_map, current_def->def);
-    if (previous_remapped_def != current_remapped_def)
-      vars_def_update.push_back(current_remapped_def);
+    optional<QueryableVarDef::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
+    optional<QueryableVarDef::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
+    if (current_remapped_def && previous_remapped_def != current_remapped_def)
+      vars_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(vars_uses, uses, QueryableLocation);
   });
@@ -553,6 +539,12 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
 }
 
 void IndexUpdate::Merge(const IndexUpdate& update) {
+  // TODO: When merging we should look at existing entries
+  // and join them so we only run the map access once in the
+  // querydb. This will probably be expensive though, we may
+  // want to cache additional state so we could do a set
+  // intersection.
+  
 #define INDEX_UPDATE_MERGE(name) \
     AddRange(&name, update.name);
 
@@ -682,13 +674,6 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
 }
 
 void QueryableDatabase::ApplyIndexUpdate(IndexUpdate* update) {
-#define HANDLE_REPLACEMENT(update_var_name, def_var_name, storage_name) \
-  for (auto replacement_update : update->update_var_name) { \
-    SymbolIdx index = usr_to_symbol[replacement_update.usr]; \
-    auto* def = &storage_name[index.idx]; \
-    def->def_var_name = replacement_update.entries; \
-  }
-
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
   for (auto merge_update : update->update_var_name) { \
     SymbolIdx index = usr_to_symbol[merge_update.usr]; \

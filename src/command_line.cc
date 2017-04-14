@@ -861,16 +861,17 @@ void QueryDbMainLoop(
 
           optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
 
-          // We use spelling start and extent end because this causes vscode
-          // to highlight the entire definition when previewing / hoving with
-          // the mouse.
+          // We use spelling start and extent end because this causes vscode to
+          // highlight the entire definition when previewing / hoving with the
+          // mouse.
           optional<QueryableLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
           if (def_loc && def_extent)
             def_loc->range.end = def_extent->range.end;
 
-          // If the cursor is currently at or in the definition we should goto the declaration if possible.
-          // We also want to use delcarations if we're pointing to, ie, a pure virtual function which has
-          // no definition.
+          // If the cursor is currently at or in the definition we should goto
+          // the declaration if possible. We also want to use declarations if
+          // we're pointing to, ie, a pure virtual function which has no
+          // definition.
           if (!def_loc || (def_loc->path == file_id &&
                            def_loc->range.Contains(target_line, target_column))) {
             // Goto declaration.
