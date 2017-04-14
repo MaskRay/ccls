@@ -488,6 +488,29 @@ struct lsTextDocumentEdit {
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentEdit, textDocument, edits);
 
+// A document highlight kind.
+enum class lsDocumentHighlightKind {
+  // A textual occurrence.
+  Text = 1,
+  // Read-access of a symbol, like reading a variable.
+  Read = 2,
+  // Write-access of a symbol, like writing to a variable.
+  Write = 3
+};
+MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind, int);
+
+// A document highlight is a range inside a text document which deserves
+// special attention. Usually a document highlight is visualized by changing
+// the background color of its range.
+struct lsDocumentHighlight {
+	// The range this highlight applies to.
+	lsRange range;
+
+	// The highlight kind, default is DocumentHighlightKind.Text.
+  lsDocumentHighlightKind kind = lsDocumentHighlightKind::Text;
+};
+MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind);
+
 // TODO: WorkspaceEdit
 // TODO: DocumentFilter
 // TODO: DocumentSelector
@@ -1130,6 +1153,20 @@ struct Out_TextDocumentDefinition : public lsOutMessage<Out_TextDocumentDefiniti
   NonElidedVector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
+
+// Document highlight
+struct Ipc_TextDocumentDocumentHighlight : public IpcMessage<Ipc_TextDocumentDocumentHighlight> {
+  const static IpcId kIpcId = IpcId::TextDocumentDocumentHighlight;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentHighlight, id, params);
+struct Out_TextDocumentDocumentHighlight : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
+  lsRequestId id;
+  NonElidedVector<lsDocumentHighlight> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentHighlight, jsonrpc, id, result);
 
 // Hover
 struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {

@@ -538,6 +538,7 @@ std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, s
   RegisterId<Ipc_TextDocumentDidSave>(ipc.get());
   RegisterId<Ipc_TextDocumentComplete>(ipc.get());
   RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
+  RegisterId<Ipc_TextDocumentDocumentHighlight>(ipc.get());
   RegisterId<Ipc_TextDocumentHover>(ipc.get());
   RegisterId<Ipc_TextDocumentReferences>(ipc.get());
   RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
@@ -561,6 +562,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentHighlight>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
@@ -918,6 +920,49 @@ void QueryDbMainLoop(
       break;
     }
 
+    case IpcId::TextDocumentDocumentHighlight: {
+      auto msg = static_cast<Ipc_TextDocumentDocumentHighlight*>(message.get());
+
+      QueryFileId file_id;
+      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+      if (!file) {
+        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        break;
+      }
+      Out_TextDocumentDocumentHighlight response;
+      response.id = msg->id;
+
+      // TODO: consider refactoring into FindSymbolsAtLocation(file);
+      int target_line = msg->params.position.line + 1;
+      int target_column = msg->params.position.character + 1;
+      for (const SymbolRef& ref : file->def.all_symbols) {
+        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
+          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+
+          // Found symbol. Return references to highlight.
+          std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+          response.result.reserve(uses.size());
+          for (const QueryableLocation& use : uses) {
+            if (use.path != file_id)
+              continue;
+
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
+            if (!ls_location)
+              continue;
+
+            lsDocumentHighlight highlight;
+            highlight.kind = lsDocumentHighlightKind::Text;
+            highlight.range = ls_location->range;
+            response.result.push_back(highlight);
+          }
+          break;
+        }
+      }
+
+      SendOutMessageToClient(language_client, response);
+      break;
+    }
+
     case IpcId::TextDocumentHover: {
       auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
 
@@ -929,13 +974,14 @@ void QueryDbMainLoop(
       Out_TextDocumentHover response;
       response.id = msg->id;
 
+      // TODO: consider refactoring into FindSymbolsAtLocation(file);
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
       for (const SymbolRef& ref : file->def.all_symbols) {
         if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
           ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
 
-          // Found symbol. Return references.
+          // Found symbol. Return hover.
           optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.usr), ref.loc.range);
           if (!ls_range)
             continue;
@@ -1282,8 +1328,8 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
       response.result.capabilities.codeLensProvider->resolveProvider = false;
 
       response.result.capabilities.definitionProvider = true;
+      response.result.capabilities.documentHighlightProvider = true;
       response.result.capabilities.hoverProvider = true;
-
       response.result.capabilities.referencesProvider = true;
 
       response.result.capabilities.documentSymbolProvider = true;
@@ -1310,6 +1356,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     case IpcId::TextDocumentDidSave:
     case IpcId::TextDocumentCompletion:
     case IpcId::TextDocumentDefinition:
+    case IpcId::TextDocumentDocumentHighlight:
     case IpcId::TextDocumentHover:
     case IpcId::TextDocumentReferences:
     case IpcId::TextDocumentDocumentSymbol:

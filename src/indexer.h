@@ -50,6 +50,10 @@ bool operator==(const Id<T>& a, const Id<T>& b) {
   assert(a.group == b.group && "Cannot compare Ids from different groups");
   return a.id == b.id;
 }
+template <typename T>
+bool operator!=(const Id<T>& a, const Id<T>& b) {
+  return !(a == b);
+}
 
 using IndexTypeId = Id<IndexedTypeDef>;
 using IndexFuncId = Id<IndexedFuncDef>;

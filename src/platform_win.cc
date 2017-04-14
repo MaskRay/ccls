@@ -141,6 +141,7 @@ std::string NormalizePath(const std::string& path) {
 
   std::string result = buffer;
   std::replace(result.begin(), result.end(), '\\', '/');
+  //std::transform(result.begin(), result.end(), result.begin(), ::tolower);
   return result;
 }
 

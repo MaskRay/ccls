@@ -166,6 +166,11 @@ std::string lsDocumentUri::GetPath() const {
   }
 
   std::replace(result.begin(), result.end(), '\\', '/');
+
+#if defined(_WIN32)
+  //std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+#endif
+
   return result;
 }
 
