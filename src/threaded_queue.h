@@ -44,7 +44,7 @@ public:
 
     auto val = std::move(queue_.front());
     queue_.pop();
-    return val;
+    return std::move(val);
   }
 
  private:

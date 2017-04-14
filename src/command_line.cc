@@ -1234,7 +1234,7 @@ void QueryDbMainLoop(
 
 
       std::cerr << "- Considering " << db->qualified_names.size()
-        << " candidates " << std::endl;
+        << " candidates for query " << msg->params.query << std::endl;
 
       std::string query = msg->params.query;
       for (int i = 0; i < db->qualified_names.size(); ++i) {

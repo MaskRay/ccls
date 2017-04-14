@@ -14,11 +14,12 @@
 #include <rapidjson/document.h>
 
 #include <algorithm>
-#include <iostream>
 #include <cstdint>
 #include <cassert>
 #include <fstream>
+#include <iostream>
 #include <unordered_map>
+#include <vector>
 
 struct IndexedTypeDef;
 struct IndexedFuncDef;
@@ -84,7 +85,7 @@ struct Ref {
   }
   bool operator!=(const Ref<T>& other) { return !(*this == other); }
   bool operator<(const Ref<T>& other) const {
-    return id < other.id && loc < other.loc;
+    return id_ < other.id && loc < other.loc;
   }
 };
 

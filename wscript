@@ -85,7 +85,10 @@ def build(bld):
   print('CLANG_LIB_DIR:     {0}'.format(CLANG_LIB_DIR))
 
   cc_files = bld.path.ant_glob(['**/*.cpp', '**/*.cc'],
-                               excl=['libcxx/*', '*tests/*', 'third_party/*'])
+                               excl=['foo/*',
+                                     'libcxx/*',
+                                     '*tests/*',
+                                     'third_party/*'])
 
   lib = ['clang']
   if sys.platform == 'linux' or sys.platform == 'linux2':
@@ -96,7 +99,7 @@ def build(bld):
 
   bld.program(
       source=cc_files,
-      cxxflags=['-O3', '-std=c++11', '-Wall'],
+      cxxflags=['-g', '-O3', '-std=c++11', '-Wall'],
       includes=[
         'third_party/',
         'third_party/doctest/',

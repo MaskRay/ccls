@@ -172,9 +172,13 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
       }
 
       entry.args.push_back(arg);
-
       //if (StartsWith(arg, "-I") || StartsWith(arg, "-D") || StartsWith(arg, "-std"))
     }
+
+    // TODO/fixme
+    entry.args.push_back("-xc++");
+    entry.args.push_back("-std=c++11");
+
 
 
     result.push_back(entry);

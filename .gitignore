@@ -3,7 +3,7 @@ Debug
 x64
 build
 libcxx
-CACHE
+CACHE*
 waf-*
 .lock-waf*
 .waf*
