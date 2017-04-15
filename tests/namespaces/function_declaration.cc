@@ -9,8 +9,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@N@hello@F@foo#I#I#",
       "short_name": "foo",
-      "qualified_name": "hello::foo",
-      "hover": "void (int, int)",
+      "qualified_name": "void hello::foo(int, int)",
       "declarations": ["2:6-2:9"]
     }]
 }

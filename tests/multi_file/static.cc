@@ -19,13 +19,11 @@ OUTPUT: static.h
       "id": 0,
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
-      "qualified_name": "Buffer::CreateSharedBuffer",
-      "hover": "void ()",
+      "qualified_name": "void Buffer::CreateSharedBuffer()",
       "declarations": ["4:15-4:33"],
       "declaring_type": 0
     }]
 }
-
 OUTPUT: static.cc
 {
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/static.h"],
@@ -39,8 +37,7 @@ OUTPUT: static.cc
       "id": 0,
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
-      "qualified_name": "Buffer::CreateSharedBuffer",
-      "hover": "void ()",
+      "qualified_name": "void Buffer::CreateSharedBuffer()",
       "definition_spelling": "3:14-3:32",
       "definition_extent": "3:1-3:37",
       "declaring_type": 0

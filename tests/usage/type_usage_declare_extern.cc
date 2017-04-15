@@ -18,8 +18,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@t",
       "short_name": "t",
-      "qualified_name": "t",
-      "hover": "T",
+      "qualified_name": "T t",
       "declaration": "3:10-3:11",
       "variable_type": 0,
       "uses": ["3:10-3:11"]

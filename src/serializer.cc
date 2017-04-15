@@ -153,7 +153,6 @@ void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
   REFLECT_MEMBER2("usr", value.def.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
-  REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
@@ -189,7 +188,6 @@ void Reflect(TVisitor& visitor, IndexedVarDef& value) {
   REFLECT_MEMBER2("usr", value.def.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("qualified_name", value.def.qualified_name);
-  REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("declaration", value.def.declaration);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);

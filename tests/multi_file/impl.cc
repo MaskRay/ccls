@@ -56,8 +56,7 @@ OUTPUT: header.h
       "id": 0,
       "usr": "c:@FT@>1#TFoo1#v#",
       "short_name": "Foo1",
-      "qualified_name": "Foo1",
-      "hover": "void ()",
+      "qualified_name": "void Foo1()",
       "definition_spelling": "10:6-10:10",
       "definition_extent": "10:1-10:15"
     }],
@@ -65,8 +64,7 @@ OUTPUT: header.h
       "id": 0,
       "usr": "c:@E@Foo3@A",
       "short_name": "A",
-      "qualified_name": "Foo3::A",
-      "hover": "Foo3",
+      "qualified_name": "Foo3 Foo3::A",
       "definition_spelling": "15:13-15:14",
       "definition_extent": "15:13-15:14",
       "variable_type": 4,
@@ -76,8 +74,7 @@ OUTPUT: header.h
       "id": 1,
       "usr": "c:@E@Foo3@B",
       "short_name": "B",
-      "qualified_name": "Foo3::B",
-      "hover": "Foo3",
+      "qualified_name": "Foo3 Foo3::B",
       "definition_spelling": "15:16-15:17",
       "definition_extent": "15:16-15:17",
       "variable_type": 4,
@@ -87,8 +84,7 @@ OUTPUT: header.h
       "id": 2,
       "usr": "c:@E@Foo3@C",
       "short_name": "C",
-      "qualified_name": "Foo3::C",
-      "hover": "Foo3",
+      "qualified_name": "Foo3 Foo3::C",
       "definition_spelling": "15:19-15:20",
       "definition_extent": "15:19-15:20",
       "variable_type": 4,
@@ -98,8 +94,7 @@ OUTPUT: header.h
       "id": 3,
       "usr": "c:@Foo4",
       "short_name": "Foo4",
-      "qualified_name": "Foo4",
-      "hover": "int",
+      "qualified_name": "int Foo4",
       "definition_spelling": "17:5-17:9",
       "definition_extent": "17:1-17:9",
       "uses": ["17:5-17:9"]
@@ -107,14 +102,12 @@ OUTPUT: header.h
       "id": 4,
       "usr": "c:header.h@Foo5",
       "short_name": "Foo5",
-      "qualified_name": "Foo5",
-      "hover": "int",
+      "qualified_name": "int Foo5",
       "definition_spelling": "18:12-18:16",
       "definition_extent": "18:1-18:16",
       "uses": ["18:12-18:16"]
     }]
 }
-
 OUTPUT: impl.cc
 {
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/header.h"],
@@ -122,8 +115,7 @@ OUTPUT: impl.cc
       "id": 0,
       "usr": "c:@F@Impl#",
       "short_name": "Impl",
-      "qualified_name": "Impl",
-      "hover": "void ()",
+      "qualified_name": "void Impl()",
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
       "callees": ["1@4:3-4:7"]

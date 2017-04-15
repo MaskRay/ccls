@@ -23,24 +23,21 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
-      "qualified_name": "Foo::declonly",
-      "hover": "void ()",
+      "qualified_name": "void Foo::declonly()",
       "declarations": ["2:8-2:16"],
       "declaring_type": 0
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
-      "qualified_name": "Foo::purevirtual",
-      "hover": "void ()",
+      "qualified_name": "void Foo::purevirtual()",
       "declarations": ["3:16-3:27"],
       "declaring_type": 0
     }, {
       "id": 2,
       "usr": "c:@S@Foo@F@def#",
       "short_name": "def",
-      "qualified_name": "Foo::def",
-      "hover": "void ()",
+      "qualified_name": "void Foo::def()",
       "declarations": ["4:8-4:11"],
       "definition_spelling": "7:11-7:14",
       "definition_extent": "7:1-7:19",

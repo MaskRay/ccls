@@ -2,6 +2,7 @@
 #include "cache.h"
 #include "code_completion.h"
 #include "file_consumer.h"
+#include "fuzzy.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
@@ -134,9 +135,9 @@ std::string GetHoverForSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   case SymbolKind::Type:
     return db->types[symbol.idx].def.qualified_name;
   case SymbolKind::Func:
-    return db->funcs[symbol.idx].def.hover;
+    return db->funcs[symbol.idx].def.qualified_name;
   case SymbolKind::Var:
-    return db->vars[symbol.idx].def.hover;
+    return db->vars[symbol.idx].def.qualified_name;
   case SymbolKind::File:
   case SymbolKind::Invalid: {
     assert(false && "unexpected");
@@ -1262,7 +1263,7 @@ void QueryDbMainLoop(
         }
       }
 
-      std::cerr << "- Found " << response.result.size() << " results" << std::endl;
+      std::cerr << "- Found " << response.result.size() << " results for query " << query << std::endl;
       SendOutMessageToClient(language_client, response);
       break;
     }

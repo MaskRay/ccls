@@ -21,8 +21,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
-      "qualified_name": "hello::Foo::foo",
-      "hover": "void ()",
+      "qualified_name": "void hello::Foo::foo()",
       "definition_spelling": "3:8-3:11",
       "definition_extent": "3:3-3:16",
       "declaring_type": 0

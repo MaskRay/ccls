@@ -56,32 +56,28 @@ OUTPUT:
       "id": 0,
       "usr": "c:@F@accept#*$@S@Foo#",
       "short_name": "accept",
-      "qualified_name": "accept",
-      "hover": "void (Foo *)",
+      "qualified_name": "void accept(Foo *)",
       "definition_spelling": "7:6-7:12",
       "definition_extent": "7:1-7:21"
     }, {
       "id": 1,
       "usr": "c:@F@accept1#**$@S@Foo#",
       "short_name": "accept1",
-      "qualified_name": "accept1",
-      "hover": "void (Foo1 *)",
+      "qualified_name": "void accept1(Foo1 *)",
       "definition_spelling": "8:6-8:13",
       "definition_extent": "8:1-8:23"
     }, {
       "id": 2,
       "usr": "c:@F@accept2#*$@S@Foo#",
       "short_name": "accept2",
-      "qualified_name": "accept2",
-      "hover": "void (Foo2 *)",
+      "qualified_name": "void accept2(Foo2 *)",
       "definition_spelling": "9:6-9:13",
       "definition_extent": "9:1-9:23"
     }, {
       "id": 3,
       "usr": "c:@F@accept3#**$@S@Foo#",
       "short_name": "accept3",
-      "qualified_name": "accept3",
-      "hover": "void (Foo3 *)",
+      "qualified_name": "void accept3(Foo3 *)",
       "definition_spelling": "10:6-10:13",
       "definition_extent": "10:1-10:23"
     }]

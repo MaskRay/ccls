@@ -183,6 +183,22 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(std::string fi
   return result;
 }
 
+void UpdateTestExpectation(const std::string& filename, const std::string& expectation, const std::string& actual) {
+  // Read the entire file into a string.
+  std::ifstream in(filename);
+  std::string str;
+  str.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+  in.close();
+
+  // Replace expectation
+  auto it = str.find(expectation);
+  str.replace(it, expectation.size(), actual);
+
+  // Write it back out.
+  std::ofstream of(filename, std::ios::out | std::ios::trunc);
+  of.write(str.c_str(), str.size());
+  of.close();
+}
 
 void Fail(const std::string& message) {
   std::cerr << "Fatal error: " << message << std::endl;

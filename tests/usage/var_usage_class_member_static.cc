@@ -24,16 +24,14 @@ OUTPUT:
       "id": 0,
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
-      "qualified_name": "accept",
-      "hover": "void (int)",
+      "qualified_name": "void accept(int)",
       "declarations": ["5:6-5:12"],
       "callers": ["1@8:3-8:9"]
     }, {
       "id": 1,
       "usr": "c:@F@foo#",
       "short_name": "foo",
-      "qualified_name": "foo",
-      "hover": "void ()",
+      "qualified_name": "void foo()",
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
       "callees": ["0@8:3-8:9"]
@@ -42,8 +40,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Foo@x",
       "short_name": "x",
-      "qualified_name": "Foo::x",
-      "hover": "int",
+      "qualified_name": "int Foo::x",
       "declaration": "2:14-2:15",
       "uses": ["2:14-2:15", "8:15-8:16"]
     }]

@@ -18,16 +18,14 @@ OUTPUT:
       "id": 0,
       "usr": "c:@F@called#",
       "short_name": "called",
-      "qualified_name": "called",
-      "hover": "void ()",
+      "qualified_name": "void called()",
       "declarations": ["1:6-1:12"],
       "callers": ["1@5:3-5:9"]
     }, {
       "id": 1,
       "usr": "c:@FT@>1#Tcaller#v#",
       "short_name": "caller",
-      "qualified_name": "caller",
-      "hover": "void ()",
+      "qualified_name": "void caller()",
       "definition_spelling": "4:6-4:12",
       "definition_extent": "4:1-6:2",
       "callers": ["2@9:3-9:9"],
@@ -36,8 +34,7 @@ OUTPUT:
       "id": 2,
       "usr": "c:@F@foo#",
       "short_name": "foo",
-      "qualified_name": "foo",
-      "hover": "void ()",
+      "qualified_name": "void foo()",
       "definition_spelling": "8:6-8:9",
       "definition_extent": "8:1-10:2",
       "callees": ["1@9:3-9:9"]

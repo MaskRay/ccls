@@ -17,6 +17,7 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
 std::vector<std::string> ReadLines(std::string filename);
 std::unordered_map<std::string, std::string> ParseTestExpectation(std::string filename);
+void UpdateTestExpectation(const std::string& filename, const std::string& expectation, const std::string& actual);
 
 void Fail(const std::string& message);
 

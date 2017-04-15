@@ -20,8 +20,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Foo@FT@>1#TFoo#v#",
       "short_name": "Foo",
-      "qualified_name": "Foo::Foo",
-      "hover": "void ()",
+      "qualified_name": "void Foo::Foo()",
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:11",
       "declaring_type": 0

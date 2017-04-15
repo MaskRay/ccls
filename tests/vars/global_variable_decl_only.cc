@@ -6,8 +6,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@global",
       "short_name": "global",
-      "qualified_name": "global",
-      "hover": "int",
+      "qualified_name": "int global",
       "declaration": "1:12-1:18",
       "uses": ["1:12-1:18"]
     }]

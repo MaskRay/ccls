@@ -113,6 +113,7 @@ IndexedFile* FindDbForPathEnding(const std::string& path, const std::vector<std:
 
 void RunTests() {
   // TODO: Assert that we need to be on clang >= 3.9.1
+  bool update_all = false;
 
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
     //if (path != "tests/templates/specialized_func_definition.cc") continue;
@@ -197,9 +198,20 @@ void RunTests() {
         DiffDocuments(path, expected_path, expected, actual);
         std::cout << std::endl;
         std::cout << std::endl;
-        std::cout << "[Enter to continue]";
-        std::cin.get();
-        std::cin.get();
+        std::cout << "[Enter to continue - type u to update test, a to update all]";
+        char c = 'u';
+        if (!update_all) {
+          c = std::cin.get();
+          std::cin.get();
+        }
+
+        if (c == 'a')
+          update_all = true;
+
+        if (update_all || c == 'u') {
+          UpdateTestExpectation(path, expected_output, ToString(actual) + "\n");
+        }
+        
       }
     }
   }
