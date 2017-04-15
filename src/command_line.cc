@@ -468,7 +468,49 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryableDatabase* db, WorkingFiles* working_
   return edit;
 }
 
+std::vector<SymbolRef> FindSymbolsAtLocation(QueryableFile* file, lsPosition position) {
+  std::vector<SymbolRef> symbols;
+  symbols.reserve(1);
+
+  int target_line = position.line + 1;
+  int target_column = position.character + 1;
+  for (const SymbolRef& ref : file->def.all_symbols) {
+    if (ref.loc.range.Contains(target_line, target_column))
+      symbols.push_back(ref);
+  }
+
+  return symbols;
+}
+
 }  // namespace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -889,18 +931,11 @@ void QueryDbMainLoop(
       Out_TextDocumentRename response;
       response.id = msg->id;
 
-      // TODO: consider refactoring into FindSymbolsAtLocation(file);
-      int target_line = msg->params.position.line + 1;
-      int target_column = msg->params.position.character + 1;
-      for (const SymbolRef& ref : file->def.all_symbols) {
-        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
-          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
-
-          // Found symbol. Return references to rename.
-          std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
-          response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
-          break;
-        }
+      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+        // Found symbol. Return references to rename.
+        std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+        response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
+        break;
       }
 
       response.Write(std::cerr);
@@ -939,49 +974,47 @@ void QueryDbMainLoop(
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
 
-      for (const SymbolRef& ref : file->def.all_symbols) {
-        if (ref.loc.range.Contains(target_line, target_column)) {
-          // Found symbol. Return definition.
+      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+        // Found symbol. Return definition.
 
-          // Special cases which are handled:
-          //  - symbol has declaration but no definition (ie, pure virtual)
-          //  - start at spelling but end at extent for better mouse tooltip
-          //  - goto declaration while in definition of recursive type
+        // Special cases which are handled:
+        //  - symbol has declaration but no definition (ie, pure virtual)
+        //  - start at spelling but end at extent for better mouse tooltip
+        //  - goto declaration while in definition of recursive type
 
-          optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
+        optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
 
-          // We use spelling start and extent end because this causes vscode to
-          // highlight the entire definition when previewing / hoving with the
-          // mouse.
-          optional<QueryableLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
-          if (def_loc && def_extent)
-            def_loc->range.end = def_extent->range.end;
+        // We use spelling start and extent end because this causes vscode to
+        // highlight the entire definition when previewing / hoving with the
+        // mouse.
+        optional<QueryableLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
+        if (def_loc && def_extent)
+          def_loc->range.end = def_extent->range.end;
 
-          // If the cursor is currently at or in the definition we should goto
-          // the declaration if possible. We also want to use declarations if
-          // we're pointing to, ie, a pure virtual function which has no
-          // definition.
-          if (!def_loc || (def_loc->path == file_id &&
-                           def_loc->range.Contains(target_line, target_column))) {
-            // Goto declaration.
+        // If the cursor is currently at or in the definition we should goto
+        // the declaration if possible. We also want to use declarations if
+        // we're pointing to, ie, a pure virtual function which has no
+        // definition.
+        if (!def_loc || (def_loc->path == file_id &&
+                          def_loc->range.Contains(target_line, target_column))) {
+          // Goto declaration.
 
-            std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
-            for (auto declaration : declarations) {
-              optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
-              if (ls_declaration)
-                response.result.push_back(*ls_declaration);
-            }
-            // We found some declarations. Break so we don't add the definition location.
-            if (!response.result.empty())
-              break;
+          std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
+          for (auto declaration : declarations) {
+            optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
+            if (ls_declaration)
+              response.result.push_back(*ls_declaration);
           }
-
-          if (def_loc)
-            PushBack(&response.result, GetLsLocation(db, working_files, *def_loc));
-
+          // We found some declarations. Break so we don't add the definition location.
           if (!response.result.empty())
             break;
         }
+
+        if (def_loc)
+          PushBack(&response.result, GetLsLocation(db, working_files, *def_loc));
+
+        if (!response.result.empty())
+          break;
       }
 
       SendOutMessageToClient(language_client, response);
@@ -1000,31 +1033,24 @@ void QueryDbMainLoop(
       Out_TextDocumentDocumentHighlight response;
       response.id = msg->id;
 
-      // TODO: consider refactoring into FindSymbolsAtLocation(file);
-      int target_line = msg->params.position.line + 1;
-      int target_column = msg->params.position.character + 1;
-      for (const SymbolRef& ref : file->def.all_symbols) {
-        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
-          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+        // Found symbol. Return references to highlight.
+        std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+        response.result.reserve(uses.size());
+        for (const QueryableLocation& use : uses) {
+          if (use.path != file_id)
+            continue;
 
-          // Found symbol. Return references to highlight.
-          std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
-          response.result.reserve(uses.size());
-          for (const QueryableLocation& use : uses) {
-            if (use.path != file_id)
-              continue;
+          optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
+          if (!ls_location)
+            continue;
 
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
-            if (!ls_location)
-              continue;
-
-            lsDocumentHighlight highlight;
-            highlight.kind = lsDocumentHighlightKind::Text;
-            highlight.range = ls_location->range;
-            response.result.push_back(highlight);
-          }
-          break;
+          lsDocumentHighlight highlight;
+          highlight.kind = lsDocumentHighlightKind::Text;
+          highlight.range = ls_location->range;
+          response.result.push_back(highlight);
         }
+        break;
       }
 
       SendOutMessageToClient(language_client, response);
@@ -1042,22 +1068,15 @@ void QueryDbMainLoop(
       Out_TextDocumentHover response;
       response.id = msg->id;
 
-      // TODO: consider refactoring into FindSymbolsAtLocation(file);
-      int target_line = msg->params.position.line + 1;
-      int target_column = msg->params.position.character + 1;
-      for (const SymbolRef& ref : file->def.all_symbols) {
-        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
-          ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+        // Found symbol. Return hover.
+        optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.usr), ref.loc.range);
+        if (!ls_range)
+          continue;
 
-          // Found symbol. Return hover.
-          optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.usr), ref.loc.range);
-          if (!ls_range)
-            continue;
-
-          response.result.contents = GetHoverForSymbol(db, ref.idx);
-          response.result.range = *ls_range;
-          break;
-        }
+        response.result.contents = GetHoverForSymbol(db, ref.idx);
+        response.result.range = *ls_range;
+        break;
       }
 
       SendOutMessageToClient(language_client, response);
@@ -1076,32 +1095,25 @@ void QueryDbMainLoop(
       Out_TextDocumentReferences response;
       response.id = msg->id;
 
-      // TODO: consider refactoring into FindSymbolsAtLocation(file);
-      int target_line = msg->params.position.line + 1;
-      int target_column = msg->params.position.character + 1;
-      for (const SymbolRef& ref : file->def.all_symbols) {
-        if (ref.loc.range.start.line >= target_line && ref.loc.range.end.line <= target_line &&
-            ref.loc.range.start.column <= target_column && ref.loc.range.end.column >= target_column) {
-
-          optional<QueryableLocation> excluded_declaration;
-          if (!msg->params.context.includeDeclaration) {
-            std::cerr << "Excluding declaration in references" << std::endl;
-            excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
-          }
-
-          // Found symbol. Return references.
-          std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
-          response.result.reserve(uses.size());
-          for (const QueryableLocation& use : uses) {
-            if (excluded_declaration.has_value() && use == *excluded_declaration)
-              continue;
-
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
-            if (ls_location)
-              response.result.push_back(*ls_location);
-          }
-          break;
+      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+        optional<QueryableLocation> excluded_declaration;
+        if (!msg->params.context.includeDeclaration) {
+          std::cerr << "Excluding declaration in references" << std::endl;
+          excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
         }
+
+        // Found symbol. Return references.
+        std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+        response.result.reserve(uses.size());
+        for (const QueryableLocation& use : uses) {
+          if (excluded_declaration.has_value() && use == *excluded_declaration)
+            continue;
+
+          optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
+          if (ls_location)
+            response.result.push_back(*ls_location);
+        }
+        break;
       }
 
       SendOutMessageToClient(language_client, response);
