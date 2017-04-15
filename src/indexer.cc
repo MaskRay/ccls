@@ -779,13 +779,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: Verify this gets called multiple times
       // if (!decl->isRedeclaration) {
       var_def->def.short_name = decl->entityInfo->name;
-      var_def->def.detailed_name =
-          ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
-      std::string hover = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
 
-      // Include type in qualified name.
-      if (!hover.empty())
-        var_def->def.detailed_name = hover + " " + var_def->def.detailed_name;
+      std::string type_name = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
+      var_def->def.detailed_name = type_name + " " + ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
       //}
 
       if (decl->isDefinition) {
@@ -886,25 +882,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // this may shadow.
         // if (!decl->isRedeclaration) {
         func_def->def.short_name = decl->entityInfo->name;
-        func_def->def.detailed_name = ns->QualifiedName(
-            decl->semanticContainer, func_def->def.short_name);
+
+        // Build detailed name. The type desc looks like void (void *). We
+        // insert the qualified name before the first '('.
+        std::string qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->def.short_name);
+        std::string type_desc = decl_cursor.get_type_description();
+        size_t offset = type_desc.find('(');
+        type_desc.insert(offset, qualified_name);
+        func_def->def.detailed_name = type_desc;
         //}
-
-        // TODO: we should build this ourselves. It doesn't include parameter names for functions.
-        std::string hover = decl_cursor.get_type_description();
-
-
-        // Update qualified name to include function signature
-        // TODO: make this less hideous
-        auto it = std::find(hover.begin(), hover.end(), '(');
-        if (it != hover.end()) {
-          std::string new_qualified_name;
-          new_qualified_name.resize(hover.size() + func_def->def.detailed_name.size());
-          std::copy(hover.begin(), it, new_qualified_name.begin());
-          std::copy(func_def->def.detailed_name.begin(), func_def->def.detailed_name.end(), new_qualified_name.begin() + std::distance(hover.begin(), it));
-          std::copy(it, hover.end(), new_qualified_name.begin() + std::distance(hover.begin(), it) + func_def->def.detailed_name.size());
-          func_def->def.detailed_name = new_qualified_name;
-        }
 
         // TODO: return type
         //decl_cursor.get_type_description()
