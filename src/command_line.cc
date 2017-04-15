@@ -1268,7 +1268,7 @@ void QueryDbMainLoop(
     }
 
     default: {
-      std::cerr << "Unhandled IPC message with kind "
+      std::cerr << "1 Unhandled IPC message with kind "
         << static_cast<int>(message->method_id) << std::endl;
       exit(1);
     }
@@ -1438,7 +1438,7 @@ void LanguageServerStdinLoop(IpcMessageQueue* ipc) {
     }
 
     default: {
-      std::cerr << "Unhandled IPC message with kind "
+      std::cerr << "3 Unhandled IPC message with kind "
         << static_cast<int>(message->method_id) << std::endl;
       exit(1);
     }
@@ -1464,7 +1464,7 @@ void LanguageServerMainLoop(IpcMessageQueue* ipc) {
     }
 
     default: {
-      std::cerr << "Unhandled IPC message with kind "
+      std::cerr << "2 Unhandled IPC message with kind "
         << static_cast<int>(message->method_id) << std::endl;
       exit(1);
     }
