@@ -132,18 +132,18 @@ struct QueryFuncRef {
 // that it can be merged with other updates before actually being applied to
 // the main database. See |MergeableUpdate|.
 
-template<typename TValue>
+template<typename TId, typename TValue>
 struct MergeableUpdate {
   // The type/func/var which is getting new usages.
-  Usr usr;
+  TId id;
   // Entries to add and remove.
   std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
 
-  MergeableUpdate(Usr usr, const std::vector<TValue>& to_add)
-    : usr(usr), to_add(to_add) {}
-  MergeableUpdate(Usr usr, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
-    : usr(usr), to_add(to_add), to_remove(to_remove) {}
+  MergeableUpdate(TId id, const std::vector<TValue>& to_add)
+    : id(id), to_add(to_add) {}
+  MergeableUpdate(TId id, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
+    : id(id), to_add(to_add), to_remove(to_remove) {}
 };
 
 struct QueryableFile {
@@ -165,9 +165,9 @@ struct QueryableFile {
 
 struct QueryableTypeDef {
   using DefUpdate = TypeDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryableLocation>;
-  using DerivedUpdate = MergeableUpdate<QueryTypeId>;
-  using InstantiationsUpdate = MergeableUpdate<QueryVarId>;
-  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+  using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
+  using InstantiationsUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
+  using UsesUpdate = MergeableUpdate<QueryTypeId, QueryableLocation>;
 
   DefUpdate def;
   std::vector<QueryTypeId> derived;
@@ -180,9 +180,9 @@ struct QueryableTypeDef {
 
 struct QueryableFuncDef {
   using DefUpdate = FuncDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryFuncRef, QueryableLocation>;
-  using DeclarationsUpdate = MergeableUpdate<QueryableLocation>;
-  using DerivedUpdate = MergeableUpdate<QueryFuncId>;
-  using CallersUpdate = MergeableUpdate<QueryFuncRef>;
+  using DeclarationsUpdate = MergeableUpdate<QueryFuncId, QueryableLocation>;
+  using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
+  using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
   DefUpdate def;
   std::vector<QueryableLocation> declarations;
@@ -196,7 +196,7 @@ struct QueryableFuncDef {
 
 struct QueryableVarDef {
   using DefUpdate = VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryableLocation>;
-  using UsesUpdate = MergeableUpdate<QueryableLocation>;
+  using UsesUpdate = MergeableUpdate<QueryVarId, QueryableLocation>;
 
   DefUpdate def;
   std::vector<QueryableLocation> uses;
