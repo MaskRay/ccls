@@ -319,20 +319,20 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
   primary_file = GetQueryFileIdFromPath(query_db, local_ids.primary_file);
 
-  cached_type_ids_.set_empty_key(-1);
+  cached_type_ids_.set_empty_key(IndexTypeId(-1));
   cached_type_ids_.resize(local_ids.type_id_to_usr.size());
   for (const auto& entry : local_ids.type_id_to_usr)
-    cached_type_ids_[entry.first.id] = GetQueryTypeIdFromUsr(query_db, entry.second).id;
+    cached_type_ids_[entry.first] = GetQueryTypeIdFromUsr(query_db, entry.second);
 
-  cached_func_ids_.set_empty_key(-1);
+  cached_func_ids_.set_empty_key(IndexFuncId(-1));
   cached_func_ids_.resize(local_ids.func_id_to_usr.size());
   for (const auto& entry : local_ids.func_id_to_usr)
-    cached_func_ids_[entry.first.id] = GetQueryFuncIdFromUsr(query_db, entry.second).id;
+    cached_func_ids_[entry.first] = GetQueryFuncIdFromUsr(query_db, entry.second);
 
-  cached_var_ids_.set_empty_key(-1);
+  cached_var_ids_.set_empty_key(IndexVarId(-1));
   cached_var_ids_.resize(local_ids.var_id_to_usr.size());
   for (const auto& entry : local_ids.var_id_to_usr)
-    cached_var_ids_[entry.first.id] = GetQueryVarIdFromUsr(query_db, entry.second).id;
+    cached_var_ids_[entry.first] = GetQueryVarIdFromUsr(query_db, entry.second);
 }
 
 QueryLocation IdMap::ToQuery(Range range) const {
@@ -340,17 +340,17 @@ QueryLocation IdMap::ToQuery(Range range) const {
 }
 
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
-  assert(cached_type_ids_.find(id.id) != cached_type_ids_.end());
-  return QueryTypeId(cached_type_ids_.find(id.id)->second);
+  assert(cached_type_ids_.find(id) != cached_type_ids_.end());
+  return QueryTypeId(cached_type_ids_.find(id)->second);
 }
 QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
   if (id.id == -1) return QueryFuncId(-1);
-  assert(cached_func_ids_.find(id.id) != cached_func_ids_.end());
-  return QueryFuncId(cached_func_ids_.find(id.id)->second);
+  assert(cached_func_ids_.find(id) != cached_func_ids_.end());
+  return QueryFuncId(cached_func_ids_.find(id)->second);
 }
 QueryVarId IdMap::ToQuery(IndexVarId id) const {
-  assert(cached_var_ids_.find(id.id) != cached_var_ids_.end());
-  return QueryVarId(cached_var_ids_.find(id.id)->second);
+  assert(cached_var_ids_.find(id) != cached_var_ids_.end());
+  return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
   return QueryFuncRef(ToQuery(ref.id_), ToQuery(ref.loc));

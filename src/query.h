@@ -308,8 +308,7 @@ struct IdMap {
   SymbolIdx ToSymbol(IndexFuncId id) const;
   SymbolIdx ToSymbol(IndexVarId id) const;
 private:
-  // TODO: make these type safe
-  google::dense_hash_map<size_t, size_t> cached_type_ids_; // IndexTypeId -> QueryTypeId
-  google::dense_hash_map<size_t, size_t> cached_func_ids_; // IndexFuncId -> QueryFuncId
-  google::dense_hash_map<size_t, size_t> cached_var_ids_;  // IndexVarId  -> QueryVarId
+  google::dense_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;
+  google::dense_hash_map<IndexFuncId, QueryFuncId> cached_func_ids_;
+  google::dense_hash_map<IndexVarId, QueryVarId> cached_var_ids_;
 };

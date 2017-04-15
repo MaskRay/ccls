@@ -34,6 +34,9 @@ struct Id {
   Id() : id(0) {}  // Needed for containers. Do not use directly.
   explicit Id(size_t id) : id(id) {}
 
+  // Needed for google::dense_hash_map.
+  explicit operator size_t() const { return id; }
+
   bool operator==(const Id<T>& other) const { return id == other.id; }
 
   bool operator<(const Id<T>& other) const { return id < other.id; }
