@@ -31,9 +31,6 @@
 // ie, a fully linear view of a function with inline function calls expanded.
 // We can probably use vscode decorators to achieve it.
 
-// TODO: we are not marking calls when an implicit ctors gets run. See
-// GetDefinitionExtentOfSymbol as a good example.
-
 namespace {
 
 const char* kIpcLanguageClientName = "language_client";
@@ -658,20 +655,6 @@ bool IndexMain_DoIndex(FileConsumer::SharedState* file_consumer_shared,
     return false;
 
   Timer time;
-
-  // TODO TODO TODO TODO TODO
-  // TODO TODO TODO TODO TODO
-  // TODO TODO TODO TODO TODO
-  // TODO TODO TODO TODO TODO
-  // We're not loading cached header files on restore. We should store the
-  // list of headers associated with a cc file in the cache and then load
-  // them here.
-  // TODO TODO TODO TODO TODO
-  // TODO TODO TODO TODO TODO
-  // TODO TODO TODO TODO TODO
-  // TODO TODO TODO TODO TODO
-
-
 
   // If the index update is an import, then we will load the previous index
   // into memory if we have a previous index. After that, we dispatch an
