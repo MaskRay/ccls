@@ -1437,10 +1437,6 @@ void indexEntityReference(CXClientData client_data,
 
 std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast) {
   filename = NormalizePath(filename);
-  //return {};
-
-  clang_enableStackTraces();
-  clang_toggleCrashRecovery(1);
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
