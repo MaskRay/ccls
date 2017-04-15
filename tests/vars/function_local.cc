@@ -17,7 +17,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
-      "qualified_name": "void foo()",
+      "detailed_name": "void foo()",
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-5:2"
     }],
@@ -25,7 +25,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:function_local.cc@31@F@foo#@a",
       "short_name": "a",
-      "qualified_name": "Foo * a",
+      "detailed_name": "Foo * a",
       "definition_spelling": "4:8-4:9",
       "definition_extent": "4:3-4:9",
       "variable_type": 0,

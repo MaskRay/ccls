@@ -779,13 +779,13 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: Verify this gets called multiple times
       // if (!decl->isRedeclaration) {
       var_def->def.short_name = decl->entityInfo->name;
-      var_def->def.qualified_name =
+      var_def->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
       std::string hover = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
 
       // Include type in qualified name.
       if (!hover.empty())
-        var_def->def.qualified_name = hover + " " + var_def->def.qualified_name;
+        var_def->def.detailed_name = hover + " " + var_def->def.detailed_name;
       //}
 
       if (decl->isDefinition) {
@@ -886,7 +886,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // this may shadow.
         // if (!decl->isRedeclaration) {
         func_def->def.short_name = decl->entityInfo->name;
-        func_def->def.qualified_name = ns->QualifiedName(
+        func_def->def.detailed_name = ns->QualifiedName(
             decl->semanticContainer, func_def->def.short_name);
         //}
 
@@ -899,11 +899,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         auto it = std::find(hover.begin(), hover.end(), '(');
         if (it != hover.end()) {
           std::string new_qualified_name;
-          new_qualified_name.resize(hover.size() + func_def->def.qualified_name.size());
+          new_qualified_name.resize(hover.size() + func_def->def.detailed_name.size());
           std::copy(hover.begin(), it, new_qualified_name.begin());
-          std::copy(func_def->def.qualified_name.begin(), func_def->def.qualified_name.end(), new_qualified_name.begin() + std::distance(hover.begin(), it));
-          std::copy(it, hover.end(), new_qualified_name.begin() + std::distance(hover.begin(), it) + func_def->def.qualified_name.size());
-          func_def->def.qualified_name = new_qualified_name;
+          std::copy(func_def->def.detailed_name.begin(), func_def->def.detailed_name.end(), new_qualified_name.begin() + std::distance(hover.begin(), it));
+          std::copy(it, hover.end(), new_qualified_name.begin() + std::distance(hover.begin(), it) + func_def->def.detailed_name.size());
+          func_def->def.detailed_name = new_qualified_name;
         }
 
         // TODO: return type
@@ -1037,7 +1037,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         type_def->def.alias_of = alias_of.value();
 
       type_def->def.short_name = decl->entityInfo->name;
-      type_def->def.qualified_name =
+      type_def->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
 
       type_def->def.definition_spelling = db->id_cache.ResolveSpelling(decl->cursor, false /*interesting*/);
@@ -1073,7 +1073,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         type_def->def.short_name = "<anonymous>";
       }
 
-      type_def->def.qualified_name =
+      type_def->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
 
       // }

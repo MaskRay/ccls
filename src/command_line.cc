@@ -133,11 +133,11 @@ optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db,
 std::string GetHoverForSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
   case SymbolKind::Type:
-    return db->types[symbol.idx].def.qualified_name;
+    return db->types[symbol.idx].def.detailed_name;
   case SymbolKind::Func:
-    return db->funcs[symbol.idx].def.qualified_name;
+    return db->funcs[symbol.idx].def.detailed_name;
   case SymbolKind::Var:
-    return db->vars[symbol.idx].def.qualified_name;
+    return db->vars[symbol.idx].def.detailed_name;
   case SymbolKind::File:
   case SymbolKind::Invalid: {
     assert(false && "unexpected");
@@ -352,17 +352,17 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
     }
     case SymbolKind::Type: {
       QueryableTypeDef* def = symbol.ResolveType(db);
-      info.name = def->def.qualified_name;
+      info.name = def->def.detailed_name;
       info.kind = lsSymbolKind::Class;
       break;
     }
     case SymbolKind::Func: {
       QueryableFuncDef* def = symbol.ResolveFunc(db);
       
-      info.name = def->def.qualified_name;
+      info.name = def->def.detailed_name;
       if (def->def.declaring_type.has_value()) {
         info.kind = lsSymbolKind::Method;
-        info.containerName = db->types[def->def.declaring_type->id].def.qualified_name;
+        info.containerName = db->types[def->def.declaring_type->id].def.detailed_name;
       }
       else {
         info.kind = lsSymbolKind::Function;
@@ -371,7 +371,7 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
     }
     case SymbolKind::Var: {
       QueryableVarDef* def = symbol.ResolveVar(db);
-      info.name += def->def.qualified_name;
+      info.name += def->def.detailed_name;
       info.kind = lsSymbolKind::Variable;
       break;
     }
@@ -1235,17 +1235,17 @@ void QueryDbMainLoop(
       response.id = msg->id;
 
 
-      std::cerr << "- Considering " << db->qualified_names.size()
+      std::cerr << "- Considering " << db->detailed_names.size()
         << " candidates for query " << msg->params.query << std::endl;
 
       std::string query = msg->params.query;
-      for (int i = 0; i < db->qualified_names.size(); ++i) {
+      for (int i = 0; i < db->detailed_names.size(); ++i) {
         if (response.result.size() > kMaxWorkspaceSearchResults) {
           std::cerr << "Query exceeded maximum number of responses (" << kMaxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
           break;
         }
 
-        if (db->qualified_names[i].find(query) != std::string::npos) {
+        if (db->detailed_names[i].find(query) != std::string::npos) {
           lsSymbolInformation info = GetSymbolInfo(db, working_files, db->symbols[i]);
           optional<QueryableLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
           if (!location) {

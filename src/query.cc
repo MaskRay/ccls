@@ -20,7 +20,7 @@ QueryableTypeDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::D
   assert(!type.short_name.empty());
   QueryableTypeDef::DefUpdate result(type.usr);
   result.short_name = type.short_name;
-  result.qualified_name = type.qualified_name;
+  result.detailed_name = type.detailed_name;
   result.definition_spelling = id_map.ToQuery(type.definition_spelling);
   result.definition_extent = id_map.ToQuery(type.definition_extent);
   result.alias_of = id_map.ToQuery(type.alias_of);
@@ -35,7 +35,7 @@ QueryableFuncDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::D
   assert(!func.short_name.empty());
   QueryableFuncDef::DefUpdate result(func.usr);
   result.short_name = func.short_name;
-  result.qualified_name = func.qualified_name;
+  result.detailed_name = func.detailed_name;
   result.definition_spelling = id_map.ToQuery(func.definition_spelling);
   result.definition_extent = id_map.ToQuery(func.definition_extent);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
@@ -49,7 +49,7 @@ QueryableVarDef::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def
   assert(!var.short_name.empty());
   QueryableVarDef::DefUpdate result(var.usr);
   result.short_name = var.short_name;
-  result.qualified_name = var.qualified_name;
+  result.detailed_name = var.detailed_name;
   result.declaration = id_map.ToQuery(var.declaration);
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
@@ -588,14 +588,14 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
 
 
-void SetQualifiedNameForWorkspaceSearch(QueryableDatabase* db, size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
+void SetDetailedNameForWorkspaceSearch(QueryableDatabase* db, size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
   if (*qualified_name_index == -1) {
-    db->qualified_names.push_back(name);
+    db->detailed_names.push_back(name);
     db->symbols.push_back(SymbolIdx(kind, symbol_index));
-    *qualified_name_index = db->qualified_names.size() - 1;
+    *qualified_name_index = db->detailed_names.size() - 1;
   }
   else {
-    db->qualified_names[*qualified_name_index] = name;
+    db->detailed_names[*qualified_name_index] = name;
   }
 }
 
@@ -623,7 +623,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFile::DefUpdat
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUpdate>& updates) {
   for (auto& def : updates) {
-    if (def.qualified_name.empty())
+    if (def.detailed_name.empty())
       continue;
 
     auto it = usr_to_symbol.find(def.usr);
@@ -634,13 +634,13 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableTypeDef::DefUp
       continue;
 
     existing.def = def;
-    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Type, it->second.idx, def.qualified_name);
+    SetDetailedNameForWorkspaceSearch(this, &existing.detailed_name_idx, SymbolKind::Type, it->second.idx, def.detailed_name);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUpdate>& updates) {
   for (auto& def : updates) {
-    if (def.qualified_name.empty())
+    if (def.detailed_name.empty())
       continue;
 
     auto it = usr_to_symbol.find(def.usr);
@@ -651,13 +651,13 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableFuncDef::DefUp
       continue;
 
     existing.def = def;
-    SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Func, it->second.idx, def.qualified_name);
+    SetDetailedNameForWorkspaceSearch(this, &existing.detailed_name_idx, SymbolKind::Func, it->second.idx, def.detailed_name);
   }
 }
 
 void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpdate>& updates) {
   for (auto& def : updates) {
-    if (def.qualified_name.empty())
+    if (def.detailed_name.empty())
       continue;
 
     auto it = usr_to_symbol.find(def.usr);
@@ -669,7 +669,7 @@ void QueryableDatabase::ImportOrUpdate(const std::vector<QueryableVarDef::DefUpd
 
     existing.def = def;
     if (def.declaring_type)
-      SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::Var, it->second.idx, def.qualified_name);
+      SetDetailedNameForWorkspaceSearch(this, &existing.detailed_name_idx, SymbolKind::Var, it->second.idx, def.detailed_name);
   }
 }
 

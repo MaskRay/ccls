@@ -20,7 +20,7 @@ OUTPUT:
       "id": 1,
       "usr": "c:@Foo1",
       "short_name": "Foo1",
-      "qualified_name": "Foo1",
+      "detailed_name": "Foo1",
       "definition_spelling": "2:7-2:11",
       "definition_extent": "2:1-2:18",
       "alias_of": 0,
@@ -29,7 +29,7 @@ OUTPUT:
       "id": 2,
       "usr": "c:type_usage_typedef_and_using.cc@T@Foo2",
       "short_name": "Foo2",
-      "qualified_name": "Foo2",
+      "detailed_name": "Foo2",
       "definition_spelling": "3:13-3:17",
       "definition_extent": "3:1-3:17",
       "alias_of": 0,
@@ -38,7 +38,7 @@ OUTPUT:
       "id": 3,
       "usr": "c:@Foo3",
       "short_name": "Foo3",
-      "qualified_name": "Foo3",
+      "detailed_name": "Foo3",
       "definition_spelling": "4:7-4:11",
       "definition_extent": "4:1-4:18",
       "alias_of": 1,
@@ -47,7 +47,7 @@ OUTPUT:
       "id": 4,
       "usr": "c:@Foo4",
       "short_name": "Foo4",
-      "qualified_name": "Foo4",
+      "detailed_name": "Foo4",
       "definition_spelling": "5:7-5:11",
       "definition_extent": "5:1-5:17",
       "uses": ["*5:7-5:11"]
@@ -56,28 +56,28 @@ OUTPUT:
       "id": 0,
       "usr": "c:@F@accept#*$@S@Foo#",
       "short_name": "accept",
-      "qualified_name": "void accept(Foo *)",
+      "detailed_name": "void accept(Foo *)",
       "definition_spelling": "7:6-7:12",
       "definition_extent": "7:1-7:21"
     }, {
       "id": 1,
       "usr": "c:@F@accept1#**$@S@Foo#",
       "short_name": "accept1",
-      "qualified_name": "void accept1(Foo1 *)",
+      "detailed_name": "void accept1(Foo1 *)",
       "definition_spelling": "8:6-8:13",
       "definition_extent": "8:1-8:23"
     }, {
       "id": 2,
       "usr": "c:@F@accept2#*$@S@Foo#",
       "short_name": "accept2",
-      "qualified_name": "void accept2(Foo2 *)",
+      "detailed_name": "void accept2(Foo2 *)",
       "definition_spelling": "9:6-9:13",
       "definition_extent": "9:1-9:23"
     }, {
       "id": 3,
       "usr": "c:@F@accept3#**$@S@Foo#",
       "short_name": "accept3",
-      "qualified_name": "void accept3(Foo3 *)",
+      "detailed_name": "void accept3(Foo3 *)",
       "definition_spelling": "10:6-10:13",
       "definition_extent": "10:1-10:23"
     }]

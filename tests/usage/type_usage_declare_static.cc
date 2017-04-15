@@ -13,7 +13,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:type_usage_declare_static.cc@t",
       "short_name": "t",
-      "qualified_name": "Type t",
+      "detailed_name": "Type t",
       "definition_spelling": "2:13-2:14",
       "definition_extent": "2:1-2:14",
       "variable_type": 0,

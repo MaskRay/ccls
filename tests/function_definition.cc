@@ -7,7 +7,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@F@foo#",
       "short_name": "foo",
-      "qualified_name": "void foo()",
+      "detailed_name": "void foo()",
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-1:14"
     }]

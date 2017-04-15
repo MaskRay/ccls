@@ -158,7 +158,7 @@ struct QueryableFile {
   using DefUpdate = Def;
 
   DefUpdate def;
-  size_t qualified_name_idx = -1;
+  size_t detailed_name_idx = -1;
 
   QueryableFile(const Usr& usr) { def.usr = usr; }
 };
@@ -173,7 +173,7 @@ struct QueryableTypeDef {
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instantiations;
   std::vector<QueryableLocation> uses;
-  size_t qualified_name_idx = -1;
+  size_t detailed_name_idx = -1;
 
   QueryableTypeDef(const Usr& usr) : def(usr) {}
 };
@@ -188,7 +188,7 @@ struct QueryableFuncDef {
   std::vector<QueryableLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
-  size_t qualified_name_idx = -1;
+  size_t detailed_name_idx = -1;
 
   QueryableFuncDef(const Usr& usr) : def(usr) {}
   QueryableFuncDef(const DefUpdate& def) : def(def) {}
@@ -200,7 +200,7 @@ struct QueryableVarDef {
 
   DefUpdate def;
   std::vector<QueryableLocation> uses;
-  size_t qualified_name_idx = -1;
+  size_t detailed_name_idx = -1;
 
   QueryableVarDef(const Usr& usr) : def(usr) {}
 };
@@ -249,8 +249,8 @@ struct IndexUpdate {
 // in-memory.
 struct QueryableDatabase {
   // Indicies between lookup vectors are related to symbols, ie, index 5 in
-  // |qualified_names| matches index 5 in |symbols|.
-  std::vector<std::string> qualified_names;
+  // |detailed_names| matches index 5 in |symbols|.
+  std::vector<std::string> detailed_names;
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage.
