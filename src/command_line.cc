@@ -44,7 +44,7 @@ void PushBack(NonElidedVector<lsLocation>* result, optional<lsLocation> location
     result->push_back(*location);
 }
 
-QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename, QueryFileId* file_id) {
+QueryFile* FindFile(QueryDatabase* db, const std::string& filename, QueryFileId* file_id) {
   auto it = db->usr_to_symbol.find(filename);
   if (it != db->usr_to_symbol.end()) {
     *file_id = QueryFileId(it->second.idx);
@@ -56,7 +56,7 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename, Quer
   return nullptr;
 }
 
-QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
+QueryFile* FindFile(QueryDatabase* db, const std::string& filename) {
   // TODO: consider calling NormalizePath here. It might add too much latency though.
   auto it = db->usr_to_symbol.find(filename);
   if (it != db->usr_to_symbol.end())
@@ -66,50 +66,32 @@ QueryableFile* FindFile(QueryableDatabase* db, const std::string& filename) {
   return nullptr;
 }
 
-QueryableFile* GetQueryable(QueryableDatabase* db, const QueryFileId& id) {
+QueryFile* GetQuery(QueryDatabase* db, const QueryFileId& id) {
   return &db->files[id.id];
 }
-QueryableTypeDef* GetQueryable(QueryableDatabase* db, const QueryTypeId& id) {
+QueryType* GetQuery(QueryDatabase* db, const QueryTypeId& id) {
   return &db->types[id.id];
 }
-QueryableFuncDef* GetQueryable(QueryableDatabase* db, const QueryFuncId& id) {
+QueryFunc* GetQuery(QueryDatabase* db, const QueryFuncId& id) {
   return &db->funcs[id.id];
 }
-QueryableVarDef* GetQueryable(QueryableDatabase* db, const QueryVarId& id) {
+QueryVar* GetQuery(QueryDatabase* db, const QueryVarId& id) {
   return &db->vars[id.id];
 }
 
-#if false
-optional<QueryableLocation> GetDeclarationOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
-  switch (symbol.kind) {
-    case SymbolKind::Type:
-      return db->types[symbol.idx].def.definition_spelling;
-    case SymbolKind::Func:
-      return db->funcs[symbol.idx].;
-    case SymbolKind::Var:
-      return db->vars[symbol.idx].uses;
-    case SymbolKind::File:
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
-    }
-  }
-  return {};
-}
-#endif
 
 
 
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
-  return GetQueryable(db, id)->def.definition_spelling;
+optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db, const QueryTypeId& id) {
+  return GetQuery(db, id)->def.definition_spelling;
 }
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
-  return GetQueryable(db, id)->def.definition_spelling;
+optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db, const QueryFuncId& id) {
+  return GetQuery(db, id)->def.definition_spelling;
 }
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
-  return GetQueryable(db, id)->def.definition_spelling;
+optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db, const QueryVarId& id) {
+  return GetQuery(db, id)->def.definition_spelling;
 }
-optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
   case SymbolKind::Type:
     return db->types[symbol.idx].def.definition_spelling;
@@ -127,7 +109,7 @@ optional<QueryableLocation> GetDefinitionSpellingOfSymbol(QueryableDatabase* db,
 }
 
 
-std::string GetHoverForSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
   case SymbolKind::Type:
     return db->types[symbol.idx].def.detailed_name;
@@ -144,38 +126,38 @@ std::string GetHoverForSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
   return "";
 }
 
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncRef>& refs) {
-  std::vector<QueryableLocation> locs;
+std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db, const std::vector<QueryFuncRef>& refs) {
+  std::vector<QueryLocation> locs;
   locs.reserve(refs.size());
   for (const QueryFuncRef& ref : refs)
     locs.push_back(ref.loc);
   return locs;
 }
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryTypeId>& ids) {
-  std::vector<QueryableLocation> locs;
+std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db, const std::vector<QueryTypeId>& ids) {
+  std::vector<QueryLocation> locs;
   locs.reserve(ids.size());
   for (const QueryTypeId& id : ids) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
     if (loc)
       locs.push_back(loc.value());
   }
   return locs;
 }
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryFuncId>& ids) {
-  std::vector<QueryableLocation> locs;
+std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db, const std::vector<QueryFuncId>& ids) {
+  std::vector<QueryLocation> locs;
   locs.reserve(ids.size());
   for (const QueryFuncId& id : ids) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
     if (loc)
       locs.push_back(loc.value());
   }
   return locs;
 }
-std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const std::vector<QueryVarId>& ids) {
-  std::vector<QueryableLocation> locs;
+std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
+  std::vector<QueryLocation> locs;
   locs.reserve(ids.size());
   for (const QueryVarId& id : ids) {
-    optional<QueryableLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
     if (loc)
       locs.push_back(loc.value());
   }
@@ -184,14 +166,14 @@ std::vector<QueryableLocation> ToQueryableLocation(QueryableDatabase* db, const 
 
 
 
-std::vector<QueryableLocation> GetUsesOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type:
       return db->types[symbol.idx].uses;
     case SymbolKind::Func: {
       // TODO: the vector allocation could be avoided.
-      const QueryableFuncDef& func = db->funcs[symbol.idx];
-      std::vector<QueryableLocation> result = ToQueryableLocation(db, func.callers);
+      const QueryFunc& func = db->funcs[symbol.idx];
+      std::vector<QueryLocation> result = ToQueryLocation(db, func.callers);
       AddRange(&result, func.declarations);
       if (func.def.definition_spelling)
         result.push_back(*func.def.definition_spelling);
@@ -208,20 +190,20 @@ std::vector<QueryableLocation> GetUsesOfSymbol(QueryableDatabase* db, const Symb
   return {};
 }
 
-optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryTypeId& id) {
-  return GetQueryable(db, id)->def.definition_extent;
+optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db, const QueryTypeId& id) {
+  return GetQuery(db, id)->def.definition_extent;
 }
-optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryFuncId& id) {
-  return GetQueryable(db, id)->def.definition_extent;
+optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db, const QueryFuncId& id) {
+  return GetQuery(db, id)->def.definition_extent;
 }
-optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const QueryVarId& id) {
-  return GetQueryable(db, id)->def.definition_extent;
+optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db, const QueryVarId& id) {
+  return GetQuery(db, id)->def.definition_extent;
 }
-optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, const SymbolIdx& symbol) {
+optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::File:
       // TODO: If line 1 is deleted the file won't show up in, ie, workspace symbol search results.
-      return QueryableLocation(QueryFileId(symbol.idx), Range(false /*is_interesting*/, Position(1, 1), Position(1, 1)));
+      return QueryLocation(QueryFileId(symbol.idx), Range(false /*is_interesting*/, Position(1, 1), Position(1, 1)));
     case SymbolKind::Type:
       return db->types[symbol.idx].def.definition_extent;
     case SymbolKind::Func:
@@ -236,14 +218,14 @@ optional<QueryableLocation> GetDefinitionExtentOfSymbol(QueryableDatabase* db, c
   return nullopt;
 }
 
-std::vector<QueryableLocation> GetDeclarationsOfSymbolForGotoDefinition(QueryableDatabase* db, const SymbolIdx& symbol) {
+std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       // Returning the definition spelling of a type is a hack (and is why the
       // function has the postfix `ForGotoDefintion`, but it lets the user
       // jump to the start of a type if clicking goto-definition on the same
       // type from within the type definition.
-      optional<QueryableLocation> declaration = db->types[symbol.idx].def.definition_spelling;
+      optional<QueryLocation> declaration = db->types[symbol.idx].def.definition_spelling;
       if (declaration)
         return { *declaration };
       break;
@@ -251,7 +233,7 @@ std::vector<QueryableLocation> GetDeclarationsOfSymbolForGotoDefinition(Queryabl
     case SymbolKind::Func:
       return db->funcs[symbol.idx].declarations;
     case SymbolKind::Var: {
-      optional<QueryableLocation> declaration = db->vars[symbol.idx].def.declaration;
+      optional<QueryLocation> declaration = db->vars[symbol.idx].def.declaration;
       if (declaration)
         return { *declaration };
       break;
@@ -261,41 +243,41 @@ std::vector<QueryableLocation> GetDeclarationsOfSymbolForGotoDefinition(Queryabl
   return {};
 }
 
-optional<QueryableLocation> GetBaseDefinitionOrDeclarationSpelling(QueryableDatabase* db, QueryableFuncDef& func) {
+optional<QueryLocation> GetBaseDefinitionOrDeclarationSpelling(QueryDatabase* db, QueryFunc& func) {
   if (!func.def.base)
     return nullopt;
-  QueryableFuncDef& base = db->funcs[func.def.base->id];
+  QueryFunc& base = db->funcs[func.def.base->id];
   auto def = base.def.definition_spelling;
   if (!def && !base.declarations.empty())
     def = base.declarations[0];
   return def;
 }
 
-std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryableDatabase* db, QueryableFuncDef& root) {
+std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db, QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
 
   optional<QueryFuncId> func_id = root.def.base;
   while (func_id) {
-    QueryableFuncDef& def = db->funcs[func_id->id];
-    AddRange(&callers, def.callers);
-    func_id = def.def.base;
+    QueryFunc& func = db->funcs[func_id->id];
+    AddRange(&callers, func.callers);
+    func_id = func.def.base;
   }
 
   return callers;
 }
 
-std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryableDatabase* db, QueryableFuncDef& root) {
+std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db, QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
 
   std::queue<QueryFuncId> queue;
   PushRange(&queue, root.derived);
 
   while (!queue.empty()) {
-    QueryableFuncDef& def = db->funcs[queue.front().id];
+    QueryFunc& func = db->funcs[queue.front().id];
     queue.pop();
-    PushRange(&queue, def.derived);
+    PushRange(&queue, func.derived);
 
-    AddRange(&callers, def.callers);
+    AddRange(&callers, func.callers);
   }
 
   return callers;
@@ -317,17 +299,17 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
     lsPosition(working_file->GetBufferLineFromDiskLine(location.end.line) - 1, location.end.column - 1));
 }
 
-lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id, std::string* path) {
-  *path = db->files[file_id.id].def.usr;
+lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id, std::string* path) {
+  *path = db->files[file_id.id].def.path;
   return lsDocumentUri::FromPath(*path);
 }
 
-lsDocumentUri GetLsDocumentUri(QueryableDatabase* db, QueryFileId file_id) {
-  std::string path = db->files[file_id.id].def.usr;
+lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id) {
+  std::string path = db->files[file_id.id].def.path;
   return lsDocumentUri::FromPath(path);
 }
 
-optional<lsLocation> GetLsLocation(QueryableDatabase* db, WorkingFiles* working_files, const QueryableLocation& location) {
+optional<lsLocation> GetLsLocation(QueryDatabase* db, WorkingFiles* working_files, const QueryLocation& location) {
   std::string path;
   lsDocumentUri uri = GetLsDocumentUri(db, location.path, &path);
   optional<lsRange> range = GetLsRange(working_files->GetFileByFilename(path), location.range);
@@ -337,29 +319,29 @@ optional<lsLocation> GetLsLocation(QueryableDatabase* db, WorkingFiles* working_
 }
 
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
-lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
+lsSymbolInformation GetSymbolInfo(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
   lsSymbolInformation info;
 
   switch (symbol.kind) {
     case SymbolKind::File: {
-      QueryableFile* def = symbol.ResolveFile(db);
-      info.name = def->def.usr;
+      QueryFile* file = symbol.ResolveFile(db);
+      info.name = file->def.path;
       info.kind = lsSymbolKind::File;
       break;
     }
     case SymbolKind::Type: {
-      QueryableTypeDef* def = symbol.ResolveType(db);
-      info.name = def->def.detailed_name;
+      QueryType* type = symbol.ResolveType(db);
+      info.name = type->def.detailed_name;
       info.kind = lsSymbolKind::Class;
       break;
     }
     case SymbolKind::Func: {
-      QueryableFuncDef* def = symbol.ResolveFunc(db);
+      QueryFunc* func = symbol.ResolveFunc(db);
       
-      info.name = def->def.detailed_name;
-      if (def->def.declaring_type.has_value()) {
+      info.name = func->def.detailed_name;
+      if (func->def.declaring_type.has_value()) {
         info.kind = lsSymbolKind::Method;
-        info.containerName = db->types[def->def.declaring_type->id].def.detailed_name;
+        info.containerName = db->types[func->def.declaring_type->id].def.detailed_name;
       }
       else {
         info.kind = lsSymbolKind::Function;
@@ -367,8 +349,8 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
       break;
     }
     case SymbolKind::Var: {
-      QueryableVarDef* def = symbol.ResolveVar(db);
-      info.name += def->def.detailed_name;
+      QueryVar* var = symbol.ResolveVar(db);
+      info.name += var->def.detailed_name;
       info.kind = lsSymbolKind::Variable;
       break;
     }
@@ -383,15 +365,15 @@ lsSymbolInformation GetSymbolInfo(QueryableDatabase* db, WorkingFiles* working_f
 
 struct CommonCodeLensParams {
   std::vector<TCodeLens>* result;
-  QueryableDatabase* db;
+  QueryDatabase* db;
   WorkingFiles* working_files;
   WorkingFile* working_file;
 };
 
 void AddCodeLens(
   CommonCodeLensParams* common,
-  QueryableLocation loc,
-  const std::vector<QueryableLocation>& uses,
+  QueryLocation loc,
+  const std::vector<QueryLocation>& uses,
   const char* singular,
   const char* plural,
   bool exclude_loc = false,
@@ -408,7 +390,7 @@ void AddCodeLens(
 
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
-  for (const QueryableLocation& use : uses) {
+  for (const QueryLocation& use : uses) {
     if (exclude_loc && use == loc)
       continue;
     if (only_interesting && !use.range.interesting)
@@ -433,7 +415,7 @@ void AddCodeLens(
     common->result->push_back(code_lens);
 }
 
-lsWorkspaceEdit BuildWorkspaceEdit(QueryableDatabase* db, WorkingFiles* working_files, const std::vector<QueryableLocation>& locations, const std::string& new_text) {
+lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db, WorkingFiles* working_files, const std::vector<QueryLocation>& locations, const std::string& new_text) {
   std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
 
   for (auto& location : locations) {
@@ -444,7 +426,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryableDatabase* db, WorkingFiles* working_
     if (path_to_edit.find(location.path) == path_to_edit.end()) {
       path_to_edit[location.path] = lsTextDocumentEdit();
 
-      const std::string& path = db->files[location.path.id].def.usr;
+      const std::string& path = db->files[location.path.id].def.path;
       path_to_edit[location.path].textDocument.uri = lsDocumentUri::FromPath(path);
       
       WorkingFile* working_file = working_files->GetFileByFilename(path);
@@ -465,7 +447,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryableDatabase* db, WorkingFiles* working_
   return edit;
 }
 
-std::vector<SymbolRef> FindSymbolsAtLocation(QueryableFile* file, lsPosition position) {
+std::vector<SymbolRef> FindSymbolsAtLocation(QueryFile* file, lsPosition position) {
   std::vector<SymbolRef> symbols;
   symbols.reserve(1);
 
@@ -815,7 +797,7 @@ void IndexMain(
 
 
 void QueryDbMainLoop(
-  QueryableDatabase* db,
+  QueryDatabase* db,
   IpcMessageQueue* language_client,
   Index_DoIndexQueue* queue_do_index,
   Index_DoIdMapQueue* queue_do_id_map,
@@ -906,7 +888,7 @@ void QueryDbMainLoop(
       auto msg = static_cast<Ipc_TextDocumentRename*>(message.get());
 
       QueryFileId file_id;
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -916,7 +898,7 @@ void QueryDbMainLoop(
 
       for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
         // Found symbol. Return references to rename.
-        std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+        std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
         response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
         break;
       }
@@ -945,7 +927,7 @@ void QueryDbMainLoop(
       auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
 
       QueryFileId file_id;
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -965,12 +947,12 @@ void QueryDbMainLoop(
         //  - start at spelling but end at extent for better mouse tooltip
         //  - goto declaration while in definition of recursive type
 
-        optional<QueryableLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
+        optional<QueryLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
 
         // We use spelling start and extent end because this causes vscode to
         // highlight the entire definition when previewing / hoving with the
         // mouse.
-        optional<QueryableLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
+        optional<QueryLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
         if (def_loc && def_extent)
           def_loc->range.end = def_extent->range.end;
 
@@ -982,7 +964,7 @@ void QueryDbMainLoop(
                           def_loc->range.Contains(target_line, target_column))) {
           // Goto declaration.
 
-          std::vector<QueryableLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
+          std::vector<QueryLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
           for (auto declaration : declarations) {
             optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
             if (ls_declaration)
@@ -1008,7 +990,7 @@ void QueryDbMainLoop(
       auto msg = static_cast<Ipc_TextDocumentDocumentHighlight*>(message.get());
 
       QueryFileId file_id;
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -1018,9 +1000,9 @@ void QueryDbMainLoop(
 
       for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
         // Found symbol. Return references to highlight.
-        std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+        std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
         response.result.reserve(uses.size());
-        for (const QueryableLocation& use : uses) {
+        for (const QueryLocation& use : uses) {
           if (use.path != file_id)
             continue;
 
@@ -1043,7 +1025,7 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentHover: {
       auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
 
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -1053,7 +1035,7 @@ void QueryDbMainLoop(
 
       for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
         // Found symbol. Return hover.
-        optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.usr), ref.loc.range);
+        optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.path), ref.loc.range);
         if (!ls_range)
           continue;
 
@@ -1069,7 +1051,7 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentReferences: {
       auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
 
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -1079,16 +1061,16 @@ void QueryDbMainLoop(
       response.id = msg->id;
 
       for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
-        optional<QueryableLocation> excluded_declaration;
+        optional<QueryLocation> excluded_declaration;
         if (!msg->params.context.includeDeclaration) {
           std::cerr << "Excluding declaration in references" << std::endl;
           excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
         }
 
         // Found symbol. Return references.
-        std::vector<QueryableLocation> uses = GetUsesOfSymbol(db, ref.idx);
+        std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
         response.result.reserve(uses.size());
-        for (const QueryableLocation& use : uses) {
+        for (const QueryLocation& use : uses) {
           if (excluded_declaration.has_value() && use == *excluded_declaration)
             continue;
 
@@ -1109,7 +1091,7 @@ void QueryDbMainLoop(
       Out_TextDocumentDocumentSymbol response;
       response.id = msg->id;
 
-      QueryableFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -1137,7 +1119,7 @@ void QueryDbMainLoop(
 
       lsDocumentUri file_as_uri = msg->params.textDocument.uri;
 
-      QueryableFile* file = FindFile(db, file_as_uri.GetPath());
+      QueryFile* file = FindFile(db, file_as_uri.GetPath());
       if (!file) {
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
@@ -1146,7 +1128,7 @@ void QueryDbMainLoop(
       common.result = &response.result;
       common.db = db;
       common.working_files = working_files;
-      common.working_file = working_files->GetFileByFilename(file->def.usr);
+      common.working_file = working_files->GetFileByFilename(file->def.path);
 
       for (SymbolRef ref : file->def.outline) {
         // NOTE: We OffsetColumn so that the code lens always show up in a
@@ -1155,15 +1137,15 @@ void QueryDbMainLoop(
         SymbolIdx symbol = ref.idx;
         switch (symbol.kind) {
         case SymbolKind::Type: {
-          QueryableTypeDef& def = db->types[symbol.idx];
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), def.uses, "ref", "refs");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(1), def.uses, "iref", "irefs", false /*exclude_loc*/, true /*only_interesting*/);
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryableLocation(db, def.derived), "derived", "derived");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(3), ToQueryableLocation(db, def.instantiations), "instantiation", "instantiations");
+          QueryType& type = db->types[symbol.idx];
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), type.uses, "ref", "refs");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(1), type.uses, "iref", "irefs", false /*exclude_loc*/, true /*only_interesting*/);
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type.derived), "derived", "derived");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(3), ToQueryLocation(db, type.instantiations), "instantiation", "instantiations");
           break;
         }
         case SymbolKind::Func: {
-          QueryableFuncDef& func = db->funcs[symbol.idx];
+          QueryFunc& func = db->funcs[symbol.idx];
 
 
           int offset = 0;
@@ -1172,20 +1154,20 @@ void QueryDbMainLoop(
           std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, func);
           if (base_callers.empty() && derived_callers.empty()) {
             // set exclude_loc to true to force the code lens to show up
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.callers), "call", "calls", true /*exclude_loc*/);
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func.callers), "call", "calls", true /*exclude_loc*/);
           }
           else {
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.callers), "direct call", "direct calls");
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func.callers), "direct call", "direct calls");
             if (!base_callers.empty())
-              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, base_callers), "base call", "base calls");
+              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, base_callers), "base call", "base calls");
             if (!derived_callers.empty())
-              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, derived_callers), "derived call", "derived calls");
+              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, derived_callers), "derived call", "derived calls");
           }
 
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryableLocation(db, func.derived), "derived", "derived");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func.derived), "derived", "derived");
 
           // "Base"
-          optional<QueryableLocation> base_loc = GetBaseDefinitionOrDeclarationSpelling(db, func);
+          optional<QueryLocation> base_loc = GetBaseDefinitionOrDeclarationSpelling(db, func);
           if (base_loc) {
             optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_loc);
             if (ls_base) {
@@ -1207,8 +1189,8 @@ void QueryDbMainLoop(
           break;
         }
         case SymbolKind::Var: {
-          QueryableVarDef& def = db->vars[symbol.idx];
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), def.uses, "ref", "refs", true /*exclude_loc*/, false /*only_interesting*/);
+          QueryVar& var = db->vars[symbol.idx];
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), var.uses, "ref", "refs", true /*exclude_loc*/, false /*only_interesting*/);
           break;
         }
         case SymbolKind::File:
@@ -1242,7 +1224,7 @@ void QueryDbMainLoop(
 
         if (db->detailed_names[i].find(query) != std::string::npos) {
           lsSymbolInformation info = GetSymbolInfo(db, working_files, db->symbols[i]);
-          optional<QueryableLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
+          optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
           if (!location) {
             auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, db->symbols[i]);
             if (decls.empty())
@@ -1330,7 +1312,7 @@ void QueryDbMain() {
   }
 
   // Run query db main loop.
-  QueryableDatabase db;
+  QueryDatabase db;
   while (true) {
     QueryDbMainLoop(&db, ipc.get(), &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &working_files, &completion_manager);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
