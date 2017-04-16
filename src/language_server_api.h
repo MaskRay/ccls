@@ -103,14 +103,17 @@ struct MessageRegistry {
 };
 
 
+struct lsBaseOutMessage {
+  virtual void Write(std::ostream& out) = 0;
+};
 
 template<typename TDerived>
-struct lsOutMessage {
+struct lsOutMessage : lsBaseOutMessage {
   // All derived types need to reflect on the |jsonrpc| member.
   std::string jsonrpc = "2.0";
 
   // Send the message to the language client by writing it to stdout.
-  void Write(std::ostream& out) {
+  void Write(std::ostream& out) override {
     rapidjson::StringBuffer output;
     Writer writer(output);
     auto that = static_cast<TDerived*>(this);

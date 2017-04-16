@@ -32,7 +32,6 @@ TEST_CASE("sanity") {
   // TODO: check case
   CHECK(m.IsMatch("abc"));
   CHECK(m.IsMatch("fooabc"));
-  CHECK(m.IsMatch("fooabc"));
   CHECK(m.IsMatch("abc"));
   CHECK(m.IsMatch("abcfoo"));
   CHECK(m.IsMatch("11a11b11c11"));

@@ -96,8 +96,7 @@ struct IpcManager {
 
 
 
-  template <typename T>
-  void SendOutMessageToClient(T& response) {
+  void SendOutMessageToClient(lsBaseOutMessage& response) {
     std::ostringstream sstream;
     response.Write(sstream);
 
@@ -109,8 +108,7 @@ struct IpcManager {
   enum class Destination {
     Client, Server
   };
-  template <typename TId, typename TMessage>
-  void SendMessageWithId(Destination destination, TId id, TMessage& message) {
+  void SendMessageWithId(Destination destination, IpcId id, BaseIpcMessage& message) {
     ipc_queue_->SendMessage(
       destination == Destination::Client ? &ipc_queue_->for_client : &ipc_queue_->for_server,
       id,
@@ -121,8 +119,7 @@ struct IpcManager {
     SendMessageWithId(destination, TMessage::kIpcId, message);
   }
 
-  template <typename TMessage>
-  std::vector<std::unique_ptr<TMessage>> GetMessages(Destination destination) {
+  std::vector<std::unique_ptr<BaseIpcMessage>> GetMessages(Destination destination) {
     return ipc_queue_->GetMessages(destination == Destination::Client ? &ipc_queue_->for_client : &ipc_queue_->for_server);
   }
 
@@ -999,7 +996,7 @@ void QueryDbMainLoop(
   WorkingFiles* working_files,
   CompletionManager* completion_manager) {
 
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = language_client->GetMessages<BaseIpcMessage>(IpcManager::Destination::Server);
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = language_client->GetMessages(IpcManager::Destination::Server);
   for (auto& message : messages) {
     //std::cerr << "[querydb] Processing message " << static_cast<int>(message->method_id) << std::endl;
 
@@ -1682,7 +1679,7 @@ void LanguageServerStdinLoop(IpcManager* ipc) {
 }
 
 void LanguageServerMainLoop(IpcManager* ipc) {
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages<BaseIpcMessage>(IpcManager::Destination::Client);
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
   for (auto& message : messages) {
     switch (message->method_id) {
     case IpcId::Quit: {
@@ -1763,7 +1760,7 @@ bool IsQueryDbProcessRunning(IpcManager* ipc) {
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages<BaseIpcMessage>(IpcManager::Destination::Client);
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
   for (auto& message : messages) {
     if (IpcId::IsAlive == message->method_id)
       return true;
@@ -1776,7 +1773,7 @@ void LanguageServerMain(std::string process_name) {
   IpcManager ipc;
 
   // Discard any left-over messages from previous runs.
-  ipc.GetMessages<BaseIpcMessage>(IpcManager::Destination::Client);
+  ipc.GetMessages(IpcManager::Destination::Client);
 
   bool has_server = IsQueryDbProcessRunning(&ipc);
 
