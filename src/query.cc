@@ -58,6 +58,38 @@ QueryVar::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def& var) 
   return result;
 }
 
+
+// Adds the mergeable updates in |source| to |dest|. If a mergeable update for
+// the destination type already exists, it will be combined. This makes merging
+// updates take longer but reduces import time on the querydb thread.
+template <typename TId, typename TValue>
+void AddMergeableRange(
+    std::vector<MergeableUpdate<TId, TValue>>* dest,
+    const std::vector<MergeableUpdate<TId, TValue>>& source) {
+
+  // TODO: Consider caching the lookup table. It can probably save even more
+  // time at the cost of some additional memory.
+
+  // Build lookup table.
+  google::dense_hash_map<TId, size_t> id_to_index;
+  id_to_index.set_empty_key(TId(-1));
+  id_to_index.resize(dest->size());
+  for (size_t i = 0; i < dest->size(); ++i)
+    id_to_index[(*dest)[i].id] = i;
+
+  // Add entries. Try to add them to an existing entry.
+  for (const auto& entry : source) {
+    auto it = id_to_index.find(entry.id);
+    if (it != id_to_index.end()) {
+      AddRange(&(*dest)[it->second].to_add, entry.to_add);
+      AddRange(&(*dest)[it->second].to_remove, entry.to_remove);
+    }
+    else {
+      dest->push_back(entry);
+    }
+  }
+}
+
 }  // namespace
 
 
@@ -539,34 +571,31 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
 }
 
 void IndexUpdate::Merge(const IndexUpdate& update) {
-  // TODO: When merging we should look at existing entries
-  // and join them so we only run the map access once in the
-  // querydb. This will probably be expensive though, we may
-  // want to cache additional state so we could do a set
-  // intersection.
-  
-#define INDEX_UPDATE_MERGE(name) \
+#define INDEX_UPDATE_APPEND(name) \
     AddRange(&name, update.name);
+#define INDEX_UPDATE_MERGE(name) \
+    AddMergeableRange(&name, update.name);
 
-  INDEX_UPDATE_MERGE(files_removed);
-  INDEX_UPDATE_MERGE(files_def_update);
+  INDEX_UPDATE_APPEND(files_removed);
+  INDEX_UPDATE_APPEND(files_def_update);
 
-  INDEX_UPDATE_MERGE(types_removed);
-  INDEX_UPDATE_MERGE(types_def_update);
+  INDEX_UPDATE_APPEND(types_removed);
+  INDEX_UPDATE_APPEND(types_def_update);
   INDEX_UPDATE_MERGE(types_derived);
   INDEX_UPDATE_MERGE(types_instantiations);
   INDEX_UPDATE_MERGE(types_uses);
 
-  INDEX_UPDATE_MERGE(funcs_removed);
-  INDEX_UPDATE_MERGE(funcs_def_update);
+  INDEX_UPDATE_APPEND(funcs_removed);
+  INDEX_UPDATE_APPEND(funcs_def_update);
   INDEX_UPDATE_MERGE(funcs_declarations);
   INDEX_UPDATE_MERGE(funcs_derived);
   INDEX_UPDATE_MERGE(funcs_callers);
 
-  INDEX_UPDATE_MERGE(vars_removed);
-  INDEX_UPDATE_MERGE(vars_def_update);
+  INDEX_UPDATE_APPEND(vars_removed);
+  INDEX_UPDATE_APPEND(vars_def_update);
   INDEX_UPDATE_MERGE(vars_uses);
 
+#undef INDEX_UPDATE_APPEND
 #undef INDEX_UPDATE_MERGE
 }
 
