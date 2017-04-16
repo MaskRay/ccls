@@ -60,6 +60,8 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
     content += c;
   }
 
+  //std::cerr << content.c_str() << std::endl;
+
   rapidjson::Document document;
   document.Parse(content.c_str(), content_length);
   assert(!document.HasParseError());

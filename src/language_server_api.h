@@ -800,6 +800,11 @@ struct lsClientCapabilities {
 MAKE_REFLECT_STRUCT(lsClientCapabilities, workspace, textDocument);
 
 struct lsInitializeParams {
+  struct lsCustomInitializationOptions {
+    NonElidedVector<std::string> whitelist;
+    NonElidedVector<std::string> blacklist;
+  };
+
   // The process Id of the parent process that started
   // the server. Is null if the process has not been started by another process.
   // If the parent process is not alive then the server should exit (see exit notification) its process.
@@ -817,7 +822,7 @@ struct lsInitializeParams {
   optional<lsDocumentUri> rootUri;
 
   // User provided initialization options.
-  // initializationOptions?: any; // TODO
+  optional<lsCustomInitializationOptions> initializationOptions;
 
   // The capabilities provided by the client (editor or tool)
   lsClientCapabilities capabilities;
@@ -834,7 +839,8 @@ struct lsInitializeParams {
 };
 void Reflect(Reader& reader, lsInitializeParams::lsTrace& value);
 void Reflect(Writer& writer, lsInitializeParams::lsTrace& value);
-MAKE_REFLECT_STRUCT(lsInitializeParams, processId, rootPath, rootUri, capabilities, trace);
+MAKE_REFLECT_STRUCT(lsInitializeParams::lsCustomInitializationOptions, whitelist, blacklist);
+MAKE_REFLECT_STRUCT(lsInitializeParams, processId, rootPath, rootUri, initializationOptions, capabilities, trace);
 
 
 struct lsInitializeError {

@@ -1,0 +1,9 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+  "cquery.blacklist": [
+    // ".*libclangmm/.*"
+  ],
+  "cquery.whitelist": [
+    // ".*platform.*.cc"
+  ]
+}

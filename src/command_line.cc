@@ -34,7 +34,7 @@ namespace {
 
 const int kNumIndexers = 8 - 1;
 const int kMaxWorkspaceSearchResults = 1000;
-const bool kUseMultipleProcesses = false;
+const bool kUseMultipleProcesses = false; // TODO: initialization options not passed properly when set to true.
 
 
 
@@ -1046,6 +1046,21 @@ void QueryDbMainLoop(
       Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
+      std::vector<Matcher> whitelist;
+      std::cerr << "Using whitelist" << std::endl;
+      for (const std::string& entry : msg->whitelist) {
+        std::cerr << " - " << entry << std::endl;
+        whitelist.push_back(Matcher(entry));
+      }
+
+      std::vector<Matcher> blacklist;
+      std::cerr << "Using blacklist" << std::endl;
+      for (const std::string& entry : msg->blacklist) {
+        std::cerr << " - " << entry << std::endl;
+        blacklist.push_back(Matcher(entry));
+      }
+
+
       project->Load(path);
       std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
       //for (int i = 0; i < 10; ++i)
@@ -1053,6 +1068,31 @@ void QueryDbMainLoop(
       for (int i = 0; i < project->entries.size(); ++i) {
         const CompilationEntry& entry = project->entries[i];
         std::string filepath = entry.filename;
+
+
+        const Matcher* is_bad = nullptr;
+        for (const Matcher& m : whitelist) {
+          if (!m.IsMatch(filepath)) {
+            is_bad = &m;
+            break;
+          }
+        }
+        if (is_bad) {
+          std::cerr << "[" << i << "/" << (project->entries.size() - 1) << "] Failed whitelist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
+          continue;
+        }
+
+        for (const Matcher& m : blacklist) {
+          if (m.IsMatch(filepath)) {
+            is_bad = &m;
+            break;
+          }
+        }
+        if (is_bad) {
+          std::cerr << "[" << i << "/" << (project->entries.size() - 1) << "] Failed blacklist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
+          continue;
+        }
+
 
         std::cerr << "[" << i << "/" << (project->entries.size() - 1)
           << "] Dispatching index request for file " << filepath
@@ -1619,7 +1659,7 @@ void LanguageServerStdinLoop() {
     if (!message)
       continue;
 
-    std::cerr << "[stdin]: Got message \"" << IpcIdToString(message->method_id) << '"' << std::endl;
+    std::cerr << "[stdin] Got message \"" << IpcIdToString(message->method_id) << '"' << std::endl;
     switch (message->method_id) {
       // TODO: For simplicitly lets just proxy the initialize request like
       // all other requests so that stdin loop thread becomes super simple.
@@ -1627,11 +1667,15 @@ void LanguageServerStdinLoop() {
       auto request = static_cast<Ipc_InitializeRequest*>(message.get());
       if (request->params.rootUri) {
         std::string project_path = request->params.rootUri->GetPath();
-        std::cerr << "Initialize in directory " << project_path
+        std::cerr << "[stdin] Initialize in directory " << project_path
           << " with uri " << request->params.rootUri->raw_uri
           << std::endl;
         auto open_project = MakeUnique<Ipc_OpenProject>();
         open_project->project_path = project_path;
+        if (request->params.initializationOptions) {
+          open_project->whitelist = request->params.initializationOptions->whitelist;
+          open_project->blacklist = request->params.initializationOptions->blacklist;
+        }
         ipc->SendMessage(IpcManager::Destination::Server, std::move(open_project));
       }
 

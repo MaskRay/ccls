@@ -58,6 +58,8 @@ MAKE_REFLECT_EMPTY_STRUCT(Ipc_IsAlive);
 struct Ipc_OpenProject : public IpcMessage<Ipc_OpenProject> {
   static constexpr IpcId kIpcId = IpcId::OpenProject;
   std::string project_path;
+  std::vector<std::string> whitelist;
+  std::vector<std::string> blacklist;
 };
 MAKE_REFLECT_STRUCT(Ipc_OpenProject, project_path);
 
