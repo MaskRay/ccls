@@ -724,13 +724,11 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
 
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
-  // TODO: allow user to configure if they want STL index.
   if (!kIndexStdDeclarations && clang_Location_isInSystemHeader(clang_indexLoc_getCXSourceLocation(decl->loc)))
     return;
 
   assert(AreEqualLocations(decl->loc, decl->cursor));
 
-  // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc), &file, nullptr, nullptr, nullptr);
   IndexParam* param = static_cast<IndexParam*>(client_data);
