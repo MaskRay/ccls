@@ -21,6 +21,19 @@ public:
     cv_.notify_one();
   }
 
+  // Return all elements in the queue.
+  std::vector<T> DequeueAll() {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    std::vector<T> result;
+    result.reserve(queue_.size());
+    while (!queue_.empty()) {
+      result.emplace_back(std::move(queue_.front()));
+      queue_.pop();
+    }
+    return result;
+  }
+
   // Get the "front"-element.
   // If the queue is empty, wait untill an element is avaiable.
   T Dequeue() {
@@ -38,7 +51,7 @@ public:
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
   optional<T> TryDequeue() {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::lock_guard<std::mutex> lock(mutex_);
     if (queue_.empty())
       return nullopt;
 

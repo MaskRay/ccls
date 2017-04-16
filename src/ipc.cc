@@ -38,8 +38,18 @@ const char* IpcIdToString(IpcId id) {
     return "codeLens/resolve";
   case IpcId::WorkspaceSymbol:
     return "workspace/symbol";
+
+
+  case IpcId::Quit:
+    return "$quit";
+  case IpcId::IsAlive:
+    return "$isAlive";
+  case IpcId::OpenProject:
+    return "$openProject";
+  case IpcId::Cout:
+    return "$cout";
   default:
-    assert(false);
+    assert(false && "missing IpcId string name");
     exit(1);
   }
 }
