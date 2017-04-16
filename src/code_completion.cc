@@ -98,7 +98,7 @@ std::string BuildLabelString(CXCompletionString completion_string) {
   std::string label;
 
   int num_chunks = clang_getNumCompletionChunks(completion_string);
-  for (unsigned i = 0; i < num_chunks; ++i) {
+  for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind = clang_getCompletionChunkKind(completion_string, i);
     if (kind == CXCompletionChunk_TypedText) {
       label += clang::ToString(clang_getCompletionChunkText(completion_string, i));
@@ -113,7 +113,7 @@ std::string BuildDetailString(CXCompletionString completion_string) {
   std::string detail;
 
   int num_chunks = clang_getNumCompletionChunks(completion_string);
-  for (unsigned i = 0; i < num_chunks; ++i) {
+  for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind = clang_getCompletionChunkKind(completion_string, i);
 
     switch (kind) {
@@ -272,7 +272,7 @@ NonElidedVector<lsCompletionItem> CompletionManager::CodeComplete(const lsTextDo
   ls_result.reserve(cx_results->NumResults);
 
   timer.Reset();
-  for (int i = 0; i < cx_results->NumResults; ++i) {
+  for (unsigned i = 0; i < cx_results->NumResults; ++i) {
     CXCompletionResult& result = cx_results->Results[i];
 
     //unsigned int is_incomplete;

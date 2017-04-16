@@ -491,6 +491,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentEdit, textDocument, edits);
 struct lsWorkspaceEdit {
   // Holds changes to existing resources.
   // changes ? : { [uri:string]: TextEdit[]; };
+  //std::unordered_map<lsDocumentUri, std::vector<lsTextEdit>> changes;
 
   // An array of `TextDocumentEdit`s to express changes to specific a specific
   // version of a text document. Whether a client supports versioned document
@@ -1112,7 +1113,7 @@ struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
   struct Params {
     // The document that was saved.
     lsTextDocumentIdentifier textDocument;
-    
+
     // Optional the content when saved. Depends on the includeText value
     // when the save notifcation was requested.
     // std::string text;
