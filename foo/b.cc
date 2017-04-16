@@ -1,12 +1,24 @@
-namespace {
+//1
+//2
 
-struct Foo2 {
-virtual void foobar() = 0;
-};
 
-void x() {
-  int bar = 3;
 
-  bar++;
-}
+
+//3
+//4
+void b(); //7
+
+
+
+void b(); //8
+//8
+//9
+//10
+//11
+//12
+
+
+//13
+void foo() {
+  b();
 }

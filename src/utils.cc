@@ -1,11 +1,37 @@
 #include "utils.h"
 
+#include <algorithm> 
 #include <cassert>
+#include <cctype>
+#include <functional> 
 #include <iostream>
 #include <fstream>
+#include <locale>
+#include <sstream>
 #include <unordered_map>
 
 #include <tinydir.h>
+
+namespace {
+
+// See http://stackoverflow.com/a/217605
+// Trim from start (in place)
+void TrimStart(std::string& s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+    std::not1(std::ptr_fun<int, int>(std::isspace))));
+}
+// Trim from end (in place)
+void TrimEnd(std::string& s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+    std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+}
+// Trim from both ends (in place)
+void Trim(std::string& s) {
+  TrimStart(s);
+  TrimEnd(s);
+}
+
+}  // namespace
 
 // See http://stackoverflow.com/a/2072890
 bool EndsWith(const std::string& value, const std::string& ending) {
@@ -129,6 +155,21 @@ std::vector<std::string> ReadLines(std::string filename) {
   std::ifstream input(filename);
   for (std::string line; SafeGetline(input, line); )
     result.push_back(line);
+
+  return result;
+}
+
+std::vector<std::string> ToLines(const std::string& content, bool trim_whitespace) {
+  std::vector<std::string> result;
+
+  std::istringstream lines(content);
+
+  std::string line;
+  while (getline(lines, line)) {
+    if (trim_whitespace)
+      Trim(line);
+    result.push_back(line);
+  }
 
   return result;
 }

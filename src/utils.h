@@ -16,6 +16,9 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
 std::vector<std::string> ReadLines(std::string filename);
+std::vector<std::string> ToLines(const std::string& content, bool trim_whitespace);
+
+
 std::unordered_map<std::string, std::string> ParseTestExpectation(std::string filename);
 void UpdateTestExpectation(const std::string& filename, const std::string& expectation, const std::string& actual);
 

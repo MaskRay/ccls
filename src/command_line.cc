@@ -290,13 +290,14 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
       lsPosition(location.end.line - 1, location.end.column - 1));
   }
 
-  // TODO: Should we also consider location.end.line?
-  if (working_file->IsDeletedDiskLine(location.start.line))
+  optional<int> start = working_file->GetBufferLineFromDiskLine(location.start.line);
+  optional<int> end = working_file->GetBufferLineFromDiskLine(location.end.line);
+  if (!start || !end)
     return nullopt;
 
   return lsRange(
-    lsPosition(working_file->GetBufferLineFromDiskLine(location.start.line) - 1, location.start.column - 1),
-    lsPosition(working_file->GetBufferLineFromDiskLine(location.end.line) - 1, location.end.column - 1));
+    lsPosition(*start - 1, location.start.column - 1),
+    lsPosition(*end - 1, location.end.column - 1));
 }
 
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id, std::string* path) {
@@ -337,7 +338,7 @@ lsSymbolInformation GetSymbolInfo(QueryDatabase* db, WorkingFiles* working_files
     }
     case SymbolKind::Func: {
       QueryFunc* func = symbol.ResolveFunc(db);
-      
+
       info.name = func->def.detailed_name;
       if (func->def.declaring_type.has_value()) {
         info.kind = lsSymbolKind::Method;
@@ -422,13 +423,13 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db, WorkingFiles* working_file
     optional<lsLocation> ls_location = GetLsLocation(db, working_files, location);
     if (!ls_location)
       continue;
-    
+
     if (path_to_edit.find(location.path) == path_to_edit.end()) {
       path_to_edit[location.path] = lsTextDocumentEdit();
 
       const std::string& path = db->files[location.path.id].def.path;
       path_to_edit[location.path].textDocument.uri = lsDocumentUri::FromPath(path);
-      
+
       WorkingFile* working_file = working_files->GetFileByFilename(path);
       if (working_file)
         path_to_edit[location.path].textDocument.version = working_file->version;
@@ -871,8 +872,11 @@ void QueryDbMainLoop(
       auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
 
       WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
-      if (working_file)
-        working_file->changes.clear();
+      if (working_file) {
+        // TODO: Update working file indexed content when we actually get the
+        // index update.
+        working_file->SetIndexContent(working_file->buffer_content);
+      }
 
       // Send an index update request.
       Index_DoIndex request(Index_DoIndex::Type::Update);
