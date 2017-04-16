@@ -64,11 +64,18 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   case CXCursor_EnumDecl:
     return lsCompletionItemKind::Enum;
 
+  case CXCursor_MacroInstantiation:
   case CXCursor_MacroDefinition:
     return lsCompletionItemKind::Interface;
 
   case CXCursor_Namespace:
+  case CXCursor_NamespaceAlias:
+  case CXCursor_NamespaceRef:
     return lsCompletionItemKind::Module;
+
+  case CXCursor_MemberRef:
+  case CXCursor_TypeRef:
+    return lsCompletionItemKind::Reference;
 
     //return lsCompletionItemKind::Property;
     //return lsCompletionItemKind::Unit;
@@ -77,7 +84,6 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     //return lsCompletionItemKind::Snippet;
     //return lsCompletionItemKind::Color;
     //return lsCompletionItemKind::File;
-    //return lsCompletionItemKind::Reference;
 
   case CXCursor_NotImplemented:
     return lsCompletionItemKind::Text;
