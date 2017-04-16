@@ -15,7 +15,6 @@
 #include "typed_bidi_message_queue.h"
 #include "working_files.h"
 
-#include <clang-c/Index.h>
 #include <doctest/doctest.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -1877,17 +1876,14 @@ void LanguageServerMain() {
 
 
 int main(int argc, char** argv) {
-  // TODO: Move to IndexInit(), remove clang-c include.
-  clang_enableStackTraces();
-  clang_toggleCrashRecovery(1);
-
-
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
   //std::this_thread::sleep_for(std::chrono::seconds(3));
 
   PlatformInit();
+  IndexInit();
+
   RegisterMessageTypes();
 
   // if (argc == 1) {

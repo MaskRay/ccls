@@ -1464,3 +1464,9 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_
   }
   return result;
 }
+
+
+void IndexInit() {
+  clang_enableStackTraces();
+  clang_toggleCrashRecovery(1);
+}

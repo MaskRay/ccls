@@ -455,3 +455,4 @@ struct IndexedFile {
 };
 
 std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast = false);
+void IndexInit();
