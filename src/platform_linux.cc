@@ -26,6 +26,8 @@
 #include <sys/stat.h> /* For mode constants */
 #include <fcntl.h>    /* For O_* constants */
 
+#include <sys/prctl.h>
+
 struct PlatformMutexLinux : public PlatformMutex {
   sem_t* sem_ = nullptr;
 
@@ -136,6 +138,10 @@ std::string NormalizePath(const std::string& path) {
   if (errno)
     return path;
   return name;
+}
+
+void SetCurrentThreadName(const std::string& thread_name) {
+  prctl(PR_SET_NAME, thread_name.c_str(), 0, 0, 0);
 }
 
 std::vector<std::string> GetPlatformClangArguments() {

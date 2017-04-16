@@ -27,6 +27,7 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 void PlatformInit();
 std::string GetWorkingDirectory();
 std::string NormalizePath(const std::string& path);
+void SetCurrentThreadName(const std::string& thread_name);
 
 // Returns any clang arguments that are specific to the current platform.
 std::vector<std::string> GetPlatformClangArguments();

@@ -88,9 +88,10 @@ struct IpcManager {
 
   static IpcManager* instance_;
   static IpcManager* instance() {
-    if (!instance_)
-      instance_ = new IpcManager();
     return instance_;
+  }
+  static void CreateInstance() {
+    instance_ = new IpcManager();
   }
 
   std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_client_;
@@ -933,6 +934,7 @@ void IndexMain(
   Index_DoIdMapQueue* queue_do_id_map,
   Index_OnIdMappedQueue* queue_on_id_mapped,
   Index_OnIndexedQueue* queue_on_indexed) {
+  SetCurrentThreadName("indexer");
 
   while (true) {
     // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
@@ -1029,7 +1031,7 @@ void QueryDbMainLoop(
 
     switch (message->method_id) {
     case IpcId::Quit: {
-      std::cerr << "Got quit message (exiting)" << std::endl;
+      std::cerr << "[querydb] Got quit message (exiting)" << std::endl;
       exit(0);
       break;
     }
@@ -1136,9 +1138,8 @@ void QueryDbMainLoop(
       response.result.items = completion_manager->CodeComplete(msg->params);
 
       Timer timer;
-      response.Write(std::cout);
+      ipc->SendOutMessageToClient(response);
       timer.ResetAndPrint("Writing completion results");
-      //SendOutMessageToClient(language_client, response);
       break;
     }
 
@@ -1508,6 +1509,7 @@ void QueryDbMainLoop(
 }
 
 void QueryDbMain() {
+  SetCurrentThreadName("querydb");
   //std::cerr << "Running QueryDb" << std::endl;
 
   // Create queues.
@@ -1607,6 +1609,7 @@ void QueryDbMain() {
 //
 // |ipc| is connected to a server.
 void LanguageServerStdinLoop() {
+  SetCurrentThreadName("stdin");
   IpcManager* ipc = IpcManager::instance();
 
   while (true) {
@@ -1798,8 +1801,13 @@ bool IsQueryDbProcessRunning() {
   // Check if we got an IsAlive message back.
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
   for (auto& message : messages) {
-    if (IpcId::IsAlive == message->method_id)
+    if (IpcId::IsAlive == message->method_id) {
       return true;
+    }
+    else {
+      std::cerr << "[setup] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
+      exit(1);
+    }
   }
 
   // No response back. Clear out server messages so server doesn't respond to stale request.
@@ -1809,6 +1817,8 @@ bool IsQueryDbProcessRunning() {
 }
 
 void LanguageServerMain() {
+  SetCurrentThreadName("server");
+
   bool has_server = IsQueryDbProcessRunning();
 
   // No server is running. Start it in-process. If the user wants to run the
@@ -1876,6 +1886,8 @@ void LanguageServerMain() {
 
 
 int main(int argc, char** argv) {
+  IpcManager::CreateInstance();
+
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
