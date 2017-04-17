@@ -1,3 +1,4 @@
+#include "atomic_object.h"
 #include "language_server_api.h"
 #include "libclangmm/CompletionString.h"
 #include "libclangmm/Index.h"
@@ -6,6 +7,8 @@
 #include "working_files.h"
 
 #include <clang-c/Index.h>
+
+#include <functional>
 
 struct CompletionSession {
   CompilationEntry file;
@@ -33,12 +36,18 @@ struct CompletionManager {
   Project* project;
   WorkingFiles* working_files;
 
+  using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results)>;
+  struct CompletionRequest {
+    lsTextDocumentPositionParams location;
+    OnComplete on_complete;
+  };
+  AtomicObject<CompletionRequest> completion_request;
+
   CompletionManager(Project* project, WorkingFiles* working_files);
 
-  // This all should run on complete_responder thread. This will internally run a child thread to
-  // reparse.
-  NonElidedVector<lsCompletionItem> CodeComplete(const lsTextDocumentPositionParams& completion_location);
+  // Start a code completion at the given location. |on_complete| will run when
+  // completion results are available. |on_complete| may run on any thread.
+  void CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete);
 
- private:
   CompletionSession* GetOrOpenSession(const std::string& filename);
 };

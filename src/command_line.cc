@@ -20,6 +20,7 @@
 #include <rapidjson/ostreamwrapper.h>
 
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <unordered_map>
@@ -1007,13 +1008,6 @@ void IndexMain(
 
 
 
-
-
-
-
-
-
-
 void QueryDbMainLoop(
   QueryDatabase* db,
   Index_DoIndexQueue* queue_do_index,
@@ -1170,16 +1164,27 @@ void QueryDbMainLoop(
     }
 
     case IpcId::TextDocumentCompletion: {
-      // TODO: better performance
       auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
-      Out_TextDocumentComplete response;
-      response.id = msg->id;
-      response.result.isIncomplete = false;
-      response.result.items = completion_manager->CodeComplete(msg->params);
+      lsTextDocumentPositionParams params = msg->params;
 
-      Timer timer;
-      ipc->SendOutMessageToClient(response);
-      timer.ResetAndPrint("Writing completion results");
+      CompletionManager::OnComplete callback = std::bind([](BaseIpcMessage* message, const NonElidedVector<lsCompletionItem>& results) {
+        auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
+        auto ipc = IpcManager::instance();
+
+        Out_TextDocumentComplete response;
+        response.id = msg->id;
+        response.result.isIncomplete = false;
+        response.result.items = results;
+
+        Timer timer;
+        ipc->SendOutMessageToClient(response);
+        timer.ResetAndPrint("Writing completion results");
+
+        delete message;
+      }, message.release(), std::placeholders::_1);
+
+      completion_manager->CodeComplete(params, std::move(callback));
+
       break;
     }
 
