@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional.h>
+
 #include <algorithm>
 #include <functional>
 #include <memory>
@@ -8,6 +10,9 @@
 #include <unordered_map>
 #include <vector>
 
+using std::experimental::optional;
+using std::experimental::nullopt;
+
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
@@ -15,6 +20,7 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
 
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
+optional<std::string> ReadContent(const std::string& filename);
 std::vector<std::string> ReadLines(std::string filename);
 std::vector<std::string> ToLines(const std::string& content, bool trim_whitespace);
 

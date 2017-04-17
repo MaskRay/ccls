@@ -149,6 +149,17 @@ std::istream& SafeGetline(std::istream& is, std::string& t) {
     }
 }
 
+optional<std::string> ReadContent(const std::string& filename) {
+  std::ifstream cache;
+  cache.open(filename);
+  if (!cache.good())
+    return nullopt;
+
+  return std::string(
+    std::istreambuf_iterator<char>(cache),
+    std::istreambuf_iterator<char>());
+}
+
 std::vector<std::string> ReadLines(std::string filename) {
   std::vector<std::string> result;
 

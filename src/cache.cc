@@ -17,18 +17,11 @@ std::string GetCachedFileName(std::string source_file) {
 std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename) {
   return nullptr;
 
-  std::string cache_file = GetCachedFileName(filename);
-
-  std::ifstream cache;
-  cache.open(GetCachedFileName(filename));
-  if (!cache.good())
+  optional<std::string> file_content = ReadContent(GetCachedFileName(filename));
+  if (!file_content)
     return nullptr;
 
-  std::string file_content = std::string(
-    std::istreambuf_iterator<char>(cache),
-    std::istreambuf_iterator<char>());
-
-  optional<IndexedFile> indexed = Deserialize(filename, file_content);
+  optional<IndexedFile> indexed = Deserialize(filename, *file_content);
   if (indexed)
     return MakeUnique<IndexedFile>(indexed.value());
 
