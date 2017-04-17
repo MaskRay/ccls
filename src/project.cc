@@ -13,10 +13,11 @@
 
 struct CompileCommandsEntry {
   std::string directory;
-  std::string filename;
+  std::string file;
+  std::string command;
   std::vector<std::string> args;
 };
-MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, filename, args);
+MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
 
 namespace {
 
@@ -39,11 +40,11 @@ static const char *kValueArgs[] = {
   "-arch",
   "-b",
   "-gcc-toolchain",
-  "-imacros",
+  //"-imacros",
   "-imultilib",
-  "-include",
-  "-iprefix",
-  "-isysroot",
+  //"-include",
+  //"-iprefix",
+  //"-isysroot",
   "-ivfsoverlay",
   "-iwithprefix",
   "-iwithprefixbefore",
@@ -93,13 +94,15 @@ static const char *kBlacklist[] = {
   //"-f",
   //"-pipe",
   //"-W",
+  // TODO
+  "-Wno-unused-lambda-capture",
   "/",
   "..",
 };
 
 CompilationEntry GetCompilationEntryFromCompileCommandEntry(const CompileCommandsEntry& entry) {
   CompilationEntry result;
-  result.filename = NormalizePath(entry.filename);
+  result.filename = NormalizePath(entry.file);
 
   unsigned int num_args = entry.args.size();
   result.args.reserve(num_args);
@@ -199,7 +202,7 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
 
 std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory) {
   // TODO: Figure out if this function or the clang one is faster.
-  return LoadFromCompileCommandsJson(project_directory);
+  //return LoadFromCompileCommandsJson(project_directory);
 
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(project_directory.c_str(), &cx_db_load_error);
@@ -218,16 +221,16 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
     std::string directory = clang::ToString(clang_CompileCommand_getDirectory(cx_command));
     std::string relative_filename = clang::ToString(clang_CompileCommand_getFilename(cx_command));
     std::string absolute_filename = directory + "/" + relative_filename;
-    
+
     CompileCommandsEntry entry;
-    entry.filename = NormalizePath(absolute_filename);
+    entry.file = NormalizePath(absolute_filename);
     entry.directory = directory;
 
     unsigned int num_args = clang_CompileCommand_getNumArgs(cx_command);
     entry.args.reserve(num_args);
     for (int i = 0; i < num_args; ++i)
       entry.args.push_back(clang::ToString(clang_CompileCommand_getArg(cx_command, i)));
-    
+
     result.push_back(GetCompilationEntryFromCompileCommandEntry(entry));
   }
 

@@ -71,7 +71,7 @@ void AddMergeableRange(
   // time at the cost of some additional memory.
 
   // Build lookup table.
-  google::dense_hash_map<TId, size_t> id_to_index;
+  google::dense_hash_map<TId, size_t, std::hash<TId>> id_to_index;
   id_to_index.set_empty_key(TId(-1));
   id_to_index.resize(dest->size());
   for (size_t i = 0; i < dest->size(); ++i)

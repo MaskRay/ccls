@@ -2,6 +2,8 @@
 
 #include "position.h"
 
+#include <climits>
+
 namespace {
 
 int GetOffsetForPosition(lsPosition position, const std::string& content) {

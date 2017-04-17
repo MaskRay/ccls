@@ -45,7 +45,7 @@ struct Id {
 namespace std {
 template <typename T>
 struct hash<Id<T>> {
-  size_t operator()(const Id<T>& k) const { return hash<uint64_t>()(k.id); }
+  size_t operator()(const Id<T>& k) const { return hash<size_t>()(k.id); }
 };
 }
 

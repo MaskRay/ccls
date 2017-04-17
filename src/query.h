@@ -5,6 +5,8 @@
 
 #include <sparsehash/dense_hash_map>
 
+#include <functional>
+
 using Usr = std::string;
 
 struct QueryFile;
@@ -308,7 +310,7 @@ struct IdMap {
   SymbolIdx ToSymbol(IndexFuncId id) const;
   SymbolIdx ToSymbol(IndexVarId id) const;
 private:
-  google::dense_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;
-  google::dense_hash_map<IndexFuncId, QueryFuncId> cached_func_ids_;
-  google::dense_hash_map<IndexVarId, QueryVarId> cached_var_ids_;
+  google::dense_hash_map<IndexTypeId, QueryTypeId, std::hash<IndexTypeId>> cached_type_ids_;
+  google::dense_hash_map<IndexFuncId, QueryFuncId, std::hash<IndexFuncId>> cached_func_ids_;
+  google::dense_hash_map<IndexVarId, QueryVarId, std::hash<IndexVarId>> cached_var_ids_;
 };
