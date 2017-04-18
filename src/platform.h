@@ -25,8 +25,16 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
     size_t size);
 
 void PlatformInit();
+
 std::string GetWorkingDirectory();
 std::string NormalizePath(const std::string& path);
+// Creates a directory at |path|. Creates directories recursively if needed.
+void MakeDirectoryRecursive(std::string path);
+// Tries to create the directory given by |absolute_path|. Returns true if
+// successful or if the directory already exists. Returns false otherwise. This
+// does not attempt to recursively create directories.
+bool TryMakeDirectory(const std::string& absolute_path);
+
 void SetCurrentThreadName(const std::string& thread_name);
 
 // Returns any clang arguments that are specific to the current platform.

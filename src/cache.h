@@ -5,8 +5,6 @@
 
 struct IndexedFile;
 
-std::string GetCachedFileName(std::string source_file);
+std::unique_ptr<IndexedFile> LoadCachedFile(const std::string& cache_directory, const std::string& filename);
 
-std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename);
-
-void WriteToCache(std::string filename, IndexedFile& file);
+void WriteToCache(const std::string& cache_directory, const std::string& filename, IndexedFile& file);

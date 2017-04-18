@@ -19,6 +19,9 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <sys/types.h> // required for stat.h
+#include <sys/stat.h> // no clue why required -- man pages say so
+
 #include <fcntl.h>    /* For O_* constants */
 #include <sys/stat.h> /* For mode constants */
 #include <semaphore.h>
@@ -138,6 +141,17 @@ std::string NormalizePath(const std::string& path) {
   if (errno)
     return path;
   return name;
+}
+
+bool TryMakeDirectory(const std::string& absolute_path) {
+  std::cerr << "!! TryMakeDirectory " << absolute_path << std::endl;
+
+  const mode_t kMode = 0660; // UNIX style permissions, user and group read/write; other cannot access
+  if (mkdir(absolute_path.c_str(), kMode) == -1) {
+    // Success if the directory exists.
+    return errno == EEXIST;
+  }
+  return true;
 }
 
 void SetCurrentThreadName(const std::string& thread_name) {

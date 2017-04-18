@@ -664,6 +664,8 @@ std::vector<SymbolRef> FindSymbolsAtLocation(QueryFile* file, lsPosition positio
   std::vector<SymbolRef> symbols;
   symbols.reserve(1);
 
+  // TODO: This needs to use the WorkingFile to convert buffer location to
+  // indexed location.
   int target_line = position.line + 1;
   int target_column = position.character + 1;
   for (const SymbolRef& ref : file->def.all_symbols) {
@@ -831,7 +833,8 @@ void RegisterMessageTypes() {
 
 
 
-bool IndexMain_DoIndex(FileConsumer::SharedState* file_consumer_shared,
+bool IndexMain_DoIndex(IndexerConfig* config,
+                       FileConsumer::SharedState* file_consumer_shared,
                        Index_DoIndexQueue* queue_do_index,
                        Index_DoIdMapQueue* queue_do_id_map) {
   optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
@@ -845,7 +848,7 @@ bool IndexMain_DoIndex(FileConsumer::SharedState* file_consumer_shared,
   // update request to get the latest version.
   if (index_request->type == Index_DoIndex::Type::Import) {
     index_request->type = Index_DoIndex::Type::Update;
-    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(index_request->path);
+    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config->cacheDirectory, index_request->path);
     time.ResetAndPrint("Reading cached index from disk " + index_request->path);
 
     // If import fails just do a standard update.
@@ -874,7 +877,7 @@ bool IndexMain_DoIndex(FileConsumer::SharedState* file_consumer_shared,
   for (auto& current_index : indexes) {
     std::cerr << "Got index for " << current_index->path << std::endl;
 
-    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(current_index->path);
+    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config->cacheDirectory, current_index->path);
     time.ResetAndPrint("Loading cached index");
 
     // TODO: Cache to disk on a separate thread. Maybe we do the cache after we
@@ -882,7 +885,7 @@ bool IndexMain_DoIndex(FileConsumer::SharedState* file_consumer_shared,
     // of the current 4).
 
     // Cache file so we can diff it later.
-    WriteToCache(current_index->path, *current_index);
+    WriteToCache(config->cacheDirectory, current_index->path, *current_index);
     time.ResetAndPrint("Cache index update to disk");
 
     // Send response to create id map.
@@ -930,6 +933,7 @@ void IndexJoinIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
 }
 
 void IndexMain(
+  IndexerConfig* config,
   FileConsumer::SharedState* file_consumer_shared,
   Index_DoIndexQueue* queue_do_index,
   Index_DoIdMapQueue* queue_do_id_map,
@@ -944,7 +948,7 @@ void IndexMain(
 
     int count = 0;
 
-    if (!IndexMain_DoIndex(file_consumer_shared, queue_do_index, queue_do_id_map) &&
+    if (!IndexMain_DoIndex(config, file_consumer_shared, queue_do_index, queue_do_id_map) &&
       !IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed)) {
 
       //if (count++ > 2) {
@@ -1009,6 +1013,7 @@ void IndexMain(
 
 
 void QueryDbMainLoop(
+  IndexerConfig* config,
   QueryDatabase* db,
   Index_DoIndexQueue* queue_do_index,
   Index_DoIdMapQueue* queue_do_id_map,
@@ -1042,14 +1047,14 @@ void QueryDbMainLoop(
 
       std::vector<Matcher> whitelist;
       std::cerr << "Using whitelist" << std::endl;
-      for (const std::string& entry : msg->whitelist) {
+      for (const std::string& entry : config->whitelist) {
         std::cerr << " - " << entry << std::endl;
         whitelist.push_back(Matcher(entry));
       }
 
       std::vector<Matcher> blacklist;
       std::cerr << "Using blacklist" << std::endl;
-      for (const std::string& entry : msg->blacklist) {
+      for (const std::string& entry : config->blacklist) {
         std::cerr << " - " << entry << std::endl;
         blacklist.push_back(Matcher(entry));
       }
@@ -1553,7 +1558,7 @@ void QueryDbMainLoop(
   }
 }
 
-void QueryDbMain() {
+void QueryDbMain(IndexerConfig* config) {
   SetCurrentThreadName("querydb");
   //std::cerr << "Running QueryDb" << std::endl;
 
@@ -1571,14 +1576,14 @@ void QueryDbMain() {
   // Start indexer threads.
   for (int i = 0; i < kNumIndexers; ++i) {
     new std::thread([&]() {
-      IndexMain(&file_consumer_shared, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
+      IndexMain(config, &file_consumer_shared, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
     });
   }
 
   // Run query db main loop.
   QueryDatabase db;
   while (true) {
-    QueryDbMainLoop(&db, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &working_files, &completion_manager);
+    QueryDbMainLoop(config, &db, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &working_files, &completion_manager);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
@@ -1653,7 +1658,7 @@ void QueryDbMain() {
 // blocks.
 //
 // |ipc| is connected to a server.
-void LanguageServerStdinLoop() {
+void LanguageServerStdinLoop(IndexerConfig* config) {
   SetCurrentThreadName("stdin");
   IpcManager* ipc = IpcManager::instance();
 
@@ -1677,10 +1682,25 @@ void LanguageServerStdinLoop() {
           << std::endl;
         auto open_project = MakeUnique<Ipc_OpenProject>();
         open_project->project_path = project_path;
-        if (request->params.initializationOptions) {
-          open_project->whitelist = request->params.initializationOptions->whitelist;
-          open_project->blacklist = request->params.initializationOptions->blacklist;
+
+        if (!request->params.initializationOptions) {
+          std::cerr << "Initialization parameters (particularily cacheDirectory) are required" << std::endl;
+          exit(1);
         }
+
+        *config = *request->params.initializationOptions;
+
+        // Make sure cache directory is valid.
+        if (config->cacheDirectory.empty()) {
+          std::cerr << "No cache directory" << std::endl;
+          exit(1);
+        }
+        config->cacheDirectory = NormalizePath(config->cacheDirectory);
+        if (config->cacheDirectory[config->cacheDirectory.size() - 1] != '/')
+          config->cacheDirectory += '/';
+        MakeDirectoryRecursive(config->cacheDirectory);
+
+
         ipc->SendMessage(IpcManager::Destination::Server, std::move(open_project));
       }
 
@@ -1864,7 +1884,7 @@ bool IsQueryDbProcessRunning() {
   return false;
 }
 
-void LanguageServerMain() {
+void LanguageServerMain(IndexerConfig* config) {
   SetCurrentThreadName("server");
 
   bool has_server = IsQueryDbProcessRunning();
@@ -1872,11 +1892,15 @@ void LanguageServerMain() {
   // No server is running. Start it in-process. If the user wants to run the
   // server out of process they have to start it themselves.
   if (!has_server) {
-    new std::thread(&QueryDbMain);
+    new std::thread([&config]() {
+      QueryDbMain(config);
+    });
   }
 
   // Run language client.
-  new std::thread(&LanguageServerStdinLoop);
+  new std::thread([&config]() {
+    LanguageServerStdinLoop(config);
+  });
   while (true) {
     LanguageServerMainLoop();
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -1991,17 +2015,21 @@ int main(int argc, char** argv) {
   }
   else if (HasOption(options, "--language-server")) {
     //std::cerr << "Running language server" << std::endl;
-    LanguageServerMain();
+    IndexerConfig config;
+    LanguageServerMain(&config);
     return 0;
   }
   else if (HasOption(options, "--querydb")) {
     //std::cerr << "Running querydb" << std::endl;
-    QueryDbMain();
+    // TODO/FIXME: config is not shared between processes.
+    IndexerConfig config;
+    QueryDbMain(&config);
     return 0;
   }
   else {
     //std::cerr << "Running language server" << std::endl;
-    LanguageServerMain();
+    IndexerConfig config;
+    LanguageServerMain(&config);
     return 0;
   }
 

@@ -3,6 +3,7 @@
 
 #include "utils.h"
 
+#include <direct.h>
 #include <fcntl.h>
 #include <io.h>
 #include <Windows.h>
@@ -145,6 +146,14 @@ std::string NormalizePath(const std::string& path) {
   return result;
 }
 
+bool TryMakeDirectory(const std::string& absolute_path) {
+  std::cerr << "!! TryMakeDirectory " << absolute_path << std::endl;
+  if (_mkdir(absolute_path.c_str()) == -1) {
+    // Success if the directory exists.
+    return errno == EEXIST;
+  }
+  return true;
+}
 
 // See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
 const DWORD MS_VC_EXCEPTION = 0x406D1388;

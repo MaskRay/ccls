@@ -4,20 +4,23 @@
 
 #include <algorithm>
 
-std::string GetCachedFileName(std::string source_file) {
-  // TODO/FIXME
-  const char* kCacheDirectory = "C:/Users/jacob/Desktop/superindex/indexer/CACHE/";
+namespace {
+
+std::string GetCachedFileName(const std::string& cache_directory, std::string source_file) {
+  assert(!cache_directory.empty());
   std::replace(source_file.begin(), source_file.end(), '\\', '_');
   std::replace(source_file.begin(), source_file.end(), '/', '_');
   std::replace(source_file.begin(), source_file.end(), ':', '_');
   std::replace(source_file.begin(), source_file.end(), '.', '_');
-  return kCacheDirectory + source_file + ".json";
+  return cache_directory + source_file + ".json";
 }
 
-std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename) {
+}  // namespace
+
+std::unique_ptr<IndexedFile> LoadCachedFile(const std::string& cache_directory, const std::string& filename) {
   return nullptr;
 
-  optional<std::string> file_content = ReadContent(GetCachedFileName(filename));
+  optional<std::string> file_content = ReadContent(GetCachedFileName(cache_directory, filename));
   if (!file_content)
     return nullptr;
 
@@ -28,11 +31,11 @@ std::unique_ptr<IndexedFile> LoadCachedFile(std::string filename) {
   return nullptr;
 }
 
-void WriteToCache(std::string filename, IndexedFile& file) {
+void WriteToCache(const std::string& cache_directory, const std::string& filename, IndexedFile& file) {
   std::string indexed_content = Serialize(file);
 
   std::ofstream cache;
-  cache.open(GetCachedFileName(filename));
+  cache.open(GetCachedFileName(cache_directory, filename));
   assert(cache.good());
   cache << indexed_content;
   cache.close();
