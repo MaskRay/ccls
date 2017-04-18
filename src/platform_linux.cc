@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <dirent.h>
 #include <sys/types.h> // required for stat.h
 #include <sys/stat.h> // no clue why required -- man pages say so
 
@@ -29,7 +30,9 @@
 #include <sys/stat.h> /* For mode constants */
 #include <fcntl.h>    /* For O_* constants */
 
+#ifndef __APPLE__
 #include <sys/prctl.h>
+#endif
 
 struct PlatformMutexLinux : public PlatformMutex {
   sem_t* sem_ = nullptr;
@@ -155,7 +158,9 @@ bool TryMakeDirectory(const std::string& absolute_path) {
 }
 
 void SetCurrentThreadName(const std::string& thread_name) {
+#ifndef __APPLE__
   prctl(PR_SET_NAME, thread_name.c_str(), 0, 0, 0);
+#endif
 }
 
 std::vector<std::string> GetPlatformClangArguments() {

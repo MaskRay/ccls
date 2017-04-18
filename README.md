@@ -32,10 +32,11 @@ in the `vscode-client` folder.
 # Build cquery
 $ git clone https://github.com/jacobdufault/cquery --recursive
 $ cd cquery
-$ pushd third_party/sparsehash # This step will eventually be eliminated
-$ ./configure # This step will eventually be eliminated
-# sparsehash is header-only; building it is not required
-$ popd # This step will eventually be eliminated
+# Note: In the future we should not have to build sparsehash explicitly.
+$ pushd third_party/sparsehash
+$ ./configure
+$ make
+$ popd
 $ ./waf configure
 $ ./waf build
 
