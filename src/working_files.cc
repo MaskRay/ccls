@@ -60,7 +60,10 @@ optional<int> WorkingFile::GetBufferLineFromDiskLine(int index_line) const {
 
   // Note: |index_line| and |buffer_line| are 1-based.
 
-  assert(index_line >= 1 && index_line <= index_lines.size());
+  // TODO: reenable this assert once we are using the real indexed file.
+  //assert(index_line >= 1 && index_line <= index_lines.size());
+  if (index_line < 1 || index_line > index_lines.size())
+    return nullopt;
 
   // Find the line in the cached index file. We'll try to find the most similar line
   // in the buffer and return the index for that.
