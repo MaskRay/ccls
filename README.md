@@ -25,8 +25,8 @@ be productive with cquery. Here's a list of implemented features:
 
 Eventually, cquery will be published in the vscode extension marketplace and you
 will be able to install and run it without any additional steps. To use cquery
-you need to clone this repository, build it, and then open vscode in this
-folder.
+you need to clone this repository, build it, and then run the vscode extension
+in the `vscode-client` folder.
 
 ```bash
 # Build cquery
@@ -96,7 +96,7 @@ cquery is able to respond to queries quickly because it caches a huge amount of
 information. When a request comes in, cquery just looks it up in the cache
 without running many computations. As a result, there's a large memory overhead.
 For example, a full index of Chrome will take about 10gb of memory. If you
-exclude v8, webkit, and blink, it goes down to about 6.5gb.
+exclude v8, webkit, and third_party, it goes down to about 6.5gb.
 
 # License
 
