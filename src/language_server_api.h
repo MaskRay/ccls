@@ -59,8 +59,9 @@ struct IndexerConfig {
   std::string cacheDirectory;
   NonElidedVector<std::string> whitelist;
   NonElidedVector<std::string> blacklist;
+  int indexerCount = 1;
 };
-MAKE_REFLECT_STRUCT(IndexerConfig, cacheDirectory, whitelist, blacklist);
+MAKE_REFLECT_STRUCT(IndexerConfig, cacheDirectory, whitelist, blacklist, indexerCount);
 
 
 

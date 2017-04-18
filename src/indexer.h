@@ -433,6 +433,8 @@ struct IndexedFile {
   IdCache id_cache;
 
   std::string path;
+  // The content of |path| when it was indexed.
+  //std::string content;
 
   std::vector<std::string> dependencies;
   std::vector<IndexedTypeDef> types;

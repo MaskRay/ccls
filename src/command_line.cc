@@ -33,7 +33,6 @@
 
 namespace {
 
-const int kNumIndexers = 8 - 1;
 const int kMaxWorkspaceSearchResults = 1000;
 const bool kUseMultipleProcesses = false; // TODO: initialization options not passed properly when set to true.
 
@@ -195,7 +194,40 @@ struct IpcManager {
 
 IpcManager* IpcManager::instance_ = nullptr;
 
+bool IsQueryDbProcessRunningOutOfProcess() {
+  if (!kUseMultipleProcesses)
+    return false;
 
+  IpcManager* ipc = IpcManager::instance();
+
+  // Discard any left-over messages from previous runs.
+  if (kUseMultipleProcesses)
+    ipc->GetMessages(IpcManager::Destination::Client);
+
+  // Emit an alive check. Sleep so the server has time to respond.
+  std::cerr << "[setup] Sending IsAlive request to server" << std::endl;
+  ipc->SendMessage(IpcManager::Destination::Server, MakeUnique<Ipc_IsAlive>());
+
+  // TODO: Tune this value or make it configurable.
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  // Check if we got an IsAlive message back.
+  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
+  for (auto& message : messages) {
+    if (IpcId::IsAlive == message->method_id) {
+      return true;
+    }
+    else {
+      std::cerr << "[setup] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
+      exit(1);
+    }
+  }
+
+  // No response back. Clear out server messages so server doesn't respond to stale request.
+  ipc->GetMessages(IpcManager::Destination::Server);
+
+  return false;
+}
 
 
 
@@ -1574,7 +1606,8 @@ void QueryDbMain(IndexerConfig* config) {
   FileConsumer::SharedState file_consumer_shared;
 
   // Start indexer threads.
-  for (int i = 0; i < kNumIndexers; ++i) {
+  std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
+  for (int i = 0; i < config->indexerCount; ++i) {
     new std::thread([&]() {
       IndexMain(config, &file_consumer_shared, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
     });
@@ -1700,6 +1733,14 @@ void LanguageServerStdinLoop(IndexerConfig* config) {
           config->cacheDirectory += '/';
         MakeDirectoryRecursive(config->cacheDirectory);
 
+        // Startup querydb now that we have initialization state.
+        // TODO: Pass init data to out of process querydb.
+        bool has_querydb = IsQueryDbProcessRunningOutOfProcess();
+        if (!has_querydb) {
+          new std::thread([&config]() {
+            QueryDbMain(config);
+          });
+        }
 
         ipc->SendMessage(IpcManager::Destination::Server, std::move(open_project));
       }
@@ -1849,53 +1890,8 @@ void LanguageServerMainLoop() {
   }
 }
 
-bool IsQueryDbProcessRunning() {
-  if (!kUseMultipleProcesses)
-    return false;
-
-  IpcManager* ipc = IpcManager::instance();
-
-  // Discard any left-over messages from previous runs.
-  if (kUseMultipleProcesses)
-    ipc->GetMessages(IpcManager::Destination::Client);
-
-  // Emit an alive check. Sleep so the server has time to respond.
-  std::cerr << "[setup] Sending IsAlive request to server" << std::endl;
-  ipc->SendMessage(IpcManager::Destination::Server, MakeUnique<Ipc_IsAlive>());
-
-  // TODO: Tune this value or make it configurable.
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-  // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
-  for (auto& message : messages) {
-    if (IpcId::IsAlive == message->method_id) {
-      return true;
-    }
-    else {
-      std::cerr << "[setup] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
-      exit(1);
-    }
-  }
-
-  // No response back. Clear out server messages so server doesn't respond to stale request.
-  ipc->GetMessages(IpcManager::Destination::Server);
-
-  return false;
-}
-
 void LanguageServerMain(IndexerConfig* config) {
   SetCurrentThreadName("server");
-
-  bool has_server = IsQueryDbProcessRunning();
-
-  // No server is running. Start it in-process. If the user wants to run the
-  // server out of process they have to start it themselves.
-  if (!has_server) {
-    new std::thread([&config]() {
-      QueryDbMain(config);
-    });
-  }
 
   // Run language client.
   new std::thread([&config]() {
