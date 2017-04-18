@@ -1,3 +1,6 @@
+# Binary files
+*.png binary
+
 # By default, use platform specific endings.
 * text eol=auto
 
