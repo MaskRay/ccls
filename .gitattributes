@@ -1,8 +1,7 @@
-# Binary files
-*.png binary
-
 # By default, use platform specific endings.
-* text eol=auto
+*.h text eol=auto
+*.cpp text eol=auto
+*.cc text eol=auto
 
 # Tests must always be crlf
 full_tests/** text eol=crlf
