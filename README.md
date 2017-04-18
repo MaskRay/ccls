@@ -6,7 +6,7 @@ has been designed for and tested on large code bases like
 is to make working on large code bases much faster by providing accurate and
 fast semantic analysis.
 
-![](images/demo.png)
+![Demo](/images/demo.png?raw=true)
 
 There are rough edges (especially when editing), but it is already possible to
 be productive with cquery. Here's a list of implemented features:
