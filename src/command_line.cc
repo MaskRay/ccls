@@ -33,7 +33,6 @@
 
 namespace {
 
-const int kMaxWorkspaceSearchResults = 1000;
 const bool kUseMultipleProcesses = false; // TODO: initialization options not passed properly when set to true.
 
 
@@ -1519,8 +1518,8 @@ void QueryDbMainLoop(
 
       std::string query = msg->params.query;
       for (int i = 0; i < db->detailed_names.size(); ++i) {
-        if (response.result.size() > kMaxWorkspaceSearchResults) {
-          std::cerr << "Query exceeded maximum number of responses (" << kMaxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
+        if (response.result.size() >= config->maxWorkspaceSearchResults) {
+          std::cerr << "Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
           break;
         }
 
