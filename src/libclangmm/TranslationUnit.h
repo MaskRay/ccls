@@ -10,11 +10,13 @@
 #include "Tokens.h"
 #include "CodeCompleteResults.h"
 #include "Cursor.h"
+#include "../language_server_api.h"
 
 namespace clang {
   class TranslationUnit {
   public:
-    TranslationUnit(Index &index,
+    TranslationUnit(IndexerConfig* config,
+                    Index &index,
                     const std::string &filepath,
                     const std::vector<std::string>& arguments,
                     std::vector<CXUnsavedFile> unsaved_files,

@@ -10,6 +10,7 @@
 namespace clang {
 
 TranslationUnit::TranslationUnit(
+  IndexerConfig* config,
   Index &index,
   const std::string& filepath,
   const std::vector<std::string>& arguments,
@@ -22,6 +23,9 @@ TranslationUnit::TranslationUnit(
 
   std::vector<std::string> platform_args = GetPlatformClangArguments();
   for (const auto& arg : platform_args)
+    args.push_back(arg.c_str());
+
+  for (const std::string& arg : config->extraClangArguments)
     args.push_back(arg.c_str());
 
   std::cerr << "Parsing " << filepath << " with args ";

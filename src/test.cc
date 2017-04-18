@@ -130,11 +130,12 @@ void RunTests() {
     // Parse expected output from the test, parse it into JSON document.
     std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
 
+    IndexerConfig config;
     FileConsumer::SharedState file_consumer_shared;
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(&file_consumer_shared, path, {
+    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(&config, &file_consumer_shared, path, {
         "-xc++",
         "-std=c++11",
         "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",

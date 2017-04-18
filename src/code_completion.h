@@ -24,7 +24,7 @@ struct CompletionSession {
   //std::unique_ptr<clang::TranslationUnit> updated;
   //std::unique_ptr<clang::Index> updated_index;
 
-  CompletionSession(const CompilationEntry& file, WorkingFiles* working_files);
+  CompletionSession(const CompilationEntry& file, IndexerConfig* config, WorkingFiles* working_files);
   ~CompletionSession();
 
   // Refresh file index.
@@ -33,6 +33,7 @@ struct CompletionSession {
 
 struct CompletionManager {
   std::vector<std::unique_ptr<CompletionSession>> sessions;
+  IndexerConfig* config;
   Project* project;
   WorkingFiles* working_files;
 
@@ -43,7 +44,7 @@ struct CompletionManager {
   };
   AtomicObject<CompletionRequest> completion_request;
 
-  CompletionManager(Project* project, WorkingFiles* working_files);
+  CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files);
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.

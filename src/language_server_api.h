@@ -61,8 +61,9 @@ struct IndexerConfig {
   NonElidedVector<std::string> blacklist;
   int indexerCount = 1;
   int maxWorkspaceSearchResults = 1000;
+  std::vector<std::string> extraClangArguments;
 };
-MAKE_REFLECT_STRUCT(IndexerConfig, cacheDirectory, whitelist, blacklist, indexerCount, maxWorkspaceSearchResults);
+MAKE_REFLECT_STRUCT(IndexerConfig, cacheDirectory, whitelist, blacklist, indexerCount, maxWorkspaceSearchResults, extraClangArguments);
 
 
 

@@ -4,6 +4,7 @@
 #include "position.h"
 #include "serializer.h"
 #include "utils.h"
+#include "language_server_api.h"
 #include "libclangmm/clangmm.h"
 #include "libclangmm/Utility.h"
 
@@ -456,5 +457,5 @@ struct IndexedFile {
   std::string ToString();
 };
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast = false);
+std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast = false);
 void IndexInit();

@@ -1419,13 +1419,13 @@ void indexEntityReference(CXClientData client_data,
 
 
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast) {
+std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast) {
   filename = NormalizePath(filename);
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
   std::vector<CXUnsavedFile> unsaved_files;
-  clang::TranslationUnit tu(index, filename, args, unsaved_files, CXTranslationUnit_KeepGoing);
+  clang::TranslationUnit tu(config, index, filename, args, unsaved_files, CXTranslationUnit_KeepGoing);
 
   if (dump_ast)
     Dump(tu.document_cursor());

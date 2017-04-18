@@ -902,7 +902,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
   }
 
   // Parse request and send a response.
-  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(file_consumer_shared, index_request->path, index_request->args);
+  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(config, file_consumer_shared, index_request->path, index_request->args);
   time.ResetAndPrint("Parsing/indexing " + index_request->path);
 
   for (auto& current_index : indexes) {
@@ -1601,7 +1601,7 @@ void QueryDbMain(IndexerConfig* config) {
 
   Project project;
   WorkingFiles working_files;
-  CompletionManager completion_manager(&project, &working_files);
+  CompletionManager completion_manager(config, &project, &working_files);
   FileConsumer::SharedState file_consumer_shared;
 
   // Start indexer threads.

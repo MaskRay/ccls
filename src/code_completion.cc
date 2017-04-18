@@ -324,7 +324,7 @@ void CompletionMain(CompletionManager* completion_manager) {
 
 }  // namespace
 
-CompletionSession::CompletionSession(const CompilationEntry& file, WorkingFiles* working_files) : file(file) {
+CompletionSession::CompletionSession(const CompilationEntry& file, IndexerConfig* config, WorkingFiles* working_files) : file(file) {
   std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
 
   std::vector<std::string> args = file.args;
@@ -339,7 +339,7 @@ CompletionSession::CompletionSession(const CompilationEntry& file, WorkingFiles*
 
   // TODO: I think we crash when there are syntax errors.
   active_index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
-  active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
+  active = MakeUnique<clang::TranslationUnit>(config, *active_index, file.filename, args, unsaved, Flags());
   std::cerr << "Done creating active; did_fail=" << active->did_fail << std::endl;
   //if (active->did_fail) {
   //  std::cerr << "Failed to create translation unit; trying again..." << std::endl;
@@ -366,7 +366,8 @@ void CompletionSession::Refresh(std::vector<CXUnsavedFile>& unsaved) {
   active->ReparseTranslationUnit(unsaved);
 }
 
-CompletionManager::CompletionManager(Project* project, WorkingFiles* working_files) : project(project), working_files(working_files) {
+CompletionManager::CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files)
+    : config(config), project(project), working_files(working_files) {
   new std::thread([&]() {
     CompletionMain(this);
   });
@@ -397,6 +398,6 @@ CompletionSession* CompletionManager::GetOrOpenSession(const std::string& filena
   else {
     std::cerr << "Found compilation entry" << std::endl;
   }
-  sessions.push_back(MakeUnique<CompletionSession>(*entry, working_files));
+  sessions.push_back(MakeUnique<CompletionSession>(*entry, config, working_files));
   return sessions[sessions.size() - 1].get();
 }
