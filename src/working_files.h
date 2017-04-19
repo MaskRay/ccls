@@ -20,8 +20,13 @@ struct WorkingFile {
   std::vector<std::string> index_lines;
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
   std::vector<std::string> all_buffer_lines;
-  // Note: The items in the value entry are 1-based lines.s
-  std::unordered_map<std::string, std::vector<int>> buffer_line_lookup;
+  // This map goes from disk-line -> indicies+1 in index_lines.
+  // Note: The items in the value entry are 1-based lines.
+  std::unordered_map<std::string, std::vector<int>> index_lines_lookup;
+  // This map goes from buffer-line -> indices+1 in all_buffer_lines.
+  // Note: The items in the value entry are 1-based liness.
+  std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
+
 
   WorkingFile(const std::string& filename, const std::string& buffer_content);
 
@@ -32,7 +37,10 @@ struct WorkingFile {
 
   // Find the buffer-line which should be shown for |indexed_line|. This
   // accepts and returns 1-based lines.
-  optional<int> GetBufferLineFromDiskLine(int indexed_line) const;
+  optional<int> GetBufferLineFromIndexLine(int indexed_line) const;
+  // Find the indexed-line which should be shown for |buffer_line|. This
+  // accepts and returns 1-based lines.
+  optional<int> GetIndexLineFromBufferLine(int buffer_line) const;
 
   CXUnsavedFile AsUnsavedFile() const;
 };

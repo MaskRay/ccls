@@ -533,8 +533,8 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
       lsPosition(location.end.line - 1, location.end.column - 1));
   }
 
-  optional<int> start = working_file->GetBufferLineFromDiskLine(location.start.line);
-  optional<int> end = working_file->GetBufferLineFromDiskLine(location.end.line);
+  optional<int> start = working_file->GetBufferLineFromIndexLine(location.start.line);
+  optional<int> end = working_file->GetBufferLineFromIndexLine(location.end.line);
   if (!start || !end)
     return nullopt;
 
@@ -687,14 +687,18 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db, WorkingFiles* working_file
   return edit;
 }
 
-std::vector<SymbolRef> FindSymbolsAtLocation(QueryFile* file, lsPosition position) {
+std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFile* file, lsPosition position) {
   std::vector<SymbolRef> symbols;
   symbols.reserve(1);
 
-  // TODO: This needs to use the WorkingFile to convert buffer location to
-  // indexed location.
   int target_line = position.line + 1;
   int target_column = position.character + 1;
+  if (working_file) {
+    optional<int> index_line = working_file->GetIndexLineFromBufferLine(target_line);
+    if (index_line)
+      target_line = *index_line;
+  }
+
   for (const SymbolRef& ref : file->def.all_symbols) {
     if (ref.loc.range.Contains(target_line, target_column))
       symbols.push_back(ref);
@@ -1192,10 +1196,12 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
+      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
       Out_TextDocumentRename response;
       response.id = msg->id;
 
-      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
         // Found symbol. Return references to rename.
         std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
         response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
@@ -1241,6 +1247,7 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
+      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
       Out_TextDocumentDefinition response;
       response.id = msg->id;
@@ -1248,7 +1255,7 @@ void QueryDbMainLoop(
       int target_line = msg->params.position.line + 1;
       int target_column = msg->params.position.character + 1;
 
-      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
         // Found symbol. Return definition.
 
         // Special cases which are handled:
@@ -1304,10 +1311,12 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
+      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
       Out_TextDocumentDocumentHighlight response;
       response.id = msg->id;
 
-      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
         // Found symbol. Return references to highlight.
         std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
         response.result.reserve(uses.size());
@@ -1339,10 +1348,12 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
+      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
       Out_TextDocumentHover response;
       response.id = msg->id;
 
-      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
         // Found symbol. Return hover.
         optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.path), ref.loc.range);
         if (!ls_range)
@@ -1365,11 +1376,12 @@ void QueryDbMainLoop(
         std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
         break;
       }
+      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
       Out_TextDocumentReferences response;
       response.id = msg->id;
 
-      for (const SymbolRef& ref : FindSymbolsAtLocation(file, msg->params.position)) {
+      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
         optional<QueryLocation> excluded_declaration;
         if (!msg->params.context.includeDeclaration) {
           std::cerr << "Excluding declaration in references" << std::endl;

@@ -30,26 +30,39 @@ WorkingFile::WorkingFile(const std::string& filename, const std::string& buffer_
 
 void WorkingFile::SetIndexContent(const std::string& index_content) {
   index_lines = ToLines(index_content, true /*trim_whitespace*/);
+
+  // Build lookup buffer.
+  index_lines_lookup.clear();
+  index_lines_lookup.reserve(index_lines.size());
+  for (int i = 0; i < index_lines.size(); ++i) {
+    const std::string& index_line = index_lines[i];
+
+    auto it = index_lines_lookup.find(index_line);
+    if (it == index_lines_lookup.end())
+      index_lines_lookup[index_line] = { i + 1 };
+    else
+      it->second.push_back(i + 1);
+  }
 }
 
 void WorkingFile::OnBufferContentUpdated() {
   all_buffer_lines = ToLines(buffer_content, true /*trim_whitespace*/);
 
   // Build lookup buffer.
-  buffer_line_lookup.clear();
-  buffer_line_lookup.reserve(all_buffer_lines.size());
+  all_buffer_lines_lookup.clear();
+  all_buffer_lines_lookup.reserve(all_buffer_lines.size());
   for (int i = 0; i < all_buffer_lines.size(); ++i) {
     const std::string& buffer_line = all_buffer_lines[i];
 
-    auto it = buffer_line_lookup.find(buffer_line);
-    if (it == buffer_line_lookup.end())
-      buffer_line_lookup[buffer_line] = { i + 1 };
+    auto it = all_buffer_lines_lookup.find(buffer_line);
+    if (it == all_buffer_lines_lookup.end())
+      all_buffer_lines_lookup[buffer_line] = { i + 1 };
     else
       it->second.push_back(i + 1);
   }
 }
 
-optional<int> WorkingFile::GetBufferLineFromDiskLine(int index_line) const {
+optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
   // The implementation is simple but works pretty well for most cases. We
   // lookup the line contents in the indexed file contents, and try to find the
   // most similar line in the current buffer file.
@@ -68,8 +81,8 @@ optional<int> WorkingFile::GetBufferLineFromDiskLine(int index_line) const {
   // Find the line in the cached index file. We'll try to find the most similar line
   // in the buffer and return the index for that.
   std::string index = index_lines[index_line - 1];
-  auto buffer_it = buffer_line_lookup.find(index);
-  if (buffer_it == buffer_line_lookup.end()) {
+  auto buffer_it = all_buffer_lines_lookup.find(index);
+  if (buffer_it == all_buffer_lines_lookup.end()) {
     // TODO: Use levenshtein distance to find the best match (but only to an
     // extent)
     return nullopt;
@@ -89,6 +102,41 @@ optional<int> WorkingFile::GetBufferLineFromDiskLine(int index_line) const {
   }
 
   return closest_buffer_line;
+}
+
+optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
+  // See GetBufferLineFromIndexLine for additional comments.
+
+  // Note: |index_line| and |buffer_line| are 1-based.
+
+  // TODO: Consider making this an assert.
+  if (buffer_line < 1 || buffer_line > all_buffer_lines.size())
+    return nullopt;
+
+  // Find the line in the index file. We'll try to find the most similar line
+  // in the index file and return the index for that.
+  std::string buffer = all_buffer_lines[buffer_line - 1];
+  auto index_it = index_lines_lookup.find(buffer);
+  if (index_it == index_lines_lookup.end()) {
+    // TODO: Use levenshtein distance to find the best match (but only to an
+    // extent)
+    return nullopt;
+  }
+
+  // From all the identical lines, return the one which is closest to
+  // |index_line|. There will usually only be one identical line.
+  assert(!index_it->second.empty());
+  int closest_dist = INT_MAX;
+  int closest_index_line = INT_MIN;
+  for (int index_line : index_it->second) {
+    int dist = std::abs(buffer_line - index_line);
+    if (dist <= closest_dist) {
+      closest_dist = dist;
+      closest_index_line = index_line;
+    }
+  }
+
+  return closest_index_line;
 }
 
 CXUnsavedFile WorkingFile::AsUnsavedFile() const {
