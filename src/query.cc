@@ -523,7 +523,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedTypeDef* previous_def, IndexedTypeDef* current_def) {
     optional<QueryType::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
     optional<QueryType::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
-    if (current_remapped_def && previous_remapped_def != current_remapped_def)
+    if (current_remapped_def && previous_remapped_def != current_remapped_def && !current_remapped_def->detailed_name.empty())
       types_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(QueryTypeId, types_derived, derived, QueryTypeId);
@@ -549,7 +549,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedFuncDef* previous_def, IndexedFuncDef* current_def) {
     optional<QueryFunc::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
     optional<QueryFunc::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
-    if (current_remapped_def && previous_remapped_def != current_remapped_def)
+    if (current_remapped_def && previous_remapped_def != current_remapped_def && !current_remapped_def->detailed_name.empty())
       funcs_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations, QueryLocation);
@@ -571,7 +571,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedVarDef* previous_def, IndexedVarDef* current_def) {
     optional<QueryVar::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
     optional<QueryVar::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
-    if (current_remapped_def && previous_remapped_def != current_remapped_def)
+    if (current_remapped_def && previous_remapped_def != current_remapped_def && !current_remapped_def->detailed_name.empty())
       vars_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, QueryLocation);
