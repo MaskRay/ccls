@@ -769,7 +769,8 @@ std::vector<SymbolRef> FindSymbolsAtLocation(QueryFile* file, lsPosition positio
 
 struct Index_DoIndex {
   enum class Type {
-    Import,
+    ImportAndUpdate,
+    ImportOnly,
     Update
   };
 
@@ -873,26 +874,32 @@ bool IndexMain_DoIndex(IndexerConfig* config,
   // If the index update is an import, then we will load the previous index
   // into memory if we have a previous index. After that, we dispatch an
   // update request to get the latest version.
-  if (index_request->type == Index_DoIndex::Type::Import) {
-    index_request->type = Index_DoIndex::Type::Update;
-    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config->cacheDirectory, index_request->path);
+  if (index_request->type == Index_DoIndex::Type::ImportAndUpdate ||
+      index_request->type == Index_DoIndex::Type::ImportOnly) {
+
+    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config, index_request->path);
     time.ResetAndPrint("Reading cached index from disk " + index_request->path);
 
     // If import fails just do a standard update.
     if (old_index) {
       for (auto& dependency_path : old_index->dependencies) {
+        // TODO: These requests should go to the front of the queue.
         std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
-        Index_DoIndex dep_index_request(Index_DoIndex::Type::Import);
+        Index_DoIndex dep_index_request(Index_DoIndex::Type::ImportOnly);
         dep_index_request.path = dependency_path;
         dep_index_request.args = index_request->args;
         queue_do_index->Enqueue(std::move(dep_index_request));
       }
 
-
       Index_DoIdMap response(nullptr, std::move(old_index));
       queue_do_id_map->Enqueue(std::move(response));
 
-      queue_do_index->Enqueue(std::move(*index_request));
+      // If we need a reparse, send the document to the back of the queue so it
+      // gets processed.
+      if (index_request->type == Index_DoIndex::Type::ImportAndUpdate) {
+        index_request->type = Index_DoIndex::Type::Update;
+        queue_do_index->Enqueue(std::move(*index_request));
+      }
       return true;
     }
   }
@@ -904,7 +911,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
   for (auto& current_index : indexes) {
     std::cerr << "Got index for " << current_index->path << std::endl;
 
-    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config->cacheDirectory, current_index->path);
+    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config, current_index->path);
     time.ResetAndPrint("Loading cached index");
 
     // TODO: Cache to disk on a separate thread. Maybe we do the cache after we
@@ -912,7 +919,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
     // of the current 4).
 
     // Cache file so we can diff it later.
-    WriteToCache(config->cacheDirectory, current_index->path, *current_index);
+    WriteToCache(config, current_index->path, *current_index);
     time.ResetAndPrint("Cache index update to disk");
 
     // Send response to create id map.
@@ -975,8 +982,13 @@ void IndexMain(
 
     int count = 0;
 
-    if (!IndexMain_DoIndex(config, file_consumer_shared, queue_do_index, queue_do_id_map) &&
-      !IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed)) {
+    // We need to make sure to run both IndexMain_DoIndex and
+    // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
+    // work. Running both also lets the user query the partially constructed
+    // index.
+    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, queue_do_index, queue_do_id_map);
+    bool did_create_update = IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
+    if (!did_index && !did_create_update) {
 
       //if (count++ > 2) {
       //  count = 0;
@@ -1124,7 +1136,7 @@ void QueryDbMainLoop(
           << "] Dispatching index request for file " << filepath
           << std::endl;
 
-        Index_DoIndex request(Index_DoIndex::Type::Import);
+        Index_DoIndex request(Index_DoIndex::Type::ImportAndUpdate);
         request.path = filepath;
         request.args = entry.args;
         queue_do_index->Enqueue(std::move(request));

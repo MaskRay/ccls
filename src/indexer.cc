@@ -1334,8 +1334,8 @@ void indexEntityReference(CXClientData client_data,
 
 
 std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast) {
-  // NOTE: uncomment to disable indexer
-  //return {};
+  if (!config->enableIndexing)
+    return {};
 
   filename = NormalizePath(filename);
 

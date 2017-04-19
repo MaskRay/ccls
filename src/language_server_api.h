@@ -62,8 +62,20 @@ struct IndexerConfig {
   int indexerCount = 1;
   int maxWorkspaceSearchResults = 1000;
   std::vector<std::string> extraClangArguments;
+  // If false, the indexer will be disabled.
+  bool enableIndexing = true;
+  // If false, indexed files will not be written to disk.
+  bool enableCacheWrite = true;
+  // If false, the index will not be loaded from a previous run.
+  bool enableCacheRead = true;
 };
-MAKE_REFLECT_STRUCT(IndexerConfig, cacheDirectory, whitelist, blacklist, indexerCount, maxWorkspaceSearchResults, extraClangArguments);
+MAKE_REFLECT_STRUCT(IndexerConfig,
+  cacheDirectory,
+  whitelist, blacklist,
+  indexerCount,
+  maxWorkspaceSearchResults,
+  extraClangArguments,
+  enableIndexing, enableCacheWrite, enableCacheRead);
 
 
 

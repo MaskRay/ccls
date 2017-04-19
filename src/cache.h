@@ -1,10 +1,12 @@
 #pragma once
 
+#include "language_server_api.h"
+
 #include <memory>
 #include <string>
 
 struct IndexedFile;
 
-std::unique_ptr<IndexedFile> LoadCachedFile(const std::string& cache_directory, const std::string& filename);
+std::unique_ptr<IndexedFile> LoadCachedFile(IndexerConfig* config, const std::string& filename);
 
-void WriteToCache(const std::string& cache_directory, const std::string& filename, IndexedFile& file);
+void WriteToCache(IndexerConfig* config, const std::string& filename, IndexedFile& file);

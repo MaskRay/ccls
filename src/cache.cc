@@ -17,10 +17,11 @@ std::string GetCachedFileName(const std::string& cache_directory, std::string so
 
 }  // namespace
 
-std::unique_ptr<IndexedFile> LoadCachedFile(const std::string& cache_directory, const std::string& filename) {
-  return nullptr;
+std::unique_ptr<IndexedFile> LoadCachedFile(IndexerConfig* config, const std::string& filename) {
+  if (!config->enableCacheRead)
+    return nullptr;
 
-  optional<std::string> file_content = ReadContent(GetCachedFileName(cache_directory, filename));
+  optional<std::string> file_content = ReadContent(GetCachedFileName(config->cacheDirectory, filename));
   if (!file_content)
     return nullptr;
 
@@ -31,11 +32,14 @@ std::unique_ptr<IndexedFile> LoadCachedFile(const std::string& cache_directory, 
   return nullptr;
 }
 
-void WriteToCache(const std::string& cache_directory, const std::string& filename, IndexedFile& file) {
+void WriteToCache(IndexerConfig* config, const std::string& filename, IndexedFile& file) {
+  if (!config->enableCacheWrite)
+    return;
+
   std::string indexed_content = Serialize(file);
 
   std::ofstream cache;
-  cache.open(GetCachedFileName(cache_directory, filename));
+  cache.open(GetCachedFileName(config->cacheDirectory, filename));
   assert(cache.good());
   cache << indexed_content;
   cache.close();
