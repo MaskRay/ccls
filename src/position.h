@@ -5,8 +5,8 @@
 #include <string>
 
 struct Position {
-  int32_t line = -1;
-  int32_t column = -1;
+  int16_t line = -1;
+  int16_t column = -1;
 
   Position();
   Position(int32_t line, int32_t column);
@@ -21,6 +21,7 @@ struct Position {
   bool operator!=(const Position& that) const;
   bool operator<(const Position& that) const;
 };
+static_assert(sizeof(Position) == 4, "Investigate, Position should be 32-bits for indexer size reasons");
 
 struct Range {
   Position start;

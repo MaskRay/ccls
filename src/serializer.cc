@@ -22,7 +22,7 @@ void Reflect(Reader& visitor, std::string& value) {
   value = visitor.GetString();
 }
 void Reflect(Writer& visitor, std::string& value) {
-  visitor.String(value.c_str(), value.size());
+  visitor.String(value.c_str(), (rapidjson::SizeType)value.size());
 }
 
 
@@ -41,7 +41,7 @@ void Reflect(Reader& visitor, Position& value) {
 }
 void Reflect(Writer& visitor, Position& value) {
   std::string output = value.ToString();
-  visitor.String(output.c_str(), output.size());
+  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
 }
 
 
@@ -51,7 +51,7 @@ void Reflect(Reader& visitor, Range& value) {
 }
 void Reflect(Writer& visitor, Range& value) {
   std::string output = value.ToString();
-  visitor.String(output.c_str(), output.size());
+  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
 }
 
 // Id<T>
