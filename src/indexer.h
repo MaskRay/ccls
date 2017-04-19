@@ -146,6 +146,19 @@ struct TypeDefDefinitionData {
   TypeDefDefinitionData() {}  // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
+  bool HasInterestingState() const {
+    return
+      !short_name.empty() ||
+      !detailed_name.empty() ||
+      definition_spelling ||
+      definition_extent ||
+      alias_of ||
+      !parents.empty() ||
+      !types.empty() ||
+      !funcs.empty() ||
+      !vars.empty();
+  }
+
   bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
@@ -206,8 +219,7 @@ struct IndexedTypeDef {
 
   bool HasInterestingState() const {
     return
-      def.definition_spelling ||
-      def.definition_extent ||
+      def.HasInterestingState() ||
       !derived.empty() ||
       !instantiations.empty() ||
       !uses.empty();
@@ -248,6 +260,18 @@ struct FuncDefDefinitionData {
   FuncDefDefinitionData() {}  // For reflection.
   FuncDefDefinitionData(const std::string& usr) : usr(usr) {
     // assert(usr.size() > 0);
+  }
+
+  bool HasInterestingState() const {
+    return
+      !short_name.empty() ||
+      !detailed_name.empty() ||
+      definition_spelling ||
+      definition_extent ||
+      declaring_type ||
+      base ||
+      !locals.empty() ||
+      !callees.empty();
   }
 
   bool operator==(
@@ -314,8 +338,7 @@ struct IndexedFuncDef {
 
   bool HasInterestingState() const {
     return
-      def.definition_spelling ||
-      def.definition_extent ||
+      def.HasInterestingState() ||
       !def.callees.empty() ||
       !declarations.empty() ||
       !derived.empty() ||
@@ -352,6 +375,16 @@ struct VarDefDefinitionData {
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
+  bool HasInterestingState() const {
+    return
+      !short_name.empty() ||
+      !detailed_name.empty() ||
+      declaration ||
+      definition_spelling ||
+      definition_extent ||
+      variable_type ||
+      declaring_type;
+  }
   bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
@@ -403,8 +436,7 @@ struct IndexedVarDef {
 
   bool HasInterestingState() const {
     return
-      def.definition_spelling ||
-      def.definition_extent ||
+      def.HasInterestingState() ||
       !uses.empty();
   }
 

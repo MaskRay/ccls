@@ -18,7 +18,6 @@
 namespace {
 
 QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::Def& type) {
-  assert(!type.short_name.empty());
   QueryType::DefUpdate result(type.usr);
   result.short_name = type.short_name;
   result.detailed_name = type.detailed_name;
@@ -33,7 +32,6 @@ QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::Def& typ
 }
 
 QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::Def& func) {
-  assert(!func.short_name.empty());
   QueryFunc::DefUpdate result(func.usr);
   result.short_name = func.short_name;
   result.detailed_name = func.detailed_name;
@@ -47,7 +45,6 @@ QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::Def& fun
 }
 
 QueryVar::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def& var) {
-  assert(!var.short_name.empty());
   QueryVar::DefUpdate result(var.usr);
   result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
@@ -65,8 +62,8 @@ QueryVar::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def& var) 
 // updates take longer but reduces import time on the querydb thread.
 template <typename TId, typename TValue>
 void AddMergeableRange(
-    std::vector<MergeableUpdate<TId, TValue>>* dest,
-    const std::vector<MergeableUpdate<TId, TValue>>& source) {
+  std::vector<MergeableUpdate<TId, TValue>>* dest,
+  const std::vector<MergeableUpdate<TId, TValue>>& source) {
 
   // TODO: Consider caching the lookup table. It can probably save even more
   // time at the cost of some additional memory.
@@ -91,131 +88,6 @@ void AddMergeableRange(
     }
   }
 }
-
-}  // namespace
-
-
-
-
-
-
-
-
-
-
-
-
-QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed) {
-  QueryFile::Def def;
-  def.path = indexed.path;
-
-  auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
-    def.outline.push_back(SymbolRef(idx, id_map.ToQuery(range)));
-  };
-  auto add_all_symbols = [&def, &id_map](SymbolIdx idx, Range range) {
-    def.all_symbols.push_back(SymbolRef(idx, id_map.ToQuery(range)));
-  };
-
-  for (const IndexedTypeDef& def : indexed.types) {
-    if (def.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
-    if (def.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
-    for (const Range& use : def.uses)
-      add_all_symbols(id_map.ToSymbol(def.id), use);
-  }
-  for (const IndexedFuncDef& def : indexed.funcs) {
-    if (def.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
-    if (def.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
-    for (Range decl : def.declarations) {
-      add_all_symbols(id_map.ToSymbol(def.id), decl);
-      add_outline(id_map.ToSymbol(def.id), decl);
-    }
-    for (const IndexFuncRef& caller : def.callers)
-      add_all_symbols(id_map.ToSymbol(def.id), caller.loc);
-  }
-  for (const IndexedVarDef& def : indexed.vars) {
-    if (def.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
-    if (def.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
-    for (const Range& use : def.uses)
-      add_all_symbols(id_map.ToSymbol(def.id), use);
-  }
-
-  std::sort(def.outline.begin(), def.outline.end(), [](const SymbolRef& a, const SymbolRef& b) {
-    return a.loc.range.start < b.loc.range.start;
-  });
-  std::sort(def.all_symbols.begin(), def.all_symbols.end(), [](const SymbolRef& a, const SymbolRef& b) {
-    return a.loc.range.start < b.loc.range.start;
-  });
-
-  return def;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-QueryFile* SymbolIdx::ResolveFile(QueryDatabase* db) const {
-  assert(kind == SymbolKind::File);
-  return &db->files[idx];
-}
-QueryType* SymbolIdx::ResolveType(QueryDatabase* db) const {
-  assert(kind == SymbolKind::Type);
-  return &db->types[idx];
-}
-QueryFunc* SymbolIdx::ResolveFunc(QueryDatabase* db) const {
-  assert(kind == SymbolKind::Func);
-  return &db->funcs[idx];
-}
-QueryVar* SymbolIdx::ResolveVar(QueryDatabase* db) const {
-  assert(kind == SymbolKind::Var);
-  return &db->vars[idx];
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Compares |previous| and |current|, adding all elements that are
 // in |previous| but not |current| to |removed|, and all elements
@@ -289,6 +161,127 @@ void CompareGroups(
   }
 }
 
+QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed) {
+  QueryFile::Def def;
+  def.path = indexed.path;
+
+  auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
+    def.outline.push_back(SymbolRef(idx, id_map.ToQuery(range)));
+  };
+  auto add_all_symbols = [&def, &id_map](SymbolIdx idx, Range range) {
+    def.all_symbols.push_back(SymbolRef(idx, id_map.ToQuery(range)));
+  };
+
+  for (const IndexedTypeDef& def : indexed.types) {
+    if (def.def.definition_spelling.has_value())
+      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
+    if (def.def.definition_extent.has_value())
+      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
+    for (const Range& use : def.uses)
+      add_all_symbols(id_map.ToSymbol(def.id), use);
+  }
+  for (const IndexedFuncDef& def : indexed.funcs) {
+    if (def.def.definition_spelling.has_value())
+      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
+    if (def.def.definition_extent.has_value())
+      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
+    for (Range decl : def.declarations) {
+      add_all_symbols(id_map.ToSymbol(def.id), decl);
+      add_outline(id_map.ToSymbol(def.id), decl);
+    }
+    for (const IndexFuncRef& caller : def.callers)
+      add_all_symbols(id_map.ToSymbol(def.id), caller.loc);
+  }
+  for (const IndexedVarDef& def : indexed.vars) {
+    if (def.def.definition_spelling.has_value())
+      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
+    if (def.def.definition_extent.has_value())
+      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
+    for (const Range& use : def.uses)
+      add_all_symbols(id_map.ToSymbol(def.id), use);
+  }
+
+  std::sort(def.outline.begin(), def.outline.end(), [](const SymbolRef& a, const SymbolRef& b) {
+    return a.loc.range.start < b.loc.range.start;
+  });
+  std::sort(def.all_symbols.begin(), def.all_symbols.end(), [](const SymbolRef& a, const SymbolRef& b) {
+    return a.loc.range.start < b.loc.range.start;
+  });
+
+  return def;
+}
+
+}  // namespace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+QueryFile* SymbolIdx::ResolveFile(QueryDatabase* db) const {
+  assert(kind == SymbolKind::File);
+  return &db->files[idx];
+}
+QueryType* SymbolIdx::ResolveType(QueryDatabase* db) const {
+  assert(kind == SymbolKind::Type);
+  return &db->types[idx];
+}
+QueryFunc* SymbolIdx::ResolveFunc(QueryDatabase* db) const {
+  assert(kind == SymbolKind::Func);
+  return &db->funcs[idx];
+}
+QueryVar* SymbolIdx::ResolveVar(QueryDatabase* db) const {
+  assert(kind == SymbolKind::Var);
+  return &db->vars[idx];
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -296,7 +289,6 @@ void CompareGroups(
 
 // TODO: consider having separate lookup maps so they are smaller (maybe
 // lookups will go faster).
-// TODO: Figure out where the invalid SymbolKinds are coming from.
 QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db, const std::string& path) {
   auto it = query_db->usr_to_symbol.find(path);
   if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
@@ -470,8 +462,18 @@ SymbolIdx IdMap::ToSymbol(IndexVarId id) const {
 
 
 
+
+
+
+
+// ----------------------
+// INDEX THREAD FUNCTIONS
+// ----------------------
+
 // static
 IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexedFile* previous, IndexedFile* current) {
+  // This function runs on an indexer thread.
+
   if (!previous_id_map) {
     assert(!previous);
     IndexedFile previous(current->path);
@@ -481,6 +483,8 @@ IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map, const IdMap* 
 }
 
 IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexedFile& previous_file, IndexedFile& current_file) {
+  // This function runs on an indexer thread.
+
   // |query_name| is the name of the variable on the query type.
   // |index_name| is the name of the variable on the index type.
   // |type| is the type of the variable.
@@ -507,7 +511,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     types_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_id_map](IndexedTypeDef* type) {
-    if (!type->def.short_name.empty())
+    if (!type->def.detailed_name.empty())
       types_def_update.push_back(ToQuery(current_id_map, type->def));
     if (!type->derived.empty())
       types_derived.push_back(QueryType::DerivedUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->derived)));
@@ -533,7 +537,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     funcs_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_id_map](IndexedFuncDef* func) {
-    if (!func->def.short_name.empty())
+    if (!func->def.detailed_name.empty())
       funcs_def_update.push_back(ToQuery(current_id_map, func->def));
     if (!func->declarations.empty())
       funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(current_id_map.ToQuery(func->id), current_id_map.ToQuery(func->declarations)));
@@ -559,7 +563,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     vars_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_id_map](IndexedVarDef* var) {
-    if (!var->def.short_name.empty())
+    if (!var->def.detailed_name.empty())
       vars_def_update.push_back(ToQuery(current_id_map, var->def));
     if (!var->uses.empty())
       vars_uses.push_back(QueryVar::UsesUpdate(current_id_map.ToQuery(var->id), current_id_map.ToQuery(var->uses)));
@@ -577,6 +581,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
 }
 
 void IndexUpdate::Merge(const IndexUpdate& update) {
+  // This function runs on an indexer thread.
+
 #define INDEX_UPDATE_APPEND(name) \
     AddRange(&name, update.name);
 #define INDEX_UPDATE_MERGE(name) \
@@ -623,92 +629,38 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
 
 
-void SetDetailedNameForWorkspaceSearch(QueryDatabase* db, size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
-  if (*qualified_name_index == -1) {
-    db->detailed_names.push_back(name);
-    db->symbols.push_back(SymbolIdx(kind, symbol_index));
-    *qualified_name_index = db->detailed_names.size() - 1;
-  }
-  else {
-    db->detailed_names[*qualified_name_index] = name;
-  }
-}
 
 
 
+
+
+
+
+
+
+
+// ------------------------
+// QUERYDB THREAD FUNCTIONS
+// ------------------------
 
 void QueryDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
-  // TODO: Removing usrs is tricky because it means we will have to rebuild idx locations. I'm thinking we just nullify
-  //       the entry instead of actually removing the data. The index could be massive.
+  // This function runs on the querydb thread.
+
+  // Actually removing data is extremely slow because every offset/index would
+  // have to be updated. Instead, we just accept the memory overhead and mark
+  // the symbol as invalid.
+  //
+  // If the user wants to reduce memory usage, they will have to restart the
+  // indexer and load it from cache. Luckily, this doesn't take too long even
+  // on large projects (1-2 minutes).
+
   for (Usr usr : to_remove)
     usr_to_symbol[usr].kind = SymbolKind::Invalid;
-  // TODO: also remove from qualified_names?
-}
-
-void QueryDatabase::ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    auto it = usr_to_symbol.find(def.path);
-    assert(it != usr_to_symbol.end());
-
-    QueryFile& existing = files[it->second.idx];
-    existing.def = def;
-    //SetQualifiedNameForWorkspaceSearch(this, &existing.qualified_name_idx, SymbolKind::File, it->second.idx, def.qualified_name);
-  }
-}
-
-void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    if (def.detailed_name.empty())
-      continue;
-
-    auto it = usr_to_symbol.find(def.usr);
-    assert(it != usr_to_symbol.end());
-
-    QueryType& existing = types[it->second.idx];
-    if (existing.def.definition_spelling && !def.definition_spelling)
-      continue;
-
-    existing.def = def;
-    SetDetailedNameForWorkspaceSearch(this, &existing.detailed_name_idx, SymbolKind::Type, it->second.idx, def.detailed_name);
-  }
-}
-
-void QueryDatabase::ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    if (def.detailed_name.empty())
-      continue;
-
-    auto it = usr_to_symbol.find(def.usr);
-    assert(it != usr_to_symbol.end());
-
-    QueryFunc& existing = funcs[it->second.idx];
-    if (existing.def.definition_spelling && !def.definition_spelling)
-      continue;
-
-    existing.def = def;
-    SetDetailedNameForWorkspaceSearch(this, &existing.detailed_name_idx, SymbolKind::Func, it->second.idx, def.detailed_name);
-  }
-}
-
-void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates) {
-  for (auto& def : updates) {
-    if (def.detailed_name.empty())
-      continue;
-
-    auto it = usr_to_symbol.find(def.usr);
-    assert(it != usr_to_symbol.end());
-
-    QueryVar& existing = vars[it->second.idx];
-    if (existing.def.definition_spelling && !def.definition_spelling)
-      continue;
-
-    existing.def = def;
-    if (def.declaring_type)
-      SetDetailedNameForWorkspaceSearch(this, &existing.detailed_name_idx, SymbolKind::Var, it->second.idx, def.detailed_name);
-  }
 }
 
 void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
+  // This function runs on the querydb thread.
+
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
   for (auto merge_update : update->update_var_name) { \
     auto* def = &storage_name[merge_update.id.id]; \
@@ -737,6 +689,90 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 #undef HANDLE_MERGEABLE
 }
 
+void QueryDatabase::ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates) {
+  // This function runs on the querydb thread.
+
+  for (auto& def : updates) {
+    auto it = usr_to_symbol.find(def.path);
+    assert(it != usr_to_symbol.end());
+
+    QueryFile& existing = files[it->second.idx];
+    existing.def = def;
+    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::File, it->second.idx, def.path);
+  }
+}
+
+void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates) {
+  // This function runs on the querydb thread.
+
+  for (auto& def : updates) {
+    assert(!def.detailed_name.empty());
+
+    auto it = usr_to_symbol.find(def.usr);
+    assert(it != usr_to_symbol.end());
+
+    QueryType& existing = types[it->second.idx];
+
+    // Keep the existing definition if it is higher quality.
+    if (existing.def.definition_spelling && !def.definition_spelling)
+      continue;
+
+    existing.def = def;
+    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Type, it->second.idx, def.detailed_name);
+  }
+}
+
+void QueryDatabase::ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates) {
+  // This function runs on the querydb thread.
+
+  for (auto& def : updates) {
+    assert(!def.detailed_name.empty());
+
+    auto it = usr_to_symbol.find(def.usr);
+    assert(it != usr_to_symbol.end());
+
+    QueryFunc& existing = funcs[it->second.idx];
+
+    // Keep the existing definition if it is higher quality.
+    if (existing.def.definition_spelling && !def.definition_spelling)
+      continue;
+
+    existing.def = def;
+    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func, it->second.idx, def.detailed_name);
+  }
+}
+
+void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates) {
+  // This function runs on the querydb thread.
+
+  for (auto& def : updates) {
+    assert(!def.detailed_name.empty());
+
+    auto it = usr_to_symbol.find(def.usr);
+    assert(it != usr_to_symbol.end());
+
+    QueryVar& existing = vars[it->second.idx];
+
+    // Keep the existing definition if it is higher quality.
+    if (existing.def.definition_spelling && !def.definition_spelling)
+      continue;
+
+    existing.def = def;
+    if (def.declaring_type)
+      UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var, it->second.idx, def.detailed_name);
+  }
+}
+
+void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name) {
+  if (*qualified_name_index == -1) {
+    detailed_names.push_back(name);
+    symbols.push_back(SymbolIdx(kind, symbol_index));
+    *qualified_name_index = detailed_names.size() - 1;
+  }
+  else {
+    detailed_names[*qualified_name_index] = name;
+  }
+}
 
 
 
@@ -744,12 +780,4 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
 
 
-
-// TODO: Idea: when indexing and joining to the main db, allow many dbs that
-//             are joined to. So that way even if the main db is busy we can
-//             still be joining. Joining the partially joined db to the main
-//             db should be faster since we will have larger data lanes to use.
-// TODO: allow user to store configuration as json? file in home dir; also
-//       allow local overrides (scan up dirs)
-// TODO: add opt to dump config when starting (--dump-config)
 // TODO: allow user to decide some indexer choices, ie, do we mark prototype parameters as usages?

@@ -563,7 +563,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db, WorkingFiles* working_file
 }
 
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
-lsSymbolInformation GetSymbolInfo(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
+optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
   lsSymbolInformation info;
 
   switch (symbol.kind) {
@@ -599,8 +599,7 @@ lsSymbolInformation GetSymbolInfo(QueryDatabase* db, WorkingFiles* working_files
       break;
     }
     case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
+      return nullopt;
     }
   };
 
@@ -1397,12 +1396,15 @@ void QueryDbMainLoop(
 
       std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
       for (SymbolRef ref : file->def.outline) {
-        lsSymbolInformation info = GetSymbolInfo(db, working_files, ref.idx);
+        optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, ref.idx);
+        if (!info)
+          continue;
+
         optional<lsLocation> location = GetLsLocation(db, working_files, ref.loc);
         if (!location)
           continue;
-        info.location = *location;
-        response.result.push_back(info);
+        info->location = *location;
+        response.result.push_back(*info);
       }
 
       ipc->SendOutMessageToClient(response);
@@ -1520,7 +1522,10 @@ void QueryDbMainLoop(
         }
 
         if (db->detailed_names[i].find(query) != std::string::npos) {
-          lsSymbolInformation info = GetSymbolInfo(db, working_files, db->symbols[i]);
+          optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, db->symbols[i]);
+          if (!info)
+            continue;
+
           optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
           if (!location) {
             auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, db->symbols[i]);
@@ -1532,8 +1537,8 @@ void QueryDbMainLoop(
           optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
           if (!ls_location)
             continue;
-          info.location = *ls_location;
-          response.result.push_back(info);
+          info->location = *ls_location;
+          response.result.push_back(*info);
         }
       }
 

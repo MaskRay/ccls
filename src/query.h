@@ -265,14 +265,15 @@ struct QueryDatabase {
   }
   //std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
 
+  // Marks the given Usrs as invalid.
+  void RemoveUsrs(const std::vector<Usr>& to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
-
-  void RemoveUsrs(const std::vector<Usr>& to_remove);
   void ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates);
+  void UpdateDetailedNames(size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name);
 };
 
 
