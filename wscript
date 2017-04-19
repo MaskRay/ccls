@@ -103,8 +103,9 @@ def build(bld):
       includes=[
         'third_party/',
         'third_party/doctest/',
-        'third_party/rapidjson/include',
-        'third_party/sparsehash/src',
+        'third_party/rapidjson/include/',
+        'third_party/sparsehash/src/',
+        'third_party/sparsepp/',
         CLANG_INCLUDE_DIR],
       lib=lib,
       libpath=[CLANG_LIB_DIR],
