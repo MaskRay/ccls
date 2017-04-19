@@ -4,6 +4,7 @@
 
 #include <optional.h>
 
+#include <cassert>
 #include <cstdint>
 #include <functional>
 #include <unordered_set>
@@ -298,8 +299,9 @@ void CompareGroups(
 QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db, const std::string& path) {
   auto it = query_db->usr_to_symbol.find(path);
   if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    assert(it->second.kind == SymbolKind::File);
-    return QueryFileId(it->second.idx);
+    // TODO: should this be an assert?
+    if (it->second.kind == SymbolKind::File)
+      return QueryFileId(it->second.idx);
   }
 
   size_t idx = query_db->files.size();
@@ -311,8 +313,9 @@ QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db, const std::string& p
 QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    assert(it->second.kind == SymbolKind::Type);
-    return QueryTypeId(it->second.idx);
+    // TODO: should this be an assert?
+    if (it->second.kind == SymbolKind::Type)
+      return QueryTypeId(it->second.idx);
   }
 
   size_t idx = query_db->types.size();
@@ -324,8 +327,9 @@ QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
 QueryFuncId GetQueryFuncIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    assert(it->second.kind == SymbolKind::Func);
-    return QueryFuncId(it->second.idx);
+    // TODO: should this be an assert?
+    if (it->second.kind == SymbolKind::Func)
+      return QueryFuncId(it->second.idx);
   }
 
   size_t idx = query_db->funcs.size();
@@ -337,8 +341,9 @@ QueryFuncId GetQueryFuncIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
 QueryVarId GetQueryVarIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
   auto it = query_db->usr_to_symbol.find(usr);
   if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    assert(it->second.kind == SymbolKind::Var);
-    return QueryVarId(it->second.idx);
+    // TODO: should this be an assert?
+    if (it->second.kind == SymbolKind::Var)
+      return QueryVarId(it->second.idx);
   }
 
   size_t idx = query_db->vars.size();

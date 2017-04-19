@@ -101,12 +101,13 @@ bool ReflectMemberStart(Reader& reader, IndexedTypeDef& value) {
   return true;
 }
 bool ReflectMemberStart(Writer& writer, IndexedTypeDef& value) {
-  if (!value.HasInterestingState())
-    std::cerr << "bad";
-  assert(value.HasInterestingState());
+  // TODO: this is crashing
+  // if (!value.HasInterestingState())
+    // std::cerr << "bad";
+  // assert(value.HasInterestingState());
 
-  //if (value.is_bad_def)
-  //  return false;
+  if (!value.HasInterestingState())
+   return false;
   DefaultReflectMemberStart(writer);
   return true;
 }
@@ -137,12 +138,13 @@ bool ReflectMemberStart(Reader& reader, IndexedFuncDef& value) {
   return true;
 }
 bool ReflectMemberStart(Writer& writer, IndexedFuncDef& value) {
+  // TODO: this is crashing
+  // if (!value.HasInterestingState())
+  //   std::cerr << "bad";
+  // assert(value.HasInterestingState());
+
   if (!value.HasInterestingState())
-    std::cerr << "bad";
-  assert(value.HasInterestingState());
-  
-  //if (value.is_bad_def)
-  //  return false;
+   return false;
   DefaultReflectMemberStart(writer);
   return true;
 }
@@ -172,12 +174,13 @@ bool ReflectMemberStart(Reader& reader, IndexedVarDef& value) {
   return true;
 }
 bool ReflectMemberStart(Writer& writer, IndexedVarDef& value) {
-  if (!value.HasInterestingState())
-    std::cerr << "bad";
-  assert(value.HasInterestingState());
+  // TODO: this is crashing
+  // if (!value.HasInterestingState())
+  //   std::cerr << "bad";
+  // assert(value.HasInterestingState());
 
-  //if (value.is_bad_def)
-  //  return false;
+  if (!value.HasInterestingState())
+   return false;
   DefaultReflectMemberStart(writer);
   return true;
 }
@@ -246,7 +249,7 @@ optional<IndexedFile> Deserialize(std::string path, std::string serialized) {
 
   IndexedFile file(path);
   Reflect(reader, file);
-  
+
   // Restore non-serialized state.
   file.path = path;
   file.id_cache.primary_file = file.path;

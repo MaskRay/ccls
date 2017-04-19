@@ -82,7 +82,7 @@ struct IpcManager {
   // TODO: Rename TypedBidiMessageQueue to IpcTransport?
   using IpcMessageQueue = TypedBidiMessageQueue<IpcId, BaseIpcMessage>;
 
-  static constexpr const char* kIpcLanguageClientName = "language_client";
+  static constexpr const char* kIpcLanguageClientName = "lanclient";
   static constexpr const int kQueueSizeBytes = 1024 * 8;
 
   static IpcManager* instance_;
@@ -970,8 +970,8 @@ void IndexMain(
   Index_DoIdMapQueue* queue_do_id_map,
   Index_OnIdMappedQueue* queue_on_id_mapped,
   Index_OnIndexedQueue* queue_on_indexed) {
-  SetCurrentThreadName("indexer");
 
+  SetCurrentThreadName("indexer");
   while (true) {
     // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
     //       better icache behavior. We need to have some threads spinning on both though
@@ -1590,7 +1590,6 @@ void QueryDbMainLoop(
 }
 
 void QueryDbMain(IndexerConfig* config) {
-  SetCurrentThreadName("querydb");
   //std::cerr << "Running QueryDb" << std::endl;
 
   // Create queues.
@@ -1613,6 +1612,7 @@ void QueryDbMain(IndexerConfig* config) {
   }
 
   // Run query db main loop.
+  SetCurrentThreadName("querydb");
   QueryDatabase db;
   while (true) {
     QueryDbMainLoop(config, &db, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &working_files, &completion_manager);
@@ -1691,9 +1691,9 @@ void QueryDbMain(IndexerConfig* config) {
 //
 // |ipc| is connected to a server.
 void LanguageServerStdinLoop(IndexerConfig* config) {
-  SetCurrentThreadName("stdin");
   IpcManager* ipc = IpcManager::instance();
 
+  SetCurrentThreadName("stdin");
   while (true) {
     std::unique_ptr<BaseIpcMessage> message = MessageRegistry::instance()->ReadMessageFromStdin();
 
@@ -1890,12 +1890,12 @@ void LanguageServerMainLoop() {
 }
 
 void LanguageServerMain(IndexerConfig* config) {
-  SetCurrentThreadName("server");
-
   // Run language client.
   new std::thread([&config]() {
     LanguageServerStdinLoop(config);
   });
+
+  SetCurrentThreadName("server");
   while (true) {
     LanguageServerMainLoop();
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
