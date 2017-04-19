@@ -69,7 +69,7 @@ bool Position::operator<(const Position& that) const {
 
 Range::Range() {}
 
-Range::Range(bool interesting, Position start, Position end) : interesting(interesting), start(start), end(end) {}
+Range::Range(Position start, Position end) : start(start), end(end) {}
 
 Range::Range(const char* encoded) {
   end = start;
@@ -123,12 +123,6 @@ std::string Range::ToString() {
   output += std::to_string(end.column);
 
   return output;
-}
-
-Range Range::WithInteresting(bool interesting) {
-  Range result = *this;
-  result.interesting = interesting;
-  return result;
 }
 
 bool Range::operator==(const Range& that) const {

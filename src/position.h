@@ -23,18 +23,16 @@ struct Position {
 };
 
 struct Range {
-  bool interesting = false;
   Position start;
   Position end;
 
   Range();
-  Range(bool interesting, Position start, Position end);
+  Range(Position start, Position end);
   explicit Range(const char* encoded);
 
   bool Contains(int line, int column) const;
 
   std::string ToString();
-  Range WithInteresting(bool interesting);
 
   bool operator==(const Range& that) const;
   bool operator!=(const Range& that) const;

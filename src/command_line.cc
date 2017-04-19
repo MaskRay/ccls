@@ -446,7 +446,7 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db, const Sym
   switch (symbol.kind) {
     case SymbolKind::File:
       // TODO: If line 1 is deleted the file won't show up in, ie, workspace symbol search results.
-      return QueryLocation(QueryFileId(symbol.idx), Range(false /*is_interesting*/, Position(1, 1), Position(1, 1)));
+      return QueryLocation(QueryFileId(symbol.idx), Range(Position(1, 1), Position(1, 1)));
     case SymbolKind::Type:
       return db->types[symbol.idx].def.definition_extent;
     case SymbolKind::Func:
@@ -620,8 +620,7 @@ void AddCodeLens(
   const std::vector<QueryLocation>& uses,
   const char* singular,
   const char* plural,
-  bool exclude_loc = false,
-  bool only_interesting = false) {
+  bool exclude_loc = false) {
   TCodeLens code_lens;
   optional<lsRange> range = GetLsRange(common->working_file, loc.range);
   if (!range)
@@ -636,8 +635,6 @@ void AddCodeLens(
   std::unordered_set<lsLocation> unique_uses;
   for (const QueryLocation& use : uses) {
     if (exclude_loc && use == loc)
-      continue;
-    if (only_interesting && !use.range.interesting)
       continue;
     optional<lsLocation> location = GetLsLocation(common->db, common->working_files, use);
     if (!location)
@@ -1440,9 +1437,8 @@ void QueryDbMainLoop(
         case SymbolKind::Type: {
           QueryType& type = db->types[symbol.idx];
           AddCodeLens(&common, ref.loc.OffsetStartColumn(0), type.uses, "ref", "refs");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(1), type.uses, "iref", "irefs", false /*exclude_loc*/, true /*only_interesting*/);
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type.derived), "derived", "derived");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(3), ToQueryLocation(db, type.instantiations), "instantiation", "instantiations");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(1), ToQueryLocation(db, type.derived), "derived", "derived");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type.instantiations), "instantiation", "instantiations");
           break;
         }
         case SymbolKind::Func: {
@@ -1491,7 +1487,7 @@ void QueryDbMainLoop(
         }
         case SymbolKind::Var: {
           QueryVar& var = db->vars[symbol.idx];
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), var.uses, "ref", "refs", true /*exclude_loc*/, false /*only_interesting*/);
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), var.uses, "ref", "refs", true /*exclude_loc*/);
           break;
         }
         case SymbolKind::File:
