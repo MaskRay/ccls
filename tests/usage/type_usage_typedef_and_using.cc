@@ -15,7 +15,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "uses": ["1:8-1:11", "*2:14-2:17", "*3:9-3:12", "*7:13-7:16"]
+      "uses": ["1:8-1:11", "2:14-2:17", "3:9-3:12", "7:13-7:16"]
     }, {
       "id": 1,
       "usr": "c:@Foo1",
@@ -24,7 +24,7 @@ OUTPUT:
       "definition_spelling": "2:7-2:11",
       "definition_extent": "2:1-2:18",
       "alias_of": 0,
-      "uses": ["*2:7-2:11", "*4:14-4:18", "*8:14-8:18"]
+      "uses": ["2:7-2:11", "4:14-4:18", "8:14-8:18"]
     }, {
       "id": 2,
       "usr": "c:type_usage_typedef_and_using.cc@T@Foo2",
@@ -33,7 +33,7 @@ OUTPUT:
       "definition_spelling": "3:13-3:17",
       "definition_extent": "3:1-3:17",
       "alias_of": 0,
-      "uses": ["*3:13-3:17", "*9:14-9:18"]
+      "uses": ["3:13-3:17", "9:14-9:18"]
     }, {
       "id": 3,
       "usr": "c:@Foo3",
@@ -42,7 +42,7 @@ OUTPUT:
       "definition_spelling": "4:7-4:11",
       "definition_extent": "4:1-4:18",
       "alias_of": 1,
-      "uses": ["*4:7-4:11", "*10:14-10:18"]
+      "uses": ["4:7-4:11", "10:14-10:18"]
     }, {
       "id": 4,
       "usr": "c:@Foo4",
@@ -50,7 +50,7 @@ OUTPUT:
       "detailed_name": "Foo4",
       "definition_spelling": "5:7-5:11",
       "definition_extent": "5:1-5:17",
-      "uses": ["*5:7-5:11"]
+      "uses": ["5:7-5:11"]
     }],
   "funcs": [{
       "id": 0,

@@ -11,7 +11,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Foo",
       "instantiations": [0],
-      "uses": ["1:8-1:11", "*4:3-4:6"]
+      "uses": ["1:8-1:11", "4:3-4:6"]
     }],
   "funcs": [{
       "id": 0,

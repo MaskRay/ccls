@@ -15,7 +15,7 @@ OUTPUT: header.h
       "definition_spelling": "3:8-3:12",
       "definition_extent": "3:1-3:15",
       "derived": [1],
-      "uses": ["*3:8-3:12", "*5:26-5:30"]
+      "uses": ["3:8-3:12", "5:26-5:30"]
     }, {
       "id": 1,
       "usr": "c:@S@SameFileDerived",
@@ -24,7 +24,7 @@ OUTPUT: header.h
       "definition_spelling": "5:8-5:23",
       "definition_extent": "5:1-5:33",
       "parents": [0],
-      "uses": ["*5:8-5:23", "*7:14-7:29"]
+      "uses": ["5:8-5:23", "7:14-7:29"]
     }, {
       "id": 2,
       "usr": "c:@Foo0",
@@ -33,7 +33,7 @@ OUTPUT: header.h
       "definition_spelling": "7:7-7:11",
       "definition_extent": "7:1-7:29",
       "alias_of": 1,
-      "uses": ["*7:7-7:11"]
+      "uses": ["7:7-7:11"]
     }, {
       "id": 3,
       "usr": "c:@ST>1#T@Foo2",
@@ -41,7 +41,7 @@ OUTPUT: header.h
       "detailed_name": "Foo2",
       "definition_spelling": "13:8-13:12",
       "definition_extent": "13:1-13:15",
-      "uses": ["*13:8-13:12"]
+      "uses": ["13:8-13:12"]
     }, {
       "id": 4,
       "usr": "c:@E@Foo3",
@@ -50,7 +50,7 @@ OUTPUT: header.h
       "definition_spelling": "15:6-15:10",
       "definition_extent": "15:1-15:22",
       "vars": [0, 1, 2],
-      "uses": ["*15:6-15:10"]
+      "uses": ["15:6-15:10"]
     }],
   "funcs": [{
       "id": 0,

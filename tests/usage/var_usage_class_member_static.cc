@@ -18,7 +18,7 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:8-1:11",
       "definition_extent": "1:1-3:2",
-      "uses": ["*1:8-1:11", "8:10-8:13"]
+      "uses": ["1:8-1:11", "8:10-8:13"]
     }],
   "funcs": [{
       "id": 0,

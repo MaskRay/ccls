@@ -18,12 +18,12 @@ OUTPUT:
       "definition_spelling": "3:8-3:23",
       "definition_extent": "3:1-7:2",
       "vars": [0, 1, 2],
-      "uses": ["*3:8-3:23"]
+      "uses": ["3:8-3:23"]
     }, {
       "id": 1,
       "usr": "c:@N@std@ST>2#T#T@vector",
       "instantiations": [2],
-      "uses": ["*6:8-6:14"]
+      "uses": ["6:8-6:14"]
     }],
   "vars": [{
       "id": 0,

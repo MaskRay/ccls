@@ -1,4 +1,5 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-  "editor.lineNumbers": "on"
+  "editor.lineNumbers": "on",
+  "cquery.cacheDirectory": "C:/Users/jacob/AppData/Roaming/Code/User/workspaceStorage/ff57708adc5718d939d7a59c9d5270c7/jacobdufault.cquery/cquerycache/"
 }

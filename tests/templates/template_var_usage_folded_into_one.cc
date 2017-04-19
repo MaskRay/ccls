@@ -37,7 +37,7 @@ OUTPUT:
       "detailed_name": "A",
       "definition_spelling": "1:6-1:7",
       "definition_extent": "1:1-1:10",
-      "uses": ["*1:6-1:7", "7:13-7:14"]
+      "uses": ["1:6-1:7", "7:13-7:14"]
     }, {
       "id": 1,
       "usr": "c:@E@B",
@@ -45,11 +45,11 @@ OUTPUT:
       "detailed_name": "B",
       "definition_spelling": "2:6-2:7",
       "definition_extent": "2:1-2:10",
-      "uses": ["*2:6-2:7", "8:13-8:14"]
+      "uses": ["2:6-2:7", "8:13-8:14"]
     }, {
       "id": 2,
       "usr": "c:template_var_usage_folded_into_one.cc@35",
-      "uses": ["*5:1-5:2"]
+      "uses": ["5:1-5:2"]
     }],
   "vars": [{
       "id": 0,

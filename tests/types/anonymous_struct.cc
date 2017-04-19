@@ -14,7 +14,7 @@ OUTPUT:
       "definition_spelling": "1:7-1:14",
       "definition_extent": "1:1-4:2",
       "vars": [3],
-      "uses": ["*1:7-1:14"]
+      "uses": ["1:7-1:14"]
     }, {
       "id": 1,
       "usr": "c:@U@vector3@Sa",
@@ -23,7 +23,7 @@ OUTPUT:
       "definition_spelling": "2:3-2:9",
       "definition_extent": "2:3-2:28",
       "vars": [0, 1, 2],
-      "uses": ["*2:3-2:9"]
+      "uses": ["2:3-2:9"]
     }],
   "vars": [{
       "id": 0,

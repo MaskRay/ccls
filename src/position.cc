@@ -74,11 +74,6 @@ Range::Range(bool interesting, Position start, Position end) : interesting(inter
 Range::Range(const char* encoded) {
   end = start;
 
-  if (*encoded == '*') {
-    interesting = true;
-    ++encoded;
-  }
-
   start.line = atoi(encoded);
 
   encoded = SkipAfter(encoded, ':');
@@ -119,8 +114,6 @@ std::string Range::ToString() {
 
   std::string output;
 
-  if (interesting)
-    output += '*';
   output += std::to_string(start.line);
   output += ':';
   output += std::to_string(start.column);

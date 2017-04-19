@@ -14,7 +14,7 @@ OUTPUT:
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-4:2",
       "vars": [0, 1],
-      "uses": ["*1:6-1:9"]
+      "uses": ["1:6-1:9"]
     }],
   "vars": [{
       "id": 0,

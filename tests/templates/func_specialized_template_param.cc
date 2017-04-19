@@ -17,7 +17,7 @@ OUTPUT:
       "detailed_name": "Template",
       "definition_spelling": "2:7-2:15",
       "definition_extent": "2:1-2:18",
-      "uses": ["*2:7-2:15", "5:12-5:20", "*8:15-8:23"]
+      "uses": ["2:7-2:15", "5:12-5:20", "8:15-8:23"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo",
@@ -26,7 +26,7 @@ OUTPUT:
       "definition_spelling": "4:8-4:11",
       "definition_extent": "4:1-6:2",
       "funcs": [0],
-      "uses": ["*4:8-4:11", "8:6-8:9"]
+      "uses": ["4:8-4:11", "8:6-8:9"]
     }],
   "funcs": [{
       "id": 0,

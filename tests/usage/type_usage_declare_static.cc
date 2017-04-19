@@ -7,7 +7,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:@S@Type",
       "instantiations": [0],
-      "uses": ["1:8-1:12", "*2:8-2:12"]
+      "uses": ["1:8-1:12", "2:8-2:12"]
     }],
   "vars": [{
       "id": 0,

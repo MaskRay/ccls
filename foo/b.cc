@@ -1,24 +1,17 @@
-//1
-//2
+struct Parent {
+  virtual void Method() = 0;
+};
+struct Derived : public Parent {
+  void Method() override {}
+};
 
 
+void Caller() {
+  Derived d;
+  Parent* p = &d;
 
-
-//3
-//4
-void b(); //7
-
-
-
-void b(); //8
-//8
-//9
-//10
-//11
-//12
-
-
-//13
-void foo() {
-  b();
+  p->Method();
+  d->Method();
 }
+
+

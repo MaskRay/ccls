@@ -13,7 +13,7 @@ OUTPUT:
       "definition_extent": "1:1-3:2",
       "vars": [0],
       "instantiations": [0],
-      "uses": ["*1:7-1:10", "*2:3-2:6"]
+      "uses": ["1:7-1:10", "2:3-2:6"]
     }],
   "vars": [{
       "id": 0,

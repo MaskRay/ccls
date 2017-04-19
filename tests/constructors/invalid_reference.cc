@@ -14,7 +14,7 @@ OUTPUT:
       "definition_spelling": "1:8-1:11",
       "definition_extent": "1:1-1:14",
       "funcs": [0],
-      "uses": ["*1:8-1:11", "4:6-4:9", "4:1-4:4"]
+      "uses": ["1:8-1:11", "4:6-4:9", "4:1-4:4"]
     }],
   "funcs": [{
       "id": 0,

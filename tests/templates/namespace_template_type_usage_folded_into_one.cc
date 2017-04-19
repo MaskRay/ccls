@@ -17,7 +17,7 @@ OUTPUT:
       "definition_spelling": "3:9-3:12",
       "definition_extent": "3:3-3:15",
       "instantiations": [0, 1],
-      "uses": ["*3:9-3:12", "*5:3-5:6", "*6:3-6:6"]
+      "uses": ["3:9-3:12", "5:3-5:6", "6:3-6:6"]
     }],
   "vars": [{
       "id": 0,

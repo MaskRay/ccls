@@ -12,7 +12,7 @@ OUTPUT:
       "definition_spelling": "1:8-1:9",
       "definition_extent": "1:1-1:12",
       "instantiations": [0],
-      "uses": ["*1:8-1:9", "*3:8-3:9"]
+      "uses": ["1:8-1:9", "3:8-3:9"]
     }],
   "vars": [{
       "id": 0,

@@ -18,7 +18,7 @@ OUTPUT:
       "definition_spelling": "1:8-1:11",
       "definition_extent": "1:1-3:2",
       "funcs": [0],
-      "uses": ["*1:8-1:11", "6:13-6:16"]
+      "uses": ["1:8-1:11", "6:13-6:16"]
     }],
   "funcs": [{
       "id": 0,

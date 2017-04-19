@@ -16,7 +16,7 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "2:8-2:11",
       "definition_extent": "2:1-4:2",
-      "uses": ["*2:8-2:11", "6:9-6:12", "7:9-7:12"]
+      "uses": ["2:8-2:11", "6:9-6:12", "7:9-7:12"]
     }],
   "vars": [{
       "id": 0,

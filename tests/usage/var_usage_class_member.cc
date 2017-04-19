@@ -29,7 +29,7 @@ OUTPUT:
       "definition_extent": "1:1-5:2",
       "vars": [0, 1],
       "instantiations": [2],
-      "uses": ["*1:7-1:10", "*11:3-11:6"]
+      "uses": ["1:7-1:10", "11:3-11:6"]
     }],
   "funcs": [{
       "id": 0,

@@ -17,7 +17,7 @@ OUTPUT:
       "definition_extent": "1:1-3:2",
       "derived": [1],
       "funcs": [0],
-      "uses": ["*1:7-1:11", "*4:24-4:28"]
+      "uses": ["1:7-1:11", "4:24-4:28"]
     }, {
       "id": 1,
       "usr": "c:@S@Derived",
@@ -27,7 +27,7 @@ OUTPUT:
       "definition_extent": "4:1-6:2",
       "parents": [0],
       "funcs": [1],
-      "uses": ["*4:7-4:14"]
+      "uses": ["4:7-4:14"]
     }],
   "funcs": [{
       "id": 0,

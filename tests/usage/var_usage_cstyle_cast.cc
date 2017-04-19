@@ -18,7 +18,7 @@ OUTPUT:
       "definition_spelling": "1:6-1:13",
       "definition_extent": "1:1-1:16",
       "instantiations": [0],
-      "uses": ["*1:6-1:13", "*4:20-4:27", "*4:42-4:49", "*7:7-7:14"]
+      "uses": ["1:6-1:13", "4:20-4:27", "4:42-4:49", "7:7-7:14"]
     }, {
       "id": 1,
       "usr": "c:@S@Holder",
@@ -27,7 +27,7 @@ OUTPUT:
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:1-5:2",
       "vars": [0],
-      "uses": ["*3:8-3:14", "7:15-7:21"]
+      "uses": ["3:8-3:14", "7:15-7:21"]
     }],
   "vars": [{
       "id": 0,

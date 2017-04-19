@@ -13,7 +13,7 @@ OUTPUT: static.h
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:1-5:2",
       "funcs": [0],
-      "uses": ["*3:8-3:14"]
+      "uses": ["3:8-3:14"]
     }],
   "funcs": [{
       "id": 0,

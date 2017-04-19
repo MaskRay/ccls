@@ -15,7 +15,7 @@ OUTPUT:
       "definition_spelling": "2:7-2:10",
       "definition_extent": "2:1-4:2",
       "funcs": [0],
-      "uses": ["*2:7-2:10"]
+      "uses": ["2:7-2:10"]
     }],
   "funcs": [{
       "id": 0,
