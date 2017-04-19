@@ -32,11 +32,6 @@ in the `vscode-client` folder.
 # Build cquery
 $ git clone https://github.com/jacobdufault/cquery --recursive
 $ cd cquery
-# Note: In the future we should not have to build sparsehash explicitly.
-$ pushd third_party/sparsehash
-$ ./configure
-$ make
-$ popd
 $ ./waf configure
 $ ./waf build
 
