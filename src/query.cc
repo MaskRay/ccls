@@ -72,8 +72,9 @@ void AddMergeableRange(
   // time at the cost of some additional memory.
 
   // Build lookup table.
-  google::dense_hash_map<TId, size_t, std::hash<TId>> id_to_index;
-  id_to_index.set_empty_key(TId(-1));
+  //google::dense_hash_map<TId, size_t, std::hash<TId>> id_to_index;
+  //id_to_index.set_empty_key(TId(-1));
+  spp::sparse_hash_map<TId, size_t> id_to_index;
   id_to_index.resize(dest->size());
   for (size_t i = 0; i < dest->size(); ++i)
     id_to_index[(*dest)[i].id] = i;
@@ -356,17 +357,17 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
   primary_file = GetQueryFileIdFromPath(query_db, local_ids.primary_file);
 
-  cached_type_ids_.set_empty_key(IndexTypeId(-1));
+  //cached_type_ids_.set_empty_key(IndexTypeId(-1));
   cached_type_ids_.resize(local_ids.type_id_to_usr.size());
   for (const auto& entry : local_ids.type_id_to_usr)
     cached_type_ids_[entry.first] = GetQueryTypeIdFromUsr(query_db, entry.second);
 
-  cached_func_ids_.set_empty_key(IndexFuncId(-1));
+  //cached_func_ids_.set_empty_key(IndexFuncId(-1));
   cached_func_ids_.resize(local_ids.func_id_to_usr.size());
   for (const auto& entry : local_ids.func_id_to_usr)
     cached_func_ids_[entry.first] = GetQueryFuncIdFromUsr(query_db, entry.second);
 
-  cached_var_ids_.set_empty_key(IndexVarId(-1));
+  //cached_var_ids_.set_empty_key(IndexVarId(-1));
   cached_var_ids_.resize(local_ids.var_id_to_usr.size());
   for (const auto& entry : local_ids.var_id_to_usr)
     cached_var_ids_[entry.first] = GetQueryVarIdFromUsr(query_db, entry.second);
