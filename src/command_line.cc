@@ -896,7 +896,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
         queue_do_index->PriorityEnqueue(std::move(dep_index_request));
       }
 
-      project->UpdateFileState(index_request->path, old_index->import_file, old_index->dependencies, old_index->last_modification_time);
+      project->UpdateFileState(index_request->path, old_index->import_file, old_index->last_modification_time);
 
       Index_DoIdMap response(nullptr, std::move(old_index));
       queue_do_id_map->Enqueue(std::move(response));
@@ -919,7 +919,6 @@ bool IndexMain_DoIndex(IndexerConfig* config,
   optional<Project::Entry> entry = project->FindCompilationEntryForFile(index_request->path);
   if (entry && entry->last_modification_time) {
     import_file = entry->import_file;
-    import_dependencies = entry->import_dependencies;
 
     int64_t modification_time = GetLastModificationTime(index_request->path);
     if (modification_time == *entry->last_modification_time) {
@@ -930,17 +929,20 @@ bool IndexMain_DoIndex(IndexerConfig* config,
 
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
       config, file_consumer_shared,
-      index_request->path, import_file, import_dependencies,
+      index_request->path, import_file,
       index_request->args);
   time.ResetAndPrint("Parsing/indexing " + index_request->path);
 
   for (auto& current_index : indexes) {
     std::cerr << "Got index for " << current_index->path << std::endl;
 
-    project->UpdateFileState(current_index->path, current_index->import_file, current_index->dependencies, current_index->last_modification_time);
+    project->UpdateFileState(current_index->path, current_index->import_file, current_index->last_modification_time);
 
     std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config, current_index->path);
     time.ResetAndPrint("Loading cached index");
+
+    if (old_index)
+      AddRange(&current_index->dependencies, old_index->dependencies);
 
     // TODO: Cache to disk on a separate thread. Maybe we do the cache after we
     // have imported the index (so the import pipeline has five stages instead

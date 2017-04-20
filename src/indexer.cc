@@ -1337,7 +1337,7 @@ void indexEntityReference(CXClientData client_data,
 
 std::vector<std::unique_ptr<IndexedFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
-    std::string desired_index_file, std::string import_file, const std::vector<std::string>& existing_dependencies,
+    std::string desired_index_file, std::string import_file,
     std::vector<std::string> args,
     bool dump_ast) {
 
@@ -1392,9 +1392,6 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(
 
     entry->last_modification_time = GetLastModificationTime(entry->path);
     entry->import_file = import_file;
-
-    if (entry->path == import_file && !existing_dependencies.empty())
-      AddRange(&entry->dependencies, existing_dependencies);
   }
 
   // TODO: Fix interesting checks.
