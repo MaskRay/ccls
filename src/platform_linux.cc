@@ -21,14 +21,13 @@
 
 #include <dirent.h>
 #include <sys/types.h> // required for stat.h
-#include <sys/stat.h> // no clue why required -- man pages say so
+#include <sys/stat.h>
+
 
 #include <fcntl.h>    /* For O_* constants */
 #include <sys/stat.h> /* For mode constants */
 #include <semaphore.h>
 #include <sys/mman.h>
-#include <sys/stat.h> /* For mode constants */
-#include <fcntl.h>    /* For O_* constants */
 
 #ifndef __APPLE__
 #include <sys/prctl.h>
@@ -161,6 +160,26 @@ void SetCurrentThreadName(const std::string& thread_name) {
 #ifndef __APPLE__
   prctl(PR_SET_NAME, thread_name.c_str(), 0, 0, 0);
 #endif
+}
+
+int64_t GetLastModificationTime(const std::string& absolute_path) {
+  struct stat buf;
+  if (stat(absolute_path.c_str(), &buf) != 0) {
+    switch (errno) {
+      case ENOENT:
+        std::cerr << "GetLastModificationTime: unable to find file " << absolute_path << std::endl;
+        break;
+      case EINVAL:
+        std::cerr << "GetLastModificationTime: invalid param to _stat for file file " << absolute_path << std::endl;
+        break;
+      default:
+        std::cerr << "GetLastModificationTime: unhandled for " << absolute_path << std::endl;
+        exit(1);
+        break;
+    }
+  }
+
+  return buf.st_mtime;
 }
 
 std::vector<std::string> GetPlatformClangArguments() {
