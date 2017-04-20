@@ -100,8 +100,8 @@ static const char *kBlacklist[] = {
   "..",
 };
 
-CompilationEntry GetCompilationEntryFromCompileCommandEntry(const CompileCommandsEntry& entry) {
-  CompilationEntry result;
+Project::Entry GetCompilationEntryFromCompileCommandEntry(const CompileCommandsEntry& entry) {
+  Project::Entry result;
   result.filename = NormalizePath(entry.file);
 
   size_t num_args = entry.args.size();
@@ -151,7 +151,7 @@ CompilationEntry GetCompilationEntryFromCompileCommandEntry(const CompileCommand
   return result;
 }
 
-std::vector<CompilationEntry> LoadFromCompileCommandsJson(const std::string& project_directory) {
+std::vector<Project::Entry> LoadFromCompileCommandsJson(const std::string& project_directory) {
   optional<std::string> compile_commands_content = ReadContent(project_directory + "/compile_commands.json");
   if (!compile_commands_content)
     return {};
@@ -164,15 +164,15 @@ std::vector<CompilationEntry> LoadFromCompileCommandsJson(const std::string& pro
   std::vector<CompileCommandsEntry> entries;
   Reflect(reader, entries);
 
-  std::vector<CompilationEntry> result;
+  std::vector<Project::Entry> result;
   result.reserve(entries.size());
   for (const auto& entry : entries)
     result.push_back(GetCompilationEntryFromCompileCommandEntry(entry));
   return result;
 }
 
-std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& project_directory) {
-  std::vector<CompilationEntry> result;
+std::vector<Project::Entry> LoadFromDirectoryListing(const std::string& project_directory) {
+  std::vector<Project::Entry> result;
 
   std::vector<std::string> args;
   std::cerr << "Using arguments: ";
@@ -190,7 +190,7 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
   std::vector<std::string> files = GetFilesInFolder(project_directory, true /*recursive*/, true /*add_folder_to_path*/);
   for (const std::string& file : files) {
     if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") || EndsWith(file, ".c")) {
-      CompilationEntry entry;
+      Project::Entry entry;
       entry.filename = NormalizePath(file);
       entry.args = args;
       result.push_back(entry);
@@ -200,7 +200,7 @@ std::vector<CompilationEntry> LoadFromDirectoryListing(const std::string& projec
   return result;
 }
 
-std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory) {
+std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::string& project_directory) {
   // TODO: Figure out if this function or the clang one is faster.
   //return LoadFromCompileCommandsJson(project_directory);
 
@@ -214,7 +214,7 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
   CXCompileCommands cx_commands = clang_CompilationDatabase_getAllCompileCommands(cx_db);
 
   unsigned int num_commands = clang_CompileCommands_getSize(cx_commands);
-  std::vector<CompilationEntry> result;
+  std::vector<Project::Entry> result;
   for (unsigned int i = 0; i < num_commands; i++) {
     CXCompileCommand cx_command = clang_CompileCommands_getCommand(cx_commands, i);
 
@@ -245,7 +245,7 @@ void Project::Load(const std::string& directory) {
   entries = LoadCompilationEntriesFromDirectory(directory);
 }
 
-optional<CompilationEntry> Project::FindCompilationEntryForFile(const std::string& filename) {
+optional<Project::Entry> Project::FindCompilationEntryForFile(const std::string& filename) {
   for (auto& entry : entries) {
     if (filename == entry.filename)
       return entry;

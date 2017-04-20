@@ -1108,7 +1108,7 @@ void QueryDbMainLoop(
       //for (int i = 0; i < 10; ++i)
         //std::cerr << project->entries[i].filename << std::endl;
       for (int i = 0; i < project->entries.size(); ++i) {
-        const CompilationEntry& entry = project->entries[i];
+        const Project::Entry& entry = project->entries[i];
         std::string filepath = entry.filename;
 
 
@@ -1179,7 +1179,7 @@ void QueryDbMainLoop(
 
       // Send an index update request.
       Index_DoIndex request(Index_DoIndex::Type::Update);
-      optional<CompilationEntry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
+      optional<Project::Entry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
       request.path = msg->params.textDocument.uri.GetPath();
       if (entry)
         request.args = entry->args;

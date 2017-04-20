@@ -7,13 +7,14 @@
 using std::experimental::optional;
 using std::experimental::nullopt;
 
-struct CompilationEntry {
-  std::string filename;
-  std::vector<std::string> args;
-};
-
 struct Project {
-  std::vector<CompilationEntry> entries;
+  struct Entry {
+    std::string filename;
+    std::vector<std::string> args;
+    // optional<uint64_t> last_modification_time;
+  };
+
+  std::vector<Entry> entries;
 
   // Loads a project for the given |directory|.
   //
@@ -24,6 +25,6 @@ struct Project {
   void Load(const std::string& directory);
 
   // Lookup the CompilationEntry for |filename|.
-  optional<CompilationEntry> FindCompilationEntryForFile(const std::string& filename);
+  optional<Entry> FindCompilationEntryForFile(const std::string& filename);
 };
 

@@ -11,7 +11,7 @@
 #include <functional>
 
 struct CompletionSession {
-  CompilationEntry file;
+  Project::Entry file;
 
   // The active translation unit.
   std::unique_ptr<clang::TranslationUnit> active;
@@ -24,7 +24,7 @@ struct CompletionSession {
   //std::unique_ptr<clang::TranslationUnit> updated;
   //std::unique_ptr<clang::Index> updated_index;
 
-  CompletionSession(const CompilationEntry& file, IndexerConfig* config, WorkingFiles* working_files);
+  CompletionSession(const Project::Entry& file, IndexerConfig* config, WorkingFiles* working_files);
   ~CompletionSession();
 
   // Refresh file index.

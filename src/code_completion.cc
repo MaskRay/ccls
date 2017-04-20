@@ -324,7 +324,7 @@ void CompletionMain(CompletionManager* completion_manager) {
 
 }  // namespace
 
-CompletionSession::CompletionSession(const CompilationEntry& file, IndexerConfig* config, WorkingFiles* working_files) : file(file) {
+CompletionSession::CompletionSession(const Project::Entry& file, IndexerConfig* config, WorkingFiles* working_files) : file(file) {
   std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
 
   std::vector<std::string> args = file.args;
@@ -389,10 +389,10 @@ CompletionSession* CompletionManager::GetOrOpenSession(const std::string& filena
 
   // Create new session. Note that this will block.
   std::cerr << "Creating new code completion session for " << filename << std::endl;
-  optional<CompilationEntry> entry = project->FindCompilationEntryForFile(filename);
+  optional<Project::Entry> entry = project->FindCompilationEntryForFile(filename);
   if (!entry) {
     std::cerr << "Unable to find compilation entry" << std::endl;
-    entry = CompilationEntry();
+    entry = Project::Entry();
     entry->filename = filename;
   }
   else {
