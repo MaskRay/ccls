@@ -10,6 +10,7 @@ const VarType Holder::static_var;
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@E@VarType",

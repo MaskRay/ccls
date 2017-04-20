@@ -112,6 +112,8 @@ IndexedFile* FindDbForPathEnding(const std::string& path, const std::vector<std:
 }
 
 void RunTests() {
+  DisableModificationTimeForTest();
+
   // TODO: Assert that we need to be on clang >= 3.9.1
   bool update_all = false;
 

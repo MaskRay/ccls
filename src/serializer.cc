@@ -10,6 +10,13 @@ void Reflect(Reader& visitor, int& value) {
 void Reflect(Writer& visitor, int& value) {
   visitor.Int(value);
 }
+// int64_t
+void Reflect(Reader& visitor, int64_t& value) {
+  value = visitor.GetInt64();
+}
+void Reflect(Writer& visitor, int64_t& value) {
+  visitor.Int64(value);
+}
 // bool
 void Reflect(Reader& visitor, bool& value) {
   value = visitor.GetBool();
@@ -215,6 +222,7 @@ bool ReflectMemberStart(Writer& visitor, IndexedFile& value) {
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexedFile& value) {
   REFLECT_MEMBER_START();
+  REFLECT_MEMBER(last_modification_time);
   REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);

@@ -7,6 +7,7 @@ void Impl() {
 /*
 OUTPUT: header.h
 {
+  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@Base",
@@ -110,6 +111,7 @@ OUTPUT: header.h
 }
 OUTPUT: impl.cc
 {
+  "last_modification_time": 1,
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/header.h"],
   "funcs": [{
       "id": 0,

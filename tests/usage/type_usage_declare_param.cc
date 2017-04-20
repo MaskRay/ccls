@@ -6,6 +6,7 @@ void foo(ForwardType* f, ImplementedType a) {}
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",

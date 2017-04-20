@@ -5,6 +5,7 @@ void foo(Foo* p0, Foo* p1) {}
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",

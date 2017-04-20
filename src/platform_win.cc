@@ -8,6 +8,9 @@
 #include <io.h>
 #include <Windows.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -177,6 +180,29 @@ void SetCurrentThreadName(const std::string& thread_name) {
     RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR), (ULONG_PTR*)&info);
   }
   __except (EXCEPTION_EXECUTE_HANDLER) {}
+}
+
+int64_t GetLastModificationTime(const std::string& absolute_path) {
+  if (IsModificationTimeDisabledForTests())
+    return 1;
+
+  struct _stat buf;
+  if (_stat(absolute_path.c_str(), &buf) != 0) {
+    switch (errno) {
+      case ENOENT:
+        std::cerr << "GetLastModificationTime: unable to find file " << absolute_path << std::endl;
+        break;
+      case EINVAL:
+        std::cerr << "GetLastModificationTime: invalid param to _stat for file file " << absolute_path << std::endl;
+        break;
+      default:
+        std::cerr << "GetLastModificationTime: unhandled for " << absolute_path << std::endl;
+        exit(1);
+        break;
+    }
+  }
+
+  return buf.st_mtime;
 }
 
 std::vector<std::string> GetPlatformClangArguments() {

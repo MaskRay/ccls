@@ -1376,6 +1376,8 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsu
     assert(entry->id_cache.primary_file == entry->path);
     entry->path = NormalizePath(entry->path);
     entry->id_cache.primary_file = entry->path;
+
+    entry->last_modification_time = GetLastModificationTime(entry->path);
   }
 
   // TODO: Fix interesting checks.

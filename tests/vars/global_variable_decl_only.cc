@@ -2,6 +2,7 @@ extern int global;
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "vars": [{
       "id": 0,
       "usr": "c:@global",

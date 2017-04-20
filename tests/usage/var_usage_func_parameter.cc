@@ -4,6 +4,7 @@ void foo(int a) {
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#I#",

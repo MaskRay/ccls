@@ -2,6 +2,7 @@ static int global = 0;
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "vars": [{
       "id": 0,
       "usr": "c:global_variable.cc@global",

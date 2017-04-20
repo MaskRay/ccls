@@ -466,6 +466,8 @@ struct IndexedFile {
   IdCache id_cache;
 
   std::string path;
+  int64_t last_modification_time = 0;
+
   // The content of |path| when it was indexed.
   //std::string content;
 

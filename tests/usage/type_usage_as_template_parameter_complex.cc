@@ -81,6 +81,7 @@ unique_ptr<S1, S2>* Foo::foo() { return nullptr; }
 /*
 OUTPUT:
 {
+  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@ST>2#T#T@unique_ptr",

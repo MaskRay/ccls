@@ -104,9 +104,9 @@ CompilationEntry GetCompilationEntryFromCompileCommandEntry(const CompileCommand
   CompilationEntry result;
   result.filename = NormalizePath(entry.file);
 
-  unsigned int num_args = entry.args.size();
+  size_t num_args = entry.args.size();
   result.args.reserve(num_args);
-  for (unsigned int j = 0; j < num_args; ++j) {
+  for (size_t j = 0; j < num_args; ++j) {
     std::string arg = entry.args[j];
 
 
@@ -226,9 +226,9 @@ std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::str
     entry.file = NormalizePath(absolute_filename);
     entry.directory = directory;
 
-    unsigned int num_args = clang_CompileCommand_getNumArgs(cx_command);
+    unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
     entry.args.reserve(num_args);
-    for (int i = 0; i < num_args; ++i)
+    for (unsigned i = 0; i < num_args; ++i)
       entry.args.push_back(clang::ToString(clang_CompileCommand_getArg(cx_command, i)));
 
     result.push_back(GetCompilationEntryFromCompileCommandEntry(entry));
