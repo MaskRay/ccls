@@ -243,13 +243,35 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::strin
 
 void Project::Load(const std::string& directory) {
   entries = LoadCompilationEntriesFromDirectory(directory);
+
+  absolute_path_to_entry_index_.resize(entries.size());
+  for (int i = 0; i < entries.size(); ++i)
+    absolute_path_to_entry_index_[entries[i].filename] = i;
 }
 
 optional<Project::Entry> Project::FindCompilationEntryForFile(const std::string& filename) {
-  for (auto& entry : entries) {
-    if (filename == entry.filename)
-      return entry;
-  }
+  std::lock_guard<std::mutex> lock(entries_modification_mutex_);
 
+  auto it = absolute_path_to_entry_index_.find(filename);
+  if (it != absolute_path_to_entry_index_.end())
+    return entries[it->second];
   return nullopt;
+}
+
+void Project::UpdateModificationTime(const std::string& filename, uint64_t modification_time) {
+  // TODO: There might be a lot of thread contention here.
+  std::lock_guard<std::mutex> lock(entries_modification_mutex_);
+
+  auto it = absolute_path_to_entry_index_.find(filename);
+  if (it != absolute_path_to_entry_index_.end()) {
+    entries[it->second].last_modification_time = modification_time;
+  }
+  else {
+    Project::Entry entry;
+    entry.filename = filename;
+    entry.last_modification_time = modification_time;
+
+    absolute_path_to_entry_index_[filename] = entries.size();
+    entries.push_back(entry);
+  }
 }

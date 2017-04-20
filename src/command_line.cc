@@ -867,6 +867,7 @@ void RegisterMessageTypes() {
 
 bool IndexMain_DoIndex(IndexerConfig* config,
                        FileConsumer::SharedState* file_consumer_shared,
+                       Project* project,
                        Index_DoIndexQueue* queue_do_index,
                        Index_DoIdMapQueue* queue_do_id_map) {
   optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
@@ -892,8 +893,10 @@ bool IndexMain_DoIndex(IndexerConfig* config,
         Index_DoIndex dep_index_request(Index_DoIndex::Type::ImportOnly);
         dep_index_request.path = dependency_path;
         dep_index_request.args = index_request->args;
-        queue_do_index->Enqueue(std::move(dep_index_request));
+        queue_do_index->PriorityEnqueue(std::move(dep_index_request));
       }
+      
+      project->UpdateModificationTime(index_request->path, old_index->last_modification_time);
 
       Index_DoIdMap response(nullptr, std::move(old_index));
       queue_do_id_map->Enqueue(std::move(response));
@@ -909,6 +912,17 @@ bool IndexMain_DoIndex(IndexerConfig* config,
   }
 
   // Parse request and send a response.
+
+  // Skip index if file modification time didn't change.
+  optional<Project::Entry> entry = project->FindCompilationEntryForFile(index_request->path);
+  if (entry && entry->last_modification_time) {
+    int64_t modification_time = GetLastModificationTime(index_request->path);
+    if (modification_time == *entry->last_modification_time) {
+      time.ResetAndPrint("Skipping index update on " + index_request->path + " since file modification time has not changed");
+      return true;
+    }
+  }
+
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(config, file_consumer_shared, index_request->path, index_request->args);
   time.ResetAndPrint("Parsing/indexing " + index_request->path);
 
@@ -973,6 +987,7 @@ void IndexJoinIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
 void IndexMain(
   IndexerConfig* config,
   FileConsumer::SharedState* file_consumer_shared,
+  Project* project,
   Index_DoIndexQueue* queue_do_index,
   Index_DoIdMapQueue* queue_do_id_map,
   Index_OnIdMappedQueue* queue_on_id_mapped,
@@ -990,7 +1005,7 @@ void IndexMain(
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, queue_do_index, queue_do_id_map);
+    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, project, queue_do_index, queue_do_id_map);
     bool did_create_update = IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
     if (!did_index && !did_create_update) {
 
@@ -1632,7 +1647,7 @@ void QueryDbMain(IndexerConfig* config) {
   std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
   for (int i = 0; i < config->indexerCount; ++i) {
     new std::thread([&]() {
-      IndexMain(config, &file_consumer_shared, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
+      IndexMain(config, &file_consumer_shared, &project, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
     });
   }
 

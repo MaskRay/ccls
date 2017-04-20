@@ -14,6 +14,13 @@
 template <class T>
 class ThreadedQueue {
 public:
+  // Add an element to the front of the queue.
+  void PriorityEnqueue(T&& t) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    priority_.push(std::move(t));
+    cv_.notify_one();
+  }
+
   // Add an element to the queue.
   void Enqueue(T&& t) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -26,7 +33,11 @@ public:
     std::lock_guard<std::mutex> lock(mutex_);
 
     std::vector<T> result;
-    result.reserve(queue_.size());
+    result.reserve(priority_.size() + queue_.size());
+    while (!priority_.empty()) {
+      result.emplace_back(std::move(priority_.front()));
+      priority_.pop();
+    }
     while (!queue_.empty()) {
       result.emplace_back(std::move(queue_.front()));
       queue_.pop();
@@ -38,11 +49,17 @@ public:
   // If the queue is empty, wait untill an element is avaiable.
   T Dequeue() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while (queue_.empty()) {
+    while (priority_.empty() && queue_.empty()) {
       // release lock as long as the wait and reaquire it afterwards.
       cv_.wait(lock);
     }
     
+    if (!priority_.empty()) {
+      auto val = std::move(priority_.front());
+      priority_.pop();
+      return val;
+    }
+
     auto val = std::move(queue_.front());
     queue_.pop();
     return val;
@@ -52,8 +69,14 @@ public:
   // value if the queue is empty.
   optional<T> TryDequeue() {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (queue_.empty())
+    if (priority_.empty() && queue_.empty())
       return nullopt;
+
+    if (!priority_.empty()) {
+      auto val = std::move(priority_.front());
+      priority_.pop();
+      return val;
+    }
 
     auto val = std::move(queue_.front());
     queue_.pop();
@@ -61,6 +84,7 @@ public:
   }
 
  private:
+  std::queue<T> priority_;
   std::queue<T> queue_;
   mutable std::mutex mutex_;
   std::condition_variable cv_;

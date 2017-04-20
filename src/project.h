@@ -1,6 +1,9 @@
 #pragma once
 
 #include <optional.h>
+#include <sparsepp/spp.h>
+
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -11,10 +14,12 @@ struct Project {
   struct Entry {
     std::string filename;
     std::vector<std::string> args;
-    // optional<uint64_t> last_modification_time;
+    optional<uint64_t> last_modification_time;
   };
 
   std::vector<Entry> entries;
+  spp::sparse_hash_map<std::string, int> absolute_path_to_entry_index_;
+  std::mutex entries_modification_mutex_;
 
   // Loads a project for the given |directory|.
   //
@@ -26,5 +31,8 @@ struct Project {
 
   // Lookup the CompilationEntry for |filename|.
   optional<Entry> FindCompilationEntryForFile(const std::string& filename);
+
+  // Update the modification time for the given filename. This is thread-safe.
+  void UpdateModificationTime(const std::string& filename, uint64_t modification_time);
 };
 
