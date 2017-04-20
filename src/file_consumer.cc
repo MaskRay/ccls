@@ -50,6 +50,16 @@ IndexedFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership)
 }
 
 IndexedFile* FileConsumer::ForceLocal(CXFile file) {
+  // Try to fetch the file using the normal system, which will insert the file
+  // usage into global storage.
+  {
+    bool is_first;
+    IndexedFile* cache = TryConsumeFile(file, &is_first);
+    if (cache)
+      return cache;
+  }
+
+  // It's already been taken before, just create a local copy.
   CXFileUniqueID file_id;
   if (clang_getFileUniqueID(file, &file_id) != 0) {
     std::cerr << "Could not get unique file id for " << FileName(file) << std::endl;
@@ -57,7 +67,7 @@ IndexedFile* FileConsumer::ForceLocal(CXFile file) {
   }
 
   auto it = local_.find(file_id);
-  if (it == local_.end())
+  if (it == local_.end() || !it->second)
     local_[file_id] = MakeUnique<IndexedFile>(FileName(file));
   assert(local_.find(file_id) != local_.end());
   return local_[file_id].get();

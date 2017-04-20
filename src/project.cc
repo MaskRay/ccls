@@ -259,7 +259,7 @@ optional<Project::Entry> Project::FindCompilationEntryForFile(const std::string&
   return nullopt;
 }
 
-void Project::UpdateFileState(const std::string& filename, const std::string& import_file, uint64_t modification_time) {
+void Project::UpdateFileState(const std::string& filename, const std::string& import_file, const std::vector<std::string>& import_dependencies, uint64_t modification_time) {
   {
     // TODO: There might be a lot of thread contention here.
     std::lock_guard<std::mutex> lock(entries_modification_mutex_);
@@ -267,6 +267,7 @@ void Project::UpdateFileState(const std::string& filename, const std::string& im
     if (it != absolute_path_to_entry_index_.end()) {
       auto& entry = entries[it->second];
       entry.import_file = import_file;
+      entry.import_dependencies = import_dependencies;
       entry.last_modification_time = modification_time;
       return;
     }
@@ -277,10 +278,12 @@ void Project::UpdateFileState(const std::string& filename, const std::string& im
 
     Project::Entry entry;
     entry.filename = filename;
-    if (import_entry)
+    if (import_entry) {
       entry.args = import_entry->args;
+    }
 
     entry.import_file = import_file;
+    entry.import_dependencies = import_dependencies;
     entry.last_modification_time = modification_time;
     
     // TODO: There might be a lot of thread contention here.

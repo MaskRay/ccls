@@ -502,8 +502,10 @@ struct IndexedFile {
 
 // |import_file| is the cc file which is what gets passed to clang.
 // |desired_index_file| is the (h or cc) file which has actually changed.
+// |dependencies| are the existing dependencies of |import_file| if this is a reparse.
 std::vector<std::unique_ptr<IndexedFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
-    std::string desired_index_file, std::string import_file, std::vector<std::string> args,
+    std::string desired_index_file, std::string import_file, const std::vector<std::string>& existing_dependencies,
+    std::vector<std::string> args,
     bool dump_ast = false);
 void IndexInit();

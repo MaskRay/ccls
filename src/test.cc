@@ -139,7 +139,7 @@ void RunTests() {
     std::cout << "[START] " << path << std::endl;
     std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(
         &config, &file_consumer_shared,
-        path, path,
+        path, path, {},
         {
           "-xc++",
           "-std=c++11",
