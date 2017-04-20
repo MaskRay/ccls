@@ -465,6 +465,9 @@ struct IdCache {
 struct IndexedFile {
   IdCache id_cache;
 
+  static constexpr int kCurrentVersion = 1;
+  int version = 0;
+
   std::string path;
   int64_t last_modification_time = 0;
 

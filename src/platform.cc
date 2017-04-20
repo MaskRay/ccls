@@ -11,8 +11,6 @@
 
 namespace {
 
-bool gModificationTimeDisabled = false;
-
 // See http://stackoverflow.com/a/236803
 template<typename Out>
 void Split(const std::string &s, char delim, Out result) {
@@ -84,15 +82,6 @@ void MakeDirectoryRecursive(std::string path) {
     }
   }
 }
-
-void DisableModificationTimeForTest() {
-  gModificationTimeDisabled = true;
-}
-
-bool IsModificationTimeDisabledForTests() {
-  return gModificationTimeDisabled;
-}
-
 
 TEST_SUITE("Platform");
 

@@ -5,7 +5,6 @@ void foo(int a, int b);
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "funcs": [{
       "id": 0,
       "usr": "c:@N@hello@F@foo#I#I#",

@@ -37,9 +37,6 @@ bool TryMakeDirectory(const std::string& absolute_path);
 
 void SetCurrentThreadName(const std::string& thread_name);
 
-void DisableModificationTimeForTest();
-bool IsModificationTimeDisabledForTests();
-
 int64_t GetLastModificationTime(const std::string& absolute_path);
 
 // Returns any clang arguments that are specific to the current platform.

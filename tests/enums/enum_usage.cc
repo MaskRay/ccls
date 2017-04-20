@@ -8,7 +8,6 @@ Foo x = Foo::A;
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",

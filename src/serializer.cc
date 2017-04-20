@@ -2,6 +2,9 @@
 
 #include "indexer.h"
 
+namespace {
+bool gTestOutputMode = false;
+}  // namespace
 
 // int
 void Reflect(Reader& visitor, int& value) {
@@ -216,13 +219,17 @@ bool ReflectMemberStart(Writer& visitor, IndexedFile& value) {
     assert(value.Resolve(it->second)->uses.size() == 0);
   }
 
+  value.version = IndexedFile::kCurrentVersion;
   DefaultReflectMemberStart(visitor);
   return true;
 }
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexedFile& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(last_modification_time);
+  if (!gTestOutputMode) {
+    REFLECT_MEMBER(version);
+    REFLECT_MEMBER(last_modification_time);
+  }
   REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);
@@ -275,4 +282,8 @@ optional<IndexedFile> Deserialize(std::string path, std::string serialized) {
   }
 
   return file;
+}
+
+void SetTestOutputMode() {
+  gTestOutputMode = true;
 }

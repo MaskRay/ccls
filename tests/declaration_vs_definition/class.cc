@@ -8,7 +8,6 @@ class Foo;
 //       for comments.
 OUTPUT:
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",

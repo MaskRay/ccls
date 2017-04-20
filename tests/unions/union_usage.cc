@@ -14,7 +14,6 @@ void act(Foo*) {
 
 OUTPUT:
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@U@Foo",

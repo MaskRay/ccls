@@ -12,7 +12,6 @@ void accept3(Foo3*) {}
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",

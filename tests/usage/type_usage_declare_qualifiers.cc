@@ -9,7 +9,6 @@ void foo(Type& a0, const Type& a1) {
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",

@@ -5,7 +5,6 @@ void Buffer::CreateSharedBuffer() {}
 /*
 OUTPUT: static.h
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@S@Buffer",
@@ -27,7 +26,6 @@ OUTPUT: static.h
 }
 OUTPUT: static.cc
 {
-  "last_modification_time": 1,
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/static.h"],
   "types": [{
       "id": 0,

@@ -8,7 +8,6 @@ enum Foo {
 
 OUTPUT: funky_enum.h
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
@@ -48,7 +47,6 @@ OUTPUT: funky_enum.h
 }
 OUTPUT: funky_enum.cc
 {
-  "last_modification_time": 1,
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/funky_enum.h"],
   "types": [{
       "id": 0,

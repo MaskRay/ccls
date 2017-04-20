@@ -183,9 +183,6 @@ void SetCurrentThreadName(const std::string& thread_name) {
 }
 
 int64_t GetLastModificationTime(const std::string& absolute_path) {
-  if (IsModificationTimeDisabledForTests())
-    return 1;
-
   struct _stat buf;
   if (_stat(absolute_path.c_str(), &buf) != 0) {
     switch (errno) {

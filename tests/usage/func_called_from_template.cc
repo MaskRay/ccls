@@ -14,7 +14,6 @@ void foo() {
 // called() is never referenced.
 OUTPUT:
 {
-  "last_modification_time": 1,
   "funcs": [{
       "id": 0,
       "usr": "c:@F@called#",

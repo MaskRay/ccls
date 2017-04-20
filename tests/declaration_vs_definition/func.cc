@@ -7,7 +7,6 @@ void foo();
 // Note: we always use the latest seen ("most local") definition/declaration.
 OUTPUT:
 {
-  "last_modification_time": 1,
   "funcs": [{
       "id": 0,
       "usr": "c:@F@foo#",

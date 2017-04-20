@@ -15,7 +15,6 @@ class Derived : Base1<3>, Base2<Derived>, Derived1<4>, Derived2<Derived> {};
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#Ni@Base1",

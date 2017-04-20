@@ -208,3 +208,5 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 
 std::string Serialize(IndexedFile& file);
 optional<IndexedFile> Deserialize(std::string path, std::string serialized);
+
+void SetTestOutputMode();

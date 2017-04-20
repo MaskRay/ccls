@@ -26,7 +26,7 @@ std::unique_ptr<IndexedFile> LoadCachedFile(IndexerConfig* config, const std::st
     return nullptr;
 
   optional<IndexedFile> indexed = Deserialize(filename, *file_content);
-  if (indexed)
+  if (indexed && indexed->version == IndexedFile::kCurrentVersion)
     return MakeUnique<IndexedFile>(indexed.value());
 
   return nullptr;

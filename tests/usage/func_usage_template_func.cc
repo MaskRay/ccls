@@ -9,7 +9,6 @@ void foo() {
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "funcs": [{
       "id": 0,
       "usr": "c:@FT@>1#Taccept#t0.0#v#",

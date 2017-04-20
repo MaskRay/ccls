@@ -12,7 +12,6 @@ int b = foo<bool>();
 /*
 OUTPUT:
 {
-  "last_modification_time": 1,
   "funcs": [{
       "id": 0,
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
