@@ -28,12 +28,10 @@ TranslationUnit::TranslationUnit(
   for (const std::string& arg : config->extraClangArguments)
     args.push_back(arg.c_str());
 
-#if false
   std::cerr << "Parsing " << filepath << " with args ";
   for (const auto& arg : args)
     std::cerr << arg << " ";
   std::cerr << std::endl;
-#endif
 
   CXErrorCode error_code = clang_parseTranslationUnit2(
     index.cx_index,

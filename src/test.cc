@@ -137,14 +137,18 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(&config, &file_consumer_shared, path, {
-        "-xc++",
-        "-std=c++11",
-        "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",
-        "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest/",
-        "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include",
-        "-IC:/Users/jacob/Desktop/superindex/indexer/src"
-    }, false /*dump_ast*/);
+    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(
+        &config, &file_consumer_shared,
+        path, path,
+        {
+          "-xc++",
+          "-std=c++11",
+          "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",
+          "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest/",
+          "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include",
+          "-IC:/Users/jacob/Desktop/superindex/indexer/src"
+        },
+        false /*dump_ast*/);
 
 #if false
     for (auto& db : dbs) {

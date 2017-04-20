@@ -14,6 +14,8 @@ struct Project {
   struct Entry {
     std::string filename;
     std::vector<std::string> args;
+    
+    std::string import_file;
     optional<uint64_t> last_modification_time;
   };
 
@@ -33,6 +35,6 @@ struct Project {
   optional<Entry> FindCompilationEntryForFile(const std::string& filename);
 
   // Update the modification time for the given filename. This is thread-safe.
-  void UpdateModificationTime(const std::string& filename, uint64_t modification_time);
+  void UpdateFileState(const std::string& filename, const std::string& import_file, uint64_t modification_time);
 };
 

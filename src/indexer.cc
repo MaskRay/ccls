@@ -192,6 +192,9 @@ struct IndexParam {
   // Only use this when strictly needed (ie, primary translation unit is
   // needed). Most logic should get the IndexedFile instance via
   // |file_consumer|.
+  //
+  // This can be null if we're not generating an index for the primary
+  // translation unit.
   IndexedFile* primary_file;
 
   FileConsumer* file_consumer;
@@ -698,7 +701,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!db)
     return;
 
-  if (is_first_time_visiting_file)
+  if (is_first_time_visiting_file && param->primary_file)
     param->primary_file->dependencies.push_back(db->path);
 
   NamespaceHelper* ns = &param->ns;
@@ -1156,7 +1159,7 @@ void indexEntityReference(CXClientData client_data,
   if (!db)
     return;
 
-  if (is_first_time_visiting_file)
+  if (is_first_time_visiting_file && param->primary_file)
     param->primary_file->dependencies.push_back(db->path);
 
   // ref->cursor mainFile=0
@@ -1332,17 +1335,21 @@ void indexEntityReference(CXClientData client_data,
 
 
 
+std::vector<std::unique_ptr<IndexedFile>> Parse(
+    IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
+    std::string desired_index_file, std::string import_file, std::vector<std::string> args,
+    bool dump_ast) {
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast) {
   if (!config->enableIndexing)
     return {};
 
-  filename = NormalizePath(filename);
+  desired_index_file = NormalizePath(desired_index_file);
+  import_file = NormalizePath(import_file);
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
   std::vector<CXUnsavedFile> unsaved_files;
-  clang::TranslationUnit tu(config, index, filename, args, unsaved_files, CXTranslationUnit_KeepGoing);
+  clang::TranslationUnit tu(config, index, import_file, args, unsaved_files, CXTranslationUnit_KeepGoing);
 
   if (dump_ast)
     Dump(tu.document_cursor());
@@ -1357,16 +1364,21 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsu
   FileConsumer file_consumer(file_consumer_shared);
   IndexParam param(&file_consumer);
 
-  CXFile file = clang_getFile(tu.cx_tu, filename.c_str());
+  CXFile file = clang_getFile(tu.cx_tu, desired_index_file.c_str());
   param.primary_file = file_consumer.ForceLocal(file);
+  if (desired_index_file != import_file)
+    param.primary_file = nullptr;
 
-  std::cerr << "!! [START] Indexing " << filename << std::endl;
+  if (desired_index_file != import_file)
+    std::cerr << "!! [START] Indexing desired_index_file=" << desired_index_file << ", import_file=" << import_file << std::endl;
+  else
+    std::cerr << "!! [START] Indexing " << desired_index_file << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
                              CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations,
                              tu.cx_tu);
   clang_IndexAction_dispose(index_action);
-  std::cerr << "!! [END] Indexing " << filename << std::endl;
+  std::cerr << "!! [END] Indexing " << desired_index_file << std::endl;
 
   auto result = param.file_consumer->TakeLocalState();
   for (auto& entry : result) {
@@ -1378,27 +1390,28 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsu
     entry->id_cache.primary_file = entry->path;
 
     entry->last_modification_time = GetLastModificationTime(entry->path);
+    entry->import_file = import_file;
   }
 
   // TODO: Fix interesting checks.
   for (auto& entry : result) {
     for (auto& type : entry->types) {
       if (!type.HasInterestingState()) {
-        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << filename << std::endl;
+        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << desired_index_file << std::endl;
         std::cerr << "!!!! USR " << type.def.usr << std::endl;
         assert(false);
       }
     }
     for (auto& func : entry->funcs) {
       if (!func.HasInterestingState()) {
-        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << filename << std::endl;
+        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << desired_index_file << std::endl;
         std::cerr << "!!!! USR " << func.def.usr << std::endl;
         assert(false);
       }
     }
     for (auto& var : entry->vars) {
       if (!var.HasInterestingState()) {
-        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << filename << std::endl;
+        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << desired_index_file << std::endl;
         std::cerr << "!!!! USR " << var.def.usr << std::endl;
         assert(false);
       }

@@ -229,6 +229,7 @@ void Reflect(TVisitor& visitor, IndexedFile& value) {
   if (!gTestOutputMode) {
     REFLECT_MEMBER(version);
     REFLECT_MEMBER(last_modification_time);
+    REFLECT_MEMBER(import_file);
   }
   REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(types);

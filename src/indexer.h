@@ -471,6 +471,12 @@ struct IndexedFile {
   std::string path;
   int64_t last_modification_time = 0;
 
+  // The path to the translation unit cc file which caused the creation of this
+  // IndexedFile. When parsing a translation unit we generate many IndexedFile
+  // instances (ie, each header has a separate one). When the user edits a
+  // header we need to lookup the original translation unit and reindex that.
+  std::string import_file;
+
   // The content of |path| when it was indexed.
   //std::string content;
 
@@ -494,5 +500,10 @@ struct IndexedFile {
   std::string ToString();
 };
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared, std::string filename, std::vector<std::string> args, bool dump_ast = false);
+// |import_file| is the cc file which is what gets passed to clang.
+// |desired_index_file| is the (h or cc) file which has actually changed.
+std::vector<std::unique_ptr<IndexedFile>> Parse(
+    IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
+    std::string desired_index_file, std::string import_file, std::vector<std::string> args,
+    bool dump_ast = false);
 void IndexInit();

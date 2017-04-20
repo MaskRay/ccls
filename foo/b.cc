@@ -1,4 +1,8 @@
+#include "a.h"
 
 enum Foo {
-  #include "a.h"
 };
+
+void faz() {
+  foobar();
+}
