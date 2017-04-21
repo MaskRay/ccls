@@ -59,9 +59,14 @@ struct IndexerConfig {
   std::string cacheDirectory;
   NonElidedVector<std::string> whitelist;
   NonElidedVector<std::string> blacklist;
-  int indexerCount = 1;
-  int maxWorkspaceSearchResults = 1000;
   std::vector<std::string> extraClangArguments;
+
+  // Maximum workspace search results.
+  int maxWorkspaceSearchResults = 1000;
+
+  // Force a certain number of indexer threads. If less than 1 a default value
+  // should be used.
+  int indexerCount = 0;
   // If false, the indexer will be disabled.
   bool enableIndexing = true;
   // If false, indexed files will not be written to disk.
@@ -72,9 +77,10 @@ struct IndexerConfig {
 MAKE_REFLECT_STRUCT(IndexerConfig,
   cacheDirectory,
   whitelist, blacklist,
-  indexerCount,
-  maxWorkspaceSearchResults,
   extraClangArguments,
+
+  maxWorkspaceSearchResults,
+  indexerCount,
   enableIndexing, enableCacheWrite, enableCacheRead);
 
 
