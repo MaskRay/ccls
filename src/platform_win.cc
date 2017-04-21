@@ -202,6 +202,13 @@ int64_t GetLastModificationTime(const std::string& absolute_path) {
   return buf.st_mtime;
 }
 
+void CopyFileTo(const std::string& destination, const std::string& source) {
+  CopyFile(
+    source.c_str(),
+    destination.c_str(),
+    false /*failIfExists*/);
+}
+
 std::vector<std::string> GetPlatformClangArguments() {
   return {
     "-fms-compatibility",

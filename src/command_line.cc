@@ -893,7 +893,7 @@ void ImportCachedIndex(IndexerConfig* config,
 
   Timer time;
 
-  std::unique_ptr<IndexedFile> cache = LoadCachedFile(config, path);
+  std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, path);
   time.ResetAndPrint("Reading cached index from disk " + path);
   if (!cache)
     return;
@@ -914,7 +914,7 @@ void ParseFile(IndexerConfig* config,
   Timer time;
 
   // Parse request and send a response.
-  std::unique_ptr<IndexedFile> cached_path_index = LoadCachedFile(config, path);
+  std::unique_ptr<IndexedFile> cached_path_index = LoadCachedIndex(config, path);
 
   if (cached_path_index) {
     // Give the user dependencies if requested.
@@ -946,7 +946,7 @@ void ParseFile(IndexerConfig* config,
     if (new_index->path == path)
       cached_index = std::move(cached_path_index);
     else
-      cached_index = LoadCachedFile(config, new_index->path);
+      cached_index = LoadCachedIndex(config, new_index->path);
     time.ResetAndPrint("Loading cached index");
 
     // Update dependencies on |new_index|, since they won't get reparsed if we
@@ -1026,10 +1026,10 @@ bool IndexMain_DoCreateIndexUpdate(
   Timer time;
   IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
     response->previous_index.get(), response->current_index.get());
-  time.ResetAndPrint("Creating delta IndexUpdate");
+  time.ResetAndPrint("[indexer] Creating delta IndexUpdate");
   Index_OnIndexed reply(update);
   queue_on_indexed->Enqueue(std::move(reply));
-  time.ResetAndPrint("Sending update to server");
+  time.ResetAndPrint("[indexer] Sending update to server");
 
   return true;
 }
@@ -1048,7 +1048,7 @@ void IndexJoinIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
 
     Timer time;
     root->update.Merge(to_join->update);
-    time.ResetAndPrint("Indexer joining two querydb updates");
+    time.ResetAndPrint("[indexer] Joining two querydb updates");
   }
 }
 
@@ -1199,7 +1199,13 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentDidOpen: {
       auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
       //std::cerr << "Opening " << msg->params.textDocument.uri.GetPath() << std::endl;
-      working_files->OnOpen(msg->params);
+      WorkingFile* working_file = working_files->OnOpen(msg->params);
+      optional<std::string> cached_file_contents = LoadCachedFileContents(config, msg->params.textDocument.uri.GetPath());
+      if (cached_file_contents)
+        working_file->SetIndexContent(*cached_file_contents);
+      else
+        working_file->SetIndexContent(working_file->buffer_content);
+
       break;
     }
     case IpcId::TextDocumentDidChange: {
@@ -1219,15 +1225,14 @@ void QueryDbMainLoop(
       auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
 
       std::string path = msg->params.textDocument.uri.GetPath();
-
-      // TODO: Update working file indexed content when we actually apply the
-      // index update.
-      WorkingFile* working_file = working_files->GetFileByFilename(path);
-      if (working_file)
-        working_file->SetIndexContent(working_file->buffer_content);
-
       // Send an index update request.
       queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, path, project->FindArgsForFile(path)));
+
+      // Copy current buffer content so it can be applied when index request is done.
+      WorkingFile* working_file = working_files->GetFileByFilename(path);
+      if (working_file)
+        working_file->pending_new_index_content = working_file->buffer_content;
+
       break;
     }
 
@@ -1579,13 +1584,13 @@ void QueryDbMainLoop(
       response.id = msg->id;
 
 
-      std::cerr << "- Considering " << db->detailed_names.size()
+      std::cerr << "[querydb] Considering " << db->detailed_names.size()
         << " candidates for query " << msg->params.query << std::endl;
 
       std::string query = msg->params.query;
       for (int i = 0; i < db->detailed_names.size(); ++i) {
         if (response.result.size() >= config->maxWorkspaceSearchResults) {
-          std::cerr << "Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
+          std::cerr << "[querydb] - Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
           break;
         }
 
@@ -1610,7 +1615,7 @@ void QueryDbMainLoop(
         }
       }
 
-      std::cerr << "- Found " << response.result.size() << " results for query " << query << std::endl;
+      std::cerr << "[querydb] - Found " << response.result.size() << " results for query " << query << std::endl;
       ipc->SendOutMessageToClient(response);
       break;
     }
@@ -1634,6 +1639,7 @@ void QueryDbMainLoop(
 
     Index_OnIdMapped response;
     Timer time;
+
     if (request->previous) {
       response.previous_id_map = MakeUnique<IdMap>(db, request->previous->id_cache);
       response.previous_index = std::move(request->previous);
@@ -1641,7 +1647,7 @@ void QueryDbMainLoop(
 
     assert(request->current);
     response.current_id_map = MakeUnique<IdMap>(db, request->current->id_cache);
-    time.ResetAndPrint("Create IdMap " + request->current->path);
+    time.ResetAndPrint("[querydb] Create IdMap " + request->current->path);
     response.current_index = std::move(request->current);
 
     queue_on_id_mapped->Enqueue(std::move(response));
@@ -1653,8 +1659,31 @@ void QueryDbMainLoop(
       break;
 
     Timer time;
+
+    for (auto& updated_file : response->update.files_def_update) {
+      // TODO: We're reading a file on querydb thread. This is slow!! If it is a
+      // problem in practice we need to create a file reader queue, dispatch the
+      // read to it, get a response, and apply the new index then.
+      WorkingFile* working_file = working_files->GetFileByFilename(updated_file.path);
+      if (working_file) {
+        if (working_file->pending_new_index_content) {
+          working_file->SetIndexContent(*working_file->pending_new_index_content);
+          working_file->pending_new_index_content = nullopt;
+          time.ResetAndPrint("[querydb] Update WorkingFile index contents (via in-memory buffer) for " + updated_file.path);
+        }
+        else {
+          optional<std::string> cached_file_contents = LoadCachedFileContents(config, updated_file.path);
+          if (cached_file_contents)
+            working_file->SetIndexContent(*cached_file_contents);
+          else
+            working_file->SetIndexContent(working_file->buffer_content);
+          time.ResetAndPrint("[querydb] Update WorkingFile index contents (via disk load) for " + updated_file.path);
+        }
+      }
+    }
+
     db->ApplyIndexUpdate(&response->update);
-    time.ResetAndPrint("Applying index update");
+    time.ResetAndPrint("[querydb] Applying index update");
   }
 }
 

@@ -24,8 +24,8 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
 WorkingFile::WorkingFile(const std::string& filename, const std::string& buffer_content)
     : filename(filename), buffer_content(buffer_content) {
   OnBufferContentUpdated();
-  // TODO: use cached index file contents
-  SetIndexContent(buffer_content);
+
+  // SetIndexContent gets called when the file is opened.
 }
 
 void WorkingFile::SetIndexContent(const std::string& index_content) {
@@ -155,21 +155,20 @@ WorkingFile* WorkingFiles::GetFileByFilename(const std::string& filename) {
   return nullptr;
 }
 
-void WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
+WorkingFile* WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
   std::string filename = open.textDocument.uri.GetPath();
   std::string content = open.textDocument.text;
 
   // The file may already be open.
   if (WorkingFile* file = GetFileByFilename(filename)) {
     file->version = open.textDocument.version;
-    // TODO: Load saved indexed content and not the initial buffer content.
-    file->SetIndexContent(content);
     file->buffer_content = content;
     file->OnBufferContentUpdated();
-    return;
+    return file;
   }
 
   files.push_back(MakeUnique<WorkingFile>(filename, content));
+  return files[files.size() - 1].get();
 }
 
 void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
