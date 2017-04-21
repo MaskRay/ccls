@@ -1513,7 +1513,7 @@ void QueryDbMainLoop(
           QueryType& type = db->types[symbol.idx];
           AddCodeLens(&common, ref.loc.OffsetStartColumn(0), type.uses, "ref", "refs");
           AddCodeLens(&common, ref.loc.OffsetStartColumn(1), ToQueryLocation(db, type.derived), "derived", "derived");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type.instantiations), "instantiation", "instantiations");
+          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type.instantiations), "var", "vars");
           break;
         }
         case SymbolKind::Func: {

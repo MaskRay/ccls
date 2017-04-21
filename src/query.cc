@@ -674,6 +674,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   RemoveUsrs(update->types_removed);
   ImportOrUpdate(update->types_def_update);
   HANDLE_MERGEABLE(types_derived, derived, types);
+  HANDLE_MERGEABLE(types_instantiations, instantiations, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
   RemoveUsrs(update->funcs_removed);
