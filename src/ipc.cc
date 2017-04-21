@@ -39,6 +39,9 @@ const char* IpcIdToString(IpcId id) {
   case IpcId::WorkspaceSymbol:
     return "workspace/symbol";
 
+  case IpcId::CqueryFreshenIndex: {
+    return "$cquery/freshenIndex";
+  }
 
   case IpcId::Quit:
     return "$quit";

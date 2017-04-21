@@ -1340,7 +1340,7 @@ struct lsWorkspaceSymbolParams {
   std::string query;
 };
 MAKE_REFLECT_STRUCT(lsWorkspaceSymbolParams, query);
-struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol > {
+struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol> {
   const static IpcId kIpcId = IpcId::WorkspaceSymbol;
   lsRequestId id;
   lsWorkspaceSymbolParams params;
@@ -1382,3 +1382,10 @@ void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
+
+
+struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
+  const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
+  lsRequestId id;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);

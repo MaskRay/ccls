@@ -25,6 +25,9 @@ enum class IpcId : int {
   CodeLensResolve,
   WorkspaceSymbol,
 
+  // Custom messages
+  CqueryFreshenIndex,
+
   // Internal implementation detail.
   Quit,
   IsAlive,

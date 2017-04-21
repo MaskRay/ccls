@@ -1,5 +1,6 @@
 #include "project.h"
 
+#include "fuzzy.h"
 #include "libclangmm/Utility.h"
 #include "platform.h"
 #include "serializer.h"
@@ -261,4 +262,51 @@ optional<std::vector<std::string>> Project::FindArgsForFile(const std::string& f
   if (!entry)
     return nullopt;
   return entry->args;
+}
+
+void Project::ForAllFilteredFiles(IndexerConfig* config, std::function<void(int i, const Entry& entry)> action) {
+  std::vector<Matcher> whitelist;
+  std::cerr << "Using whitelist" << std::endl;
+  for (const std::string& entry : config->whitelist) {
+    std::cerr << " - " << entry << std::endl;
+    whitelist.push_back(Matcher(entry));
+  }
+
+  std::vector<Matcher> blacklist;
+  std::cerr << "Using blacklist" << std::endl;
+  for (const std::string& entry : config->blacklist) {
+    std::cerr << " - " << entry << std::endl;
+    blacklist.push_back(Matcher(entry));
+  }
+
+
+  for (int i = 0; i < entries.size(); ++i) {
+    const Project::Entry& entry = entries[i];
+    std::string filepath = entry.filename;
+
+    const Matcher* is_bad = nullptr;
+    for (const Matcher& m : whitelist) {
+      if (!m.IsMatch(filepath)) {
+        is_bad = &m;
+        break;
+      }
+    }
+    if (is_bad) {
+      std::cerr << "[" << i << "/" << (entries.size() - 1) << "] Failed whitelist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
+      continue;
+    }
+
+    for (const Matcher& m : blacklist) {
+      if (m.IsMatch(filepath)) {
+        is_bad = &m;
+        break;
+      }
+    }
+    if (is_bad) {
+      std::cerr << "[" << i << "/" << (entries.size() - 1) << "] Failed blacklist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
+      continue;
+    }
+
+    action(i, entries[i]);
+  }
 }

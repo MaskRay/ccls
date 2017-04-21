@@ -187,6 +187,7 @@ struct IpcManager {
     RegisterId<Ipc_IsAlive>(ipc.get());
     RegisterId<Ipc_OpenProject>(ipc.get());
     RegisterId<Ipc_Cout>(ipc.get());
+    RegisterId<Ipc_CqueryFreshenIndex>(ipc.get());
     return ipc;
   }
 };
@@ -784,6 +785,7 @@ struct Index_DoIndex {
     ImportAndUpdate,
     ImportOnly,
     Parse,
+    Freshen,
   };
 
   Index_DoIndex(Type type, const std::string& path, const optional<std::vector<std::string>>& args)
@@ -839,6 +841,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
+  MessageRegistry::instance()->Register<Ipc_CqueryFreshenIndex>();
 }
 
 
@@ -870,7 +873,16 @@ void RegisterMessageTypes() {
 
 
 
+void DispatchDependencyImports(Index_DoIndexQueue* queue_do_index,
+                               Index_DoIndex::Type request_type,
+                               const std::vector<std::string>& dependencies) {
+  // Import all dependencies.
+  for (auto& dependency_path : dependencies) {
+    std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
+    queue_do_index->PriorityEnqueue(Index_DoIndex(request_type, dependency_path, nullopt));
+  }
 
+}
 
 void ImportCachedIndex(IndexerConfig* config,
                        Index_DoIndexQueue* queue_do_index,
@@ -886,11 +898,7 @@ void ImportCachedIndex(IndexerConfig* config,
   if (!cache)
     return;
 
-  // Import all dependencies.
-  for (auto& dependency_path : cache->dependencies) {
-    std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
-    queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::ImportOnly, dependency_path, nullopt));
-  }
+  DispatchDependencyImports(queue_do_index, Index_DoIndex::Type::ImportOnly, cache->dependencies);
 
   *last_modification_time = cache->last_modification_time;
   Index_DoIdMap response(nullptr, std::move(cache));
@@ -901,16 +909,27 @@ void ParseFile(IndexerConfig* config,
                FileConsumer::SharedState* file_consumer_shared,
                Index_DoIdMapQueue* queue_do_id_map,
                const std::string& path,
-               const optional<std::vector<std::string>>& args) {
+               const optional<std::vector<std::string>>& args,
+               std::vector<std::string>* opt_out_dependencies) {
   Timer time;
 
   // Parse request and send a response.
   std::unique_ptr<IndexedFile> cached_path_index = LoadCachedFile(config, path);
 
-  // Skip index if file modification time didn't change.
-  if (cached_path_index && GetLastModificationTime(path) == cached_path_index->last_modification_time) {
-    time.ResetAndPrint("Skipping index update on " + path + " since file modification time has not changed");
-    return;
+  if (cached_path_index) {
+    // Give the user dependencies if requested.
+    if (opt_out_dependencies)
+      *opt_out_dependencies = cached_path_index->dependencies;
+
+    // Skip index if file modification time didn't change.
+    int64_t modification_time = GetLastModificationTime(path);
+    if (modification_time == cached_path_index->last_modification_time) {
+      time.ResetAndPrint("Skipping index update on " + path + " since file modification time has not changed");
+      return;
+    }
+    else {
+      time.ResetAndPrint("Modification time on " + path + " has changed from " + std::to_string(cached_path_index->last_modification_time) + " to " + std::to_string(modification_time));
+    }
   }
 
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
@@ -982,7 +1001,14 @@ bool IndexMain_DoIndex(IndexerConfig* config,
     }
 
     case Index_DoIndex::Type::Parse: {
-      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args);
+      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args, nullptr);
+      break;
+    }
+
+    case Index_DoIndex::Type::Freshen: {
+      std::vector<std::string> dependencies;
+      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args, &dependencies);
+      DispatchDependencyImports(queue_do_index, Index_DoIndex::Type::Freshen, dependencies);
       break;
     }
   }
@@ -1145,60 +1171,28 @@ void QueryDbMainLoop(
       Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
       std::string path = msg->project_path;
 
-      std::vector<Matcher> whitelist;
-      std::cerr << "Using whitelist" << std::endl;
-      for (const std::string& entry : config->whitelist) {
-        std::cerr << " - " << entry << std::endl;
-        whitelist.push_back(Matcher(entry));
-      }
-
-      std::vector<Matcher> blacklist;
-      std::cerr << "Using blacklist" << std::endl;
-      for (const std::string& entry : config->blacklist) {
-        std::cerr << " - " << entry << std::endl;
-        blacklist.push_back(Matcher(entry));
-      }
-
-
       project->Load(path);
       std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
-      //for (int i = 0; i < 10; ++i)
-        //std::cerr << project->entries[i].filename << std::endl;
-      for (int i = 0; i < project->entries.size(); ++i) {
-        const Project::Entry& entry = project->entries[i];
-        std::string filepath = entry.filename;
 
-
-        const Matcher* is_bad = nullptr;
-        for (const Matcher& m : whitelist) {
-          if (!m.IsMatch(filepath)) {
-            is_bad = &m;
-            break;
-          }
-        }
-        if (is_bad) {
-          std::cerr << "[" << i << "/" << (project->entries.size() - 1) << "] Failed whitelist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
-          continue;
-        }
-
-        for (const Matcher& m : blacklist) {
-          if (m.IsMatch(filepath)) {
-            is_bad = &m;
-            break;
-          }
-        }
-        if (is_bad) {
-          std::cerr << "[" << i << "/" << (project->entries.size() - 1) << "] Failed blacklist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
-          continue;
-        }
-
-
+      project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
         std::cerr << "[" << i << "/" << (project->entries.size() - 1)
-          << "] Dispatching index request for file " << filepath
+          << "] Dispatching index request for file " << entry.filename
           << std::endl;
 
-        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportAndUpdate, filepath, entry.args));
-      }
+        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportAndUpdate, entry.filename, entry.args));
+      });
+
+      break;
+    }
+
+    case IpcId::CqueryFreshenIndex: {
+      std::cerr << "Freshening " << project->entries.size() << " files" << std::endl;
+      project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
+        std::cerr << "[" << i << "/" << (project->entries.size() - 1)
+          << "] Dispatching index request for file " << entry.filename
+          << std::endl;
+        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry.filename, entry.args));
+      });
       break;
     }
 
@@ -1876,7 +1870,8 @@ void LanguageServerStdinLoop(IndexerConfig* config) {
     case IpcId::TextDocumentReferences:
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
-    case IpcId::WorkspaceSymbol: {
+    case IpcId::WorkspaceSymbol:
+    case IpcId::CqueryFreshenIndex: {
       ipc->SendMessage(IpcManager::Destination::Server, std::move(message));
       break;
     }

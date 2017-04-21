@@ -1,8 +1,11 @@
 #pragma once
 
+#include "language_server_api.h"
+
 #include <optional.h>
 #include <sparsepp/spp.h>
 
+#include <functional>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -32,5 +35,7 @@ struct Project {
 
   // Helper that uses FindCompilationEntryForFile.
   optional<std::vector<std::string>> FindArgsForFile(const std::string& filename);
+
+  void ForAllFilteredFiles(IndexerConfig* config, std::function<void(int i, const Entry& entry)> action);
 };
 
