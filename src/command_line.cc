@@ -786,11 +786,12 @@ struct Index_DoIndex {
     Parse,
   };
 
+  Index_DoIndex(Type type, const std::string& path, const optional<std::vector<std::string>>& args)
+    : type(type), path(path), args(args) {}
+
+  Type type;
   std::string path;
   optional<std::vector<std::string>> args;
-  Type type;
-
-  Index_DoIndex(Type type) : type(type) {}
 };
 
 struct Index_DoIdMap {
@@ -888,9 +889,7 @@ void ImportCachedIndex(IndexerConfig* config,
   // Import all dependencies.
   for (auto& dependency_path : cache->dependencies) {
     std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
-    Index_DoIndex dep_index_request(Index_DoIndex::Type::ImportOnly);
-    dep_index_request.path = dependency_path;
-    queue_do_index->PriorityEnqueue(std::move(dep_index_request));
+    queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::ImportOnly, dependency_path, nullopt));
   }
 
   *last_modification_time = cache->last_modification_time;
@@ -1198,10 +1197,7 @@ void QueryDbMainLoop(
           << "] Dispatching index request for file " << filepath
           << std::endl;
 
-        Index_DoIndex request(Index_DoIndex::Type::ImportAndUpdate);
-        request.path = filepath;
-        request.args = entry.args;
-        queue_do_index->Enqueue(std::move(request));
+        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportAndUpdate, filepath, entry.args));
       }
       break;
     }
@@ -1228,18 +1224,16 @@ void QueryDbMainLoop(
     case IpcId::TextDocumentDidSave: {
       auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
 
-      WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
-      if (working_file) {
-        // TODO: Update working file indexed content when we actually get the
-        // index update.
+      std::string path = msg->params.textDocument.uri.GetPath();
+
+      // TODO: Update working file indexed content when we actually apply the
+      // index update.
+      WorkingFile* working_file = working_files->GetFileByFilename(path);
+      if (working_file)
         working_file->SetIndexContent(working_file->buffer_content);
-      }
 
       // Send an index update request.
-      Index_DoIndex request(Index_DoIndex::Type::Parse);
-      request.path = msg->params.textDocument.uri.GetPath();
-      request.args = project->FindArgsForFile(msg->params.textDocument.uri.GetPath());
-      queue_do_index->Enqueue(std::move(request));
+      queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, path, project->FindArgsForFile(path)));
       break;
     }
 
