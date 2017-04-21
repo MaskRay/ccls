@@ -1,10 +1,10 @@
 // Place your settings in this file to overwrite default and user settings.
 {
+  "cquery.cacheDirectory": "C:/Users/jacob/Desktop/superindex/indexer/CACHE",
   "cquery.blacklist": [
     // ".*libclangmm/.*"
   ],
   "cquery.whitelist": [
     // ".*platform.*.cc"
-  ],
-  "cquery.cacheDirectory": "C:/Users/jacob/Desktop/superindex/indexer/CACHE"
+  ]
 }

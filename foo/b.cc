@@ -1,8 +1,11 @@
 #include "a.h"
 
-enum Foo {
+
+
+
+struct Baz {
 };
 
-void faz() {
-  foobar();
+void foo() {
+  Baz b;
 }

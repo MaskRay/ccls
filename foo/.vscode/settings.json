@@ -1,5 +1,5 @@
 // Place your settings in this file to overwrite default and user settings.
 {
   "editor.lineNumbers": "on",
-  "cquery.cacheDirectory": "C:/Users/jacob/Desktop/superindex/indexer/CACHE"
+  "cquery.cacheDirectory": "C:/Users/jacob/Desktop/superindex/indexer/foo/CACHE"
 }
