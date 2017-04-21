@@ -187,10 +187,6 @@ int64_t GetLastModificationTime(const std::string& absolute_path) {
 
 // See http://stackoverflow.com/q/13198627
 void CopyFileTo(const std::string& dest, const std::string& source) {
-  char buf[4096];
-  ssize_t nread;
-  int saved_errno;
-
   int fd_from = open(source.c_str(), O_RDONLY);
   if (fd_from < 0)
     return;
@@ -199,6 +195,8 @@ void CopyFileTo(const std::string& dest, const std::string& source) {
   if (fd_to < 0)
     goto out_error;
 
+  char buf[4096];
+  ssize_t nread;
   while (nread = read(fd_from, buf, sizeof buf), nread > 0) {
     char *out_ptr = buf;
     ssize_t nwritten;

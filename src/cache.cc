@@ -36,7 +36,7 @@ std::unique_ptr<IndexedFile> LoadCachedIndex(IndexerConfig* config, const std::s
 
 optional<std::string> LoadCachedFileContents(IndexerConfig* config, const std::string& filename) {
   if (!config->enableCacheRead)
-    return nullptr;
+    return nullopt;
 
   return ReadContent(GetCachedBaseFileName(config->cacheDirectory, filename) + ".txt");
 }
