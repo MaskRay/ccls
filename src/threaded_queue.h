@@ -75,7 +75,7 @@ public:
     if (!priority_.empty()) {
       auto val = std::move(priority_.front());
       priority_.pop();
-      return val;
+      return std::move(val);
     }
 
     auto val = std::move(queue_.front());
