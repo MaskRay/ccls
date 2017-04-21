@@ -34,7 +34,7 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:1-7:2",
-      "instantiations": [1],
+      "instances": [1],
       "uses": ["5:8-5:11", "9:1-9:4", "10:1-10:4"]
     }, {
       "id": 3,
@@ -43,7 +43,7 @@ OUTPUT:
       "detailed_name": "Foo::Inner",
       "definition_spelling": "6:10-6:15",
       "definition_extent": "6:3-6:18",
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["6:10-6:15", "9:9-9:14"]
     }],
   "vars": [{

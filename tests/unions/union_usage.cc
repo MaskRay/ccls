@@ -22,7 +22,7 @@ OUTPUT:
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-4:2",
       "vars": [0, 1],
-      "instantiations": [2],
+      "instances": [2],
       "uses": ["1:7-1:10", "6:1-6:4", "8:10-8:13"]
     }],
   "funcs": [{

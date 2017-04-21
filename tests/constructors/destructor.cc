@@ -24,7 +24,7 @@ OUTPUT:
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-5:2",
       "funcs": [0, 1],
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["1:7-1:10", "3:3-3:6", "4:3-4:7", "8:3-8:6"]
     }],
   "funcs": [{

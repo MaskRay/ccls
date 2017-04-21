@@ -14,7 +14,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["1:8-1:11", "3:10-3:13", "3:18-3:21", "4:10-4:13", "4:18-4:21"]
     }],
   "funcs": [{

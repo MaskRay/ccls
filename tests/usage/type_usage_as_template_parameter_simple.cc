@@ -15,7 +15,7 @@ OUTPUT:
       "detailed_name": "unique_ptr",
       "definition_spelling": "2:7-2:17",
       "definition_extent": "2:1-2:20",
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["2:7-2:17", "6:8-6:18"]
     }, {
       "id": 1,

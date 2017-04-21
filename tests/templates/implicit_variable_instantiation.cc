@@ -24,7 +24,7 @@ OUTPUT:
       "detailed_name": "ns::VarType",
       "definition_spelling": "2:8-2:15",
       "definition_extent": "2:3-2:18",
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["2:8-2:15", "6:22-6:29", "6:44-6:51", "10:18-10:25"]
     }, {
       "id": 1,

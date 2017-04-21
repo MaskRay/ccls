@@ -27,12 +27,12 @@ OUTPUT:
     }, {
       "id": 1,
       "usr": "c:@N@std@T@string",
-      "instantiations": [0, 1],
+      "instances": [0, 1],
       "uses": ["7:8-7:14", "8:8-8:14", "9:20-9:26"]
     }, {
       "id": 2,
       "usr": "c:@N@std@ST>2#T#T@vector",
-      "instantiations": [2],
+      "instances": [2],
       "uses": ["9:8-9:14", "12:6-12:12"]
     }],
   "funcs": [{

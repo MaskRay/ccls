@@ -16,7 +16,7 @@ OUTPUT:
       "definition_spelling": "1:12-1:15",
       "definition_extent": "1:1-4:2",
       "vars": [0, 1],
-      "instantiations": [2],
+      "instances": [2],
       "uses": ["1:12-1:15", "6:1-6:4", "6:9-6:12"]
     }],
   "vars": [{

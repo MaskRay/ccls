@@ -17,7 +17,7 @@ OUTPUT:
       "detailed_name": "VarType",
       "definition_spelling": "1:6-1:13",
       "definition_extent": "1:1-1:16",
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["1:6-1:13", "4:20-4:27", "4:42-4:49", "7:7-7:14"]
     }, {
       "id": 1,

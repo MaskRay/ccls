@@ -16,7 +16,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#T@unique_ptr",
-      "instantiations": [0, 1, 2],
+      "instances": [0, 1, 2],
       "uses": ["2:7-2:17", "6:8-6:18", "7:8-7:18", "9:1-9:11", "10:3-10:13"]
     }, {
       "id": 1,

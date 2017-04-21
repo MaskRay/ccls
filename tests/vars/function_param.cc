@@ -8,7 +8,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
-      "instantiations": [0, 1],
+      "instances": [0, 1],
       "uses": ["1:8-1:11", "3:10-3:13", "3:19-3:22"]
     }],
   "funcs": [{

@@ -16,7 +16,7 @@ OUTPUT:
       "detailed_name": "Type",
       "definition_spelling": "1:8-1:12",
       "definition_extent": "1:1-1:15",
-      "instantiations": [0, 1, 2, 3, 4, 5],
+      "instances": [0, 1, 2, 3, 4, 5],
       "uses": ["1:8-1:12", "3:10-3:14", "3:26-3:30", "4:3-4:7", "5:3-5:7", "6:9-6:13", "7:9-7:13"]
     }],
   "funcs": [{

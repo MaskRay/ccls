@@ -9,7 +9,7 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
-      "instantiations": [0],
+      "instances": [0],
       "uses": ["1:8-1:19", "4:10-4:21"]
     }, {
       "id": 1,
@@ -18,7 +18,7 @@ OUTPUT:
       "detailed_name": "ImplementedType",
       "definition_spelling": "2:8-2:23",
       "definition_extent": "2:1-2:26",
-      "instantiations": [1],
+      "instances": [1],
       "uses": ["2:8-2:23", "4:26-4:41"]
     }],
   "funcs": [{

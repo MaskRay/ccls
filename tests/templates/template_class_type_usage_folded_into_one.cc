@@ -61,7 +61,7 @@ OUTPUT:
       "detailed_name": "Foo::Inner",
       "definition_spelling": "6:10-6:15",
       "definition_extent": "6:3-6:18",
-      "instantiations": [0, 1],
+      "instances": [0, 1],
       "uses": ["6:10-6:15", "9:9-9:14", "10:9-10:14"]
     }],
   "vars": [{

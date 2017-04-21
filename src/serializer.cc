@@ -136,7 +136,7 @@ void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
   REFLECT_MEMBER2("types", value.def.types);
   REFLECT_MEMBER2("funcs", value.def.funcs);
   REFLECT_MEMBER2("vars", value.def.vars);
-  REFLECT_MEMBER2("instantiations", value.instances);
+  REFLECT_MEMBER2("instances", value.instances);
   REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }

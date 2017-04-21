@@ -20,7 +20,7 @@ OUTPUT:
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-3:2",
       "funcs": [0],
-      "instantiations": [0, 1],
+      "instances": [0, 1],
       "uses": ["1:7-1:10", "2:3-2:6", "5:1-5:4", "5:6-5:9", "6:3-6:6", "10:8-10:11"]
     }],
   "funcs": [{

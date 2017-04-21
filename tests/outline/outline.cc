@@ -22,7 +22,7 @@ OUTPUT:
     }, {
       "id": 1,
       "usr": "c:@N@std@ST>2#T#T@vector",
-      "instantiations": [2],
+      "instances": [2],
       "uses": ["6:8-6:14"]
     }],
   "vars": [{
