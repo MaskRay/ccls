@@ -704,6 +704,14 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
       symbols.push_back(ref);
   }
 
+  // Order function symbols first. This makes goto definition work better when
+  // used on a constructor.
+  std::sort(symbols.begin(), symbols.end(), [](const SymbolRef& a, const SymbolRef& b) {
+    if (a.idx.kind != b.idx.kind && a.idx.kind == SymbolKind::Func)
+      return 1;
+    return 0;
+  });
+
   return symbols;
 }
 
