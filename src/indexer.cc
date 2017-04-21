@@ -776,7 +776,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // Don't treat enum definition variables as instantiations.
           bool is_enum_member = decl->semanticContainer && decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
           if (!is_enum_member)
-            db->Resolve(var_type.value())->instantiations.push_back(var_id);
+            db->Resolve(var_type.value())->instances.push_back(var_id);
 
           var_def->def.variable_type = var_type.value();
         }

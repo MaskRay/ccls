@@ -205,7 +205,7 @@ struct IndexedTypeDef {
   std::vector<IndexTypeId> derived;
 
   // Declared variables of this type.
-  std::vector<IndexVarId> instantiations;
+  std::vector<IndexVarId> instances;
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
@@ -219,7 +219,7 @@ struct IndexedTypeDef {
     return
       def.HasInterestingState() ||
       !derived.empty() ||
-      !instantiations.empty() ||
+      !instances.empty() ||
       !uses.empty();
   }
 

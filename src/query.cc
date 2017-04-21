@@ -515,8 +515,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
       types_def_update.push_back(ToQuery(current_id_map, type->def));
     if (!type->derived.empty())
       types_derived.push_back(QueryType::DerivedUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->derived)));
-    if (!type->instantiations.empty())
-      types_instantiations.push_back(QueryType::InstantiationsUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->instantiations)));
+    if (!type->instances.empty())
+      types_instances.push_back(QueryType::InstancesUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->instances)));
     if (!type->uses.empty())
       types_uses.push_back(QueryType::UsesUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->uses)));
   },
@@ -527,7 +527,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
       types_def_update.push_back(*current_remapped_def);
 
     PROCESS_UPDATE_DIFF(QueryTypeId, types_derived, derived, QueryTypeId);
-    PROCESS_UPDATE_DIFF(QueryTypeId, types_instantiations, instantiations, QueryVarId);
+    PROCESS_UPDATE_DIFF(QueryTypeId, types_instances, instances, QueryVarId);
     PROCESS_UPDATE_DIFF(QueryTypeId, types_uses, uses, QueryLocation);
   });
 
@@ -594,7 +594,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
   INDEX_UPDATE_APPEND(types_removed);
   INDEX_UPDATE_APPEND(types_def_update);
   INDEX_UPDATE_MERGE(types_derived);
-  INDEX_UPDATE_MERGE(types_instantiations);
+  INDEX_UPDATE_MERGE(types_instances);
   INDEX_UPDATE_MERGE(types_uses);
 
   INDEX_UPDATE_APPEND(funcs_removed);
@@ -674,7 +674,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   RemoveUsrs(update->types_removed);
   ImportOrUpdate(update->types_def_update);
   HANDLE_MERGEABLE(types_derived, derived, types);
-  HANDLE_MERGEABLE(types_instantiations, instantiations, types);
+  HANDLE_MERGEABLE(types_instances, instances, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
   RemoveUsrs(update->funcs_removed);

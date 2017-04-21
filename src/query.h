@@ -163,12 +163,12 @@ struct QueryFile {
 struct QueryType {
   using DefUpdate = TypeDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
-  using InstantiationsUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
+  using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
   DefUpdate def;
   std::vector<QueryTypeId> derived;
-  std::vector<QueryVarId> instantiations;
+  std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
   size_t detailed_name_idx = -1;
 
@@ -219,7 +219,7 @@ struct IndexUpdate {
   std::vector<Usr> types_removed;
   std::vector<QueryType::DefUpdate> types_def_update;
   std::vector<QueryType::DerivedUpdate> types_derived;
-  std::vector<QueryType::InstantiationsUpdate> types_instantiations;
+  std::vector<QueryType::InstancesUpdate> types_instances;
   std::vector<QueryType::UsesUpdate> types_uses;
 
   // Function updates.
