@@ -67,5 +67,6 @@ MAKE_REFLECT_STRUCT(Ipc_OpenProject, project_path);
 struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
   static constexpr IpcId kIpcId = IpcId::Cout;
   std::string content;
+  IpcId original_ipc_id;
 };
 MAKE_REFLECT_STRUCT(Ipc_Cout, content);

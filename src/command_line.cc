@@ -110,18 +110,20 @@ struct IpcManager {
     return destination == Destination::Client ? threaded_queue_for_client_.get() : threaded_queue_for_server_.get();
   }
 
-  void SendOutMessageToClient(lsBaseOutMessage& response) {
+  void SendOutMessageToClient(IpcId id, lsBaseOutMessage& response) {
     std::ostringstream sstream;
     response.Write(sstream);
 
     if (kUseMultipleProcesses) {
       Ipc_Cout out;
       out.content = sstream.str();
+      out.original_ipc_id = id;
       ipc_queue_->SendMessage(&ipc_queue_->for_client, Ipc_Cout::kIpcId, out);
     }
     else {
       auto out = MakeUnique<Ipc_Cout>();
       out->content = sstream.str();
+      out->original_ipc_id = id;
       GetThreadedQueue(Destination::Client)->Enqueue(std::move(out));
     }
   }
@@ -1262,7 +1264,7 @@ void QueryDbMainLoop(
       }
 
       response.Write(std::cerr);
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentRename, response);
       break;
     }
 
@@ -1280,7 +1282,7 @@ void QueryDbMainLoop(
         response.result.items = results;
 
         Timer timer;
-        ipc->SendOutMessageToClient(response);
+        ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, response);
         timer.ResetAndPrint("Writing completion results");
 
         delete message;
@@ -1351,7 +1353,7 @@ void QueryDbMainLoop(
           break;
       }
 
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentDefinition, response);
       break;
     }
 
@@ -1389,7 +1391,7 @@ void QueryDbMainLoop(
         break;
       }
 
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentHighlight, response);
       break;
     }
 
@@ -1417,7 +1419,7 @@ void QueryDbMainLoop(
         break;
       }
 
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentHover, response);
       break;
     }
 
@@ -1455,7 +1457,7 @@ void QueryDbMainLoop(
         break;
       }
 
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
       break;
     }
 
@@ -1484,7 +1486,7 @@ void QueryDbMainLoop(
         response.result.push_back(*info);
       }
 
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentSymbol, response);
       break;
     }
 
@@ -1506,6 +1508,8 @@ void QueryDbMainLoop(
       common.db = db;
       common.working_files = working_files;
       common.working_file = working_files->GetFileByFilename(file->def.path);
+
+      Timer time;
 
       for (SymbolRef ref : file->def.outline) {
         // NOTE: We OffsetColumn so that the code lens always show up in a
@@ -1577,7 +1581,8 @@ void QueryDbMainLoop(
         };
       }
 
-      ipc->SendOutMessageToClient(response);
+      time.ResetAndPrint("[querydb] Building code lens for " + file->def.path);
+      ipc->SendOutMessageToClient(IpcId::TextDocumentCodeLens, response);
       break;
     }
 
@@ -1620,7 +1625,7 @@ void QueryDbMainLoop(
       }
 
       std::cerr << "[querydb] - Found " << response.result.size() << " results for query " << query << std::endl;
-      ipc->SendOutMessageToClient(response);
+      ipc->SendOutMessageToClient(IpcId::WorkspaceSymbol, response);
       break;
     }
 
@@ -1795,7 +1800,7 @@ void QueryDbMain(IndexerConfig* config) {
 // blocks.
 //
 // |ipc| is connected to a server.
-void LanguageServerStdinLoop(IndexerConfig* config) {
+void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Timer>* request_times) {
   IpcManager* ipc = IpcManager::instance();
 
   SetCurrentThreadName("stdin");
@@ -1805,6 +1810,8 @@ void LanguageServerStdinLoop(IndexerConfig* config) {
     // Message parsing can fail if we don't recognize the method.
     if (!message)
       continue;
+
+    (*request_times)[message->method_id] = Timer();
 
     std::cerr << "[stdin] Got message \"" << IpcIdToString(message->method_id) << '"' << std::endl;
     switch (message->method_id) {
@@ -1966,7 +1973,7 @@ void LanguageServerStdinLoop(IndexerConfig* config) {
 
 
 
-void LanguageServerMainLoop() {
+void LanguageServerMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
   IpcManager* ipc = IpcManager::instance();
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
@@ -1982,6 +1989,10 @@ void LanguageServerMainLoop() {
 
       case IpcId::Cout: {
         auto msg = static_cast<Ipc_Cout*>(message.get());
+        
+        Timer time = (*request_times)[msg->original_ipc_id];
+        time.ResetAndPrint("[e2e] Running " + std::string(IpcIdToString(msg->original_ipc_id)));
+
         std::cout << msg->content;
         std::cout.flush();
         break;
@@ -1996,14 +2007,16 @@ void LanguageServerMainLoop() {
 }
 
 void LanguageServerMain(IndexerConfig* config) {
+  std::unordered_map<IpcId, Timer> request_times;
+
   // Run language client.
-  new std::thread([&config]() {
-    LanguageServerStdinLoop(config);
+  new std::thread([&]() {
+    LanguageServerStdinLoop(config, &request_times);
   });
 
   SetCurrentThreadName("server");
   while (true) {
-    LanguageServerMainLoop();
+    LanguageServerMainLoop(&request_times);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 }
