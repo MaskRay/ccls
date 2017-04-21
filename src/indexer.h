@@ -469,6 +469,7 @@ struct IndexedFile {
   int version = 0;
 
   std::string path;
+  std::vector<std::string> args;
   int64_t last_modification_time = 0;
 
   // The path to the translation unit cc file which caused the creation of this

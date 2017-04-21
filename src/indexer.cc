@@ -1392,6 +1392,7 @@ std::vector<std::unique_ptr<IndexedFile>> Parse(
 
     entry->last_modification_time = GetLastModificationTime(entry->path);
     entry->import_file = import_file;
+    entry->args = args;
   }
 
   // TODO: Fix interesting checks.

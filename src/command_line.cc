@@ -35,7 +35,7 @@ namespace {
 
 const bool kUseMultipleProcesses = false; // TODO: initialization options not passed properly when set to true.
 
-
+std::vector<std::string> kEmptyArgs;
 
 
 
@@ -783,11 +783,11 @@ struct Index_DoIndex {
   enum class Type {
     ImportAndUpdate,
     ImportOnly,
-    Update
+    Parse,
   };
 
   std::string path;
-  std::vector<std::string> args;
+  optional<std::vector<std::string>> args;
   Type type;
 
   Index_DoIndex(Type type) : type(type) {}
@@ -871,7 +871,82 @@ void RegisterMessageTypes() {
 
 
 
+void ImportCachedIndex(IndexerConfig* config,
+                       Index_DoIndexQueue* queue_do_index,
+                       Index_DoIdMapQueue* queue_do_id_map,
+                       const std::string path,
+                       int64_t* last_modification_time) {
+  *last_modification_time = 0;
 
+  Timer time;
+
+  std::unique_ptr<IndexedFile> cache = LoadCachedFile(config, path);
+  time.ResetAndPrint("Reading cached index from disk " + path);
+  if (!cache)
+    return;
+
+  // Import all dependencies.
+  for (auto& dependency_path : cache->dependencies) {
+    std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
+    Index_DoIndex dep_index_request(Index_DoIndex::Type::ImportOnly);
+    dep_index_request.path = dependency_path;
+    queue_do_index->PriorityEnqueue(std::move(dep_index_request));
+  }
+
+  *last_modification_time = cache->last_modification_time;
+  Index_DoIdMap response(nullptr, std::move(cache));
+  queue_do_id_map->Enqueue(std::move(response));
+}
+
+void ParseFile(IndexerConfig* config,
+               FileConsumer::SharedState* file_consumer_shared,
+               Index_DoIdMapQueue* queue_do_id_map,
+               const std::string& path,
+               const optional<std::vector<std::string>>& args) {
+  Timer time;
+
+  // Parse request and send a response.
+  std::unique_ptr<IndexedFile> cached_path_index = LoadCachedFile(config, path);
+
+  // Skip index if file modification time didn't change.
+  if (cached_path_index && GetLastModificationTime(path) == cached_path_index->last_modification_time) {
+    time.ResetAndPrint("Skipping index update on " + path + " since file modification time has not changed");
+    return;
+  }
+
+  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
+    config, file_consumer_shared,
+    path, cached_path_index ? cached_path_index->import_file : path,
+    args ? *args : cached_path_index ? cached_path_index->args : kEmptyArgs);
+  time.ResetAndPrint("Parsing/indexing " + path);
+
+  for (std::unique_ptr<IndexedFile>& new_index : indexes) {
+    std::cerr << "Got index for " << new_index->path << std::endl;
+
+    // Load the cached index.
+    std::unique_ptr<IndexedFile> cached_index;
+    if (new_index->path == path)
+      cached_index = std::move(cached_path_index);
+    else
+      cached_index = LoadCachedFile(config, new_index->path);
+    time.ResetAndPrint("Loading cached index");
+
+    // Update dependencies on |new_index|, since they won't get reparsed if we
+    // have parsed them once before.
+    if (cached_index)
+      AddRange(&new_index->dependencies, cached_index->dependencies);
+
+    // Cache the newly indexed file. This replaces the existing cache.
+    // TODO: Run this as another import pipeline stage.
+    WriteToCache(config, new_index->path, *new_index);
+    time.ResetAndPrint("Cache index update to disk");
+
+    // Dispatch IdMap creation request, which will happen on querydb thread.
+    Index_DoIdMap response(std::move(cached_index), std::move(new_index));
+    queue_do_id_map->Enqueue(std::move(response));
+  }
+
+}
 
 bool IndexMain_DoIndex(IndexerConfig* config,
                        FileConsumer::SharedState* file_consumer_shared,
@@ -884,85 +959,33 @@ bool IndexMain_DoIndex(IndexerConfig* config,
 
   Timer time;
 
-  // If the index update is an import, then we will load the previous index
-  // into memory if we have a previous index. After that, we dispatch an
-  // update request to get the latest version.
-  if (index_request->type == Index_DoIndex::Type::ImportAndUpdate ||
-      index_request->type == Index_DoIndex::Type::ImportOnly) {
+  switch (index_request->type) {
+    case Index_DoIndex::Type::ImportOnly: {
+      int64_t cache_modification_time;
+      ImportCachedIndex(config, queue_do_index, queue_do_id_map, index_request->path, &cache_modification_time);
+      break;
+    }
 
-    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config, index_request->path);
-    time.ResetAndPrint("Reading cached index from disk " + index_request->path);
+    case Index_DoIndex::Type::ImportAndUpdate: {
+      int64_t cache_modification_time;
+      ImportCachedIndex(config, queue_do_index, queue_do_id_map, index_request->path, &cache_modification_time);
 
-    // If import fails just do a standard update.
-    if (old_index) {
-      for (auto& dependency_path : old_index->dependencies) {
-        // TODO: These requests should go to the front of the queue.
-        std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
-        Index_DoIndex dep_index_request(Index_DoIndex::Type::ImportOnly);
-        dep_index_request.path = dependency_path;
-        dep_index_request.args = index_request->args;
-        queue_do_index->PriorityEnqueue(std::move(dep_index_request));
-      }
-
-      project->UpdateFileState(index_request->path, old_index->import_file, old_index->last_modification_time);
-
-      Index_DoIdMap response(nullptr, std::move(old_index));
-      queue_do_id_map->Enqueue(std::move(response));
-
-      // If we need a reparse, send the document to the back of the queue so it
-      // gets processed.
-      if (index_request->type == Index_DoIndex::Type::ImportAndUpdate) {
-        index_request->type = Index_DoIndex::Type::Update;
+      // If the file has been updated, we need to reparse it.
+      if (GetLastModificationTime(index_request->path) > cache_modification_time) {
+        // Instead of parsing the file immediate, we push the request to the
+        // back of the queue so we will finish all of the Import requests
+        // before starting to run libclang. This gives the user a
+        // partially-correct index potentially much sooner.
+        index_request->type = Index_DoIndex::Type::Parse;
         queue_do_index->Enqueue(std::move(*index_request));
       }
-      return true;
+      break;
     }
-  }
 
-  // Parse request and send a response.
-  std::string import_file = index_request->path;
-  std::vector<std::string> import_dependencies;
-
-  // Skip index if file modification time didn't change.
-  optional<Project::Entry> entry = project->FindCompilationEntryForFile(index_request->path);
-  if (entry && entry->last_modification_time) {
-    import_file = entry->import_file;
-
-    int64_t modification_time = GetLastModificationTime(index_request->path);
-    if (modification_time == *entry->last_modification_time) {
-      time.ResetAndPrint("Skipping index update on " + index_request->path + " since file modification time has not changed");
-      return true;
+    case Index_DoIndex::Type::Parse: {
+      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args);
+      break;
     }
-  }
-
-  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
-      config, file_consumer_shared,
-      index_request->path, import_file,
-      index_request->args);
-  time.ResetAndPrint("Parsing/indexing " + index_request->path);
-
-  for (auto& current_index : indexes) {
-    std::cerr << "Got index for " << current_index->path << std::endl;
-
-    project->UpdateFileState(current_index->path, current_index->import_file, current_index->last_modification_time);
-
-    std::unique_ptr<IndexedFile> old_index = LoadCachedFile(config, current_index->path);
-    time.ResetAndPrint("Loading cached index");
-
-    if (old_index)
-      AddRange(&current_index->dependencies, old_index->dependencies);
-
-    // TODO: Cache to disk on a separate thread. Maybe we do the cache after we
-    // have imported the index (so the import pipeline has five stages instead
-    // of the current 4).
-
-    // Cache file so we can diff it later.
-    WriteToCache(config, current_index->path, *current_index);
-    time.ResetAndPrint("Cache index update to disk");
-
-    // Send response to create id map.
-    Index_DoIdMap response(std::move(old_index), std::move(current_index));
-    queue_do_id_map->Enqueue(std::move(response));
   }
 
   return true;
@@ -1213,11 +1236,9 @@ void QueryDbMainLoop(
       }
 
       // Send an index update request.
-      Index_DoIndex request(Index_DoIndex::Type::Update);
-      optional<Project::Entry> entry = project->FindCompilationEntryForFile(msg->params.textDocument.uri.GetPath());
+      Index_DoIndex request(Index_DoIndex::Type::Parse);
       request.path = msg->params.textDocument.uri.GetPath();
-      if (entry)
-        request.args = entry->args;
+      request.args = project->FindArgsForFile(msg->params.textDocument.uri.GetPath());
       queue_do_index->Enqueue(std::move(request));
       break;
     }

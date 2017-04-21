@@ -250,43 +250,15 @@ void Project::Load(const std::string& directory) {
 }
 
 optional<Project::Entry> Project::FindCompilationEntryForFile(const std::string& filename) {
-  // TODO: There might be a lot of thread contention here.
-  std::lock_guard<std::mutex> lock(entries_modification_mutex_);
-
   auto it = absolute_path_to_entry_index_.find(filename);
   if (it != absolute_path_to_entry_index_.end())
     return entries[it->second];
   return nullopt;
 }
 
-void Project::UpdateFileState(const std::string& filename, const std::string& import_file, uint64_t modification_time) {
-  {
-    // TODO: There might be a lot of thread contention here.
-    std::lock_guard<std::mutex> lock(entries_modification_mutex_);
-    auto it = absolute_path_to_entry_index_.find(filename);
-    if (it != absolute_path_to_entry_index_.end()) {
-      auto& entry = entries[it->second];
-      entry.import_file = import_file;
-      entry.last_modification_time = modification_time;
-      return;
-    }
-  }
-
-  {
-    optional<Project::Entry> import_entry = FindCompilationEntryForFile(import_file);
-
-    Project::Entry entry;
-    entry.filename = filename;
-    if (import_entry) {
-      entry.args = import_entry->args;
-    }
-
-    entry.import_file = import_file;
-    entry.last_modification_time = modification_time;
-    
-    // TODO: There might be a lot of thread contention here.
-    std::lock_guard<std::mutex> lock(entries_modification_mutex_);
-    absolute_path_to_entry_index_[filename] = entries.size();
-    entries.push_back(entry);
-  }
+optional<std::vector<std::string>> Project::FindArgsForFile(const std::string& filename) {
+  auto entry = FindCompilationEntryForFile(filename);
+  if (!entry)
+    return nullopt;
+  return entry->args;
 }
