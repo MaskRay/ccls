@@ -205,8 +205,6 @@ struct IndexedTypeDef {
   std::vector<IndexTypeId> derived;
 
   // Declared variables of this type.
-  // TODO: this needs a lot more work and lots of tests.
-  // TODO: add instantiation on ctor / dtor, do not add instantiation if type is ptr
   std::vector<IndexVarId> instantiations;
 
   // Every usage, useful for things like renames.

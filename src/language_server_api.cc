@@ -197,6 +197,10 @@ bool lsLocation::operator==(const lsLocation& other) const {
   return uri == other.uri && range == other.range;
 }
 
+bool lsTextEdit::operator==(const lsTextEdit& that) {
+  return range == that.range && newText == that.newText;
+}
+
 void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
   std::string v = reader.GetString();
   if (v == "off")

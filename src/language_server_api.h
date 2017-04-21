@@ -506,6 +506,8 @@ struct lsTextEdit {
   // The string to be inserted. For delete operations use an
   // empty string.
   std::string newText;
+
+  bool operator==(const lsTextEdit& that);
 };
 MAKE_REFLECT_STRUCT(lsTextEdit, range, newText);
 

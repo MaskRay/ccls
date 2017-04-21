@@ -678,7 +678,11 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db, WorkingFiles* working_file
     lsTextEdit edit;
     edit.range = ls_location->range;
     edit.newText = new_text;
-    path_to_edit[location.path].edits.push_back(edit);
+
+    // vscode complains if we submit overlapping text edits.
+    auto& edits = path_to_edit[location.path].edits;
+    if (std::find(edits.begin(), edits.end(), edit) == edits.end())
+      edits.push_back(edit);
   }
 
 
