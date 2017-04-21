@@ -44,10 +44,8 @@ $ code .
 After VSCode is running, update the `ServerOptions` `cwd` parameter to point to
 the absolute path of your build directory.
 
-You can hit then `F5` to launch the extension locally. Make sure to open up
-settings and look over the configuration options. You will probably want to
-increase the number of indexers that run from 7 to 40 or 50, depending on how
-many CPU cores you have.
+You can hit then `F5` to launch the extension locally. Consider taking a look at
+the options cquery makes available in vscode settings.
 
 If you run into issues, you can view debug output by running the
 (`F1`) `View: Toggle Output` command and opening the `cquery` output section.
