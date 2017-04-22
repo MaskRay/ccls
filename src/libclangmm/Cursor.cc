@@ -10,15 +10,14 @@ Type::Type() : cx_type() {}
 
 Type::Type(const CXType& other) : cx_type(other) {}
 
-
 bool Type::operator==(const Type& rhs) const {
   return clang_equalTypes(cx_type, rhs.cx_type);
 }
 
 bool Type::is_fundamental() const {
-  //switch (cx_type.kind) {
-  //case CXType_Auto:
-    //return true;
+  // switch (cx_type.kind) {
+  // case CXType_Auto:
+  // return true;
   //}
 
   // NOTE: This will return false for pointed types. Should we call
@@ -36,11 +35,11 @@ std::string Type::get_usr() const {
 }
 
 Type Type::strip_qualifiers() const {
-  //CXRefQualifierKind qualifiers = clang_Type_getCXXRefQualifier(cx_type)
+  // CXRefQualifierKind qualifiers = clang_Type_getCXXRefQualifier(cx_type)
   switch (cx_type.kind) {
-  case CXType_LValueReference:
-  case CXType_Pointer:
-    return clang_getPointeeType(cx_type);
+    case CXType_LValueReference:
+    case CXType_Pointer:
+      return clang_getPointeeType(cx_type);
   }
 
   return cx_type;
@@ -72,11 +71,11 @@ std::vector<Type> Type::get_arguments() const {
   return types;
 }
 
-
 std::vector<Type> Type::get_template_arguments() const {
   /*
   CINDEX_LINKAGE int clang_Type_getNumTemplateArguments(CXType T);
-  CINDEX_LINKAGE CXType clang_Type_getTemplateArgumentAsType(CXType T, unsigned i);
+  CINDEX_LINKAGE CXType clang_Type_getTemplateArgumentAsType(CXType T, unsigned
+  i);
   */
 
   int size = clang_Type_getNumTemplateArguments(cx_type);
@@ -90,9 +89,8 @@ std::vector<Type> Type::get_template_arguments() const {
   return types;
 }
 
-
 static_assert(sizeof(Cursor) == sizeof(CXCursor),
-  "Cursor must be the same size as CXCursor");
+              "Cursor must be the same size as CXCursor");
 
 Cursor::Cursor() : cx_cursor(clang_getNullCursor()) {}
 
@@ -182,14 +180,12 @@ bool Cursor::is_valid_kind() const {
 
   CXCursorKind kind = get_kind();
   return kind > CXCursor_UnexposedDecl &&
-    (kind < CXCursor_FirstInvalid || kind > CXCursor_LastInvalid);
+         (kind < CXCursor_FirstInvalid || kind > CXCursor_LastInvalid);
 }
 
 std::string Cursor::get_type_description() const {
   auto type = clang_getCursorType(cx_cursor);
   return clang::ToString(clang_getTypeSpelling(type));
-
-
 
   std::string spelling;
 
@@ -198,28 +194,35 @@ std::string Cursor::get_type_description() const {
     auto type = clang_getCursorType(referenced);
     spelling = clang::ToString(clang_getTypeSpelling(type));
 
-#if CINDEX_VERSION_MAJOR==0 && CINDEX_VERSION_MINOR<32
+#if CINDEX_VERSION_MAJOR == 0 && CINDEX_VERSION_MINOR < 32
     const std::string auto_str = "auto";
-    if (spelling.size() >= 4 && std::equal(auto_str.begin(), auto_str.end(), spelling.begin())) {
-      auto canonical_type = clang_getCanonicalType(clang_getCursorType(cx_cursor));
+    if (spelling.size() >= 4 &&
+        std::equal(auto_str.begin(), auto_str.end(), spelling.begin())) {
+      auto canonical_type =
+          clang_getCanonicalType(clang_getCursorType(cx_cursor));
       auto canonical_spelling = ToString(clang_getTypeSpelling(canonical_type));
-      if (spelling.size() > 5 && spelling[4] == ' ' && spelling[5] == '&' && spelling != canonical_spelling)
+      if (spelling.size() > 5 && spelling[4] == ' ' && spelling[5] == '&' &&
+          spelling != canonical_spelling)
         return canonical_spelling + " &";
       else
         return canonical_spelling;
     }
 
     const std::string const_auto_str = "const auto";
-    if (spelling.size() >= 10 && std::equal(const_auto_str.begin(), const_auto_str.end(), spelling.begin())) {
-      auto canonical_type = clang_getCanonicalType(clang_getCursorType(cx_cursor));
+    if (spelling.size() >= 10 &&
+        std::equal(const_auto_str.begin(), const_auto_str.end(),
+                   spelling.begin())) {
+      auto canonical_type =
+          clang_getCanonicalType(clang_getCursorType(cx_cursor));
       auto canonical_spelling = ToString(clang_getTypeSpelling(canonical_type));
-      if (spelling.size() > 11 && spelling[10] == ' ' && spelling[11] == '&' && spelling != canonical_spelling)
+      if (spelling.size() > 11 && spelling[10] == ' ' && spelling[11] == '&' &&
+          spelling != canonical_spelling)
         return canonical_spelling + " &";
       else
         return canonical_spelling;
-}
+    }
 #endif
-}
+  }
 
   if (spelling.empty())
     return get_spelling();
@@ -315,7 +318,8 @@ std::string Cursor::evaluate() const {
 std::string Cursor::get_comments() const {
   Cursor referenced = get_referenced();
   if (referenced)
-    return clang::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor));
+    return clang::ToString(
+        clang_Cursor_getRawCommentText(referenced.cx_cursor));
 
   return "";
 }
@@ -324,4 +328,4 @@ std::string Cursor::ToString() const {
   return clang::ToString(get_kind()) + " " + get_spelling();
 }
 
-  }  // namespace clang
+}  // namespace clang

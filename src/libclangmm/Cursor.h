@@ -7,11 +7,10 @@
 
 #include <clang-c/Index.h>
 
-
 namespace clang {
 
 class Type {
-public:
+ public:
   Type();
   Type(const CXType& other);
 
@@ -35,14 +34,10 @@ public:
   CXType cx_type;
 };
 
-enum class VisiterResult {
-  Break,
-  Continue,
-  Recurse
-};
+enum class VisiterResult { Break, Continue, Recurse };
 
 class Cursor {
-public:
+ public:
   Cursor();
   Cursor(const CXCursor& other);
 
@@ -52,8 +47,6 @@ public:
 
   CXCursorKind get_kind() const;
   Type get_type() const;
-  //SourceLocation get_source_location() const;
-  //SourceRange get_source_range() const;
   std::string get_spelling() const;
   std::string get_display_name() const;
   std::string get_usr() const;
@@ -75,23 +68,24 @@ public:
   std::vector<Cursor> get_arguments() const;
   bool is_valid_kind() const;
 
-  //std::string evaluate() const;
-
   std::string get_type_description() const;
   std::string get_comments() const;
 
   std::string ToString() const;
 
-  template<typename TClientData>
-  using Visitor = VisiterResult(*)(Cursor cursor, Cursor parent, TClientData* client_data);
+  template <typename TClientData>
+  using Visitor = VisiterResult (*)(Cursor cursor,
+                                    Cursor parent,
+                                    TClientData* client_data);
 
-  enum class VisitResult {
-    Completed, EndedEarly
-  };
+  enum class VisitResult { Completed, EndedEarly };
 
-  template<typename TClientData>
-  VisitResult VisitChildren(Visitor<TClientData> visitor, TClientData* client_data) const {
-    if (clang_visitChildren(cx_cursor, reinterpret_cast<CXCursorVisitor>(visitor), client_data) == 0)
+  template <typename TClientData>
+  VisitResult VisitChildren(Visitor<TClientData> visitor,
+                            TClientData* client_data) const {
+    if (clang_visitChildren(cx_cursor,
+                            reinterpret_cast<CXCursorVisitor>(visitor),
+                            client_data) == 0)
       return VisitResult::Completed;
     return VisitResult::EndedEarly;
   }

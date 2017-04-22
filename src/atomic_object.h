@@ -5,7 +5,6 @@
 #include <memory>
 #include <mutex>
 
-
 // A object which can be stored and taken from atomically.
 template <class T>
 struct AtomicObject {
@@ -21,7 +20,7 @@ struct AtomicObject {
       // release lock as long as the wait and reaquire it afterwards.
       cv_.wait(lock);
     }
-    
+
     return std::move(value_);
   }
 

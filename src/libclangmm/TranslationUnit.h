@@ -10,24 +10,23 @@
 #include "../language_server_api.h"
 
 namespace clang {
-  class TranslationUnit {
-  public:
-    TranslationUnit(IndexerConfig* config,
-                    Index &index,
-                    const std::string &filepath,
-                    const std::vector<std::string>& arguments,
-                    std::vector<CXUnsavedFile> unsaved_files,
-                    unsigned flags);
-    ~TranslationUnit();
+class TranslationUnit {
+ public:
+  TranslationUnit(IndexerConfig* config,
+                  Index& index,
+                  const std::string& filepath,
+                  const std::vector<std::string>& arguments,
+                  std::vector<CXUnsavedFile> unsaved_files,
+                  unsigned flags);
+  ~TranslationUnit();
 
-    bool did_fail = false;
+  bool did_fail = false;
 
-    void ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved);
+  void ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved);
 
-    Cursor document_cursor() const;
+  Cursor document_cursor() const;
 
-    CXTranslationUnit cx_tu;
-  };
+  CXTranslationUnit cx_tu;
+};
 }  // namespace clang
 #endif  // TRANSLATIONUNIT_H_
-
