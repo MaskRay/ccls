@@ -1,7 +1,8 @@
 #include "TranslationUnit.h"
-#include "Tokens.h"
+
 #include "Utility.h"
 #include "../platform.h"
+
 #include <fstream>
 #include <sstream>
 #include <cassert>
@@ -39,7 +40,7 @@ TranslationUnit::TranslationUnit(
     args.data(), args.size(),
     unsaved_files.data(), unsaved_files.size(),
     flags, &cx_tu);
-  
+
   switch (error_code) {
   case CXError_Success:
     did_fail = false;
@@ -92,56 +93,8 @@ void TranslationUnit::ReparseTranslationUnit(std::vector<CXUnsavedFile>& unsaved
   }
 }
 
-CodeCompleteResults TranslationUnit::get_code_completions(
-  const std::string& buffer, unsigned line_number, unsigned column) {
-  CodeCompleteResults results(cx_tu, buffer, line_number, column);
-  return results;
-}
-
-/*
-std::vector<Diagnostic> TranslationUnit::get_diagnostics() {
-  std::vector<Diagnostic> diagnostics;
-  for (unsigned c = 0; c < clang_getNumDiagnostics(cx_tu); c++) {
-    CXDiagnostic clang_diagnostic = clang_getDiagnostic(cx_tu, c);
-    diagnostics.emplace_back(Diagnostic(cx_tu, clang_diagnostic));
-    clang_disposeDiagnostic(clang_diagnostic);
-  }
-  return diagnostics;
-}
-*/
-
-/*
-std::unique_ptr<Tokens> TranslationUnit::get_tokens(unsigned start_offset, unsigned end_offset) {
-  auto path = ToString(clang_getTranslationUnitSpelling(cx_tu));
-  SourceLocation start_location(cx_tu, path, start_offset);
-  SourceLocation end_location(cx_tu, path, end_offset);
-  SourceRange range(start_location, end_location);
-  return std::unique_ptr<Tokens>(new Tokens(cx_tu, range));
-}
-
-std::unique_ptr<Tokens> TranslationUnit::get_tokens(unsigned start_line, unsigned start_column, unsigned end_line, unsigned end_column) {
-  auto path = ToString(clang_getTranslationUnitSpelling(cx_tu));
-  SourceLocation start_location(cx_tu, path, start_line, start_column);
-  SourceLocation end_location(cx_tu, path, end_line, end_column);
-  SourceRange range(start_location, end_location);
-  return std::unique_ptr<Tokens>(new Tokens(cx_tu, range));
-}
-*/
-
 Cursor TranslationUnit::document_cursor() const {
   return Cursor(clang_getTranslationUnitCursor(cx_tu));
 }
-
-/*
-Cursor TranslationUnit::get_cursor(std::string path, unsigned offset) {
-  SourceLocation location(cx_tu, path, offset);
-  return Cursor(clang_getCursor(cx_tu, location.cx_location));
-}
-
-Cursor TranslationUnit::get_cursor(std::string path, unsigned line, unsigned column) {
-  SourceLocation location(cx_tu, path, line, column);
-  return Cursor(clang_getCursor(cx_tu, location.cx_location));
-}
-*/
 
 }

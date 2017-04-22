@@ -1,6 +1,5 @@
 #include "atomic_object.h"
 #include "language_server_api.h"
-#include "libclangmm/CompletionString.h"
 #include "libclangmm/Index.h"
 #include "libclangmm/TranslationUnit.h"
 #include "project.h"

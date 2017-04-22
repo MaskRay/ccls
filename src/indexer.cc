@@ -1,10 +1,14 @@
 #include "indexer.h"
 
-#include <algorithm>
-#include <chrono>
-
+#include "libclangmm/Cursor.h"
+#include "libclangmm/Index.h"
+#include "libclangmm/TranslationUnit.h"
+#include "libclangmm/Utility.h"
 #include "platform.h"
 #include "serializer.h"
+
+#include <algorithm>
+#include <chrono>
 
 namespace {
 

@@ -6,7 +6,6 @@
 #include <type_traits>
 
 #include <clang-c/Index.h>
-#include "SourceRange.h"
 
 
 namespace clang {

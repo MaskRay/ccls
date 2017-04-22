@@ -5,7 +5,6 @@
 #include "serializer.h"
 #include "utils.h"
 #include "language_server_api.h"
-#include "libclangmm/clangmm.h"
 #include "libclangmm/Utility.h"
 
 #include <optional.h>
