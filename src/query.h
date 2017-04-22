@@ -74,11 +74,6 @@ struct SymbolIdx {
   bool operator<(const SymbolIdx& that) const {
     return kind < that.kind || idx < that.idx;
   }
-
-  QueryFile* ResolveFile(QueryDatabase* db) const;
-  QueryType* ResolveType(QueryDatabase* db) const;
-  QueryFunc* ResolveFunc(QueryDatabase* db) const;
-  QueryVar* ResolveVar(QueryDatabase* db) const;
 };
 
 struct SymbolRef {
@@ -188,7 +183,6 @@ struct QueryFunc {
   size_t detailed_name_idx = -1;
 
   QueryFunc(const Usr& usr) : def(usr) {}
-  QueryFunc(const DefUpdate& def) : def(def) {}
 };
 
 struct QueryVar {
@@ -250,20 +244,14 @@ struct QueryDatabase {
   std::vector<std::string> detailed_names;
   std::vector<SymbolIdx> symbols;
 
-  // Raw data storage.
-  std::vector<QueryFile> files; // File path is stored as a Usr.
-  std::vector<QueryType> types;
-  std::vector<QueryFunc> funcs;
-  std::vector<QueryVar> vars;
+  // Raw data storage. Accessible via SymbolIdx instances.
+  std::vector<optional<QueryFile>> files;
+  std::vector<optional<QueryType>> types;
+  std::vector<optional<QueryFunc>> funcs;
+  std::vector<optional<QueryVar>> vars;
 
   // Lookup symbol based on a usr.
   spp::sparse_hash_map<Usr, SymbolIdx> usr_to_symbol;
-  //google::dense_hash_map<Usr, SymbolIdx> usr_to_symbol;
-
-  QueryDatabase() {
-    //usr_to_symbol.set_empty_key("");
-  }
-  //std::unordered_map<Usr, SymbolIdx> usr_to_symbol;
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(const std::vector<Usr>& to_remove);
@@ -315,7 +303,4 @@ private:
   spp::sparse_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;
   spp::sparse_hash_map<IndexFuncId, QueryFuncId> cached_func_ids_;
   spp::sparse_hash_map<IndexVarId, QueryVarId> cached_var_ids_;
-  //google::dense_hash_map<IndexTypeId, QueryTypeId, std::hash<IndexTypeId>> cached_type_ids_;
-  //google::dense_hash_map<IndexFuncId, QueryFuncId, std::hash<IndexFuncId>> cached_func_ids_;
-  //google::dense_hash_map<IndexVarId, QueryVarId, std::hash<IndexVarId>> cached_var_ids_;
 };

@@ -69,8 +69,6 @@ void AddMergeableRange(
   // time at the cost of some additional memory.
 
   // Build lookup table.
-  //google::dense_hash_map<TId, size_t, std::hash<TId>> id_to_index;
-  //id_to_index.set_empty_key(TId(-1));
   spp::sparse_hash_map<TId, size_t> id_to_index;
   id_to_index.resize(dest->size());
   for (size_t i = 0; i < dest->size(); ++i)
@@ -239,49 +237,6 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed) {
 
 
 
-QueryFile* SymbolIdx::ResolveFile(QueryDatabase* db) const {
-  assert(kind == SymbolKind::File);
-  return &db->files[idx];
-}
-QueryType* SymbolIdx::ResolveType(QueryDatabase* db) const {
-  assert(kind == SymbolKind::Type);
-  return &db->types[idx];
-}
-QueryFunc* SymbolIdx::ResolveFunc(QueryDatabase* db) const {
-  assert(kind == SymbolKind::Func);
-  return &db->funcs[idx];
-}
-QueryVar* SymbolIdx::ResolveVar(QueryDatabase* db) const {
-  assert(kind == SymbolKind::Var);
-  return &db->vars[idx];
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -349,17 +304,14 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
   primary_file = GetQueryFileIdFromPath(query_db, local_ids.primary_file);
 
-  //cached_type_ids_.set_empty_key(IndexTypeId(-1));
   cached_type_ids_.resize(local_ids.type_id_to_usr.size());
   for (const auto& entry : local_ids.type_id_to_usr)
     cached_type_ids_[entry.first] = GetQueryTypeIdFromUsr(query_db, entry.second);
 
-  //cached_func_ids_.set_empty_key(IndexFuncId(-1));
   cached_func_ids_.resize(local_ids.func_id_to_usr.size());
   for (const auto& entry : local_ids.func_id_to_usr)
     cached_func_ids_[entry.first] = GetQueryFuncIdFromUsr(query_db, entry.second);
 
-  //cached_var_ids_.set_empty_key(IndexVarId(-1));
   cached_var_ids_.resize(local_ids.var_id_to_usr.size());
   for (const auto& entry : local_ids.var_id_to_usr)
     cached_var_ids_[entry.first] = GetQueryVarIdFromUsr(query_db, entry.second);
@@ -646,24 +598,51 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 void QueryDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
   // This function runs on the querydb thread.
 
-  // Actually removing data is extremely slow because every offset/index would
-  // have to be updated. Instead, we just accept the memory overhead and mark
-  // the symbol as invalid.
+  // When we remove an element, we just erase the state from the storage. We do
+  // not update array indices because that would take a huge amount of time for
+  // a very large index.
   //
-  // If the user wants to reduce memory usage, they will have to restart the
-  // indexer and load it from cache. Luckily, this doesn't take too long even
-  // on large projects (1-2 minutes).
+  // There means that there is some memory growth that will never be reclaimed,
+  // but it should be pretty minimal and is solved by simply restarting the
+  // indexer and loading from cache, which is a fast operation.
+  //
+  // TODO: Add "cquery: Reload Index" command which unloads all querydb state
+  // and fully reloads from cache. This will address the memory leak above.
 
-  for (Usr usr : to_remove)
-    usr_to_symbol[usr].kind = SymbolKind::Invalid;
+  for (Usr usr : to_remove) {
+    SymbolIdx& symbol = usr_to_symbol[usr];
+    switch (symbol.kind) {
+      case SymbolKind::File:
+        files[symbol.idx] = nullopt;
+        break;
+      case SymbolKind::Type:
+        types[symbol.idx] = nullopt;
+        break;
+      case SymbolKind::Func:
+        funcs[symbol.idx] = nullopt;
+        break;
+      case SymbolKind::Var:
+        vars[symbol.idx] = nullopt;
+        break;
+    }
+
+    symbol.kind = SymbolKind::Invalid;
+  }
 }
 
 void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   // This function runs on the querydb thread.
 
+  // Example types:
+  //  storage_name       =>  std::vector<optional<QueryType>>
+  //  merge_update       =>  QueryType::DerivedUpdate => MergeableUpdate<QueryTypeId, QueryTypeId>
+  //  def                =>  QueryType
+  //  def->def_var_name  =>  std::vector<QueryTypeId>
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
   for (auto merge_update : update->update_var_name) { \
-    auto* def = &storage_name[merge_update.id.id]; \
+    auto& def = storage_name[merge_update.id.id]; \
+    if (!def) \
+      continue; /* TODO: Should we continue or create an empty def? */ \
     AddRange(&def->def_var_name, merge_update.to_add); \
     RemoveRange(&def->def_var_name, merge_update.to_remove); \
   }
@@ -697,9 +676,12 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& upda
     auto it = usr_to_symbol.find(def.path);
     assert(it != usr_to_symbol.end());
 
-    QueryFile& existing = files[it->second.idx];
-    existing.def = def;
-    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::File, it->second.idx, def.path);
+    optional<QueryFile>& existing = files[it->second.idx];
+    if (!existing)
+      existing = QueryFile(def.path);
+
+    existing->def = def;
+    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::File, it->second.idx, def.path);
   }
 }
 
@@ -712,14 +694,16 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& upda
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 
-    QueryType& existing = types[it->second.idx];
+    optional<QueryType>& existing = types[it->second.idx];
+    if (!existing)
+      existing = QueryType(def.usr);
 
     // Keep the existing definition if it is higher quality.
-    if (existing.def.definition_spelling && !def.definition_spelling)
+    if (existing->def.definition_spelling && !def.definition_spelling)
       continue;
 
-    existing.def = def;
-    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Type, it->second.idx, def.detailed_name);
+    existing->def = def;
+    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Type, it->second.idx, def.detailed_name);
   }
 }
 
@@ -732,14 +716,16 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& upda
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 
-    QueryFunc& existing = funcs[it->second.idx];
+    optional<QueryFunc>& existing = funcs[it->second.idx];
+    if (!existing)
+      existing = QueryFunc(def.usr);
 
     // Keep the existing definition if it is higher quality.
-    if (existing.def.definition_spelling && !def.definition_spelling)
+    if (existing->def.definition_spelling && !def.definition_spelling)
       continue;
 
-    existing.def = def;
-    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func, it->second.idx, def.detailed_name);
+    existing->def = def;
+    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Func, it->second.idx, def.detailed_name);
   }
 }
 
@@ -752,15 +738,17 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updat
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 
-    QueryVar& existing = vars[it->second.idx];
+    optional<QueryVar>& existing = vars[it->second.idx];
+    if (!existing)
+      existing = QueryVar(def.usr);
 
     // Keep the existing definition if it is higher quality.
-    if (existing.def.definition_spelling && !def.definition_spelling)
+    if (existing->def.definition_spelling && !def.definition_spelling)
       continue;
 
-    existing.def = def;
+    existing->def = def;
     if (def.declaring_type)
-      UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var, it->second.idx, def.detailed_name);
+      UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Var, it->second.idx, def.detailed_name);
   }
 }
 
@@ -774,11 +762,3 @@ void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index, SymbolKind
     detailed_names[*qualified_name_index] = name;
   }
 }
-
-
-
-
-
-
-
-// TODO: allow user to decide some indexer choices, ie, do we mark prototype parameters as usages?
