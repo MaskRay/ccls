@@ -1711,11 +1711,11 @@ void QueryDbMain(IndexerConfig* config) {
   FileConsumer::SharedState file_consumer_shared;
 
   // Start indexer threads.
-  int indexerCount = std::min<int>(std::thread::hardware_concurrency(), 2) - 1;
+  int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
   if (config->indexerCount > 0)
-    indexerCount = config->indexerCount;
-  std::cerr << "[querydb] Starting " << indexerCount << " indexers" << std::endl;
-  for (int i = 0; i < indexerCount; ++i) {
+    indexer_count = config->indexerCount;
+  std::cerr << "[querydb] Starting " << indexer_count << " indexers" << std::endl;
+  for (int i = 0; i < indexer_count; ++i) {
     new std::thread([&]() {
       IndexMain(config, &file_consumer_shared, &project, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
     });
@@ -1989,7 +1989,7 @@ void LanguageServerMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
 
       case IpcId::Cout: {
         auto msg = static_cast<Ipc_Cout*>(message.get());
-        
+
         Timer time = (*request_times)[msg->original_ipc_id];
         time.ResetAndPrint("[e2e] Running " + std::string(IpcIdToString(msg->original_ipc_id)));
 
