@@ -739,8 +739,13 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
 
 struct Index_DoIndex {
   enum class Type {
-    ImportAndUpdate,
+    // ImportOnly is used internally for loading dependency caches. The main cc
+    // file is loaded with ImportThenParse, which will call ImportOnly on all
+    // of the dependencies. The main cc will then be parsed, which will include
+    // updates to all dependencies.
+
     ImportOnly,
+    ImportThenParse,
     Parse,
     Freshen,
   };
@@ -916,7 +921,6 @@ void DispatchDependencyImports(Index_DoIndexQueue* queue_do_index,
     std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
     queue_do_index->PriorityEnqueue(Index_DoIndex(request_type, dependency_path, nullopt));
   }
-
 }
 
 void ImportCachedIndex(IndexerConfig* config,
@@ -1019,15 +1023,15 @@ bool IndexMain_DoIndex(IndexerConfig* config,
       break;
     }
 
-    case Index_DoIndex::Type::ImportAndUpdate: {
+    case Index_DoIndex::Type::ImportThenParse: {
       int64_t cache_modification_time;
       ImportCachedIndex(config, queue_do_index, queue_do_id_map, index_request->path, &cache_modification_time);
 
       // If the file has been updated, we need to reparse it.
       if (GetLastModificationTime(index_request->path) > cache_modification_time) {
-        // Instead of parsing the file immediate, we push the request to the
+        // Instead of parsing the file immediately, we push the request to the
         // back of the queue so we will finish all of the Import requests
-        // before starting to run libclang. This gives the user a
+        // before starting to run actual index jobs. This gives the user a
         // partially-correct index potentially much sooner.
         index_request->type = Index_DoIndex::Type::Parse;
         queue_do_index->Enqueue(std::move(*index_request));
@@ -1088,13 +1092,13 @@ void IndexJoinIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
 }
 
 void IndexMain(
-  IndexerConfig* config,
-  FileConsumer::SharedState* file_consumer_shared,
-  Project* project,
-  Index_DoIndexQueue* queue_do_index,
-  Index_DoIdMapQueue* queue_do_id_map,
-  Index_OnIdMappedQueue* queue_on_id_mapped,
-  Index_OnIndexedQueue* queue_on_indexed) {
+    IndexerConfig* config,
+    FileConsumer::SharedState* file_consumer_shared,
+    Project* project,
+    Index_DoIndexQueue* queue_do_index,
+    Index_DoIdMapQueue* queue_do_id_map,
+    Index_OnIdMappedQueue* queue_on_id_mapped,
+    Index_OnIndexedQueue* queue_on_indexed) {
 
   SetCurrentThreadName("indexer");
   while (true) {
@@ -1170,16 +1174,16 @@ void IndexMain(
 
 
 void QueryDbMainLoop(
-  IndexerConfig* config,
-  QueryDatabase* db,
-  Index_DoIndexQueue* queue_do_index,
-  Index_DoIdMapQueue* queue_do_id_map,
-  Index_OnIdMappedQueue* queue_on_id_mapped,
-  Index_OnIndexedQueue* queue_on_indexed,
-  Project* project,
-  FileConsumer::SharedState* file_consumer_shared,
-  WorkingFiles* working_files,
-  CompletionManager* completion_manager) {
+    IndexerConfig* config,
+    QueryDatabase* db,
+    Index_DoIndexQueue* queue_do_index,
+    Index_DoIdMapQueue* queue_do_id_map,
+    Index_OnIdMappedQueue* queue_on_id_mapped,
+    Index_OnIndexedQueue* queue_on_indexed,
+    Project* project,
+    FileConsumer::SharedState* file_consumer_shared,
+    WorkingFiles* working_files,
+    CompletionManager* completion_manager) {
   IpcManager* ipc = IpcManager::instance();
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Server);
@@ -1232,7 +1236,7 @@ void QueryDbMainLoop(
               << "] Dispatching index request for file " << entry.filename
               << std::endl;
 
-            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportAndUpdate, entry.filename, entry.args));
+            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry.filename, entry.args));
           });
         }
 
@@ -1297,11 +1301,13 @@ void QueryDbMainLoop(
 
         break;
       }
+
       case IpcId::TextDocumentDidChange: {
         auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
         working_files->OnChange(msg->params);
         break;
       }
+
       case IpcId::TextDocumentDidClose: {
         auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
         working_files->OnClose(msg->params);
@@ -1784,8 +1790,6 @@ void QueryDbMainLoop(
 }
 
 void QueryDbMain(IndexerConfig* config) {
-  //std::cerr << "Running QueryDb" << std::endl;
-
   // Create queues.
   Index_DoIndexQueue queue_do_index;
   Index_DoIdMapQueue queue_do_id_map;
@@ -1974,7 +1978,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
 
 
 
-void LanguageServerMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
+void StdoutMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
   IpcManager* ipc = IpcManager::instance();
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
@@ -2019,7 +2023,7 @@ void LanguageServerMain(IndexerConfig* config) {
   // unknown number of delays when output information.
   SetCurrentThreadName("stdout");
   while (true) {
-    LanguageServerMainLoop(&request_times);
+    StdoutMainLoop(&request_times);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 }
