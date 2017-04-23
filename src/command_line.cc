@@ -76,9 +76,6 @@ std::vector<std::string> kEmptyArgs;
 
 
 struct IpcManager {
-  static constexpr const char* kIpcLanguageClientName = "lanclient";
-  static constexpr const int kQueueSizeBytes = 1024 * 8;
-
   static IpcManager* instance_;
   static IpcManager* instance() {
     return instance_;
@@ -209,19 +206,6 @@ QueryFile* FindFile(QueryDatabase* db, const std::string& filename) {
 
   std::cerr << "Unable to find file " << filename << std::endl;
   return nullptr;
-}
-
-optional<QueryFile>* GetQuery(QueryDatabase* db, const QueryFileId& id) {
-  return &db->files[id.id];
-}
-optional<QueryType>* GetQuery(QueryDatabase* db, const QueryTypeId& id) {
-  return &db->types[id.id];
-}
-optional<QueryFunc>* GetQuery(QueryDatabase* db, const QueryFuncId& id) {
-  return &db->funcs[id.id];
-}
-optional<QueryVar>* GetQuery(QueryDatabase* db, const QueryVarId& id) {
-  return &db->vars[id.id];
 }
 
 
@@ -719,6 +703,120 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
   return symbols;
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+struct Index_DoIndex {
+  enum class Type {
+    ImportAndUpdate,
+    ImportOnly,
+    Parse,
+    Freshen,
+  };
+
+  Index_DoIndex(Type type, const std::string& path, const optional<std::vector<std::string>>& args)
+    : type(type), path(path), args(args) {}
+
+  Type type;
+  std::string path;
+  optional<std::vector<std::string>> args;
+};
+
+struct Index_DoIdMap {
+  std::unique_ptr<IndexedFile> previous;
+  std::unique_ptr<IndexedFile> current;
+
+  explicit Index_DoIdMap(std::unique_ptr<IndexedFile> previous,
+    std::unique_ptr<IndexedFile> current)
+    : previous(std::move(previous)),
+    current(std::move(current)) {}
+};
+
+struct Index_OnIdMapped {
+  std::unique_ptr<IndexedFile> previous_index;
+  std::unique_ptr<IndexedFile> current_index;
+  std::unique_ptr<IdMap> previous_id_map;
+  std::unique_ptr<IdMap> current_id_map;
+};
+
+struct Index_OnIndexed {
+  IndexUpdate update;
+  explicit Index_OnIndexed(IndexUpdate& update) : update(update) {}
+};
+
+using Index_DoIndexQueue = ThreadedQueue<Index_DoIndex>;
+using Index_DoIdMapQueue = ThreadedQueue<Index_DoIdMap>;
+using Index_OnIdMappedQueue = ThreadedQueue<Index_OnIdMapped>;
+using Index_OnIndexedQueue = ThreadedQueue<Index_OnIndexed>;
+
+void RegisterMessageTypes() {
+  MessageRegistry::instance()->Register<Ipc_CancelRequest>();
+  MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
+  MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentRename>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentHighlight>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
+  MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
+  MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
+  MessageRegistry::instance()->Register<Ipc_CqueryFreshenIndex>();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }  // namespace
 
 
@@ -780,72 +878,6 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
 
 
 
-
-
-
-struct Index_DoIndex {
-  enum class Type {
-    ImportAndUpdate,
-    ImportOnly,
-    Parse,
-    Freshen,
-  };
-
-  Index_DoIndex(Type type, const std::string& path, const optional<std::vector<std::string>>& args)
-    : type(type), path(path), args(args) {}
-
-  Type type;
-  std::string path;
-  optional<std::vector<std::string>> args;
-};
-
-struct Index_DoIdMap {
-  std::unique_ptr<IndexedFile> previous;
-  std::unique_ptr<IndexedFile> current;
-
-  explicit Index_DoIdMap(std::unique_ptr<IndexedFile> previous,
-                         std::unique_ptr<IndexedFile> current)
-    : previous(std::move(previous)),
-      current(std::move(current)) {}
-};
-
-struct Index_OnIdMapped {
-  std::unique_ptr<IndexedFile> previous_index;
-  std::unique_ptr<IndexedFile> current_index;
-  std::unique_ptr<IdMap> previous_id_map;
-  std::unique_ptr<IdMap> current_id_map;
-};
-
-struct Index_OnIndexed {
-  IndexUpdate update;
-  explicit Index_OnIndexed(IndexUpdate& update) : update(update) {}
-};
-
-using Index_DoIndexQueue = ThreadedQueue<Index_DoIndex>;
-using Index_DoIdMapQueue = ThreadedQueue<Index_DoIdMap>;
-using Index_OnIdMappedQueue = ThreadedQueue<Index_OnIdMapped>;
-using Index_OnIndexedQueue = ThreadedQueue<Index_OnIndexed>;
-
-void RegisterMessageTypes() {
-  MessageRegistry::instance()->Register<Ipc_CancelRequest>();
-  MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
-  MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentRename>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentHighlight>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
-  MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
-  MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
-  MessageRegistry::instance()->Register<Ipc_CqueryFreshenIndex>();
-}
 
 
 
