@@ -3,29 +3,67 @@
 #include <optional.h>
 
 #include <algorithm>
+#include <atomic>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
 
 // TODO: cleanup includes.
 
+struct BaseThreadQueue {
+  virtual bool IsEmpty() = 0;
+};
+
+struct MultiQueueWaiter {
+  std::mutex m;
+  std::condition_variable cv;
+
+  bool HasState(std::initializer_list<BaseThreadQueue*> queues) {
+    for (BaseThreadQueue* queue : queues) {
+      if (!queue->IsEmpty())
+        return true;
+    }
+    return false;
+  }
+
+  void Wait(std::initializer_list<BaseThreadQueue*> queues) {
+    // We cannot have a single condition variable wait on all of the different
+    // mutexes, so we have a global condition variable that every queue will
+    // notify. After it is notified we check to see if any of the queues have
+    // data; if they do, we return.
+    //
+    // We repoll every 5 seconds because it's not possible to atomically check
+    // the state of every queue and then setup the condition variable. So, if
+    // Wait() is called, HasState() returns false, and then in the time after
+    // HasState() is called data gets posted but before we begin waiting for
+    // the condition variable, we will miss the notification. The timeout of 5
+    // means that if this happens we will delay operation for 5 seconds.
+
+    while (!HasState(queues)) {
+      std::unique_lock<std::mutex> l(m);
+      cv.wait_for(l, std::chrono::seconds(5));
+    }
+  }
+};
 
 // A threadsafe-queue. http://stackoverflow.com/a/16075550
 template <class T>
-class ThreadedQueue {
+struct ThreadedQueue : public BaseThreadQueue {
 public:
+  ThreadedQueue(MultiQueueWaiter* waiter) : waiter_(waiter) {}
+
   // Add an element to the front of the queue.
   void PriorityEnqueue(T&& t) {
     std::lock_guard<std::mutex> lock(mutex_);
     priority_.push(std::move(t));
-    cv_.notify_one();
+    waiter_->cv.notify_all();
   }
 
   // Add an element to the queue.
   void Enqueue(T&& t) {
     std::lock_guard<std::mutex> lock(mutex_);
     queue_.push(std::move(t));
-    cv_.notify_one();
+    waiter_->cv.notify_all();
   }
 
   // Return all elements in the queue.
@@ -45,6 +83,12 @@ public:
     return result;
   }
 
+  bool IsEmpty() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return queue_.empty();
+  }
+
+  /*
   // Get the "front"-element.
   // If the queue is empty, wait untill an element is avaiable.
   T Dequeue() {
@@ -64,6 +108,7 @@ public:
     queue_.pop();
     return val;
   }
+  */
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
@@ -85,7 +130,7 @@ public:
 
  private:
   std::queue<T> priority_;
-  std::queue<T> queue_;
   mutable std::mutex mutex_;
-  std::condition_variable cv_;
+  std::queue<T> queue_;
+  MultiQueueWaiter* waiter_;
 };
