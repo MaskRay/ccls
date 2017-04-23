@@ -1102,8 +1102,6 @@ void IndexMain(
     //       better icache behavior. We need to have some threads spinning on both though
     //       otherwise memory usage will get bad.
 
-    int count = 0;
-
     // We need to make sure to run both IndexMain_DoIndex and
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
@@ -1112,17 +1110,15 @@ void IndexMain(
     bool did_create_update = IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
     if (!did_index && !did_create_update) {
 
-      //if (count++ > 2) {
-      //  count = 0;
-        IndexJoinIndexUpdates(queue_on_indexed);
-      //}
+      // Nothing to index and no index updates to create, so join some already
+      // created index updates to reduce work on querydb thread.
+      IndexJoinIndexUpdates(queue_on_indexed);
 
       // TODO: use CV to wakeup?
       std::this_thread::sleep_for(std::chrono::milliseconds(25));
     }
   }
 }
-
 
 
 
@@ -1181,6 +1177,7 @@ void QueryDbMainLoop(
   Index_OnIdMappedQueue* queue_on_id_mapped,
   Index_OnIndexedQueue* queue_on_indexed,
   Project* project,
+  FileConsumer::SharedState* file_consumer_shared,
   WorkingFiles* working_files,
   CompletionManager* completion_manager) {
   IpcManager* ipc = IpcManager::instance();
@@ -1190,486 +1187,539 @@ void QueryDbMainLoop(
     std::cerr << "[querydb] Processing message " << IpcIdToString(message->method_id) << std::endl;
 
     switch (message->method_id) {
-    case IpcId::Quit: {
-      std::cerr << "[querydb] Got quit message (exiting)" << std::endl;
-      exit(0);
-      break;
-    }
+      case IpcId::Initialize: {
+        auto request = static_cast<Ipc_InitializeRequest*>(message.get());
+        if (request->params.rootUri) {
+          std::string project_path = request->params.rootUri->GetPath();
+          std::cerr << "[stdin] Initialize in directory " << project_path
+            << " with uri " << request->params.rootUri->raw_uri
+            << std::endl;
 
-    case IpcId::IsAlive: {
-      std::cerr << "[querydb] Sending IsAlive response to client" << std::endl;
-      ipc->SendMessage(IpcManager::Destination::Client, MakeUnique<Ipc_IsAlive>());
-      break;
-    }
-
-    case IpcId::OpenProject: {
-      Ipc_OpenProject* msg = static_cast<Ipc_OpenProject*>(message.get());
-      std::string path = msg->project_path;
-
-      project->Load(path);
-      std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
-
-      project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
-        std::cerr << "[" << i << "/" << (project->entries.size() - 1)
-          << "] Dispatching index request for file " << entry.filename
-          << std::endl;
-
-        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportAndUpdate, entry.filename, entry.args));
-      });
-
-      break;
-    }
-
-    case IpcId::CqueryFreshenIndex: {
-      std::cerr << "Freshening " << project->entries.size() << " files" << std::endl;
-      project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
-        std::cerr << "[" << i << "/" << (project->entries.size() - 1)
-          << "] Dispatching index request for file " << entry.filename
-          << std::endl;
-        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry.filename, entry.args));
-      });
-      break;
-    }
-
-    case IpcId::TextDocumentDidOpen: {
-      // NOTE: This function blocks code lens. If it starts taking a long time
-      // we will need to find a way to unblock the code lens request.
-
-      Timer time;
-      auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
-      WorkingFile* working_file = working_files->OnOpen(msg->params);
-      optional<std::string> cached_file_contents = LoadCachedFileContents(config, msg->params.textDocument.uri.GetPath());
-      if (cached_file_contents)
-        working_file->SetIndexContent(*cached_file_contents);
-      else
-        working_file->SetIndexContent(working_file->buffer_content);
-      time.ResetAndPrint("[querydb] Loading cached index file for DidOpen");
-
-      break;
-    }
-    case IpcId::TextDocumentDidChange: {
-      auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
-      working_files->OnChange(msg->params);
-      break;
-    }
-    case IpcId::TextDocumentDidClose: {
-      auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
-      working_files->OnClose(msg->params);
-      break;
-    }
-
-    case IpcId::TextDocumentDidSave: {
-      auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
-
-      std::string path = msg->params.textDocument.uri.GetPath();
-      // Send an index update request.
-      queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, path, project->FindArgsForFile(path)));
-
-      // Copy current buffer content so it can be applied when index request is done.
-      WorkingFile* working_file = working_files->GetFileByFilename(path);
-      if (working_file)
-        working_file->pending_new_index_content = working_file->buffer_content;
-
-      break;
-    }
-
-    case IpcId::TextDocumentRename: {
-      auto msg = static_cast<Ipc_TextDocumentRename*>(message.get());
-
-      QueryFileId file_id;
-      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
-
-      Out_TextDocumentRename response;
-      response.id = msg->id;
-
-      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
-        // Found symbol. Return references to rename.
-        std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
-        response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
-        break;
-      }
-
-      response.Write(std::cerr);
-      ipc->SendOutMessageToClient(IpcId::TextDocumentRename, response);
-      break;
-    }
-
-    case IpcId::TextDocumentCompletion: {
-      auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
-      lsTextDocumentPositionParams params = msg->params;
-
-      CompletionManager::OnComplete callback = std::bind([](BaseIpcMessage* message, const NonElidedVector<lsCompletionItem>& results) {
-        auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
-        auto ipc = IpcManager::instance();
-
-        Out_TextDocumentComplete response;
-        response.id = msg->id;
-        response.result.isIncomplete = false;
-        response.result.items = results;
-
-        Timer timer;
-        ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, response);
-        timer.ResetAndPrint("Writing completion results");
-
-        delete message;
-      }, message.release(), std::placeholders::_1);
-
-      completion_manager->CodeComplete(params, std::move(callback));
-
-      break;
-    }
-
-    case IpcId::TextDocumentDefinition: {
-      auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
-
-      QueryFileId file_id;
-      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
-
-      Out_TextDocumentDefinition response;
-      response.id = msg->id;
-
-      int target_line = msg->params.position.line + 1;
-      int target_column = msg->params.position.character + 1;
-
-      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
-        // Found symbol. Return definition.
-
-        // Special cases which are handled:
-        //  - symbol has declaration but no definition (ie, pure virtual)
-        //  - start at spelling but end at extent for better mouse tooltip
-        //  - goto declaration while in definition of recursive type
-
-        optional<QueryLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
-
-        // We use spelling start and extent end because this causes vscode to
-        // highlight the entire definition when previewing / hoving with the
-        // mouse.
-        optional<QueryLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
-        if (def_loc && def_extent)
-          def_loc->range.end = def_extent->range.end;
-
-        // If the cursor is currently at or in the definition we should goto
-        // the declaration if possible. We also want to use declarations if
-        // we're pointing to, ie, a pure virtual function which has no
-        // definition.
-        if (!def_loc || (def_loc->path == file_id &&
-                          def_loc->range.Contains(target_line, target_column))) {
-          // Goto declaration.
-
-          std::vector<QueryLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
-          for (auto declaration : declarations) {
-            optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
-            if (ls_declaration)
-              response.result.push_back(*ls_declaration);
+          if (!request->params.initializationOptions) {
+            std::cerr << "Initialization parameters (particularily cacheDirectory) are required" << std::endl;
+            exit(1);
           }
-          // We found some declarations. Break so we don't add the definition location.
+
+          *config = *request->params.initializationOptions;
+
+          // Make sure cache directory is valid.
+          if (config->cacheDirectory.empty()) {
+            std::cerr << "No cache directory" << std::endl;
+            exit(1);
+          }
+          config->cacheDirectory = NormalizePath(config->cacheDirectory);
+          if (config->cacheDirectory[config->cacheDirectory.size() - 1] != '/')
+            config->cacheDirectory += '/';
+          MakeDirectoryRecursive(config->cacheDirectory);
+
+          // Start indexer threads.
+          int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
+          if (config->indexerCount > 0)
+            indexer_count = config->indexerCount;
+          std::cerr << "[querydb] Starting " << indexer_count << " indexers" << std::endl;
+          for (int i = 0; i < indexer_count; ++i) {
+            new std::thread([&]() {
+              IndexMain(config, file_consumer_shared, project, queue_do_index, queue_do_id_map, queue_on_id_mapped, queue_on_indexed);
+            });
+          }
+
+          // Open up / load the project.
+          project->Load(project_path);
+          std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
+
+          project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
+            std::cerr << "[" << i << "/" << (project->entries.size() - 1)
+              << "] Dispatching index request for file " << entry.filename
+              << std::endl;
+
+            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportAndUpdate, entry.filename, entry.args));
+          });
+        }
+
+        // TODO: query request->params.capabilities.textDocument and support only things
+        // the client supports.
+
+        auto response = Out_InitializeResponse();
+        response.id = request->id;
+
+        //response.result.capabilities.textDocumentSync = lsTextDocumentSyncOptions();
+        //response.result.capabilities.textDocumentSync->openClose = true;
+        //response.result.capabilities.textDocumentSync->change = lsTextDocumentSyncKind::Full;
+        //response.result.capabilities.textDocumentSync->willSave = true;
+        //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
+        response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental;
+
+        response.result.capabilities.renameProvider = true;
+
+        response.result.capabilities.completionProvider = lsCompletionOptions();
+        response.result.capabilities.completionProvider->resolveProvider = false;
+        response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
+
+        response.result.capabilities.codeLensProvider = lsCodeLensOptions();
+        response.result.capabilities.codeLensProvider->resolveProvider = false;
+
+        response.result.capabilities.definitionProvider = true;
+        response.result.capabilities.documentHighlightProvider = true;
+        response.result.capabilities.hoverProvider = true;
+        response.result.capabilities.referencesProvider = true;
+
+        response.result.capabilities.documentSymbolProvider = true;
+        response.result.capabilities.workspaceSymbolProvider = true;
+
+        ipc->SendOutMessageToClient(IpcId::Initialize, response);
+        break;
+      }
+
+      case IpcId::CqueryFreshenIndex: {
+        std::cerr << "Freshening " << project->entries.size() << " files" << std::endl;
+        project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
+          std::cerr << "[" << i << "/" << (project->entries.size() - 1)
+            << "] Dispatching index request for file " << entry.filename
+            << std::endl;
+          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry.filename, entry.args));
+        });
+        break;
+      }
+
+      case IpcId::TextDocumentDidOpen: {
+        // NOTE: This function blocks code lens. If it starts taking a long time
+        // we will need to find a way to unblock the code lens request.
+
+        Timer time;
+        auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
+        WorkingFile* working_file = working_files->OnOpen(msg->params);
+        optional<std::string> cached_file_contents = LoadCachedFileContents(config, msg->params.textDocument.uri.GetPath());
+        if (cached_file_contents)
+          working_file->SetIndexContent(*cached_file_contents);
+        else
+          working_file->SetIndexContent(working_file->buffer_content);
+        time.ResetAndPrint("[querydb] Loading cached index file for DidOpen");
+
+        break;
+      }
+      case IpcId::TextDocumentDidChange: {
+        auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
+        working_files->OnChange(msg->params);
+        break;
+      }
+      case IpcId::TextDocumentDidClose: {
+        auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
+        working_files->OnClose(msg->params);
+        break;
+      }
+
+      case IpcId::TextDocumentDidSave: {
+        auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
+
+        std::string path = msg->params.textDocument.uri.GetPath();
+        // Send an index update request.
+        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, path, project->FindArgsForFile(path)));
+
+        // Copy current buffer content so it can be applied when index request is done.
+        WorkingFile* working_file = working_files->GetFileByFilename(path);
+        if (working_file)
+          working_file->pending_new_index_content = working_file->buffer_content;
+
+        break;
+      }
+
+      case IpcId::TextDocumentRename: {
+        auto msg = static_cast<Ipc_TextDocumentRename*>(message.get());
+
+        QueryFileId file_id;
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_TextDocumentRename response;
+        response.id = msg->id;
+
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          // Found symbol. Return references to rename.
+          std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
+          response.result = BuildWorkspaceEdit(db, working_files, uses, msg->params.newName);
+          break;
+        }
+
+        response.Write(std::cerr);
+        ipc->SendOutMessageToClient(IpcId::TextDocumentRename, response);
+        break;
+      }
+
+      case IpcId::TextDocumentCompletion: {
+        auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
+        lsTextDocumentPositionParams params = msg->params;
+
+        CompletionManager::OnComplete callback = std::bind([](BaseIpcMessage* message, const NonElidedVector<lsCompletionItem>& results) {
+          auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
+          auto ipc = IpcManager::instance();
+
+          Out_TextDocumentComplete response;
+          response.id = msg->id;
+          response.result.isIncomplete = false;
+          response.result.items = results;
+
+          Timer timer;
+          ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, response);
+          timer.ResetAndPrint("Writing completion results");
+
+          delete message;
+        }, message.release(), std::placeholders::_1);
+
+        completion_manager->CodeComplete(params, std::move(callback));
+
+        break;
+      }
+
+      case IpcId::TextDocumentDefinition: {
+        auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
+
+        QueryFileId file_id;
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_TextDocumentDefinition response;
+        response.id = msg->id;
+
+        int target_line = msg->params.position.line + 1;
+        int target_column = msg->params.position.character + 1;
+
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          // Found symbol. Return definition.
+
+          // Special cases which are handled:
+          //  - symbol has declaration but no definition (ie, pure virtual)
+          //  - start at spelling but end at extent for better mouse tooltip
+          //  - goto declaration while in definition of recursive type
+
+          optional<QueryLocation> def_loc = GetDefinitionSpellingOfSymbol(db, ref.idx);
+
+          // We use spelling start and extent end because this causes vscode to
+          // highlight the entire definition when previewing / hoving with the
+          // mouse.
+          optional<QueryLocation> def_extent = GetDefinitionExtentOfSymbol(db, ref.idx);
+          if (def_loc && def_extent)
+            def_loc->range.end = def_extent->range.end;
+
+          // If the cursor is currently at or in the definition we should goto
+          // the declaration if possible. We also want to use declarations if
+          // we're pointing to, ie, a pure virtual function which has no
+          // definition.
+          if (!def_loc || (def_loc->path == file_id &&
+                            def_loc->range.Contains(target_line, target_column))) {
+            // Goto declaration.
+
+            std::vector<QueryLocation> declarations = GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
+            for (auto declaration : declarations) {
+              optional<lsLocation> ls_declaration = GetLsLocation(db, working_files, declaration);
+              if (ls_declaration)
+                response.result.push_back(*ls_declaration);
+            }
+            // We found some declarations. Break so we don't add the definition location.
+            if (!response.result.empty())
+              break;
+          }
+
+          if (def_loc)
+            PushBack(&response.result, GetLsLocation(db, working_files, *def_loc));
+
           if (!response.result.empty())
             break;
         }
 
-        if (def_loc)
-          PushBack(&response.result, GetLsLocation(db, working_files, *def_loc));
-
-        if (!response.result.empty())
-          break;
-      }
-
-      ipc->SendOutMessageToClient(IpcId::TextDocumentDefinition, response);
-      break;
-    }
-
-    case IpcId::TextDocumentDocumentHighlight: {
-      auto msg = static_cast<Ipc_TextDocumentDocumentHighlight*>(message.get());
-
-      QueryFileId file_id;
-      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
-
-      Out_TextDocumentDocumentHighlight response;
-      response.id = msg->id;
-
-      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
-        // Found symbol. Return references to highlight.
-        std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
-        response.result.reserve(uses.size());
-        for (const QueryLocation& use : uses) {
-          if (use.path != file_id)
-            continue;
-
-          optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
-          if (!ls_location)
-            continue;
-
-          lsDocumentHighlight highlight;
-          highlight.kind = lsDocumentHighlightKind::Text;
-          highlight.range = ls_location->range;
-          response.result.push_back(highlight);
-        }
+        ipc->SendOutMessageToClient(IpcId::TextDocumentDefinition, response);
         break;
       }
 
-      ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentHighlight, response);
-      break;
-    }
+      case IpcId::TextDocumentDocumentHighlight: {
+        auto msg = static_cast<Ipc_TextDocumentDocumentHighlight*>(message.get());
 
-    case IpcId::TextDocumentHover: {
-      auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
-
-      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
-
-      Out_TextDocumentHover response;
-      response.id = msg->id;
-
-      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
-        // Found symbol. Return hover.
-        optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.path), ref.loc.range);
-        if (!ls_range)
-          continue;
-
-        response.result.contents = GetHoverForSymbol(db, ref.idx);
-        response.result.range = *ls_range;
-        break;
-      }
-
-      ipc->SendOutMessageToClient(IpcId::TextDocumentHover, response);
-      break;
-    }
-
-    case IpcId::TextDocumentReferences: {
-      auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
-
-      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-      WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
-
-      Out_TextDocumentReferences response;
-      response.id = msg->id;
-
-      for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
-        optional<QueryLocation> excluded_declaration;
-        if (!msg->params.context.includeDeclaration) {
-          std::cerr << "Excluding declaration in references" << std::endl;
-          excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
-        }
-
-        // Found symbol. Return references.
-        std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
-        response.result.reserve(uses.size());
-        for (const QueryLocation& use : uses) {
-          if (excluded_declaration.has_value() && use == *excluded_declaration)
-            continue;
-
-          optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
-          if (ls_location)
-            response.result.push_back(*ls_location);
-        }
-        break;
-      }
-
-      ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
-      break;
-    }
-
-    case IpcId::TextDocumentDocumentSymbol: {
-      auto msg = static_cast<Ipc_TextDocumentDocumentSymbol*>(message.get());
-
-      Out_TextDocumentDocumentSymbol response;
-      response.id = msg->id;
-
-      QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-
-      std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
-      for (SymbolRef ref : file->def.outline) {
-        optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, ref.idx);
-        if (!info)
-          continue;
-
-        optional<lsLocation> location = GetLsLocation(db, working_files, ref.loc);
-        if (!location)
-          continue;
-        info->location = *location;
-        response.result.push_back(*info);
-      }
-
-      ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentSymbol, response);
-      break;
-    }
-
-    case IpcId::TextDocumentCodeLens: {
-      auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
-
-      Out_TextDocumentCodeLens response;
-      response.id = msg->id;
-
-      lsDocumentUri file_as_uri = msg->params.textDocument.uri;
-
-      QueryFile* file = FindFile(db, file_as_uri.GetPath());
-      if (!file) {
-        std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
-        break;
-      }
-      CommonCodeLensParams common;
-      common.result = &response.result;
-      common.db = db;
-      common.working_files = working_files;
-      common.working_file = working_files->GetFileByFilename(file->def.path);
-
-      Timer time;
-
-      for (SymbolRef ref : file->def.outline) {
-        // NOTE: We OffsetColumn so that the code lens always show up in a
-        // predictable order. Otherwise, the client may randomize it.
-
-        SymbolIdx symbol = ref.idx;
-        switch (symbol.kind) {
-        case SymbolKind::Type: {
-          optional<QueryType>& type = db->types[symbol.idx];
-          if (!type)
-            continue;
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), type->uses, "ref", "refs");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(1), ToQueryLocation(db, type->derived), "derived", "derived");
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type->instances), "var", "vars");
+        QueryFileId file_id;
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
           break;
         }
-        case SymbolKind::Func: {
-          optional<QueryFunc>& func = db->funcs[symbol.idx];
-          if (!func)
-            continue;
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
-          int offset = 0;
+        Out_TextDocumentDocumentHighlight response;
+        response.id = msg->id;
 
-          std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, *func);
-          std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, *func);
-          if (base_callers.empty() && derived_callers.empty()) {
-            // set exclude_loc to true to force the code lens to show up
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), "call", "calls", true /*exclude_loc*/);
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          // Found symbol. Return references to highlight.
+          std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
+          response.result.reserve(uses.size());
+          for (const QueryLocation& use : uses) {
+            if (use.path != file_id)
+              continue;
+
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
+            if (!ls_location)
+              continue;
+
+            lsDocumentHighlight highlight;
+            highlight.kind = lsDocumentHighlightKind::Text;
+            highlight.range = ls_location->range;
+            response.result.push_back(highlight);
           }
-          else {
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), "direct call", "direct calls");
-            if (!base_callers.empty())
-              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, base_callers), "base call", "base calls");
-            if (!derived_callers.empty())
-              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, derived_callers), "derived call", "derived calls");
+          break;
+        }
+
+        ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentHighlight, response);
+        break;
+      }
+
+      case IpcId::TextDocumentHover: {
+        auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_TextDocumentHover response;
+        response.id = msg->id;
+
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          // Found symbol. Return hover.
+          optional<lsRange> ls_range = GetLsRange(working_files->GetFileByFilename(file->def.path), ref.loc.range);
+          if (!ls_range)
+            continue;
+
+          response.result.contents = GetHoverForSymbol(db, ref.idx);
+          response.result.range = *ls_range;
+          break;
+        }
+
+        ipc->SendOutMessageToClient(IpcId::TextDocumentHover, response);
+        break;
+      }
+
+      case IpcId::TextDocumentReferences: {
+        auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_TextDocumentReferences response;
+        response.id = msg->id;
+
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          optional<QueryLocation> excluded_declaration;
+          if (!msg->params.context.includeDeclaration) {
+            std::cerr << "Excluding declaration in references" << std::endl;
+            excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
           }
 
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->derived), "derived", "derived");
+          // Found symbol. Return references.
+          std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
+          response.result.reserve(uses.size());
+          for (const QueryLocation& use : uses) {
+            if (excluded_declaration.has_value() && use == *excluded_declaration)
+              continue;
 
-          // "Base"
-          optional<QueryLocation> base_loc = GetBaseDefinitionOrDeclarationSpelling(db, *func);
-          if (base_loc) {
-            optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_loc);
-            if (ls_base) {
-              optional<lsRange> range = GetLsRange(common.working_file, ref.loc.range);
-              if (range) {
-                TCodeLens code_lens;
-                code_lens.range = *range;
-                code_lens.range.start.character += offset++;
-                code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-                code_lens.command->title = "Base";
-                code_lens.command->command = "superindex.goto";
-                code_lens.command->arguments.uri = ls_base->uri;
-                code_lens.command->arguments.position = ls_base->range.start;
-                response.result.push_back(code_lens);
-              }
-            }
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
+            if (ls_location)
+              response.result.push_back(*ls_location);
           }
+          break;
+        }
 
-          break;
-        }
-        case SymbolKind::Var: {
-          optional<QueryVar>& var = db->vars[symbol.idx];
-          if (!var)
-            continue;
-
-          AddCodeLens(&common, ref.loc.OffsetStartColumn(0), var->uses, "ref", "refs", true /*exclude_loc*/);
-          break;
-        }
-        case SymbolKind::File:
-        case SymbolKind::Invalid: {
-          assert(false && "unexpected");
-          break;
-        }
-        };
+        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        break;
       }
 
-      time.ResetAndPrint("[querydb] Building code lens for " + file->def.path);
-      ipc->SendOutMessageToClient(IpcId::TextDocumentCodeLens, response);
-      break;
-    }
+      case IpcId::TextDocumentDocumentSymbol: {
+        auto msg = static_cast<Ipc_TextDocumentDocumentSymbol*>(message.get());
 
-    case IpcId::WorkspaceSymbol: {
-      auto msg = static_cast<Ipc_WorkspaceSymbol*>(message.get());
+        Out_TextDocumentDocumentSymbol response;
+        response.id = msg->id;
 
-      Out_WorkspaceSymbol response;
-      response.id = msg->id;
-
-
-      std::cerr << "[querydb] Considering " << db->detailed_names.size()
-        << " candidates for query " << msg->params.query << std::endl;
-
-      std::string query = msg->params.query;
-      for (int i = 0; i < db->detailed_names.size(); ++i) {
-        if (response.result.size() >= config->maxWorkspaceSearchResults) {
-          std::cerr << "[querydb] - Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
           break;
         }
 
-        if (db->detailed_names[i].find(query) != std::string::npos) {
-          optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, db->symbols[i]);
+        std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
+        for (SymbolRef ref : file->def.outline) {
+          optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, ref.idx);
           if (!info)
             continue;
 
-          optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
-          if (!location) {
-            auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, db->symbols[i]);
-            if (decls.empty())
-              continue;
-            location = decls[0];
-          }
-
-          optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
-          if (!ls_location)
+          optional<lsLocation> location = GetLsLocation(db, working_files, ref.loc);
+          if (!location)
             continue;
-          info->location = *ls_location;
+          info->location = *location;
           response.result.push_back(*info);
         }
+
+        ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentSymbol, response);
+        break;
       }
 
-      std::cerr << "[querydb] - Found " << response.result.size() << " results for query " << query << std::endl;
-      ipc->SendOutMessageToClient(IpcId::WorkspaceSymbol, response);
-      break;
-    }
+      case IpcId::TextDocumentCodeLens: {
+        auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
 
-    default: {
-      std::cerr << "[querydb] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
-      exit(1);
-    }
+        Out_TextDocumentCodeLens response;
+        response.id = msg->id;
+
+        lsDocumentUri file_as_uri = msg->params.textDocument.uri;
+
+        QueryFile* file = FindFile(db, file_as_uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        CommonCodeLensParams common;
+        common.result = &response.result;
+        common.db = db;
+        common.working_files = working_files;
+        common.working_file = working_files->GetFileByFilename(file->def.path);
+
+        Timer time;
+
+        for (SymbolRef ref : file->def.outline) {
+          // NOTE: We OffsetColumn so that the code lens always show up in a
+          // predictable order. Otherwise, the client may randomize it.
+
+          SymbolIdx symbol = ref.idx;
+          switch (symbol.kind) {
+          case SymbolKind::Type: {
+            optional<QueryType>& type = db->types[symbol.idx];
+            if (!type)
+              continue;
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(0), type->uses, "ref", "refs");
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(1), ToQueryLocation(db, type->derived), "derived", "derived");
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type->instances), "var", "vars");
+            break;
+          }
+          case SymbolKind::Func: {
+            optional<QueryFunc>& func = db->funcs[symbol.idx];
+            if (!func)
+              continue;
+
+            int offset = 0;
+
+            std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, *func);
+            std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, *func);
+            if (base_callers.empty() && derived_callers.empty()) {
+              // set exclude_loc to true to force the code lens to show up
+              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), "call", "calls", true /*exclude_loc*/);
+            }
+            else {
+              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), "direct call", "direct calls");
+              if (!base_callers.empty())
+                AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, base_callers), "base call", "base calls");
+              if (!derived_callers.empty())
+                AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, derived_callers), "derived call", "derived calls");
+            }
+
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->derived), "derived", "derived");
+
+            // "Base"
+            optional<QueryLocation> base_loc = GetBaseDefinitionOrDeclarationSpelling(db, *func);
+            if (base_loc) {
+              optional<lsLocation> ls_base = GetLsLocation(db, working_files, *base_loc);
+              if (ls_base) {
+                optional<lsRange> range = GetLsRange(common.working_file, ref.loc.range);
+                if (range) {
+                  TCodeLens code_lens;
+                  code_lens.range = *range;
+                  code_lens.range.start.character += offset++;
+                  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+                  code_lens.command->title = "Base";
+                  code_lens.command->command = "superindex.goto";
+                  code_lens.command->arguments.uri = ls_base->uri;
+                  code_lens.command->arguments.position = ls_base->range.start;
+                  response.result.push_back(code_lens);
+                }
+              }
+            }
+
+            break;
+          }
+          case SymbolKind::Var: {
+            optional<QueryVar>& var = db->vars[symbol.idx];
+            if (!var)
+              continue;
+
+            AddCodeLens(&common, ref.loc.OffsetStartColumn(0), var->uses, "ref", "refs", true /*exclude_loc*/);
+            break;
+          }
+          case SymbolKind::File:
+          case SymbolKind::Invalid: {
+            assert(false && "unexpected");
+            break;
+          }
+          };
+        }
+
+        time.ResetAndPrint("[querydb] Building code lens for " + file->def.path);
+        ipc->SendOutMessageToClient(IpcId::TextDocumentCodeLens, response);
+        break;
+      }
+
+      case IpcId::WorkspaceSymbol: {
+        auto msg = static_cast<Ipc_WorkspaceSymbol*>(message.get());
+
+        Out_WorkspaceSymbol response;
+        response.id = msg->id;
+
+
+        std::cerr << "[querydb] Considering " << db->detailed_names.size()
+          << " candidates for query " << msg->params.query << std::endl;
+
+        std::string query = msg->params.query;
+        for (int i = 0; i < db->detailed_names.size(); ++i) {
+          if (response.result.size() >= config->maxWorkspaceSearchResults) {
+            std::cerr << "[querydb] - Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
+            break;
+          }
+
+          if (db->detailed_names[i].find(query) != std::string::npos) {
+            optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, db->symbols[i]);
+            if (!info)
+              continue;
+
+            optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
+            if (!location) {
+              auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, db->symbols[i]);
+              if (decls.empty())
+                continue;
+              location = decls[0];
+            }
+
+            optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
+            if (!ls_location)
+              continue;
+            info->location = *ls_location;
+            response.result.push_back(*info);
+          }
+        }
+
+        std::cerr << "[querydb] - Found " << response.result.size() << " results for query " << query << std::endl;
+        ipc->SendOutMessageToClient(IpcId::WorkspaceSymbol, response);
+        break;
+      }
+
+      default: {
+        std::cerr << "[querydb] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
+        exit(1);
+      }
     }
   }
 
@@ -1747,22 +1797,11 @@ void QueryDbMain(IndexerConfig* config) {
   CompletionManager completion_manager(config, &project, &working_files);
   FileConsumer::SharedState file_consumer_shared;
 
-  // Start indexer threads.
-  int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
-  if (config->indexerCount > 0)
-    indexer_count = config->indexerCount;
-  std::cerr << "[querydb] Starting " << indexer_count << " indexers" << std::endl;
-  for (int i = 0; i < indexer_count; ++i) {
-    new std::thread([&]() {
-      IndexMain(config, &file_consumer_shared, &project, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed);
-    });
-  }
-
   // Run query db main loop.
   SetCurrentThreadName("querydb");
   QueryDatabase db;
   while (true) {
-    QueryDbMainLoop(config, &db, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &working_files, &completion_manager);
+    QueryDbMainLoop(config, &db, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &file_consumer_shared, &working_files, &completion_manager);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
@@ -1852,78 +1891,6 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
 
     std::cerr << "[stdin] Got message \"" << IpcIdToString(message->method_id) << '"' << std::endl;
     switch (message->method_id) {
-      // TODO: For simplicitly lets just proxy the initialize request like
-      // all other requests so that stdin loop thread becomes super simple.
-    case IpcId::Initialize: {
-      auto request = static_cast<Ipc_InitializeRequest*>(message.get());
-      if (request->params.rootUri) {
-        std::string project_path = request->params.rootUri->GetPath();
-        std::cerr << "[stdin] Initialize in directory " << project_path
-          << " with uri " << request->params.rootUri->raw_uri
-          << std::endl;
-        auto open_project = MakeUnique<Ipc_OpenProject>();
-        open_project->project_path = project_path;
-
-        if (!request->params.initializationOptions) {
-          std::cerr << "Initialization parameters (particularily cacheDirectory) are required" << std::endl;
-          exit(1);
-        }
-
-        *config = *request->params.initializationOptions;
-
-        // Make sure cache directory is valid.
-        if (config->cacheDirectory.empty()) {
-          std::cerr << "No cache directory" << std::endl;
-          exit(1);
-        }
-        config->cacheDirectory = NormalizePath(config->cacheDirectory);
-        if (config->cacheDirectory[config->cacheDirectory.size() - 1] != '/')
-          config->cacheDirectory += '/';
-        MakeDirectoryRecursive(config->cacheDirectory);
-
-        // Startup querydb now that we have initialization state.
-        new std::thread([&config]() {
-          QueryDbMain(config);
-        });
-
-        ipc->SendMessage(IpcManager::Destination::Server, std::move(open_project));
-      }
-
-      // TODO: query request->params.capabilities.textDocument and support only things
-      // the client supports.
-
-      auto response = Out_InitializeResponse();
-      response.id = request->id;
-
-      //response.result.capabilities.textDocumentSync = lsTextDocumentSyncOptions();
-      //response.result.capabilities.textDocumentSync->openClose = true;
-      //response.result.capabilities.textDocumentSync->change = lsTextDocumentSyncKind::Full;
-      //response.result.capabilities.textDocumentSync->willSave = true;
-      //response.result.capabilities.textDocumentSync->willSaveWaitUntil = true;
-      response.result.capabilities.textDocumentSync = lsTextDocumentSyncKind::Incremental;
-
-      response.result.capabilities.renameProvider = true;
-
-      response.result.capabilities.completionProvider = lsCompletionOptions();
-      response.result.capabilities.completionProvider->resolveProvider = false;
-      response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
-
-      response.result.capabilities.codeLensProvider = lsCodeLensOptions();
-      response.result.capabilities.codeLensProvider->resolveProvider = false;
-
-      response.result.capabilities.definitionProvider = true;
-      response.result.capabilities.documentHighlightProvider = true;
-      response.result.capabilities.hoverProvider = true;
-      response.result.capabilities.referencesProvider = true;
-
-      response.result.capabilities.documentSymbolProvider = true;
-      response.result.capabilities.workspaceSymbolProvider = true;
-
-      //response.Write(std::cerr);
-      response.Write(std::cout);
-      break;
-    }
-
     case IpcId::Initialized: {
       // TODO: don't send output until we get this notification
       break;
@@ -1934,6 +1901,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
       break;
     }
 
+    case IpcId::Initialize:
     case IpcId::TextDocumentDidOpen:
     case IpcId::TextDocumentDidChange:
     case IpcId::TextDocumentDidClose:
@@ -2011,15 +1979,9 @@ void LanguageServerMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
   for (auto& message : messages) {
-    std::cerr << "[server] Processing message " << IpcIdToString(message->method_id) << std::endl;
+    std::cerr << "[stdout] Processing message " << IpcIdToString(message->method_id) << std::endl;
 
     switch (message->method_id) {
-      case IpcId::Quit: {
-        std::cerr << "[server] Got quit message (exiting)" << std::endl;
-        exit(0);
-        break;
-      }
-
       case IpcId::Cout: {
         auto msg = static_cast<Ipc_Cout*>(message.get());
 
@@ -2032,7 +1994,7 @@ void LanguageServerMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
       }
 
       default: {
-        std::cerr << "[server] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
+        std::cerr << "[stdout] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
         exit(1);
       }
     }
@@ -2042,12 +2004,20 @@ void LanguageServerMainLoop(std::unordered_map<IpcId, Timer>* request_times) {
 void LanguageServerMain(IndexerConfig* config) {
   std::unordered_map<IpcId, Timer> request_times;
 
-  // Run language client.
+  // Start stdin reader. Reading from stdin is a blocking operation so this
+  // needs a dedicated thread.
   new std::thread([&]() {
     LanguageServerStdinLoop(config, &request_times);
   });
 
-  SetCurrentThreadName("server");
+  // Start querydb thread. querydb will start indexer threads as needed.
+  new std::thread([&config]() {
+    QueryDbMain(config);
+  });
+
+  // We run a dedicated thread for writing to stdout because there can be an
+  // unknown number of delays when output information.
+  SetCurrentThreadName("stdout");
   while (true) {
     LanguageServerMainLoop(&request_times);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));

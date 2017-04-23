@@ -150,7 +150,6 @@ std::string NormalizePath(const std::string& path) {
 }
 
 bool TryMakeDirectory(const std::string& absolute_path) {
-  std::cerr << "!! TryMakeDirectory " << absolute_path << std::endl;
   if (_mkdir(absolute_path.c_str()) == -1) {
     // Success if the directory exists.
     return errno == EEXIST;

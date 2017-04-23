@@ -29,9 +29,6 @@ enum class IpcId : int {
   CqueryFreshenIndex,
 
   // Internal implementation detail.
-  Quit,
-  IsAlive,
-  OpenProject,
   Cout
 };
 MAKE_ENUM_HASHABLE(IpcId)
@@ -47,22 +44,6 @@ template <typename T>
 struct IpcMessage : public BaseIpcMessage {
   IpcMessage() : BaseIpcMessage(T::kIpcId) {}
 };
-
-struct Ipc_Quit : public IpcMessage<Ipc_Quit> {
-  static constexpr IpcId kIpcId = IpcId::Quit;
-};
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_Quit);
-
-struct Ipc_IsAlive : public IpcMessage<Ipc_IsAlive> {
-  static constexpr IpcId kIpcId = IpcId::IsAlive;
-};
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_IsAlive);
-
-struct Ipc_OpenProject : public IpcMessage<Ipc_OpenProject> {
-  static constexpr IpcId kIpcId = IpcId::OpenProject;
-  std::string project_path;
-};
-MAKE_REFLECT_STRUCT(Ipc_OpenProject, project_path);
 
 struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
   static constexpr IpcId kIpcId = IpcId::Cout;

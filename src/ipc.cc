@@ -43,12 +43,6 @@ const char* IpcIdToString(IpcId id) {
     return "$cquery/freshenIndex";
   }
 
-  case IpcId::Quit:
-    return "$quit";
-  case IpcId::IsAlive:
-    return "$isAlive";
-  case IpcId::OpenProject:
-    return "$openProject";
   case IpcId::Cout:
     return "$cout";
   default:
