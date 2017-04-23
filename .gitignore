@@ -10,4 +10,5 @@ waf-*
 *.swp
 *.sln
 *.vcxproj
+*.vcxproj.user
 *.vcxproj.filters
