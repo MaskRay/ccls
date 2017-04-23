@@ -12,7 +12,6 @@
 #include "test.h"
 #include "timer.h"
 #include "threaded_queue.h"
-#include "typed_bidi_message_queue.h"
 #include "working_files.h"
 
 #include <doctest/doctest.h>
@@ -32,8 +31,6 @@
 // We can probably use vscode decorators to achieve it.
 
 namespace {
-
-const bool kUseMultipleProcesses = false; // TODO: initialization options not passed properly when set to true.
 
 std::vector<std::string> kEmptyArgs;
 
@@ -79,9 +76,6 @@ std::vector<std::string> kEmptyArgs;
 
 
 struct IpcManager {
-  // TODO: Rename TypedBidiMessageQueue to IpcTransport?
-  using IpcMessageQueue = TypedBidiMessageQueue<IpcId, BaseIpcMessage>;
-
   static constexpr const char* kIpcLanguageClientName = "lanclient";
   static constexpr const int kQueueSizeBytes = 1024 * 8;
 
@@ -95,18 +89,12 @@ struct IpcManager {
 
   std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_client_;
   std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_server_;
-  std::unique_ptr<IpcMessageQueue> ipc_queue_;
 
   enum class Destination {
     Client, Server
   };
 
-  MessageQueue* GetMessageQueue(Destination destination) {
-    assert(kUseMultipleProcesses);
-    return destination == Destination::Client ? &ipc_queue_->for_client : &ipc_queue_->for_server;
-  }
   ThreadedQueue<std::unique_ptr<BaseIpcMessage>>* GetThreadedQueue(Destination destination) {
-    assert(!kUseMultipleProcesses);
     return destination == Destination::Client ? threaded_queue_for_client_.get() : threaded_queue_for_server_.get();
   }
 
@@ -114,123 +102,28 @@ struct IpcManager {
     std::ostringstream sstream;
     response.Write(sstream);
 
-    if (kUseMultipleProcesses) {
-      Ipc_Cout out;
-      out.content = sstream.str();
-      out.original_ipc_id = id;
-      ipc_queue_->SendMessage(&ipc_queue_->for_client, Ipc_Cout::kIpcId, out);
-    }
-    else {
-      auto out = MakeUnique<Ipc_Cout>();
-      out->content = sstream.str();
-      out->original_ipc_id = id;
-      GetThreadedQueue(Destination::Client)->Enqueue(std::move(out));
-    }
+    auto out = MakeUnique<Ipc_Cout>();
+    out->content = sstream.str();
+    out->original_ipc_id = id;
+    GetThreadedQueue(Destination::Client)->Enqueue(std::move(out));
   }
 
   void SendMessage(Destination destination, std::unique_ptr<BaseIpcMessage> message) {
-    if (kUseMultipleProcesses)
-      ipc_queue_->SendMessage(GetMessageQueue(destination), message->method_id, *message);
-    else
-      GetThreadedQueue(destination)->Enqueue(std::move(message));
+    GetThreadedQueue(destination)->Enqueue(std::move(message));
   }
 
   std::vector<std::unique_ptr<BaseIpcMessage>> GetMessages(Destination destination) {
-    if (kUseMultipleProcesses)
-      return ipc_queue_->GetMessages(GetMessageQueue(destination));
-    else
-      return GetThreadedQueue(destination)->DequeueAll();
+    return GetThreadedQueue(destination)->DequeueAll();
   }
 
  private:
   IpcManager() {
-    if (kUseMultipleProcesses) {
-      ipc_queue_ = BuildIpcMessageQueue(kIpcLanguageClientName, kQueueSizeBytes);
-    }
-    else {
-      threaded_queue_for_client_ = MakeUnique<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>>();
-      threaded_queue_for_server_ = MakeUnique<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>>();
-    }
-  }
-
-  template<typename T>
-  void RegisterId(IpcMessageQueue* t) {
-    t->RegisterId(T::kIpcId,
-      [](Writer& visitor, BaseIpcMessage& message) {
-      T& m = static_cast<T&>(message);
-      Reflect(visitor, m);
-    }, [](Reader& visitor) {
-      auto m = MakeUnique<T>();
-      Reflect(visitor, *m);
-      return m;
-    });
-  }
-
-  std::unique_ptr<IpcMessageQueue> BuildIpcMessageQueue(const std::string& name, size_t buffer_size) {
-    auto ipc = MakeUnique<IpcMessageQueue>(name, buffer_size);
-    RegisterId<Ipc_CancelRequest>(ipc.get());
-    RegisterId<Ipc_InitializeRequest>(ipc.get());
-    RegisterId<Ipc_InitializedNotification>(ipc.get());
-    RegisterId<Ipc_TextDocumentDidOpen>(ipc.get());
-    RegisterId<Ipc_TextDocumentDidChange>(ipc.get());
-    RegisterId<Ipc_TextDocumentDidClose>(ipc.get());
-    RegisterId<Ipc_TextDocumentDidSave>(ipc.get());
-    RegisterId<Ipc_TextDocumentRename>(ipc.get());
-    RegisterId<Ipc_TextDocumentComplete>(ipc.get());
-    RegisterId<Ipc_TextDocumentDefinition>(ipc.get());
-    RegisterId<Ipc_TextDocumentDocumentHighlight>(ipc.get());
-    RegisterId<Ipc_TextDocumentHover>(ipc.get());
-    RegisterId<Ipc_TextDocumentReferences>(ipc.get());
-    RegisterId<Ipc_TextDocumentDocumentSymbol>(ipc.get());
-    RegisterId<Ipc_TextDocumentCodeLens>(ipc.get());
-    RegisterId<Ipc_CodeLensResolve>(ipc.get());
-    RegisterId<Ipc_WorkspaceSymbol>(ipc.get());
-    RegisterId<Ipc_Quit>(ipc.get());
-    RegisterId<Ipc_IsAlive>(ipc.get());
-    RegisterId<Ipc_OpenProject>(ipc.get());
-    RegisterId<Ipc_Cout>(ipc.get());
-    RegisterId<Ipc_CqueryFreshenIndex>(ipc.get());
-    return ipc;
+    threaded_queue_for_client_ = MakeUnique<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>>();
+    threaded_queue_for_server_ = MakeUnique<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>>();
   }
 };
 
 IpcManager* IpcManager::instance_ = nullptr;
-
-bool IsQueryDbProcessRunningOutOfProcess() {
-  if (!kUseMultipleProcesses)
-    return false;
-
-  IpcManager* ipc = IpcManager::instance();
-
-  // Discard any left-over messages from previous runs.
-  if (kUseMultipleProcesses)
-    ipc->GetMessages(IpcManager::Destination::Client);
-
-  // Emit an alive check. Sleep so the server has time to respond.
-  std::cerr << "[setup] Sending IsAlive request to server" << std::endl;
-  ipc->SendMessage(IpcManager::Destination::Server, MakeUnique<Ipc_IsAlive>());
-
-  // TODO: Tune this value or make it configurable.
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-  // Check if we got an IsAlive message back.
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
-  for (auto& message : messages) {
-    if (IpcId::IsAlive == message->method_id) {
-      return true;
-    }
-    else {
-      std::cerr << "[setup] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
-      exit(1);
-    }
-  }
-
-  // No response back. Clear out server messages so server doesn't respond to stale request.
-  ipc->GetMessages(IpcManager::Destination::Server);
-
-  return false;
-}
-
 
 
 
@@ -1957,13 +1850,9 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
         MakeDirectoryRecursive(config->cacheDirectory);
 
         // Startup querydb now that we have initialization state.
-        // TODO: Pass init data to out of process querydb.
-        bool has_querydb = IsQueryDbProcessRunningOutOfProcess();
-        if (!has_querydb) {
-          new std::thread([&config]() {
-            QueryDbMain(config);
-          });
-        }
+        new std::thread([&config]() {
+          QueryDbMain(config);
+        });
 
         ipc->SendMessage(IpcManager::Destination::Server, std::move(open_project));
       }
@@ -2196,16 +2085,10 @@ int main(int argc, char** argv) {
 
   RegisterMessageTypes();
 
-  // if (argc == 1) {
-  //  QueryDbMain();
-  //  return 0;
-  //}
-
-
   std::unordered_map<std::string, std::string> options =
     ParseOptions(argc, argv);
 
-  if (argc == 1 || HasOption(options, "--test")) {
+  if (HasOption(options, "--test")) {
     doctest::Context context;
     context.applyCommandLine(argc, argv);
     int res = context.run();
@@ -2215,49 +2098,36 @@ int main(int argc, char** argv) {
     RunTests();
     return 0;
   }
-  else if (options.find("--help") != options.end()) {
-    std::cout << R"help(clang-querydb help:
-
-  clang-querydb is a low-latency C++ language server.
-
-  General:
-    --help        Print this help information.
-    --language-server
-                  Run as a language server. The language server will look for
-                  an existing querydb process, otherwise it will run querydb
-                  in-process. This implements the language server spec.
-    --querydb     Run the querydb. The querydb stores the program index and
-                  serves index request tasks.
-    --test        Run tests. Does nothing if test support is not compiled in.
-
-  Configuration:
-    When opening up a directory, clang-querydb will look for a
-    compile_commands.json file emitted by your preferred build system. If not
-    present, clang-querydb will use a recursive directory listing instead.
-    Command line flags can be provided by adding a "clang_args" file in the
-    top-level directory. Each line in that file is a separate argument.
-)help";
-    exit(0);
-  }
   else if (HasOption(options, "--language-server")) {
     //std::cerr << "Running language server" << std::endl;
     IndexerConfig config;
     LanguageServerMain(&config);
     return 0;
   }
-  else if (HasOption(options, "--querydb")) {
-    //std::cerr << "Running querydb" << std::endl;
-    // TODO/FIXME: config is not shared between processes.
-    IndexerConfig config;
-    QueryDbMain(&config);
-    return 0;
-  }
   else {
-    //std::cerr << "Running language server" << std::endl;
-    IndexerConfig config;
-    LanguageServerMain(&config);
+    std::cout << R"help(cquery help:
+
+  cquery is a low-latency C++ language server.
+
+  General:
+    --help        Print this help information.
+    --language-server
+                  Run as a language server. This implements the language
+                  server spec over STDIN and STDOUT.
+    --test        Run tests. Does nothing if test support is not compiled in.
+
+  Configuration:
+    When opening up a directory, cquery will look for a compile_commands.json
+    file emitted by your preferred build system. If not present, cquery will
+    use a recursive directory listing instead. Command line flags can be
+    provided by adding a "clang_args" file in the top-level directory. Each
+    line in that file is a separate argument.
+
+    There are also a number of configuration options available when
+    initializing the language server - your editor should have tooling to
+    describe those options. See |IndexerConfig| in this source code for a
+    detailed list of all currently supported options.
+)help";
     return 0;
   }
-
-  return 1;
 }
