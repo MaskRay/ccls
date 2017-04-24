@@ -11,11 +11,12 @@ void Timer::Reset() {
 }
 
 void Timer::ResetAndPrint(const std::string& message) {
-  std::cerr << message << " took " << ElapsedMilliseconds() << "ms" << std::endl;
-  Reset();
-}
-
-long long Timer::ElapsedMilliseconds() {
   std::chrono::time_point<Clock> end = Clock::now();
-  return std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+  long long elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+  long long milliseconds = elapsed / 1000;
+  long long remaining = elapsed - milliseconds;
+
+  std::cerr << message << " took " << milliseconds << "." << remaining << "ms" << std::endl;
+  Reset();
 }

@@ -14,7 +14,7 @@ std::string GetCachedBaseFileName(const std::string& cache_directory,
   std::replace(source_file.begin(), source_file.end(), '\\', '_');
   std::replace(source_file.begin(), source_file.end(), '/', '_');
   std::replace(source_file.begin(), source_file.end(), ':', '_');
-  std::replace(source_file.begin(), source_file.end(), '.', '_');
+
   return cache_directory + source_file;
 }
 
@@ -42,8 +42,7 @@ optional<std::string> LoadCachedFileContents(IndexerConfig* config,
   if (!config->enableCacheRead)
     return nullopt;
 
-  return ReadContent(GetCachedBaseFileName(config->cacheDirectory, filename) +
-                     ".txt");
+  return ReadContent(GetCachedBaseFileName(config->cacheDirectory, filename));
 }
 
 void WriteToCache(IndexerConfig* config,
@@ -55,7 +54,7 @@ void WriteToCache(IndexerConfig* config,
   std::string cache_basename =
       GetCachedBaseFileName(config->cacheDirectory, filename);
 
-  CopyFileTo(cache_basename + ".txt", filename);
+  CopyFileTo(cache_basename, filename);
 
   std::string indexed_content = Serialize(file);
   std::ofstream cache;

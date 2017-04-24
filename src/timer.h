@@ -14,9 +14,6 @@ struct Timer {
   // Resets timer and prints a message like "<foo> took 5ms"
   void ResetAndPrint(const std::string& message);
 
-  // Return the number of milliseconds since the timer was last reset.
-  long long ElapsedMilliseconds();
-
   // Raw start time.
   std::chrono::time_point<Clock> start;
 };

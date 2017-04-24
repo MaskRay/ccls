@@ -1242,7 +1242,7 @@ bool QueryDbMainLoop(
         auto request = static_cast<Ipc_InitializeRequest*>(message.get());
         if (request->params.rootUri) {
           std::string project_path = request->params.rootUri->GetPath();
-          std::cerr << "[stdin] Initialize in directory " << project_path
+          std::cerr << "[querydb] Initialize in directory " << project_path
             << " with uri " << request->params.rootUri->raw_uri
             << std::endl;
 
@@ -1607,7 +1607,7 @@ bool QueryDbMainLoop(
           break;
         }
 
-        std::cerr << "File outline size is " << file->def.outline.size() << std::endl;
+        std::cerr << "[querydb] File outline size is " << file->def.outline.size() << std::endl;
         for (SymbolRef ref : file->def.outline) {
           optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, ref.idx);
           if (!info)
@@ -1739,7 +1739,7 @@ bool QueryDbMainLoop(
         std::string query = msg->params.query;
         for (int i = 0; i < db->detailed_names.size(); ++i) {
           if (response.result.size() >= config->maxWorkspaceSearchResults) {
-            std::cerr << "[querydb] - Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
+            std::cerr << "[querydb] Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
             break;
           }
 
@@ -1764,7 +1764,7 @@ bool QueryDbMainLoop(
           }
         }
 
-        std::cerr << "[querydb] - Found " << response.result.size() << " results for query " << query << std::endl;
+        std::cerr << "[querydb] Found " << response.result.size() << " results for query " << query << std::endl;
         ipc->SendOutMessageToClient(IpcId::WorkspaceSymbol, response);
         break;
       }
@@ -1952,7 +1952,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
 
     (*request_times)[message->method_id] = Timer();
 
-    std::cerr << "[stdin] Got message \"" << IpcIdToString(message->method_id) << '"' << std::endl;
+    //std::cerr << "[stdin] Got message " << IpcIdToString(message->method_id) << std::endl;
     switch (message->method_id) {
     case IpcId::Initialized: {
       // TODO: don't send output until we get this notification
@@ -2049,7 +2049,7 @@ void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaite
     }
 
     for (auto& message : messages) {
-      std::cerr << "[stdout] Processing message " << IpcIdToString(message->method_id) << std::endl;
+      //std::cerr << "[stdout] Processing message " << IpcIdToString(message->method_id) << std::endl;
 
       switch (message->method_id) {
         case IpcId::Cout: {
