@@ -1304,7 +1304,9 @@ bool QueryDbMainLoop(
 
         response.result.capabilities.completionProvider = lsCompletionOptions();
         response.result.capabilities.completionProvider->resolveProvider = false;
-        response.result.capabilities.completionProvider->triggerCharacters = { ".", "::", "->" };
+        // vscode doesn't support trigger character sequences, so we use ':' for '::' and '>' for '->'.
+        // See https://github.com/Microsoft/language-server-protocol/issues/138.
+        response.result.capabilities.completionProvider->triggerCharacters = { ".", ":", ">" };
 
         response.result.capabilities.codeLensProvider = lsCodeLensOptions();
         response.result.capabilities.codeLensProvider->resolveProvider = false;
