@@ -18,6 +18,18 @@ bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
   return a.data[0] == b.data[0] && a.data[1] == b.data[1] && a.data[2] == b.data[2];
 }
 
+bool FileConsumer::SharedState::Mark(const std::string& file) {
+  std::lock_guard<std::mutex> lock(mutex);
+  return files.insert(file).second;
+}
+
+void FileConsumer::SharedState::Reset(const std::string& file) {
+  std::lock_guard<std::mutex> lock(mutex);
+  auto it = files.find(file);
+  if (it != files.end())
+    files.erase(it);
+}
+
 FileConsumer::FileConsumer(SharedState* shared_state) : shared_(shared_state) {}
 
 IndexedFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership) {
@@ -39,11 +51,7 @@ IndexedFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership)
   std::string file_name = FileName(file);
 
   // No result in local; we need to query global.
-  bool did_insert = false;
-  {
-    std::lock_guard<std::mutex> lock(shared_->mutex);
-    did_insert = shared_->files.insert(file_name).second;
-  }
+  bool did_insert = shared_->Mark(file_name);
   *is_first_ownership = did_insert;
   local_[file_id] = did_insert ? MakeUnique<IndexedFile>(file_name) : nullptr;
   return local_[file_id].get();

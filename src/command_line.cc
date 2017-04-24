@@ -744,7 +744,6 @@ struct Index_DoIndex {
     // of the dependencies. The main cc will then be parsed, which will include
     // updates to all dependencies.
 
-    ImportOnly,
     ImportThenParse,
     Parse,
     Freshen,
@@ -762,10 +761,13 @@ struct Index_DoIdMap {
   std::unique_ptr<IndexedFile> previous;
   std::unique_ptr<IndexedFile> current;
 
+  explicit Index_DoIdMap(std::unique_ptr<IndexedFile> current)
+    : current(std::move(current)) {}
+
   explicit Index_DoIdMap(std::unique_ptr<IndexedFile> previous,
-    std::unique_ptr<IndexedFile> current)
+                         std::unique_ptr<IndexedFile> current)
     : previous(std::move(previous)),
-    current(std::move(current)) {}
+      current(std::move(current)) {}
 };
 
 struct Index_OnIdMapped {
@@ -913,85 +915,83 @@ void RegisterMessageTypes() {
 
 
 
-void DispatchDependencyImports(Index_DoIndexQueue* queue_do_index,
-                               Index_DoIndex::Type request_type,
-                               const std::vector<std::string>& dependencies) {
-  // Import all dependencies.
-  for (auto& dependency_path : dependencies) {
-    std::cerr << "- Dispatching dependency import " << dependency_path << std::endl;
-    queue_do_index->PriorityEnqueue(Index_DoIndex(request_type, dependency_path, nullopt));
-  }
-}
-
-void ImportCachedIndex(IndexerConfig* config,
-                       Index_DoIndexQueue* queue_do_index,
+bool ImportCachedIndex(IndexerConfig* config,
+                       FileConsumer::SharedState* file_consumer_shared,
                        Index_DoIdMapQueue* queue_do_id_map,
-                       const std::string path,
-                       int64_t* last_modification_time) {
-  *last_modification_time = 0;
+                       const std::string& tu_path) {
+  // TODO: only load cache if command line arguments are the same.
 
   Timer time;
 
-  std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, path);
-  time.ResetAndPrint("Reading cached index from disk " + path);
+  std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, tu_path);
+  time.ResetAndPrint("Reading cached index from disk " + tu_path);
   if (!cache)
-    return;
+    return true;
 
-  DispatchDependencyImports(queue_do_index, Index_DoIndex::Type::ImportOnly, cache->dependencies);
+  bool needs_reparse = false;
 
-  *last_modification_time = cache->last_modification_time;
-  Index_DoIdMap response(nullptr, std::move(cache));
-  queue_do_id_map->Enqueue(std::move(response));
+  // Import all dependencies.
+  for (auto& dependency_path : cache->dependencies) {
+    std::cerr << "- Got dependency " << dependency_path << std::endl;
+    std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, dependency_path);
+    if (GetLastModificationTime(cache->path) == cache->last_modification_time)
+      file_consumer_shared->Mark(cache->path);
+    else
+      needs_reparse = true;
+    queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache)));
+  }
+
+  // Import primary file.
+  if (GetLastModificationTime(tu_path) == cache->last_modification_time)
+    file_consumer_shared->Mark(tu_path);
+  else
+    needs_reparse = true;
+  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache)));
+
+  return needs_reparse;
 }
 
 void ParseFile(IndexerConfig* config,
                FileConsumer::SharedState* file_consumer_shared,
                Index_DoIdMapQueue* queue_do_id_map,
-               const std::string& path,
-               const optional<std::vector<std::string>>& args,
-               std::vector<std::string>* opt_out_dependencies) {
+               const std::string& tu_or_dep_path,
+               const optional<std::vector<std::string>>& args) {
   Timer time;
 
-  // Parse request and send a response.
-  std::unique_ptr<IndexedFile> cached_path_index = LoadCachedIndex(config, path);
+  std::unique_ptr<IndexedFile> cache_for_args = LoadCachedIndex(config, tu_or_dep_path);
 
-  if (cached_path_index) {
-    // Give the user dependencies if requested.
-    if (opt_out_dependencies)
-      *opt_out_dependencies = cached_path_index->dependencies;
 
-    // Skip index if file modification time didn't change.
-    int64_t modification_time = GetLastModificationTime(path);
-    if (modification_time == cached_path_index->last_modification_time) {
-      time.ResetAndPrint("Skipping index update on " + path + " since file modification time has not changed");
-      return;
-    }
-    else {
-      time.ResetAndPrint("Modification time on " + path + " has changed from " + std::to_string(cached_path_index->last_modification_time) + " to " + std::to_string(modification_time));
-    }
-  }
-
+  std::string tu_path = cache_for_args ? cache_for_args->import_file : tu_or_dep_path;
+  // TODO: Replace checking cache for arguments by guessing arguments on via directory structure. That will also work better for new files.
+  const std::vector<std::string>& tu_args = args ? *args : cache_for_args ? cache_for_args->args : kEmptyArgs;
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
     config, file_consumer_shared,
-    path, cached_path_index ? cached_path_index->import_file : path,
-    args ? *args : cached_path_index ? cached_path_index->args : kEmptyArgs);
-  time.ResetAndPrint("Parsing/indexing " + path);
+    tu_path, tu_args);
+  time.ResetAndPrint("Parsing/indexing " + tu_path + " with args " + StringJoin(tu_args));
 
   for (std::unique_ptr<IndexedFile>& new_index : indexes) {
     std::cerr << "Got index for " << new_index->path << std::endl;
 
     // Load the cached index.
     std::unique_ptr<IndexedFile> cached_index;
-    if (new_index->path == path)
-      cached_index = std::move(cached_path_index);
+    if (cache_for_args && new_index->path == cache_for_args->path)
+      cached_index = std::move(cache_for_args);
     else
       cached_index = LoadCachedIndex(config, new_index->path);
+    // TODO: Enable this assert when we are no longer forcibly indexing the primary file.
+    //assert(!cached_index || GetLastModificationTime(new_index->path) != cached_index->last_modification_time);
+
     time.ResetAndPrint("Loading cached index");
 
-    // Update dependencies on |new_index|, since they won't get reparsed if we
-    // have parsed them once before.
-    if (cached_index)
-      AddRange(&new_index->dependencies, cached_index->dependencies);
+    // Any any existing dependencies to |new_index| that were there before,
+    // because we will not reparse them if they haven't changed.
+    // TODO: indexer should always include dependencies. This doesn't let us remove old dependencies.
+    if (cached_index) {
+      for (auto& dep : cached_index->dependencies) {
+        if (std::find(new_index->dependencies.begin(), new_index->dependencies.end(), dep) == new_index->dependencies.end())
+          new_index->dependencies.push_back(dep);
+      }
+    }
 
     // Cache the newly indexed file. This replaces the existing cache.
     // TODO: Run this as another import pipeline stage.
@@ -1003,6 +1003,40 @@ void ParseFile(IndexerConfig* config,
     queue_do_id_map->Enqueue(std::move(response));
   }
 
+}
+
+bool ResetStaleFiles(IndexerConfig* config,
+                     FileConsumer::SharedState* file_consumer_shared,
+                     const std::string& tu_path) {
+  Timer time;
+
+  std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, tu_path);
+  time.ResetAndPrint("Reading cached index from disk " + tu_path);
+  if (!cache) {
+    std::cerr << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)" << std::endl;
+    file_consumer_shared->Mark(tu_path);
+    return true;
+  }
+
+  bool needs_reparse = false;
+
+  // Check dependencies
+  for (auto& dependency_path : cache->dependencies) {
+    std::cerr << "- Got dependency " << dependency_path << std::endl;
+    std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, dependency_path);
+    if (GetLastModificationTime(cache->path) != cache->last_modification_time) {
+      needs_reparse = true;
+      file_consumer_shared->Reset(cache->path);
+    }
+  }
+
+  // Check primary file
+  if (GetLastModificationTime(tu_path) != cache->last_modification_time) {
+    needs_reparse = true;
+    file_consumer_shared->Mark(tu_path);
+  }
+
+  return needs_reparse;
 }
 
 bool IndexMain_DoIndex(IndexerConfig* config,
@@ -1017,18 +1051,14 @@ bool IndexMain_DoIndex(IndexerConfig* config,
   Timer time;
 
   switch (index_request->type) {
-    case Index_DoIndex::Type::ImportOnly: {
-      int64_t cache_modification_time;
-      ImportCachedIndex(config, queue_do_index, queue_do_id_map, index_request->path, &cache_modification_time);
-      break;
-    }
-
     case Index_DoIndex::Type::ImportThenParse: {
-      int64_t cache_modification_time;
-      ImportCachedIndex(config, queue_do_index, queue_do_id_map, index_request->path, &cache_modification_time);
+      // This assumes index_request->path is a cc or translation unit file (ie,
+      // it is in compile_commands.json).
+
+      bool needs_reparse = ImportCachedIndex(config, file_consumer_shared, queue_do_id_map, index_request->path);
 
       // If the file has been updated, we need to reparse it.
-      if (GetLastModificationTime(index_request->path) > cache_modification_time) {
+      if (needs_reparse) {
         // Instead of parsing the file immediately, we push the request to the
         // back of the queue so we will finish all of the Import requests
         // before starting to run actual index jobs. This gives the user a
@@ -1040,14 +1070,19 @@ bool IndexMain_DoIndex(IndexerConfig* config,
     }
 
     case Index_DoIndex::Type::Parse: {
-      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args, nullptr);
+      // index_request->path can be a cc/tu or a dependency path.
+      file_consumer_shared->Reset(index_request->path);
+      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args);
       break;
     }
 
     case Index_DoIndex::Type::Freshen: {
-      std::vector<std::string> dependencies;
-      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args, &dependencies);
-      DispatchDependencyImports(queue_do_index, Index_DoIndex::Type::Freshen, dependencies);
+      // This assumes index_request->path is a cc or translation unit file (ie,
+      // it is in compile_commands.json).
+
+      bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->path);
+      if (needs_reparse)
+        ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args);
       break;
     }
   }

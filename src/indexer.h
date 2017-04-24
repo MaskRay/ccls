@@ -503,7 +503,7 @@ struct IndexedFile {
 // |dependencies| are the existing dependencies of |import_file| if this is a reparse.
 std::vector<std::unique_ptr<IndexedFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
-    std::string desired_index_file, std::string import_file,
+    std::string file,
     std::vector<std::string> args,
     bool dump_ast = false);
 void IndexInit();

@@ -18,6 +18,8 @@ bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
 std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to);
 
+std::string StringJoin(const std::vector<std::string>& values);
+
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
 optional<std::string> ReadContent(const std::string& filename);

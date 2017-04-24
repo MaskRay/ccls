@@ -26,6 +26,11 @@ struct FileConsumer {
   struct SharedState {
     mutable std::unordered_set<std::string> files;
     mutable std::mutex mutex;
+
+    // Mark the file as used. Returns true if the file was not previously used.
+    bool Mark(const std::string& file);
+    // Reset the used state (ie, mark the file as unused).
+    void Reset(const std::string& file);
   };
 
   FileConsumer(SharedState* shared_state);
