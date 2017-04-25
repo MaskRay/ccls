@@ -41,8 +41,18 @@ $ npm install
 $ code .
 ```
 
-After VSCode is running, update the `ServerOptions` `cwd` parameter to point to
-the absolute path of your build directory.
+After VSCode is running, update the `ServerOptions` inside of `extension.ts` to
+point to the absolute path of your build directory. For example,
+
+```js
+let serverOptions: ServerOptions = {
+    command: './app',
+    args: ['--language-server'],
+    options: {
+      cwd: '/home/cquery/build/'
+    }
+  }
+```
 
 You can hit then `F5` to launch the extension locally. Consider taking a look at
 the options cquery makes available in vscode settings.
