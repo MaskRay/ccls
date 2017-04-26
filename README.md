@@ -1,3 +1,7 @@
+# Notice
+
+cquery is not yet production ready. I use it day-to-day, but there are still a number of significant issues and unimplemented features.
+
 # cquery
 
 cquery is a low-latency language server for C++. It is extremely scalable and
