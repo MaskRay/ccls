@@ -227,14 +227,16 @@ void diagnostic(CXClientData client_data,
     CXFile file;
     unsigned int line, column;
     CXSourceLocation location = clang_getDiagnosticLocation(diagnostic);
-    clang_getSpellingLocation(location, &file, &line, &column, nullptr);
+    if (!clang_Location_isInSystemHeader(location)) {
+      clang_getSpellingLocation(location, &file, &line, &column, nullptr);
 
-    // Fetch path, print.
-    if (file != nullptr) {
-      std::string path = clang::ToString(clang_getFileName(file));
-      std::cerr << NormalizePath(path) << ':';
+      // Fetch path, print.
+      if (file != nullptr) {
+        std::string path = clang::ToString(clang_getFileName(file));
+        std::cerr << NormalizePath(path) << ':';
+      }
+      std::cerr << line << ':' << column << ": " << spelling << std::endl;
     }
-    std::cerr << line << ':' << column << ": " << spelling << std::endl;
 
     clang_disposeDiagnostic(diagnostic);
   }

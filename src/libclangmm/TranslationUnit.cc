@@ -32,7 +32,7 @@ TranslationUnit::TranslationUnit(IndexerConfig* config,
     std::cerr << arg << " ";
   std::cerr << std::endl;
 
-  CXErrorCode error_code = clang_parseTranslationUnit2(
+  CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
       index.cx_index, filepath.c_str(), args.data(), args.size(),
       unsaved_files.data(), unsaved_files.size(), flags, &cx_tu);
 

@@ -15,8 +15,4 @@
 
 
 
-
-
-
-
 void foobar() {}

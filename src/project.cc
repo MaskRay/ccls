@@ -205,6 +205,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::strin
   // TODO: Figure out if this function or the clang one is faster.
   //return LoadFromCompileCommandsJson(project_directory);
 
+  std::cerr << "Trying to load compile_commands.json" << std::endl;
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(project_directory.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {

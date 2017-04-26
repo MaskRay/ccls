@@ -3,9 +3,16 @@
 
 
 
-struct Baz {
+struct Baz3 {
 };
 
-void foo() {
-  Baz b;
-}
+
+struct Foobar {
+
+};
+
+
+
+
+
+
