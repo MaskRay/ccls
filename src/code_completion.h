@@ -23,7 +23,7 @@ struct CompletionSession {
   //std::unique_ptr<clang::TranslationUnit> updated;
   //std::unique_ptr<clang::Index> updated_index;
 
-  CompletionSession(const Project::Entry& file, IndexerConfig* config, WorkingFiles* working_files);
+  CompletionSession(const Project::Entry& file, WorkingFiles* working_files);
   ~CompletionSession();
 
   // Refresh file index.

@@ -1282,7 +1282,7 @@ bool QueryDbMainLoop(
           }
 
           // Open up / load the project.
-          project->Load(project_path);
+          project->Load(config->extraClangArguments, project_path);
           std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
 
           project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {

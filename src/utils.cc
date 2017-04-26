@@ -66,18 +66,6 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
   return result;
 }
 
-std::string StringJoin(const std::vector<std::string>& values) {
-  std::string result;
-  bool first = true;
-  for (auto& entry : values) {
-    if (!first)
-      result += ", ";
-    first = false;
-    result += entry;
-  }
-  return result;
-}
-
 static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
   std::vector<std::string> result;
 

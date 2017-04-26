@@ -18,7 +18,25 @@ bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
 std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to);
 
-std::string StringJoin(const std::vector<std::string>& values);
+template <typename TValues>
+bool StartsWithAny(const TValues& values, const std::string& start) {
+  return std::any_of(std::begin(values), std::end(values), [&start](const auto& value) {
+    return StartsWith(value, start);
+  });
+}
+
+template <typename TValues>
+std::string StringJoin(const TValues& values) {
+  std::string result;
+  bool first = true;
+  for (auto& entry : values) {
+    if (!first)
+      result += ", ";
+    first = false;
+    result += entry;
+  }
+  return result;
+}
 
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);

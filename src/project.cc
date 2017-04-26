@@ -11,7 +11,6 @@
 #include <iostream>
 #include <vector>
 
-
 struct CompileCommandsEntry {
   std::string directory;
   std::string file;
@@ -22,137 +21,83 @@ MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
 
 namespace {
 
-
-
-// https://github.com/Andersbakken/rtags/blob/6b16b81ea93aeff4a58930b44b2a0a207b456192/src/Source.cpp
-static const char *kValueArgs[] = {
-  "--param",
-  "-G",
-  "-MF",
-  "-MQ",
-  "-MT",
-  "-T",
-  "-V",
-  "-Xanalyzer",
-  "-Xassembler",
-  "-Xclang",
-  "-Xlinker",
-  "-Xpreprocessor",
-  "-arch",
-  "-b",
-  "-gcc-toolchain",
-  //"-imacros",
-  "-imultilib",
-  //"-include",
-  //"-iprefix",
-  //"-isysroot",
-  "-ivfsoverlay",
-  "-iwithprefix",
-  "-iwithprefixbefore",
-  "-o",
-  "-target",
-  "-x"
-};
+// Blacklisted flags which are always removed from the command line.
 static const char *kBlacklist[] = {
-  "--param",
-  "-M",
-  "-MD",
-  "-MF",
-  "-MG",
-  "-MM",
-  "-MMD",
-  "-MP",
-  "-MQ",
-  "-MT",
-  "-Og",
-  "-Wa,--32",
-  "-Wa,--64",
-  "-Wl,--incremental-full",
-  "-Wl,--incremental-patch,1",
-  "-Wl,--no-incremental",
-  "-fbuild-session-file=",
-  "-fbuild-session-timestamp=",
-  "-fembed-bitcode",
-  "-fembed-bitcode-marker",
-  "-fmodules-validate-once-per-build-session",
-  "-fno-delete-null-pointer-checks",
-  "-fno-use-linker-plugin"
-  "-fno-var-tracking",
-  "-fno-var-tracking-assignments",
-  "-fno-enforce-eh-specs",
-  "-fvar-tracking",
-  "-fvar-tracking-assignments",
-  "-fvar-tracking-assignments-toggle",
-  "-gcc-toolchain",
-  "-march=",
-  "-masm=",
-  "-mcpu=",
-  "-mfpmath=",
-  "-mtune=",
-  "-s",
-
-  //"-B",
-  //"-f",
-  //"-pipe",
-  //"-W",
-  // TODO
-  "-Wno-unused-lambda-capture",
-  "/",
-  "..",
+  "-stdlib=libc++"
 };
 
-Project::Entry GetCompilationEntryFromCompileCommandEntry(const CompileCommandsEntry& entry) {
+// Arguments which are followed by a potentially relative path. We need to make
+// all relative paths absolute, otherwise libclang will not resolve them.
+const char* kPathArgs[] = {
+  "-isystem",
+  "-I",
+  "-iquote",
+  "--sysroot="
+};
+
+Project::Entry GetCompilationEntryFromCompileCommandEntry(const std::vector<std::string>& extra_flags, const CompileCommandsEntry& entry) {
   Project::Entry result;
   result.filename = NormalizePath(entry.file);
 
-  size_t num_args = entry.args.size();
-  result.args.reserve(num_args);
-  for (size_t j = 0; j < num_args; ++j) {
-    std::string arg = entry.args[j];
+  bool make_next_flag_absolute = false;
 
-
-    bool bad = false;
-    for (auto& entry : kValueArgs) {
-      if (StartsWith(arg, entry)) {
-        bad = true;
-        continue;
-      }
-    }
-    if (bad) {
-      ++j;
+  result.args.reserve(entry.args.size() + extra_flags.size());
+  for (size_t i = 0; i < entry.args.size(); ++i) {
+    std::string arg = entry.args[i];
+    
+    // If blacklist skip.
+    if (std::any_of(std::begin(kBlacklist), std::end(kBlacklist), [&arg](const char* value) {
+      return StartsWith(arg, value);
+    })) {
       continue;
     }
 
+    // Cleanup path for previous argument.
+    if (make_next_flag_absolute) {
+      if (arg.size() > 0 && arg[0] != '/')
+        arg = NormalizePath(entry.directory + arg);
+      make_next_flag_absolute = false;
+    }
 
-    for (auto& entry : kBlacklist) {
-      if (StartsWith(arg, entry)) {
-        bad = true;
-        continue;
+    // Update arg if it is a path.
+    for (const char* flag_type : kPathArgs) {
+      if (arg == flag_type) {
+        make_next_flag_absolute = true;
+        break;
+      }
+
+      if (StartsWith(arg, flag_type)) {
+        std::string path = arg.substr(strlen(flag_type));
+        if (path.size() > 0 && path[0] != '/') {
+          path = NormalizePath(entry.directory + "/" + path);
+          arg = flag_type + path;
+        }
+        break;
       }
     }
-    if (bad) {
+    if (make_next_flag_absolute)
       continue;
-    }
-
-
-    if (StartsWith(arg, "-I")) {
-      std::string path = entry.directory + "/" + arg.substr(2);
-      path = NormalizePath(path);
-      arg = "-I" + path;
-    }
 
     result.args.push_back(arg);
-    //if (StartsWith(arg, "-I") || StartsWith(arg, "-D") || StartsWith(arg, "-std"))
   }
 
-  // TODO/fixme
-  result.args.push_back("-xc++");
-  result.args.push_back("-std=c++11");
+  // We don't do any special processing on user-given extra flags.
+  for (const auto& flag : extra_flags)
+    result.args.push_back(flag);
+
+  // Clang does not have good hueristics for determining source language. We
+  // default to C++11 if the user has not specified.
+  if (!StartsWithAny(entry.args, "-x"))
+    result.args.push_back("-xc++");
+  if (!StartsWithAny(entry.args, "-std="))
+    result.args.push_back("-std=c++11");
 
   return result;
 }
 
-std::vector<Project::Entry> LoadFromCompileCommandsJson(const std::string& project_directory) {
+std::vector<Project::Entry> LoadFromCompileCommandsJson(const std::vector<std::string>& extra_flags, const std::string& project_directory) {
+  // TODO: Fix this function, it may be way faster than libclang's implementation.
+
   optional<std::string> compile_commands_content = ReadContent(project_directory + "/compile_commands.json");
   if (!compile_commands_content)
     return {};
@@ -168,11 +113,11 @@ std::vector<Project::Entry> LoadFromCompileCommandsJson(const std::string& proje
   std::vector<Project::Entry> result;
   result.reserve(entries.size());
   for (const auto& entry : entries)
-    result.push_back(GetCompilationEntryFromCompileCommandEntry(entry));
+    result.push_back(GetCompilationEntryFromCompileCommandEntry(extra_flags, entry));
   return result;
 }
 
-std::vector<Project::Entry> LoadFromDirectoryListing(const std::string& project_directory) {
+std::vector<Project::Entry> LoadFromDirectoryListing(const std::vector<std::string>& extra_flags, const std::string& project_directory) {
   std::vector<Project::Entry> result;
 
   std::vector<std::string> args;
@@ -184,6 +129,10 @@ std::vector<Project::Entry> LoadFromDirectoryListing(const std::string& project_
       std::cerr << ", ";
     std::cerr << line;
     args.push_back(line);
+  }
+  for (const std::string& flag : extra_flags) {
+    std::cerr << flag << std::endl;
+    args.push_back(flag);
   }
   std::cerr << std::endl;
 
@@ -201,7 +150,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(const std::string& project_
   return result;
 }
 
-std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::string& project_directory) {
+std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::vector<std::string>& extra_flags, const std::string& project_directory) {
   // TODO: Figure out if this function or the clang one is faster.
   //return LoadFromCompileCommandsJson(project_directory);
 
@@ -210,7 +159,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::strin
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(project_directory.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
     std::cerr << "Unable to load compile_commands.json located at \"" << project_directory << "\"; using directory listing instead." << std::endl;
-    return LoadFromDirectoryListing(project_directory);
+    return LoadFromDirectoryListing(extra_flags, project_directory);
   }
 
   CXCompileCommands cx_commands = clang_CompilationDatabase_getAllCompileCommands(cx_db);
@@ -233,7 +182,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::strin
     for (unsigned i = 0; i < num_args; ++i)
       entry.args.push_back(clang::ToString(clang_CompileCommand_getArg(cx_command, i)));
 
-    result.push_back(GetCompilationEntryFromCompileCommandEntry(entry));
+    result.push_back(GetCompilationEntryFromCompileCommandEntry(extra_flags, entry));
   }
 
   clang_CompileCommands_dispose(cx_commands);
@@ -243,8 +192,8 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::strin
 }
 }  // namespace
 
-void Project::Load(const std::string& directory) {
-  entries = LoadCompilationEntriesFromDirectory(directory);
+void Project::Load(const std::vector<std::string>& extra_flags, const std::string& directory) {
+  entries = LoadCompilationEntriesFromDirectory(extra_flags, directory);
 
   absolute_path_to_entry_index_.resize(entries.size());
   for (int i = 0; i < entries.size(); ++i)

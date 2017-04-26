@@ -28,7 +28,7 @@ struct Project {
   // discover all files and args. Otherwise, a recursive directory listing of
   // all *.cpp, *.cc, *.h, and *.hpp files will be used. clang arguments can be
   // specified in a clang_args file located inside of |directory|.
-  void Load(const std::string& directory);
+  void Load(const std::vector<std::string>& extra_flags, const std::string& directory);
 
   // Lookup the CompilationEntry for |filename|.
   optional<Entry> FindCompilationEntryForFile(const std::string& filename);
