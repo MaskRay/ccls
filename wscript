@@ -54,6 +54,7 @@ def options(opt):
 def configure(conf):
   conf.load('compiler_cxx')
   conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
+  conf.load('clang_compilation_database', tooldir='.')
 
   # Download and save the compressed tarball as |compressed_file_name|.
   if not os.path.isfile(CLANG_TARBALL_LOCAL_PATH):
