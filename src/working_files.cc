@@ -74,9 +74,9 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
   // Note: |index_line| and |buffer_line| are 1-based.
 
   // TODO: reenable this assert once we are using the real indexed file.
-  //assert(index_line >= 1 && index_line <= index_lines.size());
-  if (index_line < 1 || index_line > index_lines.size())
-    return nullopt;
+  assert(index_line >= 1 && index_line <= index_lines.size());
+  //if (index_line < 1 || index_line > index_lines.size())
+  //  return nullopt;
 
   // Find the line in the cached index file. We'll try to find the most similar line
   // in the buffer and return the index for that.
@@ -108,10 +108,9 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
-
-  // TODO: Consider making this an assert.
-  if (buffer_line < 1 || buffer_line > all_buffer_lines.size())
-    return nullopt;
+  assert(buffer_line >= 1 && buffer_line < all_buffer_lines.size());
+  //if (buffer_line < 1 || buffer_line > all_buffer_lines.size())
+  //  return nullopt;
 
   // Find the line in the index file. We'll try to find the most similar line
   // in the index file and return the index for that.

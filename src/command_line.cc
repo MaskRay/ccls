@@ -967,7 +967,7 @@ void ParseFile(IndexerConfig* config,
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
     config, file_consumer_shared,
     tu_path, tu_args);
-  time.ResetAndPrint("Parsing/indexing " + tu_path + " with args " + StringJoin(tu_args));
+  time.ResetAndPrint("Parsing/indexing " + tu_path);
 
   for (std::unique_ptr<IndexedFile>& new_index : indexes) {
     std::cerr << "Got index for " << new_index->path << std::endl;
@@ -1240,6 +1240,13 @@ bool QueryDbMainLoop(
     switch (message->method_id) {
       case IpcId::Initialize: {
         auto request = static_cast<Ipc_InitializeRequest*>(message.get());
+
+        // Log initialization parameters.
+        rapidjson::StringBuffer output;
+        Writer writer(output);
+        Reflect(writer, request->params.initializationOptions);
+        std::cerr << output.GetString() << std::endl;
+
         if (request->params.rootUri) {
           std::string project_path = request->params.rootUri->GetPath();
           std::cerr << "[querydb] Initialize in directory " << project_path
