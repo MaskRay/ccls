@@ -4,6 +4,8 @@ cquery is not yet production ready. I use it day-to-day, but there are still a n
 
 # cquery
 
+[![Join the chat at https://gitter.im/cquery-project/Lobby](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cquery-project/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 cquery is a low-latency language server for C++. It is extremely scalable and
 has been designed for and tested on large code bases like
 [Chromium](https://chromium.googlesource.com/chromium/src/). It's primary goal
