@@ -791,6 +791,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CancelRequest>();
   MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
   MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
+  MessageRegistry::instance()->Register<Ipc_Exit>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
@@ -1327,6 +1328,11 @@ bool QueryDbMainLoop(
         response.result.capabilities.workspaceSymbolProvider = true;
 
         ipc->SendOutMessageToClient(IpcId::Initialize, response);
+        break;
+      }
+
+      case IpcId::Exit: {
+        exit(0);
         break;
       }
 
@@ -1974,6 +1980,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
     }
 
     case IpcId::Initialize:
+    case IpcId::Exit:
     case IpcId::TextDocumentDidOpen:
     case IpcId::TextDocumentDidChange:
     case IpcId::TextDocumentDidClose:

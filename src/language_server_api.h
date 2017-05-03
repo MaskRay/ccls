@@ -1052,7 +1052,10 @@ MAKE_REFLECT_STRUCT(Ipc_InitializedNotification, id);
 
 
 
-
+struct Ipc_Exit : public IpcMessage<Ipc_Exit> {
+  static const IpcId kIpcId = IpcId::Exit;
+};
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_Exit);
 
 
 

@@ -33,6 +33,11 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
 
     std::string line;
     std::getline(std::cin, line);
+
+    // No content; end of stdin.
+    if (line.empty())
+      return nullptr;
+
     // std::cin >> line;
     // std::cerr << "Read line " << line;
 
@@ -70,9 +75,10 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
 }
 
 std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
-  std::string jsonrpc = visitor["jsonrpc"].GetString();
-  if (jsonrpc != "2.0")
+  if (!visitor.HasMember("jsonrpc") || std::string(visitor["jsonrpc"].GetString()) != "2.0") {
+    std::cerr << "Bad or missing jsonrpc version" << std::endl;
     exit(1);
+  }
 
   std::string method;
   ReflectMember(visitor, "method", method);

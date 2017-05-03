@@ -10,6 +10,7 @@ enum class IpcId : int {
   CancelRequest = 0,
   Initialize,
   Initialized,
+  Exit,
   TextDocumentDidOpen,
   TextDocumentDidChange,
   TextDocumentDidClose,

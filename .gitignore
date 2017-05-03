@@ -9,6 +9,7 @@ waf-*
 .waf*
 *.swp
 *.sln
+.vscode/.ropeproject
 *.vcxproj
 *.vcxproj.user
 *.vcxproj.filters
