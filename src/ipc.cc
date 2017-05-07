@@ -41,9 +41,17 @@ const char* IpcIdToString(IpcId id) {
   case IpcId::WorkspaceSymbol:
     return "workspace/symbol";
 
-  case IpcId::CqueryFreshenIndex: {
+  case IpcId::CqueryFreshenIndex:
     return "$cquery/freshenIndex";
-  }
+
+  case IpcId::CqueryVars:
+    return "$cquery/vars";
+  case IpcId::CqueryCallers:
+    return "$cquery/callers";
+  case IpcId::CqueryBase:
+    return "$cquery/base";
+  case IpcId::CqueryDerived:
+    return "$cquery/derived";
 
   case IpcId::Cout:
     return "$cout";

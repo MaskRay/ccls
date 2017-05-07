@@ -1400,3 +1400,35 @@ struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
   lsRequestId id;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);
+
+
+// Vars, Callers, Derived, GotoParent
+struct Ipc_CqueryVars : public IpcMessage<Ipc_CqueryVars> {
+  const static IpcId kIpcId = IpcId::CqueryVars;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryVars, id, params);
+struct Ipc_CqueryCallers : public IpcMessage<Ipc_CqueryCallers> {
+  const static IpcId kIpcId = IpcId::CqueryCallers;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+struct Ipc_CqueryBase : public IpcMessage<Ipc_CqueryBase> {
+  const static IpcId kIpcId = IpcId::CqueryBase;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryBase, id, params);
+MAKE_REFLECT_STRUCT(Ipc_CqueryCallers, id, params);
+struct Ipc_CqueryDerived : public IpcMessage<Ipc_CqueryDerived> {
+  const static IpcId kIpcId = IpcId::CqueryDerived;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryDerived, id, params);
+struct Out_LocationList : public lsOutMessage<Out_LocationList> {
+  lsRequestId id;
+  NonElidedVector<lsLocation> result;
+};
+MAKE_REFLECT_STRUCT(Out_LocationList, jsonrpc, id, result);

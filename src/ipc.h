@@ -29,6 +29,12 @@ enum class IpcId : int {
   // Custom messages
   CqueryFreshenIndex,
 
+  // These are like DocumentReferences but show different types of data.
+  CqueryVars,       // Show all variables of a type.
+  CqueryCallers,    // Show all callers of a function.
+  CqueryBase,       // Show base types/method.
+  CqueryDerived,    // Show all derived types/methods.
+
   // Internal implementation detail.
   Cout
 };

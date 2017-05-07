@@ -526,6 +526,21 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db, WorkingFiles* working_file
   return lsLocation(uri, *range);
 }
 
+NonElidedVector<lsLocation> GetLsLocations(QueryDatabase* db, WorkingFiles* working_files, const std::vector<QueryLocation>& locations) {
+  std::unordered_set<lsLocation> unique_locations;
+  for (const QueryLocation& query_location : locations) {
+    optional<lsLocation> location = GetLsLocation(db, working_files, query_location);
+    if (!location)
+      continue;
+    unique_locations.insert(*location);
+  }
+
+  NonElidedVector<lsLocation> result;
+  result.reserve(unique_locations.size());
+  result.assign(unique_locations.begin(), unique_locations.end());
+  return result;
+}
+
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol) {
     switch (symbol.kind) {
@@ -606,7 +621,7 @@ void AddCodeLens(
     return;
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-  code_lens.command->command = "superindex.showReferences";
+  code_lens.command->command = "cquery.showReferences";
   code_lens.command->arguments.uri = GetLsDocumentUri(common->db, loc.path);
   code_lens.command->arguments.position = code_lens.range.start;
 
@@ -806,6 +821,10 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
   MessageRegistry::instance()->Register<Ipc_CqueryFreshenIndex>();
+  MessageRegistry::instance()->Register<Ipc_CqueryVars>();
+  MessageRegistry::instance()->Register<Ipc_CqueryCallers>();
+  MessageRegistry::instance()->Register<Ipc_CqueryBase>();
+  MessageRegistry::instance()->Register<Ipc_CqueryDerived>();
 }
 
 
@@ -1344,6 +1363,126 @@ bool QueryDbMainLoop(
         break;
       }
 
+      case IpcId::CqueryVars: {
+        auto msg = static_cast<Ipc_CqueryVars*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_LocationList response;
+        response.id = msg->id;
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          if (ref.idx.kind == SymbolKind::Type) {
+            optional<QueryType>& type = db->types[ref.idx.idx];
+            if (!type) continue;
+            std::vector<QueryLocation> locations = ToQueryLocation(db, type->instances);
+            response.result = GetLsLocations(db, working_files, locations);
+          }
+        }
+        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        break;
+      }
+
+      case IpcId::CqueryCallers: {
+        auto msg = static_cast<Ipc_CqueryCallers*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_LocationList response;
+        response.id = msg->id;
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          if (ref.idx.kind == SymbolKind::Func) {
+            optional<QueryFunc>& func = db->funcs[ref.idx.idx];
+            if (!func) continue;
+            std::vector<QueryLocation> locations = ToQueryLocation(db, func->callers);
+            response.result = GetLsLocations(db, working_files, locations);
+          }
+        }
+        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        break;
+      }
+
+      case IpcId::CqueryBase: {
+        auto msg = static_cast<Ipc_CqueryBase*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_LocationList response;
+        response.id = msg->id;
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          if (ref.idx.kind == SymbolKind::Type) {
+            optional<QueryType>& type = db->types[ref.idx.idx];
+            if (!type) continue;
+            std::vector<QueryLocation> locations = ToQueryLocation(db, type->def.parents);
+            response.result = GetLsLocations(db, working_files, locations);
+          }
+          else if (ref.idx.kind == SymbolKind::Func) {
+            optional<QueryFunc>& func = db->funcs[ref.idx.idx];
+            if (!func) continue;
+            optional<QueryLocation> location = GetBaseDefinitionOrDeclarationSpelling(db, *func);
+            if (!location) continue;
+            optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *location);
+            if (!ls_loc) continue;
+            response.result.push_back(*ls_loc);
+          }
+        }
+        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        break;
+      }
+
+      case IpcId::CqueryDerived: {
+        auto msg = static_cast<Ipc_CqueryDerived*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_LocationList response;
+        response.id = msg->id;
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          if (ref.idx.kind == SymbolKind::Type) {
+            optional<QueryType>& type = db->types[ref.idx.idx];
+            if (!type) continue;
+            std::vector<QueryLocation> locations = ToQueryLocation(db, type->derived);
+            response.result = GetLsLocations(db, working_files, locations);
+          }
+          else if (ref.idx.kind == SymbolKind::Func) {
+            optional<QueryFunc>& func = db->funcs[ref.idx.idx];
+            if (!func) continue;
+            std::vector<QueryLocation> locations = ToQueryLocation(db, func->derived);
+            response.result = GetLsLocations(db, working_files, locations);
+          }
+        }
+        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        break;
+      }
+
+
+
+
+
+
+
+
+
+
       case IpcId::TextDocumentDidOpen: {
         // NOTE: This function blocks code lens. If it starts taking a long time
         // we will need to find a way to unblock the code lens request.
@@ -1708,7 +1847,7 @@ bool QueryDbMainLoop(
                   code_lens.range.start.character += offset++;
                   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
                   code_lens.command->title = "Base";
-                  code_lens.command->command = "superindex.goto";
+                  code_lens.command->command = "cquery.goto";
                   code_lens.command->arguments.uri = ls_base->uri;
                   code_lens.command->arguments.position = ls_base->range.start;
                   response.result.push_back(code_lens);
@@ -1992,7 +2131,11 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
     case IpcId::TextDocumentDocumentSymbol:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
-    case IpcId::CqueryFreshenIndex: {
+    case IpcId::CqueryFreshenIndex:
+    case IpcId::CqueryVars:
+    case IpcId::CqueryCallers:
+    case IpcId::CqueryBase:
+    case IpcId::CqueryDerived: {
       ipc->SendMessage(IpcManager::Destination::Server, std::move(message));
       break;
     }
