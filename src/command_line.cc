@@ -749,12 +749,11 @@ struct Index_DoIndex {
     Freshen,
   };
 
-  Index_DoIndex(Type type, const std::string& path, const optional<std::vector<std::string>>& args)
-    : type(type), path(path), args(args) {}
+  Index_DoIndex(Type type, const Project::Entry& entry)
+    : type(type), entry(entry) {}
 
   Type type;
-  std::string path;
-  optional<std::vector<std::string>> args;
+  Project::Entry entry;
 };
 
 struct Index_DoIdMap {
@@ -955,16 +954,14 @@ bool ImportCachedIndex(IndexerConfig* config,
 void ParseFile(IndexerConfig* config,
                FileConsumer::SharedState* file_consumer_shared,
                Index_DoIdMapQueue* queue_do_id_map,
-               const std::string& tu_or_dep_path,
-               const optional<std::vector<std::string>>& args) {
+               const Project::Entry& entry) {
   Timer time;
 
-  std::unique_ptr<IndexedFile> cache_for_args = LoadCachedIndex(config, tu_or_dep_path);
+  std::unique_ptr<IndexedFile> cache_for_args = LoadCachedIndex(config, entry.filename);
 
+  std::string tu_path = cache_for_args ? cache_for_args->import_file : entry.filename;
+  const std::vector<std::string>& tu_args = entry.args;
 
-  std::string tu_path = cache_for_args ? cache_for_args->import_file : tu_or_dep_path;
-  // TODO: Replace checking cache for arguments by guessing arguments on via directory structure. That will also work better for new files.
-  const std::vector<std::string>& tu_args = args ? *args : cache_for_args ? cache_for_args->args : kEmptyArgs;
   std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
     config, file_consumer_shared,
     tu_path, tu_args);
@@ -1056,7 +1053,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
       // This assumes index_request->path is a cc or translation unit file (ie,
       // it is in compile_commands.json).
 
-      bool needs_reparse = ImportCachedIndex(config, file_consumer_shared, queue_do_id_map, index_request->path);
+      bool needs_reparse = ImportCachedIndex(config, file_consumer_shared, queue_do_id_map, index_request->entry.filename);
 
       // If the file has been updated, we need to reparse it.
       if (needs_reparse) {
@@ -1072,8 +1069,8 @@ bool IndexMain_DoIndex(IndexerConfig* config,
 
     case Index_DoIndex::Type::Parse: {
       // index_request->path can be a cc/tu or a dependency path.
-      file_consumer_shared->Reset(index_request->path);
-      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args);
+      file_consumer_shared->Reset(index_request->entry.filename);
+      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry);
       break;
     }
 
@@ -1081,9 +1078,9 @@ bool IndexMain_DoIndex(IndexerConfig* config,
       // This assumes index_request->path is a cc or translation unit file (ie,
       // it is in compile_commands.json).
 
-      bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->path);
+      bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->entry.filename);
       if (needs_reparse)
-        ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->path, index_request->args);
+        ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry);
       break;
     }
   }
@@ -1291,7 +1288,7 @@ bool QueryDbMainLoop(
               << "] Dispatching index request for file " << entry.filename
               << std::endl;
 
-            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry.filename, entry.args));
+            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry));
           });
         }
 
@@ -1342,7 +1339,7 @@ bool QueryDbMainLoop(
           std::cerr << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename
             << std::endl;
-          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry.filename, entry.args));
+          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry));
         });
         break;
       }
@@ -1381,7 +1378,8 @@ bool QueryDbMainLoop(
 
         std::string path = msg->params.textDocument.uri.GetPath();
         // Send an index update request.
-        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, path, project->FindArgsForFile(path)));
+        // TODO: Make sure we don't mess up header files when guessing.
+        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
 
         // Copy current buffer content so it can be applied when index request is done.
         WorkingFile* working_file = working_files->GetFileByFilename(path);

@@ -7,6 +7,7 @@
 #include "utils.h"
 
 #include <clang-c/CXCompilationDatabase.h>
+#include <doctest/doctest.h>
 
 #include <iostream>
 #include <vector>
@@ -44,7 +45,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(const std::vector<std:
   result.args.reserve(entry.args.size() + extra_flags.size());
   for (size_t i = 0; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
-    
+
     // If blacklist skip.
     if (std::any_of(std::begin(kBlacklist), std::end(kBlacklist), [&arg](const char* value) {
       return StartsWith(arg, value);
@@ -190,6 +191,31 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::vecto
 
   return result;
 }
+
+// Computes a score based on how well |a| and |b| match. This is used for
+// argument guessing.
+int ComputeGuessScore(const std::string& a, const std::string& b) {
+  int score = 0;
+  int i = 0;
+
+  for (i = 0; i < a.length() && i < b.length(); ++i) {
+    if (a[i] != b[i])
+      break;
+    ++score;
+  }
+
+  for (int j = i; j < a.length(); ++j) {
+    if (a[j] == '/')
+      --score;
+  }
+  for (int j = i; j < b.length(); ++j) {
+    if (b[j] == '/')
+      --score;
+  }
+
+  return score;
+}
+
 }  // namespace
 
 void Project::Load(const std::vector<std::string>& extra_flags, const std::string& directory) {
@@ -200,18 +226,29 @@ void Project::Load(const std::vector<std::string>& extra_flags, const std::strin
     absolute_path_to_entry_index_[entries[i].filename] = i;
 }
 
-optional<Project::Entry> Project::FindCompilationEntryForFile(const std::string& filename) {
+Project::Entry Project::FindCompilationEntryForFile(const std::string& filename) {
   auto it = absolute_path_to_entry_index_.find(filename);
   if (it != absolute_path_to_entry_index_.end())
     return entries[it->second];
-  return nullopt;
-}
 
-optional<std::vector<std::string>> Project::FindArgsForFile(const std::string& filename) {
-  auto entry = FindCompilationEntryForFile(filename);
-  if (!entry)
-    return nullopt;
-  return entry->args;
+  // We couldn't find the file. Try to infer it.
+  // TODO: Cache inferred file in a separate array (using a lock or similar)
+  Entry* best_entry = nullptr;
+  int best_score = 0;
+  for (Entry& entry : entries) {
+    int score = ComputeGuessScore(filename, entry.filename);
+    if (score > best_score) {
+      best_score = score;
+      best_entry = &entry;
+    }
+  }
+
+  Project::Entry result;
+  result.is_inferred = true;
+  result.filename = filename;
+  if (best_entry)
+    result.args = best_entry->args;
+  return result;
 }
 
 void Project::ForAllFilteredFiles(IndexerConfig* config, std::function<void(int i, const Entry& entry)> action) {
@@ -260,3 +297,44 @@ void Project::ForAllFilteredFiles(IndexerConfig* config, std::function<void(int 
     action(i, entries[i]);
   }
 }
+
+TEST_SUITE("Project");
+
+TEST_CASE("Entry inference") {
+  Project p;
+  {
+    Project::Entry e;
+    e.args = { "arg1" };
+    e.filename = "/a/b/c/d/bar.cc";
+    p.entries.push_back(e);
+  }
+  {
+    Project::Entry e;
+    e.args = { "arg2" };
+    e.filename = "/a/b/c/baz.cc";
+    p.entries.push_back(e);
+  }
+
+  // Guess at same directory level, when there are parent directories.
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("/a/b/c/d/new.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg1" });
+  }
+
+  // Guess at same directory level, when there are child directories.
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("/a/b/c/new.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg2" });
+  }
+
+  // Guess at new directory (use the closest parent directory).
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("/a/b/c/new/new.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg2" });
+  }
+}
+
+TEST_SUITE_END();

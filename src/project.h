@@ -17,6 +17,8 @@ struct Project {
   struct Entry {
     std::string filename;
     std::vector<std::string> args;
+    // If true, this entry is inferred and was not read from disk.
+    bool is_inferred = false;
   };
 
   std::vector<Entry> entries;
@@ -30,11 +32,9 @@ struct Project {
   // specified in a clang_args file located inside of |directory|.
   void Load(const std::vector<std::string>& extra_flags, const std::string& directory);
 
-  // Lookup the CompilationEntry for |filename|.
-  optional<Entry> FindCompilationEntryForFile(const std::string& filename);
-
-  // Helper that uses FindCompilationEntryForFile.
-  optional<std::vector<std::string>> FindArgsForFile(const std::string& filename);
+  // Lookup the CompilationEntry for |filename|. If no entry was found this
+  // will infer one based on existing project structure.
+  Entry FindCompilationEntryForFile(const std::string& filename);
 
   void ForAllFilteredFiles(IndexerConfig* config, std::function<void(int i, const Entry& entry)> action);
 };
