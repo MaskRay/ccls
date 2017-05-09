@@ -25,7 +25,8 @@ TranslationUnit::TranslationUnit(Index& index,
 
   std::cerr << "Parsing " << filepath << " with args " << StringJoin(args) << std::endl;
 
-  CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
+  //CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
+  CXErrorCode error_code = clang_parseTranslationUnit2(
       index.cx_index, filepath.c_str(), args.data(), args.size(),
       unsaved_files.data(), unsaved_files.size(), flags, &cx_tu);
 

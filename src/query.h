@@ -251,6 +251,7 @@ struct QueryDatabase {
   std::vector<optional<QueryVar>> vars;
 
   // Lookup symbol based on a usr.
+  // TODO: consider splitting this into type/func/var
   spp::sparse_hash_map<Usr, SymbolIdx> usr_to_symbol;
 
   // Marks the given Usrs as invalid.
