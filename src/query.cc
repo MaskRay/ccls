@@ -694,6 +694,13 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& upda
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 
+    if (it->second.kind != SymbolKind::Type) {
+      std::cerr << "!! Import/update got symbol kind " << (int)(it->second.kind) << ", expected SymbolKind::Type for usr " << def.usr << std::endl;
+      continue;
+    }
+
+    assert(it->second.idx >= 0 && it->second.idx < types.size());
+
     optional<QueryType>& existing = types[it->second.idx];
     if (!existing)
       existing = QueryType(def.usr);
@@ -716,6 +723,13 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& upda
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
 
+    if (it->second.kind != SymbolKind::Func) {
+      std::cerr << "!! Import/update got symbol kind " << (int)(it->second.kind) << ", expected SymbolKind::Func for usr " << def.usr << std::endl;
+      continue;
+    }
+
+    assert(it->second.idx >= 0 && it->second.idx < funcs.size());
+
     optional<QueryFunc>& existing = funcs[it->second.idx];
     if (!existing)
       existing = QueryFunc(def.usr);
@@ -737,6 +751,13 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updat
 
     auto it = usr_to_symbol.find(def.usr);
     assert(it != usr_to_symbol.end());
+
+    if (it->second.kind != SymbolKind::Var) {
+      std::cerr << "!! Import/update got symbol kind " << (int)(it->second.kind) << ", expected SymbolKind::Var for usr " << def.usr << std::endl;
+      continue;
+    }
+
+    assert(it->second.idx >= 0 && it->second.idx < vars.size());
 
     optional<QueryVar>& existing = vars[it->second.idx];
     if (!existing)
