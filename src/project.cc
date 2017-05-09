@@ -22,9 +22,61 @@ MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
 
 namespace {
 
+
+static const char* kBlacklistMulti[] = {
+  "-MF",
+  "-Xclang"
+};
+
 // Blacklisted flags which are always removed from the command line.
 static const char *kBlacklist[] = {
-  "-stdlib=libc++"
+  "--param",
+  "-M",
+  "-MD",
+  "-MG",
+  "-MM",
+  "-MMD",
+  "-MP",
+  "-MQ",
+  "-MT",
+  "-Og",
+  "-Wa,--32",
+  "-Wa,--64",
+  "-Wl,--incremental-full",
+  "-Wl,--incremental-patch,1",
+  "-Wl,--no-incremental",
+  "-fbuild-session-file=",
+  "-fbuild-session-timestamp=",
+  "-fembed-bitcode",
+  "-fembed-bitcode-marker",
+  "-fmodules-validate-once-per-build-session",
+  "-fno-delete-null-pointer-checks",
+  "-fno-use-linker-plugin"
+  "-fno-var-tracking",
+  "-fno-var-tracking-assignments",
+  "-fno-enforce-eh-specs",
+  "-fvar-tracking",
+  "-fvar-tracking-assignments",
+  "-fvar-tracking-assignments-toggle",
+  "-gcc-toolchain",
+  "-march=",
+  "-masm=",
+  "-mcpu=",
+  "-mfpmath=",
+  "-mtune=",
+  "-s",
+
+  "-B",
+  //"-f",
+  //"-pipe",
+  //"-W",
+  // TODO: make sure we consume includes before stripping all path-like args.
+  "/work/goma/gomacc",
+  "../../third_party/llvm-build/Release+Asserts/bin/clang++",
+  "-Wno-unused-lambda-capture",
+  "/",
+  "..",
+  //"-stdlib=libc++"
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
@@ -47,6 +99,12 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(const std::vector<std:
     std::string arg = entry.args[i];
 
     // If blacklist skip.
+    if (std::any_of(std::begin(kBlacklistMulti), std::end(kBlacklistMulti), [&arg](const char* value) {
+      return StartsWith(arg, value);
+    })) {
+      ++i;
+      continue;
+    }
     if (std::any_of(std::begin(kBlacklist), std::end(kBlacklist), [&arg](const char* value) {
       return StartsWith(arg, value);
     })) {
@@ -88,9 +146,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(const std::vector<std:
 
   // Clang does not have good hueristics for determining source language. We
   // default to C++11 if the user has not specified.
-  if (!StartsWithAny(entry.args, "-x"))
+  if (!StartsWithAny(result.args, "-x"))
     result.args.push_back("-xc++");
-  if (!StartsWithAny(entry.args, "-std="))
+  if (!StartsWithAny(result.args, "-std="))
     result.args.push_back("-std=c++11");
 
   return result;
