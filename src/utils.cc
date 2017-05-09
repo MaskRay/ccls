@@ -1,9 +1,9 @@
 #include "utils.h"
 
-#include <algorithm> 
+#include <algorithm>
 #include <cassert>
 #include <cctype>
-#include <functional> 
+#include <functional>
 #include <iostream>
 #include <fstream>
 #include <locale>
@@ -244,6 +244,7 @@ void UpdateTestExpectation(const std::string& filename, const std::string& expec
 
   // Replace expectation
   auto it = str.find(expectation);
+  assert(it != std::string::npos);
   str.replace(it, expectation.size(), actual);
 
   // Write it back out.
