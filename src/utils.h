@@ -18,9 +18,8 @@ bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
 std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to);
 
-template <typename TValues>
-bool StartsWithAny(const TValues& values, const std::string& start) {
-  return std::any_of(std::begin(values), std::end(values), [&start](const auto& value) {
+inline bool StartsWithAny(const std::vector<std::string>& values, const std::string& start) {
+  return std::any_of(std::begin(values), std::end(values), [&start](const std::string& value) {
     return StartsWith(value, start);
   });
 }
