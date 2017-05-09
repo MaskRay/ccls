@@ -23,7 +23,12 @@ unsigned Flags() {
     CXTranslationUnit_CacheCompletionResults |
     CXTranslationUnit_PrecompiledPreamble |
     CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
-    //CXTranslationUnit_CreatePreambleOnFirstParse |
+#if !defined(_WIN32)
+    // For whatever reason, CreatePreambleOnFirstParse causes clang to become
+    // very crashy on windows.
+    // TODO: do more investigation, submit fixes to clang.
+    CXTranslationUnit_CreatePreambleOnFirstParse |
+#endif
     CXTranslationUnit_DetailedPreprocessingRecord;
 }
 
