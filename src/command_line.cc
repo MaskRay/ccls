@@ -953,11 +953,12 @@ bool ImportCachedIndex(IndexerConfig* config,
   for (auto& dependency_path : cache->dependencies) {
     std::cerr << "- Got dependency " << dependency_path << std::endl;
     std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, dependency_path);
-    if (GetLastModificationTime(cache->path) == cache->last_modification_time)
+    if (cache && GetLastModificationTime(cache->path) == cache->last_modification_time)
       file_consumer_shared->Mark(cache->path);
     else
       needs_reparse = true;
-    queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache)));
+    if (cache)
+      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache)));
   }
 
   // Import primary file.
