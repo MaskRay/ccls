@@ -251,11 +251,13 @@ struct QueryDatabase {
   std::vector<optional<QueryVar>> vars;
 
   // Lookup symbol based on a usr.
-  // TODO: consider splitting this into type/func/var
-  spp::sparse_hash_map<Usr, SymbolIdx> usr_to_symbol;
+  spp::sparse_hash_map<Usr, QueryFileId> usr_to_file;
+  spp::sparse_hash_map<Usr, QueryTypeId> usr_to_type;
+  spp::sparse_hash_map<Usr, QueryFuncId> usr_to_func;
+  spp::sparse_hash_map<Usr, QueryVarId> usr_to_var;
 
   // Marks the given Usrs as invalid.
-  void RemoveUsrs(const std::vector<Usr>& to_remove);
+  void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
   void ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates);

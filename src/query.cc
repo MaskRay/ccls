@@ -242,60 +242,46 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed) {
 
 
 
-// TODO: consider having separate lookup maps so they are smaller (maybe
-// lookups will go faster).
 QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db, const std::string& path) {
-  auto it = query_db->usr_to_symbol.find(path);
-  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    // TODO: should this be an assert?
-    if (it->second.kind == SymbolKind::File)
-      return QueryFileId(it->second.idx);
-  }
+  auto it = query_db->usr_to_file.find(path);
+  if (it != query_db->usr_to_file.end())
+    return QueryFileId(it->second.id);
 
   size_t idx = query_db->files.size();
-  query_db->usr_to_symbol[path] = SymbolIdx(SymbolKind::File, idx);
+  query_db->usr_to_file[path] = QueryFileId(idx);
   query_db->files.push_back(QueryFile(path));
   return QueryFileId(idx);
 }
 
 QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
-  auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    // TODO: should this be an assert?
-    if (it->second.kind == SymbolKind::Type)
-      return QueryTypeId(it->second.idx);
-  }
+  auto it = query_db->usr_to_type.find(usr);
+  if (it != query_db->usr_to_type.end())
+    return QueryTypeId(it->second.id);
 
   size_t idx = query_db->types.size();
-  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Type, idx);
+  query_db->usr_to_type[usr] = QueryTypeId(idx);
   query_db->types.push_back(QueryType(usr));
   return QueryTypeId(idx);
 }
 
 QueryFuncId GetQueryFuncIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
-  auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    // TODO: should this be an assert?
-    if (it->second.kind == SymbolKind::Func)
-      return QueryFuncId(it->second.idx);
-  }
+  auto it = query_db->usr_to_func.find(usr);
+  if (it != query_db->usr_to_func.end())
+    return QueryFuncId(it->second.id);
 
   size_t idx = query_db->funcs.size();
-  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Func, idx);
+  query_db->usr_to_func[usr] = QueryFuncId(idx);
   query_db->funcs.push_back(QueryFunc(usr));
   return QueryFuncId(idx);
 }
 
 QueryVarId GetQueryVarIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
-  auto it = query_db->usr_to_symbol.find(usr);
-  if (it != query_db->usr_to_symbol.end() && it->second.kind != SymbolKind::Invalid) {
-    // TODO: should this be an assert?
-    if (it->second.kind == SymbolKind::Var)
-      return QueryVarId(it->second.idx);
-  }
+  auto it = query_db->usr_to_var.find(usr);
+  if (it != query_db->usr_to_var.end())
+    return QueryVarId(it->second.id);
 
   size_t idx = query_db->vars.size();
-  query_db->usr_to_symbol[usr] = SymbolIdx(SymbolKind::Var, idx);
+  query_db->usr_to_var[usr] = QueryVarId(idx);
   query_db->vars.push_back(QueryVar(usr));
   return QueryVarId(idx);
 }
@@ -595,7 +581,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 // QUERYDB THREAD FUNCTIONS
 // ------------------------
 
-void QueryDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
+void QueryDatabase::RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove) {
   // This function runs on the querydb thread.
 
   // When we remove an element, we just erase the state from the storage. We do
@@ -609,24 +595,27 @@ void QueryDatabase::RemoveUsrs(const std::vector<Usr>& to_remove) {
   // TODO: Add "cquery: Reload Index" command which unloads all querydb state
   // and fully reloads from cache. This will address the memory leak above.
 
-  for (Usr usr : to_remove) {
-    SymbolIdx& symbol = usr_to_symbol[usr];
-    switch (symbol.kind) {
-      case SymbolKind::File:
-        files[symbol.idx] = nullopt;
-        break;
-      case SymbolKind::Type:
-        types[symbol.idx] = nullopt;
-        break;
-      case SymbolKind::Func:
-        funcs[symbol.idx] = nullopt;
-        break;
-      case SymbolKind::Var:
-        vars[symbol.idx] = nullopt;
-        break;
+  switch (usr_kind) {
+    case SymbolKind::File: {
+      for (const Usr& usr : to_remove)
+        files[usr_to_file[usr].id] = nullopt;
+      break;
     }
-
-    symbol.kind = SymbolKind::Invalid;
+    case SymbolKind::Type: {
+      for (const Usr& usr : to_remove)
+        types[usr_to_type[usr].id] = nullopt;
+      break;
+    }
+    case SymbolKind::Func: {
+      for (const Usr& usr : to_remove)
+        funcs[usr_to_func[usr].id] = nullopt;
+      break;
+    }
+    case SymbolKind::Var: {
+      for (const Usr& usr : to_remove)
+        vars[usr_to_var[usr].id] = nullopt;
+      break;
+    }
   }
 }
 
@@ -647,22 +636,22 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     RemoveRange(&def->def_var_name, merge_update.to_remove); \
   }
 
-  RemoveUsrs(update->files_removed);
+  RemoveUsrs(SymbolKind::File, update->files_removed);
   ImportOrUpdate(update->files_def_update);
 
-  RemoveUsrs(update->types_removed);
+  RemoveUsrs(SymbolKind::Type, update->types_removed);
   ImportOrUpdate(update->types_def_update);
   HANDLE_MERGEABLE(types_derived, derived, types);
   HANDLE_MERGEABLE(types_instances, instances, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
-  RemoveUsrs(update->funcs_removed);
+  RemoveUsrs(SymbolKind::Func, update->funcs_removed);
   ImportOrUpdate(update->funcs_def_update);
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
   HANDLE_MERGEABLE(funcs_derived, derived, funcs);
   HANDLE_MERGEABLE(funcs_callers, callers, funcs);
 
-  RemoveUsrs(update->vars_removed);
+  RemoveUsrs(SymbolKind::Var, update->vars_removed);
   ImportOrUpdate(update->vars_def_update);
   HANDLE_MERGEABLE(vars_uses, uses, vars);
 
@@ -673,15 +662,15 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& upda
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
-    auto it = usr_to_symbol.find(def.path);
-    assert(it != usr_to_symbol.end());
+    auto it = usr_to_file.find(def.path);
+    assert(it != usr_to_file.end());
 
-    optional<QueryFile>& existing = files[it->second.idx];
+    optional<QueryFile>& existing = files[it->second.id];
     if (!existing)
       existing = QueryFile(def.path);
 
     existing->def = def;
-    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::File, it->second.idx, def.path);
+    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::File, it->second.id, def.path);
   }
 }
 
@@ -691,17 +680,11 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& upda
   for (auto& def : updates) {
     assert(!def.detailed_name.empty());
 
-    auto it = usr_to_symbol.find(def.usr);
-    assert(it != usr_to_symbol.end());
-
-    if (it->second.kind != SymbolKind::Type) {
-      std::cerr << "!! Import/update got symbol kind " << (int)(it->second.kind) << ", expected SymbolKind::Type for usr " << def.usr << std::endl;
-      continue;
-    }
-
-    assert(it->second.idx >= 0 && it->second.idx < types.size());
-
-    optional<QueryType>& existing = types[it->second.idx];
+    auto it = usr_to_type.find(def.usr);
+    assert(it != usr_to_type.end());
+    
+    assert(it->second.id >= 0 && it->second.id < types.size());
+    optional<QueryType>& existing = types[it->second.id];
     if (!existing)
       existing = QueryType(def.usr);
 
@@ -710,7 +693,7 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& upda
       continue;
 
     existing->def = def;
-    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Type, it->second.idx, def.detailed_name);
+    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Type, it->second.id, def.detailed_name);
   }
 }
 
@@ -720,17 +703,11 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& upda
   for (auto& def : updates) {
     assert(!def.detailed_name.empty());
 
-    auto it = usr_to_symbol.find(def.usr);
-    assert(it != usr_to_symbol.end());
+    auto it = usr_to_func.find(def.usr);
+    assert(it != usr_to_func.end());
 
-    if (it->second.kind != SymbolKind::Func) {
-      std::cerr << "!! Import/update got symbol kind " << (int)(it->second.kind) << ", expected SymbolKind::Func for usr " << def.usr << std::endl;
-      continue;
-    }
-
-    assert(it->second.idx >= 0 && it->second.idx < funcs.size());
-
-    optional<QueryFunc>& existing = funcs[it->second.idx];
+    assert(it->second.id >= 0 && it->second.id < funcs.size());
+    optional<QueryFunc>& existing = funcs[it->second.id];
     if (!existing)
       existing = QueryFunc(def.usr);
 
@@ -739,7 +716,7 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& upda
       continue;
 
     existing->def = def;
-    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Func, it->second.idx, def.detailed_name);
+    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Func, it->second.id, def.detailed_name);
   }
 }
 
@@ -749,17 +726,11 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updat
   for (auto& def : updates) {
     assert(!def.detailed_name.empty());
 
-    auto it = usr_to_symbol.find(def.usr);
-    assert(it != usr_to_symbol.end());
+    auto it = usr_to_var.find(def.usr);
+    assert(it != usr_to_var.end());
 
-    if (it->second.kind != SymbolKind::Var) {
-      std::cerr << "!! Import/update got symbol kind " << (int)(it->second.kind) << ", expected SymbolKind::Var for usr " << def.usr << std::endl;
-      continue;
-    }
-
-    assert(it->second.idx >= 0 && it->second.idx < vars.size());
-
-    optional<QueryVar>& existing = vars[it->second.idx];
+    assert(it->second.id >= 0 && it->second.id < vars.size());
+    optional<QueryVar>& existing = vars[it->second.id];
     if (!existing)
       existing = QueryVar(def.usr);
 
@@ -769,7 +740,7 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updat
 
     existing->def = def;
     if (def.declaring_type)
-      UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Var, it->second.idx, def.detailed_name);
+      UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Var, it->second.id, def.detailed_name);
   }
 }
 

@@ -181,11 +181,11 @@ void PushBack(NonElidedVector<lsLocation>* result, optional<lsLocation> location
 }
 
 QueryFile* FindFile(QueryDatabase* db, const std::string& filename, QueryFileId* file_id) {
-  auto it = db->usr_to_symbol.find(filename);
-  if (it != db->usr_to_symbol.end()) {
-    optional<QueryFile>& file = db->files[it->second.idx];
+  auto it = db->usr_to_file.find(filename);
+  if (it != db->usr_to_file.end()) {
+    optional<QueryFile>& file = db->files[it->second.id];
     if (file) {
-      *file_id = QueryFileId(it->second.idx);
+      *file_id = QueryFileId(it->second.id);
       return &file.value();
     }
   }
@@ -197,9 +197,9 @@ QueryFile* FindFile(QueryDatabase* db, const std::string& filename, QueryFileId*
 
 QueryFile* FindFile(QueryDatabase* db, const std::string& filename) {
   // TODO: consider calling NormalizePath here. It might add too much latency though.
-  auto it = db->usr_to_symbol.find(filename);
-  if (it != db->usr_to_symbol.end()) {
-    optional<QueryFile>& file = db->files[it->second.idx];
+  auto it = db->usr_to_file.find(filename);
+  if (it != db->usr_to_file.end()) {
+    optional<QueryFile>& file = db->files[it->second.id];
     if (file)
       return &file.value();
   }
