@@ -1517,14 +1517,23 @@ bool QueryDbMainLoop(
         auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
 
         std::string path = msg->params.textDocument.uri.GetPath();
-        // Send an index update request.
-        // TODO: Make sure we don't mess up header files when guessing.
-        queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
-
-        // Copy current buffer content so it can be applied when index request is done.
+        // Send out an index request, and copy the current buffer state so we
+        // can update the cached index contents when the index is done.
+        //
+        // We also do not index if there is already an index request.
+        //
+        // TODO: Cancel outgoing index request. Might be tricky to make
+        //       efficient since we have to cancel.
+        //    - we could have an |atomic<int> active_cancellations| variable
+        //      that all of the indexers check before accepting an index. if
+        //      zero we don't slow down fast-path. if non-zero we acquire
+        //      mutex and check to see if we should skip the current request.
+        //      if so, ignore that index response.
         WorkingFile* working_file = working_files->GetFileByFilename(path);
-        if (working_file)
+        if (working_file && !working_file->pending_new_index_content) {
           working_file->pending_new_index_content = working_file->buffer_content;
+          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
+        }
 
         break;
       }
