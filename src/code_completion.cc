@@ -1,6 +1,7 @@
 #include "code_completion.h"
 
 #include "libclangmm/Utility.h"
+#include "platform.h"
 #include "timer.h"
 
 #include <algorithm>
@@ -369,6 +370,7 @@ void CompletionSession::Refresh(std::vector<CXUnsavedFile>& unsaved) {
 CompletionManager::CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files)
     : config(config), project(project), working_files(working_files) {
   new std::thread([&]() {
+    SetCurrentThreadName("completion");
     CompletionMain(this);
   });
 }
