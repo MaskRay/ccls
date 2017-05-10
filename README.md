@@ -24,6 +24,7 @@ be productive with cquery. Here's a list of implemented features:
   * goto definition, goto base method
   * document symbol search
   * global symbol search
+  * diagnostics
 
 # Setup
 
