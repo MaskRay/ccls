@@ -6,6 +6,7 @@
 #include <clang-c/Index.h>
 #include <optional.h>
 
+#include <mutex>
 #include <string>
 
 using std::experimental::optional;
@@ -52,15 +53,22 @@ struct WorkingFile {
 };
 
 struct WorkingFiles {
+  //
+  // :: IMPORTANT :: All methods in this class are guarded by a single lock.
+  //
+
   // Find the file with the given filename.
   WorkingFile* GetFileByFilename(const std::string& filename);
+  WorkingFile* GetFileByFilenameNoLock(const std::string& filename);
+
   WorkingFile* OnOpen(const Ipc_TextDocumentDidOpen::Params& open);
   void OnChange(const Ipc_TextDocumentDidChange::Params& change);
   void OnClose(const Ipc_TextDocumentDidClose::Params& close);
 
-  std::vector<CXUnsavedFile> AsUnsavedFiles() const;
+  std::vector<CXUnsavedFile> AsUnsavedFiles();
 
   // Use unique_ptrs so we can handout WorkingFile ptrs and not have them
   // invalidated if we resize files.
   std::vector<std::unique_ptr<WorkingFile>> files;
+  std::mutex files_mutex; // Protects |files|.
 };

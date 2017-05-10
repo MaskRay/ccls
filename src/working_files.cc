@@ -151,6 +151,11 @@ CXUnsavedFile WorkingFile::AsUnsavedFile() const {
 }
 
 WorkingFile* WorkingFiles::GetFileByFilename(const std::string& filename) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+  return GetFileByFilenameNoLock(filename);
+}
+
+WorkingFile* WorkingFiles::GetFileByFilenameNoLock(const std::string& filename) {
   for (auto& file : files) {
     if (file->filename == filename)
       return file.get();
@@ -159,11 +164,13 @@ WorkingFile* WorkingFiles::GetFileByFilename(const std::string& filename) {
 }
 
 WorkingFile* WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+
   std::string filename = open.textDocument.uri.GetPath();
   std::string content = open.textDocument.text;
 
   // The file may already be open.
-  if (WorkingFile* file = GetFileByFilename(filename)) {
+  if (WorkingFile* file = GetFileByFilenameNoLock(filename)) {
     file->version = open.textDocument.version;
     file->buffer_content = content;
     file->OnBufferContentUpdated();
@@ -175,8 +182,10 @@ WorkingFile* WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
 }
 
 void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+
   std::string filename = change.textDocument.uri.GetPath();
-  WorkingFile* file = GetFileByFilename(filename);
+  WorkingFile* file = GetFileByFilenameNoLock(filename);
   if (!file) {
     std::cerr << "Could not change " << filename << " because it was not open" << std::endl;
     return;
@@ -205,6 +214,8 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
 }
 
 void WorkingFiles::OnClose(const Ipc_TextDocumentDidClose::Params& close) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+
   std::string filename = close.textDocument.uri.GetPath();
 
   for (int i = 0; i < files.size(); ++i) {
@@ -217,7 +228,9 @@ void WorkingFiles::OnClose(const Ipc_TextDocumentDidClose::Params& close) {
   std::cerr << "Could not close " << filename << " because it was not open" << std::endl;
 }
 
-std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() const {
+std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
+  std::lock_guard<std::mutex> lock(files_mutex);
+
   std::vector<CXUnsavedFile> result;
   result.reserve(files.size());
   for (auto& file : files)

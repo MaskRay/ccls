@@ -1534,6 +1534,7 @@ bool QueryDbMainLoop(
           working_file->pending_new_index_content = working_file->buffer_content;
           queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
         }
+        completion_manager->DropAllSessionsExcept(path);
 
         break;
       }
@@ -1579,7 +1580,7 @@ bool QueryDbMainLoop(
 
           Timer timer;
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, response);
-          timer.ResetAndPrint("Writing completion results");
+          timer.ResetAndPrint("[complete] Writing completion results");
 
           delete message;
         }, message.release(), std::placeholders::_1);

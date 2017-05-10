@@ -8,9 +8,14 @@
 #include <clang-c/Index.h>
 
 #include <functional>
+#include <mutex>
 
 struct CompletionSession {
   Project::Entry file;
+  WorkingFiles* working_files;
+
+  // Acquired when the session is being used.
+  std::mutex usage_lock;
 
   // The active translation unit.
   std::unique_ptr<clang::TranslationUnit> active;
@@ -18,6 +23,7 @@ struct CompletionSession {
 
   // Updated translation unit. If |is_updated_ready| is true, then |updated|
   // contains more recent state than |active| and the two should be swapped.
+  //
   // TODO: implement this. Needs changes in Refresh and CodeComplete.
   //bool is_updated_ready = false;
   //std::unique_ptr<clang::TranslationUnit> updated;
@@ -26,8 +32,8 @@ struct CompletionSession {
   CompletionSession(const Project::Entry& file, WorkingFiles* working_files);
   ~CompletionSession();
 
-  // Refresh file index.
-  void Refresh(std::vector<CXUnsavedFile>& unsaved);
+  // Validate that we have |active| and |active_index|.
+  void EnsureCompletionState();
 };
 
 struct CompletionManager {
@@ -41,6 +47,7 @@ struct CompletionManager {
     lsTextDocumentPositionParams location;
     OnComplete on_complete;
   };
+
   AtomicObject<CompletionRequest> completion_request;
 
   CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files);
@@ -50,4 +57,5 @@ struct CompletionManager {
   void CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete);
 
   CompletionSession* GetOrOpenSession(const std::string& filename);
+  void DropAllSessionsExcept(const std::string& filename);
 };

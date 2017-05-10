@@ -9,28 +9,37 @@
 
 namespace {
 unsigned Flags() {
-  /*
   return
-    //CXTranslationUnit_Incomplete |
-    CXTranslationUnit_PrecompiledPreamble |
-    CXTranslationUnit_CacheCompletionResults |
-    //CXTranslationUnit_ForSerialization |
-    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
-    //CXTranslationUnit_CreatePreambleOnFirstParse |
-    CXTranslationUnit_KeepGoing;
-    */
-
-  return
+    CXTranslationUnit_Incomplete |
+    CXTranslationUnit_KeepGoing |
     CXTranslationUnit_CacheCompletionResults |
     CXTranslationUnit_PrecompiledPreamble |
-    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
+    CXTranslationUnit_IncludeBriefCommentsInCodeCompletion
 #if !defined(_WIN32)
     // For whatever reason, CreatePreambleOnFirstParse causes clang to become
     // very crashy on windows.
     // TODO: do more investigation, submit fixes to clang.
-    CXTranslationUnit_CreatePreambleOnFirstParse |
+    | CXTranslationUnit_CreatePreambleOnFirstParse
 #endif
-    CXTranslationUnit_DetailedPreprocessingRecord;
+    ;
+}
+
+int GetCompletionPriority(const CXCompletionString& str, CXCursorKind result_kind, const std::string& label) {
+  int priority = clang_getCompletionPriority(str);
+  if (result_kind == CXCursor_Destructor) {
+    priority *= 100;
+    //std::cerr << "Bumping[destructor] " << ls_completion_item.label << std::endl;
+  }
+  if (result_kind == CXCursor_ConversionFunction ||
+    (result_kind  == CXCursor_CXXMethod && StartsWith(label, "operator"))) {
+    //std::cerr << "Bumping[conversion] " << ls_completion_item.label << std::endl;
+    priority *= 100;
+  }
+  if (clang_getCompletionAvailability(str) != CXAvailability_Available) {
+    //std::cerr << "Bumping[notavailable] " << ls_completion_item.label << std::endl;
+    priority *= 100;
+  }
+  return priority;
 }
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
@@ -96,7 +105,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     return lsCompletionItemKind::Text;
 
   default:
-    std::cerr << "Unhandled completion kind " << cursor_kind << std::endl;
+    std::cerr << "[complete] Unhandled completion kind " << cursor_kind << std::endl;
     return lsCompletionItemKind::Text;
   }
 }
@@ -201,28 +210,28 @@ std::string BuildDetailString(CXCompletionString completion_string) {
 
 void CompletionMain(CompletionManager* completion_manager) {
   while (true) {
+    // Fetching the completion request blocks until we have a request.
     std::unique_ptr<CompletionManager::CompletionRequest> request = completion_manager->completion_request.Take();
 
 
     NonElidedVector<lsCompletionItem> ls_result;
 
     CompletionSession* session = completion_manager->GetOrOpenSession(request->location.textDocument.uri.GetPath());
+    std::lock_guard<std::mutex> lock(session->usage_lock);
+
+    session->EnsureCompletionState();
 
     unsigned line = request->location.position.line + 1;
     unsigned column = request->location.position.character + 1;
 
     std::cerr << std::endl;
-    std::cerr << "Completing at " << line << ":" << column << std::endl;
-
-    // TODO/FIXME
-    // TODO/FIXME
-    // TODO/FIXME NOT THREAD SAFE
-    // TODO/FIXME
-    // TODO/FIXME
-    std::vector<CXUnsavedFile> unsaved = completion_manager->working_files->AsUnsavedFiles();
-
+    std::cerr << "[complete] Completing at " << line << ":" << column << std::endl;
 
     Timer timer;
+
+    std::vector<CXUnsavedFile> unsaved = completion_manager->working_files->AsUnsavedFiles();
+    timer.ResetAndPrint("[complete] Fetching unsaved files");
+
 
 
     timer.Reset();
@@ -232,14 +241,13 @@ void CompletionMain(CompletionManager* completion_manager) {
       unsaved.data(), unsaved.size(),
       CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments);
     if (!cx_results) {
-      std::cerr << "Code completion failed" << std::endl;
+      std::cerr << "[complete] Code completion failed" << std::endl;
       request->on_complete(ls_result);
       continue;
     }
-    timer.ResetAndPrint("clangCodeCompleteAt");
-    std::cerr << "Got " << cx_results->NumResults << " results" << std::endl;
 
-    // TODO: for comments we could hack the unsaved buffer and transform // into ///
+    timer.ResetAndPrint("[complete] clangCodeCompleteAt");
+    std::cerr << "[complete] Got " << cx_results->NumResults << " results" << std::endl;
 
     ls_result.reserve(cx_results->NumResults);
 
@@ -247,130 +255,58 @@ void CompletionMain(CompletionManager* completion_manager) {
     for (unsigned i = 0; i < cx_results->NumResults; ++i) {
       CXCompletionResult& result = cx_results->Results[i];
 
-      //unsigned int is_incomplete;
-      //CXCursorKind kind = clang_codeCompleteGetContainerKind(cx_results, &is_incomplete);
-      //std::cerr << "clang_codeCompleteGetContainerKind kind=" << kind << " is_incomplete=" << is_incomplete << std::endl;
-
-      // CXCursor_InvalidCode fo
-
-      //clang_codeCompleteGetContexts
-      //CXCompletionContext
-      // clang_codeCompleteGetContexts
-      //
-      //CXCursorKind kind;
-      //CXString str = clang_getCompletionParent(result.CompletionString, &kind);
-      //std::cerr << "clang_getCompletionParent kind=" << kind << ", str=" << clang::ToString(str) << std::endl;
-      // if global don't append now, append to end later
-
-      // also clang_codeCompleteGetContainerKind
-
       // TODO: fill in more data
       lsCompletionItem ls_completion_item;
 
-      // kind/label/detail/docs
+      // kind/label/detail/docs/sortText
       ls_completion_item.kind = GetCompletionKind(result.CursorKind);
       ls_completion_item.label = BuildLabelString(result.CompletionString);
       ls_completion_item.detail = BuildDetailString(result.CompletionString);
       ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
-
-      // Priority
-      int priority = clang_getCompletionPriority(result.CompletionString);
-      if (result.CursorKind == CXCursor_Destructor) {
-        priority *= 100;
-        //std::cerr << "Bumping[destructor] " << ls_completion_item.label << std::endl;
-      }
-      if (result.CursorKind == CXCursor_ConversionFunction ||
-        (result.CursorKind == CXCursor_CXXMethod && StartsWith(ls_completion_item.label, "operator"))) {
-        //std::cerr << "Bumping[conversion] " << ls_completion_item.label << std::endl;
-        priority *= 100;
-      }
-      if (clang_getCompletionAvailability(result.CompletionString) != CXAvailability_Available) {
-        //std::cerr << "Bumping[notavailable] " << ls_completion_item.label << std::endl;
-        priority *= 100;
-      }
-      //std::cerr << "Adding kind=" << result.CursorKind << ", priority=" << ls_completion_item.priority_ << ", label=" << ls_completion_item.label << std::endl;
-
-      // TODO: we can probably remove priority_ and our sort.
-      ls_completion_item.sortText = uint64_t(priority);// std::to_string(ls_completion_item.priority_);
+      ls_completion_item.sortText = uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
 
       ls_result.push_back(ls_completion_item);
     }
-    timer.ResetAndPrint("Building " + std::to_string(ls_result.size()) + " completion results");
+    timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
 
     clang_disposeCodeCompleteResults(cx_results);
-    timer.ResetAndPrint("clang_disposeCodeCompleteResults ");
+    timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults ");
 
     request->on_complete(ls_result);
     continue;
-
-    // we should probably main two translation units, one for
-    // serving current requests, and one that is reparsing (follow qtcreator)
-
-    // todo: we need to run code completion on a separate thread from querydb
-    // so thread layout looks like:
-    //    - stdin                   # Reads data from stdin
-    //    - stdout                  # Pushes data to stdout
-    //    - querydb                 # Resolves index database queries.
-    //    - complete_responder      # Handles low-latency code complete requests.
-    //    - complete_parser         # Parses most recent document for future code complete requests.
-    //    - indexer (many)          # Runs index jobs (for querydb updates)
-
-    // use clang_codeCompleteAt
-    //CXUnsavedFile
-    // we need to setup CXUnsavedFile
-    // The key to doing that is via
-    //  - textDocument/didOpen
-    //  - textDocument/didChange
-    //  - textDocument/didClose
-
-    // probably don't need
-    //  - textDocument/willSave
   }
 }
 
 }  // namespace
 
-CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* working_files) : file(file) {
-  std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
+CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* working_files)
+  : file(file), working_files(working_files) {}
+
+CompletionSession::~CompletionSession() {}
+
+void CompletionSession::EnsureCompletionState() {
+  if (active && active_index) {
+    // TODO: Investigate if this helps performance. It causes crashes on windows.
+    //std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
+    //active->ReparseTranslationUnit(unsaved);
+    return;
+  }
 
   std::vector<std::string> args = file.args;
   args.push_back("-fparse-all-comments");
 
-  std::cerr << "Creating completion session with arguments " << StringJoin(args) << std::endl;
+  std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
 
-  // TODO: I think we crash when there are syntax errors.
+  std::cerr << "[complete] Creating completion session with arguments " << StringJoin(args) << std::endl;
   active_index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
   active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
-  std::cerr << "Done creating active; did_fail=" << active->did_fail << std::endl;
-  //if (active->did_fail) {
-  //  std::cerr << "Failed to create translation unit; trying again..." << std::endl;
-  //  active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
-  //}
-
-  // Despite requesting clang create a precompiled header on the first parse in
-  // Flags() via CXTranslationUnit_CreatePreambleOnFirstParse, it doesn't seem
-  // to do so. Immediately reparsing will create one which reduces
-  // clang_codeCompleteAt timing from 200ms to 20ms on simple files.
-  // TODO: figure out why this is crashing so much
-  if (!active->did_fail) {
-    std::cerr << "Start reparse" << std::endl;
-    active->ReparseTranslationUnit(unsaved);
-
-    std::cerr << "Done reparse" << std::endl;
-  }
-}
-
-CompletionSession::~CompletionSession() {}
-
-void CompletionSession::Refresh(std::vector<CXUnsavedFile>& unsaved) {
-  // TODO: Do this off the code completion thread so we don't block completions.
-  active->ReparseTranslationUnit(unsaved);
+  std::cerr << "[complete] Done creating active; did_fail=" << active->did_fail << std::endl;
 }
 
 CompletionManager::CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files)
     : config(config), project(project), working_files(working_files) {
   new std::thread([&]() {
-    SetCurrentThreadName("completion");
+    SetCurrentThreadName("complete");
     CompletionMain(this);
   });
 }
@@ -390,16 +326,27 @@ CompletionSession* CompletionManager::GetOrOpenSession(const std::string& filena
   }
 
   // Create new session. Note that this will block.
-  std::cerr << "Creating new code completion session for " << filename << std::endl;
+  std::cerr << "[complete] Creating new code completion session for " << filename << std::endl;
   optional<Project::Entry> entry = project->FindCompilationEntryForFile(filename);
   if (!entry) {
-    std::cerr << "Unable to find compilation entry" << std::endl;
+    std::cerr << "[complete] Unable to find compilation entry" << std::endl;
     entry = Project::Entry();
     entry->filename = filename;
   }
   else {
-    std::cerr << "Found compilation entry" << std::endl;
+    std::cerr << "[complete] Found compilation entry" << std::endl;
   }
   sessions.push_back(MakeUnique<CompletionSession>(*entry, working_files));
   return sessions[sessions.size() - 1].get();
+}
+
+void CompletionManager::DropAllSessionsExcept(const std::string& filename) {
+  for (auto& session : sessions) {
+    if (session->file.filename == filename)
+      continue;
+
+    std::lock_guard<std::mutex> lock(session->usage_lock);
+    session->active.reset();
+    session->active_index.reset();
+  }
 }
