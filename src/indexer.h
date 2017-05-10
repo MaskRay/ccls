@@ -453,10 +453,6 @@ struct IdCache {
   std::unordered_map<IndexVarId, std::string> var_id_to_usr;
 
   IdCache(const std::string& primary_file);
-
-  Range Resolve(const CXSourceRange& range);
-  Range ResolveSpelling(const CXCursor& cx_cursor);
-  Range ResolveExtent(const CXCursor& cx_cursor);
 };
 
 struct IndexedFile {
@@ -477,6 +473,9 @@ struct IndexedFile {
 
   // The content of |path| when it was indexed.
   //std::string content;
+
+  // Diagnostics found when indexing the file. This is not saved.
+  NonElidedVector<lsDiagnostic> diagnostics;
 
   std::vector<std::string> dependencies;
   std::vector<IndexedTypeDef> types;

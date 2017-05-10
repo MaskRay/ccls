@@ -555,6 +555,39 @@ struct lsDocumentHighlight {
 };
 MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind);
 
+enum class lsDiagnosticSeverity {
+  // Reports an error.
+  Error = 1,
+  // Reports a warning.
+  Warning = 2,
+  // Reports an information.
+  Information = 3,
+  // Reports a hint.
+  Hint = 4
+};
+MAKE_REFLECT_TYPE_PROXY(lsDiagnosticSeverity, int);
+
+struct lsDiagnostic {
+  // The range at which the message applies.
+  lsRange range;
+
+  // The diagnostic's severity. Can be omitted. If omitted it is up to the
+  // client to interpret diagnostics as error, warning, info or hint.
+  optional<lsDiagnosticSeverity> severity;
+
+  // The diagnostic's code. Can be omitted.
+  int code = 0;
+
+  // A human-readable string describing the source of this
+  // diagnostic, e.g. 'typescript' or 'super lint'.
+  std::string source = "cquery";
+
+  // The diagnostic's message.
+  std::string message;
+};
+MAKE_REFLECT_STRUCT(lsDiagnostic, range, severity, source, message);
+
+
 // TODO: DocumentFilter
 // TODO: DocumentSelector
 
@@ -1159,6 +1192,31 @@ struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave, params);
+
+
+
+// Diagnostics
+struct Out_TextDocumentPublishDiagnostics : public lsOutMessage<Out_TextDocumentPublishDiagnostics> {
+  struct Params {
+    // The URI for which diagnostic information is reported.
+    lsDocumentUri uri;
+
+    // An array of diagnostic information items.
+    NonElidedVector<lsDiagnostic> diagnostics;
+  };
+
+  Params params;
+};
+template<typename TVisitor>
+void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
+  std::string method = "textDocument/publishDiagnostics";
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER2("method", method);
+  REFLECT_MEMBER(params);
+  REFLECT_MEMBER_END();
+}
+MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params, uri, diagnostics);
 
 
 

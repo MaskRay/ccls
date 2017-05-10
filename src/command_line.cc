@@ -990,6 +990,14 @@ void ParseFile(IndexerConfig* config,
   for (std::unique_ptr<IndexedFile>& new_index : indexes) {
     std::cerr << "Got index for " << new_index->path << std::endl;
 
+    // Publish diagnostics.
+    if (!new_index->diagnostics.empty()) {
+      Out_TextDocumentPublishDiagnostics diag;
+      diag.params.uri = lsDocumentUri::FromPath(new_index->path);
+      diag.params.diagnostics = new_index->diagnostics;
+      IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
+    }
+
     // Load the cached index.
     std::unique_ptr<IndexedFile> cached_index;
     if (cache_for_args && new_index->path == cache_for_args->path)
