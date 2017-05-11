@@ -1541,7 +1541,7 @@ bool QueryDbMainLoop(
         WorkingFile* working_file = working_files->GetFileByFilename(path);
         if (working_file && !working_file->pending_new_index_content) {
           working_file->pending_new_index_content = working_file->buffer_content;
-          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
+          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
         }
         completion_manager->UpdateActiveSession(path);
 

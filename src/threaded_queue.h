@@ -85,7 +85,7 @@ public:
 
   bool IsEmpty() {
     std::lock_guard<std::mutex> lock(mutex_);
-    return queue_.empty();
+    return priority_.empty() && queue_.empty();
   }
 
   /*
