@@ -110,7 +110,9 @@ struct QueryFuncRef {
   }
   bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
   bool operator<(const QueryFuncRef& that) const {
-    return id_ < that.id_ && loc.range.start < that.loc.range.start;
+    if (id_ < that.id_)
+      return true;
+    return id_ == that.id_ && loc.range.start < that.loc.range.start;
   }
 };
 

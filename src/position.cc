@@ -64,7 +64,9 @@ bool Position::operator==(const Position& that) const {
 bool Position::operator!=(const Position& that) const { return !(*this == that); }
 
 bool Position::operator<(const Position& that) const {
-  return line < that.line && column < that.column;
+  if (line < that.line)
+    return true;
+  return line == that.line && column < that.column;
 }
 
 Range::Range() {}
