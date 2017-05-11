@@ -53,9 +53,9 @@ struct QueryLocation {
   }
   bool operator!=(const QueryLocation& other) const { return !(*this == other); }
   bool operator<(const QueryLocation& o) const {
-    return
-      path < o.path &&
-      range < o.range;
+    if (path < o.path)
+      return true;
+    return path == o.path && range < o.range;
   }
 };
 
@@ -72,7 +72,9 @@ struct SymbolIdx {
   }
   bool operator!=(const SymbolIdx& that) const { return !(*this == that); }
   bool operator<(const SymbolIdx& that) const {
-    return kind < that.kind || idx < that.idx;
+    if (kind < that.kind)
+      return true;
+    return kind == that.kind && idx < that.idx;
   }
 };
 
@@ -87,7 +89,9 @@ struct SymbolRef {
   }
   bool operator!=(const SymbolRef& that) const { return !(*this == that); }
   bool operator<(const SymbolRef& that) const {
-    return idx < that.idx && loc.range.start < that.loc.range.start;
+    if (idx < that.idx)
+      return true;
+    return idx == that.idx && loc.range.start < that.loc.range.start;
   }
 };
 

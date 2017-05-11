@@ -134,5 +134,7 @@ bool Range::operator==(const Range& that) const {
 bool Range::operator!=(const Range& that) const { return !(*this == that); }
 
 bool Range::operator<(const Range& that) const {
-  return start < that.start;// || end < that.end;
+  if (start < that.start)
+    return true;
+  return start == that.start && end < that.end;
 }

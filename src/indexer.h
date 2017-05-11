@@ -88,7 +88,9 @@ struct Ref {
   }
   bool operator!=(const Ref<T>& other) { return !(*this == other); }
   bool operator<(const Ref<T>& other) const {
-    return id_ < other.id && loc < other.loc;
+    if (id_ < other.id)
+      return true;
+    return id_ == other.id && loc < other.loc;
   }
 };
 
