@@ -232,6 +232,7 @@ void Reflect(TVisitor& visitor, IndexedFile& value) {
     REFLECT_MEMBER(import_file);
     REFLECT_MEMBER(args);
   }
+  REFLECT_MEMBER(diagnostics);
   REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);

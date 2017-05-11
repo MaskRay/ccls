@@ -990,14 +990,6 @@ void ParseFile(IndexerConfig* config,
   for (std::unique_ptr<IndexedFile>& new_index : indexes) {
     std::cerr << "Got index for " << new_index->path << std::endl;
 
-    // Publish diagnostics.
-    if (!new_index->diagnostics.empty()) {
-      Out_TextDocumentPublishDiagnostics diag;
-      diag.params.uri = lsDocumentUri::FromPath(new_index->path);
-      diag.params.diagnostics = new_index->diagnostics;
-      IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
-    }
-
     // Load the cached index.
     std::unique_ptr<IndexedFile> cached_index;
     if (cache_for_args && new_index->path == cache_for_args->path)
@@ -1008,6 +1000,15 @@ void ParseFile(IndexerConfig* config,
     //assert(!cached_index || GetLastModificationTime(new_index->path) != cached_index->last_modification_time);
 
     time.ResetAndPrint("Loading cached index");
+
+    // Publish diagnostics.
+    if (!new_index->diagnostics.empty() || (cached_index && !cached_index->diagnostics.empty())) {
+      Out_TextDocumentPublishDiagnostics diag;
+      diag.params.uri = lsDocumentUri::FromPath(new_index->path);
+      diag.params.diagnostics = new_index->diagnostics;
+      IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
+    }
+
 
     // Any any existing dependencies to |new_index| that were there before,
     // because we will not reparse them if they haven't changed.
@@ -1542,7 +1543,7 @@ bool QueryDbMainLoop(
           working_file->pending_new_index_content = working_file->buffer_content;
           queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
         }
-        completion_manager->DropAllSessionsExcept(path);
+        completion_manager->DropAllSessionsExcept("");
 
         break;
       }
