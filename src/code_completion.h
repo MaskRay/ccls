@@ -31,9 +31,6 @@ struct CompletionSession {
 
   CompletionSession(const Project::Entry& file, WorkingFiles* working_files);
   ~CompletionSession();
-
-  // Validate that we have |active| and |active_index|.
-  void EnsureCompletionState();
 };
 
 struct CompletionManager {
@@ -43,12 +40,16 @@ struct CompletionManager {
   WorkingFiles* working_files;
 
   using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results)>;
+  
   struct CompletionRequest {
     lsTextDocumentPositionParams location;
     OnComplete on_complete;
   };
 
   AtomicObject<CompletionRequest> completion_request;
+
+  // Request that the given path be reparsed.
+  AtomicObject<std::string> reparse_request;
 
   CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files);
 
@@ -57,5 +58,9 @@ struct CompletionManager {
   void CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete);
 
   CompletionSession* GetOrOpenSession(const std::string& filename);
-  void DropAllSessionsExcept(const std::string& filename);
+
+  // Set the new active session. We will drop clang state for all other
+  // sessions and begin reparsing the session for |filename| to ensure
+  // completions are always fast.
+  void UpdateActiveSession(const std::string& filename);
 };

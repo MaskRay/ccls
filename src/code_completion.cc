@@ -208,7 +208,43 @@ std::string BuildDetailString(CXCompletionString completion_string) {
   return detail;
 }
 
-void CompletionMain(CompletionManager* completion_manager) {
+void EnsureDocumentParsed(CompletionSession* session,
+                          std::unique_ptr<clang::TranslationUnit>* tu,
+                          std::unique_ptr<clang::Index>* index) {
+  // Nothing to do. We already have a translation unit and an index.
+  if (*tu && *index)
+    return;
+
+  std::vector<std::string> args = session->file.args;
+  args.push_back("-fparse-all-comments");
+
+  std::vector<CXUnsavedFile> unsaved = session->working_files->AsUnsavedFiles();
+
+  std::cerr << "[complete] Creating completion session with arguments " << StringJoin(args) << std::endl;
+  *index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
+  *tu = MakeUnique<clang::TranslationUnit>(*index->get(), session->file.filename, args, unsaved, Flags());
+  std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail << std::endl;
+}
+
+void CompletionParseMain(CompletionManager* completion_manager) {
+  while (true) {
+    // Fetching the completion request blocks until we have a request.
+    std::unique_ptr<std::string> path = completion_manager->reparse_request.Take();
+    
+    CompletionSession* session = completion_manager->GetOrOpenSession(*path);
+    std::unique_ptr<clang::TranslationUnit> parsing;
+    std::unique_ptr<clang::Index> parsing_index;
+
+    EnsureDocumentParsed(session, &parsing, &parsing_index);
+
+    // Swap out active.
+    std::lock_guard<std::mutex> lock(session->usage_lock);
+    session->active = std::move(parsing);
+    session->active_index = std::move(parsing_index);
+  }
+}
+
+void CompletionQueryMain(CompletionManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<CompletionManager::CompletionRequest> request = completion_manager->completion_request.Take();
@@ -219,7 +255,7 @@ void CompletionMain(CompletionManager* completion_manager) {
     CompletionSession* session = completion_manager->GetOrOpenSession(request->location.textDocument.uri.GetPath());
     std::lock_guard<std::mutex> lock(session->usage_lock);
 
-    session->EnsureCompletionState();
+    EnsureDocumentParsed(session, &session->active, &session->active_index);
 
     unsigned line = request->location.position.line + 1;
     unsigned column = request->location.position.character + 1;
@@ -231,8 +267,6 @@ void CompletionMain(CompletionManager* completion_manager) {
 
     std::vector<CXUnsavedFile> unsaved = completion_manager->working_files->AsUnsavedFiles();
     timer.ResetAndPrint("[complete] Fetching unsaved files");
-
-
 
     timer.Reset();
     CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
@@ -284,30 +318,16 @@ CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* w
 
 CompletionSession::~CompletionSession() {}
 
-void CompletionSession::EnsureCompletionState() {
-  if (active && active_index) {
-    // TODO: Investigate if this helps performance. It causes crashes on windows.
-    //std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
-    //active->ReparseTranslationUnit(unsaved);
-    return;
-  }
-
-  std::vector<std::string> args = file.args;
-  args.push_back("-fparse-all-comments");
-
-  std::vector<CXUnsavedFile> unsaved = working_files->AsUnsavedFiles();
-
-  std::cerr << "[complete] Creating completion session with arguments " << StringJoin(args) << std::endl;
-  active_index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
-  active = MakeUnique<clang::TranslationUnit>(*active_index, file.filename, args, unsaved, Flags());
-  std::cerr << "[complete] Done creating active; did_fail=" << active->did_fail << std::endl;
-}
-
 CompletionManager::CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files)
     : config(config), project(project), working_files(working_files) {
   new std::thread([&]() {
-    SetCurrentThreadName("complete");
-    CompletionMain(this);
+    SetCurrentThreadName("completequery");
+    CompletionQueryMain(this);
+  });
+
+  new std::thread([&]() {
+    SetCurrentThreadName("completeparse");
+    CompletionParseMain(this);
   });
 }
 
@@ -340,7 +360,8 @@ CompletionSession* CompletionManager::GetOrOpenSession(const std::string& filena
   return sessions[sessions.size() - 1].get();
 }
 
-void CompletionManager::DropAllSessionsExcept(const std::string& filename) {
+void CompletionManager::UpdateActiveSession(const std::string& filename) {
+  // Drop all sessions except for |filename|.
   for (auto& session : sessions) {
     if (session->file.filename == filename)
       continue;
@@ -349,4 +370,7 @@ void CompletionManager::DropAllSessionsExcept(const std::string& filename) {
     session->active.reset();
     session->active_index.reset();
   }
+
+  // Reparse |filename|.
+  reparse_request.Set(MakeUnique<std::string>(filename));
 }
