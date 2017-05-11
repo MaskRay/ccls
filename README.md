@@ -49,8 +49,9 @@ $ npm install
 $ code .
 ```
 
-After VSCode is running, update the `ServerOptions` inside of `extension.ts` to
-point to the absolute path of your build directory. For example,
+After VSCode is running, update the `ServerOptions` inside of `extension.ts`
+ to point to the absolute path of your build directory (specifically, the
+ `cwd` parameter). For example,
 
 ```js
 let serverOptions: ServerOptions = {
@@ -99,7 +100,7 @@ database emitted from your build system of choice. For example, here's how to
 generate one in ninja. When you sync your code you should regenerate this file.
 
 ```bash
-$ ninja -t compdb cxx cc > compile_commands.json
+$ ninja -C out/Release -t compdb cxx cc > compile_commands.json
 ```
 
 The `compile_commands.json` file should be in the top-level workspace directory.

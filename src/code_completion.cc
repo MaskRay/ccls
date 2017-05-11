@@ -372,5 +372,7 @@ void CompletionManager::UpdateActiveSession(const std::string& filename) {
   }
 
   // Reparse |filename|.
+  // TODO: Instead of actually reparsing it, see if we can hook into the
+  // indexer and steal the translation unit from there..
   reparse_request.Set(MakeUnique<std::string>(filename));
 }
