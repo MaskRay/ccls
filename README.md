@@ -27,51 +27,44 @@ be productive with cquery. Here's a list of implemented features:
   * hover
   * diagnostics
 
-# Setup
+# Setup - build cquery, install extension, setup project
 
-## Building
+There are three steps to get cquery up and running. Eventually, cquery will be
+published in the vscode extension marketplace which will reduce these three
+steps to only project setup.
 
-Eventually, cquery will be published in the vscode extension marketplace and you
-will be able to install and run it without any additional steps. To use cquery
-you need to clone this repository, build it, and then run the vscode extension
-in the `vscode-client` folder.
+## Build cquery
+
+Building cquery is simple. The external dependencies are few:
+
+- clang (3.4 or greater)
+- python
+- git
 
 ```bash
-# Build cquery
 $ git clone https://github.com/jacobdufault/cquery --recursive
 $ cd cquery
 $ ./waf configure
 $ ./waf build
-
-# Build extension
-$ cd vscode-client
-$ npm install
-$ code .
 ```
 
-After VSCode is running, update the `ServerOptions` inside of `extension.ts`
- to point to the absolute path of your build directory (specifically, the
- `cwd` parameter). For example,
+## Install extension
 
-```js
-let serverOptions: ServerOptions = {
-    command: './app',
-    args: ['--language-server'],
-    options: {
-      cwd: '/home/cquery/build/'
-    }
-  }
-```
+cquery includes a vscode extension; it is part of the repository. Launch vscode
+and install the `vscode-extension.tsix` extension. To do this:
 
-You can hit then `F5` to launch the extension locally. Consider taking a look at
-the options cquery makes available in vscode settings.
+- Hit `F1`; execute the command `Install from VSIX`.
+- Select `vscode-extension.tsix` in the file chooser.
+
+**IMPORTANT:** Please reinstall the extension when you sync the code base - it is
+still being developed.
 
 If you run into issues, you can view debug output by running the
 (`F1`) `View: Toggle Output` command and opening the `cquery` output section.
 
-## Project setup
+## Project setup (system includes, clang configuration)
 
-### System includes
+### Part 1: System includes
 
 cquery will likely fail to resolve system includes like `<vector>` unless the include path is updated to point to them. Add the system include paths to `cquery.extraClangArguments`. For example,
 
@@ -93,7 +86,9 @@ cquery will likely fail to resolve system includes like `<vector>` unless the in
 }
 ```
 
-### compile_commands.json (Best)
+### Part 2: Clang configuration
+
+#### compile_commands.json (Best)
 
 To get the most accurate index possible, you can give cquery a compilation
 database emitted from your build system of choice. For example, here's how to
@@ -105,12 +100,12 @@ $ ninja -C out/Release -t compdb cxx cc > compile_commands.json
 
 The `compile_commands.json` file should be in the top-level workspace directory.
 
-### cquery.extraClangArguments
+#### cquery.extraClangArguments
 
 If for whatever reason you cannot generate a `compile_commands.json` file, you
 can add the flags to the `cquery.extraClangArguments` configuration option.
 
-### clang_args
+#### clang_args
 
 If for whatever reason you cannot generate a `compile_commands.json` file, you
 can add the flags to a file called `clang_args` located in the top-level
@@ -127,6 +122,21 @@ are skipped. Here's an example:
 # Includes
 -I/work/cquery/third_party
 ```
+
+# Building extension
+
+If you wish to modify the vscode extension, you will need to build it locally.
+Luckily, it is pretty easy - the only dependency is npm.
+
+```bash
+# Build extension
+$ cd vscode-client
+$ npm install
+$ code .
+```
+
+When VSCode is running, you can hit `F5` to build and launch the extension
+locally.
 
 # Limitations
 

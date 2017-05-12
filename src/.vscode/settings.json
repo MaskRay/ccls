@@ -5,6 +5,9 @@
     // ".*libclangmm/.*"
   ],
   "cquery.whitelist": [
-    // ".*platform.*.cc"
-  ]
+    //".*platform.*.cc"
+  ],
+
+  "cquery.launch.workingDirectory": "C:/Users/jacob/Desktop/superindex/indexer/x64/Release",
+  "cquery.launch.command": "indexer.exe"
 }
