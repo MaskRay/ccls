@@ -21,9 +21,9 @@
 #include <unordered_map>
 #include <vector>
 
-struct IndexedTypeDef;
-struct IndexedFuncDef;
-struct IndexedVarDef;
+struct IndexType;
+struct IndexFunc;
+struct IndexVar;
 
 using namespace std::experimental;
 
@@ -59,9 +59,9 @@ bool operator!=(const Id<T>& a, const Id<T>& b) {
   return !(a == b);
 }
 
-using IndexTypeId = Id<IndexedTypeDef>;
-using IndexFuncId = Id<IndexedFuncDef>;
-using IndexVarId = Id<IndexedVarDef>;
+using IndexTypeId = Id<IndexType>;
+using IndexFuncId = Id<IndexFunc>;
+using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
@@ -103,7 +103,7 @@ bool operator!=(const Ref<T>& a, const Ref<T>& b) {
   return !(a == b);
 }
 
-using IndexFuncRef = Ref<IndexedFuncDef>;
+using IndexFuncRef = Ref<IndexFunc>;
 
 // TODO: skip as much forward-processing as possible when |is_system_def| is
 //       set to false.
@@ -196,7 +196,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_END();
 }
 
-struct IndexedTypeDef {
+struct IndexType {
   using Def = TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
   Def def;
 
@@ -212,9 +212,9 @@ struct IndexedTypeDef {
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Range> uses;
 
-  IndexedTypeDef() : def("") {}  // For serialization
+  IndexType() : def("") {}  // For serialization
 
-  IndexedTypeDef(IndexTypeId id, const std::string& usr);
+  IndexType(IndexTypeId id, const std::string& usr);
 
   bool HasInterestingState() const {
     return
@@ -224,12 +224,12 @@ struct IndexedTypeDef {
       !uses.empty();
   }
 
-  bool operator<(const IndexedTypeDef& other) const {
+  bool operator<(const IndexType& other) const {
     return def.usr < other.def.usr;
   }
 };
 
-MAKE_HASHABLE(IndexedTypeDef, t.def.usr);
+MAKE_HASHABLE(IndexType, t.def.usr);
 
 template <typename TypeId,
           typename FuncId,
@@ -311,7 +311,7 @@ void Reflect(
   REFLECT_MEMBER_END();
 }
 
-struct IndexedFuncDef {
+struct IndexFunc {
   using Def = FuncDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, IndexFuncRef, Range>;
   Def def;
 
@@ -330,8 +330,8 @@ struct IndexedFuncDef {
   // def.definition_spelling.
   std::vector<IndexFuncRef> callers;
 
-  IndexedFuncDef() {}  // For reflection.
-  IndexedFuncDef(IndexFuncId id, const std::string& usr) : def(usr), id(id) {
+  IndexFunc() {}  // For reflection.
+  IndexFunc(IndexFuncId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -344,11 +344,11 @@ struct IndexedFuncDef {
       !callers.empty();
   }
 
-  bool operator<(const IndexedFuncDef& other) const {
+  bool operator<(const IndexFunc& other) const {
     return def.usr < other.def.usr;
   }
 };
-MAKE_HASHABLE(IndexedFuncDef, t.def.usr);
+MAKE_HASHABLE(IndexFunc, t.def.usr);
 
 template <typename TypeId,
           typename FuncId,
@@ -418,7 +418,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_END();
 }
 
-struct IndexedVarDef {
+struct IndexVar {
   using Def = VarDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
   Def def;
 
@@ -427,9 +427,9 @@ struct IndexedVarDef {
   // Usages.
   std::vector<Range> uses;
 
-  IndexedVarDef() : def("") {}  // For serialization
+  IndexVar() : def("") {}  // For serialization
 
-  IndexedVarDef(IndexVarId id, const std::string& usr) : def(usr), id(id) {
+  IndexVar(IndexVarId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -439,11 +439,11 @@ struct IndexedVarDef {
       !uses.empty();
   }
 
-  bool operator<(const IndexedVarDef& other) const {
+  bool operator<(const IndexVar& other) const {
     return def.usr < other.def.usr;
   }
 };
-MAKE_HASHABLE(IndexedVarDef, t.def.usr);
+MAKE_HASHABLE(IndexVar, t.def.usr);
 
 struct IdCache {
   std::string primary_file;
@@ -457,7 +457,7 @@ struct IdCache {
   IdCache(const std::string& primary_file);
 };
 
-struct IndexedFile {
+struct IndexFile {
   IdCache id_cache;
 
   static constexpr int kCurrentVersion = 2;
@@ -468,7 +468,7 @@ struct IndexedFile {
   int64_t last_modification_time = 0;
 
   // The path to the translation unit cc file which caused the creation of this
-  // IndexedFile. When parsing a translation unit we generate many IndexedFile
+  // IndexFile. When parsing a translation unit we generate many IndexFile
   // instances (ie, each header has a separate one). When the user edits a
   // header we need to lookup the original translation unit and reindex that.
   std::string import_file;
@@ -480,11 +480,11 @@ struct IndexedFile {
   NonElidedVector<lsDiagnostic> diagnostics;
 
   std::vector<std::string> dependencies;
-  std::vector<IndexedTypeDef> types;
-  std::vector<IndexedFuncDef> funcs;
-  std::vector<IndexedVarDef> vars;
+  std::vector<IndexType> types;
+  std::vector<IndexFunc> funcs;
+  std::vector<IndexVar> vars;
 
-  IndexedFile(const std::string& path);
+  IndexFile(const std::string& path);
 
   IndexTypeId ToTypeId(const std::string& usr);
   IndexFuncId ToFuncId(const std::string& usr);
@@ -492,9 +492,9 @@ struct IndexedFile {
   IndexTypeId ToTypeId(const CXCursor& usr);
   IndexFuncId ToFuncId(const CXCursor& usr);
   IndexVarId ToVarId(const CXCursor& usr);
-  IndexedTypeDef* Resolve(IndexTypeId id);
-  IndexedFuncDef* Resolve(IndexFuncId id);
-  IndexedVarDef* Resolve(IndexVarId id);
+  IndexType* Resolve(IndexTypeId id);
+  IndexFunc* Resolve(IndexFuncId id);
+  IndexVar* Resolve(IndexVarId id);
 
   std::string ToString();
 };
@@ -502,7 +502,7 @@ struct IndexedFile {
 // |import_file| is the cc file which is what gets passed to clang.
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a reparse.
-std::vector<std::unique_ptr<IndexedFile>> Parse(
+std::vector<std::unique_ptr<IndexFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,

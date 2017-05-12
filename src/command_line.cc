@@ -772,21 +772,21 @@ struct Index_DoIndex {
 };
 
 struct Index_DoIdMap {
-  std::unique_ptr<IndexedFile> previous;
-  std::unique_ptr<IndexedFile> current;
+  std::unique_ptr<IndexFile> previous;
+  std::unique_ptr<IndexFile> current;
 
-  explicit Index_DoIdMap(std::unique_ptr<IndexedFile> current)
+  explicit Index_DoIdMap(std::unique_ptr<IndexFile> current)
     : current(std::move(current)) {}
 
-  explicit Index_DoIdMap(std::unique_ptr<IndexedFile> previous,
-                         std::unique_ptr<IndexedFile> current)
+  explicit Index_DoIdMap(std::unique_ptr<IndexFile> previous,
+                         std::unique_ptr<IndexFile> current)
     : previous(std::move(previous)),
       current(std::move(current)) {}
 };
 
 struct Index_OnIdMapped {
-  std::unique_ptr<IndexedFile> previous_index;
-  std::unique_ptr<IndexedFile> current_index;
+  std::unique_ptr<IndexFile> previous_index;
+  std::unique_ptr<IndexFile> current_index;
   std::unique_ptr<IdMap> previous_id_map;
   std::unique_ptr<IdMap> current_id_map;
 };
@@ -942,7 +942,7 @@ bool ImportCachedIndex(IndexerConfig* config,
 
   Timer time;
 
-  std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, tu_path);
+  std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, tu_path);
   time.ResetAndPrint("Reading cached index from disk " + tu_path);
   if (!cache)
     return true;
@@ -952,7 +952,7 @@ bool ImportCachedIndex(IndexerConfig* config,
   // Import all dependencies.
   for (auto& dependency_path : cache->dependencies) {
     std::cerr << "- Got dependency " << dependency_path << std::endl;
-    std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, dependency_path);
+    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
     if (cache && GetLastModificationTime(cache->path) == cache->last_modification_time)
       file_consumer_shared->Mark(cache->path);
     else
@@ -977,21 +977,21 @@ void ParseFile(IndexerConfig* config,
                const Project::Entry& entry) {
   Timer time;
 
-  std::unique_ptr<IndexedFile> cache_for_args = LoadCachedIndex(config, entry.filename);
+  std::unique_ptr<IndexFile> cache_for_args = LoadCachedIndex(config, entry.filename);
 
   std::string tu_path = cache_for_args ? cache_for_args->import_file : entry.filename;
   const std::vector<std::string>& tu_args = entry.args;
 
-  std::vector<std::unique_ptr<IndexedFile>> indexes = Parse(
+  std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
     config, file_consumer_shared,
     tu_path, tu_args);
   time.ResetAndPrint("Parsing/indexing " + tu_path);
 
-  for (std::unique_ptr<IndexedFile>& new_index : indexes) {
+  for (std::unique_ptr<IndexFile>& new_index : indexes) {
     std::cerr << "Got index for " << new_index->path << std::endl;
 
     // Load the cached index.
-    std::unique_ptr<IndexedFile> cached_index;
+    std::unique_ptr<IndexFile> cached_index;
     if (cache_for_args && new_index->path == cache_for_args->path)
       cached_index = std::move(cache_for_args);
     else
@@ -1037,7 +1037,7 @@ bool ResetStaleFiles(IndexerConfig* config,
                      const std::string& tu_path) {
   Timer time;
 
-  std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, tu_path);
+  std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, tu_path);
   time.ResetAndPrint("Reading cached index from disk " + tu_path);
   if (!cache) {
     std::cerr << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)" << std::endl;
@@ -1050,7 +1050,7 @@ bool ResetStaleFiles(IndexerConfig* config,
   // Check dependencies
   for (auto& dependency_path : cache->dependencies) {
     std::cerr << "- Got dependency " << dependency_path << std::endl;
-    std::unique_ptr<IndexedFile> cache = LoadCachedIndex(config, dependency_path);
+    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
     if (GetLastModificationTime(cache->path) != cache->last_modification_time) {
       needs_reparse = true;
       file_consumer_shared->Reset(cache->path);

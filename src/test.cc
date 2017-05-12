@@ -82,7 +82,7 @@ void DiffDocuments(std::string path, std::string path_section, rapidjson::Docume
   }
 }
 
-void VerifySerializeToFrom(IndexedFile* file) {
+void VerifySerializeToFrom(IndexFile* file) {
   std::string expected = file->ToString();
   std::string actual = Deserialize("--.cc", Serialize(*file)).value().ToString();
   if (expected != actual) {
@@ -103,7 +103,7 @@ std::string FindExpectedOutputForFilename(std::string filename, const std::unord
   return "{}";
 }
 
-IndexedFile* FindDbForPathEnding(const std::string& path, const std::vector<std::unique_ptr<IndexedFile>>& dbs) {
+IndexFile* FindDbForPathEnding(const std::string& path, const std::vector<std::unique_ptr<IndexFile>>& dbs) {
   for (auto& db : dbs) {
     if (EndsWith(db->path, path))
       return db.get();
@@ -137,7 +137,7 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
-    std::vector<std::unique_ptr<IndexedFile>> dbs = Parse(
+    std::vector<std::unique_ptr<IndexFile>> dbs = Parse(
         &config, &file_consumer_shared,
         path,
         {
@@ -184,7 +184,7 @@ void RunTests() {
       const std::string& expected_output = entry.second;
 
       // Get output from index operation.
-      IndexedFile* db = FindDbForPathEnding(expected_path, dbs);
+      IndexFile* db = FindDbForPathEnding(expected_path, dbs);
       std::string actual_output = "{}";
       if (db) {
         VerifySerializeToFrom(db);
@@ -227,6 +227,5 @@ void RunTests() {
 }
 
 // TODO: ctor/dtor, copy ctor
-// TODO: Always pass IndexedFile by pointer, ie, search and remove all IndexedFile& refs.
-// TODO: Rename IndexedFile to IndexFile
+// TODO: Always pass IndexFile by pointer, ie, search and remove all IndexFile& refs.
 

@@ -205,7 +205,7 @@ struct QueryVar {
 struct IndexUpdate {
   // Creates a new IndexUpdate based on the delta from previous to current. If
   // no delta computation should be done just pass null for previous.
-  static IndexUpdate CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexedFile* previous, IndexedFile* current);
+  static IndexUpdate CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexFile* previous, IndexFile* current);
 
   // Merge |update| into this update; this can reduce overhead / index update
   // work can be parallelized.
@@ -238,7 +238,7 @@ struct IndexUpdate {
   // Creates an index update assuming that |previous| is already
   // in the index, so only the delta between |previous| and |current|
   // will be applied.
-  IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexedFile& previous, IndexedFile& current);
+  IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexFile& previous, IndexFile& current);
 };
 
 

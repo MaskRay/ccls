@@ -48,79 +48,79 @@ Range ResolveExtent(const CXCursor& cx_cursor) {
 }  // namespace
 
 
-IndexedFile::IndexedFile(const std::string& path) : id_cache(path), path(path) {
+IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
   // Preallocate any existing resolved ids.
   for (const auto& entry : id_cache.usr_to_type_id)
-    types.push_back(IndexedTypeDef(entry.second, entry.first));
+    types.push_back(IndexType(entry.second, entry.first));
   for (const auto& entry : id_cache.usr_to_func_id)
-    funcs.push_back(IndexedFuncDef(entry.second, entry.first));
+    funcs.push_back(IndexFunc(entry.second, entry.first));
   for (const auto& entry : id_cache.usr_to_var_id)
-    vars.push_back(IndexedVarDef(entry.second, entry.first));
+    vars.push_back(IndexVar(entry.second, entry.first));
 }
 
 // TODO: Optimize for const char*?
-IndexTypeId IndexedFile::ToTypeId(const std::string& usr) {
+IndexTypeId IndexFile::ToTypeId(const std::string& usr) {
   auto it = id_cache.usr_to_type_id.find(usr);
   if (it != id_cache.usr_to_type_id.end())
     return it->second;
 
   IndexTypeId id(types.size());
-  types.push_back(IndexedTypeDef(id, usr));
+  types.push_back(IndexType(id, usr));
   id_cache.usr_to_type_id[usr] = id;
   id_cache.type_id_to_usr[id] = usr;
   return id;
 }
-IndexFuncId IndexedFile::ToFuncId(const std::string& usr) {
+IndexFuncId IndexFile::ToFuncId(const std::string& usr) {
   auto it = id_cache.usr_to_func_id.find(usr);
   if (it != id_cache.usr_to_func_id.end())
     return it->second;
 
   IndexFuncId id(funcs.size());
-  funcs.push_back(IndexedFuncDef(id, usr));
+  funcs.push_back(IndexFunc(id, usr));
   id_cache.usr_to_func_id[usr] = id;
   id_cache.func_id_to_usr[id] = usr;
   return id;
 }
-IndexVarId IndexedFile::ToVarId(const std::string& usr) {
+IndexVarId IndexFile::ToVarId(const std::string& usr) {
   auto it = id_cache.usr_to_var_id.find(usr);
   if (it != id_cache.usr_to_var_id.end())
     return it->second;
 
   IndexVarId id(vars.size());
-  vars.push_back(IndexedVarDef(id, usr));
+  vars.push_back(IndexVar(id, usr));
   id_cache.usr_to_var_id[usr] = id;
   id_cache.var_id_to_usr[id] = usr;
   return id;
 }
 
-IndexTypeId IndexedFile::ToTypeId(const CXCursor& cursor) {
+IndexTypeId IndexFile::ToTypeId(const CXCursor& cursor) {
   return ToTypeId(clang::Cursor(cursor).get_usr());
 }
 
-IndexFuncId IndexedFile::ToFuncId(const CXCursor& cursor) {
+IndexFuncId IndexFile::ToFuncId(const CXCursor& cursor) {
   return ToFuncId(clang::Cursor(cursor).get_usr());
 }
 
-IndexVarId IndexedFile::ToVarId(const CXCursor& cursor) {
+IndexVarId IndexFile::ToVarId(const CXCursor& cursor) {
   return ToVarId(clang::Cursor(cursor).get_usr());
 }
 
-IndexedTypeDef* IndexedFile::Resolve(IndexTypeId id) {
+IndexType* IndexFile::Resolve(IndexTypeId id) {
   return &types[id.id];
 }
-IndexedFuncDef* IndexedFile::Resolve(IndexFuncId id) {
+IndexFunc* IndexFile::Resolve(IndexFuncId id) {
   return &funcs[id.id];
 }
-IndexedVarDef* IndexedFile::Resolve(IndexVarId id) {
+IndexVar* IndexFile::Resolve(IndexVarId id) {
   return &vars[id.id];
 }
 
-std::string IndexedFile::ToString() {
+std::string IndexFile::ToString() {
   return Serialize(*this);
 }
 
-IndexedTypeDef::IndexedTypeDef(IndexTypeId id, const std::string& usr)
+IndexType::IndexType(IndexTypeId id, const std::string& usr)
     : def(usr), id(id) {
   assert(usr.size() > 0);
   // std::cerr << "Creating type with usr " << usr << std::endl;
@@ -195,12 +195,12 @@ struct NamespaceHelper {
 
 struct IndexParam {
   // Only use this when strictly needed (ie, primary translation unit is
-  // needed). Most logic should get the IndexedFile instance via
+  // needed). Most logic should get the IndexFile instance via
   // |file_consumer|.
   //
   // This can be null if we're not generating an index for the primary
   // translation unit.
-  IndexedFile* primary_file;
+  IndexFile* primary_file;
 
   FileConsumer* file_consumer;
   NamespaceHelper ns;
@@ -231,7 +231,7 @@ void diagnostic(CXClientData client_data,
     unsigned int line, column;
     clang_getSpellingLocation(diag_loc, &file, &line, &column, nullptr);
     bool is_first_time_visiting_file = false;
-    IndexedFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
+    IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
     if (!db)
       continue;
     if (is_first_time_visiting_file && param->primary_file)
@@ -380,18 +380,18 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
 }
 
 struct VisitDeclForTypeUsageParam {
-  IndexedFile* db;
+  IndexFile* db;
   int has_processed_any = false;
   optional<clang::Cursor> previous_cursor;
   optional<IndexTypeId> initial_type;
 
-  VisitDeclForTypeUsageParam(IndexedFile* db) : db(db) {}
+  VisitDeclForTypeUsageParam(IndexFile* db) : db(db) {}
 };
 
 void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
                                          VisitDeclForTypeUsageParam* param) {
   param->has_processed_any = true;
-  IndexedFile* db = param->db;
+  IndexFile* db = param->db;
 
   std::string referenced_usr =
       cursor.get_referenced()
@@ -406,7 +406,7 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
   if (!param->initial_type)
     param->initial_type = ref_type_id;
 
-  IndexedTypeDef* ref_type_def = db->Resolve(ref_type_id);
+  IndexType* ref_type_def = db->Resolve(ref_type_id);
   // TODO: Should we even be visiting this if the file is not from the main
   // def? Try adding assert on |loc| later.
   Range loc = ResolveSpelling(cursor.cx_cursor);
@@ -451,8 +451,8 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
 // strips
 // qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
 // (ie, Foo<A,B> => Foo<*,*>).
-optional<IndexTypeId> ResolveToDeclarationType(IndexedFile* db,
-                                          clang::Cursor cursor) {
+optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
+                                               clang::Cursor cursor) {
   clang::Cursor declaration =
       cursor.get_type().strip_qualifiers().get_declaration();
   declaration = declaration.template_specialization_to_template_definition();
@@ -468,7 +468,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexedFile* db,
 // trying to generally resolve a cursor to a type, use
 // ResolveToDeclarationType, which works in more scenarios.
 optional<IndexTypeId> AddDeclTypeUsages(
-    IndexedFile* db,
+    IndexFile* db,
     clang::Cursor decl_cursor,
     const CXIdxContainerInfo* semantic_container,
     const CXIdxContainerInfo* lexical_container) {
@@ -604,7 +604,7 @@ optional<IndexTypeId> AddDeclTypeUsages(
 // for template arguments.
 clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
                                                      clang::Cursor parent,
-                                                     IndexedFile* db) {
+                                                     IndexFile* db) {
   /*
     We need to index the |DeclRefExpr| below (ie, |var| inside of
     Foo<int>::var).
@@ -650,7 +650,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       // std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr
       // << " at " << loc.ToString() << std::endl;
       IndexVarId ref_id = db->ToVarId(ref_usr);
-      IndexedVarDef* ref_def = db->Resolve(ref_id);
+      IndexVar* ref_def = db->Resolve(ref_id);
       UniqueAdd(ref_def->uses, loc);
       break;
   }
@@ -658,7 +658,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
   return clang::VisiterResult::Recurse;
 }
 
-void AddDeclInitializerUsages(IndexedFile* db, clang::Cursor decl_cursor) {
+void AddDeclInitializerUsages(IndexFile* db, clang::Cursor decl_cursor) {
   decl_cursor.VisitChildren(&AddDeclInitializerUsagesVisitor, db);
 }
 
@@ -738,7 +738,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc), &file, nullptr, nullptr, nullptr);
   IndexParam* param = static_cast<IndexParam*>(client_data);
   bool is_first_time_visiting_file = false;
-  IndexedFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
+  IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
   if (!db)
     return;
 
@@ -773,7 +773,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       std::string decl_usr = decl_cursor.get_usr();
 
       IndexVarId var_id = db->ToVarId(decl->entityInfo->USR);
-      IndexedVarDef* var_def = db->Resolve(var_id);
+      IndexVar* var_def = db->Resolve(var_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
       // this may shadow.
@@ -827,7 +827,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
         IndexTypeId declaring_type_id =
           db->ToTypeId(decl->semanticContainer->cursor);
-        IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
+        IndexType* declaring_type_def = db->Resolve(declaring_type_id);
         var_def->def.declaring_type = declaring_type_id;
         declaring_type_def->def.vars.push_back(var_id);
       }
@@ -848,7 +848,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           decl_cursor.template_specialization_to_template_definition();
 
       IndexFuncId func_id = db->ToFuncId(resolved.cx_cursor);
-      IndexedFuncDef* func_def = db->Resolve(func_id);
+      IndexFunc* func_def = db->Resolve(func_id);
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
@@ -908,7 +908,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         if (IsTypeDefinition(decl->semanticContainer)) {
           IndexTypeId declaring_type_id =
               db->ToTypeId(decl->semanticContainer->cursor);
-          IndexedTypeDef* declaring_type_def = db->Resolve(declaring_type_id);
+          IndexType* declaring_type_def = db->Resolve(declaring_type_id);
           func_def->def.declaring_type = declaring_type_id;
 
           // Mark a type reference at the ctor/dtor location.
@@ -972,7 +972,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             for (unsigned int i = 0; i < num_overridden; ++i) {
               clang::Cursor parent = overridden[i];
               IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
-              IndexedFuncDef* parent_def = db->Resolve(parent_id);
+              IndexFunc* parent_def = db->Resolve(parent_id);
               func_def = db->Resolve(func_id);  // ToFuncId invalidated func_def
 
               func_def->def.base = parent_id;
@@ -1007,7 +1007,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                             decl->semanticContainer, decl->lexicalContainer);
 
       IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-      IndexedTypeDef* type_def = db->Resolve(type_id);
+      IndexType* type_def = db->Resolve(type_id);
 
       if (alias_of)
         type_def->def.alias_of = alias_of.value();
@@ -1029,7 +1029,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       Range decl_loc_spelling = ResolveSpelling(decl->cursor);
 
       IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-      IndexedTypeDef* type_def = db->Resolve(type_id);
+      IndexType* type_def = db->Resolve(type_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
       // this may shadow.
@@ -1075,9 +1075,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
           // type_def ptr could be invalidated by ResolveToDeclarationType.
-          IndexedTypeDef* type_def = db->Resolve(type_id);
+          IndexType* type_def = db->Resolve(type_id);
           if (parent_type_id) {
-            IndexedTypeDef* parent_type_def =
+            IndexType* parent_type_def =
                 db->Resolve(parent_type_id.value());
             parent_type_def->derived.push_back(type_id);
             type_def->def.parents.push_back(parent_type_id.value());
@@ -1196,7 +1196,7 @@ void indexEntityReference(CXClientData client_data,
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file, nullptr, nullptr, nullptr);
   IndexParam* param = static_cast<IndexParam*>(client_data);
   bool is_first_time_visiting_file = false;
-  IndexedFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
+  IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
   if (!db)
     return;
 
@@ -1207,7 +1207,7 @@ void indexEntityReference(CXClientData client_data,
   // ref->loc mainFile=1
   // ref->referencedEntity mainFile=1
   //
-  // Regardless, we need to do more advanced location processing to handle multiple output IndexedFile instances.
+  // Regardless, we need to do more advanced location processing to handle multiple output IndexFile instances.
   //bool mainFile = clang_Location_isFromMainFile(clang_indexLoc_getCXSourceLocation(ref->loc));
   //Range loc_spelling = param->db->id_cache.ForceResolveSpelling(ref->cursor, false /*interesting*/);
   //std::cerr << "mainFile: " << mainFile << ", loc: " << loc_spelling.ToString() << std::endl;
@@ -1240,7 +1240,7 @@ void indexEntityReference(CXClientData client_data,
       referenced = referenced.template_specialization_to_template_definition();
 
       IndexVarId var_id = db->ToVarId(referenced.get_usr());
-      IndexedVarDef* var_def = db->Resolve(var_id);
+      IndexVar* var_def = db->Resolve(var_id);
       UniqueAdd(var_def->uses, loc_spelling);
       break;
     }
@@ -1267,13 +1267,13 @@ void indexEntityReference(CXClientData client_data,
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
       if (IsFunctionCallContext(ref->container->cursor.kind)) {
         IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
-        IndexedFuncDef* caller_def = db->Resolve(caller_id);
-        IndexedFuncDef* called_def = db->Resolve(called_id);
+        IndexFunc* caller_def = db->Resolve(caller_id);
+        IndexFunc* called_def = db->Resolve(called_id);
 
         AddFuncRef(&caller_def->def.callees, IndexFuncRef(called_id, loc_spelling));
         AddFuncRef(&called_def->callers, IndexFuncRef(caller_id, loc_spelling));
       } else {
-        IndexedFuncDef* called_def = db->Resolve(called_id);
+        IndexFunc* called_def = db->Resolve(called_id);
         AddFuncRef(&called_def->callers, IndexFuncRef(loc_spelling));
       }
 
@@ -1292,7 +1292,7 @@ void indexEntityReference(CXClientData client_data,
       referenced = referenced.template_specialization_to_template_definition();
       IndexTypeId referenced_id = db->ToTypeId(referenced.get_usr());
 
-      IndexedTypeDef* referenced_def = db->Resolve(referenced_id);
+      IndexType* referenced_def = db->Resolve(referenced_id);
 
       //
       // The following will generate two TypeRefs to Foo, both located at the
@@ -1376,7 +1376,7 @@ void indexEntityReference(CXClientData client_data,
 
 
 
-std::vector<std::unique_ptr<IndexedFile>> Parse(
+std::vector<std::unique_ptr<IndexFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,

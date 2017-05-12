@@ -20,7 +20,7 @@ std::string GetCachedBaseFileName(const std::string& cache_directory,
 
 }  // namespace
 
-std::unique_ptr<IndexedFile> LoadCachedIndex(IndexerConfig* config,
+std::unique_ptr<IndexFile> LoadCachedIndex(IndexerConfig* config,
                                              const std::string& filename) {
   if (!config->enableCacheRead)
     return nullptr;
@@ -30,9 +30,9 @@ std::unique_ptr<IndexedFile> LoadCachedIndex(IndexerConfig* config,
   if (!file_content)
     return nullptr;
 
-  optional<IndexedFile> indexed = Deserialize(filename, *file_content);
-  if (indexed && indexed->version == IndexedFile::kCurrentVersion)
-    return MakeUnique<IndexedFile>(indexed.value());
+  optional<IndexFile> indexed = Deserialize(filename, *file_content);
+  if (indexed && indexed->version == IndexFile::kCurrentVersion)
+    return MakeUnique<IndexFile>(indexed.value());
 
   return nullptr;
 }
@@ -47,7 +47,7 @@ optional<std::string> LoadCachedFileContents(IndexerConfig* config,
 
 void WriteToCache(IndexerConfig* config,
                   const std::string& filename,
-                  IndexedFile& file) {
+                  IndexFile& file) {
   if (!config->enableCacheWrite)
     return;
 

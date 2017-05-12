@@ -75,16 +75,16 @@ void Reflect(Writer& visitor, Id<T>& value) {
 }
 
 
-// Ref<IndexedFuncDef>
-void Reflect(Reader& visitor, Ref<IndexedFuncDef>& value) {
+// Ref<IndexFunc>
+void Reflect(Reader& visitor, Ref<IndexFunc>& value) {
   const char* str_value = visitor.GetString();
   uint64_t id = atol(str_value);
   const char* loc_string = strchr(str_value, '@') + 1;
 
-  value.id_ = Id<IndexedFuncDef>(id);
+  value.id_ = Id<IndexFunc>(id);
   value.loc = Range(loc_string);
 }
-void Reflect(Writer& visitor, Ref<IndexedFuncDef>& value) {
+void Reflect(Writer& visitor, Ref<IndexFunc>& value) {
   if (value.id_.id == -1) {
     std::string s = "-1@" + value.loc.ToString();
     visitor.String(s.c_str());
@@ -105,12 +105,12 @@ void Reflect(Writer& visitor, Ref<IndexedFuncDef>& value) {
 // TODO: Rename indexer.cpp to indexer.cc
 // TODO: Do not serialize a USR if it has no usages/etc outside of USR info.
 
-// IndexedTypeDef
-bool ReflectMemberStart(Reader& reader, IndexedTypeDef& value) {
+// IndexType
+bool ReflectMemberStart(Reader& reader, IndexType& value) {
   //value.is_bad_def = false;
   return true;
 }
-bool ReflectMemberStart(Writer& writer, IndexedTypeDef& value) {
+bool ReflectMemberStart(Writer& writer, IndexType& value) {
   // TODO: this is crashing
   // if (!value.HasInterestingState())
     // std::cerr << "bad";
@@ -122,7 +122,7 @@ bool ReflectMemberStart(Writer& writer, IndexedTypeDef& value) {
   return true;
 }
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
+void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.def.usr);
@@ -142,12 +142,12 @@ void Reflect(TVisitor& visitor, IndexedTypeDef& value) {
 }
 
 
-// IndexedFuncDef
-bool ReflectMemberStart(Reader& reader, IndexedFuncDef& value) {
+// IndexFunc
+bool ReflectMemberStart(Reader& reader, IndexFunc& value) {
   //value.is_bad_def = false;
   return true;
 }
-bool ReflectMemberStart(Writer& writer, IndexedFuncDef& value) {
+bool ReflectMemberStart(Writer& writer, IndexFunc& value) {
   // TODO: this is crashing
   // if (!value.HasInterestingState())
   //   std::cerr << "bad";
@@ -159,7 +159,7 @@ bool ReflectMemberStart(Writer& writer, IndexedFuncDef& value) {
   return true;
 }
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
+void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.def.usr);
@@ -178,12 +178,12 @@ void Reflect(TVisitor& visitor, IndexedFuncDef& value) {
 }
 
 
-// IndexedVarDef
-bool ReflectMemberStart(Reader& reader, IndexedVarDef& value) {
+// IndexVar
+bool ReflectMemberStart(Reader& reader, IndexVar& value) {
   //value.is_bad_def = false;
   return true;
 }
-bool ReflectMemberStart(Writer& writer, IndexedVarDef& value) {
+bool ReflectMemberStart(Writer& writer, IndexVar& value) {
   // TODO: this is crashing
   // if (!value.HasInterestingState())
   //   std::cerr << "bad";
@@ -195,7 +195,7 @@ bool ReflectMemberStart(Writer& writer, IndexedVarDef& value) {
   return true;
 }
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, IndexedVarDef& value) {
+void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.def.usr);
@@ -211,20 +211,20 @@ void Reflect(TVisitor& visitor, IndexedVarDef& value) {
 }
 
 
-// IndexedFile
-bool ReflectMemberStart(Writer& visitor, IndexedFile& value) {
+// IndexFile
+bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   auto it = value.id_cache.usr_to_type_id.find("");
   if (it != value.id_cache.usr_to_type_id.end()) {
     value.Resolve(it->second)->def.short_name = "<fundamental>";
     assert(value.Resolve(it->second)->uses.size() == 0);
   }
 
-  value.version = IndexedFile::kCurrentVersion;
+  value.version = IndexFile::kCurrentVersion;
   DefaultReflectMemberStart(visitor);
   return true;
 }
 template<typename TVisitor>
-void Reflect(TVisitor& visitor, IndexedFile& value) {
+void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
     REFLECT_MEMBER(version);
@@ -246,7 +246,7 @@ void Reflect(TVisitor& visitor, IndexedFile& value) {
 
 
 
-std::string Serialize(IndexedFile& file) {
+std::string Serialize(IndexFile& file) {
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
   //Writer writer(output);
@@ -259,13 +259,13 @@ std::string Serialize(IndexedFile& file) {
   return output.GetString();
 }
 
-optional<IndexedFile> Deserialize(std::string path, std::string serialized) {
+optional<IndexFile> Deserialize(std::string path, std::string serialized) {
   rapidjson::Document reader;
   reader.Parse(serialized.c_str());
   if (reader.HasParseError())
     return nullopt;
 
-  IndexedFile file(path);
+  IndexFile file(path);
   Reflect(reader, file);
 
   // Restore non-serialized state.

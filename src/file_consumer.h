@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <unordered_map>
 
-struct IndexedFile;
+struct IndexFile;
 
 // Needed for unordered_map usage below.
 MAKE_HASHABLE(CXFileUniqueID, t.data[0], t.data[1], t.data[2]);
@@ -38,18 +38,18 @@ struct FileConsumer {
   // Returns true if this instance owns given |file|. This will also attempt to
   // take ownership over |file|.
   //
-  // Returns IndexedFile for the file or nullptr. |is_first_ownership| is set
+  // Returns IndexFile for the file or nullptr. |is_first_ownership| is set
   // to true iff the function just took ownership over the file. Otherwise it
   // is set to false.
-  IndexedFile* TryConsumeFile(CXFile file, bool* is_first_ownership);
+  IndexFile* TryConsumeFile(CXFile file, bool* is_first_ownership);
 
   // Forcibly create a local file, even if it has already been parsed.
-  IndexedFile* ForceLocal(CXFile file);
+  IndexFile* ForceLocal(CXFile file);
 
   // Returns and passes ownership of all local state.
-  std::vector<std::unique_ptr<IndexedFile>> TakeLocalState();
+  std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
 
  private:
-  std::unordered_map<CXFileUniqueID, std::unique_ptr<IndexedFile>> local_;
+  std::unordered_map<CXFileUniqueID, std::unique_ptr<IndexFile>> local_;
   SharedState* shared_;
 };

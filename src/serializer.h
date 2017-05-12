@@ -14,7 +14,7 @@ using std::experimental::nullopt;
 
 using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
 using Writer = rapidjson::Writer<rapidjson::StringBuffer>;
-struct IndexedFile;
+struct IndexFile;
 
 #define REFLECT_MEMBER_START() \
     if (!ReflectMemberStart(visitor, value)) return
@@ -206,7 +206,7 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
   }
 }
 
-std::string Serialize(IndexedFile& file);
-optional<IndexedFile> Deserialize(std::string path, std::string serialized);
+std::string Serialize(IndexFile& file);
+optional<IndexFile> Deserialize(std::string path, std::string serialized);
 
 void SetTestOutputMode();

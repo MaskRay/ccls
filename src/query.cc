@@ -17,7 +17,7 @@
 
 namespace {
 
-QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::Def& type) {
+QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexType::Def& type) {
   QueryType::DefUpdate result(type.usr);
   result.short_name = type.short_name;
   result.detailed_name = type.detailed_name;
@@ -31,7 +31,7 @@ QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexedTypeDef::Def& typ
   return result;
 }
 
-QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::Def& func) {
+QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexFunc::Def& func) {
   QueryFunc::DefUpdate result(func.usr);
   result.short_name = func.short_name;
   result.detailed_name = func.detailed_name;
@@ -44,7 +44,7 @@ QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexedFuncDef::Def& fun
   return result;
 }
 
-QueryVar::DefUpdate ToQuery(const IdMap& id_map, const IndexedVarDef::Def& var) {
+QueryVar::DefUpdate ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   QueryVar::DefUpdate result(var.usr);
   result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
@@ -159,7 +159,7 @@ void CompareGroups(
   }
 }
 
-QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed) {
+QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
   QueryFile::Def def;
   def.path = indexed.path;
 
@@ -170,33 +170,33 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexedFile& indexed) {
     def.all_symbols.push_back(SymbolRef(idx, id_map.ToQuery(range)));
   };
 
-  for (const IndexedTypeDef& def : indexed.types) {
-    if (def.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
-    if (def.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
-    for (const Range& use : def.uses)
-      add_all_symbols(id_map.ToSymbol(def.id), use);
+  for (const IndexType& type : indexed.types) {
+    if (type.def.definition_spelling.has_value())
+      add_all_symbols(id_map.ToSymbol(type.id), type.def.definition_spelling.value());
+    if (type.def.definition_extent.has_value())
+      add_outline(id_map.ToSymbol(type.id), type.def.definition_extent.value());
+    for (const Range& use : type.uses)
+      add_all_symbols(id_map.ToSymbol(type.id), use);
   }
-  for (const IndexedFuncDef& def : indexed.funcs) {
-    if (def.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
-    if (def.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
-    for (Range decl : def.declarations) {
-      add_all_symbols(id_map.ToSymbol(def.id), decl);
-      add_outline(id_map.ToSymbol(def.id), decl);
+  for (const IndexFunc& func : indexed.funcs) {
+    if (func.def.definition_spelling.has_value())
+      add_all_symbols(id_map.ToSymbol(func.id), func.def.definition_spelling.value());
+    if (func.def.definition_extent.has_value())
+      add_outline(id_map.ToSymbol(func.id), func.def.definition_extent.value());
+    for (Range decl : func.declarations) {
+      add_all_symbols(id_map.ToSymbol(func.id), decl);
+      add_outline(id_map.ToSymbol(func.id), decl);
     }
-    for (const IndexFuncRef& caller : def.callers)
-      add_all_symbols(id_map.ToSymbol(def.id), caller.loc);
+    for (const IndexFuncRef& caller : func.callers)
+      add_all_symbols(id_map.ToSymbol(func.id), caller.loc);
   }
-  for (const IndexedVarDef& def : indexed.vars) {
-    if (def.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(def.id), def.def.definition_spelling.value());
-    if (def.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(def.id), def.def.definition_extent.value());
-    for (const Range& use : def.uses)
-      add_all_symbols(id_map.ToSymbol(def.id), use);
+  for (const IndexVar& var : indexed.vars) {
+    if (var.def.definition_spelling.has_value())
+      add_all_symbols(id_map.ToSymbol(var.id), var.def.definition_spelling.value());
+    if (var.def.definition_extent.has_value())
+      add_outline(id_map.ToSymbol(var.id), var.def.definition_extent.value());
+    for (const Range& use : var.uses)
+      add_all_symbols(id_map.ToSymbol(var.id), use);
   }
 
   std::sort(def.outline.begin(), def.outline.end(), [](const SymbolRef& a, const SymbolRef& b) {
@@ -409,18 +409,18 @@ SymbolIdx IdMap::ToSymbol(IndexVarId id) const {
 // ----------------------
 
 // static
-IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexedFile* previous, IndexedFile* current) {
+IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexFile* previous, IndexFile* current) {
   // This function runs on an indexer thread.
 
   if (!previous_id_map) {
     assert(!previous);
-    IndexedFile previous(current->path);
+    IndexFile previous(current->path);
     return IndexUpdate(*current_id_map, *current_id_map, previous, *current);
   }
   return IndexUpdate(*previous_id_map, *current_id_map, *previous, *current);
 }
 
-IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexedFile& previous_file, IndexedFile& current_file) {
+IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexFile& previous_file, IndexFile& current_file) {
   // This function runs on an indexer thread.
 
   // |query_name| is the name of the variable on the query type.
@@ -444,11 +444,11 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
   files_def_update.push_back(BuildFileDef(current_id_map, current_file));
 
   // Types
-  CompareGroups<IndexedTypeDef>(previous_file.types, current_file.types,
-    /*onRemoved:*/[this](IndexedTypeDef* def) {
+  CompareGroups<IndexType>(previous_file.types, current_file.types,
+    /*onRemoved:*/[this](IndexType* def) {
     types_removed.push_back(def->def.usr);
   },
-    /*onAdded:*/[this, &current_id_map](IndexedTypeDef* type) {
+    /*onAdded:*/[this, &current_id_map](IndexType* type) {
     if (!type->def.detailed_name.empty())
       types_def_update.push_back(ToQuery(current_id_map, type->def));
     if (!type->derived.empty())
@@ -458,7 +458,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     if (!type->uses.empty())
       types_uses.push_back(QueryType::UsesUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->uses)));
   },
-    /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedTypeDef* previous_def, IndexedTypeDef* current_def) {
+    /*onFound:*/[this, &previous_id_map, &current_id_map](IndexType* previous_def, IndexType* current_def) {
     optional<QueryType::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
     optional<QueryType::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
     if (current_remapped_def && previous_remapped_def != current_remapped_def && !current_remapped_def->detailed_name.empty())
@@ -470,11 +470,11 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
   });
 
   // Functions
-  CompareGroups<IndexedFuncDef>(previous_file.funcs, current_file.funcs,
-    /*onRemoved:*/[this](IndexedFuncDef* def) {
+  CompareGroups<IndexFunc>(previous_file.funcs, current_file.funcs,
+    /*onRemoved:*/[this](IndexFunc* def) {
     funcs_removed.push_back(def->def.usr);
   },
-    /*onAdded:*/[this, &current_id_map](IndexedFuncDef* func) {
+    /*onAdded:*/[this, &current_id_map](IndexFunc* func) {
     if (!func->def.detailed_name.empty())
       funcs_def_update.push_back(ToQuery(current_id_map, func->def));
     if (!func->declarations.empty())
@@ -484,7 +484,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     if (!func->callers.empty())
       funcs_callers.push_back(QueryFunc::CallersUpdate(current_id_map.ToQuery(func->id), current_id_map.ToQuery(func->callers)));
   },
-    /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedFuncDef* previous_def, IndexedFuncDef* current_def) {
+    /*onFound:*/[this, &previous_id_map, &current_id_map](IndexFunc* previous_def, IndexFunc* current_def) {
     optional<QueryFunc::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
     optional<QueryFunc::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
     if (current_remapped_def && previous_remapped_def != current_remapped_def && !current_remapped_def->detailed_name.empty())
@@ -496,17 +496,17 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
   });
 
   // Variables
-  CompareGroups<IndexedVarDef>(previous_file.vars, current_file.vars,
-    /*onRemoved:*/[this](IndexedVarDef* def) {
+  CompareGroups<IndexVar>(previous_file.vars, current_file.vars,
+    /*onRemoved:*/[this](IndexVar* def) {
     vars_removed.push_back(def->def.usr);
   },
-    /*onAdded:*/[this, &current_id_map](IndexedVarDef* var) {
+    /*onAdded:*/[this, &current_id_map](IndexVar* var) {
     if (!var->def.detailed_name.empty())
       vars_def_update.push_back(ToQuery(current_id_map, var->def));
     if (!var->uses.empty())
       vars_uses.push_back(QueryVar::UsesUpdate(current_id_map.ToQuery(var->id), current_id_map.ToQuery(var->uses)));
   },
-    /*onFound:*/[this, &previous_id_map, &current_id_map](IndexedVarDef* previous_def, IndexedVarDef* current_def) {
+    /*onFound:*/[this, &previous_id_map, &current_id_map](IndexVar* previous_def, IndexVar* current_def) {
     optional<QueryVar::DefUpdate> previous_remapped_def = ToQuery(previous_id_map, previous_def->def);
     optional<QueryVar::DefUpdate> current_remapped_def = ToQuery(current_id_map, current_def->def);
     if (current_remapped_def && previous_remapped_def != current_remapped_def && !current_remapped_def->detailed_name.empty())
@@ -754,3 +754,18 @@ void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index, SymbolKind
     detailed_names[*qualified_name_index] = name;
   }
 }
+
+#if false
+void DoTest() {
+  IndexFile previous("foo.cc");
+  IndexFile current("foo.cc");
+  QueryDatabase db;
+
+  IndexFunc* func = previous.Resolve(previous.ToFuncId("usr"));
+
+
+  IdMap previous_map(&db, previous.id_cache);
+  IdMap current_map(&db, current.id_cache);
+  IndexUpdate::CreateDelta(&previous_map, &current_map, &previous, &current);
+}
+#endif
