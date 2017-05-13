@@ -44,6 +44,12 @@ CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}.tar.xz'.format(CLANG_VERSI
 # Path to locally tarball.
 CLANG_TARBALL_LOCAL_PATH = '{0}.tar.xz'.format(CLANG_DIRECTORY)
 
+# Directory libcxx will be extracted to.
+LIBCXX_DIRECTORY = '{0}/libcxx'.format(out)
+# URL to download libcxx from.
+LIBCXX_URL = 'http://releases.llvm.org/4.0.0/libcxx-4.0.0.src.tar.xz'
+# Absolute path for where to download the URL.
+LIBCXX_LOCAL_PATH = '{0}/libcxx-4.0.0.src.tar.xz'.format(out)
 
 from waflib.Tools.compiler_cxx import cxx_compiler
 cxx_compiler['linux'] = ['clang++', 'g++']
@@ -51,11 +57,38 @@ cxx_compiler['linux'] = ['clang++', 'g++']
 def options(opt):
   opt.load('compiler_cxx')
 
+def download_and_extract(destdir, dest, url):
+  # Download and save the compressed tarball as |compressed_file_name|.
+  if not os.path.isfile(dest):
+    print('Downloading tarball')
+    print('   destination: {0}'.format(dest))
+    print('   source:      {0}'.format(url))
+    # TODO: verify checksum
+    response = urlopen(url)
+    with open(dest, 'wb') as f:
+      f.write(response.read())
+  else:
+    print('Found tarball at {0}'.format(dest))
+
+  # Extract the tarball.
+  if not os.path.isdir(destdir):
+    print('Extracting')
+    # TODO: make portable.
+    call(['tar', 'xf', dest, '-C', out])
+  else:
+    print('Found extracted at {0}'.format(destdir))
+
 def configure(conf):
   conf.load('compiler_cxx')
   conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
   conf.load('clang_compilation_database', tooldir='.')
 
+  print('Checking for clang')
+  download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_LOCAL_PATH, CLANG_TARBALL_URL)
+  #print('Checking for libcxx')
+  #download_and_extract(LIBCXX_DIRECTORY, LIBCXX_LOCAL_PATH, LIBCXX_URL)
+
+  """
   # Download and save the compressed tarball as |compressed_file_name|.
   if not os.path.isfile(CLANG_TARBALL_LOCAL_PATH):
     print('Downloading clang tarball')
@@ -75,6 +108,7 @@ def configure(conf):
     call(['tar', 'xf', CLANG_TARBALL_LOCAL_PATH, '-C', out])
   else:
     print('Found extracted clang at {0}'.format(CLANG_DIRECTORY))
+  """
 
 def build(bld):
   # todo: configure vars
