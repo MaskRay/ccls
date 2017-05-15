@@ -1616,9 +1616,6 @@ bool QueryDbMainLoop(
         if (file) {
           lsPosition completion_position;
           search = file->FindClosestCallNameInBuffer(params.position, &active_param, &completion_position);
-          // Move completion position back by one; completer will automatically increment it by one to deal with -> and . accesses.
-          if (completion_position.character > 0)
-            completion_position.character -= 1;
           std::cerr << "[completion] Changing completion position from " << params.position.ToString() << " to " << completion_position.ToString() << std::endl;
           params.position = completion_position;
         }
