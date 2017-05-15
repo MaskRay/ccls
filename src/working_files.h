@@ -49,6 +49,13 @@ struct WorkingFile {
   // accepts and returns 1-based lines.
   optional<int> GetIndexLineFromBufferLine(int buffer_line) const;
 
+  // Finds the closest 'callable' name prior to position. This is used for
+  // signature help to filter code completion results.
+  //
+  // |completion_position| will be point to a good code completion location to
+  // for fetching signatures.
+  std::string FindClosestCallNameInBuffer(lsPosition position, int* active_parameter, lsPosition* completion_position = nullptr) const;
+
   CXUnsavedFile AsUnsavedFile() const;
 };
 

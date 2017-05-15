@@ -26,6 +26,8 @@ const char* IpcIdToString(IpcId id) {
     return "textDocument/rename";
   case IpcId::TextDocumentCompletion:
     return "textDocument/completion";
+  case IpcId::TextDocumentSignatureHelp:
+    return "textDocument/signatureHelp";
   case IpcId::TextDocumentDefinition:
     return "textDocument/definition";
   case IpcId::TextDocumentDocumentHighlight:

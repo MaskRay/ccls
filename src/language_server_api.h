@@ -260,6 +260,8 @@ struct lsPosition {
 
   bool operator==(const lsPosition& other) const;
 
+  std::string ToString() const;
+
   // Note: these are 0-based.
   int line = 0;
   int character = 0;
@@ -421,6 +423,9 @@ enum class lsCompletionItemKind {
 MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind, int);
 
 struct lsCompletionItem {
+  // A set of function parameters. Used internally for signature help. Not sent to vscode.
+  std::vector<std::string> parameters_;
+
   // The label of this completion item. By default
   // also the text that is inserted when selecting
   // this completion.
@@ -447,11 +452,11 @@ struct lsCompletionItem {
 
   // A string that should be inserted a document when selecting
   // this completion. When `falsy` the label is used.
-  //std::string insertText;
+  std::string insertText;
 
   // The format of the insert text. The format applies to both the `insertText` property
   // and the `newText` property of a provided `textEdit`.
-  //lsInsertTextFormat insertTextFormat;
+  lsInsertTextFormat insertTextFormat = lsInsertTextFormat::Snippet;
 
   // An edit which is applied to a document when selecting this completion. When an edit is provided the value of
   // `insertText` is ignored.
@@ -479,7 +484,9 @@ MAKE_REFLECT_STRUCT(lsCompletionItem,
   kind,
   detail,
   documentation,
-  sortText);
+  sortText,
+  insertText,
+  insertTextFormat);
 
 
 struct lsTextDocumentItem {
@@ -937,7 +944,7 @@ MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 // Signature help options.
 struct lsSignatureHelpOptions {
   // The characters that trigger signature help automatically.
-  NonElidedVector<std::string> triggerCharacters;
+  std::vector<std::string> triggerCharacters;
 };
 MAKE_REFLECT_STRUCT(lsSignatureHelpOptions, triggerCharacters);
 
@@ -1272,6 +1279,74 @@ struct Out_TextDocumentComplete : public lsOutMessage<Out_TextDocumentComplete> 
   lsTextDocumentCompleteResult result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
+
+// Signature help.
+struct Ipc_TextDocumentSignatureHelp : public IpcMessage<Ipc_TextDocumentSignatureHelp> {
+  const static IpcId kIpcId = IpcId::TextDocumentSignatureHelp;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentSignatureHelp, id, params);
+// Represents a parameter of a callable-signature. A parameter can
+// have a label and a doc-comment.
+struct lsParameterInformation {
+  // The label of this parameter. Will be shown in
+  // the UI.
+  std::string label;
+
+  // The human-readable doc-comment of this parameter. Will be shown
+  // in the UI but can be omitted.
+  optional<std::string> documentation;
+};
+MAKE_REFLECT_STRUCT(lsParameterInformation, label, documentation);
+// Represents the signature of something callable. A signature
+// can have a label, like a function-name, a doc-comment, and
+// a set of parameters.
+struct lsSignatureInformation {
+  // The label of this signature. Will be shown in
+  // the UI.
+  std::string label;
+
+  // The human-readable doc-comment of this signature. Will be shown
+  // in the UI but can be omitted.
+  optional<std::string> documentation;
+
+  // The parameters of this signature.
+  std::vector<lsParameterInformation> parameters;
+};
+MAKE_REFLECT_STRUCT(lsSignatureInformation, label, documentation, parameters);
+// Signature help represents the signature of something
+// callable. There can be multiple signature but only one
+// active and only one active parameter.
+struct lsSignatureHelp {
+  // One or more signatures.
+  NonElidedVector<lsSignatureInformation> signatures;
+
+  // The active signature. If omitted or the value lies outside the
+  // range of `signatures` the value defaults to zero or is ignored if
+  // `signatures.length === 0`. Whenever possible implementors should 
+  // make an active decision about the active signature and shouldn't 
+  // rely on a default value.
+  // In future version of the protocol this property might become
+  // mandantory to better express this.
+  optional<int> activeSignature;
+
+  // The active parameter of the active signature. If omitted or the value
+  // lies outside the range of `signatures[activeSignature].parameters` 
+  // defaults to 0 if the active signature has parameters. If 
+  // the active signature has no parameters it is ignored. 
+  // In future version of the protocol this property might become
+  // mandantory to better express the active parameter if the
+  // active signature does have any.
+  optional<int> activeParameter;
+};
+MAKE_REFLECT_STRUCT(lsSignatureHelp, signatures, activeSignature, activeParameter);
+struct Out_TextDocumentSignatureHelp : public lsOutMessage<Out_TextDocumentSignatureHelp> {
+  lsRequestId id;
+  lsSignatureHelp result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentSignatureHelp, jsonrpc, id, result);
 
 // Goto definition
 struct Ipc_TextDocumentDefinition : public IpcMessage<Ipc_TextDocumentDefinition> {

@@ -812,6 +812,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentRename>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentSignatureHelp>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentHighlight>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
@@ -1342,6 +1343,11 @@ bool QueryDbMainLoop(
         // See https://github.com/Microsoft/language-server-protocol/issues/138.
         response.result.capabilities.completionProvider->triggerCharacters = { ".", ":", ">" };
 
+        response.result.capabilities.signatureHelpProvider = lsSignatureHelpOptions();
+        // NOTE: If updating signature help tokens make sure to also update
+        // WorkingFile::FindClosestCallNameInBuffer.
+        response.result.capabilities.signatureHelpProvider->triggerCharacters = { "(", "," };
+
         response.result.capabilities.codeLensProvider = lsCodeLensOptions();
         response.result.capabilities.codeLensProvider->resolveProvider = false;
 
@@ -1593,6 +1599,76 @@ bool QueryDbMainLoop(
 
           delete message;
         }, message.release(), std::placeholders::_1);
+
+        completion_manager->CodeComplete(params, std::move(callback));
+
+        break;
+      }
+
+      case IpcId::TextDocumentSignatureHelp: {
+        auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message.get());
+        lsTextDocumentPositionParams params = msg->params;
+        //std::cerr << "!! SignatureHelp @ " << msg->params.position.line << ":" << msg->params.position.character << std::endl;
+
+        WorkingFile* file = working_files->GetFileByFilename(params.textDocument.uri.GetPath());
+        std::string search;
+        int active_param = 0;
+        if (file) {
+          lsPosition completion_position;
+          search = file->FindClosestCallNameInBuffer(params.position, &active_param, &completion_position);
+          // Move completion position back by one; completer will automatically increment it by one to deal with -> and . accesses.
+          if (completion_position.character > 0)
+            completion_position.character -= 1;
+          std::cerr << "[completion] Changing completion position from " << params.position.ToString() << " to " << completion_position.ToString() << std::endl;
+          params.position = completion_position;
+        }
+        std::cerr << "[completion] Returning signatures for " << search << std::endl;
+        if (search.empty())
+          break;
+
+        CompletionManager::OnComplete callback = std::bind([](BaseIpcMessage* message, std::string search, int active_param, const NonElidedVector<lsCompletionItem>& results) {
+          auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message);
+          auto ipc = IpcManager::instance();
+
+          Out_TextDocumentSignatureHelp response;
+          response.id = msg->id;
+
+          for (auto& result : results) {
+            if (result.label != search)
+              continue;
+
+            lsSignatureInformation signature;
+            signature.label = result.detail;
+            for (auto& parameter : result.parameters_) {
+              lsParameterInformation ls_param;
+              ls_param.label = parameter;
+              signature.parameters.push_back(ls_param);
+            }
+            response.result.signatures.push_back(signature);
+          }
+
+          // Guess the signature the user wants based on available parameter
+          // count.
+          response.result.activeSignature = 0;
+          for (size_t i = 0; i < response.result.signatures.size(); ++i) {
+            if (active_param < response.result.signatures.size()) {
+              response.result.activeSignature = i;
+              break;
+            }
+          }
+
+          // Set signature to what we parsed from the working file.
+          response.result.activeParameter = active_param;
+
+          response.Write(std::cerr);
+          std::cerr << std::endl;
+
+          Timer timer;
+          ipc->SendOutMessageToClient(IpcId::TextDocumentSignatureHelp, response);
+          timer.ResetAndPrint("[complete] Writing signature help results");
+
+          delete message;
+        }, message.release(), search, active_param, std::placeholders::_1);
 
         completion_manager->CodeComplete(params, std::move(callback));
 
@@ -2144,6 +2220,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
     case IpcId::TextDocumentDidSave:
     case IpcId::TextDocumentRename:
     case IpcId::TextDocumentCompletion:
+    case IpcId::TextDocumentSignatureHelp:
     case IpcId::TextDocumentDefinition:
     case IpcId::TextDocumentDocumentHighlight:
     case IpcId::TextDocumentHover:

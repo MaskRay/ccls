@@ -189,6 +189,10 @@ bool lsPosition::operator==(const lsPosition& other) const {
   return line == other.line && character == other.character;
 }
 
+std::string lsPosition::ToString() const {
+  return std::to_string(line) + ":" + std::to_string(character);
+}
+
 lsRange::lsRange() {}
 lsRange::lsRange(lsPosition start, lsPosition end) : start(start), end(end) {}
 

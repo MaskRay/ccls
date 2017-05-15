@@ -18,6 +18,7 @@ enum class IpcId : int {
   TextDocumentPublishDiagnostics,
   TextDocumentRename,
   TextDocumentCompletion,
+  TextDocumentSignatureHelp,
   TextDocumentDefinition,
   TextDocumentDocumentHighlight,
   TextDocumentHover,

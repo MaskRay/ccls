@@ -42,71 +42,86 @@ int GetCompletionPriority(const CXCompletionString& str, CXCursorKind result_kin
   return priority;
 }
 
+bool IsCallKind(CXCursorKind kind) {
+  switch (kind) {
+    case CXCursor_ObjCInstanceMethodDecl:
+    case CXCursor_CXXMethod:
+    case CXCursor_FunctionTemplate:
+    case CXCursor_FunctionDecl:
+    case CXCursor_Constructor:
+    case CXCursor_Destructor:
+    case CXCursor_ConversionFunction:
+      return true;
+    default:
+      return false;
+  }
+}
+
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
 
-  case CXCursor_ObjCInstanceMethodDecl:
-  case CXCursor_CXXMethod:
-    return lsCompletionItemKind::Method;
+    case CXCursor_ObjCInstanceMethodDecl:
+    case CXCursor_CXXMethod:
+      return lsCompletionItemKind::Method;
 
-  case CXCursor_FunctionTemplate:
-  case CXCursor_FunctionDecl:
-    return lsCompletionItemKind::Function;
+    case CXCursor_FunctionTemplate:
+    case CXCursor_FunctionDecl:
+      return lsCompletionItemKind::Function;
 
-  case CXCursor_Constructor:
-  case CXCursor_Destructor:
-  case CXCursor_ConversionFunction:
-    return lsCompletionItemKind::Constructor;
+    case CXCursor_Constructor:
+    case CXCursor_Destructor:
+    case CXCursor_ConversionFunction:
+      return lsCompletionItemKind::Constructor;
 
-  case CXCursor_FieldDecl:
-    return lsCompletionItemKind::Field;
+    case CXCursor_FieldDecl:
+      return lsCompletionItemKind::Field;
 
-  case CXCursor_VarDecl:
-  case CXCursor_ParmDecl:
-    return lsCompletionItemKind::Variable;
+    case CXCursor_VarDecl:
+    case CXCursor_ParmDecl:
+      return lsCompletionItemKind::Variable;
 
-  case CXCursor_UnionDecl:
-  case CXCursor_ClassTemplate:
-  case CXCursor_ClassTemplatePartialSpecialization:
-  case CXCursor_ClassDecl:
-  case CXCursor_StructDecl:
-  case CXCursor_UsingDeclaration:
-  case CXCursor_TypedefDecl:
-  case CXCursor_TypeAliasDecl:
-  case CXCursor_TypeAliasTemplateDecl:
-    return lsCompletionItemKind::Class;
+    case CXCursor_UnionDecl:
+    case CXCursor_ClassTemplate:
+    case CXCursor_ClassTemplatePartialSpecialization:
+    case CXCursor_ClassDecl:
+    case CXCursor_StructDecl:
+    case CXCursor_UsingDeclaration:
+    case CXCursor_TypedefDecl:
+    case CXCursor_TypeAliasDecl:
+    case CXCursor_TypeAliasTemplateDecl:
+      return lsCompletionItemKind::Class;
 
-  case CXCursor_EnumConstantDecl:
-  case CXCursor_EnumDecl:
-    return lsCompletionItemKind::Enum;
+    case CXCursor_EnumConstantDecl:
+    case CXCursor_EnumDecl:
+      return lsCompletionItemKind::Enum;
 
-  case CXCursor_MacroInstantiation:
-  case CXCursor_MacroDefinition:
-    return lsCompletionItemKind::Interface;
+    case CXCursor_MacroInstantiation:
+    case CXCursor_MacroDefinition:
+      return lsCompletionItemKind::Interface;
 
-  case CXCursor_Namespace:
-  case CXCursor_NamespaceAlias:
-  case CXCursor_NamespaceRef:
-    return lsCompletionItemKind::Module;
+    case CXCursor_Namespace:
+    case CXCursor_NamespaceAlias:
+    case CXCursor_NamespaceRef:
+      return lsCompletionItemKind::Module;
 
-  case CXCursor_MemberRef:
-  case CXCursor_TypeRef:
-    return lsCompletionItemKind::Reference;
+    case CXCursor_MemberRef:
+    case CXCursor_TypeRef:
+      return lsCompletionItemKind::Reference;
 
-    //return lsCompletionItemKind::Property;
-    //return lsCompletionItemKind::Unit;
-    //return lsCompletionItemKind::Value;
-    //return lsCompletionItemKind::Keyword;
-    //return lsCompletionItemKind::Snippet;
-    //return lsCompletionItemKind::Color;
-    //return lsCompletionItemKind::File;
+      //return lsCompletionItemKind::Property;
+      //return lsCompletionItemKind::Unit;
+      //return lsCompletionItemKind::Value;
+      //return lsCompletionItemKind::Keyword;
+      //return lsCompletionItemKind::Snippet;
+      //return lsCompletionItemKind::Color;
+      //return lsCompletionItemKind::File;
 
-  case CXCursor_NotImplemented:
-    return lsCompletionItemKind::Text;
+    case CXCursor_NotImplemented:
+      return lsCompletionItemKind::Text;
 
-  default:
-    std::cerr << "[complete] Unhandled completion kind " << cursor_kind << std::endl;
-    return lsCompletionItemKind::Text;
+    default:
+      std::cerr << "[complete] Unhandled completion kind " << cursor_kind << std::endl;
+      return lsCompletionItemKind::Text;
   }
 }
 
@@ -125,9 +140,7 @@ std::string BuildLabelString(CXCompletionString completion_string) {
   return label;
 }
 
-std::string BuildDetailString(CXCompletionString completion_string) {
-  std::string detail;
-
+void BuildDetailString(CXCompletionString completion_string, std::string& detail, std::string& insert, std::vector<std::string>* parameters) {
   int num_chunks = clang_getNumCompletionChunks(completion_string);
   for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind = clang_getCompletionChunkKind(completion_string, i);
@@ -135,23 +148,29 @@ std::string BuildDetailString(CXCompletionString completion_string) {
     switch (kind) {
     case CXCompletionChunk_Optional: {
       CXCompletionString nested = clang_getCompletionChunkCompletionString(completion_string, i);
-      detail += BuildDetailString(nested);
+      BuildDetailString(nested, detail, insert, parameters);
       break;
     }
 
     case CXCompletionChunk_Placeholder: {
-      // TODO: send this info to vscode.
-      CXString text = clang_getCompletionChunkText(completion_string, i);
-      detail += clang::ToString(text);
+      std::string text = clang::ToString(clang_getCompletionChunkText(completion_string, i));
+      parameters->push_back(text);
+      detail += text;
+      insert += "${" + std::to_string(parameters->size()) + ":" + text + "}";
       break;
     }
 
+    case CXCompletionChunk_CurrentParameter:
+      // We have our own parsing logic for active parameter. This doesn't seem
+      // to be very reliable.
+      break;
+
     case CXCompletionChunk_TypedText:
     case CXCompletionChunk_Text:
-    case CXCompletionChunk_Informative:
-    case CXCompletionChunk_CurrentParameter: {
-      CXString text = clang_getCompletionChunkText(completion_string, i);
-      detail += clang::ToString(text);
+    case CXCompletionChunk_Informative: {
+      std::string text = clang::ToString(clang_getCompletionChunkText(completion_string, i));
+      detail += text;
+      insert += text;
       break;
     }
 
@@ -164,48 +183,59 @@ std::string BuildDetailString(CXCompletionString completion_string) {
 
     case CXCompletionChunk_LeftParen:
       detail += "(";
+      insert += "(";
       break;
     case CXCompletionChunk_RightParen:
       detail += ")";
+      insert += ")";
       break;
     case CXCompletionChunk_LeftBracket:
-      detail += "]";
+      detail += "[";
+      insert += "[";
       break;
     case CXCompletionChunk_RightBracket:
-      detail += "[";
+      detail += "]";
+      insert += "]";
       break;
     case CXCompletionChunk_LeftBrace:
       detail += "{";
+      insert += "{";
       break;
     case CXCompletionChunk_RightBrace:
       detail += "}";
+      insert += "}";
       break;
     case CXCompletionChunk_LeftAngle:
       detail += "<";
+      insert += "<";
       break;
     case CXCompletionChunk_RightAngle:
       detail += ">";
+      insert += ">";
       break;
     case CXCompletionChunk_Comma:
       detail += ", ";
+      insert += ", ";
       break;
     case CXCompletionChunk_Colon:
       detail += ":";
+      insert += ":";
       break;
     case CXCompletionChunk_SemiColon:
       detail += ";";
+      insert += ";";
       break;
     case CXCompletionChunk_Equal:
       detail += "=";
+      insert += "=";
       break;
     case CXCompletionChunk_HorizontalSpace:
     case CXCompletionChunk_VerticalSpace:
       detail += " ";
+      insert += " ";
       break;
     }
   }
-
-  return detail;
 }
 
 void EnsureDocumentParsed(CompletionSession* session,
@@ -288,6 +318,16 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
     timer.Reset();
     for (unsigned i = 0; i < cx_results->NumResults; ++i) {
       CXCompletionResult& result = cx_results->Results[i];
+      
+      // TODO: Try to figure out how we can hide base method calls without also
+      // hiding method implementation assistance, ie,
+      //
+      //    void Foo::* {
+      //    }
+      //
+
+      if (clang_getCompletionAvailability(result.CompletionString) == CXAvailability_NotAvailable)
+        continue;
 
       // TODO: fill in more data
       lsCompletionItem ls_completion_item;
@@ -295,9 +335,13 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
       // kind/label/detail/docs/sortText
       ls_completion_item.kind = GetCompletionKind(result.CursorKind);
       ls_completion_item.label = BuildLabelString(result.CompletionString);
-      ls_completion_item.detail = BuildDetailString(result.CompletionString);
+      BuildDetailString(result.CompletionString, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
       ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
       ls_completion_item.sortText = uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
+      
+      // If this function is slow we can skip building insertText at the cost of some code duplication.
+      if (!IsCallKind(result.CursorKind))
+        ls_completion_item.insertText = "";
 
       ls_result.push_back(ls_completion_item);
     }
