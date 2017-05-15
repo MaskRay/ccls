@@ -16,7 +16,7 @@ fast semantic analysis.
 
 There are rough edges (especially when editing), but it is already possible to
 be productive with cquery. Here's a list of implemented features:
-  * code completion
+  * code completion (with both signature help and snippets)
   * references
   * type hierarchy
   * calls to functions, calls to base and derived functions
