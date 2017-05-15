@@ -125,22 +125,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   }
 }
 
-std::string BuildLabelString(CXCompletionString completion_string) {
-  std::string label;
-
-  int num_chunks = clang_getNumCompletionChunks(completion_string);
-  for (int i = 0; i < num_chunks; ++i) {
-    CXCompletionChunkKind kind = clang_getCompletionChunkKind(completion_string, i);
-    if (kind == CXCompletionChunk_TypedText) {
-      label += clang::ToString(clang_getCompletionChunkText(completion_string, i));
-      break;
-    }
-  }
-
-  return label;
-}
-
-void BuildDetailString(CXCompletionString completion_string, std::string& detail, std::string& insert, std::vector<std::string>* parameters) {
+void BuildDetailString(CXCompletionString completion_string, std::string& label, std::string& detail, std::string& insert, std::vector<std::string>* parameters) {
   int num_chunks = clang_getNumCompletionChunks(completion_string);
   for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind = clang_getCompletionChunkKind(completion_string, i);
@@ -148,7 +133,7 @@ void BuildDetailString(CXCompletionString completion_string, std::string& detail
     switch (kind) {
     case CXCompletionChunk_Optional: {
       CXCompletionString nested = clang_getCompletionChunkCompletionString(completion_string, i);
-      BuildDetailString(nested, detail, insert, parameters);
+      BuildDetailString(nested, label, detail, insert, parameters);
       break;
     }
 
@@ -165,12 +150,23 @@ void BuildDetailString(CXCompletionString completion_string, std::string& detail
       // to be very reliable.
       break;
 
-    case CXCompletionChunk_TypedText:
-    case CXCompletionChunk_Text:
-    case CXCompletionChunk_Informative: {
+    case CXCompletionChunk_TypedText: {
+      std::string text = clang::ToString(clang_getCompletionChunkText(completion_string, i));
+      label = text;
+      detail += text;
+      insert += text;
+      break;
+    }
+
+    case CXCompletionChunk_Text: {
       std::string text = clang::ToString(clang_getCompletionChunkText(completion_string, i));
       detail += text;
       insert += text;
+      break;
+    }
+
+    case CXCompletionChunk_Informative: {
+      detail += clang::ToString(clang_getCompletionChunkText(completion_string, i));
       break;
     }
 
@@ -334,8 +330,7 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
 
       // kind/label/detail/docs/sortText
       ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-      ls_completion_item.label = BuildLabelString(result.CompletionString);
-      BuildDetailString(result.CompletionString, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
+      BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
       ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
       ls_completion_item.sortText = uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
       
