@@ -71,6 +71,8 @@ bool Position::operator<(const Position& that) const {
 
 Range::Range() {}
 
+Range::Range(Position position) : Range(position, position) {}
+
 Range::Range(Position start, Position end) : start(start), end(end) {}
 
 Range::Range(const char* encoded) {

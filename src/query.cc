@@ -3,6 +3,7 @@
 #include "indexer.h"
 
 #include <optional.h>
+#include <doctest/doctest.h>
 
 #include <cassert>
 #include <cstdint>
@@ -755,17 +756,71 @@ void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index, SymbolKind
   }
 }
 
-#if false
-void DoTest() {
-  IndexFile previous("foo.cc");
-  IndexFile current("foo.cc");
+TEST_SUITE("query");
+
+IndexUpdate GetDelta(IndexFile previous, IndexFile current) {
   QueryDatabase db;
-
-  IndexFunc* func = previous.Resolve(previous.ToFuncId("usr"));
-
-
   IdMap previous_map(&db, previous.id_cache);
   IdMap current_map(&db, current.id_cache);
-  IndexUpdate::CreateDelta(&previous_map, &current_map, &previous, &current);
+  return IndexUpdate::CreateDelta(&previous_map, &current_map, &previous, &current);
 }
-#endif
+
+TEST_CASE("remove defs") {
+  IndexFile previous("foo.cc");
+  IndexFile current("foo.cc");
+
+  previous.ToTypeId("usr1");
+  previous.ToFuncId("usr2");
+  previous.ToVarId("usr3");
+
+  IndexUpdate update = GetDelta(previous, current);
+
+  REQUIRE(update.types_removed == std::vector<Usr>{ "usr1" });
+  REQUIRE(update.funcs_removed == std::vector<Usr>{ "usr2" });
+  REQUIRE(update.vars_removed == std::vector<Usr>{ "usr3" });
+}
+
+TEST_CASE("func callers") {
+  IndexFile previous("foo.cc");
+  IndexFile current("foo.cc");
+
+  IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
+  IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
+
+  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0))));
+  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0))));
+
+  IndexUpdate update = GetDelta(previous, current);
+
+  REQUIRE(update.funcs_removed == std::vector<Usr>{});
+  REQUIRE(update.funcs_callers.size() == 1);
+  REQUIRE(update.funcs_callers[0].id == QueryFuncId(0));
+  REQUIRE(update.funcs_callers[0].to_remove.size() == 1);
+  REQUIRE(update.funcs_callers[0].to_remove[0].loc.range == Range(Position(1, 0)));
+  REQUIRE(update.funcs_callers[0].to_add.size() == 1);
+  REQUIRE(update.funcs_callers[0].to_add[0].loc.range == Range(Position(2, 0)));
+}
+
+TEST_CASE("type usages") {
+  IndexFile previous("foo.cc");
+  IndexFile current("foo.cc");
+
+  IndexType* pt = previous.Resolve(previous.ToTypeId("usr"));
+  IndexType* ct = current.Resolve(current.ToTypeId("usr"));
+
+  pt->uses.push_back(Range(Position(1, 0)));
+  ct->uses.push_back(Range(Position(2, 0)));
+
+  IndexUpdate update = GetDelta(previous, current);
+  
+  REQUIRE(update.types_removed == std::vector<Usr>{});
+  REQUIRE(update.types_def_update == std::vector<QueryType::DefUpdate>{});
+  REQUIRE(update.types_uses.size() == 1);
+  REQUIRE(update.types_uses[0].to_remove.size() == 1);
+  REQUIRE(update.types_uses[0].to_remove[0].range == Range(Position(1, 0)));
+  REQUIRE(update.types_uses[0].to_add.size() == 1);
+  REQUIRE(update.types_uses[0].to_add[0].range == Range(Position(2, 0)));
+}
+
+
+TEST_SUITE_END();

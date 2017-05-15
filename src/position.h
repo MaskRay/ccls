@@ -28,6 +28,7 @@ struct Range {
   Position end;
 
   Range();
+  explicit Range(Position position);
   Range(Position start, Position end);
   explicit Range(const char* encoded);
 
