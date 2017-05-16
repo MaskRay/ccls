@@ -1006,7 +1006,8 @@ void ParseFile(IndexerConfig* config,
 
   std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
     config, file_consumer_shared,
-    tu_path, tu_args);
+    tu_path, tu_args,
+    entry.filename, indexed_content);
   time.ResetAndPrint("Parsing/indexing " + tu_path);
 
   for (std::unique_ptr<IndexFile>& new_index : indexes) {

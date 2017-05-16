@@ -506,5 +506,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
+    const std::string& file_contents_path,
+    const optional<std::string>& file_contents,
     bool dump_ast = false);
 void IndexInit();

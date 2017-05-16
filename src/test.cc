@@ -148,6 +148,7 @@ void RunTests() {
           "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include",
           "-IC:/Users/jacob/Desktop/superindex/indexer/src"
         },
+        "", nullopt,
         false /*dump_ast*/);
 
 #if false

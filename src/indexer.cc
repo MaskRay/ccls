@@ -1380,6 +1380,8 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
+    const std::string& file_contents_path,
+    const optional<std::string>& file_contents,
     bool dump_ast) {
 
   if (!config->enableIndexing)
@@ -1390,6 +1392,13 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
   std::vector<CXUnsavedFile> unsaved_files;
+  if (file_contents) {
+    CXUnsavedFile unsaved;
+    unsaved.Filename = file_contents_path.c_str();
+    unsaved.Contents = file_contents->c_str();
+    unsaved.Length = file_contents->size();
+    unsaved_files.push_back(unsaved);
+  }
   clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing);
 
   if (dump_ast)
