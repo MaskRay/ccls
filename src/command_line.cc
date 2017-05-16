@@ -560,7 +560,9 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db, WorkingFiles* wor
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = type->def.detailed_name;
+      info.name = type->def.short_name;
+      if (type->def.detailed_name != type->def.short_name)
+        info.containerName = type->def.detailed_name;
       info.kind = lsSymbolKind::Class;
       return info;
     }
@@ -570,15 +572,14 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db, WorkingFiles* wor
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = func->def.detailed_name;
+      info.name = func->def.short_name;
+      info.containerName = func->def.detailed_name;
       info.kind = lsSymbolKind::Function;
 
       if (func->def.declaring_type.has_value()) {
         optional<QueryType>& container = db->types[func->def.declaring_type->id];
-        if (container) {
+        if (container)
           info.kind = lsSymbolKind::Method;
-          info.containerName = container->def.detailed_name;
-        }
       }
 
       return info;
@@ -589,7 +590,8 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db, WorkingFiles* wor
         return nullopt;
 
       lsSymbolInformation info;
-      info.name += var->def.detailed_name;
+      info.name += var->def.short_name;
+      info.containerName = var->def.detailed_name;
       info.kind = lsSymbolKind::Variable;
       return info;
     }
