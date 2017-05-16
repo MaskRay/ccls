@@ -764,24 +764,30 @@ struct Index_DoIndex {
     Freshen,
   };
 
-  Index_DoIndex(Type type, const Project::Entry& entry)
-    : type(type), entry(entry) {}
+  Index_DoIndex(Type type, const Project::Entry& entry, optional<std::string> content)
+    : type(type), entry(entry), content(content) {}
 
   Type type;
   Project::Entry entry;
+  optional<std::string> content;
 };
 
 struct Index_DoIdMap {
   std::unique_ptr<IndexFile> previous;
   std::unique_ptr<IndexFile> current;
+  optional<std::string> indexed_content;
 
-  explicit Index_DoIdMap(std::unique_ptr<IndexFile> current)
-    : current(std::move(current)) {}
+  explicit Index_DoIdMap(std::unique_ptr<IndexFile> current,
+                         optional<std::string> indexed_content)
+    : current(std::move(current)),
+      indexed_content(indexed_content) {}
 
   explicit Index_DoIdMap(std::unique_ptr<IndexFile> previous,
-                         std::unique_ptr<IndexFile> current)
+                         std::unique_ptr<IndexFile> current,
+                         optional<std::string> indexed_content)
     : previous(std::move(previous)),
-      current(std::move(current)) {}
+      current(std::move(current)),
+      indexed_content(indexed_content) {}
 };
 
 struct Index_OnIdMapped {
@@ -789,11 +795,24 @@ struct Index_OnIdMapped {
   std::unique_ptr<IndexFile> current_index;
   std::unique_ptr<IdMap> previous_id_map;
   std::unique_ptr<IdMap> current_id_map;
+  optional<std::string> indexed_content;
+
+  Index_OnIdMapped(const optional<std::string>& indexed_content)
+    : indexed_content(indexed_content) {}
 };
 
 struct Index_OnIndexed {
   IndexUpdate update;
-  explicit Index_OnIndexed(IndexUpdate& update) : update(update) {}
+  // Map is file path to file content.
+  std::unordered_map<std::string, std::string> indexed_content;
+
+  explicit Index_OnIndexed(IndexUpdate& update, const optional<std::string>& indexed_content)
+    : update(update) {
+    if (indexed_content) {
+      assert(update.files_def_update.size() == 1);
+      this->indexed_content[update.files_def_update[0].path] = *indexed_content;
+    }
+  }
 };
 
 using Index_DoIndexQueue = ThreadedQueue<Index_DoIndex>;
@@ -938,7 +957,8 @@ void RegisterMessageTypes() {
 bool ImportCachedIndex(IndexerConfig* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        Index_DoIdMapQueue* queue_do_id_map,
-                       const std::string& tu_path) {
+                       const std::string& tu_path,
+                       const optional<std::string>& indexed_content) {
   // TODO: only load cache if command line arguments are the same.
 
   Timer time;
@@ -959,7 +979,7 @@ bool ImportCachedIndex(IndexerConfig* config,
     else
       needs_reparse = true;
     if (cache)
-      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache)));
+      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), nullopt));
   }
 
   // Import primary file.
@@ -967,7 +987,7 @@ bool ImportCachedIndex(IndexerConfig* config,
     file_consumer_shared->Mark(tu_path);
   else
     needs_reparse = true;
-  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache)));
+  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), indexed_content));
 
   return needs_reparse;
 }
@@ -975,7 +995,8 @@ bool ImportCachedIndex(IndexerConfig* config,
 void ParseFile(IndexerConfig* config,
                FileConsumer::SharedState* file_consumer_shared,
                Index_DoIdMapQueue* queue_do_id_map,
-               const Project::Entry& entry) {
+               const Project::Entry& entry,
+               const optional<std::string>& indexed_content) {
   Timer time;
 
   std::unique_ptr<IndexFile> cache_for_args = LoadCachedIndex(config, entry.filename);
@@ -1026,8 +1047,13 @@ void ParseFile(IndexerConfig* config,
     WriteToCache(config, new_index->path, *new_index);
     time.ResetAndPrint("Cache index update to disk");
 
+    // Forward file content, but only for the primary file.
+    optional<std::string> content;
+    if (new_index->path == entry.filename)
+      content = indexed_content;
+
     // Dispatch IdMap creation request, which will happen on querydb thread.
-    Index_DoIdMap response(std::move(cached_index), std::move(new_index));
+    Index_DoIdMap response(std::move(cached_index), std::move(new_index), content);
     queue_do_id_map->Enqueue(std::move(response));
   }
 
@@ -1083,7 +1109,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
       // This assumes index_request->path is a cc or translation unit file (ie,
       // it is in compile_commands.json).
 
-      bool needs_reparse = ImportCachedIndex(config, file_consumer_shared, queue_do_id_map, index_request->entry.filename);
+      bool needs_reparse = ImportCachedIndex(config, file_consumer_shared, queue_do_id_map, index_request->entry.filename, index_request->content);
 
       // If the file has been updated, we need to reparse it.
       if (needs_reparse) {
@@ -1100,7 +1126,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
     case Index_DoIndex::Type::Parse: {
       // index_request->path can be a cc/tu or a dependency path.
       file_consumer_shared->Reset(index_request->entry.filename);
-      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry);
+      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content);
       break;
     }
 
@@ -1110,7 +1136,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
 
       bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->entry.filename);
       if (needs_reparse)
-        ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry);
+        ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content);
       break;
     }
   }
@@ -1129,7 +1155,7 @@ bool IndexMain_DoCreateIndexUpdate(
   IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
     response->previous_index.get(), response->current_index.get());
   time.ResetAndPrint("[indexer] Creating delta IndexUpdate");
-  Index_OnIndexed reply(update);
+  Index_OnIndexed reply(update, response->indexed_content);
   queue_on_indexed->Enqueue(std::move(reply));
   time.ResetAndPrint("[indexer] Sending update to server");
 
@@ -1152,6 +1178,8 @@ bool IndexMergeIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
     did_merge = true;
     Timer time;
     root->update.Merge(to_join->update);
+    for (auto&& entry : to_join->indexed_content)
+      root->indexed_content.emplace(entry);
     time.ResetAndPrint("[indexer] Joining two querydb updates");
   }
 }
@@ -1318,7 +1346,7 @@ bool QueryDbMainLoop(
               << "] Dispatching index request for file " << entry.filename
               << std::endl;
 
-            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry));
+            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt));
           });
         }
 
@@ -1374,7 +1402,7 @@ bool QueryDbMainLoop(
           std::cerr << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename
             << std::endl;
-          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry));
+          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt));
         });
         break;
       }
@@ -1545,10 +1573,8 @@ bool QueryDbMainLoop(
         //      mutex and check to see if we should skip the current request.
         //      if so, ignore that index response.
         WorkingFile* working_file = working_files->GetFileByFilename(path);
-        if (working_file && !working_file->pending_new_index_content) {
-          working_file->pending_new_index_content = working_file->buffer_content;
-          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path)));
-        }
+        if (working_file)
+          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path), working_file->buffer_content));
         completion_manager->UpdateActiveSession(path);
 
         break;
@@ -2032,9 +2058,9 @@ bool QueryDbMainLoop(
 
     did_work = true;
 
-    Index_OnIdMapped response;
+    Index_OnIdMapped response(request->indexed_content);
     Timer time;
-
+    
     if (request->previous) {
       response.previous_id_map = MakeUnique<IdMap>(db, request->previous->id_cache);
       response.previous_index = std::move(request->previous);
@@ -2063,9 +2089,9 @@ bool QueryDbMainLoop(
       // read to it, get a response, and apply the new index then.
       WorkingFile* working_file = working_files->GetFileByFilename(updated_file.path);
       if (working_file) {
-        if (working_file->pending_new_index_content) {
-          working_file->SetIndexContent(*working_file->pending_new_index_content);
-          working_file->pending_new_index_content = nullopt;
+        auto it = response->indexed_content.find(updated_file.path);
+        if (it != response->indexed_content.end()) {
+          working_file->SetIndexContent(it->second);
           time.ResetAndPrint("[querydb] Update WorkingFile index contents (via in-memory buffer) for " + updated_file.path);
         }
         else {

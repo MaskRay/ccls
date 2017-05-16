@@ -28,13 +28,6 @@ struct WorkingFile {
   // Note: The items in the value entry are 1-based liness.
   std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
 
-  // The buffer content when the file was saved. This will be applied with
-  // SetIndexContent when the index has been updated and applied.
-  //
-  // This is an optimization that lets us avoid a disk read on the querydb
-  // thread when actively editing and saving a file.
-  optional<std::string> pending_new_index_content;
-
   WorkingFile(const std::string& filename, const std::string& buffer_content);
 
   // This should be called when the indexed content has changed.
