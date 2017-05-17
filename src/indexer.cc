@@ -1414,10 +1414,9 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   FileConsumer file_consumer(file_consumer_shared);
   IndexParam param(&file_consumer);
 
-  // TODO: There is no real reason why we need |ForceLocal|. Remove it when we
-  // have argument guessing.
   CXFile cx_file = clang_getFile(tu.cx_tu, file.c_str());
-  param.primary_file = file_consumer.ForceLocal(cx_file);
+  bool is_first_ownership;
+  param.primary_file = file_consumer.TryConsumeFile(cx_file, &is_first_ownership);
 
   std::cerr << "!! [START] Indexing " << file << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
