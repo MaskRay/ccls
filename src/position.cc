@@ -95,11 +95,11 @@ Range::Range(const char* encoded) {
 
 bool Range::Contains(int line, int column) const {
   if (line == start.line && line == end.line)
-    return column >= start.column && column <= end.column;
+    return column >= start.column && column < end.column;
   if (line == start.line)
     return column >= start.column;
   if (line == end.line)
-    return column <= end.column;
+    return column < end.column;
   if (line > start.line && line < end.line)
     return true;
   return false;
