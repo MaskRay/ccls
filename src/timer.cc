@@ -6,6 +6,18 @@ Timer::Timer() {
   Reset();
 }
 
+long long Timer::ElapsedMicroseconds() const {
+  std::chrono::time_point<Clock> end = Clock::now();
+  return std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+}
+
+long long Timer::ElapsedMicrosecondsAndReset() {
+  std::chrono::time_point<Clock> end = Clock::now();
+  long long microseconds = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+  Reset();
+  return microseconds;
+}
+
 void Timer::Reset() {
   start = Clock::now();
 }

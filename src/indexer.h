@@ -6,6 +6,7 @@
 #include "utils.h"
 #include "language_server_api.h"
 #include "libclangmm/Utility.h"
+#include "performance.h"
 
 #include <optional.h>
 #include <rapidjson/writer.h>
@@ -508,5 +509,6 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     std::vector<std::string> args,
     const std::string& file_contents_path,
     const optional<std::string>& file_contents,
+    PerformanceImportFile* perf,
     bool dump_ast = false);
 void IndexInit();

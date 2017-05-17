@@ -23,7 +23,7 @@ TranslationUnit::TranslationUnit(Index& index,
   for (const auto& arg : platform_args)
     args.push_back(arg.c_str());
 
-  std::cerr << "Parsing " << filepath << " with args " << StringJoin(args) << std::endl;
+  //std::cerr << "Parsing " << filepath << " with args " << StringJoin(args) << std::endl;
 
   //CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
   CXErrorCode error_code = clang_parseTranslationUnit2(

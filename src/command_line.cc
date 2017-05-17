@@ -22,6 +22,7 @@
 #include <functional>
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <unordered_map>
 #include <thread>
 #include <vector>
@@ -49,7 +50,16 @@ std::vector<std::string> kEmptyArgs;
 
 
 
+std::string FormatMicroseconds(long long microseconds) {
+  long long milliseconds = microseconds / 1000;
+  long long remaining = microseconds  - milliseconds;
+  
+  // Only show two digits after the dot.
+  while (remaining >= 100)
+    remaining /= 10;
 
+  return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
+}
 
 
 
@@ -778,18 +788,23 @@ struct Index_DoIdMap {
   std::unique_ptr<IndexFile> previous;
   std::unique_ptr<IndexFile> current;
   optional<std::string> indexed_content;
+  PerformanceImportFile perf;
 
   explicit Index_DoIdMap(std::unique_ptr<IndexFile> current,
-                         optional<std::string> indexed_content)
+                         optional<std::string> indexed_content,
+                         PerformanceImportFile perf)
     : current(std::move(current)),
-      indexed_content(indexed_content) {}
+      indexed_content(indexed_content),
+      perf(perf) {}
 
   explicit Index_DoIdMap(std::unique_ptr<IndexFile> previous,
                          std::unique_ptr<IndexFile> current,
-                         optional<std::string> indexed_content)
+                         optional<std::string> indexed_content,
+                         PerformanceImportFile perf)
     : previous(std::move(previous)),
       current(std::move(current)),
-      indexed_content(indexed_content) {}
+      indexed_content(indexed_content),
+      perf(perf) {}
 };
 
 struct Index_OnIdMapped {
@@ -798,18 +813,25 @@ struct Index_OnIdMapped {
   std::unique_ptr<IdMap> previous_id_map;
   std::unique_ptr<IdMap> current_id_map;
   optional<std::string> indexed_content;
+  PerformanceImportFile perf;
 
-  Index_OnIdMapped(const optional<std::string>& indexed_content)
-    : indexed_content(indexed_content) {}
+  Index_OnIdMapped(const optional<std::string>& indexed_content,
+                   PerformanceImportFile perf)
+    : indexed_content(indexed_content),
+      perf(perf) {}
 };
 
 struct Index_OnIndexed {
   IndexUpdate update;
   // Map is file path to file content.
   std::unordered_map<std::string, std::string> indexed_content;
+  PerformanceImportFile perf;
 
-  explicit Index_OnIndexed(IndexUpdate& update, const optional<std::string>& indexed_content)
-    : update(update) {
+  explicit Index_OnIndexed(
+      IndexUpdate& update,
+      const optional<std::string>& indexed_content,
+      PerformanceImportFile perf)
+    : update(update), perf(perf) {
     if (indexed_content) {
       assert(update.files_def_update.size() == 1);
       this->indexed_content[update.files_def_update[0].path] = *indexed_content;
@@ -962,11 +984,11 @@ bool ImportCachedIndex(IndexerConfig* config,
                        const std::string& tu_path,
                        const optional<std::string>& indexed_content) {
   // TODO: only load cache if command line arguments are the same.
-
+  PerformanceImportFile tu_perf;
   Timer time;
 
   std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, tu_path);
-  time.ResetAndPrint("Reading cached index from disk " + tu_path);
+  tu_perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
   if (!cache)
     return true;
 
@@ -974,14 +996,17 @@ bool ImportCachedIndex(IndexerConfig* config,
 
   // Import all dependencies.
   for (auto& dependency_path : cache->dependencies) {
-    std::cerr << "- Got dependency " << dependency_path << std::endl;
+    //std::cerr << "- Got dependency " << dependency_path << std::endl;
+    PerformanceImportFile perf;
+    time.Reset();
     std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
+    perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
     if (cache && GetLastModificationTime(cache->path) == cache->last_modification_time)
       file_consumer_shared->Mark(cache->path);
     else
       needs_reparse = true;
     if (cache)
-      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), nullopt));
+      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), nullopt, perf));
   }
 
   // Import primary file.
@@ -989,7 +1014,7 @@ bool ImportCachedIndex(IndexerConfig* config,
     file_consumer_shared->Mark(tu_path);
   else
     needs_reparse = true;
-  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), indexed_content));
+  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), indexed_content, tu_perf));
 
   return needs_reparse;
 }
@@ -999,21 +1024,22 @@ void ParseFile(IndexerConfig* config,
                Index_DoIdMapQueue* queue_do_id_map,
                const Project::Entry& entry,
                const optional<std::string>& indexed_content) {
-  Timer time;
 
   std::unique_ptr<IndexFile> cache_for_args = LoadCachedIndex(config, entry.filename);
 
   std::string tu_path = cache_for_args ? cache_for_args->import_file : entry.filename;
   const std::vector<std::string>& tu_args = entry.args;
 
+  PerformanceImportFile perf;
+
   std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
     config, file_consumer_shared,
     tu_path, tu_args,
-    entry.filename, indexed_content);
-  time.ResetAndPrint("Parsing/indexing " + tu_path);
+    entry.filename, indexed_content,
+    &perf);
 
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
-    std::cerr << "Got index for " << new_index->path << std::endl;
+    Timer time;
 
     // Load the cached index.
     std::unique_ptr<IndexFile> cached_index;
@@ -1024,7 +1050,8 @@ void ParseFile(IndexerConfig* config,
     // TODO: Enable this assert when we are no longer forcibly indexing the primary file.
     //assert(!cached_index || GetLastModificationTime(new_index->path) != cached_index->last_modification_time);
 
-    time.ResetAndPrint("Loading cached index");
+    // Note: we are reusing the parent perf.
+    perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
 
     // Publish diagnostics.
     if (!new_index->diagnostics.empty() || (cached_index && !cached_index->diagnostics.empty())) {
@@ -1052,11 +1079,12 @@ void ParseFile(IndexerConfig* config,
 
     // Cache the newly indexed file. This replaces the existing cache.
     // TODO: Run this as another import pipeline stage.
+    time.Reset();
     WriteToCache(config, new_index->path, *new_index, content);
-    time.ResetAndPrint("Cache index update to disk");
+    perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
 
     // Dispatch IdMap creation request, which will happen on querydb thread.
-    Index_DoIdMap response(std::move(cached_index), std::move(new_index), content);
+    Index_DoIdMap response(std::move(cached_index), std::move(new_index), content, perf);
     queue_do_id_map->Enqueue(std::move(response));
   }
 
@@ -1066,9 +1094,8 @@ bool ResetStaleFiles(IndexerConfig* config,
                      FileConsumer::SharedState* file_consumer_shared,
                      const std::string& tu_path) {
   Timer time;
-
   std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, tu_path);
-  time.ResetAndPrint("Reading cached index from disk " + tu_path);
+
   if (!cache) {
     std::cerr << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)" << std::endl;
     file_consumer_shared->Mark(tu_path);
@@ -1079,7 +1106,6 @@ bool ResetStaleFiles(IndexerConfig* config,
 
   // Check dependencies
   for (auto& dependency_path : cache->dependencies) {
-    std::cerr << "- Got dependency " << dependency_path << std::endl;
     std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
     if (GetLastModificationTime(cache->path) != cache->last_modification_time) {
       needs_reparse = true;
@@ -1157,10 +1183,32 @@ bool IndexMain_DoCreateIndexUpdate(
   Timer time;
   IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
     response->previous_index.get(), response->current_index.get());
-  time.ResetAndPrint("[indexer] Creating delta IndexUpdate");
-  Index_OnIndexed reply(update, response->indexed_content);
+  response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
+
+#define PRINT_SECTION(name) \
+  if (response->perf.name) {\
+    total += response->perf.name; \
+    long long milliseconds = response->perf.name / 1000; \
+    long long remaining = response->perf.name - milliseconds; \
+    output << " " << #name << ": " << FormatMicroseconds(response->perf.name); \
+  }
+  std::stringstream output;
+  long long total = 0;
+  output << "[perf]";
+  PRINT_SECTION(index_parse);
+  PRINT_SECTION(index_build);
+  PRINT_SECTION(index_save_to_disk);
+  PRINT_SECTION(index_load_cached);
+  PRINT_SECTION(querydb_id_map);
+  PRINT_SECTION(index_make_delta);
+  output << "\n       total: " << FormatMicroseconds(total);
+  output << " path: " << response->current_index->path;
+  output << std::endl;
+  std::cerr << output.rdbuf();
+#undef PRINT_SECTION
+
+  Index_OnIndexed reply(update, response->indexed_content, response->perf);
   queue_on_indexed->Enqueue(std::move(reply));
-  time.ResetAndPrint("[indexer] Sending update to server");
 
   return true;
 }
@@ -1678,7 +1726,7 @@ bool QueryDbMainLoop(
           response.result.activeSignature = 0;
           for (size_t i = 0; i < response.result.signatures.size(); ++i) {
             if (active_param < response.result.signatures.size()) {
-              response.result.activeSignature = i;
+              response.result.activeSignature = (int)i;
               break;
             }
           }
@@ -2061,7 +2109,7 @@ bool QueryDbMainLoop(
 
     did_work = true;
 
-    Index_OnIdMapped response(request->indexed_content);
+    Index_OnIdMapped response(request->indexed_content, request->perf);
     Timer time;
     
     if (request->previous) {
@@ -2071,8 +2119,8 @@ bool QueryDbMainLoop(
 
     assert(request->current);
     response.current_id_map = MakeUnique<IdMap>(db, request->current->id_cache);
-    time.ResetAndPrint("[querydb] Create IdMap " + request->current->path);
     response.current_index = std::move(request->current);
+    response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
 
     queue_on_id_mapped->Enqueue(std::move(response));
   }
@@ -2109,7 +2157,7 @@ bool QueryDbMainLoop(
     }
 
     db->ApplyIndexUpdate(&response->update);
-    time.ResetAndPrint("[querydb] Applying index update");
+    //time.ResetAndPrint("[querydb] Applying index update");
   }
 
   return did_work;

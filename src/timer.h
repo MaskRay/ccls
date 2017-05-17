@@ -9,6 +9,10 @@ struct Timer {
   // Creates a new timer. A timer is always running.
   Timer();
 
+  // Returns elapsed microseconds.
+  long long ElapsedMicroseconds() const;
+  // Returns elapsed microseconds and restarts/resets the timer.
+  long long ElapsedMicrosecondsAndReset();
   // Restart/reset the timer.
   void Reset();
   // Resets timer and prints a message like "<foo> took 5ms"

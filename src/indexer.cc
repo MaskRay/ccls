@@ -6,6 +6,7 @@
 #include "libclangmm/Utility.h"
 #include "platform.h"
 #include "serializer.h"
+#include "timer.h"
 
 #include <algorithm>
 #include <chrono>
@@ -1382,12 +1383,15 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     std::vector<std::string> args,
     const std::string& file_contents_path,
     const optional<std::string>& file_contents,
+    PerformanceImportFile* perf,
     bool dump_ast) {
 
   if (!config->enableIndexing)
     return {};
 
   file = NormalizePath(file);
+
+  Timer timer;
 
   clang::Index index(0 /*excludeDeclarationsFromPCH*/,
                      0 /*displayDiagnostics*/);
@@ -1400,6 +1404,8 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     unsaved_files.push_back(unsaved);
   }
   clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing);
+
+  perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
   if (dump_ast)
     Dump(tu.document_cursor());
@@ -1418,13 +1424,15 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   bool is_first_ownership;
   param.primary_file = file_consumer.TryConsumeFile(cx_file, &is_first_ownership);
 
-  std::cerr << "!! [START] Indexing " << file << std::endl;
+  //std::cerr << "!! [START] Indexing " << file << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
                              CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations,
                              tu.cx_tu);
   clang_IndexAction_dispose(index_action);
-  std::cerr << "!! [END] Indexing " << file << std::endl;
+  //std::cerr << "!! [END] Indexing " << file << std::endl;
+
+  perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
   auto result = param.file_consumer->TakeLocalState();
   for (auto& entry : result) {
