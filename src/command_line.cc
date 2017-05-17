@@ -1045,15 +1045,15 @@ void ParseFile(IndexerConfig* config,
       }
     }
 
-    // Cache the newly indexed file. This replaces the existing cache.
-    // TODO: Run this as another import pipeline stage.
-    WriteToCache(config, new_index->path, *new_index);
-    time.ResetAndPrint("Cache index update to disk");
-
     // Forward file content, but only for the primary file.
     optional<std::string> content;
     if (new_index->path == entry.filename)
       content = indexed_content;
+
+    // Cache the newly indexed file. This replaces the existing cache.
+    // TODO: Run this as another import pipeline stage.
+    WriteToCache(config, new_index->path, *new_index, content);
+    time.ResetAndPrint("Cache index update to disk");
 
     // Dispatch IdMap creation request, which will happen on querydb thread.
     Index_DoIdMap response(std::move(cached_index), std::move(new_index), content);

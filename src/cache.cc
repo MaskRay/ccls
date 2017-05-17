@@ -47,14 +47,24 @@ optional<std::string> LoadCachedFileContents(IndexerConfig* config,
 
 void WriteToCache(IndexerConfig* config,
                   const std::string& filename,
-                  IndexFile& file) {
+                  IndexFile& file,
+                  const optional<std::string>& indexed_file_content) {
   if (!config->enableCacheWrite)
     return;
 
   std::string cache_basename =
       GetCachedBaseFileName(config->cacheDirectory, filename);
 
-  CopyFileTo(cache_basename, filename);
+  if (indexed_file_content) {
+    std::ofstream cache_content;
+    cache_content.open(cache_basename);
+    assert(cache_content.good());
+    cache_content << *indexed_file_content;
+    cache_content.close();
+  }
+  else {
+    CopyFileTo(cache_basename, filename);
+  }
 
   std::string indexed_content = Serialize(file);
   std::ofstream cache;

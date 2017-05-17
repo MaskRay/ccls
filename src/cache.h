@@ -18,4 +18,5 @@ optional<std::string> LoadCachedFileContents(IndexerConfig* config,
 
 void WriteToCache(IndexerConfig* config,
                   const std::string& filename,
-                  IndexFile& file);
+                  IndexFile& file,
+                  const optional<std::string>& indexed_file_contents);
