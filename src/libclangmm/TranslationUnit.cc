@@ -35,20 +35,20 @@ TranslationUnit::TranslationUnit(Index& index,
       did_fail = false;
       break;
     case CXError_Failure:
-      std::cerr << "libclang generic failure for " << filepath << std::endl;
+      std::cerr << "libclang generic failure for " << filepath << " with args " << StringJoin(args) << std::endl;
       did_fail = true;
       break;
     case CXError_Crashed:
-      std::cerr << "libclang crashed for " << filepath << std::endl;
+      std::cerr << "libclang crashed for " << filepath << " with args " << StringJoin(args) << std::endl;
       did_fail = true;
       break;
     case CXError_InvalidArguments:
-      std::cerr << "libclang had invalid arguments for " << filepath
+      std::cerr << "libclang had invalid arguments for " << " with args " << StringJoin(args) << filepath
                 << std::endl;
       did_fail = true;
       break;
     case CXError_ASTReadError:
-      std::cerr << "libclang had ast read error for " << filepath << std::endl;
+      std::cerr << "libclang had ast read error for " << filepath << " with args " << StringJoin(args) << std::endl;
       did_fail = true;
       break;
   }
