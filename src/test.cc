@@ -119,6 +119,7 @@ void RunTests() {
 
     // Run test.
     std::cout << "[START] " << path << std::endl;
+    PerformanceImportFile perf;
     std::vector<std::unique_ptr<IndexFile>> dbs = Parse(
         &config, &file_consumer_shared,
         path,
@@ -131,7 +132,7 @@ void RunTests() {
           "-IC:/Users/jacob/Desktop/superindex/indexer/src"
         },
         "", nullopt,
-        nullptr,
+        &perf,
         false /*dump_ast*/);
 
 #if false

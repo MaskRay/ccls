@@ -776,12 +776,17 @@ struct Index_DoIndex {
     Freshen,
   };
 
-  Index_DoIndex(Type type, const Project::Entry& entry, optional<std::string> content)
-    : type(type), entry(entry), content(content) {}
+  Index_DoIndex(Type type, const Project::Entry& entry, optional<std::string> content, bool show_diagnostics)
+    : type(type), entry(entry), content(content), show_diagnostics(show_diagnostics) {}
 
+  // Type of index operation.
   Type type;
+  // Project entry for file path and file arguments.
   Project::Entry entry;
+  // File contents that should be indexed.
   optional<std::string> content;
+  // If diagnostics should be reported.
+  bool show_diagnostics = false;
 };
 
 struct Index_DoIdMap {
@@ -1020,10 +1025,12 @@ bool ImportCachedIndex(IndexerConfig* config,
 }
 
 void ParseFile(IndexerConfig* config,
+               WorkingFiles* working_files,
                FileConsumer::SharedState* file_consumer_shared,
                Index_DoIdMapQueue* queue_do_id_map,
                const Project::Entry& entry,
-               const optional<std::string>& indexed_content) {
+               const optional<std::string>& indexed_content,
+               bool report_diagnostics) {
 
   std::unique_ptr<IndexFile> cache_for_args = LoadCachedIndex(config, entry.filename);
 
@@ -1053,12 +1060,19 @@ void ParseFile(IndexerConfig* config,
     // Note: we are reusing the parent perf.
     perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
 
-    // Publish diagnostics.
-    if (!new_index->diagnostics.empty() || (cached_index && !cached_index->diagnostics.empty())) {
-      Out_TextDocumentPublishDiagnostics diag;
-      diag.params.uri = lsDocumentUri::FromPath(new_index->path);
-      diag.params.diagnostics = new_index->diagnostics;
-      IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
+    // Publish diagnostics. We guard behind a |report_diagnostics| flag to
+    // avoid heavy lock contention in working_files->GetFileByFilename().
+    if (report_diagnostics) {
+      WorkingFile* file = working_files->GetFileByFilename(new_index->path);
+      if ((file && file->has_diagnostics) || !new_index->diagnostics.empty()) {
+        if (file)
+          file->has_diagnostics = !new_index->diagnostics.empty();
+
+        Out_TextDocumentPublishDiagnostics diag;
+        diag.params.uri = lsDocumentUri::FromPath(new_index->path);
+        diag.params.diagnostics = new_index->diagnostics;
+        IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
+      }
     }
 
 
@@ -1125,6 +1139,7 @@ bool ResetStaleFiles(IndexerConfig* config,
 bool IndexMain_DoIndex(IndexerConfig* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        Project* project,
+                       WorkingFiles* working_files,
                        Index_DoIndexQueue* queue_do_index,
                        Index_DoIdMapQueue* queue_do_id_map) {
   optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
@@ -1155,7 +1170,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
     case Index_DoIndex::Type::Parse: {
       // index_request->path can be a cc/tu or a dependency path.
       file_consumer_shared->Reset(index_request->entry.filename);
-      ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content);
+      ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->show_diagnostics);
       break;
     }
 
@@ -1165,7 +1180,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
 
       bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->entry.filename);
       if (needs_reparse)
-        ParseFile(config, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content);
+        ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->show_diagnostics);
       break;
     }
   }
@@ -1239,6 +1254,7 @@ void IndexMain(
     IndexerConfig* config,
     FileConsumer::SharedState* file_consumer_shared,
     Project* project,
+    WorkingFiles* working_files,
     MultiQueueWaiter* waiter,
     Index_DoIndexQueue* queue_do_index,
     Index_DoIdMapQueue* queue_do_id_map,
@@ -1255,7 +1271,7 @@ void IndexMain(
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, project, queue_do_index, queue_do_id_map);
+    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, project, working_files, queue_do_index, queue_do_id_map);
     bool did_create_update = IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
     bool did_merge = false;
 
@@ -1342,7 +1358,7 @@ bool QueryDbMainLoop(
   std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Server);
   for (auto& message : messages) {
     did_work = true;
-    std::cerr << "[querydb] Processing message " << IpcIdToString(message->method_id) << std::endl;
+    //std::cerr << "[querydb] Processing message " << IpcIdToString(message->method_id) << std::endl;
 
     switch (message->method_id) {
       case IpcId::Initialize: {
@@ -1384,7 +1400,7 @@ bool QueryDbMainLoop(
           std::cerr << "[querydb] Starting " << indexer_count << " indexers" << std::endl;
           for (int i = 0; i < indexer_count; ++i) {
             new std::thread([&]() {
-              IndexMain(config, file_consumer_shared, project, waiter, queue_do_index, queue_do_id_map, queue_on_id_mapped, queue_on_indexed);
+              IndexMain(config, file_consumer_shared, project, working_files, waiter, queue_do_index, queue_do_id_map, queue_on_id_mapped, queue_on_indexed);
             });
           }
 
@@ -1397,7 +1413,7 @@ bool QueryDbMainLoop(
               << "] Dispatching index request for file " << entry.filename
               << std::endl;
 
-            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt));
+            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt, false /*show_diagnostics*/));
           });
         }
 
@@ -1453,7 +1469,7 @@ bool QueryDbMainLoop(
           std::cerr << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename
             << std::endl;
-          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt));
+          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt, false /*show_diagnostics*/));
         });
         break;
       }
@@ -1625,7 +1641,7 @@ bool QueryDbMainLoop(
         //      if so, ignore that index response.
         WorkingFile* working_file = working_files->GetFileByFilename(path);
         if (working_file)
-          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path), working_file->buffer_content));
+          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*show_diagnostics*/));
         completion_manager->UpdateActiveSession(path);
 
         break;

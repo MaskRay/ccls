@@ -474,9 +474,6 @@ struct IndexFile {
   // header we need to lookup the original translation unit and reindex that.
   std::string import_file;
 
-  // The content of |path| when it was indexed.
-  //std::string content;
-
   // Diagnostics found when indexing the file. This is not saved.
   NonElidedVector<lsDiagnostic> diagnostics;
 
