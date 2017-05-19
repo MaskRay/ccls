@@ -66,6 +66,23 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
   return result;
 }
 
+std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter) {
+  // http://stackoverflow.com/a/13172514
+  std::vector<std::string> strings;
+
+  std::string::size_type pos = 0;
+  std::string::size_type prev = 0;
+  while ((pos = str.find(delimiter, prev)) != std::string::npos) {
+    strings.push_back(str.substr(prev, pos - prev));
+    prev = pos + 1;
+  }
+
+  // To get the last substring (or only, if delimiter is not found)
+  strings.push_back(str.substr(prev));
+
+  return strings;
+}
+
 static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
   std::vector<std::string> result;
 

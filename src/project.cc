@@ -171,8 +171,12 @@ std::vector<Project::Entry> LoadFromCompileCommandsJson(const std::vector<std::s
 
   std::vector<Project::Entry> result;
   result.reserve(entries.size());
-  for (const auto& entry : entries)
+  for (auto& entry : entries) {
+    if (entry.args.empty() && !entry.command.empty())
+      entry.args = SplitString(entry.command, " ");
+
     result.push_back(GetCompilationEntryFromCompileCommandEntry(extra_flags, entry));
+  }
   return result;
 }
 
@@ -211,7 +215,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(const std::vector<std::stri
 
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(const std::vector<std::string>& extra_flags, const std::string& project_directory) {
   // TODO: Figure out if this function or the clang one is faster.
-  //return LoadFromCompileCommandsJson(project_directory);
+  //return LoadFromCompileCommandsJson(extra_flags, project_directory);
 
   std::cerr << "Trying to load compile_commands.json" << std::endl;
   CXCompilationDatabase_Error cx_db_load_error;
