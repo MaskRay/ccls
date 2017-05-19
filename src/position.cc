@@ -140,3 +140,22 @@ bool Range::operator<(const Range& that) const {
     return true;
   return start == that.start && end < that.end;
 }
+
+// Position
+void Reflect(Reader& visitor, Position& value) {
+  value = Position(visitor.GetString());
+}
+void Reflect(Writer& visitor, Position& value) {
+  std::string output = value.ToString();
+  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
+}
+
+
+// Range
+void Reflect(Reader& visitor, Range& value) {
+  value = Range(visitor.GetString());
+}
+void Reflect(Writer& visitor, Range& value) {
+  std::string output = value.ToString();
+  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
+}

@@ -4,6 +4,8 @@
 #include <cstdint>
 #include <string>
 
+#include "serializer.h"
+
 struct Position {
   int16_t line = -1;
   int16_t column = -1;
@@ -40,3 +42,9 @@ struct Range {
   bool operator!=(const Range& that) const;
   bool operator<(const Range& that) const;
 };
+
+// Reflection
+void Reflect(Reader& visitor, Position& value);
+void Reflect(Writer& visitor, Position& value);
+void Reflect(Reader& visitor, Range& value);
+void Reflect(Writer& visitor, Range& value);

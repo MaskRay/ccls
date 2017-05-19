@@ -98,13 +98,18 @@ void ReflectMemberEnd(TVisitor& visitor, T& value) {
 */
 
 
-
-// int
-void Reflect(Reader& visitor, int& value);
-void Reflect(Writer& visitor, int& value);
+// int16_t
+void Reflect(Reader& visitor, int16_t& value);
+void Reflect(Writer& visitor, int16_t& value);
+// int32_t
+void Reflect(Reader& visitor, int32_t& value);
+void Reflect(Writer& visitor, int32_t& value);
 // int64_t
 void Reflect(Reader& visitor, int64_t& value);
 void Reflect(Writer& visitor, int64_t& value);
+// uint64_t
+void Reflect(Reader& visitor, uint64_t& value);
+void Reflect(Writer& visitor, uint64_t& value);
 // bool
 void Reflect(Reader& visitor, bool& value);
 void Reflect(Writer& visitor, bool& value);

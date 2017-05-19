@@ -29,13 +29,11 @@ struct IdMap;
 
 
 
-// TODO: in types, store refs separately from irefs. Then we can drop
-// 'interesting' from location when that is cleaned up.
-
 struct QueryLocation {
   QueryFileId path;
   Range range;
 
+  QueryLocation() {} // Do not use, needed for reflect.
   QueryLocation(QueryFileId path, Range range)
     : path(path), range(range) {}
 
@@ -58,13 +56,16 @@ struct QueryLocation {
     return path == o.path && range < o.range;
   }
 };
+MAKE_REFLECT_STRUCT(QueryLocation, path, range);
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
+MAKE_REFLECT_TYPE_PROXY(SymbolKind, int);
+
 struct SymbolIdx {
   SymbolKind kind;
   size_t idx;
 
-  explicit SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
+  SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
   SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
 
   bool operator==(const SymbolIdx& that) const {
@@ -77,11 +78,13 @@ struct SymbolIdx {
     return kind == that.kind && idx < that.idx;
   }
 };
+MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
 
 struct SymbolRef {
   SymbolIdx idx;
   QueryLocation loc;
 
+  SymbolRef() {} // Do not use, needed for reflect.
   SymbolRef(SymbolIdx idx, QueryLocation loc) : idx(idx), loc(loc) {}
 
   bool operator==(const SymbolRef& that) const {
@@ -94,6 +97,7 @@ struct SymbolRef {
     return idx == that.idx && loc.range.start < that.loc.range.start;
   }
 };
+MAKE_REFLECT_STRUCT(SymbolRef, idx, loc);
 
 struct QueryFuncRef {
   QueryFuncId id() const {
@@ -107,6 +111,7 @@ struct QueryFuncRef {
   QueryFuncId id_;
   QueryLocation loc;
 
+  QueryFuncRef() {} // Do not use, needed for reflect.
   QueryFuncRef(QueryFuncId id, QueryLocation loc) : id_(id), loc(loc) {}
 
   bool operator==(const QueryFuncRef& that) const {
@@ -119,6 +124,7 @@ struct QueryFuncRef {
     return id_ == that.id_ && loc.range.start < that.loc.range.start;
   }
 };
+MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc);
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -143,6 +149,14 @@ struct MergeableUpdate {
   MergeableUpdate(TId id, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
     : id(id), to_add(to_add), to_remove(to_remove) {}
 };
+template<typename TVisitor, typename TId, typename TValue>
+void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(to_add);
+  REFLECT_MEMBER(to_remove);
+  REFLECT_MEMBER_END();
+}
 
 struct QueryFile {
   struct Def {
@@ -160,6 +174,7 @@ struct QueryFile {
 
   QueryFile(const std::string& path) { def.path = path; }
 };
+MAKE_REFLECT_STRUCT(QueryFile::Def, path, outline, all_symbols);
 
 struct QueryType {
   using DefUpdate = TypeDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
@@ -211,6 +226,9 @@ struct IndexUpdate {
   // work can be parallelized.
   void Merge(const IndexUpdate& update);
 
+  // Dump the update to a string.
+  std::string ToString();
+
   // File updates.
   std::vector<Usr> files_removed;
   std::vector<QueryFile::DefUpdate> files_def_update;
@@ -240,7 +258,11 @@ struct IndexUpdate {
   // will be applied.
   IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexFile& previous, IndexFile& current);
 };
-
+// NOTICE: We're not reflecting on files_removed or files_def_update, it is too much output when logging
+MAKE_REFLECT_STRUCT(IndexUpdate,
+  types_removed, types_def_update, types_derived, types_instances, types_uses,
+  funcs_removed, funcs_def_update, funcs_declarations, funcs_derived, funcs_callers,
+  vars_removed, vars_def_update, vars_uses);
 
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.

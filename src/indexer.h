@@ -60,6 +60,15 @@ bool operator!=(const Id<T>& a, const Id<T>& b) {
   return !(a == b);
 }
 
+template<typename T>
+void Reflect(Reader& visitor, Id<T>& id) {
+  id.id = visitor.GetUint64();
+}
+template<typename T>
+void Reflect(Writer& visitor, Id<T>& value) {
+  visitor.Uint64(value.id);
+}
+
 using IndexTypeId = Id<IndexType>;
 using IndexFuncId = Id<IndexFunc>;
 using IndexVarId = Id<IndexVar>;
@@ -102,6 +111,27 @@ bool operator==(const Ref<T>& a, const Ref<T>& b) {
 template <typename T>
 bool operator!=(const Ref<T>& a, const Ref<T>& b) {
   return !(a == b);
+}
+
+template<typename T>
+void Reflect(Reader& visitor, Ref<T>& value) {
+  const char* str_value = visitor.GetString();
+  uint64_t id = atol(str_value);
+  const char* loc_string = strchr(str_value, '@') + 1;
+
+  value.id_ = Id<T>(id);
+  value.loc = Range(loc_string);
+}
+template<typename T>
+void Reflect(Writer& visitor, Ref<T>& value) {
+  if (value.id_.id == -1) {
+    std::string s = "-1@" + value.loc.ToString();
+    visitor.String(s.c_str());
+  }
+  else {
+    std::string s = std::to_string(value.id_.id) + "@" + value.loc.ToString();
+    visitor.String(s.c_str());
+  }
 }
 
 using IndexFuncRef = Ref<IndexFunc>;
@@ -188,7 +218,8 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(definition);
+  REFLECT_MEMBER(definition_spelling);
+  REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(alias_of);
   REFLECT_MEMBER(parents);
   REFLECT_MEMBER(types);
@@ -304,7 +335,8 @@ void Reflect(
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(definition);
+  REFLECT_MEMBER(definition_spelling);
+  REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(base);
   REFLECT_MEMBER(locals);

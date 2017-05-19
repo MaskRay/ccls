@@ -550,7 +550,13 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 #undef INDEX_UPDATE_MERGE
 }
 
-
+std::string IndexUpdate::ToString() {
+  rapidjson::StringBuffer output;
+  Writer writer(output);
+  IndexUpdate& update = *this;
+  Reflect(writer, update);
+  return output.GetString();
+}
 
 
 

@@ -776,8 +776,8 @@ struct Index_DoIndex {
     Freshen,
   };
 
-  Index_DoIndex(Type type, const Project::Entry& entry, optional<std::string> content, bool show_diagnostics)
-    : type(type), entry(entry), content(content), show_diagnostics(show_diagnostics) {}
+  Index_DoIndex(Type type, const Project::Entry& entry, optional<std::string> content, bool is_interactive)
+    : type(type), entry(entry), content(content), is_interactive(is_interactive) {}
 
   // Type of index operation.
   Type type;
@@ -785,8 +785,11 @@ struct Index_DoIndex {
   Project::Entry entry;
   // File contents that should be indexed.
   optional<std::string> content;
-  // If diagnostics should be reported.
-  bool show_diagnostics = false;
+  // If this index request is in response to an interactive user session, for
+  // example, the user saving a file they are actively editing. We report
+  // additional information for interactive indexes such as the IndexUpdate
+  // delta as well as the diagnostics.
+  bool is_interactive;
 };
 
 struct Index_DoIdMap {
@@ -794,22 +797,27 @@ struct Index_DoIdMap {
   std::unique_ptr<IndexFile> current;
   optional<std::string> indexed_content;
   PerformanceImportFile perf;
+  bool is_interactive;
 
   explicit Index_DoIdMap(std::unique_ptr<IndexFile> current,
                          optional<std::string> indexed_content,
-                         PerformanceImportFile perf)
+                         PerformanceImportFile perf,
+                         bool is_interactive)
     : current(std::move(current)),
       indexed_content(indexed_content),
-      perf(perf) {}
+      perf(perf),
+      is_interactive(is_interactive) {}
 
   explicit Index_DoIdMap(std::unique_ptr<IndexFile> previous,
                          std::unique_ptr<IndexFile> current,
                          optional<std::string> indexed_content,
-                         PerformanceImportFile perf)
+                         PerformanceImportFile perf,
+                         bool is_interactive)
     : previous(std::move(previous)),
       current(std::move(current)),
       indexed_content(indexed_content),
-      perf(perf) {}
+      perf(perf),
+      is_interactive(is_interactive) {}
 };
 
 struct Index_OnIdMapped {
@@ -819,11 +827,14 @@ struct Index_OnIdMapped {
   std::unique_ptr<IdMap> current_id_map;
   optional<std::string> indexed_content;
   PerformanceImportFile perf;
+  bool is_interactive;
 
   Index_OnIdMapped(const optional<std::string>& indexed_content,
-                   PerformanceImportFile perf)
+                   PerformanceImportFile perf,
+                   bool is_interactive)
     : indexed_content(indexed_content),
-      perf(perf) {}
+      perf(perf),
+      is_interactive(is_interactive) {}
 };
 
 struct Index_OnIndexed {
@@ -1011,7 +1022,7 @@ bool ImportCachedIndex(IndexerConfig* config,
     else
       needs_reparse = true;
     if (cache)
-      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), nullopt, perf));
+      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), nullopt, perf, false /*is_interactive*/));
   }
 
   // Import primary file.
@@ -1019,7 +1030,7 @@ bool ImportCachedIndex(IndexerConfig* config,
     file_consumer_shared->Mark(tu_path);
   else
     needs_reparse = true;
-  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), indexed_content, tu_perf));
+  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), indexed_content, tu_perf, false /*is_interactive*/));
 
   return needs_reparse;
 }
@@ -1030,7 +1041,7 @@ void ParseFile(IndexerConfig* config,
                Index_DoIdMapQueue* queue_do_id_map,
                const Project::Entry& entry,
                const optional<std::string>& indexed_content,
-               bool report_diagnostics) {
+               bool is_interactive) {
 
   std::unique_ptr<IndexFile> cache_for_args = LoadCachedIndex(config, entry.filename);
 
@@ -1062,7 +1073,7 @@ void ParseFile(IndexerConfig* config,
 
     // Publish diagnostics. We guard behind a |report_diagnostics| flag to
     // avoid heavy lock contention in working_files->GetFileByFilename().
-    if (report_diagnostics) {
+    if (is_interactive) {
       WorkingFile* file = working_files->GetFileByFilename(new_index->path);
       if ((file && file->has_diagnostics) || !new_index->diagnostics.empty()) {
         if (file)
@@ -1098,7 +1109,7 @@ void ParseFile(IndexerConfig* config,
     perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
 
     // Dispatch IdMap creation request, which will happen on querydb thread.
-    Index_DoIdMap response(std::move(cached_index), std::move(new_index), content, perf);
+    Index_DoIdMap response(std::move(cached_index), std::move(new_index), content, perf, is_interactive);
     queue_do_id_map->Enqueue(std::move(response));
   }
 
@@ -1170,7 +1181,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
     case Index_DoIndex::Type::Parse: {
       // index_request->path can be a cc/tu or a dependency path.
       file_consumer_shared->Reset(index_request->entry.filename);
-      ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->show_diagnostics);
+      ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
       break;
     }
 
@@ -1180,7 +1191,7 @@ bool IndexMain_DoIndex(IndexerConfig* config,
 
       bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->entry.filename);
       if (needs_reparse)
-        ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->show_diagnostics);
+        ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
       break;
     }
   }
@@ -1221,6 +1232,9 @@ bool IndexMain_DoCreateIndexUpdate(
   output << std::endl;
   std::cerr << output.rdbuf();
 #undef PRINT_SECTION
+
+  if (response->is_interactive)
+    std::cerr << "Applying IndexUpdate" << std::endl << update.ToString() << std::endl;
 
   Index_OnIndexed reply(update, response->indexed_content, response->perf);
   queue_on_indexed->Enqueue(std::move(reply));
@@ -1413,7 +1427,7 @@ bool QueryDbMainLoop(
               << "] Dispatching index request for file " << entry.filename
               << std::endl;
 
-            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt, false /*show_diagnostics*/));
+            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt, false /*is_interactive*/));
           });
         }
 
@@ -1469,7 +1483,7 @@ bool QueryDbMainLoop(
           std::cerr << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename
             << std::endl;
-          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt, false /*show_diagnostics*/));
+          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt, false /*is_interactive*/));
         });
         break;
       }
@@ -1641,7 +1655,7 @@ bool QueryDbMainLoop(
         //      if so, ignore that index response.
         WorkingFile* working_file = working_files->GetFileByFilename(path);
         if (working_file)
-          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*show_diagnostics*/));
+          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
         completion_manager->UpdateActiveSession(path);
 
         break;
@@ -1945,7 +1959,6 @@ bool QueryDbMainLoop(
           break;
         }
 
-        std::cerr << "[querydb] File outline size is " << file->def.outline.size() << std::endl;
         for (SymbolRef ref : file->def.outline) {
           optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, ref.idx);
           if (!info)
@@ -1980,8 +1993,6 @@ bool QueryDbMainLoop(
         common.db = db;
         common.working_files = working_files;
         common.working_file = working_files->GetFileByFilename(file->def.path);
-
-        Timer time;
 
         for (SymbolRef ref : file->def.outline) {
           // NOTE: We OffsetColumn so that the code lens always show up in a
@@ -2059,7 +2070,6 @@ bool QueryDbMainLoop(
           };
         }
 
-        time.ResetAndPrint("[querydb] Building code lens for " + file->def.path);
         ipc->SendOutMessageToClient(IpcId::TextDocumentCodeLens, response);
         break;
       }
@@ -2125,7 +2135,7 @@ bool QueryDbMainLoop(
 
     did_work = true;
 
-    Index_OnIdMapped response(request->indexed_content, request->perf);
+    Index_OnIdMapped response(request->indexed_content, request->perf, request->is_interactive);
     Timer time;
     
     if (request->previous) {

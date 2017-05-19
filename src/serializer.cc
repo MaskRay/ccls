@@ -6,11 +6,18 @@ namespace {
 bool gTestOutputMode = false;
 }  // namespace
 
-// int
-void Reflect(Reader& visitor, int& value) {
+// int16_t
+void Reflect(Reader& visitor, int16_t& value) {
   value = visitor.GetInt();
 }
-void Reflect(Writer& visitor, int& value) {
+void Reflect(Writer& visitor, int16_t& value) {
+  visitor.Int(value);
+}
+// int32_t
+void Reflect(Reader& visitor, int32_t& value) {
+  value = visitor.GetInt();
+}
+void Reflect(Writer& visitor, int32_t& value) {
   visitor.Int(value);
 }
 // int64_t
@@ -19,6 +26,13 @@ void Reflect(Reader& visitor, int64_t& value) {
 }
 void Reflect(Writer& visitor, int64_t& value) {
   visitor.Int64(value);
+}
+// uint64_t
+void Reflect(Reader& visitor, uint64_t& value) {
+  value = visitor.GetUint64();
+}
+void Reflect(Writer& visitor, uint64_t& value) {
+  visitor.Uint64(value);
 }
 // bool
 void Reflect(Reader& visitor, bool& value) {
@@ -45,55 +59,6 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
 }
 
 
-// Position
-void Reflect(Reader& visitor, Position& value) {
-  value = Position(visitor.GetString());
-}
-void Reflect(Writer& visitor, Position& value) {
-  std::string output = value.ToString();
-  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
-}
-
-
-// Range
-void Reflect(Reader& visitor, Range& value) {
-  value = Range(visitor.GetString());
-}
-void Reflect(Writer& visitor, Range& value) {
-  std::string output = value.ToString();
-  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
-}
-
-// Id<T>
-template<typename T>
-void Reflect(Reader& visitor, Id<T>& id) {
-  id.id = visitor.GetUint64();
-}
-template<typename T>
-void Reflect(Writer& visitor, Id<T>& value) {
-  visitor.Uint64(value.id);
-}
-
-
-// Ref<IndexFunc>
-void Reflect(Reader& visitor, Ref<IndexFunc>& value) {
-  const char* str_value = visitor.GetString();
-  uint64_t id = atol(str_value);
-  const char* loc_string = strchr(str_value, '@') + 1;
-
-  value.id_ = Id<IndexFunc>(id);
-  value.loc = Range(loc_string);
-}
-void Reflect(Writer& visitor, Ref<IndexFunc>& value) {
-  if (value.id_.id == -1) {
-    std::string s = "-1@" + value.loc.ToString();
-    visitor.String(s.c_str());
-  }
-  else {
-    std::string s = std::to_string(value.id_.id) + "@" + value.loc.ToString();
-    visitor.String(s.c_str());
-  }
-}
 
 
 
@@ -101,9 +66,10 @@ void Reflect(Writer& visitor, Ref<IndexFunc>& value) {
 
 
 
-// TODO: Move this to indexer.cpp
-// TODO: Rename indexer.cpp to indexer.cc
-// TODO: Do not serialize a USR if it has no usages/etc outside of USR info.
+
+
+
+// TODO: Move this to indexer.cc
 
 // IndexType
 bool ReflectMemberStart(Reader& reader, IndexType& value) {
