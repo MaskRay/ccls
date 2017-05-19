@@ -22,24 +22,6 @@ std::string ToString(const rapidjson::Document& document) {
   return buffer.GetString();
 }
 
-std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter) {
-  // http://stackoverflow.com/a/13172514
-  std::vector<std::string> strings;
-
-  std::string::size_type pos = 0;
-  std::string::size_type prev = 0;
-  while ((pos = str.find(delimiter, prev)) != std::string::npos) {
-    strings.push_back(str.substr(prev, pos - prev));
-    prev = pos + 1;
-  }
-
-  // To get the last substring (or only, if delimiter is not found)
-  strings.push_back(str.substr(prev));
-
-  return strings;
-}
-
-
 void DiffDocuments(std::string path, std::string path_section, rapidjson::Document& expected, rapidjson::Document& actual) {
   std::string joined_actual_output = ToString(actual);
   std::vector<std::string> actual_output = SplitString(joined_actual_output, "\n");
@@ -149,6 +131,7 @@ void RunTests() {
           "-IC:/Users/jacob/Desktop/superindex/indexer/src"
         },
         "", nullopt,
+        nullptr,
         false /*dump_ast*/);
 
 #if false
@@ -219,7 +202,7 @@ void RunTests() {
         if (update_all || c == 'u') {
           UpdateTestExpectation(path, expected_output, ToString(actual) + "\n");
         }
-        
+
       }
     }
   }
