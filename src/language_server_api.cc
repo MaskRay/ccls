@@ -35,8 +35,10 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
     std::getline(std::cin, line);
 
     // No content; end of stdin.
-    if (line.empty())
-      return nullptr;
+    if (line.empty()) {
+      std::cerr << "stdin closed; exiting" << std::endl;
+      exit(0);
+    }
 
     // std::cin >> line;
     // std::cerr << "Read line " << line;
