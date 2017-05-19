@@ -7,6 +7,7 @@ CACHE*
 waf-*
 .lock-waf*
 .waf*
+*.pyc 
 *.swp
 *.sln
 .vscode/.ropeproject
