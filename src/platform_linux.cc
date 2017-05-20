@@ -189,7 +189,7 @@ void CopyFileTo(const std::string& dest, const std::string& source) {
   if (fd_from < 0)
     return;
 
-  int fd_to = open(dest.c_str(), O_WRONLY | O_CREAT | O_EXCL, 0666);
+  int fd_to = open(dest.c_str(), O_WRONLY | O_CREAT, 0666);
   if (fd_to < 0)
     goto out_error;
 
