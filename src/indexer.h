@@ -509,6 +509,9 @@ struct IndexFile {
   // Diagnostics found when indexing the file. This is not saved.
   NonElidedVector<lsDiagnostic> diagnostics;
 
+  // Source ranges that were not processed.
+  std::vector<Range> skipped_by_preprocessor;
+
   std::vector<std::string> dependencies;
   std::vector<IndexType> types;
   std::vector<IndexFunc> funcs;

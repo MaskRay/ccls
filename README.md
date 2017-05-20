@@ -27,6 +27,7 @@ be productive with cquery. Here's a list of implemented features:
   * hover
   * diagnostics
   * code actions (clang FixIts)
+  * darken/fade code disabled by preprocessor
 
 # Setup - build cquery, install extension, setup project
 

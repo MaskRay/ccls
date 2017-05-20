@@ -81,6 +81,7 @@ unique_ptr<S1, S2>* Foo::foo() { return nullptr; }
 /*
 OUTPUT:
 {
+  "skipped_by_preprocessor": ["7:1-14:7", "17:1-32:7", "35:1-39:7", "42:1-52:7", "57:1-63:7", "68:1-78:7"],
   "types": [{
       "id": 0,
       "usr": "c:@ST>2#T#T@unique_ptr",

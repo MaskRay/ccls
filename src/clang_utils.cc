@@ -65,8 +65,6 @@ optional<lsDiagnostic> BuildDiagnostic(CXDiagnostic diagnostic) {
 
   // Report fixits
   unsigned num_fixits = clang_getDiagnosticNumFixIts(diagnostic);
-  if (num_fixits > 0)
-    std::cerr << "!!!! Got " << num_fixits << " fixits" << std::endl;
   for (unsigned i = 0; i < num_fixits; ++i) {
     CXSourceRange replacement_range;
     CXString text = clang_getDiagnosticFixIt(diagnostic, i, &replacement_range);

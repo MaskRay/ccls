@@ -167,6 +167,7 @@ IpcManager* IpcManager::instance_ = nullptr;
 bool ShouldDisplayIpcTiming(IpcId id) {
   switch (id) {
   case IpcId::TextDocumentPublishDiagnostics:
+  case IpcId::CqueryPublishInactiveRegions:
     return false;
   default:
     return true;
@@ -757,6 +758,16 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
 
 
 
+void PublishInactiveLines(WorkingFile* working_file, const std::vector<Range>& inactive) {
+  Out_CquerySetInactiveRegion out;
+  out.params.uri = lsDocumentUri::FromPath(working_file->filename);
+  for (Range skipped : inactive) {
+    optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
+    if (ls_skipped)
+      out.params.inactiveRegions.push_back(*ls_skipped);
+  }
+  IpcManager::instance()->SendOutMessageToClient(IpcId::CqueryPublishInactiveRegions, out);
+}
 
 
 
@@ -1104,6 +1115,7 @@ void ParseFile(IndexerConfig* config,
     // |is_interactive| will be true, or they can change the flags cquery runs
     // with, in which case vscode will get restarted.
     if (is_interactive || !new_index->diagnostics.empty()) {
+      // Emit diagnostics.
       Out_TextDocumentPublishDiagnostics diag;
       diag.params.uri = lsDocumentUri::FromPath(new_index->path);
       diag.params.diagnostics = new_index->diagnostics;
@@ -1111,8 +1123,20 @@ void ParseFile(IndexerConfig* config,
 
       // Cache diagnostics so we can show fixits.
       WorkingFile* working_file = working_files->GetFileByFilename(new_index->path);
-      if (working_file)
+      if (working_file) {
         working_file->diagnostics = new_index->diagnostics;
+
+        // Publish source ranges disabled by preprocessor.
+        if (is_interactive) {
+          // TODO: We shouldn't be updating actual indexed content here, but we
+          // need to use the latest indexed content for the remapping.
+          // TODO: We should also remap diagnostics.
+          if (indexed_content)
+            working_file->SetIndexContent(*indexed_content);
+
+          PublishInactiveLines(working_file, new_index->skipped_by_preprocessor);
+        }
+      }
     }
 
 
@@ -1666,7 +1690,12 @@ bool QueryDbMainLoop(
           working_file->SetIndexContent(*cached_file_contents);
         else
           working_file->SetIndexContent(working_file->buffer_content);
-        time.ResetAndPrint("[querydb] Loading cached index file for DidOpen");
+
+        std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, msg->params.textDocument.uri.GetPath());
+        if (cache && !cache->skipped_by_preprocessor.empty())
+          PublishInactiveLines(working_file, cache->skipped_by_preprocessor);
+
+        time.ResetAndPrint("[querydb] Loading cached index file for DidOpen (blocks CodeLens)");
 
         break;
       }
@@ -2093,7 +2122,6 @@ bool QueryDbMainLoop(
           }
         }
 
-        response.Write(std::cerr);
         ipc->SendOutMessageToClient(IpcId::TextDocumentCodeAction, response);
         break;
       }

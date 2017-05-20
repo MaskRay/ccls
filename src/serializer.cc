@@ -199,6 +199,7 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
     REFLECT_MEMBER(args);
   }
   REFLECT_MEMBER(dependencies);
+  REFLECT_MEMBER(skipped_by_preprocessor);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);
   REFLECT_MEMBER(vars);

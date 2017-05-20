@@ -1575,6 +1575,18 @@ void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
 }
 
 
+struct Out_CquerySetInactiveRegion : public lsOutMessage<Out_CquerySetInactiveRegion> {
+  struct Params {
+    lsDocumentUri uri;
+    NonElidedVector<lsRange> inactiveRegions;
+  };
+  std::string method = "$cquery/setInactiveRegions";
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion::Params, uri, inactiveRegions);
+MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
+
+
 struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
   lsRequestId id;

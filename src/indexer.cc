@@ -47,7 +47,123 @@ Range ResolveExtent(const CXCursor& cx_cursor) {
   return Resolve(cx_range);
 }
 
+
+struct NamespaceHelper {
+  std::unordered_map<std::string, std::string> container_usr_to_qualified_name;
+
+  void RegisterQualifiedName(std::string usr,
+    const CXIdxContainerInfo* container,
+    std::string qualified_name) {
+    if (container) {
+      std::string container_usr = clang::Cursor(container->cursor).get_usr();
+      auto it = container_usr_to_qualified_name.find(container_usr);
+      if (it != container_usr_to_qualified_name.end()) {
+        container_usr_to_qualified_name[usr] =
+          it->second + qualified_name + "::";
+        return;
+      }
+    }
+
+    container_usr_to_qualified_name[usr] = qualified_name + "::";
+  }
+
+  std::string QualifiedName(const CXIdxContainerInfo* container,
+    std::string unqualified_name) {
+    if (container) {
+      std::string container_usr = clang::Cursor(container->cursor).get_usr();
+      auto it = container_usr_to_qualified_name.find(container_usr);
+      if (it != container_usr_to_qualified_name.end())
+        return it->second + unqualified_name;
+
+      // Anonymous namespaces are not processed by indexDeclaration. If we
+      // encounter one insert it into map.
+      if (container->cursor.kind == CXCursor_Namespace) {
+        // assert(clang::Cursor(container->cursor).get_spelling() == "");
+        container_usr_to_qualified_name[container_usr] = "::";
+        return "::" + unqualified_name;
+      }
+    }
+    return unqualified_name;
+  }
+};
+
+struct IndexParam {
+  // Only use this when strictly needed (ie, primary translation unit is
+  // needed). Most logic should get the IndexFile instance via
+  // |file_consumer|.
+  //
+  // This can be null if we're not generating an index for the primary
+  // translation unit.
+  IndexFile* primary_file = nullptr;
+
+  clang::TranslationUnit* tu = nullptr;
+
+  FileConsumer* file_consumer = nullptr;
+  NamespaceHelper ns;
+
+  IndexParam(clang::TranslationUnit* tu, FileConsumer* file_consumer) : tu(tu), file_consumer(file_consumer) {}
+};
+
+IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
+  bool is_first_ownership = false;
+  IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_ownership);
+  
+  // Mark dependency in primary file. If primary_file is null that means we're
+  // doing a re-index in which case the dependency has already been established
+  // in a previous index run.
+  if (is_first_ownership && param->primary_file)
+    param->primary_file->dependencies.push_back(db->path);
+
+  if (is_first_ownership) {
+    // Report skipped source range list.
+    CXSourceRangeList* skipped = clang_getSkippedRanges(param->tu->cx_tu, file);
+    for (unsigned i = 0; i < skipped->count; ++i) {
+      Range range = Resolve(skipped->ranges[i]);
+      // clang_getSkippedRanges reports start one token after the '#', move it
+      // back so it starts at the '#'
+      range.start.column -= 1;
+      db->skipped_by_preprocessor.push_back(range);
+    }
+    clang_disposeSourceRangeList(skipped);
+  }
+
+  return db;
+}
+
 }  // namespace
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
@@ -156,60 +272,6 @@ bool Contains(const std::vector<T>& vec, const T& element) {
   return false;
 }
 
-struct NamespaceHelper {
-  std::unordered_map<std::string, std::string> container_usr_to_qualified_name;
-
-  void RegisterQualifiedName(std::string usr,
-                             const CXIdxContainerInfo* container,
-                             std::string qualified_name) {
-    if (container) {
-      std::string container_usr = clang::Cursor(container->cursor).get_usr();
-      auto it = container_usr_to_qualified_name.find(container_usr);
-      if (it != container_usr_to_qualified_name.end()) {
-        container_usr_to_qualified_name[usr] =
-            it->second + qualified_name + "::";
-        return;
-      }
-    }
-
-    container_usr_to_qualified_name[usr] = qualified_name + "::";
-  }
-
-  std::string QualifiedName(const CXIdxContainerInfo* container,
-                            std::string unqualified_name) {
-    if (container) {
-      std::string container_usr = clang::Cursor(container->cursor).get_usr();
-      auto it = container_usr_to_qualified_name.find(container_usr);
-      if (it != container_usr_to_qualified_name.end())
-        return it->second + unqualified_name;
-
-      // Anonymous namespaces are not processed by indexDeclaration. If we
-      // encounter one insert it into map.
-      if (container->cursor.kind == CXCursor_Namespace) {
-        // assert(clang::Cursor(container->cursor).get_spelling() == "");
-        container_usr_to_qualified_name[container_usr] = "::";
-        return "::" + unqualified_name;
-      }
-    }
-    return unqualified_name;
-  }
-};
-
-struct IndexParam {
-  // Only use this when strictly needed (ie, primary translation unit is
-  // needed). Most logic should get the IndexFile instance via
-  // |file_consumer|.
-  //
-  // This can be null if we're not generating an index for the primary
-  // translation unit.
-  IndexFile* primary_file;
-
-  FileConsumer* file_consumer;
-  NamespaceHelper ns;
-
-  IndexParam(FileConsumer* file_consumer) : file_consumer(file_consumer) {}
-};
-
 int abortQuery(CXClientData client_data, void* reserved) {
   // 0 -> continue
   return 0;
@@ -232,15 +294,11 @@ void diagnostic(CXClientData client_data,
     CXFile file;
     unsigned int line, column;
     clang_getSpellingLocation(diag_loc, &file, &line, &column, nullptr);
-    bool is_first_time_visiting_file = false;
-    IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
+    IndexFile* db = ConsumeFile(param, file);
     if (!db)
       continue;
-    if (is_first_time_visiting_file && param->primary_file)
-      param->primary_file->dependencies.push_back(db->path);
 
     // Build diagnostic.
-
     optional<lsDiagnostic> ls_diagnostic = BuildDiagnostic(diagnostic);
     if (ls_diagnostic)
       db->diagnostics.push_back(*ls_diagnostic);
@@ -707,13 +765,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc), &file, nullptr, nullptr, nullptr);
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  bool is_first_time_visiting_file = false;
-  IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
+  IndexFile* db = ConsumeFile(param, file);
   if (!db)
     return;
-
-  if (is_first_time_visiting_file && param->primary_file)
-    param->primary_file->dependencies.push_back(db->path);
 
   NamespaceHelper* ns = &param->ns;
 
@@ -1165,13 +1219,9 @@ void indexEntityReference(CXClientData client_data,
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file, nullptr, nullptr, nullptr);
   IndexParam* param = static_cast<IndexParam*>(client_data);
-  bool is_first_time_visiting_file = false;
-  IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_time_visiting_file);
+  IndexFile* db = ConsumeFile(param, file);
   if (!db)
     return;
-
-  if (is_first_time_visiting_file && param->primary_file)
-    param->primary_file->dependencies.push_back(db->path);
 
   // ref->cursor mainFile=0
   // ref->loc mainFile=1
@@ -1369,10 +1419,10 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     CXUnsavedFile unsaved;
     unsaved.Filename = file_contents_path.c_str();
     unsaved.Contents = file_contents->c_str();
-    unsaved.Length = file_contents->size();
+    unsaved.Length = (unsigned long)file_contents->size();
     unsaved_files.push_back(unsaved);
   }
-  clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing);
+  clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord);
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
@@ -1387,11 +1437,10 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   };
 
   FileConsumer file_consumer(file_consumer_shared);
-  IndexParam param(&file_consumer);
+  IndexParam param(&tu, &file_consumer);
 
   CXFile cx_file = clang_getFile(tu.cx_tu, file.c_str());
-  bool is_first_ownership;
-  param.primary_file = file_consumer.TryConsumeFile(cx_file, &is_first_ownership);
+  param.primary_file = ConsumeFile(&param, cx_file);
 
   //std::cerr << "!! [START] Indexing " << file << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
@@ -1405,13 +1454,6 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   auto result = param.file_consumer->TakeLocalState();
   for (auto& entry : result) {
-    // TODO: only store the path on one of these.
-    // TODO: These NormalizePath call should be not needed.
-    assert(entry->path == NormalizePath(entry->path));
-    assert(entry->id_cache.primary_file == entry->path);
-    entry->path = NormalizePath(entry->path);
-    entry->id_cache.primary_file = entry->path;
-
     entry->last_modification_time = GetLastModificationTime(entry->path);
     entry->import_file = file;
     entry->args = args;
