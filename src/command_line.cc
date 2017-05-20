@@ -53,7 +53,7 @@ std::vector<std::string> kEmptyArgs;
 std::string FormatMicroseconds(long long microseconds) {
   long long milliseconds = microseconds / 1000;
   long long remaining = microseconds  - milliseconds;
-  
+
   // Only show two digits after the dot.
   while (remaining >= 100)
     remaining /= 10;
@@ -1086,19 +1086,17 @@ void ParseFile(IndexerConfig* config,
     // Note: we are reusing the parent perf.
     perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
 
-    // Publish diagnostics. We guard behind a |report_diagnostics| flag to
-    // avoid heavy lock contention in working_files->GetFileByFilename().
-    if (is_interactive) {
-      WorkingFile* file = working_files->GetFileByFilename(new_index->path);
-      if ((file && file->has_diagnostics) || !new_index->diagnostics.empty()) {
-        if (file)
-          file->has_diagnostics = !new_index->diagnostics.empty();
-
-        Out_TextDocumentPublishDiagnostics diag;
-        diag.params.uri = lsDocumentUri::FromPath(new_index->path);
-        diag.params.diagnostics = new_index->diagnostics;
-        IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
-      }
+    // Publish diagnostics. We should only need to publish empty diagnostics if
+    // |is_interactive| is true, as we may have previously published diagnostic
+    // for that file. If the user has diagnostics on files they are not
+    // editing, then they can either edit the file, in which case
+    // |is_interactive| will be true, or they can change the flags cquery runs
+    // with, in which case vscode will get restarted.
+    if (is_interactive || !new_index->diagnostics.empty()) {
+      Out_TextDocumentPublishDiagnostics diag;
+      diag.params.uri = lsDocumentUri::FromPath(new_index->path);
+      diag.params.diagnostics = new_index->diagnostics;
+      IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
     }
 
 
@@ -2171,7 +2169,7 @@ bool QueryDbMainLoop(
 
     Index_OnIdMapped response(request->indexed_content, request->perf, request->is_interactive);
     Timer time;
-    
+
     if (request->previous) {
       response.previous_id_map = MakeUnique<IdMap>(db, request->previous->id_cache);
       response.previous_index = std::move(request->previous);
@@ -2379,7 +2377,6 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
     }
   }
 }
-
 
 
 
