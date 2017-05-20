@@ -75,7 +75,14 @@ std::string FormatMicroseconds(long long microseconds) {
 
 
 
-
+// Cached completion information, so we can give fast completion results when
+// the user erases a character. vscode will resend the completion request if
+// that happens.
+struct CodeCompleteCache {
+  optional<lsPosition> cached_completion_position;
+  NonElidedVector<lsCompletionItem> cached_results;
+  NonElidedVector<lsDiagnostic> cached_diagnostics;
+};
 
 
 
@@ -146,7 +153,15 @@ IpcManager* IpcManager::instance_ = nullptr;
 
 
 
-
+// This function returns true if e2e timing should be displayed for the given IpcId.
+bool ShouldDisplayIpcTiming(IpcId id) {
+  switch (id) {
+  case IpcId::TextDocumentPublishDiagnostics:
+    return false;
+  default:
+    return true;
+  }
+}
 
 
 
@@ -1364,7 +1379,8 @@ bool QueryDbMainLoop(
     Project* project,
     FileConsumer::SharedState* file_consumer_shared,
     WorkingFiles* working_files,
-    CompletionManager* completion_manager) {
+    CompletionManager* completion_manager,
+    CodeCompleteCache* code_complete_cache) {
   IpcManager* ipc = IpcManager::instance();
 
   bool did_work = false;
@@ -1689,9 +1705,13 @@ bool QueryDbMainLoop(
 
       case IpcId::TextDocumentCompletion: {
         auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
-        lsTextDocumentPositionParams params = msg->params;
+        lsTextDocumentPositionParams& params = msg->params;
 
-        CompletionManager::OnComplete callback = std::bind([working_files](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+        WorkingFile* file = working_files->GetFileByFilename(params.textDocument.uri.GetPath());
+        if (file)
+          params.position = file->FindStableCompletionSource(params.position);
+
+        CompletionManager::OnComplete callback = std::bind([working_files, code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
           auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
           auto ipc = IpcManager::instance();
 
@@ -1707,14 +1727,21 @@ bool QueryDbMainLoop(
           diagnostic_response.params.diagnostics = diagnostics;
           ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
 
-          WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
-          if (working_file)
-            working_file->has_diagnostics = !diagnostics.empty();
+          code_complete_cache->cached_completion_position = msg->params.position;
+          code_complete_cache->cached_results = results;
+          code_complete_cache->cached_diagnostics = diagnostics;
 
           delete message;
         }, message.release(), std::placeholders::_1, std::placeholders::_2);
 
-        completion_manager->CodeComplete(params, std::move(callback));
+        if (code_complete_cache->cached_completion_position &&
+            code_complete_cache->cached_completion_position == params.position) {
+          std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
+          callback(code_complete_cache->cached_results, code_complete_cache->cached_diagnostics);
+        }
+        else {
+          completion_manager->CodeComplete(params, std::move(callback));
+        }
 
         break;
       }
@@ -2206,13 +2233,14 @@ void QueryDbMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
   Project project;
   WorkingFiles working_files;
   CompletionManager completion_manager(config, &project, &working_files);
+  CodeCompleteCache code_complete_cache;
   FileConsumer::SharedState file_consumer_shared;
 
   // Run query db main loop.
   SetCurrentThreadName("querydb");
   QueryDatabase db;
   while (true) {
-    bool did_work = QueryDbMainLoop(config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &file_consumer_shared, &working_files, &completion_manager);
+    bool did_work = QueryDbMainLoop(config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &file_consumer_shared, &working_files, &completion_manager, &code_complete_cache);
     if (!did_work) {
       IpcManager* ipc = IpcManager::instance();
       waiter->Wait({
@@ -2416,8 +2444,10 @@ void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaite
         case IpcId::Cout: {
           auto msg = static_cast<Ipc_Cout*>(message.get());
 
-          Timer time = (*request_times)[msg->original_ipc_id];
-          time.ResetAndPrint("[e2e] Running " + std::string(IpcIdToString(msg->original_ipc_id)));
+          if (ShouldDisplayIpcTiming(message->method_id)) {
+            Timer time = (*request_times)[msg->original_ipc_id];
+            time.ResetAndPrint("[e2e] Running " + std::string(IpcIdToString(msg->original_ipc_id)));
+          }
 
           std::cout << msg->content;
           std::cout.flush();

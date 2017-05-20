@@ -51,6 +51,10 @@ struct WorkingFile {
   // for fetching signatures.
   std::string FindClosestCallNameInBuffer(lsPosition position, int* active_parameter, lsPosition* completion_position = nullptr) const;
 
+  // Returns a relatively stable completion position (it jumps back until there
+  // is a non-alphanumeric character).
+  lsPosition FindStableCompletionSource(lsPosition position) const;
+
   CXUnsavedFile AsUnsavedFile() const;
 };
 

@@ -208,6 +208,21 @@ std::string WorkingFile::FindClosestCallNameInBuffer(lsPosition position, int* a
   return buffer_content.substr(offset, start_offset - offset + 1);
 }
 
+// Returns a position which contains the most recent ., ->, :, or ( for code
+// completion purposes.
+lsPosition WorkingFile::FindStableCompletionSource(lsPosition position) const {
+  int offset = GetOffsetForPosition(position, buffer_content);
+
+  while (offset > 0) {
+    char c = buffer_content[offset - 1];
+    if (!isalnum(c))
+      break;
+    --offset;
+  }
+
+  return GetPositionForOffset(buffer_content, offset);
+}
+
 CXUnsavedFile WorkingFile::AsUnsavedFile() const {
   CXUnsavedFile result;
   result.Filename = filename.c_str();
