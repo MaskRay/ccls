@@ -1,5 +1,6 @@
 #include "code_completion.h"
 
+#include "clang_utils.h"
 #include "libclangmm/Utility.h"
 #include "platform.h"
 #include "timer.h"
@@ -276,8 +277,6 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
     std::unique_ptr<CompletionManager::CompletionRequest> request = completion_manager->completion_request.Take();
 
 
-    NonElidedVector<lsCompletionItem> ls_result;
-
     CompletionSession* session = completion_manager->GetOrOpenSession(request->location.textDocument.uri.GetPath());
     std::lock_guard<std::mutex> lock(session->usage_lock);
 
@@ -302,13 +301,14 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
       CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments);
     if (!cx_results) {
       std::cerr << "[complete] Code completion failed" << std::endl;
-      request->on_complete(ls_result);
+      request->on_complete({}, {});
       continue;
     }
 
     timer.ResetAndPrint("[complete] clangCodeCompleteAt");
     std::cerr << "[complete] Got " << cx_results->NumResults << " results" << std::endl;
-
+    
+    NonElidedVector<lsCompletionItem> ls_result;
     ls_result.reserve(cx_results->NumResults);
 
     timer.Reset();
@@ -342,10 +342,22 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
     }
     timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
 
-    clang_disposeCodeCompleteResults(cx_results);
-    timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults ");
+    // Build diagnostics.
+    NonElidedVector<lsDiagnostic> ls_diagnostics;
+    timer.Reset();
+    unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
+    for (unsigned i = 0; i < num_diagnostics; ++i) {
+      optional<lsDiagnostic> diagnostic = BuildDiagnostic(clang_codeCompleteGetDiagnostic(cx_results, i));
+      if (diagnostic)
+        ls_diagnostics.push_back(*diagnostic);
+    }
+    timer.ResetAndPrint("[complete] Build diagnostics");
 
-    request->on_complete(ls_result);
+    clang_disposeCodeCompleteResults(cx_results);
+    timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults");
+
+    request->on_complete(ls_result, ls_diagnostics);
+
     continue;
   }
 }

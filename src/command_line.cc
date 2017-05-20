@@ -1691,21 +1691,28 @@ bool QueryDbMainLoop(
         auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
         lsTextDocumentPositionParams params = msg->params;
 
-        CompletionManager::OnComplete callback = std::bind([](BaseIpcMessage* message, const NonElidedVector<lsCompletionItem>& results) {
+        CompletionManager::OnComplete callback = std::bind([working_files](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
           auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
           auto ipc = IpcManager::instance();
 
-          Out_TextDocumentComplete response;
-          response.id = msg->id;
-          response.result.isIncomplete = false;
-          response.result.items = results;
+          Out_TextDocumentComplete complete_response;
+          complete_response.id = msg->id;
+          complete_response.result.isIncomplete = false;
+          complete_response.result.items = results;
 
-          Timer timer;
-          ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, response);
-          timer.ResetAndPrint("[complete] Writing completion results");
+          ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
+
+          Out_TextDocumentPublishDiagnostics diagnostic_response;
+          diagnostic_response.params.uri = msg->params.textDocument.uri;
+          diagnostic_response.params.diagnostics = diagnostics;
+          ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
+
+          WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+          if (working_file)
+            working_file->has_diagnostics = !diagnostics.empty();
 
           delete message;
-        }, message.release(), std::placeholders::_1);
+        }, message.release(), std::placeholders::_1, std::placeholders::_2);
 
         completion_manager->CodeComplete(params, std::move(callback));
 

@@ -39,7 +39,7 @@ struct CompletionManager {
   Project* project;
   WorkingFiles* working_files;
 
-  using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results)>;
+  using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics)>;
   
   struct CompletionRequest {
     lsTextDocumentPositionParams location;
