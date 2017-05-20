@@ -56,7 +56,17 @@ struct IndexFile;
     REFLECT_MEMBER_END(); \
   }
 
+#define _MAPPABLE_REFLECT_ARRAY(name) \
+  Reflect(visitor, value.name);
 
+// Reflects the struct so it is serialized as an array instead of an object.
+// This currently only supports writers.
+#define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...) \
+  inline void Reflect(Writer& visitor, type& value) { \
+    visitor.StartArray(); \
+    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__) \
+    visitor.EndArray(); \
+  }
 
 
 

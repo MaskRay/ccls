@@ -27,6 +27,8 @@ struct WorkingFile {
   // This map goes from buffer-line -> indices+1 in all_buffer_lines.
   // Note: The items in the value entry are 1-based liness.
   std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
+  // A set of diagnostics that have been reported for this file.
+  std::vector<lsDiagnostic> diagnostics;
 
   WorkingFile(const std::string& filename, const std::string& buffer_content);
 

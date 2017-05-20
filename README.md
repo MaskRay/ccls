@@ -26,6 +26,7 @@ be productive with cquery. Here's a list of implemented features:
   * global symbol search
   * hover
   * diagnostics
+  * code actions (clang FixIts)
 
 # Setup - build cquery, install extension, setup project
 

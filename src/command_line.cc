@@ -31,11 +31,15 @@
 // ie, a fully linear view of a function with inline function calls expanded.
 // We can probably use vscode decorators to achieve it.
 
+// TODO: implement ThreadPool type which monitors CPU usage / number of work items
+// per second completed and scales up/down number of running threads.
+
 namespace {
 
 std::vector<std::string> kEmptyArgs;
 
-
+// Expected client version. We show an error if this doesn't match.
+const int kExpectedClientVersion = 1;
 
 
 
@@ -898,6 +902,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentCodeAction>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
@@ -1103,6 +1108,11 @@ void ParseFile(IndexerConfig* config,
       diag.params.uri = lsDocumentUri::FromPath(new_index->path);
       diag.params.diagnostics = new_index->diagnostics;
       IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
+
+      // Cache diagnostics so we can show fixits.
+      WorkingFile* working_file = working_files->GetFileByFilename(new_index->path);
+      if (working_file)
+        working_file->diagnostics = new_index->diagnostics;
     }
 
 
@@ -1418,6 +1428,19 @@ bool QueryDbMainLoop(
 
           *config = *request->params.initializationOptions;
 
+          // Check client version.
+          if (config->clientVersion != kExpectedClientVersion) {
+            Out_ShowLogMessage out;
+            out.display_type = Out_ShowLogMessage::DisplayType::Show;
+            out.params.type = lsMessageType::Error;
+            out.params.message = "cquery client (v" + std::to_string(config->clientVersion) + ") and server (v" + std::to_string(kExpectedClientVersion) + ") version mismatch. Please update ";
+            if (config->clientVersion > kExpectedClientVersion)
+              out.params.message += "the cquery binary.";
+            else
+              out.params.message += "your extension client (VSIX file).";
+            out.Write(std::cout);
+          }
+
           // Make sure cache directory is valid.
           if (config->cacheDirectory.empty()) {
             std::cerr << "No cache directory" << std::endl;
@@ -1485,6 +1508,8 @@ bool QueryDbMainLoop(
         response.result.capabilities.documentHighlightProvider = true;
         response.result.capabilities.hoverProvider = true;
         response.result.capabilities.referencesProvider = true;
+
+        response.result.capabilities.codeActionProvider = true;
 
         response.result.capabilities.documentSymbolProvider = true;
         response.result.capabilities.workspaceSymbolProvider = true;
@@ -1716,7 +1741,7 @@ bool QueryDbMainLoop(
         if (file)
           params.position = file->FindStableCompletionSource(params.position);
 
-        CompletionManager::OnComplete callback = std::bind([code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+        CompletionManager::OnComplete callback = std::bind([working_files, code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
           auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
           auto ipc = IpcManager::instance();
 
@@ -1725,13 +1750,21 @@ bool QueryDbMainLoop(
           complete_response.result.isIncomplete = false;
           complete_response.result.items = results;
 
+          // Emit completion results.
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
 
+          // Emit diagnostics.
           Out_TextDocumentPublishDiagnostics diagnostic_response;
           diagnostic_response.params.uri = msg->params.textDocument.uri;
           diagnostic_response.params.diagnostics = diagnostics;
           ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
 
+          // Cache diagnostics so we can show fixits.
+          WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+          if (working_file)
+            working_file->diagnostics = diagnostics;
+
+          // Cache completion results so if the user types backspace we can respond faster.
           code_complete_cache->cached_path = msg->params.textDocument.uri.GetPath();
           code_complete_cache->cached_completion_position = msg->params.position;
           code_complete_cache->cached_results = results;
@@ -2018,6 +2051,50 @@ bool QueryDbMainLoop(
         }
 
         ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentSymbol, response);
+        break;
+      }
+
+      case IpcId::TextDocumentCodeAction: {
+        // NOTE: This code snippet will generate some FixIts for testing:
+        //
+        //    struct origin { int x, int y };
+        //    void foo() {
+        //      point origin = {
+        //        x: 0.0,
+        //        y: 0.0
+        //      };
+        //    }
+        //
+        auto msg = static_cast<Ipc_TextDocumentCodeAction*>(message.get());
+
+        WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+        if (!working_file) {
+          // TODO: send error response.
+          std::cerr << "[error] textDocument/codeAction could not find working file" << std::endl;
+          break;
+        }
+
+        int target_line = msg->params.range.start.line;
+
+        Out_TextDocumentCodeAction response;
+        response.id = msg->id;
+
+        for (lsDiagnostic& diag : working_file->diagnostics) {
+          // clang does not provide accurate ennough column reporting for
+          // diagnostics to do good column filtering, so report all
+          // diagnostics on the line.
+          if (!diag.fixits_.empty() && diag.range.start.line == target_line) {
+            Out_TextDocumentCodeAction::Command command;
+            command.title = "FixIt: " + diag.message;
+            command.command = "cquery._applyFixIt";
+            command.arguments.textDocumentUri = msg->params.textDocument.uri;
+            command.arguments.edits = diag.fixits_;
+            response.result.push_back(command);
+          }
+        }
+
+        response.Write(std::cerr);
+        ipc->SendOutMessageToClient(IpcId::TextDocumentCodeAction, response);
         break;
       }
 
@@ -2374,6 +2451,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
     case IpcId::TextDocumentHover:
     case IpcId::TextDocumentReferences:
     case IpcId::TextDocumentDocumentSymbol:
+    case IpcId::TextDocumentCodeAction:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
     case IpcId::CqueryFreshenIndex:

@@ -38,6 +38,8 @@ const char* IpcIdToString(IpcId id) {
     return "textDocument/references";
   case IpcId::TextDocumentDocumentSymbol:
     return "textDocument/documentSymbol";
+  case IpcId::TextDocumentCodeAction:
+    return "textDocument/codeAction";
   case IpcId::TextDocumentCodeLens:
     return "textDocument/codeLens";
   case IpcId::CodeLensResolve:

@@ -73,6 +73,9 @@ struct IndexerConfig {
   bool enableCacheWrite = true;
   // If false, the index will not be loaded from a previous run.
   bool enableCacheRead = true;
+
+  // Version of the client.
+  int clientVersion = 0;
 };
 MAKE_REFLECT_STRUCT(IndexerConfig,
   cacheDirectory,
@@ -81,8 +84,9 @@ MAKE_REFLECT_STRUCT(IndexerConfig,
 
   maxWorkspaceSearchResults,
   indexerCount,
-  enableIndexing, enableCacheWrite, enableCacheRead);
+  enableIndexing, enableCacheWrite, enableCacheRead,
 
+  clientVersion);
 
 
 
@@ -330,6 +334,8 @@ struct lsCommand {
   // Actual command identifier.
   std::string command;
   // Arguments to run the command with.
+  // **NOTE** This must be serialized as an array. Use
+  // MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY.
   T arguments;
 };
 template<typename TVisitor, typename T>
@@ -591,6 +597,9 @@ struct lsDiagnostic {
 
   // The diagnostic's message.
   std::string message;
+
+  // Non-serialized set of fixits.
+  NonElidedVector<lsTextEdit> fixits_;
 };
 MAKE_REFLECT_STRUCT(lsDiagnostic, range, severity, source, message);
 
@@ -1325,17 +1334,17 @@ struct lsSignatureHelp {
 
   // The active signature. If omitted or the value lies outside the
   // range of `signatures` the value defaults to zero or is ignored if
-  // `signatures.length === 0`. Whenever possible implementors should 
-  // make an active decision about the active signature and shouldn't 
+  // `signatures.length === 0`. Whenever possible implementors should
+  // make an active decision about the active signature and shouldn't
   // rely on a default value.
   // In future version of the protocol this property might become
   // mandantory to better express this.
   optional<int> activeSignature;
 
   // The active parameter of the active signature. If omitted or the value
-  // lies outside the range of `signatures[activeSignature].parameters` 
-  // defaults to 0 if the active signature has parameters. If 
-  // the active signature has no parameters it is ignored. 
+  // lies outside the range of `signatures[activeSignature].parameters`
+  // defaults to 0 if the active signature has parameters. If
+  // the active signature has no parameters it is ignored.
   // In future version of the protocol this property might become
   // mandantory to better express the active parameter if the
   // active signature does have any.
@@ -1421,6 +1430,44 @@ struct Out_TextDocumentReferences : public lsOutMessage<Out_TextDocumentReferenc
   NonElidedVector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
+
+// Code action
+struct Ipc_TextDocumentCodeAction : public IpcMessage<Ipc_TextDocumentCodeAction> {
+  const static IpcId kIpcId = IpcId::TextDocumentCodeAction;
+  // Contains additional diagnostic information about the context in which
+  // a code action is run.
+  struct lsCodeActionContext {
+	  // An array of diagnostics.
+	  NonElidedVector<lsDiagnostic> diagnostics;
+  };
+  // Params for the CodeActionRequest
+  struct lsCodeActionParams {
+	  // The document in which the command was invoked.
+	  lsTextDocumentIdentifier textDocument;
+	  // The range for which the command was invoked.
+    lsRange range;
+	  // Context carrying additional information.
+    lsCodeActionContext context;
+  };
+
+  lsRequestId id;
+  lsCodeActionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionContext, diagnostics);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionParams, textDocument, range, context);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction, id, params);
+struct Out_TextDocumentCodeAction : public lsOutMessage<Out_TextDocumentCodeAction> {
+  struct CommandArgs {
+    lsDocumentUri textDocumentUri;
+    NonElidedVector<lsTextEdit> edits;
+  };
+  using Command = lsCommand<CommandArgs>;
+
+  lsRequestId id;
+  NonElidedVector<Command> result;
+};
+MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(Out_TextDocumentCodeAction::CommandArgs, textDocumentUri, edits);
+MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
 
 // List symbols in a document.
 struct lsDocumentSymbolParams {

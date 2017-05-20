@@ -24,6 +24,7 @@ enum class IpcId : int {
   TextDocumentHover,
   TextDocumentReferences,
   TextDocumentDocumentSymbol,
+  TextDocumentCodeAction,
   TextDocumentCodeLens,
   CodeLensResolve,
   WorkspaceSymbol,
