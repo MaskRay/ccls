@@ -79,6 +79,7 @@ std::string FormatMicroseconds(long long microseconds) {
 // the user erases a character. vscode will resend the completion request if
 // that happens.
 struct CodeCompleteCache {
+  optional<std::string> cached_path;
   optional<lsPosition> cached_completion_position;
   NonElidedVector<lsCompletionItem> cached_results;
   NonElidedVector<lsDiagnostic> cached_diagnostics;
@@ -1378,7 +1379,8 @@ bool QueryDbMainLoop(
     FileConsumer::SharedState* file_consumer_shared,
     WorkingFiles* working_files,
     CompletionManager* completion_manager,
-    CodeCompleteCache* code_complete_cache) {
+    CodeCompleteCache* code_complete_cache,
+    CodeCompleteCache* signature_cache) {
   IpcManager* ipc = IpcManager::instance();
 
   bool did_work = false;
@@ -1709,7 +1711,7 @@ bool QueryDbMainLoop(
         if (file)
           params.position = file->FindStableCompletionSource(params.position);
 
-        CompletionManager::OnComplete callback = std::bind([working_files, code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+        CompletionManager::OnComplete callback = std::bind([code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
           auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
           auto ipc = IpcManager::instance();
 
@@ -1725,6 +1727,7 @@ bool QueryDbMainLoop(
           diagnostic_response.params.diagnostics = diagnostics;
           ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
 
+          code_complete_cache->cached_path = msg->params.textDocument.uri.GetPath();
           code_complete_cache->cached_completion_position = msg->params.position;
           code_complete_cache->cached_results = results;
           code_complete_cache->cached_diagnostics = diagnostics;
@@ -1732,7 +1735,7 @@ bool QueryDbMainLoop(
           delete message;
         }, message.release(), std::placeholders::_1, std::placeholders::_2);
 
-        if (code_complete_cache->cached_completion_position &&
+        if (code_complete_cache->cached_path == params.textDocument.uri.GetPath() &&
             code_complete_cache->cached_completion_position == params.position) {
           std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
           callback(code_complete_cache->cached_results, code_complete_cache->cached_diagnostics);
@@ -1746,23 +1749,20 @@ bool QueryDbMainLoop(
 
       case IpcId::TextDocumentSignatureHelp: {
         auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message.get());
-        lsTextDocumentPositionParams params = msg->params;
-        //std::cerr << "!! SignatureHelp @ " << msg->params.position.line << ":" << msg->params.position.character << std::endl;
-
+        lsTextDocumentPositionParams& params = msg->params;
         WorkingFile* file = working_files->GetFileByFilename(params.textDocument.uri.GetPath());
         std::string search;
         int active_param = 0;
         if (file) {
           lsPosition completion_position;
           search = file->FindClosestCallNameInBuffer(params.position, &active_param, &completion_position);
-          std::cerr << "[completion] Changing completion position from " << params.position.ToString() << " to " << completion_position.ToString() << std::endl;
           params.position = completion_position;
         }
-        std::cerr << "[completion] Returning signatures for " << search << std::endl;
+        //std::cerr << "[completion] Returning signatures for " << search << std::endl;
         if (search.empty())
           break;
 
-        CompletionManager::OnComplete callback = std::bind([](BaseIpcMessage* message, std::string search, int active_param, const NonElidedVector<lsCompletionItem>& results) {
+        CompletionManager::OnComplete callback = std::bind([signature_cache](BaseIpcMessage* message, std::string search, int active_param, const NonElidedVector<lsCompletionItem>& results) {
           auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message);
           auto ipc = IpcManager::instance();
 
@@ -1803,10 +1803,21 @@ bool QueryDbMainLoop(
           ipc->SendOutMessageToClient(IpcId::TextDocumentSignatureHelp, response);
           timer.ResetAndPrint("[complete] Writing signature help results");
 
+          signature_cache->cached_path = msg->params.textDocument.uri.GetPath();
+          signature_cache->cached_completion_position = msg->params.position;
+          signature_cache->cached_results = results;
+
           delete message;
         }, message.release(), search, active_param, std::placeholders::_1);
 
-        completion_manager->CodeComplete(params, std::move(callback));
+        if (signature_cache->cached_path == params.textDocument.uri.GetPath() &&
+            signature_cache->cached_completion_position == params.position) {
+          std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
+          callback(signature_cache->cached_results, signature_cache->cached_diagnostics);
+        }
+        else {
+          completion_manager->CodeComplete(params, std::move(callback));
+        }
 
         break;
       }
@@ -2232,13 +2243,14 @@ void QueryDbMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
   WorkingFiles working_files;
   CompletionManager completion_manager(config, &project, &working_files);
   CodeCompleteCache code_complete_cache;
+  CodeCompleteCache signature_cache;
   FileConsumer::SharedState file_consumer_shared;
 
   // Run query db main loop.
   SetCurrentThreadName("querydb");
   QueryDatabase db;
   while (true) {
-    bool did_work = QueryDbMainLoop(config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &file_consumer_shared, &working_files, &completion_manager, &code_complete_cache);
+    bool did_work = QueryDbMainLoop(config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &file_consumer_shared, &working_files, &completion_manager, &code_complete_cache, &signature_cache);
     if (!did_work) {
       IpcManager* ipc = IpcManager::instance();
       waiter->Wait({
