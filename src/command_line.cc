@@ -83,6 +83,11 @@ struct CodeCompleteCache {
   optional<lsPosition> cached_completion_position;
   NonElidedVector<lsCompletionItem> cached_results;
   NonElidedVector<lsDiagnostic> cached_diagnostics;
+
+  bool IsCacheValid(lsTextDocumentPositionParams position) const {
+    return cached_path == position.textDocument.uri.GetPath() &&
+           cached_completion_position == position.position;
+  }
 };
 
 
@@ -1735,8 +1740,7 @@ bool QueryDbMainLoop(
           delete message;
         }, message.release(), std::placeholders::_1, std::placeholders::_2);
 
-        if (code_complete_cache->cached_path == params.textDocument.uri.GetPath() &&
-            code_complete_cache->cached_completion_position == params.position) {
+        if (code_complete_cache->IsCacheValid(params)) {
           std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
           callback(code_complete_cache->cached_results, code_complete_cache->cached_diagnostics);
         }
@@ -1810,8 +1814,7 @@ bool QueryDbMainLoop(
           delete message;
         }, message.release(), search, active_param, std::placeholders::_1);
 
-        if (signature_cache->cached_path == params.textDocument.uri.GetPath() &&
-            signature_cache->cached_completion_position == params.position) {
+        if (signature_cache->IsCacheValid(params)) {
           std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
           callback(signature_cache->cached_results, signature_cache->cached_diagnostics);
         }
