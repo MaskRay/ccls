@@ -75,12 +75,10 @@ void PushRange(std::queue<T>* dest, const std::vector<T>& to_add) {
 
 template<typename T>
 void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
-  auto it = std::remove_if(dest->begin(), dest->end(), [&](const T& t) {
+  dest->erase(std::remove_if(dest->begin(), dest->end(), [&](const T& t) {
     // TODO: make to_remove a set?
     return std::find(to_remove.begin(), to_remove.end(), t) != to_remove.end();
-  });
-  if (it != dest->end())
-    dest->erase(it);
+  }), dest->end());
 }
 
 // http://stackoverflow.com/a/38140932

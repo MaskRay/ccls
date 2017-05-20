@@ -828,5 +828,34 @@ TEST_CASE("type usages") {
   REQUIRE(update.types_uses[0].to_add[0].range == Range(Position(2, 0)));
 }
 
+TEST_CASE("apply delta") {
+  IndexFile previous("foo.cc");
+  IndexFile current("foo.cc");
+
+  IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
+  IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
+  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0))));
+  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0))));
+  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0))));
+  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0))));
+
+  QueryDatabase db;
+  IdMap previous_map(&db, previous.id_cache);
+  IdMap current_map(&db, current.id_cache);
+  REQUIRE(db.funcs.size() == 1);
+
+  IndexUpdate import_update = IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, &previous);
+  IndexUpdate delta_update = IndexUpdate::CreateDelta(&previous_map, &current_map, &previous, &current);
+  
+  db.ApplyIndexUpdate(&import_update);
+  REQUIRE(db.funcs[0]->callers.size() == 2);
+  REQUIRE(db.funcs[0]->callers[0].loc.range == Range(Position(1, 0)));
+  REQUIRE(db.funcs[0]->callers[1].loc.range == Range(Position(2, 0)));
+
+  db.ApplyIndexUpdate(&delta_update);
+  REQUIRE(db.funcs[0]->callers.size() == 2);
+  REQUIRE(db.funcs[0]->callers[0].loc.range == Range(Position(4, 0)));
+  REQUIRE(db.funcs[0]->callers[1].loc.range == Range(Position(5, 0)));
+}
 
 TEST_SUITE_END();
