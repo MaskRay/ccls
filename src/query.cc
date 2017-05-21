@@ -691,7 +691,7 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryType::DefUpdate>& upda
 
     auto it = usr_to_type.find(def.usr);
     assert(it != usr_to_type.end());
-    
+
     assert(it->second.id >= 0 && it->second.id < types.size());
     optional<QueryType>& existing = types[it->second.id];
     if (!existing)
@@ -820,7 +820,7 @@ TEST_CASE("type usages") {
   ct->uses.push_back(Range(Position(2, 0)));
 
   IndexUpdate update = GetDelta(previous, current);
-  
+
   REQUIRE(update.types_removed == std::vector<Usr>{});
   REQUIRE(update.types_def_update == std::vector<QueryType::DefUpdate>{});
   REQUIRE(update.types_uses.size() == 1);
@@ -848,7 +848,7 @@ TEST_CASE("apply delta") {
 
   IndexUpdate import_update = IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, &previous);
   IndexUpdate delta_update = IndexUpdate::CreateDelta(&previous_map, &current_map, &previous, &current);
-  
+
   db.ApplyIndexUpdate(&import_update);
   REQUIRE(db.funcs[0]->callers.size() == 2);
   REQUIRE(db.funcs[0]->callers[0].loc.range == Range(Position(1, 0)));
