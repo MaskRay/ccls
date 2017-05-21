@@ -59,6 +59,7 @@ OUTPUT:
       "detailed_name": "T var",
       "definition_spelling": "5:3-5:6",
       "definition_extent": "5:1-5:10",
+      "is_local": false,
       "uses": ["5:3-5:6", "7:9-7:12", "8:9-8:12"]
     }, {
       "id": 1,
@@ -67,6 +68,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "7:5-7:6",
       "definition_extent": "7:1-7:15",
+      "is_local": false,
       "uses": ["7:5-7:6"]
     }, {
       "id": 2,
@@ -75,6 +77,7 @@ OUTPUT:
       "detailed_name": "int b",
       "definition_spelling": "8:5-8:6",
       "definition_extent": "8:1-8:15",
+      "is_local": false,
       "uses": ["8:5-8:6"]
     }]
 }

@@ -404,6 +404,9 @@ struct VarDefDefinitionData {
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
 
+  // Is this a "local" variable, ie, a parameter or function variable?
+  bool is_local = false;
+
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
@@ -448,6 +451,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(declaring_type);
+  REFLECT_MEMBER(is_local);
   REFLECT_MEMBER_END();
 }
 

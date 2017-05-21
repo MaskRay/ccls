@@ -25,6 +25,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "2:7-2:8",
       "definition_extent": "2:3-2:8",
+      "is_local": true,
       "uses": ["2:7-2:8", "3:3-3:4", "8:3-8:4"]
     }, {
       "id": 1,
@@ -33,6 +34,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "5:9-5:10",
       "definition_extent": "5:5-5:10",
+      "is_local": true,
       "uses": ["5:9-5:10", "6:5-6:6"]
     }]
 }

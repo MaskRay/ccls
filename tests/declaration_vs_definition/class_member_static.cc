@@ -26,6 +26,7 @@ OUTPUT:
       "definition_spelling": "5:10-5:13",
       "definition_extent": "5:1-5:13",
       "declaring_type": 0,
+      "is_local": false,
       "uses": ["2:14-2:17", "5:10-5:13"]
     }]
 }

@@ -143,6 +143,7 @@ OUTPUT:
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> f",
       "declaration": "15:43-15:44",
       "variable_type": 0,
+      "is_local": false,
       "uses": ["15:43-15:44"]
     }, {
       "id": 1,
@@ -152,6 +153,7 @@ OUTPUT:
       "definition_spelling": "54:39-54:44",
       "definition_extent": "54:3-54:44",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["54:39-54:44"]
     }]
 }

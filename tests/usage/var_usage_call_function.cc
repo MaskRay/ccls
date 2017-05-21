@@ -34,6 +34,7 @@ OUTPUT:
       "detailed_name": "void (*)() x",
       "definition_spelling": "4:8-4:9",
       "definition_extent": "4:3-4:19",
+      "is_local": true,
       "uses": ["4:8-4:9", "5:3-5:4"]
     }]
 }

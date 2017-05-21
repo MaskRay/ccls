@@ -74,6 +74,9 @@ struct IndexerConfig {
   // If false, the index will not be loaded from a previous run.
   bool enableCacheRead = true;
 
+  // Enables code lens on parameter and function variables.
+  bool codeLensOnLocalVariables = true;
+
   // Version of the client.
   int clientVersion = 0;
 };
@@ -85,6 +88,8 @@ MAKE_REFLECT_STRUCT(IndexerConfig,
   maxWorkspaceSearchResults,
   indexerCount,
   enableIndexing, enableCacheWrite, enableCacheRead,
+
+  codeLensOnLocalVariables,
 
   clientVersion);
 

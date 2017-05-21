@@ -647,12 +647,13 @@ struct CommonCodeLensParams {
 };
 
 void AddCodeLens(
-  CommonCodeLensParams* common,
-  QueryLocation loc,
-  const std::vector<QueryLocation>& uses,
-  const char* singular,
-  const char* plural,
-  bool exclude_loc = false) {
+    const char* singular,
+    const char* plural,
+    CommonCodeLensParams* common,
+    QueryLocation loc,
+    const std::vector<QueryLocation>& uses,
+    optional<QueryLocation> excluded,
+    bool force_display) {
   TCodeLens code_lens;
   optional<lsRange> range = GetLsRange(common->working_file, loc.range);
   if (!range)
@@ -666,7 +667,7 @@ void AddCodeLens(
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
   for (const QueryLocation& use : uses) {
-    if (exclude_loc && use == loc)
+    if (excluded == use)
       continue;
     optional<lsLocation> location = GetLsLocation(common->db, common->working_files, use);
     if (!location)
@@ -684,7 +685,7 @@ void AddCodeLens(
   else
     code_lens.command->title += plural;
 
-  if (exclude_loc || unique_uses.size() > 0)
+  if (force_display || unique_uses.size() > 0)
     common->result->push_back(code_lens);
 }
 
@@ -2155,9 +2156,9 @@ bool QueryDbMainLoop(
             optional<QueryType>& type = db->types[symbol.idx];
             if (!type)
               continue;
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(0), type->uses, "ref", "refs");
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(1), ToQueryLocation(db, type->derived), "derived", "derived");
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type->instances), "var", "vars");
+            AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0), type->uses, type->def.definition_spelling, true /*force_display*/);
+            AddCodeLens("derived", "derived", &common, ref.loc.OffsetStartColumn(1), ToQueryLocation(db, type->derived), nullopt, false /*force_display*/);
+            AddCodeLens("var", "vars", &common, ref.loc.OffsetStartColumn(2), ToQueryLocation(db, type->instances), nullopt, false /*force_display*/);
             break;
           }
           case SymbolKind::Func: {
@@ -2170,18 +2171,17 @@ bool QueryDbMainLoop(
             std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, *func);
             std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, *func);
             if (base_callers.empty() && derived_callers.empty()) {
-              // set exclude_loc to true to force the code lens to show up
-              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), "call", "calls", true /*exclude_loc*/);
+              AddCodeLens("call", "calls", &common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), nullopt, true /*force_display*/);
             }
             else {
-              AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), "direct call", "direct calls");
+              AddCodeLens("direct call", "direct calls", &common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->callers), nullopt, false /*force_display*/);
               if (!base_callers.empty())
-                AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, base_callers), "base call", "base calls");
+                AddCodeLens("base call", "base calls", &common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, base_callers), nullopt, false /*force_display*/);
               if (!derived_callers.empty())
-                AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, derived_callers), "derived call", "derived calls");
+                AddCodeLens("derived call", "derived calls", &common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, derived_callers), nullopt, false /*force_display*/);
             }
 
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->derived), "derived", "derived");
+            AddCodeLens("derived", "derived", &common, ref.loc.OffsetStartColumn(offset++), ToQueryLocation(db, func->derived), nullopt, false /*force_display*/);
 
             // "Base"
             optional<QueryLocation> base_loc = GetBaseDefinitionOrDeclarationSpelling(db, *func);
@@ -2210,7 +2210,10 @@ bool QueryDbMainLoop(
             if (!var)
               continue;
 
-            AddCodeLens(&common, ref.loc.OffsetStartColumn(0), var->uses, "ref", "refs", true /*exclude_loc*/);
+            if (var->def.is_local && !config->codeLensOnLocalVariables)
+              continue;
+
+            AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0), var->uses, var->def.definition_spelling, true /*force_display*/);
             break;
           }
           case SymbolKind::File:

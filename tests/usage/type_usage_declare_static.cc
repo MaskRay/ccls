@@ -17,6 +17,7 @@ OUTPUT:
       "definition_spelling": "2:13-2:14",
       "definition_extent": "2:1-2:14",
       "variable_type": 0,
+      "is_local": false,
       "uses": ["2:13-2:14"]
     }]
 }

@@ -35,6 +35,7 @@ OUTPUT:
       "definition_spelling": "3:16-3:18",
       "definition_extent": "3:10-3:18",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["3:16-3:18"]
     }, {
       "id": 1,
@@ -44,6 +45,7 @@ OUTPUT:
       "definition_spelling": "3:32-3:34",
       "definition_extent": "3:20-3:34",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["3:32-3:34"]
     }, {
       "id": 2,
@@ -53,6 +55,7 @@ OUTPUT:
       "definition_spelling": "4:8-4:10",
       "definition_extent": "4:3-4:10",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["4:8-4:10"]
     }, {
       "id": 3,
@@ -62,6 +65,7 @@ OUTPUT:
       "definition_spelling": "5:9-5:11",
       "definition_extent": "5:3-5:11",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["5:9-5:11"]
     }, {
       "id": 4,
@@ -71,6 +75,7 @@ OUTPUT:
       "definition_spelling": "6:15-6:17",
       "definition_extent": "6:3-6:17",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["6:15-6:17"]
     }, {
       "id": 5,
@@ -80,6 +85,7 @@ OUTPUT:
       "definition_spelling": "7:21-7:23",
       "definition_extent": "7:3-7:23",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["7:21-7:23"]
     }]
 }

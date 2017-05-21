@@ -19,6 +19,7 @@ OUTPUT:
       "short_name": "member",
       "detailed_name": "int Foo::member",
       "declaration": "2:14-2:20",
+      "is_local": false,
       "uses": ["2:14-2:20"]
     }]
 }

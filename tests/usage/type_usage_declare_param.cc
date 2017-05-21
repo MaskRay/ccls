@@ -37,6 +37,7 @@ OUTPUT:
       "definition_spelling": "4:23-4:24",
       "definition_extent": "4:10-4:24",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["4:23-4:24"]
     }, {
       "id": 1,
@@ -46,6 +47,7 @@ OUTPUT:
       "definition_spelling": "4:42-4:43",
       "definition_extent": "4:26-4:43",
       "variable_type": 1,
+      "is_local": true,
       "uses": ["4:42-4:43"]
     }]
 }

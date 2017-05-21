@@ -34,6 +34,7 @@ OUTPUT:
       "definition_spelling": "4:15-4:16",
       "definition_extent": "4:10-4:16",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["4:15-4:16"]
     }]
 }

@@ -20,6 +20,7 @@ OUTPUT:
       "short_name": "a",
       "detailed_name": "int a",
       "declaration": "1:12-1:13",
+      "is_local": false,
       "uses": ["1:12-1:13", "4:3-4:4"]
     }]
 }

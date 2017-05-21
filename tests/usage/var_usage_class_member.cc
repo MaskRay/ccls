@@ -62,6 +62,7 @@ OUTPUT:
       "definition_spelling": "3:7-3:8",
       "definition_extent": "3:3-3:8",
       "declaring_type": 0,
+      "is_local": false,
       "uses": ["3:7-3:8", "12:5-12:6", "13:5-13:6", "14:12-14:13", "15:12-15:13", "16:13-16:14"]
     }, {
       "id": 1,
@@ -71,6 +72,7 @@ OUTPUT:
       "definition_spelling": "4:7-4:8",
       "definition_extent": "4:3-4:8",
       "declaring_type": 0,
+      "is_local": false,
       "uses": ["4:7-4:8", "17:12-17:13"]
     }, {
       "id": 2,
@@ -80,6 +82,7 @@ OUTPUT:
       "definition_spelling": "11:7-11:8",
       "definition_extent": "11:3-11:8",
       "variable_type": 0,
+      "is_local": true,
       "uses": ["11:7-11:8", "12:3-12:4", "13:3-13:4", "14:10-14:11", "15:10-15:11", "16:11-16:12", "17:10-17:11"]
     }]
 }

@@ -19,6 +19,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "1:14-1:15",
       "definition_extent": "1:10-1:15",
+      "is_local": true,
       "uses": ["1:14-1:15", "2:3-2:4"]
     }]
 }

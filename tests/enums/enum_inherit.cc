@@ -25,6 +25,7 @@ OUTPUT:
       "definition_extent": "2:3-2:4",
       "variable_type": 0,
       "declaring_type": 0,
+      "is_local": false,
       "uses": ["2:3-2:4"]
     }, {
       "id": 1,
@@ -35,6 +36,7 @@ OUTPUT:
       "definition_extent": "3:3-3:9",
       "variable_type": 0,
       "declaring_type": 0,
+      "is_local": false,
       "uses": ["3:3-3:4"]
     }]
 }

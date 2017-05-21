@@ -24,6 +24,7 @@ OUTPUT:
       "definition_extent": "2:3-2:14",
       "variable_type": 0,
       "declaring_type": 0,
+      "is_local": false,
       "uses": ["2:8-2:14"]
     }]
 }

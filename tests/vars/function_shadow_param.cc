@@ -19,6 +19,7 @@ OUTPUT:
       "detailed_name": "int p",
       "definition_spelling": "1:14-1:15",
       "definition_extent": "1:10-1:15",
+      "is_local": true,
       "uses": ["1:14-1:15"]
     }, {
       "id": 1,
@@ -27,6 +28,7 @@ OUTPUT:
       "detailed_name": "int p",
       "definition_spelling": "2:7-2:8",
       "definition_extent": "2:3-2:8",
+      "is_local": true,
       "uses": ["2:7-2:8"]
     }]
 }

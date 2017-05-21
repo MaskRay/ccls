@@ -107,7 +107,7 @@ struct IndexParam {
 IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   bool is_first_ownership = false;
   IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_ownership);
-  
+
   // Mark dependency in primary file. If primary_file is null that means we're
   // doing a re-index in which case the dependency has already been established
   // in a previous index run.
@@ -128,6 +128,20 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   }
 
   return db;
+}
+
+bool IsLocalSemanticContainer(CXCursorKind kind) {
+  switch (kind) {
+    case CXCursor_Namespace:
+    case CXCursor_TranslationUnit:
+    case CXCursor_StructDecl:
+    case CXCursor_UnionDecl:
+    case CXCursor_ClassDecl:
+    case CXCursor_EnumDecl:
+      return false;
+    default:
+      return true;
+  }
 }
 
 }  // namespace
@@ -806,6 +820,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       std::string type_name = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
       var_def->def.detailed_name = type_name + " " + ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
+
+      var_def->def.is_local = !decl->semanticContainer || IsLocalSemanticContainer(decl->semanticContainer->cursor.kind);
+
       //}
 
       if (decl->isDefinition) {
