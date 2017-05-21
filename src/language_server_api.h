@@ -1613,7 +1613,8 @@ template<typename TVisitor>
 void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
-  REFLECT_MEMBER2("method", value.method());
+  std::string method = value.method();
+  REFLECT_MEMBER2("method", method);
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
