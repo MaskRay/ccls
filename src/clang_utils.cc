@@ -1,6 +1,7 @@
 #include "clang_utils.h"
 
 #include "libclangmm/Utility.h"
+#include "platform.h"
 
 namespace {
 
@@ -78,4 +79,10 @@ optional<lsDiagnostic> BuildDiagnostic(CXDiagnostic diagnostic) {
   clang_disposeDiagnostic(diagnostic);
 
   return ls_diagnostic;
+}
+
+std::string FileName(CXFile file) {
+  CXString cx_name = clang_getFileName(file);
+  std::string name = clang::ToString(cx_name);
+  return NormalizePath(name);
 }

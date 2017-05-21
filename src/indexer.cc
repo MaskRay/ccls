@@ -328,8 +328,24 @@ CXIdxClientFile enteredMainFile(CXClientData client_data,
 
 CXIdxClientFile ppIncludedFile(CXClientData client_data,
                                const CXIdxIncludedFileInfo* file) {
-  // Clang include logic is broken. This function is never
-  // called and clang_findIncludesInFile doesn't work.
+  IndexParam* param = static_cast<IndexParam*>(client_data);
+
+  // file->hashLoc only has the position of the hash. We don't have the full
+  // range for the include.
+  CXSourceLocation hash_loc = clang_indexLoc_getCXSourceLocation(file->hashLoc);
+  CXFile cx_file;
+  unsigned int line;
+  clang_getSpellingLocation(hash_loc, &cx_file, &line, nullptr, nullptr);
+
+  IndexFile* db = ConsumeFile(param, cx_file);
+  if (!db)
+    return nullptr;
+
+  IndexInclude include;
+  include.line = line;
+  include.resolved_path = FileName(file->file);
+  db->includes.push_back(include);
+
   return nullptr;
 }
 

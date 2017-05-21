@@ -1,18 +1,9 @@
 #include "file_consumer.h"
 
+#include "clang_utils.h"
 #include "indexer.h"
 #include "platform.h"
 #include "utils.h"
-
-namespace {
-
-std::string FileName(CXFile file) {
-  CXString cx_name = clang_getFileName(file);
-  std::string name = clang::ToString(cx_name);
-  return NormalizePath(name);
-}
-
-}  // namespace
 
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
   return a.data[0] == b.data[0] && a.data[1] == b.data[1] && a.data[2] == b.data[2];

@@ -115,6 +115,10 @@ OUTPUT: header.h
 }
 OUTPUT: impl.cc
 {
+  "includes": [{
+      "line": 1,
+      "resolved_path": "C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/header.h"
+    }],
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/header.h"],
   "funcs": [{
       "id": 0,

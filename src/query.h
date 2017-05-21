@@ -161,6 +161,8 @@ void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
 struct QueryFile {
   struct Def {
     std::string path;
+    // Includes in the file.
+    std::vector<IndexInclude> includes;
     // Outline of the file (ie, for code lens).
     std::vector<SymbolRef> outline;
     // Every symbol found in the file (ie, for goto definition)

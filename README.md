@@ -28,6 +28,7 @@ be productive with cquery. Here's a list of implemented features:
   * diagnostics
   * code actions (clang FixIts)
   * darken/fade code disabled by preprocessor
+  * goto definition on include to jump to file
 
 # Setup - build cquery, install extension, setup project
 

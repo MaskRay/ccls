@@ -1948,6 +1948,19 @@ bool QueryDbMainLoop(
             break;
         }
 
+        // No symbols - check for includes.
+        if (response.result.empty()) {
+          for (const IndexInclude& include : file->def.includes) {
+            if (include.line == target_line) {
+              lsLocation result;
+              std::cerr << "!! resolved to " << include.resolved_path << std::endl;
+              result.uri = lsDocumentUri::FromPath(include.resolved_path);
+              response.result.push_back(result);
+              break;
+            }
+          }
+        }
+
         ipc->SendOutMessageToClient(IpcId::TextDocumentDefinition, response);
         break;
       }

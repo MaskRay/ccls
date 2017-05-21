@@ -17,6 +17,10 @@ OUTPUT: simple_header.h
 }
 OUTPUT: simple_impl.cc
 {
+  "includes": [{
+      "line": 1,
+      "resolved_path": "C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/simple_header.h"
+    }],
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/simple_header.h"],
   "funcs": [{
       "id": 0,

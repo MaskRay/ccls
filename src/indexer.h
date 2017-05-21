@@ -494,6 +494,15 @@ struct IdCache {
   IdCache(const std::string& primary_file);
 };
 
+struct IndexInclude {
+  // Line that has the include directive. We don't have complete range
+  // information - a line is good enough for clicking.
+  int line = 0;
+  // Absolute path to the index.
+  std::string resolved_path;
+};
+MAKE_REFLECT_STRUCT(IndexInclude, line, resolved_path);
+
 struct IndexFile {
   IdCache id_cache;
 
@@ -516,6 +525,7 @@ struct IndexFile {
   // Source ranges that were not processed.
   std::vector<Range> skipped_by_preprocessor;
 
+  std::vector<IndexInclude> includes;
   std::vector<std::string> dependencies;
   std::vector<IndexType> types;
   std::vector<IndexFunc> funcs;

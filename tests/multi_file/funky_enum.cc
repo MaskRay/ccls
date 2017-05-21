@@ -50,6 +50,10 @@ OUTPUT: funky_enum.h
 }
 OUTPUT: funky_enum.cc
 {
+  "includes": [{
+      "line": 2,
+      "resolved_path": "C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/funky_enum.h"
+    }],
   "dependencies": ["C:/Users/jacob/Desktop/superindex/indexer/tests/multi_file/funky_enum.h"],
   "types": [{
       "id": 0,
