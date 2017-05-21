@@ -326,6 +326,8 @@ std::string clang::ToString(CXCursorKind kind) {
     // case CXCursor_FirstExtraDecl: return "FirstExtraDecl";
     case CXCursor_LastExtraDecl:
       return "LastExtraDecl";
+    default:
+      break;
   }
   return "<unknown kind>";
 }

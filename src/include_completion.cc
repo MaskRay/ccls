@@ -1,5 +1,3 @@
-#pragma once
-
 #include "include_completion.h"
 
 #include "match.h"
@@ -7,6 +5,8 @@
 #include "project.h"
 #include "standard_includes.h"
 #include "timer.h"
+
+#include <thread>
 
 namespace {
 
@@ -96,7 +96,7 @@ lsCompletionItem BuildCompletionItem(Config* config, std::string path, bool use_
 }  // namespace
 
 IncludeCompletion::IncludeCompletion(Config* config, Project* project)
-    : config_(config), project_(project), is_scanning(false) {}
+    : is_scanning(false), config_(config), project_(project) {}
 
 void IncludeCompletion::Rescan() {
   if (is_scanning)

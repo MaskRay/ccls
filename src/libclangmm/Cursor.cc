@@ -44,6 +44,8 @@ Type Type::strip_qualifiers() const {
     case CXType_LValueReference:
     case CXType_Pointer:
       return clang_getPointeeType(cx_type);
+    default:
+      break;
   }
 
   return cx_type;
@@ -118,7 +120,7 @@ CXCursorKind Cursor::get_kind() const {
 
 Cursor Cursor::get_declaration() const {
   Type type = get_type();
-  
+
   // auto x = new Foo() will not be deduced to |Foo| if we do not use the
   // canonical type. However, a canonical type will look past typedefs so we
   // will not accurately report variables on typedefs if we always do this.

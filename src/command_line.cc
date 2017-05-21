@@ -57,16 +57,18 @@ const int kExpectedClientVersion = 1;
 
 
 
+#if false
 std::string FormatMicroseconds(long long microseconds) {
-long long milliseconds = microseconds / 1000;
-long long remaining = microseconds  - milliseconds;
+  long long milliseconds = microseconds / 1000;
+  long long remaining = microseconds  - milliseconds;
 
-// Only show two digits after the dot.
-while (remaining >= 100)
-  remaining /= 10;
+  // Only show two digits after the dot.
+  while (remaining >= 100)
+    remaining /= 10;
 
-return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
+  return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
 }
+#endif
 
 
 
@@ -86,15 +88,15 @@ return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
 // the user erases a character. vscode will resend the completion request if
 // that happens.
 struct CodeCompleteCache {
-optional<std::string> cached_path;
-optional<lsPosition> cached_completion_position;
-NonElidedVector<lsCompletionItem> cached_results;
-NonElidedVector<lsDiagnostic> cached_diagnostics;
+  optional<std::string> cached_path;
+  optional<lsPosition> cached_completion_position;
+  NonElidedVector<lsCompletionItem> cached_results;
+  NonElidedVector<lsDiagnostic> cached_diagnostics;
 
-bool IsCacheValid(lsTextDocumentPositionParams position) const {
-  return cached_path == position.textDocument.uri.GetPath() &&
-          cached_completion_position == position.position;
-}
+  bool IsCacheValid(lsTextDocumentPositionParams position) const {
+    return cached_path == position.textDocument.uri.GetPath() &&
+            cached_completion_position == position.position;
+  }
 };
 
 
@@ -467,6 +469,8 @@ std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(QueryDatabas
       }
       break;
     }
+    default:
+      break;
   }
 
   return {};

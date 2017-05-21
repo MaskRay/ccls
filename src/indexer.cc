@@ -412,6 +412,8 @@ clang::VisiterResult FindTypeVisitor(clang::Cursor cursor,
     case CXCursor_TemplateRef:
       *result = cursor;
       return clang::VisiterResult::Break;
+    default:
+      break;
   }
 
   return clang::VisiterResult::Recurse;
@@ -485,7 +487,7 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
       }
 
       param->previous_cursor = cursor;
-      break;
+      return clang::VisiterResult::Continue;
 
     // We do not want to recurse for everything, since if we do that we will end
     // up visiting method definition bodies/etc. Instead, we only recurse for
@@ -501,6 +503,9 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
     case CXCursor_CXXStaticCastExpr:
     case CXCursor_CXXReinterpretCastExpr:
       return clang::VisiterResult::Recurse;
+
+    default:
+      return clang::VisiterResult::Continue;
   }
 
   return clang::VisiterResult::Continue;
@@ -684,7 +689,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
   */
 
   switch (cursor.get_kind()) {
-    case CXCursor_DeclRefExpr:
+    case CXCursor_DeclRefExpr: {
       if (cursor.get_referenced().get_kind() != CXCursor_VarDecl)
         break;
 
@@ -709,6 +714,10 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       IndexVarId ref_id = db->ToVarId(ref_usr);
       IndexVar* ref_def = db->Resolve(ref_id);
       UniqueAdd(ref_def->uses, loc);
+      break;
+    }
+
+    default:
       break;
   }
 
@@ -735,7 +744,7 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
 clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor, clang::Cursor parent, IndexParam* param) {
   switch (cursor.get_kind()) {
     case CXCursor_MacroDefinition:
-    case CXCursor_MacroExpansion:
+    case CXCursor_MacroExpansion: {
       // Resolve location, find IndexFile instance.
       CXSourceRange cx_source_range = clang_Cursor_getSpellingNameRange(cursor.cx_cursor, 0, 0);
       CXSourceLocation start = clang_getRangeStart(cx_source_range);
@@ -769,6 +778,9 @@ clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor, cla
         var_def->def.definition_extent = ResolveExtent(cursor.cx_cursor);;
       }
 
+      break;
+    }
+    default:
       break;
   }
 
@@ -1052,6 +1064,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                 //  AddInterestingUsageToType(db, arg_type,
                 //  FindLocationOfTypeSpecifier(arg));
                 break;
+              default:
+                break;
             }
           }
 
@@ -1222,6 +1236,9 @@ bool IsFunctionCallContext(CXCursorKind kind) {
     // TODO: we need to test lambdas
     case CXCursor_LambdaExpr:
       return true;
+
+    default:
+      break;
   }
 
   return false;

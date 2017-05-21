@@ -625,6 +625,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_r
         vars[usr_to_var[usr].id] = nullopt;
       break;
     }
+    case SymbolKind::Invalid:
+      break;
   }
 }
 
