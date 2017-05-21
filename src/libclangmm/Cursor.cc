@@ -34,6 +34,10 @@ std::string Type::get_usr() const {
   return clang::Cursor(clang_getTypeDeclaration(cx_type)).get_usr();
 }
 
+Type Type::get_canonical() const {
+  return clang_getCanonicalType(cx_type);
+}
+
 Type Type::strip_qualifiers() const {
   // CXRefQualifierKind qualifiers = clang_Type_getCXXRefQualifier(cx_type)
   switch (cx_type.kind) {
@@ -110,6 +114,18 @@ bool Cursor::operator!=(const Cursor& rhs) const {
 
 CXCursorKind Cursor::get_kind() const {
   return cx_cursor.kind;
+}
+
+Cursor Cursor::get_declaration() const {
+  Type type = get_type();
+  
+  // auto x = new Foo() will not be deduced to |Foo| if we do not use the
+  // canonical type. However, a canonical type will look past typedefs so we
+  // will not accurately report variables on typedefs if we always do this.
+  if (type.cx_type.kind == CXType_Auto)
+    type = type.get_canonical();
+
+  return type.strip_qualifiers().get_declaration();
 }
 
 Type Cursor::get_type() const {

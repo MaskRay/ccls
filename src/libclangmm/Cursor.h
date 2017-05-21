@@ -23,6 +23,7 @@ class Type {
   CXCursor get_declaration() const;
   std::string get_usr() const;
   std::string get_spelling() const;
+  Type get_canonical() const;
 
   // Try to resolve this type and remove qualifies, ie, Foo* will become Foo
   Type strip_qualifiers() const;
@@ -46,6 +47,7 @@ class Cursor {
   bool operator!=(const Cursor& rhs) const;
 
   CXCursorKind get_kind() const;
+  Cursor get_declaration() const;
   Type get_type() const;
   std::string get_spelling() const;
   std::string get_display_name() const;

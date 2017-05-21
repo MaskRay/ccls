@@ -481,8 +481,7 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
 // (ie, Foo<A,B> => Foo<*,*>).
 optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
                                                clang::Cursor cursor) {
-  clang::Cursor declaration =
-      cursor.get_type().strip_qualifiers().get_declaration();
+  clang::Cursor declaration = cursor.get_declaration();
   declaration = declaration.template_specialization_to_template_definition();
   std::string usr = declaration.get_usr();
   if (usr != "")
