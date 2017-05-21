@@ -203,6 +203,7 @@ std::string Cursor::get_type_description() const {
   auto type = clang_getCursorType(cx_cursor);
   return clang::ToString(clang_getTypeSpelling(type));
 
+#if false
   std::string spelling;
 
   auto referenced = clang_getCursorReferenced(cx_cursor);
@@ -244,6 +245,7 @@ std::string Cursor::get_type_description() const {
     return get_spelling();
 
   return spelling;
+#endif
 }
 
 #if false

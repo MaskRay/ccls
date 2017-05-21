@@ -12,16 +12,16 @@ const char* SkipAfter(const char* input, char skip_after) {
 
 Position::Position() {}
 
-Position::Position(int32_t line, int32_t column)
+Position::Position(int16_t line, int16_t column)
   : line(line), column(column) {}
 
 Position::Position(const char* encoded) {
   assert(encoded);
-  line = atoi(encoded);
+  line = (int16_t)atoi(encoded);
 
   encoded = SkipAfter(encoded, ':');
   assert(encoded);
-  column = atoi(encoded);
+  column = (int16_t)atoi(encoded);
 }
 
 std::string Position::ToString() {
@@ -78,19 +78,19 @@ Range::Range(Position start, Position end) : start(start), end(end) {}
 Range::Range(const char* encoded) {
   end = start;
 
-  start.line = atoi(encoded);
+  start.line = (int16_t)atoi(encoded);
 
   encoded = SkipAfter(encoded, ':');
   assert(encoded);
-  start.column = atoi(encoded);
+  start.column = (int16_t)atoi(encoded);
 
   encoded = SkipAfter(encoded, '-');
   assert(encoded);
-  end.line = atoi(encoded);
+  end.line = (int16_t)atoi(encoded);
 
   encoded = SkipAfter(encoded, ':');
   assert(encoded);
-  end.column = atoi(encoded);
+  end.column = (int16_t)atoi(encoded);
 }
 
 bool Range::Contains(int line, int column) const {

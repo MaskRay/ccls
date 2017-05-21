@@ -34,8 +34,8 @@ Range Resolve(const CXSourceRange& range, CXFile* cx_file = nullptr) {
   clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
 
   return Range(
-    Position(start_line, start_column) /*start*/,
-    Position(end_line, end_column) /*end*/);
+    Position((int16_t)start_line, (int16_t)start_column) /*start*/,
+    Position((int16_t)end_line, (int16_t)end_column) /*end*/);
 }
 
 Range ResolveSpelling(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
@@ -685,7 +685,6 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
 
   switch (cursor.get_kind()) {
     case CXCursor_DeclRefExpr:
-      CXCursorKind referenced_kind = cursor.get_referenced().get_kind();
       if (cursor.get_referenced().get_kind() != CXCursor_VarDecl)
         break;
 
@@ -1173,7 +1172,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
           // type_def ptr could be invalidated by ResolveToDeclarationType.
-          IndexType* type_def = db->Resolve(type_id);
+          type_def = db->Resolve(type_id);
           if (parent_type_id) {
             IndexType* parent_type_def =
                 db->Resolve(parent_type_id.value());

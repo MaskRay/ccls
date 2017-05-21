@@ -8,7 +8,7 @@ bool gTestOutputMode = false;
 
 // int16_t
 void Reflect(Reader& visitor, int16_t& value) {
-  value = visitor.GetInt();
+  value = (int16_t)visitor.GetInt();
 }
 void Reflect(Writer& visitor, int16_t& value) {
   visitor.Int(value);

@@ -81,7 +81,7 @@ struct PlatformSharedMemoryWin : public PlatformSharedMemory {
     this->name = name;
 
     shmem_ = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0,
-      capacity, name.c_str());
+      (DWORD)capacity, name.c_str());
     CheckForError({ ERROR_ALREADY_EXISTS } /*allow*/);
 
     data = MapViewOfFile(shmem_, FILE_MAP_ALL_ACCESS, 0, 0, capacity);
@@ -133,7 +133,6 @@ std::string GetWorkingDirectory() {
 
 std::string NormalizePath(const std::string& path) {
   DWORD retval = 0;
-  BOOL success = false;
   TCHAR buffer[MAX_PATH] = TEXT("");
   TCHAR buf[MAX_PATH] = TEXT("");
   TCHAR** lpp_part = { NULL };
@@ -172,7 +171,7 @@ void SetCurrentThreadName(const std::string& thread_name) {
   THREADNAME_INFO info;
   info.dwType = 0x1000;
   info.szName = thread_name.c_str();
-  info.dwThreadID = -1;
+  info.dwThreadID = (DWORD)-1;
   info.dwFlags = 0;
 
   __try {

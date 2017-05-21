@@ -91,7 +91,7 @@ struct Ref {
   Ref() {}  // For serialization.
 
   Ref(Id<T> id, Range loc) : id_(id), loc(loc) {}
-  Ref(Range loc) : id_(Id<T>(-1)), loc(loc) {}
+  Ref(Range loc) : id_(Id<T>((size_t)-1)), loc(loc) {}
 
   bool operator==(const Ref<T>& other) {
     return id_ == other.id_ && loc == other.loc;

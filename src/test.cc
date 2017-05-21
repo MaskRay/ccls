@@ -193,7 +193,7 @@ void RunTests() {
         std::cout << "[Enter to continue - type u to update test, a to update all]";
         char c = 'u';
         if (!update_all) {
-          c = std::cin.get();
+          c = (char)std::cin.get();
           std::cin.get();
         }
 

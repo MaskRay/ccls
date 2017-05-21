@@ -62,7 +62,7 @@ void MakeDirectoryRecursive(std::string path) {
 
   // Find first parent directory which doesn't exist.
   int first_success = -1;
-  for (int i = components.size(); i > 0; --i) {
+  for (int i = (int)components.size(); i > 0; --i) {
     if (TryMakeDirectory(prefix + Join(components, '/', i))) {
       first_success = i;
       break;

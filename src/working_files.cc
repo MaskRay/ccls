@@ -10,7 +10,7 @@ namespace {
 
 lsPosition GetPositionForOffset(const std::string& content, int offset) {
   if (offset >= content.size())
-    offset = content.size() - 1;
+    offset = (int)content.size() - 1;
 
   lsPosition result;
   int i = 0;

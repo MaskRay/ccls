@@ -287,8 +287,8 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 
     unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
     entry.args.reserve(num_args);
-    for (unsigned i = 0; i < num_args; ++i)
-      entry.args.push_back(clang::ToString(clang_CompileCommand_getArg(cx_command, i)));
+    for (unsigned j = 0; j < num_args; ++j)
+      entry.args.push_back(clang::ToString(clang_CompileCommand_getArg(cx_command, j)));
 
     result.push_back(GetCompilationEntryFromCompileCommandEntry(quote_includes, angle_includes, extra_flags, entry));
   }

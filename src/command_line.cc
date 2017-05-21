@@ -233,7 +233,7 @@ QueryFile* FindFile(QueryDatabase* db, const std::string& filename, QueryFileId*
   }
 
   std::cerr << "Unable to find file " << filename << std::endl;
-  *file_id = QueryFileId(-1);
+  *file_id = QueryFileId((size_t)-1);
   return nullptr;
 }
 
@@ -1048,15 +1048,15 @@ bool ImportCachedIndex(Config* config,
   PerformanceImportFile tu_perf;
   Timer time;
 
-  std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, tu_path);
+  std::unique_ptr<IndexFile> tu_cache = LoadCachedIndex(config, tu_path);
   tu_perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
-  if (!cache)
+  if (!tu_cache)
     return true;
 
   bool needs_reparse = false;
 
   // Import all dependencies.
-  for (auto& dependency_path : cache->dependencies) {
+  for (auto& dependency_path : tu_cache->dependencies) {
     //std::cerr << "- Got dependency " << dependency_path << std::endl;
     PerformanceImportFile perf;
     time.Reset();
@@ -1071,11 +1071,11 @@ bool ImportCachedIndex(Config* config,
   }
 
   // Import primary file.
-  if (GetLastModificationTime(tu_path) == cache->last_modification_time)
+  if (GetLastModificationTime(tu_path) == tu_cache->last_modification_time)
     file_consumer_shared->Mark(tu_path);
   else
     needs_reparse = true;
-  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), indexed_content, tu_perf, false /*is_interactive*/));
+  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(tu_cache), indexed_content, tu_perf, false /*is_interactive*/));
 
   return needs_reparse;
 }
@@ -1180,9 +1180,9 @@ bool ResetStaleFiles(Config* config,
                      FileConsumer::SharedState* file_consumer_shared,
                      const std::string& tu_path) {
   Timer time;
-  std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, tu_path);
+  std::unique_ptr<IndexFile> tu_cache = LoadCachedIndex(config, tu_path);
 
-  if (!cache) {
+  if (!tu_cache) {
     std::cerr << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)" << std::endl;
     file_consumer_shared->Mark(tu_path);
     return true;
@@ -1191,7 +1191,7 @@ bool ResetStaleFiles(Config* config,
   bool needs_reparse = false;
 
   // Check dependencies
-  for (auto& dependency_path : cache->dependencies) {
+  for (auto& dependency_path : tu_cache->dependencies) {
     std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
     if (GetLastModificationTime(cache->path) != cache->last_modification_time) {
       needs_reparse = true;
@@ -1200,7 +1200,7 @@ bool ResetStaleFiles(Config* config,
   }
 
   // Check primary file
-  if (GetLastModificationTime(tu_path) != cache->last_modification_time) {
+  if (GetLastModificationTime(tu_path) != tu_cache->last_modification_time) {
     needs_reparse = true;
     file_consumer_shared->Mark(tu_path);
   }
@@ -2188,7 +2188,7 @@ bool QueryDbMainLoop(
             }
             if (start == buffer_line_content->size())
               continue;
-            int end = buffer_line_content->size();
+            int end = (int)buffer_line_content->size();
             while (end > 0) {
               char c = (*buffer_line_content)[end];
               if (c == '"' || c == '>')
@@ -2297,7 +2297,7 @@ bool QueryDbMainLoop(
             if (!func)
               continue;
 
-            int offset = 0;
+            int16_t offset = 0;
 
             std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, *func);
             std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, *func);

@@ -11,7 +11,7 @@ struct Position {
   int16_t column = -1;
 
   Position();
-  Position(int32_t line, int32_t column);
+  Position(int16_t line, int16_t column);
   explicit Position(const char* encoded);
 
   std::string ToString();

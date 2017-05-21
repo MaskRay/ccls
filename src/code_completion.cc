@@ -294,11 +294,12 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
     timer.ResetAndPrint("[complete] Fetching unsaved files");
 
     timer.Reset();
+    unsigned const kCompleteOptions = CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
     CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
       session->active->cx_tu,
       session->file.filename.c_str(), line, column,
-      unsaved.data(), unsaved.size(),
-      CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments);
+      unsaved.data(), (unsigned)unsaved.size(),
+      kCompleteOptions);
     if (!cx_results) {
       std::cerr << "[complete] Code completion failed" << std::endl;
       request->on_complete({}, {});
@@ -332,7 +333,7 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
       ls_completion_item.kind = GetCompletionKind(result.CursorKind);
       BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
       ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
-      ls_completion_item.sortText = uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
+      ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
       
       // If this function is slow we can skip building insertText at the cost of some code duplication.
       if (!IsCallKind(result.CursorKind))

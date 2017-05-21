@@ -27,8 +27,8 @@ TranslationUnit::TranslationUnit(Index& index,
 
   //CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
   CXErrorCode error_code = clang_parseTranslationUnit2(
-      index.cx_index, filepath.c_str(), args.data(), args.size(),
-      unsaved_files.data(), unsaved_files.size(), flags, &cx_tu);
+      index.cx_index, filepath.c_str(), args.data(), (int)args.size(),
+      unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
 
   switch (error_code) {
     case CXError_Success:
@@ -61,7 +61,7 @@ TranslationUnit::~TranslationUnit() {
 void TranslationUnit::ReparseTranslationUnit(
     std::vector<CXUnsavedFile>& unsaved) {
   int error_code =
-      clang_reparseTranslationUnit(cx_tu, unsaved.size(), unsaved.data(),
+      clang_reparseTranslationUnit(cx_tu, (unsigned)unsaved.size(), unsaved.data(),
                                    clang_defaultReparseOptions(cx_tu));
   switch (error_code) {
     case CXError_Success:

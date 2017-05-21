@@ -17,7 +17,7 @@ std::string ElideLongPath(Config* config, const std::string& path) {
   if (path.size() <= config->includeCompletionMaximumPathLength)
     return path;
 
-  int start = path.size() - config->includeCompletionMaximumPathLength;
+  size_t start = path.size() - config->includeCompletionMaximumPathLength;
   return ".." + path.substr(start + 2);
 }
 
@@ -27,8 +27,8 @@ size_t TrimCommonPathPrefix(const std::string& result, const std::string& trimme
     char a = result[i];
     char b = trimmer[i];
 #if defined(_WIN32)
-    a = tolower(a);
-    b = tolower(b);
+    a = (char)tolower(a);
+    b = (char)tolower(b);
 #endif
     if (a != b)
       break;

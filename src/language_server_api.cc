@@ -103,10 +103,10 @@ MessageRegistry* MessageRegistry::instance() {
 
 void lsResponseError::Write(Writer& visitor) {
   auto& value = *this;
-  int code = static_cast<int>(this->code);
+  int code2 = static_cast<int>(this->code);
 
   visitor.StartObject();
-  REFLECT_MEMBER2("code", code);
+  REFLECT_MEMBER2("code", code2);
   REFLECT_MEMBER(message);
   if (data) {
     visitor.Key("data");

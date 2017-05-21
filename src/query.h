@@ -37,7 +37,7 @@ struct QueryLocation {
   QueryLocation(QueryFileId path, Range range)
     : path(path), range(range) {}
 
-  QueryLocation OffsetStartColumn(int offset) const {
+  QueryLocation OffsetStartColumn(int16_t offset) const {
     QueryLocation result = *this;
     result.range.start.column += offset;
     return result;
@@ -65,7 +65,7 @@ struct SymbolIdx {
   SymbolKind kind;
   size_t idx;
 
-  SymbolIdx() : kind(SymbolKind::Invalid), idx(-1) {} // Default ctor needed by stdlib. Do not use.
+  SymbolIdx() : kind(SymbolKind::Invalid), idx((size_t)-1) {} // Default ctor needed by stdlib. Do not use.
   SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
 
   bool operator==(const SymbolIdx& that) const {
@@ -172,7 +172,7 @@ struct QueryFile {
   using DefUpdate = Def;
 
   DefUpdate def;
-  size_t detailed_name_idx = -1;
+  size_t detailed_name_idx = (size_t)-1;
 
   QueryFile(const std::string& path) { def.path = path; }
 };
@@ -188,7 +188,7 @@ struct QueryType {
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
-  size_t detailed_name_idx = -1;
+  size_t detailed_name_idx = (size_t)-1;
 
   QueryType(const Usr& usr) : def(usr) {}
 };
@@ -203,7 +203,7 @@ struct QueryFunc {
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
-  size_t detailed_name_idx = -1;
+  size_t detailed_name_idx = (size_t)-1;
 
   QueryFunc(const Usr& usr) : def(usr) {}
 };
@@ -214,7 +214,7 @@ struct QueryVar {
 
   DefUpdate def;
   std::vector<QueryLocation> uses;
-  size_t detailed_name_idx = -1;
+  size_t detailed_name_idx = (size_t)-1;
 
   QueryVar(const Usr& usr) : def(usr) {}
 };
