@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <chrono>
 
+// TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on |Foobar| in DISALLOW_COPY(Foobar)
+
 namespace {
 
 const bool kIndexStdDeclarations = true;
@@ -22,13 +24,12 @@ void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
   result->push_back(ref);
 }
 
-
-Range Resolve(const CXSourceRange& range) {
+Range Resolve(const CXSourceRange& range, CXFile* cx_file = nullptr) {
   CXSourceLocation start = clang_getRangeStart(range);
   CXSourceLocation end = clang_getRangeEnd(range);
 
   unsigned int start_line, start_column;
-  clang_getSpellingLocation(start, nullptr, &start_line, &start_column, nullptr);
+  clang_getSpellingLocation(start, cx_file, &start_line, &start_column, nullptr);
   unsigned int end_line, end_column;
   clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
 
@@ -37,14 +38,14 @@ Range Resolve(const CXSourceRange& range) {
     Position(end_line, end_column) /*end*/);
 }
 
-Range ResolveSpelling(const CXCursor& cx_cursor) {
+Range ResolveSpelling(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
   CXSourceRange cx_range = clang_Cursor_getSpellingNameRange(cx_cursor, 0, 0);
-  return Resolve(cx_range);
+  return Resolve(cx_range, cx_file);
 }
 
-Range ResolveExtent(const CXCursor& cx_cursor) {
+Range ResolveExtent(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
   CXSourceRange cx_range = clang_getCursorExtent(cx_cursor);
-  return Resolve(cx_range);
+  return Resolve(cx_range, cx_file);
 }
 
 
@@ -716,7 +717,48 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
 
 
 
+clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor, clang::Cursor parent, IndexParam* param) {
+  switch (cursor.get_kind()) {
+    case CXCursor_MacroDefinition:
+    case CXCursor_MacroExpansion:
+      // Resolve location, find IndexFile instance.
+      CXSourceRange cx_source_range = clang_Cursor_getSpellingNameRange(cursor.cx_cursor, 0, 0);
+      CXSourceLocation start = clang_getRangeStart(cx_source_range);
+      if (clang_Location_isInSystemHeader(start))
+        break;
+      CXFile file;
+      Range decl_loc_spelling = Resolve(cx_source_range, &file);
+      IndexFile* db = ConsumeFile(param, file);
+      if (!db)
+        break;
 
+      // TODO: Considering checking clang_Cursor_isMacroFunctionLike, but the
+      // only real difference will be that we show 'callers' instead of 'refs'
+      // (especially since macros cannot have overrides)
+
+      std::string decl_usr;
+      if (cursor.get_kind() == CXCursor_MacroDefinition)
+        decl_usr = cursor.get_usr();
+      else
+        decl_usr = cursor.get_referenced().get_usr();
+
+      IndexVarId var_id = db->ToVarId(decl_usr);
+      IndexVar* var_def = db->Resolve(var_id);
+      UniqueAdd(var_def->uses, decl_loc_spelling);
+
+      if (cursor.get_kind() == CXCursor_MacroDefinition) {
+        var_def->def.short_name = cursor.get_display_name();
+        var_def->def.detailed_name = var_def->def.short_name;
+        var_def->def.is_local = false;
+        var_def->def.definition_spelling = decl_loc_spelling;
+        var_def->def.definition_extent = ResolveExtent(cursor.cx_cursor);;
+      }
+
+      break;
+  }
+
+  return clang::VisiterResult::Continue;
+}
 
 
 
@@ -1465,6 +1507,8 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
                              tu.cx_tu);
   clang_IndexAction_dispose(index_action);
   //std::cerr << "!! [END] Indexing " << file << std::endl;
+
+  tu.document_cursor().VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
 
   perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
