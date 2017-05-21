@@ -29,6 +29,10 @@ struct Config {
   // If true, document links are reported for #include directives.
   bool showDocumentLinksOnIncludes = true;
 
+  // Maximum path length to show in completion results. Paths longer than this
+  // will be elided with ".." put at the front. Set to 0 or a negative number
+  // to disable eliding.
+  int includeCompletionMaximumPathLength = 30;
   // Whitelist that file paths will be tested against. If a file path does not
   // end in one of these values, it will not be considered for auto-completion.
   // An example value is { ".h", ".hpp" }
@@ -57,6 +61,7 @@ MAKE_REFLECT_STRUCT(Config,
   indexerCount,
   enableIndexing, enableCacheWrite, enableCacheRead,
 
+  includeCompletionMaximumPathLength,
   includeCompletionWhitelistLiteralEnding,
   includeCompletionWhitelist, includeCompletionBlacklist,
 

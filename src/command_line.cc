@@ -1801,7 +1801,7 @@ bool QueryDbMainLoop(
           Out_TextDocumentComplete complete_response;
           complete_response.id = msg->id;
           complete_response.result.isIncomplete = false;
-          
+
           {
             std::unique_lock<std::mutex> lock(include_completion->completion_items_mutex, std::defer_lock);
             if (include_completion->is_scanning)
@@ -1821,6 +1821,7 @@ bool QueryDbMainLoop(
             }
           }
 
+          std::cerr << "[complete] Returning " << complete_response.result.items.size() << " include completions" << std::endl;
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
         }
         else {
