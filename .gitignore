@@ -2,6 +2,7 @@
 Debug
 x64
 build
+foo
 libcxx
 CACHE*
 waf-*
