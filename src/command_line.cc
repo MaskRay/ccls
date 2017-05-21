@@ -9,6 +9,7 @@
 #include "options.h"
 #include "project.h"
 #include "platform.h"
+#include "standard_includes.h"
 #include "test.h"
 #include "timer.h"
 #include "threaded_queue.h"
@@ -21,6 +22,7 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <string>
 #include <sstream>
 #include <unordered_map>
@@ -55,14 +57,14 @@ const int kExpectedClientVersion = 1;
 
 
 std::string FormatMicroseconds(long long microseconds) {
-  long long milliseconds = microseconds / 1000;
-  long long remaining = microseconds  - milliseconds;
+long long milliseconds = microseconds / 1000;
+long long remaining = microseconds  - milliseconds;
 
-  // Only show two digits after the dot.
-  while (remaining >= 100)
-    remaining /= 10;
+// Only show two digits after the dot.
+while (remaining >= 100)
+  remaining /= 10;
 
-  return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
+return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
 }
 
 
@@ -83,15 +85,15 @@ std::string FormatMicroseconds(long long microseconds) {
 // the user erases a character. vscode will resend the completion request if
 // that happens.
 struct CodeCompleteCache {
-  optional<std::string> cached_path;
-  optional<lsPosition> cached_completion_position;
-  NonElidedVector<lsCompletionItem> cached_results;
-  NonElidedVector<lsDiagnostic> cached_diagnostics;
+optional<std::string> cached_path;
+optional<lsPosition> cached_completion_position;
+NonElidedVector<lsCompletionItem> cached_results;
+NonElidedVector<lsDiagnostic> cached_diagnostics;
 
-  bool IsCacheValid(lsTextDocumentPositionParams position) const {
-    return cached_path == position.textDocument.uri.GetPath() &&
-           cached_completion_position == position.position;
-  }
+bool IsCacheValid(lsTextDocumentPositionParams position) const {
+  return cached_path == position.textDocument.uri.GetPath() &&
+          cached_completion_position == position.position;
+}
 };
 
 
@@ -103,27 +105,27 @@ struct CodeCompleteCache {
 
 
 struct IpcManager {
-  static IpcManager* instance_;
-  static IpcManager* instance() {
-    return instance_;
-  }
-  static void CreateInstance(MultiQueueWaiter* waiter) {
-    instance_ = new IpcManager(waiter);
-  }
+static IpcManager* instance_;
+static IpcManager* instance() {
+  return instance_;
+}
+static void CreateInstance(MultiQueueWaiter* waiter) {
+  instance_ = new IpcManager(waiter);
+}
 
-  std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_client_;
-  std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_server_;
+std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_client_;
+std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_server_;
 
-  enum class Destination {
-    Client, Server
-  };
+enum class Destination {
+  Client, Server
+};
 
-  ThreadedQueue<std::unique_ptr<BaseIpcMessage>>* GetThreadedQueue(Destination destination) {
-    return destination == Destination::Client ? threaded_queue_for_client_.get() : threaded_queue_for_server_.get();
-  }
+ThreadedQueue<std::unique_ptr<BaseIpcMessage>>* GetThreadedQueue(Destination destination) {
+  return destination == Destination::Client ? threaded_queue_for_client_.get() : threaded_queue_for_server_.get();
+}
 
-  void SendOutMessageToClient(IpcId id, lsBaseOutMessage& response) {
-    std::ostringstream sstream;
+void SendOutMessageToClient(IpcId id, lsBaseOutMessage& response) {
+  std::ostringstream sstream;
     response.Write(sstream);
 
     auto out = MakeUnique<Ipc_Cout>();
@@ -177,11 +179,70 @@ bool ShouldDisplayIpcTiming(IpcId id) {
 
 
 
+std::string BaseName(const std::string& path) {
+  int i = path.size() - 1;
+  while (i > 0) {
+    char c = path[i - 1];
+    if (c == '/' || c == '\\')
+      break;
+    --i;
+  }
+  return path.substr(i);
+}
+
+int TrimCommonPathPrefix(const std::string& result, const std::string& trimmer) {
+  size_t i = 0;
+  while (i < result.size() && i < trimmer.size()) {
+    char a = result[i];
+    char b = trimmer[i];
+#if defined(_WIN32)
+    a = tolower(a);
+    b = tolower(b);
+#endif
+    if (a != b)
+      break;
+    ++i;
+  }
+
+  if (i == trimmer.size())
+    return i;
+  return 0;
+}
 
 
+// Returns true iff angle brackets should be used.
+bool TrimPath(Project* project, const std::string& project_root, std::string& insert_path) {
+  int start = 0;
+  bool angle = false;
 
+  int len = TrimCommonPathPrefix(insert_path, project_root);
+  if (len > start)
+    start = len;
 
+  for (auto& include_dir : project->quote_include_directories) {
+    len = TrimCommonPathPrefix(insert_path, include_dir);
+    if (len > start)
+      start = len;
+  }
 
+  for (auto& include_dir : project->angle_include_directories) {
+    len = TrimCommonPathPrefix(insert_path, include_dir);
+    if (len > start) {
+      start = len;
+      angle = true;
+    }
+  }
+
+  insert_path = insert_path.substr(start);
+  return angle;
+}
+
+bool ShouldRunIncludeCompletion(const std::string& line) {
+  size_t start = 0;
+  while (start < line.size() && isspace(line[start]))
+    ++start;
+  return start < line.size() && line[start] == '#';
+}
 
 
 
@@ -1477,6 +1538,11 @@ bool QueryDbMainLoop(
             config->cacheDirectory += '/';
           MakeDirectoryRecursive(config->cacheDirectory);
 
+          // Set project root.
+          config->projectRoot = NormalizePath(request->params.rootUri->GetPath());
+          if (config->projectRoot.empty() || config->projectRoot[config->projectRoot.size() - 1] != '/')
+            config->projectRoot += '/';
+
           // Start indexer threads.
           int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
           if (config->indexerCount > 0)
@@ -1520,7 +1586,7 @@ bool QueryDbMainLoop(
         response.result.capabilities.completionProvider->resolveProvider = false;
         // vscode doesn't support trigger character sequences, so we use ':' for '::' and '>' for '->'.
         // See https://github.com/Microsoft/language-server-protocol/issues/138.
-        response.result.capabilities.completionProvider->triggerCharacters = { ".", ":", ">" };
+        response.result.capabilities.completionProvider->triggerCharacters = { ".", ":", ">", "#" };
 
         response.result.capabilities.signatureHelpProvider = lsSignatureHelpOptions();
         // NOTE: If updating signature help tokens make sure to also update
@@ -1772,47 +1838,120 @@ bool QueryDbMainLoop(
         lsTextDocumentPositionParams& params = msg->params;
 
         WorkingFile* file = working_files->GetFileByFilename(params.textDocument.uri.GetPath());
-        if (file)
-          params.position = file->FindStableCompletionSource(params.position);
 
-        CompletionManager::OnComplete callback = std::bind([working_files, code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
-          auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
-          auto ipc = IpcManager::instance();
+        // TODO: We should scan include directories to add any missing paths
 
+        std::string buffer_line = file->all_buffer_lines[params.position.line];
+
+        if (ShouldRunIncludeCompletion(buffer_line)) {
           Out_TextDocumentComplete complete_response;
           complete_response.id = msg->id;
           complete_response.result.isIncomplete = false;
-          complete_response.result.items = results;
 
-          // Emit completion results.
+          for (const char* stl_header : kStandardLibraryIncludes) {
+            lsCompletionItem item;
+            item.label = "#include <" + std::string(stl_header) + ">";
+            item.insertTextFormat = lsInsertTextFormat::PlainText;
+            item.kind = lsCompletionItemKind::Module;
+
+            // Replace the entire existing content.
+            item.textEdit = lsTextEdit();
+            item.textEdit->range.start.line = params.position.line;
+            item.textEdit->range.start.character = 0;
+            item.textEdit->range.end.line = params.position.line;
+            item.textEdit->range.end.character = buffer_line.size();
+            item.textEdit->newText = item.label;
+
+            complete_response.result.items.push_back(item);
+          }
+
+          for (optional<QueryFile>& file : db->files) {
+            if (!file)
+              continue;
+
+            // TODO: codify list of file extensions somewhere
+            if (EndsWith(file->def.path, ".c") ||
+                EndsWith(file->def.path, ".cc") ||
+                EndsWith(file->def.path, ".cpp"))
+              continue;
+
+            lsCompletionItem item;
+
+            // Standard library headers are handled differently.
+            std::string base_name = BaseName(file->def.path);
+            if (std::find(std::begin(kStandardLibraryIncludes), std::end(kStandardLibraryIncludes), base_name) != std::end(kStandardLibraryIncludes))
+              continue;
+
+            // Trim the path so it is relative to an include directory.
+            std::string insert_path = file->def.path;
+            std::string start_quote = "\"";
+            std::string end_quote = "\"";
+            if (TrimPath(project, config->projectRoot, insert_path)) {
+              start_quote = "<";
+              end_quote = ">";
+            }
+
+            item.label = "#include " + start_quote + insert_path + end_quote;
+            item.insertTextFormat = lsInsertTextFormat::PlainText;
+            item.kind = lsCompletionItemKind::File;
+
+            // Replace the entire existing content.
+            item.textEdit = lsTextEdit();
+            item.textEdit->range.start.line = params.position.line;
+            item.textEdit->range.start.character = 0;
+            item.textEdit->range.end.line = params.position.line;
+            item.textEdit->range.end.character = buffer_line.size();
+            item.textEdit->newText = item.label;
+
+            complete_response.result.items.push_back(item);
+          }
+
+          complete_response.Write(std::cerr);
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
-
-          // Emit diagnostics.
-          Out_TextDocumentPublishDiagnostics diagnostic_response;
-          diagnostic_response.params.uri = msg->params.textDocument.uri;
-          diagnostic_response.params.diagnostics = diagnostics;
-          ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
-
-          // Cache diagnostics so we can show fixits.
-          WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
-          if (working_file)
-            working_file->diagnostics = diagnostics;
-
-          // Cache completion results so if the user types backspace we can respond faster.
-          code_complete_cache->cached_path = msg->params.textDocument.uri.GetPath();
-          code_complete_cache->cached_completion_position = msg->params.position;
-          code_complete_cache->cached_results = results;
-          code_complete_cache->cached_diagnostics = diagnostics;
-
-          delete message;
-        }, message.release(), std::placeholders::_1, std::placeholders::_2);
-
-        if (code_complete_cache->IsCacheValid(params)) {
-          std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
-          callback(code_complete_cache->cached_results, code_complete_cache->cached_diagnostics);
         }
         else {
-          completion_manager->CodeComplete(params, std::move(callback));
+          if (file)
+            params.position = file->FindStableCompletionSource(params.position);
+
+          CompletionManager::OnComplete callback = std::bind([working_files, code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+            auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
+            auto ipc = IpcManager::instance();
+
+            Out_TextDocumentComplete complete_response;
+            complete_response.id = msg->id;
+            complete_response.result.isIncomplete = false;
+            complete_response.result.items = results;
+
+            // Emit completion results.
+            ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
+
+            // Emit diagnostics.
+            Out_TextDocumentPublishDiagnostics diagnostic_response;
+            diagnostic_response.params.uri = msg->params.textDocument.uri;
+            diagnostic_response.params.diagnostics = diagnostics;
+            ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
+
+            // Cache diagnostics so we can show fixits.
+            WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+            if (working_file)
+              working_file->diagnostics = diagnostics;
+
+            // Cache completion results so if the user types backspace we can respond faster.
+            code_complete_cache->cached_path = msg->params.textDocument.uri.GetPath();
+            code_complete_cache->cached_completion_position = msg->params.position;
+            code_complete_cache->cached_results = results;
+            code_complete_cache->cached_diagnostics = diagnostics;
+
+            delete message;
+          }, message.release(), std::placeholders::_1, std::placeholders::_2);
+
+          if (code_complete_cache->IsCacheValid(params)) {
+            std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
+            callback(code_complete_cache->cached_results, code_complete_cache->cached_diagnostics);
+          }
+          else {
+            completion_manager->CodeComplete(params, std::move(callback));
+          }
         }
 
         break;
@@ -1957,7 +2096,6 @@ bool QueryDbMainLoop(
           for (const IndexInclude& include : file->def.includes) {
             if (include.line == target_line) {
               lsLocation result;
-              std::cerr << "!! resolved to " << include.resolved_path << std::endl;
               result.uri = lsDocumentUri::FromPath(include.resolved_path);
               response.result.push_back(result);
               break;
@@ -2158,7 +2296,6 @@ bool QueryDbMainLoop(
           }
         }
 
-        response.Write(std::cerr);
         ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentLink, response);
         break;
       }

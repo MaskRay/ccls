@@ -10,6 +10,10 @@
 -IC:/Users/jacob/Desktop/superindex/indexer/third_party/sparsehash/src
 -IC:/Users/jacob/Desktop/superindex/indexer/third_party/sparsepp
 -IC:/Program Files/LLVM/include
+-IC:/Program Files (x86)/Windows Kits/10/Include/10.0.14393.0
+-IC:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include
+
+
 # OSX
 #-I/Users/jdufault/Personal/super-clang-index/third_party
 #-I/Users/jdufault/Personal/super-clang-index/third_party/doctest

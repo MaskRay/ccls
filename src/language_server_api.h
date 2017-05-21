@@ -56,6 +56,9 @@ void Reflect(Reader& visitor, lsRequestId& id);
 
 
 struct IndexerConfig {
+  // Root directory of the project. **Not serialized**
+  std::string projectRoot;
+
   std::string cacheDirectory;
   NonElidedVector<std::string> whitelist;
   NonElidedVector<std::string> blacklist;
@@ -397,6 +400,19 @@ struct lsTextDocumentPositionParams {
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentPositionParams, textDocument, position);
 
+struct lsTextEdit {
+  // The range of the text document to be manipulated. To insert
+  // text into a document create a range where start === end.
+  lsRange range;
+
+  // The string to be inserted. For delete operations use an
+  // empty string.
+  std::string newText;
+
+  bool operator==(const lsTextEdit& that);
+};
+MAKE_REFLECT_STRUCT(lsTextEdit, range, newText);
+
 // Defines whether the insert text in a completion item should be interpreted as
 // plain text or a snippet.
 enum class lsInsertTextFormat {
@@ -479,7 +495,7 @@ struct lsCompletionItem {
   //
   // *Note:* The range of the edit must be a single line range and it must contain the position at which completion
   // has been requested.
-  // TextEdit textEdit;
+  optional<lsTextEdit> textEdit;
 
   // An optional array of additional text edits that are applied when
   // selecting this completion. Edits must not overlap with the main edit
@@ -502,7 +518,8 @@ MAKE_REFLECT_STRUCT(lsCompletionItem,
   documentation,
   sortText,
   insertText,
-  insertTextFormat);
+  insertTextFormat,
+  textEdit);
 
 
 struct lsTextDocumentItem {
@@ -520,19 +537,6 @@ struct lsTextDocumentItem {
   std::string text;
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentItem, uri, languageId, version, text);
-
-struct lsTextEdit {
-  // The range of the text document to be manipulated. To insert
-  // text into a document create a range where start === end.
-  lsRange range;
-
-  // The string to be inserted. For delete operations use an
-  // empty string.
-  std::string newText;
-
-  bool operator==(const lsTextEdit& that);
-};
-MAKE_REFLECT_STRUCT(lsTextEdit, range, newText);
 
 struct lsTextDocumentEdit {
   // The text document to change.
