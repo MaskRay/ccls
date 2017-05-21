@@ -1,11 +1,16 @@
 #pragma once
 
+#include <optional.h>
+
 #include <regex>
-#include <string.>
+#include <string>
 #include <vector>
 
+using std::experimental::optional;
+using std::experimental::nullopt;
+
 struct Matcher {
-  Matcher(const std::string& search);
+  static optional<Matcher> Create(const std::string& search);
 
   bool IsMatch(const std::string& value) const;
 

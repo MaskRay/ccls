@@ -1,8 +1,10 @@
 #include "match.h"
 
 #include <doctest/doctest.h>
+#include <iostream>
 
-Matcher::Matcher(const std::string& search) {
+// static
+optional<Matcher> Matcher::Create(const std::string& search) {
   /*
   std::string real_search;
   real_search.reserve(search.size() * 3 + 2);
@@ -13,13 +15,22 @@ Matcher::Matcher(const std::string& search) {
   real_search += ".*";
   */
 
-  regex_string = search;
-  regex = std::regex(regex_string,
+  try {
+    Matcher m;
+    m.regex_string = search;
+    m.regex = std::regex(search,
       std::regex_constants::ECMAScript |
       std::regex_constants::icase |
       std::regex_constants::optimize
       //std::regex_constants::nosubs
-  );
+    );
+    return m;
+  }
+  catch (std::exception e) {
+    // TODO/FIXME: show a warning message, we need to access IpcManager so we can print it safely to stdout.
+    std::cerr << "Building matcher for " << search << " failed; " << e.what() << std::endl;
+    return nullopt;
+  }
 }
 
 bool Matcher::IsMatch(const std::string& value) const {
@@ -31,10 +42,16 @@ bool Matcher::IsMatch(const std::string& value) const {
 GroupMatch::GroupMatch(
     const std::vector<std::string>& whitelist,
     const std::vector<std::string>& blacklist) {
-  for (const std::string& entry : whitelist)
-    this->whitelist.push_back(Matcher(entry));
-  for (const std::string& entry : blacklist)
-    this->blacklist.push_back(Matcher(entry));
+  for (const std::string& entry : whitelist) {
+    optional<Matcher> m = Matcher::Create(entry);
+    if (m)
+      this->whitelist.push_back(*m);
+  }
+  for (const std::string& entry : blacklist) {
+    optional<Matcher> m = Matcher::Create(entry);
+    if (m)
+      this->blacklist.push_back(*m);
+  }
 }
 
 bool GroupMatch::IsMatch(const std::string& value, std::string* match_failure_reason) const {
@@ -61,7 +78,7 @@ bool GroupMatch::IsMatch(const std::string& value, std::string* match_failure_re
 TEST_SUITE("Matcher");
 
 TEST_CASE("sanity") {
-  Matcher m("abc");
+  //Matcher m("abc");
   // TODO: check case
   //CHECK(m.IsMatch("abc"));
   //CHECK(m.IsMatch("fooabc"));
