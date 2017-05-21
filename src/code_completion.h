@@ -10,6 +10,8 @@
 #include <functional>
 #include <mutex>
 
+// TODO: rename this file to clang_completion.h/cc
+
 struct CompletionSession {
   Project::Entry file;
   WorkingFiles* working_files;
@@ -35,7 +37,7 @@ struct CompletionSession {
 
 struct CompletionManager {
   std::vector<std::unique_ptr<CompletionSession>> sessions;
-  IndexerConfig* config;
+  Config* config;
   Project* project;
   WorkingFiles* working_files;
 
@@ -51,7 +53,7 @@ struct CompletionManager {
   // Request that the given path be reparsed.
   AtomicObject<std::string> reparse_request;
 
-  CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files);
+  CompletionManager(Config* config, Project* project, WorkingFiles* working_files);
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.

@@ -20,8 +20,8 @@ std::string GetCachedBaseFileName(const std::string& cache_directory,
 
 }  // namespace
 
-std::unique_ptr<IndexFile> LoadCachedIndex(IndexerConfig* config,
-                                             const std::string& filename) {
+std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
+                                           const std::string& filename) {
   if (!config->enableCacheRead)
     return nullptr;
 
@@ -37,7 +37,7 @@ std::unique_ptr<IndexFile> LoadCachedIndex(IndexerConfig* config,
   return nullptr;
 }
 
-optional<std::string> LoadCachedFileContents(IndexerConfig* config,
+optional<std::string> LoadCachedFileContents(Config* config,
                                              const std::string& filename) {
   if (!config->enableCacheRead)
     return nullopt;
@@ -45,7 +45,7 @@ optional<std::string> LoadCachedFileContents(IndexerConfig* config,
   return ReadContent(GetCachedBaseFileName(config->cacheDirectory, filename));
 }
 
-void WriteToCache(IndexerConfig* config,
+void WriteToCache(Config* config,
                   const std::string& filename,
                   IndexFile& file,
                   const optional<std::string>& indexed_file_content) {

@@ -1471,7 +1471,7 @@ void indexEntityReference(CXClientData client_data,
 
 
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
+    Config* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
     const std::string& file_contents_path,

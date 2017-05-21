@@ -1,6 +1,6 @@
 #pragma once
 
-#include "language_server_api.h"
+#include "config.h"
 
 #include <optional.h>
 #include <sparsepp/spp.h>
@@ -41,6 +41,6 @@ struct Project {
   // will infer one based on existing project structure.
   Entry FindCompilationEntryForFile(const std::string& filename);
 
-  void ForAllFilteredFiles(IndexerConfig* config, std::function<void(int i, const Entry& entry)> action);
+  void ForAllFilteredFiles(Config* config, std::function<void(int i, const Entry& entry)> action);
 };
 

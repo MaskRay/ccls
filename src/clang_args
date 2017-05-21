@@ -9,8 +9,6 @@
 -IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include
 -IC:/Users/jacob/Desktop/superindex/indexer/third_party/sparsepp
 -IC:/Program Files/LLVM/include
--IC:/Program Files (x86)/Windows Kits/10/Include/10.0.14393.0
--IC:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include
 
 
 # OSX

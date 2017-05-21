@@ -114,7 +114,7 @@ void RunTests() {
     // Parse expected output from the test, parse it into JSON document.
     std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
 
-    IndexerConfig config;
+    Config config;
     FileConsumer::SharedState file_consumer_shared;
 
     // Run test.

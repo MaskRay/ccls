@@ -1,4 +1,4 @@
-#include "fuzzy.h"
+#include "match.h"
 
 #include <doctest/doctest.h>
 
@@ -28,6 +28,36 @@ bool Matcher::IsMatch(const std::string& value) const {
   return std::regex_match(value, regex, std::regex_constants::match_any);
 }
 
+GroupMatch::GroupMatch(
+    const std::vector<std::string>& whitelist,
+    const std::vector<std::string>& blacklist) {
+  for (const std::string& entry : whitelist)
+    this->whitelist.push_back(Matcher(entry));
+  for (const std::string& entry : blacklist)
+    this->blacklist.push_back(Matcher(entry));
+}
+
+bool GroupMatch::IsMatch(const std::string& value, std::string* match_failure_reason) const {
+  for (const Matcher& m : whitelist) {
+    if (!m.IsMatch(value)) {
+      if (match_failure_reason)
+        *match_failure_reason = "whitelist \"" + m.regex_string + "\"";
+      return false;
+    }
+  }
+
+  for (const Matcher& m : blacklist) {
+    if (m.IsMatch(value)) {
+      if (match_failure_reason)
+        *match_failure_reason = "blacklist \"" + m.regex_string + "\"";
+      return false;
+    }
+  }
+
+  return true;
+}
+
+  
 TEST_SUITE("Matcher");
 
 TEST_CASE("sanity") {

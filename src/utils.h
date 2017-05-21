@@ -16,15 +16,12 @@ using std::experimental::nullopt;
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
+bool AnyStartsWith(const std::vector<std::string>& values, const std::string& start);
+bool EndsWithAny(const std::string& value, const std::vector<std::string>& endings);
+
 std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to);
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter);
-
-inline bool StartsWithAny(const std::vector<std::string>& values, const std::string& start) {
-  return std::any_of(std::begin(values), std::end(values), [&start](const std::string& value) {
-    return StartsWith(value, start);
-  });
-}
 
 template <typename TValues>
 std::string StringJoin(const TValues& values) {
@@ -41,6 +38,11 @@ std::string StringJoin(const TValues& values) {
 
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path);
+void GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path, const std::function<void(const std::string&)>& handler);
+
+// Ensures that |path| ends in a slash.
+void EnsureEndsInSlash(std::string& path);
+
 optional<std::string> ReadContent(const std::string& filename);
 std::vector<std::string> ReadLines(std::string filename);
 std::vector<std::string> ToLines(const std::string& content, bool trim_whitespace);

@@ -2,7 +2,8 @@
 #include "cache.h"
 #include "code_completion.h"
 #include "file_consumer.h"
-#include "fuzzy.h"
+#include "match.h"
+#include "include_completion.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
@@ -179,63 +180,7 @@ bool ShouldDisplayIpcTiming(IpcId id) {
 
 
 
-std::string BaseName(const std::string& path) {
-  int i = path.size() - 1;
-  while (i > 0) {
-    char c = path[i - 1];
-    if (c == '/' || c == '\\')
-      break;
-    --i;
-  }
-  return path.substr(i);
-}
 
-int TrimCommonPathPrefix(const std::string& result, const std::string& trimmer) {
-  size_t i = 0;
-  while (i < result.size() && i < trimmer.size()) {
-    char a = result[i];
-    char b = trimmer[i];
-#if defined(_WIN32)
-    a = tolower(a);
-    b = tolower(b);
-#endif
-    if (a != b)
-      break;
-    ++i;
-  }
-
-  if (i == trimmer.size())
-    return i;
-  return 0;
-}
-
-
-// Returns true iff angle brackets should be used.
-bool TrimPath(Project* project, const std::string& project_root, std::string& insert_path) {
-  int start = 0;
-  bool angle = false;
-
-  int len = TrimCommonPathPrefix(insert_path, project_root);
-  if (len > start)
-    start = len;
-
-  for (auto& include_dir : project->quote_include_directories) {
-    len = TrimCommonPathPrefix(insert_path, include_dir);
-    if (len > start)
-      start = len;
-  }
-
-  for (auto& include_dir : project->angle_include_directories) {
-    len = TrimCommonPathPrefix(insert_path, include_dir);
-    if (len > start) {
-      start = len;
-      angle = true;
-    }
-  }
-
-  insert_path = insert_path.substr(start);
-  return angle;
-}
 
 bool ShouldRunIncludeCompletion(const std::string& line) {
   size_t start = 0;
@@ -1094,7 +1039,7 @@ void RegisterMessageTypes() {
 
 
 
-bool ImportCachedIndex(IndexerConfig* config,
+bool ImportCachedIndex(Config* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        Index_DoIdMapQueue* queue_do_id_map,
                        const std::string& tu_path,
@@ -1135,7 +1080,7 @@ bool ImportCachedIndex(IndexerConfig* config,
   return needs_reparse;
 }
 
-void ParseFile(IndexerConfig* config,
+void ParseFile(Config* config,
                WorkingFiles* working_files,
                FileConsumer::SharedState* file_consumer_shared,
                Index_DoIdMapQueue* queue_do_id_map,
@@ -1231,7 +1176,7 @@ void ParseFile(IndexerConfig* config,
 
 }
 
-bool ResetStaleFiles(IndexerConfig* config,
+bool ResetStaleFiles(Config* config,
                      FileConsumer::SharedState* file_consumer_shared,
                      const std::string& tu_path) {
   Timer time;
@@ -1263,7 +1208,7 @@ bool ResetStaleFiles(IndexerConfig* config,
   return needs_reparse;
 }
 
-bool IndexMain_DoIndex(IndexerConfig* config,
+bool IndexMain_DoIndex(Config* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        Project* project,
                        WorkingFiles* working_files,
@@ -1327,6 +1272,7 @@ bool IndexMain_DoCreateIndexUpdate(
     response->previous_index.get(), response->current_index.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
 
+#if false
 #define PRINT_SECTION(name) \
   if (response->perf.name) {\
     total += response->perf.name; \
@@ -1351,6 +1297,7 @@ bool IndexMain_DoCreateIndexUpdate(
 
   if (response->is_interactive)
     std::cerr << "Applying IndexUpdate" << std::endl << update.ToString() << std::endl;
+#endif
 
   Index_OnIndexed reply(update, response->indexed_content, response->perf);
   queue_on_indexed->Enqueue(std::move(reply));
@@ -1372,16 +1319,16 @@ bool IndexMergeIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
     }
 
     did_merge = true;
-    Timer time;
+    //Timer time;
     root->update.Merge(to_join->update);
     for (auto&& entry : to_join->indexed_content)
       root->indexed_content.emplace(entry);
-    time.ResetAndPrint("[indexer] Joining two querydb updates");
+    //time.ResetAndPrint("[indexer] Joining two querydb updates");
   }
 }
 
 void IndexMain(
-    IndexerConfig* config,
+    Config* config,
     FileConsumer::SharedState* file_consumer_shared,
     Project* project,
     WorkingFiles* working_files,
@@ -1470,7 +1417,7 @@ void IndexMain(
 
 
 bool QueryDbMainLoop(
-    IndexerConfig* config,
+    Config* config,
     QueryDatabase* db,
     MultiQueueWaiter* waiter,
     Index_DoIndexQueue* queue_do_index,
@@ -1481,6 +1428,7 @@ bool QueryDbMainLoop(
     FileConsumer::SharedState* file_consumer_shared,
     WorkingFiles* working_files,
     CompletionManager* completion_manager,
+    IncludeCompletion* include_completion,
     CodeCompleteCache* code_complete_cache,
     CodeCompleteCache* signature_cache) {
   IpcManager* ipc = IpcManager::instance();
@@ -1530,18 +1478,16 @@ bool QueryDbMainLoop(
 
           // Make sure cache directory is valid.
           if (config->cacheDirectory.empty()) {
-            std::cerr << "No cache directory" << std::endl;
+            std::cerr << "[fatal] No cache directory" << std::endl;
             exit(1);
           }
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
-          if (config->cacheDirectory[config->cacheDirectory.size() - 1] != '/')
-            config->cacheDirectory += '/';
+          EnsureEndsInSlash(config->cacheDirectory);
           MakeDirectoryRecursive(config->cacheDirectory);
 
           // Set project root.
           config->projectRoot = NormalizePath(request->params.rootUri->GetPath());
-          if (config->projectRoot.empty() || config->projectRoot[config->projectRoot.size() - 1] != '/')
-            config->projectRoot += '/';
+          EnsureEndsInSlash(config->projectRoot);
 
           // Start indexer threads.
           int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
@@ -1554,17 +1500,23 @@ bool QueryDbMainLoop(
             });
           }
 
+          Timer time;
+
           // Open up / load the project.
           project->Load(config->extraClangArguments, project_path);
-          std::cerr << "Loaded compilation entries (" << project->entries.size() << " files)" << std::endl;
+          time.ResetAndPrint("[perf] Loaded compilation entries (" + std::to_string(project->entries.size()) + " files)");
 
+          // Start scanning include directories before dispatching project files, because that takes a long time.
+          include_completion->Rescan();
+
+          time.Reset();
           project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
-            std::cerr << "[" << i << "/" << (project->entries.size() - 1)
-              << "] Dispatching index request for file " << entry.filename
-              << std::endl;
-
+            //std::cerr << "[" << i << "/" << (project->entries.size() - 1)
+            //  << "] Dispatching index request for file " << entry.filename
+            //  << std::endl;
             queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt, false /*is_interactive*/));
           });
+          time.ResetAndPrint("[perf] Dispatched initial index requests");
         }
 
         // TODO: query request->params.capabilities.textDocument and support only things
@@ -1768,6 +1720,8 @@ bool QueryDbMainLoop(
 
         time.ResetAndPrint("[querydb] Loading cached index file for DidOpen (blocks CodeLens)");
 
+        include_completion->AddFile(working_file->filename);
+
         break;
       }
 
@@ -1847,66 +1801,26 @@ bool QueryDbMainLoop(
           Out_TextDocumentComplete complete_response;
           complete_response.id = msg->id;
           complete_response.result.isIncomplete = false;
+          
+          {
+            std::unique_lock<std::mutex> lock(include_completion->completion_items_mutex, std::defer_lock);
+            if (include_completion->is_scanning)
+              lock.lock();
+            complete_response.result.items.assign(
+              include_completion->completion_items.begin(),
+              include_completion->completion_items.end());
+            if (lock)
+              lock.unlock();
 
-          for (const char* stl_header : kStandardLibraryIncludes) {
-            lsCompletionItem item;
-            item.label = "#include <" + std::string(stl_header) + ">";
-            item.insertTextFormat = lsInsertTextFormat::PlainText;
-            item.kind = lsCompletionItemKind::Module;
-
-            // Replace the entire existing content.
-            item.textEdit = lsTextEdit();
-            item.textEdit->range.start.line = params.position.line;
-            item.textEdit->range.start.character = 0;
-            item.textEdit->range.end.line = params.position.line;
-            item.textEdit->range.end.character = buffer_line.size();
-            item.textEdit->newText = item.label;
-
-            complete_response.result.items.push_back(item);
-          }
-
-          for (optional<QueryFile>& file : db->files) {
-            if (!file)
-              continue;
-
-            // TODO: codify list of file extensions somewhere
-            if (EndsWith(file->def.path, ".c") ||
-                EndsWith(file->def.path, ".cc") ||
-                EndsWith(file->def.path, ".cpp"))
-              continue;
-
-            lsCompletionItem item;
-
-            // Standard library headers are handled differently.
-            std::string base_name = BaseName(file->def.path);
-            if (std::find(std::begin(kStandardLibraryIncludes), std::end(kStandardLibraryIncludes), base_name) != std::end(kStandardLibraryIncludes))
-              continue;
-
-            // Trim the path so it is relative to an include directory.
-            std::string insert_path = file->def.path;
-            std::string start_quote = "\"";
-            std::string end_quote = "\"";
-            if (TrimPath(project, config->projectRoot, insert_path)) {
-              start_quote = "<";
-              end_quote = ">";
+            // Update textEdit params.
+            for (lsCompletionItem& item : complete_response.result.items) {
+              item.textEdit->range.start.line = params.position.line;
+              item.textEdit->range.start.character = 0;
+              item.textEdit->range.end.line = params.position.line;
+              item.textEdit->range.end.character = (int)buffer_line.size();
             }
-
-            item.label = "#include " + start_quote + insert_path + end_quote;
-            item.insertTextFormat = lsInsertTextFormat::PlainText;
-            item.kind = lsCompletionItemKind::File;
-
-            // Replace the entire existing content.
-            item.textEdit = lsTextEdit();
-            item.textEdit->range.start.line = params.position.line;
-            item.textEdit->range.start.character = 0;
-            item.textEdit->range.end.line = params.position.line;
-            item.textEdit->range.end.character = buffer_line.size();
-            item.textEdit->newText = item.label;
-
-            complete_response.result.items.push_back(item);
           }
 
-          complete_response.Write(std::cerr);
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
         }
         else {
@@ -2445,6 +2359,7 @@ bool QueryDbMainLoop(
       }
 
       case IpcId::WorkspaceSymbol: {
+        // TODO: implement fuzzy search, see https://github.com/junegunn/fzf/blob/master/src/matcher.go for inspiration
         auto msg = static_cast<Ipc_WorkspaceSymbol*>(message.get());
 
         Out_WorkspaceSymbol response;
@@ -2559,7 +2474,7 @@ bool QueryDbMainLoop(
   return did_work;
 }
 
-void QueryDbMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
+void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
   // Create queues.
   Index_DoIndexQueue queue_do_index(waiter);
   Index_DoIdMapQueue queue_do_id_map(waiter);
@@ -2569,6 +2484,7 @@ void QueryDbMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
   Project project;
   WorkingFiles working_files;
   CompletionManager completion_manager(config, &project, &working_files);
+  IncludeCompletion include_completion(config, &project);
   CodeCompleteCache code_complete_cache;
   CodeCompleteCache signature_cache;
   FileConsumer::SharedState file_consumer_shared;
@@ -2577,7 +2493,10 @@ void QueryDbMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
   SetCurrentThreadName("querydb");
   QueryDatabase db;
   while (true) {
-    bool did_work = QueryDbMainLoop(config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed, &project, &file_consumer_shared, &working_files, &completion_manager, &code_complete_cache, &signature_cache);
+    bool did_work = QueryDbMainLoop(
+        config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed,
+        &project, &file_consumer_shared, &working_files,
+        &completion_manager, &include_completion, &code_complete_cache, &signature_cache);
     if (!did_work) {
       IpcManager* ipc = IpcManager::instance();
       waiter->Wait({
@@ -2659,7 +2578,7 @@ void QueryDbMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
 // blocks.
 //
 // |ipc| is connected to a server.
-void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Timer>* request_times) {
+void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* request_times) {
   IpcManager* ipc = IpcManager::instance();
 
   SetCurrentThreadName("stdin");
@@ -2801,7 +2720,7 @@ void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaite
   }
 }
 
-void LanguageServerMain(IndexerConfig* config, MultiQueueWaiter* waiter) {
+void LanguageServerMain(Config* config, MultiQueueWaiter* waiter) {
   std::unordered_map<IpcId, Timer> request_times;
 
   // Start stdin reader. Reading from stdin is a blocking operation so this
@@ -2899,7 +2818,7 @@ int main(int argc, char** argv) {
   }
   else if (HasOption(options, "--language-server")) {
     //std::cerr << "Running language server" << std::endl;
-    IndexerConfig config;
+    Config config;
     LanguageServerMain(&config, &waiter);
     return 0;
   }
@@ -2924,8 +2843,8 @@ int main(int argc, char** argv) {
 
     There are also a number of configuration options available when
     initializing the language server - your editor should have tooling to
-    describe those options. See |IndexerConfig| in this source code for a
-    detailed list of all currently supported options.
+    describe those options. See |Config| in this source code for a detailed
+    list of all currently supported options.
 )help";
     return 0;
   }

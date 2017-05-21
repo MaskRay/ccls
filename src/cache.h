@@ -7,16 +7,16 @@
 using std::experimental::optional;
 using std::experimental::nullopt;
 
-struct IndexerConfig;
+struct Config;
 struct IndexFile;
 
-std::unique_ptr<IndexFile> LoadCachedIndex(IndexerConfig* config,
+std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
                                            const std::string& filename);
 
-optional<std::string> LoadCachedFileContents(IndexerConfig* config,
+optional<std::string> LoadCachedFileContents(Config* config,
                                              const std::string& filename);
 
-void WriteToCache(IndexerConfig* config,
+void WriteToCache(Config* config,
                   const std::string& filename,
                   IndexFile& file,
                   const optional<std::string>& indexed_file_contents);

@@ -1,6 +1,6 @@
 #include "project.h"
 
-#include "fuzzy.h"
+#include "match.h"
 #include "libclangmm/Utility.h"
 #include "platform.h"
 #include "serializer.h"
@@ -10,6 +10,8 @@
 #include <doctest/doctest.h>
 
 #include <iostream>
+#include <sstream>
+#include <unordered_set>
 #include <vector>
 
 struct CompileCommandsEntry {
@@ -187,9 +189,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Clang does not have good hueristics for determining source language. We
   // default to C++11 if the user has not specified.
-  if (!StartsWithAny(result.args, "-x"))
+  if (!AnyStartsWith(result.args, "-x"))
     result.args.push_back("-xc++");
-  if (!StartsWithAny(result.args, "-std="))
+  if (!AnyStartsWith(result.args, "-std="))
     result.args.push_back("-std=c++11");
 
   return result;
@@ -321,11 +323,6 @@ int ComputeGuessScore(const std::string& a, const std::string& b) {
   return score;
 }
 
-void EnsureEndsInSlash(std::string& path) {
-  if (path.empty() || path[path.size() - 1] != '/')
-    path += '/';
-}
-
 }  // namespace
 
 void Project::Load(const std::vector<std::string>& extra_flags, const std::string& directory) {
@@ -376,50 +373,18 @@ Project::Entry Project::FindCompilationEntryForFile(const std::string& filename)
   return result;
 }
 
-void Project::ForAllFilteredFiles(IndexerConfig* config, std::function<void(int i, const Entry& entry)> action) {
-  std::vector<Matcher> whitelist;
-  std::cerr << "Using whitelist" << std::endl;
-  for (const std::string& entry : config->whitelist) {
-    std::cerr << " - " << entry << std::endl;
-    whitelist.push_back(Matcher(entry));
-  }
-
-  std::vector<Matcher> blacklist;
-  std::cerr << "Using blacklist" << std::endl;
-  for (const std::string& entry : config->blacklist) {
-    std::cerr << " - " << entry << std::endl;
-    blacklist.push_back(Matcher(entry));
-  }
-
-
+void Project::ForAllFilteredFiles(Config* config, std::function<void(int i, const Entry& entry)> action) {
+  GroupMatch matcher(config->indexWhitelist, config->indexBlacklist);
   for (int i = 0; i < entries.size(); ++i) {
     const Project::Entry& entry = entries[i];
-    std::string filepath = entry.filename;
-
-    const Matcher* is_bad = nullptr;
-    for (const Matcher& m : whitelist) {
-      if (!m.IsMatch(filepath)) {
-        is_bad = &m;
-        break;
-      }
+    std::string failure_reason;
+    if (matcher.IsMatch(entry.filename, &failure_reason))
+      action(i, entries[i]);
+    else {
+      std::stringstream output;
+      output << '[' << (i + 1) << '/' << entries.size() << "] Failed " << failure_reason << "; skipping " << entry.filename << std::endl;
+      std::cerr << output.str();
     }
-    if (is_bad) {
-      std::cerr << "[" << i << "/" << (entries.size() - 1) << "] Failed whitelist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
-      continue;
-    }
-
-    for (const Matcher& m : blacklist) {
-      if (m.IsMatch(filepath)) {
-        is_bad = &m;
-        break;
-      }
-    }
-    if (is_bad) {
-      std::cerr << "[" << i << "/" << (entries.size() - 1) << "] Failed blacklist check \"" << is_bad->regex_string << "\"; skipping " << filepath << std::endl;
-      continue;
-    }
-
-    action(i, entries[i]);
   }
 }
 

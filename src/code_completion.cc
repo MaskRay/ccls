@@ -369,7 +369,7 @@ CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* w
 
 CompletionSession::~CompletionSession() {}
 
-CompletionManager::CompletionManager(IndexerConfig* config, Project* project, WorkingFiles* working_files)
+CompletionManager::CompletionManager(Config* config, Project* project, WorkingFiles* working_files)
     : config(config), project(project), working_files(working_files) {
   new std::thread([&]() {
     SetCurrentThreadName("completequery");

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "config.h"
 #include "ipc.h"
 #include "serializer.h"
 #include "utils.h"
@@ -49,57 +50,6 @@ void Reflect(Reader& visitor, lsRequestId& id);
 
 
 
-
-
-
-
-
-
-struct IndexerConfig {
-  // Root directory of the project. **Not serialized**
-  std::string projectRoot;
-
-  std::string cacheDirectory;
-  NonElidedVector<std::string> whitelist;
-  NonElidedVector<std::string> blacklist;
-  std::vector<std::string> extraClangArguments;
-
-  // Maximum workspace search results.
-  int maxWorkspaceSearchResults = 1000;
-
-  // Force a certain number of indexer threads. If less than 1 a default value
-  // should be used.
-  int indexerCount = 0;
-  // If false, the indexer will be disabled.
-  bool enableIndexing = true;
-  // If false, indexed files will not be written to disk.
-  bool enableCacheWrite = true;
-  // If false, the index will not be loaded from a previous run.
-  bool enableCacheRead = true;
-
-  // If true, document links are reported for #include directives.
-  bool showDocumentLinksOnIncludes = true;
-
-  // Enables code lens on parameter and function variables.
-  bool codeLensOnLocalVariables = true;
-
-  // Version of the client.
-  int clientVersion = 0;
-};
-MAKE_REFLECT_STRUCT(IndexerConfig,
-  cacheDirectory,
-  whitelist, blacklist,
-  extraClangArguments,
-
-  maxWorkspaceSearchResults,
-  indexerCount,
-  enableIndexing, enableCacheWrite, enableCacheRead,
-
-  showDocumentLinksOnIncludes,
-
-  codeLensOnLocalVariables,
-
-  clientVersion);
 
 
 
@@ -510,6 +460,8 @@ struct lsCompletionItem {
   // An data entry field that is preserved on a completion item between
   // a completion and a completion resolve request.
   // data ? : any
+
+  inline bool operator==(const lsCompletionItem& other) const { return label == other.label; }
 };
 MAKE_REFLECT_STRUCT(lsCompletionItem,
   label,
@@ -520,7 +472,7 @@ MAKE_REFLECT_STRUCT(lsCompletionItem,
   insertText,
   insertTextFormat,
   textEdit);
-
+MAKE_HASHABLE(lsCompletionItem, t.label);
 
 struct lsTextDocumentItem {
   // The text document's URI.
@@ -909,7 +861,7 @@ struct lsInitializeParams {
   optional<lsDocumentUri> rootUri;
 
   // User provided initialization options.
-  optional<IndexerConfig> initializationOptions;
+  optional<Config> initializationOptions;
 
   // The capabilities provided by the client (editor or tool)
   lsClientCapabilities capabilities;

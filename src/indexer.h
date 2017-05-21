@@ -550,7 +550,7 @@ struct IndexFile {
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a reparse.
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    IndexerConfig* config, FileConsumer::SharedState* file_consumer_shared,
+    Config* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
     const std::string& file_contents_path,

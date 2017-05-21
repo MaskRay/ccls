@@ -46,6 +46,18 @@ bool StartsWith(const std::string& value, const std::string& start) {
   return std::equal(start.begin(), start.end(), value.begin());
 }
 
+bool AnyStartsWith(const std::vector<std::string>& values, const std::string& start) {
+  return std::any_of(std::begin(values), std::end(values), [&start](const std::string& value) {
+    return StartsWith(value, start);
+  });
+}
+
+bool EndsWithAny(const std::string& value, const std::vector<std::string>& endings) {
+  return std::any_of(std::begin(endings), std::end(endings), [&value](const std::string& ending) {
+    return EndsWith(value, ending);
+  });
+}
+
 // See http://stackoverflow.com/a/29752943
 std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to) {
   std::string result;
@@ -83,9 +95,8 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
   return strings;
 }
 
-static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool recursive, std::string output_prefix) {
-  std::vector<std::string> result;
-
+static void GetFilesInFolderHelper(
+    std::string folder, bool recursive, std::string output_prefix, const std::function<void(const std::string&)>& handler) {
   tinydir_dir dir;
   if (tinydir_open(&dir, folder.c_str()) == -1) {
     perror("Error opening file");
@@ -105,12 +116,11 @@ static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool 
         if (recursive) {
           // Note that we must always ignore the '.' and '..' directories, otherwise
           // this will loop infinitely. The above check handles that for us.
-          for (std::string nested_file : GetFilesInFolderHelper(file.path, true /*recursive*/, output_prefix + file.name + "/"))
-            result.push_back(nested_file);
+          GetFilesInFolderHelper(file.path, true /*recursive*/, output_prefix + file.name + "/", handler);
         }
       }
       else {
-        result.push_back(output_prefix + file.name);
+        handler(output_prefix + file.name);
       }
     }
 
@@ -122,16 +132,28 @@ static std::vector<std::string> GetFilesInFolderHelper(std::string folder, bool 
 
 bail:
   tinydir_close(&dir);
-  return result;
 }
 
 std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path) {
-  assert(folder.size() > 0);
-  if (folder[folder.size() - 1] != '/')
-    folder += '/';
-
-  return GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "");
+  EnsureEndsInSlash(folder);
+  std::vector<std::string> result;
+  GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "", [&result](const std::string& path) {
+    result.push_back(path);
+  });
+  return result;
 }
+
+
+void GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path, const std::function<void(const std::string&)>& handler) {
+  EnsureEndsInSlash(folder);
+  GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "", handler);
+}
+
+void EnsureEndsInSlash(std::string& path) {
+  if (path.empty() || path[path.size() - 1] != '/')
+    path += '/';
+}
+
 
 // http://stackoverflow.com/a/6089413
 std::istream& SafeGetline(std::istream& is, std::string& t) {
