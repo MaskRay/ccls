@@ -44,6 +44,8 @@ struct WorkingFile {
   // accepts and returns 1-based lines.
   optional<int> GetIndexLineFromBufferLine(int buffer_line) const;
 
+  optional<std::string> GetBufferLineContentFromIndexLine(int indexed_line, optional<int>* out_buffer_line) const;
+
   // Finds the closest 'callable' name prior to position. This is used for
   // signature help to filter code completion results.
   //

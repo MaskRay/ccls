@@ -914,6 +914,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
+  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentLink>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeAction>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
@@ -1539,6 +1540,9 @@ bool QueryDbMainLoop(
         response.result.capabilities.documentSymbolProvider = true;
         response.result.capabilities.workspaceSymbolProvider = true;
 
+        response.result.capabilities.documentLinkProvider = lsDocumentLinkOptions();
+        response.result.capabilities.documentLinkProvider->resolveProvider = false;
+
         ipc->SendOutMessageToClient(IpcId::Initialize, response);
         break;
       }
@@ -2097,6 +2101,68 @@ bool QueryDbMainLoop(
         break;
       }
 
+      case IpcId::TextDocumentDocumentLink: {
+        auto msg = static_cast<Ipc_TextDocumentDocumentLink*>(message.get());
+
+        Out_TextDocumentDocumentLink response;
+        response.id = msg->id;
+
+        if (config->showDocumentLinksOnIncludes) {
+          QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+          if (!file) {
+            std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+            break;
+          }
+
+          WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+          if (!working_file) {
+            std::cerr << "Unable to find working file " << msg->params.textDocument.uri.GetPath() << std::endl;
+            break;
+          }
+          for (const IndexInclude& include : file->def.includes) {
+            optional<int> buffer_line;
+            optional<std::string> buffer_line_content = working_file->GetBufferLineContentFromIndexLine(include.line, &buffer_line);
+            if (!buffer_line || !buffer_line_content)
+              continue;
+
+            // Find starting and ending quote.
+            int start = 0;
+            while (start < buffer_line_content->size()) {
+              char c = (*buffer_line_content)[start];
+              ++start;
+              if (c == '"' || c == '<')
+                break;
+            }
+            if (start == buffer_line_content->size())
+              continue;
+            int end = buffer_line_content->size();
+            while (end > 0) {
+              char c = (*buffer_line_content)[end];
+              if (c == '"' || c == '>')
+                break;
+              --end;
+            }
+            if (start >= end)
+              break;
+
+
+            lsDocumentLink link;
+            link.target = lsDocumentUri::FromPath(include.resolved_path);
+            // Subtract 1 from line because querydb stores 1-based lines but
+            // vscode expects 0-based lines.
+            link.range.start.line = *buffer_line - 1;
+            link.range.start.character = start;
+            link.range.end.line = *buffer_line - 1;
+            link.range.end.character = end;
+            response.result.push_back(link);
+          }
+        }
+
+        response.Write(std::cerr);
+        ipc->SendOutMessageToClient(IpcId::TextDocumentDocumentLink, response);
+        break;
+      }
+
       case IpcId::TextDocumentCodeAction: {
         // NOTE: This code snippet will generate some FixIts for testing:
         //
@@ -2495,6 +2561,7 @@ void LanguageServerStdinLoop(IndexerConfig* config, std::unordered_map<IpcId, Ti
     case IpcId::TextDocumentHover:
     case IpcId::TextDocumentReferences:
     case IpcId::TextDocumentDocumentSymbol:
+    case IpcId::TextDocumentDocumentLink:
     case IpcId::TextDocumentCodeAction:
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:

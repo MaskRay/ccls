@@ -74,6 +74,9 @@ struct IndexerConfig {
   // If false, the index will not be loaded from a previous run.
   bool enableCacheRead = true;
 
+  // If true, document links are reported for #include directives.
+  bool showDocumentLinksOnIncludes = true;
+
   // Enables code lens on parameter and function variables.
   bool codeLensOnLocalVariables = true;
 
@@ -88,6 +91,8 @@ MAKE_REFLECT_STRUCT(IndexerConfig,
   maxWorkspaceSearchResults,
   indexerCount,
   enableIndexing, enableCacheWrite, enableCacheRead,
+
+  showDocumentLinksOnIncludes,
 
   codeLensOnLocalVariables,
 
@@ -1491,6 +1496,36 @@ struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocu
   NonElidedVector<lsSymbolInformation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
+
+// List links a document
+struct Ipc_TextDocumentDocumentLink : public IpcMessage<Ipc_TextDocumentDocumentLink> {
+  const static IpcId kIpcId = IpcId::TextDocumentDocumentLink;
+
+  struct DocumentLinkParams {
+    // The document to provide document links for.
+    lsTextDocumentIdentifier textDocument;
+  };
+
+  lsRequestId id;
+  DocumentLinkParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::DocumentLinkParams, textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink, id, params);
+// A document link is a range in a text document that links to an internal or external resource, like another
+// text document or a web site.
+struct lsDocumentLink {
+	// The range this link applies to.
+	lsRange range;
+	// The uri this link points to. If missing a resolve request is sent later.
+	optional<lsDocumentUri> target;
+};
+MAKE_REFLECT_STRUCT(lsDocumentLink, range, target);
+struct Out_TextDocumentDocumentLink : public lsOutMessage<Out_TextDocumentDocumentLink> {
+  lsRequestId id;
+  NonElidedVector<lsDocumentLink> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentLink, jsonrpc, id, result);
+
 
 // List code lens in a document.
 struct lsDocumentCodeLensParams {

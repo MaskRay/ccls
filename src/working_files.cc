@@ -164,6 +164,22 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
   return closest_index_line;
 }
 
+optional<std::string> WorkingFile::GetBufferLineContentFromIndexLine(int indexed_line, optional<int>* out_buffer_line) const {
+  optional<int> buffer_line = GetBufferLineFromIndexLine(indexed_line);
+  if (out_buffer_line)
+    *out_buffer_line = buffer_line;
+
+  if (!buffer_line)
+    return nullopt;
+
+  if (*buffer_line < 1 || *buffer_line >= all_buffer_lines.size()) {
+    std::cerr << "GetBufferLineContentFromIndexLine buffer line lookup not in all_buffer_lines" << std::endl;
+    return nullopt;
+  }
+
+  return all_buffer_lines[*buffer_line - 1];
+}
+
 std::string WorkingFile::FindClosestCallNameInBuffer(lsPosition position, int* active_parameter, lsPosition* completion_position) const {
   *active_parameter = 0;
 
