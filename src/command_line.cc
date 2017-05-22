@@ -1711,8 +1711,17 @@ bool QueryDbMainLoop(
         //      mutex and check to see if we should skip the current request.
         //      if so, ignore that index response.
         WorkingFile* working_file = working_files->GetFileByFilename(path);
-        if (working_file)
-          queue_do_index->PriorityEnqueue(Index_DoIndex(Index_DoIndex::Type::Parse, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
+        if (working_file) {
+          // Only do a delta update (Type::Parse) if we've already imported the
+          // file. If the user saves a file not loaded by the project we don't
+          // want the initial import to be a delta-update.
+          Index_DoIndex::Type index_type = Index_DoIndex::Type::Parse;
+          QueryFile* file = FindFile(db, path);
+          if (!file)
+            index_type = Index_DoIndex::Type::ImportThenParse;
+
+          queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
+        }
         completion_manager->UpdateActiveSession(path);
 
         break;
