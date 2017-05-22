@@ -18,7 +18,12 @@
 
 namespace {
 
-QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexType::Def& type) {
+optional<QueryType::DefUpdate> ToQuery(const IdMap& id_map, const IndexType::Def& type) {
+  if (type.detailed_name.empty())
+    return nullopt;
+  if (!type.definition_extent)
+    return nullopt;
+
   QueryType::DefUpdate result(type.usr);
   result.short_name = type.short_name;
   result.detailed_name = type.detailed_name;
@@ -32,7 +37,12 @@ QueryType::DefUpdate ToQuery(const IdMap& id_map, const IndexType::Def& type) {
   return result;
 }
 
-QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexFunc::Def& func) {
+optional<QueryFunc::DefUpdate> ToQuery(const IdMap& id_map, const IndexFunc::Def& func) {
+  if (func.detailed_name.empty())
+    return nullopt;
+  if (!func.definition_extent)
+    return nullopt;
+
   QueryFunc::DefUpdate result(func.usr);
   result.short_name = func.short_name;
   result.detailed_name = func.detailed_name;
@@ -45,7 +55,12 @@ QueryFunc::DefUpdate ToQuery(const IdMap& id_map, const IndexFunc::Def& func) {
   return result;
 }
 
-QueryVar::DefUpdate ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
+optional<QueryVar::DefUpdate> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
+  if (var.detailed_name.empty())
+    return nullopt;
+  if (!var.definition_extent)
+    return nullopt;
+
   QueryVar::DefUpdate result(var.usr);
   result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
@@ -417,8 +432,8 @@ IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map, const IdMap* 
 
   if (!previous_id_map) {
     assert(!previous);
-    IndexFile previous(current->path);
-    return IndexUpdate(*current_id_map, *current_id_map, previous, *current);
+    IndexFile empty(current->path);
+    return IndexUpdate(*current_id_map, *current_id_map, empty, *current);
   }
   return IndexUpdate(*previous_id_map, *current_id_map, *previous, *current);
 }
@@ -452,8 +467,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     types_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_id_map](IndexType* type) {
-    if (!type->def.detailed_name.empty())
-      types_def_update.push_back(ToQuery(current_id_map, type->def));
+    optional<QueryType::DefUpdate> def_update = ToQuery(current_id_map, type->def);
+    if (def_update)
+      types_def_update.push_back(*def_update);
     if (!type->derived.empty())
       types_derived.push_back(QueryType::DerivedUpdate(current_id_map.ToQuery(type->id), current_id_map.ToQuery(type->derived)));
     if (!type->instances.empty())
@@ -478,8 +494,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     funcs_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_id_map](IndexFunc* func) {
-    if (!func->def.detailed_name.empty())
-      funcs_def_update.push_back(ToQuery(current_id_map, func->def));
+    optional<QueryFunc::DefUpdate> def_update = ToQuery(current_id_map, func->def);
+    if (def_update)
+      funcs_def_update.push_back(*def_update);
     if (!func->declarations.empty())
       funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(current_id_map.ToQuery(func->id), current_id_map.ToQuery(func->declarations)));
     if (!func->derived.empty())
@@ -504,8 +521,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
     vars_removed.push_back(def->def.usr);
   },
     /*onAdded:*/[this, &current_id_map](IndexVar* var) {
-    if (!var->def.detailed_name.empty())
-      vars_def_update.push_back(ToQuery(current_id_map, var->def));
+    optional<QueryVar::DefUpdate> def_update = ToQuery(current_id_map, var->def);
+    if (def_update)
+      vars_def_update.push_back(*def_update);
     if (!var->uses.empty())
       vars_uses.push_back(QueryVar::UsesUpdate(current_id_map.ToQuery(var->id), current_id_map.ToQuery(var->uses)));
   },
