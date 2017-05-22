@@ -1,5 +1,8 @@
 #include "match.h"
 
+#include "ipc_manager.h"
+#include "language_server_api.h"
+
 #include <doctest/doctest.h>
 #include <iostream>
 
@@ -27,8 +30,11 @@ optional<Matcher> Matcher::Create(const std::string& search) {
     return m;
   }
   catch (std::exception e) {
-    // TODO/FIXME: show a warning message, we need to access IpcManager so we can print it safely to stdout.
-    std::cerr << "Building matcher for " << search << " failed; " << e.what() << std::endl;
+    Out_ShowLogMessage out;
+    out.display_type = Out_ShowLogMessage::DisplayType::Show;
+    out.params.type = lsMessageType::Error;
+    out.params.message = "cquery: Parsing EMCAScript regex \"" + search + "\" failed; " + e.what();
+    IpcManager::instance()->SendOutMessageToClient(IpcId::Cout, out);
     return nullopt;
   }
 }

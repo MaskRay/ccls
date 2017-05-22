@@ -4,6 +4,7 @@
 #include "file_consumer.h"
 #include "match.h"
 #include "include_completion.h"
+#include "ipc_manager.h"
 #include "indexer.h"
 #include "query.h"
 #include "language_server_api.h"
@@ -105,54 +106,6 @@ struct CodeCompleteCache {
 
 
 
-
-
-struct IpcManager {
-static IpcManager* instance_;
-static IpcManager* instance() {
-  return instance_;
-}
-static void CreateInstance(MultiQueueWaiter* waiter) {
-  instance_ = new IpcManager(waiter);
-}
-
-std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_client_;
-std::unique_ptr<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>> threaded_queue_for_server_;
-
-enum class Destination {
-  Client, Server
-};
-
-ThreadedQueue<std::unique_ptr<BaseIpcMessage>>* GetThreadedQueue(Destination destination) {
-  return destination == Destination::Client ? threaded_queue_for_client_.get() : threaded_queue_for_server_.get();
-}
-
-void SendOutMessageToClient(IpcId id, lsBaseOutMessage& response) {
-  std::ostringstream sstream;
-    response.Write(sstream);
-
-    auto out = MakeUnique<Ipc_Cout>();
-    out->content = sstream.str();
-    out->original_ipc_id = id;
-    GetThreadedQueue(Destination::Client)->Enqueue(std::move(out));
-  }
-
-  void SendMessage(Destination destination, std::unique_ptr<BaseIpcMessage> message) {
-    GetThreadedQueue(destination)->Enqueue(std::move(message));
-  }
-
-  std::vector<std::unique_ptr<BaseIpcMessage>> GetMessages(Destination destination) {
-    return GetThreadedQueue(destination)->DequeueAll();
-  }
-
- private:
-  IpcManager(MultiQueueWaiter* waiter) {
-    threaded_queue_for_client_ = MakeUnique<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>>(waiter);
-    threaded_queue_for_server_ = MakeUnique<ThreadedQueue<std::unique_ptr<BaseIpcMessage>>>(waiter);
-  }
-};
-
-IpcManager* IpcManager::instance_ = nullptr;
 
 
 
