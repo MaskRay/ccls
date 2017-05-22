@@ -113,6 +113,12 @@ bool ShouldAddToAngleIncludes(const std::string& arg) {
   return false;
 }
 
+// Returns true if we should use the C, not C++, language spec for the given
+// file.
+bool IsCFile(const std::string& path) {
+  return EndsWith(path, ".c");
+}
+
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
     std::unordered_set<std::string>& quote_includes, std::unordered_set<std::string>& angle_includes,
     const std::vector<std::string>& extra_flags, const CompileCommandsEntry& entry) {
@@ -187,12 +193,20 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   for (const auto& flag : extra_flags)
     result.args.push_back(flag);
 
-  // Clang does not have good hueristics for determining source language. We
-  // default to C++11 if the user has not specified.
-  if (!AnyStartsWith(result.args, "-x"))
-    result.args.push_back("-xc++");
-  if (!AnyStartsWith(result.args, "-std="))
-    result.args.push_back("-std=c++11");
+  // Clang does not have good hueristics for determining source language, we
+  // should explicitly specify it.
+  if (!AnyStartsWith(result.args, "-x")) {
+    if (IsCFile(entry.file))
+      result.args.push_back("-xc");
+    else
+      result.args.push_back("-xc++");
+  }
+  if (!AnyStartsWith(result.args, "-std=")) {
+    if (IsCFile(entry.file))
+      result.args.push_back("-std=c11");
+    else
+      result.args.push_back("-std=c++11");
+  }
 
   return result;
 }
