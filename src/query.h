@@ -281,6 +281,8 @@ struct QueryDatabase {
   std::vector<optional<QueryVar>> vars;
 
   // Lookup symbol based on a usr.
+  // NOTE: For usr_to_file make sure to call LowerPathIfCaseInsensitive on key.
+  // TODO: add type wrapper to enforce we call it
   spp::sparse_hash_map<Usr, QueryFileId> usr_to_file;
   spp::sparse_hash_map<Usr, QueryTypeId> usr_to_type;
   spp::sparse_hash_map<Usr, QueryFuncId> usr_to_func;

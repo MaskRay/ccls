@@ -95,6 +95,15 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
   return strings;
 }
 
+std::string LowerPathIfCaseInsensitive(const std::string& path) {
+  std::string result = path;
+#if defined(_WIN32)
+  for (size_t i = 0; i < result.size(); ++i)
+    result[i] = (char)tolower(result[i]);
+#endif
+  return result;
+}
+
 static void GetFilesInFolderHelper(
     std::string folder, bool recursive, std::string output_prefix, const std::function<void(const std::string&)>& handler) {
   tinydir_dir dir;

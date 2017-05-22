@@ -23,6 +23,8 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
 
 std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter);
 
+std::string LowerPathIfCaseInsensitive(const std::string& path);
+
 template <typename TValues>
 std::string StringJoin(const TValues& values) {
   std::string result;

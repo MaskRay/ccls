@@ -261,12 +261,12 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
 
 
 QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db, const std::string& path) {
-  auto it = query_db->usr_to_file.find(path);
+  auto it = query_db->usr_to_file.find(LowerPathIfCaseInsensitive(path));
   if (it != query_db->usr_to_file.end())
     return QueryFileId(it->second.id);
 
   size_t idx = query_db->files.size();
-  query_db->usr_to_file[path] = QueryFileId(idx);
+  query_db->usr_to_file[LowerPathIfCaseInsensitive(path)] = QueryFileId(idx);
   query_db->files.push_back(QueryFile(path));
   return QueryFileId(idx);
 }
@@ -625,7 +625,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_r
   switch (usr_kind) {
     case SymbolKind::File: {
       for (const Usr& usr : to_remove)
-        files[usr_to_file[usr].id] = nullopt;
+        files[usr_to_file[LowerPathIfCaseInsensitive(usr)].id] = nullopt;
       break;
     }
     case SymbolKind::Type: {
@@ -691,7 +691,7 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& upda
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
-    auto it = usr_to_file.find(def.path);
+    auto it = usr_to_file.find(LowerPathIfCaseInsensitive(def.path));
     assert(it != usr_to_file.end());
 
     optional<QueryFile>& existing = files[it->second.id];
