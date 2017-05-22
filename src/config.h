@@ -7,12 +7,16 @@
 struct Config {
   // Root directory of the project. **Not serialized**
   std::string projectRoot;
-
   std::string cacheDirectory;
-  std::vector<std::string> indexWhitelist;
-  std::vector<std::string> indexBlacklist;
+
   std::vector<std::string> extraClangArguments;
 
+  std::vector<std::string> indexWhitelist;
+  std::vector<std::string> indexBlacklist;
+  // If true, project paths that were skipped by the whitelist/blacklist will
+  // be logged.
+  bool logSkippedPathsForIndex = false;
+ 
   // Maximum workspace search results.
   int maxWorkspaceSearchResults = 1000;
 
@@ -54,8 +58,11 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config,
   cacheDirectory,
-  indexWhitelist, indexBlacklist,
+
   extraClangArguments,
+
+  indexWhitelist, indexBlacklist,
+  logSkippedPathsForIndex,
 
   maxWorkspaceSearchResults,
   indexerCount,

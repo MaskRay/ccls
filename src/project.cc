@@ -395,9 +395,11 @@ void Project::ForAllFilteredFiles(Config* config, std::function<void(int i, cons
     if (matcher.IsMatch(entry.filename, &failure_reason))
       action(i, entries[i]);
     else {
-      std::stringstream output;
-      output << '[' << (i + 1) << '/' << entries.size() << "] Failed " << failure_reason << "; skipping " << entry.filename << std::endl;
-      std::cerr << output.str();
+      if (config->logSkippedPathsForIndex) {
+        std::stringstream output;
+        output << '[' << (i + 1) << '/' << entries.size() << "] Failed " << failure_reason << "; skipping " << entry.filename << std::endl;
+        std::cerr << output.str();
+      }
     }
   }
 }
