@@ -504,7 +504,7 @@ MAKE_REFLECT_STRUCT(IndexInclude, line, resolved_path);
 struct IndexFile {
   IdCache id_cache;
 
-  static constexpr int kCurrentVersion = 2;
+  static constexpr int kCurrentVersion = 3;
   int version = 0;
 
   std::string path;
