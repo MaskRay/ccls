@@ -460,14 +460,6 @@ struct lsCompletionItem {
   // An data entry field that is preserved on a completion item between
   // a completion and a completion resolve request.
   // data ? : any
-
-  inline bool operator==(const lsCompletionItem& other) const {
-    if (textEdit && other.textEdit)
-      return textEdit->newText == other.textEdit->newText;
-    if (!insertText.empty())
-      return insertText == other.insertText;
-    return label == other.label;
-  }
 };
 MAKE_REFLECT_STRUCT(lsCompletionItem,
   label,
@@ -478,17 +470,6 @@ MAKE_REFLECT_STRUCT(lsCompletionItem,
   insertText,
   insertTextFormat,
   textEdit);
-namespace std {
-template<> struct hash<lsCompletionItem> {
-  std::size_t operator()(const lsCompletionItem& t) const {
-    if (t.textEdit)
-      return std::hash<std::string>()(t.textEdit->newText);
-    if (!t.insertText.empty())
-      return std::hash<std::string>()(t.insertText);
-    return std::hash<std::string>()(t.label);
-  }
-};
-}
 
 struct lsTextDocumentItem {
   // The text document's URI.

@@ -10,6 +10,11 @@
 
 namespace {
 
+struct CompletionCandidate {
+  std::string absolute_path;
+  lsCompletionItem completion_item;
+};
+
 std::string ElideLongPath(Config* config, const std::string& path) {
   if (config->includeCompletionMaximumPathLength <= 0)
     return path;
@@ -41,33 +46,33 @@ size_t TrimCommonPathPrefix(const std::string& result, const std::string& trimme
 }
 
 // Returns true iff angle brackets should be used.
-bool TrimPath(Project* project, const std::string& project_root, std::string& insert_path) {
+bool TrimPath(Project* project, const std::string& project_root, std::string* insert_path) {
   size_t start = 0;
   bool angle = false;
 
-  size_t len = TrimCommonPathPrefix(insert_path, project_root);
+  size_t len = TrimCommonPathPrefix(*insert_path, project_root);
   if (len > start)
     start = len;
 
   for (auto& include_dir : project->quote_include_directories) {
-    len = TrimCommonPathPrefix(insert_path, include_dir);
+    len = TrimCommonPathPrefix(*insert_path, include_dir);
     if (len > start)
       start = len;
   }
 
   for (auto& include_dir : project->angle_include_directories) {
-    len = TrimCommonPathPrefix(insert_path, include_dir);
+    len = TrimCommonPathPrefix(*insert_path, include_dir);
     if (len > start) {
       start = len;
       angle = true;
     }
   }
 
-  insert_path = insert_path.substr(start);
+  *insert_path = insert_path->substr(start);
   return angle;
 }
 
-lsCompletionItem BuildCompletionItem(Config* config, std::string path, bool use_angle_brackets, bool is_stl) {
+lsCompletionItem BuildCompletionItem(Config* config, const std::string& path, bool use_angle_brackets, bool is_stl) {
   lsCompletionItem item;
   if (use_angle_brackets)
     item.label = "#include <" + ElideLongPath(config, path) + ">";
@@ -103,6 +108,7 @@ void IncludeCompletion::Rescan() {
     return;
 
   completion_items.clear();
+  seen_paths.clear();
 
   if (!match_ && (!config_->includeCompletionWhitelist.empty() || !config_->includeCompletionBlacklist.empty()))
     match_ = MakeUnique<GroupMatch>(config_->includeCompletionWhitelist, config_->includeCompletionBlacklist);
@@ -124,44 +130,56 @@ void IncludeCompletion::Rescan() {
   });
 }
 
-void IncludeCompletion::AddFile(std::string path) {
-  if (!EndsWithAny(path, config_->includeCompletionWhitelistLiteralEnding))
+void IncludeCompletion::AddFile(const std::string& absolute_path) {
+  if (!EndsWithAny(absolute_path, config_->includeCompletionWhitelistLiteralEnding))
     return;
-  if (match_ && !match_->IsMatch(path))
+  if (match_ && !match_->IsMatch(absolute_path))
     return;
 
-  bool use_angle_brackets = TrimPath(project_, config_->projectRoot, path);
-  lsCompletionItem item = BuildCompletionItem(config_, path, use_angle_brackets, false /*is_stl*/);
+  std::string trimmed_path = absolute_path;
+  bool use_angle_brackets = TrimPath(project_, config_->projectRoot, &trimmed_path);
+  lsCompletionItem item = BuildCompletionItem(config_, trimmed_path, use_angle_brackets, false /*is_stl*/);
   
   if (is_scanning) {
     std::lock_guard<std::mutex> lock(completion_items_mutex);
-    completion_items.insert(item);
+    if (seen_paths.insert(absolute_path).second)
+      completion_items.push_back(item);
   }
   else {
-    completion_items.insert(item);
+    if (seen_paths.insert(absolute_path).second)
+      completion_items.push_back(item);
   }
 }
 
 void IncludeCompletion::InsertIncludesFromDirectory(
-    const std::string& directory,
+    std::string directory,
     bool use_angle_brackets) {
-  std::vector<lsCompletionItem> result;
+  directory = NormalizePath(directory);
+  EnsureEndsInSlash(directory);
+
+  std::vector<CompletionCandidate> results;
   GetFilesInFolder(directory, true /*recursive*/, false /*add_folder_to_path*/, [&](const std::string& path) {
     if (!EndsWithAny(path, config_->includeCompletionWhitelistLiteralEnding))
       return;
     if (match_ && !match_->IsMatch(directory + path))
       return;
 
-    result.push_back(BuildCompletionItem(config_, path, use_angle_brackets, false /*is_stl*/));
+    CompletionCandidate candidate;
+    candidate.absolute_path = directory + path;
+    candidate.completion_item = BuildCompletionItem(config_, path, use_angle_brackets, false /*is_stl*/);
+    results.push_back(candidate);
   });
 
   std::lock_guard<std::mutex> lock(completion_items_mutex);
-  completion_items.insert(result.begin(), result.end());
+  for (const CompletionCandidate& result : results) {
+    if (seen_paths.insert(result.absolute_path).second)
+      completion_items.push_back(result.completion_item);
+  }
 }
 
 void IncludeCompletion::InsertStlIncludes() {
   std::lock_guard<std::mutex> lock(completion_items_mutex);
   for (const char* stl_header : kStandardLibraryIncludes) {
-    completion_items.insert(BuildCompletionItem(config_, stl_header, true /*use_angle_brackets*/, true /*is_stl*/));
+    completion_items.push_back(BuildCompletionItem(config_, stl_header, true /*use_angle_brackets*/, true /*is_stl*/));
   }
 }

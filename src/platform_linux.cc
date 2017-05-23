@@ -227,6 +227,13 @@ out_error:
     close(fd_to);
 }
 
+bool IsSymLink(const std::string& path) {
+  struct stat buf;
+  int result;
+  result = lstat(path.c_str(), &buf);
+  return result == 0;
+}
+
 std::vector<std::string> GetPlatformClangArguments() {
   return {};
 }

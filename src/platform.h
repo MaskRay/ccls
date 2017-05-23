@@ -41,5 +41,7 @@ int64_t GetLastModificationTime(const std::string& absolute_path);
 
 void CopyFileTo(const std::string& destination, const std::string& source);
 
+bool IsSymLink(const std::string& path);
+
 // Returns any clang arguments that are specific to the current platform.
 std::vector<std::string> GetPlatformClangArguments();

@@ -16,17 +16,21 @@ struct IncludeCompletion {
   void Rescan();
 
   // Ensures the one-off file is inside |completion_items|.
-  void AddFile(std::string path);
+  void AddFile(const std::string& absolute_path);
 
   // Scans the given directory and inserts all includes from this. This is a 
   // blocking function and should be run off the querydb thread.
-  void InsertIncludesFromDirectory(const std::string& directory, bool use_angle_brackets);
+  void InsertIncludesFromDirectory(std::string directory, bool use_angle_brackets);
   void InsertStlIncludes();
 
   // Guards |completion_items| when |is_scanning| is true.
   std::mutex completion_items_mutex;
   std::atomic<bool> is_scanning;
-  std::unordered_set<lsCompletionItem> completion_items;
+  std::vector<lsCompletionItem> completion_items;
+  // Paths inside of |completion_items|. Multiple paths could show up the same
+  // time, but with different bracket types, so we have to hash on the absolute
+  // path, and not what we insert into the completion results.
+  std::unordered_set<std::string> seen_paths;
 
   // Cached references
   Config* config_;

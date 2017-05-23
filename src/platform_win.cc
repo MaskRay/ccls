@@ -207,6 +207,10 @@ void CopyFileTo(const std::string& destination, const std::string& source) {
     false /*failIfExists*/);
 }
 
+bool IsSymLink(const std::string& path) {
+  return false;
+}
+
 std::vector<std::string> GetPlatformClangArguments() {
   return {
     "-fms-compatibility",

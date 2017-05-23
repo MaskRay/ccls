@@ -1,5 +1,9 @@
 #include "utils.h"
 
+#include "platform.h"
+
+#include <tinydir.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cctype>
@@ -9,8 +13,6 @@
 #include <locale>
 #include <sstream>
 #include <unordered_map>
-
-#include <tinydir.h>
 
 namespace {
 
@@ -120,12 +122,15 @@ static void GetFilesInFolderHelper(
     }
 
     // Skip all dot files.
+    // We must always ignore the '.' and '..' directories, otherwise
+    // this will loop infinitely.
+    // The nested ifs are intentional, branching order is subtle here.
     if (file.name[0] != '.') {
       if (file.is_dir) {
         if (recursive) {
-          // Note that we must always ignore the '.' and '..' directories, otherwise
-          // this will loop infinitely. The above check handles that for us.
-          GetFilesInFolderHelper(file.path, true /*recursive*/, output_prefix + file.name + "/", handler);
+          std::string child_dir = output_prefix + file.name + "/";
+          if (!IsSymLink(child_dir))
+            GetFilesInFolderHelper(file.path, true /*recursive*/, child_dir, handler);
         }
       }
       else {
