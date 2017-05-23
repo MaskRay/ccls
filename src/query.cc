@@ -339,7 +339,7 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  return QueryFuncRef(ToQuery(ref.id_), ToQuery(ref.loc));
+  return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc));
 }
 
 optional<QueryLocation> IdMap::ToQuery(optional<Range> range) const {
@@ -815,8 +815,8 @@ TEST_CASE("func callers") {
   IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
   IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
 
-  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0))));
-  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0))));
+  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)), false /*is_implicit*/));
+  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)), false /*is_implicit*/));
 
   IndexUpdate update = GetDelta(previous, current);
 
@@ -856,10 +856,10 @@ TEST_CASE("apply delta") {
 
   IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
   IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
-  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0))));
-  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0))));
-  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0))));
-  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0))));
+  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)), false /*is_implicit*/));
+  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)), false /*is_implicit*/));
+  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0)), false /*is_implicit*/));
+  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0)), false /*is_implicit*/));
 
   QueryDatabase db;
   IdMap previous_map(&db, previous.id_cache);

@@ -145,6 +145,42 @@ bool IsLocalSemanticContainer(CXCursorKind kind) {
   }
 }
 
+// Returns true if the given entity kind can be called implicitly, ie, without
+// actually being written in the source code.
+bool CanBeCalledImplicitly(CXIdxEntityKind kind) {
+  switch (kind) {
+  case CXIdxEntity_CXXConstructor:
+  case CXIdxEntity_CXXConversionFunction:
+  case CXIdxEntity_CXXDestructor:
+    return true;
+  default:
+    return false;
+  }
+}
+
+// Returns true if the cursor spelling contains the given string. This is
+// useful to check for implicit function calls.
+bool CursorSpellingContainsString(CXCursor cursor, CXTranslationUnit cx_tu, std::string scanning_for) {
+  CXSourceRange range = clang_Cursor_getSpellingNameRange(cursor, 0, 0);
+  CXToken* tokens;
+  unsigned int num_tokens;
+  clang_tokenize(cx_tu, range, &tokens, &num_tokens);
+
+  bool result = false;
+
+  for (size_t i = 0; i < num_tokens; ++i) {
+    CXString name = clang_getTokenSpelling(cx_tu, tokens[i]);
+    if (strcmp(clang_getCString(name), scanning_for.c_str()) == 0) {
+      result = true;
+      break;
+    }
+    clang_disposeString(name);
+  }
+
+  clang_disposeTokens(cx_tu, tokens, num_tokens);
+  return result;
+}
+
 }  // namespace
 
 
@@ -1373,18 +1409,25 @@ void indexEntityReference(CXClientData client_data,
       // TODO: search full history?
       Range loc_spelling = ResolveSpelling(ref->cursor);
 
-      // Note: be careful, calling db->ToFuncId invalidates the FuncDef* ptrs.
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
+      IndexFunc* called_def = db->Resolve(called_id);
+
+      // libclang doesn't provide a nice api to check if the given function
+      // call is implicit. ref->kind should probably work (it's either direct
+      // or implicit), but libclang only supports implicit for objective-c.
+      bool is_implicit = CanBeCalledImplicitly(ref->referencedEntity->kind) &&
+                         !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu, called_def->def.short_name);
+
       if (IsFunctionCallContext(ref->container->cursor.kind)) {
         IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
         IndexFunc* caller_def = db->Resolve(caller_id);
-        IndexFunc* called_def = db->Resolve(called_id);
+        // Calling db->ToFuncId invalidates the FuncDef* ptrs.
+        called_def = db->Resolve(called_id);
 
-        AddFuncRef(&caller_def->def.callees, IndexFuncRef(called_id, loc_spelling));
-        AddFuncRef(&called_def->callers, IndexFuncRef(caller_id, loc_spelling));
+        AddFuncRef(&caller_def->def.callees, IndexFuncRef(called_id, loc_spelling, is_implicit));
+        AddFuncRef(&called_def->callers, IndexFuncRef(caller_id, loc_spelling, is_implicit));
       } else {
-        IndexFunc* called_def = db->Resolve(called_id);
-        AddFuncRef(&called_def->callers, IndexFuncRef(loc_spelling));
+        AddFuncRef(&called_def->callers, IndexFuncRef(loc_spelling, is_implicit));
       }
 
       break;

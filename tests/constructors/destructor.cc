@@ -35,7 +35,7 @@ OUTPUT:
       "definition_spelling": "3:3-3:6",
       "definition_extent": "3:3-3:11",
       "declaring_type": 0,
-      "callers": ["2@8:7-8:8"]
+      "callers": ["~2@8:7-8:8"]
     }, {
       "id": 1,
       "usr": "c:@S@Foo@F@~Foo#",
@@ -51,7 +51,7 @@ OUTPUT:
       "detailed_name": "void foo()",
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
-      "callees": ["0@8:7-8:8"]
+      "callees": ["~0@8:7-8:8"]
     }],
   "vars": [{
       "id": 0,

@@ -75,66 +75,62 @@ using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
-template <typename T>
-struct Ref {
-  Id<T> id() const {
-    assert(has_id());
-    return id_;
-  }
-  bool has_id() const {
-    return id_.id != -1;
-  }
 
-  Id<T> id_;
+struct IndexFuncRef {
+  IndexFuncId id;
   Range loc;
+  bool is_implicit = false;
 
-  Ref() {}  // For serialization.
+  IndexFuncRef() {}  // For serialization.
 
-  Ref(Id<T> id, Range loc) : id_(id), loc(loc) {}
-  Ref(Range loc) : id_(Id<T>((size_t)-1)), loc(loc) {}
+  IndexFuncRef(IndexFuncId id, Range loc, bool is_implicit) : id(id), loc(loc), is_implicit(is_implicit) {}
+  IndexFuncRef(Range loc, bool is_implicit) : id(IndexFuncId((size_t)-1)), loc(loc), is_implicit(is_implicit) {}
 
-  bool operator==(const Ref<T>& other) {
-    return id_ == other.id_ && loc == other.loc;
+  inline bool operator==(const IndexFuncRef& other) {
+    return id == other.id && loc == other.loc;
   }
-  bool operator!=(const Ref<T>& other) { return !(*this == other); }
-  bool operator<(const Ref<T>& other) const {
-    if (id_ < other.id)
+  inline bool operator!=(const IndexFuncRef& other) { return !(*this == other); }
+  inline bool operator<(const IndexFuncRef& other) const {
+    if (id < other.id)
       return true;
-    return id_ == other.id && loc < other.loc;
+    return id == other.id && loc < other.loc;
   }
 };
 
-template <typename T>
-bool operator==(const Ref<T>& a, const Ref<T>& b) {
-  return a.id_ == b.id_ && a.loc == b.loc;
+inline bool operator==(const IndexFuncRef& a, const IndexFuncRef& b) {
+  return a.id == b.id && a.loc == b.loc;
 }
-template <typename T>
-bool operator!=(const Ref<T>& a, const Ref<T>& b) {
+inline bool operator!=(const IndexFuncRef& a, const IndexFuncRef& b) {
   return !(a == b);
 }
 
-template<typename T>
-void Reflect(Reader& visitor, Ref<T>& value) {
+inline void Reflect(Reader& visitor, IndexFuncRef& value) {
   const char* str_value = visitor.GetString();
+  if (str_value[0] == '~') {
+    value.is_implicit = true;
+    ++str_value;
+  }
   uint64_t id = atol(str_value);
   const char* loc_string = strchr(str_value, '@') + 1;
 
-  value.id_ = Id<T>(id);
+  value.id = IndexFuncId(id);
   value.loc = Range(loc_string);
 }
-template<typename T>
-void Reflect(Writer& visitor, Ref<T>& value) {
-  if (value.id_.id == -1) {
-    std::string s = "-1@" + value.loc.ToString();
-    visitor.String(s.c_str());
+inline void Reflect(Writer& visitor, IndexFuncRef& value) {
+  std::string s;
+
+  if (value.is_implicit)
+    s += "~";
+  if (value.id.id == -1) { // id.id is unsigned, special case 0 value
+    s += "-1";
   }
   else {
-    std::string s = std::to_string(value.id_.id) + "@" + value.loc.ToString();
-    visitor.String(s.c_str());
+    s += std::to_string(value.id.id);
   }
-}
 
-using IndexFuncRef = Ref<IndexFunc>;
+  s += "@" + value.loc.ToString();
+  visitor.String(s.c_str());
+}
 
 // TODO: skip as much forward-processing as possible when |is_system_def| is
 //       set to false.
