@@ -100,31 +100,26 @@ struct SymbolRef {
 MAKE_REFLECT_STRUCT(SymbolRef, idx, loc);
 
 struct QueryFuncRef {
-  QueryFuncId id() const {
-    assert(has_id());
-    return id_;
-  }
-  bool has_id() const {
-    return id_.id != -1;
-  }
-
-  QueryFuncId id_;
+  QueryFuncId id;
   QueryLocation loc;
+  bool is_implicit = false;
 
   QueryFuncRef() {} // Do not use, needed for reflect.
-  QueryFuncRef(QueryFuncId id, QueryLocation loc) : id_(id), loc(loc) {}
+  QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit) : id(id), loc(loc), is_implicit(is_implicit) {}
 
   bool operator==(const QueryFuncRef& that) const {
-    return id_ == that.id_ && loc == that.loc;
+    return id == that.id && loc == that.loc && is_implicit == that.is_implicit;
   }
   bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
   bool operator<(const QueryFuncRef& that) const {
-    if (id_ < that.id_)
+    if (id < that.id)
       return true;
-    return id_ == that.id_ && loc.range.start < that.loc.range.start;
+    if (id == that.id && loc.range.start < that.loc.range.start)
+      return true;
+    return id == that.id && loc.range.start == that.loc.range.start && is_implicit < that.is_implicit;
   }
 };
-MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc);
+MAKE_REFLECT_STRUCT(QueryFuncRef, id, loc, is_implicit);
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.

@@ -87,13 +87,15 @@ struct IndexFuncRef {
   IndexFuncRef(Range loc, bool is_implicit) : id(IndexFuncId((size_t)-1)), loc(loc), is_implicit(is_implicit) {}
 
   inline bool operator==(const IndexFuncRef& other) {
-    return id == other.id && loc == other.loc;
+    return id == other.id && loc == other.loc && is_implicit == other.is_implicit;
   }
   inline bool operator!=(const IndexFuncRef& other) { return !(*this == other); }
   inline bool operator<(const IndexFuncRef& other) const {
     if (id < other.id)
       return true;
-    return id == other.id && loc < other.loc;
+    if (id == other.id && loc < other.loc)
+      return true;
+    return id == other.id && loc == other.loc && is_implicit < other.is_implicit;
   }
 };
 

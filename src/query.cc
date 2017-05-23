@@ -205,8 +205,10 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
       add_all_symbols(id_map.ToSymbol(func.id), decl);
       add_outline(id_map.ToSymbol(func.id), decl);
     }
-    for (const IndexFuncRef& caller : func.callers)
+    for (const IndexFuncRef& caller : func.callers) {
+      if (caller.is_implicit) continue;
       add_all_symbols(id_map.ToSymbol(func.id), caller.loc);
+    }
   }
   for (const IndexVar& var : indexed.vars) {
     if (var.def.definition_spelling.has_value())
@@ -339,7 +341,7 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc));
+  return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc), ref.is_implicit);
 }
 
 optional<QueryLocation> IdMap::ToQuery(optional<Range> range) const {
