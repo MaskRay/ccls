@@ -29,6 +29,7 @@ be productive with cquery. Here's a list of implemented features:
   * code actions (clang FixIts)
   * darken/fade code disabled by preprocessor
   * #include auto-complete and quick-jump (goto definition, document links)
+  * explorable call tree, expandable type hierarchy (requires vscode insiders)
 
 # Setup - build cquery, install extension, setup project
 

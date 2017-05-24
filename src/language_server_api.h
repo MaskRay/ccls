@@ -1587,6 +1587,55 @@ struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);
 
+// Type Hierarchy Tree
+struct Ipc_CqueryTypeHierarchyTree : public IpcMessage<Ipc_CqueryTypeHierarchyTree> {
+  const static IpcId kIpcId = IpcId::CqueryTypeHierarchyTree;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryTypeHierarchyTree, id, params);
+struct Out_CqueryTypeHierarchyTree : public lsOutMessage<Out_CqueryTypeHierarchyTree> {
+  struct TypeEntry {
+    std::string name;
+    optional<lsLocation> location;
+    NonElidedVector<TypeEntry> children;
+  };
+  lsRequestId id;
+  optional<TypeEntry> result;
+};
+MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree::TypeEntry, name, location, children);
+MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree, jsonrpc, id, result);
+
+// Call Tree
+struct Ipc_CqueryCallTreeInitial : public IpcMessage<Ipc_CqueryCallTreeInitial> {
+  const static IpcId kIpcId = IpcId::CqueryCallTreeInitial;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeInitial, id, params);
+struct Ipc_CqueryCallTreeExpand : public IpcMessage<Ipc_CqueryCallTreeExpand> {
+  struct Params {
+    std::string usr;
+  };
+  const static IpcId kIpcId = IpcId::CqueryCallTreeExpand;
+  lsRequestId id;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand::Params, usr);
+MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand, id, params);
+struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
+  struct CallEntry {
+    std::string name;
+    std::string usr;
+    lsLocation location;
+    bool hasCallers = true;
+  };
+
+  lsRequestId id;
+  NonElidedVector<CallEntry> result;
+};
+MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry, name, usr, location, hasCallers);
+MAKE_REFLECT_STRUCT(Out_CqueryCallTree, jsonrpc, id, result);
 
 // Vars, Callers, Derived, GotoParent
 struct Ipc_CqueryVars : public IpcMessage<Ipc_CqueryVars> {

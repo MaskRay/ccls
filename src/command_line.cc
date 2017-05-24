@@ -719,7 +719,109 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
   return symbols;
 }
 
+NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> BuildParentTypeHierarchy(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
+  optional<QueryType>& root_type = db->types[root.id];
+  if (!root_type)
+    return {};
 
+  NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
+  parent_entries.reserve(root_type->def.parents.size());
+
+  for (QueryTypeId parent_id : root_type->def.parents) {
+    optional<QueryType>& parent_type = db->types[parent_id.id];
+    if (!parent_type)
+      continue;
+
+    Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
+    parent_entry.name = parent_type->def.detailed_name;
+    if (parent_type->def.definition_spelling)
+      parent_entry.location = GetLsLocation(db, working_files, *parent_type->def.definition_spelling);
+    parent_entry.children = BuildParentTypeHierarchy(db, working_files, parent_id);
+
+    parent_entries.push_back(parent_entry);
+  }
+
+  return parent_entries;
+}
+
+
+optional<Out_CqueryTypeHierarchyTree::TypeEntry> BuildTypeHierarchy(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root_id) {
+  optional<QueryType>& root_type = db->types[root_id.id];
+  if (!root_type)
+    return nullopt;
+
+  Out_CqueryTypeHierarchyTree::TypeEntry entry;
+
+  // Name and location.
+  entry.name = root_type->def.detailed_name;
+  if (root_type->def.definition_spelling)
+    entry.location = GetLsLocation(db, working_files, *root_type->def.definition_spelling);
+
+  entry.children.reserve(root_type->derived.size());
+
+  // Base types.
+  Out_CqueryTypeHierarchyTree::TypeEntry base;
+  base.name = "[[Base]]";
+  base.location = entry.location;
+  base.children = BuildParentTypeHierarchy(db, working_files, root_id);
+  if (!base.children.empty())
+    entry.children.push_back(base);
+
+  // Add derived.
+  for (QueryTypeId derived : root_type->derived) {
+    auto derived_entry = BuildTypeHierarchy(db, working_files, derived);
+    if (derived_entry)
+      entry.children.push_back(*derived_entry);
+  }
+
+  return entry;
+}
+
+NonElidedVector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(QueryDatabase* db, WorkingFiles* working_files, QueryFuncId root) {
+  optional<QueryFunc>& root_func = db->funcs[root.id];
+  if (!root_func)
+    return {};
+  if (!root_func->def.definition_spelling)
+    return {};
+  optional<lsLocation> def_loc = GetLsLocation(db, working_files, *root_func->def.definition_spelling);
+  if (!def_loc)
+    return {};
+
+  Out_CqueryCallTree::CallEntry entry;
+  entry.name = root_func->def.short_name;
+  entry.usr = root_func->def.usr;
+  entry.location = *def_loc;
+  entry.hasCallers = !root_func->callers.empty();
+  NonElidedVector<Out_CqueryCallTree::CallEntry> result;
+  result.push_back(entry);
+  return result;
+}
+
+NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase* db, WorkingFiles* working_files, QueryFuncId root) {
+  optional<QueryFunc>& root_func = db->funcs[root.id];
+  if (!root_func)
+    return {};
+
+  NonElidedVector<Out_CqueryCallTree::CallEntry> result;
+  result.reserve(root_func->callers.size());
+  for (QueryFuncRef caller : root_func->callers) {
+    optional<QueryFunc>& call_func = db->funcs[caller.id.id];
+    if (!call_func)
+      continue;
+    optional<lsLocation> call_location = GetLsLocation(db, working_files, caller.loc);
+    if (!call_location)
+      continue;
+
+    Out_CqueryCallTree::CallEntry call_entry;
+    call_entry.name = call_func->def.short_name;
+    call_entry.usr = call_func->def.usr;
+    call_entry.location = *call_location;
+    call_entry.hasCallers = !call_func->callers.empty();
+    result.push_back(call_entry);
+  }
+
+  return result;
+}
 
 void PublishInactiveLines(WorkingFile* working_file, const std::vector<Range>& inactive) {
   Out_CquerySetInactiveRegion out;
@@ -882,13 +984,14 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
   MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
   MessageRegistry::instance()->Register<Ipc_CqueryFreshenIndex>();
+  MessageRegistry::instance()->Register<Ipc_CqueryTypeHierarchyTree>();
+  MessageRegistry::instance()->Register<Ipc_CqueryCallTreeInitial>();
+  MessageRegistry::instance()->Register<Ipc_CqueryCallTreeExpand>();
   MessageRegistry::instance()->Register<Ipc_CqueryVars>();
   MessageRegistry::instance()->Register<Ipc_CqueryCallers>();
   MessageRegistry::instance()->Register<Ipc_CqueryBase>();
   MessageRegistry::instance()->Register<Ipc_CqueryDerived>();
 }
-
-
 
 
 
@@ -1537,6 +1640,70 @@ bool QueryDbMainLoop(
         break;
       }
 
+      case IpcId::CqueryTypeHierarchyTree: {
+        auto msg = static_cast<Ipc_CqueryTypeHierarchyTree*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_CqueryTypeHierarchyTree response;
+        response.id = msg->id;
+
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          if (ref.idx.kind == SymbolKind::Type) {
+            response.result = BuildTypeHierarchy(db, working_files, QueryTypeId(ref.idx.idx));
+            break;
+          }
+        }
+
+        ipc->SendOutMessageToClient(IpcId::CqueryTypeHierarchyTree, response);
+        break;
+      }
+
+      case IpcId::CqueryCallTreeInitial: {
+        auto msg = static_cast<Ipc_CqueryCallTreeInitial*>(message.get());
+
+        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
+        if (!file) {
+          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          break;
+        }
+        WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
+
+        Out_CqueryCallTree response;
+        response.id = msg->id;
+
+        for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
+          if (ref.idx.kind == SymbolKind::Func) {
+            response.result = BuildInitialCallTree(db, working_files, QueryFuncId(ref.idx.idx));
+            break;
+          }
+        }
+
+        response.Write(std::cerr);
+        ipc->SendOutMessageToClient(IpcId::CqueryCallTreeInitial, response);
+        break;
+      }
+
+      case IpcId::CqueryCallTreeExpand: {
+        auto msg = static_cast<Ipc_CqueryCallTreeExpand*>(message.get());
+
+        Out_CqueryCallTree response;
+        response.id = msg->id;
+
+        auto func_id = db->usr_to_func.find(msg->params.usr);
+        if (func_id != db->usr_to_func.end())
+          response.result = BuildExpandCallTree(db, working_files, func_id->second);
+
+        response.Write(std::cerr);
+        ipc->SendOutMessageToClient(IpcId::CqueryCallTreeExpand, response);
+        break;
+      }
+
       case IpcId::CqueryVars: {
         auto msg = static_cast<Ipc_CqueryVars*>(message.get());
 
@@ -1557,7 +1724,7 @@ bool QueryDbMainLoop(
             response.result = GetLsLocations(db, working_files, locations);
           }
         }
-        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        ipc->SendOutMessageToClient(IpcId::CqueryVars, response);
         break;
       }
 
@@ -1581,7 +1748,7 @@ bool QueryDbMainLoop(
             response.result = GetLsLocations(db, working_files, locations);
           }
         }
-        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        ipc->SendOutMessageToClient(IpcId::CqueryCallers, response);
         break;
       }
 
@@ -1614,7 +1781,7 @@ bool QueryDbMainLoop(
             response.result.push_back(*ls_loc);
           }
         }
-        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        ipc->SendOutMessageToClient(IpcId::CqueryBase, response);
         break;
       }
 
@@ -1644,7 +1811,7 @@ bool QueryDbMainLoop(
             response.result = GetLsLocations(db, working_files, locations);
           }
         }
-        ipc->SendOutMessageToClient(IpcId::TextDocumentReferences, response);
+        ipc->SendOutMessageToClient(IpcId::CqueryDerived, response);
         break;
       }
 
@@ -2588,6 +2755,9 @@ void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* r
     case IpcId::TextDocumentCodeLens:
     case IpcId::WorkspaceSymbol:
     case IpcId::CqueryFreshenIndex:
+    case IpcId::CqueryTypeHierarchyTree:
+    case IpcId::CqueryCallTreeInitial:
+    case IpcId::CqueryCallTreeExpand:
     case IpcId::CqueryVars:
     case IpcId::CqueryCallers:
     case IpcId::CqueryBase:
