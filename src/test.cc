@@ -138,7 +138,6 @@ void RunTests() {
         &index,
         false /*dump_ast*/);
 
-#if false
       // Parse expected output from the test, parse it into JSON document.
       std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
       for (auto& entry : all_expected_output) {
@@ -183,7 +182,6 @@ void RunTests() {
 
         }
       }
-#endif
 
       memory_after = GetProcessMemoryUsedInMb();
     }

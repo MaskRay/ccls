@@ -1557,7 +1557,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     unsaved.Length = (unsigned long)file_contents->size();
     unsaved_files.push_back(unsaved);
   }
-  clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord | CXTranslationUnit_Incomplete);
+  clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord);
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
