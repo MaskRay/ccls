@@ -12,7 +12,7 @@
 namespace clang {
 class TranslationUnit {
  public:
-  TranslationUnit(Index& index,
+  TranslationUnit(Index* index,
                   const std::string& filepath,
                   const std::vector<std::string>& arguments,
                   std::vector<CXUnsavedFile> unsaved_files,

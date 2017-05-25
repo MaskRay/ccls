@@ -1536,6 +1536,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     const std::string& file_contents_path,
     const optional<std::string>& file_contents,
     PerformanceImportFile* perf,
+    clang::Index* index,
     bool dump_ast) {
 
   if (!config->enableIndexing)
@@ -1545,8 +1546,9 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   Timer timer;
 
-  clang::Index index(0 /*excludeDeclarationsFromPCH*/,
-                     0 /*displayDiagnostics*/);
+  //clang::Index index(0 /*excludeDeclarationsFromPCH*/,
+  //                   0 /*displayDiagnostics*/);
+
   std::vector<CXUnsavedFile> unsaved_files;
   if (file_contents) {
     CXUnsavedFile unsaved;
@@ -1555,7 +1557,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     unsaved.Length = (unsigned long)file_contents->size();
     unsaved_files.push_back(unsaved);
   }
-  clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord);
+  clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord | CXTranslationUnit_Incomplete);
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
@@ -1576,7 +1578,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   param.primary_file = ConsumeFile(&param, cx_file);
 
   //std::cerr << "!! [START] Indexing " << file << std::endl;
-  CXIndexAction index_action = clang_IndexAction_create(index.cx_index);
+  CXIndexAction index_action = clang_IndexAction_create(index->cx_index);
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
                              CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations,
                              tu.cx_tu);

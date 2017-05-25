@@ -1142,6 +1142,7 @@ bool ImportCachedIndex(Config* config,
 void ParseFile(Config* config,
                WorkingFiles* working_files,
                FileConsumer::SharedState* file_consumer_shared,
+               clang::Index* index,
                Index_DoIdMapQueue* queue_do_id_map,
                const Project::Entry& entry,
                const optional<std::string>& indexed_content,
@@ -1158,7 +1159,7 @@ void ParseFile(Config* config,
     config, file_consumer_shared,
     tu_path, tu_args,
     entry.filename, indexed_content,
-    &perf);
+    &perf, index);
 
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
@@ -1271,6 +1272,7 @@ bool IndexMain_DoIndex(Config* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        Project* project,
                        WorkingFiles* working_files,
+                       clang::Index* index,
                        Index_DoIndexQueue* queue_do_index,
                        Index_DoIdMapQueue* queue_do_id_map) {
   optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
@@ -1301,7 +1303,7 @@ bool IndexMain_DoIndex(Config* config,
     case Index_DoIndex::Type::Parse: {
       // index_request->path can be a cc/tu or a dependency path.
       file_consumer_shared->Reset(index_request->entry.filename);
-      ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
+      ParseFile(config, working_files, file_consumer_shared, index, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
       break;
     }
 
@@ -1311,7 +1313,7 @@ bool IndexMain_DoIndex(Config* config,
 
       bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->entry.filename);
       if (needs_reparse)
-        ParseFile(config, working_files, file_consumer_shared, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
+        ParseFile(config, working_files, file_consumer_shared, index, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
       break;
     }
   }
@@ -1327,6 +1329,7 @@ bool IndexMain_DoCreateIndexUpdate(
     return false;
 
   Timer time;
+  // TODO/FIXME: Running call tree on IndexUpdate::CreateDelta crashes cquery.
   IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
     response->previous_index.get(), response->current_index.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
@@ -1398,6 +1401,9 @@ void IndexMain(
     Index_OnIndexedQueue* queue_on_indexed) {
 
   SetCurrentThreadName("indexer");
+  // TODO: dispose of index after it is not used for a while.
+  clang::Index index(1, 0);
+
   while (true) {
     // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
     //       better icache behavior. We need to have some threads spinning on both though
@@ -1407,7 +1413,7 @@ void IndexMain(
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, project, working_files, queue_do_index, queue_do_id_map);
+    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, project, working_files, &index, queue_do_index, queue_do_id_map);
     bool did_create_update = IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
     bool did_merge = false;
 
@@ -2949,7 +2955,16 @@ int main(int argc, char** argv) {
     if (context.shouldExit())
       return res;
 
-    RunTests();
+    for (int i = 0; i < 50; ++i)
+      RunTests();
+
+    for (int i = 0; i < 20; ++i) {
+      std::this_thread::sleep_for(std::chrono::seconds(5));
+      std::cerr << "[POST] " << GetProcessMemoryUsedInMb() << std::endl;
+    }
+
+    std::cerr << std::endl << "[Enter] to exit" << std::endl;
+    std::cin.get();
     return 0;
   }
   else if (HasOption(options, "--language-server")) {

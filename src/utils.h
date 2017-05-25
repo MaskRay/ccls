@@ -122,3 +122,5 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest) {
             }\
         };\
     }
+
+float GetProcessMemoryUsedInMb();

@@ -5,6 +5,7 @@
 #include "serializer.h"
 #include "utils.h"
 #include "language_server_api.h"
+#include "libclangmm/Index.h"
 #include "libclangmm/Utility.h"
 #include "performance.h"
 
@@ -554,5 +555,6 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     const std::string& file_contents_path,
     const optional<std::string>& file_contents,
     PerformanceImportFile* perf,
+    clang::Index* index,
     bool dump_ast = false);
 void IndexInit();

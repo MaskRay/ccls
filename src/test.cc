@@ -98,29 +98,31 @@ void RunTests() {
 
   // TODO: Assert that we need to be on clang >= 3.9.1
   bool update_all = false;
+  clang::Index index(1, 0);
 
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
-    //if (path != "tests/templates/specialized_func_definition.cc") continue;
-    //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
-    //if (path != "tests/multi_file/funky_enum.cc") continue;
-    //if (path != "tests/multi_file/simple_impl.cc") continue;
-    //if (path != "tests/usage/func_called_implicit_ctor.cc") continue;
-    //if (path != "tests/templates/implicit_variable_instantiation.cc") continue;
-    //if (path != "tests/_empty_test.cc") continue;
+    float memory_before = GetProcessMemoryUsedInMb();
+    float memory_after = -1.;
 
-    //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
-    //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
+    {
+      //if (path != "tests/templates/specialized_func_definition.cc") continue;
+      //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
+      //if (path != "tests/multi_file/funky_enum.cc") continue;
+      //if (path != "tests/multi_file/simple_impl.cc") continue;
+      //if (path != "tests/usage/func_called_implicit_ctor.cc") continue;
+      //if (path != "tests/templates/implicit_variable_instantiation.cc") continue;
+      //if (path != "tests/multi_file/bad_type_remove.cc") continue;
 
-    // Parse expected output from the test, parse it into JSON document.
-    std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
+      //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
+      //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
 
-    Config config;
-    FileConsumer::SharedState file_consumer_shared;
+      Config config;
+      FileConsumer::SharedState file_consumer_shared;
 
-    // Run test.
-    std::cout << "[START] " << path << std::endl;
-    PerformanceImportFile perf;
-    std::vector<std::unique_ptr<IndexFile>> dbs = Parse(
+      // Run test.
+      //std::cout << "[START] " << path << std::endl;
+      PerformanceImportFile perf;
+      std::vector<std::unique_ptr<IndexFile>> dbs = Parse(
         &config, &file_consumer_shared,
         path,
         {
@@ -133,82 +135,71 @@ void RunTests() {
         },
         "", nullopt,
         &perf,
+        &index,
         false /*dump_ast*/);
 
 #if false
-    for (auto& db : dbs) {
-      assert(db);
-      if (!db) {
-        std::cerr << "no db!!!" << std::endl;
-        continue;
-      }
+      // Parse expected output from the test, parse it into JSON document.
+      std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
+      for (auto& entry : all_expected_output) {
+        const std::string& expected_path = entry.first;
+        const std::string& expected_output = entry.second;
 
-      for (auto& func : db->funcs) {
-        if (!func.HasInterestingState())
-          continue;
+        // Get output from index operation.
+        IndexFile* db = FindDbForPathEnding(expected_path, dbs);
+        std::string actual_output = "{}";
+        if (db) {
+          VerifySerializeToFrom(db);
+          actual_output = db->ToString();
+        }
 
+        // Compare output via rapidjson::Document to ignore any formatting
+        // differences.
+        rapidjson::Document actual;
+        actual.Parse(actual_output.c_str());
+        rapidjson::Document expected;
+        expected.Parse(expected_output.c_str());
 
-        if (func.uses.size() !=
-          (func.callers.size() + func.declarations.size() + (func.def.definition_spelling.has_value() ? 1 : 0))) {
+        if (actual == expected) {
+          std::cout << "[PASSED] " << path << std::endl;
+        }
+        else {
+          DiffDocuments(path, expected_path, expected, actual);
+          std::cout << std::endl;
+          std::cout << std::endl;
+          std::cout << "[Enter to continue - type u to update test, a to update all]";
+          char c = 'u';
+          if (!update_all) {
+            c = (char)std::cin.get();
+            std::cin.get();
+          }
 
-          std::cout << "func.def.usr = " << func.def.usr << std::endl;
-          std::cout << "func.uses.size() = " << func.uses.size() << std::endl;
-          std::cout << "func.callers.size() = " << func.callers.size() << std::endl;
-          std::cout << "func.declarations.size() = " << func.declarations.size() << std::endl;
-          std::cout << "func.definition_spelling.has_value() = " << func.def.definition_spelling.has_value() << std::endl;
+          if (c == 'a')
+            update_all = true;
 
-          std::cerr << "err" << std::endl;
+          if (update_all || c == 'u') {
+            UpdateTestExpectation(path, expected_output, ToString(actual) + "\n");
+          }
 
         }
       }
-    }
 #endif
 
-    for (auto& entry : all_expected_output) {
-      const std::string& expected_path = entry.first;
-      const std::string& expected_output = entry.second;
-
-      // Get output from index operation.
-      IndexFile* db = FindDbForPathEnding(expected_path, dbs);
-      std::string actual_output = "{}";
-      if (db) {
-        VerifySerializeToFrom(db);
-        actual_output = db->ToString();
-      }
-
-      // Compare output via rapidjson::Document to ignore any formatting
-      // differences.
-      rapidjson::Document actual;
-      actual.Parse(actual_output.c_str());
-      rapidjson::Document expected;
-      expected.Parse(expected_output.c_str());
-
-      if (actual == expected) {
-        std::cout << "[PASSED] " << path << std::endl;
-      }
-      else {
-        DiffDocuments(path, expected_path, expected, actual);
-        std::cout << std::endl;
-        std::cout << std::endl;
-        std::cout << "[Enter to continue - type u to update test, a to update all]";
-        char c = 'u';
-        if (!update_all) {
-          c = (char)std::cin.get();
-          std::cin.get();
-        }
-
-        if (c == 'a')
-          update_all = true;
-
-        if (update_all || c == 'u') {
-          UpdateTestExpectation(path, expected_output, ToString(actual) + "\n");
-        }
-
-      }
+      memory_after = GetProcessMemoryUsedInMb();
     }
+
+    float memory_cleanup = GetProcessMemoryUsedInMb();
+    std::cerr << "[memory] before=" << memory_before << "mb, after=" << memory_after << "mb, cleanup=" << memory_cleanup << "mb" << std::endl;
   }
 
-  std::cin.get();
+  std::cerr << "[final presleep] " << GetProcessMemoryUsedInMb() << "mb" << std::endl;
+  //std::this_thread::sleep_for(std::chrono::seconds(10));
+  //std::cerr << "[final postsleep] " << GetProcessMemoryUsedInMb() << "mb" << std::endl;
+  std::cerr << std::endl;
+  std::cerr << std::endl;
+  std::cerr << std::endl;
+  std::cerr << std::endl;
+  std::cerr << std::endl;
 }
 
 // TODO: ctor/dtor, copy ctor

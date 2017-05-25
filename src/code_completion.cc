@@ -10,6 +10,7 @@
 
 namespace {
 unsigned Flags() {
+  // TODO: use clang_defaultEditingTranslationUnitOptions()?
   return
     CXTranslationUnit_Incomplete |
     CXTranslationUnit_KeepGoing |
@@ -249,7 +250,7 @@ void EnsureDocumentParsed(CompletionSession* session,
 
   std::cerr << "[complete] Creating completion session with arguments " << StringJoin(args) << std::endl;
   *index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
-  *tu = MakeUnique<clang::TranslationUnit>(*index->get(), session->file.filename, args, unsaved, Flags());
+  *tu = MakeUnique<clang::TranslationUnit>(index->get(), session->file.filename, args, unsaved, Flags());
   std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail << std::endl;
 }
 

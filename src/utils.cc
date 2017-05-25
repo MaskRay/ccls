@@ -2,6 +2,7 @@
 
 #include "platform.h"
 
+#include <sparsepp/spp_memory.h>
 #include <tinydir.h>
 
 #include <algorithm>
@@ -314,4 +315,10 @@ void Fail(const std::string& message) {
 void WriteToFile(const std::string& filename, const std::string& content) {
   std::ofstream file(filename);
   file << content;
+}
+
+float GetProcessMemoryUsedInMb() {
+  const float kBytesToMb = 1000000;
+  uint64_t memory_after = spp::GetProcessMemoryUsed();
+  return memory_after / kBytesToMb;
 }

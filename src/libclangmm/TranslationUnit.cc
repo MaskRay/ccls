@@ -10,7 +10,7 @@
 
 namespace clang {
 
-TranslationUnit::TranslationUnit(Index& index,
+TranslationUnit::TranslationUnit(Index* index,
                                  const std::string& filepath,
                                  const std::vector<std::string>& arguments,
                                  std::vector<CXUnsavedFile> unsaved_files,
@@ -27,7 +27,7 @@ TranslationUnit::TranslationUnit(Index& index,
 
   //CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
   CXErrorCode error_code = clang_parseTranslationUnit2(
-      index.cx_index, filepath.c_str(), args.data(), (int)args.size(),
+      index->cx_index, filepath.c_str(), args.data(), (int)args.size(),
       unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
 
   switch (error_code) {
