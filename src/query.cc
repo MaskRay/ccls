@@ -21,8 +21,6 @@ namespace {
 optional<QueryType::DefUpdate> ToQuery(const IdMap& id_map, const IndexType::Def& type) {
   if (type.detailed_name.empty())
     return nullopt;
-  if (!type.definition_extent)
-    return nullopt;
 
   QueryType::DefUpdate result(type.usr);
   result.short_name = type.short_name;
@@ -40,8 +38,6 @@ optional<QueryType::DefUpdate> ToQuery(const IdMap& id_map, const IndexType::Def
 optional<QueryFunc::DefUpdate> ToQuery(const IdMap& id_map, const IndexFunc::Def& func) {
   if (func.detailed_name.empty())
     return nullopt;
-  if (!func.definition_extent)
-    return nullopt;
 
   QueryFunc::DefUpdate result(func.usr);
   result.short_name = func.short_name;
@@ -57,8 +53,6 @@ optional<QueryFunc::DefUpdate> ToQuery(const IdMap& id_map, const IndexFunc::Def
 
 optional<QueryVar::DefUpdate> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   if (var.detailed_name.empty())
-    return nullopt;
-  if (!var.definition_extent)
     return nullopt;
 
   QueryVar::DefUpdate result(var.usr);
@@ -463,10 +457,24 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
   // File
   files_def_update.push_back(BuildFileDef(current_id_map, current_file));
 
+  // **NOTE** We only remove entries if they were defined in the previous index.
+  // For example, if a type is included from another file it will be defined
+  // simply so we can attribute the usage/reference to it. If the reference goes
+  // away we don't want to remove the type/func/var usage.
+
   // Types
   CompareGroups<IndexType>(previous_file.types, current_file.types,
-    /*onRemoved:*/[this](IndexType* def) {
-    types_removed.push_back(def->def.usr);
+    /*onRemoved:*/[this, &previous_id_map](IndexType* type) {
+    if (type->def.definition_spelling)
+      types_removed.push_back(type->def.usr);
+    else {
+      if (!type->derived.empty())
+        types_derived.push_back(QueryType::DerivedUpdate(previous_id_map.ToQuery(type->id), {}, previous_id_map.ToQuery(type->derived)));
+      if (!type->instances.empty())
+        types_instances.push_back(QueryType::InstancesUpdate(previous_id_map.ToQuery(type->id), {}, previous_id_map.ToQuery(type->instances)));
+      if (!type->uses.empty())
+        types_uses.push_back(QueryType::UsesUpdate(previous_id_map.ToQuery(type->id), {}, previous_id_map.ToQuery(type->uses)));
+    }
   },
     /*onAdded:*/[this, &current_id_map](IndexType* type) {
     optional<QueryType::DefUpdate> def_update = ToQuery(current_id_map, type->def);
@@ -492,8 +500,18 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
 
   // Functions
   CompareGroups<IndexFunc>(previous_file.funcs, current_file.funcs,
-    /*onRemoved:*/[this](IndexFunc* def) {
-    funcs_removed.push_back(def->def.usr);
+    /*onRemoved:*/[this, &previous_id_map](IndexFunc* func) {
+    if (func->def.definition_spelling) {
+      funcs_removed.push_back(func->def.usr);
+    }
+    else {
+      if (!func->declarations.empty())
+        funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(previous_id_map.ToQuery(func->id), {}, previous_id_map.ToQuery(func->declarations)));
+      if (!func->derived.empty())
+        funcs_derived.push_back(QueryFunc::DerivedUpdate(previous_id_map.ToQuery(func->id), {}, previous_id_map.ToQuery(func->derived)));
+      if (!func->callers.empty())
+        funcs_callers.push_back(QueryFunc::CallersUpdate(previous_id_map.ToQuery(func->id), {}, previous_id_map.ToQuery(func->callers)));
+    }
   },
     /*onAdded:*/[this, &current_id_map](IndexFunc* func) {
     optional<QueryFunc::DefUpdate> def_update = ToQuery(current_id_map, func->def);
@@ -519,8 +537,14 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_m
 
   // Variables
   CompareGroups<IndexVar>(previous_file.vars, current_file.vars,
-    /*onRemoved:*/[this](IndexVar* def) {
-    vars_removed.push_back(def->def.usr);
+    /*onRemoved:*/[this, &previous_id_map](IndexVar* var) {
+    if (var->def.definition_spelling) {
+      vars_removed.push_back(var->def.usr);
+    }
+    else {
+      if (!var->uses.empty())
+        vars_uses.push_back(QueryVar::UsesUpdate(previous_id_map.ToQuery(var->id), {}, previous_id_map.ToQuery(var->uses)));
+    }
   },
     /*onAdded:*/[this, &current_id_map](IndexVar* var) {
     optional<QueryVar::DefUpdate> def_update = ToQuery(current_id_map, var->def);
@@ -799,15 +823,30 @@ TEST_CASE("remove defs") {
   IndexFile previous("foo.cc");
   IndexFile current("foo.cc");
 
-  previous.ToTypeId("usr1");
-  previous.ToFuncId("usr2");
-  previous.ToVarId("usr3");
+  previous.Resolve(previous.ToTypeId("usr1"))->def.definition_spelling = Range(Position(1, 0));
+  previous.Resolve(previous.ToFuncId("usr2"))->def.definition_spelling = Range(Position(2, 0));
+  previous.Resolve(previous.ToVarId("usr3"))->def.definition_spelling = Range(Position(3, 0));
 
   IndexUpdate update = GetDelta(previous, current);
 
   REQUIRE(update.types_removed == std::vector<Usr>{ "usr1" });
   REQUIRE(update.funcs_removed == std::vector<Usr>{ "usr2" });
   REQUIRE(update.vars_removed == std::vector<Usr>{ "usr3" });
+}
+
+TEST_CASE("do not remove ref-only defs") {
+  IndexFile previous("foo.cc");
+  IndexFile current("foo.cc");
+
+  previous.Resolve(previous.ToTypeId("usr1"))->uses.push_back(Range(Position(1, 0)));
+  previous.Resolve(previous.ToFuncId("usr2"))->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)), false /*is_implicit*/));
+  previous.Resolve(previous.ToVarId("usr3"))->uses.push_back(Range(Position(3, 0)));
+
+  IndexUpdate update = GetDelta(previous, current);
+
+  REQUIRE(update.types_removed == std::vector<Usr>{});
+  REQUIRE(update.funcs_removed == std::vector<Usr>{});
+  REQUIRE(update.vars_removed == std::vector<Usr>{});
 }
 
 TEST_CASE("func callers") {
