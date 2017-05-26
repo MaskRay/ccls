@@ -144,7 +144,31 @@ bool ShouldRunIncludeCompletion(const std::string& line) {
   return start < line.size() && line[start] == '#';
 }
 
+optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
+  // Find starting and ending quote.
+  int start = 0;
+  while (start < line.size()) {
+    char c = line[start];
+    ++start;
+    if (c == '"' || c == '<')
+      break;
+  }
+  if (start == line.size())
+    return nullopt;
 
+  int end = (int)line.size();
+  while (end > 0) {
+    char c = line[end];
+    if (c == '"' || c == '>')
+      break;
+    --end;
+  }
+
+  if (start >= end)
+    return nullopt;
+
+  return lsRange(lsPosition(line_number, start), lsPosition(line_number, end));
+}
 
 
 
@@ -2325,35 +2349,15 @@ bool QueryDbMainLoop(
             if (!buffer_line || !buffer_line_content)
               continue;
 
-            // Find starting and ending quote.
-            int start = 0;
-            while (start < buffer_line_content->size()) {
-              char c = (*buffer_line_content)[start];
-              ++start;
-              if (c == '"' || c == '<')
-                break;
-            }
-            if (start == buffer_line_content->size())
+            // Subtract 1 from line because querydb stores 1-based lines but
+            // vscode expects 0-based lines.
+            optional<lsRange> between_quotes = ExtractQuotedRange(*buffer_line - 1, *buffer_line_content);
+            if (!between_quotes)
               continue;
-            int end = (int)buffer_line_content->size();
-            while (end > 0) {
-              char c = (*buffer_line_content)[end];
-              if (c == '"' || c == '>')
-                break;
-              --end;
-            }
-            if (start >= end)
-              break;
-
 
             lsDocumentLink link;
             link.target = lsDocumentUri::FromPath(include.resolved_path);
-            // Subtract 1 from line because querydb stores 1-based lines but
-            // vscode expects 0-based lines.
-            link.range.start.line = *buffer_line - 1;
-            link.range.start.character = start;
-            link.range.end.line = *buffer_line - 1;
-            link.range.end.character = end;
+            link.range = *between_quotes;
             response.result.push_back(link);
           }
         }
