@@ -488,6 +488,15 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!start || !end)
     return nullopt;
 
+  // If remapping end fails (end can never be < start), just guess that the
+  // final location didn't move. This only screws up the highlighted code
+  // region if we guess wrong, so not a big deal.
+  //
+  // Remapping fails often in C++ since there are a lot of "};" at the end of
+  // class/struct definitions.
+  if (*end < *start)
+    *end = *start + (location.end.line - location.start.line);
+
   return lsRange(
     lsPosition(*start - 1, location.start.column - 1),
     lsPosition(*end - 1, location.end.column - 1));
