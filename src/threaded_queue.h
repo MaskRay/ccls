@@ -50,7 +50,12 @@ struct MultiQueueWaiter {
 template <class T>
 struct ThreadedQueue : public BaseThreadQueue {
 public:
-  ThreadedQueue(MultiQueueWaiter* waiter) : waiter_(waiter) {}
+  ThreadedQueue() {
+    owned_waiter_ = MakeUnique<MultiQueueWaiter>();
+    waiter_ = owned_waiter_.get();
+  }
+
+  explicit ThreadedQueue(MultiQueueWaiter* waiter) : waiter_(waiter) {}
 
   // Add an element to the front of the queue.
   void PriorityEnqueue(T&& t) {
@@ -88,27 +93,23 @@ public:
     return priority_.empty() && queue_.empty();
   }
 
-  /*
-  // Get the "front"-element.
-  // If the queue is empty, wait untill an element is avaiable.
+  // Get the first element from the queue. Blocks until one is available.
   T Dequeue() {
     std::unique_lock<std::mutex> lock(mutex_);
-    while (priority_.empty() && queue_.empty()) {
-      // release lock as long as the wait and reaquire it afterwards.
-      cv_.wait(lock);
-    }
+    waiter_->cv.wait(lock, [&]() {
+      return !priority_.empty() || !queue_.empty();
+    });
     
     if (!priority_.empty()) {
       auto val = std::move(priority_.front());
       priority_.pop();
-      return val;
+      return std::move(val);
     }
 
     auto val = std::move(queue_.front());
     queue_.pop();
-    return val;
+    return std::move(val);
   }
-  */
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
@@ -133,4 +134,5 @@ public:
   mutable std::mutex mutex_;
   std::queue<T> queue_;
   MultiQueueWaiter* waiter_;
+  std::unique_ptr<MultiQueueWaiter> owned_waiter_;
 };

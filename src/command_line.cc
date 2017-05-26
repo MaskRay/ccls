@@ -1869,27 +1869,31 @@ bool QueryDbMainLoop(
 
         Timer time;
         auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
+        std::string path = msg->params.textDocument.uri.GetPath();
         WorkingFile* working_file = working_files->OnOpen(msg->params);
-        optional<std::string> cached_file_contents = LoadCachedFileContents(config, msg->params.textDocument.uri.GetPath());
+        optional<std::string> cached_file_contents = LoadCachedFileContents(config, path);
         if (cached_file_contents)
           working_file->SetIndexContent(*cached_file_contents);
         else
           working_file->SetIndexContent(working_file->buffer_content);
 
-        std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, msg->params.textDocument.uri.GetPath());
+        std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, path);
         if (cache && !cache->skipped_by_preprocessor.empty())
           PublishInactiveLines(working_file, cache->skipped_by_preprocessor);
 
         time.ResetAndPrint("[querydb] Loading cached index file for DidOpen (blocks CodeLens)");
 
         include_completion->AddFile(working_file->filename);
+        completion_manager->NotifyView(path);
 
         break;
       }
 
       case IpcId::TextDocumentDidChange: {
         auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
+        std::string path = msg->params.textDocument.uri.GetPath();
         working_files->OnChange(msg->params);
+        completion_manager->NotifyEdit(path);
         break;
       }
 
@@ -1927,7 +1931,8 @@ bool QueryDbMainLoop(
 
           queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
         }
-        completion_manager->UpdateActiveSession(path);
+
+        completion_manager->NotifySave(path);
 
         break;
       }
@@ -2416,8 +2421,11 @@ bool QueryDbMainLoop(
         response.id = msg->id;
 
         lsDocumentUri file_as_uri = msg->params.textDocument.uri;
+        std::string path = file_as_uri.GetPath();
 
-        QueryFile* file = FindFile(db, file_as_uri.GetPath());
+        completion_manager->NotifyView(path);
+
+        QueryFile* file = FindFile(db, path);
         if (!file) {
           std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
           break;

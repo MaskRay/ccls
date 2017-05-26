@@ -238,9 +238,9 @@ void BuildDetailString(CXCompletionString completion_string, std::string& label,
 
 void EnsureDocumentParsed(CompletionSession* session,
                           std::unique_ptr<clang::TranslationUnit>* tu,
-                          std::unique_ptr<clang::Index>* index) {
-  // Nothing to do. We already have a translation unit and an index.
-  if (*tu && *index)
+                          clang::Index* index) {
+  // Nothing to do. We already have a translation unit.
+  if (*tu)
     return;
 
   std::vector<std::string> args = session->file.args;
@@ -249,40 +249,51 @@ void EnsureDocumentParsed(CompletionSession* session,
   std::vector<CXUnsavedFile> unsaved = session->working_files->AsUnsavedFiles();
 
   std::cerr << "[complete] Creating completion session with arguments " << StringJoin(args) << std::endl;
-  *index = MakeUnique<clang::Index>(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/);
-  *tu = MakeUnique<clang::TranslationUnit>(index->get(), session->file.filename, args, unsaved, Flags());
+  *tu = MakeUnique<clang::TranslationUnit>(index, session->file.filename, args, unsaved, Flags());
   std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail << std::endl;
 }
 
 void CompletionParseMain(CompletionManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
-    std::unique_ptr<std::string> path = completion_manager->reparse_request.Take();
+    CompletionManager::ParseRequest request = completion_manager->parse_requests_.Dequeue();
     
-    CompletionSession* session = completion_manager->GetOrOpenSession(*path);
+    // If we don't get a session then that means we don't care about the file
+    // anymore - abandon the request.
+    CompletionSession* session = completion_manager->TryGetSession(request.path, false /*create_if_needed*/);
+    if (!session)
+      continue;
+
+    // If we've parsed it more recently than the request time, don't bother
+    // reparsing.
+    if (session->tu_last_parsed_at &&
+        *session->tu_last_parsed_at > request.request_time) {
+      continue;
+    }
+
     std::unique_ptr<clang::TranslationUnit> parsing;
-    std::unique_ptr<clang::Index> parsing_index;
+    EnsureDocumentParsed(session, &parsing, &session->index);
 
-    EnsureDocumentParsed(session, &parsing, &parsing_index);
-
-    // Swap out active.
-    std::lock_guard<std::mutex> lock(session->usage_lock);
-    session->active = std::move(parsing);
-    session->active_index = std::move(parsing_index);
+    // Activate new translation unit.
+    // tu_last_parsed_at is only read by this thread, so it doesn't need to be under the mutex.
+    session->tu_last_parsed_at = std::chrono::high_resolution_clock::now();
+    std::lock_guard<std::mutex> lock(session->tu_lock);
+    session->tu = std::move(parsing);
   }
 }
 
 void CompletionQueryMain(CompletionManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
-    std::unique_ptr<CompletionManager::CompletionRequest> request = completion_manager->completion_request.Take();
+    std::unique_ptr<CompletionManager::CompletionRequest> request = completion_manager->completion_request_.Take();
+    std::string path = request->location.textDocument.uri.GetPath();
 
+    CompletionSession* session = completion_manager->TryGetSession(path, true /*create_if_needed*/);
+    
+    std::lock_guard<std::mutex> lock(session->tu_lock);
+    EnsureDocumentParsed(session, &session->tu, &session->index);
 
-    CompletionSession* session = completion_manager->GetOrOpenSession(request->location.textDocument.uri.GetPath());
-    std::lock_guard<std::mutex> lock(session->usage_lock);
-
-    EnsureDocumentParsed(session, &session->active, &session->active_index);
-
+    // Language server is 0-based, clang is 1-based.
     unsigned line = request->location.position.line + 1;
     unsigned column = request->location.position.character + 1;
 
@@ -291,18 +302,18 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
 
     Timer timer;
 
-    std::vector<CXUnsavedFile> unsaved = completion_manager->working_files->AsUnsavedFiles();
+    std::vector<CXUnsavedFile> unsaved = completion_manager->working_files_->AsUnsavedFiles();
     timer.ResetAndPrint("[complete] Fetching unsaved files");
 
     timer.Reset();
     unsigned const kCompleteOptions = CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
     CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
-      session->active->cx_tu,
+      session->tu->cx_tu,
       session->file.filename.c_str(), line, column,
       unsaved.data(), (unsigned)unsaved.size(),
       kCompleteOptions);
     if (!cx_results) {
-      std::cerr << "[complete] Code completion failed" << std::endl;
+      timer.ResetAndPrint("[complete] Code completion failed");
       request->on_complete({}, {});
       continue;
     }
@@ -355,6 +366,7 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
     }
     timer.ResetAndPrint("[complete] Build diagnostics");
 
+
     clang_disposeCodeCompleteResults(cx_results);
     timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults");
 
@@ -367,12 +379,32 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
 }  // namespace
 
 CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* working_files)
-  : file(file), working_files(working_files) {}
+  : file(file), working_files(working_files), index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/) {}
 
 CompletionSession::~CompletionSession() {}
 
+LruSessionCache::LruSessionCache(int max_entries) : max_entries_(max_entries) {}
+
+CompletionSession* LruSessionCache::TryGetEntry(const std::string& filename) {
+  for (int i = 0; i < entries_.size(); ++i) {
+    if (entries_[i]->file.filename == filename)
+      return entries_[i].get();
+  }
+  return nullptr;
+}
+
+void LruSessionCache::InsertEntry(std::unique_ptr<CompletionSession> session) {
+  if (entries_.size() >= max_entries_)
+    entries_.pop_back();
+  entries_.insert(entries_.begin(), std::move(session));
+}
+
+CompletionManager::ParseRequest::ParseRequest(const std::string& path)
+  : path(path), request_time(std::chrono::high_resolution_clock::now()) {}
+
 CompletionManager::CompletionManager(Config* config, Project* project, WorkingFiles* working_files)
-    : config(config), project(project), working_files(working_files) {
+    : config_(config), project_(project), working_files_(working_files),
+      view_sessions_(kMaxViewSessions), edit_sessions_(kMaxEditSessions) {
   new std::thread([&]() {
     SetCurrentThreadName("completequery");
     CompletionQueryMain(this);
@@ -385,47 +417,81 @@ CompletionManager::CompletionManager(Config* config, Project* project, WorkingFi
 }
 
 void CompletionManager::CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete) {
+  // completion thread will create the CompletionSession if needed.
+
   auto request = MakeUnique<CompletionRequest>();
   request->location = completion_location;
   request->on_complete = on_complete;
-  completion_request.Set(std::move(request));
+  completion_request_.Set(std::move(request));
 }
 
-CompletionSession* CompletionManager::GetOrOpenSession(const std::string& filename) {
-  // Try to find existing session.
-  for (auto& session : sessions) {
-    if (session->file.filename == filename)
-      return session.get();
-  }
+void CompletionManager::NotifyView(const std::string& filename) {
+  //
+  // On view, we reparse only if the file has not been parsed. The existence of
+  // a CompletionSession instance implies the file is already parsed or will be
+  // parsed soon.
+  //
 
-  // Create new session. Note that this will block.
-  std::cerr << "[complete] Creating new code completion session for " << filename << std::endl;
-  optional<Project::Entry> entry = project->FindCompilationEntryForFile(filename);
-  if (!entry) {
-    std::cerr << "[complete] Unable to find compilation entry" << std::endl;
-    entry = Project::Entry();
-    entry->filename = filename;
-  }
-  else {
-    std::cerr << "[complete] Found compilation entry" << std::endl;
-  }
-  sessions.push_back(MakeUnique<CompletionSession>(*entry, working_files));
-  return sessions[sessions.size() - 1].get();
+  std::lock_guard<std::mutex> lock(sessions_lock_);
+
+  if (view_sessions_.TryGetEntry(filename))
+    return;
+
+  std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
+  view_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+    project_->FindCompilationEntryForFile(filename), working_files_));
+  parse_requests_.Enqueue(ParseRequest(filename));
 }
 
-void CompletionManager::UpdateActiveSession(const std::string& filename) {
-  // Drop all sessions except for |filename|.
-  for (auto& session : sessions) {
-    if (session->file.filename == filename)
-      continue;
+void CompletionManager::NotifyEdit(const std::string& filename) {
+  //
+  // On edit, we reparse only if the file has not been parsed. The existence of
+  // a CompletionSession instance implies the file is already parsed or will be
+  // parsed soon.
+  //
 
-    std::lock_guard<std::mutex> lock(session->usage_lock);
-    session->active.reset();
-    session->active_index.reset();
+  std::lock_guard<std::mutex> lock(sessions_lock_);
+
+  if (edit_sessions_.TryGetEntry(filename))
+    return;
+
+  std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
+  edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+    project_->FindCompilationEntryForFile(filename), working_files_));
+  parse_requests_.PriorityEnqueue(ParseRequest(filename));
+}
+
+void CompletionManager::NotifySave(const std::string& filename) {
+  //
+  // On save, always reparse.
+  //
+
+  std::lock_guard<std::mutex> lock(sessions_lock_);
+
+  if (!edit_sessions_.TryGetEntry(filename)) {
+    std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
+    edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+      project_->FindCompilationEntryForFile(filename), working_files_));
   }
 
-  // Reparse |filename|.
-  // TODO: Instead of actually reparsing it, see if we can hook into the
-  // indexer and steal the translation unit from there..
-  reparse_request.Set(MakeUnique<std::string>(filename));
+  parse_requests_.PriorityEnqueue(ParseRequest(filename));
+}
+
+CompletionSession* CompletionManager::TryGetSession(const std::string& filename, bool create_if_needed) {
+  std::lock_guard<std::mutex> lock(sessions_lock_);
+
+  CompletionSession* session = edit_sessions_.TryGetEntry(filename);
+  
+  if (!session)
+    session = view_sessions_.TryGetEntry(filename);
+  
+  if (!session && create_if_needed) {
+    // Create new session. Default to edited_sessions_ since invoking code
+    // completion almost certainly implies an edit.
+    edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+      project_->FindCompilationEntryForFile(filename), working_files_));
+    session = edit_sessions_.TryGetEntry(filename);
+  }
+  
+  return session;
 }
