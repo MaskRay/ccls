@@ -55,7 +55,10 @@ struct WorkingFile {
 
   // Returns a relatively stable completion position (it jumps back until there
   // is a non-alphanumeric character).
-  lsPosition FindStableCompletionSource(lsPosition position) const;
+  //
+  // The out param |is_global_completion| is set to true if this looks like a
+  // global completion.
+  lsPosition FindStableCompletionSource(lsPosition position, bool* is_global_completion) const;
 
   CXUnsavedFile AsUnsavedFile() const;
 };

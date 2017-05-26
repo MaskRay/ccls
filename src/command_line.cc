@@ -1527,7 +1527,8 @@ bool QueryDbMainLoop(
     WorkingFiles* working_files,
     CompletionManager* completion_manager,
     IncludeCompletion* include_completion,
-    CodeCompleteCache* code_complete_cache,
+    CodeCompleteCache* global_code_complete_cache,
+    CodeCompleteCache* non_global_code_complete_cache,
     CodeCompleteCache* signature_cache) {
   IpcManager* ipc = IpcManager::instance();
 
@@ -1967,7 +1968,8 @@ bool QueryDbMainLoop(
         auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
         lsTextDocumentPositionParams& params = msg->params;
 
-        WorkingFile* file = working_files->GetFileByFilename(params.textDocument.uri.GetPath());
+        std::string path = params.textDocument.uri.GetPath();
+        WorkingFile* file = working_files->GetFileByFilename(path);
 
         // TODO: We should scan include directories to add any missing paths
 
@@ -2001,10 +2003,11 @@ bool QueryDbMainLoop(
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
         }
         else {
+          bool is_global_completion = false;
           if (file)
-            params.position = file->FindStableCompletionSource(params.position);
+            params.position = file->FindStableCompletionSource(params.position, &is_global_completion);
 
-          CompletionManager::OnComplete callback = std::bind([working_files, code_complete_cache](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+          CompletionManager::OnComplete callback = std::bind([working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
             auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
             auto ipc = IpcManager::instance();
 
@@ -2022,23 +2025,46 @@ bool QueryDbMainLoop(
             diagnostic_response.params.diagnostics = diagnostics;
             ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
 
+            std::string path = msg->params.textDocument.uri.GetPath();
+
             // Cache diagnostics so we can show fixits.
-            WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
+            WorkingFile* working_file = working_files->GetFileByFilename(path);
             if (working_file)
               working_file->diagnostics = diagnostics;
 
-            // Cache completion results so if the user types backspace we can respond faster.
-            code_complete_cache->cached_path = msg->params.textDocument.uri.GetPath();
-            code_complete_cache->cached_completion_position = msg->params.position;
-            code_complete_cache->cached_results = results;
-            code_complete_cache->cached_diagnostics = diagnostics;
+            // Cache completion results.
+            if (is_global_completion) {
+              global_code_complete_cache->cached_path = path;
+              global_code_complete_cache->cached_results = results;
+              global_code_complete_cache->cached_diagnostics = diagnostics;
+            }
+            else {
+              non_global_code_complete_cache->cached_path = path;
+              non_global_code_complete_cache->cached_completion_position = msg->params.position;
+              non_global_code_complete_cache->cached_results = results;
+              non_global_code_complete_cache->cached_diagnostics = diagnostics;
+            }
 
             delete message;
           }, message.release(), std::placeholders::_1, std::placeholders::_2);
 
-          if (code_complete_cache->IsCacheValid(params)) {
+          if (is_global_completion && global_code_complete_cache->cached_path == path && !global_code_complete_cache->cached_results.empty()) {
+            std::cerr << "[complete] Early-returning cached global completion results at " << params.position.ToString() << std::endl;
+
+            CompletionManager::OnComplete update_global = std::bind([global_code_complete_cache](NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+              std::cerr << "[complete] Updated global completion cache" << std::endl;
+              // note: path is updated in the normal completion handler.
+              global_code_complete_cache->cached_results = results;
+              global_code_complete_cache->cached_diagnostics = diagnostics;
+            }, std::placeholders::_1, std::placeholders::_2);
+            completion_manager->CodeComplete(params, std::move(update_global));
+
+            // Note: callback will delete the message (ie, |params|) so we need to run completion_manager->CodeComplete before |callback|.
+            callback(global_code_complete_cache->cached_results, global_code_complete_cache->cached_diagnostics);
+          }
+          else if (non_global_code_complete_cache->IsCacheValid(params)) {
             std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
-            callback(code_complete_cache->cached_results, code_complete_cache->cached_diagnostics);
+            callback(non_global_code_complete_cache->cached_results, non_global_code_complete_cache->cached_diagnostics);
           }
           else {
             completion_manager->CodeComplete(params, std::move(callback));
@@ -2645,7 +2671,8 @@ void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
   WorkingFiles working_files;
   CompletionManager completion_manager(config, &project, &working_files);
   IncludeCompletion include_completion(config, &project);
-  CodeCompleteCache code_complete_cache;
+  CodeCompleteCache global_code_complete_cache;
+  CodeCompleteCache non_global_code_complete_cache;
   CodeCompleteCache signature_cache;
   FileConsumer::SharedState file_consumer_shared;
 
@@ -2656,7 +2683,7 @@ void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
     bool did_work = QueryDbMainLoop(
         config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed,
         &project, &file_consumer_shared, &working_files,
-        &completion_manager, &include_completion, &code_complete_cache, &signature_cache);
+        &completion_manager, &include_completion, &global_code_complete_cache, &non_global_code_complete_cache, &signature_cache);
     if (!did_work) {
       IpcManager* ipc = IpcManager::instance();
       waiter->Wait({

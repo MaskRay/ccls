@@ -297,7 +297,6 @@ void CompletionQueryMain(CompletionManager* completion_manager) {
     unsigned line = request->location.position.line + 1;
     unsigned column = request->location.position.character + 1;
 
-    std::cerr << std::endl;
     std::cerr << "[complete] Completing at " << line << ":" << column << std::endl;
 
     Timer timer;
