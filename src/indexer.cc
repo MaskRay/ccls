@@ -1039,9 +1039,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // Mark a type reference at the ctor/dtor location.
           if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor)
             UniqueAdd(declaring_type_def->uses, decl_loc_spelling);
-          // TODO/FIXME: +1 on dtor start range.
-          if (decl->entityInfo->kind == CXIdxEntity_CXXDestructor)
-            UniqueAdd(declaring_type_def->uses, decl_loc_spelling);
+          if (decl->entityInfo->kind == CXIdxEntity_CXXDestructor) {
+            Range dtor_type_range = decl_loc_spelling;
+            dtor_type_range.start.column += 1; // Don't count the leading ~
+            UniqueAdd(declaring_type_def->uses, dtor_type_range);
+          }
 
           // Add function to declaring type.
           UniqueAdd(declaring_type_def->def.funcs, func_id);
