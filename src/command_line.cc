@@ -1972,7 +1972,11 @@ bool QueryDbMainLoop(
 
         // TODO: We should scan include directories to add any missing paths
 
-        std::string buffer_line = file->all_buffer_lines[msg->params.position.line];
+        // It shouldn't be possible, but sometimes vscode will send queries out
+        // of order, ie, we get completion request before buffer content update.
+        std::string buffer_line;
+        if (msg->params.position.line >= 0 && msg->params.position.line < file->all_buffer_lines.size())
+          buffer_line = file->all_buffer_lines[msg->params.position.line];
 
         if (ShouldRunIncludeCompletion(buffer_line)) {
           Out_TextDocumentComplete complete_response;
