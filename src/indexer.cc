@@ -910,35 +910,35 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       std::string decl_usr = decl_cursor.get_usr();
 
       IndexVarId var_id = db->ToVarId(decl->entityInfo->USR);
-      IndexVar* var_def = db->Resolve(var_id);
+      IndexVar* var = db->Resolve(var_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
       // this may shadow.
       // TODO: Verify this gets called multiple times
       // if (!decl->isRedeclaration) {
-      var_def->def.short_name = decl->entityInfo->name;
+      var->def.short_name = decl->entityInfo->name;
 
       std::string type_name = clang::ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
-      var_def->def.detailed_name = type_name + " " + ns->QualifiedName(decl->semanticContainer, var_def->def.short_name);
+      var->def.detailed_name = type_name + " " + ns->QualifiedName(decl->semanticContainer, var->def.short_name);
 
-      var_def->def.is_local = !decl->semanticContainer || IsLocalSemanticContainer(decl->semanticContainer->cursor.kind);
+      var->def.is_local = !decl->semanticContainer || IsLocalSemanticContainer(decl->semanticContainer->cursor.kind);
 
       //}
 
       if (decl->isDefinition) {
-        var_def->def.definition_spelling = ResolveSpelling(decl->cursor);
-        var_def->def.definition_extent = ResolveExtent(decl->cursor);;
+        var->def.definition_spelling = ResolveSpelling(decl->cursor);
+        var->def.definition_extent = ResolveExtent(decl->cursor);;
       }
       else {
-        var_def->def.declaration = ResolveSpelling(decl->cursor);
+        var->def.declaration = ResolveSpelling(decl->cursor);
       }
-      UniqueAdd(var_def->uses, decl_loc_spelling);
+      UniqueAdd(var->uses, decl_loc_spelling);
 
       // std::cerr << std::endl << "Visiting declaration" << std::endl;
       // Dump(decl_cursor);
 
       AddDeclInitializerUsages(db, decl_cursor);
-      var_def = db->Resolve(var_id);
+      var = db->Resolve(var_id);
 
       // Declaring variable type information. Note that we do not insert an
       // interesting reference for parameter declarations - that is handled when
@@ -959,7 +959,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           if (!is_enum_member)
             db->Resolve(var_type.value())->instances.push_back(var_id);
 
-          var_def->def.variable_type = var_type.value();
+          var->def.variable_type = var_type.value();
         }
       }
 
@@ -968,7 +968,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         IndexTypeId declaring_type_id =
           db->ToTypeId(decl->semanticContainer->cursor);
         IndexType* declaring_type_def = db->Resolve(declaring_type_id);
-        var_def->def.declaring_type = declaring_type_id;
+        var->def.declaring_type = declaring_type_id;
         declaring_type_def->def.vars.push_back(var_id);
       }
 
@@ -988,7 +988,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           decl_cursor.template_specialization_to_template_definition();
 
       IndexFuncId func_id = db->ToFuncId(resolved.cx_cursor);
-      IndexFunc* func_def = db->Resolve(func_id);
+      IndexFunc* func = db->Resolve(func_id);
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
@@ -1011,17 +1011,17 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: support multiple definitions per function; right now we are
       // hacking the 'declarations' field by
       // adding a definition when we really don't have one.
-      if (decl->isDefinition && !func_def->def.definition_extent.has_value()) {
-        func_def->def.definition_spelling = ResolveSpelling(decl->cursor);
-        func_def->def.definition_extent = ResolveExtent(decl->cursor);
+      if (decl->isDefinition && !func->def.definition_extent.has_value()) {
+        func->def.definition_spelling = ResolveSpelling(decl->cursor);
+        func->def.definition_extent = ResolveExtent(decl->cursor);
 
-        RemoveItem(func_def->declarations, *func_def->def.definition_spelling);
+        RemoveItem(func->declarations, *func->def.definition_spelling);
       }
       else {
         Range decl_spelling = ResolveSpelling(decl->cursor);
         // Only add the declaration if it's not already a definition.
-        if (!func_def->def.definition_spelling || *func_def->def.definition_spelling != decl_spelling)
-          UniqueAdd(func_def->declarations, decl_spelling);
+        if (!func->def.definition_spelling || *func->def.definition_spelling != decl_spelling)
+          UniqueAdd(func->declarations, decl_spelling);
       }
 
       // If decl_cursor != resolved, then decl_cursor is a template
@@ -1031,15 +1031,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // TODO: Eventually run with this if. Right now I want to iron out bugs
         // this may shadow.
         // if (!decl->isRedeclaration) {
-        func_def->def.short_name = decl->entityInfo->name;
+        func->def.short_name = decl->entityInfo->name;
 
         // Build detailed name. The type desc looks like void (void *). We
         // insert the qualified name before the first '('.
-        std::string qualified_name = ns->QualifiedName(decl->semanticContainer, func_def->def.short_name);
+        std::string qualified_name = ns->QualifiedName(decl->semanticContainer, func->def.short_name);
         std::string type_desc = decl_cursor.get_type_description();
         size_t offset = type_desc.find('(');
         type_desc.insert(offset, qualified_name);
-        func_def->def.detailed_name = type_desc;
+        func->def.detailed_name = type_desc;
 
         bool is_ctor_or_dtor =
             decl->entityInfo->kind == CXIdxEntity_CXXConstructor ||
@@ -1053,7 +1053,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           IndexTypeId declaring_type_id =
               db->ToTypeId(decl->semanticContainer->cursor);
           IndexType* declaring_type_def = db->Resolve(declaring_type_id);
-          func_def->def.declaring_type = declaring_type_id;
+          func->def.declaring_type = declaring_type_id;
 
           // Mark a type reference at the ctor/dtor location.
           if (is_ctor_or_dtor) {
@@ -1077,15 +1077,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // FIXME if it ever shows up. Methods should only ever have 1 base
           // type, though.
           if (num_overridden > 1)
-            std::cerr << "[indexer]: warning: multiple base overrides for " << func_def->def.detailed_name << std::endl;
+            std::cerr << "[indexer]: warning: multiple base overrides for " << func->def.detailed_name << std::endl;
 
           for (unsigned i = 0; i < num_overridden; ++i) {
             clang::Cursor parent = overridden[i];
             IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
             IndexFunc* parent_def = db->Resolve(parent_id);
-            func_def = db->Resolve(func_id);  // ToFuncId invalidated func_def
+            func = db->Resolve(func_id);  // ToFuncId invalidated func_def
 
-            func_def->def.base = parent_id;
+            func->def.base = parent_id;
             parent_def->derived.push_back(func_id);
           }
 
@@ -1133,18 +1133,18 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                             decl->semanticContainer, decl->lexicalContainer);
 
       IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-      IndexType* type_def = db->Resolve(type_id);
+      IndexType* type = db->Resolve(type_id);
 
       if (alias_of)
-        type_def->def.alias_of = alias_of.value();
+        type->def.alias_of = alias_of.value();
 
-      type_def->def.short_name = decl->entityInfo->name;
-      type_def->def.detailed_name =
-          ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
+      type->def.short_name = decl->entityInfo->name;
+      type->def.detailed_name =
+          ns->QualifiedName(decl->semanticContainer, type->def.short_name);
 
-      type_def->def.definition_spelling = ResolveSpelling(decl->cursor);
-      type_def->def.definition_extent = ResolveExtent(decl->cursor);
-      UniqueAdd(type_def->uses, decl_loc_spelling);
+      type->def.definition_spelling = ResolveSpelling(decl->cursor);
+      type->def.definition_extent = ResolveExtent(decl->cursor);
+      UniqueAdd(type->uses, decl_loc_spelling);
       break;
     }
 
@@ -1155,7 +1155,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       Range decl_loc_spelling = ResolveSpelling(decl->cursor);
 
       IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
-      IndexType* type_def = db->Resolve(type_id);
+      IndexType* type = db->Resolve(type_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
       // this may shadow.
@@ -1168,20 +1168,20 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         ns->RegisterQualifiedName(decl->entityInfo->USR,
                                   decl->semanticContainer,
                                   decl->entityInfo->name);
-        type_def->def.short_name = decl->entityInfo->name;
+        type->def.short_name = decl->entityInfo->name;
       } else {
-        type_def->def.short_name = "<anonymous>";
+        type->def.short_name = "<anonymous>";
       }
 
-      type_def->def.detailed_name =
-          ns->QualifiedName(decl->semanticContainer, type_def->def.short_name);
+      type->def.detailed_name =
+          ns->QualifiedName(decl->semanticContainer, type->def.short_name);
 
       // }
 
       assert(decl->isDefinition);
-      type_def->def.definition_spelling = ResolveSpelling(decl->cursor);
-      type_def->def.definition_extent = ResolveExtent(decl->cursor);
-      UniqueAdd(type_def->uses, decl_loc_spelling);
+      type->def.definition_spelling = ResolveSpelling(decl->cursor);
+      type->def.definition_extent = ResolveExtent(decl->cursor);
+      UniqueAdd(type->uses, decl_loc_spelling);
 
       // type_def->alias_of
       // type_def->funcs
@@ -1201,12 +1201,12 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
           // type_def ptr could be invalidated by ResolveToDeclarationType.
-          type_def = db->Resolve(type_id);
+          type = db->Resolve(type_id);
           if (parent_type_id) {
             IndexType* parent_type_def =
                 db->Resolve(parent_type_id.value());
             parent_type_def->derived.push_back(type_id);
-            type_def->def.parents.push_back(parent_type_id.value());
+            type->def.parents.push_back(parent_type_id.value());
           }
         }
       }
@@ -1365,8 +1365,8 @@ void indexEntityReference(CXClientData client_data,
       referenced = referenced.template_specialization_to_template_definition();
 
       IndexVarId var_id = db->ToVarId(referenced.get_usr());
-      IndexVar* var_def = db->Resolve(var_id);
-      UniqueAdd(var_def->uses, loc_spelling);
+      IndexVar* var = db->Resolve(var_id);
+      UniqueAdd(var->uses, loc_spelling);
       break;
     }
 
@@ -1389,24 +1389,24 @@ void indexEntityReference(CXClientData client_data,
       Range loc_spelling = ResolveSpelling(ref->cursor);
 
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
-      IndexFunc* called_def = db->Resolve(called_id);
+      IndexFunc* called = db->Resolve(called_id);
 
       // libclang doesn't provide a nice api to check if the given function
       // call is implicit. ref->kind should probably work (it's either direct
       // or implicit), but libclang only supports implicit for objective-c.
       bool is_implicit = CanBeCalledImplicitly(ref->referencedEntity->kind) &&
-                         !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu, called_def->def.short_name);
+                         !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu, called->def.short_name);
 
       if (IsFunctionCallContext(ref->container->cursor.kind)) {
         IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
-        IndexFunc* caller_def = db->Resolve(caller_id);
+        IndexFunc* caller = db->Resolve(caller_id);
         // Calling db->ToFuncId invalidates the FuncDef* ptrs.
-        called_def = db->Resolve(called_id);
+        called = db->Resolve(called_id);
 
-        AddFuncRef(&caller_def->def.callees, IndexFuncRef(called_id, loc_spelling, is_implicit));
-        AddFuncRef(&called_def->callers, IndexFuncRef(caller_id, loc_spelling, is_implicit));
+        AddFuncRef(&caller->def.callees, IndexFuncRef(called_id, loc_spelling, is_implicit));
+        AddFuncRef(&called->callers, IndexFuncRef(caller_id, loc_spelling, is_implicit));
       } else {
-        AddFuncRef(&called_def->callers, IndexFuncRef(loc_spelling, is_implicit));
+        AddFuncRef(&called->callers, IndexFuncRef(loc_spelling, is_implicit));
       }
 
       break;
@@ -1418,21 +1418,18 @@ void indexEntityReference(CXClientData client_data,
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
-      Range loc_spelling = ResolveSpelling(ref->cursor);
+      clang::Cursor referenced_cursor = ref->referencedEntity->cursor;
+      referenced_cursor = referenced_cursor.template_specialization_to_template_definition();
+      IndexTypeId referenced_id = db->ToTypeId(referenced_cursor.get_usr());
 
-      clang::Cursor referenced = ref->referencedEntity->cursor;
-      referenced = referenced.template_specialization_to_template_definition();
-      IndexTypeId referenced_id = db->ToTypeId(referenced.get_usr());
-
-      IndexType* referenced_def = db->Resolve(referenced_id);
+      IndexType* referenced = db->Resolve(referenced_id);
 
       //
       // The following will generate two TypeRefs to Foo, both located at the
       // same spot (line 3, column 3). One of the parents will be set to
       // CXIdxEntity_Variable, the other will be CXIdxEntity_Function. There
-      // does
-      // not appear to be a good way to disambiguate these references, as using
-      // parent type alone breaks other indexing tasks.
+      // does not appear to be a good way to disambiguate these references, as
+      // using parent type alone breaks other indexing tasks.
       //
       // To work around this, we check to see if the usage location has been
       // inserted into all_uses previously.
@@ -1442,7 +1439,7 @@ void indexEntityReference(CXClientData client_data,
       //    Foo f;
       //  }
       //
-      UniqueAdd(referenced_def->uses, loc_spelling);
+      UniqueAdd(referenced->uses, ResolveSpelling(ref->cursor));
       break;
     }
 
