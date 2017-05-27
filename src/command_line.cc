@@ -3001,10 +3001,12 @@ int main(int argc, char** argv) {
     for (int i = 0; i < 1; ++i)
       RunTests();
 
+    /*
     for (int i = 0; i < 1; ++i) {
       std::this_thread::sleep_for(std::chrono::seconds(5));
       std::cerr << "[POST] Memory usage: " << GetProcessMemoryUsedInMb() << "mb" << std::endl;
     }
+    */
 
     std::cerr << std::endl << "[Enter] to exit" << std::endl;
     std::cin.get();

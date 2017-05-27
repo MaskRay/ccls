@@ -71,22 +71,6 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
 
 // TODO: Move this to indexer.cc
 
-// IndexType
-bool ReflectMemberStart(Reader& reader, IndexType& value) {
-  //value.is_bad_def = false;
-  return true;
-}
-bool ReflectMemberStart(Writer& writer, IndexType& value) {
-  // TODO: this is crashing
-  // if (!value.HasInterestingState())
-    // std::cerr << "bad";
-  // assert(value.HasInterestingState());
-
-  if (!value.HasInterestingState())
-   return false;
-  DefaultReflectMemberStart(writer);
-  return true;
-}
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
@@ -108,22 +92,6 @@ void Reflect(TVisitor& visitor, IndexType& value) {
 }
 
 
-// IndexFunc
-bool ReflectMemberStart(Reader& reader, IndexFunc& value) {
-  //value.is_bad_def = false;
-  return true;
-}
-bool ReflectMemberStart(Writer& writer, IndexFunc& value) {
-  // TODO: this is crashing
-  // if (!value.HasInterestingState())
-  //   std::cerr << "bad";
-  // assert(value.HasInterestingState());
-
-  if (!value.HasInterestingState())
-   return false;
-  DefaultReflectMemberStart(writer);
-  return true;
-}
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
@@ -144,22 +112,6 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
 }
 
 
-// IndexVar
-bool ReflectMemberStart(Reader& reader, IndexVar& value) {
-  //value.is_bad_def = false;
-  return true;
-}
-bool ReflectMemberStart(Writer& writer, IndexVar& value) {
-  // TODO: this is crashing
-  // if (!value.HasInterestingState())
-  //   std::cerr << "bad";
-  // assert(value.HasInterestingState());
-
-  if (!value.HasInterestingState())
-   return false;
-  DefaultReflectMemberStart(writer);
-  return true;
-}
 template<typename TVisitor>
 void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_START();

@@ -1596,31 +1596,6 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     entry->args = args;
   }
 
-  // TODO: Fix interesting checks.
-  for (auto& entry : result) {
-    for (auto& type : entry->types) {
-      if (!type.HasInterestingState()) {
-        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << file << std::endl;
-        std::cerr << "!!!! USR " << type.def.usr << std::endl;
-        assert(false);
-      }
-    }
-    for (auto& func : entry->funcs) {
-      if (!func.HasInterestingState()) {
-        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << file << std::endl;
-        std::cerr << "!!!! USR " << func.def.usr << std::endl;
-        assert(false);
-      }
-    }
-    for (auto& var : entry->vars) {
-      if (!var.HasInterestingState()) {
-        std::cerr << "!!!! NO INTERESTING STATE FOR " << entry->path << " of !!! " << file << std::endl;
-        std::cerr << "!!!! USR " << var.def.usr << std::endl;
-        assert(false);
-      }
-    }
-  }
-
   return result;
 }
 

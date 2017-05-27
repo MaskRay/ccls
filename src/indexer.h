@@ -177,19 +177,6 @@ struct TypeDefDefinitionData {
   TypeDefDefinitionData() {}  // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool HasInterestingState() const {
-    return
-      !short_name.empty() ||
-      !detailed_name.empty() ||
-      definition_spelling ||
-      definition_extent ||
-      alias_of ||
-      !parents.empty() ||
-      !types.empty() ||
-      !funcs.empty() ||
-      !vars.empty();
-  }
-
   bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
@@ -247,14 +234,6 @@ struct IndexType {
 
   IndexType(IndexTypeId id, const std::string& usr);
 
-  bool HasInterestingState() const {
-    return
-      def.HasInterestingState() ||
-      !derived.empty() ||
-      !instances.empty() ||
-      !uses.empty();
-  }
-
   bool operator<(const IndexType& other) const {
     return def.usr < other.def.usr;
   }
@@ -290,18 +269,6 @@ struct FuncDefDefinitionData {
   FuncDefDefinitionData() {}  // For reflection.
   FuncDefDefinitionData(const std::string& usr) : usr(usr) {
     // assert(usr.size() > 0);
-  }
-
-  bool HasInterestingState() const {
-    return
-      !short_name.empty() ||
-      !detailed_name.empty() ||
-      definition_spelling ||
-      definition_extent ||
-      declaring_type ||
-      base ||
-      !locals.empty() ||
-      !callees.empty();
   }
 
   bool operator==(
@@ -367,15 +334,6 @@ struct IndexFunc {
     // assert(usr.size() > 0);
   }
 
-  bool HasInterestingState() const {
-    return
-      def.HasInterestingState() ||
-      !def.callees.empty() ||
-      !declarations.empty() ||
-      !derived.empty() ||
-      !callers.empty();
-  }
-
   bool operator<(const IndexFunc& other) const {
     return def.usr < other.def.usr;
   }
@@ -409,16 +367,6 @@ struct VarDefDefinitionData {
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool HasInterestingState() const {
-    return
-      !short_name.empty() ||
-      !detailed_name.empty() ||
-      declaration ||
-      definition_spelling ||
-      definition_extent ||
-      variable_type ||
-      declaring_type;
-  }
   bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Range>&
                       other) const {
     return usr == other.usr && short_name == other.short_name &&
@@ -467,12 +415,6 @@ struct IndexVar {
 
   IndexVar(IndexVarId id, const std::string& usr) : def(usr), id(id) {
     // assert(usr.size() > 0);
-  }
-
-  bool HasInterestingState() const {
-    return
-      def.HasInterestingState() ||
-      !uses.empty();
   }
 
   bool operator<(const IndexVar& other) const {
