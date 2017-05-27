@@ -301,11 +301,6 @@ void RemoveItem(std::vector<Range>& ranges, Range to_remove) {
     ranges.erase(it);
 }
 
-void UniqueAdd(std::vector<IndexFuncRef>& refs, IndexFuncRef ref) {
-  if (std::find(refs.begin(), refs.end(), ref) != refs.end())
-    refs.push_back(ref);
-}
-
 void UniqueAdd(std::vector<Range>& uses, Range loc) {
   if (std::find(uses.begin(), uses.end(), loc) == uses.end())
     uses.push_back(loc);
@@ -1000,6 +995,19 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       AddDeclTypeUsages(db, decl_cursor,
                         decl->semanticContainer, decl->lexicalContainer);
 
+
+      // We always need to build the short/qualified name for the function,
+      // because we may be parsing a declaration with no definition (ie, pure
+      // virtual, class header but no impl yet, etc).
+      // If decl_cursor != resolved, then decl_cursor is a template
+      // specialization. We don't want to override a lot of the function
+      // definition information in that scenario.
+      //bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
+      // if (decl->isDefinition && decl_cursor == resolved) {
+      //   func_def->def.definition_spelling = ResolveSpelling(decl->cursor);
+      //   func_def->def.definition_extent = ResolveExtent(decl->cursor);
+
+
       // TODO: support multiple definitions per function; right now we are
       // hacking the 'declarations' field by
       // adding a definition when we really don't have one.
@@ -1017,10 +1025,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       }
 
       // If decl_cursor != resolved, then decl_cursor is a template
-      // specialization. We
-      // don't want to override a lot of the function definition information in
-      // that
-      // scenario.
+      // specialization. We don't want to override a lot of the function
+      // definition information in that scenario.
       if (decl_cursor == resolved) {
         // TODO: Eventually run with this if. Right now I want to iron out bugs
         // this may shadow.
@@ -1034,13 +1040,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         size_t offset = type_desc.find('(');
         type_desc.insert(offset, qualified_name);
         func_def->def.detailed_name = type_desc;
-        //}
 
-        // TODO: return type
-        //decl_cursor.get_type_description()
-        //func_def->def.return_type =
-
-        bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
         bool is_ctor_or_dtor =
             decl->entityInfo->kind == CXIdxEntity_CXXConstructor ||
             decl->entityInfo->kind == CXIdxEntity_CXXDestructor;
@@ -1048,8 +1048,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
         // Add function usage information. We only want to do it once per
         // definition/declaration. Do it on definition since there should only
-        // ever
-        // be one of those in the entire program.
+        // ever be one of those in the entire program.
         if (IsTypeDefinition(decl->semanticContainer)) {
           IndexTypeId declaring_type_id =
               db->ToTypeId(decl->semanticContainer->cursor);
@@ -1068,77 +1067,57 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             declaring_type_def->def.funcs.push_back(func_id);
         }
 
-        if (decl->isDefinition || is_pure_virtual) {
-          // Mark type usage for parameters as interesting. We handle this here
-          // instead of inside var declaration because clang will not emit a var
-          // declaration for an unnamed parameter, but we still want to mark the
-          // usage as interesting.
-          // TODO: Do a similar thing for function decl parameter usages. Mark
-          //       prototype params as interesting type usages but also relate
-          //       mark
-          //       them as as usages on the primary variable - requires USR to
-          //       be
-          //       the same. We can work around it by declaring which variables
-          //       a
-          //       parameter has declared and update the USR in the definition.
-          clang::Cursor cursor = decl->cursor;
-          for (clang::Cursor arg : cursor.get_arguments()) {
-            switch (arg.get_kind()) {
-              case CXCursor_ParmDecl:
-                // We don't need to know the arg type, but we do want to mark it
-                // as
-                // an interesting usage. Note that we use semanticContainer
-                // twice
-                // because a parameter is not really part of the lexical
-                // container.
-                AddDeclTypeUsages(db, arg,
-                                  decl->semanticContainer,
-                                  decl->semanticContainer);
+        // Process inheritance.
+        if (clang_CXXMethod_isVirtual(decl->cursor)) {
+          CXCursor* overridden;
+          unsigned int num_overridden;
+          clang_getOverriddenCursors(decl->cursor, &overridden,
+            &num_overridden);
 
-                // TypeResolution arg_type = ResolveToType(db, arg.get_type());
-                // if (arg_type.resolved_type)
-                //  AddInterestingUsageToType(db, arg_type,
-                //  FindLocationOfTypeSpecifier(arg));
-                break;
-              default:
-                break;
-            }
+          // FIXME if it ever shows up. Methods should only ever have 1 base
+          // type, though.
+          if (num_overridden > 1)
+            std::cerr << "[indexer]: warning: multiple base overrides for " << func_def->def.detailed_name << std::endl;
+
+          for (unsigned i = 0; i < num_overridden; ++i) {
+            clang::Cursor parent = overridden[i];
+            IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
+            IndexFunc* parent_def = db->Resolve(parent_id);
+            func_def = db->Resolve(func_id);  // ToFuncId invalidated func_def
+
+            func_def->def.base = parent_id;
+            parent_def->derived.push_back(func_id);
           }
 
-          // Process inheritance.
-          // void clang_getOverriddenCursors(CXCursor cursor, CXCursor
-          // **overridden, unsigned *num_overridden);
-          // void clang_disposeOverriddenCursors(CXCursor *overridden);
-          if (clang_CXXMethod_isVirtual(decl->cursor)) {
-            CXCursor* overridden;
-            unsigned int num_overridden;
-            clang_getOverriddenCursors(decl->cursor, &overridden,
-                                       &num_overridden);
-
-            // TODO: How to handle multiple parent overrides??
-            for (unsigned int i = 0; i < num_overridden; ++i) {
-              clang::Cursor parent = overridden[i];
-              IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
-              IndexFunc* parent_def = db->Resolve(parent_id);
-              func_def = db->Resolve(func_id);  // ToFuncId invalidated func_def
-
-              func_def->def.base = parent_id;
-              parent_def->derived.push_back(func_id);
-            }
-
-            clang_disposeOverriddenCursors(overridden);
-          }
+          clang_disposeOverriddenCursors(overridden);
         }
       }
 
-      /*
-      optional<FuncId> base;
-      std::vector<FuncId> derived;
-      std::vector<VarId> locals;
-      std::vector<FuncRef> callers;
-      std::vector<FuncRef> callees;
-      std::vector<Location> uses;
-      */
+      // else {
+        // Add declaration.
+        // func_def->declarations.push_back(ResolveSpelling(decl->cursor));
+        /* TODO/FIXME: enable this block
+        IndexFunc::Declaration declaration;
+        declaration.extent = ResolveExtent(decl->cursor);
+
+        clang::Cursor cursor = decl->cursor;
+        for (clang::Cursor arg : cursor.get_arguments()) {
+          switch (arg.get_kind()) {
+            case CXCursor_ParmDecl: {
+              IndexFunc::DeclarationVariable decl_var;
+              // FIXME/TODO: scan actual tokens.
+              decl_var.extent_string = arg.get_display_name();
+              decl_var.spelling = ResolveSpelling(arg.cx_cursor);
+              declaration.vars.push_back(decl_var);
+              break;
+            }
+            default:
+              break;
+          }
+        }
+        func_def->declarations.push_back(declaration);
+        */
+      // }
       break;
     }
 
