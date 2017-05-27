@@ -982,7 +982,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXInstanceMethod:
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXConversionFunction: {
-      Range decl_loc_spelling = ResolveSpelling(decl->cursor);
+      Range decl_spelling = ResolveSpelling(decl->cursor);
 
       clang::Cursor decl_cursor = decl->cursor;
       clang::Cursor decl_cursor_resolved = decl_cursor.template_specialization_to_template_definition();
@@ -1004,11 +1004,11 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && !is_template_specialization) {
         assert(!func->def.definition_spelling);
         assert(!func->def.definition_extent);
-        func->def.definition_spelling = ResolveSpelling(decl->cursor);
+        func->def.definition_spelling = decl_spelling;
         func->def.definition_extent = ResolveExtent(decl->cursor);
       }
       else {
-        func->declarations.push_back(ResolveSpelling(decl->cursor));
+        func->declarations.push_back(decl_spelling);
       }
 
       // Emit definition data for the function. We do this even if it isn't a
@@ -1038,9 +1038,9 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
           // Mark a type reference at the ctor/dtor location.
           if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor)
-            UniqueAdd(declaring_type_def->uses, decl_loc_spelling);
+            UniqueAdd(declaring_type_def->uses, decl_spelling);
           if (decl->entityInfo->kind == CXIdxEntity_CXXDestructor) {
-            Range dtor_type_range = decl_loc_spelling;
+            Range dtor_type_range = decl_spelling;
             dtor_type_range.start.column += 1; // Don't count the leading ~
             UniqueAdd(declaring_type_def->uses, dtor_type_range);
           }
