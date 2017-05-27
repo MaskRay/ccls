@@ -301,9 +301,10 @@ void RemoveItem(std::vector<Range>& ranges, Range to_remove) {
     ranges.erase(it);
 }
 
-void UniqueAdd(std::vector<Range>& uses, Range loc) {
-  if (std::find(uses.begin(), uses.end(), loc) == uses.end())
-    uses.push_back(loc);
+template <typename T>
+void UniqueAdd(std::vector<T>& values, T value) {
+  if (std::find(values.begin(), values.end(), value) == values.end())
+    values.push_back(value);
 }
 
 IdCache::IdCache(const std::string& primary_file)
@@ -984,10 +985,10 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       Range decl_loc_spelling = ResolveSpelling(decl->cursor);
 
       clang::Cursor decl_cursor = decl->cursor;
-      clang::Cursor resolved =
-          decl_cursor.template_specialization_to_template_definition();
+      clang::Cursor decl_cursor_resolved = decl_cursor.template_specialization_to_template_definition();
+      bool is_template_specialization = decl_cursor != decl_cursor_resolved;
 
-      IndexFuncId func_id = db->ToFuncId(resolved.cx_cursor);
+      IndexFuncId func_id = db->ToFuncId(decl_cursor_resolved.cx_cursor);
       IndexFunc* func = db->Resolve(func_id);
 
       // We don't actually need to know the return type, but we need to mark it
@@ -995,42 +996,27 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       AddDeclTypeUsages(db, decl_cursor,
                         decl->semanticContainer, decl->lexicalContainer);
 
-
-      // We always need to build the short/qualified name for the function,
-      // because we may be parsing a declaration with no definition (ie, pure
-      // virtual, class header but no impl yet, etc).
-      // If decl_cursor != resolved, then decl_cursor is a template
-      // specialization. We don't want to override a lot of the function
-      // definition information in that scenario.
-      //bool is_pure_virtual = clang_CXXMethod_isPureVirtual(decl->cursor);
-      // if (decl->isDefinition && decl_cursor == resolved) {
-      //   func_def->def.definition_spelling = ResolveSpelling(decl->cursor);
-      //   func_def->def.definition_extent = ResolveExtent(decl->cursor);
-
-
-      // TODO: support multiple definitions per function; right now we are
-      // hacking the 'declarations' field by
-      // adding a definition when we really don't have one.
-      if (decl->isDefinition && !func->def.definition_extent.has_value()) {
+      // Add definition or declaration. This is a bit tricky because we treat
+      // template specializations as declarations, even though they are
+      // technically definitions.
+      // TODO: Support multiple function definitions, which is common for
+      //       template specializations.
+      if (decl->isDefinition && !is_template_specialization) {
+        assert(!func->def.definition_spelling);
+        assert(!func->def.definition_extent);
         func->def.definition_spelling = ResolveSpelling(decl->cursor);
         func->def.definition_extent = ResolveExtent(decl->cursor);
-
-        RemoveItem(func->declarations, *func->def.definition_spelling);
       }
       else {
-        Range decl_spelling = ResolveSpelling(decl->cursor);
-        // Only add the declaration if it's not already a definition.
-        if (!func->def.definition_spelling || *func->def.definition_spelling != decl_spelling)
-          UniqueAdd(func->declarations, decl_spelling);
+        func->declarations.push_back(ResolveSpelling(decl->cursor));
       }
 
-      // If decl_cursor != resolved, then decl_cursor is a template
-      // specialization. We don't want to override a lot of the function
-      // definition information in that scenario.
-      if (decl_cursor == resolved) {
-        // TODO: Eventually run with this if. Right now I want to iron out bugs
-        // this may shadow.
-        // if (!decl->isRedeclaration) {
+      // Emit definition data for the function. We do this even if it isn't a
+      // definition because there can be, for example, interfaces, or a class
+      // declaration that doesn't have a definition yet. If we never end up
+      // indexing the definition, then there will not be any (ie) outline
+      // information.
+      if (!is_template_specialization) {
         func->def.short_name = decl->entityInfo->name;
 
         // Build detailed name. The type desc looks like void (void *). We
@@ -1040,11 +1026,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         size_t offset = type_desc.find('(');
         type_desc.insert(offset, qualified_name);
         func->def.detailed_name = type_desc;
-
-        bool is_ctor_or_dtor =
-            decl->entityInfo->kind == CXIdxEntity_CXXConstructor ||
-            decl->entityInfo->kind == CXIdxEntity_CXXDestructor;
-        // bool process_declaring_type = is_pure_virtual || is_ctor_or_dtor;
 
         // Add function usage information. We only want to do it once per
         // definition/declaration. Do it on definition since there should only
@@ -1056,15 +1037,14 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           func->def.declaring_type = declaring_type_id;
 
           // Mark a type reference at the ctor/dtor location.
-          if (is_ctor_or_dtor) {
-            Range type_usage_loc = decl_loc_spelling;
-            UniqueAdd(declaring_type_def->uses, type_usage_loc);
-          }
+          if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor)
+            UniqueAdd(declaring_type_def->uses, decl_loc_spelling);
+          // TODO/FIXME: +1 on dtor start range.
+          if (decl->entityInfo->kind == CXIdxEntity_CXXDestructor)
+            UniqueAdd(declaring_type_def->uses, decl_loc_spelling);
 
-          // Register function in declaring type if it hasn't been registered
-          // yet.
-          if (!Contains(declaring_type_def->def.funcs, func_id))
-            declaring_type_def->def.funcs.push_back(func_id);
+          // Add function to declaring type.
+          UniqueAdd(declaring_type_def->def.funcs, func_id);
         }
 
         // Process inheritance.
