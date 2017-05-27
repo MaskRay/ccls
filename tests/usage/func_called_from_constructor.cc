@@ -34,7 +34,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
-      "declarations": ["4:3-4:6"],
+      "declarations": [{
+          "spelling": "4:3-4:6"
+        }],
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
       "declaring_type": 0,

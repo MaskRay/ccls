@@ -34,7 +34,9 @@ OUTPUT:
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Root::foo()",
-      "declarations": ["2:16-2:19"],
+      "declarations": [{
+          "spelling": "2:16-2:19"
+        }],
       "declaring_type": 0,
       "derived": [1]
     }, {

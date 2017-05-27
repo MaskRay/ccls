@@ -195,9 +195,10 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
       add_all_symbols(id_map.ToSymbol(func.id), func.def.definition_spelling.value());
     if (func.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(func.id), func.def.definition_extent.value());
-    for (Range decl : func.declarations) {
-      add_all_symbols(id_map.ToSymbol(func.id), decl);
-      add_outline(id_map.ToSymbol(func.id), decl);
+    for (const IndexFunc::Declaration& decl : func.declarations) {
+      // TODO: add more outline info?
+      add_all_symbols(id_map.ToSymbol(func.id), decl.spelling);
+      add_outline(id_map.ToSymbol(func.id), decl.spelling);
     }
     for (const IndexFuncRef& caller : func.callers) {
       if (caller.is_implicit) continue;
@@ -320,7 +321,6 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
 QueryLocation IdMap::ToQuery(Range range) const {
   return QueryLocation(primary_file, range);
 }
-
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id) != cached_type_ids_.end());
   return QueryTypeId(cached_type_ids_.find(id)->second);
@@ -336,6 +336,10 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
   return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc), ref.is_implicit);
+}
+QueryLocation IdMap::ToQuery(IndexFunc::Declaration decl) const {
+  // TODO: expose more than just QueryLocation.
+  return QueryLocation(primary_file, decl.spelling);
 }
 
 optional<QueryLocation> IdMap::ToQuery(optional<Range> range) const {
@@ -363,6 +367,11 @@ optional<QueryFuncRef> IdMap::ToQuery(optional<IndexFuncRef> ref) const {
     return nullopt;
   return ToQuery(ref.value());
 }
+optional<QueryLocation> IdMap::ToQuery(optional<IndexFunc::Declaration> decl) const {
+  if (!decl)
+    return nullopt;
+  return ToQuery(decl.value());
+}
 
 template<typename In, typename Out>
 std::vector<Out> ToQueryTransform(const IdMap& id_map, const std::vector<In>& input) {
@@ -386,6 +395,9 @@ std::vector<QueryVarId> IdMap::ToQuery(std::vector<IndexVarId> ids) const {
 }
 std::vector<QueryFuncRef> IdMap::ToQuery(std::vector<IndexFuncRef> refs) const {
   return ToQueryTransform<IndexFuncRef, QueryFuncRef>(*this, refs);
+}
+std::vector<QueryLocation> IdMap::ToQuery(std::vector<IndexFunc::Declaration> decls) const {
+  return ToQueryTransform<IndexFunc::Declaration, QueryLocation>(*this, decls);
 }
 
 SymbolIdx IdMap::ToSymbol(IndexTypeId id) const {

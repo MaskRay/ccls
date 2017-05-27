@@ -25,7 +25,9 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
-      "declarations": ["5:6-5:12"],
+      "declarations": [{
+          "spelling": "5:6-5:12"
+        }],
       "callers": ["1@8:3-8:9"]
     }, {
       "id": 1,

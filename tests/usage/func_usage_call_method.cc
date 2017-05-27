@@ -26,7 +26,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "detailed_name": "void Foo::Used()",
-      "declarations": ["2:8-2:12"],
+      "declarations": [{
+          "spelling": "2:8-2:12"
+        }],
       "declaring_type": 0,
       "callers": ["1@7:6-7:10"]
     }, {

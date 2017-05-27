@@ -22,7 +22,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Foo::foo()",
-      "declarations": ["2:8-2:11"],
+      "declarations": [{
+          "spelling": "2:8-2:11"
+        }],
       "definition_spelling": "5:11-5:14",
       "definition_extent": "5:1-5:19",
       "declaring_type": 0

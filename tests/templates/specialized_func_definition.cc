@@ -30,7 +30,11 @@ OUTPUT:
       "usr": "c:@ST>1#T@Template@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Template::Foo()",
-      "declarations": ["3:8-3:11", "9:22-9:25"],
+      "declarations": [{
+          "spelling": "3:8-3:11"
+        }, {
+          "spelling": "9:22-9:25"
+        }],
       "definition_spelling": "7:19-7:22",
       "definition_extent": "6:1-7:24",
       "declaring_type": 0

@@ -39,7 +39,11 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "Type *foo()",
-      "declarations": ["3:7-3:10", "4:7-4:10"],
+      "declarations": [{
+          "spelling": "3:7-3:10"
+        }, {
+          "spelling": "4:7-4:10"
+        }],
       "definition_spelling": "5:7-5:10",
       "definition_extent": "5:1-5:15"
     }, {
@@ -47,7 +51,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Get#I#",
       "short_name": "Get",
       "detailed_name": "Type *Foo::Get(int)",
-      "declarations": ["8:9-8:12"],
+      "declarations": [{
+          "spelling": "8:9-8:12"
+        }],
       "definition_spelling": "12:12-12:15",
       "definition_extent": "12:1-12:23",
       "declaring_type": 1
@@ -56,7 +62,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Empty#",
       "short_name": "Empty",
       "detailed_name": "void Foo::Empty()",
-      "declarations": ["9:8-9:13"],
+      "declarations": [{
+          "spelling": "9:8-9:13"
+        }],
       "definition_spelling": "13:11-13:16",
       "definition_extent": "13:1-13:21",
       "declaring_type": 1
@@ -65,13 +73,17 @@ OUTPUT:
       "usr": "c:@F@external#",
       "short_name": "external",
       "detailed_name": "const Type &external()",
-      "declarations": ["15:20-15:28"]
+      "declarations": [{
+          "spelling": "15:20-15:28"
+        }]
     }, {
       "id": 4,
       "usr": "c:type_usage_on_return_type.cc@F@bar#",
       "short_name": "bar",
       "detailed_name": "Type *bar()",
-      "declarations": ["17:14-17:17"],
+      "declarations": [{
+          "spelling": "17:14-17:17"
+        }],
       "definition_spelling": "18:14-18:17",
       "definition_extent": "18:1-18:22"
     }]

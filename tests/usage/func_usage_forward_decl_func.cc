@@ -11,7 +11,9 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "declarations": ["1:6-1:9"],
+      "declarations": [{
+          "spelling": "1:6-1:9"
+        }],
       "callers": ["1@4:3-4:6"]
     }, {
       "id": 1,

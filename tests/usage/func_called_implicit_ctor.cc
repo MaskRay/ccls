@@ -26,7 +26,9 @@ OUTPUT:
       "usr": "c:@S@Wrapper@F@Wrapper#I#",
       "short_name": "Wrapper",
       "detailed_name": "void Wrapper::Wrapper(int)",
-      "declarations": ["2:3-2:10"],
+      "declarations": [{
+          "spelling": "2:3-2:10"
+        }],
       "declaring_type": 0,
       "callers": ["~2@8:10-8:16"]
     }, {

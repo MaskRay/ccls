@@ -316,8 +316,19 @@ struct IndexFunc {
 
   IndexFuncId id;
 
+  struct DeclarationVariable {
+    // Spelled name of the variable.
+    Range spelling;
+    // Full text (including type) of the variable.
+    std::string content;
+  };
+  struct Declaration {
+    Range spelling;
+    std::vector<DeclarationVariable> vars;
+  };
+
   // Places the function is forward-declared.
-  std::vector<Range> declarations;
+  std::vector<Declaration> declarations;
 
   // Methods which directly override this one.
   std::vector<IndexFuncId> derived;
@@ -339,6 +350,8 @@ struct IndexFunc {
   }
 };
 MAKE_HASHABLE(IndexFunc, t.def.usr);
+MAKE_REFLECT_STRUCT(IndexFunc::DeclarationVariable, spelling, content);
+MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spelling, vars);
 
 template <typename TypeId,
           typename FuncId,
@@ -447,7 +460,7 @@ MAKE_REFLECT_STRUCT(IndexInclude, line, resolved_path);
 struct IndexFile {
   IdCache id_cache;
 
-  static constexpr int kCurrentVersion = 3;
+  static constexpr int kCurrentVersion = 4;
   int version = 0;
 
   std::string path;

@@ -19,7 +19,9 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "void called()",
-      "declarations": ["1:6-1:12"],
+      "declarations": [{
+          "spelling": "1:6-1:12"
+        }],
       "callers": ["1@5:3-5:9"]
     }, {
       "id": 1,

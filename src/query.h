@@ -315,16 +315,19 @@ struct IdMap {
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
   QueryFuncRef ToQuery(IndexFuncRef ref) const;
+  QueryLocation ToQuery(IndexFunc::Declaration decl) const;
   optional<QueryLocation> ToQuery(optional<Range> range) const;
   optional<QueryTypeId> ToQuery(optional<IndexTypeId> id) const;
   optional<QueryFuncId> ToQuery(optional<IndexFuncId> id) const;
   optional<QueryVarId> ToQuery(optional<IndexVarId> id) const;
   optional<QueryFuncRef> ToQuery(optional<IndexFuncRef> ref) const;
+  optional<QueryLocation> ToQuery(optional<IndexFunc::Declaration> decl) const;
   std::vector<QueryLocation> ToQuery(std::vector<Range> ranges) const;
   std::vector<QueryTypeId> ToQuery(std::vector<IndexTypeId> ids) const;
   std::vector<QueryFuncId> ToQuery(std::vector<IndexFuncId> ids) const;
   std::vector<QueryVarId> ToQuery(std::vector<IndexVarId> ids) const;
   std::vector<QueryFuncRef> ToQuery(std::vector<IndexFuncRef> refs) const;
+  std::vector<QueryLocation> ToQuery(std::vector<IndexFunc::Declaration> decls) const;
 
   SymbolIdx ToSymbol(IndexTypeId id) const;
   SymbolIdx ToSymbol(IndexFuncId id) const;

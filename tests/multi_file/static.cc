@@ -20,7 +20,9 @@ OUTPUT: static.h
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",
-      "declarations": ["4:15-4:33"],
+      "declarations": [{
+          "spelling": "4:15-4:33"
+        }],
       "declaring_type": 0
     }]
 }

@@ -1008,7 +1008,26 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         func->def.definition_extent = ResolveExtent(decl->cursor);
       }
       else {
-        func->declarations.push_back(decl_spelling);
+        IndexFunc::Declaration declaration;
+        declaration.spelling = decl_spelling;
+
+        /*
+        for (clang::Cursor arg : decl_cursor.get_arguments()) {
+          switch (arg.get_kind()) {
+            case CXCursor_ParmDecl: {
+              IndexFunc::DeclarationVariable decl_var;
+              decl_var.content = arg.get_display_name(); // FIXME/TODO: scan actual tokens.
+              decl_var.spelling = ResolveSpelling(arg.cx_cursor);
+              declaration.vars.push_back(decl_var);
+              break;
+            }
+            default:
+              break;
+          }
+        }
+        */
+
+        func->declarations.push_back(declaration);
       }
 
       // Emit definition data for the function. We do this even if it isn't a
@@ -1074,32 +1093,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           clang_disposeOverriddenCursors(overridden);
         }
       }
-
-      // else {
-        // Add declaration.
-        // func_def->declarations.push_back(ResolveSpelling(decl->cursor));
-        /* TODO/FIXME: enable this block
-        IndexFunc::Declaration declaration;
-        declaration.extent = ResolveExtent(decl->cursor);
-
-        clang::Cursor cursor = decl->cursor;
-        for (clang::Cursor arg : cursor.get_arguments()) {
-          switch (arg.get_kind()) {
-            case CXCursor_ParmDecl: {
-              IndexFunc::DeclarationVariable decl_var;
-              // FIXME/TODO: scan actual tokens.
-              decl_var.extent_string = arg.get_display_name();
-              decl_var.spelling = ResolveSpelling(arg.cx_cursor);
-              declaration.vars.push_back(decl_var);
-              break;
-            }
-            default:
-              break;
-          }
-        }
-        func_def->declarations.push_back(declaration);
-        */
-      // }
       break;
     }
 

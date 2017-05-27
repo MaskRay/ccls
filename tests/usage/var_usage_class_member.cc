@@ -36,14 +36,18 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
-      "declarations": ["7:6-7:12"],
+      "declarations": [{
+          "spelling": "7:6-7:12"
+        }],
       "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"]
     }, {
       "id": 1,
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "detailed_name": "void accept(int *)",
-      "declarations": ["8:6-8:12"],
+      "declarations": [{
+          "spelling": "8:6-8:12"
+        }],
       "callers": ["2@16:3-16:9"]
     }, {
       "id": 2,

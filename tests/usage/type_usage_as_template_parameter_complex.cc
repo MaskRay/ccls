@@ -131,7 +131,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "unique_ptr<S1, S2> *Foo::foo()",
-      "declarations": ["65:23-65:26"],
+      "declarations": [{
+          "spelling": "65:23-65:26"
+        }],
       "definition_spelling": "79:26-79:29",
       "definition_extent": "79:1-79:51",
       "declaring_type": 3

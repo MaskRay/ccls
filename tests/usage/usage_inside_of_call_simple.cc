@@ -14,7 +14,9 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "detailed_name": "void called(int)",
-      "declarations": ["1:6-1:12"],
+      "declarations": [{
+          "spelling": "1:6-1:12"
+        }],
       "callers": ["2@6:3-6:9"]
     }, {
       "id": 1,

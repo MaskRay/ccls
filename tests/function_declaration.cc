@@ -8,7 +8,9 @@ OUTPUT:
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
       "detailed_name": "void foo(int, int)",
-      "declarations": ["1:6-1:9"]
+      "declarations": [{
+          "spelling": "1:6-1:9"
+        }]
     }]
 }
 */

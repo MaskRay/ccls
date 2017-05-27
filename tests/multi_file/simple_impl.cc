@@ -12,7 +12,9 @@ OUTPUT: simple_header.h
       "usr": "c:@F@header#",
       "short_name": "header",
       "detailed_name": "void header()",
-      "declarations": ["3:6-3:12"]
+      "declarations": [{
+          "spelling": "3:6-3:12"
+        }]
     }]
 }
 OUTPUT: simple_impl.cc

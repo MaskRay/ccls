@@ -24,7 +24,9 @@ OUTPUT:
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void hello::Foo::foo()",
-      "declarations": ["3:8-3:11"],
+      "declarations": [{
+          "spelling": "3:8-3:11"
+        }],
       "definition_spelling": "6:11-6:14",
       "definition_extent": "6:1-6:19",
       "declaring_type": 0

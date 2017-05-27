@@ -28,7 +28,9 @@ OUTPUT:
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "detailed_name": "Foo *Foo::make()",
-      "declarations": ["2:8-2:12"],
+      "declarations": [{
+          "spelling": "2:8-2:12"
+        }],
       "definition_spelling": "5:11-5:15",
       "definition_extent": "5:1-8:2",
       "declaring_type": 0
