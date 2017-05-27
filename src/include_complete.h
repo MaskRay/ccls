@@ -9,8 +9,8 @@
 struct GroupMatch;
 struct Project;
 
-struct IncludeCompletion {
-  IncludeCompletion(Config* config, Project* project);
+struct IncludeComplete {
+  IncludeComplete(Config* config, Project* project);
 
   // Starts scanning directories. Clears existing cache.
   void Rescan();

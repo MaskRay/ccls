@@ -1,4 +1,4 @@
-#include "include_completion.h"
+#include "include_complete.h"
 
 #include "match.h"
 #include "platform.h"
@@ -100,10 +100,10 @@ lsCompletionItem BuildCompletionItem(Config* config, const std::string& path, bo
 
 }  // namespace
 
-IncludeCompletion::IncludeCompletion(Config* config, Project* project)
+IncludeComplete::IncludeComplete(Config* config, Project* project)
     : is_scanning(false), config_(config), project_(project) {}
 
-void IncludeCompletion::Rescan() {
+void IncludeComplete::Rescan() {
   if (is_scanning)
     return;
 
@@ -130,7 +130,7 @@ void IncludeCompletion::Rescan() {
   });
 }
 
-void IncludeCompletion::AddFile(const std::string& absolute_path) {
+void IncludeComplete::AddFile(const std::string& absolute_path) {
   if (!EndsWithAny(absolute_path, config_->includeCompletionWhitelistLiteralEnding))
     return;
   if (match_ && !match_->IsMatch(absolute_path))
@@ -151,7 +151,7 @@ void IncludeCompletion::AddFile(const std::string& absolute_path) {
   }
 }
 
-void IncludeCompletion::InsertIncludesFromDirectory(
+void IncludeComplete::InsertIncludesFromDirectory(
     std::string directory,
     bool use_angle_brackets) {
   directory = NormalizePath(directory);
@@ -177,7 +177,7 @@ void IncludeCompletion::InsertIncludesFromDirectory(
   }
 }
 
-void IncludeCompletion::InsertStlIncludes() {
+void IncludeComplete::InsertStlIncludes() {
   std::lock_guard<std::mutex> lock(completion_items_mutex);
   for (const char* stl_header : kStandardLibraryIncludes) {
     completion_items.push_back(BuildCompletionItem(config_, stl_header, true /*use_angle_brackets*/, true /*is_stl*/));

@@ -1,4 +1,4 @@
-#include "code_completion.h"
+#include "clang_complete.h"
 
 #include "clang_utils.h"
 #include "libclangmm/Utility.h"
@@ -253,10 +253,10 @@ void EnsureDocumentParsed(CompletionSession* session,
   std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail << std::endl;
 }
 
-void CompletionParseMain(CompletionManager* completion_manager) {
+void CompletionParseMain(ClangCompleteManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
-    CompletionManager::ParseRequest request = completion_manager->parse_requests_.Dequeue();
+    ClangCompleteManager::ParseRequest request = completion_manager->parse_requests_.Dequeue();
     
     // If we don't get a session then that means we don't care about the file
     // anymore - abandon the request.
@@ -282,10 +282,10 @@ void CompletionParseMain(CompletionManager* completion_manager) {
   }
 }
 
-void CompletionQueryMain(CompletionManager* completion_manager) {
+void CompletionQueryMain(ClangCompleteManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
-    std::unique_ptr<CompletionManager::CompletionRequest> request = completion_manager->completion_request_.Take();
+    std::unique_ptr<ClangCompleteManager::CompletionRequest> request = completion_manager->completion_request_.Take();
     std::string path = request->location.textDocument.uri.GetPath();
 
     CompletionSession* session = completion_manager->TryGetSession(path, true /*create_if_needed*/);
@@ -392,16 +392,27 @@ CompletionSession* LruSessionCache::TryGetEntry(const std::string& filename) {
   return nullptr;
 }
 
+std::unique_ptr<CompletionSession> LruSessionCache::TryTakeEntry(const std::string& filename) {
+  for (int i = 0; i < entries_.size(); ++i) {
+    if (entries_[i]->file.filename == filename) {
+      std::unique_ptr<CompletionSession> result = std::move(entries_[i]);
+      entries_.erase(entries_.begin() + i);
+      return result;
+    }
+  }
+  return nullptr;
+}
+
 void LruSessionCache::InsertEntry(std::unique_ptr<CompletionSession> session) {
   if (entries_.size() >= max_entries_)
     entries_.pop_back();
   entries_.insert(entries_.begin(), std::move(session));
 }
 
-CompletionManager::ParseRequest::ParseRequest(const std::string& path)
+ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
   : path(path), request_time(std::chrono::high_resolution_clock::now()) {}
 
-CompletionManager::CompletionManager(Config* config, Project* project, WorkingFiles* working_files)
+ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files)
     : config_(config), project_(project), working_files_(working_files),
       view_sessions_(kMaxViewSessions), edit_sessions_(kMaxEditSessions) {
   new std::thread([&]() {
@@ -415,7 +426,7 @@ CompletionManager::CompletionManager(Config* config, Project* project, WorkingFi
   });
 }
 
-void CompletionManager::CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete) {
+void ClangCompleteManager::CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete) {
   // completion thread will create the CompletionSession if needed.
 
   auto request = MakeUnique<CompletionRequest>();
@@ -424,7 +435,7 @@ void CompletionManager::CodeComplete(const lsTextDocumentPositionParams& complet
   completion_request_.Set(std::move(request));
 }
 
-void CompletionManager::NotifyView(const std::string& filename) {
+void ClangCompleteManager::NotifyView(const std::string& filename) {
   //
   // On view, we reparse only if the file has not been parsed. The existence of
   // a CompletionSession instance implies the file is already parsed or will be
@@ -442,7 +453,7 @@ void CompletionManager::NotifyView(const std::string& filename) {
   parse_requests_.Enqueue(ParseRequest(filename));
 }
 
-void CompletionManager::NotifyEdit(const std::string& filename) {
+void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   //
   // On edit, we reparse only if the file has not been parsed. The existence of
   // a CompletionSession instance implies the file is already parsed or will be
@@ -454,13 +465,17 @@ void CompletionManager::NotifyEdit(const std::string& filename) {
   if (edit_sessions_.TryGetEntry(filename))
     return;
 
+  if (std::unique_ptr<CompletionSession> session = view_sessions_.TryTakeEntry(filename)) {
+    edit_sessions_.InsertEntry(std::move(session));
+  }
+
   std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
   edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
     project_->FindCompilationEntryForFile(filename), working_files_));
   parse_requests_.PriorityEnqueue(ParseRequest(filename));
 }
 
-void CompletionManager::NotifySave(const std::string& filename) {
+void ClangCompleteManager::NotifySave(const std::string& filename) {
   //
   // On save, always reparse.
   //
@@ -476,7 +491,7 @@ void CompletionManager::NotifySave(const std::string& filename) {
   parse_requests_.PriorityEnqueue(ParseRequest(filename));
 }
 
-CompletionSession* CompletionManager::TryGetSession(const std::string& filename, bool create_if_needed) {
+CompletionSession* ClangCompleteManager::TryGetSession(const std::string& filename, bool create_if_needed) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
   CompletionSession* session = edit_sessions_.TryGetEntry(filename);

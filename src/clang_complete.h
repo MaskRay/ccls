@@ -42,11 +42,13 @@ struct LruSessionCache {
   // Fetches the entry for |filename| and updates it's usage so it is less
   // likely to be evicted.
   CompletionSession* TryGetEntry(const std::string& filename);
+  // TryGetEntry, except the return value captures ownership.
+  std::unique_ptr<CompletionSession> TryTakeEntry(const std::string& fiilename);
   // Inserts an entry. Evicts the oldest unused entry if there is no space.
   void InsertEntry(std::unique_ptr<CompletionSession> session);
 };
 
-struct CompletionManager {
+struct ClangCompleteManager {
   using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics)>;
   
   struct ParseRequest {
@@ -60,7 +62,7 @@ struct CompletionManager {
     OnComplete on_complete;
   };
 
-  CompletionManager(Config* config, Project* project, WorkingFiles* working_files);
+  ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files);
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.
