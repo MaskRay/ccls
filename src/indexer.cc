@@ -1350,6 +1350,7 @@ void indexEntityReference(CXClientData client_data,
   // std::endl;
 
   switch (ref->referencedEntity->kind) {
+    case CXIdxEntity_CXXNamespaceAlias:
     case CXIdxEntity_CXXNamespace: {
       // We don't index namespace usages.
       break;
