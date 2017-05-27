@@ -1093,8 +1093,42 @@ MAKE_REFLECT_EMPTY_STRUCT(Ipc_Exit);
 
 
 
+enum class lsErrorCodes {
+  // Defined by JSON RPC
+  ParseError = -32700,
+  InvalidRequest = -32600,
+  MethodNotFound = -32601,
+  InvalidParams = -32602,
+  InternalError = -32603,
+  serverErrorStart = -32099,
+  serverErrorEnd = -32000,
+  ServerNotInitialized = -32002,
+  UnknownErrorCode = -32001,
 
+  // Defined by the protocol.
+  RequestCancelled = -32800,
+};
+MAKE_REFLECT_TYPE_PROXY(lsErrorCodes, int);
+struct Out_Error : public lsOutMessage<Out_Error> {
+  struct lsResponseError {
+    // A number indicating the error type that occurred.
+    lsErrorCodes code;
 
+    // A string providing a short description of the error.
+    std::string message;
+
+    // A Primitive or Structured value that contains additional
+    // information about the error. Can be omitted.
+    // optional<D> data;
+  };
+
+  lsRequestId id;
+
+  // The error object in case a request fails.
+  lsResponseError error;
+};
+MAKE_REFLECT_STRUCT(Out_Error::lsResponseError, code, message);
+MAKE_REFLECT_STRUCT(Out_Error, jsonrpc, id, error);
 
 
 

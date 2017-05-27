@@ -201,34 +201,41 @@ void PushBack(NonElidedVector<lsLocation>* result, optional<lsLocation> location
     result->push_back(*location);
 }
 
-QueryFile* FindFile(QueryDatabase* db, const std::string& filename, QueryFileId* file_id) {
-  auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(filename));
+bool FindFileOrFail(QueryDatabase* db, lsRequestId id, const std::string& absolute_path, QueryFile** out_query_file, QueryFileId* out_file_id = nullptr) {
+  auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(absolute_path));
   if (it != db->usr_to_file.end()) {
     optional<QueryFile>& file = db->files[it->second.id];
     if (file) {
-      *file_id = QueryFileId(it->second.id);
-      return &file.value();
+      *out_query_file = &file.value();
+      if (out_file_id)
+        *out_file_id = QueryFileId(it->second.id);
+      return true;
     }
   }
 
-  std::cerr << "Unable to find file " << filename << std::endl;
-  *file_id = QueryFileId((size_t)-1);
-  return nullptr;
+  if (out_file_id)
+    *out_file_id = QueryFileId((size_t)-1);
+
+  std::cerr << "Unable to find file " << absolute_path << std::endl;
+
+  Out_Error out;
+  out.id = id;
+  out.error.code = lsErrorCodes::InternalError;
+  out.error.message = "Unable to find file " + absolute_path;
+  IpcManager::instance()->SendOutMessageToClient(IpcId::Cout, out);
+
+  return false;
 }
 
-QueryFile* FindFile(QueryDatabase* db, const std::string& filename) {
-  auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(filename));
+QueryFile* FindFile(QueryDatabase* db, const std::string& absolute_path) {
+  auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(absolute_path));
   if (it != db->usr_to_file.end()) {
     optional<QueryFile>& file = db->files[it->second.id];
     if (file)
       return &file.value();
   }
-
-  std::cerr << "Unable to find file " << filename << std::endl;
   return nullptr;
 }
-
-
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db, const QueryTypeId& id) {
   optional<QueryType>& type = db->types[id.id];
@@ -1683,11 +1690,10 @@ bool QueryDbMainLoop(
       case IpcId::CqueryTypeHierarchyTree: {
         auto msg = static_cast<Ipc_CqueryTypeHierarchyTree*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_CqueryTypeHierarchyTree response;
@@ -1707,11 +1713,10 @@ bool QueryDbMainLoop(
       case IpcId::CqueryCallTreeInitial: {
         auto msg = static_cast<Ipc_CqueryCallTreeInitial*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_CqueryCallTree response;
@@ -1747,11 +1752,10 @@ bool QueryDbMainLoop(
       case IpcId::CqueryVars: {
         auto msg = static_cast<Ipc_CqueryVars*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_LocationList response;
@@ -1771,11 +1775,10 @@ bool QueryDbMainLoop(
       case IpcId::CqueryCallers: {
         auto msg = static_cast<Ipc_CqueryCallers*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_LocationList response;
@@ -1795,11 +1798,10 @@ bool QueryDbMainLoop(
       case IpcId::CqueryBase: {
         auto msg = static_cast<Ipc_CqueryBase*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_LocationList response;
@@ -1828,11 +1830,10 @@ bool QueryDbMainLoop(
       case IpcId::CqueryDerived: {
         auto msg = static_cast<Ipc_CqueryDerived*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_LocationList response;
@@ -1942,11 +1943,10 @@ bool QueryDbMainLoop(
         auto msg = static_cast<Ipc_TextDocumentRename*>(message.get());
 
         QueryFileId file_id;
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file, &file_id))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_TextDocumentRename response;
@@ -2155,11 +2155,10 @@ bool QueryDbMainLoop(
         auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
 
         QueryFileId file_id;
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file, &file_id))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_TextDocumentDefinition response;
@@ -2231,11 +2230,10 @@ bool QueryDbMainLoop(
         auto msg = static_cast<Ipc_TextDocumentDocumentHighlight*>(message.get());
 
         QueryFileId file_id;
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath(), &file_id);
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file, &file_id))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_TextDocumentDocumentHighlight response;
@@ -2268,11 +2266,10 @@ bool QueryDbMainLoop(
       case IpcId::TextDocumentHover: {
         auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_TextDocumentHover response;
@@ -2296,11 +2293,10 @@ bool QueryDbMainLoop(
       case IpcId::TextDocumentReferences: {
         auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         WorkingFile* working_file = working_files->GetFileByFilename(file->def.path);
 
         Out_TextDocumentReferences response;
@@ -2337,11 +2333,10 @@ bool QueryDbMainLoop(
         Out_TextDocumentDocumentSymbol response;
         response.id = msg->id;
 
-        QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
 
         for (SymbolRef ref : file->def.outline) {
           optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, ref.idx);
@@ -2366,11 +2361,9 @@ bool QueryDbMainLoop(
         response.id = msg->id;
 
         if (config->showDocumentLinksOnIncludes) {
-          QueryFile* file = FindFile(db, msg->params.textDocument.uri.GetPath());
-          if (!file) {
-            std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+          QueryFile* file;
+          if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
             break;
-          }
 
           WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
           if (!working_file) {
@@ -2454,11 +2447,10 @@ bool QueryDbMainLoop(
 
         clang_complete->NotifyView(path);
 
-        QueryFile* file = FindFile(db, path);
-        if (!file) {
-          std::cerr << "Unable to find file " << msg->params.textDocument.uri.GetPath() << std::endl;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file))
           break;
-        }
+
         CommonCodeLensParams common;
         common.result = &response.result;
         common.db = db;
