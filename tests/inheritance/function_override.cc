@@ -35,7 +35,9 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "void Root::foo()",
       "declarations": [{
-          "spelling": "2:16-2:19"
+          "spelling": "2:16-2:19",
+          "extent": "2:3-2:21",
+          "content": "virtual void foo()"
         }],
       "declaring_type": 0,
       "derived": [1]

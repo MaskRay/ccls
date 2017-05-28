@@ -15,7 +15,10 @@ OUTPUT:
       "short_name": "accept",
       "detailed_name": "void accept(T)",
       "declarations": [{
-          "spelling": "2:6-2:12"
+          "spelling": "2:6-2:12",
+          "extent": "2:1-2:15",
+          "content": "void accept(T)",
+          "param_spellings": ["2:14-2:14"]
         }],
       "callers": ["1@5:3-5:9", "1@6:3-6:9"]
     }, {

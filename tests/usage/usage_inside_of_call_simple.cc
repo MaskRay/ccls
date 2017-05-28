@@ -15,7 +15,10 @@ OUTPUT:
       "short_name": "called",
       "detailed_name": "void called(int)",
       "declarations": [{
-          "spelling": "1:6-1:12"
+          "spelling": "1:6-1:12",
+          "extent": "1:1-1:19",
+          "content": "void called(int a)",
+          "param_spellings": ["1:17-1:18"]
         }],
       "callers": ["2@6:3-6:9"]
     }, {

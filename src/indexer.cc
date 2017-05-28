@@ -163,12 +163,12 @@ bool CanBeCalledImplicitly(CXIdxEntityKind kind) {
 bool CursorSpellingContainsString(CXCursor cursor, CXTranslationUnit cx_tu, std::string scanning_for) {
   CXSourceRange range = clang_Cursor_getSpellingNameRange(cursor, 0, 0);
   CXToken* tokens;
-  unsigned int num_tokens;
+  unsigned num_tokens;
   clang_tokenize(cx_tu, range, &tokens, &num_tokens);
 
   bool result = false;
 
-  for (size_t i = 0; i < num_tokens; ++i) {
+  for (unsigned i = 0; i < num_tokens; ++i) {
     CXString name = clang_getTokenSpelling(cx_tu, tokens[i]);
     if (strcmp(clang_getCString(name), scanning_for.c_str()) == 0) {
       result = true;
@@ -178,6 +178,47 @@ bool CursorSpellingContainsString(CXCursor cursor, CXTranslationUnit cx_tu, std:
   }
 
   clang_disposeTokens(cx_tu, tokens, num_tokens);
+  return result;
+}
+
+// Returns the document content for the given range. May not work perfectly
+// when there are tabs instead of spaces.
+std::string GetDocumentContentInRange(CXTranslationUnit cx_tu, CXSourceRange range) {
+  std::string result;
+
+  CXToken* tokens;
+  unsigned num_tokens;
+  clang_tokenize(cx_tu, range, &tokens, &num_tokens);
+
+  optional<Range> previous_token_range;
+
+  for (unsigned i = 0; i < num_tokens; ++i) {
+    // Add whitespace between the previous token and this one.
+    Range token_range = Resolve(clang_getTokenExtent(cx_tu, tokens[i]));
+    if (previous_token_range) {
+      // Insert newlines.
+      int16_t line_delta = token_range.start.line - previous_token_range->end.line;
+      assert(line_delta >= 0);
+      if (line_delta > 0) {
+        result.append((size_t)line_delta, '\n');
+        // Reset column so we insert starting padding.
+        previous_token_range->end.column = 0;
+      }
+      // Insert spaces.
+      int16_t column_delta = token_range.start.column - previous_token_range->end.column;
+      assert(column_delta >= 0);
+      result.append((size_t)column_delta, ' ');
+    }
+    previous_token_range = token_range;
+
+    // Add token content.
+    CXString spelling = clang_getTokenSpelling(cx_tu, tokens[i]);
+    result += clang_getCString(spelling);
+    clang_disposeString(spelling);
+  }
+
+  clang_disposeTokens(cx_tu, tokens, num_tokens);
+
   return result;
 }
 
@@ -983,6 +1024,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXConversionFunction: {
       Range decl_spelling = ResolveSpelling(decl->cursor);
+      Range decl_extent = ResolveExtent(decl->cursor);
 
       clang::Cursor decl_cursor = decl->cursor;
       clang::Cursor decl_cursor_resolved = decl_cursor.template_specialization_to_template_definition();
@@ -1005,27 +1047,34 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         assert(!func->def.definition_spelling);
         assert(!func->def.definition_extent);
         func->def.definition_spelling = decl_spelling;
-        func->def.definition_extent = ResolveExtent(decl->cursor);
+        func->def.definition_extent = decl_extent;
       }
       else {
         IndexFunc::Declaration declaration;
         declaration.spelling = decl_spelling;
+        declaration.extent = decl_extent;
+        declaration.content = GetDocumentContentInRange(param->tu->cx_tu, clang_getCursorExtent(decl->cursor));
 
-        /*
+        // Add parameters.
         for (clang::Cursor arg : decl_cursor.get_arguments()) {
           switch (arg.get_kind()) {
             case CXCursor_ParmDecl: {
-              IndexFunc::DeclarationVariable decl_var;
-              decl_var.content = arg.get_display_name(); // FIXME/TODO: scan actual tokens.
-              decl_var.spelling = ResolveSpelling(arg.cx_cursor);
-              declaration.vars.push_back(decl_var);
+              Range param_spelling = ResolveSpelling(arg.cx_cursor);
+
+              // If the name is empty (which is common for parameters), clang
+              // will report a range with length 1, which is not correct.
+              if (param_spelling.start.column == (param_spelling.end.column - 1) &&
+                  arg.get_display_name().empty()) {
+                param_spelling.end.column -= 1;
+              }
+
+              declaration.param_spellings.push_back(param_spelling);
               break;
             }
             default:
               break;
           }
         }
-        */
 
         func->declarations.push_back(declaration);
       }

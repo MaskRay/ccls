@@ -48,7 +48,10 @@ OUTPUT:
       "short_name": "LoadCompilationEntriesFromDirectory",
       "detailed_name": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string &)",
       "declarations": [{
-          "spelling": "12:31-12:66"
+          "spelling": "12:31-12:66",
+          "extent": "12:1-12:104",
+          "content": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory)",
+          "param_spellings": ["12:86-12:103"]
         }]
     }],
   "vars": [{

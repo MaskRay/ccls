@@ -15,7 +15,10 @@ OUTPUT:
       "short_name": "called",
       "detailed_name": "bool called(bool, bool)",
       "declarations": [{
-          "spelling": "3:6-3:12"
+          "spelling": "3:6-3:12",
+          "extent": "3:1-3:28",
+          "content": "bool called(bool a, bool b)",
+          "param_spellings": ["3:18-3:19", "3:26-3:27"]
         }],
       "callers": ["1@6:14-6:20"]
     }, {

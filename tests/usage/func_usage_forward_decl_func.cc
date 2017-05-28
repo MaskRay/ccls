@@ -12,7 +12,9 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "void foo()",
       "declarations": [{
-          "spelling": "1:6-1:9"
+          "spelling": "1:6-1:9",
+          "extent": "1:1-1:11",
+          "content": "void foo()"
         }],
       "callers": ["1@4:3-4:6"]
     }, {

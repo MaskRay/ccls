@@ -27,7 +27,9 @@ OUTPUT:
       "short_name": "Used",
       "detailed_name": "void Foo::Used()",
       "declarations": [{
-          "spelling": "2:8-2:12"
+          "spelling": "2:8-2:12",
+          "extent": "2:3-2:14",
+          "content": "void Used()"
         }],
       "declaring_type": 0,
       "callers": ["1@7:6-7:10"]

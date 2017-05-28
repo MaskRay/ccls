@@ -13,7 +13,9 @@ OUTPUT: simple_header.h
       "short_name": "header",
       "detailed_name": "void header()",
       "declarations": [{
-          "spelling": "3:6-3:12"
+          "spelling": "3:6-3:12",
+          "extent": "3:1-3:14",
+          "content": "void header()"
         }]
     }]
 }

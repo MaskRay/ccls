@@ -37,7 +37,10 @@ OUTPUT:
       "short_name": "accept",
       "detailed_name": "void accept(int)",
       "declarations": [{
-          "spelling": "7:6-7:12"
+          "spelling": "7:6-7:12",
+          "extent": "7:1-7:17",
+          "content": "void accept(int)",
+          "param_spellings": ["7:16-7:16"]
         }],
       "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"]
     }, {
@@ -46,7 +49,10 @@ OUTPUT:
       "short_name": "accept",
       "detailed_name": "void accept(int *)",
       "declarations": [{
-          "spelling": "8:6-8:12"
+          "spelling": "8:6-8:12",
+          "extent": "8:1-8:18",
+          "content": "void accept(int*)",
+          "param_spellings": ["8:17-8:17"]
         }],
       "callers": ["2@16:3-16:9"]
     }, {

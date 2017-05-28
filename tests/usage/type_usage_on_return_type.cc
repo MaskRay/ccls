@@ -40,9 +40,13 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "Type *foo()",
       "declarations": [{
-          "spelling": "3:7-3:10"
+          "spelling": "3:7-3:10",
+          "extent": "3:1-3:12",
+          "content": "Type* foo()"
         }, {
-          "spelling": "4:7-4:10"
+          "spelling": "4:7-4:10",
+          "extent": "4:1-4:12",
+          "content": "Type* foo()"
         }],
       "definition_spelling": "5:7-5:10",
       "definition_extent": "5:1-5:15"
@@ -52,7 +56,10 @@ OUTPUT:
       "short_name": "Get",
       "detailed_name": "Type *Foo::Get(int)",
       "declarations": [{
-          "spelling": "8:9-8:12"
+          "spelling": "8:9-8:12",
+          "extent": "8:3-8:17",
+          "content": "Type* Get(int)",
+          "param_spellings": ["8:16-8:16"]
         }],
       "definition_spelling": "12:12-12:15",
       "definition_extent": "12:1-12:23",
@@ -63,7 +70,9 @@ OUTPUT:
       "short_name": "Empty",
       "detailed_name": "void Foo::Empty()",
       "declarations": [{
-          "spelling": "9:8-9:13"
+          "spelling": "9:8-9:13",
+          "extent": "9:3-9:15",
+          "content": "void Empty()"
         }],
       "definition_spelling": "13:11-13:16",
       "definition_extent": "13:1-13:21",
@@ -74,7 +83,9 @@ OUTPUT:
       "short_name": "external",
       "detailed_name": "const Type &external()",
       "declarations": [{
-          "spelling": "15:20-15:28"
+          "spelling": "15:20-15:28",
+          "extent": "15:1-15:30",
+          "content": "extern const Type& external()"
         }]
     }, {
       "id": 4,
@@ -82,7 +93,9 @@ OUTPUT:
       "short_name": "bar",
       "detailed_name": "Type *bar()",
       "declarations": [{
-          "spelling": "17:14-17:17"
+          "spelling": "17:14-17:17",
+          "extent": "17:1-17:19",
+          "content": "static Type* bar()"
         }],
       "definition_spelling": "18:14-18:17",
       "definition_extent": "18:1-18:22"

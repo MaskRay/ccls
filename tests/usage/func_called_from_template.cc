@@ -20,7 +20,9 @@ OUTPUT:
       "short_name": "called",
       "detailed_name": "void called()",
       "declarations": [{
-          "spelling": "1:6-1:12"
+          "spelling": "1:6-1:12",
+          "extent": "1:1-1:14",
+          "content": "void called()"
         }],
       "callers": ["1@5:3-5:9"]
     }, {

@@ -31,9 +31,13 @@ OUTPUT:
       "short_name": "Foo",
       "detailed_name": "void Template::Foo()",
       "declarations": [{
-          "spelling": "3:8-3:11"
+          "spelling": "3:8-3:11",
+          "extent": "3:3-3:13",
+          "content": "void Foo()"
         }, {
-          "spelling": "9:22-9:25"
+          "spelling": "9:22-9:25",
+          "extent": "9:1-9:30",
+          "content": "void Template<void>::Foo() {}"
         }],
       "definition_spelling": "7:19-7:22",
       "definition_extent": "6:1-7:24",

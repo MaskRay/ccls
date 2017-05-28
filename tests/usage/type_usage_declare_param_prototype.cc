@@ -23,7 +23,10 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "void foo(Foo *, Foo *)",
       "declarations": [{
-          "spelling": "3:6-3:9"
+          "spelling": "3:6-3:9",
+          "extent": "3:1-3:23",
+          "content": "void foo(Foo* f, Foo*)",
+          "param_spellings": ["3:15-3:16", "3:22-3:22"]
         }],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:26"

@@ -35,7 +35,9 @@ OUTPUT:
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
       "declarations": [{
-          "spelling": "4:3-4:6"
+          "spelling": "4:3-4:6",
+          "extent": "4:3-4:8",
+          "content": "Foo()"
         }],
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",

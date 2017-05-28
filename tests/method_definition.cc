@@ -1,8 +1,8 @@
 class Foo {
-  void foo();
+  void foo() const;
 };
 
-void Foo::foo() {}
+void Foo::foo() const {}
 
 /*
 OUTPUT:
@@ -19,14 +19,16 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
-      "usr": "c:@S@Foo@F@foo#",
+      "usr": "c:@S@Foo@F@foo#1",
       "short_name": "foo",
-      "detailed_name": "void Foo::foo()",
+      "detailed_name": "void Foo::foo() const",
       "declarations": [{
-          "spelling": "2:8-2:11"
+          "spelling": "2:8-2:11",
+          "extent": "2:3-2:19",
+          "content": "void foo() const"
         }],
       "definition_spelling": "5:11-5:14",
-      "definition_extent": "5:1-5:19",
+      "definition_extent": "5:1-5:25",
       "declaring_type": 0
     }]
 }

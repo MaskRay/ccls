@@ -27,7 +27,10 @@ OUTPUT:
       "short_name": "Wrapper",
       "detailed_name": "void Wrapper::Wrapper(int)",
       "declarations": [{
-          "spelling": "2:3-2:10"
+          "spelling": "2:3-2:10",
+          "extent": "2:3-2:17",
+          "content": "Wrapper(int i)",
+          "param_spellings": ["2:15-2:16"]
         }],
       "declaring_type": 0,
       "callers": ["~2@8:10-8:16"]

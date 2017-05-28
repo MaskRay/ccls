@@ -132,7 +132,9 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "unique_ptr<S1, S2> *Foo::foo()",
       "declarations": [{
-          "spelling": "65:23-65:26"
+          "spelling": "65:23-65:26",
+          "extent": "65:3-65:28",
+          "content": "unique_ptr<S1, S2>* foo()"
         }],
       "definition_spelling": "79:26-79:29",
       "definition_extent": "79:1-79:51",

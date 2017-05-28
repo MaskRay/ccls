@@ -34,7 +34,10 @@ OUTPUT:
       "short_name": "Bar",
       "detailed_name": "void Foo::Bar(Template<double> &)",
       "declarations": [{
-          "spelling": "5:8-5:11"
+          "spelling": "5:8-5:11",
+          "extent": "5:3-5:30",
+          "content": "void Bar(Template<double>&)",
+          "param_spellings": ["5:29-5:29"]
         }],
       "definition_spelling": "8:11-8:14",
       "definition_extent": "8:1-8:36",

@@ -21,7 +21,9 @@ OUTPUT: static.h
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",
       "declarations": [{
-          "spelling": "4:15-4:33"
+          "spelling": "4:15-4:33",
+          "extent": "4:3-4:35",
+          "content": "static void CreateSharedBuffer()"
         }],
       "declaring_type": 0
     }]

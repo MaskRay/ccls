@@ -23,7 +23,9 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "void hello::Foo::foo()",
       "declarations": [{
-          "spelling": "3:8-3:11"
+          "spelling": "3:8-3:11",
+          "extent": "3:3-3:13",
+          "content": "void foo()"
         }],
       "declaring_type": 0
     }]

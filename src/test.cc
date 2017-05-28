@@ -109,9 +109,9 @@ void RunTests() {
       //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
       //if (path != "tests/multi_file/funky_enum.cc") continue;
       //if (path != "tests/multi_file/simple_impl.cc") continue;
-      //if (path != "tests/usage/func_called_implicit_ctor.cc") continue;
-      //if (path != "tests/templates/implicit_variable_instantiation.cc") continue;
-      //if (path != "tests/multi_file/bad_type_remove.cc") continue;
+      //if (path != "tests/inheritance/interface_pure_virtual.cc") continue;
+      //if (path != "tests/_empty_test.cc") continue;
+      //if (path != "tests/declaration_vs_definition/func_associated_function_params.cc") continue;
 
       //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
       //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;

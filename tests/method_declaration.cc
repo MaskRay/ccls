@@ -25,7 +25,9 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "void Foo::foo()",
       "declarations": [{
-          "spelling": "2:8-2:11"
+          "spelling": "2:8-2:11",
+          "extent": "2:3-2:13",
+          "content": "void foo()"
         }],
       "declaring_type": 0
     }]

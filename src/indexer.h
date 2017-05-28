@@ -316,15 +316,15 @@ struct IndexFunc {
 
   IndexFuncId id;
 
-  struct DeclarationVariable {
-    // Spelled name of the variable.
-    Range spelling;
-    // Full text (including type) of the variable.
-    std::string content;
-  };
   struct Declaration {
+    // Range of only the function name.
     Range spelling;
-    std::vector<DeclarationVariable> vars;
+    // Full range of the declaration.
+    Range extent;
+    // Full text of the declaration.
+    std::string content;
+    // Location of the parameter names.
+    std::vector<Range> param_spellings;
   };
 
   // Places the function is forward-declared.
@@ -350,8 +350,7 @@ struct IndexFunc {
   }
 };
 MAKE_HASHABLE(IndexFunc, t.def.usr);
-MAKE_REFLECT_STRUCT(IndexFunc::DeclarationVariable, spelling, content);
-MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spelling, vars);
+MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spelling, extent, content, param_spellings);
 
 template <typename TypeId,
           typename FuncId,

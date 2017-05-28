@@ -33,7 +33,10 @@ OUTPUT:
       "short_name": "called",
       "detailed_name": "void called(int)",
       "declarations": [{
-          "spelling": "1:6-1:12"
+          "spelling": "1:6-1:12",
+          "extent": "1:1-1:19",
+          "content": "void called(int a)",
+          "param_spellings": ["1:17-1:18"]
         }],
       "callers": ["2@14:3-14:9"]
     }, {
@@ -42,7 +45,9 @@ OUTPUT:
       "short_name": "gen",
       "detailed_name": "int gen()",
       "declarations": [{
-          "spelling": "3:5-3:8"
+          "spelling": "3:5-3:8",
+          "extent": "3:1-3:10",
+          "content": "int gen()"
         }],
       "callers": ["2@14:14-14:17"]
     }, {

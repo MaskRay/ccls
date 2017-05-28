@@ -25,7 +25,9 @@ OUTPUT:
       "short_name": "declonly",
       "detailed_name": "void Foo::declonly()",
       "declarations": [{
-          "spelling": "2:8-2:16"
+          "spelling": "2:8-2:16",
+          "extent": "2:3-2:18",
+          "content": "void declonly()"
         }],
       "declaring_type": 0
     }, {
@@ -34,7 +36,9 @@ OUTPUT:
       "short_name": "purevirtual",
       "detailed_name": "void Foo::purevirtual()",
       "declarations": [{
-          "spelling": "3:16-3:27"
+          "spelling": "3:16-3:27",
+          "extent": "3:3-3:33",
+          "content": "virtual void purevirtual() = 0"
         }],
       "declaring_type": 0
     }, {
@@ -43,7 +47,9 @@ OUTPUT:
       "short_name": "def",
       "detailed_name": "void Foo::def()",
       "declarations": [{
-          "spelling": "4:8-4:11"
+          "spelling": "4:8-4:11",
+          "extent": "4:3-4:13",
+          "content": "void def()"
         }],
       "definition_spelling": "7:11-7:14",
       "definition_extent": "7:1-7:19",
