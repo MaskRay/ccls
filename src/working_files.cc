@@ -28,6 +28,8 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
   return result;
 }
 
+}  // namespace
+
 int GetOffsetForPosition(lsPosition position, const std::string& content) {
   int offset = 0;
 
@@ -41,7 +43,27 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
   return offset + position.character;
 }
 
-}  // namespace
+lsPosition CharPos(const std::string& search, char character, int character_offset) {
+  lsPosition result;
+  int index = 0;
+  while (index < search.size()) {
+    char c = search[index];
+    if (c == character)
+      break;
+    if (c == '\n') {
+      result.line += 1;
+      result.character = 0;
+    }
+    else {
+      result.character += 1;
+    }
+    ++index;
+  }
+  assert(index < search.size());
+  result.character += character_offset;
+  return result;
+}
+
 
 WorkingFile::WorkingFile(const std::string& filename, const std::string& buffer_content)
     : filename(filename), buffer_content(buffer_content) {
@@ -353,26 +375,7 @@ std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
 TEST_SUITE("WorkingFile");
 
 lsPosition CharPos(const WorkingFile& file, char character, int character_offset = 0) {
-  const std::string& search = file.buffer_content;
-
-  lsPosition result;
-  int index = 0;
-  while (index < search.size()) {
-    char c = search[index];
-    if (c == character)
-      break;
-    if (c == '\n') {
-      result.line += 1;
-      result.character = 0;
-    }
-    else {
-      result.character += 1;
-    }
-    ++index;
-  }
-  REQUIRE(index < search.size());
-  result.character += character_offset;
-  return result;
+  return CharPos(file.buffer_content, character, character_offset);
 }
 
 TEST_CASE("simple call") {

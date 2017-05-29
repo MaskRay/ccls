@@ -15,26 +15,19 @@
 #include <sstream>
 #include <unordered_map>
 
-namespace {
-
 // See http://stackoverflow.com/a/217605
-// Trim from start (in place)
 void TrimStart(std::string& s) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(),
     std::not1(std::ptr_fun<int, int>(std::isspace))));
 }
-// Trim from end (in place)
 void TrimEnd(std::string& s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
     std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
 }
-// Trim from both ends (in place)
 void Trim(std::string& s) {
   TrimStart(s);
   TrimEnd(s);
 }
-
-}  // namespace
 
 // See http://stackoverflow.com/a/2072890
 bool EndsWith(const std::string& value, const std::string& ending) {

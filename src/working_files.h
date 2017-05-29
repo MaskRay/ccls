@@ -12,6 +12,11 @@
 using std::experimental::optional;
 using std::experimental::nullopt;
 
+// Utility method to map |position| to an offset inside of |content|.
+int GetOffsetForPosition(lsPosition position, const std::string& content);
+// Utility method to find a position for the given character.
+lsPosition CharPos(const std::string& search, char character, int character_offset = 0);
+
 struct WorkingFile {
   int version = 0;
   std::string filename;

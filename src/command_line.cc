@@ -507,6 +507,17 @@ std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db, Qu
   return callers;
 }
 
+optional<lsPosition> GetLsPosition(WorkingFile* working_file, const Position& position) {
+  if (!working_file)
+    return lsPosition(position.line - 1, position.column - 1);
+
+  optional<int> start = working_file->GetBufferLineFromIndexLine(position.line);
+  if (!start)
+    return nullopt;
+
+  return lsPosition(*start - 1, position.column - 1);
+}
+
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
     return lsRange(
@@ -872,6 +883,248 @@ void PublishInactiveLines(WorkingFile* working_file, const std::vector<Range>& i
       out.params.inactiveRegions.push_back(*ls_skipped);
   }
   IpcManager::instance()->SendOutMessageToClient(IpcId::CqueryPublishInactiveRegions, out);
+}
+
+
+void LexFunctionDeclaration(const std::string& buffer_content, lsPosition declaration_spelling, optional<std::string> type_name, std::string* insert_text, int* newlines_after_name) {
+  int name_start = GetOffsetForPosition(declaration_spelling, buffer_content);
+
+  bool parse_return_type = true;
+  // We need to check if we have a return type (ctors and dtors do not).
+  if (type_name) {
+    int name_end = name_start;
+    while (name_end < buffer_content.size()) {
+      char c = buffer_content[name_end];
+      if (isspace(c) || c == '(')
+        break;
+      ++name_end;
+    }
+
+    std::string func_name = buffer_content.substr(name_start, name_end - name_start);
+    if (func_name == *type_name || func_name == ("~" + *type_name))
+      parse_return_type = false;
+  }
+
+  // We need to fetch the return type. This can get complex, ie,
+  //
+  //  std::vector <int> foo();
+  //
+  int return_start = name_start;
+  if (parse_return_type) {
+    int paren_balance = 0;
+    int angle_balance = 0;
+    bool expect_token = true;
+    while (return_start > 0) {
+      char c = buffer_content[return_start - 1];
+      if (paren_balance == 0 && angle_balance == 0) {
+        if (isspace(c) && !expect_token) {
+          break;
+        }
+        if (!isspace(c))
+          expect_token = false;
+      }
+
+      if (c == ')')
+        ++paren_balance;
+      if (c == '(') {
+        --paren_balance;
+        expect_token = true;
+      }
+
+      if (c == '>')
+        ++angle_balance;
+      if (c == '<') {
+        --angle_balance;
+        expect_token = true;
+      }
+
+      return_start -= 1;
+    }
+  }
+
+  // We need to fetch the arguments. Just scan for the next ';'.
+  *newlines_after_name = 0;
+  int end = name_start;
+  while (end < buffer_content.size()) {
+    char c = buffer_content[end];
+    if (c == ';')
+      break;
+    if (c == '\n')
+      *newlines_after_name += 1;
+    ++end;
+  }
+
+  std::string result;
+  result += buffer_content.substr(return_start, name_start - return_start);
+  if (type_name && !type_name->empty())
+    result += *type_name + "::";
+  result += buffer_content.substr(name_start, end - name_start);
+  TrimEnd(result);
+  result += " {\n}";
+  *insert_text = result;
+}
+
+optional<QueryFileId> GetImplementationFile(QueryDatabase* db, QueryFile* file) {
+  for (SymbolRef sym : file->def.outline) {
+    switch (sym.idx.kind) {
+      case SymbolKind::Func: {
+        optional<QueryFunc>& func = db->funcs[sym.idx.idx];
+        if (func && func->def.definition_extent)
+          return func->def.definition_extent->path;
+        break;
+      }
+      case SymbolKind::Var: {
+        optional<QueryVar>& var = db->vars[sym.idx.idx];
+        if (var && var->def.definition_extent)
+          return db->vars[sym.idx.idx]->def.definition_extent->path;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  // No associated definition, scan the project for a file in the same
+  // directory with the same base-name.
+  std::string original_path = LowerPathIfCaseInsensitive(file->def.path);
+  std::string target_path = original_path;
+  size_t last = target_path.find_last_of('.');
+  if (last != std::string::npos) {
+    target_path = target_path.substr(0, last);
+  }
+
+  for (auto& entry : db->usr_to_file) {
+    Usr path = entry.first;
+
+    // Do not consider header files for implementation files.
+    // TODO: make file extensions configurable.
+    if (EndsWith(path, ".h") || EndsWith(path, ".hpp"))
+      continue;
+
+    if (StartsWith(path, target_path) && path != original_path) {
+      return entry.second;
+    }
+  }
+
+  return nullopt;
+}
+
+void EnsureImplFile(QueryDatabase* db, QueryFileId file_id, optional<lsDocumentUri>& impl_uri, optional<QueryFileId>& impl_file_id) {
+  if (!impl_uri.has_value()) {
+    optional<QueryFile>& file = db->files[file_id.id];
+    assert(file);
+
+    impl_file_id = GetImplementationFile(db, &file.value());
+    if (!impl_file_id.has_value())
+      impl_file_id = file_id;
+
+    optional<QueryFile>& impl_file = db->files[impl_file_id->id];
+    if (impl_file)
+      impl_uri = lsDocumentUri::FromPath(impl_file->def.path);
+    else
+      impl_uri = lsDocumentUri::FromPath(file->def.path);
+  }
+}
+
+optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db, WorkingFiles* working_files, WorkingFile* working_file, int default_line, QueryFileId decl_file_id, QueryFileId impl_file_id, QueryFunc& func) {
+  for (const QueryLocation& decl : func.declarations) {
+    if (decl.path != decl_file_id)
+      continue;
+
+    optional<lsRange> ls_decl = GetLsRange(working_file, decl.range);
+    if (!ls_decl)
+      continue;
+
+    optional<std::string> type_name;
+    optional<lsPosition> same_file_insert_end;
+    if (func.def.declaring_type) {
+      optional<QueryType>& declaring_type = db->types[func.def.declaring_type->id];
+      if (declaring_type) {
+        type_name = declaring_type->def.short_name;
+        optional<lsRange> ls_type_def_extent = GetLsRange(working_file, declaring_type->def.definition_extent->range);
+        if (ls_type_def_extent) {
+          same_file_insert_end = ls_type_def_extent->end;
+          same_file_insert_end->character += 1; // move past semicolon.
+        }
+      }
+    }
+
+    std::string insert_text;
+    int newlines_after_name = 0;
+    LexFunctionDeclaration(working_file->buffer_content, ls_decl->start, type_name, &insert_text, &newlines_after_name);
+
+    if (!same_file_insert_end) {
+      same_file_insert_end = ls_decl->end;
+      same_file_insert_end->line += newlines_after_name;
+      same_file_insert_end->character = 1000;
+    }
+
+    lsTextEdit edit;
+
+    if (decl_file_id == impl_file_id) {
+      edit.range.start = *same_file_insert_end;
+      edit.range.end = *same_file_insert_end;
+      edit.newText = "\n\n" + insert_text;
+    }
+    else {
+      lsPosition best_pos;
+      best_pos.line = default_line;
+      int best_dist = INT_MAX;
+
+      optional<QueryFile>& file = db->files[impl_file_id.id];
+      assert(file);
+      for (SymbolRef sym : file->def.outline) {
+        switch (sym.idx.kind) {
+          case SymbolKind::Func: {
+            optional<QueryFunc>& sym_func = db->funcs[sym.idx.idx];
+            if (!sym_func || !sym_func->def.definition_extent)
+              break;
+
+            for (QueryLocation& func_decl : sym_func->declarations) {
+              if (func_decl.path == decl_file_id) {
+                int dist = func_decl.range.start.line - decl.range.start.line;
+                if (abs(dist) < abs(best_dist)) {
+                  optional<lsLocation> def_loc = GetLsLocation(db, working_files, *sym_func->def.definition_extent);
+                  if (!def_loc)
+                    continue;
+
+                  best_dist = dist;
+
+                  if (dist > 0)
+                    best_pos = def_loc->range.start;
+                  else
+                    best_pos = def_loc->range.end;
+                }
+              }
+            }
+
+            break;
+          }
+          case SymbolKind::Var: {
+            // TODO: handle vars.
+
+            //optional<QueryVar>& var = db->vars[sym.idx.idx];
+            //if (!var || !var->def.definition_extent)
+            //  continue;
+
+            break;
+          }
+        }
+      }
+
+
+      edit.range.start = best_pos;
+      edit.range.end = best_pos;
+      if (best_dist < 0)
+        edit.newText = "\n\n" + insert_text;
+      else
+        edit.newText = insert_text + "\n\n";
+    }
+
+    return edit;
+  }
+
+  return nullopt;
 }
 
 
@@ -2406,6 +2659,11 @@ bool QueryDbMainLoop(
         //
         auto msg = static_cast<Ipc_TextDocumentCodeAction*>(message.get());
 
+        QueryFileId file_id;
+        QueryFile* file;
+        if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(), &file, &file_id))
+          break;
+
         WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
         if (!working_file) {
           // TODO: send error response.
@@ -2413,16 +2671,109 @@ bool QueryDbMainLoop(
           break;
         }
 
-        int target_line = msg->params.range.start.line;
-
         Out_TextDocumentCodeAction response;
         response.id = msg->id;
+
+        // TODO: auto-insert namespace?
+
+        int default_line = (int)working_file->all_buffer_lines.size();
+
+        // Make sure to call EnsureImplFile before using these. We lazy load
+        // them because computing the values could involve an entire project
+        // scan.
+        optional<lsDocumentUri> impl_uri;
+        optional<QueryFileId> impl_file_id;
+
+        std::vector<SymbolRef> syms = FindSymbolsAtLocation(working_file, file, msg->params.range.start);
+        for (SymbolRef sym : syms) {
+          switch (sym.idx.kind) {
+            case SymbolKind::Type: {
+              optional<QueryType>& type = db->types[sym.idx.idx];
+              if (!type)
+                break;
+
+              int num_edits = 0;
+
+              // Get implementation file.
+              Out_TextDocumentCodeAction::Command command;
+
+              for (QueryFuncId func_id : type->def.funcs) {
+                optional<QueryFunc>& func_def = db->funcs[func_id.id];
+                if (!func_def || func_def->def.definition_extent)
+                  continue;
+
+                EnsureImplFile(db, file_id, impl_uri /*out*/, impl_file_id /*out*/);
+                optional<lsTextEdit> edit = BuildAutoImplementForFunction(db, working_files, working_file, default_line, file_id, *impl_file_id, *func_def);
+                if (!edit)
+                  continue;
+
+                ++num_edits;
+
+                // Merge edits together if they are on the same line.
+                // TODO: be smarter about newline merging? ie, don't end up
+                //       with foo()\n\n\n\nfoo(), we want foo()\n\nfoo()\n\n
+                //
+                if (!command.arguments.edits.empty() &&
+                    command.arguments.edits[command.arguments.edits.size() - 1].range.end.line == edit->range.start.line) {
+                  command.arguments.edits[command.arguments.edits.size() - 1].newText += edit->newText;
+                }
+                else {
+                  command.arguments.edits.push_back(*edit);
+                }
+              }
+              if (command.arguments.edits.empty())
+                break;
+
+              // If we're inserting at the end of the document, put a newline before the insertion.
+              if (command.arguments.edits[0].range.start.line >= default_line)
+                command.arguments.edits[0].newText.insert(0, "\n");
+
+              command.arguments.textDocumentUri = *impl_uri;
+              command.title = "Auto-Implement " + std::to_string(num_edits) + " methods on " + type->def.short_name;
+              command.command = "cquery._autoImplement";
+              response.result.push_back(command);
+              break;
+            }
+
+            case SymbolKind::Func: {
+              optional<QueryFunc>& func = db->funcs[sym.idx.idx];
+              if (!func || func->def.definition_extent)
+                break;
+
+              EnsureImplFile(db, file_id, impl_uri /*out*/, impl_file_id /*out*/);
+
+              // Get implementation file.
+              Out_TextDocumentCodeAction::Command command;
+              command.title = "Auto-Implement " + func->def.short_name;
+              command.command = "cquery._autoImplement";
+              command.arguments.textDocumentUri = *impl_uri;
+              optional<lsTextEdit> edit = BuildAutoImplementForFunction(db, working_files, working_file, default_line, file_id, *impl_file_id, *func);
+              if (!edit)
+                break;
+
+              // If we're inserting at the end of the document, put a newline before the insertion.
+              if (edit->range.start.line >= default_line)
+                edit->newText.insert(0, "\n");
+              command.arguments.edits.push_back(*edit);
+              response.result.push_back(command);
+              break;
+            }
+            default:
+              break;
+          }
+
+          // Only show one auto-impl section.
+          if (!response.result.empty())
+            break;
+        }
+
+
 
         for (lsDiagnostic& diag : working_file->diagnostics) {
           // clang does not provide accurate ennough column reporting for
           // diagnostics to do good column filtering, so report all
           // diagnostics on the line.
-          if (!diag.fixits_.empty() && diag.range.start.line == target_line) {
+          if (!diag.fixits_.empty() && diag.range.start.line == msg->params.range.start.line) {
             Out_TextDocumentCodeAction::Command command;
             command.title = "FixIt: " + diag.message;
             command.command = "cquery._applyFixIt";
@@ -3045,3 +3396,91 @@ int main(int argc, char** argv) {
     return 0;
   }
 }
+
+
+
+TEST_SUITE("LexFunctionDeclaration");
+
+TEST_CASE("simple") {
+  std::string buffer_content = " void Foo(); ";
+  lsPosition declaration = CharPos(buffer_content, 'F');
+  std::string insert_text;
+  int newlines_after_name = 0;
+
+  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "void Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+
+  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"), &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "void Type::Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+}
+
+TEST_CASE("ctor") {
+  std::string buffer_content = " Foo(); ";
+  lsPosition declaration = CharPos(buffer_content, 'F');
+  std::string insert_text;
+  int newlines_after_name = 0;
+
+  LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"), &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "Foo::Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+}
+
+TEST_CASE("dtor") {
+  std::string buffer_content = " ~Foo(); ";
+  lsPosition declaration = CharPos(buffer_content, '~');
+  std::string insert_text;
+  int newlines_after_name = 0;
+
+  LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"), &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "Foo::~Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+}
+
+TEST_CASE("complex return type") {
+  std::string buffer_content = " std::vector<int> Foo(); ";
+  lsPosition declaration = CharPos(buffer_content, 'F');
+  std::string insert_text;
+  int newlines_after_name = 0;
+
+  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "std::vector<int> Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+
+  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"), &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "std::vector<int> Type::Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+}
+
+TEST_CASE("extra complex return type") {
+  std::string buffer_content = " std::function < int() > \n Foo(); ";
+  lsPosition declaration = CharPos(buffer_content, 'F');
+  std::string insert_text;
+  int newlines_after_name = 0;
+
+  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "std::function < int() > \n Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+
+  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"), &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "std::function < int() > \n Type::Foo() {\n}");
+  REQUIRE(newlines_after_name == 0);
+}
+
+TEST_CASE("parameters") {
+  std::string buffer_content = "void Foo(int a,\n\n    int b); ";
+  lsPosition declaration = CharPos(buffer_content, 'F');
+  std::string insert_text;
+  int newlines_after_name = 0;
+
+  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "void Foo(int a,\n\n    int b) {\n}");
+  REQUIRE(newlines_after_name == 2);
+
+  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"), &insert_text, &newlines_after_name);
+  REQUIRE(insert_text == "void Type::Foo(int a,\n\n    int b) {\n}");
+  REQUIRE(newlines_after_name == 2);
+}
+
+TEST_SUITE_END();

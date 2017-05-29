@@ -13,6 +13,13 @@
 using std::experimental::optional;
 using std::experimental::nullopt;
 
+// Trim from start (in place)
+void TrimStart(std::string& s);
+// Trim from end (in place)
+void TrimEnd(std::string& s);
+// Trim from both ends (in place)
+void Trim(std::string& s);
+
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
