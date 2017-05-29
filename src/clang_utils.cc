@@ -51,17 +51,17 @@ optional<lsDiagnostic> BuildDiagnostic(CXDiagnostic diagnostic) {
   ls_diagnostic.code = clang_getDiagnosticCategory(diagnostic);
 
   switch (clang_getDiagnosticSeverity(diagnostic)) {
-  case CXDiagnostic_Ignored:
-  case CXDiagnostic_Note:
-    ls_diagnostic.severity = lsDiagnosticSeverity::Information;
-    break;
-  case CXDiagnostic_Warning:
-    ls_diagnostic.severity = lsDiagnosticSeverity::Warning;
-    break;
-  case CXDiagnostic_Error:
-  case CXDiagnostic_Fatal:
-    ls_diagnostic.severity = lsDiagnosticSeverity::Error;
-    break;
+    case CXDiagnostic_Ignored:
+    case CXDiagnostic_Note:
+      ls_diagnostic.severity = lsDiagnosticSeverity::Information;
+      break;
+    case CXDiagnostic_Warning:
+      ls_diagnostic.severity = lsDiagnosticSeverity::Warning;
+      break;
+    case CXDiagnostic_Error:
+    case CXDiagnostic_Fatal:
+      ls_diagnostic.severity = lsDiagnosticSeverity::Error;
+      break;
   }
 
   // Report fixits
