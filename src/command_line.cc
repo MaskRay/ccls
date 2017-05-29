@@ -144,6 +144,7 @@ bool ShouldRunIncludeCompletion(const std::string& line) {
   return start < line.size() && line[start] == '#';
 }
 
+// TODO: eliminate |line_number| param.
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
   // Find starting and ending quote.
   int start = 0;
@@ -345,6 +346,41 @@ std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
     }
   }
   return "";
+}
+
+optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    case SymbolKind::Type: {
+      optional<QueryType>& type = db->types[symbol.idx];
+      if (type && type->def.definition_spelling)
+        return type->def.definition_spelling->path;
+      break;
+    }
+    case SymbolKind::Func: {
+      optional<QueryFunc>& func = db->funcs[symbol.idx];
+      if (func) {
+        if (!func->declarations.empty())
+          return func->declarations[0].path;
+        if (func->def.definition_spelling)
+          return func->def.definition_spelling->path;
+      }
+      break;
+    }
+    case SymbolKind::Var: {
+      optional<QueryVar>& var = db->vars[symbol.idx];
+      if (var && var->def.definition_spelling)
+        return var->def.definition_spelling->path;
+      break;
+    }
+    case SymbolKind::File: {
+      return QueryFileId(symbol.idx);
+    }
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
+  }
+  return nullopt;
 }
 
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db, const std::vector<QueryFuncRef>& refs) {
@@ -962,6 +998,85 @@ void LexFunctionDeclaration(const std::string& buffer_content, lsPosition declar
   TrimEnd(result);
   result += " {\n}";
   *insert_text = result;
+}
+
+std::string LexWordAroundPos(lsPosition position, const std::string& content) {
+  int index = GetOffsetForPosition(position, content);
+
+  int start = index;
+  int end = index;
+
+  while (start > 0) {
+    char c = content[start - 1];
+    if (isalnum(c) || c == '_') {
+      --start;
+    }
+    else {
+      break;
+    }
+  }
+
+  while ((end + 1) < content.size()) {
+    char c = content[end + 1];
+    if (isalnum(c) || c == '_') {
+      ++end;
+    }
+    else {
+      break;
+    }
+  }
+
+  return content.substr(start, end - start + 1);
+}
+
+optional<int> FindIncludeLine(const std::vector<std::string>& lines, const std::string& full_include_line) {
+  //
+  // This returns an include line. For example,
+  //
+  //    #include <a>  // 0
+  //    #include <c>  // 1
+  //
+  // Given #include <b>, this will return '1', which means that the
+  // #include <b> text should be inserted at the start of line 1. Inserting
+  // at the start of a line allows insertion at both the top and bottom of the
+  // document.
+  //
+  // If the include line is already in the document this returns nullopt.
+  //
+
+  optional<int> last_include_line;
+  optional<int> best_include_line;
+
+  //  1 => include line is gt content (ie, it should go after)
+  // -1 => include line is lt content (ie, it should go before)
+  int last_line_compare = 1;
+
+  for (int line = 0; line < (int)lines.size(); ++line) {
+    if (!StartsWith(lines[line], "#include")) {
+      last_line_compare = 1;
+      continue;
+    }
+
+    last_include_line = line;
+
+    int current_line_compare = full_include_line.compare(lines[line]);
+    if (current_line_compare == 0)
+      return nullopt;
+
+    if (last_line_compare == 1 && current_line_compare == -1)
+      best_include_line = line;
+    last_line_compare = current_line_compare;
+  }
+
+  if (best_include_line)
+    return *best_include_line;
+  // If |best_include_line| didn't match that means we likely didn't find an
+  // include which was lt the new one, so put it at the end of the last include
+  // list.
+  if (last_include_line)
+    return *last_include_line + 1;
+  // No includes, use top of document.
+  return 0;
 }
 
 optional<QueryFileId> GetImplementationFile(QueryDatabase* db, QueryFile* file) {
@@ -2776,12 +2891,86 @@ bool QueryDbMainLoop(
         }
 
 
-
         for (lsDiagnostic& diag : working_file->diagnostics) {
-          // clang does not provide accurate ennough column reporting for
+          if (diag.range.start.line != msg->params.range.start.line)
+            continue;
+
+          // For error diagnostics, provide an action to resolve an include.
+          // TODO: find a way to index diagnostic contents so line numbers
+          // don't get mismatched when actively editing a file.
+          std::string include_query = LexWordAroundPos(diag.range.start, working_file->buffer_content);
+          if (diag.severity == lsDiagnosticSeverity::Error && !include_query.empty()) {
+            const size_t kMaxResults = 20;
+
+
+            std::unordered_set<std::string> include_absolute_paths;
+
+            // Find include candidate strings.
+            for (int i = 0; i < db->detailed_names.size(); ++i) {
+              if (include_absolute_paths.size() > kMaxResults)
+                break;
+              if (db->detailed_names[i].find(include_query) == std::string::npos)
+                continue;
+
+              optional<QueryFileId> decl_file_id = GetDeclarationFileForSymbol(db, db->symbols[i]);
+              if (!decl_file_id)
+                continue;
+
+              optional<QueryFile>& decl_file = db->files[decl_file_id->id];
+              if (!decl_file)
+                continue;
+
+              include_absolute_paths.insert(decl_file->def.path);
+            }
+
+            // Build include strings.
+            std::vector<std::string> include_insert_strings;
+            include_insert_strings.reserve(include_absolute_paths.size());
+
+            for (const std::string& path : include_absolute_paths) {
+              optional<lsCompletionItem> item = include_complete->FindCompletionItemForAbsolutePath(path);
+              if (!item)
+                continue;
+              if (item->textEdit)
+                include_insert_strings.push_back(item->textEdit->newText);
+              else if (!item->insertText.empty())
+                include_insert_strings.push_back(item->insertText);
+              else
+                assert(false && "unable to determine insert string for include completion item");
+            }
+
+            // Build code action.
+            if (!include_insert_strings.empty()) {
+              Out_TextDocumentCodeAction::Command command;
+
+              // Build edits.
+              for (const std::string& include_insert_string : include_insert_strings) {
+                lsTextEdit edit;
+                optional<int> include_line = FindIncludeLine(working_file->all_buffer_lines, include_insert_string);
+                if (!include_line)
+                  continue;
+
+                edit.range.start.line = *include_line;
+                edit.range.end.line = *include_line;
+                edit.newText = include_insert_string + "\n";
+                command.arguments.edits.push_back(edit);
+              }
+
+              // Setup metadata and send to client.
+              if (include_insert_strings.size() == 1)
+                command.title = "Insert " + include_insert_strings[0];
+              else
+                command.title = "Pick one of " + std::to_string(include_insert_strings.size()) + " includes to insert";
+              command.command = "cquery._insertInclude";
+              command.arguments.textDocumentUri = msg->params.textDocument.uri;
+              response.result.push_back(command);
+            }
+          }
+
+          // clang does not provide accurate enough column reporting for
           // diagnostics to do good column filtering, so report all
           // diagnostics on the line.
-          if (!diag.fixits_.empty() && diag.range.start.line == msg->params.range.start.line) {
+          if (!diag.fixits_.empty()) {
             Out_TextDocumentCodeAction::Command command;
             command.title = "FixIt: " + diag.message;
             command.command = "cquery._applyFixIt";
@@ -3489,6 +3678,105 @@ TEST_CASE("parameters") {
   LexFunctionDeclaration(buffer_content, declaration, std::string("Type"), &insert_text, &newlines_after_name);
   REQUIRE(insert_text == "void Type::Foo(int a,\n\n    int b) {\n}");
   REQUIRE(newlines_after_name == 2);
+}
+
+TEST_SUITE_END();
+
+
+
+TEST_SUITE("LexWordAroundPos");
+
+TEST_CASE("edges") {
+  std::string content = "Foobar";
+  REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
+}
+
+TEST_CASE("simple") {
+  std::string content = "  Foobar  ";
+  REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
+}
+
+TEST_CASE("underscores and numbers") {
+  std::string content = "  _my_t5ype7  ";
+  REQUIRE(LexWordAroundPos(CharPos(content, '_'), content) == "_my_t5ype7");
+  REQUIRE(LexWordAroundPos(CharPos(content, '5'), content) == "_my_t5ype7");
+  REQUIRE(LexWordAroundPos(CharPos(content, 'e'), content) == "_my_t5ype7");
+  REQUIRE(LexWordAroundPos(CharPos(content, '7'), content) == "_my_t5ype7");
+}
+
+TEST_CASE("dot, dash, colon are skipped") {
+  std::string content = "1. 2- 3:";
+  REQUIRE(LexWordAroundPos(CharPos(content, '1'), content) == "1");
+  REQUIRE(LexWordAroundPos(CharPos(content, '2'), content) == "2");
+  REQUIRE(LexWordAroundPos(CharPos(content, '3'), content) == "3");
+}
+
+TEST_SUITE_END();
+
+
+
+TEST_SUITE("FindIncludeLine");
+
+TEST_CASE("in document") {
+  std::vector<std::string> lines = {
+    "#include <bbb>",   // 0
+    "#include <ddd>"    // 1
+  };
+
+  REQUIRE(FindIncludeLine(lines, "#include <bbb>") == nullopt);
+}
+
+TEST_CASE("insert before") {
+  std::vector<std::string> lines = {
+    "#include <bbb>",   // 0
+    "#include <ddd>"    // 1
+  };
+
+  REQUIRE(FindIncludeLine(lines, "#include <aaa>") == 0);
+}
+
+TEST_CASE("insert middle") {
+  std::vector<std::string> lines = {
+    "#include <bbb>",   // 0
+    "#include <ddd>"    // 1
+  };
+
+  REQUIRE(FindIncludeLine(lines, "#include <ccc>") == 1);
+}
+
+TEST_CASE("insert after") {
+  std::vector<std::string> lines = {
+    "#include <bbb>",   // 0
+    "#include <ddd>",   // 1
+    "",                 // 2
+  };
+
+  REQUIRE(FindIncludeLine(lines, "#include <eee>") == 2);
+}
+
+TEST_CASE("ignore header") {
+  std::vector<std::string> lines = {
+    "// FOOBAR",        // 0
+    "// FOOBAR",        // 1
+    "// FOOBAR",        // 2
+    "// FOOBAR",        // 3
+    "",                 // 4
+    "#include <bbb>",   // 5
+    "#include <ddd>",   // 6
+    "",                 // 7
+  };
+
+  REQUIRE(FindIncludeLine(lines, "#include <a>") == 5);
+  REQUIRE(FindIncludeLine(lines, "#include <c>") == 6);
+  REQUIRE(FindIncludeLine(lines, "#include <e>") == 7);
 }
 
 TEST_SUITE_END();

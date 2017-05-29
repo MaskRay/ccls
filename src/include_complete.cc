@@ -108,7 +108,7 @@ void IncludeComplete::Rescan() {
     return;
 
   completion_items.clear();
-  seen_paths.clear();
+  absolute_path_to_completion_item.clear();
 
   if (!match_ && (!config_->includeCompletionWhitelist.empty() || !config_->includeCompletionBlacklist.empty()))
     match_ = MakeUnique<GroupMatch>(config_->includeCompletionWhitelist, config_->includeCompletionBlacklist);
@@ -139,14 +139,14 @@ void IncludeComplete::AddFile(const std::string& absolute_path) {
   std::string trimmed_path = absolute_path;
   bool use_angle_brackets = TrimPath(project_, config_->projectRoot, &trimmed_path);
   lsCompletionItem item = BuildCompletionItem(config_, trimmed_path, use_angle_brackets, false /*is_stl*/);
-  
+
   if (is_scanning) {
     std::lock_guard<std::mutex> lock(completion_items_mutex);
-    if (seen_paths.insert(absolute_path).second)
+    if (absolute_path_to_completion_item.insert(std::make_pair(absolute_path, completion_items.size())).second)
       completion_items.push_back(item);
   }
   else {
-    if (seen_paths.insert(absolute_path).second)
+    if (absolute_path_to_completion_item.insert(std::make_pair(absolute_path, completion_items.size())).second)
       completion_items.push_back(item);
   }
 }
@@ -172,7 +172,7 @@ void IncludeComplete::InsertIncludesFromDirectory(
 
   std::lock_guard<std::mutex> lock(completion_items_mutex);
   for (const CompletionCandidate& result : results) {
-    if (seen_paths.insert(result.absolute_path).second)
+    if (absolute_path_to_completion_item.insert(std::make_pair(result.absolute_path, completion_items.size())).second)
       completion_items.push_back(result.completion_item);
   }
 }
@@ -182,4 +182,13 @@ void IncludeComplete::InsertStlIncludes() {
   for (const char* stl_header : kStandardLibraryIncludes) {
     completion_items.push_back(BuildCompletionItem(config_, stl_header, true /*use_angle_brackets*/, true /*is_stl*/));
   }
+}
+
+optional<lsCompletionItem> IncludeComplete::FindCompletionItemForAbsolutePath(const std::string& absolute_path) {
+  std::lock_guard<std::mutex> lock(completion_items_mutex);
+
+  auto it = absolute_path_to_completion_item.find(absolute_path);
+  if (it == absolute_path_to_completion_item.end())
+    return nullopt;
+  return completion_items[it->second];
 }
