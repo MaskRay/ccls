@@ -2154,7 +2154,15 @@ bool QueryDbMainLoop(
 
       case IpcId::TextDocumentDidClose: {
         auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
+
+        // Clear any diagnostics for the file.
+        Out_TextDocumentPublishDiagnostics diag;
+        diag.params.uri = msg->params.textDocument.uri;
+        IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
+
+        // Remove internal state.
         working_files->OnClose(msg->params);
+
         break;
       }
 
