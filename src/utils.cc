@@ -2,7 +2,6 @@
 
 #include "platform.h"
 
-#include <sparsepp/spp_memory.h>
 #include <tinydir.h>
 
 #include <algorithm>
@@ -14,6 +13,10 @@
 #include <locale>
 #include <sstream>
 #include <unordered_map>
+
+#if !defined(__APPLE__)
+#include <sparsepp/spp_memory.h>
+#endif
 
 // See http://stackoverflow.com/a/217605
 void TrimStart(std::string& s) {
@@ -311,7 +314,11 @@ void WriteToFile(const std::string& filename, const std::string& content) {
 }
 
 float GetProcessMemoryUsedInMb() {
+#if defined(__APPLE__)
+  return 0.f;
+#else
   const float kBytesToMb = 1000000;
   uint64_t memory_after = spp::GetProcessMemoryUsed();
   return memory_after / kBytesToMb;
+#endif
 }

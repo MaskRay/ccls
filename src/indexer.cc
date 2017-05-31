@@ -1044,8 +1044,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: Support multiple function definitions, which is common for
       //       template specializations.
       if (decl->isDefinition && !is_template_specialization) {
-        assert(!func->def.definition_spelling);
-        assert(!func->def.definition_extent);
+        //assert(!func->def.definition_spelling);
+        //assert(!func->def.definition_extent);
         func->def.definition_spelling = decl_spelling;
         func->def.definition_extent = decl_extent;
       }
