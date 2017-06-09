@@ -43,7 +43,7 @@ namespace {
 std::vector<std::string> kEmptyArgs;
 
 // Expected client version. We show an error if this doesn't match.
-const int kExpectedClientVersion = 1;
+const int kExpectedClientVersion = 2;
 
 
 
