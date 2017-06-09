@@ -55,6 +55,7 @@ const char* IpcIdToString(IpcId id);
 struct BaseIpcMessage {
   const IpcId method_id;
   BaseIpcMessage(IpcId method_id);
+  virtual ~BaseIpcMessage();
 };
 
 template <typename T>

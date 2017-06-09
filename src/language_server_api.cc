@@ -101,6 +101,8 @@ MessageRegistry* MessageRegistry::instance() {
   return instance_;
 }
 
+lsBaseOutMessage::~lsBaseOutMessage() = default;
+
 void lsResponseError::Write(Writer& visitor) {
   auto& value = *this;
   int code2 = static_cast<int>(this->code);

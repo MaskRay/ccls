@@ -98,6 +98,7 @@ struct MessageRegistry {
 
 
 struct lsBaseOutMessage {
+  virtual ~lsBaseOutMessage();
   virtual void Write(std::ostream& out) = 0;
 };
 

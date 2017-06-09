@@ -79,3 +79,5 @@ const char* IpcIdToString(IpcId id) {
 
 BaseIpcMessage::BaseIpcMessage(IpcId method_id)
   : method_id(method_id) {}
+
+BaseIpcMessage::~BaseIpcMessage() = default;
