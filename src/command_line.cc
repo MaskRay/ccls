@@ -2386,8 +2386,10 @@ bool QueryDbMainLoop(
           if (file)
             msg->params.position = file->FindStableCompletionSource(msg->params.position, &is_global_completion);
 
-          ClangCompleteManager::OnComplete callback = std::bind([working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion](BaseIpcMessage* message, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
-            auto msg = static_cast<Ipc_TextDocumentComplete*>(message);
+          ClangCompleteManager::OnComplete callback = std::bind(
+            [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion]
+            (Ipc_TextDocumentComplete* msg, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+
             auto ipc = IpcManager::instance();
 
             Out_TextDocumentComplete complete_response;
@@ -2424,8 +2426,8 @@ bool QueryDbMainLoop(
               non_global_code_complete_cache->cached_diagnostics = diagnostics;
             }
 
-            delete message;
-          }, message.release(), std::placeholders::_1, std::placeholders::_2);
+            delete msg;
+          }, static_cast<Ipc_TextDocumentComplete*>(message.release()), std::placeholders::_1, std::placeholders::_2);
 
           if (is_global_completion && global_code_complete_cache->cached_path == path && !global_code_complete_cache->cached_results.empty()) {
             std::cerr << "[complete] Early-returning cached global completion results at " << msg->params.position.ToString() << std::endl;
@@ -3529,7 +3531,7 @@ int main(int argc, char** argv) {
   //bool loop = true;
   //while (loop)
   //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  //std::this_thread::sleep_for(std::chrono::seconds(3));
+  //std::this_thread::sleep_for(std::chrono::seconds(10));
 
   PlatformInit();
   IndexInit();
