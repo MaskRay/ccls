@@ -128,10 +128,12 @@ void RunTests() {
         {
           "-xc++",
           "-std=c++11",
-          "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/",
-          "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/doctest/",
-          "-IC:/Users/jacob/Desktop/superindex/indexer/third_party/rapidjson/include",
-          "-IC:/Users/jacob/Desktop/superindex/indexer/src"
+          "-IC:/Users/jacob/Desktop/cquery/third_party/",
+          "-IC:/Users/jacob/Desktop/cquery/third_party/doctest/",
+          "-IC:/Users/jacob/Desktop/cquery/third_party/rapidjson/include",
+          "-IC:/Users/jacob/Desktop/cquery/src",
+          "-isystemC:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
+          "-isystemC:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt"
         },
         "", nullopt,
         &perf,
@@ -150,6 +152,11 @@ void RunTests() {
         if (db) {
           VerifySerializeToFrom(db);
           actual_output = db->ToString();
+
+          for (lsDiagnostic diag : db->diagnostics) {
+            std::cerr << db->path << ":" << diag.range.start.line << ":" << diag.range.end.character << ": " << diag.message << std::endl;
+          }
+
         }
 
         // Compare output via rapidjson::Document to ignore any formatting
