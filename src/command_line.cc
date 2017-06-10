@@ -21,6 +21,7 @@
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 
+#include <climits>
 #include <fstream>
 #include <functional>
 #include <iostream>

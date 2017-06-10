@@ -140,6 +140,7 @@ void BuildDetailString(CXCompletionString completion_string, std::string& label,
     }
 
     case CXCompletionChunk_Placeholder: {
+      // TODO: insert $0 at end of snippet
       std::string text = clang::ToString(clang_getCompletionChunkText(completion_string, i));
       parameters->push_back(text);
       detail += text;
@@ -257,7 +258,7 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     ClangCompleteManager::ParseRequest request = completion_manager->parse_requests_.Dequeue();
-    
+
     // If we don't get a session then that means we don't care about the file
     // anymore - abandon the request.
     CompletionSession* session = completion_manager->TryGetSession(request.path, false /*create_if_needed*/);
@@ -289,7 +290,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     std::string path = request->location.textDocument.uri.GetPath();
 
     CompletionSession* session = completion_manager->TryGetSession(path, true /*create_if_needed*/);
-    
+
     std::lock_guard<std::mutex> lock(session->tu_lock);
     EnsureDocumentParsed(session, &session->tu, &session->index);
 
@@ -319,14 +320,14 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
     timer.ResetAndPrint("[complete] clangCodeCompleteAt");
     std::cerr << "[complete] Got " << cx_results->NumResults << " results" << std::endl;
-    
+
     NonElidedVector<lsCompletionItem> ls_result;
     ls_result.reserve(cx_results->NumResults);
 
     timer.Reset();
     for (unsigned i = 0; i < cx_results->NumResults; ++i) {
       CXCompletionResult& result = cx_results->Results[i];
-      
+
       // TODO: Try to figure out how we can hide base method calls without also
       // hiding method implementation assistance, ie,
       //
@@ -345,7 +346,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
       ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
       ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
-      
+
       // If this function is slow we can skip building insertText at the cost of some code duplication.
       if (!IsCallKind(result.CursorKind))
         ls_completion_item.insertText = "";
@@ -357,13 +358,18 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     // Build diagnostics.
     NonElidedVector<lsDiagnostic> ls_diagnostics;
     timer.Reset();
+    /*
     unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
+    std::cerr << "!! There are " + std::to_string(num_diagnostics) + " diagnostics to build\n";
     for (unsigned i = 0; i < num_diagnostics; ++i) {
-      optional<lsDiagnostic> diagnostic = BuildDiagnostic(clang_codeCompleteGetDiagnostic(cx_results, i));
+      std::cerr << "!! Building diagnostic " + std::to_string(i) + "\n";
+      CXDiagnostic cx_diag = clang_codeCompleteGetDiagnostic(cx_results, i);
+      optional<lsDiagnostic> diagnostic = BuildDiagnostic(cx_diag);
       if (diagnostic)
         ls_diagnostics.push_back(*diagnostic);
     }
     timer.ResetAndPrint("[complete] Build diagnostics");
+    */
 
 
     clang_disposeCodeCompleteResults(cx_results);
@@ -410,7 +416,7 @@ void LruSessionCache::InsertEntry(std::unique_ptr<CompletionSession> session) {
 }
 
 ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
-  : path(path), request_time(std::chrono::high_resolution_clock::now()) {}
+  : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
 
 ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files)
     : config_(config), project_(project), working_files_(working_files),
@@ -495,10 +501,10 @@ CompletionSession* ClangCompleteManager::TryGetSession(const std::string& filena
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
   CompletionSession* session = edit_sessions_.TryGetEntry(filename);
-  
+
   if (!session)
     session = view_sessions_.TryGetEntry(filename);
-  
+
   if (!session && create_if_needed) {
     // Create new session. Default to edited_sessions_ since invoking code
     // completion almost certainly implies an edit.
@@ -506,6 +512,6 @@ CompletionSession* ClangCompleteManager::TryGetSession(const std::string& filena
       project_->FindCompilationEntryForFile(filename), working_files_));
     session = edit_sessions_.TryGetEntry(filename);
   }
-  
+
   return session;
 }

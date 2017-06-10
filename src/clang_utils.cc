@@ -24,8 +24,11 @@ lsRange GetLsRangeForFixIt(const CXSourceRange& range) {
 optional<lsDiagnostic> BuildDiagnostic(CXDiagnostic diagnostic) {
   // Skip diagnostics in system headers.
   CXSourceLocation diag_loc = clang_getDiagnosticLocation(diagnostic);
-  if (clang_Location_isInSystemHeader(diag_loc))
+  if (clang_equalLocations(diag_loc, clang_getNullLocation()) ||
+      clang_Location_isInSystemHeader(diag_loc)) {
+    clang_disposeDiagnostic(diagnostic);
     return nullopt;
+  }
 
   // Get db so we can attribute diagnostic to the right indexed file.
   CXFile file;
