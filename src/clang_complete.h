@@ -41,7 +41,7 @@ struct LruSessionCache {
 
   // Fetches the entry for |filename| and updates it's usage so it is less
   // likely to be evicted.
-  CompletionSession* TryGetEntry(const std::string& filename);
+  std::shared_ptr<CompletionSession> TryGetEntry(const std::string& filename);
   // TryGetEntry, except the return value captures ownership.
   std::shared_ptr<CompletionSession> TryTakeEntry(const std::string& fiilename);
   // Inserts an entry. Evicts the oldest unused entry if there is no space.
@@ -79,7 +79,7 @@ struct ClangCompleteManager {
   // triggers a reparse.
   void NotifySave(const std::string& filename);
 
-  CompletionSession* TryGetSession(const std::string& filename, bool create_if_needed);
+  std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename, bool create_if_needed);
 
   // TODO: make these configurable.
   const int kMaxViewSessions = 3;

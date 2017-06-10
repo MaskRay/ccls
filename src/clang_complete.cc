@@ -238,7 +238,7 @@ void BuildDetailString(CXCompletionString completion_string, std::string& label,
 }
 
 void EnsureDocumentParsed(ClangCompleteManager* manager,
-                          CompletionSession* session,
+                          std::shared_ptr<CompletionSession> session,
                           std::unique_ptr<clang::TranslationUnit>* tu,
                           clang::Index* index) {
   // Nothing to do. We already have a translation unit.
@@ -274,7 +274,7 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
 
     // If we don't get a session then that means we don't care about the file
     // anymore - abandon the request.
-    CompletionSession* session = completion_manager->TryGetSession(request.path, false /*create_if_needed*/);
+    std::shared_ptr<CompletionSession> session = completion_manager->TryGetSession(request.path, false /*create_if_needed*/);
     if (!session)
       continue;
 
@@ -302,7 +302,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     std::unique_ptr<ClangCompleteManager::CompletionRequest> request = completion_manager->completion_request_.Take();
     std::string path = request->location.textDocument.uri.GetPath();
 
-    CompletionSession* session = completion_manager->TryGetSession(path, true /*create_if_needed*/);
+    std::shared_ptr<CompletionSession> session = completion_manager->TryGetSession(path, true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->tu_lock);
     EnsureDocumentParsed(completion_manager, session, &session->tu, &session->index);
@@ -386,10 +386,10 @@ CompletionSession::~CompletionSession() {}
 
 LruSessionCache::LruSessionCache(int max_entries) : max_entries_(max_entries) {}
 
-CompletionSession* LruSessionCache::TryGetEntry(const std::string& filename) {
+std::shared_ptr<CompletionSession> LruSessionCache::TryGetEntry(const std::string& filename) {
   for (int i = 0; i < entries_.size(); ++i) {
     if (entries_[i]->file.filename == filename)
-      return entries_[i].get();
+      return entries_[i];
   }
   return nullptr;
 }
@@ -493,10 +493,10 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   parse_requests_.PriorityEnqueue(ParseRequest(filename));
 }
 
-CompletionSession* ClangCompleteManager::TryGetSession(const std::string& filename, bool create_if_needed) {
+std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(const std::string& filename, bool create_if_needed) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
-  CompletionSession* session = edit_sessions_.TryGetEntry(filename);
+  std::shared_ptr<CompletionSession> session = edit_sessions_.TryGetEntry(filename);
 
   if (!session)
     session = view_sessions_.TryGetEntry(filename);
