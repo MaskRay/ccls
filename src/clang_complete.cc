@@ -237,7 +237,8 @@ void BuildDetailString(CXCompletionString completion_string, std::string& label,
   }
 }
 
-void EnsureDocumentParsed(CompletionSession* session,
+void EnsureDocumentParsed(ClangCompleteManager* manager,
+                          CompletionSession* session,
                           std::unique_ptr<clang::TranslationUnit>* tu,
                           clang::Index* index) {
   // Nothing to do. We already have a translation unit.
@@ -252,6 +253,18 @@ void EnsureDocumentParsed(CompletionSession* session,
   std::cerr << "[complete] Creating completion session with arguments " << StringJoin(args) << std::endl;
   *tu = MakeUnique<clang::TranslationUnit>(index, session->file.filename, args, unsaved, Flags());
   std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail << std::endl;
+
+  // Build diagnostics.
+  if (!(*tu)->did_fail) {
+    NonElidedVector<lsDiagnostic> ls_diagnostics;
+    unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
+    for (unsigned i = 0; i < num_diagnostics; ++i) {
+      optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(clang_getDiagnostic((*tu)->cx_tu, i));
+      if (diagnostic)
+        ls_diagnostics.push_back(*diagnostic);
+    }
+    manager->on_diagnostic_(session->file.filename, ls_diagnostics);
+  }
 }
 
 void CompletionParseMain(ClangCompleteManager* completion_manager) {
@@ -273,7 +286,7 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
     }
 
     std::unique_ptr<clang::TranslationUnit> parsing;
-    EnsureDocumentParsed(session, &parsing, &session->index);
+    EnsureDocumentParsed(completion_manager, session, &parsing, &session->index);
 
     // Activate new translation unit.
     // tu_last_parsed_at is only read by this thread, so it doesn't need to be under the mutex.
@@ -292,7 +305,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     CompletionSession* session = completion_manager->TryGetSession(path, true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->tu_lock);
-    EnsureDocumentParsed(session, &session->tu, &session->index);
+    EnsureDocumentParsed(completion_manager, session, &session->tu, &session->index);
 
     // Language server is 0-based, clang is 1-based.
     unsigned line = request->location.position.line + 1;
@@ -314,7 +327,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       kCompleteOptions);
     if (!cx_results) {
       timer.ResetAndPrint("[complete] Code completion failed");
-      request->on_complete({}, {});
+      request->on_complete({});
       continue;
     }
 
@@ -355,27 +368,10 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     }
     timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
 
-    // Build diagnostics.
-    NonElidedVector<lsDiagnostic> ls_diagnostics;
-    timer.Reset();
-    /*
-    unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
-    std::cerr << "!! There are " + std::to_string(num_diagnostics) + " diagnostics to build\n";
-    for (unsigned i = 0; i < num_diagnostics; ++i) {
-      std::cerr << "!! Building diagnostic " + std::to_string(i) + "\n";
-      CXDiagnostic cx_diag = clang_codeCompleteGetDiagnostic(cx_results, i);
-      optional<lsDiagnostic> diagnostic = BuildDiagnostic(cx_diag);
-      if (diagnostic)
-        ls_diagnostics.push_back(*diagnostic);
-    }
-    timer.ResetAndPrint("[complete] Build diagnostics");
-    */
-
-
     clang_disposeCodeCompleteResults(cx_results);
     timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults");
 
-    request->on_complete(ls_result, ls_diagnostics);
+    request->on_complete(ls_result);
 
     continue;
   }
@@ -398,10 +394,10 @@ CompletionSession* LruSessionCache::TryGetEntry(const std::string& filename) {
   return nullptr;
 }
 
-std::unique_ptr<CompletionSession> LruSessionCache::TryTakeEntry(const std::string& filename) {
+std::shared_ptr<CompletionSession> LruSessionCache::TryTakeEntry(const std::string& filename) {
   for (int i = 0; i < entries_.size(); ++i) {
     if (entries_[i]->file.filename == filename) {
-      std::unique_ptr<CompletionSession> result = std::move(entries_[i]);
+      std::shared_ptr<CompletionSession> result = std::move(entries_[i]);
       entries_.erase(entries_.begin() + i);
       return result;
     }
@@ -409,7 +405,7 @@ std::unique_ptr<CompletionSession> LruSessionCache::TryTakeEntry(const std::stri
   return nullptr;
 }
 
-void LruSessionCache::InsertEntry(std::unique_ptr<CompletionSession> session) {
+void LruSessionCache::InsertEntry(std::shared_ptr<CompletionSession> session) {
   if (entries_.size() >= max_entries_)
     entries_.pop_back();
   entries_.insert(entries_.begin(), std::move(session));
@@ -418,8 +414,8 @@ void LruSessionCache::InsertEntry(std::unique_ptr<CompletionSession> session) {
 ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
   : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
 
-ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files)
-    : config_(config), project_(project), working_files_(working_files),
+ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files, OnDiagnostic on_diagnostic)
+    : config_(config), project_(project), working_files_(working_files), on_diagnostic_(on_diagnostic),
       view_sessions_(kMaxViewSessions), edit_sessions_(kMaxEditSessions) {
   new std::thread([&]() {
     SetCurrentThreadName("completequery");
@@ -471,7 +467,7 @@ void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   if (edit_sessions_.TryGetEntry(filename))
     return;
 
-  if (std::unique_ptr<CompletionSession> session = view_sessions_.TryTakeEntry(filename)) {
+  if (std::shared_ptr<CompletionSession> session = view_sessions_.TryTakeEntry(filename)) {
     edit_sessions_.InsertEntry(std::move(session));
   }
 

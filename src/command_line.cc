@@ -93,7 +93,6 @@ struct CodeCompleteCache {
   optional<std::string> cached_path;
   optional<lsPosition> cached_completion_position;
   NonElidedVector<lsCompletionItem> cached_results;
-  NonElidedVector<lsDiagnostic> cached_diagnostics;
 
   bool IsCacheValid(lsTextDocumentPositionParams position) const {
     return cached_path == position.textDocument.uri.GetPath() &&
@@ -1243,7 +1242,25 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db, WorkingFil
   return nullopt;
 }
 
+void EmitDiagnostics(WorkingFiles* working_files, std::string path, NonElidedVector<lsDiagnostic> diagnostics) {
+  // Emit diagnostics.
+  Out_TextDocumentPublishDiagnostics diagnostic_response;
+  diagnostic_response.params.uri = lsDocumentUri::FromPath(path);
+  diagnostic_response.params.diagnostics = diagnostics;
+  IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
 
+  // Cache diagnostics so we can show fixits.
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  // TODO/FIXME: this function can run concurrently on any thread!!!!
+  WorkingFile* working_file = working_files->GetFileByFilename(path);
+  if (working_file)
+    working_file->diagnostics = diagnostics;
+}
 
 
 
@@ -1585,37 +1602,20 @@ void ParseFile(Config* config,
     // Note: we are reusing the parent perf.
     perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
 
-    // Publish diagnostics. We should only need to publish empty diagnostics if
-    // |is_interactive| is true, as we may have previously published diagnostic
-    // for that file. If the user has diagnostics on files they are not
-    // editing, then they can either edit the file, in which case
-    // |is_interactive| will be true, or they can change the flags cquery runs
-    // with, in which case vscode will get restarted.
-    if (is_interactive || !new_index->diagnostics.empty()) {
-      // Emit diagnostics.
-      Out_TextDocumentPublishDiagnostics diag;
-      diag.params.uri = lsDocumentUri::FromPath(new_index->path);
-      diag.params.diagnostics = new_index->diagnostics;
-      IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diag);
-
-      // Cache diagnostics so we can show fixits.
+    // Publish lines skipped by the preprocessor if this is an interactive
+    // index.
+    if (is_interactive) {
       WorkingFile* working_file = working_files->GetFileByFilename(new_index->path);
       if (working_file) {
-        working_file->diagnostics = new_index->diagnostics;
-
         // Publish source ranges disabled by preprocessor.
-        if (is_interactive) {
-          // TODO: We shouldn't be updating actual indexed content here, but we
-          // need to use the latest indexed content for the remapping.
-          // TODO: We should also remap diagnostics.
-          if (indexed_content)
-            working_file->SetIndexContent(*indexed_content);
-
-          PublishInactiveLines(working_file, new_index->skipped_by_preprocessor);
-        }
+        // TODO: We shouldn't be updating actual indexed content here, but we
+        // need to use the latest indexed content for the remapping.
+        // TODO: We should also remap diagnostics.
+        if (indexed_content)
+          working_file->SetIndexContent(*indexed_content);
+        PublishInactiveLines(working_file, new_index->skipped_by_preprocessor);
       }
     }
-
 
     // Any any existing dependencies to |new_index| that were there before,
     // because we will not reparse them if they haven't changed.
@@ -2347,8 +2347,6 @@ bool QueryDbMainLoop(
         std::string path = msg->params.textDocument.uri.GetPath();
         WorkingFile* file = working_files->GetFileByFilename(path);
 
-        // TODO: We should scan include directories to add any missing paths
-
         // It shouldn't be possible, but sometimes vscode will send queries out
         // of order, ie, we get completion request before buffer content update.
         std::string buffer_line;
@@ -2389,9 +2387,7 @@ bool QueryDbMainLoop(
 
           ClangCompleteManager::OnComplete callback = std::bind(
             [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion]
-            (Ipc_TextDocumentComplete* msg, NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
-
-            auto ipc = IpcManager::instance();
+            (Ipc_TextDocumentComplete* msg, NonElidedVector<lsCompletionItem> results) {
 
             Out_TextDocumentComplete complete_response;
             complete_response.id = msg->id;
@@ -2399,54 +2395,42 @@ bool QueryDbMainLoop(
             complete_response.result.items = results;
 
             // Emit completion results.
-            ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
-
-            // Emit diagnostics.
-            Out_TextDocumentPublishDiagnostics diagnostic_response;
-            diagnostic_response.params.uri = msg->params.textDocument.uri;
-            diagnostic_response.params.diagnostics = diagnostics;
-            ipc->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
-
-            std::string path = msg->params.textDocument.uri.GetPath();
-
-            // Cache diagnostics so we can show fixits.
-            WorkingFile* working_file = working_files->GetFileByFilename(path);
-            if (working_file)
-              working_file->diagnostics = diagnostics;
+            IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
 
             // Cache completion results.
+            std::string path = msg->params.textDocument.uri.GetPath();
             if (is_global_completion) {
               global_code_complete_cache->cached_path = path;
               global_code_complete_cache->cached_results = results;
-              global_code_complete_cache->cached_diagnostics = diagnostics;
             }
             else {
               non_global_code_complete_cache->cached_path = path;
               non_global_code_complete_cache->cached_completion_position = msg->params.position;
               non_global_code_complete_cache->cached_results = results;
-              non_global_code_complete_cache->cached_diagnostics = diagnostics;
             }
 
             delete msg;
-          }, static_cast<Ipc_TextDocumentComplete*>(message.release()), std::placeholders::_1, std::placeholders::_2);
+          }, static_cast<Ipc_TextDocumentComplete*>(message.release()), std::placeholders::_1);
 
           if (is_global_completion && global_code_complete_cache->cached_path == path && !global_code_complete_cache->cached_results.empty()) {
             std::cerr << "[complete] Early-returning cached global completion results at " << msg->params.position.ToString() << std::endl;
 
-            ClangCompleteManager::OnComplete freshen_global = [global_code_complete_cache](NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics) {
+            ClangCompleteManager::OnComplete freshen_global =
+              [global_code_complete_cache]
+              (NonElidedVector<lsCompletionItem> results) {
+
               std::cerr << "[complete] Updated global completion cache" << std::endl;
               // note: path is updated in the normal completion handler.
               global_code_complete_cache->cached_results = results;
-              global_code_complete_cache->cached_diagnostics = diagnostics;
             };
             clang_complete->CodeComplete(msg->params, std::move(freshen_global));
 
             // Note: callback will delete the message (ie, |params|) so we need to run completion_manager->CodeComplete before |callback|.
-            callback(global_code_complete_cache->cached_results, global_code_complete_cache->cached_diagnostics);
+            callback(global_code_complete_cache->cached_results);
           }
           else if (non_global_code_complete_cache->IsCacheValid(msg->params)) {
             std::cerr << "[complete] Using cached completion results at " << msg->params.position.ToString() << std::endl;
-            callback(non_global_code_complete_cache->cached_results, non_global_code_complete_cache->cached_diagnostics);
+            callback(non_global_code_complete_cache->cached_results);
           }
           else {
             clang_complete->CodeComplete(msg->params, std::move(callback));
@@ -2521,7 +2505,7 @@ bool QueryDbMainLoop(
 
         if (signature_cache->IsCacheValid(params)) {
           std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
-          callback(signature_cache->cached_results, signature_cache->cached_diagnostics);
+          callback(signature_cache->cached_results);
         }
         else {
           clang_complete->CodeComplete(params, std::move(callback));
@@ -3215,7 +3199,9 @@ void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
 
   Project project;
   WorkingFiles working_files;
-  ClangCompleteManager clang_complete(config, &project, &working_files);
+  ClangCompleteManager clang_complete(
+      config, &project, &working_files,
+      std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1, std::placeholders::_2));
   IncludeComplete include_complete(config, &project);
   CodeCompleteCache global_code_complete_cache;
   CodeCompleteCache non_global_code_complete_cache;

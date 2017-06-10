@@ -34,7 +34,7 @@ struct CompletionSession {
 };
 
 struct LruSessionCache {
-  std::vector<std::unique_ptr<CompletionSession>> entries_;
+  std::vector<std::shared_ptr<CompletionSession>> entries_;
   int max_entries_;
 
   LruSessionCache(int max_entries);
@@ -43,13 +43,14 @@ struct LruSessionCache {
   // likely to be evicted.
   CompletionSession* TryGetEntry(const std::string& filename);
   // TryGetEntry, except the return value captures ownership.
-  std::unique_ptr<CompletionSession> TryTakeEntry(const std::string& fiilename);
+  std::shared_ptr<CompletionSession> TryTakeEntry(const std::string& fiilename);
   // Inserts an entry. Evicts the oldest unused entry if there is no space.
-  void InsertEntry(std::unique_ptr<CompletionSession> session);
+  void InsertEntry(std::shared_ptr<CompletionSession> session);
 };
 
 struct ClangCompleteManager {
-  using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results, NonElidedVector<lsDiagnostic> diagnostics)>;
+  using OnDiagnostic = std::function<void(std::string path, NonElidedVector<lsDiagnostic> diagnostics)>;
+  using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results)>;
   
   struct ParseRequest {
     ParseRequest(const std::string& path);
@@ -62,7 +63,7 @@ struct ClangCompleteManager {
     OnComplete on_complete;
   };
 
-  ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files);
+  ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files, OnDiagnostic on_diagnostic);
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.
@@ -88,6 +89,7 @@ struct ClangCompleteManager {
   Config* config_;
   Project* project_;
   WorkingFiles* working_files_;
+  OnDiagnostic on_diagnostic_;
 
   // Sessions which have never had a real text-edit applied, but are preloaded
   // to give a fast initial experience.

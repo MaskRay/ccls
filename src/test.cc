@@ -152,11 +152,6 @@ void RunTests() {
         if (db) {
           VerifySerializeToFrom(db);
           actual_output = db->ToString();
-
-          for (lsDiagnostic diag : db->diagnostics) {
-            std::cerr << db->path << ":" << diag.range.start.line << ":" << diag.range.end.character << ": " << diag.message << std::endl;
-          }
-
         }
 
         // Compare output via rapidjson::Document to ignore any formatting

@@ -472,9 +472,6 @@ struct IndexFile {
   // header we need to lookup the original translation unit and reindex that.
   std::string import_file;
 
-  // Diagnostics found when indexing the file. This is not saved.
-  NonElidedVector<lsDiagnostic> diagnostics;
-
   // Source ranges that were not processed.
   std::vector<Range> skipped_by_preprocessor;
 

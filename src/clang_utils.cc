@@ -21,7 +21,7 @@ lsRange GetLsRangeForFixIt(const CXSourceRange& range) {
 
 }  // namespace
 
-optional<lsDiagnostic> BuildDiagnostic(CXDiagnostic diagnostic) {
+optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic) {
   // Skip diagnostics in system headers.
   CXSourceLocation diag_loc = clang_getDiagnosticLocation(diagnostic);
   if (clang_equalLocations(diag_loc, clang_getNullLocation()) ||
