@@ -2905,7 +2905,7 @@ bool QueryDbMainLoop(
             }
 
             // Build include strings.
-            std::vector<std::string> include_insert_strings;
+            std::unordered_set<std::string> include_insert_strings;
             include_insert_strings.reserve(include_absolute_paths.size());
 
             for (const std::string& path : include_absolute_paths) {
@@ -2913,9 +2913,9 @@ bool QueryDbMainLoop(
               if (!item)
                 continue;
               if (item->textEdit)
-                include_insert_strings.push_back(item->textEdit->newText);
+                include_insert_strings.insert(item->textEdit->newText);
               else if (!item->insertText.empty())
-                include_insert_strings.push_back(item->insertText);
+                include_insert_strings.insert(item->insertText);
               else
                 assert(false && "unable to determine insert string for include completion item");
             }
@@ -2939,7 +2939,7 @@ bool QueryDbMainLoop(
 
               // Setup metadata and send to client.
               if (include_insert_strings.size() == 1)
-                command.title = "Insert " + include_insert_strings[0];
+                command.title = "Insert " + *include_insert_strings.begin();
               else
                 command.title = "Pick one of " + std::to_string(include_insert_strings.size()) + " includes to insert";
               command.command = "cquery._insertInclude";
