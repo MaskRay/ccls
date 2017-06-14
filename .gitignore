@@ -5,7 +5,7 @@ x64
 build
 foo
 libcxx
-CACHE*
+*CACHE*
 waf-*
 .lock-waf*
 .waf*
