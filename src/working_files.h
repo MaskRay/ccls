@@ -33,7 +33,8 @@ struct WorkingFile {
   // Note: The items in the value entry are 1-based liness.
   std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
   // A set of diagnostics that have been reported for this file.
-  std::vector<lsDiagnostic> diagnostics;
+  // NOTE: _ is appended because it must be accessed under the WorkingFiles lock!
+  std::vector<lsDiagnostic> diagnostics_;
 
   WorkingFile(const std::string& filename, const std::string& buffer_content);
 
@@ -76,6 +77,11 @@ struct WorkingFiles {
   // Find the file with the given filename.
   WorkingFile* GetFileByFilename(const std::string& filename);
   WorkingFile* GetFileByFilenameNoLock(const std::string& filename);
+
+  // Run |action| under the lock.
+  void DoAction(const std::function<void()>& action);
+  // Run |action| on the file identified by |filename|. This executes under the lock.
+  void DoActionOnFile(const std::string& filename, const std::function<void(WorkingFile* file)>& action);
 
   WorkingFile* OnOpen(const Ipc_TextDocumentDidOpen::Params& open);
   void OnChange(const Ipc_TextDocumentDidChange::Params& change);

@@ -297,6 +297,20 @@ WorkingFile* WorkingFiles::GetFileByFilenameNoLock(const std::string& filename) 
   return nullptr;
 }
 
+void WorkingFiles::DoAction(const std::function<void()>& action) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+  action();
+}
+
+void WorkingFiles::DoActionOnFile(
+    const std::string& filename,
+    const std::function<void(WorkingFile* file)>& action) {
+
+  std::lock_guard<std::mutex> lock(files_mutex);
+  WorkingFile* file = GetFileByFilenameNoLock(filename);
+  action(file);
+}
+
 WorkingFile* WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
   std::lock_guard<std::mutex> lock(files_mutex);
 

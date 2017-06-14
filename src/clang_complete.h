@@ -13,8 +13,6 @@
 #include <mutex>
 #include <string>
 
-// TODO: rename this file to clang_completion.h/cc
-
 struct CompletionSession {
   Project::Entry file;
   WorkingFiles* working_files;

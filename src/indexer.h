@@ -135,11 +135,6 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
   visitor.String(s.c_str());
 }
 
-// TODO: skip as much forward-processing as possible when |is_system_def| is
-//       set to false.
-// TODO: Either eliminate the defs created as a by-product of cross-referencing,
-//       or do not emit things we don't have definitions for.
-
 template <typename TypeId,
           typename FuncId,
           typename VarId,

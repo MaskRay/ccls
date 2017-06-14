@@ -1250,16 +1250,10 @@ void EmitDiagnostics(WorkingFiles* working_files, std::string path, NonElidedVec
   IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentPublishDiagnostics, diagnostic_response);
 
   // Cache diagnostics so we can show fixits.
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  // TODO/FIXME: this function can run concurrently on any thread!!!!
-  WorkingFile* working_file = working_files->GetFileByFilename(path);
-  if (working_file)
-    working_file->diagnostics = diagnostics;
+  working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
+    if (working_file)
+      working_file->diagnostics_ = diagnostics;
+  });
 }
 
 
@@ -2871,8 +2865,11 @@ bool QueryDbMainLoop(
             break;
         }
 
-
-        for (lsDiagnostic& diag : working_file->diagnostics) {
+        std::vector<lsDiagnostic> diagnostics;
+        working_files->DoAction([&]() {
+          diagnostics = working_file->diagnostics_;
+        });
+        for (lsDiagnostic& diag : diagnostics) {
           if (diag.range.start.line != msg->params.range.start.line)
             continue;
 
