@@ -892,19 +892,32 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
   NonElidedVector<Out_CqueryCallTree::CallEntry> result;
   result.reserve(root_func->callers.size());
   for (QueryFuncRef caller : root_func->callers) {
-    optional<QueryFunc>& call_func = db->funcs[caller.id.id];
-    if (!call_func)
-      continue;
     optional<lsLocation> call_location = GetLsLocation(db, working_files, caller.loc);
     if (!call_location)
       continue;
 
-    Out_CqueryCallTree::CallEntry call_entry;
-    call_entry.name = call_func->def.short_name;
-    call_entry.usr = call_func->def.usr;
-    call_entry.location = *call_location;
-    call_entry.hasCallers = !call_func->callers.empty();
-    result.push_back(call_entry);
+    if (caller.has_id()) {
+      optional<QueryFunc>& call_func = db->funcs[caller.id_.id];
+      if (!call_func)
+        continue;
+
+      Out_CqueryCallTree::CallEntry call_entry;
+      call_entry.name = call_func->def.short_name;
+      call_entry.usr = call_func->def.usr;
+      call_entry.location = *call_location;
+      call_entry.hasCallers = !call_func->callers.empty();
+      result.push_back(call_entry);
+    }
+    else {
+      // TODO: See if we can do a better job here. Need more information from
+      // the indexer.
+      Out_CqueryCallTree::CallEntry call_entry;
+      call_entry.name = "Likely Constructor";
+      call_entry.usr = "no_usr";
+      call_entry.location = *call_location;
+      call_entry.hasCallers = false;
+      result.push_back(call_entry);
+    }
   }
 
   return result;
@@ -1732,7 +1745,6 @@ bool IndexMain_DoCreateIndexUpdate(
     return false;
 
   Timer time;
-  // TODO/FIXME: Running call tree on IndexUpdate::CreateDelta crashes cquery.
   IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
     response->previous_index.get(), response->current_index.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();

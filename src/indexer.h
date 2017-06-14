@@ -78,6 +78,7 @@ struct IdCache;
 
 
 struct IndexFuncRef {
+  // NOTE: id can be -1 if the function call is not coming from a function.
   IndexFuncId id;
   Range loc;
   bool is_implicit = false;
