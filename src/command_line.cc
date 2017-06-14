@@ -2098,7 +2098,6 @@ bool QueryDbMainLoop(
           }
         }
 
-        response.Write(std::cerr);
         ipc->SendOutMessageToClient(IpcId::CqueryCallTreeInitial, response);
         break;
       }
@@ -2113,7 +2112,6 @@ bool QueryDbMainLoop(
         if (func_id != db->usr_to_func.end())
           response.result = BuildExpandCallTree(db, working_files, func_id->second);
 
-        response.Write(std::cerr);
         ipc->SendOutMessageToClient(IpcId::CqueryCallTreeExpand, response);
         break;
       }
@@ -2336,7 +2334,6 @@ bool QueryDbMainLoop(
           break;
         }
 
-        response.Write(std::cerr);
         ipc->SendOutMessageToClient(IpcId::TextDocumentRename, response);
         break;
       }
@@ -2488,9 +2485,6 @@ bool QueryDbMainLoop(
 
           // Set signature to what we parsed from the working file.
           response.result.activeParameter = active_param;
-
-          response.Write(std::cerr);
-          std::cerr << std::endl;
 
           Timer timer;
           ipc->SendOutMessageToClient(IpcId::TextDocumentSignatureHelp, response);
