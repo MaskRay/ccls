@@ -30,11 +30,7 @@ std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
   if (!file_content)
     return nullptr;
 
-  optional<IndexFile> indexed = Deserialize(filename, *file_content);
-  if (indexed && indexed->version == IndexFile::kCurrentVersion)
-    return MakeUnique<IndexFile>(indexed.value());
-
-  return nullptr;
+  return Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
 }
 
 optional<std::string> LoadCachedFileContents(Config* config,

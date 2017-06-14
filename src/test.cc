@@ -66,7 +66,8 @@ void DiffDocuments(std::string path, std::string path_section, rapidjson::Docume
 
 void VerifySerializeToFrom(IndexFile* file) {
   std::string expected = file->ToString();
-  std::string actual = Deserialize("--.cc", Serialize(*file)).value().ToString();
+  std::unique_ptr<IndexFile> result = Deserialize("--.cc", Serialize(*file), nullopt /*expected_version*/);
+  std::string actual = result->ToString();
   if (expected != actual) {
     std::cerr << "Serialization failure" << std::endl;;
     assert(false);

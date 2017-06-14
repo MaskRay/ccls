@@ -5,8 +5,9 @@
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 
-#include <vector>
+#include <memory>
 #include <string>
+#include <vector>
 
 
 using std::experimental::optional;
@@ -222,6 +223,6 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 }
 
 std::string Serialize(IndexFile& file);
-optional<IndexFile> Deserialize(std::string path, std::string serialized);
+std::unique_ptr<IndexFile> Deserialize(std::string path, std::string serialized, optional<int> expected_version);
 
 void SetTestOutputMode();
