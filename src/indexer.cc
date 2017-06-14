@@ -1535,6 +1535,10 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     unsaved_files.push_back(unsaved);
   }
   clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord);
+  if (tu.did_fail) {
+    std::cerr << "!! Failed creating translation unit for " << file << std::endl;
+    return {};
+  }
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
@@ -1548,7 +1552,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
        &indexEntityReference}
   };
 
-  FileConsumer file_consumer(file_consumer_shared);
+  FileConsumer file_consumer(file_consumer_shared, file);
   IndexParam param(&tu, &file_consumer);
 
   CXFile cx_file = clang_getFile(tu.cx_tu, file.c_str());

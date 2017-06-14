@@ -1,15 +1,16 @@
-#ifndef TRANSLATIONUNIT_H_
-#define TRANSLATIONUNIT_H_
-#include <clang-c/Index.h>
-#include <string>
-#include <vector>
-#include <map>
-#include <memory>
+#pragma once
+
+
 #include "Index.h"
 #include "Cursor.h"
-#include "../language_server_api.h"
+
+#include <clang-c/Index.h>
+
+#include <string>
+#include <vector>
 
 namespace clang {
+
 class TranslationUnit {
  public:
   TranslationUnit(Index* index,
@@ -27,5 +28,5 @@ class TranslationUnit {
 
   CXTranslationUnit cx_tu;
 };
+
 }  // namespace clang
-#endif  // TRANSLATIONUNIT_H_

@@ -33,7 +33,7 @@ struct FileConsumer {
     void Reset(const std::string& file);
   };
 
-  FileConsumer(SharedState* shared_state);
+  FileConsumer(SharedState* shared_state, const std::string& parse_file);
 
   // Returns true if this instance owns given |file|. This will also attempt to
   // take ownership over |file|.
@@ -52,4 +52,5 @@ struct FileConsumer {
  private:
   std::unordered_map<CXFileUniqueID, std::unique_ptr<IndexFile>> local_;
   SharedState* shared_;
+  std::string parse_file_;
 };

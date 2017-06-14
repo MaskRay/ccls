@@ -2,6 +2,7 @@
 
 #include "Utility.h"
 #include "../platform.h"
+#include "../utils.h"
 
 #include <fstream>
 #include <sstream>

@@ -21,14 +21,15 @@ void FileConsumer::SharedState::Reset(const std::string& file) {
     files.erase(it);
 }
 
-FileConsumer::FileConsumer(SharedState* shared_state) : shared_(shared_state) {}
+FileConsumer::FileConsumer(SharedState* shared_state, const std::string& parse_file)
+    : shared_(shared_state), parse_file_(parse_file) {}
 
 IndexFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership) {
   assert(is_first_ownership);
 
   CXFileUniqueID file_id;
   if (clang_getFileUniqueID(file, &file_id) != 0) {
-    std::cerr << "Could not get unique file id for " << FileName(file) << std::endl;
+    std::cerr << "Could not get unique file id when parsing " << parse_file_ << std::endl;
     return nullptr;
   }
 
