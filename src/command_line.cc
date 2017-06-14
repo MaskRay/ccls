@@ -44,7 +44,7 @@ namespace {
 std::vector<std::string> kEmptyArgs;
 
 // Expected client version. We show an error if this doesn't match.
-const int kExpectedClientVersion = 2;
+const int kExpectedClientVersion = 3;
 
 
 
@@ -1941,7 +1941,7 @@ bool QueryDbMainLoop(
             if (config->clientVersion > kExpectedClientVersion)
               out.params.message += "the cquery binary.";
             else
-              out.params.message += "your extension client (VSIX file).";
+              out.params.message += "your extension client (VSIX file). Make sure to uninstall the cquery extension and restart vscode before reinstalling.";
             out.Write(std::cout);
           }
 
