@@ -140,7 +140,6 @@ void BuildDetailString(CXCompletionString completion_string, std::string& label,
     }
 
     case CXCompletionChunk_Placeholder: {
-      // TODO: insert $0 at end of snippet
       std::string text = clang::ToString(clang_getCompletionChunkText(completion_string, i));
       parameters->push_back(text);
       detail += text;
@@ -357,6 +356,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       // kind/label/detail/docs/sortText
       ls_completion_item.kind = GetCompletionKind(result.CursorKind);
       BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
+      ls_completion_item.insertText += "$0";
       ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
       ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
 
@@ -380,9 +380,13 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 }  // namespace
 
 CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* working_files)
-  : file(file), working_files(working_files), index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/) {}
+    : file(file), working_files(working_files), index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/) {
+  std::cerr << "[complete] CompletionSession::CompletionSession() for " << file.filename << std::endl;
+}
 
-CompletionSession::~CompletionSession() {}
+CompletionSession::~CompletionSession() {
+  std::cerr << "[complete] CompletionSession::~CompletionSession() for " << file.filename << std::endl;
+}
 
 LruSessionCache::LruSessionCache(int max_entries) : max_entries_(max_entries) {}
 
