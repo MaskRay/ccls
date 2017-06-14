@@ -322,3 +322,15 @@ float GetProcessMemoryUsedInMb() {
   return memory_after / kBytesToMb;
 #endif
 }
+
+std::string FormatMicroseconds(long long microseconds) {
+  long long milliseconds = microseconds / 1000;
+  long long remaining = microseconds - milliseconds;
+
+  // Only show two digits after the dot.
+  while (remaining >= 100)
+    remaining /= 10;
+
+  return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
+}
+

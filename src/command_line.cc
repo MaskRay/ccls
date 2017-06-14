@@ -59,18 +59,6 @@ const int kExpectedClientVersion = 2;
 
 
 
-#if false
-std::string FormatMicroseconds(long long microseconds) {
-  long long milliseconds = microseconds / 1000;
-  long long remaining = microseconds  - milliseconds;
-
-  // Only show two digits after the dot.
-  while (remaining >= 100)
-    remaining /= 10;
-
-  return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
-}
-#endif
 
 
 
@@ -3426,7 +3414,7 @@ void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaite
         case IpcId::Cout: {
           auto msg = static_cast<Ipc_Cout*>(message.get());
 
-          if (ShouldDisplayIpcTiming(message->method_id)) {
+          if (ShouldDisplayIpcTiming(msg->original_ipc_id)) {
             Timer time = (*request_times)[msg->original_ipc_id];
             time.ResetAndPrint("[e2e] Running " + std::string(IpcIdToString(msg->original_ipc_id)));
           }
