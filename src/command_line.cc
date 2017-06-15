@@ -1570,11 +1570,13 @@ bool QueryDbMainLoop(
             std::string path = msg->params.textDocument.uri.GetPath();
             if (is_global_completion) {
               global_code_complete_cache->cached_path = path;
+              std::cerr << "[complete] Updating global_code_complete_cache->cached_results [0]" << std::endl;
               global_code_complete_cache->cached_results = results;
             }
             else {
               non_global_code_complete_cache->cached_path = path;
               non_global_code_complete_cache->cached_completion_position = msg->params.position;
+              std::cerr << "[complete] Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
               non_global_code_complete_cache->cached_results = results;
             }
 
@@ -1588,7 +1590,7 @@ bool QueryDbMainLoop(
               [global_code_complete_cache]
               (NonElidedVector<lsCompletionItem> results) {
 
-              std::cerr << "[complete] Updated global completion cache" << std::endl;
+              std::cerr << "[complete] Updating global_code_complete_cache->cached_results [2]" << std::endl;
               // note: path is updated in the normal completion handler.
               global_code_complete_cache->cached_results = results;
             };
@@ -1664,6 +1666,7 @@ bool QueryDbMainLoop(
 
           signature_cache->cached_path = msg->params.textDocument.uri.GetPath();
           signature_cache->cached_completion_position = msg->params.position;
+          std::cerr << "[complete] Updating signature_cache->cached_results [3]" << std::endl;
           signature_cache->cached_results = results;
 
           delete message;
