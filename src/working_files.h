@@ -12,11 +12,6 @@
 using std::experimental::optional;
 using std::experimental::nullopt;
 
-// Utility method to map |position| to an offset inside of |content|.
-int GetOffsetForPosition(lsPosition position, const std::string& content);
-// Utility method to find a position for the given character.
-lsPosition CharPos(const std::string& search, char character, int character_offset = 0);
-
 struct WorkingFile {
   int version = 0;
   std::string filename;
@@ -51,6 +46,8 @@ struct WorkingFile {
   optional<int> GetIndexLineFromBufferLine(int buffer_line) const;
 
   optional<std::string> GetBufferLineContentFromIndexLine(int indexed_line, optional<int>* out_buffer_line) const;
+
+  // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into lex_utils.h/cc
 
   // Finds the closest 'callable' name prior to position. This is used for
   // signature help to filter code completion results.

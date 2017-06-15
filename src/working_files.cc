@@ -1,5 +1,6 @@
 #include "working_files.h"
 
+#include "lex_utils.h"
 #include "position.h"
 
 #include <doctest/doctest.h>
@@ -30,39 +31,6 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
 
 }  // namespace
 
-int GetOffsetForPosition(lsPosition position, const std::string& content) {
-  int offset = 0;
-
-  int remaining_lines = position.line;
-  while (remaining_lines > 0) {
-    if (content[offset] == '\n')
-      --remaining_lines;
-    ++offset;
-  }
-
-  return offset + position.character;
-}
-
-lsPosition CharPos(const std::string& search, char character, int character_offset) {
-  lsPosition result;
-  int index = 0;
-  while (index < search.size()) {
-    char c = search[index];
-    if (c == character)
-      break;
-    if (c == '\n') {
-      result.line += 1;
-      result.character = 0;
-    }
-    else {
-      result.character += 1;
-    }
-    ++index;
-  }
-  assert(index < search.size());
-  result.character += character_offset;
-  return result;
-}
 
 
 WorkingFile::WorkingFile(const std::string& filename, const std::string& buffer_content)
