@@ -257,6 +257,8 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu, CXSourceRange ran
 
 
 
+// static
+int IndexFile::kCurrentVersion = 4;
 
 IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
