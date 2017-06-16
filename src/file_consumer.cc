@@ -29,7 +29,7 @@ IndexFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership) {
 
   CXFileUniqueID file_id;
   if (clang_getFileUniqueID(file, &file_id) != 0) {
-    std::cerr << "Could not get unique file id when parsing " << parse_file_ << std::endl;
+    EmitError(file);
     return nullptr;
   }
 
@@ -62,7 +62,7 @@ IndexFile* FileConsumer::ForceLocal(CXFile file) {
   // It's already been taken before, just create a local copy.
   CXFileUniqueID file_id;
   if (clang_getFileUniqueID(file, &file_id) != 0) {
-    std::cerr << "Could not get unique file id for " << FileName(file) << std::endl;
+    EmitError(file);
     return nullptr;
   }
 
@@ -80,4 +80,10 @@ std::vector<std::unique_ptr<IndexFile>> FileConsumer::TakeLocalState() {
       result.push_back(std::move(entry.second));
   }
   return result;
+}
+
+void FileConsumer::EmitError(CXFile file) const {
+  std::string file_name = clang::ToString(clang_getFileName(file));
+  std::string error_message = "Could not get unique file id for " + file_name + " when parsing " + parse_file_;
+  std::cerr << error_message << std::endl;
 }
