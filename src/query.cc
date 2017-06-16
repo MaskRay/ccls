@@ -806,7 +806,7 @@ void QueryDatabase::ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updat
       continue;
 
     existing->def = def;
-    if (def.declaring_type)
+    if (!def.is_local)
       UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Var, it->second.id, def.detailed_name);
   }
 }
