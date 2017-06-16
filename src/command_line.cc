@@ -2312,7 +2312,7 @@ bool QueryDbMainLoop(
             break;
           }
 
-          if (db->detailed_names[i].find(query) != std::string::npos) {
+          if (SubstringMatch(query, db->detailed_names[i])) {
             optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, db->symbols[i]);
             if (!info)
               continue;
