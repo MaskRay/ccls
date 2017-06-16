@@ -2,17 +2,22 @@
 
 #include <doctest/doctest.h>
 
+#include <algorithm>
+
 int GetOffsetForPosition(lsPosition position, const std::string& content) {
+  if (content.empty())
+    return 0;
+
   int offset = 0;
 
   int remaining_lines = position.line;
-  while (remaining_lines > 0) {
+  while (remaining_lines > 0 && offset < content.size()) {
     if (content[offset] == '\n')
       --remaining_lines;
     ++offset;
   }
 
-  return offset + position.character;
+  return std::min<int>(offset + position.character, content.size() - 1);
 }
 
 lsPosition CharPos(const std::string& search, char character, int character_offset) {
@@ -203,6 +208,16 @@ bool SubstringMatch(const std::string& search, const std::string& content) {
 
   return false;
 }
+
+TEST_SUITE("Offset");
+
+TEST_CASE("over range") {
+  std::string content = "foo";
+  int offset = GetOffsetForPosition(lsPosition(10, 10), content);
+  REQUIRE(offset < content.size());
+}
+
+TEST_SUITE_END();
 
 TEST_SUITE("Substring");
 

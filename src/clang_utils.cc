@@ -39,6 +39,7 @@ optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic) {
 
   lsDiagnostic ls_diagnostic;
 
+  // TODO: consider using clang_getDiagnosticRange
   // TODO: ls_diagnostic.range is lsRange, we have Range. We should only be
   // storing Range types when inside the indexer so that index <-> buffer
   // remapping logic is applied.

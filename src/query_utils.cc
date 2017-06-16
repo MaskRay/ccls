@@ -1,5 +1,16 @@
 #include "query_utils.h"
 
+namespace {
+
+// Computes roughly how long |range| is.
+int ComputeRangeSize(const Range& range) {
+  if (range.start.line != range.end.line)
+    return INT_MAX;
+  return range.end.column - range.start.column;
+}
+
+}  // namespace
+
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db, const QueryTypeId& id) {
   optional<QueryType>& type = db->types[id.id];
   if (type)
@@ -550,12 +561,20 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFil
       symbols.push_back(ref);
   }
 
-  // Order function symbols first. This makes goto definition work better when
-  // used on a constructor.
+  // Order shorter ranges first, since they are more detailed/precise. This is
+  // important for macros which generate code so that we can resolving the
+  // macro argument takes priority over the entire macro body.
+  //
+  // Order functions before other types, which makes goto definition work
+  // better on constructors.
   std::sort(symbols.begin(), symbols.end(), [](const SymbolRef& a, const SymbolRef& b) {
-    if (a.idx.kind != b.idx.kind && a.idx.kind == SymbolKind::Func)
-      return 1;
-    return 0;
+    int a_size = ComputeRangeSize(a.loc.range);
+    int b_size = ComputeRangeSize(b.loc.range);
+
+    if (a_size == b_size)
+      return a.idx.kind != b.idx.kind && a.idx.kind == SymbolKind::Func;
+
+    return a_size < b_size;
   });
 
   return symbols;

@@ -404,7 +404,8 @@ TEST_CASE("auto-insert )") {
 }
 
 TEST_CASE("existing completion") {
-  WorkingFile f("foo.cc", "zzz.asdf");
+  // TODO: remove trailing space in zz.asdf. Lexing doesn't work correctly if done at the end of input.
+  WorkingFile f("foo.cc", "zzz.asdf ");
   bool is_global_completion;
   std::string existing_completion;
 
