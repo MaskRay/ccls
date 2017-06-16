@@ -1,5 +1,7 @@
 #include "query_utils.h"
 
+#include <climits>
+
 namespace {
 
 // Computes roughly how long |range| is.
