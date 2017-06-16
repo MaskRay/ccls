@@ -214,12 +214,11 @@ std::string WorkingFile::FindClosestCallNameInBuffer(lsPosition position, int* a
   return buffer_content.substr(offset, start_offset - offset + 1);
 }
 
-// Returns a position which contains the most recent ., ->, :, or ( for code
-// completion purposes.
-lsPosition WorkingFile::FindStableCompletionSource(lsPosition position, bool* is_global_completion) const {
+lsPosition WorkingFile::FindStableCompletionSource(lsPosition position, bool* is_global_completion, std::string* existing_completion) const {
   *is_global_completion = true;
 
-  int offset = GetOffsetForPosition(position, buffer_content);
+  int start_offset = GetOffsetForPosition(position, buffer_content);
+  int offset = start_offset;
 
   while (offset > 0) {
     char c = buffer_content[offset - 1];
@@ -241,6 +240,7 @@ lsPosition WorkingFile::FindStableCompletionSource(lsPosition position, bool* is
     --offset;
   }
 
+  *existing_completion = buffer_content.substr(offset, start_offset - offset);
   return GetPositionForOffset(buffer_content, offset);
 }
 
@@ -401,6 +401,23 @@ TEST_CASE("auto-insert )") {
   int active_param = 0;
   REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ')'), &active_param) == "abc");
   REQUIRE(active_param == 0);
+}
+
+TEST_CASE("existing completion") {
+  WorkingFile f("foo.cc", "zzz.asdf");
+  bool is_global_completion;
+  std::string existing_completion;
+
+  f.FindStableCompletionSource(CharPos(f, '.'), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "zzz");
+  f.FindStableCompletionSource(CharPos(f, 'a', 1), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "a");
+  f.FindStableCompletionSource(CharPos(f, 's', 1), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "as");
+  f.FindStableCompletionSource(CharPos(f, 'd', 1), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "asd");
+  f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "asdf");
 }
 
 TEST_SUITE_END();

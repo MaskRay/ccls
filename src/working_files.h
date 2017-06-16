@@ -61,7 +61,9 @@ struct WorkingFile {
   //
   // The out param |is_global_completion| is set to true if this looks like a
   // global completion.
-  lsPosition FindStableCompletionSource(lsPosition position, bool* is_global_completion) const;
+  // The out param |existing_completion| is set to any existing completion
+  // content the user has entered.
+  lsPosition FindStableCompletionSource(lsPosition position, bool* is_global_completion, std::string* existing_completion) const;
 
   CXUnsavedFile AsUnsavedFile() const;
 };

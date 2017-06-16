@@ -1,5 +1,7 @@
 #include "lex_utils.h"
 
+#include <doctest/doctest.h>
+
 int GetOffsetForPosition(lsPosition position, const std::string& content) {
   int offset = 0;
 
@@ -174,3 +176,64 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
 
   return content.substr(start, end - start + 1);
 }
+
+bool SubstringMatch(const std::string& search, const std::string& content) {
+  if (search.empty())
+    return true;
+
+  size_t search_index = 0;
+  char search_char = tolower(search[search_index]);
+
+  size_t content_index = 0;
+
+  while (true) {
+    char content_char = tolower(content[content_index]);
+
+    if (content_char == search_char) {
+      search_index += 1;
+      if (search_index >= search.size())
+        return true;
+      search_char = tolower(search[search_index]);
+    }
+
+    content_index += 1;
+    if (content_index >= content.size())
+      return false;
+  }
+
+  return false;
+}
+
+TEST_SUITE("Substring");
+
+TEST_CASE("match") {
+  // Sanity.
+  REQUIRE(SubstringMatch("a", "aa"));
+  REQUIRE(SubstringMatch("aa", "aa"));
+
+  // Empty string matches anything.
+  REQUIRE(SubstringMatch("", ""));
+  REQUIRE(SubstringMatch("", "aa"));
+
+  // Match in start/middle/end.
+  REQUIRE(SubstringMatch("a", "abbbb"));
+  REQUIRE(SubstringMatch("a", "bbabb"));
+  REQUIRE(SubstringMatch("a", "bbbba"));
+  REQUIRE(SubstringMatch("aa", "aabbb"));
+  REQUIRE(SubstringMatch("aa", "bbaab"));
+  REQUIRE(SubstringMatch("aa", "bbbaa"));
+
+  // Capitalization.
+  REQUIRE(SubstringMatch("aa", "aA"));
+  REQUIRE(SubstringMatch("aa", "Aa"));
+  REQUIRE(SubstringMatch("aa", "AA"));
+
+  // Token skipping.
+  REQUIRE(SubstringMatch("ad", "abcd"));
+  REQUIRE(SubstringMatch("ad", "ABCD"));
+
+  // Ordering.
+  REQUIRE(!SubstringMatch("ad", "dcba"));
+}
+
+TEST_SUITE_END();

@@ -435,11 +435,53 @@ void EmitDiagnostics(WorkingFiles* working_files, std::string path, NonElidedVec
   });
 }
 
+// Pre-filters completion responses before sending to vscode. This results in a
+// significantly snappier completion experience as vscode is easily overloaded
+// when given 1000+ completion items.
+void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
+                              const std::string& complete_text) {
+  // Used to inject more completions.
+#if false
+  const size_t kNumIterations = 250;
+  size_t size = complete_response->result.items.size();
+  complete_response->result.items.reserve(size * (kNumIterations + 1));
+  for (size_t iteration = 0; iteration < kNumIterations; ++iteration) {
+    for (size_t i = 0; i < size; ++i) {
+      auto item = complete_response->result.items[i];
+      item.label += "#" + std::to_string(iteration);
+      complete_response->result.items.push_back(item);
+    }
+  }
+#endif
 
 
+  const size_t kMaxResultSize = 100u;
+  if (complete_response->result.items.size() > kMaxResultSize) {
+    //std::cerr << "!!! Filtering " << complete_response->result.items.size() << " results using " << complete_text << std::endl;
 
+    complete_response->result.isIncomplete = true;
 
+    if (complete_text.empty()) {
+      complete_response->result.items.resize(kMaxResultSize);
+    }
+    else {
+      NonElidedVector<lsCompletionItem> filtered_result;
+      filtered_result.reserve(kMaxResultSize);
+      for (const lsCompletionItem& item : complete_response->result.items) {
+        if (SubstringMatch(complete_text, item.label)) {
+          //std::cerr << "!! emitting " << item.label << std::endl;
+          filtered_result.push_back(item);
+          if (filtered_result.size() >= kMaxResultSize)
+            break;
+        }
+      }
 
+      complete_response->result.items = filtered_result;
+    }
+
+    //std::cerr << "!! Filtering resulted in " << complete_response->result.items.size() << " entries" << std::endl;
+  }
+}
 
 
 
@@ -1547,15 +1589,20 @@ bool QueryDbMainLoop(
           }
 
           std::cerr << "[complete] Returning " << complete_response.result.items.size() << " include completions" << std::endl;
+          FilterCompletionResponse(&complete_response, buffer_line);
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
         }
         else {
           bool is_global_completion = false;
-          if (file)
-            msg->params.position = file->FindStableCompletionSource(msg->params.position, &is_global_completion);
+          std::string existing_completion;
+          if (file) {
+            msg->params.position = file->FindStableCompletionSource(msg->params.position, &is_global_completion, &existing_completion);
+          }
+
+          std::cerr << "[complete] Got existing completion " << existing_completion;
 
           ClangCompleteManager::OnComplete callback = std::bind(
-            [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion]
+            [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion, existing_completion]
             (Ipc_TextDocumentComplete* msg, NonElidedVector<lsCompletionItem> results) {
 
             Out_TextDocumentComplete complete_response;
@@ -1564,6 +1611,7 @@ bool QueryDbMainLoop(
             complete_response.result.items = results;
 
             // Emit completion results.
+            FilterCompletionResponse(&complete_response, existing_completion);
             IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
 
             // Cache completion results.
