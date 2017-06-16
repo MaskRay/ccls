@@ -641,7 +641,17 @@ void RegisterMessageTypes() {
 
 
 
+void PriorityEnqueueFileForIndex(QueryDatabase* db, Project* project, Index_DoIndexQueue* queue_do_index, WorkingFile* working_file, const std::string& path) {
+  // Only do a delta update (Type::Parse) if we've already imported the
+  // file. If the user saves a file not loaded by the project we don't
+  // want the initial import to be a delta-update.
+  Index_DoIndex::Type index_type = Index_DoIndex::Type::Parse;
+  QueryFile* file = FindFile(db, path);
+  if (!file)
+    index_type = Index_DoIndex::Type::ImportThenParse;
 
+  queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
+}
 
 
 
@@ -1468,6 +1478,7 @@ bool QueryDbMainLoop(
 
         include_complete->AddFile(working_file->filename);
         clang_complete->NotifyView(path);
+        PriorityEnqueueFileForIndex(db, project, queue_do_index, working_file, path);
 
         break;
       }
@@ -1511,17 +1522,8 @@ bool QueryDbMainLoop(
         //      mutex and check to see if we should skip the current request.
         //      if so, ignore that index response.
         WorkingFile* working_file = working_files->GetFileByFilename(path);
-        if (working_file) {
-          // Only do a delta update (Type::Parse) if we've already imported the
-          // file. If the user saves a file not loaded by the project we don't
-          // want the initial import to be a delta-update.
-          Index_DoIndex::Type index_type = Index_DoIndex::Type::Parse;
-          QueryFile* file = FindFile(db, path);
-          if (!file)
-            index_type = Index_DoIndex::Type::ImportThenParse;
-
-          queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
-        }
+        if (working_file)
+          PriorityEnqueueFileForIndex(db, project, queue_do_index, working_file, path);
 
         clang_complete->NotifySave(path);
 
