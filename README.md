@@ -47,6 +47,8 @@ Building cquery is simple. The external dependencies are few:
 - git
 
 ```bash
+# Ensure your system clang is up-to-date
+$ sudo apt-get install clang
 $ git clone https://github.com/jacobdufault/cquery --recursive
 $ cd cquery
 $ ./waf configure
@@ -71,9 +73,9 @@ If you run into issues, you can view debug output by running the
 
 ### Part 1: System includes
 
-cquery will likely fail to resolve system includes like `<vector>` unless the
-include path is updated to point to them. Add the system include paths to
-`cquery.index.extraClangArguments`. For example,
+cquery will likely fail to resolve system includes like `stddef.h` or
+`<vector>` unless the include path is updated to point to them. Add the
+system include paths to `cquery.index.extraClangArguments`. For example,
 
 ```js
 {
@@ -85,7 +87,7 @@ include path is updated to point to them. Add the system include paths to
     "-isystem/usr/lib/gcc/x86_64-linux-gnu/4.8/../../../../include/x86_64-linux-gnu/c++/4.8",
     "-isystem/usr/lib/gcc/x86_64-linux-gnu/4.8/../../../../include/c++/4.8/backward",
     "-isystem/usr/local/include",
-    "-isystem/work/chrome/src/third_party/llvm-build/Release+Asserts/lib/clang/5.0.0/include",
+    "-isystem/PATH/TO/CHROME/src/third_party/llvm-build/Release+Asserts/lib/clang/5.0.0/include",
     "-isystem/usr/include/x86_64-linux-gnu",
     "-isystem/usr/include",
   ],
@@ -153,6 +155,10 @@ information. When a request comes in, cquery just looks it up in the cache
 without running many computations. As a result, there's a large memory overhead.
 For example, a full index of Chrome will take about 10gb of memory. If you
 exclude v8, webkit, and third_party, it goes down to about 6.5gb.
+
+# Chromium tips
+
+(Add them here)
 
 # License
 
