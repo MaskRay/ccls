@@ -47,8 +47,7 @@ Building cquery is simple. The external dependencies are few:
 - git
 
 ```bash
-# Ensure your system clang is up-to-date
-$ sudo apt-get install clang
+$ clang --version  # if missing, sudo apt-get install clang
 $ git clone https://github.com/jacobdufault/cquery --recursive
 $ cd cquery
 $ ./waf configure
@@ -158,7 +157,22 @@ exclude v8, webkit, and third_party, it goes down to about 6.5gb.
 
 # Chromium tips
 
-(Add them here)
+Chromium is a very large codebase, so cquery benefits from a bit of tuning.
+Optionally add these to your settings:
+
+```js
+  // Set slightly lower than your CPU core count to keep other tools responsive.
+  "cquery.misc.indexerCount": 50,
+  // Remove uncommonly used directories with large numbers of files.
+  "cquery.index.blacklist": [
+   ".*/src/base/third_party/.*",
+   ".*/src/native_client/.*",
+   ".*/src/native_client_sdk/.*",
+   ".*/src/third_party/.*",
+   ".*/src/v8/.*",
+   ".*/src/webkit/.*"
+  ]
+```
 
 # License
 
