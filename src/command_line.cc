@@ -659,8 +659,25 @@ void PriorityEnqueueFileForIndex(QueryDatabase* db, Project* project, Index_DoIn
   queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
 }
 
+void InsertSymbolIntoResult(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol, std::vector<lsSymbolInformation>* result) {
+  optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol);
+  if (!info)
+    return;
 
+  optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, symbol);
+  if (!location) {
+    auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
+    if (decls.empty())
+      return;
+    location = decls[0];
+  }
 
+  optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
+  if (!ls_location)
+    return;
+  info->location = *ls_location;
+  result->push_back(*info);
+}
 
 
 
@@ -2315,29 +2332,20 @@ bool QueryDbMainLoop(
 
         std::string query = msg->params.query;
         for (int i = 0; i < db->detailed_names.size(); ++i) {
-          if (response.result.size() >= config->maxWorkspaceSearchResults) {
-            std::cerr << "[querydb] Query exceeded maximum number of responses (" << config->maxWorkspaceSearchResults << "), output may not contain all results" << std::endl;
-            break;
+          if (db->detailed_names[i].find(query) != std::string::npos) {
+            InsertSymbolIntoResult(db, working_files, db->symbols[i], &response.result);
+            if (response.result.size() >= config->maxWorkspaceSearchResults)
+              break;
           }
+        }
 
-          if (SubstringMatch(query, db->detailed_names[i])) {
-            optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, db->symbols[i]);
-            if (!info)
-              continue;
-
-            optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, db->symbols[i]);
-            if (!location) {
-              auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, db->symbols[i]);
-              if (decls.empty())
-                continue;
-              location = decls[0];
+        if (response.result.size() < config->maxWorkspaceSearchResults) {
+          for (int i = 0; i < db->detailed_names.size(); ++i) {
+            if (SubstringMatch(query, db->detailed_names[i])) {
+              InsertSymbolIntoResult(db, working_files, db->symbols[i], &response.result);
+              if (response.result.size() >= config->maxWorkspaceSearchResults)
+                break;
             }
-
-            optional<lsLocation> ls_location = GetLsLocation(db, working_files, *location);
-            if (!ls_location)
-              continue;
-            info->location = *ls_location;
-            response.result.push_back(*info);
           }
         }
 
