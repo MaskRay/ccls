@@ -211,10 +211,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   return result;
 }
 
+/* TODO: Fix this function, it may be way faster than libclang's implementation.
 std::vector<Project::Entry> LoadFromCompileCommandsJson(
     std::unordered_set<std::string>& quote_includes, std::unordered_set<std::string>& angle_includes,
     const std::vector<std::string>& extra_flags, const std::string& project_directory) {
-  // TODO: Fix this function, it may be way faster than libclang's implementation.
 
   optional<std::string> compile_commands_content = ReadContent(project_directory + "/compile_commands.json");
   if (!compile_commands_content)
@@ -238,6 +238,7 @@ std::vector<Project::Entry> LoadFromCompileCommandsJson(
   }
   return result;
 }
+*/
 
 std::vector<Project::Entry> LoadFromDirectoryListing(
     std::unordered_set<std::string>& quote_includes, std::unordered_set<std::string>& angle_includes,

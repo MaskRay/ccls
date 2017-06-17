@@ -130,7 +130,7 @@ def build(bld):
 
   bld.program(
       source=cc_files,
-      cxxflags=['-g', '-O3', '-std=c++11', '-Wall'],
+      cxxflags=['-g', '-O3', '-std=c++11', '-Wall', '-Werror'],
       includes=[
         'third_party/',
         'third_party/doctest/',

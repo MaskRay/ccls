@@ -403,6 +403,12 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db, WorkingFil
 
             break;
           }
+          case SymbolKind::Invalid:
+          case SymbolKind::File:
+          case SymbolKind::Type:
+            std::cerr << "Unexpected SymbolKind "
+                      << static_cast<int>(sym.idx.kind) << std::endl;
+            break;
         }
       }
 
