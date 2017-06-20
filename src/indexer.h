@@ -477,6 +477,9 @@ struct IndexFile {
   std::vector<IndexFunc> funcs;
   std::vector<IndexVar> vars;
 
+  // Diagnostics found when indexing this file. Not serialized.
+  NonElidedVector<lsDiagnostic> diagnostics_;
+
   IndexFile(const std::string& path);
 
   IndexTypeId ToTypeId(const std::string& usr);

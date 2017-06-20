@@ -865,6 +865,11 @@ void ParseFile(Config* config,
       }
     }
 
+    // Publish diagnostics for non-interactive index.
+    else {
+      EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
+    }
+
     // Any any existing dependencies to |new_index| that were there before,
     // because we will not reparse them if they haven't changed.
     // TODO: indexer should always include dependencies. This doesn't let us remove old dependencies.

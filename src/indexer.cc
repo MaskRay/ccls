@@ -369,6 +369,29 @@ int abortQuery(CXClientData client_data, void* reserved) {
 void diagnostic(CXClientData client_data,
                 CXDiagnosticSet diagnostics,
                 void* reserved) {
+  IndexParam* param = static_cast<IndexParam*>(client_data);
+
+  for (unsigned i = 0; i < clang_getNumDiagnosticsInSet(diagnostics); ++i) {
+    CXDiagnostic diagnostic = clang_getDiagnosticInSet(diagnostics, i);
+    
+    // Skip diagnostics in system headers.
+    CXSourceLocation diag_loc = clang_getDiagnosticLocation(diagnostic);
+    if (clang_Location_isInSystemHeader(diag_loc))
+      continue;
+
+    // Get db so we can attribute diagnostic to the right indexed file.
+    CXFile file;
+    unsigned int line, column;
+    clang_getSpellingLocation(diag_loc, &file, &line, &column, nullptr);
+    IndexFile* db = ConsumeFile(param, file);
+    if (!db)
+      continue;
+    
+    // Build diagnostic.
+    optional<lsDiagnostic> ls_diagnostic = BuildAndDisposeDiagnostic(diagnostic);
+    if (ls_diagnostic)
+      db->diagnostics_.push_back(*ls_diagnostic);
+  }
 }
 
 CXIdxClientFile enteredMainFile(CXClientData client_data,
