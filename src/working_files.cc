@@ -222,7 +222,7 @@ lsPosition WorkingFile::FindStableCompletionSource(lsPosition position, bool* is
 
   while (offset > 0) {
     char c = buffer_content[offset - 1];
-    if (!isalnum(c)) {
+    if (!isalnum(c) && c != '_') {
       // Global completion is everything except for dot (.), arrow (->), and
       // double colon (::)
       if (c == '.')
@@ -419,6 +419,20 @@ TEST_CASE("existing completion") {
   REQUIRE(existing_completion == "asd");
   f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion, &existing_completion);
   REQUIRE(existing_completion == "asdf");
+}
+
+TEST_CASE("existing completion underscore") {
+  // TODO: remove trailing space in ABC_DEF. Lexing doesn't work correctly if done at the end of input.
+  WorkingFile f("foo.cc", "ABC_DEF ");
+  bool is_global_completion;
+  std::string existing_completion;
+
+  f.FindStableCompletionSource(CharPos(f, 'C'), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "AB");
+  f.FindStableCompletionSource(CharPos(f, '_'), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "ABC");
+  f.FindStableCompletionSource(CharPos(f, 'D'), &is_global_completion, &existing_completion);
+  REQUIRE(existing_completion == "ABC_");
 }
 
 TEST_SUITE_END();
