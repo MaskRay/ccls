@@ -317,22 +317,36 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 // Computes a score based on how well |a| and |b| match. This is used for
 // argument guessing.
 int ComputeGuessScore(const std::string& a, const std::string& b) {
+  const int kMatchPrefixWeight = 100;
+  const int kMismatchDirectoryWeight = 100;
+  const int kMatchPostfixWeight = 1;
+
   int score = 0;
   int i = 0;
 
+  // Increase score based on matching prefix.
   for (i = 0; i < a.length() && i < b.length(); ++i) {
     if (a[i] != b[i])
       break;
-    ++score;
+    score += kMatchPrefixWeight;
   }
 
+  // Reduce score based on mismatched directory distance.
   for (int j = i; j < a.length(); ++j) {
     if (a[j] == '/')
-      --score;
+      score -= kMismatchDirectoryWeight;
   }
   for (int j = i; j < b.length(); ++j) {
     if (b[j] == '/')
-      --score;
+      score -= kMismatchDirectoryWeight;
+  }
+
+  // Increase score based on common ending. Don't increase as much as matching
+  // prefix or directory distance.
+  for (int offset = 1; offset <= a.length() && offset <= b.length(); ++offset) {
+    if (a[a.size() - offset] != b[b.size() - offset])
+      break;
+    score += kMatchPostfixWeight;
   }
 
   return score;
@@ -371,7 +385,7 @@ Project::Entry Project::FindCompilationEntryForFile(const std::string& filename)
   // We couldn't find the file. Try to infer it.
   // TODO: Cache inferred file in a separate array (using a lock or similar)
   Entry* best_entry = nullptr;
-  int best_score = 0;
+  int best_score = INT_MIN;
   for (Entry& entry : entries) {
     int score = ComputeGuessScore(filename, entry.filename);
     if (score > best_score) {
@@ -441,6 +455,58 @@ TEST_CASE("Entry inference") {
     optional<Project::Entry> entry = p.FindCompilationEntryForFile("/a/b/c/new/new.cc");
     REQUIRE(entry.has_value());
     REQUIRE(entry->args == std::vector<std::string>{ "arg2" });
+  }
+}
+
+TEST_CASE("Entry inference prefers same file endings") {
+  Project p;
+  {
+    Project::Entry e;
+    e.args = { "arg1" };
+    e.filename = "common/simple_browsertest.cc";
+    p.entries.push_back(e);
+  }
+  {
+    Project::Entry e;
+    e.args = { "arg2" };
+    e.filename = "common/simple_unittest.cc";
+    p.entries.push_back(e);
+  }
+  {
+    Project::Entry e;
+    e.args = { "arg3" };
+    e.filename = "common/a/simple_unittest.cc";
+    p.entries.push_back(e);
+  }
+
+
+  // Prefer files with the same ending.
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("my_browsertest.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg1" });
+  }
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("my_unittest.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg2" });
+  }
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("common/my_browsertest.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg1" });
+  }
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("common/my_unittest.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg2" });
+  }
+
+  // Prefer the same directory over matching file-ending.
+  {
+    optional<Project::Entry> entry = p.FindCompilationEntryForFile("common/a/foo.cc");
+    REQUIRE(entry.has_value());
+    REQUIRE(entry->args == std::vector<std::string>{ "arg3" });
   }
 }
 
