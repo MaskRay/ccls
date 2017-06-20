@@ -84,6 +84,9 @@ std::vector<std::unique_ptr<IndexFile>> FileConsumer::TakeLocalState() {
 
 void FileConsumer::EmitError(CXFile file) const {
   std::string file_name = clang::ToString(clang_getFileName(file));
-  std::string error_message = "Could not get unique file id for " + file_name + " when parsing " + parse_file_;
-  std::cerr << error_message << std::endl;
+  // TODO: Investigate this more, why can we get an empty file name?
+  if (!file_name.empty()) {
+    std::string error_message = "Could not get unique file id for " + file_name + " when parsing " + parse_file_;
+    std::cerr << error_message << std::endl;
+  }
 }
