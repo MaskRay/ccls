@@ -10,6 +10,7 @@
 #include <doctest/doctest.h>
 
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <unordered_set>
 #include <vector>
@@ -385,7 +386,7 @@ Project::Entry Project::FindCompilationEntryForFile(const std::string& filename)
   // We couldn't find the file. Try to infer it.
   // TODO: Cache inferred file in a separate array (using a lock or similar)
   Entry* best_entry = nullptr;
-  int best_score = INT_MIN;
+  int best_score = std::numeric_limits<int>::min();
   for (Entry& entry : entries) {
     int score = ComputeGuessScore(filename, entry.filename);
     if (score > best_score) {
