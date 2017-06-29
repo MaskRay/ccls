@@ -463,11 +463,13 @@ ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, Wor
   new std::thread([&]() {
     SetCurrentThreadName("completequery");
     CompletionQueryMain(this);
+    std::cerr << "!!! exiting completequery thread" << std::endl;
   });
 
   new std::thread([&]() {
     SetCurrentThreadName("completeparse");
     CompletionParseMain(this);
+    std::cerr << "!!! exiting completeparse thread" << std::endl;
   });
 }
 

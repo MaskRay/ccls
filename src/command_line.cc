@@ -1598,7 +1598,8 @@ bool QueryDbMainLoop(
       }
 
       case IpcId::TextDocumentCompletion: {
-        auto msg = static_cast<Ipc_TextDocumentComplete*>(message.get());
+        auto msg = std::shared_ptr<Ipc_TextDocumentComplete>(
+            static_cast<Ipc_TextDocumentComplete*>(message.release()));
 
         std::string path = msg->params.textDocument.uri.GetPath();
         WorkingFile* file = working_files->GetFileByFilename(path);
@@ -1648,7 +1649,7 @@ bool QueryDbMainLoop(
 
           ClangCompleteManager::OnComplete callback = std::bind(
             [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion, existing_completion]
-            (Ipc_TextDocumentComplete* msg, NonElidedVector<lsCompletionItem> results) {
+            (std::shared_ptr<Ipc_TextDocumentComplete> msg, NonElidedVector<lsCompletionItem> results) {
 
             Out_TextDocumentComplete complete_response;
             complete_response.id = msg->id;
@@ -1672,9 +1673,7 @@ bool QueryDbMainLoop(
               std::cerr << "[complete] Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
               non_global_code_complete_cache->cached_results = results;
             }
-
-            delete msg;
-          }, static_cast<Ipc_TextDocumentComplete*>(message.release()), std::placeholders::_1);
+          }, msg, std::placeholders::_1);
 
           if (is_global_completion && global_code_complete_cache->cached_path == path && !global_code_complete_cache->cached_results.empty()) {
             std::cerr << "[complete] Early-returning cached global completion results at " << msg->params.position.ToString() << std::endl;
@@ -1688,12 +1687,8 @@ bool QueryDbMainLoop(
               global_code_complete_cache->cached_results = results;
             };
 
-            // Note: |callback| will delete the message (ie, |params|) so we
-            // need to run completion_manager->CodeComplete before |callback|.
-            lsTextDocumentPositionParams params = msg->params;
             callback(global_code_complete_cache->cached_results);
-
-            clang_complete->CodeComplete(params, std::move(freshen_global));
+            clang_complete->CodeComplete(msg->params, std::move(freshen_global));
           }
           else if (non_global_code_complete_cache->IsCacheValid(msg->params)) {
             std::cerr << "[complete] Using cached completion results at " << msg->params.position.ToString() << std::endl;
