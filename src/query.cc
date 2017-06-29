@@ -64,6 +64,7 @@ optional<QueryVar::DefUpdate> ToQuery(const IdMap& id_map, const IndexVar::Def& 
   result.variable_type = id_map.ToQuery(var.variable_type);
   result.declaring_type = id_map.ToQuery(var.declaring_type);
   result.is_local = var.is_local;
+  result.is_macro = var.is_macro;
   return result;
 }
 

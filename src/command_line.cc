@@ -2322,7 +2322,13 @@ bool QueryDbMainLoop(
             if (var->def.is_local && !config->codeLensOnLocalVariables)
               continue;
 
-            AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0), var->uses, var->def.definition_spelling, true /*force_display*/);
+            bool force_display = true;
+            // Do not show 0 refs on macro with no uses, as it is most likely a
+            // header guard.
+            if (var->def.is_macro)
+              force_display = false;
+
+            AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0), var->uses, var->def.definition_spelling, force_display);
             break;
           }
           case SymbolKind::File:
