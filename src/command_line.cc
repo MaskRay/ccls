@@ -258,18 +258,20 @@ optional<int> FindIncludeLine(const std::vector<std::string>& lines, const std::
   return 0;
 }
 
-optional<QueryFileId> GetImplementationFile(QueryDatabase* db, QueryFile* file) {
+optional<QueryFileId> GetImplementationFile(QueryDatabase* db, QueryFileId file_id, QueryFile* file) {
   for (SymbolRef sym : file->def.outline) {
     switch (sym.idx.kind) {
       case SymbolKind::Func: {
         optional<QueryFunc>& func = db->funcs[sym.idx.idx];
-        if (func && func->def.definition_extent)
+        // Note: we ignore the definition if it is in the same file (ie, possibly a header).
+        if (func && func->def.definition_extent && func->def.definition_extent->path != file_id)
           return func->def.definition_extent->path;
         break;
       }
       case SymbolKind::Var: {
         optional<QueryVar>& var = db->vars[sym.idx.idx];
-        if (var && var->def.definition_extent)
+        // Note: we ignore the definition if it is in the same file (ie, possibly a header).
+        if (var && var->def.definition_extent && var->def.definition_extent->path != file_id)
           return db->vars[sym.idx.idx]->def.definition_extent->path;
         break;
       }
@@ -286,6 +288,8 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db, QueryFile* file) 
   if (last != std::string::npos) {
     target_path = target_path.substr(0, last);
   }
+
+  std::cerr << "!! Looking for impl file that starts with " << target_path << std::endl;
 
   for (auto& entry : db->usr_to_file) {
     Usr path = entry.first;
@@ -308,7 +312,7 @@ void EnsureImplFile(QueryDatabase* db, QueryFileId file_id, optional<lsDocumentU
     optional<QueryFile>& file = db->files[file_id.id];
     assert(file);
 
-    impl_file_id = GetImplementationFile(db, &file.value());
+    impl_file_id = GetImplementationFile(db, file_id, &file.value());
     if (!impl_file_id.has_value())
       impl_file_id = file_id;
 
@@ -2211,7 +2215,7 @@ bool QueryDbMainLoop(
               if (include_insert_strings.size() == 1)
                 command.title = "Insert " + *include_insert_strings.begin();
               else
-                command.title = "Pick one of " + std::to_string(include_insert_strings.size()) + " includes to insert";
+                command.title = "Pick one of " + std::to_string(command.arguments.edits.size()) + " includes to insert";
               command.command = "cquery._insertInclude";
               command.arguments.textDocumentUri = msg->params.textDocument.uri;
               response.result.push_back(command);
