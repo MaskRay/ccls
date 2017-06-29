@@ -18,9 +18,9 @@
 
 namespace {
 
+#if false
 constexpr int kBacktraceBufferSize = 300;
 
-#if false
 void EmitBacktrace() {
    void* buffer[kBacktraceBufferSize];
    int nptrs = backtrace(buffer, kBacktraceBufferSize);
@@ -78,6 +78,7 @@ int GetCompletionPriority(const CXCompletionString& str, CXCursorKind result_kin
   return priority;
 }
 
+/*
 bool IsCallKind(CXCursorKind kind) {
   switch (kind) {
     case CXCursor_ObjCInstanceMethodDecl:
@@ -92,6 +93,7 @@ bool IsCallKind(CXCursorKind kind) {
       return false;
   }
 }
+*/
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
