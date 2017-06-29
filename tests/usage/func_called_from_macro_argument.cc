@@ -38,7 +38,7 @@ OUTPUT:
       "definition_spelling": "1:9-1:19",
       "definition_extent": "1:9-1:24",
       "is_local": false,
-      "is_macro": false,
+      "is_macro": true,
       "uses": ["1:9-1:19", "6:3-6:13"]
     }]
 }

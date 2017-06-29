@@ -14,7 +14,7 @@ OUTPUT:
       "definition_spelling": "2:9-2:12",
       "definition_extent": "2:9-2:12",
       "is_local": false,
-      "is_macro": false,
+      "is_macro": true,
       "uses": ["2:9-2:12"]
     }]
 }

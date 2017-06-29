@@ -54,7 +54,7 @@ OUTPUT:
       "definition_spelling": "1:9-1:12",
       "definition_extent": "1:9-3:32",
       "is_local": false,
-      "is_macro": false,
+      "is_macro": true,
       "uses": ["1:9-1:12", "12:1-12:4"]
     }]
 }

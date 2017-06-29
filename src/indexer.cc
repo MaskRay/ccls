@@ -848,6 +848,7 @@ clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor, cla
         var_def->def.short_name = cursor.get_display_name();
         var_def->def.detailed_name = var_def->def.short_name;
         var_def->def.is_local = false;
+        var_def->def.is_macro = true;
         var_def->def.definition_spelling = decl_loc_spelling;
         var_def->def.definition_extent = ResolveExtent(cursor.cx_cursor);;
       }
