@@ -49,7 +49,7 @@ struct LruSessionCache {
 struct ClangCompleteManager {
   using OnDiagnostic = std::function<void(std::string path, NonElidedVector<lsDiagnostic> diagnostics)>;
   using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results)>;
-  
+
   struct ParseRequest {
     ParseRequest(const std::string& path);
 
@@ -62,6 +62,7 @@ struct ClangCompleteManager {
   };
 
   ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files, OnDiagnostic on_diagnostic);
+  ~ClangCompleteManager();
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.

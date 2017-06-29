@@ -8,7 +8,41 @@
 #include <algorithm>
 #include <thread>
 
+/*
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+*/
+
+
 namespace {
+
+constexpr int kBacktraceBufferSize = 300;
+
+#if false
+void EmitBacktrace() {
+   void* buffer[kBacktraceBufferSize];
+   int nptrs = backtrace(buffer, kBacktraceBufferSize);
+
+   fprintf(stderr, "backtrace() returned %d addresses\n", nptrs);
+
+   /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
+      would produce similar output to the following: */
+
+   char** strings = backtrace_symbols(buffer, nptrs);
+   if (!strings) {
+       perror("Failed to emit backtrace");
+       exit(EXIT_FAILURE);
+   }
+
+   for (int j = 0; j < nptrs; j++)
+       fprintf(stderr, "%s\n", strings[j]);
+
+   free(strings);
+}
+#endif
+
 unsigned Flags() {
   // TODO: use clang_defaultEditingTranslationUnitOptions()?
   return
@@ -333,45 +367,49 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     timer.ResetAndPrint("[complete] clangCodeCompleteAt");
     std::cerr << "[complete] Got " << cx_results->NumResults << " results" << std::endl;
 
-    NonElidedVector<lsCompletionItem> ls_result;
-    ls_result.reserve(cx_results->NumResults);
+    {
+      NonElidedVector<lsCompletionItem> ls_result;
+      ls_result.reserve(cx_results->NumResults);
 
-    timer.Reset();
-    for (unsigned i = 0; i < cx_results->NumResults; ++i) {
-      CXCompletionResult& result = cx_results->Results[i];
+      timer.Reset();
+      for (unsigned i = 0; i < cx_results->NumResults; ++i) {
+        CXCompletionResult& result = cx_results->Results[i];
 
-      // TODO: Try to figure out how we can hide base method calls without also
-      // hiding method implementation assistance, ie,
-      //
-      //    void Foo::* {
-      //    }
-      //
+        // TODO: Try to figure out how we can hide base method calls without also
+        // hiding method implementation assistance, ie,
+        //
+        //    void Foo::* {
+        //    }
+        //
 
-      if (clang_getCompletionAvailability(result.CompletionString) == CXAvailability_NotAvailable)
-        continue;
+        if (clang_getCompletionAvailability(result.CompletionString) == CXAvailability_NotAvailable)
+          continue;
 
-      // TODO: fill in more data
-      lsCompletionItem ls_completion_item;
+        // TODO: fill in more data
+        lsCompletionItem ls_completion_item;
 
-      // kind/label/detail/docs/sortText
-      ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-      BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
-      ls_completion_item.insertText += "$0";
-      ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
-      ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
+        // kind/label/detail/docs/sortText
+        ls_completion_item.kind = GetCompletionKind(result.CursorKind);
+        BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
+        ls_completion_item.insertText += "$0";
+        ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
+        ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
 
-      // If this function is slow we can skip building insertText at the cost of some code duplication.
-      if (!IsCallKind(result.CursorKind))
-        ls_completion_item.insertText = "";
+        // If this function is slow we can skip building insertText at the cost of some code duplication.
+        if (!IsCallKind(result.CursorKind))
+          ls_completion_item.insertText = "";
 
-      ls_result.push_back(ls_completion_item);
+        ls_result.push_back(ls_completion_item);
+      }
+      timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
+
+      request->on_complete(ls_result);
+      timer.ResetAndPrint("[complete] Running user-given completion func");
     }
-    timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
 
+    // Make sure |ls_results| is destroyed before clearing |cx_results|.
     clang_disposeCodeCompleteResults(cx_results);
     timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults");
-
-    request->on_complete(ls_result);
 
     continue;
   }
@@ -386,6 +424,7 @@ CompletionSession::CompletionSession(const Project::Entry& file, WorkingFiles* w
 
 CompletionSession::~CompletionSession() {
   std::cerr << "[complete] CompletionSession::~CompletionSession() for " << file.filename << std::endl;
+  // EmitBacktrace();
 }
 
 LruSessionCache::LruSessionCache(int max_entries) : max_entries_(max_entries) {}
@@ -401,7 +440,7 @@ std::shared_ptr<CompletionSession> LruSessionCache::TryGetEntry(const std::strin
 std::shared_ptr<CompletionSession> LruSessionCache::TryTakeEntry(const std::string& filename) {
   for (int i = 0; i < entries_.size(); ++i) {
     if (entries_[i]->file.filename == filename) {
-      std::shared_ptr<CompletionSession> result = std::move(entries_[i]);
+      std::shared_ptr<CompletionSession> result = entries_[i];
       entries_.erase(entries_.begin() + i);
       return result;
     }
@@ -410,9 +449,9 @@ std::shared_ptr<CompletionSession> LruSessionCache::TryTakeEntry(const std::stri
 }
 
 void LruSessionCache::InsertEntry(std::shared_ptr<CompletionSession> session) {
-  if (entries_.size() >= max_entries_)
+  if (entries_.size() && entries_.size() >= max_entries_)
     entries_.pop_back();
-  entries_.insert(entries_.begin(), std::move(session));
+  entries_.insert(entries_.begin(), session);
 }
 
 ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
@@ -431,6 +470,8 @@ ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, Wor
     CompletionParseMain(this);
   });
 }
+
+ClangCompleteManager::~ClangCompleteManager() {}
 
 void ClangCompleteManager::CodeComplete(const lsTextDocumentPositionParams& completion_location, const OnComplete& on_complete) {
   // completion thread will create the CompletionSession if needed.
@@ -454,7 +495,7 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
     return;
 
   std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
-  view_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+  view_sessions_.InsertEntry(std::make_shared<CompletionSession>(
     project_->FindCompilationEntryForFile(filename), working_files_));
   parse_requests_.Enqueue(ParseRequest(filename));
 }
@@ -471,14 +512,16 @@ void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   if (edit_sessions_.TryGetEntry(filename))
     return;
 
-  if (std::shared_ptr<CompletionSession> session = view_sessions_.TryTakeEntry(filename)) {
-    edit_sessions_.InsertEntry(std::move(session));
+  std::shared_ptr<CompletionSession> session = view_sessions_.TryTakeEntry(filename);
+  if (session) {
+    edit_sessions_.InsertEntry(session);
   }
-
-  std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
-  edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
-    project_->FindCompilationEntryForFile(filename), working_files_));
-  parse_requests_.PriorityEnqueue(ParseRequest(filename));
+  else {
+    std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
+    edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
+      project_->FindCompilationEntryForFile(filename), working_files_));
+    parse_requests_.PriorityEnqueue(ParseRequest(filename));
+  }
 }
 
 void ClangCompleteManager::NotifySave(const std::string& filename) {
@@ -490,7 +533,7 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
 
   if (!edit_sessions_.TryGetEntry(filename)) {
     std::cerr << "[complete] Creating new edit code completion session for " << filename << std::endl;
-    edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+    edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
       project_->FindCompilationEntryForFile(filename), working_files_));
   }
 
@@ -508,7 +551,7 @@ std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(const std
   if (!session && create_if_needed) {
     // Create new session. Default to edited_sessions_ since invoking code
     // completion almost certainly implies an edit.
-    edit_sessions_.InsertEntry(MakeUnique<CompletionSession>(
+    edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
       project_->FindCompilationEntryForFile(filename), working_files_));
     session = edit_sessions_.TryGetEntry(filename);
   }

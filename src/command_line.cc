@@ -1672,10 +1672,13 @@ bool QueryDbMainLoop(
               // note: path is updated in the normal completion handler.
               global_code_complete_cache->cached_results = results;
             };
-            clang_complete->CodeComplete(msg->params, std::move(freshen_global));
 
-            // Note: callback will delete the message (ie, |params|) so we need to run completion_manager->CodeComplete before |callback|.
+            // Note: |callback| will delete the message (ie, |params|) so we
+            // need to run completion_manager->CodeComplete before |callback|.
+            lsTextDocumentPositionParams params = msg->params;
             callback(global_code_complete_cache->cached_results);
+
+            clang_complete->CodeComplete(params, std::move(freshen_global));
           }
           else if (non_global_code_complete_cache->IsCacheValid(msg->params)) {
             std::cerr << "[complete] Using cached completion results at " << msg->params.position.ToString() << std::endl;
