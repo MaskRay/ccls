@@ -25,6 +25,7 @@ OUTPUT:
       "definition_extent": "2:3-2:8",
       "declaring_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["2:7-2:8"]
     }, {
       "id": 1,
@@ -35,6 +36,7 @@ OUTPUT:
       "definition_extent": "3:3-3:9",
       "declaring_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["3:8-3:9"]
     }]
 }

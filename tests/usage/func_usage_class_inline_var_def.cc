@@ -37,6 +37,7 @@ OUTPUT:
       "definition_extent": "6:3-6:19",
       "declaring_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["6:7-6:8"]
     }]
 }

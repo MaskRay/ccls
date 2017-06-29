@@ -48,6 +48,7 @@ OUTPUT:
       "detailed_name": "int Foo::x",
       "declaration": "2:14-2:15",
       "is_local": false,
+      "is_macro": false,
       "uses": ["2:14-2:15", "8:15-8:16"]
     }]
 }

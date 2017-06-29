@@ -25,6 +25,7 @@ OUTPUT:
       "detailed_name": "const int Foo::var",
       "declaration": "3:24-3:27",
       "is_local": false,
+      "is_macro": false,
       "uses": ["3:24-3:27", "6:19-6:22", "7:20-7:23"]
     }, {
       "id": 1,
@@ -34,6 +35,7 @@ OUTPUT:
       "definition_spelling": "6:5-6:6",
       "definition_extent": "6:1-6:22",
       "is_local": false,
+      "is_macro": false,
       "uses": ["6:5-6:6"]
     }, {
       "id": 2,
@@ -43,6 +45,7 @@ OUTPUT:
       "definition_spelling": "7:5-7:6",
       "definition_extent": "7:1-7:23",
       "is_local": false,
+      "is_macro": false,
       "uses": ["7:5-7:6"]
     }]
 }

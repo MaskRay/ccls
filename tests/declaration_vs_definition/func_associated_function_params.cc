@@ -39,6 +39,7 @@ OUTPUT:
       "definition_spelling": "5:13-5:14",
       "definition_extent": "5:9-5:14",
       "is_local": true,
+      "is_macro": false,
       "uses": ["5:13-5:14"]
     }, {
       "id": 1,
@@ -48,6 +49,7 @@ OUTPUT:
       "definition_spelling": "5:20-5:21",
       "definition_extent": "5:16-5:21",
       "is_local": true,
+      "is_macro": false,
       "uses": ["5:20-5:21"]
     }]
 }

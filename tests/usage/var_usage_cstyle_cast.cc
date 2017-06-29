@@ -40,6 +40,7 @@ OUTPUT:
       "variable_type": 0,
       "declaring_type": 1,
       "is_local": false,
+      "is_macro": false,
       "uses": ["4:28-4:38", "7:23-7:33"]
     }]
 }

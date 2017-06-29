@@ -44,6 +44,7 @@ OUTPUT:
       "definition_extent": "6:1-6:27",
       "variable_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["6:25-6:27"]
     }, {
       "id": 1,
@@ -54,6 +55,7 @@ OUTPUT:
       "definition_extent": "7:1-7:24",
       "variable_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["7:22-7:24"]
     }, {
       "id": 2,
@@ -64,6 +66,7 @@ OUTPUT:
       "definition_extent": "10:3-10:23",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["10:18-10:23"]
     }]
 }

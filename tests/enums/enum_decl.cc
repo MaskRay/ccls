@@ -26,6 +26,7 @@ OUTPUT:
       "variable_type": 0,
       "declaring_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["2:3-2:4"]
     }, {
       "id": 1,
@@ -37,6 +38,7 @@ OUTPUT:
       "variable_type": 0,
       "declaring_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["3:3-3:4"]
     }]
 }

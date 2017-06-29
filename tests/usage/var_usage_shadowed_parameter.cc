@@ -26,6 +26,7 @@ OUTPUT:
       "definition_spelling": "1:14-1:15",
       "definition_extent": "1:10-1:15",
       "is_local": true,
+      "is_macro": false,
       "uses": ["1:14-1:15", "2:3-2:4", "7:3-7:4"]
     }, {
       "id": 1,
@@ -35,6 +36,7 @@ OUTPUT:
       "definition_spelling": "4:9-4:10",
       "definition_extent": "4:5-4:10",
       "is_local": true,
+      "is_macro": false,
       "uses": ["4:9-4:10", "5:5-5:6"]
     }]
 }

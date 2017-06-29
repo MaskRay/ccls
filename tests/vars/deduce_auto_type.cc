@@ -34,6 +34,7 @@ OUTPUT:
       "definition_extent": "3:3-3:21",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["3:8-3:9"]
     }, {
       "id": 1,
@@ -44,6 +45,7 @@ OUTPUT:
       "definition_extent": "4:3-4:22",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["4:9-4:10"]
     }]
 }

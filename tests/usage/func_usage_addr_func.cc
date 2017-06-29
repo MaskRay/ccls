@@ -43,6 +43,7 @@ OUTPUT:
       "definition_spelling": "6:8-6:9",
       "definition_extent": "6:3-6:17",
       "is_local": true,
+      "is_macro": false,
       "uses": ["6:8-6:9"]
     }]
 }

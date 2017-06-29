@@ -28,6 +28,7 @@ OUTPUT:
       "definition_extent": "3:10-3:17",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["3:15-3:17"]
     }, {
       "id": 1,
@@ -38,6 +39,7 @@ OUTPUT:
       "definition_extent": "3:19-3:26",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["3:24-3:26"]
     }]
 }

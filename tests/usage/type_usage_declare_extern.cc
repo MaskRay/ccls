@@ -22,6 +22,7 @@ OUTPUT:
       "declaration": "3:10-3:11",
       "variable_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["3:10-3:11"]
     }]
 }

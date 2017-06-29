@@ -24,6 +24,7 @@ OUTPUT:
       "definition_extent": "2:3-2:10",
       "declaring_type": 0,
       "is_local": false,
+      "is_macro": false,
       "uses": ["2:7-2:10"]
     }]
 }

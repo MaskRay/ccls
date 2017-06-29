@@ -20,6 +20,7 @@ OUTPUT:
       "detailed_name": "int Foo::member",
       "declaration": "2:14-2:20",
       "is_local": false,
+      "is_macro": false,
       "uses": ["2:14-2:20"]
     }]
 }

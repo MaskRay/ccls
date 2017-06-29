@@ -43,6 +43,7 @@ OUTPUT:
       "variable_type": 0,
       "declaring_type": 2,
       "is_local": false,
+      "is_macro": false,
       "uses": ["5:16-5:17"]
     }, {
       "id": 1,
@@ -54,6 +55,7 @@ OUTPUT:
       "variable_type": 1,
       "declaring_type": 2,
       "is_local": false,
+      "is_macro": false,
       "uses": ["6:19-6:20"]
     }]
 }

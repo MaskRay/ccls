@@ -21,6 +21,7 @@ OUTPUT:
       "detailed_name": "int a",
       "declaration": "1:12-1:13",
       "is_local": false,
+      "is_macro": false,
       "uses": ["1:12-1:13", "4:3-4:4"]
     }]
 }

@@ -371,6 +371,8 @@ struct VarDefDefinitionData {
 
   // Is this a "local" variable, ie, a parameter or function variable?
   bool is_local = false;
+  // Is this a macro, ie, #define FOO?
+  bool is_macro = false;
 
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
@@ -407,6 +409,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(is_local);
+  REFLECT_MEMBER(is_macro);
   REFLECT_MEMBER_END();
 }
 

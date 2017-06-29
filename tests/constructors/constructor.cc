@@ -49,6 +49,7 @@ OUTPUT:
       "definition_extent": "7:3-7:8",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["7:7-7:8"]
     }, {
       "id": 1,
@@ -59,6 +60,7 @@ OUTPUT:
       "definition_extent": "8:3-8:22",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["8:8-8:10"]
     }]
 }

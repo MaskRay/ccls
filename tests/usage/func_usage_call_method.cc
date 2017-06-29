@@ -51,6 +51,7 @@ OUTPUT:
       "definition_extent": "6:3-6:19",
       "variable_type": 0,
       "is_local": true,
+      "is_macro": false,
       "uses": ["6:8-6:9", "7:3-7:4"]
     }]
 }

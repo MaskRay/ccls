@@ -37,6 +37,7 @@ OUTPUT:
       "definition_spelling": "2:7-2:10",
       "definition_extent": "2:3-2:10",
       "is_local": false,
+      "is_macro": false,
       "uses": ["2:7-2:10", "7:18-7:21", "9:10-9:13"]
     }, {
       "id": 1,
@@ -46,6 +47,7 @@ OUTPUT:
       "definition_spelling": "3:19-3:20",
       "definition_extent": "3:15-3:20",
       "is_local": true,
+      "is_macro": false,
       "uses": ["3:19-3:20"]
     }]
 }

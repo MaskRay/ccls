@@ -125,6 +125,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("is_local", value.def.is_local);
+  REFLECT_MEMBER2("is_macro", value.def.is_macro);
   REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }
