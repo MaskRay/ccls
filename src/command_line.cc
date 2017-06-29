@@ -478,8 +478,17 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       NonElidedVector<lsCompletionItem> filtered_result;
       filtered_result.reserve(kMaxResultSize);
 
+      std::unordered_set<std::string> inserted;
+      inserted.reserve(kMaxResultSize);
+
       for (const lsCompletionItem& item : complete_response->result.items) {
         if (item.label.find(complete_text) != std::string::npos) {
+          // Don't insert the same completion entry.
+          if (!inserted.insert(item.InsertedContent()).second) {
+            std::cerr << "foo " << item.InsertedContent();
+            continue;
+          }
+
           filtered_result.push_back(item);
           if (filtered_result.size() >= kMaxResultSize)
             break;
@@ -489,7 +498,10 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       if (filtered_result.size() < kMaxResultSize) {
         for (const lsCompletionItem& item : complete_response->result.items) {
           if (SubstringMatch(complete_text, item.label)) {
-            //std::cerr << "!! emitting " << item.label << std::endl;
+            // Don't insert the same completion entry.
+            if (!inserted.insert(item.InsertedContent()).second)
+              continue;
+
             filtered_result.push_back(item);
             if (filtered_result.size() >= kMaxResultSize)
               break;
@@ -2355,8 +2367,16 @@ bool QueryDbMainLoop(
           << " candidates for query " << msg->params.query << std::endl;
 
         std::string query = msg->params.query;
+
+        std::unordered_set<std::string> inserted_results;
+        inserted_results.reserve(config->maxWorkspaceSearchResults);
+
         for (int i = 0; i < db->detailed_names.size(); ++i) {
           if (db->detailed_names[i].find(query) != std::string::npos) {
+            // Do not show the same entry twice.
+            if (!inserted_results.insert(db->detailed_names[i]).second)
+              continue;
+
             InsertSymbolIntoResult(db, working_files, db->symbols[i], &response.result);
             if (response.result.size() >= config->maxWorkspaceSearchResults)
               break;
@@ -2366,6 +2386,10 @@ bool QueryDbMainLoop(
         if (response.result.size() < config->maxWorkspaceSearchResults) {
           for (int i = 0; i < db->detailed_names.size(); ++i) {
             if (SubstringMatch(query, db->detailed_names[i])) {
+              // Do not show the same entry twice.
+              if (!inserted_results.insert(db->detailed_names[i]).second)
+                continue;
+
               InsertSymbolIntoResult(db, working_files, db->symbols[i], &response.result);
               if (response.result.size() >= config->maxWorkspaceSearchResults)
                 break;

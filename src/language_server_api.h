@@ -461,6 +461,11 @@ struct lsCompletionItem {
   // An data entry field that is preserved on a completion item between
   // a completion and a completion resolve request.
   // data ? : any
+
+  // Use this helper to figure out what content the completion item will insert
+  // into the document, as it could live in either |textEdit|, |insertText|, or
+  // |label|.
+  const std::string& InsertedContent() const;
 };
 MAKE_REFLECT_STRUCT(lsCompletionItem,
   label,

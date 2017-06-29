@@ -395,10 +395,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
         ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
 
-        // If this function is slow we can skip building insertText at the cost of some code duplication.
-        if (!IsCallKind(result.CursorKind))
-          ls_completion_item.insertText = "";
-
         ls_result.push_back(ls_completion_item);
       }
       timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");

@@ -215,6 +215,14 @@ bool lsTextEdit::operator==(const lsTextEdit& that) {
   return range == that.range && newText == that.newText;
 }
 
+const std::string& lsCompletionItem::InsertedContent() const {
+  if (textEdit)
+    return textEdit->newText;
+  if (!insertText.empty())
+    return insertText;
+  return label;
+}
+
 void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
   std::string v = reader.GetString();
   if (v == "off")
