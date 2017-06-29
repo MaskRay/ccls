@@ -473,12 +473,23 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
     else {
       NonElidedVector<lsCompletionItem> filtered_result;
       filtered_result.reserve(kMaxResultSize);
+
       for (const lsCompletionItem& item : complete_response->result.items) {
-        if (SubstringMatch(complete_text, item.label)) {
-          //std::cerr << "!! emitting " << item.label << std::endl;
+        if (item.label.find(complete_text) != std::string::npos) {
           filtered_result.push_back(item);
           if (filtered_result.size() >= kMaxResultSize)
             break;
+        }
+      }
+
+      if (filtered_result.size() < kMaxResultSize) {
+        for (const lsCompletionItem& item : complete_response->result.items) {
+          if (SubstringMatch(complete_text, item.label)) {
+            //std::cerr << "!! emitting " << item.label << std::endl;
+            filtered_result.push_back(item);
+            if (filtered_result.size() >= kMaxResultSize)
+              break;
+          }
         }
       }
 
