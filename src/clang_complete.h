@@ -13,7 +13,7 @@
 #include <mutex>
 #include <string>
 
-struct CompletionSession {
+struct CompletionSession : public std::enable_shared_from_this<CompletionSession> {
   Project::Entry file;
   WorkingFiles* working_files;
   clang::Index index;
@@ -81,8 +81,8 @@ struct ClangCompleteManager {
   std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename, bool create_if_needed);
 
   // TODO: make these configurable.
-  const int kMaxViewSessions = 3;
-  const int kMaxEditSessions = 10;
+  const int kMaxViewSessions = 1;
+  const int kMaxEditSessions = 1;
 
   // Global state.
   Config* config_;
