@@ -362,7 +362,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       kCompleteOptions);
     if (!cx_results) {
       timer.ResetAndPrint("[complete] Code completion failed");
-      request->on_complete({});
+      request->on_complete({}, false /*is_cached_result*/);
       continue;
     }
 
@@ -401,7 +401,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       }
       timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
 
-      request->on_complete(ls_result);
+      request->on_complete(ls_result, false /*is_cached_result*/);
       timer.ResetAndPrint("[complete] Running user-given completion func");
     }
 

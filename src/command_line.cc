@@ -80,13 +80,22 @@ const int kExpectedClientVersion = 3;
 // the user erases a character. vscode will resend the completion request if
 // that happens.
 struct CodeCompleteCache {
-  optional<std::string> cached_path;
-  optional<lsPosition> cached_completion_position;
-  NonElidedVector<lsCompletionItem> cached_results;
+  // NOTE: Make sure to access these variables under |WithLock|.
+  optional<std::string> cached_path_;
+  optional<lsPosition> cached_completion_position_;
+  NonElidedVector<lsCompletionItem> cached_results_;
 
-  bool IsCacheValid(lsTextDocumentPositionParams position) const {
-    return cached_path == position.textDocument.uri.GetPath() &&
-            cached_completion_position == position.position;
+  std::mutex mutex_;
+
+  void WithLock(std::function<void()> action) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    action();
+  }
+
+  bool IsCacheValid(lsTextDocumentPositionParams position) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return cached_path_ == position.textDocument.uri.GetPath() &&
+           cached_completion_position_ == position.position;
   }
 };
 
@@ -1660,8 +1669,8 @@ bool QueryDbMainLoop(
           std::cerr << "[complete] Got existing completion " << existing_completion;
 
           ClangCompleteManager::OnComplete callback = std::bind(
-            [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion, existing_completion]
-            (std::shared_ptr<Ipc_TextDocumentComplete> msg, NonElidedVector<lsCompletionItem> results) {
+            [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion, existing_completion, msg]
+            (const NonElidedVector<lsCompletionItem>& results, bool is_cached_result) {
 
             Out_TextDocumentComplete complete_response;
             complete_response.id = msg->id;
@@ -1673,41 +1682,62 @@ bool QueryDbMainLoop(
             IpcManager::instance()->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
 
             // Cache completion results.
-            std::string path = msg->params.textDocument.uri.GetPath();
-            if (is_global_completion) {
-              global_code_complete_cache->cached_path = path;
-              std::cerr << "[complete] Updating global_code_complete_cache->cached_results [0]" << std::endl;
-              global_code_complete_cache->cached_results = results;
+            if (!is_cached_result) {
+              std::string path = msg->params.textDocument.uri.GetPath();
+              if (is_global_completion) {
+                global_code_complete_cache->WithLock([&]() {
+                  global_code_complete_cache->cached_path_ = path;
+                  std::cerr << "[complete] Updating global_code_complete_cache->cached_results [0]" << std::endl;
+                  global_code_complete_cache->cached_results_ = results;
+                  std::cerr << "[complete] DONE Updating global_code_complete_cache->cached_results [0]" << std::endl;
+                });
+              }
+              else {
+                non_global_code_complete_cache->WithLock([&]() {
+                  non_global_code_complete_cache->cached_path_ = path;
+                  non_global_code_complete_cache->cached_completion_position_ = msg->params.position;
+                  std::cerr << "[complete] Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
+                  non_global_code_complete_cache->cached_results_ = results;
+                  std::cerr << "[complete] DONE Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
+                });
+              }
             }
-            else {
-              non_global_code_complete_cache->cached_path = path;
-              non_global_code_complete_cache->cached_completion_position = msg->params.position;
-              std::cerr << "[complete] Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
-              non_global_code_complete_cache->cached_results = results;
-            }
-          }, msg, std::placeholders::_1);
+          }, std::placeholders::_1, std::placeholders::_2);
 
-          if (is_global_completion && global_code_complete_cache->cached_path == path && !global_code_complete_cache->cached_results.empty()) {
+          bool is_cache_match = false;
+          global_code_complete_cache->WithLock([&]() {
+            is_cache_match = is_global_completion && global_code_complete_cache->cached_path_ == path && !global_code_complete_cache->cached_results_.empty();
+          });
+          if (is_cache_match) {
             std::cerr << "[complete] Early-returning cached global completion results at " << msg->params.position.ToString() << std::endl;
 
             ClangCompleteManager::OnComplete freshen_global =
               [global_code_complete_cache]
-              (NonElidedVector<lsCompletionItem> results) {
+              (NonElidedVector<lsCompletionItem> results, bool is_cached_result) {
+
+              assert(!is_cached_result);
 
               std::cerr << "[complete] Updating global_code_complete_cache->cached_results [2]" << std::endl;
               // note: path is updated in the normal completion handler.
-              global_code_complete_cache->cached_results = results;
+              global_code_complete_cache->WithLock([&]() {
+                global_code_complete_cache->cached_results_ = results;
+              });
+              std::cerr << "[complete] DONE Updating global_code_complete_cache->cached_results [2]" << std::endl;
             };
 
-            callback(global_code_complete_cache->cached_results);
-            clang_complete->CodeComplete(msg->params, std::move(freshen_global));
+            global_code_complete_cache->WithLock([&]() {
+              callback(global_code_complete_cache->cached_results_, true /*is_cached_result*/);
+            });
+            clang_complete->CodeComplete(msg->params, freshen_global);
           }
           else if (non_global_code_complete_cache->IsCacheValid(msg->params)) {
             std::cerr << "[complete] Using cached completion results at " << msg->params.position.ToString() << std::endl;
-            callback(non_global_code_complete_cache->cached_results);
+            non_global_code_complete_cache->WithLock([&]() {
+              callback(non_global_code_complete_cache->cached_results_, true /*is_cached_result*/);
+            });
           }
           else {
-            clang_complete->CodeComplete(msg->params, std::move(callback));
+            clang_complete->CodeComplete(msg->params, callback);
           }
         }
 
@@ -1729,7 +1759,9 @@ bool QueryDbMainLoop(
         if (search.empty())
           break;
 
-        ClangCompleteManager::OnComplete callback = std::bind([signature_cache](BaseIpcMessage* message, std::string search, int active_param, const NonElidedVector<lsCompletionItem>& results) {
+        ClangCompleteManager::OnComplete callback = std::bind(
+          [signature_cache]
+          (BaseIpcMessage* message, std::string search, int active_param, const NonElidedVector<lsCompletionItem>& results, bool is_cached_result) {
           auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message);
           auto ipc = IpcManager::instance();
 
@@ -1767,17 +1799,23 @@ bool QueryDbMainLoop(
           ipc->SendOutMessageToClient(IpcId::TextDocumentSignatureHelp, response);
           timer.ResetAndPrint("[complete] Writing signature help results");
 
-          signature_cache->cached_path = msg->params.textDocument.uri.GetPath();
-          signature_cache->cached_completion_position = msg->params.position;
-          std::cerr << "[complete] Updating signature_cache->cached_results [3]" << std::endl;
-          signature_cache->cached_results = results;
+          if (!is_cached_result) {
+            signature_cache->WithLock([&]() {
+              signature_cache->cached_path_ = msg->params.textDocument.uri.GetPath();
+              signature_cache->cached_completion_position_ = msg->params.position;
+              std::cerr << "[complete] Updating signature_cache->cached_results [3]" << std::endl;
+              signature_cache->cached_results_ = results;
+            });
+          }
 
           delete message;
-        }, message.release(), search, active_param, std::placeholders::_1);
+        }, message.release(), search, active_param, std::placeholders::_1, std::placeholders::_2);
 
         if (signature_cache->IsCacheValid(params)) {
           std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
-          callback(signature_cache->cached_results);
+          signature_cache->WithLock([&]() {
+            callback(signature_cache->cached_results_, true /*is_cached_result*/);
+          });
         }
         else {
           clang_complete->CodeComplete(params, std::move(callback));
@@ -2487,9 +2525,9 @@ void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
       config, &project, &working_files,
       std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1, std::placeholders::_2));
   IncludeComplete include_complete(config, &project);
-  CodeCompleteCache global_code_complete_cache;
-  CodeCompleteCache non_global_code_complete_cache;
-  CodeCompleteCache signature_cache;
+  auto global_code_complete_cache = MakeUnique<CodeCompleteCache>();
+  auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
+  auto signature_cache = MakeUnique<CodeCompleteCache>();
   FileConsumer::SharedState file_consumer_shared;
 
   // Run query db main loop.
@@ -2499,7 +2537,7 @@ void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
     bool did_work = QueryDbMainLoop(
         config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed,
         &project, &file_consumer_shared, &working_files,
-        &clang_complete, &include_complete, &global_code_complete_cache, &non_global_code_complete_cache, &signature_cache);
+        &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
     if (!did_work) {
       IpcManager* ipc = IpcManager::instance();
       waiter->Wait({

@@ -48,7 +48,7 @@ struct LruSessionCache {
 
 struct ClangCompleteManager {
   using OnDiagnostic = std::function<void(std::string path, NonElidedVector<lsDiagnostic> diagnostics)>;
-  using OnComplete = std::function<void(NonElidedVector<lsCompletionItem> results)>;
+  using OnComplete = std::function<void(const NonElidedVector<lsCompletionItem>& results, bool is_cached_result)>;
 
   struct ParseRequest {
     ParseRequest(const std::string& path);
