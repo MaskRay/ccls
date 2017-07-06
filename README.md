@@ -60,7 +60,7 @@ cquery includes a vscode extension; it is part of the repository. Launch vscode
 and install the `vscode-extension.tsix` extension. To do this:
 
 - Hit `F1`; execute the command `Install from VSIX`.
-- Select `vscode-extension.tsix` in the file chooser.
+- Select `vscode-extension.vsix` in the file chooser.
 
 **IMPORTANT:** Please reinstall the extension when you sync the code base - it is
 still being developed.
