@@ -403,6 +403,19 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
       request->on_complete(ls_result, false /*is_cached_result*/);
       timer.ResetAndPrint("[complete] Running user-given completion func");
+
+      unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
+      NonElidedVector<lsDiagnostic> ls_diagnostics;
+      std::cerr << "!! There are " + std::to_string(num_diagnostics) + " diagnostics to build\n";
+      for (unsigned i = 0; i < num_diagnostics; ++i) {
+        std::cerr << "!! Building diagnostic " + std::to_string(i) + "\n";
+        CXDiagnostic cx_diag = clang_codeCompleteGetDiagnostic(cx_results, i);
+        optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(cx_diag);
+        if (diagnostic)
+          ls_diagnostics.push_back(*diagnostic);
+      }
+      completion_manager->on_diagnostic_(session->file.filename, ls_diagnostics);
+      timer.ResetAndPrint("[complete] Build diagnostics");
     }
 
     // Make sure |ls_results| is destroyed before clearing |cx_results|.
