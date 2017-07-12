@@ -9,7 +9,8 @@
 
 using namespace std::experimental;
 
-optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic);
+optional<lsDiagnostic> BuildAndDisposeDiagnostic(
+    CXDiagnostic diagnostic, const std::string& path);
 
 // Returns the absolute path to |file|.
 std::string FileName(CXFile file);

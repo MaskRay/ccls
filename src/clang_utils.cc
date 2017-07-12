@@ -21,22 +21,22 @@ lsRange GetLsRangeForFixIt(const CXSourceRange& range) {
 
 }  // namespace
 
-optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic) {
-  // Skip diagnostics in system headers.
-  CXSourceLocation diag_loc = clang_getDiagnosticLocation(diagnostic);
-  if (clang_equalLocations(diag_loc, clang_getNullLocation()) ||
-      clang_Location_isInSystemHeader(diag_loc)) {
+optional<lsDiagnostic> BuildAndDisposeDiagnostic(
+    CXDiagnostic diagnostic, const std::string& path) {
+  // Get diagnostic location.
+  CXFile file;
+  unsigned int line, column;
+  clang_getSpellingLocation(
+      clang_getDiagnosticLocation(diagnostic), &file, &line, &column, nullptr);
+
+  // Only report diagnostics in the same file. Using
+  // clang_Location_isInSystemHeader causes crashes for some reason.
+  if (path != FileName(file)) {
     clang_disposeDiagnostic(diagnostic);
     return nullopt;
   }
 
-  // Get db so we can attribute diagnostic to the right indexed file.
-  CXFile file;
-  unsigned int line, column;
-  clang_getSpellingLocation(diag_loc, &file, &line, &column, nullptr);
-
   // Build diagnostic.
-
   lsDiagnostic ls_diagnostic;
 
   // TODO: consider using clang_getDiagnosticRange

@@ -373,7 +373,7 @@ void diagnostic(CXClientData client_data,
 
   for (unsigned i = 0; i < clang_getNumDiagnosticsInSet(diagnostics); ++i) {
     CXDiagnostic diagnostic = clang_getDiagnosticInSet(diagnostics, i);
-    
+
     // Skip diagnostics in system headers.
     CXSourceLocation diag_loc = clang_getDiagnosticLocation(diagnostic);
     if (clang_Location_isInSystemHeader(diag_loc))
@@ -386,9 +386,10 @@ void diagnostic(CXClientData client_data,
     IndexFile* db = ConsumeFile(param, file);
     if (!db)
       continue;
-    
+
     // Build diagnostic.
-    optional<lsDiagnostic> ls_diagnostic = BuildAndDisposeDiagnostic(diagnostic);
+    optional<lsDiagnostic> ls_diagnostic =
+        BuildAndDisposeDiagnostic(diagnostic, db->path);
     if (ls_diagnostic)
       db->diagnostics_.push_back(*ls_diagnostic);
   }
