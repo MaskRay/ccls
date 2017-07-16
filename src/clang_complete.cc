@@ -290,7 +290,7 @@ void EnsureDocumentParsed(ClangCompleteManager* manager,
   std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail << std::endl;
 
   // Build diagnostics.
-  if (!(*tu)->did_fail) {
+  if (manager->config_->diagnosticsOnParse && !(*tu)->did_fail) {
     NonElidedVector<lsDiagnostic> ls_diagnostics;
     unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
     for (unsigned i = 0; i < num_diagnostics; ++i) {
@@ -449,23 +449,26 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         timer.ResetAndPrint("[complete] Running user-given completion func");
       }
 
-      unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
-      NonElidedVector<lsDiagnostic> ls_diagnostics;
-      for (unsigned i = 0; i < num_diagnostics; ++i) {
-        CXDiagnostic cx_diag = clang_codeCompleteGetDiagnostic(cx_results, i);
-        optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(cx_diag, path);
-        if (diagnostic)
-          ls_diagnostics.push_back(*diagnostic);
+      if (completion_manager->config_->diagnosticsOnCodeCompletion) {
+        unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
+        NonElidedVector<lsDiagnostic> ls_diagnostics;
+        for (unsigned i = 0; i < num_diagnostics; ++i) {
+          CXDiagnostic cx_diag = clang_codeCompleteGetDiagnostic(cx_results, i);
+          optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(cx_diag, path);
+          if (diagnostic)
+            ls_diagnostics.push_back(*diagnostic);
+        }
+        completion_manager->on_diagnostic_(session->file.filename, ls_diagnostics);
+        timer.ResetAndPrint("[complete] Build diagnostics");
       }
-      completion_manager->on_diagnostic_(session->file.filename, ls_diagnostics);
-      timer.ResetAndPrint("[complete] Build diagnostics");
     }
 
     // Make sure |ls_results| is destroyed before clearing |cx_results|.
     clang_disposeCodeCompleteResults(cx_results);
     timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults");
 
-    if (request->is_user_completion) {
+    if (completion_manager->config_->diagnosticsOnCodeCompletion &&
+        request->is_user_completion) {
       {
         std::lock_guard<std::mutex> lock(completion_manager->delayed_diagnostic_wakeup_mtx_);
         completion_manager->delayed_diagnostic_last_completion_position_ = request->location;

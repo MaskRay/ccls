@@ -902,7 +902,7 @@ void ParseFile(Config* config,
     }
 
     // Publish diagnostics for non-interactive index.
-    else {
+    else if (config->diagnosticsOnParse) {
       EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
     }
 

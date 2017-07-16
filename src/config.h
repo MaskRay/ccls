@@ -7,6 +7,7 @@
 struct Config {
   // Root directory of the project. **Not serialized**
   std::string projectRoot;
+  // Cache directory for indexed files.
   std::string cacheDirectory;
 
   std::vector<std::string> extraClangArguments;
@@ -50,6 +51,11 @@ struct Config {
   std::vector<std::string> includeCompletionWhitelist;
   std::vector<std::string> includeCompletionBlacklist;
 
+  // If true, diagnostics from a full document parse will be reported.
+  bool diagnosticsOnParse = true;
+  // If true, diagnostics from code completion will be reported.
+  bool diagnosticsOnCodeCompletion = true;
+
   // Enables code lens on parameter and function variables.
   bool codeLensOnLocalVariables = true;
 
@@ -73,6 +79,9 @@ MAKE_REFLECT_STRUCT(Config,
   includeCompletionWhitelist, includeCompletionBlacklist,
 
   showDocumentLinksOnIncludes,
+
+  diagnosticsOnParse,
+  diagnosticsOnCodeCompletion,
 
   codeLensOnLocalVariables,
 
