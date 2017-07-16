@@ -59,6 +59,7 @@ struct ClangCompleteManager {
   struct CompletionRequest {
     lsTextDocumentPositionParams location;
     OnComplete on_complete;
+    bool is_user_completion = false;
   };
 
   ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files, OnDiagnostic on_diagnostic);
@@ -103,4 +104,10 @@ struct ClangCompleteManager {
   // Parse requests. The path may already be parsed, in which case it should be
   // reparsed.
   ThreadedQueue<ParseRequest> parse_requests_;
+  // Used to wakeup the delayed diagnostics thread.
+  std::mutex delayed_diagnostic_wakeup_mtx_;
+  std::condition_variable delayed_diagnostic_wakeup_cv_;
+  // Access under |delayed_diagnostic_wakeup_mtx_|.
+  optional<lsTextDocumentPositionParams> delayed_diagnostic_last_completion_position_;
+  optional<std::chrono::time_point<std::chrono::high_resolution_clock>> delayed_diagnostic_last_completion_time_;
 };

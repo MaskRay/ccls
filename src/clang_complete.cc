@@ -332,6 +332,48 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
   }
 }
 
+void CompletionDiagnosticsDelayedRefreshMain(ClangCompleteManager* completion_manager) {
+  constexpr int kSecondsToWaitForDiagnosticsRefresh = 5;
+
+  // Refreshes diagnostics a few seconds after the final code completion, since
+  // we don't get a language server request.
+  while (true) {
+    std::unique_lock<std::mutex> l(completion_manager->delayed_diagnostic_wakeup_mtx_);
+    completion_manager->delayed_diagnostic_wakeup_cv_.wait(l);
+
+    // Check for spurious wakeup.
+    if (!completion_manager->delayed_diagnostic_last_completion_position_)
+      continue;
+
+    while (true) {
+      // Get completion request info.
+      if (!l.owns_lock())
+        l.lock();
+      auto time = *completion_manager->delayed_diagnostic_last_completion_time_;
+      lsTextDocumentPositionParams location = *completion_manager->delayed_diagnostic_last_completion_position_;
+      completion_manager->delayed_diagnostic_last_completion_time_.reset();
+      completion_manager->delayed_diagnostic_last_completion_position_.reset();
+      l.unlock();
+
+      // Wait five seconds. If there was another completion request, start the
+      // waiting process over again.
+      std::this_thread::sleep_for(std::chrono::seconds(kSecondsToWaitForDiagnosticsRefresh));
+      l.lock();
+      bool has_completion_since_sleeping = completion_manager->delayed_diagnostic_last_completion_position_.has_value();
+      l.unlock();
+      if (has_completion_since_sleeping)
+        continue;
+
+      // Make completion request to get refreshed diagnostics.
+      auto request = MakeUnique<ClangCompleteManager::CompletionRequest>();
+      request->location = location;
+      completion_manager->completion_request_.SetIfEmpty(std::move(request));
+      break;
+    }
+
+  }
+}
+
 void CompletionQueryMain(ClangCompleteManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
@@ -371,45 +413,45 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     std::cerr << "[complete] Got " << cx_results->NumResults << " results" << std::endl;
 
     {
-      NonElidedVector<lsCompletionItem> ls_result;
-      ls_result.reserve(cx_results->NumResults);
+      if (request->on_complete) {
+        NonElidedVector<lsCompletionItem> ls_result;
+        ls_result.reserve(cx_results->NumResults);
 
-      timer.Reset();
-      for (unsigned i = 0; i < cx_results->NumResults; ++i) {
-        CXCompletionResult& result = cx_results->Results[i];
+        timer.Reset();
+        for (unsigned i = 0; i < cx_results->NumResults; ++i) {
+          CXCompletionResult& result = cx_results->Results[i];
 
-        // TODO: Try to figure out how we can hide base method calls without also
-        // hiding method implementation assistance, ie,
-        //
-        //    void Foo::* {
-        //    }
-        //
+          // TODO: Try to figure out how we can hide base method calls without also
+          // hiding method implementation assistance, ie,
+          //
+          //    void Foo::* {
+          //    }
+          //
 
-        if (clang_getCompletionAvailability(result.CompletionString) == CXAvailability_NotAvailable)
-          continue;
+          if (clang_getCompletionAvailability(result.CompletionString) == CXAvailability_NotAvailable)
+            continue;
 
-        // TODO: fill in more data
-        lsCompletionItem ls_completion_item;
+          // TODO: fill in more data
+          lsCompletionItem ls_completion_item;
 
-        // kind/label/detail/docs/sortText
-        ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-        BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
-        ls_completion_item.insertText += "$0";
-        ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
-        ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
+          // kind/label/detail/docs/sortText
+          ls_completion_item.kind = GetCompletionKind(result.CursorKind);
+          BuildDetailString(result.CompletionString, ls_completion_item.label, ls_completion_item.detail, ls_completion_item.insertText, &ls_completion_item.parameters_);
+          ls_completion_item.insertText += "$0";
+          ls_completion_item.documentation = clang::ToString(clang_getCompletionBriefComment(result.CompletionString));
+          ls_completion_item.sortText = (const char)uint64_t(GetCompletionPriority(result.CompletionString, result.CursorKind, ls_completion_item.label));
 
-        ls_result.push_back(ls_completion_item);
+          ls_result.push_back(ls_completion_item);
+        }
+        timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
+
+        request->on_complete(ls_result, false /*is_cached_result*/);
+        timer.ResetAndPrint("[complete] Running user-given completion func");
       }
-      timer.ResetAndPrint("[complete] Building " + std::to_string(ls_result.size()) + " completion results");
-
-      request->on_complete(ls_result, false /*is_cached_result*/);
-      timer.ResetAndPrint("[complete] Running user-given completion func");
 
       unsigned num_diagnostics = clang_codeCompleteGetNumDiagnostics(cx_results);
       NonElidedVector<lsDiagnostic> ls_diagnostics;
-      std::cerr << "!! There are " + std::to_string(num_diagnostics) + " diagnostics to build\n";
       for (unsigned i = 0; i < num_diagnostics; ++i) {
-        std::cerr << "!! Building diagnostic " + std::to_string(i) + "\n";
         CXDiagnostic cx_diag = clang_codeCompleteGetDiagnostic(cx_results, i);
         optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(cx_diag, path);
         if (diagnostic)
@@ -422,6 +464,15 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     // Make sure |ls_results| is destroyed before clearing |cx_results|.
     clang_disposeCodeCompleteResults(cx_results);
     timer.ResetAndPrint("[complete] clang_disposeCodeCompleteResults");
+
+    if (request->is_user_completion) {
+      {
+        std::lock_guard<std::mutex> lock(completion_manager->delayed_diagnostic_wakeup_mtx_);
+        completion_manager->delayed_diagnostic_last_completion_position_ = request->location;
+        completion_manager->delayed_diagnostic_last_completion_time_ = std::chrono::high_resolution_clock::now();
+      }
+      completion_manager->delayed_diagnostic_wakeup_cv_.notify_one();
+    }
 
     continue;
   }
@@ -475,13 +526,16 @@ ClangCompleteManager::ClangCompleteManager(Config* config, Project* project, Wor
   new std::thread([&]() {
     SetCurrentThreadName("completequery");
     CompletionQueryMain(this);
-    std::cerr << "!!! exiting completequery thread" << std::endl;
+  });
+
+  new std::thread([&]() {
+    SetCurrentThreadName("completediagnosticsrefresh");
+    CompletionDiagnosticsDelayedRefreshMain(this);
   });
 
   new std::thread([&]() {
     SetCurrentThreadName("completeparse");
     CompletionParseMain(this);
-    std::cerr << "!!! exiting completeparse thread" << std::endl;
   });
 }
 
@@ -493,6 +547,7 @@ void ClangCompleteManager::CodeComplete(const lsTextDocumentPositionParams& comp
   auto request = MakeUnique<CompletionRequest>();
   request->location = completion_location;
   request->on_complete = on_complete;
+  request->is_user_completion = true;
   completion_request_.Set(std::move(request));
 }
 

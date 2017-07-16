@@ -14,6 +14,15 @@ struct AtomicObject {
     cv_.notify_one();
   }
 
+  void SetIfEmpty(std::unique_ptr<T> t) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (value_)
+      return;
+
+    value_ = std::move(t);
+    cv_.notify_one();
+  }
+
   std::unique_ptr<T> Take() {
     std::unique_lock<std::mutex> lock(mutex_);
     while (!value_) {
