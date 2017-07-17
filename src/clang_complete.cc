@@ -404,7 +404,8 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       kCompleteOptions);
     if (!cx_results) {
       timer.ResetAndPrint("[complete] Code completion failed");
-      request->on_complete({}, false /*is_cached_result*/);
+      if (request->on_complete)
+        request->on_complete({}, false /*is_cached_result*/);
       continue;
     }
 
