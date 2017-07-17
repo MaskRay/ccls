@@ -109,5 +109,4 @@ struct ClangCompleteManager {
   std::condition_variable delayed_diagnostic_wakeup_cv_;
   // Access under |delayed_diagnostic_wakeup_mtx_|.
   optional<lsTextDocumentPositionParams> delayed_diagnostic_last_completion_position_;
-  optional<std::chrono::time_point<std::chrono::high_resolution_clock>> delayed_diagnostic_last_completion_time_;
 };

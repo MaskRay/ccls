@@ -1035,8 +1035,6 @@ bool IndexMain_DoCreateIndexUpdate(
 #define PRINT_SECTION(name) \
   if (response->perf.name) {\
     total += response->perf.name; \
-    long long milliseconds = response->perf.name / 1000; \
-    long long remaining = response->perf.name - milliseconds; \
     output << " " << #name << ": " << FormatMicroseconds(response->perf.name); \
   }
   std::stringstream output;

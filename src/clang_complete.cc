@@ -328,6 +328,7 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
     // tu_last_parsed_at is only read by this thread, so it doesn't need to be under the mutex.
     session->tu_last_parsed_at = std::chrono::high_resolution_clock::now();
     std::lock_guard<std::mutex> lock(session->tu_lock);
+    std::cerr << "[completion] Swapping completion session for " << request.path << std::endl;
     session->tu = std::move(parsing);
   }
 }
@@ -349,9 +350,7 @@ void CompletionDiagnosticsDelayedRefreshMain(ClangCompleteManager* completion_ma
       // Get completion request info.
       if (!l.owns_lock())
         l.lock();
-      auto time = *completion_manager->delayed_diagnostic_last_completion_time_;
       lsTextDocumentPositionParams location = *completion_manager->delayed_diagnostic_last_completion_position_;
-      completion_manager->delayed_diagnostic_last_completion_time_.reset();
       completion_manager->delayed_diagnostic_last_completion_position_.reset();
       l.unlock();
 
@@ -472,7 +471,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       {
         std::lock_guard<std::mutex> lock(completion_manager->delayed_diagnostic_wakeup_mtx_);
         completion_manager->delayed_diagnostic_last_completion_position_ = request->location;
-        completion_manager->delayed_diagnostic_last_completion_time_ = std::chrono::high_resolution_clock::now();
       }
       completion_manager->delayed_diagnostic_wakeup_cv_.notify_one();
     }
