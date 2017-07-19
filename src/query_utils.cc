@@ -283,6 +283,39 @@ optional<QueryLocation> GetBaseDefinitionOrDeclarationSpelling(QueryDatabase* db
   return def;
 }
 
+bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
+  // Check self.
+  if (!root.callers.empty())
+    return true;
+
+  // Check for base calls.
+  optional<QueryFuncId> func_id = root.def.base;
+  while (func_id) {
+    optional<QueryFunc>& func = db->funcs[func_id->id];
+    if (!func)
+      break;
+    if (!func->callers.empty())
+      return true;
+    func_id = func->def.base;
+  }
+
+  // Check for derived calls.
+  std::queue<QueryFuncId> queue;
+  PushRange(&queue, root.derived);
+  while (!queue.empty()) {
+    optional<QueryFunc>& func = db->funcs[queue.front().id];
+    queue.pop();
+    if (!func)
+      continue;
+
+    if (!func->derived.empty())
+      return true;
+    PushRange(&queue, func->derived);
+  }
+
+  return false;
+}
+
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db, QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
 
@@ -654,7 +687,7 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(QueryDatabas
   entry.name = root_func->def.short_name;
   entry.usr = root_func->def.usr;
   entry.location = *def_loc;
-  entry.hasCallers = !root_func->callers.empty();
+  entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, *root_func);
   NonElidedVector<Out_CqueryCallTree::CallEntry> result;
   result.push_back(entry);
   return result;
@@ -709,7 +742,7 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
       call_entry.name = prefix + call_func->def.short_name + " (" + format_location(*call_location) + ")";
       call_entry.usr = call_func->def.usr;
       call_entry.location = *call_location;
-      call_entry.hasCallers = !call_func->callers.empty();
+      call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, *call_func);
       result.push_back(call_entry);
     }
     else {

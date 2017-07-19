@@ -21,6 +21,7 @@ std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db, const std::vector<
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db, const SymbolIdx& symbol);
 std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(QueryDatabase* db, const SymbolIdx& symbol);
 optional<QueryLocation> GetBaseDefinitionOrDeclarationSpelling(QueryDatabase* db, QueryFunc& func);
+bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db, QueryFunc& root);
 std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db, QueryFunc& root);
 optional<lsPosition> GetLsPosition(WorkingFile* working_file, const Position& position);
