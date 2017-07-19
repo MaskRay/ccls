@@ -363,6 +363,13 @@ void CompletionDiagnosticsDelayedRefreshMain(ClangCompleteManager* completion_ma
       if (has_completion_since_sleeping)
         continue;
 
+      // Push completion request to the end of the line. clang may report errors
+      // if completing in the middle of the line. Not a perfect hueristic, but
+      // probably good enough.
+      // TODO: Consider scanning for a semicolon if this doesn't work well in
+      // practice.
+      location.position.character = 10000;
+
       // Make completion request to get refreshed diagnostics.
       auto request = MakeUnique<ClangCompleteManager::CompletionRequest>();
       request->location = location;
