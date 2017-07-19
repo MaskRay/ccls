@@ -665,20 +665,48 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
   if (!root_func)
     return {};
 
+  auto format_location = [](const lsLocation& location) -> std::string {
+    std::string path = location.uri.GetPath();
+    size_t last_index = path.find_last_of('/');
+    if (last_index != std::string::npos)
+      path = path.substr(last_index + 1);
+
+    return path + ":" + std::to_string(location.range.start.line + 1) + ":" + std::to_string(location.range.start.character + 1);
+  };
+
   NonElidedVector<Out_CqueryCallTree::CallEntry> result;
-  result.reserve(root_func->callers.size());
-  for (QueryFuncRef caller : root_func->callers) {
+  std::unordered_set<QueryLocation> seen_locations;
+
+  auto handle_caller = [&](const std::string& prefix, QueryFuncRef caller) {
     optional<lsLocation> call_location = GetLsLocation(db, working_files, caller.loc);
     if (!call_location)
-      continue;
+      return;
+
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
+    // TODO: basically, querydb gets duplicate references inserted into it.
+    if (!seen_locations.insert(caller.loc).second) {
+      std::cerr << "!!!! FIXME DUPLICATE REFERENCE IN QUERYDB" << std::endl;
+      return;
+    }
 
     if (caller.has_id()) {
       optional<QueryFunc>& call_func = db->funcs[caller.id_.id];
       if (!call_func)
-        continue;
+        return;
 
       Out_CqueryCallTree::CallEntry call_entry;
-      call_entry.name = call_func->def.short_name;
+      call_entry.name = prefix + call_func->def.short_name + " (" + format_location(*call_location) + ")";
       call_entry.usr = call_func->def.usr;
       call_entry.location = *call_location;
       call_entry.hasCallers = !call_func->callers.empty();
@@ -694,7 +722,18 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
       call_entry.hasCallers = false;
       result.push_back(call_entry);
     }
-  }
+  };
+
+  std::vector<QueryFuncRef> base_callers = GetCallersForAllBaseFunctions(db, *root_func);
+  std::vector<QueryFuncRef> derived_callers = GetCallersForAllDerivedFunctions(db, *root_func);
+  result.reserve(root_func->callers.size() + base_callers.size() + derived_callers.size());
+
+  for (QueryFuncRef caller : root_func->callers)
+    handle_caller("", caller);
+  for (QueryFuncRef caller : base_callers)
+    handle_caller("[B] ", caller);
+  for (QueryFuncRef caller : derived_callers)
+    handle_caller("[D] ", caller);
 
   return result;
 }

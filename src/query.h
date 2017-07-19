@@ -57,6 +57,7 @@ struct QueryLocation {
   }
 };
 MAKE_REFLECT_STRUCT(QueryLocation, path, range);
+MAKE_HASHABLE(QueryLocation, t.path, t.range);
 
 enum class SymbolKind { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind, int);

@@ -5,6 +5,7 @@
 #include <string>
 
 #include "serializer.h"
+#include "utils.h"
 
 struct Position {
   int16_t line = -1;
@@ -24,6 +25,7 @@ struct Position {
   bool operator<(const Position& that) const;
 };
 static_assert(sizeof(Position) == 4, "Investigate, Position should be 32-bits for indexer size reasons");
+MAKE_HASHABLE(Position, t.line, t.column);
 
 struct Range {
   Position start;
@@ -42,6 +44,7 @@ struct Range {
   bool operator!=(const Range& that) const;
   bool operator<(const Range& that) const;
 };
+MAKE_HASHABLE(Range, t.start, t.end);
 
 // Reflection
 void Reflect(Reader& visitor, Position& value);
