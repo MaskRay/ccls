@@ -1441,6 +1441,11 @@ bool QueryDbMainLoop(
             optional<QueryFunc>& func = db->funcs[ref.idx.idx];
             if (!func) continue;
             std::vector<QueryLocation> locations = ToQueryLocation(db, func->callers);
+            for (QueryFuncRef func_ref : GetCallersForAllBaseFunctions(db, *func))
+              locations.push_back(func_ref.loc);
+            for (QueryFuncRef func_ref : GetCallersForAllDerivedFunctions(db, *func))
+              locations.push_back(func_ref.loc);
+
             response.result = GetLsLocations(db, working_files, locations);
           }
         }
