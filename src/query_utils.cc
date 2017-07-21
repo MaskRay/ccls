@@ -763,8 +763,13 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
 
   for (QueryFuncRef caller : root_func->callers)
     handle_caller("", caller);
-  for (QueryFuncRef caller : base_callers)
+  for (QueryFuncRef caller : base_callers) {
+    // Do not show calls to the base function coming from this function.
+    if (caller.id_ == root)
+      continue;
+
     handle_caller("[B] ", caller);
+  }
   for (QueryFuncRef caller : derived_callers)
     handle_caller("[D] ", caller);
 
