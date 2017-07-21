@@ -752,19 +752,29 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
   if (!root_func)
     return {};
 
-  auto format_location = [](const lsLocation& location) -> std::string {
-    std::string path = location.uri.GetPath();
-    size_t last_index = path.find_last_of('/');
-    if (last_index != std::string::npos)
-      path = path.substr(last_index + 1);
+  auto format_location = [&](const lsLocation& location, optional<QueryTypeId> declaring_type) -> std::string {
+    std::string base;
 
-    return path + ":" + std::to_string(location.range.start.line + 1) + ":" + std::to_string(location.range.start.character + 1);
+    if (declaring_type) {
+      optional<QueryType> type = db->types[declaring_type->id];
+      if (type)
+        base = type->def.detailed_name;
+    }
+
+    if (base.empty()) {
+      base = location.uri.GetPath();
+      size_t last_index = base.find_last_of('/');
+      if (last_index != std::string::npos)
+        base = base.substr(last_index + 1);
+    }
+
+    return base + ":" + std::to_string(location.range.start.line + 1);
   };
 
   NonElidedVector<Out_CqueryCallTree::CallEntry> result;
   std::unordered_set<QueryLocation> seen_locations;
 
-  auto handle_caller = [&](const std::string& prefix, QueryFuncRef caller) {
+  auto handle_caller = [&](QueryFuncRef caller, Out_CqueryCallTree::CallType call_type) {
     optional<lsLocation> call_location = GetLsLocation(db, working_files, caller.loc);
     if (!call_location)
       return;
@@ -793,10 +803,11 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
         return;
 
       Out_CqueryCallTree::CallEntry call_entry;
-      call_entry.name = prefix + call_func->def.short_name + " (" + format_location(*call_location) + ")";
+      call_entry.name = call_func->def.short_name + " (" + format_location(*call_location, call_func->def.declaring_type) + ")";
       call_entry.usr = call_func->def.usr;
       call_entry.location = *call_location;
       call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, *call_func);
+      call_entry.callType = call_type;
       result.push_back(call_entry);
     }
     else {
@@ -807,6 +818,7 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
       call_entry.usr = "no_usr";
       call_entry.location = *call_location;
       call_entry.hasCallers = false;
+      call_entry.callType = call_type;
       result.push_back(call_entry);
     }
   };
@@ -816,16 +828,16 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase
   result.reserve(root_func->callers.size() + base_callers.size() + derived_callers.size());
 
   for (QueryFuncRef caller : root_func->callers)
-    handle_caller("", caller);
+    handle_caller(caller, Out_CqueryCallTree::CallType::Direct);
   for (QueryFuncRef caller : base_callers) {
     // Do not show calls to the base function coming from this function.
     if (caller.id_ == root)
       continue;
 
-    handle_caller("[B] ", caller);
+    handle_caller(caller, Out_CqueryCallTree::CallType::Base);
   }
   for (QueryFuncRef caller : derived_callers)
-    handle_caller("[D] ", caller);
+    handle_caller(caller, Out_CqueryCallTree::CallType::Derived);
 
   return result;
 }

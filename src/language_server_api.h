@@ -1664,17 +1664,22 @@ struct Ipc_CqueryCallTreeExpand : public IpcMessage<Ipc_CqueryCallTreeExpand> {
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand::Params, usr);
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand, id, params);
 struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
+  enum class CallType {
+    Direct = 0, Base = 1, Derived = 2
+  };
   struct CallEntry {
     std::string name;
     std::string usr;
     lsLocation location;
     bool hasCallers = true;
+    CallType callType = CallType::Direct;
   };
 
   lsRequestId id;
   NonElidedVector<CallEntry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry, name, usr, location, hasCallers);
+MAKE_REFLECT_TYPE_PROXY(Out_CqueryCallTree::CallType, int);
+MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry, name, usr, location, hasCallers, callType);
 MAKE_REFLECT_STRUCT(Out_CqueryCallTree, jsonrpc, id, result);
 
 // Vars, Callers, Derived, GotoParent
