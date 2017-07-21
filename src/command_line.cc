@@ -1356,7 +1356,11 @@ bool QueryDbMainLoop(
 
         for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           if (ref.idx.kind == SymbolKind::Type) {
-            response.result = BuildTypeHierarchy(db, working_files, QueryTypeId(ref.idx.idx));
+            response.result = BuildInheritanceHierarchyForType(db, working_files, QueryTypeId(ref.idx.idx));
+            break;
+          }
+          if (ref.idx.kind == SymbolKind::Func) {
+            response.result = BuildInheritanceHierarchyForFunc(db, working_files, QueryFuncId(ref.idx.idx));
             break;
           }
         }

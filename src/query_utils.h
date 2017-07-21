@@ -52,7 +52,9 @@ void AddCodeLens(
 lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db, WorkingFiles* working_files, const std::vector<QueryLocation>& locations, const std::string& new_text);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file, QueryFile* file, lsPosition position);
-NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> BuildParentTypeHierarchy(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root);
-optional<Out_CqueryTypeHierarchyTree::TypeEntry> BuildTypeHierarchy(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root_id);
+NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> BuildParentInheritanceHierarchyForType(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root);
+optional<Out_CqueryTypeHierarchyTree::TypeEntry> BuildInheritanceHierarchyForType(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root_id);
+NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> BuildParentInheritanceHierarchyForFunc(QueryDatabase* db, WorkingFiles* working_files, QueryFuncId root);
+optional<Out_CqueryTypeHierarchyTree::TypeEntry> BuildInheritanceHierarchyForFunc(QueryDatabase* db, WorkingFiles* working_files, QueryFuncId root_id);
 NonElidedVector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(QueryDatabase* db, WorkingFiles* working_files, QueryFuncId root);
 NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(QueryDatabase* db, WorkingFiles* working_files, QueryFuncId root);
