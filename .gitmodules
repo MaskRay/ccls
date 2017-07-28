@@ -7,3 +7,6 @@
 [submodule "third_party/sparsepp"]
 	path = third_party/sparsepp
 	url = https://github.com/greg7mdp/sparsepp
+[submodule "third_party/loguru"]
+	path = third_party/loguru
+	url = https://github.com/emilk/loguru

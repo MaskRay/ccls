@@ -3,6 +3,8 @@
 
 #include "utils.h"
 
+#include <loguru.hpp>
+
 #include <direct.h>
 #include <fcntl.h>
 #include <io.h>
@@ -168,6 +170,8 @@ typedef struct tagTHREADNAME_INFO
 } THREADNAME_INFO;
 #pragma pack(pop)
 void SetCurrentThreadName(const std::string& thread_name) {
+  loguru::set_thread_name(thread_name.c_str());
+
   THREADNAME_INFO info;
   info.dwType = 0x1000;
   info.szName = thread_name.c_str();

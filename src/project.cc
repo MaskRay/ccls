@@ -8,6 +8,7 @@
 
 #include <clang-c/CXCompilationDatabase.h>
 #include <doctest/doctest.h>
+#include <loguru.hpp>
 
 #include <iostream>
 #include <limits>
@@ -366,11 +367,11 @@ void Project::Load(const std::vector<std::string>& extra_flags, const std::strin
 
   for (std::string& path : quote_include_directories) {
     EnsureEndsInSlash(path);
-    std::cerr << "quote_include_dir: " << path << std::endl;
+    LOG_S(INFO) << "quote_include_dir: " << path;
   }
   for (std::string& path : angle_include_directories) {
     EnsureEndsInSlash(path);
-    std::cerr << "angle_include_dir: " << path << std::endl;
+    LOG_S(INFO) << "angle_include_dir: " << path;
   }
 
   absolute_path_to_entry_index_.resize(entries.size());
@@ -411,11 +412,7 @@ void Project::ForAllFilteredFiles(Config* config, std::function<void(int i, cons
     if (matcher.IsMatch(entry.filename, &failure_reason))
       action(i, entries[i]);
     else {
-      if (config->logSkippedPathsForIndex) {
-        std::stringstream output;
-        output << '[' << (i + 1) << '/' << entries.size() << "] Failed " << failure_reason << "; skipping " << entry.filename << std::endl;
-        std::cerr << output.str();
-      }
+      LOG_IF_F(INFO, config->logSkippedPathsForIndex, "[%d/%d]: Failed %s; skipping %s", i + 1, entries.size(), failure_reason.c_str(), entry.filename.c_str());
     }
   }
 }

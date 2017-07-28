@@ -19,6 +19,7 @@
 #include "threaded_queue.h"
 #include "working_files.h"
 
+#include <loguru.hpp>
 #include <doctest/doctest.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
@@ -182,7 +183,7 @@ bool FindFileOrFail(QueryDatabase* db, lsRequestId id, const std::string& absolu
   if (out_file_id)
     *out_file_id = QueryFileId((size_t)-1);
 
-  std::cerr << "Unable to find file " << absolute_path << std::endl;
+  LOG_S(INFO) << "Unable to find file " << absolute_path;
 
   Out_Error out;
   out.id = id;
@@ -298,7 +299,7 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db, QueryFileId file_
     target_path = target_path.substr(0, last);
   }
 
-  std::cerr << "!! Looking for impl file that starts with " << target_path << std::endl;
+  LOG_S(INFO) << "!! Looking for impl file that starts with " << target_path;
 
   for (auto& entry : db->usr_to_file) {
     Usr path = entry.first;
@@ -419,8 +420,8 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db, WorkingFil
           case SymbolKind::Invalid:
           case SymbolKind::File:
           case SymbolKind::Type:
-            std::cerr << "Unexpected SymbolKind "
-                      << static_cast<int>(sym.idx.kind) << std::endl;
+            LOG_S(WARNING) << "Unexpected SymbolKind "
+                           << static_cast<int>(sym.idx.kind);
             break;
         }
       }
@@ -493,10 +494,8 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       for (const lsCompletionItem& item : complete_response->result.items) {
         if (item.label.find(complete_text) != std::string::npos) {
           // Don't insert the same completion entry.
-          if (!inserted.insert(item.InsertedContent()).second) {
-            std::cerr << "foo " << item.InsertedContent();
+          if (!inserted.insert(item.InsertedContent()).second)
             continue;
-          }
 
           filtered_result.push_back(item);
           if (filtered_result.size() >= kMaxResultSize)
@@ -941,7 +940,7 @@ bool ResetStaleFiles(Config* config,
   std::unique_ptr<IndexFile> tu_cache = LoadCachedIndex(config, tu_path);
 
   if (!tu_cache) {
-    std::cerr << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)" << std::endl;
+    LOG_S(WARNING) << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)";
     file_consumer_shared->Mark(tu_path);
     return true;
   }
@@ -1213,12 +1212,11 @@ bool QueryDbMainLoop(
 
         if (request->params.rootUri) {
           std::string project_path = request->params.rootUri->GetPath();
-          std::cerr << "[querydb] Initialize in directory " << project_path
-            << " with uri " << request->params.rootUri->raw_uri
-            << std::endl;
+          LOG_S(INFO) << "[querydb] Initialize in directory " << project_path
+            << " with uri " << request->params.rootUri->raw_uri;
 
           if (!request->params.initializationOptions) {
-            std::cerr << "Initialization parameters (particularily cacheDirectory) are required" << std::endl;
+            LOG_S(INFO) << "Initialization parameters (particularily cacheDirectory) are required";
             exit(1);
           }
 
@@ -1239,7 +1237,7 @@ bool QueryDbMainLoop(
 
           // Make sure cache directory is valid.
           if (config->cacheDirectory.empty()) {
-            std::cerr << "[fatal] No cache directory" << std::endl;
+            LOG_S(ERROR) << "No cache directory";
             exit(1);
           }
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
@@ -1254,7 +1252,7 @@ bool QueryDbMainLoop(
           int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
           if (config->indexerCount > 0)
             indexer_count = config->indexerCount;
-          std::cerr << "[querydb] Starting " << indexer_count << " indexers" << std::endl;
+          LOG_S(INFO) << "[querydb] Starting " << indexer_count << " indexers";
           for (int i = 0; i < indexer_count; ++i) {
             new std::thread([&]() {
               IndexMain(config, file_consumer_shared, project, working_files, waiter, queue_do_index, queue_do_id_map, queue_on_id_mapped, queue_on_indexed);
@@ -1332,11 +1330,10 @@ bool QueryDbMainLoop(
       }
 
       case IpcId::CqueryFreshenIndex: {
-        std::cerr << "Freshening " << project->entries.size() << " files" << std::endl;
+        LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
         project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
-          std::cerr << "[" << i << "/" << (project->entries.size() - 1)
-            << "] Dispatching index request for file " << entry.filename
-            << std::endl;
+          LOG_S(INFO) << "[" << i << "/" << (project->entries.size() - 1)
+            << "] Dispatching index request for file " << entry.filename;
           queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt, false /*is_interactive*/));
         });
         break;
@@ -1662,7 +1659,7 @@ bool QueryDbMainLoop(
             }
           }
 
-          std::cerr << "[complete] Returning " << complete_response.result.items.size() << " include completions" << std::endl;
+          LOG_S(INFO) << "[complete] Returning " << complete_response.result.items.size() << " include completions";
           FilterCompletionResponse(&complete_response, buffer_line);
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion, complete_response);
         }
@@ -1673,7 +1670,7 @@ bool QueryDbMainLoop(
             msg->params.position = file->FindStableCompletionSource(msg->params.position, &is_global_completion, &existing_completion);
           }
 
-          std::cerr << "[complete] Got existing completion " << existing_completion;
+          LOG_S(INFO) << "[complete] Got existing completion " << existing_completion;
 
           ClangCompleteManager::OnComplete callback = std::bind(
             [working_files, global_code_complete_cache, non_global_code_complete_cache, is_global_completion, existing_completion, msg]
@@ -1694,18 +1691,18 @@ bool QueryDbMainLoop(
               if (is_global_completion) {
                 global_code_complete_cache->WithLock([&]() {
                   global_code_complete_cache->cached_path_ = path;
-                  std::cerr << "[complete] Updating global_code_complete_cache->cached_results [0]" << std::endl;
+                  LOG_S(INFO) << "[complete] Updating global_code_complete_cache->cached_results [0]";
                   global_code_complete_cache->cached_results_ = results;
-                  std::cerr << "[complete] DONE Updating global_code_complete_cache->cached_results [0]" << std::endl;
+                  LOG_S(INFO) << "[complete] DONE Updating global_code_complete_cache->cached_results [0]";
                 });
               }
               else {
                 non_global_code_complete_cache->WithLock([&]() {
                   non_global_code_complete_cache->cached_path_ = path;
                   non_global_code_complete_cache->cached_completion_position_ = msg->params.position;
-                  std::cerr << "[complete] Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
+                  LOG_S(INFO) << "[complete] Updating non_global_code_complete_cache->cached_results [1]";
                   non_global_code_complete_cache->cached_results_ = results;
-                  std::cerr << "[complete] DONE Updating non_global_code_complete_cache->cached_results [1]" << std::endl;
+                  LOG_S(INFO) << "[complete] DONE Updating non_global_code_complete_cache->cached_results [1]";
                 });
               }
             }
@@ -1716,7 +1713,7 @@ bool QueryDbMainLoop(
             is_cache_match = is_global_completion && global_code_complete_cache->cached_path_ == path && !global_code_complete_cache->cached_results_.empty();
           });
           if (is_cache_match) {
-            std::cerr << "[complete] Early-returning cached global completion results at " << msg->params.position.ToString() << std::endl;
+            LOG_S(INFO) << "[complete] Early-returning cached global completion results at " << msg->params.position.ToString();
 
             ClangCompleteManager::OnComplete freshen_global =
               [global_code_complete_cache]
@@ -1724,12 +1721,12 @@ bool QueryDbMainLoop(
 
               assert(!is_cached_result);
 
-              std::cerr << "[complete] Updating global_code_complete_cache->cached_results [2]" << std::endl;
+              LOG_S(INFO) << "[complete] Updating global_code_complete_cache->cached_results [2]";
               // note: path is updated in the normal completion handler.
               global_code_complete_cache->WithLock([&]() {
                 global_code_complete_cache->cached_results_ = results;
               });
-              std::cerr << "[complete] DONE Updating global_code_complete_cache->cached_results [2]" << std::endl;
+              LOG_S(INFO) << "[complete] DONE Updating global_code_complete_cache->cached_results [2]";
             };
 
             global_code_complete_cache->WithLock([&]() {
@@ -1738,7 +1735,7 @@ bool QueryDbMainLoop(
             clang_complete->CodeComplete(msg->params, freshen_global);
           }
           else if (non_global_code_complete_cache->IsCacheValid(msg->params)) {
-            std::cerr << "[complete] Using cached completion results at " << msg->params.position.ToString() << std::endl;
+            LOG_S(INFO) << "[complete] Using cached completion results at " << msg->params.position.ToString();
             non_global_code_complete_cache->WithLock([&]() {
               callback(non_global_code_complete_cache->cached_results_, true /*is_cached_result*/);
             });
@@ -1762,7 +1759,7 @@ bool QueryDbMainLoop(
           search = file->FindClosestCallNameInBuffer(params.position, &active_param, &completion_position);
           params.position = completion_position;
         }
-        //std::cerr << "[completion] Returning signatures for " << search << std::endl;
+        //LOG_S(INFO) << "[completion] Returning signatures for " << search;
         if (search.empty())
           break;
 
@@ -1810,7 +1807,7 @@ bool QueryDbMainLoop(
             signature_cache->WithLock([&]() {
               signature_cache->cached_path_ = msg->params.textDocument.uri.GetPath();
               signature_cache->cached_completion_position_ = msg->params.position;
-              std::cerr << "[complete] Updating signature_cache->cached_results [3]" << std::endl;
+              LOG_S(INFO) << "[complete] Updating signature_cache->cached_results [3]";
               signature_cache->cached_results_ = results;
             });
           }
@@ -1819,7 +1816,7 @@ bool QueryDbMainLoop(
         }, message.release(), search, active_param, std::placeholders::_1, std::placeholders::_2);
 
         if (signature_cache->IsCacheValid(params)) {
-          std::cerr << "[complete] Using cached completion results at " << params.position.ToString() << std::endl;
+          LOG_S(INFO) << "[complete] Using cached completion results at " << params.position.ToString();
           signature_cache->WithLock([&]() {
             callback(signature_cache->cached_results_, true /*is_cached_result*/);
           });
@@ -1985,7 +1982,7 @@ bool QueryDbMainLoop(
         for (const SymbolRef& ref : FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           optional<QueryLocation> excluded_declaration;
           if (!msg->params.context.includeDeclaration) {
-            std::cerr << "Excluding declaration in references" << std::endl;
+            LOG_S(INFO) << "Excluding declaration in references";
             excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
           }
 
@@ -2047,7 +2044,7 @@ bool QueryDbMainLoop(
 
           WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
           if (!working_file) {
-            std::cerr << "Unable to find working file " << msg->params.textDocument.uri.GetPath() << std::endl;
+            LOG_S(INFO) << "Unable to find working file " << msg->params.textDocument.uri.GetPath();
             break;
           }
           for (const IndexInclude& include : file->def.includes) {
@@ -2094,7 +2091,7 @@ bool QueryDbMainLoop(
         WorkingFile* working_file = working_files->GetFileByFilename(msg->params.textDocument.uri.GetPath());
         if (!working_file) {
           // TODO: send error response.
-          std::cerr << "[error] textDocument/codeAction could not find working file" << std::endl;
+          LOG_S(INFO) << "[error] textDocument/codeAction could not find working file";
           break;
         }
 
@@ -2408,8 +2405,8 @@ bool QueryDbMainLoop(
         response.id = msg->id;
 
 
-        std::cerr << "[querydb] Considering " << db->detailed_names.size()
-          << " candidates for query " << msg->params.query << std::endl;
+        LOG_S(INFO) << "[querydb] Considering " << db->detailed_names.size()
+          << " candidates for query " << msg->params.query;
 
         std::string query = msg->params.query;
 
@@ -2442,13 +2439,13 @@ bool QueryDbMainLoop(
           }
         }
 
-        std::cerr << "[querydb] Found " << response.result.size() << " results for query " << query << std::endl;
+        LOG_S(INFO) << "[querydb] Found " << response.result.size() << " results for query " << query;
         ipc->SendOutMessageToClient(IpcId::WorkspaceSymbol, response);
         break;
       }
 
       default: {
-        std::cerr << "[querydb] Unhandled IPC message " << IpcIdToString(message->method_id) << std::endl;
+        LOG_S(INFO) << "[querydb] Unhandled IPC message " << IpcIdToString(message->method_id);
         exit(1);
       }
     }
@@ -2841,6 +2838,9 @@ void LanguageServerMain(Config* config, MultiQueueWaiter* waiter) {
 
 
 int main(int argc, char** argv) {
+  loguru::init(argc, argv);
+  loguru::g_flush_interval_ms = 0;
+
   MultiQueueWaiter waiter;
   IpcManager::CreateInstance(&waiter);
 

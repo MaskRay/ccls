@@ -3,6 +3,8 @@
 
 #include "utils.h"
 
+#include <loguru.hpp>
+
 #include <cassert>
 #include <string>
 #include <pthread.h>
@@ -158,6 +160,7 @@ bool TryMakeDirectory(const std::string& absolute_path) {
 }
 
 void SetCurrentThreadName(const std::string& thread_name) {
+  loguru::set_thread_name(thread_name.c_str());
 #ifndef __APPLE__
   prctl(PR_SET_NAME, thread_name.c_str(), 0, 0, 0);
 #endif
