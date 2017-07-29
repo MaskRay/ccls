@@ -204,6 +204,11 @@ int64_t GetLastModificationTime(const std::string& absolute_path) {
   return buf.st_mtime;
 }
 
+void MoveFileTo(const std::string& destination, const std::string& source) {
+  MoveFile(source.c_str(),
+           destination.c_str());
+}
+
 void CopyFileTo(const std::string& destination, const std::string& source) {
   CopyFile(
     source.c_str(),

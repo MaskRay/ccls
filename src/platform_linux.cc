@@ -186,6 +186,11 @@ int64_t GetLastModificationTime(const std::string& absolute_path) {
   return buf.st_mtime;
 }
 
+void MoveFileTo(const std::string& dest, const std::string& source) {
+  // TODO/FIXME - do a real move.
+  CopyFileTo(dest, source);
+}
+
 // See http://stackoverflow.com/q/13198627
 void CopyFileTo(const std::string& dest, const std::string& source) {
   int fd_from = open(source.c_str(), O_RDONLY);

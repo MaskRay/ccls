@@ -39,6 +39,7 @@ void SetCurrentThreadName(const std::string& thread_name);
 
 int64_t GetLastModificationTime(const std::string& absolute_path);
 
+void MoveFileTo(const std::string& destination, const std::string& source);
 void CopyFileTo(const std::string& destination, const std::string& source);
 
 bool IsSymLink(const std::string& path);
