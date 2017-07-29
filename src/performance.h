@@ -1,5 +1,7 @@
 #pragma once
 
+#include "serializer.h"
+
 // Contains timing information for the entire pipeline for importing a file
 // into the querydb.
 struct PerformanceImportFile {
@@ -22,3 +24,4 @@ struct PerformanceImportFile {
   // [querydb] apply IndexUpdate
   //long long querydb_apply_index_update = 0;
 };
+MAKE_REFLECT_STRUCT(PerformanceImportFile, index_parse, index_build, querydb_id_map, index_save_to_disk, index_load_cached, index_make_delta);
