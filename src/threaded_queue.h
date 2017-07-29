@@ -94,12 +94,14 @@ public:
   }
 
   // Get the first element from the queue. Blocks until one is available.
-  T Dequeue() {
+  // Executes |action| with an acquired |mutex_|.
+  template<typename TAction>
+  T DequeuePlusAction(TAction& action) {
     std::unique_lock<std::mutex> lock(mutex_);
     waiter_->cv.wait(lock, [&]() {
       return !priority_.empty() || !queue_.empty();
     });
-    
+
     if (!priority_.empty()) {
       auto val = std::move(priority_.front());
       priority_.pop();
@@ -108,7 +110,15 @@ public:
 
     auto val = std::move(queue_.front());
     queue_.pop();
+
+    action();
+
     return std::move(val);
+  }
+
+  // Get the first element from the queue. Blocks until one is available.
+  T Dequeue() {
+    return DequeuePlusAction([]() {});
   }
 
   // Get the first element from the queue without blocking. Returns a null
