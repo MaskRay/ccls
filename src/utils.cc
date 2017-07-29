@@ -107,14 +107,14 @@ static void GetFilesInFolderHelper(
     std::string folder, bool recursive, std::string output_prefix, const std::function<void(const std::string&)>& handler) {
   tinydir_dir dir;
   if (tinydir_open(&dir, folder.c_str()) == -1) {
-    perror("Error opening file");
+    //perror("Error opening file");
     goto bail;
   }
 
   while (dir.has_next) {
     tinydir_file file;
     if (tinydir_readfile(&dir, &file) == -1) {
-      perror("Error getting file");
+      //perror("Error getting file");
       goto bail;
     }
 
