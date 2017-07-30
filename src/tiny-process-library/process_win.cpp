@@ -1,3 +1,4 @@
+#if defined(_WIN32)
 #include "process.hpp"
 #include <windows.h>
 #include <cstring>
@@ -176,7 +177,7 @@ void Process::close_fds() noexcept {
     stdout_thread.join();
   if(stderr_thread.joinable())
     stderr_thread.join();
-  
+
   if(stdin_fd)
     close_stdin();
   if(stdout_fd) {
@@ -268,3 +269,4 @@ void Process::kill(id_type id, bool force) noexcept {
 }
 
 } // TinyProsessLib
+#endif

@@ -96,7 +96,7 @@ public:
   // Get the first element from the queue. Blocks until one is available.
   // Executes |action| with an acquired |mutex_|.
   template<typename TAction>
-  T DequeuePlusAction(TAction& action) {
+  T DequeuePlusAction(TAction action) {
     std::unique_lock<std::mutex> lock(mutex_);
     waiter_->cv.wait(lock, [&]() {
       return !priority_.empty() || !queue_.empty();

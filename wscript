@@ -125,6 +125,7 @@ def build(bld):
   if sys.platform == 'linux' or sys.platform == 'linux2':
     lib.append('rt')
     lib.append('pthread')
+    lib.append('dl')
   elif sys.platform == 'darwin':
     lib.append('pthread')
 
@@ -134,10 +135,12 @@ def build(bld):
       includes=[
         'third_party/',
         'third_party/doctest/',
+        'third_party/loguru/',
         'third_party/rapidjson/include/',
         'third_party/sparsehash/src/',
         'third_party/sparsepp/',
         CLANG_INCLUDE_DIR],
+      defines=['LOGURU_WITH_STREAMS=1'],
       lib=lib,
       libpath=[CLANG_LIB_DIR],
       rpath=[CLANG_LIB_DIR],

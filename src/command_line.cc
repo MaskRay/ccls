@@ -834,10 +834,10 @@ struct CacheManager {
   }
 
   std::unique_ptr<Entry> UpdateAndReturnOldFile(std::unique_ptr<Entry> entry) {
-    auto& it = files_.find(entry->file->path);
+    const auto it = files_.find(entry->file->path);
     if (it != files_.end()) {
       std::unique_ptr<Entry> old = std::move(it->second);
-      it->second = std::move(entry);
+      files_[entry->file->path] = std::move(entry);
       return old;
     }
 
@@ -1252,7 +1252,7 @@ struct InProcessIndexer : IIndexerProcess {
   ThreadedQueue<IndexProcess_Request>* messages_;
   Index_IndexProcess_Request_IndexQueue queue_;
   std::vector<std::thread> indexer_threads_;
-  std::atomic<int> num_busy_indexers_ = 0;
+  std::atomic<int> num_busy_indexers_;
   Config config_;
   IQueryDbResponder* responder_;
 
@@ -1264,7 +1264,7 @@ struct InProcessIndexer : IIndexerProcess {
   FileConsumer::SharedState file_consumer_shared_;
 
   explicit InProcessIndexer(IQueryDbResponder* responder, ThreadedQueue<IndexProcess_Request>* messages)
-    : messages_(messages), responder_(responder) {}
+    : messages_(messages), num_busy_indexers_(0), responder_(responder) {}
 
   void Restart() override {} // no-op
   void EnableAutoRestart() override {} // no-op
@@ -1285,9 +1285,14 @@ struct InProcessIndexer : IIndexerProcess {
         }
         break;
       }
-     case IndexProcess_Request::Type::kIndex: {
+      case IndexProcess_Request::Type::kIndex: {
         // Dispatch the request so one of the indexers will pick it up.
         queue_.Enqueue(std::move(*message.index_args));
+        break;
+      }
+      case IndexProcess_Request::Type::kInvalid:
+      case IndexProcess_Request::Type::kQuit: {
+        LOG_S(ERROR) << "Unhandled IndexProcess_Request::Type " << static_cast<int>(message.type);
         break;
       }
     }
@@ -1343,10 +1348,7 @@ struct OutOfProcessIndexer : IIndexerProcess {
   void SetConfig(const Config& config) override {
     assert(!config_);
     config_ = config;
-
-    //std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
-    for (auto& process : processes_)
-      SendMessage(IndexProcess_Request::CreateInitialize(*config_));
+    SendMessage(IndexProcess_Request::CreateInitialize(*config_));
   }
 
   void SendMessage(IndexProcess_Request message) override {
@@ -1450,13 +1452,12 @@ struct OutOfProcessIndexer : IIndexerProcess {
   }
 };
 
-constexpr const char* kIpcBufferName = "CqueryIpc";
-constexpr size_t kIpcBufferSize = 1024 * 8;
-
 // Main function for the out-of-process indexer.
 void IndexProcessMain() {
   // TODO
   // querydb process is responsible for owning the buffer.
+  //constexpr const char* kIpcBufferName = "CqueryIpc";
+  //constexpr size_t kIpcBufferSize = 1024 * 8;
   //MessageQueue queue(Buffer::CreateSharedBuffer(kIpcBufferName, kIpcBufferSize), true /*buffer_has_data*/);
 
   std::cerr << "Indexer process starting\n";
