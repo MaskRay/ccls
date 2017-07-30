@@ -834,6 +834,8 @@ struct CacheManager {
   }
 
   std::shared_ptr<Entry> UpdateAndReturnOldFile(std::shared_ptr<Entry> entry) {
+    entry->file->ClearLargeState();
+
     const auto it = files_.find(entry->file->path);
     if (it != files_.end()) {
       std::shared_ptr<Entry> old = std::move(it->second);
@@ -895,7 +897,6 @@ bool IndexMain_DoIndex(Config* config,
   }
 
   assert(current_index);
-  // assert(previous_index);
 
   // TODO: get real value for is_interactive
   Index_DoIdMap response(std::move(current_index), request->perf,
@@ -1162,6 +1163,10 @@ std::vector<IndexProcess_Response> DoParseFile(
   //
   // We do this to minimize the race between indexing a file and capturing the
   // file contents.
+  //
+  // TODO: We might be able to optimize perf by only copying for files in
+  //       working_files. We can pass that same set of files to the indexer as
+  //       well. We then default to a fast file-copy if not in working set.
   std::vector<FileContents> file_contents;
   for (const auto& it : cache_loader->caches) {
     const std::unique_ptr<IndexFile>& index = it.second;

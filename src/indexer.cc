@@ -356,6 +356,10 @@ std::string IndexFile::ToString() {
   return Serialize(*this);
 }
 
+void IndexFile::ClearLargeState() {
+  file_contents_ = "";
+}
+
 IndexType::IndexType(IndexTypeId id, const std::string& usr)
     : def(usr), id(id) {
   assert(usr.size() > 0);
@@ -1603,6 +1607,9 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   FileConsumer file_consumer(file_consumer_shared, file);
   IndexParam param(&tu, &file_consumer);
+  for (const FileContents& contents : file_contents) {
+    param.file_contents[contents.path] = contents.content;
+  }
 
   CXFile cx_file = clang_getFile(tu.cx_tu, file.c_str());
   param.primary_file = ConsumeFile(&param, cx_file);

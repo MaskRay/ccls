@@ -498,6 +498,7 @@ struct IndexFile {
   IndexVar* Resolve(IndexVarId id);
 
   std::string ToString();
+  void ClearLargeState();
 };
 
 struct FileContents {
