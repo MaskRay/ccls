@@ -554,12 +554,12 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
 
 struct Index_DoIdMap {
-  std::unique_ptr<IndexFile> current;
+  std::shared_ptr<IndexFile> current;
   PerformanceImportFile perf;
   bool is_interactive;
 
   explicit Index_DoIdMap(
-      std::unique_ptr<IndexFile> current,
+      std::shared_ptr<IndexFile> current,
       PerformanceImportFile perf,
       bool is_interactive)
     : current(std::move(current)),
@@ -568,10 +568,10 @@ struct Index_DoIdMap {
 };
 
 struct Index_OnIdMapped {
-  std::unique_ptr<IndexFile> previous_index;
-  IndexFile* current_index;
-  std::unique_ptr<IdMap> previous_id_map;
-  IdMap* current_id_map;
+  std::shared_ptr<IndexFile> previous_index;
+  std::shared_ptr<IndexFile> current_index;
+  std::shared_ptr<IdMap> previous_id_map;
+  std::shared_ptr<IdMap> current_id_map;
   PerformanceImportFile perf;
   bool is_interactive;
 
@@ -818,10 +818,10 @@ struct CacheLoader {
 // needed for delta index updates.
 struct CacheManager {
   struct Entry {
-    std::unique_ptr<IndexFile> file;
-    std::unique_ptr<IdMap> ids;
+    std::shared_ptr<IndexFile> file;
+    std::shared_ptr<IdMap> ids;
 
-    Entry(std::unique_ptr<IndexFile> file, std::unique_ptr<IdMap> ids)
+    Entry(std::shared_ptr<IndexFile> file, std::shared_ptr<IdMap> ids)
         : file(std::move(file)), ids(std::move(ids)) {}
   };
 
@@ -833,10 +833,10 @@ struct CacheManager {
     return nullptr;
   }
 
-  std::unique_ptr<Entry> UpdateAndReturnOldFile(std::unique_ptr<Entry> entry) {
+  std::shared_ptr<Entry> UpdateAndReturnOldFile(std::shared_ptr<Entry> entry) {
     const auto it = files_.find(entry->file->path);
     if (it != files_.end()) {
-      std::unique_ptr<Entry> old = std::move(it->second);
+      std::shared_ptr<Entry> old = std::move(it->second);
       files_[entry->file->path] = std::move(entry);
       return old;
     }
@@ -846,7 +846,7 @@ struct CacheManager {
   }
 
   Config* config_;
-  std::unordered_map<std::string, std::unique_ptr<Entry>> files_;
+  std::unordered_map<std::string, std::shared_ptr<Entry>> files_;
 };
 
 struct IndexManager {
@@ -913,8 +913,8 @@ bool IndexMain_DoCreateIndexUpdate(
     return false;
 
   Timer time;
-  IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map,
-    response->previous_index.get(), response->current_index);
+  IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
+    response->previous_index.get(), response->current_index.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
 
 #if false
@@ -949,6 +949,7 @@ bool IndexMain_DoCreateIndexUpdate(
 }
 
 bool IndexMergeIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
+  // TODO/FIXME: it looks like there is a crash here?
   optional<Index_OnIndexed> root = queue_on_indexed->TryDequeue();
   if (!root)
     return false;
@@ -2869,14 +2870,14 @@ bool QueryDbMainLoop(
     Timer time;
 
     assert(request->current);
-    std::unique_ptr<CacheManager::Entry> previous;
-    CacheManager::Entry* current = nullptr;
+    std::shared_ptr<CacheManager::Entry> previous;
+    std::shared_ptr<CacheManager::Entry> current;
     {
-      auto id_map = MakeUnique<IdMap>(db, request->current->id_cache);
-      std::unique_ptr<CacheManager::Entry> current0 =
-          MakeUnique<CacheManager::Entry>(std::move(request->current),
+      auto id_map = std::make_shared<IdMap>(db, request->current->id_cache);
+      std::shared_ptr<CacheManager::Entry> current0 =
+          std::make_shared<CacheManager::Entry>(std::move(request->current),
                                           std::move(id_map));
-      current = current0.get();
+      current = current0;
       previous = db_cache->UpdateAndReturnOldFile(std::move(current0));
     }
 
@@ -2884,8 +2885,8 @@ bool QueryDbMainLoop(
       response.previous_id_map = std::move(previous->ids);
       response.previous_index = std::move(previous->file);
     }
-    response.current_id_map = current->ids.get();
-    response.current_index = current->file.get();
+    response.current_id_map = current->ids;
+    response.current_index = current->file;
     response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
 
     queue_on_id_mapped->Enqueue(std::move(response));

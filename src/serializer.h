@@ -121,9 +121,6 @@ void Reflect(Writer& visitor, int64_t& value);
 // uint64_t
 void Reflect(Reader& visitor, uint64_t& value);
 void Reflect(Writer& visitor, uint64_t& value);
-// long long
-void Reflect(Reader& visitor, long long& value);
-void Reflect(Writer& visitor, long long& value);
 // bool
 void Reflect(Reader& visitor, bool& value);
 void Reflect(Writer& visitor, bool& value);

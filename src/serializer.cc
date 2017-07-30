@@ -34,13 +34,6 @@ void Reflect(Reader& visitor, uint64_t& value) {
 void Reflect(Writer& visitor, uint64_t& value) {
   visitor.Uint64(value);
 }
-// long long
-void Reflect(Reader& visitor, long long& value) {
-  value = visitor.GetUint64();
-}
-void Reflect(Writer& visitor, long long& value) {
-  visitor.Uint64(value);
-}
 // bool
 void Reflect(Reader& visitor, bool& value) {
   value = visitor.GetBool();
