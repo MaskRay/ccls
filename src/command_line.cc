@@ -547,7 +547,13 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
 
 
+struct MappedIndexFile {
+  std::shared_ptr<IndexFile> file;
+  std::shared_ptr<IdMap> ids;
 
+  MappedIndexFile(std::shared_ptr<IndexFile> file, std::shared_ptr<IdMap> ids)
+    : file(file), ids(ids) {}
+};
 
 
 
@@ -568,10 +574,8 @@ struct Index_DoIdMap {
 };
 
 struct Index_OnIdMapped {
-  std::shared_ptr<IndexFile> previous_index;
-  std::shared_ptr<IndexFile> current_index;
-  std::shared_ptr<IdMap> previous_id_map;
-  std::shared_ptr<IdMap> current_id_map;
+  std::shared_ptr<MappedIndexFile> previous;
+  std::shared_ptr<MappedIndexFile> current;
   PerformanceImportFile perf;
   bool is_interactive;
 
@@ -817,38 +821,25 @@ struct CacheLoader {
 // Maintains the currently indexed file cache for the querydb process. This is
 // needed for delta index updates.
 struct CacheManager {
-  struct Entry {
-    std::shared_ptr<IndexFile> file;
-    std::shared_ptr<IdMap> ids;
-
-    Entry(std::shared_ptr<IndexFile> file, std::shared_ptr<IdMap> ids)
-        : file(std::move(file)), ids(std::move(ids)) {}
-  };
-
-  Entry* TryGet(const std::string& path) {
-    auto it = files_.find(path);
-    if (it != files_.end())
-      return it->second.get();
-
-    return nullptr;
-  }
-
-  std::shared_ptr<Entry> UpdateAndReturnOldFile(std::shared_ptr<Entry> entry) {
-    entry->file->ClearLargeState();
-
+  std::shared_ptr<MappedIndexFile> UpdateAndReturnOldFile(
+      std::shared_ptr<MappedIndexFile> entry) {
+    // Fetch previous value, if any.
+    std::shared_ptr<MappedIndexFile> previous_value;
     const auto it = files_.find(entry->file->path);
     if (it != files_.end()) {
-      std::shared_ptr<Entry> old = std::move(it->second);
-      files_[entry->file->path] = std::move(entry);
-      return old;
+      previous_value = it->second;
     }
 
-    files_[entry->file->path] = std::move(entry);
-    return nullptr;
+    // Update new value.
+    entry->file->ClearLargeState();
+    files_[entry->file->path] = entry;
+
+    // Return previous value.
+    return previous_value;
   }
 
   Config* config_;
-  std::unordered_map<std::string, std::shared_ptr<Entry>> files_;
+  std::unordered_map<std::string, std::shared_ptr<MappedIndexFile>> files_;
 };
 
 struct IndexManager {
@@ -914,9 +905,17 @@ bool IndexMain_DoCreateIndexUpdate(
     return false;
 
   Timer time;
+  
+  IdMap* previous_id_map = nullptr;
+  IndexFile* previous_index = nullptr;
+  if (response->previous) {
+    previous_id_map = response->previous->ids.get();
+    previous_index = response->previous->file.get();
+  }
+
   IndexUpdate update = IndexUpdate::CreateDelta(
-      response->previous_id_map.get(), response->current_id_map.get(),
-      response->previous_index.get(), response->current_index.get());
+      previous_id_map, response->current->ids.get(),
+      previous_index, response->current->file.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
 
 #if false
@@ -2878,17 +2877,8 @@ bool QueryDbMainLoop(
     assert(request->current);
     // Build IdMap for the new instance. Replace the value in the cache.
     auto id_map_current = std::make_shared<IdMap>(db, request->current->id_cache);
-    std::shared_ptr<CacheManager::Entry> current = std::make_shared<CacheManager::Entry>(request->current, id_map_current);
-    std::shared_ptr<CacheManager::Entry> previous = db_cache->UpdateAndReturnOldFile(current);
-
-    // Let response know about previous id map, if available.
-    if (previous) {
-      response.previous_id_map = previous->ids;
-      response.previous_index = previous->file;
-    }
-    // Let response know about current id map, if available.
-    response.current_id_map = current->ids;
-    response.current_index = current->file;
+    response.current = std::make_shared<MappedIndexFile>(request->current, id_map_current);
+    response.previous = db_cache->UpdateAndReturnOldFile(response.current);
     response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
 
     queue_on_id_mapped->Enqueue(std::move(response));
