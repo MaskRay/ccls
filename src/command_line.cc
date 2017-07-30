@@ -906,15 +906,16 @@ bool IndexMain_DoIndex(Config* config,
 }
 
 bool IndexMain_DoCreateIndexUpdate(
-  Index_OnIdMappedQueue* queue_on_id_mapped,
-  Index_OnIndexedQueue* queue_on_indexed) {
+    Index_OnIdMappedQueue* queue_on_id_mapped,
+    Index_OnIndexedQueue* queue_on_indexed) {
   optional<Index_OnIdMapped> response = queue_on_id_mapped->TryDequeue();
   if (!response)
     return false;
 
   Timer time;
-  IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
-    response->previous_index.get(), response->current_index.get());
+  IndexUpdate update = IndexUpdate::CreateDelta(
+      response->previous_id_map.get(), response->current_id_map.get(),
+      response->previous_index.get(), response->current_index.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
 
 #if false
@@ -2870,21 +2871,17 @@ bool QueryDbMainLoop(
     Timer time;
 
     assert(request->current);
-    std::shared_ptr<CacheManager::Entry> previous;
-    std::shared_ptr<CacheManager::Entry> current;
-    {
-      auto id_map = std::make_shared<IdMap>(db, request->current->id_cache);
-      std::shared_ptr<CacheManager::Entry> current0 =
-          std::make_shared<CacheManager::Entry>(std::move(request->current),
-                                          std::move(id_map));
-      current = current0;
-      previous = db_cache->UpdateAndReturnOldFile(std::move(current0));
-    }
+    // Build IdMap for the new instance. Replace the value in the cache.
+    auto id_map_current = std::make_shared<IdMap>(db, request->current->id_cache);
+    std::shared_ptr<CacheManager::Entry> current = std::make_shared<CacheManager::Entry>(request->current, id_map_current);
+    std::shared_ptr<CacheManager::Entry> previous = db_cache->UpdateAndReturnOldFile(current);
 
+    // Let response know about previous id map, if available.
     if (previous) {
-      response.previous_id_map = std::move(previous->ids);
-      response.previous_index = std::move(previous->file);
+      response.previous_id_map = previous->ids;
+      response.previous_index = previous->file;
     }
+    // Let response know about current id map, if available.
     response.current_id_map = current->ids;
     response.current_index = current->file;
     response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
