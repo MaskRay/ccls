@@ -308,24 +308,30 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
   }
 
   file->version = change.textDocument.version;
+  // std::cerr << "!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
   //std::cerr << "VERSION " << change.textDocument.version << std::endl;
 
   for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
-    //std::cerr << "Applying rangeLength=" << diff.rangeLength;
-
+    // std::cerr << "|" << file->buffer_content << "|" << std::endl;
     // If range or rangeLength are emitted we replace everything, per the spec.
     if (diff.rangeLength == -1) {
       file->buffer_content = diff.text;
       file->OnBufferContentUpdated();
+      // std::cerr << "-> Replacing entire content";
     }
     else {
       int start_offset = GetOffsetForPosition(diff.range.start, file->buffer_content);
+      // std::cerr << "-> Applying diff start=" << diff.range.start.ToString() << ", end=" << diff.range.end.ToString() << ", start_offset=" << start_offset << std::endl;
       file->buffer_content.replace(file->buffer_content.begin() + start_offset,
         file->buffer_content.begin() + start_offset + diff.rangeLength,
         diff.text);
       file->OnBufferContentUpdated();
     }
+
+    // std::cerr << "|" << file->buffer_content << "|" << std::endl;
   }
+  // std::cerr << "!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
+
   //std::cerr << std::endl << std::endl << "--------" << file->content << "--------" << std::endl << std::endl;
 }
 

@@ -17,7 +17,7 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
     ++offset;
   }
 
-  return std::min<int>(offset + position.character, content.size() - 1);
+  return std::min<int>(offset + position.character, content.size());
 }
 
 lsPosition CharPos(const std::string& search, char character, int character_offset) {
@@ -211,10 +211,23 @@ bool SubstringMatch(const std::string& search, const std::string& content) {
 
 TEST_SUITE("Offset");
 
-TEST_CASE("over range") {
+TEST_CASE("past end") {
   std::string content = "foo";
   int offset = GetOffsetForPosition(lsPosition(10, 10), content);
-  REQUIRE(offset < content.size());
+  REQUIRE(offset <= content.size());
+}
+
+TEST_CASE("in middle of content") {
+  std::string content = "abcdefghijk";
+  for (int i = 0; i < content.size(); ++i) {
+    int offset = GetOffsetForPosition(lsPosition(0, i), content);
+    REQUIRE(i == offset);
+  }
+}
+
+TEST_CASE("at end of content") {
+  REQUIRE(GetOffsetForPosition(lsPosition(0, 0), "") == 0);
+  REQUIRE(GetOffsetForPosition(lsPosition(0, 1), "a") == 1);
 }
 
 TEST_SUITE_END();
