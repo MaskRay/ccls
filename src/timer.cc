@@ -1,5 +1,7 @@
 #include "timer.h"
 
+#include <loguru.hpp>
+
 #include <iostream>
 
 Timer::Timer() {
@@ -29,6 +31,6 @@ void Timer::ResetAndPrint(const std::string& message) {
   long long milliseconds = elapsed / 1000;
   long long remaining = elapsed - milliseconds;
 
-  std::cerr << message << " took " << milliseconds << "." << remaining << "ms" << std::endl;
+  LOG_S(INFO) << message << " took " << milliseconds << "." << remaining << "ms";
   Reset();
 }
