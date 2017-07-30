@@ -136,7 +136,7 @@ void RunTests() {
           "-isystemC:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
           "-isystemC:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt"
         },
-        "", nullopt,
+        {},
         &perf,
         &index,
         false /*dump_ast*/);

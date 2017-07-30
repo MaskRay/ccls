@@ -1,4 +1,5 @@
 // TODO: cleanup includes
+#include "buffer.h"
 #include "cache.h"
 #include "clang_complete.h"
 #include "file_consumer.h"
@@ -6,6 +7,7 @@
 #include "include_complete.h"
 #include "ipc_manager.h"
 #include "indexer.h"
+#include "message_queue.h"
 #include "query.h"
 #include "query_utils.h"
 #include "language_server_api.h"
@@ -13,6 +15,7 @@
 #include "options.h"
 #include "project.h"
 #include "platform.h"
+#include "serializer.h"
 #include "standard_includes.h"
 #include "test.h"
 #include "timer.h"
@@ -20,12 +23,15 @@
 #include "working_files.h"
 
 #include <loguru.hpp>
+#include "tiny-process-library/process.hpp"
+
 #include <doctest/doctest.h>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 
 #include <climits>
 #include <fstream>
+#include <future>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -42,7 +48,7 @@
 // TODO: implement ThreadPool type which monitors CPU usage / number of work items
 // per second completed and scales up/down number of running threads.
 
-namespace {
+//namespace {
 
 std::vector<std::string> kEmptyArgs;
 
@@ -547,98 +553,168 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
 
 
-struct Index_DoIndex {
-  enum class Type {
-    // ImportOnly is used internally for loading dependency caches. The main cc
-    // file is loaded with ImportThenParse, which will call ImportOnly on all
-    // of the dependencies. The main cc will then be parsed, which will include
-    // updates to all dependencies.
-
-    ImportThenParse,
-    Parse,
-    Freshen,
-  };
-
-  Index_DoIndex(Type type, const Project::Entry& entry, optional<std::string> content, bool is_interactive)
-    : type(type), entry(entry), content(content), is_interactive(is_interactive) {}
-
-  // Type of index operation.
-  Type type;
-  // Project entry for file path and file arguments.
-  Project::Entry entry;
-  // File contents that should be indexed.
-  optional<std::string> content;
-  // If this index request is in response to an interactive user session, for
-  // example, the user saving a file they are actively editing. We report
-  // additional information for interactive indexes such as the IndexUpdate
-  // delta as well as the diagnostics.
-  bool is_interactive;
-};
-
 struct Index_DoIdMap {
-  std::unique_ptr<IndexFile> previous;
   std::unique_ptr<IndexFile> current;
-  optional<std::string> indexed_content;
   PerformanceImportFile perf;
   bool is_interactive;
 
-  explicit Index_DoIdMap(std::unique_ptr<IndexFile> current,
-                         optional<std::string> indexed_content,
-                         PerformanceImportFile perf,
-                         bool is_interactive)
+  explicit Index_DoIdMap(
+      std::unique_ptr<IndexFile> current,
+      PerformanceImportFile perf,
+      bool is_interactive)
     : current(std::move(current)),
-      indexed_content(indexed_content),
-      perf(perf),
-      is_interactive(is_interactive) {}
-
-  explicit Index_DoIdMap(std::unique_ptr<IndexFile> previous,
-                         std::unique_ptr<IndexFile> current,
-                         optional<std::string> indexed_content,
-                         PerformanceImportFile perf,
-                         bool is_interactive)
-    : previous(std::move(previous)),
-      current(std::move(current)),
-      indexed_content(indexed_content),
       perf(perf),
       is_interactive(is_interactive) {}
 };
 
 struct Index_OnIdMapped {
   std::unique_ptr<IndexFile> previous_index;
-  std::unique_ptr<IndexFile> current_index;
+  IndexFile* current_index;
   std::unique_ptr<IdMap> previous_id_map;
-  std::unique_ptr<IdMap> current_id_map;
-  optional<std::string> indexed_content;
+  IdMap* current_id_map;
   PerformanceImportFile perf;
   bool is_interactive;
 
-  Index_OnIdMapped(const optional<std::string>& indexed_content,
-                   PerformanceImportFile perf,
-                   bool is_interactive)
-    : indexed_content(indexed_content),
-      perf(perf),
+  Index_OnIdMapped(
+      PerformanceImportFile perf,
+      bool is_interactive)
+    : perf(perf),
       is_interactive(is_interactive) {}
 };
 
 struct Index_OnIndexed {
   IndexUpdate update;
-  // Map is file path to file content.
-  std::unordered_map<std::string, std::string> indexed_content;
   PerformanceImportFile perf;
 
   explicit Index_OnIndexed(
       IndexUpdate& update,
-      const optional<std::string>& indexed_content,
       PerformanceImportFile perf)
-    : update(update), perf(perf) {
-    if (indexed_content) {
-      assert(update.files_def_update.size() == 1);
-      this->indexed_content[update.files_def_update[0].path] = *indexed_content;
-    }
-  }
+    : update(update), perf(perf) {}
 };
 
-using Index_DoIndexQueue = ThreadedQueue<Index_DoIndex>;
+
+
+
+
+
+// IndexRequest is all messages that can be sent from the querydb process to
+// the indexer process.
+struct IndexProcess_Request {
+  enum class Type {
+    kInvalid = 0,
+    kInitialize = 1,
+    kQuit = 2,
+    kIndex = 3
+  };
+
+  Type type = Type::kInvalid;
+
+  optional<Config> initialize_args;
+
+  struct IndexArgs {
+    std::string path;
+    std::vector<std::string> args; // TODO: make this a string that is parsed lazily.
+  };
+  optional<IndexArgs> index_args;
+
+  static IndexProcess_Request CreateInitialize(const Config& config) {
+    IndexProcess_Request m;
+    m.type = Type::kInitialize;
+    m.initialize_args = config;
+    return m;
+  }
+
+  static IndexProcess_Request CreateQuit() {
+    IndexProcess_Request m;
+    m.type = Type::kQuit;
+    return m;
+  }
+
+  static IndexProcess_Request CreateIndex(const std::string& path, const std::vector<std::string>& args) {
+    IndexProcess_Request m;
+    m.type = Type::kIndex;
+    m.index_args = IndexArgs();
+    m.index_args->path = path;
+    m.index_args->args = args;
+    return m;
+  }
+};
+MAKE_REFLECT_TYPE_PROXY(IndexProcess_Request::Type, int);
+MAKE_REFLECT_STRUCT(IndexProcess_Request::IndexArgs, path, args);
+MAKE_REFLECT_STRUCT(IndexProcess_Request, type, initialize_args, index_args);
+
+using Index_IndexProcess_Request_IndexQueue = ThreadedQueue<IndexProcess_Request::IndexArgs>;
+
+// IndexResponse is all messages that can be sent from the indexer process to
+// the querydb process.
+struct IndexProcess_Response {
+  enum class Type {
+    kInvalid = 0,
+    kShutdown = 1,
+    kIndexResult = 2
+  };
+
+  Type type;
+
+  struct IndexResultArgs {
+    std::string file_path;
+    PerformanceImportFile perf;
+  };
+  optional<IndexResultArgs> index_result_args;
+
+  static IndexProcess_Response CreateShutdown() {
+    IndexProcess_Response response;
+    response.type = Type::kShutdown;
+    return response;
+  }
+
+  static IndexProcess_Response CreateIndexResult(const std::string& file_path, const PerformanceImportFile& perf) {
+    IndexProcess_Response response;
+    response.type = Type::kIndexResult;
+    response.index_result_args = IndexResultArgs();
+    response.index_result_args->file_path = file_path;
+    response.index_result_args->perf = perf;
+    return response;
+  }
+};
+MAKE_REFLECT_TYPE_PROXY(IndexProcess_Response::Type, int);
+MAKE_REFLECT_STRUCT(IndexProcess_Response::IndexResultArgs, file_path, perf);
+MAKE_REFLECT_STRUCT(IndexProcess_Response, type, index_result_args);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+using IndexProcess_ResponseQueue = ThreadedQueue<IndexProcess_Response::IndexResultArgs>;
 using Index_DoIdMapQueue = ThreadedQueue<Index_DoIdMap>;
 using Index_OnIdMappedQueue = ThreadedQueue<Index_OnIdMapped>;
 using Index_OnIndexedQueue = ThreadedQueue<Index_OnIndexed>;
@@ -681,18 +757,21 @@ void RegisterMessageTypes() {
 
 
 
+#if false
+  TODO: re-enable
+  void PriorityEnqueueFileForIndex(QueryDatabase* db, Project* project, Index_DoIndexQueue* queue_do_index, WorkingFile* working_file, const std::string& path) {
+    // Only do a delta update (Type::Parse) if we've already imported the
+    // file. If the user saves a file not loaded by the project we don't
+    // want the initial import to be a delta-update.
+    Index_DoIndex::Type index_type = Index_DoIndex::Type::Parse;
+    // TODO/FIXME: this is racy. we need to check if the file is already in the import pipeline. So we should change PriorityEnqueue to look at existing contents before appending. That's not a full fix tho.
+    QueryFile* file = FindFile(db, path);
+    if (!file)
+      index_type = Index_DoIndex::Type::ImportThenParse;
 
-void PriorityEnqueueFileForIndex(QueryDatabase* db, Project* project, Index_DoIndexQueue* queue_do_index, WorkingFile* working_file, const std::string& path) {
-  // Only do a delta update (Type::Parse) if we've already imported the
-  // file. If the user saves a file not loaded by the project we don't
-  // want the initial import to be a delta-update.
-  Index_DoIndex::Type index_type = Index_DoIndex::Type::Parse;
-  QueryFile* file = FindFile(db, path);
-  if (!file)
-    index_type = Index_DoIndex::Type::ImportThenParse;
-
-  queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
-}
+    queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
+  }
+#endif
 
 void InsertSymbolIntoResult(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol, std::vector<lsSymbolInformation>* result) {
   optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol);
@@ -714,320 +793,128 @@ void InsertSymbolIntoResult(QueryDatabase* db, WorkingFiles* working_files, Symb
   result->push_back(*info);
 }
 
-
-
-}  // namespace
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-bool ImportCachedIndex(Config* config,
-                       FileConsumer::SharedState* file_consumer_shared,
-                       Index_DoIdMapQueue* queue_do_id_map,
-                       const std::string& tu_path,
-                       const optional<std::string>& indexed_content) {
-  // TODO: only load cache if command line arguments are the same.
-  PerformanceImportFile tu_perf;
-  Timer time;
-
-  std::unique_ptr<IndexFile> tu_cache = LoadCachedIndex(config, tu_path);
-  tu_perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
-  if (!tu_cache)
-    return true;
-
-  bool needs_reparse = false;
-
-  // Import all dependencies.
-  for (auto& dependency_path : tu_cache->dependencies) {
-    //std::cerr << "- Got dependency " << dependency_path << std::endl;
-    PerformanceImportFile perf;
-    time.Reset();
-    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
-    perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
-    if (cache && GetLastModificationTime(cache->path) == cache->last_modification_time)
-      file_consumer_shared->Mark(cache->path);
-    else
-      needs_reparse = true;
-    if (cache)
-      queue_do_id_map->Enqueue(Index_DoIdMap(std::move(cache), nullopt, perf, false /*is_interactive*/));
+// Manages loading caches from file paths for the indexer process.
+struct CacheLoader {
+  explicit CacheLoader(Config* config) : config_(config) {}
+
+  IndexFile* TryLoad(const std::string& path) {
+    auto it = caches.find(path);
+    if (it != caches.end())
+      return it->second.get();
+
+    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config_, path);
+    if (!cache)
+      return nullptr;
+
+    caches[path] = std::move(cache);
+    return caches[path].get();
   }
 
-  // Import primary file.
-  if (GetLastModificationTime(tu_path) == tu_cache->last_modification_time)
-    file_consumer_shared->Mark(tu_path);
-  else
-    needs_reparse = true;
-  queue_do_id_map->Enqueue(Index_DoIdMap(std::move(tu_cache), indexed_content, tu_perf, false /*is_interactive*/));
+  std::unordered_map<std::string, std::unique_ptr<IndexFile>> caches;
+  Config* config_;
+};
 
-  return needs_reparse;
-}
+// Maintains the currently indexed file cache for the querydb process. This is
+// needed for delta index updates.
+struct CacheManager {
+  struct Entry {
+    std::unique_ptr<IndexFile> file;
+    std::unique_ptr<IdMap> ids;
 
-void ParseFile(Config* config,
-               WorkingFiles* working_files,
-               FileConsumer::SharedState* file_consumer_shared,
-               clang::Index* index,
-               Index_DoIdMapQueue* queue_do_id_map,
-               const Project::Entry& entry,
-               const optional<std::string>& indexed_content,
-               bool is_interactive) {
+    Entry(std::unique_ptr<IndexFile> file, std::unique_ptr<IdMap> ids)
+        : file(std::move(file)), ids(std::move(ids)) {}
+  };
 
-  std::unique_ptr<IndexFile> cache_for_args = LoadCachedIndex(config, entry.filename);
+  Entry* TryGet(const std::string& path) {
+    auto it = files_.find(path);
+    if (it != files_.end())
+      return it->second.get();
 
-  std::string tu_path = cache_for_args ? cache_for_args->import_file : entry.filename;
-  const std::vector<std::string>& tu_args = entry.args;
+    return nullptr;
+  }
 
-  PerformanceImportFile perf;
-
-  std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
-    config, file_consumer_shared,
-    tu_path, tu_args,
-    entry.filename, indexed_content,
-    &perf, index);
-
-  for (std::unique_ptr<IndexFile>& new_index : indexes) {
-    Timer time;
-
-    // Load the cached index.
-    std::unique_ptr<IndexFile> cached_index;
-    if (cache_for_args && new_index->path == cache_for_args->path)
-      cached_index = std::move(cache_for_args);
-    else
-      cached_index = LoadCachedIndex(config, new_index->path);
-    // TODO: Enable this assert when we are no longer forcibly indexing the primary file.
-    //assert(!cached_index || GetLastModificationTime(new_index->path) != cached_index->last_modification_time);
-
-    // Note: we are reusing the parent perf.
-    perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
-
-    // Publish lines skipped by the preprocessor if this is an interactive
-    // index.
-    if (is_interactive) {
-      WorkingFile* working_file = working_files->GetFileByFilename(new_index->path);
-      if (working_file) {
-        // Publish source ranges disabled by preprocessor.
-        // TODO: We shouldn't be updating actual indexed content here, but we
-        // need to use the latest indexed content for the remapping.
-        // TODO: We should also remap diagnostics.
-        if (indexed_content)
-          working_file->SetIndexContent(*indexed_content);
-        PublishInactiveLines(working_file, new_index->skipped_by_preprocessor);
-      }
+  std::unique_ptr<Entry> UpdateAndReturnOldFile(std::unique_ptr<Entry> entry) {
+    auto& it = files_.find(entry->file->path);
+    if (it != files_.end()) {
+      std::unique_ptr<Entry> old = std::move(it->second);
+      it->second = std::move(entry);
+      return old;
     }
 
-    // Publish diagnostics for non-interactive index.
-    else if (config->diagnosticsOnParse) {
-      EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
-    }
-
-    // Any any existing dependencies to |new_index| that were there before,
-    // because we will not reparse them if they haven't changed.
-    // TODO: indexer should always include dependencies. This doesn't let us remove old dependencies.
-    if (cached_index) {
-      for (auto& dep : cached_index->dependencies) {
-        if (std::find(new_index->dependencies.begin(), new_index->dependencies.end(), dep) == new_index->dependencies.end())
-          new_index->dependencies.push_back(dep);
-      }
-    }
-
-    // Forward file content, but only for the primary file.
-    optional<std::string> content;
-    if (new_index->path == entry.filename)
-      content = indexed_content;
-
-    // Cache the newly indexed file. This replaces the existing cache.
-    // TODO: Run this as another import pipeline stage.
-    time.Reset();
-    WriteToCache(config, new_index->path, *new_index, content);
-    perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
-
-    // Dispatch IdMap creation request, which will happen on querydb thread.
-    Index_DoIdMap response(std::move(cached_index), std::move(new_index), content, perf, is_interactive);
-    queue_do_id_map->Enqueue(std::move(response));
+    files_[entry->file->path] = std::move(entry);
+    return nullptr;
   }
 
-}
+  Config* config_;
+  std::unordered_map<std::string, std::unique_ptr<Entry>> files_;
+};
 
-bool ResetStaleFiles(Config* config,
-                     FileConsumer::SharedState* file_consumer_shared,
-                     const std::string& tu_path) {
-  Timer time;
-  std::unique_ptr<IndexFile> tu_cache = LoadCachedIndex(config, tu_path);
+struct IndexManager {
+  std::unordered_set<std::string> files_being_indexed_;
+  std::mutex mutex_;
 
-  if (!tu_cache) {
-    LOG_S(WARNING) << "[indexer] Unable to load existing index from file when freshening (dependences will not be freshened)";
-    file_consumer_shared->Mark(tu_path);
-    return true;
+  // Marks a file as being indexed. Returns true if the file is not already
+  // being indexed.
+  bool MarkIndex(const std::string& path) {
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    return files_being_indexed_.insert(path).second;
   }
 
-  bool needs_reparse = false;
+  // Unmarks a file as being indexed, so it can get indexed again in the
+  // future.
+  void ClearIndex(const std::string& path) {
+    std::lock_guard<std::mutex> lock(mutex_);
 
-  // Check dependencies
-  for (auto& dependency_path : tu_cache->dependencies) {
-    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, dependency_path);
-    if (GetLastModificationTime(cache->path) != cache->last_modification_time) {
-      needs_reparse = true;
-      file_consumer_shared->Reset(cache->path);
-    }
+    auto it = files_being_indexed_.find(path);
+    assert(it != files_being_indexed_.end());
+    files_being_indexed_.erase(it);
   }
+};
 
-  // Check primary file
-  if (GetLastModificationTime(tu_path) != tu_cache->last_modification_time) {
-    needs_reparse = true;
-    file_consumer_shared->Mark(tu_path);
-  }
 
-  return needs_reparse;
-}
+//}  // namespace
 
 bool IndexMain_DoIndex(Config* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        Project* project,
                        WorkingFiles* working_files,
                        clang::Index* index,
-                       Index_DoIndexQueue* queue_do_index,
+                       IndexProcess_ResponseQueue* queue_index_response,
                        Index_DoIdMapQueue* queue_do_id_map) {
-  optional<Index_DoIndex> index_request = queue_do_index->TryDequeue();
-  if (!index_request)
+  optional<IndexProcess_Response::IndexResultArgs> request =
+      queue_index_response->TryDequeue();
+  if (!request)
     return false;
 
-  Timer time;
-
-  switch (index_request->type) {
-    case Index_DoIndex::Type::ImportThenParse: {
-      // This assumes index_request->path is a cc or translation unit file (ie,
-      // it is in compile_commands.json).
-
-      bool needs_reparse = ImportCachedIndex(config, file_consumer_shared, queue_do_id_map, index_request->entry.filename, index_request->content);
-
-      // If the file has been updated, we need to reparse it.
-      if (needs_reparse) {
-        // Instead of parsing the file immediately, we push the request to the
-        // back of the queue so we will finish all of the Import requests
-        // before starting to run actual index jobs. This gives the user a
-        // partially-correct index potentially much sooner.
-        index_request->type = Index_DoIndex::Type::Parse;
-        queue_do_index->Enqueue(std::move(*index_request));
-      }
-      break;
-    }
-
-    case Index_DoIndex::Type::Parse: {
-      // index_request->path can be a cc/tu or a dependency path.
-      file_consumer_shared->Reset(index_request->entry.filename);
-      ParseFile(config, working_files, file_consumer_shared, index, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
-      break;
-    }
-
-    case Index_DoIndex::Type::Freshen: {
-      // This assumes index_request->path is a cc or translation unit file (ie,
-      // it is in compile_commands.json).
-
-      bool needs_reparse = ResetStaleFiles(config, file_consumer_shared, index_request->entry.filename);
-      if (needs_reparse)
-        ParseFile(config, working_files, file_consumer_shared, index, queue_do_id_map, index_request->entry, index_request->content, index_request->is_interactive);
-      break;
-    }
+  std::unique_ptr<IndexFile> current_index =
+      LoadCachedIndex(config, request->file_path);
+  if (!current_index) {
+    std::cerr << "!!! Failed to load index for " + request->file_path + "\n";
+    return false;
   }
+
+  assert(current_index);
+  // assert(previous_index);
+
+  // TODO: get real value for is_interactive
+  Index_DoIdMap response(std::move(current_index), request->perf,
+                         false /*is_interactive*/);
+  queue_do_id_map->Enqueue(std::move(response));
 
   return true;
 }
 
 bool IndexMain_DoCreateIndexUpdate(
-    Index_OnIdMappedQueue* queue_on_id_mapped,
-    Index_OnIndexedQueue* queue_on_indexed) {
+  Index_OnIdMappedQueue* queue_on_id_mapped,
+  Index_OnIndexedQueue* queue_on_indexed) {
   optional<Index_OnIdMapped> response = queue_on_id_mapped->TryDequeue();
   if (!response)
     return false;
 
   Timer time;
-  IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map.get(),
-    response->previous_index.get(), response->current_index.get());
+  IndexUpdate update = IndexUpdate::CreateDelta(response->previous_id_map.get(), response->current_id_map,
+    response->previous_index.get(), response->current_index);
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
 
 #if false
@@ -1055,7 +942,7 @@ bool IndexMain_DoCreateIndexUpdate(
     std::cerr << "Applying IndexUpdate" << std::endl << update.ToString() << std::endl;
 #endif
 
-  Index_OnIndexed reply(update, response->indexed_content, response->perf);
+  Index_OnIndexed reply(update, response->perf);
   queue_on_indexed->Enqueue(std::move(reply));
 
   return true;
@@ -1077,38 +964,39 @@ bool IndexMergeIndexUpdates(Index_OnIndexedQueue* queue_on_indexed) {
     did_merge = true;
     //Timer time;
     root->update.Merge(to_join->update);
-    for (auto&& entry : to_join->indexed_content)
-      root->indexed_content.emplace(entry);
     //time.ResetAndPrint("[indexer] Joining two querydb updates");
   }
 }
 
-void IndexMain(
-    Config* config,
-    FileConsumer::SharedState* file_consumer_shared,
-    Project* project,
-    WorkingFiles* working_files,
-    MultiQueueWaiter* waiter,
-    Index_DoIndexQueue* queue_do_index,
-    Index_DoIdMapQueue* queue_do_id_map,
-    Index_OnIdMappedQueue* queue_on_id_mapped,
-    Index_OnIndexedQueue* queue_on_indexed) {
-
+void IndexMain(Config* config,
+               FileConsumer::SharedState* file_consumer_shared,
+               Project* project,
+               WorkingFiles* working_files,
+               MultiQueueWaiter* waiter,
+               IndexProcess_ResponseQueue* queue_index_response,
+               Index_DoIdMapQueue* queue_do_id_map,
+               Index_OnIdMappedQueue* queue_on_id_mapped,
+               Index_OnIndexedQueue* queue_on_indexed) {
   SetCurrentThreadName("indexer");
   // TODO: dispose of index after it is not used for a while.
   clang::Index index(1, 0);
 
   while (true) {
-    // TODO: process all off IndexMain_DoIndex before calling IndexMain_DoCreateIndexUpdate for
-    //       better icache behavior. We need to have some threads spinning on both though
+    // TODO: process all off IndexMain_DoIndex before calling
+    // IndexMain_DoCreateIndexUpdate for
+    //       better icache behavior. We need to have some threads spinning on
+    //       both though
     //       otherwise memory usage will get bad.
 
     // We need to make sure to run both IndexMain_DoIndex and
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_index = IndexMain_DoIndex(config, file_consumer_shared, project, working_files, &index, queue_do_index, queue_do_id_map);
-    bool did_create_update = IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
+    bool did_index =
+        IndexMain_DoIndex(config, file_consumer_shared, project, working_files,
+                          &index, queue_index_response, queue_do_id_map);
+    bool did_create_update =
+        IndexMain_DoCreateIndexUpdate(queue_on_id_mapped, queue_on_indexed);
     bool did_merge = false;
 
     // Nothing to index and no index updates to create, so join some already
@@ -1118,13 +1006,516 @@ void IndexMain(
 
     // We didn't do any work, so wait for a notification.
     if (!did_index && !did_create_update && !did_merge)
-      waiter->Wait({
-        queue_do_index,
-        queue_on_id_mapped,
-        queue_on_indexed
-      });
+      waiter->Wait(
+          {queue_index_response, queue_on_id_mapped, queue_on_indexed});
   }
 }
+
+
+
+struct IQueryDbResponder {
+  virtual void Write(IndexProcess_Response response) = 0;
+};
+
+struct OutOfProcessQueryDbResponder : IQueryDbResponder {
+  void Write(IndexProcess_Response response) override {
+    rapidjson::StringBuffer output;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
+
+    Reflect(writer, response);
+    std::cerr << "!! Wrote to querydb " + std::string(output.GetString()) + "\n";
+    std::cout << output.GetSize() << "\n\n" << output.GetString();
+  }
+};
+
+struct InProcessQueryDbResponder : IQueryDbResponder {
+  IndexProcess_ResponseQueue* queue_;
+
+  InProcessQueryDbResponder(IndexProcess_ResponseQueue* queue)
+    : queue_(queue) {}
+
+  void Write(IndexProcess_Response response) override {
+    if (response.index_result_args)
+      queue_->Enqueue(std::move(*response.index_result_args));
+  }
+};
+
+optional<std::string> ReadContentFromSource(std::function<optional<char>()> read) {
+  // Read the content length. It is terminated by two \n\n characters.
+  std::string stringified_content_length;
+  char last = 0;
+  while (true) {
+    optional<char> opt_c = read();
+    if (!opt_c)
+      return nullopt;
+    char c = *opt_c;
+    if (last == '\n' && c == '\n')
+      break;
+    last = c;
+    stringified_content_length += c;
+  }
+  int content_length = atoi(stringified_content_length.c_str());
+
+  // Read content.
+  std::string content;
+  content.reserve(content_length);
+  for (size_t i = 0; i < content_length; ++i) {
+    char c;
+    std::cin.read(&c, 1);
+    content += c;
+  }
+
+  return content;
+}
+
+void PumpIndexThreadStdioReaderMain(ThreadedQueue<IndexProcess_Request>* messages) {
+  // Read content.
+  optional<std::string> content = ReadContentFromSource([]() {
+    // Bad stdin means parent process has probably exited. Either way, indexer
+    // process can no longer be communicated with so exit.
+    if (!std::cin.good())
+      exit(0);
+
+    char c = 0;
+    std::cin.read(&c, 1);
+    return c;
+  });
+  assert(content);
+
+  // Parse content.
+  rapidjson::Document document;
+  document.Parse(content->c_str(), content->size());
+  assert(!document.HasParseError());
+
+            // Deserialize content.
+  IndexProcess_Request message;
+  Reflect(document, message);
+  assert(message.type != IndexProcess_Request::Type::kInvalid);
+
+  // Push message to queue.
+  messages->Enqueue(std::move(message));
+}
+
+std::vector<IndexProcess_Response> DoParseFile(
+    Config* config,
+    clang::Index* index,
+    FileConsumer::SharedState* file_consumer_shared,
+    CacheLoader* cache_loader,
+    const std::string& path,
+    const std::vector<std::string>& args) {
+  std::vector<IndexProcess_Response> result;
+
+  IndexFile* previous_index = cache_loader->TryLoad(path);
+  if (previous_index) {
+    // If none of the dependencies have changed, skip parsing and just load from cache.
+    auto file_needs_parse = [&](const std::string& path) {
+      int64_t modification_timestamp = GetLastModificationTime(path);
+      // PERF: We don't need to fully deserialize the file from cache here; we
+      // need to load it into memory but after that we can just check the
+      // timestamp. We may want to actually introduce a third file, so we have
+      // foo.cc, foo.cc.index.json, and foo.cc.meta.json and store the
+      // timestamp in foo.cc.meta.json. We may also want to begin writing
+      // to separate folders so things are not all in one folder (ie, take the
+      // first 5 chars as the folder name).
+      IndexFile* index = cache_loader->TryLoad(path);
+      if (!index || modification_timestamp != index->last_modification_time) {
+        file_consumer_shared->Reset(path);
+        return true;
+      }
+      return false;
+    };
+
+    // Check timestamps and update |file_consumer_shared|.
+    bool needs_reparse = file_needs_parse(path);
+    for (const std::string& dependency : previous_index->dependencies) {
+      if (file_needs_parse(dependency)) {
+        LOG_S(INFO) << "Timestamp has changed for " << dependency;
+        needs_reparse = true;
+        // SUBTLE: Do not break here, as |file_consumer_shared| is updated
+        // inside of |file_needs_parse|.
+      }
+    }
+
+    // No timestamps changed - load directly from cache.
+    if (!needs_reparse) {
+      LOG_S(INFO) << "Skipping parse; no timestamp change for " << path;
+
+      // TODO/FIXME: real perf
+      PerformanceImportFile perf;
+      result.push_back(IndexProcess_Response::CreateIndexResult(path, perf));
+      for (const std::string& dependency : previous_index->dependencies) {
+        LOG_S(INFO) << "Emitting index result for " << dependency;
+        result.push_back(IndexProcess_Response::CreateIndexResult(dependency, perf));
+      }
+      return result;
+    }
+  }
+
+  LOG_S(INFO) << "Parsing " << path;
+
+  // Load file contents for all dependencies into memory. If the dependencies
+  // for the file changed we may not end up using all of the files we
+  // preloaded. If a new dependency was added the indexer will grab the file
+  // contents as soon as possible.
+  //
+  // We do this to minimize the race between indexing a file and capturing the
+  // file contents.
+  std::vector<FileContents> file_contents;
+  for (const auto& it : cache_loader->caches) {
+    const std::unique_ptr<IndexFile>& index = it.second;
+    assert(index);
+    optional<std::string> index_content = ReadContent(index->path);
+    if (!index_content) {
+      LOG_S(ERROR) << "Failed to preload index content for " << index->path;
+      continue;
+    }
+    file_contents.push_back(FileContents(index->path, *index_content));
+  }
+
+  PerformanceImportFile perf;
+  std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
+    config, file_consumer_shared,
+    path, args, file_contents,
+    &perf, index);
+
+  for (std::unique_ptr<IndexFile>& new_index : indexes) {
+    Timer time;
+
+    // TODO: don't load cached index. We don't need to do this when indexer always exports dependency tree.
+    // Sanity check that verifies we did not generate a new index for a file whose timestamp did not change.
+    //{
+    //  IndexFile* previous_index = cache_loader->TryLoad(new_index->path);
+    //  assert(!previous_index || GetLastModificationTime(new_index->path) != previous_index->last_modification_time);
+    //}
+
+    // Note: we are reusing the parent perf.
+    perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
+
+    // Write new cache to disk. Add file to list of paths that need to be reimported.
+    time.Reset();
+    WriteToCache(config, new_index->path, *new_index, new_index->file_contents_);
+    perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
+
+    LOG_S(INFO) << "Emitting index result for " << new_index->path;
+    result.push_back(IndexProcess_Response::CreateIndexResult(new_index->path, perf));
+  }
+
+  return result;
+}
+
+std::vector<IndexProcess_Response> ParseFile(
+    Config* config,
+    clang::Index* index,
+    FileConsumer::SharedState* file_consumer_shared,
+    const Project::Entry& entry) {
+
+  CacheLoader cache_loader(config);
+
+  // Try to determine the original import file by loading the file from cache.
+  // This lets the user request an index on a header file, which clang will
+  // complain about if indexed by itself.
+  IndexFile* entry_cache = cache_loader.TryLoad(entry.filename);
+  std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
+  return DoParseFile(config, index, file_consumer_shared, &cache_loader, tu_path, entry.args);
+}
+
+
+
+void IndexThreadMain(Config* config, IQueryDbResponder* responder, Index_IndexProcess_Request_IndexQueue* queue, std::atomic<int>* busy, FileConsumer::SharedState* file_consumer_shared) {
+  while (true) {
+    IndexProcess_Request::IndexArgs request = queue->DequeuePlusAction([&]() {
+      ++(*busy);
+    });
+
+    clang::Index index(0, 0);
+    Project::Entry entry;
+    entry.filename = request.path;
+    entry.args = request.args;
+    std::vector<IndexProcess_Response> responses = ParseFile(config, &index, file_consumer_shared, entry);
+
+    for (const auto& response : responses)
+      responder->Write(response);
+
+    --(*busy);
+  }
+}
+
+
+struct IIndexerProcess {
+  virtual void Restart() = 0;
+  virtual void EnableAutoRestart() = 0;
+  virtual void SetConfig(const Config& config) = 0;
+  virtual void SendMessage(IndexProcess_Request message) = 0;
+};
+
+struct InProcessIndexer : IIndexerProcess {
+  ThreadedQueue<IndexProcess_Request>* messages_;
+  Index_IndexProcess_Request_IndexQueue queue_;
+  std::vector<std::thread> indexer_threads_;
+  std::atomic<int> num_busy_indexers_ = 0;
+  Config config_;
+  IQueryDbResponder* responder_;
+
+  // TODO: Remove FileConsumer::SharedState support from indexer. Indexer
+  // always generates every index since it doesn't take a huge amount of time.
+  // Then the querydb process decides if the new index is worth importing. At
+  // some point we can "blacklist" certain files we are definately not
+  // interested in indexing.
+  FileConsumer::SharedState file_consumer_shared_;
+
+  explicit InProcessIndexer(IQueryDbResponder* responder, ThreadedQueue<IndexProcess_Request>* messages)
+    : messages_(messages), responder_(responder) {}
+
+  void Restart() override {} // no-op
+  void EnableAutoRestart() override {} // no-op
+
+  void SetConfig(const Config& config) override {
+    SendMessage(IndexProcess_Request::CreateInitialize(config));
+  }
+
+  void SendMessage(IndexProcess_Request message) override {
+    switch (message.type) {
+      case IndexProcess_Request::Type::kInitialize: {
+        config_ = *message.initialize_args;
+        for (int i = 0; i < config_.indexerCount; ++i) {
+          indexer_threads_.push_back(std::thread([&, i]() {
+            SetCurrentThreadName("indexer" + std::to_string(i));
+            IndexThreadMain(&config_, responder_, &queue_, &num_busy_indexers_, &file_consumer_shared_);
+          }));
+        }
+        break;
+      }
+     case IndexProcess_Request::Type::kIndex: {
+        // Dispatch the request so one of the indexers will pick it up.
+        queue_.Enqueue(std::move(*message.index_args));
+        break;
+      }
+    }
+  }
+
+  bool TryWaitUntilIdle() {
+    // Wait until all indexers are done running and we have finished all of our work.
+    while (num_busy_indexers_ != 0 || !queue_.IsEmpty() || !messages_->IsEmpty()) {
+      // There are other messages that need to be processed; start the loop over.
+      if (!messages_->IsEmpty())
+        return false;
+      std::cerr << "!! Trying to exit indexer; there are still " + std::to_string(num_busy_indexers_) + " indexers running\n";
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    return true;
+  }
+};
+
+struct OutOfProcessIndexer : IIndexerProcess {
+  struct ProcessState {
+    std::unique_ptr<TinyProcessLib::Process> process;
+    std::string unhandled_output;
+  };
+  std::recursive_mutex processes_mutex_;
+  std::unordered_map<int, ProcessState> processes_;
+  int next_process_id_ = 0;
+
+  optional<Config> config_;
+
+  std::string bin_name_;
+  IndexProcess_ResponseQueue* response_queue_;
+
+  const int kMaxIndexRequestsUntilRestart = 25;
+  bool enable_auto_restart_ = false;
+  int number_of_index_requests_since_last_restart_ = 0;
+
+  OutOfProcessIndexer(const std::string& bin_name,
+                      IndexProcess_ResponseQueue* response_queue)
+    : bin_name_(bin_name), response_queue_(response_queue) {
+    CreateIndexProcess();
+  }
+
+  void Restart() override {
+    SendMessage(IndexProcess_Request::CreateQuit());
+    CreateIndexProcess();
+    number_of_index_requests_since_last_restart_ = 0;
+  }
+
+  void EnableAutoRestart() override {
+    enable_auto_restart_ = true;
+  }
+
+  void SetConfig(const Config& config) override {
+    assert(!config_);
+    config_ = config;
+
+    //std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
+    for (auto& process : processes_)
+      SendMessage(IndexProcess_Request::CreateInitialize(*config_));
+  }
+
+  void SendMessage(IndexProcess_Request message) override {
+    if (message.type == IndexProcess_Request::Type::kIndex &&
+        number_of_index_requests_since_last_restart_++ > kMaxIndexRequestsUntilRestart) {
+      Restart();
+    }
+
+    std::string content;
+
+    rapidjson::StringBuffer output;
+    rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
+
+    Reflect(writer, message);
+    std::cerr << "!!! WRITING TO INDEXER: " << output.GetString() << std::endl;
+
+    //std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
+    processes_[next_process_id_ - 1].process->write(std::to_string(output.GetSize()) + "\n\n");
+    processes_[next_process_id_ - 1].process->write(output.GetString(), output.GetSize());
+  }
+
+  void CreateIndexProcess() {
+    int process_id = next_process_id_++;
+    ProcessState state;
+    state.process = MakeUnique<TinyProcessLib::Process>(
+      bin_name_ + std::string(" --indexer"), ".",
+      [this, process_id](const char* bytes, size_t n) { OnStdOut(process_id, bytes, n); },
+      [this](const char* bytes, size_t n) { OnStdErr(bytes, n); },
+      true /*open_stdin*/);
+
+    //std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
+    processes_[process_id] = std::move(state);
+
+    if (config_)
+      SendMessage(IndexProcess_Request::CreateInitialize(*config_));
+  }
+
+  void ParseOutput(int process_id) {
+    //std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
+    while (true) {
+      size_t next_idx = 0;
+      optional<std::string> content = ReadContentFromSource([&]() -> optional<char> {
+        if (next_idx >= processes_[process_id].unhandled_output.size())
+          return nullopt;
+        return processes_[process_id].unhandled_output[next_idx++];
+      });
+      std::cerr << "!! querydb failed to read input; next_idx=" << next_idx << std::endl;
+      if (!content)
+        return;
+      processes_[process_id].unhandled_output = processes_[process_id].unhandled_output.substr(next_idx);
+
+      std::cerr << "!! querydb got input " << *content << " from process " << process_id << std::endl;
+
+      // Parse content.
+      rapidjson::Document document;
+      document.Parse(content->c_str(), content->size());
+      assert(!document.HasParseError());
+
+      // Deserialize content.
+      IndexProcess_Response message;
+      Reflect(document, message);
+
+      // Cleanup state from our side if the process exits.
+      if (message.type == IndexProcess_Response::Type::kShutdown) {
+        std::cerr << "!!! Got process shutdown message !!!\n";
+        // Delete the process on a separate thread, since a thread cannot destroy itself.
+        //std::async([&, process_id]() {
+        //  std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
+        //  processes_.erase(processes_.find(process_id));
+        //});
+        return;
+      }
+
+      // Push message to queue.
+      response_queue_->Enqueue(std::move(*message.index_result_args));
+    }
+  }
+
+  void OnStdOut(int process_id, const char* bytes, size_t n) {
+    std::string content;
+    for (size_t i = 0; i < n; ++i)
+      content += bytes[i];
+    std::cerr << "!!! ON STDOUT for process " + std::to_string(process_id) + " with content " + content + "\n";
+
+    {
+      //std::lock_guard<std::recursive_mutex> processes_lock(processes_mutex_);
+      for (size_t i = 0; i < n; ++i)
+        processes_[process_id].unhandled_output += bytes[i];
+    }
+
+    std::cerr << "!&&! Begin ParseOutput\n";
+    ParseOutput(process_id);
+    std::cerr << "!&&! End ParseOutput\n";
+  }
+
+  void OnStdErr(const char* bytes, size_t n) {
+    std::string content = "OOP [indexer]: ";
+    for (size_t i = 0; i < n; ++i)
+      content += bytes[i];
+    std::cerr << content;
+  }
+};
+
+constexpr const char* kIpcBufferName = "CqueryIpc";
+constexpr size_t kIpcBufferSize = 1024 * 8;
+
+// Main function for the out-of-process indexer.
+void IndexProcessMain() {
+  // TODO
+  // querydb process is responsible for owning the buffer.
+  //MessageQueue queue(Buffer::CreateSharedBuffer(kIpcBufferName, kIpcBufferSize), true /*buffer_has_data*/);
+
+  std::cerr << "Indexer process starting\n";
+
+  OutOfProcessQueryDbResponder responder;
+  ThreadedQueue<IndexProcess_Request> messages;
+  InProcessIndexer indexer(&responder, &messages);
+
+  std::thread stdin_reader([&]() {
+    SetCurrentThreadName("IndexStdinReader");
+    while (true)
+      PumpIndexThreadStdioReaderMain(&messages);
+  });
+
+  SetCurrentThreadName("IndexMain");
+  while (true) {
+    IndexProcess_Request message = messages.Dequeue();
+    std::cerr << "!! Got message.type=" + std::to_string((int)message.type) + "\n";
+
+    if (message.type == IndexProcess_Request::Type::kInitialize)
+      indexer.SetConfig(*message.initialize_args);
+
+    if (message.type == IndexProcess_Request::Type::kQuit) {
+      if (!indexer.TryWaitUntilIdle()) {
+        // Process other messages.
+        assert(!messages.IsEmpty());
+        messages.Enqueue(std::move(message));
+        continue;
+      }
+
+      responder.Write(IndexProcess_Response::CreateShutdown());
+      assert(messages.IsEmpty());
+      exit(0);
+    }
+
+    indexer.SendMessage(message);
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1178,11 +1569,13 @@ void IndexMain(
 bool QueryDbMainLoop(
     Config* config,
     QueryDatabase* db,
+    CacheManager* db_cache,
     MultiQueueWaiter* waiter,
-    Index_DoIndexQueue* queue_do_index,
+    IndexProcess_ResponseQueue* queue_index_response,
     Index_DoIdMapQueue* queue_do_id_map,
     Index_OnIdMappedQueue* queue_on_id_mapped,
     Index_OnIndexedQueue* queue_on_indexed,
+    IIndexerProcess* indexer_process,
     Project* project,
     FileConsumer::SharedState* file_consumer_shared,
     WorkingFiles* working_files,
@@ -1249,15 +1642,19 @@ bool QueryDbMainLoop(
           EnsureEndsInSlash(config->projectRoot);
 
           // Start indexer threads.
-          int indexer_count = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
-          if (config->indexerCount > 0)
-            indexer_count = config->indexerCount;
-          LOG_S(INFO) << "[querydb] Starting " << indexer_count << " indexers";
-          for (int i = 0; i < indexer_count; ++i) {
+          // Set default indexer count if not specified.
+          if (config->indexerCount == 0) {
+            config->indexerCount = std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
+          }
+          std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
+          for (int i = 0; i < config->indexerCount; ++i) {
             new std::thread([&]() {
-              IndexMain(config, file_consumer_shared, project, working_files, waiter, queue_do_index, queue_do_id_map, queue_on_id_mapped, queue_on_indexed);
+              IndexMain(config, file_consumer_shared, project, working_files, waiter, queue_index_response, queue_do_id_map, queue_on_id_mapped, queue_on_indexed);
             });
           }
+
+          // Send config to indexer process.
+          indexer_process->SetConfig(*config);
 
           Timer time;
 
@@ -1273,8 +1670,12 @@ bool QueryDbMainLoop(
             //std::cerr << "[" << i << "/" << (project->entries.size() - 1)
             //  << "] Dispatching index request for file " << entry.filename
             //  << std::endl;
-            queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::ImportThenParse, entry, nullopt, false /*is_interactive*/));
+            indexer_process->SendMessage(IndexProcess_Request::CreateIndex(entry.filename, entry.args));
           });
+          indexer_process->Restart();
+          indexer_process->EnableAutoRestart();
+
+          // We need to support multiple concurrent index processes.
           time.ResetAndPrint("[perf] Dispatched initial index requests");
         }
 
@@ -1334,7 +1735,7 @@ bool QueryDbMainLoop(
         project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
           LOG_S(INFO) << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename;
-          queue_do_index->Enqueue(Index_DoIndex(Index_DoIndex::Type::Freshen, entry, nullopt, false /*is_interactive*/));
+          indexer_process->SendMessage(IndexProcess_Request::CreateIndex(entry.filename, entry.args));
         });
         break;
       }
@@ -1546,7 +1947,8 @@ bool QueryDbMainLoop(
 
         include_complete->AddFile(working_file->filename);
         clang_complete->NotifyView(path);
-        PriorityEnqueueFileForIndex(db, project, queue_do_index, working_file, path);
+        // TODO/FIXME
+        //PriorityEnqueueFileForIndex(db, project, queue_do_index, working_file, path);
 
         break;
       }
@@ -1589,9 +1991,9 @@ bool QueryDbMainLoop(
         //      zero we don't slow down fast-path. if non-zero we acquire
         //      mutex and check to see if we should skip the current request.
         //      if so, ignore that index response.
-        WorkingFile* working_file = working_files->GetFileByFilename(path);
-        if (working_file)
-          PriorityEnqueueFileForIndex(db, project, queue_do_index, working_file, path);
+        // TODO: send as priority request
+        Project::Entry entry = project->FindCompilationEntryForFile(path);
+        indexer_process->SendMessage(IndexProcess_Request::CreateIndex(entry.filename, entry.args));
 
         clang_complete->NotifySave(path);
 
@@ -2462,17 +2864,27 @@ bool QueryDbMainLoop(
 
     did_work = true;
 
-    Index_OnIdMapped response(request->indexed_content, request->perf, request->is_interactive);
+    Index_OnIdMapped response(request->perf, request->is_interactive);
     Timer time;
 
-    if (request->previous) {
-      response.previous_id_map = MakeUnique<IdMap>(db, request->previous->id_cache);
-      response.previous_index = std::move(request->previous);
+    assert(request->current);
+    std::unique_ptr<CacheManager::Entry> previous;
+    CacheManager::Entry* current = nullptr;
+    {
+      auto id_map = MakeUnique<IdMap>(db, request->current->id_cache);
+      std::unique_ptr<CacheManager::Entry> current0 =
+          MakeUnique<CacheManager::Entry>(std::move(request->current),
+                                          std::move(id_map));
+      current = current0.get();
+      previous = db_cache->UpdateAndReturnOldFile(std::move(current0));
     }
 
-    assert(request->current);
-    response.current_id_map = MakeUnique<IdMap>(db, request->current->id_cache);
-    response.current_index = std::move(request->current);
+    if (previous) {
+      response.previous_id_map = std::move(previous->ids);
+      response.previous_index = std::move(previous->file);
+    }
+    response.current_id_map = current->ids.get();
+    response.current_index = current->file.get();
     response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
 
     queue_on_id_mapped->Enqueue(std::move(response));
@@ -2488,24 +2900,18 @@ bool QueryDbMainLoop(
     Timer time;
 
     for (auto& updated_file : response->update.files_def_update) {
-      // TODO: We're reading a file on querydb thread. This is slow!! If it is a
-      // problem in practice we need to create a file reader queue, dispatch the
-      // read to it, get a response, and apply the new index then.
+      // TODO: We're reading a file on querydb thread. This is slow!! If this
+      // a real problem in practice we can load the file in a previous stage.
+      // It should be fine though because we only do it if the user has the
+      // file open.
       WorkingFile* working_file = working_files->GetFileByFilename(updated_file.path);
       if (working_file) {
-        auto it = response->indexed_content.find(updated_file.path);
-        if (it != response->indexed_content.end()) {
-          working_file->SetIndexContent(it->second);
-          time.ResetAndPrint("[querydb] Update WorkingFile index contents (via in-memory buffer) for " + updated_file.path);
-        }
-        else {
-          optional<std::string> cached_file_contents = LoadCachedFileContents(config, updated_file.path);
-          if (cached_file_contents)
-            working_file->SetIndexContent(*cached_file_contents);
-          else
-            working_file->SetIndexContent(working_file->buffer_content);
-          time.ResetAndPrint("[querydb] Update WorkingFile index contents (via disk load) for " + updated_file.path);
-        }
+        optional<std::string> cached_file_contents = LoadCachedFileContents(config, updated_file.path);
+        if (cached_file_contents)
+          working_file->SetIndexContent(*cached_file_contents);
+        else
+          working_file->SetIndexContent(working_file->buffer_content);
+        time.ResetAndPrint("Update WorkingFile index contents (via disk load) for " + updated_file.path);
       }
     }
 
@@ -2516,9 +2922,9 @@ bool QueryDbMainLoop(
   return did_work;
 }
 
-void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
+void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* waiter) {
   // Create queues.
-  Index_DoIndexQueue queue_do_index(waiter);
+  IndexProcess_ResponseQueue queue_process_response(waiter);
   Index_DoIdMapQueue queue_do_id_map(waiter);
   Index_OnIdMappedQueue queue_on_id_mapped(waiter);
   Index_OnIndexedQueue queue_on_indexed(waiter);
@@ -2526,22 +2932,29 @@ void QueryDbMain(Config* config, MultiQueueWaiter* waiter) {
   Project project;
   WorkingFiles working_files;
   ClangCompleteManager clang_complete(
-      config, &project, &working_files,
-      std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1, std::placeholders::_2));
+    config, &project, &working_files,
+    std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1, std::placeholders::_2));
   IncludeComplete include_complete(config, &project);
   auto global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto signature_cache = MakeUnique<CodeCompleteCache>();
   FileConsumer::SharedState file_consumer_shared;
 
+  InProcessQueryDbResponder responder(&queue_process_response);
+  ThreadedQueue<IndexProcess_Request> queue_process_request;
+  auto indexer = MakeUnique<InProcessIndexer>(&responder, &queue_process_request);
+  //auto indexer = MakeUnique<OutOfProcessIndexer>(bin_name, &queue_process_response);
+
   // Run query db main loop.
   SetCurrentThreadName("querydb");
   QueryDatabase db;
+  CacheManager db_cache;
   while (true) {
     bool did_work = QueryDbMainLoop(
-        config, &db, waiter, &queue_do_index, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed,
-        &project, &file_consumer_shared, &working_files,
-        &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
+      config, &db, &db_cache, waiter, &queue_process_response, &queue_do_id_map, &queue_on_id_mapped, &queue_on_indexed,
+      indexer.get(),
+      &project, &file_consumer_shared, &working_files,
+      &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
     if (!did_work) {
       IpcManager* ipc = IpcManager::instance();
       waiter->Wait({
@@ -2768,7 +3181,7 @@ void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaite
   }
 }
 
-void LanguageServerMain(Config* config, MultiQueueWaiter* waiter) {
+void LanguageServerMain(const std::string& bin_name, Config* config, MultiQueueWaiter* waiter) {
   std::unordered_map<IpcId, Timer> request_times;
 
   // Start stdin reader. Reading from stdin is a blocking operation so this
@@ -2779,7 +3192,7 @@ void LanguageServerMain(Config* config, MultiQueueWaiter* waiter) {
 
   // Start querydb thread. querydb will start indexer threads as needed.
   new std::thread([&]() {
-    QueryDbMain(config, waiter);
+    QueryDbMain(bin_name, config, waiter);
   });
 
   // We run a dedicated thread for writing to stdout because there can be an
@@ -2836,6 +3249,11 @@ void LanguageServerMain(Config* config, MultiQueueWaiter* waiter) {
 
 
 
+// What's the plan?
+//
+// - start up a separate process for indexing
+// - send file paths to it to index raw compile_commands.json, it can reparse as needed
+// -
 
 int main(int argc, char** argv) {
   loguru::init(argc, argv);
@@ -2878,10 +3296,14 @@ int main(int argc, char** argv) {
     std::cin.get();
     return 0;
   }
+  else if (HasOption(options, "--indexer")) {
+    IndexProcessMain();
+    return 0;
+  }
   else if (HasOption(options, "--language-server")) {
     //std::cerr << "Running language server" << std::endl;
     Config config;
-    LanguageServerMain(&config, &waiter);
+    LanguageServerMain(argv[0], &config, &waiter);
     return 0;
   }
   else {

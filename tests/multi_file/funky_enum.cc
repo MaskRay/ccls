@@ -8,6 +8,7 @@ enum Foo {
 
 OUTPUT: funky_enum.h
 {
+  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/funky_enum.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",

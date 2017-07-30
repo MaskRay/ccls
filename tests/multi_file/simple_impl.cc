@@ -7,6 +7,7 @@ void impl() {
 /*
 OUTPUT: simple_header.h
 {
+  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/simple_impl.cc"],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@header#",

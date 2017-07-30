@@ -7,4 +7,7 @@
   "cquery.whitelist": [
     //".*platform.*.cc"
   ],
+  "cquery.launch.command": "cquery.exe",
+  "cquery.launch.workingDirectory": "C:/Users/jacob/Desktop/cquery/x64/Release",
+  "cquery.launch.autoRestart": false
 }

@@ -7,6 +7,7 @@ void Impl() {
 /*
 OUTPUT: header.h
 {
+  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/impl.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@S@Base",

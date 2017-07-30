@@ -482,6 +482,8 @@ struct IndexFile {
 
   // Diagnostics found when indexing this file. Not serialized.
   NonElidedVector<lsDiagnostic> diagnostics_;
+  // File contents at the time of index. Not serialized.
+  std::string file_contents_;
 
   IndexFile(const std::string& path);
 
@@ -498,6 +500,13 @@ struct IndexFile {
   std::string ToString();
 };
 
+struct FileContents {
+  std::string path;
+  std::string content;
+
+  FileContents(const std::string& path, const std::string& content);
+};
+
 // |import_file| is the cc file which is what gets passed to clang.
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a reparse.
@@ -505,8 +514,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
-    const std::string& file_contents_path,
-    const optional<std::string>& file_contents,
+    std::vector<FileContents> file_contents,
     PerformanceImportFile* perf,
     clang::Index* index,
     bool dump_ast = false);

@@ -4,6 +4,7 @@
 
 #include <optional.h>
 #include <doctest/doctest.h>
+#include <loguru.hpp>
 
 #include <cassert>
 #include <cstdint>
@@ -304,6 +305,7 @@ QueryVarId GetQueryVarIdFromUsr(QueryDatabase* query_db, const Usr& usr) {
 
 IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
   : local_ids(local_ids) {
+  LOG_S(INFO) << "Creating IdMap for " << local_ids.primary_file;
   primary_file = GetQueryFileIdFromPath(query_db, local_ids.primary_file);
 
   cached_type_ids_.resize(local_ids.type_id_to_usr.size());

@@ -9,6 +9,8 @@
 #include "serializer.h"
 #include "timer.h"
 
+#include <loguru.hpp>
+
 #include <algorithm>
 #include <chrono>
 
@@ -89,6 +91,11 @@ struct NamespaceHelper {
 };
 
 struct IndexParam {
+  std::unordered_set<CXFile> seen_cx_files;
+  std::vector<std::string> seen_files;
+  std::unordered_map<std::string, std::string> file_contents;
+  std::unordered_map<std::string, int64_t> file_modification_times;
+
   // Only use this when strictly needed (ie, primary translation unit is
   // needed). Most logic should get the IndexFile instance via
   // |file_consumer|.
@@ -109,11 +116,28 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   bool is_first_ownership = false;
   IndexFile* db = param->file_consumer->TryConsumeFile(file, &is_first_ownership);
 
-  // Mark dependency in primary file. If primary_file is null that means we're
-  // doing a re-index in which case the dependency has already been established
-  // in a previous index run.
-  if (is_first_ownership && param->primary_file)
-    param->primary_file->dependencies.push_back(db->path);
+  // If this is the first time we have seen the file (ignoring if we are
+  // generating an index for it):
+  if (param->seen_cx_files.insert(file).second) {
+    std::string file_name = FileName(file);
+
+    // Add to all files we have seen so we can generate proper dependency
+    // graph.
+    param->seen_files.push_back(file_name);
+
+    // Set modification time.
+    param->file_modification_times[file_name] = GetLastModificationTime(file_name);
+
+    // Capture file contents in |param->file_contents| if it was not specified
+    // at the start of indexing.
+    if (db && param->file_contents.find(file_name) == param->file_contents.end()) {
+      optional<std::string> content = ReadContent(file_name);
+      if (content)
+        param->file_contents[file_name] = *content;
+      else
+        LOG_S(ERROR) << "[indexer] Failed to read file content for " << file_name;
+    }
+  }
 
   if (is_first_ownership) {
     // Report skipped source range list.
@@ -1532,13 +1556,13 @@ void indexEntityReference(CXClientData client_data,
 
 
 
+FileContents::FileContents(const std::string& path, const std::string& content) : path(path), content(content) {}
 
 std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config, FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
-    const std::string& file_contents_path,
-    const optional<std::string>& file_contents,
+    std::vector<FileContents> file_contents,
     PerformanceImportFile* perf,
     clang::Index* index,
     bool dump_ast) {
@@ -1550,17 +1574,15 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   Timer timer;
 
-  //clang::Index index(0 /*excludeDeclarationsFromPCH*/,
-  //                   0 /*displayDiagnostics*/);
-
   std::vector<CXUnsavedFile> unsaved_files;
-  if (file_contents) {
+  for (const FileContents& contents : file_contents) {
     CXUnsavedFile unsaved;
-    unsaved.Filename = file_contents_path.c_str();
-    unsaved.Contents = file_contents->c_str();
-    unsaved.Length = (unsigned long)file_contents->size();
+    unsaved.Filename = contents.path.c_str();
+    unsaved.Contents = contents.content.c_str();
+    unsaved.Length = (unsigned long)contents.content.size();
     unsaved_files.push_back(unsaved);
   }
+
   clang::TranslationUnit tu(index, file, args, unsaved_files, CXTranslationUnit_KeepGoing | CXTranslationUnit_DetailedPreprocessingRecord);
   if (tu.did_fail) {
     std::cerr << "!! Failed creating translation unit for " << file << std::endl;
@@ -1590,6 +1612,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
                              CXIndexOpt_IndexFunctionLocalSymbols | CXIndexOpt_SkipParsedBodiesInSession | CXIndexOpt_IndexImplicitTemplateInstantiations,
                              tu.cx_tu);
+
   clang_IndexAction_dispose(index_action);
   //std::cerr << "!! [END] Indexing " << file << std::endl;
 
@@ -1598,10 +1621,25 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
   auto result = param.file_consumer->TakeLocalState();
-  for (auto& entry : result) {
-    entry->last_modification_time = GetLastModificationTime(entry->path);
+  for (std::unique_ptr<IndexFile>& entry : result) {
     entry->import_file = file;
     entry->args = args;
+
+    // Update file contents and modification time.
+    entry->file_contents_ = param.file_contents[entry->path];
+    entry->last_modification_time = param.file_modification_times[entry->path];
+
+    // Update dependencies for the file. Do not include the file in its own
+    // dependency set.
+    entry->dependencies = param.seen_files;
+    entry->dependencies.erase(std::find(
+        entry->dependencies.begin(), entry->dependencies.end(), entry->path));
+
+    // Make sure we are using correct file contents.
+    for (const FileContents& contents : file_contents) {
+      if (entry->path == contents.path)
+        entry->file_contents_ = contents.content;
+    }
   }
 
   return result;
