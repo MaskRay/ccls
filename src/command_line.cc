@@ -2949,9 +2949,8 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
       &project, &file_consumer_shared, &working_files,
       &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
     if (!did_work) {
-      IpcManager* ipc = IpcManager::instance();
       waiter->Wait({
-        ipc->threaded_queue_for_server_.get(),
+        IpcManager::instance()->threaded_queue_for_server_.get(),
         &queue.do_id_map,
         &queue.on_indexed
       });
