@@ -917,6 +917,7 @@ bool IndexMain_DoCreateIndexUpdate(
   IdMap* previous_id_map = nullptr;
   IndexFile* previous_index = nullptr;
   if (response->previous) {
+    LOG_S(INFO) << "Creating delta update for " << response->previous->file->path;
     previous_id_map = response->previous->ids.get();
     previous_index = response->previous->file.get();
   }
