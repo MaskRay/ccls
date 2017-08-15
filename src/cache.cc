@@ -4,6 +4,8 @@
 #include "platform.h"
 #include "language_server_api.h"
 
+#include <loguru/loguru.hpp>
+
 #include <algorithm>
 
 namespace {
@@ -30,7 +32,9 @@ std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
   if (!file_content)
     return nullptr;
 
-  return Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
+  auto result = Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
+  result->is_loaded_from_cache_ = true;
+  return result;
 }
 
 optional<std::string> LoadCachedFileContents(Config* config,
@@ -42,25 +46,21 @@ optional<std::string> LoadCachedFileContents(Config* config,
 }
 
 void WriteToCache(Config* config,
-                  const std::string& filename,
-                  IndexFile& file,
-                  const optional<std::string>& indexed_file_content) {
+                  IndexFile& file) {
   if (!config->enableCacheWrite)
     return;
 
   std::string cache_basename =
-      GetCachedBaseFileName(config->cacheDirectory, filename);
+      GetCachedBaseFileName(config->cacheDirectory, file.path);
 
-  if (indexed_file_content) {
-    std::ofstream cache_content;
-    cache_content.open(cache_basename);
-    assert(cache_content.good());
-    cache_content << *indexed_file_content;
-    cache_content.close();
-  }
-  else {
-    CopyFileTo(cache_basename, filename);
-  }
+  LOG_IF_S(ERROR, file.file_contents_.empty()) << "Writing " << file.path << " to cache but it has no contents";
+
+  assert(!file.file_contents_.empty());
+  std::ofstream cache_content;
+  cache_content.open(cache_basename);
+  assert(cache_content.good());
+  cache_content << file.file_contents_;
+  cache_content.close();
 
   std::string indexed_content = Serialize(file);
   std::ofstream cache;

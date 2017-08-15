@@ -480,6 +480,8 @@ struct IndexFile {
   std::vector<IndexFunc> funcs;
   std::vector<IndexVar> vars;
 
+  // True if this file was loaded from cache. Not serialized.
+  bool is_loaded_from_cache_ = false;
   // Diagnostics found when indexing this file. Not serialized.
   NonElidedVector<lsDiagnostic> diagnostics_;
   // File contents at the time of index. Not serialized.
@@ -498,7 +500,6 @@ struct IndexFile {
   IndexVar* Resolve(IndexVarId id);
 
   std::string ToString();
-  void ClearLargeState();
 };
 
 struct FileContents {

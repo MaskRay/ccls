@@ -17,6 +17,4 @@ optional<std::string> LoadCachedFileContents(Config* config,
                                              const std::string& filename);
 
 void WriteToCache(Config* config,
-                  const std::string& filename,
-                  IndexFile& file,
-                  const optional<std::string>& indexed_file_contents);
+                  IndexFile& file);

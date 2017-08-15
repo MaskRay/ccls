@@ -356,10 +356,6 @@ std::string IndexFile::ToString() {
   return Serialize(*this);
 }
 
-void IndexFile::ClearLargeState() {
-  file_contents_ = "";
-}
-
 IndexType::IndexType(IndexTypeId id, const std::string& usr)
     : def(usr), id(id) {
   assert(usr.size() > 0);

@@ -583,6 +583,7 @@ struct Index_OnIdMapped {
 
   std::unique_ptr<File> previous;
   std::unique_ptr<File> current;
+
   PerformanceImportFile perf;
   bool is_interactive;
 
@@ -602,8 +603,6 @@ struct Index_OnIndexed {
       PerformanceImportFile perf)
     : update(update), perf(perf) {}
 };
-
-
 
 
 
@@ -896,11 +895,6 @@ std::vector<Index_DoIdMap> DoParseFile(
     // Note: we are reusing the parent perf.
     perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
 
-    // Write new cache to disk. Add file to list of paths that need to be reimported.
-    time.Reset();
-    WriteToCache(config, new_index->path, *new_index, new_index->file_contents_);
-    perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
-
     // TODO/FIXME: real is_interactive
     bool is_interactive = false;
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
@@ -952,6 +946,7 @@ bool IndexMain_DoParse(
 }
 
 bool IndexMain_DoCreateIndexUpdate(
+    Config* config,
     QueueManager* queue) {
   // TODO: Index_OnIdMapped dtor is failing because it seems that its contents have already been destroyed.
   optional<Index_OnIdMapped> response = queue->on_id_mapped.TryDequeue();
@@ -968,10 +963,18 @@ bool IndexMain_DoCreateIndexUpdate(
     previous_index = response->previous->file.get();
   }
 
+  // Build delta update.
   IndexUpdate update = IndexUpdate::CreateDelta(
       previous_id_map, response->current->ids.get(),
       previous_index, response->current->file.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
+
+  // Write new cache to disk if it is a fresh index.
+  if (!response->current->file->is_loaded_from_cache_) {
+    time.Reset();
+    WriteToCache(config, *response->current->file);
+    response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
+  }
 
 #if false
 #define PRINT_SECTION(name) \
@@ -1061,8 +1064,8 @@ void IndexMain(Config* config,
     bool did_parse = IndexMain_DoParse(config, queue, file_consumer_shared, &index);
 
     bool did_create_update =
-        IndexMain_DoCreateIndexUpdate(queue);
-    
+        IndexMain_DoCreateIndexUpdate(config, queue);
+
     bool did_load_previous = IndexMain_LoadPreviousIndex(config, queue);
 
     // Nothing to index and no index updates to create, so join some already
