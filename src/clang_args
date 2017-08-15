@@ -2,6 +2,9 @@
 -xc++
 -std=c++11
 
+# Loguru
+-DLOGURU_WITH_STREAMS=1
+
 # Includes
 # Windows
 -IC:/Users/jacob/Desktop/cquery/third_party
