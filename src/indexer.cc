@@ -128,7 +128,10 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
       param->seen_files.push_back(file_name);
 
       // Set modification time.
-      param->file_modification_times[file_name] = GetLastModificationTime(file_name);
+      optional<int64_t> modification_time = GetLastModificationTime(file_name);
+      LOG_IF_S(ERROR, !modification_time) << "Failed fetching modification time for " << file_name;
+      if (modification_time)
+        param->file_modification_times[file_name] = *modification_time;
 
       // Capture file contents in |param->file_contents| if it was not specified
       // at the start of indexing.

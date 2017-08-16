@@ -1,8 +1,13 @@
 #pragma once
 
+#include <optional.h>
+
 #include <memory>
 #include <string>
 #include <vector>
+
+using std::experimental::optional;
+using std::experimental::nullopt;
 
 struct PlatformMutex {
   virtual ~PlatformMutex();
@@ -37,7 +42,7 @@ bool TryMakeDirectory(const std::string& absolute_path);
 
 void SetCurrentThreadName(const std::string& thread_name);
 
-int64_t GetLastModificationTime(const std::string& absolute_path);
+optional<int64_t> GetLastModificationTime(const std::string& absolute_path);
 
 void MoveFileTo(const std::string& destination, const std::string& source);
 void CopyFileTo(const std::string& destination, const std::string& source);

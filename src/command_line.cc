@@ -818,6 +818,12 @@ struct IndexManager {
 
 //}  // namespace
 
+enum class FileParseState {
+  NeedsParse,
+  DoesNotNeedParse,
+  BadFile
+};
+
 std::vector<Index_DoIdMap> DoParseFile(
   Config* config,
   clang::Index* index,
@@ -832,22 +838,31 @@ std::vector<Index_DoIdMap> DoParseFile(
   if (previous_index) {
     // If none of the dependencies have changed, skip parsing and just load from cache.
     auto file_needs_parse = [&](const std::string& path) {
-      int64_t modification_timestamp = GetLastModificationTime(path);
+      optional<int64_t> modification_timestamp = GetLastModificationTime(path);
+      if (!modification_timestamp)
+        return FileParseState::BadFile;
+
       optional<int64_t> last_cached_modification = timestamp_manager->GetLastCachedModificationTime(cache_loader, path);
 
       if (!last_cached_modification || modification_timestamp != *last_cached_modification) {
         file_consumer_shared->Reset(path);
-        return true;
+        return FileParseState::NeedsParse;
       }
-      return false;
+      return FileParseState::DoesNotNeedParse;
     };
 
     // Check timestamps and update |file_consumer_shared|.
-    bool needs_reparse = file_needs_parse(path);
+    bool needs_reparse = false;
+    FileParseState path_state = file_needs_parse(path);
+    if (path_state == FileParseState::BadFile)
+      return result;
+    if (path_state == FileParseState::NeedsParse)
+      needs_reparse = true;
+
     for (const std::string& dependency : previous_index->dependencies) {
       assert(!dependency.empty());
 
-      if (file_needs_parse(dependency)) {
+      if (file_needs_parse(dependency) == FileParseState::NeedsParse) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency;
         needs_reparse = true;
         // SUBTLE: Do not break here, as |file_consumer_shared| is updated
@@ -890,6 +905,7 @@ std::vector<Index_DoIdMap> DoParseFile(
   // TODO: We might be able to optimize perf by only copying for files in
   //       working_files. We can pass that same set of files to the indexer as
   //       well. We then default to a fast file-copy if not in working set.
+  bool loaded_primary = false;
   std::vector<FileContents> file_contents;
   for (const auto& it : cache_loader->caches) {
     const std::unique_ptr<IndexFile>& index = it.second;
@@ -900,6 +916,16 @@ std::vector<Index_DoIdMap> DoParseFile(
       continue;
     }
     file_contents.push_back(FileContents(index->path, *index_content));
+
+    loaded_primary = loaded_primary || index->path == path;
+  }
+  if (!loaded_primary) {
+    optional<std::string> content = ReadContent(path);
+    if (!content) {
+      LOG_S(ERROR) << "Skipping index (file cannot be found): " << path;
+      return result;
+    }
+    file_contents.push_back(FileContents(path, *content));
   }
 
   PerformanceImportFile perf;
