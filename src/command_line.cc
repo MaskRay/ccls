@@ -763,6 +763,35 @@ struct CacheLoader {
   Config* config_;
 };
 
+// Caches timestamps of cc files so we can avoid a filesystem reads. This is
+// important for import perf, as during dependency checking the same files are
+// checked over and over again if they are common headers.
+struct TimestampManager {
+  optional<int64_t> GetLastCachedModificationTime(CacheLoader* cache_loader, const std::string& path) {
+    {
+      std::lock_guard<std::mutex> guard(mutex_);
+      auto it = timestamps_.find(path);
+      if (it != timestamps_.end())
+        return it->second;
+    }
+    IndexFile* file = cache_loader->TryLoad(path);
+    if (!file)
+      return nullopt;
+
+    UpdateCachedModificationTime(path, file->last_modification_time);
+    return file->last_modification_time;
+  }
+
+  void UpdateCachedModificationTime(const std::string& path, int64_t timestamp) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    timestamps_[path] = timestamp;
+  }
+
+  std::mutex mutex_; // TODO: use std::shared_mutex so we can have multiple readers.
+  std::unordered_map<std::string, int64_t> timestamps_;
+};
+
+
 struct IndexManager {
   std::unordered_set<std::string> files_being_indexed_;
   std::mutex mutex_;
@@ -793,6 +822,7 @@ std::vector<Index_DoIdMap> DoParseFile(
   Config* config,
   clang::Index* index,
   FileConsumer::SharedState* file_consumer_shared,
+  TimestampManager* timestamp_manager,
   CacheLoader* cache_loader,
   const std::string& path,
   const std::vector<std::string>& args) {
@@ -803,15 +833,9 @@ std::vector<Index_DoIdMap> DoParseFile(
     // If none of the dependencies have changed, skip parsing and just load from cache.
     auto file_needs_parse = [&](const std::string& path) {
       int64_t modification_timestamp = GetLastModificationTime(path);
-      // PERF: We don't need to fully deserialize the file from cache here; we
-      // need to load it into memory but after that we can just check the
-      // timestamp. We may want to actually introduce a third file, so we have
-      // foo.cc, foo.cc.index.json, and foo.cc.meta.json and store the
-      // timestamp in foo.cc.meta.json. We may also want to begin writing
-      // to separate folders so things are not all in one folder (ie, take the
-      // first 5 chars as the folder name).
-      IndexFile* index = cache_loader->TryLoad(path);
-      if (!index || modification_timestamp != index->last_modification_time) {
+      optional<int64_t> last_cached_modification = timestamp_manager->GetLastCachedModificationTime(cache_loader, path);
+
+      if (!last_cached_modification || modification_timestamp != *last_cached_modification) {
         file_consumer_shared->Reset(path);
         return true;
       }
@@ -915,6 +939,7 @@ std::vector<Index_DoIdMap> ParseFile(
     Config* config,
     clang::Index* index,
     FileConsumer::SharedState* file_consumer_shared,
+    TimestampManager* timestamp_manager,
     const Project::Entry& entry) {
 
   CacheLoader cache_loader(config);
@@ -924,13 +949,14 @@ std::vector<Index_DoIdMap> ParseFile(
   // complain about if indexed by itself.
   IndexFile* entry_cache = cache_loader.TryLoad(entry.filename);
   std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
-  return DoParseFile(config, index, file_consumer_shared, &cache_loader, tu_path, entry.args);
+  return DoParseFile(config, index, file_consumer_shared, timestamp_manager, &cache_loader, tu_path, entry.args);
 }
 
 bool IndexMain_DoParse(
     Config* config,
     QueueManager* queue,
     FileConsumer::SharedState* file_consumer_shared,
+    TimestampManager* timestamp_manager,
     clang::Index* index) {
 
   optional<Index_Request> request = queue->index_request.TryDequeue();
@@ -940,7 +966,7 @@ bool IndexMain_DoParse(
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  std::vector<Index_DoIdMap> responses = ParseFile(config, index, file_consumer_shared, entry);
+  std::vector<Index_DoIdMap> responses = ParseFile(config, index, file_consumer_shared, timestamp_manager, entry);
 
   // TODO/FIXME: bulk enqueue so we don't lock so many times
   for (Index_DoIdMap& response : responses)
@@ -951,7 +977,8 @@ bool IndexMain_DoParse(
 
 bool IndexMain_DoCreateIndexUpdate(
     Config* config,
-    QueueManager* queue) {
+    QueueManager* queue,
+    TimestampManager* timestamp_manager) {
   // TODO: Index_OnIdMapped dtor is failing because it seems that its contents have already been destroyed.
   optional<Index_OnIdMapped> response = queue->on_id_mapped.TryDequeue();
   if (!response)
@@ -978,6 +1005,8 @@ bool IndexMain_DoCreateIndexUpdate(
     time.Reset();
     WriteToCache(config, *response->current->file);
     response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
+
+    timestamp_manager->UpdateCachedModificationTime(response->current->file->path, response->current->file->last_modification_time);
   }
 
 #if false
@@ -1045,6 +1074,7 @@ bool IndexMergeIndexUpdates(QueueManager* queue) {
 
 void IndexMain(Config* config,
                FileConsumer::SharedState* file_consumer_shared,
+               TimestampManager* timestamp_manager,
                Project* project,
                WorkingFiles* working_files,
                MultiQueueWaiter* waiter,
@@ -1064,10 +1094,10 @@ void IndexMain(Config* config,
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_parse = IndexMain_DoParse(config, queue, file_consumer_shared, &index);
+    bool did_parse = IndexMain_DoParse(config, queue, file_consumer_shared, timestamp_manager, &index);
 
     bool did_create_update =
-        IndexMain_DoCreateIndexUpdate(config, queue);
+        IndexMain_DoCreateIndexUpdate(config, queue, timestamp_manager);
 
     bool did_load_previous = IndexMain_LoadPreviousIndex(config, queue);
 
@@ -1150,8 +1180,9 @@ bool QueryDb_ImportMain(Config* config, QueryDatabase* db, QueueManager* queue, 
       }
     }
 
+    time.Reset();
     db->ApplyIndexUpdate(&response->update);
-    //time.ResetAndPrint("[querydb] Applying index update");
+    time.ResetAndPrint("Applying index update");
   }
 
   return did_work;
@@ -1239,6 +1270,7 @@ bool QueryDbMainLoop(
     QueueManager* queue,
     Project* project,
     FileConsumer::SharedState* file_consumer_shared,
+    TimestampManager* timestamp_manager,
     WorkingFiles* working_files,
     ClangCompleteManager* clang_complete,
     IncludeComplete* include_complete,
@@ -1310,7 +1342,7 @@ bool QueryDbMainLoop(
           std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
           for (int i = 0; i < config->indexerCount; ++i) {
             new std::thread([&]() {
-              IndexMain(config, file_consumer_shared, project, working_files, waiter, queue);
+              IndexMain(config, file_consumer_shared, timestamp_manager, project, working_files, waiter, queue);
             });
           }
 
@@ -2532,6 +2564,7 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
   auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto signature_cache = MakeUnique<CodeCompleteCache>();
   FileConsumer::SharedState file_consumer_shared;
+  TimestampManager timestamp_manager;
 
   // Run query db main loop.
   SetCurrentThreadName("querydb");
@@ -2539,7 +2572,7 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
   while (true) {
     bool did_work = QueryDbMainLoop(
       config, &db, waiter, &queue,
-      &project, &file_consumer_shared, &working_files,
+      &project, &file_consumer_shared, &timestamp_manager, &working_files,
       &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
     if (!did_work) {
       waiter->Wait({
