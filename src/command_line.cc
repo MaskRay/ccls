@@ -818,7 +818,7 @@ struct IndexManager {
 
 //}  // namespace
 
-enum class FileParseState {
+enum class FileParseQuery {
   NeedsParse,
   DoesNotNeedParse,
   BadFile
@@ -840,29 +840,27 @@ std::vector<Index_DoIdMap> DoParseFile(
     auto file_needs_parse = [&](const std::string& path) {
       optional<int64_t> modification_timestamp = GetLastModificationTime(path);
       if (!modification_timestamp)
-        return FileParseState::BadFile;
+        return FileParseQuery::BadFile;
 
       optional<int64_t> last_cached_modification = timestamp_manager->GetLastCachedModificationTime(cache_loader, path);
 
       if (!last_cached_modification || modification_timestamp != *last_cached_modification) {
         file_consumer_shared->Reset(path);
-        return FileParseState::NeedsParse;
+        return FileParseQuery::NeedsParse;
       }
-      return FileParseState::DoesNotNeedParse;
+      return FileParseQuery::DoesNotNeedParse;
     };
 
     // Check timestamps and update |file_consumer_shared|.
-    bool needs_reparse = false;
-    FileParseState path_state = file_needs_parse(path);
-    if (path_state == FileParseState::BadFile)
+    FileParseQuery path_state = file_needs_parse(path);
+    if (path_state == FileParseQuery::BadFile)
       return result;
-    if (path_state == FileParseState::NeedsParse)
-      needs_reparse = true;
+    bool needs_reparse = path_state == FileParseQuery::NeedsParse;
 
     for (const std::string& dependency : previous_index->dependencies) {
       assert(!dependency.empty());
 
-      if (file_needs_parse(dependency) == FileParseState::NeedsParse) {
+      if (file_needs_parse(dependency) == FileParseQuery::NeedsParse) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency;
         needs_reparse = true;
         // SUBTLE: Do not break here, as |file_consumer_shared| is updated
