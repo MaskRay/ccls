@@ -120,22 +120,25 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   // generating an index for it):
   if (param->seen_cx_files.insert(file).second) {
     std::string file_name = FileName(file);
+    // Sometimes the fill name will be empty. Not sure why. Not much we can do
+    // with it.
+    if (!file_name.empty()) {
+      // Add to all files we have seen so we can generate proper dependency
+      // graph.
+      param->seen_files.push_back(file_name);
 
-    // Add to all files we have seen so we can generate proper dependency
-    // graph.
-    param->seen_files.push_back(file_name);
+      // Set modification time.
+      param->file_modification_times[file_name] = GetLastModificationTime(file_name);
 
-    // Set modification time.
-    param->file_modification_times[file_name] = GetLastModificationTime(file_name);
-
-    // Capture file contents in |param->file_contents| if it was not specified
-    // at the start of indexing.
-    if (db && param->file_contents.find(file_name) == param->file_contents.end()) {
-      optional<std::string> content = ReadContent(file_name);
-      if (content)
-        param->file_contents[file_name] = *content;
-      else
-        LOG_S(ERROR) << "[indexer] Failed to read file content for " << file_name;
+      // Capture file contents in |param->file_contents| if it was not specified
+      // at the start of indexing.
+      if (db && param->file_contents.find(file_name) == param->file_contents.end()) {
+        optional<std::string> content = ReadContent(file_name);
+        if (content)
+          param->file_contents[file_name] = *content;
+        else
+          LOG_S(ERROR) << "[indexer] Failed to read file content for " << file_name;
+      }
     }
   }
 
