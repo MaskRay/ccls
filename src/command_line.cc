@@ -821,6 +821,8 @@ std::vector<Index_DoIdMap> DoParseFile(
     // Check timestamps and update |file_consumer_shared|.
     bool needs_reparse = file_needs_parse(path);
     for (const std::string& dependency : previous_index->dependencies) {
+      assert(!dependency.empty());
+
       if (file_needs_parse(dependency)) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency;
         needs_reparse = true;
@@ -931,11 +933,13 @@ bool IndexMain_DoParse(
     FileConsumer::SharedState* file_consumer_shared,
     clang::Index* index) {
 
-  Index_Request request = queue->index_request.Dequeue();
+  optional<Index_Request> request = queue->index_request.TryDequeue();
+  if (!request)
+    return false;
 
   Project::Entry entry;
-  entry.filename = request.path;
-  entry.args = request.args;
+  entry.filename = request->path;
+  entry.args = request->args;
   std::vector<Index_DoIdMap> responses = ParseFile(config, index, file_consumer_shared, entry);
 
   // TODO/FIXME: bulk enqueue so we don't lock so many times
@@ -1013,14 +1017,13 @@ bool IndexMain_LoadPreviousIndex(Config* config, QueueManager* queue) {
     return false;
 
   response->previous = LoadCachedIndex(config, response->current->path);
-  assert(response->previous);
+  LOG_IF_S(ERROR, !response->previous) << "Unable to load previous index for already imported index " << response->current->path;
 
   queue->do_id_map.Enqueue(std::move(*response));
   return true;
 }
 
 bool IndexMergeIndexUpdates(QueueManager* queue) {
-  // TODO/FIXME: it looks like there is a crash here?
   optional<Index_OnIndexed> root = queue->on_indexed.TryDequeue();
   if (!root)
     return false;
@@ -1082,6 +1085,77 @@ void IndexMain(Config* config,
   }
 }
 
+bool QueryDb_ImportMain(Config* config, QueryDatabase* db, QueueManager* queue, WorkingFiles* working_files) {
+  bool did_work = false;
+
+  while (true) {
+    optional<Index_DoIdMap> request = queue->do_id_map.TryDequeue();
+    if (!request)
+      break;
+    did_work = true;
+
+    // If the request does not have previous state and we have already imported
+    // it, load the previous state from disk and rerun IdMap logic later. Do not
+    // do this if we have already attempted in the past.
+    if (!request->load_previous &&
+      !request->previous &&
+      db->usr_to_file.find(LowerPathIfCaseInsensitive(request->current->path)) != db->usr_to_file.end()) {
+      assert(!request->load_previous);
+      request->load_previous = true;
+      queue->load_previous_index.Enqueue(std::move(*request));
+      continue;
+    }
+
+    Index_OnIdMapped response(request->perf, request->is_interactive);
+    Timer time;
+
+    assert(request->current);
+
+    auto make_map = [db](std::unique_ptr<IndexFile> file) -> std::unique_ptr<Index_OnIdMapped::File> {
+      if (!file)
+        return nullptr;
+
+      auto id_map = MakeUnique<IdMap>(db, file->id_cache);
+      return MakeUnique<Index_OnIdMapped::File>(std::move(file), std::move(id_map));
+    };
+    response.current = make_map(std::move(request->current));
+    response.previous = make_map(std::move(request->previous));
+    response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
+
+    queue->on_id_mapped.Enqueue(std::move(response));
+  }
+
+  while (true) {
+    optional<Index_OnIndexed> response = queue->on_indexed.TryDequeue();
+    if (!response)
+      break;
+
+    did_work = true;
+
+    Timer time;
+
+    for (auto& updated_file : response->update.files_def_update) {
+      // TODO: We're reading a file on querydb thread. This is slow!! If this
+      // a real problem in practice we can load the file in a previous stage.
+      // It should be fine though because we only do it if the user has the
+      // file open.
+      WorkingFile* working_file = working_files->GetFileByFilename(updated_file.path);
+      if (working_file) {
+        optional<std::string> cached_file_contents = LoadCachedFileContents(config, updated_file.path);
+        if (cached_file_contents)
+          working_file->SetIndexContent(*cached_file_contents);
+        else
+          working_file->SetIndexContent(working_file->buffer_content);
+        time.ResetAndPrint("Update WorkingFile index contents (via disk load) for " + updated_file.path);
+      }
+    }
+
+    db->ApplyIndexUpdate(&response->update);
+    //time.ResetAndPrint("[querydb] Applying index update");
+  }
+
+  return did_work;
+}
 
 
 
@@ -2438,70 +2512,8 @@ bool QueryDbMainLoop(
   // TODO: consider rate-limiting and checking for IPC messages so we don't block
   // requests / we can serve partial requests.
 
-
-  while (true) {
-    optional<Index_DoIdMap> request = queue->do_id_map.TryDequeue();
-    if (!request)
-      break;
+  if (QueryDb_ImportMain(config, db, queue, working_files))
     did_work = true;
-
-    // If the request does not have previous state and we have already imported
-    // it, load the previous state from disk and rerun IdMap logic later.
-    if (!request->previous &&
-        db->usr_to_file.find(LowerPathIfCaseInsensitive(request->current->path)) != db->usr_to_file.end()) {
-      assert(!request->load_previous);
-      request->load_previous = true;
-      queue->load_previous_index.Enqueue(std::move(*request));
-      continue;
-    }
-
-    Index_OnIdMapped response(request->perf, request->is_interactive);
-    Timer time;
-
-    assert(request->current);
-
-    auto make_map = [db](std::unique_ptr<IndexFile> file) -> std::unique_ptr<Index_OnIdMapped::File> {
-      if (!file)
-        return nullptr;
-
-      auto id_map = MakeUnique<IdMap>(db, file->id_cache);
-      return MakeUnique<Index_OnIdMapped::File>(std::move(file), std::move(id_map));
-    };
-    response.current = make_map(std::move(request->current));
-    response.previous = make_map(std::move(request->previous));
-    response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
-
-    queue->on_id_mapped.Enqueue(std::move(response));
-  }
-
-  while (true) {
-    optional<Index_OnIndexed> response = queue->on_indexed.TryDequeue();
-    if (!response)
-      break;
-
-    did_work = true;
-
-    Timer time;
-
-    for (auto& updated_file : response->update.files_def_update) {
-      // TODO: We're reading a file on querydb thread. This is slow!! If this
-      // a real problem in practice we can load the file in a previous stage.
-      // It should be fine though because we only do it if the user has the
-      // file open.
-      WorkingFile* working_file = working_files->GetFileByFilename(updated_file.path);
-      if (working_file) {
-        optional<std::string> cached_file_contents = LoadCachedFileContents(config, updated_file.path);
-        if (cached_file_contents)
-          working_file->SetIndexContent(*cached_file_contents);
-        else
-          working_file->SetIndexContent(working_file->buffer_content);
-        time.ResetAndPrint("Update WorkingFile index contents (via disk load) for " + updated_file.path);
-      }
-    }
-
-    db->ApplyIndexUpdate(&response->update);
-    //time.ResetAndPrint("[querydb] Applying index update");
-  }
 
   return did_work;
 }
