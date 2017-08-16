@@ -33,7 +33,8 @@ std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
     return nullptr;
 
   auto result = Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
-  result->is_loaded_from_cache_ = true;
+  if (result)
+    result->is_loaded_from_cache_ = true;
   return result;
 }
 
