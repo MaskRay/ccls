@@ -550,9 +550,10 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 struct Index_Request {
   std::string path;
   std::vector<std::string> args; // TODO: make this a string that is parsed lazily.
+  bool is_interactive;
 
-  Index_Request(const std::string& path, const std::vector<std::string>& args)
-    : path(path), args(args) {}
+  Index_Request(const std::string& path, const std::vector<std::string>& args, bool is_interactive)
+    : path(path), args(args), is_interactive(is_interactive) {}
 };
 
 struct Index_DoIdMap {
@@ -700,23 +701,6 @@ void RegisterMessageTypes() {
 
 
 
-
-#if false
-  TODO: re-enable
-  void PriorityEnqueueFileForIndex(QueryDatabase* db, Project* project, Index_DoIndexQueue* queue_do_index, WorkingFile* working_file, const std::string& path) {
-    // Only do a delta update (Type::Parse) if we've already imported the
-    // file. If the user saves a file not loaded by the project we don't
-    // want the initial import to be a delta-update.
-    Index_DoIndex::Type index_type = Index_DoIndex::Type::Parse;
-    // TODO/FIXME: this is racy. we need to check if the file is already in the import pipeline. So we should change PriorityEnqueue to look at existing contents before appending. That's not a full fix tho.
-    QueryFile* file = FindFile(db, path);
-    if (!file)
-      index_type = Index_DoIndex::Type::ImportThenParse;
-
-    queue_do_index->PriorityEnqueue(Index_DoIndex(index_type, project->FindCompilationEntryForFile(path), working_file->buffer_content, true /*is_interactive*/));
-  }
-#endif
-
 void InsertSymbolIntoResult(QueryDatabase* db, WorkingFiles* working_files, SymbolIdx symbol, std::vector<lsSymbolInformation>* result) {
   optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol);
   if (!info)
@@ -736,6 +720,25 @@ void InsertSymbolIntoResult(QueryDatabase* db, WorkingFiles* working_files, Symb
   info->location = *ls_location;
   result->push_back(*info);
 }
+
+// Manages files inside of the indexing pipeline so we don't have the same file
+// being imported multiple times.
+struct ImportManager {
+  // Try to import the given file. Returns true if the file should be imported.
+  bool StartImport(const std::string& path) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    return import_.insert(path).second;
+  }
+
+  // The file has been fully imported and can be imported again later on.
+  void DoneImport(const std::string& path) {
+    std::lock_guard<std::mutex> guard(mutex_);
+    import_.erase(path);
+  }
+
+  std::mutex mutex_;
+  std::unordered_set<std::string> import_;
+};
 
 // Manages loading caches from file paths for the indexer process.
 struct CacheLoader {
@@ -831,13 +834,15 @@ enum class FileParseQuery {
 };
 
 std::vector<Index_DoIdMap> DoParseFile(
-  Config* config,
-  clang::Index* index,
-  FileConsumer::SharedState* file_consumer_shared,
-  TimestampManager* timestamp_manager,
-  CacheLoader* cache_loader,
-  const std::string& path,
-  const std::vector<std::string>& args) {
+    Config* config,
+    WorkingFiles* working_files,
+    clang::Index* index,
+    FileConsumer::SharedState* file_consumer_shared,
+    TimestampManager* timestamp_manager,
+    CacheLoader* cache_loader,
+    bool is_interactive,
+    const std::string& path,
+    const std::vector<std::string>& args) {
   std::vector<Index_DoIdMap> result;
 
   IndexFile* previous_index = cache_loader->TryLoad(path);
@@ -878,8 +883,6 @@ std::vector<Index_DoIdMap> DoParseFile(
     if (!needs_reparse) {
       LOG_S(INFO) << "Skipping parse; no timestamp change for " << path;
 
-      // TODO/FIXME: real is_interactive
-      bool is_interactive = false;
       // TODO/FIXME: real perf
       PerformanceImportFile perf;
       result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(path), perf, is_interactive, false /*write_to_disk*/));
@@ -941,6 +944,9 @@ std::vector<Index_DoIdMap> DoParseFile(
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
+    if (is_interactive)
+      EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
+
     // TODO: don't load cached index. We don't need to do this when indexer always exports dependency tree.
     // Sanity check that verifies we did not generate a new index for a file whose timestamp did not change.
     //{
@@ -951,8 +957,6 @@ std::vector<Index_DoIdMap> DoParseFile(
     // Note: we are reusing the parent perf.
     perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
 
-    // TODO/FIXME: real is_interactive
-    bool is_interactive = false;
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
     result.push_back(Index_DoIdMap(std::move(new_index), perf, is_interactive, true /*write_to_disk*/));
   }
@@ -961,15 +965,15 @@ std::vector<Index_DoIdMap> DoParseFile(
 }
 
 
-// TODO: import to CACHE_DIR/staging/foo.cc
-// TODO: split index files into foo.cc.json, foo.cc.timestamp, foo.cc
 
 
 std::vector<Index_DoIdMap> ParseFile(
     Config* config,
+    WorkingFiles* working_files,
     clang::Index* index,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
+    bool is_interactive,
     const Project::Entry& entry) {
 
   CacheLoader cache_loader(config);
@@ -979,13 +983,15 @@ std::vector<Index_DoIdMap> ParseFile(
   // complain about if indexed by itself.
   IndexFile* entry_cache = cache_loader.TryLoad(entry.filename);
   std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
-  return DoParseFile(config, index, file_consumer_shared, timestamp_manager, &cache_loader, tu_path, entry.args);
+  return DoParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, &cache_loader, is_interactive, tu_path, entry.args);
 }
 
 bool IndexMain_DoParse(
     Config* config,
+    WorkingFiles* working_files,
     QueueManager* queue,
     FileConsumer::SharedState* file_consumer_shared,
+    ImportManager* import_manager,
     TimestampManager* timestamp_manager,
     clang::Index* index) {
 
@@ -993,10 +999,13 @@ bool IndexMain_DoParse(
   if (!request)
     return false;
 
+  if (!import_manager->StartImport(request->path))
+    return false;
+
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  std::vector<Index_DoIdMap> responses = ParseFile(config, index, file_consumer_shared, timestamp_manager, entry);
+  std::vector<Index_DoIdMap> responses = ParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, request->is_interactive, entry);
 
   if (responses.empty())
     return false;
@@ -1103,6 +1112,7 @@ bool IndexMergeIndexUpdates(QueueManager* queue) {
 
 void IndexMain(Config* config,
                FileConsumer::SharedState* file_consumer_shared,
+               ImportManager* import_manager,
                TimestampManager* timestamp_manager,
                Project* project,
                WorkingFiles* working_files,
@@ -1123,7 +1133,7 @@ void IndexMain(Config* config,
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_parse = IndexMain_DoParse(config, queue, file_consumer_shared, timestamp_manager, &index);
+    bool did_parse = IndexMain_DoParse(config, working_files, queue, file_consumer_shared, import_manager, timestamp_manager, &index);
 
     bool did_create_update =
         IndexMain_DoCreateIndexUpdate(config, queue, timestamp_manager);
@@ -1144,7 +1154,7 @@ void IndexMain(Config* config,
   }
 }
 
-bool QueryDb_ImportMain(Config* config, QueryDatabase* db, QueueManager* queue, WorkingFiles* working_files) {
+bool QueryDb_ImportMain(Config* config, QueryDatabase* db, ImportManager* import_manager, QueueManager* queue, WorkingFiles* working_files) {
   bool did_work = false;
 
   while (true) {
@@ -1207,6 +1217,10 @@ bool QueryDb_ImportMain(Config* config, QueryDatabase* db, QueueManager* queue, 
           working_file->SetIndexContent(working_file->buffer_content);
         time.ResetAndPrint("Update WorkingFile index contents (via disk load) for " + updated_file.path);
       }
+
+      // PERF: This will acquire a lock. If querydb ends being up being slow we
+      // could push this request to another queue which runs on an indexer.
+      import_manager->DoneImport(updated_file.path);
     }
 
     time.Reset();
@@ -1299,6 +1313,7 @@ bool QueryDbMainLoop(
     QueueManager* queue,
     Project* project,
     FileConsumer::SharedState* file_consumer_shared,
+    ImportManager* import_manager,
     TimestampManager* timestamp_manager,
     WorkingFiles* working_files,
     ClangCompleteManager* clang_complete,
@@ -1371,7 +1386,7 @@ bool QueryDbMainLoop(
           std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
           for (int i = 0; i < config->indexerCount; ++i) {
             new std::thread([&]() {
-              IndexMain(config, file_consumer_shared, timestamp_manager, project, working_files, waiter, queue);
+              IndexMain(config, file_consumer_shared, import_manager, timestamp_manager, project, working_files, waiter, queue);
             });
           }
 
@@ -1389,7 +1404,8 @@ bool QueryDbMainLoop(
             //std::cerr << "[" << i << "/" << (project->entries.size() - 1)
             //  << "] Dispatching index request for file " << entry.filename
             //  << std::endl;
-            queue->index_request.Enqueue(Index_Request(entry.filename, entry.args));
+            bool is_interactive = working_files->GetFileByFilename(entry.filename) != nullptr;
+            queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, is_interactive));
           });
 
           // We need to support multiple concurrent index processes.
@@ -1452,7 +1468,8 @@ bool QueryDbMainLoop(
         project->ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
           LOG_S(INFO) << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename;
-          queue->index_request.Enqueue(Index_Request(entry.filename, entry.args));
+          bool is_interactive = working_files->GetFileByFilename(entry.filename) != nullptr;
+          queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, is_interactive));
         });
         break;
       }
@@ -1664,8 +1681,10 @@ bool QueryDbMainLoop(
 
         include_complete->AddFile(working_file->filename);
         clang_complete->NotifyView(path);
-        // TODO/FIXME
-        //PriorityEnqueueFileForIndex(db, project, queue_do_index, working_file, path);
+
+        // Submit new index request.
+        const Project::Entry& entry = project->FindCompilationEntryForFile(path);
+        queue->index_request.PriorityEnqueue(Index_Request(entry.filename, entry.args, true /*is_interactive*/));
 
         break;
       }
@@ -1710,7 +1729,7 @@ bool QueryDbMainLoop(
         //      if so, ignore that index response.
         // TODO: send as priority request
         Project::Entry entry = project->FindCompilationEntryForFile(path);
-        queue->index_request.Enqueue(Index_Request(entry.filename, entry.args));
+        queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, true /*is_interactive*/));
 
         clang_complete->NotifySave(path);
 
@@ -2573,7 +2592,7 @@ bool QueryDbMainLoop(
   // TODO: consider rate-limiting and checking for IPC messages so we don't block
   // requests / we can serve partial requests.
 
-  if (QueryDb_ImportMain(config, db, queue, working_files))
+  if (QueryDb_ImportMain(config, db, import_manager, queue, working_files))
     did_work = true;
 
   return did_work;
@@ -2593,6 +2612,7 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
   auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto signature_cache = MakeUnique<CodeCompleteCache>();
   FileConsumer::SharedState file_consumer_shared;
+  ImportManager import_manager;
   TimestampManager timestamp_manager;
 
   // Run query db main loop.
@@ -2601,7 +2621,7 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
   while (true) {
     bool did_work = QueryDbMainLoop(
       config, &db, waiter, &queue,
-      &project, &file_consumer_shared, &timestamp_manager, &working_files,
+      &project, &file_consumer_shared, &import_manager, &timestamp_manager, &working_files,
       &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
     if (!did_work) {
       waiter->Wait({
