@@ -48,7 +48,7 @@
 // TODO: implement ThreadPool type which monitors CPU usage / number of work items
 // per second completed and scales up/down number of running threads.
 
-//namespace {
+namespace {
 
 std::vector<std::string> kEmptyArgs;
 
@@ -822,7 +822,7 @@ struct IndexManager {
 };
 
 
-//}  // namespace
+}  // namespace
 
 enum class FileParseQuery {
   NeedsParse,
