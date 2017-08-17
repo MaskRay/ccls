@@ -226,4 +226,7 @@ std::vector<std::string> GetPlatformClangArguments() {
     "-fdelayed-template-parsing"
   };
 }
+
+void FreeUnusedMemory() {}
+
 #endif

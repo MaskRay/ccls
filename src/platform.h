@@ -51,3 +51,6 @@ bool IsSymLink(const std::string& path);
 
 // Returns any clang arguments that are specific to the current platform.
 std::vector<std::string> GetPlatformClangArguments();
+
+// Free any unused memory and return it to the system.
+void FreeUnusedMemory();

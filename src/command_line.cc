@@ -2623,6 +2623,10 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
       config, &db, waiter, &queue,
       &project, &file_consumer_shared, &import_manager, &timestamp_manager, &working_files,
       &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
+
+    // Cleanup and free any unused memory.
+    FreeUnusedMemory();
+
     if (!did_work) {
       waiter->Wait({
         IpcManager::instance()->threaded_queue_for_server_.get(),

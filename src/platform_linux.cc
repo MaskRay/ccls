@@ -5,6 +5,7 @@
 
 #include <loguru.hpp>
 
+#include <malloc.h>
 #include <cassert>
 #include <string>
 #include <pthread.h>
@@ -246,5 +247,9 @@ std::vector<std::string> GetPlatformClangArguments() {
   return {};
 }
 #undef CHECKED
+
+void FreeUnusedMemory() {
+  malloc_trim(0);
+}
 
 #endif
