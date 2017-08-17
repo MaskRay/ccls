@@ -71,6 +71,15 @@ public:
     waiter_->cv.notify_all();
   }
 
+  // Add a set of elements to the queue.
+  void EnqueueAll(std::vector<T>&& elements) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (T& element : elements)
+      queue_.push(std::move(element));
+    elements.clear();
+    waiter_->cv.notify_all();
+  }
+
   // Return all elements in the queue.
   std::vector<T> DequeueAll() {
     std::lock_guard<std::mutex> lock(mutex_);

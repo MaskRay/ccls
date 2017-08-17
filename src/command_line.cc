@@ -998,18 +998,18 @@ bool IndexMain_DoParse(
   entry.args = request->args;
   std::vector<Index_DoIdMap> responses = ParseFile(config, index, file_consumer_shared, timestamp_manager, entry);
 
-  // TODO/FIXME: bulk enqueue so we don't lock so many times
-  for (Index_DoIdMap& response : responses)
-    queue->do_id_map.Enqueue(std::move(response));
+  if (responses.empty())
+    return false;
 
-  return !responses.empty();
+  // EnqueueAll will clear |responses|.
+  queue->do_id_map.EnqueueAll(std::move(responses));
+  return true;
 }
 
 bool IndexMain_DoCreateIndexUpdate(
     Config* config,
     QueueManager* queue,
     TimestampManager* timestamp_manager) {
-  // TODO: Index_OnIdMapped dtor is failing because it seems that its contents have already been destroyed.
   optional<Index_OnIdMapped> response = queue->on_id_mapped.TryDequeue();
   if (!response)
     return false;
