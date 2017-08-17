@@ -561,15 +561,18 @@ struct Index_DoIdMap {
 
   PerformanceImportFile perf;
   bool is_interactive = false;
+  bool write_to_disk = false;
   bool load_previous = false;
 
   Index_DoIdMap(
       std::unique_ptr<IndexFile> current,
       PerformanceImportFile perf,
-      bool is_interactive)
+      bool is_interactive,
+      bool write_to_disk)
     : current(std::move(current)),
       perf(perf),
-      is_interactive(is_interactive) {}
+      is_interactive(is_interactive),
+      write_to_disk(write_to_disk) {}
 };
 
 struct Index_OnIdMapped {
@@ -586,12 +589,15 @@ struct Index_OnIdMapped {
 
   PerformanceImportFile perf;
   bool is_interactive;
+  bool write_to_disk;
 
   Index_OnIdMapped(
       PerformanceImportFile perf,
-      bool is_interactive)
+      bool is_interactive,
+      bool write_to_disk)
     : perf(perf),
-      is_interactive(is_interactive) {}
+      is_interactive(is_interactive),
+      write_to_disk(write_to_disk) {}
 };
 
 struct Index_OnIndexed {
@@ -876,7 +882,7 @@ std::vector<Index_DoIdMap> DoParseFile(
       bool is_interactive = false;
       // TODO/FIXME: real perf
       PerformanceImportFile perf;
-      result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(path), perf, is_interactive));
+      result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(path), perf, is_interactive, false /*write_to_disk*/));
       for (const std::string& dependency : previous_index->dependencies) {
         // Only actually load the file if we haven't loaded it yet. Important
         // for perf when files have lots of common dependencies.
@@ -884,7 +890,7 @@ std::vector<Index_DoIdMap> DoParseFile(
           continue;
 
         LOG_S(INFO) << "Emitting index result for " << dependency;
-        result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(dependency), perf, is_interactive));
+        result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(dependency), perf, is_interactive, false /*write_to_disk*/));
       }
       return result;
     }
@@ -948,7 +954,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     // TODO/FIXME: real is_interactive
     bool is_interactive = false;
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
-    result.push_back(Index_DoIdMap(std::move(new_index), perf, is_interactive));
+    result.push_back(Index_DoIdMap(std::move(new_index), perf, is_interactive, true /*write_to_disk*/));
   }
 
   return result;
@@ -1024,12 +1030,11 @@ bool IndexMain_DoCreateIndexUpdate(
       previous_index, response->current->file.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
 
-  // Write new cache to disk if it is a fresh index.
-  if (!response->current->file->is_loaded_from_cache_) {
+  // Write current index to disk if requested.
+  if (response->write_to_disk) {
     time.Reset();
     WriteToCache(config, *response->current->file);
     response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
-
     timestamp_manager->UpdateCachedModificationTime(response->current->file->path, response->current->file->last_modification_time);
   }
 
@@ -1160,7 +1165,7 @@ bool QueryDb_ImportMain(Config* config, QueryDatabase* db, QueueManager* queue, 
       continue;
     }
 
-    Index_OnIdMapped response(request->perf, request->is_interactive);
+    Index_OnIdMapped response(request->perf, request->is_interactive, request->write_to_disk);
     Timer time;
 
     assert(request->current);
