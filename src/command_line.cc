@@ -200,16 +200,6 @@ bool FindFileOrFail(QueryDatabase* db, lsRequestId id, const std::string& absolu
   return false;
 }
 
-QueryFile* FindFile(QueryDatabase* db, const std::string& absolute_path) {
-  auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(absolute_path));
-  if (it != db->usr_to_file.end()) {
-    optional<QueryFile>& file = db->files[it->second.id];
-    if (file)
-      return &file.value();
-  }
-  return nullptr;
-}
-
 
 void PublishInactiveLines(WorkingFile* working_file, const std::vector<Range>& inactive) {
   Out_CquerySetInactiveRegion out;
