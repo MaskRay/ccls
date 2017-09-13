@@ -20,6 +20,7 @@
 #include "test.h"
 #include "timer.h"
 #include "threaded_queue.h"
+#include "work_thread.h"
 #include "working_files.h"
 
 #include <loguru.hpp>
@@ -189,7 +190,7 @@ bool FindFileOrFail(QueryDatabase* db, lsRequestId id, const std::string& absolu
   if (out_file_id)
     *out_file_id = QueryFileId((size_t)-1);
 
-  LOG_S(INFO) << "Unable to find file " << absolute_path;
+  LOG_S(INFO) << "Unable to find file \"" << absolute_path << "\"";
 
   Out_Error out;
   out.id = id;
@@ -541,9 +542,10 @@ struct Index_Request {
   std::string path;
   std::vector<std::string> args; // TODO: make this a string that is parsed lazily.
   bool is_interactive;
+  optional<std::string> contents; // Preloaded contents. Useful for tests.
 
-  Index_Request(const std::string& path, const std::vector<std::string>& args, bool is_interactive)
-    : path(path), args(args), is_interactive(is_interactive) {}
+  Index_Request(const std::string& path, const std::vector<std::string>& args, bool is_interactive, optional<std::string> contents)
+    : path(path), args(args), is_interactive(is_interactive), contents(contents) {}
 };
 
 struct Index_DoIdMap {
@@ -652,6 +654,15 @@ struct QueueManager {
   Index_OnIndexedQueue on_indexed;
 
   QueueManager(MultiQueueWaiter* waiter) : index_request(waiter), do_id_map(waiter), load_previous_index(waiter), on_id_mapped(waiter), on_indexed(waiter) {}
+
+  bool HasWork() {
+    return
+        !index_request.IsEmpty() ||
+        !do_id_map.IsEmpty() ||
+        !load_previous_index.IsEmpty() ||
+        !on_id_mapped.IsEmpty() ||
+        !on_indexed.IsEmpty();
+  }
 };
 
 void RegisterMessageTypes() {
@@ -684,6 +695,9 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CqueryCallers>();
   MessageRegistry::instance()->Register<Ipc_CqueryBase>();
   MessageRegistry::instance()->Register<Ipc_CqueryDerived>();
+  MessageRegistry::instance()->Register<Ipc_CqueryIndexFile>();
+  MessageRegistry::instance()->Register<Ipc_CqueryQueryDbWaitForIdleIndexer>();
+  MessageRegistry::instance()->Register<Ipc_CqueryExitWhenIdle>();
 }
 
 
@@ -724,6 +738,12 @@ struct ImportManager {
   void DoneImport(const std::string& path) {
     std::lock_guard<std::mutex> guard(mutex_);
     import_.erase(path);
+  }
+
+  // Returns true if there any any files currently being imported.
+  bool HasActiveImports() {
+    std::lock_guard<std::mutex> guard(mutex_);
+    return !import_.empty();
   }
 
   std::mutex mutex_;
@@ -832,7 +852,8 @@ std::vector<Index_DoIdMap> DoParseFile(
     CacheLoader* cache_loader,
     bool is_interactive,
     const std::string& path,
-    const std::vector<std::string>& args) {
+    const std::vector<std::string>& args,
+    const optional<FileContents>& contents) {
   std::vector<Index_DoIdMap> result;
 
   IndexFile* previous_index = cache_loader->TryLoad(path);
@@ -904,6 +925,10 @@ std::vector<Index_DoIdMap> DoParseFile(
   //       well. We then default to a fast file-copy if not in working set.
   bool loaded_primary = false;
   std::vector<FileContents> file_contents;
+  if (contents) {
+    loaded_primary = loaded_primary || contents->path == path;
+    file_contents.push_back(*contents);
+  }
   for (const auto& it : cache_loader->caches) {
     const std::unique_ptr<IndexFile>& index = it.second;
     assert(index);
@@ -930,6 +955,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     config, file_consumer_shared,
     path, args, file_contents,
     &perf, index);
+  // LOG_S(INFO) << "Parsing " << path << " gave " << indexes.size() << " indexes";
 
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
@@ -964,7 +990,12 @@ std::vector<Index_DoIdMap> ParseFile(
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     bool is_interactive,
-    const Project::Entry& entry) {
+    const Project::Entry& entry,
+    const optional<std::string>& contents) {
+
+  optional<FileContents> file_contents;
+  if (contents)
+    file_contents = FileContents(entry.filename, *contents);
 
   CacheLoader cache_loader(config);
 
@@ -973,7 +1004,7 @@ std::vector<Index_DoIdMap> ParseFile(
   // complain about if indexed by itself.
   IndexFile* entry_cache = cache_loader.TryLoad(entry.filename);
   std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
-  return DoParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, &cache_loader, is_interactive, tu_path, entry.args);
+  return DoParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, &cache_loader, is_interactive, tu_path, entry.args, file_contents);
 }
 
 bool IndexMain_DoParse(
@@ -985,18 +1016,28 @@ bool IndexMain_DoParse(
     TimestampManager* timestamp_manager,
     clang::Index* index) {
 
-  optional<Index_Request> request = queue->index_request.TryDequeue();
-  if (!request)
-    return false;
-
-  if (!import_manager->StartImport(request->path))
+  bool can_import = false;
+  optional<Index_Request> request = queue->index_request.TryDequeuePlusAction([&](const Index_Request& request) {
+    can_import = import_manager->StartImport(request.path);
+  });
+  if (!request || !can_import)
     return false;
 
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  std::vector<Index_DoIdMap> responses = ParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, request->is_interactive, entry);
+  std::vector<Index_DoIdMap> responses = ParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, request->is_interactive, entry, request->contents);
 
+  // Unmark file as imported if indexing failed.
+  bool found_import = false;
+  for (auto& response : responses) {
+    if (response.current->path == request->path)
+      found_import = true;
+  }
+  if (!found_import)
+    import_manager->DoneImport(request->path);
+
+  // Don't bother sending an IdMap request if there are no responses.
   if (responses.empty())
     return false;
 
@@ -1100,48 +1141,48 @@ bool IndexMergeIndexUpdates(QueueManager* queue) {
   }
 }
 
-void IndexMain(Config* config,
-               FileConsumer::SharedState* file_consumer_shared,
-               ImportManager* import_manager,
-               TimestampManager* timestamp_manager,
-               Project* project,
-               WorkingFiles* working_files,
-               MultiQueueWaiter* waiter,
-               QueueManager* queue) {
-  SetCurrentThreadName("indexer");
+WorkThread::Result IndexMain(
+    Config* config,
+    FileConsumer::SharedState* file_consumer_shared,
+    ImportManager* import_manager,
+    TimestampManager* timestamp_manager,
+    Project* project,
+    WorkingFiles* working_files,
+    MultiQueueWaiter* waiter,
+    QueueManager* queue) {
   // TODO: dispose of index after it is not used for a while.
   clang::Index index(1, 0);
 
-  while (true) {
-    // TODO: process all off IndexMain_DoIndex before calling
-    // IndexMain_DoCreateIndexUpdate for
-    //       better icache behavior. We need to have some threads spinning on
-    //       both though
-    //       otherwise memory usage will get bad.
+  // TODO: process all off IndexMain_DoIndex before calling
+  // IndexMain_DoCreateIndexUpdate for
+  //       better icache behavior. We need to have some threads spinning on
+  //       both though
+  //       otherwise memory usage will get bad.
 
-    // We need to make sure to run both IndexMain_DoParse and
-    // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
-    // work. Running both also lets the user query the partially constructed
-    // index.
-    bool did_parse = IndexMain_DoParse(config, working_files, queue, file_consumer_shared, import_manager, timestamp_manager, &index);
+  // We need to make sure to run both IndexMain_DoParse and
+  // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
+  // work. Running both also lets the user query the partially constructed
+  // index.
+  bool did_parse = IndexMain_DoParse(config, working_files, queue, file_consumer_shared, import_manager, timestamp_manager, &index);
 
-    bool did_create_update =
-        IndexMain_DoCreateIndexUpdate(config, queue, timestamp_manager);
+  bool did_create_update =
+      IndexMain_DoCreateIndexUpdate(config, queue, timestamp_manager);
 
-    bool did_load_previous = IndexMain_LoadPreviousIndex(config, queue);
+  bool did_load_previous = IndexMain_LoadPreviousIndex(config, queue);
 
-    // Nothing to index and no index updates to create, so join some already
-    // created index updates to reduce work on querydb thread.
-    bool did_merge = false;
-    if (!did_parse && !did_create_update && !did_load_previous)
-      did_merge = IndexMergeIndexUpdates(queue);
+  // Nothing to index and no index updates to create, so join some already
+  // created index updates to reduce work on querydb thread.
+  bool did_merge = false;
+  if (!did_parse && !did_create_update && !did_load_previous)
+    did_merge = IndexMergeIndexUpdates(queue);
 
-    // We didn't do any work, so wait for a notification.
-    if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
-      waiter->Wait(
-          {&queue->index_request, &queue->on_id_mapped, &queue->load_previous_index, &queue->on_indexed});
-    }
+  // We didn't do any work, so wait for a notification.
+  if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
+    waiter->Wait(
+        {&queue->index_request, &queue->on_id_mapped, &queue->load_previous_index, &queue->on_indexed});
   }
+
+  return queue->HasWork() ? WorkThread::Result::MoreWork : WorkThread::Result::NoWork;
 }
 
 bool QueryDb_ImportMain(Config* config, QueryDatabase* db, ImportManager* import_manager, QueueManager* queue, WorkingFiles* working_files) {
@@ -1157,8 +1198,8 @@ bool QueryDb_ImportMain(Config* config, QueryDatabase* db, ImportManager* import
     // it, load the previous state from disk and rerun IdMap logic later. Do not
     // do this if we have already attempted in the past.
     if (!request->load_previous &&
-      !request->previous &&
-      db->usr_to_file.find(LowerPathIfCaseInsensitive(request->current->path)) != db->usr_to_file.end()) {
+        !request->previous &&
+        db->usr_to_file.find(LowerPathIfCaseInsensitive(request->current->path)) != db->usr_to_file.end()) {
       assert(!request->load_previous);
       request->load_previous = true;
       queue->load_previous_index.Enqueue(std::move(*request));
@@ -1299,6 +1340,7 @@ bool QueryDb_ImportMain(Config* config, QueryDatabase* db, ImportManager* import
 bool QueryDbMainLoop(
     Config* config,
     QueryDatabase* db,
+    bool* exit_when_idle,
     MultiQueueWaiter* waiter,
     QueueManager* queue,
     Project* project,
@@ -1336,14 +1378,15 @@ bool QueryDbMainLoop(
             << " with uri " << request->params.rootUri->raw_uri;
 
           if (!request->params.initializationOptions) {
-            LOG_S(INFO) << "Initialization parameters (particularily cacheDirectory) are required";
+            LOG_S(FATAL) << "Initialization parameters (particularily cacheDirectory) are required";
             exit(1);
           }
 
           *config = *request->params.initializationOptions;
 
           // Check client version.
-          if (config->clientVersion != kExpectedClientVersion) {
+          if (config->clientVersion != kExpectedClientVersion &&
+              config->clientVersion != -1 /*disable check*/) {
             Out_ShowLogMessage out;
             out.display_type = Out_ShowLogMessage::DisplayType::Show;
             out.params.type = lsMessageType::Error;
@@ -1375,8 +1418,8 @@ bool QueryDbMainLoop(
           }
           std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
           for (int i = 0; i < config->indexerCount; ++i) {
-            new std::thread([&]() {
-              IndexMain(config, file_consumer_shared, import_manager, timestamp_manager, project, working_files, waiter, queue);
+            WorkThread::StartThread("indexer" + std::to_string(i), [&]() {
+              return IndexMain(config, file_consumer_shared, import_manager, timestamp_manager, project, working_files, waiter, queue);
             });
           }
 
@@ -1395,7 +1438,7 @@ bool QueryDbMainLoop(
             //  << "] Dispatching index request for file " << entry.filename
             //  << std::endl;
             bool is_interactive = working_files->GetFileByFilename(entry.filename) != nullptr;
-            queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, is_interactive));
+            queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, is_interactive, nullopt));
           });
 
           // We need to support multiple concurrent index processes.
@@ -1459,7 +1502,7 @@ bool QueryDbMainLoop(
           LOG_S(INFO) << "[" << i << "/" << (project->entries.size() - 1)
             << "] Dispatching index request for file " << entry.filename;
           bool is_interactive = working_files->GetFileByFilename(entry.filename) != nullptr;
-          queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, is_interactive));
+          queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, is_interactive, nullopt));
         });
         break;
       }
@@ -1674,7 +1717,7 @@ bool QueryDbMainLoop(
 
         // Submit new index request.
         const Project::Entry& entry = project->FindCompilationEntryForFile(path);
-        queue->index_request.PriorityEnqueue(Index_Request(entry.filename, entry.args, true /*is_interactive*/));
+        queue->index_request.PriorityEnqueue(Index_Request(entry.filename, entry.args, true /*is_interactive*/, nullopt));
 
         break;
       }
@@ -1719,7 +1762,7 @@ bool QueryDbMainLoop(
         //      if so, ignore that index response.
         // TODO: send as priority request
         Project::Entry entry = project->FindCompilationEntryForFile(path);
-        queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, true /*is_interactive*/));
+        queue->index_request.Enqueue(Index_Request(entry.filename, entry.args, true /*is_interactive*/, nullopt));
 
         clang_complete->NotifySave(path);
 
@@ -2572,6 +2615,45 @@ bool QueryDbMainLoop(
         break;
       }
 
+      case IpcId::CqueryIndexFile: {
+        auto msg = static_cast<Ipc_CqueryIndexFile*>(message.get());
+        queue->index_request.Enqueue(Index_Request(
+            NormalizePath(msg->params.path),
+            msg->params.args,
+            msg->params.is_interactive,
+            msg->params.contents));
+        break;
+      }
+
+      case IpcId::CqueryQueryDbWaitForIdleIndexer: {
+        auto msg = static_cast<Ipc_CqueryQueryDbWaitForIdleIndexer*>(message.get());
+        LOG_S(INFO) << "Waiting for idle";
+        int idle_count = 0;
+        while (true) {
+          bool has_work = false;
+          has_work |= import_manager->HasActiveImports();
+          has_work |= queue->HasWork();
+          has_work |= QueryDb_ImportMain(config, db, import_manager, queue, working_files);
+          if (!has_work)
+            ++idle_count;
+          else
+            idle_count = 0;
+
+          // There are race conditions between each of the three checks above,
+          // so we retry a bunch of times to try to avoid any.
+          if (idle_count > 10)
+            break;
+        }
+        LOG_S(INFO) << "Done waiting for idle";
+        break;
+      }
+
+      case IpcId::CqueryExitWhenIdle: {
+        *exit_when_idle = true;
+        WorkThread::request_exit_on_idle = true;
+        break;
+      }
+
       default: {
         LOG_S(INFO) << "[querydb] Unhandled IPC message " << IpcIdToString(message->method_id);
         exit(1);
@@ -2588,10 +2670,8 @@ bool QueryDbMainLoop(
   return did_work;
 }
 
-void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* waiter) {
-  // Create queues.
-  QueueManager queue(waiter);
-
+void RunQueryDbThread(const std::string& bin_name, Config* config, MultiQueueWaiter* waiter, QueueManager* queue) {
+  bool exit_when_idle = false;
   Project project;
   WorkingFiles working_files;
   ClangCompleteManager clang_complete(
@@ -2610,9 +2690,13 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
   QueryDatabase db;
   while (true) {
     bool did_work = QueryDbMainLoop(
-      config, &db, waiter, &queue,
+      config, &db, &exit_when_idle, waiter, queue,
       &project, &file_consumer_shared, &import_manager, &timestamp_manager, &working_files,
       &clang_complete, &include_complete, global_code_complete_cache.get(), non_global_code_complete_cache.get(), signature_cache.get());
+
+    // No more work left and exit request. Exit.
+    if (!did_work && exit_when_idle && WorkThread::num_active_threads == 0)
+      exit(0);
 
     // Cleanup and free any unused memory.
     FreeUnusedMemory();
@@ -2620,8 +2704,8 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
     if (!did_work) {
       waiter->Wait({
         IpcManager::instance()->threaded_queue_for_server_.get(),
-        &queue.do_id_map,
-        &queue.on_indexed
+        &queue->do_id_map,
+        &queue->on_indexed
       });
     }
   }
@@ -2689,24 +2773,22 @@ void QueryDbMain(const std::string& bin_name, Config* config, MultiQueueWaiter* 
 
 
 
-// TODO: global lock on stderr output.
-
 // Separate thread whose only job is to read from stdin and
 // dispatch read commands to the actual indexer program. This
 // cannot be done on the main thread because reading from std::cin
 // blocks.
 //
 // |ipc| is connected to a server.
-void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* request_times) {
-  IpcManager* ipc = IpcManager::instance();
+void LaunchStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* request_times) {
 
-  SetCurrentThreadName("stdin");
-  while (true) {
+  WorkThread::StartThread("stdin", [config, request_times]() {
+    IpcManager* ipc = IpcManager::instance();
+
     std::unique_ptr<BaseIpcMessage> message = MessageRegistry::instance()->ReadMessageFromStdin();
 
     // Message parsing can fail if we don't recognize the method.
     if (!message)
-      continue;
+      return WorkThread::Result::MoreWork;
 
     (*request_times)[message->method_id] = Timer();
 
@@ -2722,8 +2804,21 @@ void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* r
       break;
     }
 
+    case IpcId::Exit: {
+      exit(0);
+      break;
+    }
+
+    case IpcId::CqueryExitWhenIdle: {
+      // querydb needs to know to exit when idle. We return out of the stdin
+      // loop to exit the thread. If we keep parsing input stdin is likely
+      // closed so cquery will exit.
+      LOG_S(INFO) << "cquery will exit when all threads are idle";
+      ipc->SendMessage(IpcManager::Destination::Server, std::move(message));
+      return WorkThread::Result::ExitThread;
+    }
+
     case IpcId::Initialize:
-    case IpcId::Exit:
     case IpcId::TextDocumentDidOpen:
     case IpcId::TextDocumentDidChange:
     case IpcId::TextDocumentDidClose:
@@ -2747,7 +2842,9 @@ void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* r
     case IpcId::CqueryVars:
     case IpcId::CqueryCallers:
     case IpcId::CqueryBase:
-    case IpcId::CqueryDerived: {
+    case IpcId::CqueryDerived:
+    case IpcId::CqueryIndexFile:
+    case IpcId::CqueryQueryDbWaitForIdleIndexer: {
       ipc->SendMessage(IpcManager::Destination::Server, std::move(message));
       break;
     }
@@ -2757,7 +2854,9 @@ void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* r
       exit(1);
     }
     }
-  }
+
+    return WorkThread::Result::MoreWork;
+  });
 }
 
 
@@ -2805,15 +2904,14 @@ void LanguageServerStdinLoop(Config* config, std::unordered_map<IpcId, Timer>* r
 
 
 
-void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaiter* waiter) {
-  SetCurrentThreadName("stdout");
-  IpcManager* ipc = IpcManager::instance();
+void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaiter* waiter, QueueManager* queue) {
+  WorkThread::StartThread("stdout", [=]() {
+    IpcManager* ipc = IpcManager::instance();
 
-  while (true) {
     std::vector<std::unique_ptr<BaseIpcMessage>> messages = ipc->GetMessages(IpcManager::Destination::Client);
     if (messages.empty()) {
-      waiter->Wait({ipc->threaded_queue_for_client_.get()});
-      continue;
+      waiter->Wait({ ipc->threaded_queue_for_client_.get() });
+      return queue->HasWork() ? WorkThread::Result::MoreWork : WorkThread::Result::NoWork;
     }
 
     for (auto& message : messages) {
@@ -2839,26 +2937,24 @@ void StdoutMain(std::unordered_map<IpcId, Timer>* request_times, MultiQueueWaite
         }
       }
     }
-  }
+
+    return WorkThread::Result::MoreWork;
+  });
 }
 
 void LanguageServerMain(const std::string& bin_name, Config* config, MultiQueueWaiter* waiter) {
+  QueueManager queue(waiter);
   std::unordered_map<IpcId, Timer> request_times;
 
-  // Start stdin reader. Reading from stdin is a blocking operation so this
-  // needs a dedicated thread.
-  new std::thread([&]() {
-    LanguageServerStdinLoop(config, &request_times);
-  });
-
-  // Start querydb thread. querydb will start indexer threads as needed.
-  new std::thread([&]() {
-    QueryDbMain(bin_name, config, waiter);
-  });
+  LaunchStdinLoop(config, &request_times);
 
   // We run a dedicated thread for writing to stdout because there can be an
   // unknown number of delays when output information.
-  StdoutMain(&request_times, waiter);
+  LaunchStdoutThread(&request_times, waiter, &queue);
+
+  // Start querydb which takes over this thread. The querydb will launch
+  // indexer threads as needed.
+  RunQueryDbThread(bin_name, config, waiter, &queue);
 }
 
 

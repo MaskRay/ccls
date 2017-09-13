@@ -46,7 +46,14 @@ enum class IpcId : int {
   CqueryDerived,    // Show all derived types/methods.
 
   // Internal implementation detail.
-  Cout
+  Cout,
+
+  // Index the given file contents. Used in tests.
+  CqueryIndexFile,
+  // Make querydb wait for the indexer to be idle. Used in tests.
+  CqueryQueryDbWaitForIdleIndexer,
+  // Exit after all messages have been read/processes. Used in tests.
+  CqueryExitWhenIdle
 };
 MAKE_ENUM_HASHABLE(IpcId)
 MAKE_REFLECT_TYPE_PROXY(IpcId, int)
@@ -69,3 +76,27 @@ struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
   IpcId original_ipc_id;
 };
 MAKE_REFLECT_STRUCT(Ipc_Cout, content);
+
+struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
+  static constexpr IpcId kIpcId = IpcId::CqueryIndexFile;
+
+  struct Params {
+    std::string path;
+    std::vector<std::string> args;
+    bool is_interactive = false;
+    std::string contents;
+  };
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile::Params, path, args, is_interactive, contents);
+MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile, params);
+
+struct Ipc_CqueryQueryDbWaitForIdleIndexer : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
+  static constexpr IpcId kIpcId = IpcId::CqueryQueryDbWaitForIdleIndexer;
+};
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryQueryDbWaitForIdleIndexer);
+
+struct Ipc_CqueryExitWhenIdle : public IpcMessage<Ipc_CqueryExitWhenIdle> {
+  static constexpr IpcId kIpcId = IpcId::CqueryExitWhenIdle;
+};
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryExitWhenIdle);

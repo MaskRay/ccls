@@ -1,6 +1,11 @@
 import json
+import re
 import shlex
 from subprocess import Popen, PIPE
+
+
+CQUERY_PATH = 'x64/Debug/cquery.exe'
+CACHE_DIR = 'e2e_CACHE'
 
     # Content-Length: ...\r\n
     # \r\n
@@ -22,15 +27,33 @@ from subprocess import Popen, PIPE
 
 class TestBuilder:
   def __init__(self):
-    self.files = []
     self.sent = []
-    self.received = []
+    self.expected = []
 
-  def WithFile(self, filename, contents):
+  def IndexFile(self, path, contents):
     """
     Writes the file contents to disk so that the language server can access it.
     """
-    self.files.append((filename, contents))
+    self.Send({
+      'method': '$cquery/indexFile',
+      'params': {
+        'path': path,
+        'contents': contents,
+        'args': [
+          '-xc++',
+          '-std=c++11',
+          '-isystemC:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include',
+          '-isystemC:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt'
+        ]
+      }
+    })
+    return self
+
+  def WaitForIdle(self):
+    """
+    Blocks the querydb thread until any active imports are complete.
+    """
+    self.Send({'method': '$cquery/queryDbWaitForIdleIndexer'})
     return self
 
   def Send(self, stdin):
@@ -41,11 +64,12 @@ class TestBuilder:
     self.sent.append(stdin)
     return self
 
-  def Expect(self, stdout):
+  def Expect(self, expected):
     """
     Expect a message from the language server.
     """
-    self.received.append(stdout)
+    expected['jsonrpc'] = '2.0'
+    self.expected.append(expected)
     return self
 
   def SetupCommonInit(self):
@@ -57,15 +81,45 @@ class TestBuilder:
       'method': 'initialize',
       'params': {
         'processId': 123,
-        'rootPath': 'cquery',
+        'rootUri': 'cquery',
         'capabilities': {},
-        'trace': 'off'
+        'trace': 'off',
+        'initializationOptions': {
+          'cacheDirectory': CACHE_DIR,
+          'clientVersion': -1 # Disables the check
+        }
       }
     })
     self.Expect({
       'id': 0,
-      'method': 'initialized',
-      'result': {}
+      'result': {
+        'capabilities': {
+          'textDocumentSync': 2,
+          'hoverProvider': True,
+          'completionProvider': {
+            'resolveProvider': False,
+            'triggerCharacters': [ '.', ':', '>', '#' ]
+          },
+          'signatureHelpProvider': {
+            'triggerCharacters': [ '(', ',' ]
+          },
+          'definitionProvider': True,
+          'referencesProvider': True,
+          'documentHighlightProvider': True,
+          'documentSymbolProvider': True,
+          'workspaceSymbolProvider': True,
+          'codeActionProvider': True,
+          'codeLensProvider': {
+            'resolveProvider': False
+          },
+          'documentFormattingProvider': False,
+          'documentRangeFormattingProvider': False,
+          'renameProvider': True,
+          'documentLinkProvider': {
+            'resolveProvider': False
+          }
+        }
+      }
     })
     return self
 
@@ -79,32 +133,76 @@ def _ExecuteTest(name, func):
   if not isinstance(test_builder, TestBuilder):
     raise Exception('%s does not return a TestBuilder instance' % name)
 
-  test_builder.Send({ 'method': 'exit' })
+  # Add a final exit message.
+  test_builder.Send({ 'method': '$cquery/exitWhenIdle' })
 
-  # Possible test runner implementation
-  cmd = "x64/Debug/indexer.exe --language-server"
-  process = Popen(shlex.split(cmd), stdin=PIPE, stdout=PIPE, stderr=PIPE, universal_newlines=True)
-
+  # Convert messages to a stdin byte array.
   stdin = ''
   for message in test_builder.sent:
     payload = json.dumps(message)
     wrapped = 'Content-Length: %s\r\n\r\n%s' % (len(payload), payload)
     stdin += wrapped
+  stdin_bytes = stdin.encode(encoding='UTF-8')
 
-  print('## %s ##' % name)
-  print('== STDIN ==')
-  print(stdin)
-  (stdout, stderr) = process.communicate(stdin)
-  if stdout:
-    print('== STDOUT ==')
-    print(stdout)
-  if stderr:
-    print('== STDERR ==')
-    print(stderr)
+  # Finds all messages in |string| by parsing Content-Length headers.
+  def GetMessages(string):
+    messages = []
+    for match in re.finditer('Content-Length: (\d+)\r\n\r\n', string):
+      start = match.span()[1]
+      length = int(match.groups()[0])
+      message = string[start:start + length]
+      messages.append(json.loads(message))
+    return messages
 
-  # TODO: Actually verify stdout.
+  # Utility method to print a byte array.
+  def PrintByteArray(bytes):
+    for line in bytes.split(b'\r\n'):
+      print(line.decode('utf8'))
 
-  exit_code = process.wait()
+  # Execute program.
+  cmd = "%s --language-server" % CQUERY_PATH
+  process = Popen(shlex.split(cmd), stdin=PIPE, stdout=PIPE, stderr=PIPE)
+  (stdout, stderr) = process.communicate(stdin_bytes)
+  exit_code = process.wait();
+
+  # Check if test succeeded.
+  actual = GetMessages(stdout.decode('utf8'))
+  success = actual == test_builder.expected
+
+  # Print failure messages.
+  if success:
+    print('== Passed %s with exit_code=%s ==' % (name, exit_code))
+  else:
+    print('== FAILED %s with exit_code=%s ==' % (name, exit_code))
+    print('## STDIN:')
+    for message in GetMessages(stdin):
+      print(json.dumps(message, indent=True))
+    if stdout:
+      print('## STDOUT:')
+      for message in GetMessages(stdout.decode('utf8')):
+        print(json.dumps(message, indent=True))
+    if stderr:
+      print('## STDERR:')
+      PrintByteArray(stderr)
+
+    print('## Expected output')
+    for message in test_builder.expected:
+      print(message)
+    print('## Actual output')
+    for message in actual:
+      print(message)
+    print('## Difference')
+    common_end = min(len(test_builder.expected), len(actual))
+    for i in range(0, common_end):
+      if test_builder.expected[i] != actual[i]:
+        print('i=%s' % i)
+        print('- Expected %s' % str(test_builder.expected[i]))
+        print('- Actual %s' % str(actual[i]))
+    for i in range(common_end, len(test_builder.expected)):
+      print('Extra expected: %s' % str(test_builder.expected[i]))
+    for i in range(common_end, len(actual)):
+      print('Extra actual: %s' % str(actual[i]))
+
 
 def _DiscoverTests():
   """
@@ -122,10 +220,14 @@ def _RunTests():
   Executes all tests.
   """
   for name, func in _DiscoverTests():
-    print('Running test function %s' % name)
     _ExecuteTest(name, func)
 
 
+
+
+
+
+#### EXAMPLE TESTS ####
 
 
 class lsSymbolKind:
@@ -138,24 +240,32 @@ def lsSymbolInfo(name, position, kind):
     'kind': kind
   }
 
-def Test_Init():
+def DISABLED_Test_Init():
   return (TestBuilder()
     .SetupCommonInit()
   )
 
-def _Test_Outline():
+def Test_Outline():
   return (TestBuilder()
     .SetupCommonInit()
-    .WithFile("foo.cc",
-      """
-      void main() {}
-      """
-    )
+    # .IndexFile("file:///C%3A/Users/jacob/Desktop/cquery/foo.cc",
+    .IndexFile("foo.cc",
+      """void foobar();""")
+    .WaitForIdle()
     .Send({
       'id': 1,
       'method': 'textDocument/documentSymbol',
-      'params': {}
+      'params': {
+        'textDocument': {
+          'uri': 'C:/Users/jacob/Desktop/cquery/foo.cc'
+        }
+      }
     })
+    # .Expect({
+    #   'jsonrpc': '2.0',
+    #   'id': 1,
+    #   'error': {'code': -32603, 'message': 'Unable to find file '}
+    # }))
     .Expect({
       'id': 1,
       'result': [

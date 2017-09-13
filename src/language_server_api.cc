@@ -1,5 +1,8 @@
 #include "language_server_api.h"
 
+#include <doctest/doctest.h>
+#include <loguru.hpp>
+
 void Reflect(Writer& visitor, lsRequestId& value) {
   assert(value.id0.has_value() || value.id1.has_value());
 
@@ -22,55 +25,113 @@ void Reflect(Reader& visitor, lsRequestId& id) {
 
 MessageRegistry* MessageRegistry::instance_ = nullptr;
 
-std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
-  int content_length = -1;
-  int iteration = 0;
+// Reads a JsonRpc message. |read| returns the next input character.
+optional<std::string> ReadJsonRpcContentFrom(std::function<optional<char>()> read) {
+  // Read the content length. It is terminated by the "\r\n" sequence.
+  int exit_seq = 0;
+  std::string stringified_content_length;
   while (true) {
-    if (++iteration > 10) {
-      assert(false && "bad parser state");
-      exit(1);
+    optional<char> opt_c = read();
+    if (!opt_c) {
+      LOG_S(INFO) << "No more input when reading content length header";
+      return nullopt;
     }
+    char c = *opt_c;
 
-    std::string line;
-    std::getline(std::cin, line);
+    if (exit_seq == 0 && c == '\r') ++exit_seq;
+    if (exit_seq == 1 && c == '\n') break;
+    
+    stringified_content_length += c;
+  }
+  constexpr char* kContentLengthStart = "Content-Length: ";
+  assert(StartsWith(stringified_content_length, kContentLengthStart));
+  int content_length = atoi(stringified_content_length.c_str() + strlen(kContentLengthStart));
 
-    // No content; end of stdin.
-    if (line.empty()) {
-      std::cerr << "stdin closed; exiting" << std::endl;
-      exit(0);
-    }
-
-    // std::cin >> line;
-    // std::cerr << "Read line " << line;
-
-    if (line.compare(0, 14, "Content-Length") == 0) {
-      content_length = atoi(line.c_str() + 16);
-    }
-
-    if (line == "\r")
-      break;
+  // There is always a "\r\n" sequence before the actual content.
+  auto expect_char = [&](char expected) {
+    optional<char> opt_c = read();
+    return opt_c && *opt_c == expected;
+  };
+  if (!expect_char('\r') || !expect_char('\n')) {
+    LOG_S(INFO) << "Unexpected token (expected \r\n sequence)";
+    return nullopt;
   }
 
-  // bad input that is not a message.
-  if (content_length < 0) {
-    std::cerr << "parsing command failed (no Content-Length header)"
-      << std::endl;
-    return nullptr;
-  }
-
-  // TODO: maybe use std::cin.read(c, content_length)
+  // Read content.
   std::string content;
   content.reserve(content_length);
-  for (int i = 0; i < content_length; ++i) {
-    char c;
-    std::cin.read(&c, 1);
-    content += c;
+  for (size_t i = 0; i < content_length; ++i) {
+    optional<char> c = read();
+    if (!c) {
+      LOG_S(INFO) << "No more input when reading content body";
+      return nullopt;
+    }
+    content += *c;
+  }
+  
+  return content;
+}
+
+TEST_SUITE("FindIncludeLine");
+
+auto MakeContentReader(std::string* content, bool can_be_empty) {
+  return [=]() -> optional<char> {
+    if (!can_be_empty)
+      REQUIRE(!content->empty());
+    if (content->empty())
+      return nullopt;
+    char c = (*content)[0];
+    content->erase(content->begin());
+    return c;
+  };
+}
+
+TEST_CASE("ReadContentFromSource") {
+  auto parse_correct = [](std::string content) {
+    auto reader = MakeContentReader(&content, false /*can_be_empty*/);
+    auto got = ReadJsonRpcContentFrom(reader);
+    REQUIRE(got);
+    return got.value();
+  };
+
+  auto parse_incorrect = [](std::string content) {
+    auto reader = MakeContentReader(&content, true /*can_be_empty*/);
+    return ReadJsonRpcContentFrom(reader);
+  };
+
+  REQUIRE(parse_correct("Content-Length: 0\r\n\r\n") == "");
+  REQUIRE(parse_correct("Content-Length: 1\r\n\r\na") == "a");
+  REQUIRE(parse_correct("Content-Length: 4\r\n\r\nabcd") == "abcd");
+
+  REQUIRE(parse_incorrect("ggg") == optional<std::string>());
+  REQUIRE(parse_incorrect("Content-Length: 0\r\n") == optional<std::string>());
+  REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") == optional<std::string>());
+}
+
+TEST_SUITE_END();
+
+optional<char> ReadCharFromStdinBlocking() {
+  // Bad stdin means parent process has probably exited. Either way, cquery
+  // can no longer be communicated with so just exit.
+  if (!std::cin.good()) {
+    LOG_S(FATAL) << "std::cin.good() is false; exiting";
+    exit(1);
   }
 
-  //std::cerr << content.c_str() << std::endl;
+  char c = 0;
+  std::cin.read(&c, 1);
+  return c;
+}
+
+std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
+  optional<std::string> content = ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
+  if (!content) {
+    LOG_S(FATAL) << "Failed to read JsonRpc input; exiting";
+    exit(1);
+  }
 
   rapidjson::Document document;
-  document.Parse(content.c_str(), content_length);
+  document.Parse(content->c_str(), content->length());
   assert(!document.HasParseError());
 
   return Parse(document);
@@ -86,7 +147,7 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
   ReflectMember(visitor, "method", method);
 
   if (allocators.find(method) == allocators.end()) {
-    std::cerr << "Unable to find registered handler for method \"" << method << "\"" << std::endl;
+    LOG_S(ERROR) << "Unable to find registered handler for method \"" << method << "\"" << std::endl;
     return nullptr;
   }
 

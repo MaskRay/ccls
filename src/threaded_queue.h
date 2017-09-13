@@ -1,5 +1,6 @@
 #pragma once
 
+#include "work_thread.h"
 #include <optional.h>
 
 #include <algorithm>
@@ -38,8 +39,11 @@ struct MultiQueueWaiter {
     // HasState() is called data gets posted but before we begin waiting for
     // the condition variable, we will miss the notification. The timeout of 5
     // means that if this happens we will delay operation for 5 seconds.
+    //
+    // If we're trying to exit (WorkThread::request_exit_on_idle), do not
+    // bother waiting.
 
-    while (!HasState(queues)) {
+    while (!HasState(queues) && !WorkThread::request_exit_on_idle) {
       std::unique_lock<std::mutex> l(m);
       cv.wait_for(l, std::chrono::seconds(5));
     }
@@ -132,7 +136,8 @@ public:
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
-  optional<T> TryDequeue() {
+  template<typename TAction>
+  optional<T> TryDequeuePlusAction(TAction action) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (priority_.empty() && queue_.empty())
       return nullopt;
@@ -145,7 +150,14 @@ public:
 
     auto val = std::move(queue_.front());
     queue_.pop();
+
+    action(val);
+
     return std::move(val);
+  }
+
+  optional<T> TryDequeue() {
+    return TryDequeuePlusAction([](const T&) {});
   }
 
  private:

@@ -5,6 +5,7 @@
 #include "project.h"
 #include "standard_includes.h"
 #include "timer.h"
+#include "work_thread.h"
 
 #include <thread>
 
@@ -114,8 +115,7 @@ void IncludeComplete::Rescan() {
     match_ = MakeUnique<GroupMatch>(config_->includeCompletionWhitelist, config_->includeCompletionBlacklist);
 
   is_scanning = true;
-  new std::thread([this]() {
-    SetCurrentThreadName("include_scanner");
+  WorkThread::StartThread("include_scanner", [this]() {
     Timer timer;
 
     InsertStlIncludes();
@@ -127,6 +127,8 @@ void IncludeComplete::Rescan() {
 
     timer.ResetAndPrint("[perf] Scanning for includes");
     is_scanning = false;
+
+    return WorkThread::Result::ExitThread;
   });
 }
 
