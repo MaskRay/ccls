@@ -1235,9 +1235,10 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // }
 
-      assert(decl->isDefinition);
-      type->def.definition_spelling = ResolveSpelling(decl->cursor);
-      type->def.definition_extent = ResolveExtent(decl->cursor);
+      if (decl->isDefinition) {
+        type->def.definition_spelling = ResolveSpelling(decl->cursor);
+        type->def.definition_extent = ResolveExtent(decl->cursor);
+      }
       UniqueAdd(type->uses, decl_loc_spelling);
 
       // type_def->alias_of
