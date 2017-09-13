@@ -17,7 +17,17 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "4:8-4:11",
       "definition_extent": "4:1-6:2",
-      "uses": ["4:8-4:11"]
+      "funcs": [0],
+      "uses": ["4:8-4:11", "5:12-5:15"]
+    }],
+  "funcs": [{
+      "id": 0,
+      "usr": "c:@S@Foo@F@Foo#&&$@S@Foo#",
+      "short_name": "Foo",
+      "detailed_name": "void Foo::Foo(Foo &&)",
+      "definition_spelling": "5:12-5:15",
+      "definition_extent": "5:12-5:16",
+      "declaring_type": 0
     }],
   "vars": [{
       "id": 0,

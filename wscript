@@ -15,16 +15,16 @@ out = 'build'
 
 
 # Example URLs
-#   http://releases.llvm.org/4.0.0/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-#   http://releases.llvm.org/4.0.0/clang+llvm-4.0.0-x86_64-apple-darwin.tar.xz
-#   http://releases.llvm.org/4.0.0/LLVM-4.0.0-win64.exe
+#   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu16.04.tar.xz
+#   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu14.04.tar.xz
+#   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-x86_64-apple-darwin.tar.xz
 # TODO: windows support (it's an exe!)
 
 global CLANG_PLATFORM_NAME
 global CLANG_TARBALL_PLATFORM_NAME
 
 if sys.platform == 'linux' or sys.platform == 'linux2':
-  CLANG_PLATFORM_NAME = 'x86_64-linux-gnu-ubuntu-14.04'
+  CLANG_PLATFORM_NAME = 'linux-x86_64-gnu-ubuntu14.04'
   CLANG_TARBALL_PLATFORM_NAME = 'clang+llvm'
 elif sys.platform == 'darwin':
   CLANG_PLATFORM_NAME = 'x86_64-apple-darwin'
@@ -34,7 +34,7 @@ else:
   sys.exit(1)
 
 # Version of clang to download and use.
-CLANG_VERSION = '4.0.0'
+CLANG_VERSION = '5.0.0'
 # Tarball name on clang servers that should be used.
 CLANG_TARBALL_NAME  = '{0}-{1}-{2}'.format(CLANG_TARBALL_PLATFORM_NAME, CLANG_VERSION, CLANG_PLATFORM_NAME)
 # Directory clang has been extracted to.
