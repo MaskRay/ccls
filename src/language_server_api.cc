@@ -40,10 +40,10 @@ optional<std::string> ReadJsonRpcContentFrom(std::function<optional<char>()> rea
 
     if (exit_seq == 0 && c == '\r') ++exit_seq;
     if (exit_seq == 1 && c == '\n') break;
-    
+
     stringified_content_length += c;
   }
-  constexpr char* kContentLengthStart = "Content-Length: ";
+  const char* kContentLengthStart = "Content-Length: ";
   assert(StartsWith(stringified_content_length, kContentLengthStart));
   int content_length = atoi(stringified_content_length.c_str() + strlen(kContentLengthStart));
 
@@ -68,14 +68,15 @@ optional<std::string> ReadJsonRpcContentFrom(std::function<optional<char>()> rea
     }
     content += *c;
   }
-  
+
   return content;
 }
 
 TEST_SUITE("FindIncludeLine");
 
-auto MakeContentReader(std::string* content, bool can_be_empty) {
-  return [=]() -> optional<char> {
+std::function<optional<char>()>
+    MakeContentReader(std::string* content, bool can_be_empty) {
+  return [content, can_be_empty]() -> optional<char> {
     if (!can_be_empty)
       REQUIRE(!content->empty());
     if (content->empty())
@@ -87,14 +88,14 @@ auto MakeContentReader(std::string* content, bool can_be_empty) {
 }
 
 TEST_CASE("ReadContentFromSource") {
-  auto parse_correct = [](std::string content) {
+  auto parse_correct = [](std::string content) -> std::string {
     auto reader = MakeContentReader(&content, false /*can_be_empty*/);
     auto got = ReadJsonRpcContentFrom(reader);
     REQUIRE(got);
     return got.value();
   };
 
-  auto parse_incorrect = [](std::string content) {
+  auto parse_incorrect = [](std::string content) -> optional<std::string> {
     auto reader = MakeContentReader(&content, true /*can_be_empty*/);
     return ReadJsonRpcContentFrom(reader);
   };

@@ -2626,7 +2626,6 @@ bool QueryDbMainLoop(
       }
 
       case IpcId::CqueryQueryDbWaitForIdleIndexer: {
-        auto msg = static_cast<Ipc_CqueryQueryDbWaitForIdleIndexer*>(message.get());
         LOG_S(INFO) << "Waiting for idle";
         int idle_count = 0;
         while (true) {

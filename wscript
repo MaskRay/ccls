@@ -24,7 +24,7 @@ global CLANG_PLATFORM_NAME
 global CLANG_TARBALL_PLATFORM_NAME
 
 if sys.platform == 'linux' or sys.platform == 'linux2':
-  CLANG_PLATFORM_NAME = 'linux-x86_64-gnu-ubuntu14.04'
+  CLANG_PLATFORM_NAME = 'linux-x86_64-ubuntu14.04'
   CLANG_TARBALL_PLATFORM_NAME = 'clang+llvm'
 elif sys.platform == 'darwin':
   CLANG_PLATFORM_NAME = 'x86_64-apple-darwin'
