@@ -896,6 +896,10 @@ std::vector<Index_DoIdMap> DoParseFile(
   IndexFile* previous_index = cache_loader->TryLoad(path);
   if (previous_index) {
     // If none of the dependencies have changed, skip parsing and just load from cache.
+
+    // Checks if |path| needs to be reparsed. This will modify cached state
+    // such that calling this function twice with the same path may return true
+    // the first time but will return false the second.
     auto file_needs_parse = [&](const std::string& path) {
       optional<int64_t> modification_timestamp = GetLastModificationTime(path);
       if (!modification_timestamp)
@@ -905,6 +909,7 @@ std::vector<Index_DoIdMap> DoParseFile(
 
       if (!last_cached_modification || modification_timestamp != *last_cached_modification) {
         file_consumer_shared->Reset(path);
+        timestamp_manager->UpdateCachedModificationTime(path, *modification_timestamp);
         return FileParseQuery::NeedsParse;
       }
       return FileParseQuery::DoesNotNeedParse;
@@ -1284,7 +1289,9 @@ bool QueryDb_ImportMain(Config* config, QueryDatabase* db, ImportManager* import
 
     time.Reset();
     db->ApplyIndexUpdate(&response->update);
-    time.ResetAndPrint("Applying index update");
+    time.ResetAndPrint("Applying index update for " + StringJoinMap(response->update.files_def_update, [](const QueryFile::DefUpdate& value) {
+      return value.path;
+    }));
   }
 
   return did_work;

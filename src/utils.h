@@ -32,17 +32,25 @@ std::vector<std::string> SplitString(const std::string& str, const std::string& 
 
 std::string LowerPathIfCaseInsensitive(const std::string& path);
 
-template <typename TValues>
-std::string StringJoin(const TValues& values) {
+
+template <typename TValues, typename TMap>
+std::string StringJoinMap(const TValues& values, const TMap& map) {
   std::string result;
   bool first = true;
   for (auto& entry : values) {
     if (!first)
       result += ", ";
     first = false;
-    result += entry;
+    result += map(entry);
   }
   return result;
+}
+
+template <typename TValues>
+std::string StringJoin(const TValues& values) {
+  return StringJoinMap(values, [](const std::string& entry) {
+    return entry;
+  });
 }
 
 // Finds all files in the given folder. This is recursive.
