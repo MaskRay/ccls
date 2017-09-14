@@ -837,6 +837,43 @@ struct IndexManager {
 
 }  // namespace
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 enum class FileParseQuery {
   NeedsParse,
   DoesNotNeedParse,
