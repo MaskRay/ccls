@@ -925,7 +925,7 @@ std::vector<Index_DoIdMap> DoParseFile(
       assert(!dependency.empty());
 
       if (file_needs_parse(dependency) == FileParseQuery::NeedsParse) {
-        LOG_S(INFO) << "Timestamp has changed for " << dependency;
+        LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via " << previous_index->path << ")";
         needs_reparse = true;
         // SUBTLE: Do not break here, as |file_consumer_shared| is updated
         // inside of |file_needs_parse|.
@@ -945,12 +945,24 @@ std::vector<Index_DoIdMap> DoParseFile(
         if (!file_consumer_shared->Mark(dependency))
           continue;
 
-        LOG_S(INFO) << "Emitting index result for " << dependency;
+        LOG_S(INFO) << "Emitting index result for " << dependency << " (via " << previous_index->path << ")";
         result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(dependency), perf, is_interactive, false /*write_to_disk*/));
       }
       return result;
     }
   }
+
+  // TODO: fix indexing issue.
+  //  - threaded_queue.h timestamp change from command_line.cc   (force repase)
+  //  - threaded_queue.h timestamp change from clang_complete.cc (force reparse)
+  //  - threaded_queue.h cached index emitted from ipc_manager   (load cache)
+  //
+  // RESULT:
+  //  - we indexed command_line.cc and clang_complete.cc but did not update threaded_queue.h
+  //
+  // Ideas:
+  //  - find the set of changes, try to commit/lock those changes, redo logic if failed.
+
 
   LOG_S(INFO) << "Parsing " << path;
 
@@ -1101,6 +1113,7 @@ bool IndexMain_DoCreateIndexUpdate(
 
   // Write current index to disk if requested.
   if (response->write_to_disk) {
+    LOG_S(INFO) << "Writing cached index to disk for " << response->current->file->path;
     time.Reset();
     WriteToCache(config, *response->current->file);
     response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
@@ -3048,7 +3061,9 @@ void LanguageServerMain(const std::string& bin_name, Config* config, MultiQueueW
 
 int main(int argc, char** argv) {
   loguru::init(argc, argv);
+  loguru::add_file("cquery.log", loguru::Truncate, loguru::Verbosity_MAX);
   loguru::g_flush_interval_ms = 0;
+  // loguru::g_stderr_verbosity = 1;
 
   MultiQueueWaiter waiter;
   IpcManager::CreateInstance(&waiter);

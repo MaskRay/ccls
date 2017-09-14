@@ -9,6 +9,9 @@
 #include <mutex>
 #include <condition_variable>
 
+using std::experimental::optional;
+using std::experimental::nullopt;
+
 // TODO: cleanup includes.
 
 struct BaseThreadQueue {
