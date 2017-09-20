@@ -730,24 +730,35 @@ void InsertSymbolIntoResult(QueryDatabase* db, WorkingFiles* working_files, Symb
 //
 // NOTE: This is not thread safe and should only be used on the querydb thread.
 struct ImportManager {
+  // Try to mark the given dependency as imported. A dependency can only ever be
+  // imported once.
+  bool TryMarkDependencyImported(const std::string& path) {
+    std::lock_guard<std::mutex> lock(depdency_mutex_);
+    return depdency_imported_.insert(path).second;
+  }
+
   // Try to import the given file into querydb. We should only ever be
   // importing a file into querydb once per file. Returns true if the file
   // can be imported.
   bool StartQueryDbImport(const std::string& path) {
-    return import_.insert(path).second;
+    return querydb_processing_.insert(path).second;
   }
 
   // The file has been fully imported and can be imported again later on.
   void DoneQueryDbImport(const std::string& path) {
-    import_.erase(path);
+    querydb_processing_.erase(path);
   }
 
   // Returns true if there any any files currently being imported.
-  bool HasActiveImports() {
-    return !import_.empty();
+  bool HasActiveQuerydbImports() {
+    return !querydb_processing_.empty();
   }
 
-  std::unordered_set<std::string> import_;
+  std::unordered_set<std::string> querydb_processing_;
+
+  // TODO: use std::shared_mutex so we can have multiple readers.
+  std::mutex depdency_mutex_;
+  std::unordered_set<std::string> depdency_imported_;
 };
 
 // Manages loading caches from file paths for the indexer process.
@@ -886,6 +897,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     clang::Index* index,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
+    ImportManager* import_manager,
     CacheLoader* cache_loader,
     bool is_interactive,
     const std::string& path,
@@ -894,13 +906,20 @@ std::vector<Index_DoIdMap> DoParseFile(
   std::vector<Index_DoIdMap> result;
 
   IndexFile* previous_index = cache_loader->TryLoad(path);
-  if (previous_index) {
-    // If none of the dependencies have changed, skip parsing and just load from cache.
+  if (previous_index && !is_interactive) {
+    // If none of the dependencies have changed and the index is not
+    // interactive (ie, requested by a file save), skip parsing and just load
+    // from cache.
 
     // Checks if |path| needs to be reparsed. This will modify cached state
     // such that calling this function twice with the same path may return true
     // the first time but will return false the second.
-    auto file_needs_parse = [&](const std::string& path) {
+    auto file_needs_parse = [&](const std::string& path, bool is_dependency) {
+      // If the file is a dependency but another file as already imported it,
+      // don't bother.
+      if (is_dependency && !import_manager->TryMarkDependencyImported(path))
+        return FileParseQuery::DoesNotNeedParse;
+
       optional<int64_t> modification_timestamp = GetLastModificationTime(path);
       if (!modification_timestamp)
         return FileParseQuery::BadFile;
@@ -916,7 +935,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     };
 
     // Check timestamps and update |file_consumer_shared|.
-    FileParseQuery path_state = file_needs_parse(path);
+    FileParseQuery path_state = file_needs_parse(path, false /*is_dependency*/);
     if (path_state == FileParseQuery::BadFile)
       return result;
     bool needs_reparse = path_state == FileParseQuery::NeedsParse;
@@ -924,7 +943,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     for (const std::string& dependency : previous_index->dependencies) {
       assert(!dependency.empty());
 
-      if (file_needs_parse(dependency) == FileParseQuery::NeedsParse) {
+      if (file_needs_parse(dependency, true /*is_dependency*/) == FileParseQuery::NeedsParse) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via " << previous_index->path << ")";
         needs_reparse = true;
         // SUBTLE: Do not break here, as |file_consumer_shared| is updated
@@ -951,18 +970,6 @@ std::vector<Index_DoIdMap> DoParseFile(
       return result;
     }
   }
-
-  // TODO: fix indexing issue.
-  //  - threaded_queue.h timestamp change from command_line.cc   (force repase)
-  //  - threaded_queue.h timestamp change from clang_complete.cc (force reparse)
-  //  - threaded_queue.h cached index emitted from ipc_manager   (load cache)
-  //
-  // RESULT:
-  //  - we indexed command_line.cc and clang_complete.cc but did not update threaded_queue.h
-  //
-  // Ideas:
-  //  - find the set of changes, try to commit/lock those changes, redo logic if failed.
-
 
   LOG_S(INFO) << "Parsing " << path;
 
@@ -1043,6 +1050,7 @@ std::vector<Index_DoIdMap> ParseFile(
     clang::Index* index,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
+    ImportManager* import_manager,
     bool is_interactive,
     const Project::Entry& entry,
     const optional<std::string>& contents) {
@@ -1058,7 +1066,7 @@ std::vector<Index_DoIdMap> ParseFile(
   // complain about if indexed by itself.
   IndexFile* entry_cache = cache_loader.TryLoad(entry.filename);
   std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
-  return DoParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, &cache_loader, is_interactive, tu_path, entry.args, file_contents);
+  return DoParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, import_manager, &cache_loader, is_interactive, tu_path, entry.args, file_contents);
 }
 
 bool IndexMain_DoParse(
@@ -1067,6 +1075,7 @@ bool IndexMain_DoParse(
     QueueManager* queue,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
+    ImportManager* import_manager,
     clang::Index* index) {
 
   optional<Index_Request> request = queue->index_request.TryDequeue();
@@ -1076,7 +1085,7 @@ bool IndexMain_DoParse(
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  std::vector<Index_DoIdMap> responses = ParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, request->is_interactive, entry, request->contents);
+  std::vector<Index_DoIdMap> responses = ParseFile(config, working_files, index, file_consumer_shared, timestamp_manager, import_manager, request->is_interactive, entry, request->contents);
 
   // Don't bother sending an IdMap request if there are no responses.
   if (responses.empty())
@@ -1187,6 +1196,7 @@ WorkThread::Result IndexMain(
     Config* config,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
+    ImportManager* import_manager,
     Project* project,
     WorkingFiles* working_files,
     MultiQueueWaiter* waiter,
@@ -1204,7 +1214,7 @@ WorkThread::Result IndexMain(
   // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
   // work. Running both also lets the user query the partially constructed
   // index.
-  bool did_parse = IndexMain_DoParse(config, working_files, queue, file_consumer_shared, timestamp_manager, &index);
+  bool did_parse = IndexMain_DoParse(config, working_files, queue, file_consumer_shared, timestamp_manager, import_manager, &index);
 
   bool did_create_update =
       IndexMain_DoCreateIndexUpdate(config, queue, timestamp_manager);
@@ -1467,7 +1477,7 @@ bool QueryDbMainLoop(
           std::cerr << "[querydb] Starting " << config->indexerCount << " indexers" << std::endl;
           for (int i = 0; i < config->indexerCount; ++i) {
             WorkThread::StartThread("indexer" + std::to_string(i), [&]() {
-              return IndexMain(config, file_consumer_shared, timestamp_manager, project, working_files, waiter, queue);
+              return IndexMain(config, file_consumer_shared, timestamp_manager, import_manager, project, working_files, waiter, queue);
             });
           }
 
@@ -2678,7 +2688,7 @@ bool QueryDbMainLoop(
         int idle_count = 0;
         while (true) {
           bool has_work = false;
-          has_work |= import_manager->HasActiveImports();
+          has_work |= import_manager->HasActiveQuerydbImports();
           has_work |= queue->HasWork();
           has_work |= QueryDb_ImportMain(config, db, import_manager, queue, working_files);
           if (!has_work)

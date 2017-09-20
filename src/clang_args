@@ -11,6 +11,7 @@
 -IC:/Users/jacob/Desktop/cquery/third_party/doctest
 -IC:/Users/jacob/Desktop/cquery/third_party/rapidjson/include
 -IC:/Users/jacob/Desktop/cquery/third_party/sparsepp
+-IC:/Users/jacob/Desktop/cquery/third_party/loguru
 -IC:/Program Files/LLVM/include
 -isystemC:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include
 -isystemC:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt
@@ -21,6 +22,7 @@
 -I/Users/jdufault/personal/cquery/third_party/doctest
 -I/Users/jdufault/personal/cquery/third_party/rapidjson/include
 -I/Users/jdufault/personal/cquery/third_party/sparsepp
+-I/Users/jdufault/personal/cquery/third_party/loguru
 -I/Users/jdufault/personal/cquery/build/clang+llvm-4.0.0-x86_64-apple-darwin/include
 
 # Use libcxx
