@@ -416,8 +416,6 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
   const size_t kMaxResultSize = 100u;
   if (complete_response->result.items.size() > kMaxResultSize) {
-    complete_response->result.isIncomplete = true;
-
     if (complete_text.empty()) {
       complete_response->result.items.resize(kMaxResultSize);
     } else {
@@ -454,6 +452,15 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       }
 
       complete_response->result.items = filtered_result;
+
+      // Assuming the client does not support out-of-order completion (ie, ao
+      // matches against oa), our filtering is guaranteed to contain any
+      // potential matches, so the completion is only incomplete if we have the
+      // max number of emitted matches.
+      if (complete_response->result.items.size() >= kMaxResultSize) {
+        LOG_S(INFO) << "Marking completion results as incomplete";
+        complete_response->result.isIncomplete = true;
+      }
     }
   }
 }
@@ -1743,7 +1750,6 @@ bool QueryDbMainLoop(Config* config,
         if (ShouldRunIncludeCompletion(buffer_line)) {
           Out_TextDocumentComplete complete_response;
           complete_response.id = msg->id;
-          complete_response.result.isIncomplete = false;
 
           {
             std::unique_lock<std::mutex> lock(
@@ -1765,9 +1771,6 @@ bool QueryDbMainLoop(Config* config,
             }
           }
 
-          LOG_S(INFO) << "[complete] Returning "
-                      << complete_response.result.items.size()
-                      << " include completions";
           FilterCompletionResponse(&complete_response, buffer_line);
           ipc->SendOutMessageToClient(IpcId::TextDocumentCompletion,
                                       complete_response);
@@ -1780,9 +1783,6 @@ bool QueryDbMainLoop(Config* config,
                 &existing_completion);
           }
 
-          LOG_S(INFO) << "[complete] Got existing completion "
-                      << existing_completion;
-
           ClangCompleteManager::OnComplete callback = std::bind(
               [working_files, global_code_complete_cache,
                non_global_code_complete_cache, is_global_completion,
@@ -1792,7 +1792,6 @@ bool QueryDbMainLoop(Config* config,
 
                 Out_TextDocumentComplete complete_response;
                 complete_response.id = msg->id;
-                complete_response.result.isIncomplete = false;
                 complete_response.result.items = results;
 
                 // Emit completion results.
@@ -1807,26 +1806,14 @@ bool QueryDbMainLoop(Config* config,
                   if (is_global_completion) {
                     global_code_complete_cache->WithLock([&]() {
                       global_code_complete_cache->cached_path_ = path;
-                      LOG_S(INFO) << "[complete] Updating "
-                                     "global_code_complete_cache->cached_"
-                                     "results [0]";
                       global_code_complete_cache->cached_results_ = results;
-                      LOG_S(INFO) << "[complete] DONE Updating "
-                                     "global_code_complete_cache->cached_"
-                                     "results [0]";
                     });
                   } else {
                     non_global_code_complete_cache->WithLock([&]() {
                       non_global_code_complete_cache->cached_path_ = path;
                       non_global_code_complete_cache
                           ->cached_completion_position_ = msg->params.position;
-                      LOG_S(INFO) << "[complete] Updating "
-                                     "non_global_code_complete_cache->cached_"
-                                     "results [1]";
                       non_global_code_complete_cache->cached_results_ = results;
-                      LOG_S(INFO) << "[complete] DONE Updating "
-                                     "non_global_code_complete_cache->cached_"
-                                     "results [1]";
                     });
                   }
                 }
@@ -1841,10 +1828,6 @@ bool QueryDbMainLoop(Config* config,
                 !global_code_complete_cache->cached_results_.empty();
           });
           if (is_cache_match) {
-            LOG_S(INFO) << "[complete] Early-returning cached global "
-                           "completion results at "
-                        << msg->params.position.ToString();
-
             ClangCompleteManager::OnComplete freshen_global =
                 [global_code_complete_cache](
                     NonElidedVector<lsCompletionItem> results,
@@ -1852,16 +1835,10 @@ bool QueryDbMainLoop(Config* config,
 
                   assert(!is_cached_result);
 
-                  LOG_S(INFO) << "[complete] Updating "
-                                 "global_code_complete_cache->cached_results "
-                                 "[2]";
                   // note: path is updated in the normal completion handler.
                   global_code_complete_cache->WithLock([&]() {
                     global_code_complete_cache->cached_results_ = results;
                   });
-                  LOG_S(INFO) << "[complete] DONE Updating "
-                                 "global_code_complete_cache->cached_results "
-                                 "[2]";
                 };
 
             global_code_complete_cache->WithLock([&]() {
@@ -1871,8 +1848,6 @@ bool QueryDbMainLoop(Config* config,
             clang_complete->CodeComplete(msg->params, freshen_global);
           } else if (non_global_code_complete_cache->IsCacheValid(
                          msg->params)) {
-            LOG_S(INFO) << "[complete] Using cached completion results at "
-                        << msg->params.position.ToString();
             non_global_code_complete_cache->WithLock([&]() {
               callback(non_global_code_complete_cache->cached_results_,
                        true /*is_cached_result*/);
@@ -1942,7 +1917,6 @@ bool QueryDbMainLoop(Config* config,
               Timer timer;
               ipc->SendOutMessageToClient(IpcId::TextDocumentSignatureHelp,
                                           response);
-              timer.ResetAndPrint("[complete] Writing signature help results");
 
               if (!is_cached_result) {
                 signature_cache->WithLock([&]() {
@@ -1950,8 +1924,6 @@ bool QueryDbMainLoop(Config* config,
                       msg->params.textDocument.uri.GetPath();
                   signature_cache->cached_completion_position_ =
                       msg->params.position;
-                  LOG_S(INFO) << "[complete] Updating "
-                                 "signature_cache->cached_results [3]";
                   signature_cache->cached_results_ = results;
                 });
               }
@@ -1962,8 +1934,6 @@ bool QueryDbMainLoop(Config* config,
             std::placeholders::_2);
 
         if (signature_cache->IsCacheValid(params)) {
-          LOG_S(INFO) << "[complete] Using cached completion results at "
-                      << params.position.ToString();
           signature_cache->WithLock([&]() {
             callback(signature_cache->cached_results_,
                      true /*is_cached_result*/);

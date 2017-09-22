@@ -65,18 +65,12 @@ int GetCompletionPriority(const CXCompletionString& str,
   int priority = clang_getCompletionPriority(str);
   if (result_kind == CXCursor_Destructor) {
     priority *= 100;
-    // std::cerr << "Bumping[destructor] " << ls_completion_item.label <<
-    // std::endl;
   }
   if (result_kind == CXCursor_ConversionFunction ||
       (result_kind == CXCursor_CXXMethod && StartsWith(label, "operator"))) {
-    // std::cerr << "Bumping[conversion] " << ls_completion_item.label <<
-    // std::endl;
     priority *= 100;
   }
   if (clang_getCompletionAvailability(str) != CXAvailability_Available) {
-    // std::cerr << "Bumping[notavailable] " << ls_completion_item.label <<
-    // std::endl;
     priority *= 100;
   }
   return priority;
@@ -101,6 +95,9 @@ bool IsCallKind(CXCursorKind kind) {
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
+    case CXCursor_UnexposedDecl:
+      return lsCompletionItemKind::Text;
+
     case CXCursor_ObjCInstanceMethodDecl:
     case CXCursor_CXXMethod:
       return lsCompletionItemKind::Method;
@@ -161,8 +158,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
       return lsCompletionItemKind::Text;
 
     default:
-      std::cerr << "[complete] Unhandled completion kind " << cursor_kind
-                << std::endl;
+      LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
       return lsCompletionItemKind::Text;
   }
 }
@@ -299,12 +295,10 @@ void EnsureDocumentParsed(ClangCompleteManager* manager,
 
   std::vector<CXUnsavedFile> unsaved = session->working_files->AsUnsavedFiles();
 
-  std::cerr << "[complete] Creating completion session with arguments "
-            << StringJoin(args) << std::endl;
+  LOG_S(INFO) << "Creating completion session with arguments "
+              << StringJoin(args);
   *tu = MakeUnique<clang::TranslationUnit>(index, session->file.filename, args,
                                            unsaved, Flags());
-  std::cerr << "[complete] Done creating active; did_fail=" << (*tu)->did_fail
-            << std::endl;
 
   // Build diagnostics.
   if (manager->config_->diagnosticsOnParse && !(*tu)->did_fail) {
@@ -350,8 +344,6 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
     // under the mutex.
     session->tu_last_parsed_at = std::chrono::high_resolution_clock::now();
     std::lock_guard<std::mutex> lock(session->tu_lock);
-    std::cerr << "[completion] Swapping completion session for " << request.path
-              << std::endl;
     session->tu = std::move(parsing);
   }
 }
@@ -380,27 +372,18 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       unsigned line = request->position->line + 1;
       unsigned column = request->position->character + 1;
 
-      std::cerr << "[complete] Completing at " << line << ":" << column
-                << std::endl;
-
-      timer.ResetAndPrint("[complete] Fetching unsaved files");
-
       timer.Reset();
       unsigned const kCompleteOptions =
           CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
       CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
           session->tu->cx_tu, session->file.filename.c_str(), line, column,
           unsaved.data(), (unsigned)unsaved.size(), kCompleteOptions);
+      timer.ResetAndPrint("[complete] clangCodeCompleteAt");
       if (!cx_results) {
-        timer.ResetAndPrint("[complete] Code completion failed");
         if (request->on_complete)
           request->on_complete({}, false /*is_cached_result*/);
         continue;
       }
-
-      timer.ResetAndPrint("[complete] clangCodeCompleteAt");
-      std::cerr << "[complete] Got " << cx_results->NumResults << " results"
-                << std::endl;
 
       {
         if (request->on_complete) {
@@ -446,7 +429,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                               " completion results");
 
           request->on_complete(ls_result, false /*is_cached_result*/);
-          timer.ResetAndPrint("[complete] Running user-given completion func");
         }
       }
 
@@ -486,16 +468,9 @@ CompletionSession::CompletionSession(const Project::Entry& file,
                                      WorkingFiles* working_files)
     : file(file),
       working_files(working_files),
-      index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/) {
-  std::cerr << "[complete] CompletionSession::CompletionSession() for "
-            << file.filename << std::endl;
-}
+      index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/) {}
 
-CompletionSession::~CompletionSession() {
-  std::cerr << "[complete] CompletionSession::~CompletionSession() for "
-            << file.filename << std::endl;
-  // EmitBacktrace();
-}
+CompletionSession::~CompletionSession() {}
 
 LruSessionCache::LruSessionCache(int max_entries) : max_entries_(max_entries) {}
 
@@ -594,8 +569,6 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
   if (view_sessions_.TryGetEntry(filename))
     return;
 
-  std::cerr << "[complete] Creating new edit code completion session for "
-            << filename << std::endl;
   view_sessions_.InsertEntry(std::make_shared<CompletionSession>(
       project_->FindCompilationEntryForFile(filename), working_files_));
   parse_requests_.Enqueue(ParseRequest(filename));
@@ -618,8 +591,6 @@ void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   if (session) {
     edit_sessions_.InsertEntry(session);
   } else {
-    std::cerr << "[complete] Creating new edit code completion session for "
-              << filename << std::endl;
     edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
         project_->FindCompilationEntryForFile(filename), working_files_));
     parse_requests_.PriorityEnqueue(ParseRequest(filename));
@@ -634,8 +605,6 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
   if (!edit_sessions_.TryGetEntry(filename)) {
-    std::cerr << "[complete] Creating new edit code completion session for "
-              << filename << std::endl;
     edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
         project_->FindCompilationEntryForFile(filename), working_files_));
   }
