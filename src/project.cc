@@ -26,9 +26,11 @@ MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
 
 namespace {
 
-struct IncludeDirectories {
+struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
+  std::vector<std::string> extra_flags;
+  std::string project_dir;
 };
 
 static const char* kBlacklistMulti[] = {"-MF", "-Xclang"};
@@ -88,8 +90,7 @@ bool IsCFile(const std::string& path) {
 }
 
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
-    IncludeDirectories* includes,
-    const std::vector<std::string>& extra_flags,
+    ProjectConfig* config,
     const CompileCommandsEntry& entry) {
   Project::Entry result;
   result.filename = NormalizePath(entry.file);
@@ -98,7 +99,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   bool add_next_flag_quote = false;
   bool add_next_flag_angle = false;
 
-  result.args.reserve(entry.args.size() + extra_flags.size());
+  result.args.reserve(entry.args.size() + config->extra_flags.size());
   for (size_t i = 0; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
 
@@ -122,9 +123,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       make_next_flag_absolute = false;
 
       if (add_next_flag_quote)
-        includes->quote_dirs.insert(arg);
+        config->quote_dirs.insert(arg);
       if (add_next_flag_angle)
-        includes->angle_dirs.insert(arg);
+        config->angle_dirs.insert(arg);
       add_next_flag_quote = false;
       add_next_flag_angle = false;
     }
@@ -148,9 +149,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
           arg = flag_type + path;
         }
         if (ShouldAddToQuoteIncludes(arg))
-          includes->quote_dirs.insert(path);
+          config->quote_dirs.insert(path);
         if (ShouldAddToAngleIncludes(arg))
-          includes->angle_dirs.insert(path);
+          config->angle_dirs.insert(path);
         break;
       }
     }
@@ -159,7 +160,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   }
 
   // We don't do any special processing on user-given extra flags.
-  for (const auto& flag : extra_flags)
+  for (const auto& flag : config->extra_flags)
     result.args.push_back(flag);
 
   // Clang does not have good hueristics for determining source language, we
@@ -180,45 +181,13 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   return result;
 }
 
-/* TODO: Fix this function, it may be way faster than libclang's implementation.
-std::vector<Project::Entry> LoadFromCompileCommandsJson(
-    std::unordered_set<std::string>& quote_includes,
-std::unordered_set<std::string>& angle_includes, const std::vector<std::string>&
-extra_flags, const std::string& project_directory) {
-
-  optional<std::string> compile_commands_content = ReadContent(project_directory
-+ "/compile_commands.json"); if (!compile_commands_content) return {};
-
-  rapidjson::Document reader;
-  reader.Parse(compile_commands_content->c_str());
-  if (reader.HasParseError())
-    return {};
-
-  std::vector<CompileCommandsEntry> entries;
-  Reflect(reader, entries);
-
-  std::vector<Project::Entry> result;
-  result.reserve(entries.size());
-  for (auto& entry : entries) {
-    if (entry.args.empty() && !entry.command.empty())
-      entry.args = SplitString(entry.command, " ");
-
-    result.push_back(GetCompilationEntryFromCompileCommandEntry(quote_includes,
-angle_includes, extra_flags, entry));
-  }
-  return result;
-}
-*/
-
 std::vector<Project::Entry> LoadFromDirectoryListing(
-    IncludeDirectories* includes,
-    const std::vector<std::string>& extra_flags,
-    const std::string& project_directory) {
+    ProjectConfig* config) {
   std::vector<Project::Entry> result;
 
   std::vector<std::string> args;
   std::cerr << "Using arguments: ";
-  for (const std::string& line : ReadLines(project_directory + "/clang_args")) {
+  for (const std::string& line : ReadLines(config->project_dir + "/clang_args")) {
     if (line.empty() || StartsWith(line, "#"))
       continue;
     if (!args.empty())
@@ -229,7 +198,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(
   std::cerr << std::endl;
 
   std::vector<std::string> files = GetFilesInFolder(
-      project_directory, true /*recursive*/, true /*add_folder_to_path*/);
+      config->project_dir, true /*recursive*/, true /*add_folder_to_path*/);
   for (const std::string& file : files) {
     if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") ||
         EndsWith(file, ".c")) {
@@ -237,7 +206,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(
       e.file = NormalizePath(file);
       e.args = args;
       result.push_back(
-          GetCompilationEntryFromCompileCommandEntry(includes, extra_flags, e));
+          GetCompilationEntryFromCompileCommandEntry(config, e));
     }
   }
 
@@ -245,21 +214,17 @@ std::vector<Project::Entry> LoadFromDirectoryListing(
 }
 
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
-    IncludeDirectories* includes,
-    const std::vector<std::string>& extra_flags,
-    const std::string& project_directory) {
-  // TODO: Figure out if this function or the clang one is faster.
-  // return LoadFromCompileCommandsJson(extra_flags, project_directory);
+    ProjectConfig* config) {
 
-  std::cerr << "Trying to load compile_commands.json" << std::endl;
+  // Try to load compile_commands.json, but fallback to a project listing.
+  LOG_S(INFO) << "Trying to load compile_commands.json";
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
-      project_directory.c_str(), &cx_db_load_error);
+      config->project_dir.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
-    std::cerr << "Unable to load compile_commands.json located at \""
-              << project_directory << "\"; using directory listing instead."
-              << std::endl;
-    return LoadFromDirectoryListing(includes, extra_flags, project_directory);
+    LOG_S(INFO) << "Unable to load compile_commands.json located at \""
+              << config->project_dir << "\"; using directory listing instead.";
+    return LoadFromDirectoryListing(config);
   }
 
   CXCompileCommands cx_commands =
@@ -288,7 +253,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
           clang::ToString(clang_CompileCommand_getArg(cx_command, j)));
 
     result.push_back(GetCompilationEntryFromCompileCommandEntry(
-        includes, extra_flags, entry));
+        config, entry));
   }
 
   clang_CompileCommands_dispose(cx_commands);
@@ -339,15 +304,17 @@ int ComputeGuessScore(const std::string& a, const std::string& b) {
 
 void Project::Load(const std::vector<std::string>& extra_flags,
                    const std::string& directory) {
-  IncludeDirectories includes;
-  entries =
-      LoadCompilationEntriesFromDirectory(&includes, extra_flags, directory);
+  // Load data.
+  ProjectConfig config;
+  config.extra_flags = extra_flags;
+  config.project_dir = directory;
+  entries = LoadCompilationEntriesFromDirectory(&config);
 
-  quote_include_directories.assign(includes.quote_dirs.begin(),
-                                   includes.quote_dirs.end());
-  angle_include_directories.assign(includes.angle_dirs.begin(),
-                                   includes.angle_dirs.end());
-
+  // Cleanup / postprocess include directories.
+  quote_include_directories.assign(config.quote_dirs.begin(),
+                                   config.quote_dirs.end());
+  angle_include_directories.assign(config.angle_dirs.begin(),
+                                   config.angle_dirs.end());
   for (std::string& path : quote_include_directories) {
     EnsureEndsInSlash(path);
     LOG_S(INFO) << "quote_include_dir: " << path;
@@ -357,6 +324,7 @@ void Project::Load(const std::vector<std::string>& extra_flags,
     LOG_S(INFO) << "angle_include_dir: " << path;
   }
 
+  // Setup project entries.
   absolute_path_to_entry_index_.resize(entries.size());
   for (int i = 0; i < entries.size(); ++i)
     absolute_path_to_entry_index_[entries[i].filename] = i;
