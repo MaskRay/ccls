@@ -655,29 +655,6 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CqueryExitWhenIdle>();
 }
 
-void InsertSymbolIntoResult(QueryDatabase* db,
-                            WorkingFiles* working_files,
-                            SymbolIdx symbol,
-                            std::vector<lsSymbolInformation>* result) {
-  optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol);
-  if (!info)
-    return;
-
-  optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, symbol);
-  if (!location) {
-    auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
-    if (decls.empty())
-      return;
-    location = decls[0];
-  }
-
-  optional<lsLocation> ls_location =
-      GetLsLocation(db, working_files, *location);
-  if (!ls_location)
-    return;
-  info->location = *ls_location;
-  result->push_back(*info);
-}
 
 // Manages files inside of the indexing pipeline so we don't have the same file
 // being imported multiple times.

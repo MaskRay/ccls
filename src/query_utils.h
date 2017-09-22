@@ -108,3 +108,9 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     QueryDatabase* db,
     WorkingFiles* working_files,
     QueryFuncId root);
+
+// Lookup |symbol| in |db| and insert the value into |result|.
+void InsertSymbolIntoResult(QueryDatabase* db,
+                            WorkingFiles* working_files,
+                            SymbolIdx symbol,
+                            std::vector<lsSymbolInformation>* result);
