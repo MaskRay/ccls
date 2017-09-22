@@ -33,6 +33,17 @@ struct AtomicObject {
     return std::move(value_);
   }
 
+  template <typename TAction>
+  void WithLock(TAction action) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    bool had_value = !!value_;
+    action(value_);
+    bool has_value = !!value_;
+
+    if (had_value != has_value)
+      cv_.notify_one();
+  }
+
  private:
   std::unique_ptr<T> value_;
   mutable std::mutex mutex_;

@@ -728,6 +728,7 @@ struct IndexManager {
 ////////////////////////////////////////////////////////////////////////////////
 
 enum class FileParseQuery { NeedsParse, DoesNotNeedParse, BadFile };
+
 std::vector<Index_DoIdMap> DoParseFile(
     Config* config,
     WorkingFiles* working_files,
@@ -860,27 +861,15 @@ std::vector<Index_DoIdMap> DoParseFile(
   PerformanceImportFile perf;
   std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
       config, file_consumer_shared, path, args, file_contents, &perf, index);
-  // LOG_S(INFO) << "Parsing " << path << " gave " << indexes.size() << "
-  // indexes";
-
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
-    if (is_interactive)
-      EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
+    // Always emit diagnostics. This makes it easier to identify indexing
+    // problems.
+    EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
 
-    // TODO: don't load cached index. We don't need to do this when indexer
-    // always exports dependency tree. Sanity check that verifies we did not
-    // generate a new index for a file whose timestamp did not change.
-    //{
-    //  IndexFile* previous_index = cache_loader->TryLoad(new_index->path);
-    //  assert(!previous_index || GetLastModificationTime(new_index->path) !=
-    //  previous_index->last_modification_time);
-    //}
-
-    // Note: we are reusing the parent perf.
-    perf.index_load_cached = time.ElapsedMicrosecondsAndReset();
-
+    // When main thread does IdMap request it will request the previous index if
+    // needed.
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
     result.push_back(Index_DoIdMap(std::move(new_index), perf, is_interactive,
                                    true /*write_to_disk*/));
@@ -1663,6 +1652,8 @@ bool QueryDbMainLoop(Config* config,
         std::string path = msg->params.textDocument.uri.GetPath();
         working_files->OnChange(msg->params);
         clang_complete->NotifyEdit(path);
+        clang_complete->DiagnosticsUpdate(
+            msg->params.textDocument.AsTextDocumentIdentifier());
         break;
       }
 

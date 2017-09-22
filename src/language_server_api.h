@@ -338,6 +338,8 @@ struct lsVersionedTextDocumentIdentifier {
   lsDocumentUri uri;
   // The version number of this document.
   int version = 0;
+
+  lsTextDocumentIdentifier AsTextDocumentIdentifier() const;
 };
 MAKE_REFLECT_STRUCT(lsVersionedTextDocumentIdentifier, uri, version);
 

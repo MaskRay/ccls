@@ -24,6 +24,13 @@ void Reflect(Reader& visitor, lsRequestId& id) {
 
 MessageRegistry* MessageRegistry::instance_ = nullptr;
 
+lsTextDocumentIdentifier
+lsVersionedTextDocumentIdentifier::AsTextDocumentIdentifier() const {
+  lsTextDocumentIdentifier result;
+  result.uri = uri;
+  return result;
+}
+
 // Reads a JsonRpc message. |read| returns the next input character.
 optional<std::string> ReadJsonRpcContentFrom(
     std::function<optional<char>()> read) {
