@@ -4,7 +4,6 @@
 #include "language_server_api.h"
 #include "platform.h"
 
-
 #include <loguru/loguru.hpp>
 
 #include <algorithm>
@@ -51,15 +50,17 @@ void WriteToCache(Config* config, IndexFile& file) {
   std::string cache_basename =
       GetCachedBaseFileName(config->cacheDirectory, file.path);
 
-  LOG_IF_S(ERROR, file.file_contents_.empty())
-      << "Writing " << file.path << " to cache but it has no contents";
-
-  assert(!file.file_contents_.empty());
-  std::ofstream cache_content;
-  cache_content.open(cache_basename);
-  assert(cache_content.good());
-  cache_content << file.file_contents_;
-  cache_content.close();
+  if (file.file_contents_.empty()) {
+    LOG_S(ERROR) << "No cached file contents; performing potentially stale "
+                 << "file-copy for " << file.path;
+    CopyFileTo(cache_basename, file.path);
+  } else {
+    std::ofstream cache_content;
+    cache_content.open(cache_basename);
+    assert(cache_content.good());
+    cache_content << file.file_contents_;
+    cache_content.close();
+  }
 
   std::string indexed_content = Serialize(file);
   std::ofstream cache;
