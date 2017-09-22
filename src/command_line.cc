@@ -23,7 +23,6 @@
 #include "work_thread.h"
 #include "working_files.h"
 
-
 #include <loguru.hpp>
 #include "tiny-process-library/process.hpp"
 
@@ -43,7 +42,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 // TODO: provide a feature like 'https://github.com/goldsborough/clang-expand',
 // ie, a fully linear view of a function with inline function calls expanded.
 // We can probably use vscode decorators to achieve it.
@@ -57,34 +55,6 @@ std::vector<std::string> kEmptyArgs;
 
 // Expected client version. We show an error if this doesn't match.
 const int kExpectedClientVersion = 3;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Cached completion information, so we can give fast completion results when
 // the user erases a character. vscode will resend the completion request if
@@ -556,44 +526,6 @@ struct Index_OnIndexed {
       : update(update), perf(perf) {}
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 struct QueueManager {
   using Index_RequestQueue = ThreadedQueue<Index_Request>;
   using Index_DoIdMapQueue = ThreadedQueue<Index_DoIdMap>;
@@ -654,7 +586,6 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CqueryQueryDbWaitForIdleIndexer>();
   MessageRegistry::instance()->Register<Ipc_CqueryExitWhenIdle>();
 }
-
 
 // Manages files inside of the indexing pipeline so we don't have the same file
 // being imported multiple times.
@@ -778,45 +709,25 @@ struct IndexManager {
 
 }  // namespace
 
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// IMPORT PIPELINE /////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
 enum class FileParseQuery { NeedsParse, DoesNotNeedParse, BadFile };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 std::vector<Index_DoIdMap> DoParseFile(
     Config* config,
     WorkingFiles* working_files,
@@ -1279,83 +1190,23 @@ bool QueryDb_ImportMain(Config* config,
   return did_work;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// QUERYDB MAIN ////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 bool QueryDbMainLoop(Config* config,
                      QueryDatabase* db,
@@ -1383,7 +1234,7 @@ bool QueryDbMainLoop(Config* config,
 
     switch (message->method_id) {
       case IpcId::Initialize: {
-        auto request = static_cast<Ipc_InitializeRequest*>(message.get());
+        auto request = message->As<Ipc_InitializeRequest>();
 
         // Log initialization parameters.
         rapidjson::StringBuffer output;
@@ -1560,7 +1411,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryTypeHierarchyTree: {
-        auto msg = static_cast<Ipc_CqueryTypeHierarchyTree*>(message.get());
+        auto msg = message->As<Ipc_CqueryTypeHierarchyTree>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -1592,7 +1443,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryCallTreeInitial: {
-        auto msg = static_cast<Ipc_CqueryCallTreeInitial*>(message.get());
+        auto msg = message->As<Ipc_CqueryCallTreeInitial>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -1619,7 +1470,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryCallTreeExpand: {
-        auto msg = static_cast<Ipc_CqueryCallTreeExpand*>(message.get());
+        auto msg = message->As<Ipc_CqueryCallTreeExpand>();
 
         Out_CqueryCallTree response;
         response.id = msg->id;
@@ -1634,7 +1485,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryVars: {
-        auto msg = static_cast<Ipc_CqueryVars*>(message.get());
+        auto msg = message->As<Ipc_CqueryVars>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -1662,7 +1513,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryCallers: {
-        auto msg = static_cast<Ipc_CqueryCallers*>(message.get());
+        auto msg = message->As<Ipc_CqueryCallers>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -1697,7 +1548,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryBase: {
-        auto msg = static_cast<Ipc_CqueryBase*>(message.get());
+        auto msg = message->As<Ipc_CqueryBase>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -1738,7 +1589,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryDerived: {
-        auto msg = static_cast<Ipc_CqueryDerived*>(message.get());
+        auto msg = message->As<Ipc_CqueryDerived>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -1777,7 +1628,7 @@ bool QueryDbMainLoop(Config* config,
         // we will need to find a way to unblock the code lens request.
 
         Timer time;
-        auto msg = static_cast<Ipc_TextDocumentDidOpen*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDidOpen>();
         std::string path = msg->params.textDocument.uri.GetPath();
         WorkingFile* working_file = working_files->OnOpen(msg->params);
         optional<std::string> cached_file_contents =
@@ -1808,7 +1659,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDidChange: {
-        auto msg = static_cast<Ipc_TextDocumentDidChange*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDidChange>();
         std::string path = msg->params.textDocument.uri.GetPath();
         working_files->OnChange(msg->params);
         clang_complete->NotifyEdit(path);
@@ -1816,7 +1667,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDidClose: {
-        auto msg = static_cast<Ipc_TextDocumentDidClose*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDidClose>();
 
         // Clear any diagnostics for the file.
         Out_TextDocumentPublishDiagnostics diag;
@@ -1831,7 +1682,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDidSave: {
-        auto msg = static_cast<Ipc_TextDocumentDidSave*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDidSave>();
 
         std::string path = msg->params.textDocument.uri.GetPath();
         // Send out an index request, and copy the current buffer state so we
@@ -1857,7 +1708,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentRename: {
-        auto msg = static_cast<Ipc_TextDocumentRename*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentRename>();
 
         QueryFileId file_id;
         QueryFile* file;
@@ -2044,7 +1895,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentSignatureHelp: {
-        auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentSignatureHelp>();
         lsTextDocumentPositionParams& params = msg->params;
         WorkingFile* file =
             working_files->GetFileByFilename(params.textDocument.uri.GetPath());
@@ -2064,7 +1915,7 @@ bool QueryDbMainLoop(Config* config,
                               int active_param,
                               const NonElidedVector<lsCompletionItem>& results,
                               bool is_cached_result) {
-              auto msg = static_cast<Ipc_TextDocumentSignatureHelp*>(message);
+              auto msg = message->As<Ipc_TextDocumentSignatureHelp>();
               auto ipc = IpcManager::instance();
 
               Out_TextDocumentSignatureHelp response;
@@ -2134,7 +1985,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDefinition: {
-        auto msg = static_cast<Ipc_TextDocumentDefinition*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDefinition>();
 
         QueryFileId file_id;
         QueryFile* file;
@@ -2220,8 +2071,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDocumentHighlight: {
-        auto msg =
-            static_cast<Ipc_TextDocumentDocumentHighlight*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDocumentHighlight>();
 
         QueryFileId file_id;
         QueryFile* file;
@@ -2263,7 +2113,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentHover: {
-        auto msg = static_cast<Ipc_TextDocumentHover*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentHover>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -2294,7 +2144,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentReferences: {
-        auto msg = static_cast<Ipc_TextDocumentReferences*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentReferences>();
 
         QueryFile* file;
         if (!FindFileOrFail(db, msg->id, msg->params.textDocument.uri.GetPath(),
@@ -2336,7 +2186,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDocumentSymbol: {
-        auto msg = static_cast<Ipc_TextDocumentDocumentSymbol*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDocumentSymbol>();
 
         Out_TextDocumentDocumentSymbol response;
         response.id = msg->id;
@@ -2366,7 +2216,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentDocumentLink: {
-        auto msg = static_cast<Ipc_TextDocumentDocumentLink*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentDocumentLink>();
 
         Out_TextDocumentDocumentLink response;
         response.id = msg->id;
@@ -2421,7 +2271,7 @@ bool QueryDbMainLoop(Config* config,
         //      };
         //    }
         //
-        auto msg = static_cast<Ipc_TextDocumentCodeAction*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentCodeAction>();
 
         QueryFileId file_id;
         QueryFile* file;
@@ -2652,7 +2502,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::TextDocumentCodeLens: {
-        auto msg = static_cast<Ipc_TextDocumentCodeLens*>(message.get());
+        auto msg = message->As<Ipc_TextDocumentCodeLens>();
 
         Out_TextDocumentCodeLens response;
         response.id = msg->id;
@@ -2794,7 +2644,7 @@ bool QueryDbMainLoop(Config* config,
         // TODO: implement fuzzy search, see
         // https://github.com/junegunn/fzf/blob/master/src/matcher.go for
         // inspiration
-        auto msg = static_cast<Ipc_WorkspaceSymbol*>(message.get());
+        auto msg = message->As<Ipc_WorkspaceSymbol>();
 
         Out_WorkspaceSymbol response;
         response.id = msg->id;
@@ -2842,7 +2692,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::CqueryIndexFile: {
-        auto msg = static_cast<Ipc_CqueryIndexFile*>(message.get());
+        auto msg = message->As<Ipc_CqueryIndexFile>();
         queue->index_request.Enqueue(
             Index_Request(NormalizePath(msg->params.path), msg->params.args,
                           msg->params.is_interactive, msg->params.contents));
@@ -2939,68 +2789,23 @@ void RunQueryDbThread(const std::string& bin_name,
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// STDIN MAIN //////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 // Separate thread whose only job is to read from stdin and
 // dispatch read commands to the actual indexer program. This
 // cannot be done on the main thread because reading from std::cin
@@ -3090,51 +2895,6 @@ void LaunchStdinLoop(Config* config,
   });
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
                         MultiQueueWaiter* waiter,
                         QueueManager* queue) {
@@ -3155,7 +2915,7 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
 
       switch (message->method_id) {
         case IpcId::Cout: {
-          auto msg = static_cast<Ipc_Cout*>(message.get());
+          auto msg = message->As<Ipc_Cout>();
 
           if (ShouldDisplayIpcTiming(msg->original_ipc_id)) {
             Timer time = (*request_times)[msg->original_ipc_id];
@@ -3197,56 +2957,23 @@ void LanguageServerMain(const std::string& bin_name,
   RunQueryDbThread(bin_name, config, waiter, &queue);
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+// MAIN ////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
   loguru::init(argc, argv);
   loguru::add_file("cquery.log", loguru::Truncate, loguru::Verbosity_MAX);

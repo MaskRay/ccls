@@ -3,7 +3,6 @@
 #include "serializer.h"
 #include "utils.h"
 
-
 #include <string>
 
 enum class IpcId : int {
@@ -64,6 +63,12 @@ struct BaseIpcMessage {
   const IpcId method_id;
   BaseIpcMessage(IpcId method_id);
   virtual ~BaseIpcMessage();
+
+  template <typename T>
+  T* As() {
+    assert(method_id == T::kIpcId);
+    return static_cast<T*>(this);
+  }
 };
 
 template <typename T>
