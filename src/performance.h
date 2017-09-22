@@ -22,8 +22,14 @@ struct PerformanceImportFile {
   // [indexer] create delta IndexUpdate object
   uint64_t index_make_delta = 0;
   // [querydb] update WorkingFile indexed file state
-  //uint64_t querydb_update_working_file = 0;
+  // uint64_t querydb_update_working_file = 0;
   // [querydb] apply IndexUpdate
-  //uint64_t querydb_apply_index_update = 0;
+  // uint64_t querydb_apply_index_update = 0;
 };
-MAKE_REFLECT_STRUCT(PerformanceImportFile, index_parse, index_build, querydb_id_map, index_save_to_disk, index_load_cached, index_make_delta);
+MAKE_REFLECT_STRUCT(PerformanceImportFile,
+                    index_parse,
+                    index_build,
+                    querydb_id_map,
+                    index_save_to_disk,
+                    index_load_cached,
+                    index_make_delta);

@@ -49,7 +49,6 @@ void Reflect(Writer& visitor, std::string& value) {
   visitor.String(value.c_str(), (rapidjson::SizeType)value.size());
 }
 
-
 // ReflectMember
 void ReflectMember(Writer& visitor, const char* name, std::string& value) {
   if (value.empty())
@@ -58,20 +57,9 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
   Reflect(visitor, value);
 }
 
-
-
-
-
-
-
-
-
-
-
-
 // TODO: Move this to indexer.cc
 
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
@@ -91,8 +79,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_END();
 }
 
-
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
@@ -111,8 +98,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_END();
 }
 
-
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
@@ -130,7 +116,6 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_END();
 }
 
-
 // IndexFile
 bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   auto it = value.id_cache.usr_to_type_id.find("");
@@ -143,7 +128,7 @@ bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   DefaultReflectMemberStart(visitor);
   return true;
 }
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
@@ -161,18 +146,12 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_END();
 }
 
-
-
-
-
-
-
 std::string Serialize(IndexFile& file) {
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-  //Writer writer(output);
+  // Writer writer(output);
   writer.SetFormatOptions(
-    rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+      rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
 
   Reflect(writer, file);
@@ -180,7 +159,9 @@ std::string Serialize(IndexFile& file) {
   return output.GetString();
 }
 
-std::unique_ptr<IndexFile> Deserialize(std::string path, std::string serialized, optional<int> expected_version) {
+std::unique_ptr<IndexFile> Deserialize(std::string path,
+                                       std::string serialized,
+                                       optional<int> expected_version) {
   rapidjson::Document reader;
   reader.Parse(serialized.c_str());
   if (reader.HasParseError())

@@ -9,8 +9,8 @@
 #include <mutex>
 #include <string>
 
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 
 struct WorkingFile {
   int version = 0;
@@ -28,7 +28,8 @@ struct WorkingFile {
   // Note: The items in the value entry are 1-based liness.
   std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
   // A set of diagnostics that have been reported for this file.
-  // NOTE: _ is appended because it must be accessed under the WorkingFiles lock!
+  // NOTE: _ is appended because it must be accessed under the WorkingFiles
+  // lock!
   std::vector<lsDiagnostic> diagnostics_;
 
   WorkingFile(const std::string& filename, const std::string& buffer_content);
@@ -45,16 +46,22 @@ struct WorkingFile {
   // accepts and returns 1-based lines.
   optional<int> GetIndexLineFromBufferLine(int buffer_line) const;
 
-  optional<std::string> GetBufferLineContentFromIndexLine(int indexed_line, optional<int>* out_buffer_line) const;
+  optional<std::string> GetBufferLineContentFromIndexLine(
+      int indexed_line,
+      optional<int>* out_buffer_line) const;
 
-  // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into lex_utils.h/cc
+  // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
+  // lex_utils.h/cc
 
   // Finds the closest 'callable' name prior to position. This is used for
   // signature help to filter code completion results.
   //
   // |completion_position| will be point to a good code completion location to
   // for fetching signatures.
-  std::string FindClosestCallNameInBuffer(lsPosition position, int* active_parameter, lsPosition* completion_position = nullptr) const;
+  std::string FindClosestCallNameInBuffer(
+      lsPosition position,
+      int* active_parameter,
+      lsPosition* completion_position = nullptr) const;
 
   // Returns a relatively stable completion position (it jumps back until there
   // is a non-alphanumeric character).
@@ -63,7 +70,9 @@ struct WorkingFile {
   // global completion.
   // The out param |existing_completion| is set to any existing completion
   // content the user has entered.
-  lsPosition FindStableCompletionSource(lsPosition position, bool* is_global_completion, std::string* existing_completion) const;
+  lsPosition FindStableCompletionSource(lsPosition position,
+                                        bool* is_global_completion,
+                                        std::string* existing_completion) const;
 
   CXUnsavedFile AsUnsavedFile() const;
 };
@@ -79,8 +88,10 @@ struct WorkingFiles {
 
   // Run |action| under the lock.
   void DoAction(const std::function<void()>& action);
-  // Run |action| on the file identified by |filename|. This executes under the lock.
-  void DoActionOnFile(const std::string& filename, const std::function<void(WorkingFile* file)>& action);
+  // Run |action| on the file identified by |filename|. This executes under the
+  // lock.
+  void DoActionOnFile(const std::string& filename,
+                      const std::function<void(WorkingFile* file)>& action);
 
   WorkingFile* OnOpen(const Ipc_TextDocumentDidOpen::Params& open);
   void OnChange(const Ipc_TextDocumentDidChange::Params& change);
@@ -91,5 +102,5 @@ struct WorkingFiles {
   // Use unique_ptrs so we can handout WorkingFile ptrs and not have them
   // invalidated if we resize files.
   std::vector<std::unique_ptr<WorkingFile>> files;
-  std::mutex files_mutex; // Protects |files|.
+  std::mutex files_mutex;  // Protects |files|.
 };

@@ -1,27 +1,30 @@
 #pragma once
 
 #include "file_consumer.h"
-#include "position.h"
-#include "serializer.h"
-#include "utils.h"
 #include "language_server_api.h"
 #include "libclangmm/Index.h"
 #include "libclangmm/Utility.h"
 #include "performance.h"
+#include "position.h"
+#include "serializer.h"
+#include "utils.h"
+
 
 #include <optional.h>
-#include <rapidjson/writer.h>
+#include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
-#include <rapidjson/document.h>
+#include <rapidjson/writer.h>
+
 
 #include <algorithm>
-#include <cstdint>
 #include <cassert>
+#include <cstdint>
 #include <fstream>
 #include <iostream>
 #include <unordered_map>
 #include <vector>
+
 
 struct IndexType;
 struct IndexFunc;
@@ -49,7 +52,7 @@ template <typename T>
 struct hash<Id<T>> {
   size_t operator()(const Id<T>& k) const { return hash<size_t>()(k.id); }
 };
-}
+}  // namespace std
 
 template <typename T>
 bool operator==(const Id<T>& a, const Id<T>& b) {
@@ -61,11 +64,11 @@ bool operator!=(const Id<T>& a, const Id<T>& b) {
   return !(a == b);
 }
 
-template<typename T>
+template <typename T>
 void Reflect(Reader& visitor, Id<T>& id) {
   id.id = visitor.GetUint64();
 }
-template<typename T>
+template <typename T>
 void Reflect(Writer& visitor, Id<T>& value) {
   visitor.Uint64(value.id);
 }
@@ -76,7 +79,6 @@ using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
-
 struct IndexFuncRef {
   // NOTE: id can be -1 if the function call is not coming from a function.
   IndexFuncId id;
@@ -85,19 +87,25 @@ struct IndexFuncRef {
 
   IndexFuncRef() {}  // For serialization.
 
-  IndexFuncRef(IndexFuncId id, Range loc, bool is_implicit) : id(id), loc(loc), is_implicit(is_implicit) {}
-  IndexFuncRef(Range loc, bool is_implicit) : id(IndexFuncId((size_t)-1)), loc(loc), is_implicit(is_implicit) {}
+  IndexFuncRef(IndexFuncId id, Range loc, bool is_implicit)
+      : id(id), loc(loc), is_implicit(is_implicit) {}
+  IndexFuncRef(Range loc, bool is_implicit)
+      : id(IndexFuncId((size_t)-1)), loc(loc), is_implicit(is_implicit) {}
 
   inline bool operator==(const IndexFuncRef& other) {
-    return id == other.id && loc == other.loc && is_implicit == other.is_implicit;
+    return id == other.id && loc == other.loc &&
+           is_implicit == other.is_implicit;
   }
-  inline bool operator!=(const IndexFuncRef& other) { return !(*this == other); }
+  inline bool operator!=(const IndexFuncRef& other) {
+    return !(*this == other);
+  }
   inline bool operator<(const IndexFuncRef& other) const {
     if (id < other.id)
       return true;
     if (id == other.id && loc < other.loc)
       return true;
-    return id == other.id && loc == other.loc && is_implicit < other.is_implicit;
+    return id == other.id && loc == other.loc &&
+           is_implicit < other.is_implicit;
   }
 };
 
@@ -125,10 +133,9 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
 
   if (value.is_implicit)
     s += "~";
-  if (value.id.id == -1) { // id.id is unsigned, special case 0 value
+  if (value.id.id == -1) {  // id.id is unsigned, special case 0 value
     s += "-1";
-  }
-  else {
+  } else {
     s += std::to_string(value.id.id);
   }
 
@@ -136,10 +143,7 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
   visitor.String(s.c_str());
 }
 
-template <typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename Range>
+template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
   std::string usr;
@@ -173,19 +177,18 @@ struct TypeDefDefinitionData {
   TypeDefDefinitionData() {}  // For reflection.
   TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>&
-                      other) const {
+  bool operator==(
+      const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return usr == other.usr && short_name == other.short_name &&
            detailed_name == other.detailed_name &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
-           alias_of == other.alias_of &&
-           parents == other.parents && types == other.types &&
-           funcs == other.funcs && vars == other.vars;
+           alias_of == other.alias_of && parents == other.parents &&
+           types == other.types && funcs == other.funcs && vars == other.vars;
   }
 
-  bool operator!=(const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>&
-                      other) const {
+  bool operator!=(
+      const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return !(*this == other);
   }
 };
@@ -211,7 +214,8 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexType {
-  using Def = TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
+  using Def =
+      TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
   Def def;
 
   IndexTypeId id;
@@ -268,8 +272,8 @@ struct FuncDefDefinitionData {
   }
 
   bool operator==(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>&
-          other) const {
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
+      const {
     return usr == other.usr && short_name == other.short_name &&
            detailed_name == other.detailed_name &&
            definition_spelling == other.definition_spelling &&
@@ -278,8 +282,8 @@ struct FuncDefDefinitionData {
            locals == other.locals && callees == other.callees;
   }
   bool operator!=(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>&
-          other) const {
+      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
+      const {
     return !(*this == other);
   }
 };
@@ -307,7 +311,11 @@ void Reflect(
 }
 
 struct IndexFunc {
-  using Def = FuncDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, IndexFuncRef, Range>;
+  using Def = FuncDefDefinitionData<IndexTypeId,
+                                    IndexFuncId,
+                                    IndexVarId,
+                                    IndexFuncRef,
+                                    Range>;
   Def def;
 
   IndexFuncId id;
@@ -346,12 +354,13 @@ struct IndexFunc {
   }
 };
 MAKE_HASHABLE(IndexFunc, t.def.usr);
-MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spelling, extent, content, param_spellings);
+MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
+                    spelling,
+                    extent,
+                    content,
+                    param_spellings);
 
-template <typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename Range>
+template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct VarDefDefinitionData {
   // General metadata.
   std::string usr;
@@ -377,8 +386,8 @@ struct VarDefDefinitionData {
   VarDefDefinitionData() {}  // For reflection.
   VarDefDefinitionData(const std::string& usr) : usr(usr) {}
 
-  bool operator==(const VarDefDefinitionData<TypeId, FuncId, VarId, Range>&
-                      other) const {
+  bool operator==(
+      const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return usr == other.usr && short_name == other.short_name &&
            detailed_name == other.detailed_name &&
            declaration == other.declaration &&
@@ -387,8 +396,8 @@ struct VarDefDefinitionData {
            variable_type == other.variable_type &&
            declaring_type == other.declaring_type;
   }
-  bool operator!=(const VarDefDefinitionData<TypeId, FuncId, VarId, Range>&
-                      other) const {
+  bool operator!=(
+      const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return !(*this == other);
   }
 };
@@ -509,9 +518,11 @@ struct FileContents {
 
 // |import_file| is the cc file which is what gets passed to clang.
 // |desired_index_file| is the (h or cc) file which has actually changed.
-// |dependencies| are the existing dependencies of |import_file| if this is a reparse.
+// |dependencies| are the existing dependencies of |import_file| if this is a
+// reparse.
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    Config* config, FileConsumer::SharedState* file_consumer_shared,
+    Config* config,
+    FileConsumer::SharedState* file_consumer_shared,
     std::string file,
     std::vector<std::string> args,
     std::vector<FileContents> file_contents,

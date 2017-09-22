@@ -13,13 +13,15 @@
 #include <mutex>
 #include <string>
 
-struct CompletionSession : public std::enable_shared_from_this<CompletionSession> {
+struct CompletionSession
+    : public std::enable_shared_from_this<CompletionSession> {
   Project::Entry file;
   WorkingFiles* working_files;
   clang::Index index;
 
   // When |tu| was last parsed.
-  optional<std::chrono::time_point<std::chrono::high_resolution_clock>> tu_last_parsed_at;
+  optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
+      tu_last_parsed_at;
 
   // Acquired when |tu| is being used.
   std::mutex tu_lock;
@@ -47,8 +49,12 @@ struct LruSessionCache {
 };
 
 struct ClangCompleteManager {
-  using OnDiagnostic = std::function<void(std::string path, NonElidedVector<lsDiagnostic> diagnostics)>;
-  using OnComplete = std::function<void(const NonElidedVector<lsCompletionItem>& results, bool is_cached_result)>;
+  using OnDiagnostic =
+      std::function<void(std::string path,
+                         NonElidedVector<lsDiagnostic> diagnostics)>;
+  using OnComplete =
+      std::function<void(const NonElidedVector<lsCompletionItem>& results,
+                         bool is_cached_result)>;
 
   struct ParseRequest {
     ParseRequest(const std::string& path);
@@ -62,7 +68,10 @@ struct ClangCompleteManager {
     bool is_user_completion = false;
   };
 
-  ClangCompleteManager(Config* config, Project* project, WorkingFiles* working_files, OnDiagnostic on_diagnostic);
+  ClangCompleteManager(Config* config,
+                       Project* project,
+                       WorkingFiles* working_files,
+                       OnDiagnostic on_diagnostic);
   ~ClangCompleteManager();
 
   // Start a code completion at the given location. |on_complete| will run when
@@ -79,7 +88,8 @@ struct ClangCompleteManager {
   // triggers a reparse.
   void NotifySave(const std::string& filename);
 
-  std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename, bool create_if_needed);
+  std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename,
+                                                   bool create_if_needed);
 
   // TODO: make these configurable.
   const int kMaxViewSessions = 1;
@@ -108,5 +118,6 @@ struct ClangCompleteManager {
   std::mutex delayed_diagnostic_wakeup_mtx_;
   std::condition_variable delayed_diagnostic_wakeup_cv_;
   // Access under |delayed_diagnostic_wakeup_mtx_|.
-  optional<lsTextDocumentPositionParams> delayed_diagnostic_last_completion_position_;
+  optional<lsTextDocumentPositionParams>
+      delayed_diagnostic_last_completion_position_;
 };

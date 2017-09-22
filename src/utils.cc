@@ -7,12 +7,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cctype>
+#include <fstream>
 #include <functional>
 #include <iostream>
-#include <fstream>
 #include <locale>
 #include <sstream>
 #include <unordered_map>
+
 
 #if !defined(__APPLE__)
 #include <sparsepp/spp_memory.h>
@@ -20,12 +21,15 @@
 
 // See http://stackoverflow.com/a/217605
 void TrimStart(std::string& s) {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-    std::not1(std::ptr_fun<int, int>(std::isspace))));
+  s.erase(s.begin(),
+          std::find_if(s.begin(), s.end(),
+                       std::not1(std::ptr_fun<int, int>(std::isspace))));
 }
 void TrimEnd(std::string& s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
-    std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+                       std::not1(std::ptr_fun<int, int>(std::isspace)))
+              .base(),
+          s.end());
 }
 void Trim(std::string& s) {
   TrimStart(s);
@@ -45,20 +49,24 @@ bool StartsWith(const std::string& value, const std::string& start) {
   return std::equal(start.begin(), start.end(), value.begin());
 }
 
-bool AnyStartsWith(const std::vector<std::string>& values, const std::string& start) {
-  return std::any_of(std::begin(values), std::end(values), [&start](const std::string& value) {
-    return StartsWith(value, start);
-  });
+bool AnyStartsWith(const std::vector<std::string>& values,
+                   const std::string& start) {
+  return std::any_of(
+      std::begin(values), std::end(values),
+      [&start](const std::string& value) { return StartsWith(value, start); });
 }
 
-bool EndsWithAny(const std::string& value, const std::vector<std::string>& endings) {
-  return std::any_of(std::begin(endings), std::end(endings), [&value](const std::string& ending) {
-    return EndsWith(value, ending);
-  });
+bool EndsWithAny(const std::string& value,
+                 const std::vector<std::string>& endings) {
+  return std::any_of(
+      std::begin(endings), std::end(endings),
+      [&value](const std::string& ending) { return EndsWith(value, ending); });
 }
 
 // See http://stackoverflow.com/a/29752943
-std::string ReplaceAll(const std::string& source, const std::string& from, const std::string& to) {
+std::string ReplaceAll(const std::string& source,
+                       const std::string& from,
+                       const std::string& to) {
   std::string result;
   result.reserve(source.length());  // avoids a few memory allocations
 
@@ -77,7 +85,8 @@ std::string ReplaceAll(const std::string& source, const std::string& from, const
   return result;
 }
 
-std::vector<std::string> SplitString(const std::string& str, const std::string& delimiter) {
+std::vector<std::string> SplitString(const std::string& str,
+                                     const std::string& delimiter) {
   // http://stackoverflow.com/a/13172514
   std::vector<std::string> strings;
 
@@ -104,17 +113,20 @@ std::string LowerPathIfCaseInsensitive(const std::string& path) {
 }
 
 static void GetFilesInFolderHelper(
-    std::string folder, bool recursive, std::string output_prefix, const std::function<void(const std::string&)>& handler) {
+    std::string folder,
+    bool recursive,
+    std::string output_prefix,
+    const std::function<void(const std::string&)>& handler) {
   tinydir_dir dir;
   if (tinydir_open(&dir, folder.c_str()) == -1) {
-    //perror("Error opening file");
+    // perror("Error opening file");
     goto bail;
   }
 
   while (dir.has_next) {
     tinydir_file file;
     if (tinydir_readfile(&dir, &file) == -1) {
-      //perror("Error getting file");
+      // perror("Error getting file");
       goto bail;
     }
 
@@ -127,10 +139,10 @@ static void GetFilesInFolderHelper(
         if (recursive) {
           std::string child_dir = output_prefix + file.name + "/";
           if (!IsSymLink(child_dir))
-            GetFilesInFolderHelper(file.path, true /*recursive*/, child_dir, handler);
+            GetFilesInFolderHelper(file.path, true /*recursive*/, child_dir,
+                                   handler);
         }
-      }
-      else {
+      } else {
         handler(output_prefix + file.name);
       }
     }
@@ -145,19 +157,24 @@ bail:
   tinydir_close(&dir);
 }
 
-std::vector<std::string> GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path) {
+std::vector<std::string> GetFilesInFolder(std::string folder,
+                                          bool recursive,
+                                          bool add_folder_to_path) {
   EnsureEndsInSlash(folder);
   std::vector<std::string> result;
-  GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "", [&result](const std::string& path) {
-    result.push_back(path);
-  });
+  GetFilesInFolderHelper(
+      folder, recursive, add_folder_to_path ? folder : "",
+      [&result](const std::string& path) { result.push_back(path); });
   return result;
 }
 
-
-void GetFilesInFolder(std::string folder, bool recursive, bool add_folder_to_path, const std::function<void(const std::string&)>& handler) {
+void GetFilesInFolder(std::string folder,
+                      bool recursive,
+                      bool add_folder_to_path,
+                      const std::function<void(const std::string&)>& handler) {
   EnsureEndsInSlash(folder);
-  GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "", handler);
+  GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "",
+                         handler);
 }
 
 void EnsureEndsInSlash(std::string& path) {
@@ -165,38 +182,37 @@ void EnsureEndsInSlash(std::string& path) {
     path += '/';
 }
 
-
 // http://stackoverflow.com/a/6089413
 std::istream& SafeGetline(std::istream& is, std::string& t) {
-    t.clear();
+  t.clear();
 
-    // The characters in the stream are read one-by-one using a std::streambuf.
-    // That is faster than reading them one-by-one using the std::istream.
-    // Code that uses streambuf this way must be guarded by a sentry object.
-    // The sentry object performs various tasks,
-    // such as thread synchronization and updating the stream state.
+  // The characters in the stream are read one-by-one using a std::streambuf.
+  // That is faster than reading them one-by-one using the std::istream.
+  // Code that uses streambuf this way must be guarded by a sentry object.
+  // The sentry object performs various tasks,
+  // such as thread synchronization and updating the stream state.
 
-    std::istream::sentry se(is, true);
-    std::streambuf* sb = is.rdbuf();
+  std::istream::sentry se(is, true);
+  std::streambuf* sb = is.rdbuf();
 
-    for(;;) {
-        int c = sb->sbumpc();
-        switch (c) {
-        case '\n':
-            return is;
-        case '\r':
-            if(sb->sgetc() == '\n')
-                sb->sbumpc();
-            return is;
-        case EOF:
-            // Also handle the case when the last line has no line ending
-            if(t.empty())
-                is.setstate(std::ios::eofbit);
-            return is;
-        default:
-            t += (char)c;
-        }
+  for (;;) {
+    int c = sb->sbumpc();
+    switch (c) {
+      case '\n':
+        return is;
+      case '\r':
+        if (sb->sgetc() == '\n')
+          sb->sbumpc();
+        return is;
+      case EOF:
+        // Also handle the case when the last line has no line ending
+        if (t.empty())
+          is.setstate(std::ios::eofbit);
+        return is;
+      default:
+        t += (char)c;
     }
+  }
 }
 
 optional<std::string> ReadContent(const std::string& filename) {
@@ -205,22 +221,22 @@ optional<std::string> ReadContent(const std::string& filename) {
   if (!cache.good())
     return nullopt;
 
-  return std::string(
-    std::istreambuf_iterator<char>(cache),
-    std::istreambuf_iterator<char>());
+  return std::string(std::istreambuf_iterator<char>(cache),
+                     std::istreambuf_iterator<char>());
 }
 
 std::vector<std::string> ReadLines(std::string filename) {
   std::vector<std::string> result;
 
   std::ifstream input(filename);
-  for (std::string line; SafeGetline(input, line); )
+  for (std::string line; SafeGetline(input, line);)
     result.push_back(line);
 
   return result;
 }
 
-std::vector<std::string> ToLines(const std::string& content, bool trim_whitespace) {
+std::vector<std::string> ToLines(const std::string& content,
+                                 bool trim_whitespace) {
   std::vector<std::string> result;
 
   std::istringstream lines(content);
@@ -235,11 +251,12 @@ std::vector<std::string> ToLines(const std::string& content, bool trim_whitespac
   return result;
 }
 
-std::unordered_map<std::string, std::string> ParseTestExpectation(std::string filename) {
+std::unordered_map<std::string, std::string> ParseTestExpectation(
+    std::string filename) {
   bool in_output = false;
 
 #if false
-  #include "bar.h"
+#include "bar.h"
 
   void foo();
 
@@ -275,8 +292,7 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(std::string fi
       active_output_contents = "";
 
       in_output = true;
-    }
-    else if (in_output)
+    } else if (in_output)
       active_output_contents += line + "\n";
   }
 
@@ -285,11 +301,14 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(std::string fi
   return result;
 }
 
-void UpdateTestExpectation(const std::string& filename, const std::string& expectation, const std::string& actual) {
+void UpdateTestExpectation(const std::string& filename,
+                           const std::string& expectation,
+                           const std::string& actual) {
   // Read the entire file into a string.
   std::ifstream in(filename);
   std::string str;
-  str.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+  str.assign(std::istreambuf_iterator<char>(in),
+             std::istreambuf_iterator<char>());
   in.close();
 
   // Replace expectation
@@ -333,4 +352,3 @@ std::string FormatMicroseconds(long long microseconds) {
 
   return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
 }
-

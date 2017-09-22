@@ -17,12 +17,10 @@ struct TypedBidiMessageQueue {
       std::function<std::unique_ptr<TMessage>(Reader& visitor)>;
 
   TypedBidiMessageQueue(const std::string& name, size_t buffer_size)
-      : for_server(
-            Buffer::CreateSharedBuffer(name + "_fs", buffer_size),
-            false /*buffer_has_data*/),
-        for_client(
-            Buffer::CreateSharedBuffer(name + "_fc", buffer_size),
-            true /*buffer_has_data*/) {}
+      : for_server(Buffer::CreateSharedBuffer(name + "_fs", buffer_size),
+                   false /*buffer_has_data*/),
+        for_client(Buffer::CreateSharedBuffer(name + "_fc", buffer_size),
+                   true /*buffer_has_data*/) {}
 
   void RegisterId(TId id,
                   const Serializer& serializer,
@@ -42,7 +40,8 @@ struct TypedBidiMessageQueue {
     writer.SetIndent(' ', 0);
 
     // Serialize the message.
-    assert(serializers_.find(id) != serializers_.end() && "No registered serializer");
+    assert(serializers_.find(id) != serializers_.end() &&
+           "No registered serializer");
     const Serializer& serializer = serializers_.find(id)->second;
     serializer(writer, message);
 

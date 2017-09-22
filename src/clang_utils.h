@@ -4,13 +4,14 @@
 
 #include <clang-c/Index.h>
 
-#include <vector>
 #include <optional.h>
+#include <vector>
+
 
 using namespace std::experimental;
 
-optional<lsDiagnostic> BuildAndDisposeDiagnostic(
-    CXDiagnostic diagnostic, const std::string& path);
+optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
+                                                 const std::string& path);
 
 // Returns the absolute path to |file|.
 std::string FileName(CXFile file);

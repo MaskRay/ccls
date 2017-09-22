@@ -12,8 +12,7 @@ const char* SkipAfter(const char* input, char skip_after) {
 
 Position::Position() {}
 
-Position::Position(int16_t line, int16_t column)
-  : line(line), column(column) {}
+Position::Position(int16_t line, int16_t column) : line(line), column(column) {}
 
 Position::Position(const char* encoded) {
   assert(encoded);
@@ -61,7 +60,9 @@ bool Position::operator==(const Position& that) const {
   return line == that.line && column == that.column;
 }
 
-bool Position::operator!=(const Position& that) const { return !(*this == that); }
+bool Position::operator!=(const Position& that) const {
+  return !(*this == that);
+}
 
 bool Position::operator<(const Position& that) const {
   if (line < that.line)
@@ -133,7 +134,9 @@ bool Range::operator==(const Range& that) const {
   return start == that.start && end == that.end;
 }
 
-bool Range::operator!=(const Range& that) const { return !(*this == that); }
+bool Range::operator!=(const Range& that) const {
+  return !(*this == that);
+}
 
 bool Range::operator<(const Range& that) const {
   if (start < that.start)
@@ -149,7 +152,6 @@ void Reflect(Writer& visitor, Position& value) {
   std::string output = value.ToString();
   visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
 }
-
 
 // Range
 void Reflect(Reader& visitor, Range& value) {

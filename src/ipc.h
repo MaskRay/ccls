@@ -1,7 +1,8 @@
 #pragma once
 
-#include "utils.h"
 #include "serializer.h"
+#include "utils.h"
+
 
 #include <string>
 
@@ -40,10 +41,10 @@ enum class IpcId : int {
   CqueryCallTreeInitial,
   CqueryCallTreeExpand,
   // These are like DocumentReferences but show different types of data.
-  CqueryVars,       // Show all variables of a type.
-  CqueryCallers,    // Show all callers of a function.
-  CqueryBase,       // Show base types/method.
-  CqueryDerived,    // Show all derived types/methods.
+  CqueryVars,     // Show all variables of a type.
+  CqueryCallers,  // Show all callers of a function.
+  CqueryBase,     // Show base types/method.
+  CqueryDerived,  // Show all derived types/methods.
 
   // Internal implementation detail.
   Cout,
@@ -88,10 +89,15 @@ struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile::Params, path, args, is_interactive, contents);
+MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile::Params,
+                    path,
+                    args,
+                    is_interactive,
+                    contents);
 MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile, params);
 
-struct Ipc_CqueryQueryDbWaitForIdleIndexer : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
+struct Ipc_CqueryQueryDbWaitForIdleIndexer
+    : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
   static constexpr IpcId kIpcId = IpcId::CqueryQueryDbWaitForIdleIndexer;
 };
 MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryQueryDbWaitForIdleIndexer);

@@ -17,7 +17,7 @@ struct Config {
   // If true, project paths that were skipped by the whitelist/blacklist will
   // be logged.
   bool logSkippedPathsForIndex = false;
- 
+
   // Maximum workspace search results.
   int maxWorkspaceSearchResults = 1000;
 
@@ -63,26 +63,30 @@ struct Config {
   int clientVersion = 0;
 };
 MAKE_REFLECT_STRUCT(Config,
-  cacheDirectory,
+                    cacheDirectory,
 
-  extraClangArguments,
+                    extraClangArguments,
 
-  indexWhitelist, indexBlacklist,
-  logSkippedPathsForIndex,
+                    indexWhitelist,
+                    indexBlacklist,
+                    logSkippedPathsForIndex,
 
-  maxWorkspaceSearchResults,
-  indexerCount,
-  enableIndexing, enableCacheWrite, enableCacheRead,
+                    maxWorkspaceSearchResults,
+                    indexerCount,
+                    enableIndexing,
+                    enableCacheWrite,
+                    enableCacheRead,
 
-  includeCompletionMaximumPathLength,
-  includeCompletionWhitelistLiteralEnding,
-  includeCompletionWhitelist, includeCompletionBlacklist,
+                    includeCompletionMaximumPathLength,
+                    includeCompletionWhitelistLiteralEnding,
+                    includeCompletionWhitelist,
+                    includeCompletionBlacklist,
 
-  showDocumentLinksOnIncludes,
+                    showDocumentLinksOnIncludes,
 
-  diagnosticsOnParse,
-  diagnosticsOnCodeCompletion,
+                    diagnosticsOnParse,
+                    diagnosticsOnCodeCompletion,
 
-  codeLensOnLocalVariables,
+                    codeLensOnLocalVariables,
 
-  clientVersion);
+                    clientVersion);

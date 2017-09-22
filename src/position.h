@@ -24,7 +24,9 @@ struct Position {
   bool operator!=(const Position& that) const;
   bool operator<(const Position& that) const;
 };
-static_assert(sizeof(Position) == 4, "Investigate, Position should be 32-bits for indexer size reasons");
+static_assert(
+    sizeof(Position) == 4,
+    "Investigate, Position should be 32-bits for indexer size reasons");
 MAKE_HASHABLE(Position, t.line, t.column);
 
 struct Range {

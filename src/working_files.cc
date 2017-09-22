@@ -19,8 +19,7 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
     if (content[i] == '\n') {
       result.line += 1;
       result.character = 0;
-    }
-    else {
+    } else {
       result.character += 1;
     }
     ++i;
@@ -31,9 +30,8 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
 
 }  // namespace
 
-
-
-WorkingFile::WorkingFile(const std::string& filename, const std::string& buffer_content)
+WorkingFile::WorkingFile(const std::string& filename,
+                         const std::string& buffer_content)
     : filename(filename), buffer_content(buffer_content) {
   OnBufferContentUpdated();
 
@@ -51,7 +49,7 @@ void WorkingFile::SetIndexContent(const std::string& index_content) {
 
     auto it = index_lines_lookup.find(index_line);
     if (it == index_lines_lookup.end())
-      index_lines_lookup[index_line] = { i + 1 };
+      index_lines_lookup[index_line] = {i + 1};
     else
       it->second.push_back(i + 1);
   }
@@ -68,7 +66,7 @@ void WorkingFile::OnBufferContentUpdated() {
 
     auto it = all_buffer_lines_lookup.find(buffer_line);
     if (it == all_buffer_lines_lookup.end())
-      all_buffer_lines_lookup[buffer_line] = { i + 1 };
+      all_buffer_lines_lookup[buffer_line] = {i + 1};
     else
       it->second.push_back(i + 1);
   }
@@ -86,14 +84,15 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
   // Note: |index_line| and |buffer_line| are 1-based.
 
   // TODO: reenable this assert once we are using the real indexed file.
-  //assert(index_line >= 1 && index_line <= index_lines.size());
+  // assert(index_line >= 1 && index_line <= index_lines.size());
   if (index_line < 1 || index_line > index_lines.size()) {
-    std::cerr << "!! Bad index_line (got " << index_line << ", expected [1, " << index_lines.size() << "])" << std::endl;
+    std::cerr << "!! Bad index_line (got " << index_line << ", expected [1, "
+              << index_lines.size() << "])" << std::endl;
     return nullopt;
   }
 
-  // Find the line in the cached index file. We'll try to find the most similar line
-  // in the buffer and return the index for that.
+  // Find the line in the cached index file. We'll try to find the most similar
+  // line in the buffer and return the index for that.
   std::string index = index_lines[index_line - 1];
   auto buffer_it = all_buffer_lines_lookup.find(index);
   if (buffer_it == all_buffer_lines_lookup.end()) {
@@ -122,9 +121,10 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
-  //assert(buffer_line >= 1 && buffer_line < all_buffer_lines.size());
+  // assert(buffer_line >= 1 && buffer_line < all_buffer_lines.size());
   if (buffer_line < 1 || buffer_line > all_buffer_lines.size()) {
-    std::cerr << "!! Bad buffer_line (got " << buffer_line << ", expected [1, " << all_buffer_lines.size() << "])" << std::endl;
+    std::cerr << "!! Bad buffer_line (got " << buffer_line << ", expected [1, "
+              << all_buffer_lines.size() << "])" << std::endl;
     return nullopt;
   }
 
@@ -154,7 +154,9 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
   return closest_index_line;
 }
 
-optional<std::string> WorkingFile::GetBufferLineContentFromIndexLine(int indexed_line, optional<int>* out_buffer_line) const {
+optional<std::string> WorkingFile::GetBufferLineContentFromIndexLine(
+    int indexed_line,
+    optional<int>* out_buffer_line) const {
   optional<int> buffer_line = GetBufferLineFromIndexLine(indexed_line);
   if (out_buffer_line)
     *out_buffer_line = buffer_line;
@@ -163,14 +165,19 @@ optional<std::string> WorkingFile::GetBufferLineContentFromIndexLine(int indexed
     return nullopt;
 
   if (*buffer_line < 1 || *buffer_line >= all_buffer_lines.size()) {
-    std::cerr << "GetBufferLineContentFromIndexLine buffer line lookup not in all_buffer_lines" << std::endl;
+    std::cerr << "GetBufferLineContentFromIndexLine buffer line lookup not in "
+                 "all_buffer_lines"
+              << std::endl;
     return nullopt;
   }
 
   return all_buffer_lines[*buffer_line - 1];
 }
 
-std::string WorkingFile::FindClosestCallNameInBuffer(lsPosition position, int* active_parameter, lsPosition* completion_position) const {
+std::string WorkingFile::FindClosestCallNameInBuffer(
+    lsPosition position,
+    int* active_parameter,
+    lsPosition* completion_position) const {
   *active_parameter = 0;
 
   int offset = GetOffsetForPosition(position, buffer_content);
@@ -184,8 +191,10 @@ std::string WorkingFile::FindClosestCallNameInBuffer(lsPosition position, int* a
   int balance = 0;
   while (offset > 0) {
     char c = buffer_content[offset];
-    if (c == ')') ++balance;
-    else if (c == '(') --balance;
+    if (c == ')')
+      ++balance;
+    else if (c == '(')
+      --balance;
 
     if (balance == 0 && c == ',')
       *active_parameter += 1;
@@ -214,7 +223,10 @@ std::string WorkingFile::FindClosestCallNameInBuffer(lsPosition position, int* a
   return buffer_content.substr(offset, start_offset - offset + 1);
 }
 
-lsPosition WorkingFile::FindStableCompletionSource(lsPosition position, bool* is_global_completion, std::string* existing_completion) const {
+lsPosition WorkingFile::FindStableCompletionSource(
+    lsPosition position,
+    bool* is_global_completion,
+    std::string* existing_completion) const {
   *is_global_completion = true;
 
   int start_offset = GetOffsetForPosition(position, buffer_content);
@@ -257,7 +269,8 @@ WorkingFile* WorkingFiles::GetFileByFilename(const std::string& filename) {
   return GetFileByFilenameNoLock(filename);
 }
 
-WorkingFile* WorkingFiles::GetFileByFilenameNoLock(const std::string& filename) {
+WorkingFile* WorkingFiles::GetFileByFilenameNoLock(
+    const std::string& filename) {
   for (auto& file : files) {
     if (file->filename == filename)
       return file.get();
@@ -273,7 +286,6 @@ void WorkingFiles::DoAction(const std::function<void()>& action) {
 void WorkingFiles::DoActionOnFile(
     const std::string& filename,
     const std::function<void(WorkingFile* file)>& action) {
-
   std::lock_guard<std::mutex> lock(files_mutex);
   WorkingFile* file = GetFileByFilenameNoLock(filename);
   action(file);
@@ -303,28 +315,33 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
   std::string filename = change.textDocument.uri.GetPath();
   WorkingFile* file = GetFileByFilenameNoLock(filename);
   if (!file) {
-    std::cerr << "Could not change " << filename << " because it was not open" << std::endl;
+    std::cerr << "Could not change " << filename << " because it was not open"
+              << std::endl;
     return;
   }
 
   file->version = change.textDocument.version;
   // std::cerr << "!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-  //std::cerr << "VERSION " << change.textDocument.version << std::endl;
+  // std::cerr << "VERSION " << change.textDocument.version << std::endl;
 
-  for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
+  for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff :
+       change.contentChanges) {
     // std::cerr << "|" << file->buffer_content << "|" << std::endl;
     // If range or rangeLength are emitted we replace everything, per the spec.
     if (diff.rangeLength == -1) {
       file->buffer_content = diff.text;
       file->OnBufferContentUpdated();
       // std::cerr << "-> Replacing entire content";
-    }
-    else {
-      int start_offset = GetOffsetForPosition(diff.range.start, file->buffer_content);
-      // std::cerr << "-> Applying diff start=" << diff.range.start.ToString() << ", end=" << diff.range.end.ToString() << ", start_offset=" << start_offset << std::endl;
-      file->buffer_content.replace(file->buffer_content.begin() + start_offset,
-        file->buffer_content.begin() + start_offset + diff.rangeLength,
-        diff.text);
+    } else {
+      int start_offset =
+          GetOffsetForPosition(diff.range.start, file->buffer_content);
+      // std::cerr << "-> Applying diff start=" << diff.range.start.ToString()
+      // << ", end=" << diff.range.end.ToString() << ", start_offset=" <<
+      // start_offset << std::endl;
+      file->buffer_content.replace(
+          file->buffer_content.begin() + start_offset,
+          file->buffer_content.begin() + start_offset + diff.rangeLength,
+          diff.text);
       file->OnBufferContentUpdated();
     }
 
@@ -332,7 +349,8 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
   }
   // std::cerr << "!!!!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
 
-  //std::cerr << std::endl << std::endl << "--------" << file->content << "--------" << std::endl << std::endl;
+  // std::cerr << std::endl << std::endl << "--------" << file->content <<
+  // "--------" << std::endl << std::endl;
 }
 
 void WorkingFiles::OnClose(const Ipc_TextDocumentDidClose::Params& close) {
@@ -347,7 +365,8 @@ void WorkingFiles::OnClose(const Ipc_TextDocumentDidClose::Params& close) {
     }
   }
 
-  std::cerr << "Could not close " << filename << " because it was not open" << std::endl;
+  std::cerr << "Could not close " << filename << " because it was not open"
+            << std::endl;
 }
 
 std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
@@ -362,82 +381,108 @@ std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
 
 TEST_SUITE("WorkingFile");
 
-lsPosition CharPos(const WorkingFile& file, char character, int character_offset = 0) {
+lsPosition CharPos(const WorkingFile& file,
+                   char character,
+                   int character_offset = 0) {
   return CharPos(file.buffer_content, character, character_offset);
 }
 
 TEST_CASE("simple call") {
   WorkingFile f("foo.cc", "abcd(1, 2");
   int active_param = 0;
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '1'), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '1'), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 1);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 1);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '2'), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '2'), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 1);
 }
 
 TEST_CASE("nested call") {
   WorkingFile f("foo.cc", "abcd(efg(), 2");
   int active_param = 0;
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'e'), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'e'), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'f'), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'f'), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g'), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g'), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 1), &active_param) == "efg");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 1), &active_param) ==
+          "efg");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 2), &active_param) == "efg");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 2), &active_param) ==
+          "efg");
   REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 1);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) == "abcd");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) ==
+          "abcd");
   REQUIRE(active_param == 1);
 }
 
 TEST_CASE("auto-insert )") {
   WorkingFile f("foo.cc", "abc()");
   int active_param = 0;
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ')'), &active_param) == "abc");
+  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ')'), &active_param) ==
+          "abc");
   REQUIRE(active_param == 0);
 }
 
 TEST_CASE("existing completion") {
-  // TODO: remove trailing space in zz.asdf. Lexing doesn't work correctly if done at the end of input.
+  // TODO: remove trailing space in zz.asdf. Lexing doesn't work correctly if
+  // done at the end of input.
   WorkingFile f("foo.cc", "zzz.asdf ");
   bool is_global_completion;
   std::string existing_completion;
 
-  f.FindStableCompletionSource(CharPos(f, '.'), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, '.'), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "zzz");
-  f.FindStableCompletionSource(CharPos(f, 'a', 1), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, 'a', 1), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "a");
-  f.FindStableCompletionSource(CharPos(f, 's', 1), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, 's', 1), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "as");
-  f.FindStableCompletionSource(CharPos(f, 'd', 1), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, 'd', 1), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "asd");
-  f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "asdf");
 }
 
 TEST_CASE("existing completion underscore") {
-  // TODO: remove trailing space in ABC_DEF. Lexing doesn't work correctly if done at the end of input.
+  // TODO: remove trailing space in ABC_DEF. Lexing doesn't work correctly if
+  // done at the end of input.
   WorkingFile f("foo.cc", "ABC_DEF ");
   bool is_global_completion;
   std::string existing_completion;
 
-  f.FindStableCompletionSource(CharPos(f, 'C'), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, 'C'), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "AB");
-  f.FindStableCompletionSource(CharPos(f, '_'), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, '_'), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "ABC");
-  f.FindStableCompletionSource(CharPos(f, 'D'), &is_global_completion, &existing_completion);
+  f.FindStableCompletionSource(CharPos(f, 'D'), &is_global_completion,
+                               &existing_completion);
   REQUIRE(existing_completion == "ABC_");
 }
 

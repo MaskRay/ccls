@@ -2,8 +2,9 @@
 #define CURSOR_H_
 
 #include <string>
-#include <vector>
 #include <type_traits>
+#include <vector>
+
 
 #include <clang-c/Index.h>
 

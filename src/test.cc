@@ -14,7 +14,7 @@ std::string ToString(const rapidjson::Document& document) {
   rapidjson::StringBuffer buffer;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
   writer.SetFormatOptions(
-    rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+      rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
 
   buffer.Clear();
@@ -22,16 +22,24 @@ std::string ToString(const rapidjson::Document& document) {
   return buffer.GetString();
 }
 
-void DiffDocuments(std::string path, std::string path_section, rapidjson::Document& expected, rapidjson::Document& actual) {
+void DiffDocuments(std::string path,
+                   std::string path_section,
+                   rapidjson::Document& expected,
+                   rapidjson::Document& actual) {
   std::string joined_actual_output = ToString(actual);
-  std::vector<std::string> actual_output = SplitString(joined_actual_output, "\n");
+  std::vector<std::string> actual_output =
+      SplitString(joined_actual_output, "\n");
   std::string joined_expected_output = ToString(expected);
-  std::vector<std::string> expected_output = SplitString(joined_expected_output, "\n");
+  std::vector<std::string> expected_output =
+      SplitString(joined_expected_output, "\n");
 
-  std::cout << "[FAILED] " << path << " (section " << path_section << ")" << std::endl;
-  std::cout << "Expected output for " << path << " (section " << path_section << "):" << std::endl;
+  std::cout << "[FAILED] " << path << " (section " << path_section << ")"
+            << std::endl;
+  std::cout << "Expected output for " << path << " (section " << path_section
+            << "):" << std::endl;
   std::cout << joined_expected_output << std::endl;
-  std::cout << "Actual output for " << path << " (section " << path_section << "):" << std::endl;
+  std::cout << "Actual output for " << path << " (section " << path_section
+            << "):" << std::endl;
   std::cout << joined_actual_output << std::endl;
   std::cout << std::endl;
 
@@ -66,15 +74,19 @@ void DiffDocuments(std::string path, std::string path_section, rapidjson::Docume
 
 void VerifySerializeToFrom(IndexFile* file) {
   std::string expected = file->ToString();
-  std::unique_ptr<IndexFile> result = Deserialize("--.cc", Serialize(*file), nullopt /*expected_version*/);
+  std::unique_ptr<IndexFile> result =
+      Deserialize("--.cc", Serialize(*file), nullopt /*expected_version*/);
   std::string actual = result->ToString();
   if (expected != actual) {
-    std::cerr << "Serialization failure" << std::endl;;
+    std::cerr << "Serialization failure" << std::endl;
+    ;
     assert(false);
   }
 }
 
-std::string FindExpectedOutputForFilename(std::string filename, const std::unordered_map<std::string, std::string>& expected) {
+std::string FindExpectedOutputForFilename(
+    std::string filename,
+    const std::unordered_map<std::string, std::string>& expected) {
   for (const auto& entry : expected) {
     if (EndsWith(entry.first, filename))
       return entry.second;
@@ -86,7 +98,9 @@ std::string FindExpectedOutputForFilename(std::string filename, const std::unord
   return "{}";
 }
 
-IndexFile* FindDbForPathEnding(const std::string& path, const std::vector<std::unique_ptr<IndexFile>>& dbs) {
+IndexFile* FindDbForPathEnding(
+    const std::string& path,
+    const std::vector<std::unique_ptr<IndexFile>>& dbs) {
   for (auto& db : dbs) {
     if (EndsWith(db->path, path))
       return db.get();
@@ -101,48 +115,48 @@ void RunTests() {
   bool update_all = false;
   clang::Index index(1, 0);
 
-  for (std::string path : GetFilesInFolder("tests", true /*recursive*/, true /*add_folder_to_path*/)) {
+  for (std::string path : GetFilesInFolder("tests", true /*recursive*/,
+                                           true /*add_folder_to_path*/)) {
     float memory_before = GetProcessMemoryUsedInMb();
     float memory_after = -1.;
 
     {
-      //if (path != "tests/templates/specialized_func_definition.cc") continue;
-      //if (path != "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc") continue;
-      //if (path != "tests/multi_file/funky_enum.cc") continue;
-      //if (path != "tests/multi_file/simple_impl.cc") continue;
-      //if (path != "tests/inheritance/interface_pure_virtual.cc") continue;
-      //if (path != "tests/_empty_test.cc") continue;
-      //if (path != "tests/declaration_vs_definition/func_associated_function_params.cc") continue;
+      // if (path != "tests/templates/specialized_func_definition.cc") continue;
+      // if (path !=
+      // "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc")
+      // continue;  if (path != "tests/multi_file/funky_enum.cc") continue;  if
+      // (path != "tests/multi_file/simple_impl.cc") continue;  if (path !=
+      // "tests/inheritance/interface_pure_virtual.cc") continue;  if (path !=
+      // "tests/_empty_test.cc") continue;  if (path !=
+      // "tests/declaration_vs_definition/func_associated_function_params.cc")
+      // continue;
 
-      //if (path != "tests/templates/template_class_type_usage_folded_into_one.cc") continue;
-      //path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
+      // if (path !=
+      // "tests/templates/template_class_type_usage_folded_into_one.cc")
+      // continue;  path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
 
       Config config;
       FileConsumer::SharedState file_consumer_shared;
 
       // Run test.
-      //std::cout << "[START] " << path << std::endl;
+      // std::cout << "[START] " << path << std::endl;
       PerformanceImportFile perf;
       std::vector<std::unique_ptr<IndexFile>> dbs = Parse(
-        &config, &file_consumer_shared,
-        path,
-        {
-          "-xc++",
-          "-std=c++11",
-          "-IC:/Users/jacob/Desktop/cquery/third_party/",
-          "-IC:/Users/jacob/Desktop/cquery/third_party/doctest/",
-          "-IC:/Users/jacob/Desktop/cquery/third_party/rapidjson/include",
-          "-IC:/Users/jacob/Desktop/cquery/src",
-          "-isystemC:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
-          "-isystemC:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt"
-        },
-        {},
-        &perf,
-        &index,
-        false /*dump_ast*/);
+          &config, &file_consumer_shared, path,
+          {"-xc++", "-std=c++11",
+           "-IC:/Users/jacob/Desktop/cquery/third_party/",
+           "-IC:/Users/jacob/Desktop/cquery/third_party/doctest/",
+           "-IC:/Users/jacob/Desktop/cquery/third_party/rapidjson/include",
+           "-IC:/Users/jacob/Desktop/cquery/src",
+           "-isystemC:/Program Files (x86)/Microsoft Visual "
+           "Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
+           "-isystemC:/Program Files (x86)/Windows "
+           "Kits/10/Include/10.0.15063.0/ucrt"},
+          {}, &perf, &index, false /*dump_ast*/);
 
       // Parse expected output from the test, parse it into JSON document.
-      std::unordered_map<std::string, std::string> all_expected_output = ParseTestExpectation(path);
+      std::unordered_map<std::string, std::string> all_expected_output =
+          ParseTestExpectation(path);
       for (auto& entry : all_expected_output) {
         const std::string& expected_path = entry.first;
         const std::string& expected_output = entry.second;
@@ -164,12 +178,12 @@ void RunTests() {
 
         if (actual == expected) {
           std::cout << "[PASSED] " << path << std::endl;
-        }
-        else {
+        } else {
           DiffDocuments(path, expected_path, expected, actual);
           std::cout << std::endl;
           std::cout << std::endl;
-          std::cout << "[Enter to continue - type u to update test, a to update all]";
+          std::cout
+              << "[Enter to continue - type u to update test, a to update all]";
           char c = 'u';
           if (!update_all) {
             c = (char)std::cin.get();
@@ -180,9 +194,9 @@ void RunTests() {
             update_all = true;
 
           if (update_all || c == 'u') {
-            UpdateTestExpectation(path, expected_output, ToString(actual) + "\n");
+            UpdateTestExpectation(path, expected_output,
+                                  ToString(actual) + "\n");
           }
-
         }
       }
 
@@ -190,12 +204,16 @@ void RunTests() {
     }
 
     float memory_cleanup = GetProcessMemoryUsedInMb();
-    std::cerr << "[memory] before=" << memory_before << "mb, after=" << memory_after << "mb, cleanup=" << memory_cleanup << "mb" << std::endl;
+    std::cerr << "[memory] before=" << memory_before
+              << "mb, after=" << memory_after
+              << "mb, cleanup=" << memory_cleanup << "mb" << std::endl;
   }
 
-  std::cerr << "[final presleep] " << GetProcessMemoryUsedInMb() << "mb" << std::endl;
-  //std::this_thread::sleep_for(std::chrono::seconds(10));
-  //std::cerr << "[final postsleep] " << GetProcessMemoryUsedInMb() << "mb" << std::endl;
+  std::cerr << "[final presleep] " << GetProcessMemoryUsedInMb() << "mb"
+            << std::endl;
+  // std::this_thread::sleep_for(std::chrono::seconds(10));
+  // std::cerr << "[final postsleep] " << GetProcessMemoryUsedInMb() << "mb" <<
+  // std::endl;
   std::cerr << std::endl;
   std::cerr << std::endl;
   std::cerr << std::endl;
@@ -204,5 +222,5 @@ void RunTests() {
 }
 
 // TODO: ctor/dtor, copy ctor
-// TODO: Always pass IndexFile by pointer, ie, search and remove all IndexFile& refs.
-
+// TODO: Always pass IndexFile by pointer, ie, search and remove all IndexFile&
+// refs.

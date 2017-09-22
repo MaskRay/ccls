@@ -9,83 +9,62 @@
 #include <string>
 #include <vector>
 
-
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 
 using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
 using Writer = rapidjson::Writer<rapidjson::StringBuffer>;
 struct IndexFile;
 
-#define REFLECT_MEMBER_START() \
-    if (!ReflectMemberStart(visitor, value)) return
-#define REFLECT_MEMBER_START1(value) \
-    if (!ReflectMemberStart(visitor, value)) return
-#define REFLECT_MEMBER_END() \
-    ReflectMemberEnd(visitor, value);
-#define REFLECT_MEMBER_END1(value) \
-    ReflectMemberEnd(visitor, value);
-#define REFLECT_MEMBER(name) \
-    ReflectMember(visitor, #name, value.name)
-#define REFLECT_MEMBER2(name, value) \
-    ReflectMember(visitor, name, value)
+#define REFLECT_MEMBER_START()             \
+  if (!ReflectMemberStart(visitor, value)) \
+  return
+#define REFLECT_MEMBER_START1(value)       \
+  if (!ReflectMemberStart(visitor, value)) \
+  return
+#define REFLECT_MEMBER_END() ReflectMemberEnd(visitor, value);
+#define REFLECT_MEMBER_END1(value) ReflectMemberEnd(visitor, value);
+#define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
+#define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
-
-#define MAKE_REFLECT_TYPE_PROXY(type, as_type) \
-  template<typename TVisitor> \
+#define MAKE_REFLECT_TYPE_PROXY(type, as_type)   \
+  template <typename TVisitor>                   \
   void Reflect(TVisitor& visitor, type& value) { \
-    auto value0 = static_cast<as_type>(value); \
-    Reflect(visitor, value0); \
-    value = static_cast<type>(value0); \
+    auto value0 = static_cast<as_type>(value);   \
+    Reflect(visitor, value0);                    \
+    value = static_cast<type>(value0);           \
   }
 
-#define _MAPPABLE_REFLECT_MEMBER(name) \
-  REFLECT_MEMBER(name);
+#define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
 
-#define MAKE_REFLECT_EMPTY_STRUCT(type, ...) \
-  template<typename TVisitor> \
+#define MAKE_REFLECT_EMPTY_STRUCT(type, ...)     \
+  template <typename TVisitor>                   \
   void Reflect(TVisitor& visitor, type& value) { \
-    REFLECT_MEMBER_START(); \
-    REFLECT_MEMBER_END(); \
+    REFLECT_MEMBER_START();                      \
+    REFLECT_MEMBER_END();                        \
   }
 
-#define MAKE_REFLECT_STRUCT(type, ...) \
-  template<typename TVisitor> \
-  void Reflect(TVisitor& visitor, type& value) { \
-    REFLECT_MEMBER_START(); \
+#define MAKE_REFLECT_STRUCT(type, ...)               \
+  template <typename TVisitor>                       \
+  void Reflect(TVisitor& visitor, type& value) {     \
+    REFLECT_MEMBER_START();                          \
     MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__) \
-    REFLECT_MEMBER_END(); \
+    REFLECT_MEMBER_END();                            \
   }
 
-#define _MAPPABLE_REFLECT_ARRAY(name) \
-  Reflect(visitor, value.name);
+#define _MAPPABLE_REFLECT_ARRAY(name) Reflect(visitor, value.name);
 
 // Reflects the struct so it is serialized as an array instead of an object.
 // This currently only supports writers.
 #define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...) \
-  inline void Reflect(Writer& visitor, type& value) { \
-    visitor.StartArray(); \
-    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__) \
-    visitor.EndArray(); \
+  inline void Reflect(Writer& visitor, type& value) {  \
+    visitor.StartArray();                              \
+    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)    \
+    visitor.EndArray();                                \
   }
 
-
-
-
-
-
-
-template<typename T>
+template <typename T>
 struct NonElidedVector : public std::vector<T> {};
-
-
-
-
-
-
-
-
-
 
 // API:
 /*
@@ -108,7 +87,6 @@ void ReflectMemberEnd(TVisitor& visitor, T& value) {
 }
 */
 
-
 // int16_t
 void Reflect(Reader& visitor, int16_t& value);
 void Reflect(Writer& visitor, int16_t& value);
@@ -128,21 +106,15 @@ void Reflect(Writer& visitor, bool& value);
 void Reflect(Reader& visitor, std::string& value);
 void Reflect(Writer& visitor, std::string& value);
 
-
-
-
-
-
-
 // Writer:
-template<typename T>
+template <typename T>
 void Reflect(Writer& visitor, std::vector<T>& values) {
   visitor.StartArray();
   for (auto& value : values)
     Reflect(visitor, value);
   visitor.EndArray();
 }
-template<typename T>
+template <typename T>
 void Reflect(Writer& visitor, optional<T> value) {
   if (value)
     Reflect(visitor, value.value());
@@ -150,21 +122,21 @@ void Reflect(Writer& visitor, optional<T> value) {
 inline void DefaultReflectMemberStart(Writer& visitor) {
   visitor.StartObject();
 }
-template<typename T>
+template <typename T>
 bool ReflectMemberStart(Writer& visitor, T& value) {
   visitor.StartObject();
   return true;
 }
-template<typename T>
+template <typename T>
 void ReflectMemberEnd(Writer& visitor, T& value) {
   visitor.EndObject();
 }
-template<typename T>
+template <typename T>
 void ReflectMember(Writer& visitor, const char* name, T& value) {
   visitor.Key(name);
   Reflect(visitor, value);
 }
-template<typename T>
+template <typename T>
 void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
   if (values.empty())
     return;
@@ -174,15 +146,17 @@ void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
     Reflect(visitor, value);
   visitor.EndArray();
 }
-template<typename T>
-void ReflectMember(Writer& visitor, const char* name, NonElidedVector<T>& values) {
+template <typename T>
+void ReflectMember(Writer& visitor,
+                   const char* name,
+                   NonElidedVector<T>& values) {
   visitor.Key(name);
   visitor.StartArray();
   for (auto& value : values)
     Reflect(visitor, value);
   visitor.EndArray();
 }
-template<typename T>
+template <typename T>
 void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
   if (!value)
     return;
@@ -192,7 +166,7 @@ void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
 
 // Reader:
-template<typename T>
+template <typename T>
 void Reflect(Reader& visitor, std::vector<T>& values) {
   for (auto& entry : visitor.GetArray()) {
     T entry_value;
@@ -200,20 +174,20 @@ void Reflect(Reader& visitor, std::vector<T>& values) {
     values.push_back(entry_value);
   }
 }
-template<typename T>
+template <typename T>
 void Reflect(Reader& visitor, optional<T>& value) {
   T real_value;
   Reflect(visitor, real_value);
   value = real_value;
 }
 inline void DefaultReflectMemberStart(Reader& visitor) {}
-template<typename T>
+template <typename T>
 bool ReflectMemberStart(Reader& visitor, T& value) {
   return true;
 }
-template<typename T>
+template <typename T>
 void ReflectMemberEnd(Reader& visitor, T& value) {}
-template<typename T>
+template <typename T>
 void ReflectMember(Reader& visitor, const char* name, T& value) {
   auto it = visitor.FindMember(name);
   if (it != visitor.MemberEnd()) {
@@ -223,6 +197,8 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 }
 
 std::string Serialize(IndexFile& file);
-std::unique_ptr<IndexFile> Deserialize(std::string path, std::string serialized, optional<int> expected_version);
+std::unique_ptr<IndexFile> Deserialize(std::string path,
+                                       std::string serialized,
+                                       optional<int> expected_version);
 
 void SetTestOutputMode();

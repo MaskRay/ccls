@@ -162,7 +162,6 @@ MessageQueue::MessageQueue(std::unique_ptr<Buffer> buffer, bool buffer_has_data)
 
   local_buffer_ = Buffer::Create(buffer_->capacity - sizeof(BufferMetadata));
   memset(local_buffer_->data, 0, local_buffer_->capacity);
-
 }
 
 void MessageQueue::Enqueue(const Message& message) {

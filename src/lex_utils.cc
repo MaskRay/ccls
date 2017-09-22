@@ -20,7 +20,9 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
   return std::min<int>(offset + position.character, content.size());
 }
 
-lsPosition CharPos(const std::string& search, char character, int character_offset) {
+lsPosition CharPos(const std::string& search,
+                   char character,
+                   int character_offset) {
   lsPosition result;
   int index = 0;
   while (index < search.size()) {
@@ -30,8 +32,7 @@ lsPosition CharPos(const std::string& search, char character, int character_offs
     if (c == '\n') {
       result.line += 1;
       result.character = 0;
-    }
-    else {
+    } else {
       result.character += 1;
     }
     ++index;
@@ -75,7 +76,11 @@ optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
   return lsRange(lsPosition(line_number, start), lsPosition(line_number, end));
 }
 
-void LexFunctionDeclaration(const std::string& buffer_content, lsPosition declaration_spelling, optional<std::string> type_name, std::string* insert_text, int* newlines_after_name) {
+void LexFunctionDeclaration(const std::string& buffer_content,
+                            lsPosition declaration_spelling,
+                            optional<std::string> type_name,
+                            std::string* insert_text,
+                            int* newlines_after_name) {
   int name_start = GetOffsetForPosition(declaration_spelling, buffer_content);
 
   bool parse_return_type = true;
@@ -89,7 +94,8 @@ void LexFunctionDeclaration(const std::string& buffer_content, lsPosition declar
       ++name_end;
     }
 
-    std::string func_name = buffer_content.substr(name_start, name_end - name_start);
+    std::string func_name =
+        buffer_content.substr(name_start, name_end - name_start);
     if (func_name == *type_name || func_name == ("~" + *type_name))
       parse_return_type = false;
   }
@@ -163,8 +169,7 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
     char c = content[start - 1];
     if (isalnum(c) || c == '_') {
       --start;
-    }
-    else {
+    } else {
       break;
     }
   }
@@ -173,8 +178,7 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
     char c = content[end + 1];
     if (isalnum(c) || c == '_') {
       ++end;
-    }
-    else {
+    } else {
       break;
     }
   }

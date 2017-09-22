@@ -2,18 +2,19 @@
 
 #include <iostream>
 #include <iterator>
-#include <string>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <vector>
+
 
 #include <doctest/doctest.h>
 
 namespace {
 
 // See http://stackoverflow.com/a/236803
-template<typename Out>
-void Split(const std::string &s, char delim, Out result) {
+template <typename Out>
+void Split(const std::string& s, char delim, Out result) {
   std::stringstream ss;
   ss.str(s);
   std::string item;
@@ -22,7 +23,7 @@ void Split(const std::string &s, char delim, Out result) {
       *(result++) = item;
   }
 }
-std::vector<std::string> Split(const std::string &s, char delim) {
+std::vector<std::string> Split(const std::string& s, char delim) {
   std::vector<std::string> elems;
   Split(s, delim, std::back_inserter(elems));
   return elems;
@@ -70,14 +71,16 @@ void MakeDirectoryRecursive(std::string path) {
   }
 
   if (first_success == -1) {
-    std::cerr << "Failed to make any parent directory for " << path << std::endl;
+    std::cerr << "Failed to make any parent directory for " << path
+              << std::endl;
     exit(1);
   }
 
   // Make all child directories.
   for (int i = first_success + 1; i <= components.size(); ++i) {
     if (TryMakeDirectory(prefix + Join(components, '/', i)) == false) {
-      std::cerr << "Failed making directory for " << path << " even after creating parent directories" << std::endl;
+      std::cerr << "Failed making directory for " << path
+                << " even after creating parent directories" << std::endl;
       exit(1);
     }
   }

@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 
 struct Project {
   struct Entry {
@@ -35,12 +35,14 @@ struct Project {
   // discover all files and args. Otherwise, a recursive directory listing of
   // all *.cpp, *.cc, *.h, and *.hpp files will be used. clang arguments can be
   // specified in a clang_args file located inside of |directory|.
-  void Load(const std::vector<std::string>& extra_flags, const std::string& directory);
+  void Load(const std::vector<std::string>& extra_flags,
+            const std::string& directory);
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this
   // will infer one based on existing project structure.
   Entry FindCompilationEntryForFile(const std::string& filename);
 
-  void ForAllFilteredFiles(Config* config, std::function<void(int i, const Entry& entry)> action);
+  void ForAllFilteredFiles(
+      Config* config,
+      std::function<void(int i, const Entry& entry)> action);
 };
-

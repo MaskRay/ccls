@@ -1,16 +1,18 @@
 #pragma once
 
-#include "work_thread.h"
 #include <optional.h>
+#include "work_thread.h"
+
 
 #include <algorithm>
 #include <atomic>
-#include <queue>
-#include <mutex>
 #include <condition_variable>
+#include <mutex>
+#include <queue>
 
-using std::experimental::optional;
+
 using std::experimental::nullopt;
+using std::experimental::optional;
 
 // TODO: cleanup includes.
 
@@ -56,7 +58,7 @@ struct MultiQueueWaiter {
 // A threadsafe-queue. http://stackoverflow.com/a/16075550
 template <class T>
 struct ThreadedQueue : public BaseThreadQueue {
-public:
+ public:
   ThreadedQueue() {
     owned_waiter_ = MakeUnique<MultiQueueWaiter>();
     waiter_ = owned_waiter_.get();
@@ -111,12 +113,11 @@ public:
 
   // Get the first element from the queue. Blocks until one is available.
   // Executes |action| with an acquired |mutex_|.
-  template<typename TAction>
+  template <typename TAction>
   T DequeuePlusAction(TAction action) {
     std::unique_lock<std::mutex> lock(mutex_);
-    waiter_->cv.wait(lock, [&]() {
-      return !priority_.empty() || !queue_.empty();
-    });
+    waiter_->cv.wait(lock,
+                     [&]() { return !priority_.empty() || !queue_.empty(); });
 
     if (!priority_.empty()) {
       auto val = std::move(priority_.front());
@@ -139,7 +140,7 @@ public:
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
-  template<typename TAction>
+  template <typename TAction>
   optional<T> TryDequeuePlusAction(TAction action) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (priority_.empty() && queue_.empty())

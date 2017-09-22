@@ -14,8 +14,8 @@
 #include <unordered_map>
 #include <unordered_set>
 
-using std::experimental::optional;
 using std::experimental::nullopt;
+using std::experimental::optional;
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -79,10 +79,11 @@ struct MessageRegistry {
   static MessageRegistry* instance_;
   static MessageRegistry* instance();
 
-  using Allocator = std::function<std::unique_ptr<BaseIpcMessage>(Reader& visitor)>;
+  using Allocator =
+      std::function<std::unique_ptr<BaseIpcMessage>(Reader& visitor)>;
   std::unordered_map<std::string, Allocator> allocators;
 
-  template<typename T>
+  template <typename T>
   void Register() {
     std::string method_name = IpcIdToString(T::kIpcId);
     allocators[method_name] = [](Reader& visitor) {
@@ -96,13 +97,12 @@ struct MessageRegistry {
   std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor);
 };
 
-
 struct lsBaseOutMessage {
   virtual ~lsBaseOutMessage();
   virtual void Write(std::ostream& out) = 0;
 };
 
-template<typename TDerived>
+template <typename TDerived>
 struct lsOutMessage : lsBaseOutMessage {
   // All derived types need to reflect on the |jsonrpc| member.
   std::string jsonrpc = "2.0";
@@ -115,7 +115,7 @@ struct lsOutMessage : lsBaseOutMessage {
     Reflect(writer, *that);
 
     out << "Content-Length: " << output.GetSize();
-    out << (char)13 << char(10) << char(13) << char(10); // CRLFCRLF
+    out << (char)13 << char(10) << char(13) << char(10);  // CRLFCRLF
     out << output.GetString();
     out.flush();
   }
@@ -216,11 +216,10 @@ struct lsDocumentUri {
 };
 MAKE_HASHABLE(lsDocumentUri, t.raw_uri);
 
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, lsDocumentUri& value) {
   Reflect(visitor, value.raw_uri);
 }
-
 
 struct lsPosition {
   lsPosition();
@@ -291,7 +290,7 @@ struct lsSymbolInformation {
 };
 MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
 
-template<typename T>
+template <typename T>
 struct lsCommand {
   // Title of the command (ie, 'save')
   std::string title;
@@ -302,7 +301,7 @@ struct lsCommand {
   // MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY.
   T arguments;
 };
-template<typename TVisitor, typename T>
+template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, lsCommand<T>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(title);
@@ -311,7 +310,7 @@ void Reflect(TVisitor& visitor, lsCommand<T>& value) {
   REFLECT_MEMBER_END();
 }
 
-template<typename TData, typename TCommandArguments>
+template <typename TData, typename TCommandArguments>
 struct lsCodeLens {
   // The range in which this code lens is valid. Should only span a single line.
   lsRange range;
@@ -321,7 +320,7 @@ struct lsCodeLens {
   // a code lens and a code lens resolve request.
   TData data;
 };
-template<typename TVisitor, typename TData, typename TCommandArguments>
+template <typename TVisitor, typename TData, typename TCommandArguments>
 void Reflect(TVisitor& visitor, lsCodeLens<TData, TCommandArguments>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(range);
@@ -377,7 +376,8 @@ enum class lsInsertTextFormat {
   // the end of the snippet. Placeholders with equal identifiers are linked,
   // that is typing in one will update others too.
   //
-  // See also: https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md
+  // See also:
+  // https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md
   Snippet = 2
 };
 MAKE_REFLECT_TYPE_PROXY(lsInsertTextFormat, int);
@@ -406,7 +406,8 @@ enum class lsCompletionItemKind {
 MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind, int);
 
 struct lsCompletionItem {
-  // A set of function parameters. Used internally for signature help. Not sent to vscode.
+  // A set of function parameters. Used internally for signature help. Not sent
+  // to vscode.
   std::vector<std::string> parameters_;
 
   // The label of this completion item. By default
@@ -431,21 +432,21 @@ struct lsCompletionItem {
 
   // A string that should be used when filtering a set of
   // completion items. When `falsy` the label is used.
-  //std::string filterText;
+  // std::string filterText;
 
   // A string that should be inserted a document when selecting
   // this completion. When `falsy` the label is used.
   std::string insertText;
 
-  // The format of the insert text. The format applies to both the `insertText` property
-  // and the `newText` property of a provided `textEdit`.
+  // The format of the insert text. The format applies to both the `insertText`
+  // property and the `newText` property of a provided `textEdit`.
   lsInsertTextFormat insertTextFormat = lsInsertTextFormat::Snippet;
 
-  // An edit which is applied to a document when selecting this completion. When an edit is provided the value of
-  // `insertText` is ignored.
+  // An edit which is applied to a document when selecting this completion. When
+  // an edit is provided the value of `insertText` is ignored.
   //
-  // *Note:* The range of the edit must be a single line range and it must contain the position at which completion
-  // has been requested.
+  // *Note:* The range of the edit must be a single line range and it must
+  // contain the position at which completion has been requested.
   optional<lsTextEdit> textEdit;
 
   // An optional array of additional text edits that are applied when
@@ -453,10 +454,9 @@ struct lsCompletionItem {
   // nor with themselves.
   // std::vector<TextEdit> additionalTextEdits;
 
-  // An optional command that is executed *after* inserting this completion. *Note* that
-  // additional modifications to the current document should be described with the
-  // additionalTextEdits-property.
-  // Command command;
+  // An optional command that is executed *after* inserting this completion.
+  // *Note* that additional modifications to the current document should be
+  // described with the additionalTextEdits-property. Command command;
 
   // An data entry field that is preserved on a completion item between
   // a completion and a completion resolve request.
@@ -468,14 +468,14 @@ struct lsCompletionItem {
   const std::string& InsertedContent() const;
 };
 MAKE_REFLECT_STRUCT(lsCompletionItem,
-  label,
-  kind,
-  detail,
-  documentation,
-  sortText,
-  insertText,
-  insertTextFormat,
-  textEdit);
+                    label,
+                    kind,
+                    detail,
+                    documentation,
+                    sortText,
+                    insertText,
+                    insertTextFormat,
+                    textEdit);
 
 struct lsTextDocumentItem {
   // The text document's URI.
@@ -505,7 +505,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentEdit, textDocument, edits);
 struct lsWorkspaceEdit {
   // Holds changes to existing resources.
   // changes ? : { [uri:string]: TextEdit[]; };
-  //std::unordered_map<lsDocumentUri, std::vector<lsTextEdit>> changes;
+  // std::unordered_map<lsDocumentUri, std::vector<lsTextEdit>> changes;
 
   // An array of `TextDocumentEdit`s to express changes to specific a specific
   // version of a text document. Whether a client supports versioned document
@@ -529,10 +529,10 @@ MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind, int);
 // special attention. Usually a document highlight is visualized by changing
 // the background color of its range.
 struct lsDocumentHighlight {
-	// The range this highlight applies to.
-	lsRange range;
+  // The range this highlight applies to.
+  lsRange range;
 
-	// The highlight kind, default is DocumentHighlightKind.Text.
+  // The highlight kind, default is DocumentHighlightKind.Text.
   lsDocumentHighlightKind kind = lsDocumentHighlightKind::Text;
 };
 MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind);
@@ -571,7 +571,6 @@ struct lsDiagnostic {
   NonElidedVector<lsTextEdit> fixits_;
 };
 MAKE_REFLECT_STRUCT(lsDiagnostic, range, severity, source, message);
-
 
 // TODO: DocumentFilter
 // TODO: DocumentSelector
@@ -687,17 +686,17 @@ struct lsWorkspaceClientCapabilites {
   // Capabilities specific to `WorkspaceEdit`s
   optional<lsWorkspaceEdit> workspaceEdit;
 
-
   struct lsGenericDynamicReg {
     // Did foo notification supports dynamic registration.
     optional<bool> dynamicRegistration;
   };
 
-
-  // Capabilities specific to the `workspace/didChangeConfiguration` notification.
+  // Capabilities specific to the `workspace/didChangeConfiguration`
+  // notification.
   optional<lsGenericDynamicReg> didChangeConfiguration;
 
-  // Capabilities specific to the `workspace/didChangeWatchedFiles` notification.
+  // Capabilities specific to the `workspace/didChangeWatchedFiles`
+  // notification.
   optional<lsGenericDynamicReg> didChangeWatchedFiles;
 
   // Capabilities specific to the `workspace/symbol` request.
@@ -707,17 +706,17 @@ struct lsWorkspaceClientCapabilites {
   optional<lsGenericDynamicReg> executeCommand;
 };
 
-MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsWorkspaceEdit, documentChanges);
-MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsGenericDynamicReg, dynamicRegistration);
+MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsWorkspaceEdit,
+                    documentChanges);
+MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsGenericDynamicReg,
+                    dynamicRegistration);
 MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites,
-  applyEdit,
-  workspaceEdit,
-  didChangeConfiguration,
-  didChangeWatchedFiles,
-  symbol,
-  executeCommand);
-
-
+                    applyEdit,
+                    workspaceEdit,
+                    didChangeConfiguration,
+                    didChangeWatchedFiles,
+                    symbol,
+                    executeCommand);
 
 // Text document specific client capabilities.
 struct lsTextDocumentClientCapabilities {
@@ -810,27 +809,39 @@ struct lsTextDocumentClientCapabilities {
   optional<lsGenericDynamicReg> rename;
 };
 
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization, dynamicRegistration, willSave, willSaveWaitUntil, didSave);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion, dynamicRegistration, completionItem);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion::lsCompletionItem, snippetSupport);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg, dynamicRegistration);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::CodeLensRegistrationOptions, dynamicRegistration, resolveProvider);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization,
+                    dynamicRegistration,
+                    willSave,
+                    willSaveWaitUntil,
+                    didSave);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion,
+                    dynamicRegistration,
+                    completionItem);
+MAKE_REFLECT_STRUCT(
+    lsTextDocumentClientCapabilities::lsCompletion::lsCompletionItem,
+    snippetSupport);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg,
+                    dynamicRegistration);
+MAKE_REFLECT_STRUCT(
+    lsTextDocumentClientCapabilities::CodeLensRegistrationOptions,
+    dynamicRegistration,
+    resolveProvider);
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities,
-  synchronization,
-  completion,
-  hover,
-  signatureHelp,
-  references,
-  documentHighlight,
-  documentSymbol,
-  formatting,
-  rangeFormatting,
-  onTypeFormatting,
-  definition,
-  codeAction,
-  codeLens,
-  documentLink,
-  rename);
+                    synchronization,
+                    completion,
+                    hover,
+                    signatureHelp,
+                    references,
+                    documentHighlight,
+                    documentSymbol,
+                    formatting,
+                    rangeFormatting,
+                    onTypeFormatting,
+                    definition,
+                    codeAction,
+                    codeLens,
+                    documentLink,
+                    rename);
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
@@ -840,8 +851,8 @@ struct lsClientCapabilities {
   optional<lsTextDocumentClientCapabilities> textDocument;
 
   /**
-  * Experimental client capabilities.
-  */
+   * Experimental client capabilities.
+   */
   // experimental?: any; // TODO
 };
 MAKE_REFLECT_STRUCT(lsClientCapabilities, workspace, textDocument);
@@ -849,7 +860,8 @@ MAKE_REFLECT_STRUCT(lsClientCapabilities, workspace, textDocument);
 struct lsInitializeParams {
   // The process Id of the parent process that started
   // the server. Is null if the process has not been started by another process.
-  // If the parent process is not alive then the server should exit (see exit notification) its process.
+  // If the parent process is not alive then the server should exit (see exit
+  // notification) its process.
   optional<int> processId;
 
   // The rootPath of the workspace. Is null
@@ -871,9 +883,9 @@ struct lsInitializeParams {
 
   enum class lsTrace {
     // NOTE: serialized as a string, one of 'off' | 'messages' | 'verbose';
-    Off, // off
-    Messages, // messages
-    Verbose // verbose
+    Off,       // off
+    Messages,  // messages
+    Verbose    // verbose
   };
 
   // The initial trace setting. If omitted trace is disabled ('off').
@@ -881,8 +893,13 @@ struct lsInitializeParams {
 };
 void Reflect(Reader& reader, lsInitializeParams::lsTrace& value);
 void Reflect(Writer& writer, lsInitializeParams::lsTrace& value);
-MAKE_REFLECT_STRUCT(lsInitializeParams, processId, rootPath, rootUri, initializationOptions, capabilities, trace);
-
+MAKE_REFLECT_STRUCT(lsInitializeParams,
+                    processId,
+                    rootPath,
+                    rootUri,
+                    initializationOptions,
+                    capabilities,
+                    trace);
 
 struct lsInitializeError {
   // Indicates whether the client should retry to send the
@@ -892,7 +909,8 @@ struct lsInitializeError {
 };
 MAKE_REFLECT_STRUCT(lsInitializeError, retry);
 
-// Defines how the host (editor) should sync document changes to the language server.
+// Defines how the host (editor) should sync document changes to the language
+// server.
 enum class lsTextDocumentSyncKind {
   // Documents should not be synced at all.
   None = 0,
@@ -941,7 +959,9 @@ struct lsDocumentOnTypeFormattingOptions {
   // More trigger characters.
   NonElidedVector<std::string> moreTriggerCharacter;
 };
-MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter, moreTriggerCharacter);
+MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions,
+                    firstTriggerCharacter,
+                    moreTriggerCharacter);
 
 // Document link options
 struct lsDocumentLinkOptions {
@@ -967,8 +987,8 @@ MAKE_REFLECT_STRUCT(lsSaveOptions, includeText);
 struct lsTextDocumentSyncOptions {
   // Open and close notifications are sent to the server.
   bool openClose = false;
-  // Change notificatins are sent to the server. See TextDocumentSyncKind.None, TextDocumentSyncKind.Full
-  // and TextDocumentSyncKindIncremental.
+  // Change notificatins are sent to the server. See TextDocumentSyncKind.None,
+  // TextDocumentSyncKind.Full and TextDocumentSyncKindIncremental.
   lsTextDocumentSyncKind change = lsTextDocumentSyncKind::Incremental;
   // Will save notifications are sent to the server.
   optional<bool> willSave;
@@ -977,11 +997,17 @@ struct lsTextDocumentSyncOptions {
   // Save notifications are sent to the server.
   optional<lsSaveOptions> save;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions, openClose, change, willSave, willSaveWaitUntil, save);
+MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions,
+                    openClose,
+                    change,
+                    willSave,
+                    willSaveWaitUntil,
+                    save);
 
 struct lsServerCapabilities {
-  // Defines how text documents are synced. Is either a detailed structure defining each notification or
-  // for backwards compatibility the TextDocumentSyncKind number.
+  // Defines how text documents are synced. Is either a detailed structure
+  // defining each notification or for backwards compatibility the
+  // TextDocumentSyncKind number.
   // TODO: It seems like the new API is broken and doesn't work.
   // optional<lsTextDocumentSyncOptions> textDocumentSync;
   lsTextDocumentSyncKind textDocumentSync;
@@ -1020,23 +1046,23 @@ struct lsServerCapabilities {
   optional<lsExecuteCommandOptions> executeCommandProvider;
 };
 MAKE_REFLECT_STRUCT(lsServerCapabilities,
-  textDocumentSync,
-  hoverProvider,
-  completionProvider,
-  signatureHelpProvider,
-  definitionProvider,
-  referencesProvider,
-  documentHighlightProvider,
-  documentSymbolProvider,
-  workspaceSymbolProvider,
-  codeActionProvider,
-  codeLensProvider,
-  documentFormattingProvider,
-  documentRangeFormattingProvider,
-  documentOnTypeFormattingProvider,
-  renameProvider,
-  documentLinkProvider,
-  executeCommandProvider);
+                    textDocumentSync,
+                    hoverProvider,
+                    completionProvider,
+                    signatureHelpProvider,
+                    definitionProvider,
+                    referencesProvider,
+                    documentHighlightProvider,
+                    documentSymbolProvider,
+                    workspaceSymbolProvider,
+                    codeActionProvider,
+                    codeLensProvider,
+                    documentFormattingProvider,
+                    documentRangeFormattingProvider,
+                    documentOnTypeFormattingProvider,
+                    renameProvider,
+                    documentLinkProvider,
+                    executeCommandProvider);
 
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
@@ -1056,7 +1082,8 @@ struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
 MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
 MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
 
-struct Ipc_InitializedNotification : public IpcMessage<Ipc_InitializedNotification> {
+struct Ipc_InitializedNotification
+    : public IpcMessage<Ipc_InitializedNotification> {
   const static IpcId kIpcId = IpcId::Initialized;
 
   lsRequestId id;
@@ -1136,21 +1163,12 @@ struct Out_Error : public lsOutMessage<Out_Error> {
 MAKE_REFLECT_STRUCT(Out_Error::lsResponseError, code, message);
 MAKE_REFLECT_STRUCT(Out_Error, jsonrpc, id, error);
 
-
-
-
-
-
 // Cancel an existing request.
 struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
   static const IpcId kIpcId = IpcId::CancelRequest;
   lsRequestId id;
 };
 MAKE_REFLECT_STRUCT(Ipc_CancelRequest, id);
-
-
-
-
 
 // Open, update, close file
 struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
@@ -1163,7 +1181,8 @@ struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen, params);
-struct Ipc_TextDocumentDidChange : public IpcMessage<Ipc_TextDocumentDidChange> {
+struct Ipc_TextDocumentDidChange
+    : public IpcMessage<Ipc_TextDocumentDidChange> {
   struct lsTextDocumentContentChangeEvent {
     // The range of the document that changed.
     lsRange range;
@@ -1181,8 +1200,13 @@ struct Ipc_TextDocumentDidChange : public IpcMessage<Ipc_TextDocumentDidChange> 
   const static IpcId kIpcId = IpcId::TextDocumentDidChange;
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent, range, rangeLength, text);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange::Params, textDocument, contentChanges);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent,
+                    range,
+                    rangeLength,
+                    text);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange::Params,
+                    textDocument,
+                    contentChanges);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange, params);
 struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {
   struct Params {
@@ -1194,7 +1218,6 @@ struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose, params);
-
 
 struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
   struct Params {
@@ -1212,10 +1235,9 @@ struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave, params);
 
-
-
 // Diagnostics
-struct Out_TextDocumentPublishDiagnostics : public lsOutMessage<Out_TextDocumentPublishDiagnostics> {
+struct Out_TextDocumentPublishDiagnostics
+    : public lsOutMessage<Out_TextDocumentPublishDiagnostics> {
   struct Params {
     // The URI for which diagnostic information is reported.
     lsDocumentUri uri;
@@ -1226,7 +1248,7 @@ struct Out_TextDocumentPublishDiagnostics : public lsOutMessage<Out_TextDocument
 
   Params params;
 };
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
   std::string method = "textDocument/publishDiagnostics";
   REFLECT_MEMBER_START();
@@ -1235,9 +1257,9 @@ void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params, uri, diagnostics);
-
-
+MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params,
+                    uri,
+                    diagnostics);
 
 // Rename
 struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
@@ -1258,17 +1280,16 @@ struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
   lsRequestId id;
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename::Params, textDocument, position, newName);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename::Params,
+                    textDocument,
+                    position,
+                    newName);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename, id, params);
 struct Out_TextDocumentRename : public lsOutMessage<Out_TextDocumentRename> {
   lsRequestId id;
   lsWorkspaceEdit result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
-
-
-
-
 
 // Code completion
 struct Ipc_TextDocumentComplete : public IpcMessage<Ipc_TextDocumentComplete> {
@@ -1286,14 +1307,16 @@ struct lsTextDocumentCompleteResult {
   NonElidedVector<lsCompletionItem> items;
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentCompleteResult, isIncomplete, items);
-struct Out_TextDocumentComplete : public lsOutMessage<Out_TextDocumentComplete> {
+struct Out_TextDocumentComplete
+    : public lsOutMessage<Out_TextDocumentComplete> {
   lsRequestId id;
   lsTextDocumentCompleteResult result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
 // Signature help.
-struct Ipc_TextDocumentSignatureHelp : public IpcMessage<Ipc_TextDocumentSignatureHelp> {
+struct Ipc_TextDocumentSignatureHelp
+    : public IpcMessage<Ipc_TextDocumentSignatureHelp> {
   const static IpcId kIpcId = IpcId::TextDocumentSignatureHelp;
 
   lsRequestId id;
@@ -1353,36 +1376,44 @@ struct lsSignatureHelp {
   // active signature does have any.
   optional<int> activeParameter;
 };
-MAKE_REFLECT_STRUCT(lsSignatureHelp, signatures, activeSignature, activeParameter);
-struct Out_TextDocumentSignatureHelp : public lsOutMessage<Out_TextDocumentSignatureHelp> {
+MAKE_REFLECT_STRUCT(lsSignatureHelp,
+                    signatures,
+                    activeSignature,
+                    activeParameter);
+struct Out_TextDocumentSignatureHelp
+    : public lsOutMessage<Out_TextDocumentSignatureHelp> {
   lsRequestId id;
   lsSignatureHelp result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentSignatureHelp, jsonrpc, id, result);
 
 // Goto definition
-struct Ipc_TextDocumentDefinition : public IpcMessage<Ipc_TextDocumentDefinition> {
+struct Ipc_TextDocumentDefinition
+    : public IpcMessage<Ipc_TextDocumentDefinition> {
   const static IpcId kIpcId = IpcId::TextDocumentDefinition;
 
   lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDefinition, id, params);
-struct Out_TextDocumentDefinition : public lsOutMessage<Out_TextDocumentDefinition> {
+struct Out_TextDocumentDefinition
+    : public lsOutMessage<Out_TextDocumentDefinition> {
   lsRequestId id;
   NonElidedVector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
 // Document highlight
-struct Ipc_TextDocumentDocumentHighlight : public IpcMessage<Ipc_TextDocumentDocumentHighlight> {
+struct Ipc_TextDocumentDocumentHighlight
+    : public IpcMessage<Ipc_TextDocumentDocumentHighlight> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentHighlight;
 
   lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentHighlight, id, params);
-struct Out_TextDocumentDocumentHighlight : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
+struct Out_TextDocumentDocumentHighlight
+    : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
   lsRequestId id;
   NonElidedVector<lsDocumentHighlight> result;
 };
@@ -1409,7 +1440,8 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover, jsonrpc, id, result);
 
 // References
-struct Ipc_TextDocumentReferences : public IpcMessage<Ipc_TextDocumentReferences> {
+struct Ipc_TextDocumentReferences
+    : public IpcMessage<Ipc_TextDocumentReferences> {
   struct lsReferenceContext {
     // Include the declaration of the current symbol.
     bool includeDeclaration;
@@ -1425,41 +1457,52 @@ struct Ipc_TextDocumentReferences : public IpcMessage<Ipc_TextDocumentReferences
   lsRequestId id;
   lsReferenceParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext, includeDeclaration);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceParams, textDocument, position, context);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext,
+                    includeDeclaration);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceParams,
+                    textDocument,
+                    position,
+                    context);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences, id, params);
-struct Out_TextDocumentReferences : public lsOutMessage<Out_TextDocumentReferences> {
+struct Out_TextDocumentReferences
+    : public lsOutMessage<Out_TextDocumentReferences> {
   lsRequestId id;
   NonElidedVector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
 
 // Code action
-struct Ipc_TextDocumentCodeAction : public IpcMessage<Ipc_TextDocumentCodeAction> {
+struct Ipc_TextDocumentCodeAction
+    : public IpcMessage<Ipc_TextDocumentCodeAction> {
   const static IpcId kIpcId = IpcId::TextDocumentCodeAction;
   // Contains additional diagnostic information about the context in which
   // a code action is run.
   struct lsCodeActionContext {
-	  // An array of diagnostics.
-	  NonElidedVector<lsDiagnostic> diagnostics;
+    // An array of diagnostics.
+    NonElidedVector<lsDiagnostic> diagnostics;
   };
   // Params for the CodeActionRequest
   struct lsCodeActionParams {
-	  // The document in which the command was invoked.
-	  lsTextDocumentIdentifier textDocument;
-	  // The range for which the command was invoked.
+    // The document in which the command was invoked.
+    lsTextDocumentIdentifier textDocument;
+    // The range for which the command was invoked.
     lsRange range;
-	  // Context carrying additional information.
+    // Context carrying additional information.
     lsCodeActionContext context;
   };
 
   lsRequestId id;
   lsCodeActionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionContext, diagnostics);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionParams, textDocument, range, context);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionContext,
+                    diagnostics);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionParams,
+                    textDocument,
+                    range,
+                    context);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction, id, params);
-struct Out_TextDocumentCodeAction : public lsOutMessage<Out_TextDocumentCodeAction> {
+struct Out_TextDocumentCodeAction
+    : public lsOutMessage<Out_TextDocumentCodeAction> {
   struct CommandArgs {
     lsDocumentUri textDocumentUri;
     NonElidedVector<lsTextEdit> edits;
@@ -1469,7 +1512,9 @@ struct Out_TextDocumentCodeAction : public lsOutMessage<Out_TextDocumentCodeActi
   lsRequestId id;
   NonElidedVector<Command> result;
 };
-MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(Out_TextDocumentCodeAction::CommandArgs, textDocumentUri, edits);
+MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(Out_TextDocumentCodeAction::CommandArgs,
+                                    textDocumentUri,
+                                    edits);
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
 
 // List symbols in a document.
@@ -1477,21 +1522,24 @@ struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
 };
 MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument);
-struct Ipc_TextDocumentDocumentSymbol : public IpcMessage<Ipc_TextDocumentDocumentSymbol> {
+struct Ipc_TextDocumentDocumentSymbol
+    : public IpcMessage<Ipc_TextDocumentDocumentSymbol> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentSymbol;
 
   lsRequestId id;
   lsDocumentSymbolParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentSymbol, id, params);
-struct Out_TextDocumentDocumentSymbol : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
+struct Out_TextDocumentDocumentSymbol
+    : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
   lsRequestId id;
   NonElidedVector<lsSymbolInformation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
 
 // List links a document
-struct Ipc_TextDocumentDocumentLink : public IpcMessage<Ipc_TextDocumentDocumentLink> {
+struct Ipc_TextDocumentDocumentLink
+    : public IpcMessage<Ipc_TextDocumentDocumentLink> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentLink;
 
   struct DocumentLinkParams {
@@ -1502,23 +1550,24 @@ struct Ipc_TextDocumentDocumentLink : public IpcMessage<Ipc_TextDocumentDocument
   lsRequestId id;
   DocumentLinkParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::DocumentLinkParams, textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::DocumentLinkParams,
+                    textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink, id, params);
-// A document link is a range in a text document that links to an internal or external resource, like another
-// text document or a web site.
+// A document link is a range in a text document that links to an internal or
+// external resource, like another text document or a web site.
 struct lsDocumentLink {
-	// The range this link applies to.
-	lsRange range;
-	// The uri this link points to. If missing a resolve request is sent later.
-	optional<lsDocumentUri> target;
+  // The range this link applies to.
+  lsRange range;
+  // The uri this link points to. If missing a resolve request is sent later.
+  optional<lsDocumentUri> target;
 };
 MAKE_REFLECT_STRUCT(lsDocumentLink, range, target);
-struct Out_TextDocumentDocumentLink : public lsOutMessage<Out_TextDocumentDocumentLink> {
+struct Out_TextDocumentDocumentLink
+    : public lsOutMessage<Out_TextDocumentDocumentLink> {
   lsRequestId id;
   NonElidedVector<lsDocumentLink> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentLink, jsonrpc, id, result);
-
 
 // List code lens in a document.
 struct lsDocumentCodeLensParams {
@@ -1541,9 +1590,11 @@ struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
   lsDocumentCodeLensParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeLens, id, params);
-struct Out_TextDocumentCodeLens : public lsOutMessage<Out_TextDocumentCodeLens> {
+struct Out_TextDocumentCodeLens
+    : public lsOutMessage<Out_TextDocumentCodeLens> {
   lsRequestId id;
-  NonElidedVector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>> result;
+  NonElidedVector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>>
+      result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
 struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve> {
@@ -1577,12 +1628,7 @@ struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
 MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 
 // Show a message to the user.
-enum class lsMessageType : int {
-  Error = 1,
-  Warning = 2,
-  Info = 3,
-  Log = 4
-};
+enum class lsMessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 MAKE_REFLECT_TYPE_PROXY(lsMessageType, int)
 struct Out_ShowLogMessageParams {
   lsMessageType type = lsMessageType::Error;
@@ -1590,15 +1636,13 @@ struct Out_ShowLogMessageParams {
 };
 MAKE_REFLECT_STRUCT(Out_ShowLogMessageParams, type, message);
 struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
-  enum class DisplayType {
-    Show, Log
-  };
+  enum class DisplayType { Show, Log };
   DisplayType display_type = DisplayType::Show;
 
   std::string method();
   Out_ShowLogMessageParams params;
 };
-template<typename TVisitor>
+template <typename TVisitor>
 void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
@@ -1608,8 +1652,8 @@ void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
   REFLECT_MEMBER_END();
 }
 
-
-struct Out_CquerySetInactiveRegion : public lsOutMessage<Out_CquerySetInactiveRegion> {
+struct Out_CquerySetInactiveRegion
+    : public lsOutMessage<Out_CquerySetInactiveRegion> {
   struct Params {
     lsDocumentUri uri;
     NonElidedVector<lsRange> inactiveRegions;
@@ -1620,7 +1664,6 @@ struct Out_CquerySetInactiveRegion : public lsOutMessage<Out_CquerySetInactiveRe
 MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion::Params, uri, inactiveRegions);
 MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
 
-
 struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
   lsRequestId id;
@@ -1628,13 +1671,15 @@ struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
 MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);
 
 // Type Hierarchy Tree
-struct Ipc_CqueryTypeHierarchyTree : public IpcMessage<Ipc_CqueryTypeHierarchyTree> {
+struct Ipc_CqueryTypeHierarchyTree
+    : public IpcMessage<Ipc_CqueryTypeHierarchyTree> {
   const static IpcId kIpcId = IpcId::CqueryTypeHierarchyTree;
   lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryTypeHierarchyTree, id, params);
-struct Out_CqueryTypeHierarchyTree : public lsOutMessage<Out_CqueryTypeHierarchyTree> {
+struct Out_CqueryTypeHierarchyTree
+    : public lsOutMessage<Out_CqueryTypeHierarchyTree> {
   struct TypeEntry {
     std::string name;
     optional<lsLocation> location;
@@ -1643,11 +1688,15 @@ struct Out_CqueryTypeHierarchyTree : public lsOutMessage<Out_CqueryTypeHierarchy
   lsRequestId id;
   optional<TypeEntry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree::TypeEntry, name, location, children);
+MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree::TypeEntry,
+                    name,
+                    location,
+                    children);
 MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree, jsonrpc, id, result);
 
 // Call Tree
-struct Ipc_CqueryCallTreeInitial : public IpcMessage<Ipc_CqueryCallTreeInitial> {
+struct Ipc_CqueryCallTreeInitial
+    : public IpcMessage<Ipc_CqueryCallTreeInitial> {
   const static IpcId kIpcId = IpcId::CqueryCallTreeInitial;
   lsRequestId id;
   lsTextDocumentPositionParams params;
@@ -1664,9 +1713,7 @@ struct Ipc_CqueryCallTreeExpand : public IpcMessage<Ipc_CqueryCallTreeExpand> {
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand::Params, usr);
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand, id, params);
 struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
-  enum class CallType {
-    Direct = 0, Base = 1, Derived = 2
-  };
+  enum class CallType { Direct = 0, Base = 1, Derived = 2 };
   struct CallEntry {
     std::string name;
     std::string usr;
@@ -1679,7 +1726,12 @@ struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
   NonElidedVector<CallEntry> result;
 };
 MAKE_REFLECT_TYPE_PROXY(Out_CqueryCallTree::CallType, int);
-MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry, name, usr, location, hasCallers, callType);
+MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry,
+                    name,
+                    usr,
+                    location,
+                    hasCallers,
+                    callType);
 MAKE_REFLECT_STRUCT(Out_CqueryCallTree, jsonrpc, id, result);
 
 // Vars, Callers, Derived, GotoParent

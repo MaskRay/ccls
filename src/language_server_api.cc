@@ -8,8 +8,7 @@ void Reflect(Writer& visitor, lsRequestId& value) {
 
   if (value.id0) {
     Reflect(visitor, value.id0.value());
-  }
-  else {
+  } else {
     Reflect(visitor, value.id1.value());
   }
 }
@@ -26,7 +25,8 @@ void Reflect(Reader& visitor, lsRequestId& id) {
 MessageRegistry* MessageRegistry::instance_ = nullptr;
 
 // Reads a JsonRpc message. |read| returns the next input character.
-optional<std::string> ReadJsonRpcContentFrom(std::function<optional<char>()> read) {
+optional<std::string> ReadJsonRpcContentFrom(
+    std::function<optional<char>()> read) {
   // Read the content length. It is terminated by the "\r\n" sequence.
   int exit_seq = 0;
   std::string stringified_content_length;
@@ -38,14 +38,17 @@ optional<std::string> ReadJsonRpcContentFrom(std::function<optional<char>()> rea
     }
     char c = *opt_c;
 
-    if (exit_seq == 0 && c == '\r') ++exit_seq;
-    if (exit_seq == 1 && c == '\n') break;
+    if (exit_seq == 0 && c == '\r')
+      ++exit_seq;
+    if (exit_seq == 1 && c == '\n')
+      break;
 
     stringified_content_length += c;
   }
   const char* kContentLengthStart = "Content-Length: ";
   assert(StartsWith(stringified_content_length, kContentLengthStart));
-  int content_length = atoi(stringified_content_length.c_str() + strlen(kContentLengthStart));
+  int content_length =
+      atoi(stringified_content_length.c_str() + strlen(kContentLengthStart));
 
   // There is always a "\r\n" sequence before the actual content.
   auto expect_char = [&](char expected) {
@@ -74,8 +77,8 @@ optional<std::string> ReadJsonRpcContentFrom(std::function<optional<char>()> rea
 
 TEST_SUITE("FindIncludeLine");
 
-std::function<optional<char>()>
-    MakeContentReader(std::string* content, bool can_be_empty) {
+std::function<optional<char>()> MakeContentReader(std::string* content,
+                                                  bool can_be_empty) {
   return [content, can_be_empty]() -> optional<char> {
     if (!can_be_empty)
       REQUIRE(!content->empty());
@@ -106,7 +109,8 @@ TEST_CASE("ReadContentFromSource") {
 
   REQUIRE(parse_incorrect("ggg") == optional<std::string>());
   REQUIRE(parse_incorrect("Content-Length: 0\r\n") == optional<std::string>());
-  REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") == optional<std::string>());
+  REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") ==
+          optional<std::string>());
 }
 
 TEST_SUITE_END();
@@ -125,7 +129,8 @@ optional<char> ReadCharFromStdinBlocking() {
 }
 
 std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
-  optional<std::string> content = ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
+  optional<std::string> content =
+      ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
     LOG_S(FATAL) << "Failed to read JsonRpc input; exiting";
     exit(1);
@@ -139,7 +144,8 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
 }
 
 std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
-  if (!visitor.HasMember("jsonrpc") || std::string(visitor["jsonrpc"].GetString()) != "2.0") {
+  if (!visitor.HasMember("jsonrpc") ||
+      std::string(visitor["jsonrpc"].GetString()) != "2.0") {
     std::cerr << "Bad or missing jsonrpc version" << std::endl;
     exit(1);
   }
@@ -148,7 +154,8 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
   ReflectMember(visitor, "method", method);
 
   if (allocators.find(method) == allocators.end()) {
-    LOG_S(ERROR) << "Unable to find registered handler for method \"" << method << "\"" << std::endl;
+    LOG_S(ERROR) << "Unable to find registered handler for method \"" << method
+                 << "\"" << std::endl;
     return nullptr;
   }
 
@@ -196,8 +203,9 @@ void lsDocumentUri::SetPath(const std::string& path) {
   raw_uri = path;
 
   size_t index = raw_uri.find(":");
-  if (index == 1) { // widows drive letters must always be 1 char
-    raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1, "%3A");
+  if (index == 1) {  // widows drive letters must always be 1 char
+    raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1,
+                    "%3A");
   }
 
   raw_uri = ReplaceAll(raw_uri, " ", "%20");
@@ -210,7 +218,7 @@ void lsDocumentUri::SetPath(const std::string& path) {
 #else
   raw_uri = "file://" + raw_uri;
 #endif
-  //std::cerr << "Set uri to " << raw_uri << " from " << path;
+  // std::cerr << "Set uri to " << raw_uri << " from " << path;
 }
 
 std::string lsDocumentUri::GetPath() const {
@@ -242,14 +250,15 @@ std::string lsDocumentUri::GetPath() const {
   std::replace(result.begin(), result.end(), '\\', '/');
 
 #if defined(_WIN32)
-  //std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+  // std::transform(result.begin(), result.end(), result.begin(), ::tolower);
 #endif
 
   return result;
 }
 
 lsPosition::lsPosition() {}
-lsPosition::lsPosition(int line, int character) : line(line), character(character) {}
+lsPosition::lsPosition(int line, int character)
+    : line(line), character(character) {}
 
 bool lsPosition::operator==(const lsPosition& other) const {
   return line == other.line && character == other.character;
@@ -267,7 +276,8 @@ bool lsRange::operator==(const lsRange& other) const {
 }
 
 lsLocation::lsLocation() {}
-lsLocation::lsLocation(lsDocumentUri uri, lsRange range) : uri(uri), range(range) {}
+lsLocation::lsLocation(lsDocumentUri uri, lsRange range)
+    : uri(uri), range(range) {}
 
 bool lsLocation::operator==(const lsLocation& other) const {
   return uri == other.uri && range == other.range;
@@ -297,15 +307,15 @@ void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
 
 void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
   switch (value) {
-  case lsInitializeParams::lsTrace::Off:
-    writer.String("off");
-    break;
-  case lsInitializeParams::lsTrace::Messages:
-    writer.String("messages");
-    break;
-  case lsInitializeParams::lsTrace::Verbose:
-    writer.String("verbose");
-    break;
+    case lsInitializeParams::lsTrace::Off:
+      writer.String("off");
+      break;
+    case lsInitializeParams::lsTrace::Messages:
+      writer.String("messages");
+      break;
+    case lsInitializeParams::lsTrace::Verbose:
+      writer.String("verbose");
+      break;
   }
 }
 

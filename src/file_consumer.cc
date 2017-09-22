@@ -6,7 +6,8 @@
 #include "utils.h"
 
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
-  return a.data[0] == b.data[0] && a.data[1] == b.data[1] && a.data[2] == b.data[2];
+  return a.data[0] == b.data[0] && a.data[1] == b.data[1] &&
+         a.data[2] == b.data[2];
 }
 
 bool FileConsumer::SharedState::Mark(const std::string& file) {
@@ -21,7 +22,8 @@ void FileConsumer::SharedState::Reset(const std::string& file) {
     files.erase(it);
 }
 
-FileConsumer::FileConsumer(SharedState* shared_state, const std::string& parse_file)
+FileConsumer::FileConsumer(SharedState* shared_state,
+                           const std::string& parse_file)
     : shared_(shared_state), parse_file_(parse_file) {}
 
 IndexFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership) {
@@ -86,7 +88,8 @@ void FileConsumer::EmitError(CXFile file) const {
   std::string file_name = clang::ToString(clang_getFileName(file));
   // TODO: Investigate this more, why can we get an empty file name?
   if (!file_name.empty()) {
-    std::string error_message = "Could not get unique file id for " + file_name + " when parsing " + parse_file_;
+    std::string error_message = "Could not get unique file id for " +
+                                file_name + " when parsing " + parse_file_;
     std::cerr << error_message << std::endl;
   }
 }

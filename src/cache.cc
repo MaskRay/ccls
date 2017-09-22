@@ -1,8 +1,9 @@
 #include "cache.h"
 
 #include "indexer.h"
-#include "platform.h"
 #include "language_server_api.h"
+#include "platform.h"
+
 
 #include <loguru/loguru.hpp>
 
@@ -43,15 +44,15 @@ optional<std::string> LoadCachedFileContents(Config* config,
   return ReadContent(GetCachedBaseFileName(config->cacheDirectory, filename));
 }
 
-void WriteToCache(Config* config,
-                  IndexFile& file) {
+void WriteToCache(Config* config, IndexFile& file) {
   if (!config->enableCacheWrite)
     return;
 
   std::string cache_basename =
       GetCachedBaseFileName(config->cacheDirectory, file.path);
 
-  LOG_IF_S(ERROR, file.file_contents_.empty()) << "Writing " << file.path << " to cache but it has no contents";
+  LOG_IF_S(ERROR, file.file_contents_.empty())
+      << "Writing " << file.path << " to cache but it has no contents";
 
   assert(!file.file_contents_.empty());
   std::ofstream cache_content;

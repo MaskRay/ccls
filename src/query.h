@@ -20,22 +20,14 @@ using QueryTypeId = Id<QueryType>;
 using QueryFuncId = Id<QueryFunc>;
 using QueryVarId = Id<QueryVar>;
 
-
-
-
-
-
 struct IdMap;
-
-
 
 struct QueryLocation {
   QueryFileId path;
   Range range;
 
-  QueryLocation() {} // Do not use, needed for reflect.
-  QueryLocation(QueryFileId path, Range range)
-    : path(path), range(range) {}
+  QueryLocation() {}  // Do not use, needed for reflect.
+  QueryLocation(QueryFileId path, Range range) : path(path), range(range) {}
 
   QueryLocation OffsetStartColumn(int16_t offset) const {
     QueryLocation result = *this;
@@ -45,11 +37,11 @@ struct QueryLocation {
 
   bool operator==(const QueryLocation& other) const {
     // Note: We ignore |is_interesting|.
-    return
-      path == other.path &&
-      range == other.range;
+    return path == other.path && range == other.range;
   }
-  bool operator!=(const QueryLocation& other) const { return !(*this == other); }
+  bool operator!=(const QueryLocation& other) const {
+    return !(*this == other);
+  }
   bool operator<(const QueryLocation& o) const {
     if (path < o.path)
       return true;
@@ -66,7 +58,9 @@ struct SymbolIdx {
   SymbolKind kind;
   size_t idx;
 
-  SymbolIdx() : kind(SymbolKind::Invalid), idx((size_t)-1) {} // Default ctor needed by stdlib. Do not use.
+  SymbolIdx()
+      : kind(SymbolKind::Invalid),
+        idx((size_t)-1) {}  // Default ctor needed by stdlib. Do not use.
   SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
 
   bool operator==(const SymbolIdx& that) const {
@@ -85,7 +79,7 @@ struct SymbolRef {
   SymbolIdx idx;
   QueryLocation loc;
 
-  SymbolRef() {} // Do not use, needed for reflect.
+  SymbolRef() {}  // Do not use, needed for reflect.
   SymbolRef(SymbolIdx idx, QueryLocation loc) : idx(idx), loc(loc) {}
 
   bool operator==(const SymbolRef& that) const {
@@ -108,11 +102,13 @@ struct QueryFuncRef {
 
   bool has_id() const { return id_.id != -1; }
 
-  QueryFuncRef() {} // Do not use, needed for reflect.
-  QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit) : id_(id), loc(loc), is_implicit(is_implicit) {}
+  QueryFuncRef() {}  // Do not use, needed for reflect.
+  QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit)
+      : id_(id), loc(loc), is_implicit(is_implicit) {}
 
   bool operator==(const QueryFuncRef& that) const {
-    return id_ == that.id_ && loc == that.loc && is_implicit == that.is_implicit;
+    return id_ == that.id_ && loc == that.loc &&
+           is_implicit == that.is_implicit;
   }
   bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
   bool operator<(const QueryFuncRef& that) const {
@@ -120,7 +116,8 @@ struct QueryFuncRef {
       return true;
     if (id_ == that.id_ && loc.range.start < that.loc.range.start)
       return true;
-    return id_ == that.id_ && loc.range.start == that.loc.range.start && is_implicit < that.is_implicit;
+    return id_ == that.id_ && loc.range.start == that.loc.range.start &&
+           is_implicit < that.is_implicit;
   }
 };
 MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc, is_implicit);
@@ -135,7 +132,7 @@ MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc, is_implicit);
 // that it can be merged with other updates before actually being applied to
 // the main database. See |MergeableUpdate|.
 
-template<typename TId, typename TValue>
+template <typename TId, typename TValue>
 struct MergeableUpdate {
   // The type/func/var which is getting new usages.
   TId id;
@@ -144,11 +141,13 @@ struct MergeableUpdate {
   std::vector<TValue> to_remove;
 
   MergeableUpdate(TId id, const std::vector<TValue>& to_add)
-    : id(id), to_add(to_add) {}
-  MergeableUpdate(TId id, const std::vector<TValue>& to_add, const std::vector<TValue>& to_remove)
-    : id(id), to_add(to_add), to_remove(to_remove) {}
+      : id(id), to_add(to_add) {}
+  MergeableUpdate(TId id,
+                  const std::vector<TValue>& to_add,
+                  const std::vector<TValue>& to_remove)
+      : id(id), to_add(to_add), to_remove(to_remove) {}
 };
-template<typename TVisitor, typename TId, typename TValue>
+template <typename TVisitor, typename TId, typename TValue>
 void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
@@ -178,7 +177,10 @@ struct QueryFile {
 MAKE_REFLECT_STRUCT(QueryFile::Def, path, outline, all_symbols);
 
 struct QueryType {
-  using DefUpdate = TypeDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
+  using DefUpdate = TypeDefDefinitionData<QueryTypeId,
+                                          QueryFuncId,
+                                          QueryVarId,
+                                          QueryLocation>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
@@ -193,7 +195,11 @@ struct QueryType {
 };
 
 struct QueryFunc {
-  using DefUpdate = FuncDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryFuncRef, QueryLocation>;
+  using DefUpdate = FuncDefDefinitionData<QueryTypeId,
+                                          QueryFuncId,
+                                          QueryVarId,
+                                          QueryFuncRef,
+                                          QueryLocation>;
   using DeclarationsUpdate = MergeableUpdate<QueryFuncId, QueryLocation>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
@@ -208,7 +214,8 @@ struct QueryFunc {
 };
 
 struct QueryVar {
-  using DefUpdate = VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
+  using DefUpdate =
+      VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
 
   DefUpdate def;
@@ -221,7 +228,10 @@ struct QueryVar {
 struct IndexUpdate {
   // Creates a new IndexUpdate based on the delta from previous to current. If
   // no delta computation should be done just pass null for previous.
-  static IndexUpdate CreateDelta(const IdMap* previous_id_map, const IdMap* current_id_map, IndexFile* previous, IndexFile* current);
+  static IndexUpdate CreateDelta(const IdMap* previous_id_map,
+                                 const IdMap* current_id_map,
+                                 IndexFile* previous,
+                                 IndexFile* current);
 
   // Merge |update| into this update; this can reduce overhead / index update
   // work can be parallelized.
@@ -257,13 +267,27 @@ struct IndexUpdate {
   // Creates an index update assuming that |previous| is already
   // in the index, so only the delta between |previous| and |current|
   // will be applied.
-  IndexUpdate(const IdMap& previous_id_map, const IdMap& current_id_map, IndexFile& previous, IndexFile& current);
+  IndexUpdate(const IdMap& previous_id_map,
+              const IdMap& current_id_map,
+              IndexFile& previous,
+              IndexFile& current);
 };
-// NOTICE: We're not reflecting on files_removed or files_def_update, it is too much output when logging
+// NOTICE: We're not reflecting on files_removed or files_def_update, it is too
+// much output when logging
 MAKE_REFLECT_STRUCT(IndexUpdate,
-  types_removed, types_def_update, types_derived, types_instances, types_uses,
-  funcs_removed, funcs_def_update, funcs_declarations, funcs_derived, funcs_callers,
-  vars_removed, vars_def_update, vars_uses);
+                    types_removed,
+                    types_def_update,
+                    types_derived,
+                    types_instances,
+                    types_uses,
+                    funcs_removed,
+                    funcs_def_update,
+                    funcs_declarations,
+                    funcs_derived,
+                    funcs_callers,
+                    vars_removed,
+                    vars_def_update,
+                    vars_uses);
 
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
@@ -295,11 +319,11 @@ struct QueryDatabase {
   void ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates);
-  void UpdateDetailedNames(size_t* qualified_name_index, SymbolKind kind, size_t symbol_index, const std::string& name);
+  void UpdateDetailedNames(size_t* qualified_name_index,
+                           SymbolKind kind,
+                           size_t symbol_index,
+                           const std::string& name);
 };
-
-
-
 
 struct IdMap {
   const IdCache& local_ids;
@@ -324,12 +348,14 @@ struct IdMap {
   std::vector<QueryFuncId> ToQuery(std::vector<IndexFuncId> ids) const;
   std::vector<QueryVarId> ToQuery(std::vector<IndexVarId> ids) const;
   std::vector<QueryFuncRef> ToQuery(std::vector<IndexFuncRef> refs) const;
-  std::vector<QueryLocation> ToQuery(std::vector<IndexFunc::Declaration> decls) const;
+  std::vector<QueryLocation> ToQuery(
+      std::vector<IndexFunc::Declaration> decls) const;
 
   SymbolIdx ToSymbol(IndexTypeId id) const;
   SymbolIdx ToSymbol(IndexFuncId id) const;
   SymbolIdx ToSymbol(IndexVarId id) const;
-private:
+
+ private:
   spp::sparse_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;
   spp::sparse_hash_map<IndexFuncId, QueryFuncId> cached_func_ids_;
   spp::sparse_hash_map<IndexVarId, QueryVarId> cached_var_ids_;

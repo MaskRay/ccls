@@ -6,9 +6,8 @@ std::atomic<int> WorkThread::num_active_threads;
 std::atomic<bool> WorkThread::request_exit_on_idle;
 
 // static
-void WorkThread::StartThread(
-    const std::string& thread_name,
-    const std::function<Result()>& entry_point) {
+void WorkThread::StartThread(const std::string& thread_name,
+                             const std::function<Result()>& entry_point) {
   new std::thread([thread_name, entry_point]() {
     SetCurrentThreadName(thread_name);
 
