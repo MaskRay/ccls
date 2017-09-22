@@ -438,6 +438,10 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
     // Emit diagnostics.
     if (request->emit_diagnostics) {
+      // TODO: before emitting diagnostics check if we have another completion
+      // request and think about servicing that first, because it may be much
+      // faster than reparsing the document.
+
       timer.Reset();
       clang_reparseTranslationUnit(
           session->tu->cx_tu, unsaved.size(), unsaved.data(),
