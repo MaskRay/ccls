@@ -42,6 +42,7 @@ struct Project {
   // will infer one based on existing project structure.
   Entry FindCompilationEntryForFile(const std::string& filename);
 
+  // Run |action| on every file in the project.
   void ForAllFilteredFiles(
       Config* config,
       std::function<void(int i, const Entry& entry)> action);
