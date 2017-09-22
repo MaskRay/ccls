@@ -1188,7 +1188,11 @@ bool IndexMergeIndexUpdates(QueueManager* queue) {
     did_merge = true;
     Timer time;
     root->update.Merge(to_join->update);
-    time.ResetAndPrint("Joining two querydb updates");
+    time.ResetAndPrint("Joined querydb updates for files: " +
+                       StringJoinMap(root->update.files_def_update,
+                                     [](const QueryFile::DefUpdate& update) {
+                                       return update.path;
+                                     }));
   }
 }
 
