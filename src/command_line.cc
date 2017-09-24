@@ -750,8 +750,10 @@ std::vector<Index_DoIdMap> DoParseFile(
     const optional<FileContents>& contents) {
   std::vector<Index_DoIdMap> result;
 
+  // Always run this block, even if we are interactive, so we can check
+  // dependencies and reset files in |file_consumer_shared|.
   IndexFile* previous_index = cache_loader->TryLoad(path);
-  if (previous_index && !is_interactive) {
+  if (previous_index) {
     // If none of the dependencies have changed and the index is not
     // interactive (ie, requested by a file save), skip parsing and just load
     // from cache.
@@ -762,8 +764,10 @@ std::vector<Index_DoIdMap> DoParseFile(
     auto file_needs_parse = [&](const std::string& path, bool is_dependency) {
       // If the file is a dependency but another file as already imported it,
       // don't bother.
-      if (is_dependency && !import_manager->TryMarkDependencyImported(path))
+      if (!is_interactive && is_dependency &&
+          !import_manager->TryMarkDependencyImported(path)) {
         return FileParseQuery::DoesNotNeedParse;
+      }
 
       optional<int64_t> modification_timestamp = GetLastModificationTime(path);
       if (!modification_timestamp)
@@ -786,7 +790,8 @@ std::vector<Index_DoIdMap> DoParseFile(
     FileParseQuery path_state = file_needs_parse(path, false /*is_dependency*/);
     if (path_state == FileParseQuery::BadFile)
       return result;
-    bool needs_reparse = path_state == FileParseQuery::NeedsParse;
+    bool needs_reparse =
+        is_interactive || path_state == FileParseQuery::NeedsParse;
 
     for (const std::string& dependency : previous_index->dependencies) {
       assert(!dependency.empty());
@@ -950,8 +955,6 @@ bool IndexMain_DoCreateIndexUpdate(Config* config,
   IdMap* previous_id_map = nullptr;
   IndexFile* previous_index = nullptr;
   if (response->previous) {
-    LOG_S(INFO) << "Creating delta update for "
-                << response->previous->file->path;
     previous_id_map = response->previous->ids.get();
     previous_index = response->previous->file.get();
   }
@@ -961,6 +964,8 @@ bool IndexMain_DoCreateIndexUpdate(Config* config,
       IndexUpdate::CreateDelta(previous_id_map, response->current->ids.get(),
                                previous_index, response->current->file.get());
   response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
+  LOG_S(INFO) << "Built index update for " << response->current->file->path
+              << " (is_delta=" << !!response->previous << ")";
 
   // Write current index to disk if requested.
   if (response->write_to_disk) {
@@ -1102,11 +1107,6 @@ bool QueryDb_ImportMain(Config* config,
       break;
     did_work = true;
 
-    // Check if the file is already being imported into querydb. If it is, drop
-    // the request.
-    if (!import_manager->StartQueryDbImport(request->current->path))
-      continue;
-
     // If the request does not have previous state and we have already imported
     // it, load the previous state from disk and rerun IdMap logic later. Do not
     // do this if we have already attempted in the past.
@@ -1116,6 +1116,17 @@ bool QueryDb_ImportMain(Config* config,
       assert(!request->load_previous);
       request->load_previous = true;
       queue->load_previous_index.Enqueue(std::move(*request));
+      continue;
+    }
+
+    // Check if the file is already being imported into querydb. If it is, drop
+    // the request.
+    //
+    // Note, we must do this *after* we have checked for the previous index,
+    // otherwise we will never actually generate the IdMap.
+    if (!import_manager->StartQueryDbImport(request->current->path)) {
+      LOG_S(INFO) << "Dropping index as it is already being imported for "
+                  << request->current->path;
       continue;
     }
 
@@ -1168,10 +1179,6 @@ bool QueryDb_ImportMain(Config* config,
             "Update WorkingFile index contents (via disk load) for " +
             updated_file.path);
       }
-
-      // PERF: This will acquire a lock. If querydb ends being up being slow we
-      // could push this request to another queue which runs on an indexer.
-      import_manager->DoneQueryDbImport(updated_file.path);
     }
 
     time.Reset();
@@ -1181,6 +1188,11 @@ bool QueryDb_ImportMain(Config* config,
                                      [](const QueryFile::DefUpdate& value) {
                                        return value.path;
                                      }));
+
+    // Mark the files as being done in querydb stage after we apply the index
+    // update.
+    for (auto& updated_file : response->update.files_def_update)
+      import_manager->DoneQueryDbImport(updated_file.path);
   }
 
   return did_work;
@@ -1294,7 +1306,7 @@ bool QueryDbMainLoop(Config* config,
           std::cerr << "[querydb] Starting " << config->indexerCount
                     << " indexers" << std::endl;
           for (int i = 0; i < config->indexerCount; ++i) {
-            WorkThread::StartThread("indexer" + std::to_string(i), [&]() {
+            WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
               return IndexMain(config, file_consumer_shared, timestamp_manager,
                                import_manager, project, working_files, waiter,
                                queue);
@@ -1361,8 +1373,8 @@ bool QueryDbMainLoop(Config* config,
             lsSignatureHelpOptions();
         // NOTE: If updating signature help tokens make sure to also update
         // WorkingFile::FindClosestCallNameInBuffer.
-        response.result.capabilities.signatureHelpProvider
-            ->triggerCharacters = {"(", ","};
+        response.result.capabilities.signatureHelpProvider->triggerCharacters =
+            {"(", ","};
 
         response.result.capabilities.codeLensProvider = lsCodeLensOptions();
         response.result.capabilities.codeLensProvider->resolveProvider = false;
@@ -1393,6 +1405,28 @@ bool QueryDbMainLoop(Config* config,
 
       case IpcId::CqueryFreshenIndex: {
         LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
+
+        // TODO: think about this flow and test it more.
+
+        // Unmark all files whose timestamp has changed.
+        CacheLoader cache_loader(config);
+        for (const auto& file : db->files) {
+          if (!file)
+            continue;
+
+          optional<int64_t> modification_timestamp =
+              GetLastModificationTime(file->def.path);
+          if (!modification_timestamp)
+            continue;
+
+          optional<int64_t> cached_modification =
+              timestamp_manager->GetLastCachedModificationTime(&cache_loader,
+                                                               file->def.path);
+          if (modification_timestamp != cached_modification)
+            file_consumer_shared->Reset(file->def.path);
+        }
+
+        // Send index requests for every file.
         project->ForAllFilteredFiles(
             config, [&](int i, const Project::Entry& entry) {
               LOG_S(INFO) << "[" << i << "/" << (project->entries.size() - 1)
@@ -2980,8 +3014,8 @@ int main(int argc, char** argv) {
     return 0;
   } else if (HasOption(options, "--language-server")) {
     // std::cerr << "Running language server" << std::endl;
-    Config config;
-    LanguageServerMain(argv[0], &config, &waiter);
+    auto config = MakeUnique<Config>();
+    LanguageServerMain(argv[0], config.get(), &waiter);
     return 0;
   } else {
     std::cout << R"help(cquery help:
