@@ -425,6 +425,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       std::unordered_set<std::string> inserted;
       inserted.reserve(kMaxResultSize);
 
+      // Find literal matches first.
       for (const lsCompletionItem& item : complete_response->result.items) {
         if (item.label.find(complete_text) != std::string::npos) {
           // Don't insert the same completion entry.
@@ -437,6 +438,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
         }
       }
 
+      // Find fuzzy matches if we haven't found all of the literal matches.
       if (filtered_result.size() < kMaxResultSize) {
         for (const lsCompletionItem& item : complete_response->result.items) {
           if (SubstringMatch(complete_text, item.label)) {
@@ -457,7 +459,9 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       // matches against oa), our filtering is guaranteed to contain any
       // potential matches, so the completion is only incomplete if we have the
       // max number of emitted matches.
-      if (complete_response->result.items.size() >= kMaxResultSize) {
+      // TODO: This is currently disabled, as it seems to be missing some
+      // results, esp with global completion.
+      if (true || filtered_result.size() >= kMaxResultSize) {
         LOG_S(INFO) << "Marking completion results as incomplete";
         complete_response->result.isIncomplete = true;
       }
@@ -1040,11 +1044,11 @@ bool IndexMergeIndexUpdates(QueueManager* queue) {
     did_merge = true;
     Timer time;
     root->update.Merge(to_join->update);
-    time.ResetAndPrint("Joined querydb updates for files: " +
-                       StringJoinMap(root->update.files_def_update,
-                                     [](const QueryFile::DefUpdate& update) {
-                                       return update.path;
-                                     }));
+    //time.ResetAndPrint("Joined querydb updates for files: " +
+                       //StringJoinMap(root->update.files_def_update,
+                                     //[](const QueryFile::DefUpdate& update) {
+                                       //return update.path;
+                                     //}));
   }
 }
 
