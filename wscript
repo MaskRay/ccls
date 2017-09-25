@@ -24,7 +24,8 @@ global CLANG_PLATFORM_NAME
 global CLANG_TARBALL_PLATFORM_NAME
 
 if sys.platform == 'linux' or sys.platform == 'linux2':
-  CLANG_PLATFORM_NAME = 'linux-x86_64-ubuntu14.04'
+  #CLANG_PLATFORM_NAME = 'linux-x86_64-ubuntu14.04'
+  CLANG_PLATFORM_NAME = 'x86_64-linux-gnu-ubuntu-14.04'
   CLANG_TARBALL_PLATFORM_NAME = 'clang+llvm'
 elif sys.platform == 'darwin':
   CLANG_PLATFORM_NAME = 'x86_64-apple-darwin'
@@ -34,7 +35,8 @@ else:
   sys.exit(1)
 
 # Version of clang to download and use.
-CLANG_VERSION = '5.0.0'
+#CLANG_VERSION = '5.0.0'
+CLANG_VERSION = '4.0.0'
 # Tarball name on clang servers that should be used.
 CLANG_TARBALL_NAME  = '{0}-{1}-{2}'.format(CLANG_TARBALL_PLATFORM_NAME, CLANG_VERSION, CLANG_PLATFORM_NAME)
 # Directory clang has been extracted to.
