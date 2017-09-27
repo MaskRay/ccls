@@ -454,17 +454,15 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       }
 
       complete_response->result.items = filtered_result;
+    }
 
-      // Assuming the client does not support out-of-order completion (ie, ao
-      // matches against oa), our filtering is guaranteed to contain any
-      // potential matches, so the completion is only incomplete if we have the
-      // max number of emitted matches.
-      // TODO: This is currently disabled, as it seems to be missing some
-      // results, esp with global completion.
-      if (true || filtered_result.size() >= kMaxResultSize) {
-        LOG_S(INFO) << "Marking completion results as incomplete";
-        complete_response->result.isIncomplete = true;
-      }
+    // Assuming the client does not support out-of-order completion (ie, ao
+    // matches against oa), our filtering is guaranteed to contain any
+    // potential matches, so the completion is only incomplete if we have the
+    // max number of emitted matches.
+    if (complete_response->result.items.size() >= kMaxResultSize) {
+      LOG_S(INFO) << "Marking completion results as incomplete";
+      complete_response->result.isIncomplete = true;
     }
   }
 }
