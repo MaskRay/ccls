@@ -462,10 +462,12 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       completion_manager->on_diagnostic_(session->file.filename,
                                          ls_diagnostics);
 
+      /*
       timer.Reset();
       completion_manager->on_index_(session->tu.get(), unsaved,
                                     session->file.filename, session->file.args);
       timer.ResetAndPrint("[complete] Reindex file");
+      */
     }
 
     continue;
@@ -578,9 +580,11 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
 
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
+  // Already a view session, do nothing.
   if (view_sessions_.TryGetEntry(filename))
     return;
 
+  // Create new view session.
   view_sessions_.InsertEntry(std::make_shared<CompletionSession>(
       project_->FindCompilationEntryForFile(filename), working_files_));
   parse_requests_.Enqueue(ParseRequest(filename));
@@ -598,15 +602,18 @@ void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   if (edit_sessions_.TryGetEntry(filename))
     return;
 
-  std::shared_ptr<CompletionSession> session =
+  // Move the session from view to edit.
+  std::shared_ptr<CompletionSession> view_session =
       view_sessions_.TryTakeEntry(filename);
-  if (session) {
-    edit_sessions_.InsertEntry(session);
-  } else {
-    edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
-        project_->FindCompilationEntryForFile(filename), working_files_));
-    parse_requests_.PriorityEnqueue(ParseRequest(filename));
+  if (view_session) {
+    edit_sessions_.InsertEntry(view_session);
+    return;
   }
+
+  // No view session, create a new session.
+  edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
+      project_->FindCompilationEntryForFile(filename), working_files_));
+  parse_requests_.PriorityEnqueue(ParseRequest(filename));
 }
 
 void ClangCompleteManager::NotifySave(const std::string& filename) {
