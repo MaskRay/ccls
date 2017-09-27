@@ -892,6 +892,42 @@ std::vector<Index_DoIdMap> DoParseFile(
   return result;
 }
 
+// Index a file using an already-parsed translation unit from code completion.
+// Since most of the time for indexing a file comes from parsing, we can do
+// real-time indexing.
+// TODO: add option to disable this.
+void IndexWithTuFromCodeCompletion(
+    QueueManager* queue,
+    FileConsumer::SharedState* file_consumer_shared,
+    clang::TranslationUnit* tu,
+    const std::vector<CXUnsavedFile>& file_contents,
+    const std::string& path,
+    const std::vector<std::string>& args) {
+  file_consumer_shared->Reset(path);
+
+  PerformanceImportFile perf;
+  clang::Index index(0, 0);
+  std::vector<std::unique_ptr<IndexFile>> indexes = ParseWithTu(
+      file_consumer_shared, &perf, tu, &index, path, args, file_contents);
+
+  std::vector<Index_DoIdMap> result;
+  for (std::unique_ptr<IndexFile>& new_index : indexes) {
+    Timer time;
+
+    // When main thread does IdMap request it will request the previous index if
+    // needed.
+    LOG_S(INFO) << "Emitting index result for " << new_index->path;
+    result.push_back(Index_DoIdMap(std::move(new_index), perf,
+                                   true /*is_interactive*/,
+                                   true /*write_to_disk*/));
+  }
+
+  LOG_IF_S(WARNING, result.size() > 1)
+      << "Code completion index update generated more than one index";
+
+  queue->do_id_map.EnqueueAll(std::move(result));
+}
+
 std::vector<Index_DoIdMap> ParseFile(
     Config* config,
     WorkingFiles* working_files,
@@ -1042,11 +1078,11 @@ bool IndexMergeIndexUpdates(QueueManager* queue) {
     did_merge = true;
     Timer time;
     root->update.Merge(to_join->update);
-    //time.ResetAndPrint("Joined querydb updates for files: " +
-                       //StringJoinMap(root->update.files_def_update,
-                                     //[](const QueryFile::DefUpdate& update) {
-                                       //return update.path;
-                                     //}));
+    // time.ResetAndPrint("Joined querydb updates for files: " +
+    // StringJoinMap(root->update.files_def_update,
+    //[](const QueryFile::DefUpdate& update) {
+    // return update.path;
+    //}));
   }
 }
 
@@ -1375,8 +1411,8 @@ bool QueryDbMainLoop(Config* config,
             lsSignatureHelpOptions();
         // NOTE: If updating signature help tokens make sure to also update
         // WorkingFile::FindClosestCallNameInBuffer.
-        response.result.capabilities.signatureHelpProvider->triggerCharacters =
-            {"(", ","};
+        response.result.capabilities.signatureHelpProvider
+            ->triggerCharacters = {"(", ","};
 
         response.result.capabilities.codeLensProvider = lsCodeLensOptions();
         response.result.capabilities.codeLensProvider->resolveProvider = false;
@@ -2749,15 +2785,20 @@ void RunQueryDbThread(const std::string& bin_name,
   bool exit_when_idle = false;
   Project project;
   WorkingFiles working_files;
+  FileConsumer::SharedState file_consumer_shared;
+
   ClangCompleteManager clang_complete(
       config, &project, &working_files,
       std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1,
-                std::placeholders::_2));
+                std::placeholders::_2),
+      std::bind(&IndexWithTuFromCodeCompletion, queue, &file_consumer_shared,
+                std::placeholders::_1, std::placeholders::_2,
+                std::placeholders::_3, std::placeholders::_4));
+
   IncludeComplete include_complete(config, &project);
   auto global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto signature_cache = MakeUnique<CodeCompleteCache>();
-  FileConsumer::SharedState file_consumer_shared;
   ImportManager import_manager;
   TimestampManager timestamp_manager;
 

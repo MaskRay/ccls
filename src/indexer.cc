@@ -1598,8 +1598,8 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
     FileConsumer::SharedState* file_consumer_shared,
     std::string file,
-    std::vector<std::string> args,
-    std::vector<FileContents> file_contents,
+    const std::vector<std::string>& args,
+    const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
     clang::Index* index,
     bool dump_ast) {
@@ -1633,18 +1633,33 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   if (dump_ast)
     Dump(tu.document_cursor());
 
+  return ParseWithTu(file_consumer_shared, perf, &tu, index, file, args,
+                     unsaved_files);
+}
+
+std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
+    FileConsumer::SharedState* file_consumer_shared,
+    PerformanceImportFile* perf,
+    clang::TranslationUnit* tu,
+    clang::Index* index,
+    const std::string& file,
+    const std::vector<std::string>& args,
+    const std::vector<CXUnsavedFile>& file_contents) {
+  Timer timer;
+
   IndexerCallbacks callbacks[] = {{&abortQuery, &diagnostic, &enteredMainFile,
                                    &ppIncludedFile, &importedASTFile,
                                    &startedTranslationUnit, &indexDeclaration,
                                    &indexEntityReference}};
 
   FileConsumer file_consumer(file_consumer_shared, file);
-  IndexParam param(&tu, &file_consumer);
-  for (const FileContents& contents : file_contents) {
-    param.file_contents[contents.path] = contents.content;
+  IndexParam param(tu, &file_consumer);
+  for (const CXUnsavedFile& contents : file_contents) {
+    param.file_contents[contents.Filename] =
+        std::string(contents.Contents, contents.Length);
   }
 
-  CXFile cx_file = clang_getFile(tu.cx_tu, file.c_str());
+  CXFile cx_file = clang_getFile(tu->cx_tu, file.c_str());
   param.primary_file = ConsumeFile(&param, cx_file);
 
   // std::cerr << "!! [START] Indexing " << file << std::endl;
@@ -1653,13 +1668,13 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
                              CXIndexOpt_IndexFunctionLocalSymbols |
                                  CXIndexOpt_SkipParsedBodiesInSession |
                                  CXIndexOpt_IndexImplicitTemplateInstantiations,
-                             tu.cx_tu);
+                             tu->cx_tu);
 
   clang_IndexAction_dispose(index_action);
   // std::cerr << "!! [END] Indexing " << file << std::endl;
 
-  tu.document_cursor().VisitChildren(&VisitMacroDefinitionAndExpansions,
-                                     &param);
+  tu->document_cursor().VisitChildren(&VisitMacroDefinitionAndExpansions,
+                                      &param);
 
   perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
@@ -1679,9 +1694,9 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
         entry->dependencies.begin(), entry->dependencies.end(), entry->path));
 
     // Make sure we are using correct file contents.
-    for (const FileContents& contents : file_contents) {
-      if (entry->path == contents.path)
-        entry->file_contents_ = contents.content;
+    for (const CXUnsavedFile& contents : file_contents) {
+      if (entry->path == contents.Filename)
+        entry->file_contents_ = std::string(contents.Contents, contents.Length);
     }
   }
 

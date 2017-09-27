@@ -52,6 +52,10 @@ struct ClangCompleteManager {
   using OnDiagnostic =
       std::function<void(std::string path,
                          NonElidedVector<lsDiagnostic> diagnostics)>;
+  using OnIndex = std::function<void(clang::TranslationUnit* tu,
+                                     const std::vector<CXUnsavedFile>& unsaved,
+                                     const std::string& path,
+                                     const std::vector<std::string>& args)>;
   using OnComplete =
       std::function<void(const NonElidedVector<lsCompletionItem>& results,
                          bool is_cached_result)>;
@@ -72,7 +76,8 @@ struct ClangCompleteManager {
   ClangCompleteManager(Config* config,
                        Project* project,
                        WorkingFiles* working_files,
-                       OnDiagnostic on_diagnostic);
+                       OnDiagnostic on_diagnostic,
+                       OnIndex on_index);
   ~ClangCompleteManager();
 
   // Start a code completion at the given location. |on_complete| will run when
@@ -103,6 +108,7 @@ struct ClangCompleteManager {
   Project* project_;
   WorkingFiles* working_files_;
   OnDiagnostic on_diagnostic_;
+  OnIndex on_index_;
 
   // Sessions which have never had a real text-edit applied, but are preloaded
   // to give a fast initial experience.

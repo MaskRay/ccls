@@ -49,7 +49,8 @@ unsigned Flags() {
   return CXTranslationUnit_Incomplete | CXTranslationUnit_KeepGoing |
          CXTranslationUnit_CacheCompletionResults |
          CXTranslationUnit_PrecompiledPreamble |
-         CXTranslationUnit_IncludeBriefCommentsInCodeCompletion
+         CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
+         CXTranslationUnit_DetailedPreprocessingRecord
 #if !defined(_WIN32)
          // For whatever reason, CreatePreambleOnFirstParse causes clang to
          // become very crashy on windows.
@@ -460,6 +461,11 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       }
       completion_manager->on_diagnostic_(session->file.filename,
                                          ls_diagnostics);
+
+      timer.Reset();
+      completion_manager->on_index_(session->tu.get(), unsaved,
+                                    session->file.filename, session->file.args);
+      timer.ResetAndPrint("[complete] Reindex file");
     }
 
     continue;
@@ -511,11 +517,13 @@ ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
 ClangCompleteManager::ClangCompleteManager(Config* config,
                                            Project* project,
                                            WorkingFiles* working_files,
-                                           OnDiagnostic on_diagnostic)
+                                           OnDiagnostic on_diagnostic,
+                                           OnIndex on_index)
     : config_(config),
       project_(project),
       working_files_(working_files),
       on_diagnostic_(on_diagnostic),
+      on_index_(on_index),
       view_sessions_(kMaxViewSessions),
       edit_sessions_(kMaxEditSessions) {
   new std::thread([&]() {

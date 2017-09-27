@@ -3,19 +3,18 @@
 #include "file_consumer.h"
 #include "language_server_api.h"
 #include "libclangmm/Index.h"
+#include "libclangmm/TranslationUnit.h"
 #include "libclangmm/Utility.h"
 #include "performance.h"
 #include "position.h"
 #include "serializer.h"
 #include "utils.h"
 
-
 #include <optional.h>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-
 
 #include <algorithm>
 #include <cassert>
@@ -24,7 +23,6 @@
 #include <iostream>
 #include <unordered_map>
 #include <vector>
-
 
 struct IndexType;
 struct IndexFunc;
@@ -524,9 +522,18 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
     FileConsumer::SharedState* file_consumer_shared,
     std::string file,
-    std::vector<std::string> args,
-    std::vector<FileContents> file_contents,
+    const std::vector<std::string>& args,
+    const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
     clang::Index* index,
     bool dump_ast = false);
+std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
+    FileConsumer::SharedState* file_consumer_shared,
+    PerformanceImportFile* perf,
+    clang::TranslationUnit* tu,
+    clang::Index* index,
+    const std::string& file,
+    const std::vector<std::string>& args,
+    const std::vector<CXUnsavedFile>& file_contents);
+
 void IndexInit();
