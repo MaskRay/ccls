@@ -3,8 +3,6 @@
 cquery is not yet production ready. I use it day-to-day, but there are still
 a number of rough edges.
 
-**WARNING**: Master is broken for large repros right now. Use commit 809276d29390798ab2a0886907332985ab7cc13b.
-
 # cquery
 
 [![Join the chat at https://gitter.im/cquery-project/Lobby](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cquery-project/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
