@@ -1,8 +1,3 @@
-# Notice
-
-cquery is not yet production ready. I use it day-to-day, but there are still
-a number of rough edges.
-
 # cquery
 
 [![Join the chat at https://gitter.im/cquery-project/Lobby](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cquery-project/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
