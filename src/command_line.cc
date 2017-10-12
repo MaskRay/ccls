@@ -500,7 +500,9 @@ struct Index_DoIdMap {
       : current(std::move(current)),
         perf(perf),
         is_interactive(is_interactive),
-        write_to_disk(write_to_disk) {}
+        write_to_disk(write_to_disk) {
+     assert(this->current);
+  }
 };
 
 struct Index_OnIdMapped {
@@ -647,6 +649,8 @@ struct CacheLoader {
     return caches[path].get();
   }
 
+  // Takes the existing cache or loads the cache at |path|. May return nullptr
+  // if the cache does not exist.
   std::unique_ptr<IndexFile> TryTakeOrLoad(const std::string& path) {
     auto it = caches.find(path);
     if (it != caches.end()) {
@@ -656,6 +660,14 @@ struct CacheLoader {
     }
 
     return LoadCachedIndex(config_, path);
+  }
+
+  // Takes the existing cache or loads the cache at |path|. Asserts the cache
+  // exists.
+  std::unique_ptr<IndexFile> TakeOrLoad(const std::string& path) {
+    auto result = TryTakeOrLoad(path);
+    assert(result);
+    return result;
   }
 
   std::unordered_map<std::string, std::unique_ptr<IndexFile>> caches;
@@ -736,7 +748,7 @@ struct IndexManager {
 // IMPORT PIPELINE /////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-enum class FileParseQuery { NeedsParse, DoesNotNeedParse, BadFile };
+enum class FileParseQuery { NeedsParse, DoesNotNeedParse, NoSuchFile };
 
 std::vector<Index_DoIdMap> DoParseFile(
     Config* config,
@@ -772,12 +784,15 @@ std::vector<Index_DoIdMap> DoParseFile(
       }
 
       optional<int64_t> modification_timestamp = GetLastModificationTime(path);
+
+      // Cannot find file.
       if (!modification_timestamp)
-        return FileParseQuery::BadFile;
+        return FileParseQuery::NoSuchFile;
 
       optional<int64_t> last_cached_modification =
           timestamp_manager->GetLastCachedModificationTime(cache_loader, path);
 
+      // File has been changed.
       if (!last_cached_modification ||
           modification_timestamp != *last_cached_modification) {
         file_consumer_shared->Reset(path);
@@ -785,21 +800,30 @@ std::vector<Index_DoIdMap> DoParseFile(
             path, *modification_timestamp);
         return FileParseQuery::NeedsParse;
       }
+
+      // File has not changed, do not parse it.
       return FileParseQuery::DoesNotNeedParse;
     };
 
     // Check timestamps and update |file_consumer_shared|.
     FileParseQuery path_state = file_needs_parse(path, false /*is_dependency*/);
-    if (path_state == FileParseQuery::BadFile)
+
+    // Target file does not exist on disk, do not emit any indexes.
+    // TODO: Dependencies should be reassigned to other files. We can do this by
+    // updating the "primary_file" if it doesn't exist. Might not actually be a
+    // problem in practice.
+    if (path_state == FileParseQuery::NoSuchFile)
       return result;
+
     bool needs_reparse =
         is_interactive || path_state == FileParseQuery::NeedsParse;
 
     for (const std::string& dependency : previous_index->dependencies) {
       assert(!dependency.empty());
 
-      if (file_needs_parse(dependency, true /*is_dependency*/) ==
-          FileParseQuery::NeedsParse) {
+      // note: Use != as there are multiple failure results for FileParseQuery.
+      if (file_needs_parse(dependency, true /*is_dependency*/) !=
+          FileParseQuery::DoesNotNeedParse) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via "
                     << previous_index->path << ")";
         needs_reparse = true;
@@ -814,18 +838,29 @@ std::vector<Index_DoIdMap> DoParseFile(
 
       // TODO/FIXME: real perf
       PerformanceImportFile perf;
-      result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(path), perf,
+      result.push_back(Index_DoIdMap(cache_loader->TakeOrLoad(path), perf,
                                      is_interactive, false /*write_to_disk*/));
       for (const std::string& dependency : previous_index->dependencies) {
-        // Only actually load the file if we haven't loaded it yet. Important
-        // for perf when files have lots of common dependencies.
+        // Only load a dependency if it is not already loaded.
+        //
+        // This is important for perf in large projects where there are lots of
+        // dependencies shared between many files.
         if (!file_consumer_shared->Mark(dependency))
           continue;
 
         LOG_S(INFO) << "Emitting index result for " << dependency << " (via "
                     << previous_index->path << ")";
-        result.push_back(Index_DoIdMap(cache_loader->TryTakeOrLoad(dependency),
-                                       perf, is_interactive,
+
+        std::unique_ptr<IndexFile> dependency_index =
+            cache_loader->TryTakeOrLoad(dependency);
+
+        // |dependency_index| may be null if there is no cache for it but
+        // another file has already started importing it.
+        if (!dependency_index)
+          continue;
+
+        result.push_back(Index_DoIdMap(std::move(dependency_index), perf,
+                                       is_interactive,
                                        false /*write_to_disk*/));
       }
       return result;
@@ -878,9 +913,11 @@ std::vector<Index_DoIdMap> DoParseFile(
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
-    // Always emit diagnostics. This makes it easier to identify indexing
-    // problems.
-    EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
+    // Only emit diagnostics for non-interactive sessions, which makes it easier
+    // to identify indexing problems. For interactive sessions, diagnostics are
+    // handled by code completion.
+    if (!is_interactive)
+      EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
 
     // When main thread does IdMap request it will request the previous index if
     // needed.
@@ -1145,6 +1182,8 @@ bool QueryDb_ImportMain(Config* config,
       break;
     did_work = true;
 
+    assert(request->current);
+
     // If the request does not have previous state and we have already imported
     // it, load the previous state from disk and rerun IdMap logic later. Do not
     // do this if we have already attempted in the past.
@@ -1171,8 +1210,6 @@ bool QueryDb_ImportMain(Config* config,
     Index_OnIdMapped response(request->perf, request->is_interactive,
                               request->write_to_disk);
     Timer time;
-
-    assert(request->current);
 
     auto make_map = [db](std::unique_ptr<IndexFile> file)
         -> std::unique_ptr<Index_OnIdMapped::File> {
