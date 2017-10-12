@@ -100,8 +100,8 @@ struct ClangCompleteManager {
                                                    bool create_if_needed);
 
   // TODO: make these configurable.
-  const int kMaxViewSessions = 1;
-  const int kMaxEditSessions = 1;
+  const int kMaxViewSessions = 10;
+  const int kMaxEditSessions = 5;
 
   // Global state.
   Config* config_;
