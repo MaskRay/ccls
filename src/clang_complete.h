@@ -95,6 +95,9 @@ struct ClangCompleteManager {
   // Notify the completion manager that |filename| has been saved. This
   // triggers a reparse.
   void NotifySave(const std::string& filename);
+  // Notify the completion manager that |filename| has been closed. Any existing
+  // completion session will be dropped.
+  void NotifyClose(const std::string& filename);
 
   std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename,
                                                    bool create_if_needed);

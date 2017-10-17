@@ -303,6 +303,12 @@ void EnsureDocumentParsed(ClangCompleteManager* manager,
 
   // Build diagnostics.
   if (manager->config_->diagnosticsOnParse && !(*tu)->did_fail) {
+    // If we're emitting diagnostics, do an immedaite reparse, otherwise we will
+    // emit stale/bad diagnostics.
+    clang_reparseTranslationUnit(
+        (*tu)->cx_tu, unsaved.size(), unsaved.data(),
+        clang_defaultReparseOptions((*tu)->cx_tu));
+
     NonElidedVector<lsDiagnostic> ls_diagnostics;
     unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
     for (unsigned i = 0; i < num_diagnostics; ++i) {
@@ -360,9 +366,10 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         completion_manager->TryGetSession(path, true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->tu_lock);
+    Timer timer;
     EnsureDocumentParsed(completion_manager, session, &session->tu,
                          &session->index);
-    Timer timer;
+    timer.ResetAndPrint("[complete] EnsureDocumentParsed");
 
     std::vector<CXUnsavedFile> unsaved =
         completion_manager->working_files_->AsUnsavedFiles();
@@ -629,6 +636,23 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   }
 
   parse_requests_.PriorityEnqueue(ParseRequest(filename));
+}
+
+void ClangCompleteManager::NotifyClose(const std::string& filename) {
+  //
+  // On close, we clear any existing CompletionSession instance.
+  //
+
+  std::lock_guard<std::mutex> lock(sessions_lock_);
+
+  // Take and drop. It's okay if we don't actually drop the file, it'll
+  // eventually get pushed out of the caches as the user opens other files.
+  auto view_ptr = view_sessions_.TryTakeEntry(filename);
+  LOG_IF_S(INFO, !!view_ptr)
+      << "Dropped view-based code completion session for " << filename;
+  auto edit_ptr = edit_sessions_.TryTakeEntry(filename);
+  LOG_IF_S(INFO, !!edit_ptr)
+      << "Dropped edit-based code completion session for " << filename;
 }
 
 std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(

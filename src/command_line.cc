@@ -1765,6 +1765,7 @@ bool QueryDbMainLoop(Config* config,
 
       case IpcId::TextDocumentDidClose: {
         auto msg = message->As<Ipc_TextDocumentDidClose>();
+        std::string path = msg->params.textDocument.uri.GetPath();
 
         // Clear any diagnostics for the file.
         Out_TextDocumentPublishDiagnostics diag;
@@ -1774,6 +1775,7 @@ bool QueryDbMainLoop(Config* config,
 
         // Remove internal state.
         working_files->OnClose(msg->params);
+        clang_complete->NotifyClose(path);
 
         break;
       }
