@@ -104,9 +104,9 @@ bool FindFileOrFail(QueryDatabase* db,
                     QueryFileId* out_file_id = nullptr) {
   auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(absolute_path));
   if (it != db->usr_to_file.end()) {
-    optional<QueryFile>& file = db->files[it->second.id];
-    if (file) {
-      *out_query_file = &file.value();
+    QueryFile& file = db->files[it->second.id];
+    if (file.def) {
+      *out_query_file = &file;
       if (out_file_id)
         *out_file_id = QueryFileId(it->second.id);
       return true;
@@ -194,25 +194,25 @@ optional<int> FindIncludeLine(const std::vector<std::string>& lines,
 optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
                                             QueryFileId file_id,
                                             QueryFile* file) {
-  for (SymbolRef sym : file->def.outline) {
+  for (SymbolRef sym : file->def->outline) {
     switch (sym.idx.kind) {
       case SymbolKind::Func: {
-        optional<QueryFunc>& func = db->funcs[sym.idx.idx];
+        QueryFunc& func = db->funcs[sym.idx.idx];
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (func && func->def.definition_extent &&
-            func->def.definition_extent->path != file_id) {
-          return func->def.definition_extent->path;
+        if (func.def && func.def->definition_extent &&
+            func.def->definition_extent->path != file_id) {
+          return func.def->definition_extent->path;
         }
         break;
       }
       case SymbolKind::Var: {
-        optional<QueryVar>& var = db->vars[sym.idx.idx];
+        QueryVar& var = db->vars[sym.idx.idx];
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (var && var->def.definition_extent &&
-            var->def.definition_extent->path != file_id) {
-          return db->vars[sym.idx.idx]->def.definition_extent->path;
+        if (var.def && var.def->definition_extent &&
+            var.def->definition_extent->path != file_id) {
+          return db->vars[sym.idx.idx].def->definition_extent->path;
         }
         break;
       }
@@ -223,7 +223,7 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
 
   // No associated definition, scan the project for a file in the same
   // directory with the same base-name.
-  std::string original_path = LowerPathIfCaseInsensitive(file->def.path);
+  std::string original_path = LowerPathIfCaseInsensitive(file->def->path);
   std::string target_path = original_path;
   size_t last = target_path.find_last_of('.');
   if (last != std::string::npos) {
@@ -253,18 +253,18 @@ void EnsureImplFile(QueryDatabase* db,
                     optional<lsDocumentUri>& impl_uri,
                     optional<QueryFileId>& impl_file_id) {
   if (!impl_uri.has_value()) {
-    optional<QueryFile>& file = db->files[file_id.id];
-    assert(file);
+    QueryFile& file = db->files[file_id.id];
+    assert(file.def);
 
-    impl_file_id = GetImplementationFile(db, file_id, &file.value());
+    impl_file_id = GetImplementationFile(db, file_id, &file);
     if (!impl_file_id.has_value())
       impl_file_id = file_id;
 
-    optional<QueryFile>& impl_file = db->files[impl_file_id->id];
-    if (impl_file)
-      impl_uri = lsDocumentUri::FromPath(impl_file->def.path);
+    QueryFile& impl_file = db->files[impl_file_id->id];
+    if (impl_file.def)
+      impl_uri = lsDocumentUri::FromPath(impl_file.def->path);
     else
-      impl_uri = lsDocumentUri::FromPath(file->def.path);
+      impl_uri = lsDocumentUri::FromPath(file.def->path);
   }
 }
 
@@ -275,6 +275,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
                                                    QueryFileId decl_file_id,
                                                    QueryFileId impl_file_id,
                                                    QueryFunc& func) {
+  assert(func.def);
   for (const QueryLocation& decl : func.declarations) {
     if (decl.path != decl_file_id)
       continue;
@@ -285,13 +286,12 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
 
     optional<std::string> type_name;
     optional<lsPosition> same_file_insert_end;
-    if (func.def.declaring_type) {
-      optional<QueryType>& declaring_type =
-          db->types[func.def.declaring_type->id];
-      if (declaring_type) {
-        type_name = declaring_type->def.short_name;
+    if (func.def->declaring_type) {
+      QueryType& declaring_type = db->types[func.def->declaring_type->id];
+      if (declaring_type.def) {
+        type_name = declaring_type.def->short_name;
         optional<lsRange> ls_type_def_extent = GetLsRange(
-            working_file, declaring_type->def.definition_extent->range);
+            working_file, declaring_type.def->definition_extent->range);
         if (ls_type_def_extent) {
           same_file_insert_end = ls_type_def_extent->end;
           same_file_insert_end->character += 1;  // move past semicolon.
@@ -321,21 +321,21 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
       best_pos.line = default_line;
       int best_dist = INT_MAX;
 
-      optional<QueryFile>& file = db->files[impl_file_id.id];
-      assert(file);
-      for (SymbolRef sym : file->def.outline) {
+      QueryFile& file = db->files[impl_file_id.id];
+      assert(file.def);
+      for (SymbolRef sym : file.def->outline) {
         switch (sym.idx.kind) {
           case SymbolKind::Func: {
-            optional<QueryFunc>& sym_func = db->funcs[sym.idx.idx];
-            if (!sym_func || !sym_func->def.definition_extent)
+            QueryFunc& sym_func = db->funcs[sym.idx.idx];
+            if (!sym_func.def || !sym_func.def->definition_extent)
               break;
 
-            for (QueryLocation& func_decl : sym_func->declarations) {
+            for (QueryLocation& func_decl : sym_func.declarations) {
               if (func_decl.path == decl_file_id) {
                 int dist = func_decl.range.start.line - decl.range.start.line;
                 if (abs(dist) < abs(best_dist)) {
                   optional<lsLocation> def_loc = GetLsLocation(
-                      db, working_files, *sym_func->def.definition_extent);
+                      db, working_files, *sym_func.def->definition_extent);
                   if (!def_loc)
                     continue;
 
@@ -1486,19 +1486,19 @@ bool QueryDbMainLoop(Config* config,
         // Unmark all files whose timestamp has changed.
         CacheLoader cache_loader(config);
         for (const auto& file : db->files) {
-          if (!file)
+          if (!file.def)
             continue;
 
           optional<int64_t> modification_timestamp =
-              GetLastModificationTime(file->def.path);
+              GetLastModificationTime(file.def->path);
           if (!modification_timestamp)
             continue;
 
           optional<int64_t> cached_modification =
               timestamp_manager->GetLastCachedModificationTime(&cache_loader,
-                                                               file->def.path);
+                                                               file.def->path);
           if (modification_timestamp != cached_modification)
-            file_consumer_shared->Reset(file->def.path);
+            file_consumer_shared->Reset(file.def->path);
         }
 
         // Send index requests for every file.
@@ -1524,7 +1524,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_CqueryTypeHierarchyTree response;
         response.id = msg->id;
@@ -1556,7 +1556,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_CqueryCallTree response;
         response.id = msg->id;
@@ -1598,18 +1598,16 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_LocationList response;
         response.id = msg->id;
         for (const SymbolRef& ref :
              FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           if (ref.idx.kind == SymbolKind::Type) {
-            optional<QueryType>& type = db->types[ref.idx.idx];
-            if (!type)
-              continue;
+            QueryType& type = db->types[ref.idx.idx];
             std::vector<QueryLocation> locations =
-                ToQueryLocation(db, type->instances);
+                ToQueryLocation(db, type.instances);
             response.result = GetLsLocations(db, working_files, locations);
           }
         }
@@ -1626,23 +1624,21 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_LocationList response;
         response.id = msg->id;
         for (const SymbolRef& ref :
              FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           if (ref.idx.kind == SymbolKind::Func) {
-            optional<QueryFunc>& func = db->funcs[ref.idx.idx];
-            if (!func)
-              continue;
+            QueryFunc& func = db->funcs[ref.idx.idx];
             std::vector<QueryLocation> locations =
-                ToQueryLocation(db, func->callers);
+                ToQueryLocation(db, func.callers);
             for (QueryFuncRef func_ref :
-                 GetCallersForAllBaseFunctions(db, *func))
+                 GetCallersForAllBaseFunctions(db, func))
               locations.push_back(func_ref.loc);
             for (QueryFuncRef func_ref :
-                 GetCallersForAllDerivedFunctions(db, *func))
+                 GetCallersForAllDerivedFunctions(db, func))
               locations.push_back(func_ref.loc);
 
             response.result = GetLsLocations(db, working_files, locations);
@@ -1661,25 +1657,23 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_LocationList response;
         response.id = msg->id;
         for (const SymbolRef& ref :
              FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           if (ref.idx.kind == SymbolKind::Type) {
-            optional<QueryType>& type = db->types[ref.idx.idx];
-            if (!type)
+            QueryType& type = db->types[ref.idx.idx];
+            if (!type.def)
               continue;
             std::vector<QueryLocation> locations =
-                ToQueryLocation(db, type->def.parents);
+                ToQueryLocation(db, type.def->parents);
             response.result = GetLsLocations(db, working_files, locations);
           } else if (ref.idx.kind == SymbolKind::Func) {
-            optional<QueryFunc>& func = db->funcs[ref.idx.idx];
-            if (!func)
-              continue;
+            QueryFunc& func = db->funcs[ref.idx.idx];
             optional<QueryLocation> location =
-                GetBaseDefinitionOrDeclarationSpelling(db, *func);
+                GetBaseDefinitionOrDeclarationSpelling(db, func);
             if (!location)
               continue;
             optional<lsLocation> ls_loc =
@@ -1702,25 +1696,21 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_LocationList response;
         response.id = msg->id;
         for (const SymbolRef& ref :
              FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           if (ref.idx.kind == SymbolKind::Type) {
-            optional<QueryType>& type = db->types[ref.idx.idx];
-            if (!type)
-              continue;
+            QueryType& type = db->types[ref.idx.idx];
             std::vector<QueryLocation> locations =
-                ToQueryLocation(db, type->derived);
+                ToQueryLocation(db, type.derived);
             response.result = GetLsLocations(db, working_files, locations);
           } else if (ref.idx.kind == SymbolKind::Func) {
-            optional<QueryFunc>& func = db->funcs[ref.idx.idx];
-            if (!func)
-              continue;
+            QueryFunc& func = db->funcs[ref.idx.idx];
             std::vector<QueryLocation> locations =
-                ToQueryLocation(db, func->derived);
+                ToQueryLocation(db, func.derived);
             response.result = GetLsLocations(db, working_files, locations);
           }
         }
@@ -1824,7 +1814,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_TextDocumentRename response;
         response.id = msg->id;
@@ -2064,7 +2054,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_TextDocumentDefinition response;
         response.id = msg->id;
@@ -2126,7 +2116,7 @@ bool QueryDbMainLoop(Config* config,
 
         // No symbols - check for includes.
         if (response.result.empty()) {
-          for (const IndexInclude& include : file->def.includes) {
+          for (const IndexInclude& include : file->def->includes) {
             if (include.line == target_line) {
               lsLocation result;
               result.uri = lsDocumentUri::FromPath(include.resolved_path);
@@ -2150,7 +2140,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_TextDocumentDocumentHighlight response;
         response.id = msg->id;
@@ -2191,7 +2181,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_TextDocumentHover response;
         response.id = msg->id;
@@ -2200,7 +2190,7 @@ bool QueryDbMainLoop(Config* config,
              FindSymbolsAtLocation(working_file, file, msg->params.position)) {
           // Found symbol. Return hover.
           optional<lsRange> ls_range = GetLsRange(
-              working_files->GetFileByFilename(file->def.path), ref.loc.range);
+              working_files->GetFileByFilename(file->def->path), ref.loc.range);
           if (!ls_range)
             continue;
 
@@ -2222,7 +2212,7 @@ bool QueryDbMainLoop(Config* config,
           break;
 
         WorkingFile* working_file =
-            working_files->GetFileByFilename(file->def.path);
+            working_files->GetFileByFilename(file->def->path);
 
         Out_TextDocumentReferences response;
         response.id = msg->id;
@@ -2266,7 +2256,7 @@ bool QueryDbMainLoop(Config* config,
                             &file))
           break;
 
-        for (SymbolRef ref : file->def.outline) {
+        for (SymbolRef ref : file->def->outline) {
           optional<lsSymbolInformation> info =
               GetSymbolInfo(db, working_files, ref.idx);
           if (!info)
@@ -2304,7 +2294,7 @@ bool QueryDbMainLoop(Config* config,
                         << msg->params.textDocument.uri.GetPath();
             break;
           }
-          for (const IndexInclude& include : file->def.includes) {
+          for (const IndexInclude& include : file->def->includes) {
             optional<int> buffer_line;
             optional<std::string> buffer_line_content =
                 working_file->GetBufferLineContentFromIndexLine(include.line,
@@ -2376,8 +2366,8 @@ bool QueryDbMainLoop(Config* config,
         for (SymbolRef sym : syms) {
           switch (sym.idx.kind) {
             case SymbolKind::Type: {
-              optional<QueryType>& type = db->types[sym.idx.idx];
-              if (!type)
+              QueryType& type = db->types[sym.idx.idx];
+              if (!type.def)
                 break;
 
               int num_edits = 0;
@@ -2385,16 +2375,16 @@ bool QueryDbMainLoop(Config* config,
               // Get implementation file.
               Out_TextDocumentCodeAction::Command command;
 
-              for (QueryFuncId func_id : type->def.funcs) {
-                optional<QueryFunc>& func_def = db->funcs[func_id.id];
-                if (!func_def || func_def->def.definition_extent)
+              for (QueryFuncId func_id : type.def->funcs) {
+                QueryFunc& func_def = db->funcs[func_id.id];
+                if (!func_def.def || func_def.def->definition_extent)
                   continue;
 
                 EnsureImplFile(db, file_id, impl_uri /*out*/,
                                impl_file_id /*out*/);
                 optional<lsTextEdit> edit = BuildAutoImplementForFunction(
                     db, working_files, working_file, default_line, file_id,
-                    *impl_file_id, *func_def);
+                    *impl_file_id, func_def);
                 if (!edit)
                   continue;
 
@@ -2423,15 +2413,15 @@ bool QueryDbMainLoop(Config* config,
 
               command.arguments.textDocumentUri = *impl_uri;
               command.title = "Auto-Implement " + std::to_string(num_edits) +
-                              " methods on " + type->def.short_name;
+                              " methods on " + type.def->short_name;
               command.command = "cquery._autoImplement";
               response.result.push_back(command);
               break;
             }
 
             case SymbolKind::Func: {
-              optional<QueryFunc>& func = db->funcs[sym.idx.idx];
-              if (!func || func->def.definition_extent)
+              QueryFunc& func = db->funcs[sym.idx.idx];
+              if (!func.def || func.def->definition_extent)
                 break;
 
               EnsureImplFile(db, file_id, impl_uri /*out*/,
@@ -2439,12 +2429,12 @@ bool QueryDbMainLoop(Config* config,
 
               // Get implementation file.
               Out_TextDocumentCodeAction::Command command;
-              command.title = "Auto-Implement " + func->def.short_name;
+              command.title = "Auto-Implement " + func.def->short_name;
               command.command = "cquery._autoImplement";
               command.arguments.textDocumentUri = *impl_uri;
               optional<lsTextEdit> edit = BuildAutoImplementForFunction(
                   db, working_files, working_file, default_line, file_id,
-                  *impl_file_id, *func);
+                  *impl_file_id, func);
               if (!edit)
                 break;
 
@@ -2496,11 +2486,11 @@ bool QueryDbMainLoop(Config* config,
               if (!decl_file_id)
                 continue;
 
-              optional<QueryFile>& decl_file = db->files[decl_file_id->id];
-              if (!decl_file)
+              QueryFile& decl_file = db->files[decl_file_id->id];
+              if (!decl_file.def)
                 continue;
 
-              include_absolute_paths.insert(decl_file->def.path);
+              include_absolute_paths.insert(decl_file.def->path);
             }
 
             // Build include strings.
@@ -2591,50 +2581,50 @@ bool QueryDbMainLoop(Config* config,
         common.result = &response.result;
         common.db = db;
         common.working_files = working_files;
-        common.working_file = working_files->GetFileByFilename(file->def.path);
+        common.working_file = working_files->GetFileByFilename(file->def->path);
 
-        for (SymbolRef ref : file->def.outline) {
+        for (SymbolRef ref : file->def->outline) {
           // NOTE: We OffsetColumn so that the code lens always show up in a
           // predictable order. Otherwise, the client may randomize it.
 
           SymbolIdx symbol = ref.idx;
           switch (symbol.kind) {
             case SymbolKind::Type: {
-              optional<QueryType>& type = db->types[symbol.idx];
-              if (!type)
+              QueryType& type = db->types[symbol.idx];
+              if (!type.def)
                 continue;
               AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
-                          type->uses, type->def.definition_spelling,
+                          type.uses, type.def->definition_spelling,
                           true /*force_display*/);
               AddCodeLens("derived", "derived", &common,
                           ref.loc.OffsetStartColumn(1),
-                          ToQueryLocation(db, type->derived), nullopt,
+                          ToQueryLocation(db, type.derived), nullopt,
                           false /*force_display*/);
               AddCodeLens("var", "vars", &common, ref.loc.OffsetStartColumn(2),
-                          ToQueryLocation(db, type->instances), nullopt,
+                          ToQueryLocation(db, type.instances), nullopt,
                           false /*force_display*/);
               break;
             }
             case SymbolKind::Func: {
-              optional<QueryFunc>& func = db->funcs[symbol.idx];
-              if (!func)
+              QueryFunc& func = db->funcs[symbol.idx];
+              if (!func.def)
                 continue;
 
               int16_t offset = 0;
 
               std::vector<QueryFuncRef> base_callers =
-                  GetCallersForAllBaseFunctions(db, *func);
+                  GetCallersForAllBaseFunctions(db, func);
               std::vector<QueryFuncRef> derived_callers =
-                  GetCallersForAllDerivedFunctions(db, *func);
+                  GetCallersForAllDerivedFunctions(db, func);
               if (base_callers.empty() && derived_callers.empty()) {
                 AddCodeLens("call", "calls", &common,
                             ref.loc.OffsetStartColumn(offset++),
-                            ToQueryLocation(db, func->callers), nullopt,
+                            ToQueryLocation(db, func.callers), nullopt,
                             true /*force_display*/);
               } else {
                 AddCodeLens("direct call", "direct calls", &common,
                             ref.loc.OffsetStartColumn(offset++),
-                            ToQueryLocation(db, func->callers), nullopt,
+                            ToQueryLocation(db, func.callers), nullopt,
                             false /*force_display*/);
                 if (!base_callers.empty())
                   AddCodeLens("base call", "base calls", &common,
@@ -2650,12 +2640,12 @@ bool QueryDbMainLoop(Config* config,
 
               AddCodeLens("derived", "derived", &common,
                           ref.loc.OffsetStartColumn(offset++),
-                          ToQueryLocation(db, func->derived), nullopt,
+                          ToQueryLocation(db, func.derived), nullopt,
                           false /*force_display*/);
 
               // "Base"
               optional<QueryLocation> base_loc =
-                  GetBaseDefinitionOrDeclarationSpelling(db, *func);
+                  GetBaseDefinitionOrDeclarationSpelling(db, func);
               if (base_loc) {
                 optional<lsLocation> ls_base =
                     GetLsLocation(db, working_files, *base_loc);
@@ -2680,21 +2670,21 @@ bool QueryDbMainLoop(Config* config,
               break;
             }
             case SymbolKind::Var: {
-              optional<QueryVar>& var = db->vars[symbol.idx];
-              if (!var)
+              QueryVar& var = db->vars[symbol.idx];
+              if (!var.def)
                 continue;
 
-              if (var->def.is_local && !config->codeLensOnLocalVariables)
+              if (var.def->is_local && !config->codeLensOnLocalVariables)
                 continue;
 
               bool force_display = true;
               // Do not show 0 refs on macro with no uses, as it is most likely
               // a header guard.
-              if (var->def.is_macro)
+              if (var.def->is_macro)
                 force_display = false;
 
               AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
-                          var->uses, var->def.definition_spelling,
+                          var.uses, var.def->definition_spelling,
                           force_display);
               break;
             }

@@ -6,7 +6,6 @@
 #include <optional.h>
 #include <loguru.hpp>
 
-
 #include <cassert>
 #include <cstdint>
 #include <functional>
@@ -14,7 +13,6 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-
 
 // TODO: Make all copy constructors explicit.
 
@@ -665,22 +663,22 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
   switch (usr_kind) {
     case SymbolKind::File: {
       for (const Usr& usr : to_remove)
-        files[usr_to_file[LowerPathIfCaseInsensitive(usr)].id] = nullopt;
+        files[usr_to_file[LowerPathIfCaseInsensitive(usr)].id].def = nullopt;
       break;
     }
     case SymbolKind::Type: {
       for (const Usr& usr : to_remove)
-        types[usr_to_type[usr].id] = nullopt;
+        types[usr_to_type[usr].id].def = nullopt;
       break;
     }
     case SymbolKind::Func: {
       for (const Usr& usr : to_remove)
-        funcs[usr_to_func[usr].id] = nullopt;
+        funcs[usr_to_func[usr].id].def = nullopt;
       break;
     }
     case SymbolKind::Var: {
       for (const Usr& usr : to_remove)
-        vars[usr_to_var[usr].id] = nullopt;
+        vars[usr_to_var[usr].id].def = nullopt;
       break;
     }
     case SymbolKind::Invalid:
@@ -696,13 +694,11 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 //  merge_update       =>  QueryType::DerivedUpdate =>
 //  MergeableUpdate<QueryTypeId, QueryTypeId> def                =>  QueryType
 //  def->def_var_name  =>  std::vector<QueryTypeId>
-#define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name)  \
-  for (auto merge_update : update->update_var_name) {                  \
-    auto& def = storage_name[merge_update.id.id];                      \
-    if (!def)                                                          \
-      continue; /* TODO: Should we continue or create an empty def? */ \
-    AddRange(&def->def_var_name, merge_update.to_add);                 \
-    RemoveRange(&def->def_var_name, merge_update.to_remove);           \
+#define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
+  for (auto merge_update : update->update_var_name) {                 \
+    auto& def = storage_name[merge_update.id.id];                     \
+    AddRange(&def.def_var_name, merge_update.to_add);                 \
+    RemoveRange(&def.def_var_name, merge_update.to_remove);           \
   }
 
   RemoveUsrs(SymbolKind::File, update->files_removed);
@@ -735,12 +731,10 @@ void QueryDatabase::ImportOrUpdate(
     auto it = usr_to_file.find(LowerPathIfCaseInsensitive(def.path));
     assert(it != usr_to_file.end());
 
-    optional<QueryFile>& existing = files[it->second.id];
-    if (!existing)
-      existing = QueryFile(def.path);
+    QueryFile& existing = files[it->second.id];
 
-    existing->def = def;
-    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::File,
+    existing.def = def;
+    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::File,
                         it->second.id, def.path);
   }
 }
@@ -756,16 +750,15 @@ void QueryDatabase::ImportOrUpdate(
     assert(it != usr_to_type.end());
 
     assert(it->second.id >= 0 && it->second.id < types.size());
-    optional<QueryType>& existing = types[it->second.id];
-    if (!existing)
-      existing = QueryType(def.usr);
+    QueryType& existing = types[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (existing->def.definition_spelling && !def.definition_spelling)
+    if (existing.def && existing.def->definition_spelling &&
+        !def.definition_spelling)
       continue;
 
-    existing->def = def;
-    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Type,
+    existing.def = def;
+    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Type,
                         it->second.id, def.detailed_name);
   }
 }
@@ -781,16 +774,15 @@ void QueryDatabase::ImportOrUpdate(
     assert(it != usr_to_func.end());
 
     assert(it->second.id >= 0 && it->second.id < funcs.size());
-    optional<QueryFunc>& existing = funcs[it->second.id];
-    if (!existing)
-      existing = QueryFunc(def.usr);
+    QueryFunc& existing = funcs[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (existing->def.definition_spelling && !def.definition_spelling)
+    if (existing.def && existing.def->definition_spelling &&
+        !def.definition_spelling)
       continue;
 
-    existing->def = def;
-    UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Func,
+    existing.def = def;
+    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func,
                         it->second.id, def.detailed_name);
   }
 }
@@ -806,17 +798,16 @@ void QueryDatabase::ImportOrUpdate(
     assert(it != usr_to_var.end());
 
     assert(it->second.id >= 0 && it->second.id < vars.size());
-    optional<QueryVar>& existing = vars[it->second.id];
-    if (!existing)
-      existing = QueryVar(def.usr);
+    QueryVar& existing = vars[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (existing->def.definition_spelling && !def.definition_spelling)
+    if (existing.def && existing.def->definition_spelling &&
+        !def.definition_spelling)
       continue;
 
-    existing->def = def;
+    existing.def = def;
     if (!def.is_local)
-      UpdateDetailedNames(&existing->detailed_name_idx, SymbolKind::Var,
+      UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var,
                           it->second.id, def.detailed_name);
   }
 }
@@ -952,14 +943,14 @@ TEST_CASE("apply delta") {
       &previous_map, &current_map, &previous, &current);
 
   db.ApplyIndexUpdate(&import_update);
-  REQUIRE(db.funcs[0]->callers.size() == 2);
-  REQUIRE(db.funcs[0]->callers[0].loc.range == Range(Position(1, 0)));
-  REQUIRE(db.funcs[0]->callers[1].loc.range == Range(Position(2, 0)));
+  REQUIRE(db.funcs[0].callers.size() == 2);
+  REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(1, 0)));
+  REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(2, 0)));
 
   db.ApplyIndexUpdate(&delta_update);
-  REQUIRE(db.funcs[0]->callers.size() == 2);
-  REQUIRE(db.funcs[0]->callers[0].loc.range == Range(Position(4, 0)));
-  REQUIRE(db.funcs[0]->callers[1].loc.range == Range(Position(5, 0)));
+  REQUIRE(db.funcs[0].callers.size() == 2);
+  REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(4, 0)));
+  REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(5, 0)));
 }
 
 TEST_SUITE_END();

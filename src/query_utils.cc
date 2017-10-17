@@ -15,25 +15,25 @@ int ComputeRangeSize(const Range& range) {
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const QueryTypeId& id) {
-  optional<QueryType>& type = db->types[id.id];
-  if (type)
-    return type->def.definition_spelling;
+  QueryType& type = db->types[id.id];
+  if (type.def)
+    return type.def->definition_spelling;
   return nullopt;
 }
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const QueryFuncId& id) {
-  optional<QueryFunc>& func = db->funcs[id.id];
-  if (func)
-    return func->def.definition_spelling;
+  QueryFunc& func = db->funcs[id.id];
+  if (func.def)
+    return func.def->definition_spelling;
   return nullopt;
 }
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const QueryVarId& id) {
-  optional<QueryVar>& var = db->vars[id.id];
-  if (var)
-    return var->def.definition_spelling;
+  QueryVar& var = db->vars[id.id];
+  if (var.def)
+    return var.def->definition_spelling;
   return nullopt;
 }
 
@@ -41,21 +41,21 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (type)
-        return type->def.definition_spelling;
+      QueryType& type = db->types[symbol.idx];
+      if (type.def)
+        return type.def->definition_spelling;
       break;
     }
     case SymbolKind::Func: {
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (func)
-        return func->def.definition_spelling;
+      QueryFunc& func = db->funcs[symbol.idx];
+      if (func.def)
+        return func.def->definition_spelling;
       break;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (var)
-        return var->def.definition_spelling;
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def)
+        return var.def->definition_spelling;
       break;
     }
     case SymbolKind::File:
@@ -71,21 +71,21 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
                                                     const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (type)
-        return type->def.definition_extent;
+      QueryType& type = db->types[symbol.idx];
+      if (type.def)
+        return type.def->definition_extent;
       break;
     }
     case SymbolKind::Func: {
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (func)
-        return func->def.definition_extent;
+      QueryFunc& func = db->funcs[symbol.idx];
+      if (func.def)
+        return func.def->definition_extent;
       break;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (var)
-        return var->def.definition_extent;
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def)
+        return var.def->definition_extent;
       break;
     }
     case SymbolKind::File: {
@@ -103,21 +103,21 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
 std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (type)
-        return type->def.detailed_name;
+      QueryType& type = db->types[symbol.idx];
+      if (type.def)
+        return type.def->detailed_name;
       break;
     }
     case SymbolKind::Func: {
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (func)
-        return func->def.detailed_name;
+      QueryFunc& func = db->funcs[symbol.idx];
+      if (func.def)
+        return func.def->detailed_name;
       break;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (var)
-        return var->def.detailed_name;
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def)
+        return var.def->detailed_name;
       break;
     }
     case SymbolKind::File:
@@ -133,25 +133,23 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (type && type->def.definition_spelling)
-        return type->def.definition_spelling->path;
+      QueryType& type = db->types[symbol.idx];
+      if (type.def && type.def->definition_spelling)
+        return type.def->definition_spelling->path;
       break;
     }
     case SymbolKind::Func: {
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (func) {
-        if (!func->declarations.empty())
-          return func->declarations[0].path;
-        if (func->def.definition_spelling)
-          return func->def.definition_spelling->path;
-      }
+      QueryFunc& func = db->funcs[symbol.idx];
+      if (!func.declarations.empty())
+        return func.declarations[0].path;
+      if (func.def && func.def->definition_spelling)
+        return func.def->definition_spelling->path;
       break;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (var && var->def.definition_spelling)
-        return var->def.definition_spelling->path;
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def && var.def->definition_spelling)
+        return var.def->definition_spelling->path;
       break;
     }
     case SymbolKind::File: {
@@ -214,28 +212,21 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
                                            const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (type)
-        return type->uses;
-      break;
+      QueryType& type = db->types[symbol.idx];
+      return type.uses;
     }
     case SymbolKind::Func: {
       // TODO: the vector allocation could be avoided.
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (func) {
-        std::vector<QueryLocation> result = ToQueryLocation(db, func->callers);
-        AddRange(&result, func->declarations);
-        if (func->def.definition_spelling)
-          result.push_back(*func->def.definition_spelling);
-        return result;
-      }
-      break;
+      QueryFunc& func = db->funcs[symbol.idx];
+      std::vector<QueryLocation> result = ToQueryLocation(db, func.callers);
+      AddRange(&result, func.declarations);
+      if (func.def && func.def->definition_spelling)
+        result.push_back(*func.def->definition_spelling);
+      return result;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (var)
-        return var->uses;
-      break;
+      QueryVar& var = db->vars[symbol.idx];
+      return var.uses;
     }
     case SymbolKind::File:
     case SymbolKind::Invalid: {
@@ -255,24 +246,22 @@ std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
       // function has the postfix `ForGotoDefintion`, but it lets the user
       // jump to the start of a type if clicking goto-definition on the same
       // type from within the type definition.
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (type) {
-        optional<QueryLocation> declaration = type->def.definition_spelling;
+      QueryType& type = db->types[symbol.idx];
+      if (type.def) {
+        optional<QueryLocation> declaration = type.def->definition_spelling;
         if (declaration)
           return {*declaration};
       }
       break;
     }
     case SymbolKind::Func: {
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (func)
-        return func->declarations;
-      break;
+      QueryFunc& func = db->funcs[symbol.idx];
+      return func.declarations;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (var) {
-        optional<QueryLocation> declaration = var->def.declaration;
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def) {
+        optional<QueryLocation> declaration = var.def->declaration;
         if (declaration)
           return {*declaration};
       }
@@ -288,15 +277,15 @@ std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
 optional<QueryLocation> GetBaseDefinitionOrDeclarationSpelling(
     QueryDatabase* db,
     QueryFunc& func) {
-  if (!func.def.base)
+  if (!func.def->base)
     return nullopt;
-  optional<QueryFunc>& base = db->funcs[func.def.base->id];
-  if (!base)
-    return nullopt;
+  QueryFunc& base = db->funcs[func.def->base->id];
 
-  auto def = base->def.definition_spelling;
-  if (!def && !base->declarations.empty())
-    def = base->declarations[0];
+  optional<QueryLocation> def;
+  if (base.def)
+    def = base.def->definition_spelling;
+  if (!def && !base.declarations.empty())
+    def = base.declarations[0];
   return def;
 }
 
@@ -306,28 +295,25 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
     return true;
 
   // Check for base calls.
-  optional<QueryFuncId> func_id = root.def.base;
+  optional<QueryFuncId> func_id = root.def->base;
   while (func_id) {
-    optional<QueryFunc>& func = db->funcs[func_id->id];
-    if (!func)
-      break;
-    if (!func->callers.empty())
+    QueryFunc& func = db->funcs[func_id->id];
+    if (!func.callers.empty())
       return true;
-    func_id = func->def.base;
+    if (!func.def)
+      break;
+    func_id = func.def->base;
   }
 
   // Check for derived calls.
   std::queue<QueryFuncId> queue;
   PushRange(&queue, root.derived);
   while (!queue.empty()) {
-    optional<QueryFunc>& func = db->funcs[queue.front().id];
+    QueryFunc& func = db->funcs[queue.front().id];
     queue.pop();
-    if (!func)
-      continue;
-
-    if (!func->derived.empty())
+    if (!func.callers.empty())
       return true;
-    PushRange(&queue, func->derived);
+    PushRange(&queue, func.derived);
   }
 
   return false;
@@ -337,14 +323,14 @@ std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
                                                         QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
 
-  optional<QueryFuncId> func_id = root.def.base;
+  optional<QueryFuncId> func_id = root.def->base;
   while (func_id) {
-    optional<QueryFunc>& func = db->funcs[func_id->id];
-    if (!func)
-      break;
+    QueryFunc& func = db->funcs[func_id->id];
+    AddRange(&callers, func.callers);
 
-    AddRange(&callers, func->callers);
-    func_id = func->def.base;
+    if (!func.def)
+      break;
+    func_id = func.def->base;
   }
 
   return callers;
@@ -358,13 +344,11 @@ std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db,
   PushRange(&queue, root.derived);
 
   while (!queue.empty()) {
-    optional<QueryFunc>& func = db->funcs[queue.front().id];
+    QueryFunc& func = db->funcs[queue.front().id];
     queue.pop();
-    if (!func)
-      continue;
 
-    PushRange(&queue, func->derived);
-    AddRange(&callers, func->callers);
+    PushRange(&queue, func.derived);
+    AddRange(&callers, func.callers);
   }
 
   return callers;
@@ -412,9 +396,9 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
                                QueryFileId file_id,
                                std::string* path) {
-  optional<QueryFile>& file = db->files[file_id.id];
-  if (file) {
-    *path = file->def.path;
+  QueryFile& file = db->files[file_id.id];
+  if (file.def) {
+    *path = file.def->path;
     return lsDocumentUri::FromPath(*path);
   } else {
     *path = "";
@@ -423,9 +407,9 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
 }
 
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id) {
-  optional<QueryFile>& file = db->files[file_id.id];
-  if (file) {
-    return lsDocumentUri::FromPath(file->def.path);
+  QueryFile& file = db->files[file_id.id];
+  if (file.def) {
+    return lsDocumentUri::FromPath(file.def->path);
   } else {
     return lsDocumentUri::FromPath("");
   }
@@ -468,54 +452,54 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             SymbolIdx symbol) {
   switch (symbol.kind) {
     case SymbolKind::File: {
-      optional<QueryFile>& file = db->files[symbol.idx];
-      if (!file)
+      QueryFile& file = db->files[symbol.idx];
+      if (!file.def)
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = file->def.path;
+      info.name = file.def->path;
       info.kind = lsSymbolKind::File;
       return info;
     }
     case SymbolKind::Type: {
-      optional<QueryType>& type = db->types[symbol.idx];
-      if (!type)
+      QueryType& type = db->types[symbol.idx];
+      if (!type.def)
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = type->def.short_name;
-      if (type->def.detailed_name != type->def.short_name)
-        info.containerName = type->def.detailed_name;
+      info.name = type.def->short_name;
+      if (type.def->detailed_name != type.def->short_name)
+        info.containerName = type.def->detailed_name;
       info.kind = lsSymbolKind::Class;
       return info;
     }
     case SymbolKind::Func: {
-      optional<QueryFunc>& func = db->funcs[symbol.idx];
-      if (!func)
+      QueryFunc& func = db->funcs[symbol.idx];
+      if (!func.def)
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = func->def.short_name;
-      info.containerName = func->def.detailed_name;
+      info.name = func.def->short_name;
+      info.containerName = func.def->detailed_name;
       info.kind = lsSymbolKind::Function;
 
-      if (func->def.declaring_type.has_value()) {
-        optional<QueryType>& container =
-            db->types[func->def.declaring_type->id];
-        if (container)
+      if (func.def->declaring_type.has_value()) {
+        QueryType& container =
+            db->types[func.def->declaring_type->id];
+        if (container.def)
           info.kind = lsSymbolKind::Method;
       }
 
       return info;
     }
     case SymbolKind::Var: {
-      optional<QueryVar>& var = db->vars[symbol.idx];
-      if (!var)
+      QueryVar& var = db->vars[symbol.idx];
+      if (!var.def)
         return nullopt;
 
       lsSymbolInformation info;
-      info.name += var->def.short_name;
-      info.containerName = var->def.detailed_name;
+      info.name += var.def->short_name;
+      info.containerName = var.def->detailed_name;
       info.kind = lsSymbolKind::Variable;
       return info;
     }
@@ -585,11 +569,11 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
     if (path_to_edit.find(location.path) == path_to_edit.end()) {
       path_to_edit[location.path] = lsTextDocumentEdit();
 
-      optional<QueryFile>& file = db->files[location.path.id];
-      if (!file)
+      QueryFile& file = db->files[location.path.id];
+      if (!file.def)
         continue;
 
-      const std::string& path = file->def.path;
+      const std::string& path = file.def->path;
       path_to_edit[location.path].textDocument.uri =
           lsDocumentUri::FromPath(path);
 
@@ -630,7 +614,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
       target_line = *index_line;
   }
 
-  for (const SymbolRef& ref : file->def.all_symbols) {
+  for (const SymbolRef& ref : file->def->all_symbols) {
     if (ref.loc.range.Contains(target_line, target_column))
       symbols.push_back(ref);
   }
@@ -660,23 +644,23 @@ NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildParentInheritanceHierarchyForType(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        QueryTypeId root) {
-  optional<QueryType>& root_type = db->types[root.id];
-  if (!root_type)
+  QueryType& root_type = db->types[root.id];
+  if (!root_type.def)
     return {};
 
   NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
-  parent_entries.reserve(root_type->def.parents.size());
+  parent_entries.reserve(root_type.def->parents.size());
 
-  for (QueryTypeId parent_id : root_type->def.parents) {
-    optional<QueryType>& parent_type = db->types[parent_id.id];
-    if (!parent_type)
+  for (QueryTypeId parent_id : root_type.def->parents) {
+    QueryType& parent_type = db->types[parent_id.id];
+    if (!parent_type.def)
       continue;
 
     Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-    parent_entry.name = parent_type->def.detailed_name;
-    if (parent_type->def.definition_spelling)
+    parent_entry.name = parent_type.def->detailed_name;
+    if (parent_type.def->definition_spelling)
       parent_entry.location = GetLsLocation(
-          db, working_files, *parent_type->def.definition_spelling);
+          db, working_files, *parent_type.def->definition_spelling);
     parent_entry.children =
         BuildParentInheritanceHierarchyForType(db, working_files, parent_id);
 
@@ -690,19 +674,19 @@ optional<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildInheritanceHierarchyForType(QueryDatabase* db,
                                  WorkingFiles* working_files,
                                  QueryTypeId root_id) {
-  optional<QueryType>& root_type = db->types[root_id.id];
-  if (!root_type)
+  QueryType& root_type = db->types[root_id.id];
+  if (!root_type.def)
     return nullopt;
 
   Out_CqueryTypeHierarchyTree::TypeEntry entry;
 
   // Name and location.
-  entry.name = root_type->def.detailed_name;
-  if (root_type->def.definition_spelling)
+  entry.name = root_type.def->detailed_name;
+  if (root_type.def->definition_spelling)
     entry.location =
-        GetLsLocation(db, working_files, *root_type->def.definition_spelling);
+        GetLsLocation(db, working_files, *root_type.def->definition_spelling);
 
-  entry.children.reserve(root_type->derived.size());
+  entry.children.reserve(root_type.derived.size());
 
   // Base types.
   Out_CqueryTypeHierarchyTree::TypeEntry base;
@@ -714,7 +698,7 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  for (QueryTypeId derived : root_type->derived) {
+  for (QueryTypeId derived : root_type.derived) {
     auto derived_entry =
         BuildInheritanceHierarchyForType(db, working_files, derived);
     if (derived_entry)
@@ -728,21 +712,21 @@ NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        QueryFuncId root) {
-  optional<QueryFunc>& root_func = db->funcs[root.id];
-  if (!root_func || !root_func->def.base)
+  QueryFunc& root_func = db->funcs[root.id];
+  if (!root_func.def || !root_func.def->base)
     return {};
 
-  optional<QueryFunc>& parent_func = db->funcs[root_func->def.base->id];
-  if (!parent_func)
+  QueryFunc& parent_func = db->funcs[root_func.def->base->id];
+  if (!parent_func.def)
     return {};
 
   Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-  parent_entry.name = parent_func->def.detailed_name;
-  if (parent_func->def.definition_spelling)
+  parent_entry.name = parent_func.def->detailed_name;
+  if (parent_func.def->definition_spelling)
     parent_entry.location =
-        GetLsLocation(db, working_files, *parent_func->def.definition_spelling);
+        GetLsLocation(db, working_files, *parent_func.def->definition_spelling);
   parent_entry.children = BuildParentInheritanceHierarchyForFunc(
-      db, working_files, *root_func->def.base);
+      db, working_files, *root_func.def->base);
 
   NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> entries;
   entries.push_back(parent_entry);
@@ -753,19 +737,19 @@ optional<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildInheritanceHierarchyForFunc(QueryDatabase* db,
                                  WorkingFiles* working_files,
                                  QueryFuncId root_id) {
-  optional<QueryFunc>& root_func = db->funcs[root_id.id];
-  if (!root_func)
+  QueryFunc& root_func = db->funcs[root_id.id];
+  if (!root_func.def)
     return nullopt;
 
   Out_CqueryTypeHierarchyTree::TypeEntry entry;
 
   // Name and location.
-  entry.name = root_func->def.detailed_name;
-  if (root_func->def.definition_spelling)
+  entry.name = root_func.def->detailed_name;
+  if (root_func.def->definition_spelling)
     entry.location =
-        GetLsLocation(db, working_files, *root_func->def.definition_spelling);
+        GetLsLocation(db, working_files, *root_func.def->definition_spelling);
 
-  entry.children.reserve(root_func->derived.size());
+  entry.children.reserve(root_func.derived.size());
 
   // Base types.
   Out_CqueryTypeHierarchyTree::TypeEntry base;
@@ -777,7 +761,7 @@ BuildInheritanceHierarchyForFunc(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  for (QueryFuncId derived : root_func->derived) {
+  for (QueryFuncId derived : root_func.derived) {
     auto derived_entry =
         BuildInheritanceHierarchyForFunc(db, working_files, derived);
     if (derived_entry)
@@ -791,21 +775,19 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
     QueryDatabase* db,
     WorkingFiles* working_files,
     QueryFuncId root) {
-  optional<QueryFunc>& root_func = db->funcs[root.id];
-  if (!root_func)
-    return {};
-  if (!root_func->def.definition_spelling)
+  QueryFunc& root_func = db->funcs[root.id];
+  if (!root_func.def || !root_func.def->definition_spelling)
     return {};
   optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *root_func->def.definition_spelling);
+      GetLsLocation(db, working_files, *root_func.def->definition_spelling);
   if (!def_loc)
     return {};
 
   Out_CqueryCallTree::CallEntry entry;
-  entry.name = root_func->def.short_name;
-  entry.usr = root_func->def.usr;
+  entry.name = root_func.def->short_name;
+  entry.usr = root_func.def->usr;
   entry.location = *def_loc;
-  entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, *root_func);
+  entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, root_func);
   NonElidedVector<Out_CqueryCallTree::CallEntry> result;
   result.push_back(entry);
   return result;
@@ -815,8 +797,8 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     QueryDatabase* db,
     WorkingFiles* working_files,
     QueryFuncId root) {
-  optional<QueryFunc>& root_func = db->funcs[root.id];
-  if (!root_func)
+  QueryFunc& root_func = db->funcs[root.id];
+  if (!root_func.def)
     return {};
 
   auto format_location =
@@ -825,9 +807,9 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     std::string base;
 
     if (declaring_type) {
-      optional<QueryType> type = db->types[declaring_type->id];
-      if (type)
-        base = type->def.detailed_name;
+      QueryType type = db->types[declaring_type->id];
+      if (type.def)
+        base = type.def->detailed_name;
     }
 
     if (base.empty()) {
@@ -869,17 +851,17 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     }
 
     if (caller.has_id()) {
-      optional<QueryFunc>& call_func = db->funcs[caller.id_.id];
-      if (!call_func)
+      QueryFunc& call_func = db->funcs[caller.id_.id];
+      if (!call_func.def)
         return;
 
       Out_CqueryCallTree::CallEntry call_entry;
       call_entry.name =
-          call_func->def.short_name + " (" +
-          format_location(*call_location, call_func->def.declaring_type) + ")";
-      call_entry.usr = call_func->def.usr;
+          call_func.def->short_name + " (" +
+          format_location(*call_location, call_func.def->declaring_type) + ")";
+      call_entry.usr = call_func.def->usr;
       call_entry.location = *call_location;
-      call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, *call_func);
+      call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, call_func);
       call_entry.callType = call_type;
       result.push_back(call_entry);
     } else {
@@ -896,13 +878,13 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
   };
 
   std::vector<QueryFuncRef> base_callers =
-      GetCallersForAllBaseFunctions(db, *root_func);
+      GetCallersForAllBaseFunctions(db, root_func);
   std::vector<QueryFuncRef> derived_callers =
-      GetCallersForAllDerivedFunctions(db, *root_func);
-  result.reserve(root_func->callers.size() + base_callers.size() +
+      GetCallersForAllDerivedFunctions(db, root_func);
+  result.reserve(root_func.callers.size() + base_callers.size() +
                  derived_callers.size());
 
-  for (QueryFuncRef caller : root_func->callers)
+  for (QueryFuncRef caller : root_func.callers)
     handle_caller(caller, Out_CqueryCallTree::CallType::Direct);
   for (QueryFuncRef caller : base_callers) {
     // Do not show calls to the base function coming from this function.

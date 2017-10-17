@@ -169,10 +169,13 @@ struct QueryFile {
 
   using DefUpdate = Def;
 
-  DefUpdate def;
+  optional<DefUpdate> def;
   size_t detailed_name_idx = (size_t)-1;
 
-  QueryFile(const std::string& path) { def.path = path; }
+  QueryFile(const std::string& path) {
+    def = DefUpdate();
+    def->path = path;
+  }
 };
 MAKE_REFLECT_STRUCT(QueryFile::Def, path, outline, all_symbols);
 
@@ -185,7 +188,7 @@ struct QueryType {
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
-  DefUpdate def;
+  optional<DefUpdate> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
@@ -204,7 +207,7 @@ struct QueryFunc {
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
-  DefUpdate def;
+  optional<DefUpdate> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
@@ -218,7 +221,7 @@ struct QueryVar {
       VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
 
-  DefUpdate def;
+  optional<DefUpdate> def;
   std::vector<QueryLocation> uses;
   size_t detailed_name_idx = (size_t)-1;
 
@@ -298,10 +301,10 @@ struct QueryDatabase {
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage. Accessible via SymbolIdx instances.
-  std::vector<optional<QueryFile>> files;
-  std::vector<optional<QueryType>> types;
-  std::vector<optional<QueryFunc>> funcs;
-  std::vector<optional<QueryVar>> vars;
+  std::vector<QueryFile> files;
+  std::vector<QueryType> types;
+  std::vector<QueryFunc> funcs;
+  std::vector<QueryVar> vars;
 
   // Lookup symbol based on a usr.
   // NOTE: For usr_to_file make sure to call LowerPathIfCaseInsensitive on key.
