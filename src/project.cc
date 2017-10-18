@@ -26,6 +26,15 @@ MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
 
 namespace {
 
+bool g_disable_normalize_path_for_test = false;
+
+std::string NormalizePathWithTestOptOut(const std::string& path) {
+  if (g_disable_normalize_path_for_test)
+    return "&" +
+           path;  // Add a & so we can test to verify a path is normalized.
+  return NormalizePath(path);
+}
+
 struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
@@ -35,11 +44,11 @@ struct ProjectConfig {
 
 // TODO: See
 // https://github.com/Valloric/ycmd/blob/master/ycmd/completers/cpp/flags.py.
-static const char* kBlacklistMulti[] = {
+static std::vector<std::string> kBlacklistMulti = {
     "-MF", "-MT", "-MQ", "-o", "--serialize-diagnostics", "-Xclang"};
 
 // Blacklisted flags which are always removed from the command line.
-static const char* kBlacklist[] = {
+static std::vector<std::string> kBlacklist = {
     "-c",
     "-MP",
     "-MD",
@@ -47,35 +56,27 @@ static const char* kBlacklist[] = {
     "--fcolor-diagnostics",
 
     // This strips path-like args but is a bit hacky.
-    // TODO: make sure we consume includes before stripping all path-like args.
-    "/", "..",
+    "/",
+    "..",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
 // all relative paths absolute, otherwise libclang will not resolve them.
-const char* kPathArgs[] = {"-I",           "-iquote",     "-isystem",
-                           "--sysroot=",   "-isysroot",   "-gcc-toolchain",
-                           "-include-pch", "-iframework", "-F",
-                           "-imacros"};
+static std::vector<std::string> kPathArgs = {
+    "-I",        "-iquote",        "-isystem",     "--sysroot=",
+    "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
+    "-F",        "-imacros"};
 
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
-const char* kQuoteIncludeArgs[] = {"-iquote"};
-const char* kAngleIncludeArgs[] = {"-I", "-isystem"};
+static std::vector<std::string> kQuoteIncludeArgs = {"-iquote"};
+static std::vector<std::string> kAngleIncludeArgs = {"-I", "-isystem"};
 
 bool ShouldAddToQuoteIncludes(const std::string& arg) {
-  for (const char* flag_type : kQuoteIncludeArgs) {
-    if (arg == flag_type)
-      return true;
-  }
-  return false;
+  return StartsWithAny(arg, kQuoteIncludeArgs);
 }
 bool ShouldAddToAngleIncludes(const std::string& arg) {
-  for (const char* flag_type : kAngleIncludeArgs) {
-    if (StartsWith(arg, flag_type))
-      return true;
-  }
-  return false;
+  return StartsWithAny(arg, kAngleIncludeArgs);
 }
 
 // Returns true if we should use the C, not C++, language spec for the given
@@ -88,7 +89,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {
   Project::Entry result;
-  result.filename = NormalizePath(entry.file);
+  result.filename = NormalizePathWithTestOptOut(entry.file);
 
   size_t i = 0;
 
@@ -99,63 +100,61 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     ++i;
   // Include the compiler in the args.
   if (i > 0)
-    --i;
+    result.args.push_back(entry.args[i - 1]);
 
-  bool make_next_flag_absolute = false;
-  bool add_next_flag_quote = false;
-  bool add_next_flag_angle = false;
+  bool next_flag_is_path = false;
+  bool add_next_flag_to_quote_dirs = false;
+  bool add_next_flag_to_angle_dirs = false;
 
   result.args.reserve(entry.args.size() + config->extra_flags.size());
   for (; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
 
     // If blacklist skip.
-    if (std::any_of(
-            std::begin(kBlacklistMulti), std::end(kBlacklistMulti),
-            [&arg](const char* value) { return StartsWith(arg, value); })) {
-      ++i;
-      continue;
+    if (!next_flag_is_path) {
+      if (StartsWithAny(arg, kBlacklistMulti)) {
+        ++i;
+        continue;
+      }
+      if (StartsWithAny(arg, kBlacklist))
+        continue;
     }
-    if (std::any_of(
-            std::begin(kBlacklist), std::end(kBlacklist),
-            [&arg](const char* value) { return StartsWith(arg, value); })) {
-      continue;
-    }
+
+    auto cleanup_maybe_relative_path = [entry](const std::string& path) {
+      assert(!path.empty());
+      if (path[0] == '/')
+        return NormalizePathWithTestOptOut(path);
+      return NormalizePathWithTestOptOut(entry.directory + "/" + path);
+    };
 
     // Cleanup path for previous argument.
-    if (make_next_flag_absolute) {
-      if (arg.size() > 0 && arg[0] != '/')
-        arg = NormalizePath(entry.directory + arg);
+    if (next_flag_is_path) {
+      arg = cleanup_maybe_relative_path(arg);
 
-      if (add_next_flag_quote)
+      if (add_next_flag_to_quote_dirs)
         config->quote_dirs.insert(arg);
-      if (add_next_flag_angle)
+      if (add_next_flag_to_angle_dirs)
         config->angle_dirs.insert(arg);
 
-      make_next_flag_absolute = false;
-      add_next_flag_quote = false;
-      add_next_flag_angle = false;
+      next_flag_is_path = false;
+      add_next_flag_to_quote_dirs = false;
+      add_next_flag_to_angle_dirs = false;
     }
 
     // Update arg if it is a path.
-    for (const char* flag_type : kPathArgs) {
+    for (const std::string& flag_type : kPathArgs) {
       if (arg == flag_type) {
-        make_next_flag_absolute = true;
-        add_next_flag_quote = ShouldAddToQuoteIncludes(arg);
-        add_next_flag_angle = ShouldAddToAngleIncludes(arg);
+        next_flag_is_path = true;
+        add_next_flag_to_quote_dirs = ShouldAddToQuoteIncludes(arg);
+        add_next_flag_to_angle_dirs = ShouldAddToAngleIncludes(arg);
         break;
       }
 
       if (StartsWith(arg, flag_type)) {
-        std::string path = arg.substr(strlen(flag_type));
-        if (path.size() > 0 && path[0] != '/') {
-          // TODO: should this be entry.directory or config->project_dir?
-          if (!entry.directory.empty())
-            path = entry.directory + "/" + path;
-          path = NormalizePath(path);
-
-          arg = flag_type + path;
-        }
+        std::string path = arg.substr(flag_type.size());
+        assert(!path.empty());
+        path = cleanup_maybe_relative_path(path);
+        arg = flag_type + path;
         if (ShouldAddToQuoteIncludes(arg))
           config->quote_dirs.insert(path);
         if (ShouldAddToAngleIncludes(arg))
@@ -186,6 +185,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       result.args.push_back("-std=c++11");
   }
 
+  // TODO: Add
+  // "-resource-dir=/home/jdufault/.vim/bundle/YouCompleteMe/third_party/ycmd/ycmd/../clang_includes",
+  // we can extract this from build dir.
+
   return result;
 }
 
@@ -211,7 +214,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
     if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") ||
         EndsWith(file, ".c")) {
       CompileCommandsEntry e;
-      e.file = NormalizePath(file);
+      e.file = NormalizePathWithTestOptOut(file);
       e.args = args;
       result.push_back(GetCompilationEntryFromCompileCommandEntry(config, e));
     }
@@ -250,7 +253,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     std::string absolute_filename = directory + "/" + relative_filename;
 
     CompileCommandsEntry entry;
-    entry.file = NormalizePath(absolute_filename);
+    entry.file = NormalizePathWithTestOptOut(absolute_filename);
     entry.directory = directory;
 
     unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
@@ -382,492 +385,755 @@ void Project::ForAllFilteredFiles(
 
 TEST_SUITE("Project");
 
-void CheckFlags(std::vector<std::string> raw,
+void CheckFlags(const std::string& directory,
+                const std::string& file,
+                std::vector<std::string> raw,
                 std::vector<std::string> expected) {
+  g_disable_normalize_path_for_test = true;
+
   ProjectConfig config;
-  config.project_dir = "/work2/chrome/src/";
+  config.project_dir = "/w/c/s/";
 
   CompileCommandsEntry entry;
-  entry.directory = "/dir/";
+  entry.directory = directory;
   entry.args = raw;
-  entry.file = "file.cc";
+  entry.file = file;
   Project::Entry result =
       GetCompilationEntryFromCompileCommandEntry(&config, entry);
 
-  std::cout << "Expected - Actual\n\n";
+  bool printed_header = false;
   for (int i = 0; i < std::min(result.args.size(), expected.size()); ++i) {
-    if (result.args[i] != expected[i])
+    if (result.args[i] != expected[i]) {
+      if (!printed_header) {
+        printed_header = true;
+        std::cout << "Expected - Actual\n\n";
+      }
+
       std::cout << "mismatch at " << i << "; expected " << expected[i]
                 << " but got " << result.args[i] << std::endl;
+    }
   }
   REQUIRE(result.args == expected);
 }
 
-TEST_CASE("strip flags before compiler") {
-  CheckFlags({"clang", "-lstdc++", "myfile.cc"},
-             {"-lstdc++", "myfile.cc", "-xc++", "-std=c++11"});
-
-  CheckFlags({"goma", "clang"}, {"-xc++", "-std=c++11"});
-
-  CheckFlags({"goma", "clang", "--foo"}, {"--foo", "-xc++", "-std=c++11"});
+void CheckFlags(std::vector<std::string> raw,
+                std::vector<std::string> expected) {
+  CheckFlags("/dir/", "file.cc", raw, expected);
 }
 
-#if false
+TEST_CASE("strip meta-compiler invocations") {
+  CheckFlags(
+      /* raw */ {"clang", "-lstdc++", "myfile.cc"},
+      /* expected */ {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11"});
+
+  CheckFlags(/* raw */ {"goma", "clang"},
+             /* expected */ {"clang", "-xc++", "-std=c++11"});
+
+  CheckFlags(/* raw */ {"goma", "clang", "--foo"},
+             /* expected */ {"clang", "--foo", "-xc++", "-std=c++11"});
+}
+
+// Checks flag parsing for a random chromium file in comparison to what
+// YouCompleteMe fetches.
 TEST_CASE("ycm") {
-  ProjectConfig config;
-  config.project_dir = "/work2/chrome/src/";
+  CheckFlags(
+      "/w/c/s/out/Release", "../../ash/login/lock_screen_sanity_unittest.cc",
 
-  CompileCommandsEntry entry;
-  entry.directory = "/work2/chrome/src/out/Release";
-  entry.args = {
-    "/work/goma/gomacc", "../../third_party/llvm-build/Release+Asserts/bin/clang++", "-MMD", "-MF", "obj/ash/ash_unittests/lock_screen_sanity_unittest.o.d", "-DV8_DEPRECATION_WARNINGS", "-DDCHECK_ALWAYS_ON=1", "-DUSE_UDEV", "-DUSE_AURA=1", "-DUSE_NSS_CERTS=1", "-DUSE_OZONE=1", "-DFULL_SAFE_BROWSING", "-DSAFE_BROWSING_CSD", "-DSAFE_BROWSING_DB_LOCAL", "-DCHROMIUM_BUILD", "-DFIELDTRIAL_TESTING_ENABLED", "-D_FILE_OFFSET_BITS=64", "-D_LARGEFILE_SOURCE", "-D_LARGEFILE64_SOURCE", "-DCR_CLANG_REVISION=\"313786-1\"", "-D__STDC_CONSTANT_MACROS", "-D__STDC_FORMAT_MACROS", "-DCOMPONENT_BUILD", "-DOS_CHROMEOS", "-DNDEBUG", "-DNVALGRIND", "-DDYNAMIC_ANNOTATIONS_ENABLED=0", "-DGL_GLEXT_PROTOTYPES", "-DUSE_GLX", "-DUSE_EGL", "-DANGLE_ENABLE_RELEASE_ASSERTS", "-DTOOLKIT_VIEWS=1", "-DGTEST_API_=", "-DGTEST_HAS_POSIX_RE=0", "-DGTEST_LANG_CXX11=1", "-DUNIT_TEST", "-DUSING_V8_SHARED", "-DU_USING_ICU_NAMESPACE=0", "-DU_ENABLE_DYLOAD=0", "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE", "-DUCHAR_TYPE=uint16_t", "-DGOOGLE_PROTOBUF_NO_RTTI", "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER", "-DHAVE_PTHREAD", "-DPROTOBUF_USE_DLLS", "-DBORINGSSL_SHARED_LIBRARY", "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS", "-DSK_HAS_PNG_LIBRARY", "-DSK_HAS_WEBP_LIBRARY", "-DSK_HAS_JPEG_LIBRARY", "-DSKIA_DLL", "-DGR_GL_IGNORE_ES3_MSAA=0", "-DSK_SUPPORT_GPU=1", "-DMESA_EGL_NO_X11_HEADERS", "-I../..", "-Igen", "-I../../third_party/libwebp/src", "-I../../third_party/khronos", "-I../../gpu", "-I../../third_party/googletest/src/googletest/include", "-I../../third_party/WebKit", "-Igen/third_party/WebKit", "-I../../v8/include", "-Igen/v8/include", "-I../../third_party/icu/source/common", "-I../../third_party/icu/source/i18n", "-I../../third_party/protobuf/src", "-Igen/protoc_out", "-I../../third_party/protobuf/src", "-I../../third_party/boringssl/src/include", "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nss", "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nspr", "-I../../skia/config", "-I../../skia/ext", "-I../../third_party/skia/include/c", "-I../../third_party/skia/include/config", "-I../../third_party/skia/include/core", "-I../../third_party/skia/include/effects", "-I../../third_party/skia/include/encode", "-I../../third_party/skia/include/gpu", "-I../../third_party/skia/include/images", "-I../../third_party/skia/include/lazy", "-I../../third_party/skia/include/pathops", "-I../../third_party/skia/include/pdf", "-I../../third_party/skia/include/pipe", "-I../../third_party/skia/include/ports", "-I../../third_party/skia/include/utils", "-I../../third_party/skia/third_party/vulkan", "-I../../third_party/skia/include/codec", "-I../../third_party/skia/src/gpu", "-I../../third_party/skia/src/sksl", "-I../../third_party/ced/src", "-I../../third_party/mesa/src/include", "-I../../third_party/libwebm/source", "-Igen", "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/dbus-1.0", "-I../../build/linux/debian_jessie_amd64-sysroot/usr/lib/x86_64-linux-gnu/dbus-1.0/include", "-I../../third_party/googletest/custom", "-I../../third_party/googletest/src/googlemock/include", "-fno-strict-aliasing", "-Wno-builtin-macro-redefined", "-D__DATE__=", "-D__TIME__=", "-D__TIMESTAMP__=", "-funwind-tables", "-fPIC", "-pipe", "-B../../third_party/binutils/Linux_x64/Release/bin", "-pthread", "-fcolor-diagnostics", "-no-canonical-prefixes", "-m64", "-march=x86-64", "-Wall", "-Werror", "-Wextra", "-Wno-missing-field-initializers", "-Wno-unused-parameter", "-Wno-c++11-narrowing", "-Wno-covered-switch-default", "-Wno-unneeded-internal-declaration", "-Wno-inconsistent-missing-override", "-Wno-undefined-var-template", "-Wno-nonportable-include-path", "-Wno-address-of-packed-member", "-Wno-unused-lambda-capture", "-Wno-user-defined-warnings", "-Wno-enum-compare-switch", "-Wno-tautological-unsigned-zero-compare", "-Wno-null-pointer-arithmetic", "-Wno-tautological-unsigned-enum-zero-compare", "-O2", "-fno-ident", "-fdata-sections", "-ffunction-sections", "-fno-omit-frame-pointer", "-g0", "-fvisibility=hidden", "-Xclang", "-load", "-Xclang", "../../third_party/llvm-build/Release+Asserts/lib/libFindBadConstructs.so", "-Xclang", "-add-plugin", "-Xclang", "find-bad-constructs", "-Xclang", "-plugin-arg-find-bad-constructs", "-Xclang", "check-auto-raw-pointer", "-Xclang", "-plugin-arg-find-bad-constructs", "-Xclang", "check-ipc", "-Wheader-hygiene", "-Wstring-conversion", "-Wtautological-overlap-compare", "-Wno-header-guard", "-std=gnu++14", "-fno-rtti", "-nostdinc++", "-isystem../../buildtools/third_party/libc++/trunk/include", "-isystem../../buildtools/third_party/libc++abi/trunk/include", "--sysroot=../../build/linux/debian_jessie_amd64-sysroot", "-fno-exceptions", "-fvisibility-inlines-hidden", "-c", "../../ash/login/ui/lock_screen_sanity_unittest.cc", "-o", "obj/ash/ash_unittests/lock_screen_sanity_unittest.o",
-  };
-  entry.file = "../../ash/login/lock_screen_sanity_unittest.cc";
-  Project::Entry result =
-      GetCompilationEntryFromCompileCommandEntry(&config, entry);
+      /* raw */
+      {
+          "/work/goma/gomacc",
+          "../../third_party/llvm-build/Release+Asserts/bin/clang++",
+          "-MMD",
+          "-MF",
+          "obj/ash/ash_unittests/lock_screen_sanity_unittest.o.d",
+          "-DV8_DEPRECATION_WARNINGS",
+          "-DDCHECK_ALWAYS_ON=1",
+          "-DUSE_UDEV",
+          "-DUSE_AURA=1",
+          "-DUSE_NSS_CERTS=1",
+          "-DUSE_OZONE=1",
+          "-DFULL_SAFE_BROWSING",
+          "-DSAFE_BROWSING_CSD",
+          "-DSAFE_BROWSING_DB_LOCAL",
+          "-DCHROMIUM_BUILD",
+          "-DFIELDTRIAL_TESTING_ENABLED",
+          "-D_FILE_OFFSET_BITS=64",
+          "-D_LARGEFILE_SOURCE",
+          "-D_LARGEFILE64_SOURCE",
+          "-DCR_CLANG_REVISION=\"313786-1\"",
+          "-D__STDC_CONSTANT_MACROS",
+          "-D__STDC_FORMAT_MACROS",
+          "-DCOMPONENT_BUILD",
+          "-DOS_CHROMEOS",
+          "-DNDEBUG",
+          "-DNVALGRIND",
+          "-DDYNAMIC_ANNOTATIONS_ENABLED=0",
+          "-DGL_GLEXT_PROTOTYPES",
+          "-DUSE_GLX",
+          "-DUSE_EGL",
+          "-DANGLE_ENABLE_RELEASE_ASSERTS",
+          "-DTOOLKIT_VIEWS=1",
+          "-DGTEST_API_=",
+          "-DGTEST_HAS_POSIX_RE=0",
+          "-DGTEST_LANG_CXX11=1",
+          "-DUNIT_TEST",
+          "-DUSING_V8_SHARED",
+          "-DU_USING_ICU_NAMESPACE=0",
+          "-DU_ENABLE_DYLOAD=0",
+          "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE",
+          "-DUCHAR_TYPE=uint16_t",
+          "-DGOOGLE_PROTOBUF_NO_RTTI",
+          "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER",
+          "-DHAVE_PTHREAD",
+          "-DPROTOBUF_USE_DLLS",
+          "-DBORINGSSL_SHARED_LIBRARY",
+          "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
+          "-DSK_HAS_PNG_LIBRARY",
+          "-DSK_HAS_WEBP_LIBRARY",
+          "-DSK_HAS_JPEG_LIBRARY",
+          "-DSKIA_DLL",
+          "-DGR_GL_IGNORE_ES3_MSAA=0",
+          "-DSK_SUPPORT_GPU=1",
+          "-DMESA_EGL_NO_X11_HEADERS",
+          "-I../..",
+          "-Igen",
+          "-I../../third_party/libwebp/src",
+          "-I../../third_party/khronos",
+          "-I../../gpu",
+          "-I../../third_party/googletest/src/googletest/include",
+          "-I../../third_party/WebKit",
+          "-Igen/third_party/WebKit",
+          "-I../../v8/include",
+          "-Igen/v8/include",
+          "-I../../third_party/icu/source/common",
+          "-I../../third_party/icu/source/i18n",
+          "-I../../third_party/protobuf/src",
+          "-Igen/protoc_out",
+          "-I../../third_party/protobuf/src",
+          "-I../../third_party/boringssl/src/include",
+          "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nss",
+          "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nspr",
+          "-I../../skia/config",
+          "-I../../skia/ext",
+          "-I../../third_party/skia/include/c",
+          "-I../../third_party/skia/include/config",
+          "-I../../third_party/skia/include/core",
+          "-I../../third_party/skia/include/effects",
+          "-I../../third_party/skia/include/encode",
+          "-I../../third_party/skia/include/gpu",
+          "-I../../third_party/skia/include/images",
+          "-I../../third_party/skia/include/lazy",
+          "-I../../third_party/skia/include/pathops",
+          "-I../../third_party/skia/include/pdf",
+          "-I../../third_party/skia/include/pipe",
+          "-I../../third_party/skia/include/ports",
+          "-I../../third_party/skia/include/utils",
+          "-I../../third_party/skia/third_party/vulkan",
+          "-I../../third_party/skia/include/codec",
+          "-I../../third_party/skia/src/gpu",
+          "-I../../third_party/skia/src/sksl",
+          "-I../../third_party/ced/src",
+          "-I../../third_party/mesa/src/include",
+          "-I../../third_party/libwebm/source",
+          "-Igen",
+          "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/"
+          "dbus-1.0",
+          "-I../../build/linux/debian_jessie_amd64-sysroot/usr/lib/"
+          "x86_64-linux-gnu/dbus-1.0/include",
+          "-I../../third_party/googletest/custom",
+          "-I../../third_party/googletest/src/googlemock/include",
+          "-fno-strict-aliasing",
+          "-Wno-builtin-macro-redefined",
+          "-D__DATE__=",
+          "-D__TIME__=",
+          "-D__TIMESTAMP__=",
+          "-funwind-tables",
+          "-fPIC",
+          "-pipe",
+          "-B../../third_party/binutils/Linux_x64/Release/bin",
+          "-pthread",
+          "-fcolor-diagnostics",
+          "-no-canonical-prefixes",
+          "-m64",
+          "-march=x86-64",
+          "-Wall",
+          "-Werror",
+          "-Wextra",
+          "-Wno-missing-field-initializers",
+          "-Wno-unused-parameter",
+          "-Wno-c++11-narrowing",
+          "-Wno-covered-switch-default",
+          "-Wno-unneeded-internal-declaration",
+          "-Wno-inconsistent-missing-override",
+          "-Wno-undefined-var-template",
+          "-Wno-nonportable-include-path",
+          "-Wno-address-of-packed-member",
+          "-Wno-unused-lambda-capture",
+          "-Wno-user-defined-warnings",
+          "-Wno-enum-compare-switch",
+          "-Wno-tautological-unsigned-zero-compare",
+          "-Wno-null-pointer-arithmetic",
+          "-Wno-tautological-unsigned-enum-zero-compare",
+          "-O2",
+          "-fno-ident",
+          "-fdata-sections",
+          "-ffunction-sections",
+          "-fno-omit-frame-pointer",
+          "-g0",
+          "-fvisibility=hidden",
+          "-Xclang",
+          "-load",
+          "-Xclang",
+          "../../third_party/llvm-build/Release+Asserts/lib/"
+          "libFindBadConstructs.so",
+          "-Xclang",
+          "-add-plugin",
+          "-Xclang",
+          "find-bad-constructs",
+          "-Xclang",
+          "-plugin-arg-find-bad-constructs",
+          "-Xclang",
+          "check-auto-raw-pointer",
+          "-Xclang",
+          "-plugin-arg-find-bad-constructs",
+          "-Xclang",
+          "check-ipc",
+          "-Wheader-hygiene",
+          "-Wstring-conversion",
+          "-Wtautological-overlap-compare",
+          "-Wno-header-guard",
+          "-std=gnu++14",
+          "-fno-rtti",
+          "-nostdinc++",
+          "-isystem../../buildtools/third_party/libc++/trunk/include",
+          "-isystem../../buildtools/third_party/libc++abi/trunk/include",
+          "--sysroot=../../build/linux/debian_jessie_amd64-sysroot",
+          "-fno-exceptions",
+          "-fvisibility-inlines-hidden",
+          "-c",
+          "../../ash/login/ui/lock_screen_sanity_unittest.cc",
+          "-o",
+          "obj/ash/ash_unittests/lock_screen_sanity_unittest.o",
+      },
 
-  std::vector<std::string> expected_args{
-    "../../third_party/llvm-build/Release+Asserts/bin/clang++", "-x", "c++", "-DV8_DEPRECATION_WARNINGS", "-DDCHECK_ALWAYS_ON=1", "-DUSE_UDEV", "-DUSE_AURA=1",
-    "-DUSE_NSS_CERTS=1", "-DUSE_OZONE=1", "-DFULL_SAFE_BROWSING", "-DSAFE_BROWSING_CSD", "-DSAFE_BROWSING_DB_LOCAL", "-DCHROMIUM_BUILD", "-DFIELDTRIAL_TESTING_ENABLED",
-    "-D_FILE_OFFSET_BITS=64", "-D_LARGEFILE_SOURCE", "-D_LARGEFILE64_SOURCE", "-DCR_CLANG_REVISION=\"313786-1\"", "-D__STDC_CONSTANT_MACROS", "-D__STDC_FORMAT_MACROS",
-    "-DCOMPONENT_BUILD", "-DOS_CHROMEOS", "-DNDEBUG", "-DNVALGRIND", "-DDYNAMIC_ANNOTATIONS_ENABLED=0", "-DGL_GLEXT_PROTOTYPES", "-DUSE_GLX", "-DUSE_EGL",
-    "-DANGLE_ENABLE_RELEASE_ASSERTS", "-DTOOLKIT_VIEWS=1", "-DGTEST_API_=", "-DGTEST_HAS_POSIX_RE=0", "-DGTEST_LANG_CXX11=1", "-DUNIT_TEST", "-DUSING_V8_SHARED",
-    "-DU_USING_ICU_NAMESPACE=0", "-DU_ENABLE_DYLOAD=0", "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE", "-DUCHAR_TYPE=uint16_t", "-DGOOGLE_PROTOBUF_NO_RTTI",
-    "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER", "-DHAVE_PTHREAD", "-DPROTOBUF_USE_DLLS", "-DBORINGSSL_SHARED_LIBRARY", "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
-    "-DSK_HAS_PNG_LIBRARY", "-DSK_HAS_WEBP_LIBRARY", "-DSK_HAS_JPEG_LIBRARY", "-DSKIA_DLL", "-DGR_GL_IGNORE_ES3_MSAA=0", "-DSK_SUPPORT_GPU=1", "-DMESA_EGL_NO_X11_HEADERS",
-    "-I/work2/chrome/src", "-I/work2/chrome/src/out/Release/gen", "-I/work2/chrome/src/third_party/libwebp/src", "-I/work2/chrome/src/third_party/khronos", "-I/work2/chrome/src/gpu",
-    "-I/work2/chrome/src/third_party/googletest/src/googletest/include", "-I/work2/chrome/src/third_party/WebKit", "-I/work2/chrome/src/out/Release/gen/third_party/WebKit",
-    "-I/work2/chrome/src/v8/include", "-I/work2/chrome/src/out/Release/gen/v8/include", "-I/work2/chrome/src/third_party/icu/source/common",
-    "-I/work2/chrome/src/third_party/icu/source/i18n", "-I/work2/chrome/src/third_party/protobuf/src", "-I/work2/chrome/src/out/Release/gen/protoc_out",
-    "-I/work2/chrome/src/third_party/protobuf/src", "-I/work2/chrome/src/third_party/boringssl/src/include",
-    "-I/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot/usr/include/nss", "-I/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot/usr/include/nspr",
-    "-I/work2/chrome/src/skia/config", "-I/work2/chrome/src/skia/ext", "-I/work2/chrome/src/third_party/skia/include/c", "-I/work2/chrome/src/third_party/skia/include/config",
-    "-I/work2/chrome/src/third_party/skia/include/core", "-I/work2/chrome/src/third_party/skia/include/effects", "-I/work2/chrome/src/third_party/skia/include/encode",
-    "-I/work2/chrome/src/third_party/skia/include/gpu", "-I/work2/chrome/src/third_party/skia/include/images",
-    "-I/work2/chrome/src/third_party/skia/include/lazy", "-I/work2/chrome/src/third_party/skia/include/pathops", "-I/work2/chrome/src/third_party/skia/include/pdf",
-    "-I/work2/chrome/src/third_party/skia/include/pipe", "-I/work2/chrome/src/third_party/skia/include/ports", "-I/work2/chrome/src/third_party/skia/include/utils",
-    "-I/work2/chrome/src/third_party/skia/third_party/vulkan", "-I/work2/chrome/src/third_party/skia/include/codec", "-I/work2/chrome/src/third_party/skia/src/gpu",
-    "-I/work2/chrome/src/third_party/skia/src/sksl", "-I/work2/chrome/src/third_party/ced/src", "-I/work2/chrome/src/third_party/mesa/src/include",
-    "-I/work2/chrome/src/third_party/libwebm/source", "-I/work2/chrome/src/out/Release/gen", "-I/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot/usr/include/dbus-1.0",
-    "-I/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot/usr/lib/x86_64-linux-gnu/dbus-1.0/include", "-I/work2/chrome/src/third_party/googletest/custom",
-    "-I/work2/chrome/src/third_party/googletest/src/googlemock/include", "-fno-strict-aliasing", "-Wno-builtin-macro-redefined", "-D__DATE__=", "-D__TIME__=", "-D__TIMESTAMP__=",
-    "-funwind-tables", "-fPIC", "-pipe", "-B../../third_party/binutils/Linux_x64/Release/bin", "-pthread", "-fcolor-diagnostics", "-no-canonical-prefixes", "-m64", "-march=x86-64",
-    "-Wall", "-Werror", "-Wextra", "-Wno-missing-field-initializers", "-Wno-unused-parameter", "-Wno-c++11-narrowing", "-Wno-covered-switch-default", "-Wno-unneeded-internal-declaration",
-    "-Wno-inconsistent-missing-override", "-Wno-undefined-var-template", "-Wno-nonportable-include-path", "-Wno-address-of-packed-member", "-Wno-unused-lambda-capture",
-    "-Wno-user-defined-warnings", "-Wno-enum-compare-switch", "-Wno-tautological-unsigned-zero-compare", "-Wno-null-pointer-arithmetic", "-Wno-tautological-unsigned-enum-zero-compare",
-    "-O2", "-fno-ident", "-fdata-sections", "-ffunction-sections", "-fno-omit-frame-pointer", "-g0", "-fvisibility=hidden", "-Wheader-hygiene", "-Wstring-conversion",
-    "-Wtautological-overlap-compare", "-Wno-header-guard", "-std=gnu++14", "-fno-rtti", "-nostdinc++", "-isystem/work2/chrome/src/buildtools/third_party/libc++/trunk/include",
-    "-isystem/work2/chrome/src/buildtools/third_party/libc++abi/trunk/include", "--sysroot=/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot", "-fno-exceptions",
-    "-fvisibility-inlines-hidden", "-resource-dir=/usr/local/google/home/jdufault/.vim/bundle/YouCompleteMe/third_party/ycmd/ycmd/../clang_includes", "-fspell-checking"
-  };
-  std::cout << "Expected - Actual\n\n";
-  for (int i = 0; i < std::min(result.args.size(), expected_args.size()); ++i) {
-    if (result.args[i] != expected_args[i])
-      std::cout << "mismatch at " << i << "; expected " << expected_args[i]
-                << " but got " << result.args[i] << std::endl;
-  }
-  REQUIRE(result.args == expected_args);
+      /* expected */
+      {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
+       "-DV8_DEPRECATION_WARNINGS",
+       "-DDCHECK_ALWAYS_ON=1",
+       "-DUSE_UDEV",
+       "-DUSE_AURA=1",
+       "-DUSE_NSS_CERTS=1",
+       "-DUSE_OZONE=1",
+       "-DFULL_SAFE_BROWSING",
+       "-DSAFE_BROWSING_CSD",
+       "-DSAFE_BROWSING_DB_LOCAL",
+       "-DCHROMIUM_BUILD",
+       "-DFIELDTRIAL_TESTING_ENABLED",
+       "-D_FILE_OFFSET_BITS=64",
+       "-D_LARGEFILE_SOURCE",
+       "-D_LARGEFILE64_SOURCE",
+       "-DCR_CLANG_REVISION=\"313786-1\"",
+       "-D__STDC_CONSTANT_MACROS",
+       "-D__STDC_FORMAT_MACROS",
+       "-DCOMPONENT_BUILD",
+       "-DOS_CHROMEOS",
+       "-DNDEBUG",
+       "-DNVALGRIND",
+       "-DDYNAMIC_ANNOTATIONS_ENABLED=0",
+       "-DGL_GLEXT_PROTOTYPES",
+       "-DUSE_GLX",
+       "-DUSE_EGL",
+       "-DANGLE_ENABLE_RELEASE_ASSERTS",
+       "-DTOOLKIT_VIEWS=1",
+       "-DGTEST_API_=",
+       "-DGTEST_HAS_POSIX_RE=0",
+       "-DGTEST_LANG_CXX11=1",
+       "-DUNIT_TEST",
+       "-DUSING_V8_SHARED",
+       "-DU_USING_ICU_NAMESPACE=0",
+       "-DU_ENABLE_DYLOAD=0",
+       "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE",
+       "-DUCHAR_TYPE=uint16_t",
+       "-DGOOGLE_PROTOBUF_NO_RTTI",
+       "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER",
+       "-DHAVE_PTHREAD",
+       "-DPROTOBUF_USE_DLLS",
+       "-DBORINGSSL_SHARED_LIBRARY",
+       "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
+       "-DSK_HAS_PNG_LIBRARY",
+       "-DSK_HAS_WEBP_LIBRARY",
+       "-DSK_HAS_JPEG_LIBRARY",
+       "-DSKIA_DLL",
+       "-DGR_GL_IGNORE_ES3_MSAA=0",
+       "-DSK_SUPPORT_GPU=1",
+       "-DMESA_EGL_NO_X11_HEADERS",
+       "-I&/w/c/s/out/Release/../..",
+       "-I&/w/c/s/out/Release/gen",
+       "-I&/w/c/s/out/Release/../../third_party/libwebp/src",
+       "-I&/w/c/s/out/Release/../../third_party/khronos",
+       "-I&/w/c/s/out/Release/../../gpu",
+       "-I&/w/c/s/out/Release/../../third_party/googletest/src/googletest/"
+       "include",
+       "-I&/w/c/s/out/Release/../../third_party/WebKit",
+       "-I&/w/c/s/out/Release/gen/third_party/WebKit",
+       "-I&/w/c/s/out/Release/../../v8/include",
+       "-I&/w/c/s/out/Release/gen/v8/include",
+       "-I&/w/c/s/out/Release/../../third_party/icu/source/common",
+       "-I&/w/c/s/out/Release/../../third_party/icu/source/i18n",
+       "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
+       "-I&/w/c/s/out/Release/gen/protoc_out",
+       "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
+       "-I&/w/c/s/out/Release/../../third_party/boringssl/src/include",
+       "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+       "usr/include/nss",
+       "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+       "usr/include/nspr",
+       "-I&/w/c/s/out/Release/../../skia/config",
+       "-I&/w/c/s/out/Release/../../skia/ext",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/c",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/config",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/core",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/effects",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/encode",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/gpu",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/images",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/lazy",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/pathops",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/pdf",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/pipe",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/ports",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/utils",
+       "-I&/w/c/s/out/Release/../../third_party/skia/third_party/vulkan",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/codec",
+       "-I&/w/c/s/out/Release/../../third_party/skia/src/gpu",
+       "-I&/w/c/s/out/Release/../../third_party/skia/src/sksl",
+       "-I&/w/c/s/out/Release/../../third_party/ced/src",
+       "-I&/w/c/s/out/Release/../../third_party/mesa/src/include",
+       "-I&/w/c/s/out/Release/../../third_party/libwebm/source",
+       "-I&/w/c/s/out/Release/gen",
+       "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+       "usr/include/dbus-1.0",
+       "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+       "usr/lib/x86_64-linux-gnu/dbus-1.0/include",
+       "-I&/w/c/s/out/Release/../../third_party/googletest/custom",
+       "-I&/w/c/s/out/Release/../../third_party/googletest/src/googlemock/"
+       "include",
+       "-fno-strict-aliasing",
+       "-Wno-builtin-macro-redefined",
+       "-D__DATE__=",
+       "-D__TIME__=",
+       "-D__TIMESTAMP__=",
+       "-funwind-tables",
+       "-fPIC",
+       "-pipe",
+       "-B../../third_party/binutils/Linux_x64/Release/bin",
+       "-pthread",
+       "-fcolor-diagnostics",
+       "-no-canonical-prefixes",
+       "-m64",
+       "-march=x86-64",
+       "-Wall",
+       "-Werror",
+       "-Wextra",
+       "-Wno-missing-field-initializers",
+       "-Wno-unused-parameter",
+       "-Wno-c++11-narrowing",
+       "-Wno-covered-switch-default",
+       "-Wno-unneeded-internal-declaration",
+       "-Wno-inconsistent-missing-override",
+       "-Wno-undefined-var-template",
+       "-Wno-nonportable-include-path",
+       "-Wno-address-of-packed-member",
+       "-Wno-unused-lambda-capture",
+       "-Wno-user-defined-warnings",
+       "-Wno-enum-compare-switch",
+       "-Wno-tautological-unsigned-zero-compare",
+       "-Wno-null-pointer-arithmetic",
+       "-Wno-tautological-unsigned-enum-zero-compare",
+       "-O2",
+       "-fno-ident",
+       "-fdata-sections",
+       "-ffunction-sections",
+       "-fno-omit-frame-pointer",
+       "-g0",
+       "-fvisibility=hidden",
+       "-Wheader-hygiene",
+       "-Wstring-conversion",
+       "-Wtautological-overlap-compare",
+       "-Wno-header-guard",
+       "-std=gnu++14",
+       "-fno-rtti",
+       "-nostdinc++",
+       "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++/trunk/"
+       "include",
+       "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++abi/"
+       "trunk/"
+       "include",
+       "--sysroot=&/w/c/s/out/Release/../../build/linux/"
+       "debian_jessie_amd64-sysroot",
+       "-fno-exceptions",
+       "-fvisibility-inlines-hidden",
+       "-xc++"});
 }
-#endif
 
+// Checks flag parsing for an example chromium file.
 TEST_CASE("chromium") {
-  ProjectConfig config;
-  config.project_dir = "/work2/chrome/src/";
+  CheckFlags(
+      "/w/c/s/out/Release", "../../apps/app_lifetime_monitor.cc",
+      /* raw */
+      {"/work/goma/gomacc",
+       "../../third_party/llvm-build/Release+Asserts/bin/clang++",
+       "-MMD",
+       "-MF",
+       "obj/apps/apps/app_lifetime_monitor.o.d",
+       "-DV8_DEPRECATION_WARNINGS",
+       "-DDCHECK_ALWAYS_ON=1",
+       "-DUSE_UDEV",
+       "-DUSE_ASH=1",
+       "-DUSE_AURA=1",
+       "-DUSE_NSS_CERTS=1",
+       "-DUSE_OZONE=1",
+       "-DDISABLE_NACL",
+       "-DFULL_SAFE_BROWSING",
+       "-DSAFE_BROWSING_CSD",
+       "-DSAFE_BROWSING_DB_LOCAL",
+       "-DCHROMIUM_BUILD",
+       "-DFIELDTRIAL_TESTING_ENABLED",
+       "-DCR_CLANG_REVISION=\"310694-1\"",
+       "-D_FILE_OFFSET_BITS=64",
+       "-D_LARGEFILE_SOURCE",
+       "-D_LARGEFILE64_SOURCE",
+       "-D__STDC_CONSTANT_MACROS",
+       "-D__STDC_FORMAT_MACROS",
+       "-DCOMPONENT_BUILD",
+       "-DOS_CHROMEOS",
+       "-DNDEBUG",
+       "-DNVALGRIND",
+       "-DDYNAMIC_ANNOTATIONS_ENABLED=0",
+       "-DGL_GLEXT_PROTOTYPES",
+       "-DUSE_GLX",
+       "-DUSE_EGL",
+       "-DANGLE_ENABLE_RELEASE_ASSERTS",
+       "-DTOOLKIT_VIEWS=1",
+       "-DV8_USE_EXTERNAL_STARTUP_DATA",
+       "-DU_USING_ICU_NAMESPACE=0",
+       "-DU_ENABLE_DYLOAD=0",
+       "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE",
+       "-DUCHAR_TYPE=uint16_t",
+       "-DGOOGLE_PROTOBUF_NO_RTTI",
+       "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER",
+       "-DHAVE_PTHREAD",
+       "-DPROTOBUF_USE_DLLS",
+       "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
+       "-DSK_HAS_PNG_LIBRARY",
+       "-DSK_HAS_WEBP_LIBRARY",
+       "-DSK_HAS_JPEG_LIBRARY",
+       "-DSKIA_DLL",
+       "-DGR_GL_IGNORE_ES3_MSAA=0",
+       "-DSK_SUPPORT_GPU=1",
+       "-DMESA_EGL_NO_X11_HEADERS",
+       "-DBORINGSSL_SHARED_LIBRARY",
+       "-DUSING_V8_SHARED",
+       "-I../..",
+       "-Igen",
+       "-I../../third_party/libwebp/src",
+       "-I../../third_party/khronos",
+       "-I../../gpu",
+       "-I../../third_party/ced/src",
+       "-I../../third_party/icu/source/common",
+       "-I../../third_party/icu/source/i18n",
+       "-I../../third_party/protobuf/src",
+       "-I../../skia/config",
+       "-I../../skia/ext",
+       "-I../../third_party/skia/include/c",
+       "-I../../third_party/skia/include/config",
+       "-I../../third_party/skia/include/core",
+       "-I../../third_party/skia/include/effects",
+       "-I../../third_party/skia/include/encode",
+       "-I../../third_party/skia/include/gpu",
+       "-I../../third_party/skia/include/images",
+       "-I../../third_party/skia/include/lazy",
+       "-I../../third_party/skia/include/pathops",
+       "-I../../third_party/skia/include/pdf",
+       "-I../../third_party/skia/include/pipe",
+       "-I../../third_party/skia/include/ports",
+       "-I../../third_party/skia/include/utils",
+       "-I../../third_party/skia/third_party/vulkan",
+       "-I../../third_party/skia/src/gpu",
+       "-I../../third_party/skia/src/sksl",
+       "-I../../third_party/mesa/src/include",
+       "-I../../third_party/libwebm/source",
+       "-I../../third_party/protobuf/src",
+       "-Igen/protoc_out",
+       "-I../../third_party/boringssl/src/include",
+       "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nss",
+       "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nspr",
+       "-Igen",
+       "-I../../third_party/WebKit",
+       "-Igen/third_party/WebKit",
+       "-I../../v8/include",
+       "-Igen/v8/include",
+       "-Igen",
+       "-I../../third_party/flatbuffers/src/include",
+       "-Igen",
+       "-fno-strict-aliasing",
+       "-Wno-builtin-macro-redefined",
+       "-D__DATE__=",
+       "-D__TIME__=",
+       "-D__TIMESTAMP__=",
+       "-funwind-tables",
+       "-fPIC",
+       "-pipe",
+       "-B../../third_party/binutils/Linux_x64/Release/bin",
+       "-pthread",
+       "-fcolor-diagnostics",
+       "-m64",
+       "-march=x86-64",
+       "-Wall",
+       "-Werror",
+       "-Wextra",
+       "-Wno-missing-field-initializers",
+       "-Wno-unused-parameter",
+       "-Wno-c++11-narrowing",
+       "-Wno-covered-switch-default",
+       "-Wno-unneeded-internal-declaration",
+       "-Wno-inconsistent-missing-override",
+       "-Wno-undefined-var-template",
+       "-Wno-nonportable-include-path",
+       "-Wno-address-of-packed-member",
+       "-Wno-unused-lambda-capture",
+       "-Wno-user-defined-warnings",
+       "-Wno-enum-compare-switch",
+       "-O2",
+       "-fno-ident",
+       "-fdata-sections",
+       "-ffunction-sections",
+       "-fno-omit-frame-pointer",
+       "-g0",
+       "-fvisibility=hidden",
+       "-Xclang",
+       "-load",
+       "-Xclang",
+       "../../third_party/llvm-build/Release+Asserts/lib/"
+       "libFindBadConstructs.so",
+       "-Xclang",
+       "-add-plugin",
+       "-Xclang",
+       "find-bad-constructs",
+       "-Xclang",
+       "-plugin-arg-find-bad-constructs",
+       "-Xclang",
+       "check-auto-raw-pointer",
+       "-Xclang",
+       "-plugin-arg-find-bad-constructs",
+       "-Xclang",
+       "check-ipc",
+       "-Wheader-hygiene",
+       "-Wstring-conversion",
+       "-Wtautological-overlap-compare",
+       "-Wexit-time-destructors",
+       "-Wno-header-guard",
+       "-Wno-exit-time-destructors",
+       "-std=gnu++14",
+       "-fno-rtti",
+       "-nostdinc++",
+       "-isystem../../buildtools/third_party/libc++/trunk/include",
+       "-isystem../../buildtools/third_party/libc++abi/trunk/include",
+       "--sysroot=../../build/linux/debian_jessie_amd64-sysroot",
+       "-fno-exceptions",
+       "-fvisibility-inlines-hidden"},
 
-  CompileCommandsEntry entry;
-  entry.directory = "/work2/chrome/src/out/Release";
-  entry.args = {
-      "/work/goma/gomacc",
-      "../../third_party/llvm-build/Release+Asserts/bin/clang++",
-      "-MMD",
-      "-MF",
-      "obj/apps/apps/app_lifetime_monitor.o.d",
-      "-DV8_DEPRECATION_WARNINGS",
-      "-DDCHECK_ALWAYS_ON=1",
-      "-DUSE_UDEV",
-      "-DUSE_ASH=1",
-      "-DUSE_AURA=1",
-      "-DUSE_NSS_CERTS=1",
-      "-DUSE_OZONE=1",
-      "-DDISABLE_NACL",
-      "-DFULL_SAFE_BROWSING",
-      "-DSAFE_BROWSING_CSD",
-      "-DSAFE_BROWSING_DB_LOCAL",
-      "-DCHROMIUM_BUILD",
-      "-DFIELDTRIAL_TESTING_ENABLED",
-      "-DCR_CLANG_REVISION=\"310694-1\"",
-      "-D_FILE_OFFSET_BITS=64",
-      "-D_LARGEFILE_SOURCE",
-      "-D_LARGEFILE64_SOURCE",
-      "-D__STDC_CONSTANT_MACROS",
-      "-D__STDC_FORMAT_MACROS",
-      "-DCOMPONENT_BUILD",
-      "-DOS_CHROMEOS",
-      "-DNDEBUG",
-      "-DNVALGRIND",
-      "-DDYNAMIC_ANNOTATIONS_ENABLED=0",
-      "-DGL_GLEXT_PROTOTYPES",
-      "-DUSE_GLX",
-      "-DUSE_EGL",
-      "-DANGLE_ENABLE_RELEASE_ASSERTS",
-      "-DTOOLKIT_VIEWS=1",
-      "-DV8_USE_EXTERNAL_STARTUP_DATA",
-      "-DU_USING_ICU_NAMESPACE=0",
-      "-DU_ENABLE_DYLOAD=0",
-      "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE",
-      "-DUCHAR_TYPE=uint16_t",
-      "-DGOOGLE_PROTOBUF_NO_RTTI",
-      "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER",
-      "-DHAVE_PTHREAD",
-      "-DPROTOBUF_USE_DLLS",
-      "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
-      "-DSK_HAS_PNG_LIBRARY",
-      "-DSK_HAS_WEBP_LIBRARY",
-      "-DSK_HAS_JPEG_LIBRARY",
-      "-DSKIA_DLL",
-      "-DGR_GL_IGNORE_ES3_MSAA=0",
-      "-DSK_SUPPORT_GPU=1",
-      "-DMESA_EGL_NO_X11_HEADERS",
-      "-DBORINGSSL_SHARED_LIBRARY",
-      "-DUSING_V8_SHARED",
-      "-I../..",
-      "-Igen",
-      "-I../../third_party/libwebp/src",
-      "-I../../third_party/khronos",
-      "-I../../gpu",
-      "-I../../third_party/ced/src",
-      "-I../../third_party/icu/source/common",
-      "-I../../third_party/icu/source/i18n",
-      "-I../../third_party/protobuf/src",
-      "-I../../skia/config",
-      "-I../../skia/ext",
-      "-I../../third_party/skia/include/c",
-      "-I../../third_party/skia/include/config",
-      "-I../../third_party/skia/include/core",
-      "-I../../third_party/skia/include/effects",
-      "-I../../third_party/skia/include/encode",
-      "-I../../third_party/skia/include/gpu",
-      "-I../../third_party/skia/include/images",
-      "-I../../third_party/skia/include/lazy",
-      "-I../../third_party/skia/include/pathops",
-      "-I../../third_party/skia/include/pdf",
-      "-I../../third_party/skia/include/pipe",
-      "-I../../third_party/skia/include/ports",
-      "-I../../third_party/skia/include/utils",
-      "-I../../third_party/skia/third_party/vulkan",
-      "-I../../third_party/skia/src/gpu",
-      "-I../../third_party/skia/src/sksl",
-      "-I../../third_party/mesa/src/include",
-      "-I../../third_party/libwebm/source",
-      "-I../../third_party/protobuf/src",
-      "-Igen/protoc_out",
-      "-I../../third_party/boringssl/src/include",
-      "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nss",
-      "-I../../build/linux/debian_jessie_amd64-sysroot/usr/include/nspr",
-      "-Igen",
-      "-I../../third_party/WebKit",
-      "-Igen/third_party/WebKit",
-      "-I../../v8/include",
-      "-Igen/v8/include",
-      "-Igen",
-      "-I../../third_party/flatbuffers/src/include",
-      "-Igen",
-      "-fno-strict-aliasing",
-      "-Wno-builtin-macro-redefined",
-      "-D__DATE__=",
-      "-D__TIME__=",
-      "-D__TIMESTAMP__=",
-      "-funwind-tables",
-      "-fPIC",
-      "-pipe",
-      "-B../../third_party/binutils/Linux_x64/Release/bin",
-      "-pthread",
-      "-fcolor-diagnostics",
-      "-m64",
-      "-march=x86-64",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Wno-missing-field-initializers",
-      "-Wno-unused-parameter",
-      "-Wno-c++11-narrowing",
-      "-Wno-covered-switch-default",
-      "-Wno-unneeded-internal-declaration",
-      "-Wno-inconsistent-missing-override",
-      "-Wno-undefined-var-template",
-      "-Wno-nonportable-include-path",
-      "-Wno-address-of-packed-member",
-      "-Wno-unused-lambda-capture",
-      "-Wno-user-defined-warnings",
-      "-Wno-enum-compare-switch",
-      "-O2",
-      "-fno-ident",
-      "-fdata-sections",
-      "-ffunction-sections",
-      "-fno-omit-frame-pointer",
-      "-g0",
-      "-fvisibility=hidden",
-      "-Xclang",
-      "-load",
-      "-Xclang",
-      "../../third_party/llvm-build/Release+Asserts/lib/"
-      "libFindBadConstructs.so",
-      "-Xclang",
-      "-add-plugin",
-      "-Xclang",
-      "find-bad-constructs",
-      "-Xclang",
-      "-plugin-arg-find-bad-constructs",
-      "-Xclang",
-      "check-auto-raw-pointer",
-      "-Xclang",
-      "-plugin-arg-find-bad-constructs",
-      "-Xclang",
-      "check-ipc",
-      "-Wheader-hygiene",
-      "-Wstring-conversion",
-      "-Wtautological-overlap-compare",
-      "-Wexit-time-destructors",
-      "-Wno-header-guard",
-      "-Wno-exit-time-destructors",
-      "-std=gnu++14",
-      "-fno-rtti",
-      "-nostdinc++",
-      "-isystem../../buildtools/third_party/libc++/trunk/include",
-      "-isystem../../buildtools/third_party/libc++abi/trunk/include",
-      "--sysroot=../../build/linux/debian_jessie_amd64-sysroot",
-      "-fno-exceptions",
-      "-fvisibility-inlines-hidden"};
-  entry.file = "../../apps/app_lifetime_monitor.cc";
-
-  Project::Entry result =
-      GetCompilationEntryFromCompileCommandEntry(&config, entry);
-
-  std::vector<std::string> expected_args{
-      "-DV8_DEPRECATION_WARNINGS",
-      "-DDCHECK_ALWAYS_ON=1",
-      "-DUSE_UDEV",
-      "-DUSE_ASH=1",
-      "-DUSE_AURA=1",
-      "-DUSE_NSS_CERTS=1",
-      "-DUSE_OZONE=1",
-      "-DDISABLE_NACL",
-      "-DFULL_SAFE_BROWSING",
-      "-DSAFE_BROWSING_CSD",
-      "-DSAFE_BROWSING_DB_LOCAL",
-      "-DCHROMIUM_BUILD",
-      "-DFIELDTRIAL_TESTING_ENABLED",
-      "-DCR_CLANG_REVISION=\"310694-1\"",
-      "-D_FILE_OFFSET_BITS=64",
-      "-D_LARGEFILE_SOURCE",
-      "-D_LARGEFILE64_SOURCE",
-      "-D__STDC_CONSTANT_MACROS",
-      "-D__STDC_FORMAT_MACROS",
-      "-DCOMPONENT_BUILD",
-      "-DOS_CHROMEOS",
-      "-DNDEBUG",
-      "-DNVALGRIND",
-      "-DDYNAMIC_ANNOTATIONS_ENABLED=0",
-      "-DGL_GLEXT_PROTOTYPES",
-      "-DUSE_GLX",
-      "-DUSE_EGL",
-      "-DANGLE_ENABLE_RELEASE_ASSERTS",
-      "-DTOOLKIT_VIEWS=1",
-      "-DV8_USE_EXTERNAL_STARTUP_DATA",
-      "-DU_USING_ICU_NAMESPACE=0",
-      "-DU_ENABLE_DYLOAD=0",
-      "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE",
-      "-DUCHAR_TYPE=uint16_t",
-      "-DGOOGLE_PROTOBUF_NO_RTTI",
-      "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER",
-      "-DHAVE_PTHREAD",
-      "-DPROTOBUF_USE_DLLS",
-      "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
-      "-DSK_HAS_PNG_LIBRARY",
-      "-DSK_HAS_WEBP_LIBRARY",
-      "-DSK_HAS_JPEG_LIBRARY",
-      "-DSKIA_DLL",
-      "-DGR_GL_IGNORE_ES3_MSAA=0",
-      "-DSK_SUPPORT_GPU=1",
-      "-DMESA_EGL_NO_X11_HEADERS",
-      "-DBORINGSSL_SHARED_LIBRARY",
-      "-DUSING_V8_SHARED",
-      "-IC:/work2/chrome/src",
-      "-IC:/work2/chrome/src/out/Release/gen",
-      "-IC:/work2/chrome/src/third_party/libwebp/src",
-      "-IC:/work2/chrome/src/third_party/khronos",
-      "-IC:/work2/chrome/src/gpu",
-      "-IC:/work2/chrome/src/third_party/ced/src",
-      "-IC:/work2/chrome/src/third_party/icu/source/common",
-      "-IC:/work2/chrome/src/third_party/icu/source/i18n",
-      "-IC:/work2/chrome/src/third_party/protobuf/src",
-      "-IC:/work2/chrome/src/skia/config",
-      "-IC:/work2/chrome/src/skia/ext",
-      "-IC:/work2/chrome/src/third_party/skia/include/c",
-      "-IC:/work2/chrome/src/third_party/skia/include/config",
-      "-IC:/work2/chrome/src/third_party/skia/include/core",
-      "-IC:/work2/chrome/src/third_party/skia/include/effects",
-      "-IC:/work2/chrome/src/third_party/skia/include/encode",
-      "-IC:/work2/chrome/src/third_party/skia/include/gpu",
-      "-IC:/work2/chrome/src/third_party/skia/include/images",
-      "-IC:/work2/chrome/src/third_party/skia/include/lazy",
-      "-IC:/work2/chrome/src/third_party/skia/include/pathops",
-      "-IC:/work2/chrome/src/third_party/skia/include/pdf",
-      "-IC:/work2/chrome/src/third_party/skia/include/pipe",
-      "-IC:/work2/chrome/src/third_party/skia/include/ports",
-      "-IC:/work2/chrome/src/third_party/skia/include/utils",
-      "-IC:/work2/chrome/src/third_party/skia/third_party/vulkan",
-      "-IC:/work2/chrome/src/third_party/skia/src/gpu",
-      "-IC:/work2/chrome/src/third_party/skia/src/sksl",
-      "-IC:/work2/chrome/src/third_party/mesa/src/include",
-      "-IC:/work2/chrome/src/third_party/libwebm/source",
-      "-IC:/work2/chrome/src/third_party/protobuf/src",
-      "-IC:/work2/chrome/src/out/Release/gen/protoc_out",
-      "-IC:/work2/chrome/src/third_party/boringssl/src/include",
-      "-IC:/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot/usr/"
-      "include/nss",
-      "-IC:/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot/usr/"
-      "include/nspr",
-      "-IC:/work2/chrome/src/out/Release/gen",
-      "-IC:/work2/chrome/src/third_party/WebKit",
-      "-IC:/work2/chrome/src/out/Release/gen/third_party/WebKit",
-      "-IC:/work2/chrome/src/v8/include",
-      "-IC:/work2/chrome/src/out/Release/gen/v8/include",
-      "-IC:/work2/chrome/src/out/Release/gen",
-      "-IC:/work2/chrome/src/third_party/flatbuffers/src/include",
-      "-IC:/work2/chrome/src/out/Release/gen",
-      "-fno-strict-aliasing",
-      "-Wno-builtin-macro-redefined",
-      "-D__DATE__=",
-      "-D__TIME__=",
-      "-D__TIMESTAMP__=",
-      "-funwind-tables",
-      "-fPIC",
-      "-pipe",
-      "-B../../third_party/binutils/Linux_x64/Release/bin",
-      "-pthread",
-      "-fcolor-diagnostics",
-      "-m64",
-      "-march=x86-64",
-      "-Wall",
-      "-Werror",
-      "-Wextra",
-      "-Wno-missing-field-initializers",
-      "-Wno-unused-parameter",
-      "-Wno-c++11-narrowing",
-      "-Wno-covered-switch-default",
-      "-Wno-unneeded-internal-declaration",
-      "-Wno-inconsistent-missing-override",
-      "-Wno-undefined-var-template",
-      "-Wno-nonportable-include-path",
-      "-Wno-address-of-packed-member",
-      "-Wno-unused-lambda-capture",
-      "-Wno-user-defined-warnings",
-      "-Wno-enum-compare-switch",
-      "-O2",
-      "-fno-ident",
-      "-fdata-sections",
-      "-ffunction-sections",
-      "-fno-omit-frame-pointer",
-      "-g0",
-      "-fvisibility=hidden",
-      "-Wheader-hygiene",
-      "-Wstring-conversion",
-      "-Wtautological-overlap-compare",
-      "-Wexit-time-destructors",
-      "-Wno-header-guard",
-      "-Wno-exit-time-destructors",
-      "-std=gnu++14",
-      "-fno-rtti",
-      "-nostdinc++",
-      "-isystemC:/work2/chrome/src/buildtools/third_party/libc++/trunk/include",
-      "-isystemC:/work2/chrome/src/buildtools/third_party/libc++abi/trunk/"
-      "include",
-      "--sysroot=C:/work2/chrome/src/build/linux/debian_jessie_amd64-sysroot",
-      "-fno-exceptions",
-      "-fvisibility-inlines-hidden",
-      "-xc++"};
-  std::cout << "Expected - Actual\n\n";
-  for (int i = 0; i < std::min(result.args.size(), expected_args.size()); ++i) {
-    if (result.args[i] != expected_args[i])
-      std::cout << "mismatch at " << i << "; expected " << expected_args[i]
-                << " but got " << result.args[i] << std::endl;
-  }
-  REQUIRE(result.args == expected_args);
-}
-
-#if false
-TEST_CASE("argument parsing") {
-  std::string compile_commands = R"(
-    [
-      {
-        "directory": "/usr/local/google/code/naive/build",
-        "command": "clang++    -std=c++14 -Werror -I/usr/include/pixman-1 -I/usr/include/libdrm -I/usr/local/google/code/naive/src    -o CMakeFiles/naive.dir/src/wm/window.cc.o -c /usr/local/google/code/naive/src/wm/window.cc",
-        "file": "/usr/local/google/code/naive/src/wm/window.cc"
-      }
-    ]
-  )";
-
-  std::string project_directory = "/usr/local/google/code/naive/src/";
-  std::vector<std::string> extra_flags;
-
-  std::unordered_set<std::string> quote_includes;
-  std::unordered_set<std::string> angle_includes;
-  std::vector<Project::Entry> result;
-
-  REQUIRE(TryLoadFromCompileCommandsJson(&result, &quote_includes, &angle_includes, project_directory, extra_flags, compile_commands));
-
-  std::vector<std::string> expected_args{
-      "-std=c++14",
-      "-Werror",
-      "-I/usr/include/pixman-1",
-      "-I/usr/include/libdrm",
-      "-I/usr/local/google/code/naive/src",
-      "-o",
-      "CMakeFiles/naive.dir/src/wm/window.cc.o",
-      "-c",
-      "/usr/local/google/code/naive/src/wm/window.cc",
-      "-xc++"
-  };
-  REQUIRE(result.size() == 1);
-  REQUIRE(result[0].args == expected_args);
-}
-
-TEST_CASE("relative directories") {
-  std::string compile_commands = R"(
-    [
-      {
-        "directory": "/build",
-        "command": "clang++ -std=c++14 -Werror",
-        "file": "bar/foo.cc"
-      }
-    ]
-  )";
-
-  std::string project_directory = "/build/";
-  std::vector<std::string> extra_flags;
-
-  std::unordered_set<std::string> quote_includes;
-  std::unordered_set<std::string> angle_includes;
-  std::vector<Project::Entry> result;
-
-  REQUIRE(TryLoadFromCompileCommandsJson(&result, &quote_includes, &angle_includes, project_directory, extra_flags, compile_commands));
-  REQUIRE(result.size() == 1);
-  REQUIRE(result[0].filename == "/build/bar/foo.cc");
+      /* expected */
+      {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
+       "-DV8_DEPRECATION_WARNINGS",
+       "-DDCHECK_ALWAYS_ON=1",
+       "-DUSE_UDEV",
+       "-DUSE_ASH=1",
+       "-DUSE_AURA=1",
+       "-DUSE_NSS_CERTS=1",
+       "-DUSE_OZONE=1",
+       "-DDISABLE_NACL",
+       "-DFULL_SAFE_BROWSING",
+       "-DSAFE_BROWSING_CSD",
+       "-DSAFE_BROWSING_DB_LOCAL",
+       "-DCHROMIUM_BUILD",
+       "-DFIELDTRIAL_TESTING_ENABLED",
+       "-DCR_CLANG_REVISION=\"310694-1\"",
+       "-D_FILE_OFFSET_BITS=64",
+       "-D_LARGEFILE_SOURCE",
+       "-D_LARGEFILE64_SOURCE",
+       "-D__STDC_CONSTANT_MACROS",
+       "-D__STDC_FORMAT_MACROS",
+       "-DCOMPONENT_BUILD",
+       "-DOS_CHROMEOS",
+       "-DNDEBUG",
+       "-DNVALGRIND",
+       "-DDYNAMIC_ANNOTATIONS_ENABLED=0",
+       "-DGL_GLEXT_PROTOTYPES",
+       "-DUSE_GLX",
+       "-DUSE_EGL",
+       "-DANGLE_ENABLE_RELEASE_ASSERTS",
+       "-DTOOLKIT_VIEWS=1",
+       "-DV8_USE_EXTERNAL_STARTUP_DATA",
+       "-DU_USING_ICU_NAMESPACE=0",
+       "-DU_ENABLE_DYLOAD=0",
+       "-DICU_UTIL_DATA_IMPL=ICU_UTIL_DATA_FILE",
+       "-DUCHAR_TYPE=uint16_t",
+       "-DGOOGLE_PROTOBUF_NO_RTTI",
+       "-DGOOGLE_PROTOBUF_NO_STATIC_INITIALIZER",
+       "-DHAVE_PTHREAD",
+       "-DPROTOBUF_USE_DLLS",
+       "-DSK_IGNORE_LINEONLY_AA_CONVEX_PATH_OPTS",
+       "-DSK_HAS_PNG_LIBRARY",
+       "-DSK_HAS_WEBP_LIBRARY",
+       "-DSK_HAS_JPEG_LIBRARY",
+       "-DSKIA_DLL",
+       "-DGR_GL_IGNORE_ES3_MSAA=0",
+       "-DSK_SUPPORT_GPU=1",
+       "-DMESA_EGL_NO_X11_HEADERS",
+       "-DBORINGSSL_SHARED_LIBRARY",
+       "-DUSING_V8_SHARED",
+       "-I&/w/c/s/out/Release/../..",
+       "-I&/w/c/s/out/Release/gen",
+       "-I&/w/c/s/out/Release/../../third_party/libwebp/src",
+       "-I&/w/c/s/out/Release/../../third_party/khronos",
+       "-I&/w/c/s/out/Release/../../gpu",
+       "-I&/w/c/s/out/Release/../../third_party/ced/src",
+       "-I&/w/c/s/out/Release/../../third_party/icu/source/common",
+       "-I&/w/c/s/out/Release/../../third_party/icu/source/i18n",
+       "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
+       "-I&/w/c/s/out/Release/../../skia/config",
+       "-I&/w/c/s/out/Release/../../skia/ext",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/c",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/config",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/core",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/effects",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/encode",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/gpu",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/images",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/lazy",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/pathops",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/pdf",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/pipe",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/ports",
+       "-I&/w/c/s/out/Release/../../third_party/skia/include/utils",
+       "-I&/w/c/s/out/Release/../../third_party/skia/third_party/vulkan",
+       "-I&/w/c/s/out/Release/../../third_party/skia/src/gpu",
+       "-I&/w/c/s/out/Release/../../third_party/skia/src/sksl",
+       "-I&/w/c/s/out/Release/../../third_party/mesa/src/include",
+       "-I&/w/c/s/out/Release/../../third_party/libwebm/source",
+       "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
+       "-I&/w/c/s/out/Release/gen/protoc_out",
+       "-I&/w/c/s/out/Release/../../third_party/boringssl/src/include",
+       "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+       "usr/include/nss",
+       "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+       "usr/include/nspr",
+       "-I&/w/c/s/out/Release/gen",
+       "-I&/w/c/s/out/Release/../../third_party/WebKit",
+       "-I&/w/c/s/out/Release/gen/third_party/WebKit",
+       "-I&/w/c/s/out/Release/../../v8/include",
+       "-I&/w/c/s/out/Release/gen/v8/include",
+       "-I&/w/c/s/out/Release/gen",
+       "-I&/w/c/s/out/Release/../../third_party/flatbuffers/src/include",
+       "-I&/w/c/s/out/Release/gen",
+       "-fno-strict-aliasing",
+       "-Wno-builtin-macro-redefined",
+       "-D__DATE__=",
+       "-D__TIME__=",
+       "-D__TIMESTAMP__=",
+       "-funwind-tables",
+       "-fPIC",
+       "-pipe",
+       "-B../../third_party/binutils/Linux_x64/Release/bin",
+       "-pthread",
+       "-fcolor-diagnostics",
+       "-m64",
+       "-march=x86-64",
+       "-Wall",
+       "-Werror",
+       "-Wextra",
+       "-Wno-missing-field-initializers",
+       "-Wno-unused-parameter",
+       "-Wno-c++11-narrowing",
+       "-Wno-covered-switch-default",
+       "-Wno-unneeded-internal-declaration",
+       "-Wno-inconsistent-missing-override",
+       "-Wno-undefined-var-template",
+       "-Wno-nonportable-include-path",
+       "-Wno-address-of-packed-member",
+       "-Wno-unused-lambda-capture",
+       "-Wno-user-defined-warnings",
+       "-Wno-enum-compare-switch",
+       "-O2",
+       "-fno-ident",
+       "-fdata-sections",
+       "-ffunction-sections",
+       "-fno-omit-frame-pointer",
+       "-g0",
+       "-fvisibility=hidden",
+       "-Wheader-hygiene",
+       "-Wstring-conversion",
+       "-Wtautological-overlap-compare",
+       "-Wexit-time-destructors",
+       "-Wno-header-guard",
+       "-Wno-exit-time-destructors",
+       "-std=gnu++14",
+       "-fno-rtti",
+       "-nostdinc++",
+       "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++/trunk/"
+       "include",
+       "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++abi/"
+       "trunk/"
+       "include",
+       "--sysroot=&/w/c/s/out/Release/../../build/linux/"
+       "debian_jessie_amd64-sysroot",
+       "-fno-exceptions",
+       "-fvisibility-inlines-hidden",
+       "-xc++"});
 }
 
 TEST_CASE("Directory extraction") {
-  std::string build_directory = "/base/";
-  std::string filename = "foo.cc";
-  std::vector<std::string> args = { "-I/absolute1", "-I", "/absolute2", "-Irelative1", "-I", "relative2" };
-  std::unordered_set<std::string> angle_includes;
-  std::unordered_set<std::string> quote_includes;
-  CleanupArguments(build_directory, filename, &args, &angle_includes, &quote_includes);
+  ProjectConfig config;
+  config.project_dir = "/w/c/s/";
 
-  std::unordered_set<std::string> expected{ "/absolute1", "/absolute2", "/base/relative1", "/base/relative2" };
-  REQUIRE(angle_includes == expected);
+  CompileCommandsEntry entry;
+  entry.directory = "/base";
+  entry.args = {"clang",
+                "-I/a_absolute1",
+                "--foobar",
+                "-I",
+                "/a_absolute2",
+                "--foobar",
+                "-Ia_relative1",
+                "--foobar",
+                "-I",
+                "a_relative2",
+                "--foobar",
+                "-iquote/q_absolute1",
+                "--foobar",
+                "-iquote",
+                "/q_absolute2",
+                "--foobar",
+                "-iquoteq_relative1",
+                "--foobar",
+                "-iquote",
+                "q_relative2",
+                "--foobar",
+                "foo.cc"};
+  entry.file = "foo.cc";
+  Project::Entry result =
+      GetCompilationEntryFromCompileCommandEntry(&config, entry);
+
+  std::unordered_set<std::string> angle_expected{
+      "&/a_absolute1", "&/a_absolute2", "&/base/a_relative1",
+      "&/base/a_relative2"};
+  std::unordered_set<std::string> quote_expected{
+      "&/q_absolute1", "&/q_absolute2", "&/base/q_relative1",
+      "&/base/q_relative2"};
+  REQUIRE(config.angle_dirs == angle_expected);
+  REQUIRE(config.quote_dirs == quote_expected);
 }
-#endif
 
 TEST_CASE("Entry inference") {
   Project p;

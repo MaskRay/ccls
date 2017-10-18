@@ -56,6 +56,13 @@ bool AnyStartsWith(const std::vector<std::string>& values,
       [&start](const std::string& value) { return StartsWith(value, start); });
 }
 
+bool StartsWithAny(const std::string& value,
+                   const std::vector<std::string>& startings) {
+  return std::any_of(
+      std::begin(startings), std::end(startings),
+      [&value](const std::string& starting) { return StartsWith(value, starting); });
+}
+
 bool EndsWithAny(const std::string& value,
                  const std::vector<std::string>& endings) {
   return std::any_of(

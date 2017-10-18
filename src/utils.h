@@ -25,6 +25,8 @@ bool StartsWith(const std::string& value, const std::string& start);
 bool EndsWith(const std::string& value, const std::string& ending);
 bool AnyStartsWith(const std::vector<std::string>& values,
                    const std::string& start);
+bool StartsWithAny(const std::string& value,
+                   const std::vector<std::string>& startings);
 bool EndsWithAny(const std::string& value,
                  const std::vector<std::string>& endings);
 
