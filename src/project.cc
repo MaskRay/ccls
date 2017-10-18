@@ -44,17 +44,11 @@ static const char* kBlacklist[] = {
     "-MP",
     "-MD",
     "-MMD",
-    "--fcolor-diagnostics"
+    "--fcolor-diagnostics",
 
-    //"-s",
-
-    "-B",
-    //"-f",
-    //"-pipe",
-    //"-W",
+    // This strips path-like args but is a bit hacky.
     // TODO: make sure we consume includes before stripping all path-like args.
-    //"/", "..",
-    //"-stdlib=libc++"
+    "/", "..",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
@@ -103,6 +97,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // correct parsing for command lines like "goma clang -c foo".
   while (i < entry.args.size() && entry.args[i][0] != '-')
     ++i;
+  // Include the compiler in the args.
+  if (i > 0)
+    --i;
 
   bool make_next_flag_absolute = false;
   bool add_next_flag_quote = false;

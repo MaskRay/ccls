@@ -33,7 +33,7 @@ TranslationUnit::TranslationUnit(Index* index,
   //  index->cx_index, filepath.c_str(), args.size(), args.data(),
   //  (unsigned)unsaved_files.size(), unsaved_files.data());
 
-  CXErrorCode error_code = clang_parseTranslationUnit2(
+  CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
       index->cx_index, filepath.c_str(), args.data(), (int)args.size(),
       unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
 
