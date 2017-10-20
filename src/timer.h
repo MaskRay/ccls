@@ -1,7 +1,12 @@
 #pragma once
 
+#include <optional.h>
+
 #include <chrono>
 #include <string>
+
+using std::experimental::nullopt;
+using std::experimental::optional;
 
 struct Timer {
   using Clock = std::chrono::high_resolution_clock;
@@ -17,7 +22,13 @@ struct Timer {
   void Reset();
   // Resets timer and prints a message like "<foo> took 5ms"
   void ResetAndPrint(const std::string& message);
+  // Pause the timer.
+  void Pause();
+  // Resume the timer after it has been paused.
+  void Resume();
 
   // Raw start time.
-  std::chrono::time_point<Clock> start;
+  optional<std::chrono::time_point<Clock>> start_;
+  // Elapsed time.
+  long long elapsed_ = 0;
 };
