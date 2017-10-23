@@ -314,6 +314,11 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
     // If we're emitting diagnostics, do an immediate reparse, otherwise we will
     // emit stale/bad diagnostics.
     *tu = clang::TranslationUnit::Reparse(std::move(*tu), unsaved);
+    if (!*tu) {
+      LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
+                   << session->file.filename;
+      return;
+    }
 
     NonElidedVector<lsDiagnostic> ls_diagnostics;
     unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
@@ -649,14 +654,17 @@ void ClangCompleteManager::NotifyClose(const std::string& filename) {
 bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
     const std::string& filename) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
-  if (!preloaded_sessions_.TryGetEntry(filename) &&
-      !completion_sessions_.TryGetEntry(filename)) {
-    auto session = std::make_shared<CompletionSession>(
-        project_->FindCompilationEntryForFile(filename), working_files_);
-    preloaded_sessions_.InsertEntry(session);
-    return true;
-  }
-  return false;
+
+  // Check for an existing CompletionSession.
+  if (preloaded_sessions_.TryGetEntry(filename) ||
+      completion_sessions_.TryGetEntry(filename))
+    return false;
+
+  // No CompletionSession, create new one.
+  auto session = std::make_shared<CompletionSession>(
+      project_->FindCompilationEntryForFile(filename), working_files_);
+  preloaded_sessions_.InsertEntry(session);
+  return true;
 }
 
 std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(
@@ -683,7 +691,7 @@ std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(
 
   // Try to find a completion session. If none create one.
   std::shared_ptr<CompletionSession> completion_session =
-      completion_sessions_.TryTakeEntry(filename);
+      completion_sessions_.TryGetEntry(filename);
   if (!completion_session && create_if_needed) {
     completion_session = std::make_shared<CompletionSession>(
         project_->FindCompilationEntryForFile(filename), working_files_);
