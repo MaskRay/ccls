@@ -99,15 +99,18 @@ struct ClangCompleteManager {
   // completion session will be dropped.
   void NotifyClose(const std::string& filename);
 
+  // Ensures there is a completion or preloaded session. Returns true if a new
+  // session was created.
+  bool EnsureCompletionOrCreatePreloadSession(const std::string& filename);
   // Tries to find an edit session for |filename|. This will move the session
   // from view to edit.
-  std::shared_ptr<CompletionSession> TryGetEditSession(
-      const std::string& filename,
-      bool create_if_needed);
+  std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename,
+                                                   bool mark_as_completion,
+                                                   bool create_if_needed);
 
   // TODO: make these configurable.
-  const int kMaxViewSessions = 10;
-  const int kMaxEditSessions = 5;
+  const int kMaxPreloadedSessions = 10;
+  const int kMaxCompletionSessions = 5;
 
   // Global state.
   Config* config_;
@@ -116,11 +119,13 @@ struct ClangCompleteManager {
   OnDiagnostic on_diagnostic_;
   OnIndex on_index_;
 
-  // Sessions which have never had a real text-edit applied, but are preloaded
-  // to give a fast initial experience.
-  LruSessionCache view_sessions_;
-  // Completion sessions which have been edited.
-  LruSessionCache edit_sessions_;
+  // CompletionSession instances which are preloaded, ie, files which the user
+  // has viewed but not requested code completion for.
+  LruSessionCache preloaded_sessions_;
+  // CompletionSession instances which the user has actually performed
+  // completion on. This is more rare so these instances tend to stay alive
+  // much longer than the ones in |preloaded_sessions_|.
+  LruSessionCache completion_sessions_;
   // Mutex which protects |view_sessions_| and |edit_sessions_|.
   std::mutex sessions_lock_;
 

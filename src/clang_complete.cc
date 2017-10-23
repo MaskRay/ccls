@@ -336,8 +336,9 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
     // If we don't get a session then that means we don't care about the file
     // anymore - abandon the request.
     std::shared_ptr<CompletionSession> session =
-        completion_manager->TryGetEditSession(request.path,
-                                              false /*create_if_needed*/);
+        completion_manager->TryGetSession(request.path,
+                                          false /*mark_as_completion*/,
+                                          false /*create_if_needed*/);
     if (!session)
       continue;
 
@@ -369,7 +370,8 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     std::string path = request->document.uri.GetPath();
 
     std::shared_ptr<CompletionSession> session =
-        completion_manager->TryGetEditSession(path, true /*create_if_needed*/);
+        completion_manager->TryGetSession(path, true /*mark_as_completion*/,
+                                          true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->tu_lock);
     Timer timer;
@@ -548,8 +550,8 @@ ClangCompleteManager::ClangCompleteManager(Config* config,
       working_files_(working_files),
       on_diagnostic_(on_diagnostic),
       on_index_(on_index),
-      view_sessions_(kMaxViewSessions),
-      edit_sessions_(kMaxEditSessions) {
+      preloaded_sessions_(kMaxPreloadedSessions),
+      completion_sessions_(kMaxCompletionSessions) {
   new std::thread([&]() {
     SetCurrentThreadName("completequery");
     CompletionQueryMain(this);
@@ -600,44 +602,19 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
   // parsed soon.
   //
 
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  // Already a view or edit session, do nothing.
-  if (view_sessions_.TryGetEntry(filename) ||
-      edit_sessions_.TryGetEntry(filename)) {
-    return;
-  }
-
-  // Create new view session.
-  view_sessions_.InsertEntry(std::make_shared<CompletionSession>(
-      project_->FindCompilationEntryForFile(filename), working_files_));
-  parse_requests_.Enqueue(ParseRequest(filename));
+  // Only reparse the file if we create a new CompletionSession.
+  if (EnsureCompletionOrCreatePreloadSession(filename))
+    parse_requests_.PriorityEnqueue(ParseRequest(filename));
 }
 
 void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   //
-  // On edit, we reparse only if the file has not been parsed. The existence of
-  // a CompletionSession instance implies the file is already parsed or will be
-  // parsed soon.
+  // We treat an edit like a view, because the completion logic will handle
+  // moving the CompletionSession instance from preloaded to completion
+  // storage.
   //
 
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  if (edit_sessions_.TryGetEntry(filename))
-    return;
-
-  // Move the session from view to edit.
-  std::shared_ptr<CompletionSession> view_session =
-      view_sessions_.TryTakeEntry(filename);
-  if (view_session) {
-    edit_sessions_.InsertEntry(view_session);
-    return;
-  }
-
-  // No view session, create a new session.
-  edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
-      project_->FindCompilationEntryForFile(filename), working_files_));
-  parse_requests_.PriorityEnqueue(ParseRequest(filename));
+  NotifyView(filename);
 }
 
 void ClangCompleteManager::NotifySave(const std::string& filename) {
@@ -645,22 +622,7 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   // On save, always reparse.
   //
 
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  // If for whatever reason we have a view session and not an edit session,
-  // move the session from view to edit.
-  std::shared_ptr<CompletionSession> view_session =
-      view_sessions_.TryTakeEntry(filename);
-  if (view_session) {
-    edit_sessions_.InsertEntry(view_session);
-  }
-
-  // If no edit session create one.
-  if (!edit_sessions_.TryGetEntry(filename)) {
-    edit_sessions_.InsertEntry(std::make_shared<CompletionSession>(
-        project_->FindCompilationEntryForFile(filename), working_files_));
-  }
-
+  EnsureCompletionOrCreatePreloadSession(filename);
   parse_requests_.PriorityEnqueue(ParseRequest(filename));
 }
 
@@ -673,39 +635,60 @@ void ClangCompleteManager::NotifyClose(const std::string& filename) {
 
   // Take and drop. It's okay if we don't actually drop the file, it'll
   // eventually get pushed out of the caches as the user opens other files.
-  auto view_ptr = view_sessions_.TryTakeEntry(filename);
-  LOG_IF_S(INFO, !!view_ptr)
-      << "Dropped view-based code completion session for " << filename;
-  auto edit_ptr = edit_sessions_.TryTakeEntry(filename);
-  LOG_IF_S(INFO, !!edit_ptr)
-      << "Dropped edit-based code completion session for " << filename;
+  auto preloaded_ptr = preloaded_sessions_.TryTakeEntry(filename);
+  LOG_IF_S(INFO, !!preloaded_ptr)
+      << "Dropped preloaded-based code completion session for " << filename;
+  auto completion_ptr = completion_sessions_.TryTakeEntry(filename);
+  LOG_IF_S(INFO, !!completion_ptr)
+      << "Dropped completion-based code completion session for " << filename;
 
-  // We should never have both a view and edit session.
-  assert((view_ptr && edit_ptr) == false);
+  // We should never have both a preloaded and completion session.
+  assert((preloaded_ptr && completion_ptr) == false);
 }
 
-std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetEditSession(
+bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
+    const std::string& filename) {
+  std::lock_guard<std::mutex> lock(sessions_lock_);
+  if (!preloaded_sessions_.TryGetEntry(filename) &&
+      !completion_sessions_.TryGetEntry(filename)) {
+    auto session = std::make_shared<CompletionSession>(
+        project_->FindCompilationEntryForFile(filename), working_files_);
+    preloaded_sessions_.InsertEntry(session);
+    return true;
+  }
+  return false;
+}
+
+std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(
     const std::string& filename,
+    bool mark_as_completion,
     bool create_if_needed) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
-  // Try to find a view session. If found move it to |edit_sessions_|.
-  std::shared_ptr<CompletionSession> view_session =
-      view_sessions_.TryTakeEntry(filename);
-  if (view_session) {
-    assert(!edit_sessions_.TryGetEntry(filename));
-    edit_sessions_.InsertEntry(view_session);
-    return view_session;
+  // Try to find a preloaded session.
+  std::shared_ptr<CompletionSession> preloaded_session =
+      preloaded_sessions_.TryGetEntry(filename);
+
+  if (preloaded_session) {
+    // If this request is for a completion, we should move it to
+    // |completion_sessions|.
+    if (mark_as_completion) {
+      assert(!completion_sessions_.TryGetEntry(filename));
+      preloaded_sessions_.TryTakeEntry(filename);
+      completion_sessions_.InsertEntry(preloaded_session);
+    }
+
+    return preloaded_session;
   }
 
-  // Try to find an edit session. If none create if requested.
-  std::shared_ptr<CompletionSession> edit_session =
-      edit_sessions_.TryTakeEntry(filename);
-  if (!edit_session && create_if_needed) {
-    edit_session = std::make_shared<CompletionSession>(
+  // Try to find a completion session. If none create one.
+  std::shared_ptr<CompletionSession> completion_session =
+      completion_sessions_.TryTakeEntry(filename);
+  if (!completion_session && create_if_needed) {
+    completion_session = std::make_shared<CompletionSession>(
         project_->FindCompilationEntryForFile(filename), working_files_);
-    edit_sessions_.InsertEntry(edit_session);
+    completion_sessions_.InsertEntry(completion_session);
   }
 
-  return edit_session;
+  return completion_session;
 }
