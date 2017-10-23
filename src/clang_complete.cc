@@ -283,10 +283,10 @@ void BuildDetailString(CXCompletionString completion_string,
   }
 }
 
-void EnsureDocumentParsed(ClangCompleteManager* manager,
-                          std::shared_ptr<CompletionSession> session,
-                          std::unique_ptr<clang::TranslationUnit>* tu,
-                          clang::Index* index) {
+void TryEnsureDocumentParsed(ClangCompleteManager* manager,
+                             std::shared_ptr<CompletionSession> session,
+                             std::unique_ptr<clang::TranslationUnit>* tu,
+                             clang::Index* index) {
   // Nothing to do. We already have a translation unit.
   if (*tu)
     return;
@@ -306,15 +306,14 @@ void EnsureDocumentParsed(ClangCompleteManager* manager,
 
   LOG_S(INFO) << "Creating completion session with arguments "
               << StringJoin(args);
-  *tu = MakeUnique<clang::TranslationUnit>(index, session->file.filename, args,
-                                           unsaved, Flags());
+  *tu = clang::TranslationUnit::Create(index, session->file.filename, args,
+                                       unsaved, Flags());
 
   // Build diagnostics.
-  if (manager->config_->diagnosticsOnParse && !(*tu)->did_fail) {
-    // If we're emitting diagnostics, do an immedaite reparse, otherwise we will
+  if (manager->config_->diagnosticsOnParse && *tu) {
+    // If we're emitting diagnostics, do an immediate reparse, otherwise we will
     // emit stale/bad diagnostics.
-    clang_reparseTranslationUnit((*tu)->cx_tu, unsaved.size(), unsaved.data(),
-                                 clang_defaultReparseOptions((*tu)->cx_tu));
+    *tu = clang::TranslationUnit::Reparse(std::move(*tu), unsaved);
 
     NonElidedVector<lsDiagnostic> ls_diagnostics;
     unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
@@ -350,8 +349,8 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
     }
 
     std::unique_ptr<clang::TranslationUnit> parsing;
-    EnsureDocumentParsed(completion_manager, session, &parsing,
-                         &session->index);
+    TryEnsureDocumentParsed(completion_manager, session, &parsing,
+                            &session->index);
 
     // Activate new translation unit.
     // tu_last_parsed_at is only read by this thread, so it doesn't need to be
@@ -374,9 +373,14 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
     std::lock_guard<std::mutex> lock(session->tu_lock);
     Timer timer;
-    EnsureDocumentParsed(completion_manager, session, &session->tu,
-                         &session->index);
-    timer.ResetAndPrint("[complete] EnsureDocumentParsed");
+    TryEnsureDocumentParsed(completion_manager, session, &session->tu,
+                            &session->index);
+    timer.ResetAndPrint("[complete] TryEnsureDocumentParsed");
+
+    // It is possible we failed to create the document despite
+    // |TryEnsureDocumentParsed|.
+    if (!session->tu)
+      continue;
 
     std::vector<CXUnsavedFile> unsaved =
         completion_manager->working_files_->AsUnsavedFiles();
@@ -458,10 +462,14 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       // faster than reparsing the document.
 
       timer.Reset();
-      clang_reparseTranslationUnit(
-          session->tu->cx_tu, unsaved.size(), unsaved.data(),
-          clang_defaultReparseOptions(session->tu->cx_tu));
+      session->tu =
+          clang::TranslationUnit::Reparse(std::move(session->tu), unsaved);
       timer.ResetAndPrint("[complete] clang_reparseTranslationUnit");
+      if (!session->tu) {
+        LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
+                     << path;
+        continue;
+      }
 
       size_t num_diagnostics = clang_getNumDiagnostics(session->tu->cx_tu);
       NonElidedVector<lsDiagnostic> ls_diagnostics;

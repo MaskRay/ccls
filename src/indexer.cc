@@ -1619,21 +1619,19 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     unsaved_files.push_back(unsaved);
   }
 
-  clang::TranslationUnit tu(index, file, args, unsaved_files,
+  std::unique_ptr<clang::TranslationUnit> tu = clang::TranslationUnit::Create(
+      index, file, args, unsaved_files,
                             CXTranslationUnit_KeepGoing |
                                 CXTranslationUnit_DetailedPreprocessingRecord);
-  if (tu.did_fail) {
-    std::cerr << "!! Failed creating translation unit for " << file
-              << std::endl;
+  if (!tu)
     return {};
-  }
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
   if (dump_ast)
-    Dump(tu.document_cursor());
+    Dump(tu->document_cursor());
 
-  return ParseWithTu(file_consumer_shared, perf, &tu, index, file, args,
+  return ParseWithTu(file_consumer_shared, perf, tu.get(), index, file, args,
                      unsaved_files);
 }
 
