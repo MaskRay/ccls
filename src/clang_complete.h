@@ -99,8 +99,11 @@ struct ClangCompleteManager {
   // completion session will be dropped.
   void NotifyClose(const std::string& filename);
 
-  std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename,
-                                                   bool create_if_needed);
+  // Tries to find an edit session for |filename|. This will move the session
+  // from view to edit.
+  std::shared_ptr<CompletionSession> TryGetEditSession(
+      const std::string& filename,
+      bool create_if_needed);
 
   // TODO: make these configurable.
   const int kMaxViewSessions = 10;
