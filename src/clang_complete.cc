@@ -657,8 +657,9 @@ bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
 
   // Check for an existing CompletionSession.
   if (preloaded_sessions_.TryGetEntry(filename) ||
-      completion_sessions_.TryGetEntry(filename))
+      completion_sessions_.TryGetEntry(filename)) {
     return false;
+  }
 
   // No CompletionSession, create new one.
   auto session = std::make_shared<CompletionSession>(
