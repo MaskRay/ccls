@@ -5,6 +5,7 @@
 #include "platform.h"
 #include "serializer.h"
 #include "utils.h"
+#include "timer.h"
 
 #include <clang-c/CXCompilationDatabase.h>
 #include <doctest/doctest.h>
@@ -239,12 +240,20 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     return LoadFromDirectoryListing(config);
   }
 
+  Timer clang_time;
+  Timer our_time;
+  clang_time.Pause();
+  our_time.Pause();
+
+  clang_time.Resume();
   CXCompileCommands cx_commands =
       clang_CompilationDatabase_getAllCompileCommands(cx_db);
-
   unsigned int num_commands = clang_CompileCommands_getSize(cx_commands);
+  clang_time.Pause();
+
   std::vector<Project::Entry> result;
   for (unsigned int i = 0; i < num_commands; i++) {
+    clang_time.Resume();
     CXCompileCommand cx_command =
         clang_CompileCommands_getCommand(cx_commands, i);
 
@@ -252,23 +261,31 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
         clang::ToString(clang_CompileCommand_getDirectory(cx_command));
     std::string relative_filename =
         clang::ToString(clang_CompileCommand_getFilename(cx_command));
-    std::string absolute_filename = directory + "/" + relative_filename;
-
-    CompileCommandsEntry entry;
-    entry.file = NormalizePathWithTestOptOut(absolute_filename);
-    entry.directory = directory;
 
     unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
+    CompileCommandsEntry entry;
     entry.args.reserve(num_args);
     for (unsigned j = 0; j < num_args; ++j)
       entry.args.push_back(
           clang::ToString(clang_CompileCommand_getArg(cx_command, j)));
+    clang_time.Pause();  // TODO: don't call clang::ToString in this block.
+
+    our_time.Resume();
+    std::string absolute_filename = directory + "/" + relative_filename;
+    entry.file = NormalizePathWithTestOptOut(absolute_filename);
+    entry.directory = directory;
 
     result.push_back(GetCompilationEntryFromCompileCommandEntry(config, entry));
+    our_time.Pause();
   }
 
+  clang_time.Resume();
   clang_CompileCommands_dispose(cx_commands);
   clang_CompilationDatabase_dispose(cx_db);
+  clang_time.Pause();
+
+  clang_time.ResetAndPrint("compile_commands.json clang time");
+  our_time.ResetAndPrint("compile_commands.json our time");
 
   return result;
 }
