@@ -9,6 +9,9 @@ struct Config {
   std::string projectRoot;
   // Cache directory for indexed files.
   std::string cacheDirectory;
+  // Value to use for clang -resource-dir if not present in
+  // compile_commands.json.
+  std::string resourceDirectory;
 
   std::vector<std::string> extraClangArguments;
 
@@ -64,6 +67,7 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config,
                     cacheDirectory,
+                    resourceDirectory,
 
                     extraClangArguments,
 

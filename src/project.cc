@@ -40,6 +40,7 @@ struct ProjectConfig {
   std::unordered_set<std::string> angle_dirs;
   std::vector<std::string> extra_flags;
   std::string project_dir;
+  std::string resource_dir;
 };
 
 // TODO: See
@@ -185,9 +186,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       result.args.push_back("-std=c++11");
   }
 
-  // TODO: Add
-  // "-resource-dir=/home/jdufault/.vim/bundle/YouCompleteMe/third_party/ycmd/ycmd/../clang_includes",
-  // we can extract this from build dir.
+  // Add -resource-dir so clang can correctly resolve system includes like
+  // <cstddef>
+  if (!AnyStartsWith(result.args, "-resource-dir"))
+    result.args.push_back("-resource-dir=" + config->resource_dir);
 
   return result;
 }
@@ -312,11 +314,13 @@ int ComputeGuessScore(const std::string& a, const std::string& b) {
 }  // namespace
 
 void Project::Load(const std::vector<std::string>& extra_flags,
-                   const std::string& directory) {
+                   const std::string& directory,
+                   const std::string& resource_directory) {
   // Load data.
   ProjectConfig config;
   config.extra_flags = extra_flags;
   config.project_dir = directory;
+  config.resource_dir = resource_directory;
   entries = LoadCompilationEntriesFromDirectory(&config);
 
   // Cleanup / postprocess include directories.
@@ -393,6 +397,7 @@ void CheckFlags(const std::string& directory,
 
   ProjectConfig config;
   config.project_dir = "/w/c/s/";
+  config.resource_dir = "/w/resource_dir/";
 
   CompileCommandsEntry entry;
   entry.directory = directory;
@@ -424,13 +429,16 @@ void CheckFlags(std::vector<std::string> raw,
 TEST_CASE("strip meta-compiler invocations") {
   CheckFlags(
       /* raw */ {"clang", "-lstdc++", "myfile.cc"},
-      /* expected */ {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11"});
+      /* expected */ {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
+                      "-resource-dir=/w/resource_dir/"});
 
   CheckFlags(/* raw */ {"goma", "clang"},
-             /* expected */ {"clang", "-xc++", "-std=c++11"});
+             /* expected */ {"clang", "-xc++", "-std=c++11",
+                             "-resource-dir=/w/resource_dir/"});
 
   CheckFlags(/* raw */ {"goma", "clang", "--foo"},
-             /* expected */ {"clang", "--foo", "-xc++", "-std=c++11"});
+             /* expected */ {"clang", "--foo", "-xc++", "-std=c++11",
+                             "-resource-dir=/w/resource_dir/"});
 }
 
 // Checks flag parsing for a random chromium file in comparison to what
@@ -773,7 +781,8 @@ TEST_CASE("ycm") {
        "debian_jessie_amd64-sysroot",
        "-fno-exceptions",
        "-fvisibility-inlines-hidden",
-       "-xc++"});
+       "-xc++",
+       "-resource-dir=/w/resource_dir/"});
 }
 
 // Checks flag parsing for an example chromium file.
@@ -1090,7 +1099,8 @@ TEST_CASE("chromium") {
        "debian_jessie_amd64-sysroot",
        "-fno-exceptions",
        "-fvisibility-inlines-hidden",
-       "-xc++"});
+       "-xc++",
+       "-resource-dir=/w/resource_dir/"});
 }
 
 TEST_CASE("Directory extraction") {

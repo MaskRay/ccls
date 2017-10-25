@@ -501,7 +501,7 @@ struct Index_DoIdMap {
         perf(perf),
         is_interactive(is_interactive),
         write_to_disk(write_to_disk) {
-     assert(this->current);
+    assert(this->current);
   }
 };
 
@@ -1367,6 +1367,19 @@ bool QueryDbMainLoop(Config* config,
           EnsureEndsInSlash(config->cacheDirectory);
           MakeDirectoryRecursive(config->cacheDirectory);
 
+          // Ensure there is a resource directory.
+          if (config->resourceDirectory.empty()) {
+            config->resourceDirectory = GetWorkingDirectory();
+#if defined(_WIN32)
+            config->resourceDirectory +=
+                std::string("../../clang_resource_dir/");
+#else
+            config->resourceDirectory += std::string("../clang_resource_dir/");
+#endif
+          }
+          config->resourceDirectory = NormalizePath(config->resourceDirectory);
+          LOG_S(INFO) << "Using -resource-dir=" << config->resourceDirectory;
+
           // Set project root.
           config->projectRoot =
               NormalizePath(request->params.rootUri->GetPath());
@@ -1391,7 +1404,8 @@ bool QueryDbMainLoop(Config* config,
           Timer time;
 
           // Open up / load the project.
-          project->Load(config->extraClangArguments, project_path);
+          project->Load(config->extraClangArguments, project_path,
+                        config->resourceDirectory);
           time.ResetAndPrint("[perf] Loaded compilation entries (" +
                              std::to_string(project->entries.size()) +
                              " files)");

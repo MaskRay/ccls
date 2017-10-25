@@ -10,10 +10,8 @@
 #include <fcntl.h>
 #include <io.h>
 
-
 #include <sys/stat.h>
 #include <sys/types.h>
-
 
 #include <algorithm>
 #include <cassert>
@@ -132,7 +130,8 @@ void PlatformInit() {
 // See http://stackoverflow.com/a/19535628
 std::string GetWorkingDirectory() {
   char result[MAX_PATH];
-  return std::string(result, GetModuleFileName(NULL, result, MAX_PATH));
+  std::string binary_path(result, GetModuleFileName(NULL, result, MAX_PATH));
+  return binary_path.substr(0, binary_path.find_last_of("\\/") + 1);
 }
 
 std::string NormalizePath(const std::string& path) {

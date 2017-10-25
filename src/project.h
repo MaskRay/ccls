@@ -36,7 +36,8 @@ struct Project {
   // all *.cpp, *.cc, *.h, and *.hpp files will be used. clang arguments can be
   // specified in a clang_args file located inside of |directory|.
   void Load(const std::vector<std::string>& extra_flags,
-            const std::string& directory);
+            const std::string& directory,
+            const std::string& resource_directory);
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this
   // will infer one based on existing project structure.
