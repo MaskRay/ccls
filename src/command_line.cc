@@ -1386,13 +1386,16 @@ bool QueryDbMainLoop(Config* config,
           EnsureEndsInSlash(config->projectRoot);
 
           // Start indexer threads.
-          // Set default indexer count if not specified.
           if (config->indexerCount == 0) {
+            // If the user has not specified how many indexers to run, try to
+            // guess an appropriate value. Default to 80% utilization.
+            const float kDefaultTargetUtilization = 0.8;
             config->indexerCount =
-                std::max<int>(std::thread::hardware_concurrency(), 2) - 1;
+                std::thread::hardware_concurrency() * kDefaultTargetUtilization;
+            if (config->indexerCount <= 0)
+              config->indexerCount = 1;
           }
-          std::cerr << "[querydb] Starting " << config->indexerCount
-                    << " indexers" << std::endl;
+          LOG_S(INFO) << "Starting " << config->indexerCount << " indexers";
           for (int i = 0; i < config->indexerCount; ++i) {
             WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
               return IndexMain(config, file_consumer_shared, timestamp_manager,
