@@ -61,11 +61,8 @@ GroupMatch::GroupMatch(const std::vector<std::string>& whitelist,
 bool GroupMatch::IsMatch(const std::string& value,
                          std::string* match_failure_reason) const {
   for (const Matcher& m : whitelist) {
-    if (!m.IsMatch(value)) {
-      if (match_failure_reason)
-        *match_failure_reason = "whitelist \"" + m.regex_string + "\"";
-      return false;
-    }
+    if (m.IsMatch(value))
+      return true;
   }
 
   for (const Matcher& m : blacklist) {
