@@ -14,7 +14,6 @@
 #include <sstream>
 #include <unordered_map>
 
-
 #if !defined(__APPLE__)
 #include <sparsepp/spp_memory.h>
 #endif
@@ -58,9 +57,10 @@ bool AnyStartsWith(const std::vector<std::string>& values,
 
 bool StartsWithAny(const std::string& value,
                    const std::vector<std::string>& startings) {
-  return std::any_of(
-      std::begin(startings), std::end(startings),
-      [&value](const std::string& starting) { return StartsWith(value, starting); });
+  return std::any_of(std::begin(startings), std::end(startings),
+                     [&value](const std::string& starting) {
+                       return StartsWith(value, starting);
+                     });
 }
 
 bool EndsWithAny(const std::string& value,
@@ -138,9 +138,12 @@ static void GetFilesInFolderHelper(
     }
 
     // Skip all dot files.
-    // We must always ignore the '.' and '..' directories, otherwise
-    // this will loop infinitely.
+    //
     // The nested ifs are intentional, branching order is subtle here.
+    //
+    // Note that in the future if we do support dot directories/files, we must
+    // always ignore the '.' and '..' directories otherwise this will loop
+    // infinitely.
     if (file.name[0] != '.') {
       if (file.is_dir) {
         if (recursive) {
