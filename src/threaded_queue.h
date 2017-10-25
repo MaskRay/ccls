@@ -3,13 +3,11 @@
 #include <optional.h>
 #include "work_thread.h"
 
-
 #include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-
 
 using std::experimental::nullopt;
 using std::experimental::optional;
@@ -65,6 +63,12 @@ struct ThreadedQueue : public BaseThreadQueue {
   }
 
   explicit ThreadedQueue(MultiQueueWaiter* waiter) : waiter_(waiter) {}
+
+  // Returns the number of elements in the queue. This acquires a lock.
+  size_t Size() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return priority_.size() + queue_.size();
+  }
 
   // Add an element to the front of the queue.
   void PriorityEnqueue(T&& t) {

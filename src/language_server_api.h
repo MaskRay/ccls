@@ -1654,6 +1654,25 @@ void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
   REFLECT_MEMBER_END();
 }
 
+struct Out_Progress : public lsOutMessage<Out_Progress> {
+  struct Params {
+    int indexRequestCount = 0;
+    int doIdMapCount = 0;
+    int loadPreviousIndexCount = 0;
+    int onIdMappedCount = 0;
+    int onIndexedCount = 0;
+  };
+  std::string method = "$cquery/progress";
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Out_Progress::Params,
+                    indexRequestCount,
+                    doIdMapCount,
+                    loadPreviousIndexCount,
+                    onIdMappedCount,
+                    onIndexedCount);
+MAKE_REFLECT_STRUCT(Out_Progress, jsonrpc, method, params);
+
 struct Out_CquerySetInactiveRegion
     : public lsOutMessage<Out_CquerySetInactiveRegion> {
   struct Params {
