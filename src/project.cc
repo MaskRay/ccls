@@ -30,9 +30,10 @@ namespace {
 bool g_disable_normalize_path_for_test = false;
 
 std::string NormalizePathWithTestOptOut(const std::string& path) {
-  if (g_disable_normalize_path_for_test)
-    return "&" +
-           path;  // Add a & so we can test to verify a path is normalized.
+  if (g_disable_normalize_path_for_test) {
+    // Add a & so we can test to verify a path is normalized.
+    return "&" + path;
+  }
   return NormalizePath(path);
 }
 
@@ -122,7 +123,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         continue;
     }
 
-    auto cleanup_maybe_relative_path = [entry](const std::string& path) {
+    auto cleanup_maybe_relative_path = [&](const std::string& path) {
       assert(!path.empty());
       if (path[0] == '/')
         return NormalizePathWithTestOptOut(path);
