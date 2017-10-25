@@ -147,6 +147,16 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 
 void PlatformInit() {}
 
+std::string GetWorkingDirectory() {
+  char result[FILENAME_MAX];
+  if (!getcwd(result, sizeof(result)))
+    return "";
+  std::string working_dir = std::string(result, strlen(result));
+  EnsureEndsInSlash(working_dir);
+  return working_dir;
+}
+
+
 std::string NormalizePath(const std::string& path) {
   errno = 0;
   char name[PATH_MAX + 1];
