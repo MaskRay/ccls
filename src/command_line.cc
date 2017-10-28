@@ -3098,7 +3098,7 @@ void LanguageServerMain(const std::string& bin_name,
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
   loguru::init(argc, argv);
-  loguru::add_file("cquery.log", loguru::Truncate, loguru::Verbosity_MAX);
+  loguru::add_file("cquery_diagnostics.log", loguru::Truncate, loguru::Verbosity_MAX);
   loguru::g_flush_interval_ms = 0;
   loguru::g_stderr_verbosity = 1;
 
