@@ -85,6 +85,7 @@ bool ShouldDisplayIpcTiming(IpcId id) {
   switch (id) {
     case IpcId::TextDocumentPublishDiagnostics:
     case IpcId::CqueryPublishInactiveRegions:
+    case IpcId::Cout:
       return false;
     default:
       return true;
