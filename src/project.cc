@@ -125,7 +125,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
     auto cleanup_maybe_relative_path = [&](const std::string& path) {
       assert(!path.empty());
-      if (path[0] == '/')
+      if (path[0] == '/' || entry.directory.empty())
         return NormalizePathWithTestOptOut(path);
       return NormalizePathWithTestOptOut(entry.directory + "/" + path);
     };
