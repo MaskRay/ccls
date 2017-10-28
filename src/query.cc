@@ -172,6 +172,7 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
   QueryFile::Def def;
   def.path = indexed.path;
   def.includes = indexed.includes;
+  def.inactive_regions = indexed.skipped_by_preprocessor;
 
   auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
     def.outline.push_back(SymbolRef(idx, id_map.ToQuery(range)));

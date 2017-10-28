@@ -165,6 +165,8 @@ struct QueryFile {
     std::vector<SymbolRef> outline;
     // Every symbol found in the file (ie, for goto definition)
     std::vector<SymbolRef> all_symbols;
+    // Parts of the file which are disabled.
+    std::vector<Range> inactive_regions;
   };
 
   using DefUpdate = Def;
@@ -177,7 +179,11 @@ struct QueryFile {
     def->path = path;
   }
 };
-MAKE_REFLECT_STRUCT(QueryFile::Def, path, outline, all_symbols);
+MAKE_REFLECT_STRUCT(QueryFile::Def,
+                    path,
+                    outline,
+                    all_symbols,
+                    inactive_regions);
 
 struct QueryType {
   using DefUpdate = TypeDefDefinitionData<QueryTypeId,

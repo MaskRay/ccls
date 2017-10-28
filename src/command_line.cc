@@ -99,10 +99,12 @@ void PushBack(NonElidedVector<lsLocation>* result,
 }
 
 bool FindFileOrFail(QueryDatabase* db,
-                    lsRequestId id,
+                    optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
                     QueryFileId* out_file_id = nullptr) {
+  *out_query_file = nullptr;
+
   auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(absolute_path));
   if (it != db->usr_to_file.end()) {
     QueryFile& file = db->files[it->second.id];
@@ -119,30 +121,25 @@ bool FindFileOrFail(QueryDatabase* db,
 
   LOG_S(INFO) << "Unable to find file \"" << absolute_path << "\"";
 
-  Out_Error out;
-  out.id = id;
-  out.error.code = lsErrorCodes::InternalError;
-  out.error.message = "Unable to find file " + absolute_path;
-  IpcManager::instance()->SendOutMessageToClient(IpcId::Cout, out);
+  if (id) {
+    Out_Error out;
+    out.id = *id;
+    out.error.code = lsErrorCodes::InternalError;
+    out.error.message = "Unable to find file " + absolute_path;
+    IpcManager::instance()->SendOutMessageToClient(IpcId::Cout, out);
+  }
 
   return false;
 }
 
-void PublishInactiveLines(WorkingFile* working_file,
-                          const std::vector<Range>& inactive,
-                          bool remap_index_lines) {
+void EmitInactiveLines(WorkingFile* working_file,
+                       const std::vector<Range>& inactive_regions) {
   Out_CquerySetInactiveRegion out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
-  for (Range skipped : inactive) {
-    if (remap_index_lines) {
-      optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
-      if (ls_skipped)
-        out.params.inactiveRegions.push_back(*ls_skipped);
-    } else {
-      out.params.inactiveRegions.push_back(
-          lsRange(lsPosition(skipped.start.line - 1, skipped.start.column),
-                  lsPosition(skipped.end.line - 1, skipped.end.column)));
-    }
+  for (Range skipped : inactive_regions) {
+    optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
+    if (ls_skipped)
+      out.params.inactiveRegions.push_back(*ls_skipped);
   }
   IpcManager::instance()->SendOutMessageToClient(
       IpcId::CqueryPublishInactiveRegions, out);
@@ -938,20 +935,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     // handled by code completion.
     if (!is_interactive)
       EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
-    // Emit regions disabled by the preprocessor. Checking |is_interactive| is
-    // an optimization so we can avoid locking as much in WorkingFiles, but it
-    // will likely generate invalid results if the index request was created
-    // and then the user opened the file.
-    if (is_interactive) {
-      // Since |is_interactive| is true |working_file| should ideally never be
-      // null, but the user may have closed the document after the index
-      // request was generated.
-      WorkingFile* working_file =
-          working_files->GetFileByFilename(new_index->path);
-      if (working_file)
-        PublishInactiveLines(working_file, new_index->skipped_by_preprocessor,
-                             false /*remap_index_lines*/);
-    }
+
     // When main thread does IdMap request it will request the previous index if
     // needed.
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
@@ -1290,6 +1274,9 @@ bool QueryDb_ImportMain(Config* config,
         time.ResetAndPrint(
             "Update WorkingFile index contents (via disk load) for " +
             updated_file.path);
+
+        // Update inactive region.
+        EmitInactiveLines(working_file, updated_file.inactive_regions);
       }
     }
 
@@ -1787,10 +1774,10 @@ bool QueryDbMainLoop(Config* config,
         else
           working_file->SetIndexContent(working_file->buffer_content);
 
-        std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, path);
-        if (cache && !cache->skipped_by_preprocessor.empty())
-          PublishInactiveLines(working_file, cache->skipped_by_preprocessor,
-                               true /*remap_index_lines*/);
+        QueryFile* file = nullptr;
+        FindFileOrFail(db, nullopt, path, &file);
+        if (file && file->def)
+          EmitInactiveLines(working_file, file->def->inactive_regions);
 
         time.ResetAndPrint(
             "[querydb] Loading cached index file for DidOpen (blocks "
@@ -2754,6 +2741,14 @@ bool QueryDbMainLoop(Config* config,
         }
 
         ipc->SendOutMessageToClient(IpcId::TextDocumentCodeLens, response);
+
+        // TODO: We need to move this to a separate request, as the user may
+        // have turned code lens off (ie, a custom DidView notification).
+        if (file && file->def) {
+          EmitInactiveLines(working_files->GetFileByFilename(file->def->path),
+                            file->def->inactive_regions);
+        }
+
         break;
       }
 
@@ -3098,7 +3093,8 @@ void LanguageServerMain(const std::string& bin_name,
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
   loguru::init(argc, argv);
-  loguru::add_file("cquery_diagnostics.log", loguru::Truncate, loguru::Verbosity_MAX);
+  loguru::add_file("cquery_diagnostics.log", loguru::Truncate,
+                   loguru::Verbosity_MAX);
   loguru::g_flush_interval_ms = 0;
   loguru::g_stderr_verbosity = 1;
 
