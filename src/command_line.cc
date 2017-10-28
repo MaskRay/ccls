@@ -128,13 +128,20 @@ bool FindFileOrFail(QueryDatabase* db,
 }
 
 void PublishInactiveLines(WorkingFile* working_file,
-                          const std::vector<Range>& inactive) {
+                          const std::vector<Range>& inactive,
+                          bool remap_index_lines) {
   Out_CquerySetInactiveRegion out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
   for (Range skipped : inactive) {
-    optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
-    if (ls_skipped)
-      out.params.inactiveRegions.push_back(*ls_skipped);
+    if (remap_index_lines) {
+      optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
+      if (ls_skipped)
+        out.params.inactiveRegions.push_back(*ls_skipped);
+    } else {
+      out.params.inactiveRegions.push_back(
+          lsRange(lsPosition(skipped.start.line - 1, skipped.start.column),
+                  lsPosition(skipped.end.line - 1, skipped.end.column)));
+    }
   }
   IpcManager::instance()->SendOutMessageToClient(
       IpcId::CqueryPublishInactiveRegions, out);
@@ -930,7 +937,20 @@ std::vector<Index_DoIdMap> DoParseFile(
     // handled by code completion.
     if (!is_interactive)
       EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
-
+    // Emit regions disabled by the preprocessor. Checking |is_interactive| is
+    // an optimization so we can avoid locking as much in WorkingFiles, but it
+    // will likely generate invalid results if the index request was created
+    // and then the user opened the file.
+    if (is_interactive) {
+      // Since |is_interactive| is true |working_file| should ideally never be
+      // null, but the user may have closed the document after the index
+      // request was generated.
+      WorkingFile* working_file =
+          working_files->GetFileByFilename(new_index->path);
+      if (working_file)
+        PublishInactiveLines(working_file, new_index->skipped_by_preprocessor,
+                             false /*remap_index_lines*/);
+    }
     // When main thread does IdMap request it will request the previous index if
     // needed.
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
@@ -1768,7 +1788,8 @@ bool QueryDbMainLoop(Config* config,
 
         std::unique_ptr<IndexFile> cache = LoadCachedIndex(config, path);
         if (cache && !cache->skipped_by_preprocessor.empty())
-          PublishInactiveLines(working_file, cache->skipped_by_preprocessor);
+          PublishInactiveLines(working_file, cache->skipped_by_preprocessor,
+                               true /*remap_index_lines*/);
 
         time.ResetAndPrint(
             "[querydb] Loading cached index file for DidOpen (blocks "
@@ -3078,7 +3099,7 @@ int main(int argc, char** argv) {
   loguru::init(argc, argv);
   loguru::add_file("cquery.log", loguru::Truncate, loguru::Verbosity_MAX);
   loguru::g_flush_interval_ms = 0;
-  // loguru::g_stderr_verbosity = 1;
+  loguru::g_stderr_verbosity = 1;
 
   MultiQueueWaiter waiter;
   IpcManager::CreateInstance(&waiter);
