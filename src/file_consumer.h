@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-
 struct IndexFile;
 
 // Needed for unordered_map usage below.

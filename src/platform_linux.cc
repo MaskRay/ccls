@@ -11,7 +11,6 @@
 #include <iostream>
 #include <string>
 
-
 #include <assert.h>
 #include <errno.h>
 #include <limits.h>
@@ -23,22 +22,18 @@
 #include <time.h>
 #include <unistd.h>
 
-
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>  // required for stat.h
-
 
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-
 #include <fcntl.h> /* For O_* constants */
 #include <semaphore.h>
 #include <sys/mman.h>
 #include <sys/stat.h> /* For mode constants */
-
 
 #ifndef __APPLE__
 #include <sys/prctl.h>
@@ -155,7 +150,6 @@ std::string GetWorkingDirectory() {
   EnsureEndsInSlash(working_dir);
   return working_dir;
 }
-
 
 std::string NormalizePath(const std::string& path) {
   errno = 0;

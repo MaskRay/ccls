@@ -264,39 +264,6 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
 
 }  // namespace
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // static
 int IndexFile::kCurrentVersion = 4;
 
@@ -903,57 +870,6 @@ clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor,
   return clang::VisiterResult::Continue;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!kIndexStdDeclarations &&
       clang_Location_isInSystemHeader(
@@ -1339,53 +1255,6 @@ bool IsFunctionCallContext(CXCursorKind kind) {
   return false;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 void indexEntityReference(CXClientData client_data,
                           const CXIdxEntityRefInfo* ref) {
   // Don't index references from or to system headers.
@@ -1562,35 +1431,6 @@ void indexEntityReference(CXClientData client_data,
   }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 FileContents::FileContents(const std::string& path, const std::string& content)
     : path(path), content(content) {}
 
@@ -1621,8 +1461,8 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   std::unique_ptr<clang::TranslationUnit> tu = clang::TranslationUnit::Create(
       index, file, args, unsaved_files,
-                            CXTranslationUnit_KeepGoing |
-                                CXTranslationUnit_DetailedPreprocessingRecord);
+      CXTranslationUnit_KeepGoing |
+          CXTranslationUnit_DetailedPreprocessingRecord);
   if (!tu)
     return {};
 

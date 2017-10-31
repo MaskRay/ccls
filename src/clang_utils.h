@@ -7,7 +7,6 @@
 #include <optional.h>
 #include <vector>
 
-
 using namespace std::experimental;
 
 optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,

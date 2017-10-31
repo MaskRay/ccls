@@ -7,7 +7,6 @@
 #include <thread>
 #include <vector>
 
-
 #include <doctest/doctest.h>
 
 namespace {

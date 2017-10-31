@@ -484,8 +484,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       info.kind = lsSymbolKind::Function;
 
       if (func.def->declaring_type.has_value()) {
-        QueryType& container =
-            db->types[func.def->declaring_type->id];
+        QueryType& container = db->types[func.def->declaring_type->id];
         if (container.def)
           info.kind = lsSymbolKind::Method;
       }

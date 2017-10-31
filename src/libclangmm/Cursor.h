@@ -5,7 +5,6 @@
 #include <type_traits>
 #include <vector>
 
-
 #include <clang-c/Index.h>
 
 namespace clang {
