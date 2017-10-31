@@ -5,7 +5,6 @@
 
 #include <loguru.hpp>
 
-#include <malloc.h>
 #include <pthread.h>
 #include <cassert>
 #include <iostream>
@@ -37,6 +36,10 @@
 
 #ifndef __APPLE__
 #include <sys/prctl.h>
+#endif
+
+#if defined(__linux__)
+#include <malloc.h>
 #endif
 
 struct PlatformMutexLinux : public PlatformMutex {
@@ -259,7 +262,9 @@ std::vector<std::string> GetPlatformClangArguments() {
 #undef CHECKED
 
 void FreeUnusedMemory() {
+#if defined(__linux__)
   malloc_trim(0);
+#endif
 }
 
 #endif
