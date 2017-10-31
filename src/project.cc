@@ -272,7 +272,11 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     clang_time.Pause();  // TODO: don't call clang::ToString in this block.
 
     our_time.Resume();
-    std::string absolute_filename = directory + "/" + relative_filename;
+    std::string absolute_filename;
+    if (!relative_filename.empty() && relative_filename[0] == '/')
+      absolute_filename = relative_filename;
+    else
+      absolute_filename = directory + "/" + relative_filename;
     entry.file = NormalizePathWithTestOptOut(absolute_filename);
     entry.directory = directory;
 
