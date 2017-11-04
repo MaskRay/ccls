@@ -24,9 +24,9 @@
 #include "working_files.h"
 
 #include <doctest/doctest.h>
-#include <loguru.hpp>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
+#include <loguru.hpp>
 
 #include <climits>
 #include <fstream>

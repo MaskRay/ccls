@@ -429,9 +429,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
     bool did_add =                                                             \
         ComputeDifferenceForUpdate(previous, current, &removed, &added);       \
     if (did_add) {                                                             \
-      /*std::cerr << "Adding mergeable update on " <<                          \
+      /*std::cerr << "Adding mergeable update on " << \ \ \ \ \ \                                                                             \
        * current_def->def.short_name << " (" << current_def->def.usr << ") for \
-       * field " << #index_name << std::endl;*/                                \
+       * \ \ \ \ \ \ field " << #index_name << std::endl;*/                              \
       query_name.push_back(MergeableUpdate<type_id, type>(                     \
           current_id_map.ToQuery(current_def->id), added, removed));           \
     }                                                                          \
@@ -606,7 +606,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 }
 
 void IndexUpdate::Merge(const IndexUpdate& update) {
-  // This function runs on an indexer thread.
+// This function runs on an indexer thread.
 
 #define INDEX_UPDATE_APPEND(name) AddRange(&name, update.name);
 #define INDEX_UPDATE_MERGE(name) AddMergeableRange(&name, update.name);

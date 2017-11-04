@@ -14,3 +14,7 @@ optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
 
 // Returns the absolute path to |file|.
 std::string FileName(CXFile file);
+
+std::string ToString(CXString cx_string);
+
+std::string ToString(CXCursorKind cursor_kind);

@@ -4,7 +4,6 @@
 #include "libclangmm/Cursor.h"
 #include "libclangmm/Index.h"
 #include "libclangmm/TranslationUnit.h"
-#include "libclangmm/Utility.h"
 #include "platform.h"
 #include "serializer.h"
 #include "timer.h"
@@ -446,8 +445,8 @@ clang::VisiterResult DumpVisitor(clang::Cursor cursor,
                                  int* level) {
   for (int i = 0; i < *level; ++i)
     std::cerr << "  ";
-  std::cerr << clang::ToString(cursor.get_kind()) << " "
-            << cursor.get_spelling() << std::endl;
+  std::cerr << ToString(cursor.get_kind()) << " " << cursor.get_spelling()
+            << std::endl;
 
   *level += 1;
   cursor.VisitChildren(&DumpVisitor, level);
@@ -923,8 +922,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // if (!decl->isRedeclaration) {
       var->def.short_name = decl->entityInfo->name;
 
-      std::string type_name = clang::ToString(
-          clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
+      std::string type_name =
+          ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
       var->def.detailed_name =
           type_name + " " +
           ns->QualifiedName(decl->semanticContainer, var->def.short_name);

@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <cassert>
 
+#include "../clang_utils.h"
 #include "Cursor.h"
-#include "Utility.h"
 
 namespace clang {
 
@@ -141,15 +141,15 @@ SourceRange Cursor::get_source_range() const {
 */
 
 std::string Cursor::get_spelling() const {
-  return clang::ToString(clang_getCursorSpelling(cx_cursor));
+  return ::ToString(clang_getCursorSpelling(cx_cursor));
 }
 
 std::string Cursor::get_display_name() const {
-  return clang::ToString(clang_getCursorDisplayName(cx_cursor));
+  return ::ToString(clang_getCursorDisplayName(cx_cursor));
 }
 
 std::string Cursor::get_usr() const {
-  return clang::ToString(clang_getCursorUSR(cx_cursor));
+  return ::ToString(clang_getCursorUSR(cx_cursor));
 }
 
 bool Cursor::is_definition() const {
@@ -203,7 +203,7 @@ bool Cursor::is_valid_kind() const {
 
 std::string Cursor::get_type_description() const {
   auto type = clang_getCursorType(cx_cursor);
-  return clang::ToString(clang_getTypeSpelling(type));
+  return ::ToString(clang_getTypeSpelling(type));
 
 #if false
   std::string spelling;
@@ -338,14 +338,13 @@ std::string Cursor::evaluate() const {
 std::string Cursor::get_comments() const {
   Cursor referenced = get_referenced();
   if (referenced)
-    return clang::ToString(
-        clang_Cursor_getRawCommentText(referenced.cx_cursor));
+    return ::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor));
 
   return "";
 }
 
 std::string Cursor::ToString() const {
-  return clang::ToString(get_kind()) + " " + get_spelling();
+  return ::ToString(get_kind()) + " " + get_spelling();
 }
 
 }  // namespace clang

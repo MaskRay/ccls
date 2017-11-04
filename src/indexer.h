@@ -1,10 +1,10 @@
 #pragma once
 
+#include "clang_utils.h"
 #include "file_consumer.h"
 #include "language_server_api.h"
 #include "libclangmm/Index.h"
 #include "libclangmm/TranslationUnit.h"
-#include "libclangmm/Utility.h"
 #include "performance.h"
 #include "position.h"
 #include "serializer.h"

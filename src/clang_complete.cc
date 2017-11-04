@@ -1,7 +1,6 @@
 #include "clang_complete.h"
 
 #include "clang_utils.h"
-#include "libclangmm/Utility.h"
 #include "platform.h"
 #include "timer.h"
 
@@ -184,7 +183,7 @@ void BuildDetailString(CXCompletionString completion_string,
 
       case CXCompletionChunk_Placeholder: {
         std::string text =
-            clang::ToString(clang_getCompletionChunkText(completion_string, i));
+            ToString(clang_getCompletionChunkText(completion_string, i));
         parameters->push_back(text);
         detail += text;
         insert += "${" + std::to_string(parameters->size()) + ":" + text + "}";
@@ -198,7 +197,7 @@ void BuildDetailString(CXCompletionString completion_string,
 
       case CXCompletionChunk_TypedText: {
         std::string text =
-            clang::ToString(clang_getCompletionChunkText(completion_string, i));
+            ToString(clang_getCompletionChunkText(completion_string, i));
         label = text;
         detail += text;
         insert += text;
@@ -207,21 +206,20 @@ void BuildDetailString(CXCompletionString completion_string,
 
       case CXCompletionChunk_Text: {
         std::string text =
-            clang::ToString(clang_getCompletionChunkText(completion_string, i));
+            ToString(clang_getCompletionChunkText(completion_string, i));
         detail += text;
         insert += text;
         break;
       }
 
       case CXCompletionChunk_Informative: {
-        detail +=
-            clang::ToString(clang_getCompletionChunkText(completion_string, i));
+        detail += ToString(clang_getCompletionChunkText(completion_string, i));
         break;
       }
 
       case CXCompletionChunk_ResultType: {
         CXString text = clang_getCompletionChunkText(completion_string, i);
-        std::string new_detail = clang::ToString(text) + detail + " ";
+        std::string new_detail = ToString(text) + detail + " ";
         detail = new_detail;
         break;
       }
@@ -441,7 +439,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                               ls_completion_item.insertText,
                               &ls_completion_item.parameters_);
             ls_completion_item.insertText += "$0";
-            ls_completion_item.documentation = clang::ToString(
+            ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
             ls_completion_item.sortText =
                 (const char)uint64_t(GetCompletionPriority(

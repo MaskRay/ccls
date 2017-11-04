@@ -1,6 +1,6 @@
 #include "project.h"
 
-#include "libclangmm/Utility.h"
+#include "clang_utils.h"
 #include "match.h"
 #include "platform.h"
 #include "serializer.h"
@@ -259,16 +259,16 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
         clang_CompileCommands_getCommand(cx_commands, i);
 
     std::string directory =
-        clang::ToString(clang_CompileCommand_getDirectory(cx_command));
+        ToString(clang_CompileCommand_getDirectory(cx_command));
     std::string relative_filename =
-        clang::ToString(clang_CompileCommand_getFilename(cx_command));
+        ToString(clang_CompileCommand_getFilename(cx_command));
 
     unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
     CompileCommandsEntry entry;
     entry.args.reserve(num_args);
     for (unsigned j = 0; j < num_args; ++j)
       entry.args.push_back(
-          clang::ToString(clang_CompileCommand_getArg(cx_command, j)));
+          ToString(clang_CompileCommand_getArg(cx_command, j)));
     clang_time.Pause();  // TODO: don't call clang::ToString in this block.
 
     our_time.Resume();
