@@ -23,10 +23,8 @@
 #include "work_thread.h"
 #include "working_files.h"
 
-#include <loguru.hpp>
-#include "tiny-process-library/process.hpp"
-
 #include <doctest/doctest.h>
+#include <loguru.hpp>
 #include <rapidjson/istreamwrapper.h>
 #include <rapidjson/ostreamwrapper.h>
 
