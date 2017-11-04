@@ -27,8 +27,6 @@ class TranslationUnit {
   explicit TranslationUnit(CXTranslationUnit tu);
   ~TranslationUnit();
 
-  Cursor document_cursor() const;
-
   CXTranslationUnit cx_tu;
 };
 

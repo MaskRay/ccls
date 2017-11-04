@@ -89,7 +89,4 @@ TranslationUnit::~TranslationUnit() {
   clang_disposeTranslationUnit(cx_tu);
 }
 
-Cursor TranslationUnit::document_cursor() const {
-  return Cursor(clang_getTranslationUnitCursor(cx_tu));
-}
 }  // namespace clang

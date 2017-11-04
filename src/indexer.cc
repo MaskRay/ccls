@@ -1468,7 +1468,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
   if (dump_ast)
-    Dump(tu->document_cursor());
+    Dump(clang_getTranslationUnitCursor(tu->cx_tu));
 
   return ParseWithTu(file_consumer_shared, perf, tu.get(), index, file, args,
                      unsaved_files);
@@ -1510,8 +1510,8 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   clang_IndexAction_dispose(index_action);
   // std::cerr << "!! [END] Indexing " << file << std::endl;
 
-  tu->document_cursor().VisitChildren(&VisitMacroDefinitionAndExpansions,
-                                      &param);
+  clang::Cursor(clang_getTranslationUnitCursor(tu->cx_tu))
+      .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
 
   perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
