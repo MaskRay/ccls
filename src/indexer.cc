@@ -1009,6 +1009,19 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       AddDeclTypeUsages(db, decl_cursor, decl->semanticContainer,
                         decl->lexicalContainer);
 
+      // Add parameter list if we haven't seen this function before.
+      //
+      // note: If the function has no parameters, this block will be rerun
+      // every time we see the function. Performance should hopefully be fine
+      // but it may be a possible optimization.
+      if (func->parameter_type_descriptions.empty()) {
+        for (clang::Cursor arg : decl_cursor.get_arguments()) {
+          if (arg.get_kind() == CXCursor_ParmDecl) {
+            func->parameter_type_descriptions.push_back(arg.get_type_description());
+          }
+        }
+      }
+
       // Add definition or declaration. This is a bit tricky because we treat
       // template specializations as declarations, even though they are
       // technically definitions.

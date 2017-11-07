@@ -110,6 +110,7 @@ OUTPUT:
       "usr": "c:@F@as_return_type#*$@S@unique_ptr>#$@S@S1#$@S@S2#",
       "short_name": "as_return_type",
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> *as_return_type(unique_ptr<S1, S2> *)",
+      "parameter_type_descriptions": ["unique_ptr<S1, S2> *"],
       "definition_spelling": "33:37-33:51",
       "definition_extent": "33:1-33:92"
     }, {
@@ -117,6 +118,7 @@ OUTPUT:
       "usr": "c:@F@no_return_type#I#",
       "short_name": "no_return_type",
       "detailed_name": "void no_return_type(int)",
+      "parameter_type_descriptions": ["int"],
       "definition_spelling": "40:6-40:20",
       "definition_extent": "40:1-40:28"
     }, {

@@ -86,6 +86,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("usr", value.def.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("parameter_type_descriptions", value.parameter_type_descriptions);
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);

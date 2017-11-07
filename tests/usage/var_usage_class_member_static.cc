@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
+      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "5:6-5:12",
           "extent": "5:1-5:17",

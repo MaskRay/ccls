@@ -15,6 +15,7 @@ OUTPUT:
       "usr": "c:@F@consume#*v#",
       "short_name": "consume",
       "detailed_name": "void consume(void *)",
+      "parameter_type_descriptions": ["void *"],
       "definition_spelling": "1:6-1:13",
       "definition_extent": "1:1-1:23",
       "callers": ["2@7:3-7:10"]

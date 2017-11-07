@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#&&$@S@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo(Foo &&)",
+      "parameter_type_descriptions": ["Foo &&"],
       "definition_spelling": "5:12-5:15",
       "definition_extent": "5:12-5:16",
       "declaring_type": 0

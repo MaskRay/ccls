@@ -8,6 +8,7 @@ OUTPUT:
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
       "detailed_name": "void foo(int, int)",
+      "parameter_type_descriptions": ["int", "int"],
       "declarations": [{
           "spelling": "1:6-1:9",
           "extent": "1:1-1:23",

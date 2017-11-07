@@ -17,6 +17,7 @@ OUTPUT:
       "usr": "c:@N@ns@F@Accept#I#",
       "short_name": "Accept",
       "detailed_name": "void ns::Accept(int)",
+      "parameter_type_descriptions": ["int"],
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:3-3:24",
       "callers": ["1@7:7-7:13", "1@9:3-9:9"]

@@ -32,6 +32,7 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "detailed_name": "void called(int)",
+      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "1:6-1:12",
           "extent": "1:1-1:19",

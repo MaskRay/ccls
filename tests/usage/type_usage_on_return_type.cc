@@ -55,6 +55,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Get#I#",
       "short_name": "Get",
       "detailed_name": "Type *Foo::Get(int)",
+      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "8:9-8:12",
           "extent": "8:3-8:17",

@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@F@foo#&$@S@Type#&1S1_#",
       "short_name": "foo",
       "detailed_name": "void foo(Type &, const Type &)",
+      "parameter_type_descriptions": ["Type &", "const Type &"],
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-8:2"
     }],

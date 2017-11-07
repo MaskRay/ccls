@@ -26,6 +26,7 @@ OUTPUT:
       "usr": "c:@S@Wrapper@F@Wrapper#I#",
       "short_name": "Wrapper",
       "detailed_name": "void Wrapper::Wrapper(int)",
+      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "2:3-2:10",
           "extent": "2:3-2:17",

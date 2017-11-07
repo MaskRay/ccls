@@ -14,6 +14,7 @@ OUTPUT:
       "usr": "c:@FT@>1#Taccept#t0.0#v#",
       "short_name": "accept",
       "detailed_name": "void accept(T)",
+      "parameter_type_descriptions": ["T"],
       "declarations": [{
           "spelling": "2:6-2:12",
           "extent": "2:1-2:15",

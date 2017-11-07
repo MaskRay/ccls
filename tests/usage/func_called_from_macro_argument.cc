@@ -14,6 +14,7 @@ OUTPUT:
       "usr": "c:@F@called#b#b#",
       "short_name": "called",
       "detailed_name": "bool called(bool, bool)",
+      "parameter_type_descriptions": ["bool", "bool"],
       "declarations": [{
           "spelling": "3:6-3:12",
           "extent": "3:1-3:28",

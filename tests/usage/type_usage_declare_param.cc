@@ -26,6 +26,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@ForwardType#$@S@ImplementedType#",
       "short_name": "foo",
       "detailed_name": "void foo(ForwardType *, ImplementedType)",
+      "parameter_type_descriptions": ["ForwardType *", "ImplementedType"],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:47"
     }],

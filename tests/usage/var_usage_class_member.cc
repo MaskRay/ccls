@@ -36,6 +36,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
+      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "7:6-7:12",
           "extent": "7:1-7:17",
@@ -48,6 +49,7 @@ OUTPUT:
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "detailed_name": "void accept(int *)",
+      "parameter_type_descriptions": ["int *"],
       "declarations": [{
           "spelling": "8:6-8:12",
           "extent": "8:1-8:18",

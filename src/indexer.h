@@ -329,6 +329,12 @@ struct IndexFunc {
     std::vector<Range> param_spellings;
   };
 
+  // Type description for each parameter. This is stored in the sharable
+  // section (instead of the def) because it is while indexing cross-refs for
+  // constructors, which means the def may not yet be available if the function
+  // is forward-declared.
+  std::vector<std::string> parameter_type_descriptions;
+
   // Places the function is forward-declared.
   std::vector<Declaration> declarations;
 

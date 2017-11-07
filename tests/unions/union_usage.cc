@@ -30,6 +30,7 @@ OUTPUT:
       "usr": "c:@F@act#*$@U@Foo#",
       "short_name": "act",
       "detailed_name": "void act(Foo *)",
+      "parameter_type_descriptions": ["Foo *"],
       "definition_spelling": "8:6-8:9",
       "definition_extent": "8:1-10:2"
     }],
