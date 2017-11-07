@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Foo::foo()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "2:8-2:11",
           "extent": "2:3-2:13",

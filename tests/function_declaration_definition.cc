@@ -10,6 +10,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "1:6-1:9",
           "extent": "1:1-1:11",

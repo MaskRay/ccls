@@ -32,6 +32,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
+      "is_constructor": true,
       "definition_spelling": "3:3-3:6",
       "definition_extent": "3:3-3:11",
       "declaring_type": 0,
@@ -41,6 +42,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@~Foo#",
       "short_name": "~Foo",
       "detailed_name": "void Foo::~Foo() noexcept",
+      "is_constructor": false,
       "definition_spelling": "4:3-4:7",
       "definition_extent": "4:3-4:12",
       "declaring_type": 0
@@ -49,6 +51,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "is_constructor": false,
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
       "callees": ["~0@8:7-8:8"]

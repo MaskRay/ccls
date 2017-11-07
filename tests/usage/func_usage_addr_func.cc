@@ -15,6 +15,7 @@ OUTPUT:
       "usr": "c:@F@consume#*v#",
       "short_name": "consume",
       "detailed_name": "void consume(void *)",
+      "is_constructor": false,
       "parameter_type_descriptions": ["void *"],
       "definition_spelling": "1:6-1:13",
       "definition_extent": "1:1-1:23",
@@ -24,6 +25,7 @@ OUTPUT:
       "usr": "c:@F@used#",
       "short_name": "used",
       "detailed_name": "void used()",
+      "is_constructor": false,
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-3:15",
       "callers": ["2@6:13-6:17", "2@7:12-7:16"]
@@ -32,6 +34,7 @@ OUTPUT:
       "usr": "c:@F@user#",
       "short_name": "user",
       "detailed_name": "void user()",
+      "is_constructor": false,
       "definition_spelling": "5:6-5:10",
       "definition_extent": "5:1-8:2",
       "callees": ["1@6:13-6:17", "0@7:3-7:10", "1@7:12-7:16"]

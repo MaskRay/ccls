@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:func_usage_class_inline_var_def.cc@F@helper#",
       "short_name": "helper",
       "detailed_name": "int helper()",
+      "is_constructor": false,
       "definition_spelling": "1:12-1:18",
       "definition_extent": "1:1-3:2",
       "callers": ["-1@6:11-6:17"]

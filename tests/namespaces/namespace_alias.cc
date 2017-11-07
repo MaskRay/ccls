@@ -21,6 +21,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "is_constructor": false,
       "definition_spelling": "11:6-11:9",
       "definition_extent": "11:1-14:2"
     }],

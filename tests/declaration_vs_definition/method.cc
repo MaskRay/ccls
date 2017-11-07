@@ -24,6 +24,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
       "detailed_name": "void Foo::declonly()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "2:8-2:16",
           "extent": "2:3-2:18",
@@ -35,6 +36,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
       "detailed_name": "void Foo::purevirtual()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "3:16-3:27",
           "extent": "3:3-3:33",
@@ -46,6 +48,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@def#",
       "short_name": "def",
       "detailed_name": "void Foo::def()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "4:8-4:11",
           "extent": "4:3-4:13",

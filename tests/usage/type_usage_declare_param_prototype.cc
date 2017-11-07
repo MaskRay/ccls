@@ -22,6 +22,7 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "detailed_name": "void foo(Foo *, Foo *)",
+      "is_constructor": false,
       "parameter_type_descriptions": ["Foo *", "Foo *"],
       "declarations": [{
           "spelling": "3:6-3:9",

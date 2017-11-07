@@ -58,6 +58,7 @@ OUTPUT: header.h
       "usr": "c:@FT@>1#TFoo1#v#",
       "short_name": "Foo1",
       "detailed_name": "void Foo1()",
+      "is_constructor": false,
       "definition_spelling": "10:6-10:10",
       "definition_extent": "10:1-10:15"
     }],
@@ -131,12 +132,14 @@ OUTPUT: impl.cc
       "usr": "c:@F@Impl#",
       "short_name": "Impl",
       "detailed_name": "void Impl()",
+      "is_constructor": false,
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
       "callees": ["1@4:3-4:7"]
     }, {
       "id": 1,
       "usr": "c:@FT@>1#TFoo1#v#",
+      "is_constructor": false,
       "callers": ["0@4:3-4:7"]
     }]
 }

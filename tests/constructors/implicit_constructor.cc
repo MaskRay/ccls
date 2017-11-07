@@ -26,6 +26,7 @@ OUTPUT:
       "usr": "c:@S@Type@F@Type#",
       "short_name": "Type",
       "detailed_name": "void Type::Type()",
+      "is_constructor": true,
       "definition_spelling": "2:3-2:7",
       "definition_extent": "2:3-2:12",
       "declaring_type": 0,
@@ -35,6 +36,7 @@ OUTPUT:
       "usr": "c:@F@Make#",
       "short_name": "Make",
       "detailed_name": "void Make()",
+      "is_constructor": false,
       "definition_spelling": "5:6-5:10",
       "definition_extent": "5:1-8:2",
       "callees": ["~0@6:8-6:11"]

@@ -36,6 +36,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
+      "is_constructor": false,
       "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "7:6-7:12",
@@ -49,6 +50,7 @@ OUTPUT:
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "detailed_name": "void accept(int *)",
+      "is_constructor": false,
       "parameter_type_descriptions": ["int *"],
       "declarations": [{
           "spelling": "8:6-8:12",
@@ -62,6 +64,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "is_constructor": false,
       "definition_spelling": "10:6-10:9",
       "definition_extent": "10:1-18:2",
       "callees": ["0@14:3-14:9", "0@15:3-15:9", "1@16:3-16:9", "0@17:3-17:9"]

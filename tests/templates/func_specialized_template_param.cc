@@ -33,6 +33,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Bar#&$@S@Template>#d#",
       "short_name": "Bar",
       "detailed_name": "void Foo::Bar(Template<double> &)",
+      "is_constructor": false,
       "parameter_type_descriptions": ["Template<double> &"],
       "declarations": [{
           "spelling": "5:8-5:11",

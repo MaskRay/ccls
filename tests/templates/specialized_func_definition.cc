@@ -30,6 +30,7 @@ OUTPUT:
       "usr": "c:@ST>1#T@Template@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Template::Foo()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "3:8-3:11",
           "extent": "3:3-3:13",

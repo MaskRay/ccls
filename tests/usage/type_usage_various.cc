@@ -28,6 +28,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "detailed_name": "Foo *Foo::make()",
+      "is_constructor": false,
       "declarations": [{
           "spelling": "2:8-2:12",
           "extent": "2:3-2:14",

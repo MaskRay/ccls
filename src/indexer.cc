@@ -1009,6 +1009,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       AddDeclTypeUsages(db, decl_cursor, decl->semanticContainer,
                         decl->lexicalContainer);
 
+      func->is_constructor = decl->entityInfo->kind == CXIdxEntity_CXXConstructor;
+
       // Add parameter list if we haven't seen this function before.
       //
       // note: If the function has no parameters, this block will be rerun
@@ -1110,8 +1112,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           clang_getOverriddenCursors(decl->cursor, &overridden,
                                      &num_overridden);
 
-          // FIXME if it ever shows up. Methods should only ever have 1 base
-          // type, though.
+          // FIXME: this happens for destructors when there are multiple
+          // parent classes.
           if (num_overridden > 1)
             std::cerr << "[indexer]: warning: multiple base overrides for "
                       << func->def.detailed_name << std::endl;
@@ -1310,10 +1312,6 @@ void indexEntityReference(CXClientData client_data,
   //  return;
 
   clang::Cursor cursor(ref->cursor);
-
-  // std::cerr << "REF kind=" << ref->referencedEntity->kind << " at " <<
-  // db->id_cache.Resolve(cursor, false).ToPrettyString(&db->id_cache) <<
-  // std::endl;
 
   switch (ref->referencedEntity->kind) {
     case CXIdxEntity_CXXNamespaceAlias:

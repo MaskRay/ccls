@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
+      "is_constructor": false,
       "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "5:6-5:12",
@@ -38,6 +39,7 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "is_constructor": false,
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
       "callees": ["0@8:3-8:9"]
