@@ -181,7 +181,6 @@ Cursor Cursor::get_semantic_parent() const {
 
 std::vector<Cursor> Cursor::get_arguments() const {
   int size = clang_Cursor_getNumArguments(cx_cursor);
-  assert(size >= 0);
   if (size < 0)
     return std::vector<Cursor>();
 

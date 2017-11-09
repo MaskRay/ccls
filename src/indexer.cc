@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <climits>
 
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
@@ -19,6 +20,15 @@
 namespace {
 
 const bool kIndexStdDeclarations = true;
+
+std::vector<std::string> BuildTypeDesc(clang::Cursor cursor) {
+  std::vector<std::string> type_desc;
+  for (clang::Cursor arg : cursor.get_arguments()) {
+    if (arg.get_kind() == CXCursor_ParmDecl)
+      type_desc.push_back(arg.get_type_description());
+  }
+  return type_desc;
+}
 
 void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
   if (!result->empty() && (*result)[result->size() - 1] == ref)
@@ -89,6 +99,103 @@ struct NamespaceHelper {
   }
 };
 
+// Caches all instances of constructors, regardless if they are indexed or not.
+// The constructor may have a make_unique call associated with it that we need
+// to export. If we do not capture the parameter type description for the
+// constructor we will not be able to attribute the constructor call correctly.
+struct ConstructorCache {
+  using Usr = std::string;
+  struct Constructor {
+    std::vector<std::string> param_type_desc;
+    Usr usr;
+  };
+  std::unordered_map<Usr, std::vector<Constructor>> constructors_;
+
+  // This should be called whenever there is a constructor declaration.
+  void NotifyConstructor(clang::Cursor ctor_cursor) {
+    Constructor ctor;
+    ctor.usr = ctor_cursor.get_usr();
+    ctor.param_type_desc = BuildTypeDesc(ctor_cursor);
+
+    // Insert into |constructors_|.
+    std::string type_usr = ctor_cursor.get_semantic_parent().get_usr();
+    auto existing_ctors = constructors_.find(type_usr);
+    if (existing_ctors != constructors_.end()) {
+      existing_ctors->second.push_back(ctor);
+    } else {
+      constructors_[type_usr] = {ctor};
+    }
+  }
+
+  // Tries to lookup a constructor in |type_usr| that takes arguments most
+  // closely aligned to |param_type_desc|.
+  optional<std::string> TryFindConstructorUsr(
+      const std::string& type_usr,
+      const std::vector<std::string>& param_type_desc) {
+    auto count_matching_prefix_length = [](const char* a, const char* b) {
+      int matched = 0;
+      while (*a && *b) {
+        if (*a != *b)
+          break;
+        ++a;
+        ++b;
+        ++matched;
+      }
+      // Additional score if the strings were the same length, which makes
+      // "a"/"a" match higher than "a"/"a&"
+      if (*a == *b)
+        matched += 1;
+      return matched;
+    };
+
+    // Try to find constructors for the type. If there are no constructors
+    // available, return an empty result.
+    auto ctors_it = constructors_.find(type_usr);
+    if (ctors_it == constructors_.end())
+      return nullopt;
+    const std::vector<Constructor>& ctors = ctors_it->second;
+    if (ctors.empty())
+      return nullopt;
+
+    std::string best_usr;
+    int best_score = INT_MIN;
+
+    // Scan constructors for the best possible match.
+    for (const Constructor& ctor : ctors) {
+      // If |param_type_desc| is empty and the constructor is as well, we don't
+      // need to bother searching, as this is the match.
+      if (param_type_desc.empty() && ctor.param_type_desc.empty()) {
+        best_usr = ctor.usr;
+        break;
+      }
+
+      // Weight matching parameter length heavily, as it is more accurate than
+      // the fuzzy type matching approach.
+      int score = 0;
+      if (param_type_desc.size() == ctor.param_type_desc.size())
+        score += param_type_desc.size() * 1000;
+
+      // Do prefix-based match on parameter type description. This works well in
+      // practice because clang appends qualifiers to the end of the type, ie,
+      // |foo *&&|
+      for (int i = 0;
+           i < std::min(param_type_desc.size(), ctor.param_type_desc.size());
+           ++i) {
+        score += count_matching_prefix_length(param_type_desc[i].c_str(),
+                                              ctor.param_type_desc[i].c_str());
+      }
+
+      if (score > best_score) {
+        best_usr = ctor.usr;
+        best_score = score;
+      }
+    }
+
+    assert(!best_usr.empty());
+    return best_usr;
+  }
+};
+
 struct IndexParam {
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
@@ -107,6 +214,7 @@ struct IndexParam {
 
   FileConsumer* file_consumer = nullptr;
   NamespaceHelper ns;
+  ConstructorCache ctors;
 
   IndexParam(clang::TranslationUnit* tu, FileConsumer* file_consumer)
       : tu(tu), file_consumer(file_consumer) {}
@@ -875,12 +983,19 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           clang_indexLoc_getCXSourceLocation(decl->loc)))
     return;
 
+  IndexParam* param = static_cast<IndexParam*>(client_data);
+
+  // Track all constructor declarations, as we may need to use it to manually
+  // associate std::make_unique and the like as constructor invocations.
+  if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor) {
+    param->ctors.NotifyConstructor(decl->cursor);
+  }
+
   assert(AreEqualLocations(decl->loc, decl->cursor));
 
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc),
                             &file, nullptr, nullptr, nullptr);
-  IndexParam* param = static_cast<IndexParam*>(client_data);
   IndexFile* db = ConsumeFile(param, file);
   if (!db)
     return;
@@ -1009,20 +1124,16 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       AddDeclTypeUsages(db, decl_cursor, decl->semanticContainer,
                         decl->lexicalContainer);
 
-      func->is_constructor = decl->entityInfo->kind == CXIdxEntity_CXXConstructor;
+      func->is_constructor =
+          decl->entityInfo->kind == CXIdxEntity_CXXConstructor;
 
       // Add parameter list if we haven't seen this function before.
       //
       // note: If the function has no parameters, this block will be rerun
       // every time we see the function. Performance should hopefully be fine
       // but it may be a possible optimization.
-      if (func->parameter_type_descriptions.empty()) {
-        for (clang::Cursor arg : decl_cursor.get_arguments()) {
-          if (arg.get_kind() == CXCursor_ParmDecl) {
-            func->parameter_type_descriptions.push_back(arg.get_type_description());
-          }
-        }
-      }
+      if (func->parameter_type_descriptions.empty())
+        func->parameter_type_descriptions = BuildTypeDesc(decl_cursor);
 
       // Add definition or declaration. This is a bit tricky because we treat
       // template specializations as declarations, even though they are
@@ -1376,6 +1487,50 @@ void indexEntityReference(CXClientData client_data,
                    IndexFuncRef(caller_id, loc_spelling, is_implicit));
       } else {
         AddFuncRef(&called->callers, IndexFuncRef(loc_spelling, is_implicit));
+      }
+
+      // Checks if |str| starts with |start|. Ignores case.
+      auto str_begin = [](const char* start, const char* str) {
+        while (*start && *str) {
+          char a = tolower(*start);
+          char b = tolower(*str);
+          if (a != b)
+            return false;
+          ++start;
+          ++str;
+        }
+        return !*start;
+      };
+
+      bool is_template = ref->referencedEntity->templateKind !=
+                         CXIdxEntityCXXTemplateKind::CXIdxEntity_NonTemplate;
+      if (is_template && str_begin("make", ref->referencedEntity->name)) {
+        // Try to find the return type of called function. That type will have
+        // the constructor function we add a usage to.
+        optional<clang::Cursor> opt_found_type = FindType(ref->cursor);
+        if (opt_found_type) {
+          std::string ctor_type_usr =
+              opt_found_type->get_referenced().get_usr();
+          clang::Cursor call_cursor = ref->cursor;
+
+          // Build a type description from the parameters of the call, so we
+          // can try to find a constructor with the same type description.
+          std::vector<std::string> call_type_desc;
+          for (clang::Type type : call_cursor.get_type().get_arguments()) {
+            std::string type_desc = type.get_spelling();
+            if (!type_desc.empty())
+              call_type_desc.push_back(type_desc);
+          }
+
+          // Try to find the constructor and add a reference.
+          optional<std::string> ctor_usr =
+              param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
+          if (ctor_usr) {
+            IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
+            AddFuncRef(&ctor->callers,
+                       IndexFuncRef(loc_spelling, true /*is_implicit*/));
+          }
+        }
       }
 
       break;

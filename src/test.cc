@@ -121,19 +121,7 @@ void RunTests() {
     float memory_after = -1.;
 
     {
-      // if (path != "tests/templates/specialized_func_definition.cc") continue;
-      // if (path !=
-      // "tests/templates/namespace_template_class_template_func_usage_folded_into_one.cc")
-      // continue;  if (path != "tests/multi_file/funky_enum.cc") continue;  if
-      // (path != "tests/multi_file/simple_impl.cc") continue;  if (path !=
-      // "tests/inheritance/interface_pure_virtual.cc") continue;  if (path !=
-      // "tests/_empty_test.cc") continue;  if (path !=
-      // "tests/declaration_vs_definition/func_associated_function_params.cc")
-      // continue;
-
-      // if (path !=
-      // "tests/templates/template_class_type_usage_folded_into_one.cc")
-      // continue;  path = "C:/Users/jacob/Desktop/superindex/indexer/" + path;
+      // if (path != "tests/constructors/make_functions.cc") continue;
 
       Config config;
       FileConsumer::SharedState file_consumer_shared;
