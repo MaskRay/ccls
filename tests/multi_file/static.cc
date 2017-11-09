@@ -21,7 +21,6 @@ OUTPUT: static.h
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "4:15-4:33",
           "extent": "4:3-4:35",
@@ -48,7 +47,6 @@ OUTPUT: static.cc
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",
-      "is_constructor": false,
       "definition_spelling": "3:14-3:32",
       "definition_extent": "3:1-3:37",
       "declaring_type": 0

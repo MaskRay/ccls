@@ -19,7 +19,6 @@ OUTPUT:
       "usr": "c:@F@make1#",
       "short_name": "make1",
       "detailed_name": "int make1()",
-      "is_constructor": false,
       "definition_spelling": "6:5-6:10",
       "definition_extent": "6:1-8:2",
       "callers": ["1@12:5-12:10"]
@@ -28,7 +27,6 @@ OUTPUT:
       "usr": "c:@F@a#",
       "short_name": "a",
       "detailed_name": "int a()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "12:1-12:20",
           "extent": "12:1-12:20",

@@ -11,7 +11,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "1:6-1:9",
           "extent": "1:1-1:11",
@@ -23,7 +22,6 @@ OUTPUT:
       "usr": "c:@F@usage#",
       "short_name": "usage",
       "detailed_name": "void usage()",
-      "is_constructor": false,
       "definition_spelling": "3:6-3:11",
       "definition_extent": "3:1-5:2",
       "callees": ["0@4:3-4:6"]

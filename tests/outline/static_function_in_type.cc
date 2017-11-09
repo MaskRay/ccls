@@ -29,8 +29,6 @@ OUTPUT: static_function_in_type.h
       "usr": "c:@N@ns@S@Foo@F@Register#*$@N@ns@S@Manager#S",
       "short_name": "Register",
       "detailed_name": "void ns::Foo::Register(ns::Manager *)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["ns::Manager *"],
       "declarations": [{
           "spelling": "6:15-6:23",
           "extent": "6:3-6:33",
@@ -63,8 +61,6 @@ OUTPUT: static_function_in_type.cc
       "usr": "c:@N@ns@S@Foo@F@Register#*$@N@ns@S@Manager#S",
       "short_name": "Register",
       "detailed_name": "void ns::Foo::Register(ns::Manager *)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["ns::Manager *"],
       "definition_spelling": "5:11-5:19",
       "definition_extent": "5:1-6:2",
       "declaring_type": 0

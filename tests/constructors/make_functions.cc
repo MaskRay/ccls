@@ -50,7 +50,6 @@ OUTPUT: make_functions.h
       "usr": "c:@S@Foobar@F@Foobar#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar()",
-      "is_constructor": true,
       "definition_spelling": "5:3-5:9",
       "definition_extent": "5:3-5:14",
       "declaring_type": 1
@@ -59,8 +58,6 @@ OUTPUT: make_functions.h
       "usr": "c:@S@Foobar@F@Foobar#I#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar(int)",
-      "is_constructor": true,
-      "parameter_type_descriptions": ["int"],
       "definition_spelling": "6:3-6:9",
       "definition_extent": "6:3-6:17",
       "declaring_type": 1
@@ -69,8 +66,6 @@ OUTPUT: make_functions.h
       "usr": "c:@S@Foobar@F@Foobar#&&I#*$@S@Bar#*b#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar(int &&, Bar *, bool *)",
-      "is_constructor": true,
-      "parameter_type_descriptions": ["int &&", "Bar *", "bool *"],
       "definition_spelling": "7:3-7:9",
       "definition_extent": "7:3-7:32",
       "declaring_type": 1
@@ -79,8 +74,6 @@ OUTPUT: make_functions.h
       "usr": "c:@S@Foobar@F@Foobar#I#*$@S@Bar#*b#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar(int, Bar *, bool *)",
-      "is_constructor": true,
-      "parameter_type_descriptions": ["int", "Bar *", "bool *"],
       "definition_spelling": "8:3-8:9",
       "definition_extent": "8:3-8:30",
       "declaring_type": 1
@@ -123,8 +116,6 @@ OUTPUT: make_functions.cc
       "usr": "c:@FT@>2#T#pTMakeUnique#P&&t0.1#*t0.0#",
       "short_name": "MakeUnique",
       "detailed_name": "T *MakeUnique(Args &&...)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["Args &&..."],
       "definition_spelling": "4:4-4:14",
       "definition_extent": "4:1-6:2",
       "callers": ["2@14:3-14:13", "2@15:3-15:13", "2@16:3-16:13"]
@@ -133,8 +124,6 @@ OUTPUT: make_functions.cc
       "usr": "c:@FT@>2#T#pTmaKE_NoRefs#Pt0.1#*t0.0#",
       "short_name": "maKE_NoRefs",
       "detailed_name": "T *maKE_NoRefs(Args...)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["Args..."],
       "definition_spelling": "9:4-9:15",
       "definition_extent": "9:1-11:2",
       "callers": ["2@17:3-17:14"]
@@ -143,29 +132,24 @@ OUTPUT: make_functions.cc
       "usr": "c:@F@caller22#",
       "short_name": "caller22",
       "detailed_name": "void caller22()",
-      "is_constructor": false,
       "definition_spelling": "13:6-13:14",
       "definition_extent": "13:1-18:2",
       "callees": ["0@14:3-14:13", "0@15:3-15:13", "0@16:3-16:13", "1@17:3-17:14"]
     }, {
       "id": 3,
       "usr": "c:@S@Foobar@F@Foobar#",
-      "is_constructor": false,
       "callers": ["~-1@14:3-14:13"]
     }, {
       "id": 4,
       "usr": "c:@S@Foobar@F@Foobar#I#",
-      "is_constructor": false,
       "callers": ["~-1@15:3-15:13"]
     }, {
       "id": 5,
       "usr": "c:@S@Foobar@F@Foobar#&&I#*$@S@Bar#*b#",
-      "is_constructor": false,
       "callers": ["~-1@16:3-16:13"]
     }, {
       "id": 6,
       "usr": "c:@S@Foobar@F@Foobar#I#*$@S@Bar#*b#",
-      "is_constructor": false,
       "callers": ["~-1@17:3-17:14"]
     }],
   "vars": [{

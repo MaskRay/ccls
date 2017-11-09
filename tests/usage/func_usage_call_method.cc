@@ -26,7 +26,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Used#",
       "short_name": "Used",
       "detailed_name": "void Foo::Used()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "2:8-2:12",
           "extent": "2:3-2:14",
@@ -39,7 +38,6 @@ OUTPUT:
       "usr": "c:@F@user#",
       "short_name": "user",
       "detailed_name": "void user()",
-      "is_constructor": false,
       "definition_spelling": "5:6-5:10",
       "definition_extent": "5:1-8:2",
       "callees": ["0@7:6-7:10"]

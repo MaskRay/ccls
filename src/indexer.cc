@@ -21,15 +21,6 @@ namespace {
 
 const bool kIndexStdDeclarations = true;
 
-std::vector<std::string> BuildTypeDesc(clang::Cursor cursor) {
-  std::vector<std::string> type_desc;
-  for (clang::Cursor arg : cursor.get_arguments()) {
-    if (arg.get_kind() == CXCursor_ParmDecl)
-      type_desc.push_back(arg.get_type_description());
-  }
-  return type_desc;
-}
-
 void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
   if (!result->empty() && (*result)[result->size() - 1] == ref)
     return;
@@ -106,16 +97,23 @@ struct NamespaceHelper {
 struct ConstructorCache {
   using Usr = std::string;
   struct Constructor {
-    std::vector<std::string> param_type_desc;
     Usr usr;
+    std::vector<std::string> param_type_desc;
   };
   std::unordered_map<Usr, std::vector<Constructor>> constructors_;
 
   // This should be called whenever there is a constructor declaration.
   void NotifyConstructor(clang::Cursor ctor_cursor) {
-    Constructor ctor;
-    ctor.usr = ctor_cursor.get_usr();
-    ctor.param_type_desc = BuildTypeDesc(ctor_cursor);
+    auto build_type_desc = [](clang::Cursor cursor) {
+      std::vector<std::string> type_desc;
+      for (clang::Cursor arg : cursor.get_arguments()) {
+        if (arg.get_kind() == CXCursor_ParmDecl)
+          type_desc.push_back(arg.get_type_description());
+      }
+      return type_desc;
+    };
+
+    Constructor ctor{ctor_cursor.get_usr(), build_type_desc(ctor_cursor)};
 
     // Insert into |constructors_|.
     std::string type_usr = ctor_cursor.get_semantic_parent().get_usr();
@@ -1123,17 +1121,6 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // as an interesting usage.
       AddDeclTypeUsages(db, decl_cursor, decl->semanticContainer,
                         decl->lexicalContainer);
-
-      func->is_constructor =
-          decl->entityInfo->kind == CXIdxEntity_CXXConstructor;
-
-      // Add parameter list if we haven't seen this function before.
-      //
-      // note: If the function has no parameters, this block will be rerun
-      // every time we see the function. Performance should hopefully be fine
-      // but it may be a possible optimization.
-      if (func->parameter_type_descriptions.empty())
-        func->parameter_type_descriptions = BuildTypeDesc(decl_cursor);
 
       // Add definition or declaration. This is a bit tricky because we treat
       // template specializations as declarations, even though they are

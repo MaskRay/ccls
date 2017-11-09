@@ -27,7 +27,6 @@ OUTPUT:
       "usr": "c:@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int Foo::foo()",
-      "is_constructor": false,
       "definition_spelling": "4:14-4:17",
       "definition_extent": "4:3-6:4",
       "declaring_type": 0,

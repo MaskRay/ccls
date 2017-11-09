@@ -29,7 +29,6 @@ OUTPUT:
       "usr": "c:@N@ns@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int ns::Foo::foo()",
-      "is_constructor": false,
       "definition_spelling": "5:16-5:19",
       "definition_extent": "5:5-7:6",
       "declaring_type": 0,

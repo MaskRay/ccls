@@ -57,8 +57,6 @@ OUTPUT:
       "usr": "c:@F@accept#*$@S@Foo#",
       "short_name": "accept",
       "detailed_name": "void accept(Foo *)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["Foo *"],
       "definition_spelling": "7:6-7:12",
       "definition_extent": "7:1-7:21"
     }, {
@@ -66,8 +64,6 @@ OUTPUT:
       "usr": "c:@F@accept1#**$@S@Foo#",
       "short_name": "accept1",
       "detailed_name": "void accept1(Foo1 *)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["Foo1 *"],
       "definition_spelling": "8:6-8:13",
       "definition_extent": "8:1-8:23"
     }, {
@@ -75,8 +71,6 @@ OUTPUT:
       "usr": "c:@F@accept2#*$@S@Foo#",
       "short_name": "accept2",
       "detailed_name": "void accept2(Foo2 *)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["Foo2 *"],
       "definition_spelling": "9:6-9:13",
       "definition_extent": "9:1-9:23"
     }, {
@@ -84,8 +78,6 @@ OUTPUT:
       "usr": "c:@F@accept3#**$@S@Foo#",
       "short_name": "accept3",
       "detailed_name": "void accept3(Foo3 *)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["Foo3 *"],
       "definition_spelling": "10:6-10:13",
       "definition_extent": "10:1-10:23"
     }]

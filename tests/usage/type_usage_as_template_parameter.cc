@@ -32,7 +32,6 @@ OUTPUT:
       "usr": "c:@F@return_type#",
       "short_name": "return_type",
       "detailed_name": "unique_ptr<S> *return_type()",
-      "is_constructor": false,
       "definition_spelling": "9:16-9:27",
       "definition_extent": "9:1-12:2"
     }],

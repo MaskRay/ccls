@@ -34,7 +34,6 @@ OUTPUT:
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Root::foo()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "2:16-2:19",
           "extent": "2:3-2:21",
@@ -47,7 +46,6 @@ OUTPUT:
       "usr": "c:@S@Derived@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Derived::foo()",
-      "is_constructor": false,
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:3-5:25",
       "declaring_type": 1,

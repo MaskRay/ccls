@@ -19,7 +19,6 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "void called()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "1:6-1:12",
           "extent": "1:1-1:14",
@@ -31,7 +30,6 @@ OUTPUT:
       "usr": "c:@FT@>1#Tcaller#v#",
       "short_name": "caller",
       "detailed_name": "void caller()",
-      "is_constructor": false,
       "definition_spelling": "4:6-4:12",
       "definition_extent": "4:1-6:2",
       "callers": ["2@9:3-9:9"],
@@ -41,7 +39,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "is_constructor": false,
       "definition_spelling": "8:6-8:9",
       "definition_extent": "8:1-10:2",
       "callees": ["1@9:3-9:9"]

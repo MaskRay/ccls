@@ -32,8 +32,6 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "detailed_name": "void called(int)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "1:6-1:12",
           "extent": "1:1-1:19",
@@ -46,7 +44,6 @@ OUTPUT:
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "detailed_name": "int gen()",
-      "is_constructor": false,
       "declarations": [{
           "spelling": "3:5-3:8",
           "extent": "3:1-3:10",
@@ -58,7 +55,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "is_constructor": false,
       "definition_spelling": "12:6-12:9",
       "definition_extent": "12:1-15:2",
       "callees": ["0@14:3-14:9", "1@14:14-14:17"]

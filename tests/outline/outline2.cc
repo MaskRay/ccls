@@ -47,8 +47,6 @@ OUTPUT:
       "usr": "c:@F@LoadCompilationEntriesFromDirectory#&1$@N@std@S@basic_string>#C#$@N@std@S@char_traits>#C#$@N@std@S@allocator>#C#",
       "short_name": "LoadCompilationEntriesFromDirectory",
       "detailed_name": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string &)",
-      "is_constructor": false,
-      "parameter_type_descriptions": ["const std::string &"],
       "declarations": [{
           "spelling": "12:31-12:66",
           "extent": "12:1-12:104",

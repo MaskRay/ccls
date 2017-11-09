@@ -26,8 +26,6 @@ OUTPUT:
       "usr": "c:@S@Wrapper@F@Wrapper#I#",
       "short_name": "Wrapper",
       "detailed_name": "void Wrapper::Wrapper(int)",
-      "is_constructor": true,
-      "parameter_type_descriptions": ["int"],
       "declarations": [{
           "spelling": "2:3-2:10",
           "extent": "2:3-2:17",
@@ -41,7 +39,6 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "int called()",
-      "is_constructor": false,
       "definition_spelling": "5:5-5:11",
       "definition_extent": "5:1-5:27",
       "callers": ["2@8:10-8:16"]
@@ -50,7 +47,6 @@ OUTPUT:
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "detailed_name": "Wrapper caller()",
-      "is_constructor": false,
       "definition_spelling": "7:9-7:15",
       "definition_extent": "7:1-9:2",
       "callees": ["~0@8:10-8:16", "1@8:10-8:16"]

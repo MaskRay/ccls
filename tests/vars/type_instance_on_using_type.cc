@@ -33,7 +33,6 @@ OUTPUT:
       "usr": "c:@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo()",
-      "is_constructor": false,
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-5:2"
     }],
