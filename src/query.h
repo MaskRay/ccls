@@ -74,6 +74,7 @@ struct SymbolIdx {
   }
 };
 MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
+MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
 
 struct SymbolRef {
   SymbolIdx idx;

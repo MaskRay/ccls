@@ -51,6 +51,8 @@ const char* IpcIdToString(IpcId id) {
 
     case IpcId::CqueryPublishInactiveRegions:
       return "$cquery/publishInactiveRegions";
+    case IpcId::CqueryPublishSemanticHighlighting:
+      return "$cquery/publishSemanticHighlighting";
 
     case IpcId::CqueryFreshenIndex:
       return "$cquery/freshenIndex";

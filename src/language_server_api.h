@@ -1480,6 +1480,32 @@ struct Out_CquerySetInactiveRegion
 MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion::Params, uri, inactiveRegions);
 MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
 
+struct Out_CqueryPublishSemanticHighlighting
+    : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
+  enum class SymbolType { Type = 0, Function, Variable };
+  struct Symbol {
+    SymbolType type;
+    NonElidedVector<lsRange> ranges;
+  };
+  struct Params {
+    lsDocumentUri uri;
+    NonElidedVector<Symbol> symbols;
+  };
+  std::string method = "$cquery/publishSemanticHighlighting";
+  Params params;
+};
+MAKE_REFLECT_TYPE_PROXY(Out_CqueryPublishSemanticHighlighting::SymbolType, int);
+MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
+                    type,
+                    ranges);
+MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Params,
+                    uri,
+                    symbols);
+MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting,
+                    jsonrpc,
+                    method,
+                    params);
+
 struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
   lsRequestId id;

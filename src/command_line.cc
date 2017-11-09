@@ -143,6 +143,51 @@ void EmitInactiveLines(WorkingFile* working_file,
       IpcId::CqueryPublishInactiveRegions, out);
 }
 
+void EmitSemanticHighlighting(QueryDatabase* db,
+                              WorkingFile* working_file,
+                              QueryFile* file) {
+  auto map_symbol_kind_to_symbol_type = [](SymbolKind kind) {
+    switch (kind) {
+      case SymbolKind::Type:
+        return Out_CqueryPublishSemanticHighlighting::SymbolType::Type;
+      case SymbolKind::Func:
+        return Out_CqueryPublishSemanticHighlighting::SymbolType::Function;
+      case SymbolKind::Var:
+        return Out_CqueryPublishSemanticHighlighting::SymbolType::Variable;
+      default:
+        assert(false);
+        return Out_CqueryPublishSemanticHighlighting::SymbolType::Variable;
+    }
+  };
+
+  // Group symbols together.
+  std::unordered_map<SymbolIdx, NonElidedVector<lsRange>> grouped_symbols;
+  for (SymbolRef sym : file->def->all_symbols) {
+    if (sym.idx.kind == SymbolKind::Var) {
+      QueryVar* var = &db->vars[sym.idx.idx];
+      if (!var->def)
+        continue;
+      if (!var->def->is_local)
+        continue;
+    }
+    optional<lsRange> loc = GetLsRange(working_file, sym.loc.range);
+    if (loc)
+      grouped_symbols[sym.idx].push_back(*loc);
+  }
+
+  // Publish.
+  Out_CqueryPublishSemanticHighlighting out;
+  out.params.uri = lsDocumentUri::FromPath(working_file->filename);
+  for (auto& entry : grouped_symbols) {
+    Out_CqueryPublishSemanticHighlighting::Symbol symbol;
+    symbol.type = map_symbol_kind_to_symbol_type(entry.first.kind);
+    symbol.ranges = entry.second;
+    out.params.symbols.push_back(symbol);
+  }
+  IpcManager::instance()->SendOutMessageToClient(
+      IpcId::CqueryPublishSemanticHighlighting, out);
+}
+
 optional<int> FindIncludeLine(const std::vector<std::string>& lines,
                               const std::string& full_include_line) {
   //
@@ -1286,6 +1331,18 @@ bool QueryDb_ImportMain(Config* config,
                                        return value.path;
                                      }));
 
+    // Update semantic highlighting.
+    for (auto& updated_file : response->update.files_def_update) {
+      WorkingFile* working_file =
+          working_files->GetFileByFilename(updated_file.path);
+      if (working_file) {
+        QueryFileId file_id =
+            db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
+        QueryFile* file = &db->files[file_id.id];
+        EmitSemanticHighlighting(db, working_file, file);
+      }
+    }
+
     // Mark the files as being done in querydb stage after we apply the index
     // update.
     for (auto& updated_file : response->update.files_def_update)
@@ -1774,8 +1831,10 @@ bool QueryDbMainLoop(Config* config,
 
         QueryFile* file = nullptr;
         FindFileOrFail(db, nullopt, path, &file);
-        if (file && file->def)
+        if (file && file->def) {
           EmitInactiveLines(working_file, file->def->inactive_regions);
+          EmitSemanticHighlighting(db, working_file, file);
+        }
 
         time.ResetAndPrint(
             "[querydb] Loading cached index file for DidOpen (blocks "
@@ -2743,8 +2802,11 @@ bool QueryDbMainLoop(Config* config,
         // TODO: We need to move this to a separate request, as the user may
         // have turned code lens off (ie, a custom DidView notification).
         if (file && file->def) {
-          EmitInactiveLines(working_files->GetFileByFilename(file->def->path),
-                            file->def->inactive_regions);
+          WorkingFile* working_file =
+              working_files->GetFileByFilename(file->def->path);
+          EmitInactiveLines(working_file, file->def->inactive_regions);
+          // Do not emit semantic highlighting information here, as it has not
+          // been updated.
         }
 
         break;

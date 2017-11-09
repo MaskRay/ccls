@@ -32,6 +32,7 @@ enum class IpcId : int {
 
   // Custom notifications
   CqueryPublishInactiveRegions,
+  CqueryPublishSemanticHighlighting,
 
   // Custom messages
   CqueryFreshenIndex,
