@@ -1,5 +1,4 @@
 // TODO: cleanup includes
-#include "buffer.h"
 #include "cache.h"
 #include "clang_complete.h"
 #include "file_consumer.h"
@@ -9,7 +8,6 @@
 #include "language_server_api.h"
 #include "lex_utils.h"
 #include "match.h"
-#include "message_queue.h"
 #include "options.h"
 #include "platform.h"
 #include "project.h"
