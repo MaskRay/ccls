@@ -161,29 +161,51 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   };
 
   // Group symbols together.
-  std::unordered_map<SymbolIdx, NonElidedVector<lsRange>> grouped_symbols;
+  std::unordered_map<SymbolIdx, Out_CqueryPublishSemanticHighlighting::Symbol>
+      grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
-    if (sym.idx.kind == SymbolKind::Var) {
-      QueryVar* var = &db->vars[sym.idx.idx];
-      if (!var->def)
-        continue;
-      if (!var->def->is_local)
-        continue;
+    bool is_type_member = false;
+    switch (sym.idx.kind) {
+      case SymbolKind::Func: {
+        QueryFunc* func = &db->funcs[sym.idx.idx];
+        if (!func->def)
+          continue;  // applies to for loop
+        is_type_member = func->def->declaring_type.has_value();
+        break;
+      }
+      case SymbolKind::Var: {
+        QueryVar* var = &db->vars[sym.idx.idx];
+        if (!var->def)
+          continue;  // applies to for loop
+        if (!var->def->is_local && !var->def->declaring_type)
+          continue;  // applies to for loop
+        is_type_member = var->def->declaring_type.has_value();
+        break;
+      }
+      default:
+        continue;  // applies to for loop
     }
+
     optional<lsRange> loc = GetLsRange(working_file, sym.loc.range);
-    if (loc)
-      grouped_symbols[sym.idx].push_back(*loc);
+    if (loc) {
+      auto it = grouped_symbols.find(sym.idx);
+      if (it != grouped_symbols.end()) {
+        it->second.ranges.push_back(*loc);
+      } else {
+        Out_CqueryPublishSemanticHighlighting::Symbol symbol;
+        symbol.type = map_symbol_kind_to_symbol_type(sym.idx.kind);
+        symbol.is_type_member = is_type_member;
+        symbol.ranges.push_back(*loc);
+        grouped_symbols[sym.idx] = symbol;
+      }
+    }
   }
 
   // Publish.
   Out_CqueryPublishSemanticHighlighting out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
-  for (auto& entry : grouped_symbols) {
-    Out_CqueryPublishSemanticHighlighting::Symbol symbol;
-    symbol.type = map_symbol_kind_to_symbol_type(entry.first.kind);
-    symbol.ranges = entry.second;
-    out.params.symbols.push_back(symbol);
-  }
+  for (auto& entry : grouped_symbols)
+    out.params.symbols.push_back(entry.second);
   IpcManager::instance()->SendOutMessageToClient(
       IpcId::CqueryPublishSemanticHighlighting, out);
 }

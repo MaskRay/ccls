@@ -373,10 +373,10 @@ struct VarDefDefinitionData {
   // Type of the variable.
   optional<TypeId> variable_type;
 
-  // Type which declares this one (ie, it is a method)
+  // Type which declares this one.
   optional<TypeId> declaring_type;
 
-  // Is this a "local" variable, ie, a parameter or function variable?
+  // Is this a parameter or function variable?
   bool is_local = false;
   // Is this a macro, ie, #define FOO?
   bool is_macro = false;
