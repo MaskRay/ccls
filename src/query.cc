@@ -420,18 +420,18 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 // |query_name| is the name of the variable on the query type.
 // |index_name| is the name of the variable on the index type.
 // |type| is the type of the variable.
-#define PROCESS_UPDATE_DIFF(type_id, query_name, index_name, type)             \
-  {                                                                            \
-    /* Check for changes. */                                                   \
-    std::vector<type> removed, added;                                          \
-    auto previous = previous_id_map.ToQuery(previous_def->index_name);         \
-    auto current = current_id_map.ToQuery(current_def->index_name);            \
-    bool did_add =                                                             \
-        ComputeDifferenceForUpdate(previous, current, &removed, &added);       \
-    if (did_add) {                                                             \
-      query_name.push_back(MergeableUpdate<type_id, type>(                     \
-          current_id_map.ToQuery(current_def->id), added, removed));           \
-    }                                                                          \
+#define PROCESS_UPDATE_DIFF(type_id, query_name, index_name, type)       \
+  {                                                                      \
+    /* Check for changes. */                                             \
+    std::vector<type> removed, added;                                    \
+    auto previous = previous_id_map.ToQuery(previous_def->index_name);   \
+    auto current = current_id_map.ToQuery(current_def->index_name);      \
+    bool did_add =                                                       \
+        ComputeDifferenceForUpdate(previous, current, &removed, &added); \
+    if (did_add) {                                                       \
+      query_name.push_back(MergeableUpdate<type_id, type>(               \
+          current_id_map.ToQuery(current_def->id), added, removed));     \
+    }                                                                    \
   }
   // File
   files_def_update.push_back(BuildFileDef(current_id_map, current_file));

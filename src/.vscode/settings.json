@@ -1,6 +1,5 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-  "cquery.cacheDirectory": "C:/Users/jacob/Desktop/cquery/CACHE",
   "cquery.blacklist": [
     // ".*libclangmm/.*"
   ],
@@ -9,5 +8,6 @@
   ],
   "cquery.launch.command": "cquery.exe",
   "cquery.launch.workingDirectory": "C:/Users/jacob/Desktop/cquery/x64/Release",
-  "cquery.launch.autoRestart": false
+  "cquery.launch.autoRestart": false,
+  "cquery.cacheDirectory": "c:/Users/jacob/Desktop/cquery/src/.vscode/cquery_cached_index/"
 }

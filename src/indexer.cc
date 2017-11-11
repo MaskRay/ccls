@@ -1,7 +1,7 @@
 #include "indexer.h"
 
+#include "clang_cursor.h"
 #include "clang_utils.h"
-#include "libclangmm/Cursor.h"
 #include "libclangmm/Index.h"
 #include "libclangmm/TranslationUnit.h"
 #include "platform.h"
@@ -58,7 +58,7 @@ struct NamespaceHelper {
                              const CXIdxContainerInfo* container,
                              std::string qualified_name) {
     if (container) {
-      std::string container_usr = clang::Cursor(container->cursor).get_usr();
+      std::string container_usr = ClangCursor(container->cursor).get_usr();
       auto it = container_usr_to_qualified_name.find(container_usr);
       if (it != container_usr_to_qualified_name.end()) {
         container_usr_to_qualified_name[usr] =
@@ -73,7 +73,7 @@ struct NamespaceHelper {
   std::string QualifiedName(const CXIdxContainerInfo* container,
                             std::string unqualified_name) {
     if (container) {
-      std::string container_usr = clang::Cursor(container->cursor).get_usr();
+      std::string container_usr = ClangCursor(container->cursor).get_usr();
       auto it = container_usr_to_qualified_name.find(container_usr);
       if (it != container_usr_to_qualified_name.end())
         return it->second + unqualified_name;
@@ -81,7 +81,7 @@ struct NamespaceHelper {
       // Anonymous namespaces are not processed by indexDeclaration. If we
       // encounter one insert it into map.
       if (container->cursor.kind == CXCursor_Namespace) {
-        // assert(clang::Cursor(container->cursor).get_spelling() == "");
+        // assert(ClangCursor(container->cursor).get_spelling() == "");
         container_usr_to_qualified_name[container_usr] = "::";
         return "::" + unqualified_name;
       }
@@ -103,10 +103,10 @@ struct ConstructorCache {
   std::unordered_map<Usr, std::vector<Constructor>> constructors_;
 
   // This should be called whenever there is a constructor declaration.
-  void NotifyConstructor(clang::Cursor ctor_cursor) {
-    auto build_type_desc = [](clang::Cursor cursor) {
+  void NotifyConstructor(ClangCursor ctor_cursor) {
+    auto build_type_desc = [](ClangCursor cursor) {
       std::vector<std::string> type_desc;
-      for (clang::Cursor arg : cursor.get_arguments()) {
+      for (ClangCursor arg : cursor.get_arguments()) {
         if (arg.get_kind() == CXCursor_ParmDecl)
           type_desc.push_back(arg.get_type_description());
       }
@@ -419,15 +419,15 @@ IndexVarId IndexFile::ToVarId(const std::string& usr) {
 }
 
 IndexTypeId IndexFile::ToTypeId(const CXCursor& cursor) {
-  return ToTypeId(clang::Cursor(cursor).get_usr());
+  return ToTypeId(ClangCursor(cursor).get_usr());
 }
 
 IndexFuncId IndexFile::ToFuncId(const CXCursor& cursor) {
-  return ToFuncId(clang::Cursor(cursor).get_usr());
+  return ToFuncId(ClangCursor(cursor).get_usr());
 }
 
 IndexVarId IndexFile::ToVarId(const CXCursor& cursor) {
-  return ToVarId(clang::Cursor(cursor).get_usr());
+  return ToVarId(ClangCursor(cursor).get_usr());
 }
 
 IndexType* IndexFile::Resolve(IndexTypeId id) {
@@ -546,9 +546,9 @@ CXIdxClientContainer startedTranslationUnit(CXClientData client_data,
   return nullptr;
 }
 
-clang::VisiterResult DumpVisitor(clang::Cursor cursor,
-                                 clang::Cursor parent,
-                                 int* level) {
+ClangCursor::VisitResult DumpVisitor(ClangCursor cursor,
+                                     ClangCursor parent,
+                                     int* level) {
   for (int i = 0; i < *level; ++i)
     std::cerr << "  ";
   std::cerr << ToString(cursor.get_kind()) << " " << cursor.get_spelling()
@@ -558,56 +558,55 @@ clang::VisiterResult DumpVisitor(clang::Cursor cursor,
   cursor.VisitChildren(&DumpVisitor, level);
   *level -= 1;
 
-  return clang::VisiterResult::Continue;
+  return ClangCursor::VisitResult::Continue;
 }
 
-void Dump(clang::Cursor cursor) {
+void Dump(ClangCursor cursor) {
   int level = 0;
   cursor.VisitChildren(&DumpVisitor, &level);
 }
 
 struct FindChildOfKindParam {
   CXCursorKind target_kind;
-  optional<clang::Cursor> result;
+  optional<ClangCursor> result;
 
   FindChildOfKindParam(CXCursorKind target_kind) : target_kind(target_kind) {}
 };
 
-clang::VisiterResult FindChildOfKindVisitor(clang::Cursor cursor,
-                                            clang::Cursor parent,
-                                            FindChildOfKindParam* param) {
+ClangCursor::VisitResult FindChildOfKindVisitor(ClangCursor cursor,
+                                                ClangCursor parent,
+                                                FindChildOfKindParam* param) {
   if (cursor.get_kind() == param->target_kind) {
     param->result = cursor;
-    return clang::VisiterResult::Break;
+    return ClangCursor::VisitResult::Break;
   }
 
-  return clang::VisiterResult::Recurse;
+  return ClangCursor::VisitResult::Recurse;
 }
 
-optional<clang::Cursor> FindChildOfKind(clang::Cursor cursor,
-                                        CXCursorKind kind) {
+optional<ClangCursor> FindChildOfKind(ClangCursor cursor, CXCursorKind kind) {
   FindChildOfKindParam param(kind);
   cursor.VisitChildren(&FindChildOfKindVisitor, &param);
   return param.result;
 }
 
-clang::VisiterResult FindTypeVisitor(clang::Cursor cursor,
-                                     clang::Cursor parent,
-                                     optional<clang::Cursor>* result) {
+ClangCursor::VisitResult FindTypeVisitor(ClangCursor cursor,
+                                         ClangCursor parent,
+                                         optional<ClangCursor>* result) {
   switch (cursor.get_kind()) {
     case CXCursor_TypeRef:
     case CXCursor_TemplateRef:
       *result = cursor;
-      return clang::VisiterResult::Break;
+      return ClangCursor::VisitResult::Break;
     default:
       break;
   }
 
-  return clang::VisiterResult::Recurse;
+  return ClangCursor::VisitResult::Recurse;
 }
 
-optional<clang::Cursor> FindType(clang::Cursor cursor) {
-  optional<clang::Cursor> result;
+optional<ClangCursor> FindType(ClangCursor cursor) {
+  optional<ClangCursor> result;
   cursor.VisitChildren(&FindTypeVisitor, &result);
   return result;
 }
@@ -630,13 +629,13 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
 struct VisitDeclForTypeUsageParam {
   IndexFile* db;
   int has_processed_any = false;
-  optional<clang::Cursor> previous_cursor;
+  optional<ClangCursor> previous_cursor;
   optional<IndexTypeId> initial_type;
 
   VisitDeclForTypeUsageParam(IndexFile* db) : db(db) {}
 };
 
-void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
+void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
                                          VisitDeclForTypeUsageParam* param) {
   param->has_processed_any = true;
   IndexFile* db = param->db;
@@ -661,9 +660,9 @@ void VisitDeclForTypeUsageVisitorHandler(clang::Cursor cursor,
   UniqueAdd(ref_type_def->uses, loc);
 }
 
-clang::VisiterResult VisitDeclForTypeUsageVisitor(
-    clang::Cursor cursor,
-    clang::Cursor parent,
+ClangCursor::VisitResult VisitDeclForTypeUsageVisitor(
+    ClangCursor cursor,
+    ClangCursor parent,
     VisitDeclForTypeUsageParam* param) {
   switch (cursor.get_kind()) {
     case CXCursor_TemplateRef:
@@ -674,7 +673,7 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
       }
 
       param->previous_cursor = cursor;
-      return clang::VisiterResult::Continue;
+      return ClangCursor::VisitResult::Continue;
 
     // We do not want to recurse for everything, since if we do that we will end
     // up visiting method definition bodies/etc. Instead, we only recurse for
@@ -689,13 +688,13 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
     case CXCursor_CStyleCastExpr:
     case CXCursor_CXXStaticCastExpr:
     case CXCursor_CXXReinterpretCastExpr:
-      return clang::VisiterResult::Recurse;
+      return ClangCursor::VisitResult::Recurse;
 
     default:
-      return clang::VisiterResult::Continue;
+      return ClangCursor::VisitResult::Continue;
   }
 
-  return clang::VisiterResult::Continue;
+  return ClangCursor::VisitResult::Continue;
 }
 
 // Finds the cursor associated with the declaration type of |cursor|. This
@@ -703,8 +702,8 @@ clang::VisiterResult VisitDeclForTypeUsageVisitor(
 // qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
 // (ie, Foo<A,B> => Foo<*,*>).
 optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
-                                               clang::Cursor cursor) {
-  clang::Cursor declaration = cursor.get_declaration();
+                                               ClangCursor cursor) {
+  ClangCursor declaration = cursor.get_declaration();
   declaration = declaration.template_specialization_to_template_definition();
   std::string usr = declaration.get_usr();
   if (usr != "")
@@ -719,7 +718,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
 // ResolveToDeclarationType, which works in more scenarios.
 optional<IndexTypeId> AddDeclTypeUsages(
     IndexFile* db,
-    clang::Cursor decl_cursor,
+    ClangCursor decl_cursor,
     const CXIdxContainerInfo* semantic_container,
     const CXIdxContainerInfo* lexical_container) {
   // std::cerr << std::endl << "AddDeclUsages " << decl_cursor.get_spelling() <<
@@ -817,7 +816,7 @@ optional<IndexTypeId> AddDeclTypeUsages(
     //
     if (!decl_cursor.is_definition()) {
       // TODO: I don't think this resolution ever works.
-      clang::Cursor def = decl_cursor.get_definition();
+      ClangCursor def = decl_cursor.get_definition();
       if (def.get_kind() != CXCursor_FirstInvalid) {
         std::cerr << "Successful resolution of decl usage to definition"
                   << std::endl;
@@ -851,9 +850,9 @@ optional<IndexTypeId> AddDeclTypeUsages(
 
 // Various versions of LLVM (ie, 4.0) will not visit inline variable references
 // for template arguments.
-clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
-                                                     clang::Cursor parent,
-                                                     IndexFile* db) {
+ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
+                                                         ClangCursor parent,
+                                                         IndexFile* db) {
   /*
     We need to index the |DeclRefExpr| below (ie, |var| inside of
     Foo<int>::var).
@@ -882,7 +881,7 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       // TODO: when we resolve the template type to the definition, we get a
       // different USR.
 
-      // clang::Cursor ref =
+      // ClangCursor ref =
       // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr();
       // std::string ref_usr =
       // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr();
@@ -907,10 +906,10 @@ clang::VisiterResult AddDeclInitializerUsagesVisitor(clang::Cursor cursor,
       break;
   }
 
-  return clang::VisiterResult::Recurse;
+  return ClangCursor::VisitResult::Recurse;
 }
 
-void AddDeclInitializerUsages(IndexFile* db, clang::Cursor decl_cursor) {
+void AddDeclInitializerUsages(IndexFile* db, ClangCursor decl_cursor) {
   decl_cursor.VisitChildren(&AddDeclInitializerUsagesVisitor, db);
 }
 
@@ -924,9 +923,9 @@ bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
       clang_getRangeStart(clang_Cursor_getSpellingNameRange(cursor, 0, 0)));
 }
 
-clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor,
-                                                       clang::Cursor parent,
-                                                       IndexParam* param) {
+ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
+                                                           ClangCursor parent,
+                                                           IndexParam* param) {
   switch (cursor.get_kind()) {
     case CXCursor_MacroDefinition:
     case CXCursor_MacroExpansion: {
@@ -972,7 +971,7 @@ clang::VisiterResult VisitMacroDefinitionAndExpansions(clang::Cursor cursor,
       break;
   }
 
-  return clang::VisiterResult::Continue;
+  return ClangCursor::VisitResult::Continue;
 }
 
 void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
@@ -1017,7 +1016,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXStaticVariable: {
       Range decl_loc_spelling = ResolveSpelling(decl->cursor);
 
-      clang::Cursor decl_cursor = decl->cursor;
+      ClangCursor decl_cursor = decl->cursor;
 
       // Do not index implicit template instantiations.
       if (decl_cursor !=
@@ -1109,8 +1108,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       Range decl_spelling = ResolveSpelling(decl->cursor);
       Range decl_extent = ResolveExtent(decl->cursor);
 
-      clang::Cursor decl_cursor = decl->cursor;
-      clang::Cursor decl_cursor_resolved =
+      ClangCursor decl_cursor = decl->cursor;
+      ClangCursor decl_cursor_resolved =
           decl_cursor.template_specialization_to_template_definition();
       bool is_template_specialization = decl_cursor != decl_cursor_resolved;
 
@@ -1140,7 +1139,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             param->tu->cx_tu, clang_getCursorExtent(decl->cursor));
 
         // Add parameters.
-        for (clang::Cursor arg : decl_cursor.get_arguments()) {
+        for (ClangCursor arg : decl_cursor.get_arguments()) {
           switch (arg.get_kind()) {
             case CXCursor_ParmDecl: {
               Range param_spelling = ResolveSpelling(arg.cx_cursor);
@@ -1217,7 +1216,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                       << func->def.detailed_name << std::endl;
 
           for (unsigned i = 0; i < num_overridden; ++i) {
-            clang::Cursor parent = overridden[i];
+            ClangCursor parent = overridden[i];
             IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
             IndexFunc* parent_def = db->Resolve(parent_id);
             func = db->Resolve(func_id);  // ToFuncId invalidated func_def
@@ -1325,7 +1324,7 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     default:
       std::cerr << "!! Unhandled indexDeclaration:     "
-                << clang::Cursor(decl->cursor).ToString() << " at "
+                << ClangCursor(decl->cursor).ToString() << " at "
                 << ResolveSpelling(decl->cursor).start.ToString() << std::endl;
       std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind
                 << std::endl;
@@ -1333,15 +1332,15 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                 << std::endl;
       if (decl->declAsContainer)
         std::cerr << "     declAsContainer   = "
-                  << clang::Cursor(decl->declAsContainer->cursor).ToString()
+                  << ClangCursor(decl->declAsContainer->cursor).ToString()
                   << std::endl;
       if (decl->semanticContainer)
         std::cerr << "     semanticContainer = "
-                  << clang::Cursor(decl->semanticContainer->cursor).ToString()
+                  << ClangCursor(decl->semanticContainer->cursor).ToString()
                   << std::endl;
       if (decl->lexicalContainer)
         std::cerr << "     lexicalContainer  = "
-                  << clang::Cursor(decl->lexicalContainer->cursor).get_usr()
+                  << ClangCursor(decl->lexicalContainer->cursor).get_usr()
                   << std::endl;
       break;
   }
@@ -1409,7 +1408,7 @@ void indexEntityReference(CXClientData client_data,
   // if (!clang_Location_isFromMainFile(clang_getCursorLocation(ref->cursor)))
   //  return;
 
-  clang::Cursor cursor(ref->cursor);
+  ClangCursor cursor(ref->cursor);
 
   switch (ref->referencedEntity->kind) {
     case CXIdxEntity_CXXNamespaceAlias:
@@ -1424,7 +1423,7 @@ void indexEntityReference(CXClientData client_data,
     case CXIdxEntity_Field: {
       Range loc_spelling = ResolveSpelling(ref->cursor);
 
-      clang::Cursor referenced = ref->referencedEntity->cursor;
+      ClangCursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
 
       IndexVarId var_id = db->ToVarId(referenced.get_usr());
@@ -1494,16 +1493,16 @@ void indexEntityReference(CXClientData client_data,
       if (is_template && str_begin("make", ref->referencedEntity->name)) {
         // Try to find the return type of called function. That type will have
         // the constructor function we add a usage to.
-        optional<clang::Cursor> opt_found_type = FindType(ref->cursor);
+        optional<ClangCursor> opt_found_type = FindType(ref->cursor);
         if (opt_found_type) {
           std::string ctor_type_usr =
               opt_found_type->get_referenced().get_usr();
-          clang::Cursor call_cursor = ref->cursor;
+          ClangCursor call_cursor = ref->cursor;
 
           // Build a type description from the parameters of the call, so we
           // can try to find a constructor with the same type description.
           std::vector<std::string> call_type_desc;
-          for (clang::Type type : call_cursor.get_type().get_arguments()) {
+          for (ClangType type : call_cursor.get_type().get_arguments()) {
             std::string type_desc = type.get_spelling();
             if (!type_desc.empty())
               call_type_desc.push_back(type_desc);
@@ -1529,7 +1528,7 @@ void indexEntityReference(CXClientData client_data,
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
-      clang::Cursor referenced_cursor = ref->referencedEntity->cursor;
+      ClangCursor referenced_cursor = ref->referencedEntity->cursor;
       referenced_cursor =
           referenced_cursor.template_specialization_to_template_definition();
       IndexTypeId referenced_id = db->ToTypeId(referenced_cursor.get_usr());
@@ -1569,15 +1568,15 @@ void indexEntityReference(CXClientData client_data,
       std::cerr << "     ref->kind         = " << ref->kind << std::endl;
       if (ref->parentEntity)
         std::cerr << "     parentEntity      = "
-                  << clang::Cursor(ref->parentEntity->cursor).ToString()
+                  << ClangCursor(ref->parentEntity->cursor).ToString()
                   << std::endl;
       if (ref->referencedEntity)
         std::cerr << "     referencedEntity  = "
-                  << clang::Cursor(ref->referencedEntity->cursor).ToString()
+                  << ClangCursor(ref->referencedEntity->cursor).ToString()
                   << std::endl;
       if (ref->container)
         std::cerr << "     container         = "
-                  << clang::Cursor(ref->container->cursor).ToString()
+                  << ClangCursor(ref->container->cursor).ToString()
                   << std::endl;
       break;
   }
@@ -1663,7 +1662,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   clang_IndexAction_dispose(index_action);
   // std::cerr << "!! [END] Indexing " << file << std::endl;
 
-  clang::Cursor(clang_getTranslationUnitCursor(tu->cx_tu))
+  ClangCursor(clang_getTranslationUnitCursor(tu->cx_tu))
       .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
 
   perf->index_build = timer.ElapsedMicrosecondsAndReset();

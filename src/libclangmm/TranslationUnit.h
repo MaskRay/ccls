@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Cursor.h"
+#include "../clang_cursor.h"
 #include "Index.h"
 
 #include <clang-c/Index.h>
