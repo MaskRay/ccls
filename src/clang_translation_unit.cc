@@ -1,7 +1,7 @@
-#include "TranslationUnit.h"
+#include "clang_translation_unit.h"
 
-#include "../platform.h"
-#include "../utils.h"
+#include "platform.h"
+#include "utils.h"
 
 #include <loguru.hpp>
 
@@ -10,11 +10,9 @@
 #include <iostream>
 #include <sstream>
 
-namespace clang {
-
 // static
-std::unique_ptr<TranslationUnit> TranslationUnit::Create(
-    Index* index,
+std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
+    ClangIndex* index,
     const std::string& filepath,
     const std::vector<std::string>& arguments,
     std::vector<CXUnsavedFile> unsaved_files,
@@ -34,7 +32,7 @@ std::unique_ptr<TranslationUnit> TranslationUnit::Create(
 
   switch (error_code) {
     case CXError_Success:
-      return MakeUnique<TranslationUnit>(cx_tu);
+      return MakeUnique<ClangTranslationUnit>(cx_tu);
     case CXError_Failure:
       LOG_S(ERROR) << "libclang generic failure for " << filepath
                    << " with args " << StringJoin(args);
@@ -57,8 +55,8 @@ std::unique_ptr<TranslationUnit> TranslationUnit::Create(
 }
 
 // static
-std::unique_ptr<TranslationUnit> TranslationUnit::Reparse(
-    std::unique_ptr<TranslationUnit> tu,
+std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Reparse(
+    std::unique_ptr<ClangTranslationUnit> tu,
     std::vector<CXUnsavedFile>& unsaved) {
   int error_code = clang_reparseTranslationUnit(
       tu->cx_tu, (unsigned)unsaved.size(), unsaved.data(),
@@ -83,10 +81,8 @@ std::unique_ptr<TranslationUnit> TranslationUnit::Reparse(
   return nullptr;
 }
 
-TranslationUnit::TranslationUnit(CXTranslationUnit tu) : cx_tu(tu) {}
+ClangTranslationUnit::ClangTranslationUnit(CXTranslationUnit tu) : cx_tu(tu) {}
 
-TranslationUnit::~TranslationUnit() {
+ClangTranslationUnit::~ClangTranslationUnit() {
   clang_disposeTranslationUnit(cx_tu);
 }
-
-}  // namespace clang

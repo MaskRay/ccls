@@ -1,10 +1,10 @@
 #pragma once
 
+#include "clang_index.h"
+#include "clang_translation_unit.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
 #include "language_server_api.h"
-#include "libclangmm/Index.h"
-#include "libclangmm/TranslationUnit.h"
 #include "performance.h"
 #include "position.h"
 #include "serializer.h"
@@ -525,13 +525,13 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
-    clang::Index* index,
+    ClangIndex* index,
     bool dump_ast = false);
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     FileConsumer::SharedState* file_consumer_shared,
     PerformanceImportFile* perf,
-    clang::TranslationUnit* tu,
-    clang::Index* index,
+    ClangTranslationUnit* tu,
+    ClangIndex* index,
     const std::string& file,
     const std::vector<std::string>& args,
     const std::vector<CXUnsavedFile>& file_contents);

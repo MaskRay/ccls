@@ -835,7 +835,7 @@ enum class FileParseQuery { NeedsParse, DoesNotNeedParse, NoSuchFile };
 std::vector<Index_DoIdMap> DoParseFile(
     Config* config,
     WorkingFiles* working_files,
-    clang::Index* index,
+    ClangIndex* index,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
@@ -1018,14 +1018,14 @@ std::vector<Index_DoIdMap> DoParseFile(
 void IndexWithTuFromCodeCompletion(
     QueueManager* queue,
     FileConsumer::SharedState* file_consumer_shared,
-    clang::TranslationUnit* tu,
+    ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
     const std::string& path,
     const std::vector<std::string>& args) {
   file_consumer_shared->Reset(path);
 
   PerformanceImportFile perf;
-  clang::Index index(0, 0);
+  ClangIndex index;
   std::vector<std::unique_ptr<IndexFile>> indexes = ParseWithTu(
       file_consumer_shared, &perf, tu, &index, path, args, file_contents);
 
@@ -1050,7 +1050,7 @@ void IndexWithTuFromCodeCompletion(
 std::vector<Index_DoIdMap> ParseFile(
     Config* config,
     WorkingFiles* working_files,
-    clang::Index* index,
+    ClangIndex* index,
     FileConsumer::SharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
@@ -1079,7 +1079,7 @@ bool IndexMain_DoParse(Config* config,
                        FileConsumer::SharedState* file_consumer_shared,
                        TimestampManager* timestamp_manager,
                        ImportManager* import_manager,
-                       clang::Index* index) {
+                       ClangIndex* index) {
   optional<Index_Request> request = queue->index_request.TryDequeue();
   if (!request)
     return false;
@@ -1216,7 +1216,7 @@ WorkThread::Result IndexMain(Config* config,
   EmitProgress(queue);
 
   // TODO: dispose of index after it is not used for a while.
-  clang::Index index(1, 0);
+  ClangIndex index;
 
   // TODO: process all off IndexMain_DoIndex before calling
   // IndexMain_DoCreateIndexUpdate for

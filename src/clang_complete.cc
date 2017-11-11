@@ -9,39 +9,7 @@
 #include <algorithm>
 #include <thread>
 
-/*
-#include <execinfo.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-*/
-
 namespace {
-
-#if false
-constexpr int kBacktraceBufferSize = 300;
-
-void EmitBacktrace() {
-   void* buffer[kBacktraceBufferSize];
-   int nptrs = backtrace(buffer, kBacktraceBufferSize);
-
-   fprintf(stderr, "backtrace() returned %d addresses\n", nptrs);
-
-   /* The call backtrace_symbols_fd(buffer, nptrs, STDOUT_FILENO)
-      would produce similar output to the following: */
-
-   char** strings = backtrace_symbols(buffer, nptrs);
-   if (!strings) {
-       perror("Failed to emit backtrace");
-       exit(EXIT_FAILURE);
-   }
-
-   for (int j = 0; j < nptrs; j++)
-       fprintf(stderr, "%s\n", strings[j]);
-
-   free(strings);
-}
-#endif
 
 unsigned Flags() {
   // TODO: use clang_defaultEditingTranslationUnitOptions()?
@@ -283,8 +251,8 @@ void BuildDetailString(CXCompletionString completion_string,
 
 void TryEnsureDocumentParsed(ClangCompleteManager* manager,
                              std::shared_ptr<CompletionSession> session,
-                             std::unique_ptr<clang::TranslationUnit>* tu,
-                             clang::Index* index) {
+                             std::unique_ptr<ClangTranslationUnit>* tu,
+                             ClangIndex* index) {
   // Nothing to do. We already have a translation unit.
   if (*tu)
     return;
@@ -304,14 +272,14 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
 
   LOG_S(INFO) << "Creating completion session with arguments "
               << StringJoin(args);
-  *tu = clang::TranslationUnit::Create(index, session->file.filename, args,
-                                       unsaved, Flags());
+  *tu = ClangTranslationUnit::Create(index, session->file.filename, args,
+                                     unsaved, Flags());
 
   // Build diagnostics.
   if (manager->config_->diagnosticsOnParse && *tu) {
     // If we're emitting diagnostics, do an immediate reparse, otherwise we will
     // emit stale/bad diagnostics.
-    *tu = clang::TranslationUnit::Reparse(std::move(*tu), unsaved);
+    *tu = ClangTranslationUnit::Reparse(std::move(*tu), unsaved);
     if (!*tu) {
       LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
                    << session->file.filename;
@@ -352,7 +320,7 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
       continue;
     }
 
-    std::unique_ptr<clang::TranslationUnit> parsing;
+    std::unique_ptr<ClangTranslationUnit> parsing;
     TryEnsureDocumentParsed(completion_manager, session, &parsing,
                             &session->index);
 
@@ -468,7 +436,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
       timer.Reset();
       session->tu =
-          clang::TranslationUnit::Reparse(std::move(session->tu), unsaved);
+          ClangTranslationUnit::Reparse(std::move(session->tu), unsaved);
       timer.ResetAndPrint("[complete] clang_reparseTranslationUnit");
       if (!session->tu) {
         LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "

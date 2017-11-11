@@ -113,7 +113,7 @@ void RunTests() {
 
   // TODO: Assert that we need to be on clang >= 3.9.1
   bool update_all = false;
-  clang::Index index(1, 0);
+  ClangIndex index;
 
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/,
                                            true /*add_folder_to_path*/)) {

@@ -269,7 +269,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     for (unsigned j = 0; j < num_args; ++j)
       entry.args.push_back(
           ToString(clang_CompileCommand_getArg(cx_command, j)));
-    clang_time.Pause();  // TODO: don't call clang::ToString in this block.
+    clang_time.Pause();  // TODO: don't call ToString in this block.
 
     our_time.Resume();
     std::string absolute_filename;

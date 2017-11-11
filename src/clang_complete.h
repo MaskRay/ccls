@@ -1,7 +1,7 @@
 #include "atomic_object.h"
+#include "clang_index.h"
+#include "clang_translation_unit.h"
 #include "language_server_api.h"
-#include "libclangmm/Index.h"
-#include "libclangmm/TranslationUnit.h"
 #include "project.h"
 #include "threaded_queue.h"
 #include "working_files.h"
@@ -17,7 +17,7 @@ struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
   Project::Entry file;
   WorkingFiles* working_files;
-  clang::Index index;
+  ClangIndex index;
 
   // When |tu| was last parsed.
   optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
@@ -27,7 +27,7 @@ struct CompletionSession
   std::mutex tu_lock;
 
   // The active translation unit.
-  std::unique_ptr<clang::TranslationUnit> tu;
+  std::unique_ptr<ClangTranslationUnit> tu;
 
   CompletionSession(const Project::Entry& file, WorkingFiles* working_files);
   ~CompletionSession();
@@ -52,7 +52,7 @@ struct ClangCompleteManager {
   using OnDiagnostic =
       std::function<void(std::string path,
                          NonElidedVector<lsDiagnostic> diagnostics)>;
-  using OnIndex = std::function<void(clang::TranslationUnit* tu,
+  using OnIndex = std::function<void(ClangTranslationUnit* tu,
                                      const std::vector<CXUnsavedFile>& unsaved,
                                      const std::string& path,
                                      const std::vector<std::string>& args)>;

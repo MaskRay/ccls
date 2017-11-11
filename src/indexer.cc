@@ -2,8 +2,6 @@
 
 #include "clang_cursor.h"
 #include "clang_utils.h"
-#include "libclangmm/Index.h"
-#include "libclangmm/TranslationUnit.h"
 #include "platform.h"
 #include "serializer.h"
 #include "timer.h"
@@ -208,13 +206,13 @@ struct IndexParam {
   // translation unit.
   IndexFile* primary_file = nullptr;
 
-  clang::TranslationUnit* tu = nullptr;
+  ClangTranslationUnit* tu = nullptr;
 
   FileConsumer* file_consumer = nullptr;
   NamespaceHelper ns;
   ConstructorCache ctors;
 
-  IndexParam(clang::TranslationUnit* tu, FileConsumer* file_consumer)
+  IndexParam(ClangTranslationUnit* tu, FileConsumer* file_consumer)
       : tu(tu), file_consumer(file_consumer) {}
 };
 
@@ -1592,7 +1590,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
-    clang::Index* index,
+    ClangIndex* index,
     bool dump_ast) {
   if (!config->enableIndexing)
     return {};
@@ -1610,7 +1608,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     unsaved_files.push_back(unsaved);
   }
 
-  std::unique_ptr<clang::TranslationUnit> tu = clang::TranslationUnit::Create(
+  std::unique_ptr<ClangTranslationUnit> tu = ClangTranslationUnit::Create(
       index, file, args, unsaved_files,
       CXTranslationUnit_KeepGoing |
           CXTranslationUnit_DetailedPreprocessingRecord);
@@ -1629,8 +1627,8 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     FileConsumer::SharedState* file_consumer_shared,
     PerformanceImportFile* perf,
-    clang::TranslationUnit* tu,
-    clang::Index* index,
+    ClangTranslationUnit* tu,
+    ClangIndex* index,
     const std::string& file,
     const std::vector<std::string>& args,
     const std::vector<CXUnsavedFile>& file_contents) {
