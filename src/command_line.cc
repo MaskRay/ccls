@@ -1464,8 +1464,7 @@ bool QueryDbMainLoop(Config* config,
           }
           // Make sure compile commands directory is valid.
           if (config->compileCommandsDirectory.empty()) {
-            LOG_S(ERROR) << "No compile commands directory";
-            exit(1);
+            config->compileCommandsDirectory = project_path;
           }
 
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
