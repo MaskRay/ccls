@@ -1479,6 +1479,66 @@ bool QueryDbMainLoop(Config* config,
           config->resourceDirectory = NormalizePath(config->resourceDirectory);
           LOG_S(INFO) << "Using -resource-dir=" << config->resourceDirectory;
 
+          // Send initialization before starting indexers, so we don't send a
+          // status update too early.
+          // TODO: query request->params.capabilities.textDocument and support
+          // only things the client supports.
+
+          auto response = Out_InitializeResponse();
+          response.id = request->id;
+
+          // response.result.capabilities.textDocumentSync =
+          // lsTextDocumentSyncOptions();
+          // response.result.capabilities.textDocumentSync->openClose = true;
+          // response.result.capabilities.textDocumentSync->change =
+          // lsTextDocumentSyncKind::Full;
+          // response.result.capabilities.textDocumentSync->willSave = true;
+          // response.result.capabilities.textDocumentSync->willSaveWaitUntil =
+          // true;
+          response.result.capabilities.textDocumentSync =
+              lsTextDocumentSyncKind::Incremental;
+
+          response.result.capabilities.renameProvider = true;
+
+          response.result.capabilities.completionProvider =
+              lsCompletionOptions();
+          response.result.capabilities.completionProvider->resolveProvider =
+              false;
+          // vscode doesn't support trigger character sequences, so we use ':'
+          // for
+          // '::' and '>' for '->'. See
+          // https://github.com/Microsoft/language-server-protocol/issues/138.
+          response.result.capabilities.completionProvider->triggerCharacters = {
+              ".", ":", ">", "#"};
+
+          response.result.capabilities.signatureHelpProvider =
+              lsSignatureHelpOptions();
+          // NOTE: If updating signature help tokens make sure to also update
+          // WorkingFile::FindClosestCallNameInBuffer.
+          response.result.capabilities.signatureHelpProvider
+              ->triggerCharacters = {"(", ","};
+
+          response.result.capabilities.codeLensProvider = lsCodeLensOptions();
+          response.result.capabilities.codeLensProvider->resolveProvider =
+              false;
+
+          response.result.capabilities.definitionProvider = true;
+          response.result.capabilities.documentHighlightProvider = true;
+          response.result.capabilities.hoverProvider = true;
+          response.result.capabilities.referencesProvider = true;
+
+          response.result.capabilities.codeActionProvider = true;
+
+          response.result.capabilities.documentSymbolProvider = true;
+          response.result.capabilities.workspaceSymbolProvider = true;
+
+          response.result.capabilities.documentLinkProvider =
+              lsDocumentLinkOptions();
+          response.result.capabilities.documentLinkProvider->resolveProvider =
+              false;
+
+          ipc->SendOutMessageToClient(IpcId::Initialize, response);
+
           // Set project root.
           config->projectRoot =
               NormalizePath(request->params.rootUri->GetPath());
@@ -1532,60 +1592,6 @@ bool QueryDbMainLoop(Config* config,
           time.ResetAndPrint("[perf] Dispatched initial index requests");
         }
 
-        // TODO: query request->params.capabilities.textDocument and support
-        // only things the client supports.
-
-        auto response = Out_InitializeResponse();
-        response.id = request->id;
-
-        // response.result.capabilities.textDocumentSync =
-        // lsTextDocumentSyncOptions();
-        // response.result.capabilities.textDocumentSync->openClose = true;
-        // response.result.capabilities.textDocumentSync->change =
-        // lsTextDocumentSyncKind::Full;
-        // response.result.capabilities.textDocumentSync->willSave = true;
-        // response.result.capabilities.textDocumentSync->willSaveWaitUntil =
-        // true;
-        response.result.capabilities.textDocumentSync =
-            lsTextDocumentSyncKind::Incremental;
-
-        response.result.capabilities.renameProvider = true;
-
-        response.result.capabilities.completionProvider = lsCompletionOptions();
-        response.result.capabilities.completionProvider->resolveProvider =
-            false;
-        // vscode doesn't support trigger character sequences, so we use ':' for
-        // '::' and '>' for '->'. See
-        // https://github.com/Microsoft/language-server-protocol/issues/138.
-        response.result.capabilities.completionProvider->triggerCharacters = {
-            ".", ":", ">", "#"};
-
-        response.result.capabilities.signatureHelpProvider =
-            lsSignatureHelpOptions();
-        // NOTE: If updating signature help tokens make sure to also update
-        // WorkingFile::FindClosestCallNameInBuffer.
-        response.result.capabilities.signatureHelpProvider
-            ->triggerCharacters = {"(", ","};
-
-        response.result.capabilities.codeLensProvider = lsCodeLensOptions();
-        response.result.capabilities.codeLensProvider->resolveProvider = false;
-
-        response.result.capabilities.definitionProvider = true;
-        response.result.capabilities.documentHighlightProvider = true;
-        response.result.capabilities.hoverProvider = true;
-        response.result.capabilities.referencesProvider = true;
-
-        response.result.capabilities.codeActionProvider = true;
-
-        response.result.capabilities.documentSymbolProvider = true;
-        response.result.capabilities.workspaceSymbolProvider = true;
-
-        response.result.capabilities.documentLinkProvider =
-            lsDocumentLinkOptions();
-        response.result.capabilities.documentLinkProvider->resolveProvider =
-            false;
-
-        ipc->SendOutMessageToClient(IpcId::Initialize, response);
         break;
       }
 
@@ -2004,9 +2010,8 @@ bool QueryDbMainLoop(Config* config,
           }
 
           ClangCompleteManager::OnComplete callback = std::bind(
-              [global_code_complete_cache,
-               non_global_code_complete_cache, is_global_completion,
-               existing_completion,
+              [global_code_complete_cache, non_global_code_complete_cache,
+               is_global_completion, existing_completion,
                msg](const NonElidedVector<lsCompletionItem>& results,
                     bool is_cached_result) {
 
