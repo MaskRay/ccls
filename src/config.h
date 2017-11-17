@@ -7,6 +7,8 @@
 struct Config {
   // Root directory of the project. **Not serialized**
   std::string projectRoot;
+  // Location of compile_commands.json.
+  std::string compileCommandsDirectory;
   // Cache directory for indexed files.
   std::string cacheDirectory;
   // Value to use for clang -resource-dir if not present in
@@ -70,6 +72,7 @@ struct Config {
   bool enableSnippetInsertion = true;
 };
 MAKE_REFLECT_STRUCT(Config,
+                    compileCommandsDirectory,
                     cacheDirectory,
                     resourceDirectory,
 

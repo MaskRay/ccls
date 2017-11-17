@@ -1462,6 +1462,12 @@ bool QueryDbMainLoop(Config* config,
             LOG_S(FATAL) << "Exiting; no cache directory";
             exit(1);
           }
+          // Make sure compile commands directory is valid.
+          if (config->compileCommandsDirectory.empty()) {
+            LOG_S(ERROR) << "No compile commands directory";
+            exit(1);
+          }
+
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
           EnsureEndsInSlash(config->cacheDirectory);
           MakeDirectoryRecursive(config->cacheDirectory);
@@ -1566,7 +1572,7 @@ bool QueryDbMainLoop(Config* config,
           Timer time;
 
           // Open up / load the project.
-          project->Load(config->extraClangArguments, project_path,
+          project->Load(config->extraClangArguments, config->compileCommandsDirectory,
                         config->resourceDirectory);
           time.ResetAndPrint("[perf] Loaded compilation entries (" +
                              std::to_string(project->entries.size()) +
