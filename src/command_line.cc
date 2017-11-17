@@ -2004,7 +2004,7 @@ bool QueryDbMainLoop(Config* config,
           }
 
           ClangCompleteManager::OnComplete callback = std::bind(
-              [working_files, global_code_complete_cache,
+              [global_code_complete_cache,
                non_global_code_complete_cache, is_global_completion,
                existing_completion,
                msg](const NonElidedVector<lsCompletionItem>& results,
@@ -3011,7 +3011,7 @@ void RunQueryDbThread(const std::string& bin_name,
 // |ipc| is connected to a server.
 void LaunchStdinLoop(Config* config,
                      std::unordered_map<IpcId, Timer>* request_times) {
-  WorkThread::StartThread("stdin", [config, request_times]() {
+  WorkThread::StartThread("stdin", [request_times]() {
     IpcManager* ipc = IpcManager::instance();
 
     std::unique_ptr<BaseIpcMessage> message =
