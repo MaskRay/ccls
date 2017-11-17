@@ -2,7 +2,7 @@
 
 [![Join the chat at https://gitter.im/cquery-project/Lobby](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/cquery-project/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-cquery is a highly-scalable, low-latency language server for C++. It is tested
+cquery is a highly-scalable, low-latency language server for C/C++. It is tested
 and designed for large code bases like
 [Chromium](https://chromium.googlesource.com/chromium/src/). cquery provides
 accurate and fast semantic analysis without interrupting workflow.
