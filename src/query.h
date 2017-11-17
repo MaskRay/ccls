@@ -51,8 +51,17 @@ struct QueryLocation {
 MAKE_REFLECT_STRUCT(QueryLocation, path, range);
 MAKE_HASHABLE(QueryLocation, t.path, t.range);
 
-enum class SymbolKind { Invalid, File, Type, Func, Var };
+enum class SymbolKind : int { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind, int);
+
+namespace std {
+template <> struct hash<::SymbolKind> {
+  size_t operator()(const ::SymbolKind &instance) const {
+    return std::hash<int>()(static_cast<int>(instance));
+  }
+};
+}
+
 
 struct SymbolIdx {
   SymbolKind kind;
