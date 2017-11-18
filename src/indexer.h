@@ -64,7 +64,8 @@ bool operator!=(const Id<T>& a, const Id<T>& b) {
 
 template <typename T>
 void Reflect(Reader& visitor, Id<T>& id) {
-  id.id = visitor.GetUint64();
+  if (visitor.IsUint64())
+    id.id = visitor.GetUint64();
 }
 template <typename T>
 void Reflect(Writer& visitor, Id<T>& value) {

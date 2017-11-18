@@ -168,6 +168,8 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value);
 // Reader:
 template <typename T>
 void Reflect(Reader& visitor, std::vector<T>& values) {
+  if (!visitor.IsArray())
+    return;
   for (auto& entry : visitor.GetArray()) {
     T entry_value;
     Reflect(entry, entry_value);
@@ -176,6 +178,8 @@ void Reflect(Reader& visitor, std::vector<T>& values) {
 }
 template <typename T>
 void Reflect(Reader& visitor, optional<T>& value) {
+  if (visitor.IsNull())
+    return;
   T real_value;
   Reflect(visitor, real_value);
   value = real_value;

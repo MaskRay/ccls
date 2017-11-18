@@ -8,42 +8,48 @@ bool gTestOutputMode = false;
 
 // int16_t
 void Reflect(Reader& visitor, int16_t& value) {
-  value = (int16_t)visitor.GetInt();
+  if (visitor.IsInt())
+    value = (int16_t)visitor.GetInt();
 }
 void Reflect(Writer& visitor, int16_t& value) {
   visitor.Int(value);
 }
 // int32_t
 void Reflect(Reader& visitor, int32_t& value) {
-  value = visitor.GetInt();
+  if (visitor.IsInt())
+    value = visitor.GetInt();
 }
 void Reflect(Writer& visitor, int32_t& value) {
   visitor.Int(value);
 }
 // int64_t
 void Reflect(Reader& visitor, int64_t& value) {
-  value = visitor.GetInt64();
+  if (visitor.IsInt64())
+    value = visitor.GetInt64();
 }
 void Reflect(Writer& visitor, int64_t& value) {
   visitor.Int64(value);
 }
 // uint64_t
 void Reflect(Reader& visitor, uint64_t& value) {
-  value = visitor.GetUint64();
+  if (visitor.IsUint64())
+    value = visitor.GetUint64();
 }
 void Reflect(Writer& visitor, uint64_t& value) {
   visitor.Uint64(value);
 }
 // bool
 void Reflect(Reader& visitor, bool& value) {
-  value = visitor.GetBool();
+  if (visitor.IsBool())
+    value = visitor.GetBool();
 }
 void Reflect(Writer& visitor, bool& value) {
   visitor.Bool(value);
 }
 // std::string
 void Reflect(Reader& visitor, std::string& value) {
-  value = visitor.GetString();
+  if (visitor.IsString())
+    value = visitor.GetString();
 }
 void Reflect(Writer& visitor, std::string& value) {
   visitor.String(value.c_str(), (rapidjson::SizeType)value.size());

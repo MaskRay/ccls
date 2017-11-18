@@ -303,6 +303,10 @@ const std::string& lsCompletionItem::InsertedContent() const {
 }
 
 void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
+  if (!reader.IsString()) {
+    value = lsInitializeParams::lsTrace::Off;
+    return;
+  }
   std::string v = reader.GetString();
   if (v == "off")
     value = lsInitializeParams::lsTrace::Off;
