@@ -124,6 +124,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     }
 
     auto cleanup_maybe_relative_path = [&](const std::string& path) {
+      // TODO/FIXME: Normalization will fail for paths that do not exist. Should
+      // it return an optional<std::string>?
       assert(!path.empty());
       if (path[0] == '/' || entry.directory.empty())
         return NormalizePathWithTestOptOut(path);

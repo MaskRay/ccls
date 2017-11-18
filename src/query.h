@@ -55,13 +55,13 @@ enum class SymbolKind : int { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind, int);
 
 namespace std {
-template <> struct hash<::SymbolKind> {
-  size_t operator()(const ::SymbolKind &instance) const {
+template <>
+struct hash<::SymbolKind> {
+  size_t operator()(const ::SymbolKind& instance) const {
     return std::hash<int>()(static_cast<int>(instance));
   }
 };
-}
-
+}  // namespace std
 
 struct SymbolIdx {
   SymbolKind kind;
