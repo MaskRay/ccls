@@ -121,7 +121,7 @@ def build(bld):
   print('CLANG_INCLUDE_DIR: {0}'.format(CLANG_INCLUDE_DIR))
   print('CLANG_LIB_DIR:     {0}'.format(CLANG_LIB_DIR))
 
-  cc_files = bld.path.ant_glob(['src/**/*.cpp', 'src/**/*.cc'])
+  cc_files = bld.path.ant_glob(['src/*.cc'])
 
   lib = ['clang']
   if sys.platform == 'linux' or sys.platform == 'linux2':
