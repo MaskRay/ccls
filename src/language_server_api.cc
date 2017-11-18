@@ -240,12 +240,12 @@ std::string lsDocumentUri::GetPath() const {
   result = ReplaceAll(result, "%29", ")");
 
   size_t index = result.find("%3A");
-  if (index != -1) {
+  if (index != std::string::npos) {
     result.replace(result.begin() + index, result.begin() + index + 3, ":");
   }
 
   index = result.find("file://");
-  if (index != -1) {
+  if (index != std::string::npos) {
 // TODO: proper fix
 #if defined(_WIN32)
     result.replace(result.begin() + index, result.begin() + index + 8, "");

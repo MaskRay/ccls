@@ -180,7 +180,7 @@ template <typename T>
 void Reflect(Reader& visitor, optional<T>& value) {
   if (visitor.IsNull())
     return;
-  T real_value;
+  T real_value{};
   Reflect(visitor, real_value);
   value = real_value;
 }

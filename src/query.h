@@ -110,7 +110,7 @@ struct QueryFuncRef {
   QueryLocation loc;
   bool is_implicit = false;
 
-  bool has_id() const { return id_.id != -1; }
+  bool has_id() const { return static_cast<ssize_t>(id_.id) != -1; }
 
   QueryFuncRef() {}  // Do not use, needed for reflect.
   QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit)

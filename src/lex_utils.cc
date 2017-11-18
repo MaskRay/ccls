@@ -11,7 +11,7 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
   int offset = 0;
 
   int remaining_lines = position.line;
-  while (remaining_lines > 0 && offset < content.size()) {
+  while (remaining_lines > 0 && offset < static_cast<int>(content.size())) {
     if (content[offset] == '\n')
       --remaining_lines;
     ++offset;

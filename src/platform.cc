@@ -28,10 +28,11 @@ std::vector<std::string> Split(const std::string& s, char delim) {
   return elems;
 }
 
-std::string Join(const std::vector<std::string>& entries, char delim, int end) {
+std::string Join(const std::vector<std::string>& entries, char delim,
+                 size_t end) {
   std::string result;
   bool first = true;
-  for (int i = 0; i < end; ++i) {
+  for (size_t i = 0; i < end; ++i) {
     if (!first)
       result += delim;
     first = false;
@@ -62,7 +63,8 @@ void MakeDirectoryRecursive(std::string path) {
 
   // Find first parent directory which doesn't exist.
   int first_success = -1;
-  for (int i = (int)components.size(); i > 0; --i) {
+  for (size_t j = 0; j < components.size(); ++j) {
+    size_t i = components.size() - j;
     if (TryMakeDirectory(prefix + Join(components, '/', i))) {
       first_success = i;
       break;
@@ -76,7 +78,7 @@ void MakeDirectoryRecursive(std::string path) {
   }
 
   // Make all child directories.
-  for (int i = first_success + 1; i <= components.size(); ++i) {
+  for (size_t i = first_success + 1; i <= components.size(); ++i) {
     if (TryMakeDirectory(prefix + Join(components, '/', i)) == false) {
       std::cerr << "Failed making directory for " << path
                 << " even after creating parent directories" << std::endl;

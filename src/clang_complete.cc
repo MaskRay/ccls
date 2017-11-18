@@ -483,7 +483,7 @@ LruSessionCache::LruSessionCache(int max_entries) : max_entries_(max_entries) {}
 
 std::shared_ptr<CompletionSession> LruSessionCache::TryGetEntry(
     const std::string& filename) {
-  for (int i = 0; i < entries_.size(); ++i) {
+  for (size_t i = 0; i < entries_.size(); ++i) {
     if (entries_[i]->file.filename == filename)
       return entries_[i];
   }
@@ -492,7 +492,7 @@ std::shared_ptr<CompletionSession> LruSessionCache::TryGetEntry(
 
 std::shared_ptr<CompletionSession> LruSessionCache::TryTakeEntry(
     const std::string& filename) {
-  for (int i = 0; i < entries_.size(); ++i) {
+  for (size_t i = 0; i < entries_.size(); ++i) {
     if (entries_[i]->file.filename == filename) {
       std::shared_ptr<CompletionSession> result = entries_[i];
       entries_.erase(entries_.begin() + i);
