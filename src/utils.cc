@@ -3,6 +3,7 @@
 #include "platform.h"
 
 #include <tinydir.h>
+#include <loguru/loguru.hpp>
 
 #include <algorithm>
 #include <cassert>
@@ -333,7 +334,7 @@ void UpdateTestExpectation(const std::string& filename,
 }
 
 void Fail(const std::string& message) {
-  std::cerr << "Fatal error: " << message << std::endl;
+  LOG_S(FATAL) << "Fatal error: " << message;
   std::exit(1);
 }
 

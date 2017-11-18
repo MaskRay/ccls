@@ -1459,7 +1459,7 @@ bool QueryDbMainLoop(Config* config,
 
           // Make sure cache directory is valid.
           if (config->cacheDirectory.empty()) {
-            LOG_S(ERROR) << "No cache directory";
+            LOG_S(FATAL) << "Exiting; no cache directory";
             exit(1);
           }
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
@@ -1596,6 +1596,7 @@ bool QueryDbMainLoop(Config* config,
       }
 
       case IpcId::Exit: {
+        LOG_S(INFO) << "Exiting; got IpcId::Exit";
         exit(0);
         break;
       }
@@ -2926,8 +2927,8 @@ bool QueryDbMainLoop(Config* config,
       }
 
       default: {
-        LOG_S(INFO) << "[querydb] Unhandled IPC message "
-                    << IpcIdToString(message->method_id);
+        LOG_S(FATAL) << "Exiting; unhandled IPC message "
+                     << IpcIdToString(message->method_id);
         exit(1);
       }
     }
@@ -2978,8 +2979,10 @@ void RunQueryDbThread(const std::string& bin_name,
         signature_cache.get());
 
     // No more work left and exit request. Exit.
-    if (!did_work && exit_when_idle && WorkThread::num_active_threads == 0)
+    if (!did_work && exit_when_idle && WorkThread::num_active_threads == 0) {
+      LOG_S(INFO) << "Exiting; exit_when_idle is set and there is no more work";
       exit(0);
+    }
 
     // Cleanup and free any unused memory.
     FreeUnusedMemory();
@@ -3042,6 +3045,7 @@ void LaunchStdinLoop(Config* config,
       }
 
       case IpcId::Exit: {
+        LOG_S(INFO) << "Exiting";
         exit(0);
         break;
       }
@@ -3087,8 +3091,8 @@ void LaunchStdinLoop(Config* config,
       }
 
       default: {
-        std::cerr << "[stdin] Unhandled IPC message "
-                  << IpcIdToString(message->method_id) << std::endl;
+        LOG_S(ERROR) << "Unhandled IPC message "
+                     << IpcIdToString(message->method_id);
         exit(1);
       }
     }
@@ -3131,8 +3135,8 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
         }
 
         default: {
-          std::cerr << "[stdout] Unhandled IPC message "
-                    << IpcIdToString(message->method_id) << std::endl;
+          LOG_S(FATAL) << "Exiting; unhandled IPC message "
+                       << IpcIdToString(message->method_id);
           exit(1);
         }
       }
