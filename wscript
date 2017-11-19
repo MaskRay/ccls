@@ -1,8 +1,11 @@
 #! /usr/bin/env python
 # encoding: utf-8
 
-from urllib2 import urlopen # Python 2
-# from urllib.request import urlopen # Python 3
+try:
+    from urllib2 import urlopen # Python 2
+except ImportError:
+    from urllib.request import urlopen # Python 3
+
 import os.path
 from subprocess import call
 import sys
