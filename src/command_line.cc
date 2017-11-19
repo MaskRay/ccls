@@ -3203,33 +3203,33 @@ int main(int argc, char** argv) {
   std::unordered_map<std::string, std::string> options =
       ParseOptions(argc, argv);
 
-  if (HasOption(options, "--test")) {
+  bool print_help = true;
+
+  if (HasOption(options, "--test-unit")) {
+    print_help = false;
     doctest::Context context;
     context.applyCommandLine(argc, argv);
     int res = context.run();
     if (context.shouldExit())
       return res;
+  }
 
-    for (int i = 0; i < 1; ++i)
-      RunTests();
-
-    /*
-    for (int i = 0; i < 1; ++i) {
-      std::this_thread::sleep_for(std::chrono::seconds(5));
-      std::cerr << "[POST] Memory usage: " << GetProcessMemoryUsedInMb() << "mb"
-    << std::endl;
-    }
-    */
-
+  if (HasOption(options, "--test-index")) {
+    print_help = false;
+    RunIndexTests();
     std::cerr << std::endl << "[Enter] to exit" << std::endl;
     std::cin.get();
-    return 0;
-  } else if (HasOption(options, "--language-server")) {
+  }
+
+  if (HasOption(options, "--language-server")) {
+    print_help = false;
     // std::cerr << "Running language server" << std::endl;
     auto config = MakeUnique<Config>();
     LanguageServerMain(argv[0], config.get(), &waiter);
     return 0;
-  } else {
+  }
+
+  if (print_help) {
     std::cout << R"help(cquery help:
 
   cquery is a low-latency C++ language server.
@@ -3239,7 +3239,8 @@ int main(int argc, char** argv) {
     --language-server
                   Run as a language server. This implements the language
                   server spec over STDIN and STDOUT.
-    --test        Run tests. Does nothing if test support is not compiled in.
+    --test-unit   Run unit tests.
+    --test-index  Run index tests.
 
   Configuration:
     When opening up a directory, cquery will look for a compile_commands.json
@@ -3253,8 +3254,9 @@ int main(int argc, char** argv) {
     describe those options. See |Config| in this source code for a detailed
     list of all currently supported options.
 )help";
-    return 0;
   }
+
+  return 0;
 }
 
 TEST_SUITE("LexFunctionDeclaration") {

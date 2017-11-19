@@ -108,7 +108,7 @@ IndexFile* FindDbForPathEnding(
   return nullptr;
 }
 
-void RunTests() {
+void RunIndexTests() {
   SetTestOutputMode();
 
   // TODO: Assert that we need to be on clang >= 3.9.1
