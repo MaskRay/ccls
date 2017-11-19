@@ -263,10 +263,12 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
     CompileCommandsEntry entry;
     entry.args.reserve(num_args);
-    for (unsigned j = 0; j < num_args; ++j)
+    for (unsigned j = 0; j < num_args; ++j) {
       entry.args.push_back(
           ToString(clang_CompileCommand_getArg(cx_command, j)));
+    }
     clang_time.Pause();  // TODO: don't call ToString in this block.
+    // LOG_S(INFO) << "Got args " << StringJoin(entry.args);
 
     our_time.Resume();
     std::string absolute_filename;
@@ -423,6 +425,11 @@ TEST_SUITE("Project") {
     Project::Entry result =
         GetCompilationEntryFromCompileCommandEntry(&config, entry);
 
+    if (result.args != expected) {
+      std::cout << "Raw:      " << StringJoin(raw) << std::endl;
+      std::cout << "Expected: " << StringJoin(expected) << std::endl;
+      std::cout << "Actual:   " << StringJoin(result.args) << std::endl;
+    }
     bool printed_header = false;
     for (int i = 0; i < std::min(result.args.size(), expected.size()); ++i) {
       if (result.args[i] != expected[i]) {
@@ -457,6 +464,17 @@ TEST_SUITE("Project") {
                /* expected */ {"clang", "--foo", "-xc++", "-std=c++11",
                                "-resource-dir=/w/resource_dir/"});
   }
+
+  #if false
+  // FIXME: Fix this test.
+  TEST_CASE("Path in args") {
+    CheckFlags("/home/user", "/home/user/foo/bar.c",
+               /* raw */ {"cc", "-O0", "foo/bar.c"},
+               /* expected */
+               {"-O0", "&foo/bar.c", "-xc", "-std=c11",
+                "-resource-dir=/w/resource_dir/"});
+  }
+  #endif
 
   // Checks flag parsing for a random chromium file in comparison to what
   // YouCompleteMe fetches.
