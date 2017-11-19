@@ -465,16 +465,15 @@ TEST_SUITE("Project") {
                                "-resource-dir=/w/resource_dir/"});
   }
 
-  #if false
+#if false
   // FIXME: Fix this test.
   TEST_CASE("Path in args") {
     CheckFlags("/home/user", "/home/user/foo/bar.c",
                /* raw */ {"cc", "-O0", "foo/bar.c"},
                /* expected */
-               {"-O0", "&foo/bar.c", "-xc", "-std=c11",
-                "-resource-dir=/w/resource_dir/"});
+               {"-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/"});
   }
-  #endif
+#endif
 
   // Checks flag parsing for a random chromium file in comparison to what
   // YouCompleteMe fetches.
