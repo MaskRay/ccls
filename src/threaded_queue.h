@@ -16,6 +16,7 @@ using std::experimental::optional;
 
 struct BaseThreadQueue {
   virtual bool IsEmpty() = 0;
+  virtual ~BaseThreadQueue() = default;
 };
 
 struct MultiQueueWaiter {
