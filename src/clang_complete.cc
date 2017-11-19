@@ -135,7 +135,8 @@ void BuildDetailString(CXCompletionString completion_string,
                        std::string& label,
                        std::string& detail,
                        std::string& insert,
-                       std::vector<std::string>* parameters) {
+                       std::vector<std::string>* parameters,
+                       bool include_snippets) {
   int num_chunks = clang_getNumCompletionChunks(completion_string);
   for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind =
@@ -145,7 +146,7 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_Optional: {
         CXCompletionString nested =
             clang_getCompletionChunkCompletionString(completion_string, i);
-        BuildDetailString(nested, label, detail, insert, parameters);
+        BuildDetailString(nested, label, detail, insert, parameters, include_snippets);
         break;
       }
 
@@ -154,7 +155,8 @@ void BuildDetailString(CXCompletionString completion_string,
             ToString(clang_getCompletionChunkText(completion_string, i));
         parameters->push_back(text);
         detail += text;
-        insert += "${" + std::to_string(parameters->size()) + ":" + text + "}";
+        // Add parameter declarations as snippets if enabled
+        if (include_snippets) { insert += "${" + std::to_string(parameters->size()) + ":" + text + "}"; }
         break;
       }
 
@@ -195,6 +197,8 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_LeftParen:
         detail += "(";
         insert += "(";
+        // Put cursor between parentheses if snippets are not enabled
+        if (!include_snippets) { insert += "$1"; }
         break;
       case CXCompletionChunk_RightParen:
         detail += ")";
@@ -226,7 +230,8 @@ void BuildDetailString(CXCompletionString completion_string,
         break;
       case CXCompletionChunk_Comma:
         detail += ", ";
-        insert += ", ";
+        // Only put comma's between parentheses if snippets are enabled
+        if (include_snippets) { insert += ", "; }
         break;
       case CXCompletionChunk_Colon:
         detail += ":";
@@ -247,6 +252,8 @@ void BuildDetailString(CXCompletionString completion_string,
         break;
     }
   }
+
+  insert += "$0";
 }
 
 void TryEnsureDocumentParsed(ClangCompleteManager* manager,
@@ -405,8 +412,9 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             BuildDetailString(result.CompletionString, ls_completion_item.label,
                               ls_completion_item.detail,
                               ls_completion_item.insertText,
-                              &ls_completion_item.parameters_);
-            ls_completion_item.insertText += "$0";
+                              &ls_completion_item.parameters_,
+                              completion_manager->config_->enableSnippetInsertion);
+ 
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
             ls_completion_item.sortText =
