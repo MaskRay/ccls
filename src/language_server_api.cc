@@ -82,8 +82,6 @@ optional<std::string> ReadJsonRpcContentFrom(
   return content;
 }
 
-TEST_SUITE("FindIncludeLine");
-
 std::function<optional<char>()> MakeContentReader(std::string* content,
                                                   bool can_be_empty) {
   return [content, can_be_empty]() -> optional<char> {
@@ -97,30 +95,30 @@ std::function<optional<char>()> MakeContentReader(std::string* content,
   };
 }
 
-TEST_CASE("ReadContentFromSource") {
-  auto parse_correct = [](std::string content) -> std::string {
-    auto reader = MakeContentReader(&content, false /*can_be_empty*/);
-    auto got = ReadJsonRpcContentFrom(reader);
-    REQUIRE(got);
-    return got.value();
-  };
+TEST_SUITE("FindIncludeLine") {
+  TEST_CASE("ReadContentFromSource") {
+    auto parse_correct = [](std::string content) -> std::string {
+      auto reader = MakeContentReader(&content, false /*can_be_empty*/);
+      auto got = ReadJsonRpcContentFrom(reader);
+      REQUIRE(got);
+      return got.value();
+    };
 
-  auto parse_incorrect = [](std::string content) -> optional<std::string> {
-    auto reader = MakeContentReader(&content, true /*can_be_empty*/);
-    return ReadJsonRpcContentFrom(reader);
-  };
+    auto parse_incorrect = [](std::string content) -> optional<std::string> {
+      auto reader = MakeContentReader(&content, true /*can_be_empty*/);
+      return ReadJsonRpcContentFrom(reader);
+    };
 
-  REQUIRE(parse_correct("Content-Length: 0\r\n\r\n") == "");
-  REQUIRE(parse_correct("Content-Length: 1\r\n\r\na") == "a");
-  REQUIRE(parse_correct("Content-Length: 4\r\n\r\nabcd") == "abcd");
+    REQUIRE(parse_correct("Content-Length: 0\r\n\r\n") == "");
+    REQUIRE(parse_correct("Content-Length: 1\r\n\r\na") == "a");
+    REQUIRE(parse_correct("Content-Length: 4\r\n\r\nabcd") == "abcd");
 
-  REQUIRE(parse_incorrect("ggg") == optional<std::string>());
-  REQUIRE(parse_incorrect("Content-Length: 0\r\n") == optional<std::string>());
-  REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") ==
-          optional<std::string>());
+    REQUIRE(parse_incorrect("ggg") == optional<std::string>());
+    REQUIRE(parse_incorrect("Content-Length: 0\r\n") == optional<std::string>());
+    REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") ==
+            optional<std::string>());
+  }
 }
-
-TEST_SUITE_END();
 
 optional<char> ReadCharFromStdinBlocking() {
   // Bad stdin means parent process has probably exited. Either way, cquery

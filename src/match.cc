@@ -76,16 +76,14 @@ bool GroupMatch::IsMatch(const std::string& value,
   return true;
 }
 
-TEST_SUITE("Matcher");
-
-TEST_CASE("sanity") {
-  // Matcher m("abc");
-  // TODO: check case
-  // CHECK(m.IsMatch("abc"));
-  // CHECK(m.IsMatch("fooabc"));
-  // CHECK(m.IsMatch("abc"));
-  // CHECK(m.IsMatch("abcfoo"));
-  // CHECK(m.IsMatch("11a11b11c11"));
+TEST_SUITE("Matcher") {
+  TEST_CASE("sanity") {
+    // Matcher m("abc");
+    // TODO: check case
+    // CHECK(m.IsMatch("abc"));
+    // CHECK(m.IsMatch("fooabc"));
+    // CHECK(m.IsMatch("abc"));
+    // CHECK(m.IsMatch("abcfoo"));
+    // CHECK(m.IsMatch("11a11b11c11"));
+  }
 }
-
-TEST_SUITE_END();

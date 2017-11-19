@@ -3257,193 +3257,187 @@ int main(int argc, char** argv) {
   }
 }
 
-TEST_SUITE("LexFunctionDeclaration");
+TEST_SUITE("LexFunctionDeclaration") {
+  TEST_CASE("simple") {
+    std::string buffer_content = " void Foo(); ";
+    lsPosition declaration = CharPos(buffer_content, 'F');
+    std::string insert_text;
+    int newlines_after_name = 0;
 
-TEST_CASE("simple") {
-  std::string buffer_content = " void Foo(); ";
-  lsPosition declaration = CharPos(buffer_content, 'F');
-  std::string insert_text;
-  int newlines_after_name = 0;
+    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+                          &newlines_after_name);
+    REQUIRE(insert_text == "void Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
 
-  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                         &newlines_after_name);
-  REQUIRE(insert_text == "void Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
+    LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
+                          &insert_text, &newlines_after_name);
+    REQUIRE(insert_text == "void Type::Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+  }
 
-  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                         &insert_text, &newlines_after_name);
-  REQUIRE(insert_text == "void Type::Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
+  TEST_CASE("ctor") {
+    std::string buffer_content = " Foo(); ";
+    lsPosition declaration = CharPos(buffer_content, 'F');
+    std::string insert_text;
+    int newlines_after_name = 0;
+
+    LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"),
+                          &insert_text, &newlines_after_name);
+    REQUIRE(insert_text == "Foo::Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+  }
+
+  TEST_CASE("dtor") {
+    std::string buffer_content = " ~Foo(); ";
+    lsPosition declaration = CharPos(buffer_content, '~');
+    std::string insert_text;
+    int newlines_after_name = 0;
+
+    LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"),
+                          &insert_text, &newlines_after_name);
+    REQUIRE(insert_text == "Foo::~Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+  }
+
+  TEST_CASE("complex return type") {
+    std::string buffer_content = " std::vector<int> Foo(); ";
+    lsPosition declaration = CharPos(buffer_content, 'F');
+    std::string insert_text;
+    int newlines_after_name = 0;
+
+    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+                          &newlines_after_name);
+    REQUIRE(insert_text == "std::vector<int> Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+
+    LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
+                          &insert_text, &newlines_after_name);
+    REQUIRE(insert_text == "std::vector<int> Type::Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+  }
+
+  TEST_CASE("extra complex return type") {
+    std::string buffer_content = " std::function < int() > \n Foo(); ";
+    lsPosition declaration = CharPos(buffer_content, 'F');
+    std::string insert_text;
+    int newlines_after_name = 0;
+
+    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+                          &newlines_after_name);
+    REQUIRE(insert_text == "std::function < int() > \n Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+
+    LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
+                          &insert_text, &newlines_after_name);
+    REQUIRE(insert_text == "std::function < int() > \n Type::Foo() {\n}");
+    REQUIRE(newlines_after_name == 0);
+  }
+
+  TEST_CASE("parameters") {
+    std::string buffer_content = "void Foo(int a,\n\n    int b); ";
+    lsPosition declaration = CharPos(buffer_content, 'F');
+    std::string insert_text;
+    int newlines_after_name = 0;
+
+    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+                          &newlines_after_name);
+    REQUIRE(insert_text == "void Foo(int a,\n\n    int b) {\n}");
+    REQUIRE(newlines_after_name == 2);
+
+    LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
+                          &insert_text, &newlines_after_name);
+    REQUIRE(insert_text == "void Type::Foo(int a,\n\n    int b) {\n}");
+    REQUIRE(newlines_after_name == 2);
+  }
 }
 
-TEST_CASE("ctor") {
-  std::string buffer_content = " Foo(); ";
-  lsPosition declaration = CharPos(buffer_content, 'F');
-  std::string insert_text;
-  int newlines_after_name = 0;
+TEST_SUITE("LexWordAroundPos") {
+  TEST_CASE("edges") {
+    std::string content = "Foobar";
+    REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
+  }
 
-  LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"),
-                         &insert_text, &newlines_after_name);
-  REQUIRE(insert_text == "Foo::Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
+  TEST_CASE("simple") {
+    std::string content = "  Foobar  ";
+    REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
+  }
+
+  TEST_CASE("underscores and numbers") {
+    std::string content = "  _my_t5ype7  ";
+    REQUIRE(LexWordAroundPos(CharPos(content, '_'), content) == "_my_t5ype7");
+    REQUIRE(LexWordAroundPos(CharPos(content, '5'), content) == "_my_t5ype7");
+    REQUIRE(LexWordAroundPos(CharPos(content, 'e'), content) == "_my_t5ype7");
+    REQUIRE(LexWordAroundPos(CharPos(content, '7'), content) == "_my_t5ype7");
+  }
+
+  TEST_CASE("dot, dash, colon are skipped") {
+    std::string content = "1. 2- 3:";
+    REQUIRE(LexWordAroundPos(CharPos(content, '1'), content) == "1");
+    REQUIRE(LexWordAroundPos(CharPos(content, '2'), content) == "2");
+    REQUIRE(LexWordAroundPos(CharPos(content, '3'), content) == "3");
+  }
 }
 
-TEST_CASE("dtor") {
-  std::string buffer_content = " ~Foo(); ";
-  lsPosition declaration = CharPos(buffer_content, '~');
-  std::string insert_text;
-  int newlines_after_name = 0;
+TEST_SUITE("FindIncludeLine") {
+  TEST_CASE("in document") {
+    std::vector<std::string> lines = {
+        "#include <bbb>",  // 0
+        "#include <ddd>"   // 1
+    };
 
-  LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"),
-                         &insert_text, &newlines_after_name);
-  REQUIRE(insert_text == "Foo::~Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
+    REQUIRE(FindIncludeLine(lines, "#include <bbb>") == nullopt);
+  }
+
+  TEST_CASE("insert before") {
+    std::vector<std::string> lines = {
+        "#include <bbb>",  // 0
+        "#include <ddd>"   // 1
+    };
+
+    REQUIRE(FindIncludeLine(lines, "#include <aaa>") == 0);
+  }
+
+  TEST_CASE("insert middle") {
+    std::vector<std::string> lines = {
+        "#include <bbb>",  // 0
+        "#include <ddd>"   // 1
+    };
+
+    REQUIRE(FindIncludeLine(lines, "#include <ccc>") == 1);
+  }
+
+  TEST_CASE("insert after") {
+    std::vector<std::string> lines = {
+        "#include <bbb>",  // 0
+        "#include <ddd>",  // 1
+        "",                // 2
+    };
+
+    REQUIRE(FindIncludeLine(lines, "#include <eee>") == 2);
+  }
+
+  TEST_CASE("ignore header") {
+    std::vector<std::string> lines = {
+        "// FOOBAR",       // 0
+        "// FOOBAR",       // 1
+        "// FOOBAR",       // 2
+        "// FOOBAR",       // 3
+        "",                // 4
+        "#include <bbb>",  // 5
+        "#include <ddd>",  // 6
+        "",                // 7
+    };
+
+    REQUIRE(FindIncludeLine(lines, "#include <a>") == 5);
+    REQUIRE(FindIncludeLine(lines, "#include <c>") == 6);
+    REQUIRE(FindIncludeLine(lines, "#include <e>") == 7);
+  }
 }
-
-TEST_CASE("complex return type") {
-  std::string buffer_content = " std::vector<int> Foo(); ";
-  lsPosition declaration = CharPos(buffer_content, 'F');
-  std::string insert_text;
-  int newlines_after_name = 0;
-
-  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                         &newlines_after_name);
-  REQUIRE(insert_text == "std::vector<int> Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
-
-  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                         &insert_text, &newlines_after_name);
-  REQUIRE(insert_text == "std::vector<int> Type::Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
-}
-
-TEST_CASE("extra complex return type") {
-  std::string buffer_content = " std::function < int() > \n Foo(); ";
-  lsPosition declaration = CharPos(buffer_content, 'F');
-  std::string insert_text;
-  int newlines_after_name = 0;
-
-  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                         &newlines_after_name);
-  REQUIRE(insert_text == "std::function < int() > \n Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
-
-  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                         &insert_text, &newlines_after_name);
-  REQUIRE(insert_text == "std::function < int() > \n Type::Foo() {\n}");
-  REQUIRE(newlines_after_name == 0);
-}
-
-TEST_CASE("parameters") {
-  std::string buffer_content = "void Foo(int a,\n\n    int b); ";
-  lsPosition declaration = CharPos(buffer_content, 'F');
-  std::string insert_text;
-  int newlines_after_name = 0;
-
-  LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                         &newlines_after_name);
-  REQUIRE(insert_text == "void Foo(int a,\n\n    int b) {\n}");
-  REQUIRE(newlines_after_name == 2);
-
-  LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                         &insert_text, &newlines_after_name);
-  REQUIRE(insert_text == "void Type::Foo(int a,\n\n    int b) {\n}");
-  REQUIRE(newlines_after_name == 2);
-}
-
-TEST_SUITE_END();
-
-TEST_SUITE("LexWordAroundPos");
-
-TEST_CASE("edges") {
-  std::string content = "Foobar";
-  REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
-}
-
-TEST_CASE("simple") {
-  std::string content = "  Foobar  ";
-  REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
-}
-
-TEST_CASE("underscores and numbers") {
-  std::string content = "  _my_t5ype7  ";
-  REQUIRE(LexWordAroundPos(CharPos(content, '_'), content) == "_my_t5ype7");
-  REQUIRE(LexWordAroundPos(CharPos(content, '5'), content) == "_my_t5ype7");
-  REQUIRE(LexWordAroundPos(CharPos(content, 'e'), content) == "_my_t5ype7");
-  REQUIRE(LexWordAroundPos(CharPos(content, '7'), content) == "_my_t5ype7");
-}
-
-TEST_CASE("dot, dash, colon are skipped") {
-  std::string content = "1. 2- 3:";
-  REQUIRE(LexWordAroundPos(CharPos(content, '1'), content) == "1");
-  REQUIRE(LexWordAroundPos(CharPos(content, '2'), content) == "2");
-  REQUIRE(LexWordAroundPos(CharPos(content, '3'), content) == "3");
-}
-
-TEST_SUITE_END();
-
-TEST_SUITE("FindIncludeLine");
-
-TEST_CASE("in document") {
-  std::vector<std::string> lines = {
-      "#include <bbb>",  // 0
-      "#include <ddd>"   // 1
-  };
-
-  REQUIRE(FindIncludeLine(lines, "#include <bbb>") == nullopt);
-}
-
-TEST_CASE("insert before") {
-  std::vector<std::string> lines = {
-      "#include <bbb>",  // 0
-      "#include <ddd>"   // 1
-  };
-
-  REQUIRE(FindIncludeLine(lines, "#include <aaa>") == 0);
-}
-
-TEST_CASE("insert middle") {
-  std::vector<std::string> lines = {
-      "#include <bbb>",  // 0
-      "#include <ddd>"   // 1
-  };
-
-  REQUIRE(FindIncludeLine(lines, "#include <ccc>") == 1);
-}
-
-TEST_CASE("insert after") {
-  std::vector<std::string> lines = {
-      "#include <bbb>",  // 0
-      "#include <ddd>",  // 1
-      "",                // 2
-  };
-
-  REQUIRE(FindIncludeLine(lines, "#include <eee>") == 2);
-}
-
-TEST_CASE("ignore header") {
-  std::vector<std::string> lines = {
-      "// FOOBAR",       // 0
-      "// FOOBAR",       // 1
-      "// FOOBAR",       // 2
-      "// FOOBAR",       // 3
-      "",                // 4
-      "#include <bbb>",  // 5
-      "#include <ddd>",  // 6
-      "",                // 7
-  };
-
-  REQUIRE(FindIncludeLine(lines, "#include <a>") == 5);
-  REQUIRE(FindIncludeLine(lines, "#include <c>") == 6);
-  REQUIRE(FindIncludeLine(lines, "#include <e>") == 7);
-}
-
-TEST_SUITE_END();

@@ -823,132 +823,130 @@ void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index,
   }
 }
 
-TEST_SUITE("query");
+TEST_SUITE("query") {
+  IndexUpdate GetDelta(IndexFile previous, IndexFile current) {
+    QueryDatabase db;
+    IdMap previous_map(&db, previous.id_cache);
+    IdMap current_map(&db, current.id_cache);
+    return IndexUpdate::CreateDelta(&previous_map, &current_map, &previous,
+                                    &current);
+  }
 
-IndexUpdate GetDelta(IndexFile previous, IndexFile current) {
-  QueryDatabase db;
-  IdMap previous_map(&db, previous.id_cache);
-  IdMap current_map(&db, current.id_cache);
-  return IndexUpdate::CreateDelta(&previous_map, &current_map, &previous,
-                                  &current);
+  TEST_CASE("remove defs") {
+    IndexFile previous("foo.cc");
+    IndexFile current("foo.cc");
+
+    previous.Resolve(previous.ToTypeId("usr1"))->def.definition_spelling =
+        Range(Position(1, 0));
+    previous.Resolve(previous.ToFuncId("usr2"))->def.definition_spelling =
+        Range(Position(2, 0));
+    previous.Resolve(previous.ToVarId("usr3"))->def.definition_spelling =
+        Range(Position(3, 0));
+
+    IndexUpdate update = GetDelta(previous, current);
+
+    REQUIRE(update.types_removed == std::vector<Usr>{"usr1"});
+    REQUIRE(update.funcs_removed == std::vector<Usr>{"usr2"});
+    REQUIRE(update.vars_removed == std::vector<Usr>{"usr3"});
+  }
+
+  TEST_CASE("do not remove ref-only defs") {
+    IndexFile previous("foo.cc");
+    IndexFile current("foo.cc");
+
+    previous.Resolve(previous.ToTypeId("usr1"))
+        ->uses.push_back(Range(Position(1, 0)));
+    previous.Resolve(previous.ToFuncId("usr2"))
+        ->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
+                                        false /*is_implicit*/));
+    previous.Resolve(previous.ToVarId("usr3"))
+        ->uses.push_back(Range(Position(3, 0)));
+
+    IndexUpdate update = GetDelta(previous, current);
+
+    REQUIRE(update.types_removed == std::vector<Usr>{});
+    REQUIRE(update.funcs_removed == std::vector<Usr>{});
+    REQUIRE(update.vars_removed == std::vector<Usr>{});
+  }
+
+  TEST_CASE("func callers") {
+    IndexFile previous("foo.cc");
+    IndexFile current("foo.cc");
+
+    IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
+    IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
+
+    pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
+                                      false /*is_implicit*/));
+    cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
+                                      false /*is_implicit*/));
+
+    IndexUpdate update = GetDelta(previous, current);
+
+    REQUIRE(update.funcs_removed == std::vector<Usr>{});
+    REQUIRE(update.funcs_callers.size() == 1);
+    REQUIRE(update.funcs_callers[0].id == QueryFuncId(0));
+    REQUIRE(update.funcs_callers[0].to_remove.size() == 1);
+    REQUIRE(update.funcs_callers[0].to_remove[0].loc.range ==
+            Range(Position(1, 0)));
+    REQUIRE(update.funcs_callers[0].to_add.size() == 1);
+    REQUIRE(update.funcs_callers[0].to_add[0].loc.range == Range(Position(2, 0)));
+  }
+
+  TEST_CASE("type usages") {
+    IndexFile previous("foo.cc");
+    IndexFile current("foo.cc");
+
+    IndexType* pt = previous.Resolve(previous.ToTypeId("usr"));
+    IndexType* ct = current.Resolve(current.ToTypeId("usr"));
+
+    pt->uses.push_back(Range(Position(1, 0)));
+    ct->uses.push_back(Range(Position(2, 0)));
+
+    IndexUpdate update = GetDelta(previous, current);
+
+    REQUIRE(update.types_removed == std::vector<Usr>{});
+    REQUIRE(update.types_def_update == std::vector<QueryType::DefUpdate>{});
+    REQUIRE(update.types_uses.size() == 1);
+    REQUIRE(update.types_uses[0].to_remove.size() == 1);
+    REQUIRE(update.types_uses[0].to_remove[0].range == Range(Position(1, 0)));
+    REQUIRE(update.types_uses[0].to_add.size() == 1);
+    REQUIRE(update.types_uses[0].to_add[0].range == Range(Position(2, 0)));
+  }
+
+  TEST_CASE("apply delta") {
+    IndexFile previous("foo.cc");
+    IndexFile current("foo.cc");
+
+    IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
+    IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
+    pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
+                                      false /*is_implicit*/));
+    pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
+                                      false /*is_implicit*/));
+    cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0)),
+                                      false /*is_implicit*/));
+    cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0)),
+                                      false /*is_implicit*/));
+
+    QueryDatabase db;
+    IdMap previous_map(&db, previous.id_cache);
+    IdMap current_map(&db, current.id_cache);
+    REQUIRE(db.funcs.size() == 1);
+
+    IndexUpdate import_update =
+        IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, &previous);
+    IndexUpdate delta_update = IndexUpdate::CreateDelta(
+        &previous_map, &current_map, &previous, &current);
+
+    db.ApplyIndexUpdate(&import_update);
+    REQUIRE(db.funcs[0].callers.size() == 2);
+    REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(1, 0)));
+    REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(2, 0)));
+
+    db.ApplyIndexUpdate(&delta_update);
+    REQUIRE(db.funcs[0].callers.size() == 2);
+    REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(4, 0)));
+    REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(5, 0)));
+  }
 }
-
-TEST_CASE("remove defs") {
-  IndexFile previous("foo.cc");
-  IndexFile current("foo.cc");
-
-  previous.Resolve(previous.ToTypeId("usr1"))->def.definition_spelling =
-      Range(Position(1, 0));
-  previous.Resolve(previous.ToFuncId("usr2"))->def.definition_spelling =
-      Range(Position(2, 0));
-  previous.Resolve(previous.ToVarId("usr3"))->def.definition_spelling =
-      Range(Position(3, 0));
-
-  IndexUpdate update = GetDelta(previous, current);
-
-  REQUIRE(update.types_removed == std::vector<Usr>{"usr1"});
-  REQUIRE(update.funcs_removed == std::vector<Usr>{"usr2"});
-  REQUIRE(update.vars_removed == std::vector<Usr>{"usr3"});
-}
-
-TEST_CASE("do not remove ref-only defs") {
-  IndexFile previous("foo.cc");
-  IndexFile current("foo.cc");
-
-  previous.Resolve(previous.ToTypeId("usr1"))
-      ->uses.push_back(Range(Position(1, 0)));
-  previous.Resolve(previous.ToFuncId("usr2"))
-      ->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                       false /*is_implicit*/));
-  previous.Resolve(previous.ToVarId("usr3"))
-      ->uses.push_back(Range(Position(3, 0)));
-
-  IndexUpdate update = GetDelta(previous, current);
-
-  REQUIRE(update.types_removed == std::vector<Usr>{});
-  REQUIRE(update.funcs_removed == std::vector<Usr>{});
-  REQUIRE(update.vars_removed == std::vector<Usr>{});
-}
-
-TEST_CASE("func callers") {
-  IndexFile previous("foo.cc");
-  IndexFile current("foo.cc");
-
-  IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
-  IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
-
-  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
-                                     false /*is_implicit*/));
-  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                     false /*is_implicit*/));
-
-  IndexUpdate update = GetDelta(previous, current);
-
-  REQUIRE(update.funcs_removed == std::vector<Usr>{});
-  REQUIRE(update.funcs_callers.size() == 1);
-  REQUIRE(update.funcs_callers[0].id == QueryFuncId(0));
-  REQUIRE(update.funcs_callers[0].to_remove.size() == 1);
-  REQUIRE(update.funcs_callers[0].to_remove[0].loc.range ==
-          Range(Position(1, 0)));
-  REQUIRE(update.funcs_callers[0].to_add.size() == 1);
-  REQUIRE(update.funcs_callers[0].to_add[0].loc.range == Range(Position(2, 0)));
-}
-
-TEST_CASE("type usages") {
-  IndexFile previous("foo.cc");
-  IndexFile current("foo.cc");
-
-  IndexType* pt = previous.Resolve(previous.ToTypeId("usr"));
-  IndexType* ct = current.Resolve(current.ToTypeId("usr"));
-
-  pt->uses.push_back(Range(Position(1, 0)));
-  ct->uses.push_back(Range(Position(2, 0)));
-
-  IndexUpdate update = GetDelta(previous, current);
-
-  REQUIRE(update.types_removed == std::vector<Usr>{});
-  REQUIRE(update.types_def_update == std::vector<QueryType::DefUpdate>{});
-  REQUIRE(update.types_uses.size() == 1);
-  REQUIRE(update.types_uses[0].to_remove.size() == 1);
-  REQUIRE(update.types_uses[0].to_remove[0].range == Range(Position(1, 0)));
-  REQUIRE(update.types_uses[0].to_add.size() == 1);
-  REQUIRE(update.types_uses[0].to_add[0].range == Range(Position(2, 0)));
-}
-
-TEST_CASE("apply delta") {
-  IndexFile previous("foo.cc");
-  IndexFile current("foo.cc");
-
-  IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
-  IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
-  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
-                                     false /*is_implicit*/));
-  pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                     false /*is_implicit*/));
-  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0)),
-                                     false /*is_implicit*/));
-  cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0)),
-                                     false /*is_implicit*/));
-
-  QueryDatabase db;
-  IdMap previous_map(&db, previous.id_cache);
-  IdMap current_map(&db, current.id_cache);
-  REQUIRE(db.funcs.size() == 1);
-
-  IndexUpdate import_update =
-      IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, &previous);
-  IndexUpdate delta_update = IndexUpdate::CreateDelta(
-      &previous_map, &current_map, &previous, &current);
-
-  db.ApplyIndexUpdate(&import_update);
-  REQUIRE(db.funcs[0].callers.size() == 2);
-  REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(1, 0)));
-  REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(2, 0)));
-
-  db.ApplyIndexUpdate(&delta_update);
-  REQUIRE(db.funcs[0].callers.size() == 2);
-  REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(4, 0)));
-  REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(5, 0)));
-}
-
-TEST_SUITE_END();

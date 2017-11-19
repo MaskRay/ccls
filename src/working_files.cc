@@ -379,107 +379,105 @@ std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
   return result;
 }
 
-TEST_SUITE("WorkingFile");
-
 lsPosition CharPos(const WorkingFile& file,
-                   char character,
-                   int character_offset = 0) {
+                  char character,
+                  int character_offset = 0) {
   return CharPos(file.buffer_content, character, character_offset);
 }
 
-TEST_CASE("simple call") {
-  WorkingFile f("foo.cc", "abcd(1, 2");
-  int active_param = 0;
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '1'), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 1);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 1);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '2'), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 1);
+TEST_SUITE("WorkingFile") {
+  TEST_CASE("simple call") {
+    WorkingFile f("foo.cc", "abcd(1, 2");
+    int active_param = 0;
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '1'), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 1);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 1);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '2'), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 1);
+  }
+
+  TEST_CASE("nested call") {
+    WorkingFile f("foo.cc", "abcd(efg(), 2");
+    int active_param = 0;
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'e'), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'f'), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g'), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 1), &active_param) ==
+            "efg");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 2), &active_param) ==
+            "efg");
+    REQUIRE(active_param == 0);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 1);
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) ==
+            "abcd");
+    REQUIRE(active_param == 1);
+  }
+
+  TEST_CASE("auto-insert )") {
+    WorkingFile f("foo.cc", "abc()");
+    int active_param = 0;
+    REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ')'), &active_param) ==
+            "abc");
+    REQUIRE(active_param == 0);
+  }
+
+  TEST_CASE("existing completion") {
+    WorkingFile f("foo.cc", "zzz.asdf");
+    bool is_global_completion;
+    std::string existing_completion;
+
+    f.FindStableCompletionSource(CharPos(f, '.'), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "zzz");
+    f.FindStableCompletionSource(CharPos(f, 'a', 1), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "a");
+    f.FindStableCompletionSource(CharPos(f, 's', 1), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "as");
+    f.FindStableCompletionSource(CharPos(f, 'd', 1), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "asd");
+    f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "asdf");
+  }
+
+  TEST_CASE("existing completion underscore") {
+    WorkingFile f("foo.cc", "ABC_DEF");
+    bool is_global_completion;
+    std::string existing_completion;
+
+    f.FindStableCompletionSource(CharPos(f, 'C'), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "AB");
+    f.FindStableCompletionSource(CharPos(f, '_'), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "ABC");
+    f.FindStableCompletionSource(CharPos(f, 'D'), &is_global_completion,
+                                &existing_completion);
+    REQUIRE(existing_completion == "ABC_");
+  }
 }
-
-TEST_CASE("nested call") {
-  WorkingFile f("foo.cc", "abcd(efg(), 2");
-  int active_param = 0;
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, '('), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'e'), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'f'), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g'), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 1), &active_param) ==
-          "efg");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, 'g', 2), &active_param) ==
-          "efg");
-  REQUIRE(active_param == 0);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ','), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 1);
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ' '), &active_param) ==
-          "abcd");
-  REQUIRE(active_param == 1);
-}
-
-TEST_CASE("auto-insert )") {
-  WorkingFile f("foo.cc", "abc()");
-  int active_param = 0;
-  REQUIRE(f.FindClosestCallNameInBuffer(CharPos(f, ')'), &active_param) ==
-          "abc");
-  REQUIRE(active_param == 0);
-}
-
-TEST_CASE("existing completion") {
-  WorkingFile f("foo.cc", "zzz.asdf");
-  bool is_global_completion;
-  std::string existing_completion;
-
-  f.FindStableCompletionSource(CharPos(f, '.'), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "zzz");
-  f.FindStableCompletionSource(CharPos(f, 'a', 1), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "a");
-  f.FindStableCompletionSource(CharPos(f, 's', 1), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "as");
-  f.FindStableCompletionSource(CharPos(f, 'd', 1), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "asd");
-  f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "asdf");
-}
-
-TEST_CASE("existing completion underscore") {
-  WorkingFile f("foo.cc", "ABC_DEF");
-  bool is_global_completion;
-  std::string existing_completion;
-
-  f.FindStableCompletionSource(CharPos(f, 'C'), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "AB");
-  f.FindStableCompletionSource(CharPos(f, '_'), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "ABC");
-  f.FindStableCompletionSource(CharPos(f, 'D'), &is_global_completion,
-                               &existing_completion);
-  REQUIRE(existing_completion == "ABC_");
-}
-
-TEST_SUITE_END();
