@@ -16,3 +16,4 @@ waf-*
 *.vcxproj
 *.vcxproj.user
 *.vcxproj.filters
+.vscode/
