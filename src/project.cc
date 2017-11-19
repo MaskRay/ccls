@@ -108,16 +108,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   for (; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
 
-    // If blacklist skip.
-    if (!next_flag_is_path) {
-      if (StartsWithAny(arg, kBlacklistMulti)) {
-        ++i;
-        continue;
-      }
-      if (StartsWithAny(arg, kBlacklist) || arg == result.filename)
-        continue;
-    }
-
     auto cleanup_maybe_relative_path = [&](const std::string& path) {
       // TODO/FIXME: Normalization will fail for paths that do not exist. Should
       // it return an optional<std::string>?
@@ -126,6 +116,20 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         return NormalizePathWithTestOptOut(path);
       return NormalizePathWithTestOptOut(entry.directory + "/" + path);
     };
+
+    // Do not include path.
+    if (result.filename == cleanup_maybe_relative_path(arg))
+      continue;
+
+    // If blacklist skip.
+    if (!next_flag_is_path) {
+      if (StartsWithAny(arg, kBlacklistMulti)) {
+        ++i;
+        continue;
+      }
+      if (StartsWithAny(arg, kBlacklist))
+        continue;
+    }
 
     // Cleanup path for previous argument.
     if (next_flag_is_path) {
@@ -465,15 +469,14 @@ TEST_SUITE("Project") {
                                "-resource-dir=/w/resource_dir/"});
   }
 
-#if false
   // FIXME: Fix this test.
   TEST_CASE("Path in args") {
-    CheckFlags("/home/user", "/home/user/foo/bar.c",
-               /* raw */ {"cc", "-O0", "foo/bar.c"},
-               /* expected */
-               {"-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/"});
+    CheckFlags(
+        "/home/user", "/home/user/foo/bar.c",
+        /* raw */ {"cc", "-O0", "foo/bar.c"},
+        /* expected */
+        {"cc", "-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/"});
   }
-#endif
 
   // Checks flag parsing for a random chromium file in comparison to what
   // YouCompleteMe fetches.
