@@ -114,7 +114,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         ++i;
         continue;
       }
-      if (StartsWithAny(arg, kBlacklist))
+      if (StartsWithAny(arg, kBlacklist) || arg == result.filename)
         continue;
     }
 
