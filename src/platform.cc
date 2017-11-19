@@ -28,7 +28,8 @@ std::vector<std::string> Split(const std::string& s, char delim) {
   return elems;
 }
 
-std::string Join(const std::vector<std::string>& entries, char delim,
+std::string Join(const std::vector<std::string>& entries,
+                 char delim,
                  size_t end) {
   std::string result;
   bool first = true;

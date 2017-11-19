@@ -380,8 +380,8 @@ std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
 }
 
 lsPosition CharPos(const WorkingFile& file,
-                  char character,
-                  int character_offset = 0) {
+                   char character,
+                   int character_offset = 0) {
   return CharPos(file.buffer_content, character, character_offset);
 }
 
@@ -449,19 +449,19 @@ TEST_SUITE("WorkingFile") {
     std::string existing_completion;
 
     f.FindStableCompletionSource(CharPos(f, '.'), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "zzz");
     f.FindStableCompletionSource(CharPos(f, 'a', 1), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "a");
     f.FindStableCompletionSource(CharPos(f, 's', 1), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "as");
     f.FindStableCompletionSource(CharPos(f, 'd', 1), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "asd");
     f.FindStableCompletionSource(CharPos(f, 'f', 1), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "asdf");
   }
 
@@ -471,13 +471,13 @@ TEST_SUITE("WorkingFile") {
     std::string existing_completion;
 
     f.FindStableCompletionSource(CharPos(f, 'C'), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "AB");
     f.FindStableCompletionSource(CharPos(f, '_'), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "ABC");
     f.FindStableCompletionSource(CharPos(f, 'D'), &is_global_completion,
-                                &existing_completion);
+                                 &existing_completion);
     REQUIRE(existing_completion == "ABC_");
   }
 }

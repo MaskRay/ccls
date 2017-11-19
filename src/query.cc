@@ -603,7 +603,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 }
 
 void IndexUpdate::Merge(const IndexUpdate& update) {
-  // This function runs on an indexer thread.
+// This function runs on an indexer thread.
 
 #define INDEX_UPDATE_APPEND(name) AddRange(&name, update.name);
 #define INDEX_UPDATE_MERGE(name) AddMergeableRange(&name, update.name);
@@ -858,7 +858,7 @@ TEST_SUITE("query") {
         ->uses.push_back(Range(Position(1, 0)));
     previous.Resolve(previous.ToFuncId("usr2"))
         ->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                        false /*is_implicit*/));
+                                         false /*is_implicit*/));
     previous.Resolve(previous.ToVarId("usr3"))
         ->uses.push_back(Range(Position(3, 0)));
 
@@ -877,9 +877,9 @@ TEST_SUITE("query") {
     IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
 
     pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
-                                      false /*is_implicit*/));
+                                       false /*is_implicit*/));
     cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                      false /*is_implicit*/));
+                                       false /*is_implicit*/));
 
     IndexUpdate update = GetDelta(previous, current);
 
@@ -890,7 +890,8 @@ TEST_SUITE("query") {
     REQUIRE(update.funcs_callers[0].to_remove[0].loc.range ==
             Range(Position(1, 0)));
     REQUIRE(update.funcs_callers[0].to_add.size() == 1);
-    REQUIRE(update.funcs_callers[0].to_add[0].loc.range == Range(Position(2, 0)));
+    REQUIRE(update.funcs_callers[0].to_add[0].loc.range ==
+            Range(Position(2, 0)));
   }
 
   TEST_CASE("type usages") {
@@ -921,13 +922,13 @@ TEST_SUITE("query") {
     IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
     IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
     pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
-                                      false /*is_implicit*/));
+                                       false /*is_implicit*/));
     pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                      false /*is_implicit*/));
+                                       false /*is_implicit*/));
     cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0)),
-                                      false /*is_implicit*/));
+                                       false /*is_implicit*/));
     cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0)),
-                                      false /*is_implicit*/));
+                                       false /*is_implicit*/));
 
     QueryDatabase db;
     IdMap previous_map(&db, previous.id_cache);

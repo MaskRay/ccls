@@ -114,13 +114,13 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_TypeRef:
       return lsCompletionItemKind::Reference;
 
-      // return lsCompletionItemKind::Property;
-      // return lsCompletionItemKind::Unit;
-      // return lsCompletionItemKind::Value;
-      // return lsCompletionItemKind::Keyword;
-      // return lsCompletionItemKind::Snippet;
-      // return lsCompletionItemKind::Color;
-      // return lsCompletionItemKind::File;
+    // return lsCompletionItemKind::Property;
+    // return lsCompletionItemKind::Unit;
+    // return lsCompletionItemKind::Value;
+    // return lsCompletionItemKind::Keyword;
+    // return lsCompletionItemKind::Snippet;
+    // return lsCompletionItemKind::Color;
+    // return lsCompletionItemKind::File;
 
     case CXCursor_NotImplemented:
       return lsCompletionItemKind::Text;
@@ -146,7 +146,8 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_Optional: {
         CXCompletionString nested =
             clang_getCompletionChunkCompletionString(completion_string, i);
-        BuildDetailString(nested, label, detail, insert, parameters, include_snippets);
+        BuildDetailString(nested, label, detail, insert, parameters,
+                          include_snippets);
         break;
       }
 
@@ -156,7 +157,10 @@ void BuildDetailString(CXCompletionString completion_string,
         parameters->push_back(text);
         detail += text;
         // Add parameter declarations as snippets if enabled
-        if (include_snippets) { insert += "${" + std::to_string(parameters->size()) + ":" + text + "}"; }
+        if (include_snippets) {
+          insert +=
+              "${" + std::to_string(parameters->size()) + ":" + text + "}";
+        }
         break;
       }
 
@@ -198,7 +202,9 @@ void BuildDetailString(CXCompletionString completion_string,
         detail += "(";
         insert += "(";
         // Put cursor between parentheses if snippets are not enabled
-        if (!include_snippets) { insert += "$1"; }
+        if (!include_snippets) {
+          insert += "$1";
+        }
         break;
       case CXCompletionChunk_RightParen:
         detail += ")";
@@ -231,7 +237,9 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_Comma:
         detail += ", ";
         // Only put comma's between parentheses if snippets are enabled
-        if (include_snippets) { insert += ", "; }
+        if (include_snippets) {
+          insert += ", ";
+        }
         break;
       case CXCompletionChunk_Colon:
         detail += ":";
@@ -409,12 +417,12 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
             // kind/label/detail/docs/sortText
             ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-            BuildDetailString(result.CompletionString, ls_completion_item.label,
-                              ls_completion_item.detail,
-                              ls_completion_item.insertText,
-                              &ls_completion_item.parameters_,
-                              completion_manager->config_->enableSnippetInsertion);
- 
+            BuildDetailString(
+                result.CompletionString, ls_completion_item.label,
+                ls_completion_item.detail, ls_completion_item.insertText,
+                &ls_completion_item.parameters_,
+                completion_manager->config_->enableSnippetInsertion);
+
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
             ls_completion_item.sortText =

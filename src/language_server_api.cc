@@ -114,7 +114,8 @@ TEST_SUITE("FindIncludeLine") {
     REQUIRE(parse_correct("Content-Length: 4\r\n\r\nabcd") == "abcd");
 
     REQUIRE(parse_incorrect("ggg") == optional<std::string>());
-    REQUIRE(parse_incorrect("Content-Length: 0\r\n") == optional<std::string>());
+    REQUIRE(parse_incorrect("Content-Length: 0\r\n") ==
+            optional<std::string>());
     REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") ==
             optional<std::string>());
   }
@@ -217,7 +218,7 @@ void lsDocumentUri::SetPath(const std::string& path) {
   raw_uri = ReplaceAll(raw_uri, "(", "%28");
   raw_uri = ReplaceAll(raw_uri, ")", "%29");
 
-  // TODO: proper fix
+// TODO: proper fix
 #if defined(_WIN32)
   raw_uri = "file:///" + raw_uri;
 #else
@@ -255,7 +256,7 @@ std::string lsDocumentUri::GetPath() const {
   std::replace(result.begin(), result.end(), '\\', '/');
 
 #if defined(_WIN32)
-  // std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+// std::transform(result.begin(), result.end(), result.begin(), ::tolower);
 #endif
 
   return result;

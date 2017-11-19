@@ -3265,12 +3265,12 @@ TEST_SUITE("LexFunctionDeclaration") {
     int newlines_after_name = 0;
 
     LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                          &newlines_after_name);
+                           &newlines_after_name);
     REQUIRE(insert_text == "void Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
 
     LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                          &insert_text, &newlines_after_name);
+                           &insert_text, &newlines_after_name);
     REQUIRE(insert_text == "void Type::Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
   }
@@ -3282,7 +3282,7 @@ TEST_SUITE("LexFunctionDeclaration") {
     int newlines_after_name = 0;
 
     LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"),
-                          &insert_text, &newlines_after_name);
+                           &insert_text, &newlines_after_name);
     REQUIRE(insert_text == "Foo::Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
   }
@@ -3294,7 +3294,7 @@ TEST_SUITE("LexFunctionDeclaration") {
     int newlines_after_name = 0;
 
     LexFunctionDeclaration(buffer_content, declaration, std::string("Foo"),
-                          &insert_text, &newlines_after_name);
+                           &insert_text, &newlines_after_name);
     REQUIRE(insert_text == "Foo::~Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
   }
@@ -3306,12 +3306,12 @@ TEST_SUITE("LexFunctionDeclaration") {
     int newlines_after_name = 0;
 
     LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                          &newlines_after_name);
+                           &newlines_after_name);
     REQUIRE(insert_text == "std::vector<int> Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
 
     LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                          &insert_text, &newlines_after_name);
+                           &insert_text, &newlines_after_name);
     REQUIRE(insert_text == "std::vector<int> Type::Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
   }
@@ -3323,12 +3323,12 @@ TEST_SUITE("LexFunctionDeclaration") {
     int newlines_after_name = 0;
 
     LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                          &newlines_after_name);
+                           &newlines_after_name);
     REQUIRE(insert_text == "std::function < int() > \n Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
 
     LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                          &insert_text, &newlines_after_name);
+                           &insert_text, &newlines_after_name);
     REQUIRE(insert_text == "std::function < int() > \n Type::Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
   }
@@ -3340,12 +3340,12 @@ TEST_SUITE("LexFunctionDeclaration") {
     int newlines_after_name = 0;
 
     LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
-                          &newlines_after_name);
+                           &newlines_after_name);
     REQUIRE(insert_text == "void Foo(int a,\n\n    int b) {\n}");
     REQUIRE(newlines_after_name == 2);
 
     LexFunctionDeclaration(buffer_content, declaration, std::string("Type"),
-                          &insert_text, &newlines_after_name);
+                           &insert_text, &newlines_after_name);
     REQUIRE(insert_text == "void Type::Foo(int a,\n\n    int b) {\n}");
     REQUIRE(newlines_after_name == 2);
   }

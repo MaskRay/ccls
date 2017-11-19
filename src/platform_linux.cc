@@ -157,7 +157,7 @@ std::string GetWorkingDirectory() {
 std::string NormalizePath(const std::string& path) {
   errno = 0;
   char name[PATH_MAX + 1];
-  (void) realpath(path.c_str(), name);
+  (void)realpath(path.c_str(), name);
   if (errno)
     return path;
   return name;
