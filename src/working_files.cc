@@ -327,20 +327,27 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
   for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff :
        change.contentChanges) {
     // std::cerr << "|" << file->buffer_content << "|" << std::endl;
-    // If range or rangeLength are emitted we replace everything, per the spec.
-    if (diff.rangeLength == -1) {
+    // Per the spec replace everything if the rangeLength and range are not set.
+    // See https://github.com/Microsoft/language-server-protocol/issues/9.
+    auto zeroPosition = lsPosition(0, 0);
+    if (diff.rangeLength == -1 && diff.range.start == zeroPosition
+        && diff.range.end == zeroPosition) {
       file->buffer_content = diff.text;
       file->OnBufferContentUpdated();
       // std::cerr << "-> Replacing entire content";
     } else {
-      int start_offset =
-          GetOffsetForPosition(diff.range.start, file->buffer_content);
+      int start_offset = GetOffsetForPosition(diff.range.start, file->buffer_content);
+      int end_offset = GetOffsetForPosition(diff.range.end, file->buffer_content);
+      int length = diff.rangeLength;
+      if (length == -1) {
+        length = end_offset - start_offset;
+      }
       // std::cerr << "-> Applying diff start=" << diff.range.start.ToString()
       // << ", end=" << diff.range.end.ToString() << ", start_offset=" <<
       // start_offset << std::endl;
       file->buffer_content.replace(
           file->buffer_content.begin() + start_offset,
-          file->buffer_content.begin() + start_offset + diff.rangeLength,
+          file->buffer_content.begin() + start_offset + length,
           diff.text);
       file->OnBufferContentUpdated();
     }
