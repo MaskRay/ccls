@@ -229,15 +229,19 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
 }
 
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
-    ProjectConfig* config) {
+    ProjectConfig* config,
+    const std::string& compilationDatabaseDirectory) {
   // Try to load compile_commands.json, but fallback to a project listing.
+  const auto& compilationDbDir = compilationDatabaseDirectory.empty()
+                                 ? config->project_dir
+                                 : compilationDatabaseDirectory;
   LOG_S(INFO) << "Trying to load compile_commands.json";
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
-      config->project_dir.c_str(), &cx_db_load_error);
+      compilationDbDir.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
     LOG_S(INFO) << "Unable to load compile_commands.json located at \""
-                << config->project_dir
+                << compilationDbDir
                 << "\"; using directory listing instead.";
     return LoadFromDirectoryListing(config);
   }
@@ -339,14 +343,16 @@ int ComputeGuessScore(const std::string& a, const std::string& b) {
 }  // namespace
 
 void Project::Load(const std::vector<std::string>& extra_flags,
-                   const std::string& directory,
+                   const std::string& compilationDatabaseDirectory,
+                   const std::string& rootDirectory,
                    const std::string& resource_directory) {
   // Load data.
   ProjectConfig config;
   config.extra_flags = extra_flags;
-  config.project_dir = directory;
+  config.project_dir = rootDirectory;
   config.resource_dir = resource_directory;
-  entries = LoadCompilationEntriesFromDirectory(&config);
+  entries = LoadCompilationEntriesFromDirectory(&config,
+                                                compilationDatabaseDirectory);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(config.quote_dirs.begin(),
