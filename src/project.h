@@ -31,15 +31,15 @@ struct Project {
 
   // Loads a project for the given |directory|.
   //
-  // If |compilationDatabaseDirectory| is not empty, the compile_commands.json
+  // If |opt_compilation_db_dir| is not empty, the compile_commands.json
   // file in it will be used to discover all files and args. If it's empty and
-  // |directory| contains a compile_commands.json file, that one will be used
+  // |root_directory| contains a compile_commands.json file, that one will be used
   // instead. Otherwise, a recursive directory listing of all *.cpp, *.cc, *.h,
   // and *.hpp files will be used. clang arguments can be specified in a
-  // clang_args file located inside of |directory|.
+  // clang_args file located inside of |root_directory|.
   void Load(const std::vector<std::string>& extra_flags,
-            const std::string& compilationDatabaseDirectory,
-            const std::string& rootDirectory,
+            const std::string& opt_compilation_db_dir,
+            const std::string& root_directory,
             const std::string& resource_directory);
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this

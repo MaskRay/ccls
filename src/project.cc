@@ -230,18 +230,18 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
 
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     ProjectConfig* config,
-    const std::string& compilationDatabaseDirectory) {
+    const std::string& opt_compilation_db_dir) {
   // Try to load compile_commands.json, but fallback to a project listing.
-  const auto& compilationDbDir = compilationDatabaseDirectory.empty()
-                                 ? config->project_dir
-                                 : compilationDatabaseDirectory;
+  const auto& compilation_db_dir  = opt_compilation_db_dir.empty()
+                                    ? config->project_dir
+                                    : opt_compilation_db_dir;
   LOG_S(INFO) << "Trying to load compile_commands.json";
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
-      compilationDbDir.c_str(), &cx_db_load_error);
+      compilation_db_dir.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
     LOG_S(INFO) << "Unable to load compile_commands.json located at \""
-                << compilationDbDir
+                << compilation_db_dir
                 << "\"; using directory listing instead.";
     return LoadFromDirectoryListing(config);
   }
@@ -343,16 +343,16 @@ int ComputeGuessScore(const std::string& a, const std::string& b) {
 }  // namespace
 
 void Project::Load(const std::vector<std::string>& extra_flags,
-                   const std::string& compilationDatabaseDirectory,
-                   const std::string& rootDirectory,
+                   const std::string& opt_compilation_db_dir,
+                   const std::string& root_directory,
                    const std::string& resource_directory) {
   // Load data.
   ProjectConfig config;
   config.extra_flags = extra_flags;
-  config.project_dir = rootDirectory;
+  config.project_dir = root_directory;
   config.resource_dir = resource_directory;
   entries = LoadCompilationEntriesFromDirectory(&config,
-                                                compilationDatabaseDirectory);
+                                                opt_compilation_db_dir);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(config.quote_dirs.begin(),
