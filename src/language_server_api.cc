@@ -273,6 +273,7 @@ bool lsPosition::operator==(const lsPosition& other) const {
 std::string lsPosition::ToString() const {
   return std::to_string(line) + ":" + std::to_string(character);
 }
+const lsPosition lsPosition::kZeroPosition = lsPosition();
 
 lsRange::lsRange() {}
 lsRange::lsRange(lsPosition start, lsPosition end) : start(start), end(end) {}

@@ -148,6 +148,7 @@ struct lsPosition {
   // Note: these are 0-based.
   int line = 0;
   int character = 0;
+  static const lsPosition kZeroPosition;
 };
 MAKE_HASHABLE(lsPosition, t.line, t.character);
 MAKE_REFLECT_STRUCT(lsPosition, line, character);

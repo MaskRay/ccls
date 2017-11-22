@@ -329,9 +329,8 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
     // std::cerr << "|" << file->buffer_content << "|" << std::endl;
     // Per the spec replace everything if the rangeLength and range are not set.
     // See https://github.com/Microsoft/language-server-protocol/issues/9.
-    auto zeroPosition = lsPosition(0, 0);
-    if (diff.rangeLength == -1 && diff.range.start == zeroPosition
-        && diff.range.end == zeroPosition) {
+    if (diff.rangeLength == -1 && diff.range.start == lsPosition::kZeroPosition
+        && diff.range.end == lsPosition::kZeroPosition) {
       file->buffer_content = diff.text;
       file->OnBufferContentUpdated();
       // std::cerr << "-> Replacing entire content";
