@@ -124,6 +124,10 @@ without running many computations. As a result, there's a large memory overhead.
 For example, a full index of Chrome will take about 10gb of memory. If you
 exclude v8, webkit, and third_party, it goes down to about 6.5gb.
 
+# Wiki
+
+There are some additional tips on the [wiki](https://github.com/jacobdufault/cquery/wiki).
+
 # Chromium tips
 
 Chromium is a very large codebase, so cquery benefits from a bit of tuning.
