@@ -7,11 +7,12 @@ except ImportError:
     from urllib.request import urlopen # Python 3
 
 import os.path
-from subprocess import call
+import string
+import subprocess
 import sys
 
-VERSION='0.0.1'
-APPNAME='indexer'
+VERSION = '0.0.1'
+APPNAME = 'cquery'
 
 top = '.'
 out = 'build'
@@ -21,40 +22,19 @@ out = 'build'
 #   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu16.04.tar.xz
 #   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu14.04.tar.xz
 #   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-x86_64-apple-darwin.tar.xz
-# TODO: windows support (it's an exe!)
 
-global CLANG_PLATFORM_NAME
-global CLANG_TARBALL_PLATFORM_NAME
-
-if sys.platform == 'linux' or sys.platform == 'linux2':
-  #CLANG_PLATFORM_NAME = 'linux-x86_64-ubuntu14.04'
-  CLANG_PLATFORM_NAME = 'x86_64-linux-gnu-ubuntu-14.04'
-  CLANG_TARBALL_PLATFORM_NAME = 'clang+llvm'
-elif sys.platform == 'darwin':
-  CLANG_PLATFORM_NAME = 'x86_64-apple-darwin'
-  CLANG_TARBALL_PLATFORM_NAME = 'clang+llvm'
+if sys.platform == 'darwin':
+  CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
+elif sys.platform.startswith('freebsd'):
+  CLANG_TARBALL_NAME = 'clang+llvm-$version-amd64-unknown-freebsd10'
+# It is either 'linux2' or 'linux3' before Python 3.3
+elif sys.platform.startswith('linux'):
+  # These executable depend on libtinfo.so.5
+  CLANG_TARBALL_NAME = 'clang+llvm-$version-linux-x86_64-ubuntu14.04'
 else:
+  # TODO: windows support (it's an exe!)
   sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
   sys.exit(1)
-
-# Version of clang to download and use.
-#CLANG_VERSION = '5.0.0'
-CLANG_VERSION = '4.0.0'
-# Tarball name on clang servers that should be used.
-CLANG_TARBALL_NAME  = '{0}-{1}-{2}'.format(CLANG_TARBALL_PLATFORM_NAME, CLANG_VERSION, CLANG_PLATFORM_NAME)
-# Directory clang has been extracted to.
-CLANG_DIRECTORY = '{0}/{1}'.format(out, CLANG_TARBALL_NAME)
-# URL of the tarball to download.
-CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}.tar.xz'.format(CLANG_VERSION, CLANG_TARBALL_NAME)
-# Path to locally tarball.
-CLANG_TARBALL_LOCAL_PATH = '{0}.tar.xz'.format(CLANG_DIRECTORY)
-
-# Directory libcxx will be extracted to.
-LIBCXX_DIRECTORY = '{0}/libcxx'.format(out)
-# URL to download libcxx from.
-LIBCXX_URL = 'http://releases.llvm.org/4.0.0/libcxx-4.0.0.src.tar.xz'
-# Absolute path for where to download the URL.
-LIBCXX_LOCAL_PATH = '{0}/libcxx-4.0.0.src.tar.xz'.format(out)
 
 from waflib.Tools.compiler_cxx import cxx_compiler
 cxx_compiler['linux'] = ['clang++', 'g++']
@@ -64,12 +44,15 @@ def options(opt):
   grp = opt.add_option_group('Configuration options related to use of clang from the system (not recommended)')
   grp.add_option('--use-system-clang', dest='use_system_clang', default=False, action='store_true',
                  help='enable use of clang from the system')
+  grp.add_option('--bundled-clang', dest='bundled_clang', default='4.0.0', choices=('4.0.0', '5.0.0'),
+                 help='bundled clang version')
   grp.add_option('--llvm-config', dest='llvm_config', default='llvm-config',
                  help='specify path to llvm-config for automatic configuration [default: %default]')
   grp.add_option('--clang-prefix', dest='clang_prefix', default='',
                  help='enable fallback configuration method by specifying a clang installation prefix (e.g. /opt/llvm)')
 
-def download_and_extract(destdir, dest, url):
+def download_and_extract(destdir, url):
+  dest = destdir + '.tar.xz'
   # Download and save the compressed tarball as |compressed_file_name|.
   if not os.path.isfile(dest):
     print('Downloading tarball')
@@ -86,7 +69,7 @@ def download_and_extract(destdir, dest, url):
   if not os.path.isdir(destdir):
     print('Extracting')
     # TODO: make portable.
-    call(['tar', 'xf', dest, '-C', out])
+    subprocess.call(['tar', '-x', '-C', out, '-f', dest])
   else:
     print('Found extracted at {0}'.format(destdir))
 
@@ -125,8 +108,28 @@ def configure(conf):
       conf.check_cxx(msg='Checking for library clang', lib='clang', uselib_store='clang', includes=includes, libpath=libpath)
 
   else:
+    global CLANG_TARBALL_NAME
+
+    # TODO Remove these after dropping clang 4 (after we figure out how to index Chrome)
+    if conf.options.bundled_clang[0] == '4':
+      if sys.platform == 'darwin':
+        CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
+      elif sys.platform.startswith('linux'):
+        # These executable depend on libtinfo.so.5
+        CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04'
+      else:
+        # TODO: windows support (it's an exe!)
+        sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
+        sys.exit(1)
+
+    CLANG_TARBALL_NAME = string.Template(CLANG_TARBALL_NAME).substitute(version=conf.options.bundled_clang)
+    # Directory clang has been extracted to.
+    CLANG_DIRECTORY = '{0}/{1}'.format(out, CLANG_TARBALL_NAME)
+    # URL of the tarball to download.
+    CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}.tar.xz'.format(conf.options.bundled_clang, CLANG_TARBALL_NAME)
+
     print('Checking for clang')
-    download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_LOCAL_PATH, CLANG_TARBALL_URL)
+    download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL)
     clang_node = conf.path.find_dir(CLANG_DIRECTORY)
 
     conf.check_cxx(uselib_store='clang',
@@ -165,7 +168,7 @@ def build(bld):
   cc_files = bld.path.ant_glob(['src/*.cc'])
 
   lib = []
-  if sys.platform == 'linux' or sys.platform == 'linux2':
+  if sys.platform.startswith('linux'):
     lib.append('rt')
     lib.append('pthread')
     lib.append('dl')
