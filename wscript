@@ -95,6 +95,7 @@ def configure(conf):
   conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
   conf.load('clang_compilation_database', tooldir='.')
 
+  conf.env['use_system_clang'] = conf.options.use_system_clang
   if conf.options.use_system_clang:
     # Ask llvm-config for cflags and ldflags
     conf.find_program(conf.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
@@ -184,6 +185,7 @@ def build(bld):
         'third_party/sparsepp/'],
       defines=['LOGURU_WITH_STREAMS=1'],
       lib=lib,
+      rpath=[] if bld.env['use_system_clang'] else bld.env['LIBPATH_clang'],
       target='app')
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
