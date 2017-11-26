@@ -796,16 +796,18 @@ struct IndexManager {
   }
 };
 
-// Sends indexing progress to client.
-void EmitProgress(QueueManager* queue) {
-  Out_Progress out;
-  out.params.indexRequestCount = queue->index_request.Size();
-  out.params.doIdMapCount = queue->do_id_map.Size();
-  out.params.loadPreviousIndexCount = queue->load_previous_index.Size();
-  out.params.onIdMappedCount = queue->on_id_mapped.Size();
-  out.params.onIndexedCount = queue->on_indexed.Size();
+// Send indexing progress to client if reporting is enabled.
+void EmitProgress(Config *config, QueueManager* queue) {
+  if (config->enableProgressReports) {
+    Out_Progress out;
+    out.params.indexRequestCount = queue->index_request.Size();
+    out.params.doIdMapCount = queue->do_id_map.Size();
+    out.params.loadPreviousIndexCount = queue->load_previous_index.Size();
+    out.params.onIdMappedCount = queue->on_id_mapped.Size();
+    out.params.onIndexedCount = queue->on_indexed.Size();
 
-  IpcManager::instance()->SendOutMessageToClient(IpcId::Cout, out);
+    IpcManager::instance()->SendOutMessageToClient(IpcId::Cout, out);
+  }
 }
 
 }  // namespace
@@ -1211,7 +1213,7 @@ WorkThread::Result IndexMain(Config* config,
                              WorkingFiles* working_files,
                              MultiQueueWaiter* waiter,
                              QueueManager* queue) {
-  EmitProgress(queue);
+  EmitProgress(config, queue);
 
   // TODO: dispose of index after it is not used for a while.
   ClangIndex index;
@@ -1256,7 +1258,7 @@ bool QueryDb_ImportMain(Config* config,
                         ImportManager* import_manager,
                         QueueManager* queue,
                         WorkingFiles* working_files) {
-  EmitProgress(queue);
+  EmitProgress(config, queue);
 
   bool did_work = false;
 

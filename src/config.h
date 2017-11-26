@@ -36,6 +36,9 @@ struct Config {
   // If false, the index will not be loaded from a previous run.
   bool enableCacheRead = true;
 
+  // If true, cquery will send progress reports while indexing
+  bool enableProgressReports = true;
+
   // If true, document links are reported for #include directives.
   bool showDocumentLinksOnIncludes = true;
 
@@ -87,6 +90,7 @@ MAKE_REFLECT_STRUCT(Config,
                     enableIndexing,
                     enableCacheWrite,
                     enableCacheRead,
+                    enableProgressReports,
 
                     includeCompletionMaximumPathLength,
                     includeCompletionWhitelistLiteralEnding,
