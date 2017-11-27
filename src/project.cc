@@ -53,9 +53,6 @@ static std::vector<std::string> kBlacklistMulti = {
 // Blacklisted flags which are always removed from the command line.
 static std::vector<std::string> kBlacklist = {
     "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics",
-
-    // This strips path-like args but is a bit hacky.
-    "/", "..",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
@@ -108,10 +105,21 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   size_t i = 0;
 
-  // Strip all arguments before the -, as there may be non-compiler related
-  // commands beforehand, ie, compiler schedular such as goma. This allows
-  // correct parsing for command lines like "goma clang -c foo".
-  while (i < entry.args.size() && entry.args[i][0] != '-')
+  // Strip all arguments consisting the compiler command,
+  // as there may be non-compiler related commands beforehand,
+  // ie, compiler schedular such as goma. This allows correct parsing for
+  // command lines like "goma clang -c foo".
+  while (i < entry.args.size() && entry.args[i][0] != '-' &&
+         // Do not skip over main source filename
+         NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
+         // There may be other filenames (e.g. more than one source filenames)
+         // preceding main source filename.
+         // We use a heuristic here. `.` may occur in both command names and
+         // source filenames. If `.` occurs in the last 4 bytes of
+         // entry.args[i], e.g. .c .cpp, We take it as a source filename. Others
+         // (like ./a/b/goma) are seen as commands.
+         (entry.args[i].rfind('.') == std::string::npos ||
+          entry.args[i].rfind('.') + 4 < entry.args[i].size()))
     ++i;
   // Include the compiler in the args.
   if (i > 0)
@@ -151,10 +159,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   for (; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
 
-    // Do not include path.
-    if (result.filename == cleanup_maybe_relative_path(arg))
-      continue;
-
     // If blacklist skip.
     if (!next_flag_is_path) {
       if (StartsWithAny(arg, kBlacklistMulti)) {
@@ -167,11 +171,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
     // Cleanup path for previous argument.
     if (next_flag_is_path) {
-      arg = cleanup_maybe_relative_path(arg);
+      std::string normalized_arg = cleanup_maybe_relative_path(arg);
       if (add_next_flag_to_quote_dirs)
-        config->quote_dirs.insert(arg);
+        config->quote_dirs.insert(normalized_arg);
       if (add_next_flag_to_angle_dirs)
-        config->angle_dirs.insert(arg);
+        config->angle_dirs.insert(normalized_arg);
 
       next_flag_is_path = false;
       add_next_flag_to_quote_dirs = false;
@@ -191,10 +195,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         std::string path = arg.substr(flag_type.size());
         assert(!path.empty());
         path = cleanup_maybe_relative_path(path);
-        arg = flag_type + path;
-        if (ShouldAddToQuoteIncludes(arg))
+        std::string normalized_path = flag_type + path;
+        if (ShouldAddToQuoteIncludes(normalized_path))
           config->quote_dirs.insert(path);
-        if (ShouldAddToAngleIncludes(arg))
+        if (ShouldAddToAngleIncludes(normalized_path))
           config->angle_dirs.insert(path);
         break;
       }
@@ -247,9 +251,10 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   for (const std::string& file : files) {
     if (SourceFileType(file)) {
       CompileCommandsEntry e;
-      e.file = NormalizePathWithTestOptOut(file);
-      e.args = args;
       e.directory = config->project_dir;
+      e.file = file;
+      e.args = args;
+      e.args.push_back(e.file);
       result.push_back(GetCompilationEntryFromCompileCommandEntry(config, e));
     }
   }
@@ -307,13 +312,13 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     // LOG_S(INFO) << "Got args " << StringJoin(entry.args);
 
     our_time.Resume();
+    entry.directory = directory;
     std::string absolute_filename;
     if (!relative_filename.empty() && relative_filename[0] == '/')
       absolute_filename = relative_filename;
     else
       absolute_filename = directory + "/" + relative_filename;
     entry.file = NormalizePathWithTestOptOut(absolute_filename);
-    entry.directory = directory;
 
     result.push_back(GetCompilationEntryFromCompileCommandEntry(config, entry));
     our_time.Pause();
@@ -516,7 +521,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0", "-resource-dir=/w/resource_dir/",
+        {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0", "foo/bar.c", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
@@ -766,56 +771,56 @@ TEST_SUITE("Project") {
          "-DGR_GL_IGNORE_ES3_MSAA=0",
          "-DSK_SUPPORT_GPU=1",
          "-DMESA_EGL_NO_X11_HEADERS",
-         "-I&/w/c/s/out/Release/../..",
-         "-I&/w/c/s/out/Release/gen",
-         "-I&/w/c/s/out/Release/../../third_party/libwebp/src",
-         "-I&/w/c/s/out/Release/../../third_party/khronos",
-         "-I&/w/c/s/out/Release/../../gpu",
-         "-I&/w/c/s/out/Release/../../third_party/googletest/src/googletest/"
+         "-I../..",
+         "-Igen",
+         "-I../../third_party/libwebp/src",
+         "-I../../third_party/khronos",
+         "-I../../gpu",
+         "-I../../third_party/googletest/src/googletest/"
          "include",
-         "-I&/w/c/s/out/Release/../../third_party/WebKit",
-         "-I&/w/c/s/out/Release/gen/third_party/WebKit",
-         "-I&/w/c/s/out/Release/../../v8/include",
-         "-I&/w/c/s/out/Release/gen/v8/include",
-         "-I&/w/c/s/out/Release/../../third_party/icu/source/common",
-         "-I&/w/c/s/out/Release/../../third_party/icu/source/i18n",
-         "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
-         "-I&/w/c/s/out/Release/gen/protoc_out",
-         "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
-         "-I&/w/c/s/out/Release/../../third_party/boringssl/src/include",
-         "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+         "-I../../third_party/WebKit",
+         "-Igen/third_party/WebKit",
+         "-I../../v8/include",
+         "-Igen/v8/include",
+         "-I../../third_party/icu/source/common",
+         "-I../../third_party/icu/source/i18n",
+         "-I../../third_party/protobuf/src",
+         "-Igen/protoc_out",
+         "-I../../third_party/protobuf/src",
+         "-I../../third_party/boringssl/src/include",
+         "-I../../build/linux/debian_jessie_amd64-sysroot/"
          "usr/include/nss",
-         "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+         "-I../../build/linux/debian_jessie_amd64-sysroot/"
          "usr/include/nspr",
-         "-I&/w/c/s/out/Release/../../skia/config",
-         "-I&/w/c/s/out/Release/../../skia/ext",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/c",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/config",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/core",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/effects",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/encode",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/gpu",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/images",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/lazy",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/pathops",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/pdf",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/pipe",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/ports",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/utils",
-         "-I&/w/c/s/out/Release/../../third_party/skia/third_party/vulkan",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/codec",
-         "-I&/w/c/s/out/Release/../../third_party/skia/src/gpu",
-         "-I&/w/c/s/out/Release/../../third_party/skia/src/sksl",
-         "-I&/w/c/s/out/Release/../../third_party/ced/src",
-         "-I&/w/c/s/out/Release/../../third_party/mesa/src/include",
-         "-I&/w/c/s/out/Release/../../third_party/libwebm/source",
-         "-I&/w/c/s/out/Release/gen",
-         "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+         "-I../../skia/config",
+         "-I../../skia/ext",
+         "-I../../third_party/skia/include/c",
+         "-I../../third_party/skia/include/config",
+         "-I../../third_party/skia/include/core",
+         "-I../../third_party/skia/include/effects",
+         "-I../../third_party/skia/include/encode",
+         "-I../../third_party/skia/include/gpu",
+         "-I../../third_party/skia/include/images",
+         "-I../../third_party/skia/include/lazy",
+         "-I../../third_party/skia/include/pathops",
+         "-I../../third_party/skia/include/pdf",
+         "-I../../third_party/skia/include/pipe",
+         "-I../../third_party/skia/include/ports",
+         "-I../../third_party/skia/include/utils",
+         "-I../../third_party/skia/third_party/vulkan",
+         "-I../../third_party/skia/include/codec",
+         "-I../../third_party/skia/src/gpu",
+         "-I../../third_party/skia/src/sksl",
+         "-I../../third_party/ced/src",
+         "-I../../third_party/mesa/src/include",
+         "-I../../third_party/libwebm/source",
+         "-Igen",
+         "-I../../build/linux/debian_jessie_amd64-sysroot/"
          "usr/include/dbus-1.0",
-         "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+         "-I../../build/linux/debian_jessie_amd64-sysroot/"
          "usr/lib/x86_64-linux-gnu/dbus-1.0/include",
-         "-I&/w/c/s/out/Release/../../third_party/googletest/custom",
-         "-I&/w/c/s/out/Release/../../third_party/googletest/src/googlemock/"
+         "-I../../third_party/googletest/custom",
+         "-I../../third_party/googletest/src/googlemock/"
          "include",
          "-fno-strict-aliasing",
          "-Wno-builtin-macro-redefined",
@@ -863,16 +868,17 @@ TEST_SUITE("Project") {
          "-std=gnu++14",
          "-fno-rtti",
          "-nostdinc++",
-         "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++/"
+         "-isystem../../buildtools/third_party/libc++/"
          "trunk/"
          "include",
-         "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++abi/"
+         "-isystem../../buildtools/third_party/libc++abi/"
          "trunk/"
          "include",
-         "--sysroot=&/w/c/s/out/Release/../../build/linux/"
+         "--sysroot=../../build/linux/"
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
+         "../../ash/login/ui/lock_screen_sanity_unittest.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
@@ -1043,7 +1049,8 @@ TEST_SUITE("Project") {
          "-isystem../../buildtools/third_party/libc++abi/trunk/include",
          "--sysroot=../../build/linux/debian_jessie_amd64-sysroot",
          "-fno-exceptions",
-         "-fvisibility-inlines-hidden"},
+         "-fvisibility-inlines-hidden",
+         "../../apps/app_lifetime_monitor.cc"},
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
@@ -1098,50 +1105,50 @@ TEST_SUITE("Project") {
          "-DMESA_EGL_NO_X11_HEADERS",
          "-DBORINGSSL_SHARED_LIBRARY",
          "-DUSING_V8_SHARED",
-         "-I&/w/c/s/out/Release/../..",
-         "-I&/w/c/s/out/Release/gen",
-         "-I&/w/c/s/out/Release/../../third_party/libwebp/src",
-         "-I&/w/c/s/out/Release/../../third_party/khronos",
-         "-I&/w/c/s/out/Release/../../gpu",
-         "-I&/w/c/s/out/Release/../../third_party/ced/src",
-         "-I&/w/c/s/out/Release/../../third_party/icu/source/common",
-         "-I&/w/c/s/out/Release/../../third_party/icu/source/i18n",
-         "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
-         "-I&/w/c/s/out/Release/../../skia/config",
-         "-I&/w/c/s/out/Release/../../skia/ext",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/c",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/config",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/core",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/effects",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/encode",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/gpu",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/images",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/lazy",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/pathops",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/pdf",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/pipe",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/ports",
-         "-I&/w/c/s/out/Release/../../third_party/skia/include/utils",
-         "-I&/w/c/s/out/Release/../../third_party/skia/third_party/vulkan",
-         "-I&/w/c/s/out/Release/../../third_party/skia/src/gpu",
-         "-I&/w/c/s/out/Release/../../third_party/skia/src/sksl",
-         "-I&/w/c/s/out/Release/../../third_party/mesa/src/include",
-         "-I&/w/c/s/out/Release/../../third_party/libwebm/source",
-         "-I&/w/c/s/out/Release/../../third_party/protobuf/src",
-         "-I&/w/c/s/out/Release/gen/protoc_out",
-         "-I&/w/c/s/out/Release/../../third_party/boringssl/src/include",
-         "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+         "-I../..",
+         "-Igen",
+         "-I../../third_party/libwebp/src",
+         "-I../../third_party/khronos",
+         "-I../../gpu",
+         "-I../../third_party/ced/src",
+         "-I../../third_party/icu/source/common",
+         "-I../../third_party/icu/source/i18n",
+         "-I../../third_party/protobuf/src",
+         "-I../../skia/config",
+         "-I../../skia/ext",
+         "-I../../third_party/skia/include/c",
+         "-I../../third_party/skia/include/config",
+         "-I../../third_party/skia/include/core",
+         "-I../../third_party/skia/include/effects",
+         "-I../../third_party/skia/include/encode",
+         "-I../../third_party/skia/include/gpu",
+         "-I../../third_party/skia/include/images",
+         "-I../../third_party/skia/include/lazy",
+         "-I../../third_party/skia/include/pathops",
+         "-I../../third_party/skia/include/pdf",
+         "-I../../third_party/skia/include/pipe",
+         "-I../../third_party/skia/include/ports",
+         "-I../../third_party/skia/include/utils",
+         "-I../../third_party/skia/third_party/vulkan",
+         "-I../../third_party/skia/src/gpu",
+         "-I../../third_party/skia/src/sksl",
+         "-I../../third_party/mesa/src/include",
+         "-I../../third_party/libwebm/source",
+         "-I../../third_party/protobuf/src",
+         "-Igen/protoc_out",
+         "-I../../third_party/boringssl/src/include",
+         "-I../../build/linux/debian_jessie_amd64-sysroot/"
          "usr/include/nss",
-         "-I&/w/c/s/out/Release/../../build/linux/debian_jessie_amd64-sysroot/"
+         "-I../../build/linux/debian_jessie_amd64-sysroot/"
          "usr/include/nspr",
-         "-I&/w/c/s/out/Release/gen",
-         "-I&/w/c/s/out/Release/../../third_party/WebKit",
-         "-I&/w/c/s/out/Release/gen/third_party/WebKit",
-         "-I&/w/c/s/out/Release/../../v8/include",
-         "-I&/w/c/s/out/Release/gen/v8/include",
-         "-I&/w/c/s/out/Release/gen",
-         "-I&/w/c/s/out/Release/../../third_party/flatbuffers/src/include",
-         "-I&/w/c/s/out/Release/gen",
+         "-Igen",
+         "-I../../third_party/WebKit",
+         "-Igen/third_party/WebKit",
+         "-I../../v8/include",
+         "-Igen/v8/include",
+         "-Igen",
+         "-I../../third_party/flatbuffers/src/include",
+         "-Igen",
          "-fno-strict-aliasing",
          "-Wno-builtin-macro-redefined",
          "-D__DATE__=",
@@ -1186,16 +1193,17 @@ TEST_SUITE("Project") {
          "-std=gnu++14",
          "-fno-rtti",
          "-nostdinc++",
-         "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++/"
+         "-isystem../../buildtools/third_party/libc++/"
          "trunk/"
          "include",
-         "-isystem&/w/c/s/out/Release/../../buildtools/third_party/libc++abi/"
+         "-isystem../../buildtools/third_party/libc++abi/"
          "trunk/"
          "include",
-         "--sysroot=&/w/c/s/out/Release/../../build/linux/"
+         "--sysroot=../../build/linux/"
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
+         "../../apps/app_lifetime_monitor.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
          "-fparse-all-comments"});

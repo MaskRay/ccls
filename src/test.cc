@@ -158,6 +158,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
       std::cout << "For " << path << std::endl;
       std::cout << "  flags: " << StringJoin(flags) << std::endl;
     }
+    flags.push_back(path);
 
     // Run test.
     Config config;

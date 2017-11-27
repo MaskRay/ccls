@@ -86,7 +86,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
   CXErrorCode error_code;
   {
     error_code = clang_parseTranslationUnit2FullArgv(
-        index->cx_index, filepath.c_str(), args.data(), (int)args.size(),
+        index->cx_index, nullptr, args.data(), (int)args.size(),
         unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
   }
 
