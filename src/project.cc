@@ -203,7 +203,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::vector<std::string> args;
   std::cerr << "Using arguments: ";
   for (const std::string& line :
-       ReadLines(config->project_dir + "/clang_args")) {
+       ReadLines(config->project_dir + "/.cquery")) {
     if (line.empty() || StartsWith(line, "#"))
       continue;
     if (!args.empty())

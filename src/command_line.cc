@@ -3250,7 +3250,7 @@ int main(int argc, char** argv) {
     When opening up a directory, cquery will look for a compile_commands.json
     file emitted by your preferred build system. If not present, cquery will
     use a recursive directory listing instead. Command line flags can be
-    provided by adding a "clang_args" file in the top-level directory. Each
+    provided by adding a file named `.cquery` in the top-level directory. Each
     line in that file is a separate argument.
 
     There are also a number of configuration options available when
