@@ -96,7 +96,7 @@ are skipped. Here's an example:
 
 ```
 # Language
-clang++
+-xc++
 -std=c++11
 
 # Includes

@@ -53,6 +53,9 @@ static std::vector<std::string> kBlacklistMulti = {
 // Blacklisted flags which are always removed from the command line.
 static std::vector<std::string> kBlacklist = {
     "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics",
+
+    // This strips path-like args but is a bit hacky.
+    "/", "..",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
@@ -114,6 +117,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       return NormalizePathWithTestOptOut(entry.directory + "/" + path);
     };
 
+    // Do not include path.
+    if (result.filename == cleanup_maybe_relative_path(arg))
+      continue;
+
     // If blacklist skip.
     if (!next_flag_is_path) {
       if (StartsWithAny(arg, kBlacklistMulti)) {
@@ -167,6 +174,14 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   for (const auto& flag : config->extra_flags)
     result.args.push_back(flag);
 
+  // Clang does not have good hueristics for determining source language, we
+  // should explicitly specify it.
+  if (!AnyStartsWith(result.args, "-x")) {
+    if (IsCFile(entry.file))
+      result.args.push_back("-xc");
+    else
+      result.args.push_back("-xc++");
+  }
   if (!AnyStartsWith(result.args, "-std=")) {
     if (IsCFile(entry.file))
       result.args.push_back("-std=c11");
@@ -206,7 +221,6 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
       CompileCommandsEntry e;
       e.file = NormalizePathWithTestOptOut(file);
       e.args = args;
-      e.args.push_back(e.file);
       result.push_back(GetCompilationEntryFromCompileCommandEntry(config, e));
     }
   }
@@ -449,15 +463,15 @@ TEST_SUITE("Project") {
   TEST_CASE("strip meta-compiler invocations") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
-        /* expected */ {"clang", "-lstdc++", "myfile.cc", "-std=c++11",
+        /* expected */ {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
                         "-resource-dir=/w/resource_dir/"});
 
     CheckFlags(/* raw */ {"goma", "clang"},
-               /* expected */ {"clang", "-std=c++11",
+               /* expected */ {"clang", "-xc++", "-std=c++11",
                                "-resource-dir=/w/resource_dir/"});
 
     CheckFlags(/* raw */ {"goma", "clang", "--foo"},
-               /* expected */ {"clang", "--foo", "-std=c++11",
+               /* expected */ {"clang", "--foo", "-xc++", "-std=c++11",
                                "-resource-dir=/w/resource_dir/"});
   }
 
@@ -467,7 +481,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-O0", "foo/bar.c", "-std=c11", "-resource-dir=/w/resource_dir/"});
+        {"cc", "-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what
@@ -811,7 +825,7 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "../../ash/login/ui/lock_screen_sanity_unittest.cc",
+         "-xc++",
          "-resource-dir=/w/resource_dir/"});
   }
 
@@ -980,8 +994,7 @@ TEST_SUITE("Project") {
          "-isystem../../buildtools/third_party/libc++abi/trunk/include",
          "--sysroot=../../build/linux/debian_jessie_amd64-sysroot",
          "-fno-exceptions",
-         "-fvisibility-inlines-hidden",
-         "../../apps/app_lifetime_monitor.cc"},
+         "-fvisibility-inlines-hidden"},
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
@@ -1131,7 +1144,7 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "../../apps/app_lifetime_monitor.cc",
+         "-xc++",
          "-resource-dir=/w/resource_dir/"});
   }
 
