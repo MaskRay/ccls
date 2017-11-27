@@ -75,7 +75,9 @@ generate one in ninja. When you sync your code you should regenerate this file.
 $ ninja -C out/Release -t compdb cxx cc > compile_commands.json
 ```
 
-The `compile_commands.json` file should be in the top-level workspace directory.
+If the `compile_commands.json` is not in the top-level workspace directory,
+then the `cquery.misc.compilationDatabaseDirectory` setting can be used to
+specify its location.
 
 ### cquery.index.extraClangArguments
 
