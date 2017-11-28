@@ -198,22 +198,22 @@ std::istream& SafeGetline(std::istream& is, std::string& t) {
   t.clear();
 
   // The characters in the stream are read one-by-one using a std::streambuf.
-  // That is faster than reading them one-by-one using the std::istream.
-  // Code that uses streambuf this way must be guarded by a sentry object.
-  // The sentry object performs various tasks,
-  // such as thread synchronization and updating the stream state.
+  // That is faster than reading them one-by-one using the std::istream. Code
+  // that uses streambuf this way must be guarded by a sentry object. The sentry
+  // object performs various tasks, such as thread synchronization and updating
+  // the stream state.
 
   std::istream::sentry se(is, true);
   std::streambuf* sb = is.rdbuf();
 
   for (;;) {
+    bool had_r = false;
     int c = sb->sbumpc();
     switch (c) {
-      case '\n':
-        return is;
       case '\r':
-        if (sb->sgetc() == '\n')
-          sb->sbumpc();
+        had_r = true;
+        break;
+      case '\n':
         return is;
       case EOF:
         // Also handle the case when the last line has no line ending
@@ -221,6 +221,10 @@ std::istream& SafeGetline(std::istream& is, std::string& t) {
           is.setstate(std::ios::eofbit);
         return is;
       default:
+        if (had_r) {
+          t += '\r';
+          had_r = false;
+        }
         t += (char)c;
     }
   }
@@ -306,7 +310,7 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(
 
       in_output = true;
     } else if (in_output)
-      active_output_contents += line + "\n";
+      active_output_contents += line + "\r\n";
   }
 
   if (in_output)
