@@ -127,14 +127,15 @@ static void GetFilesInFolderHelper(
     const std::function<void(const std::string&)>& handler) {
   tinydir_dir dir;
   if (tinydir_open(&dir, folder.c_str()) == -1) {
-    // perror("Error opening file");
+    LOG_S(WARNING) << "Unable to open directory " << folder;
     goto bail;
   }
 
   while (dir.has_next) {
     tinydir_file file;
     if (tinydir_readfile(&dir, &file) == -1) {
-      // perror("Error getting file");
+      LOG_S(WARNING) << "Unable to read file " << file.name
+                     << " when reading directory " << folder;
       goto bail;
     }
 
@@ -159,7 +160,8 @@ static void GetFilesInFolderHelper(
     }
 
     if (tinydir_next(&dir) == -1) {
-      perror("Error getting next file");
+      LOG_S(WARNING) << "Unable to fetch next file when reading directory "
+                     << folder;
       goto bail;
     }
   }
