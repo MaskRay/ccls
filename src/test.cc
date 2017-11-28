@@ -79,7 +79,6 @@ void VerifySerializeToFrom(IndexFile* file) {
   std::string actual = result->ToString();
   if (expected != actual) {
     std::cerr << "Serialization failure" << std::endl;
-    ;
     assert(false);
   }
 }

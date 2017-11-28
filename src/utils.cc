@@ -209,26 +209,18 @@ std::istream& SafeGetline(std::istream& is, std::string& t) {
   std::streambuf* sb = is.rdbuf();
 
   for (;;) {
-    bool had_r = false;
     int c = sb->sbumpc();
-    switch (c) {
-      case '\r':
-        had_r = true;
-        break;
-      case '\n':
-        return is;
-      case EOF:
-        // Also handle the case when the last line has no line ending
-        if (t.empty())
-          is.setstate(std::ios::eofbit);
-        return is;
-      default:
-        if (had_r) {
-          t += '\r';
-          had_r = false;
-        }
-        t += (char)c;
+    if (c == EOF) {
+      // Also handle the case when the last line has no line ending
+      if (t.empty())
+        is.setstate(std::ios::eofbit);
+      return is;
     }
+
+    t += (char)c;
+
+    if (c == '\n')
+      return is;
   }
 }
 
@@ -248,8 +240,15 @@ std::vector<std::string> ReadLines(std::string filename) {
   std::vector<std::string> result;
 
   std::ifstream input(filename);
-  for (std::string line; SafeGetline(input, line);)
+  for (std::string line; SafeGetline(input, line);) {
+#if false
+    LOG_S(INFO) << "!! got line |" << line << "|";
+    for (char c : line)
+      std::cout << (int)c << ",";
+    std::cout << std::endl;
+#endif
     result.push_back(line);
+  }
 
   return result;
 }
@@ -295,24 +294,29 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(
   std::string active_output_filename;
   std::string active_output_contents;
 
-  for (std::string line : ReadLines(filename)) {
-    if (line == "*/")
+  for (std::string line_with_ending : ReadLines(filename)) {
+    if (StartsWith(line_with_ending, "*/"))
       break;
 
-    if (StartsWith(line, "OUTPUT:")) {
+    if (StartsWith(line_with_ending, "OUTPUT:")) {
       if (in_output) {
         result[active_output_filename] = active_output_contents;
       }
 
-      if (line.size() > 7)
-        active_output_filename = line.substr(8);
-      else
+      // Try to tokenize OUTPUT: based one whitespace. If there is more than one
+      // token assume it is a filename.
+      std::vector<std::string> tokens = SplitString(line_with_ending, " ");
+      if (tokens.size() > 1) {
+        active_output_filename = tokens[1];
+        Trim(active_output_filename);
+      } else {
         active_output_filename = filename;
+      }
       active_output_contents = "";
 
       in_output = true;
     } else if (in_output)
-      active_output_contents += line + "\r\n";
+      active_output_contents += line_with_ending;
   }
 
   if (in_output)
