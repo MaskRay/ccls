@@ -3156,6 +3156,7 @@ void LanguageServerMain(const std::string& bin_name,
   QueueManager queue(waiter);
   std::unordered_map<IpcId, Timer> request_times;
 
+  std::cin.tie(NULL);
   LaunchStdinLoop(config, &request_times);
 
   // We run a dedicated thread for writing to stdout because there can be an
