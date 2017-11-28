@@ -3222,8 +3222,10 @@ int main(int argc, char** argv) {
   if (HasOption(options, "--test-index")) {
     print_help = false;
     RunIndexTests();
+#if defined(_WIN32)
     std::cerr << std::endl << "[Enter] to exit" << std::endl;
     std::cin.get();
+#endif
   }
 
   if (HasOption(options, "--language-server")) {
