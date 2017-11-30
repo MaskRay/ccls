@@ -473,6 +473,8 @@ struct IndexFile {
   std::string path;
   std::vector<std::string> args;
   int64_t last_modification_time = 0;
+  // "c++", "c", "obj-c", "invalid" or "unknown"
+  std::string language;
 
   // The path to the translation unit cc file which caused the creation of this
   // IndexFile. When parsing a translation unit we generate many IndexFile

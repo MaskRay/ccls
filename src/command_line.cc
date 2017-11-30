@@ -2328,7 +2328,9 @@ bool QueryDbMainLoop(Config* config,
           if (!ls_range)
             continue;
 
-          response.result.contents = GetHoverForSymbol(db, ref.idx);
+          response.result.contents.value = GetHoverForSymbol(db, ref.idx);
+          response.result.contents.language = file->def->language;
+
           response.result.range = *ls_range;
           break;
         }

@@ -169,6 +169,8 @@ void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
 struct QueryFile {
   struct Def {
     std::string path;
+    // Language identifier
+    std::string language;
     // Includes in the file.
     std::vector<IndexInclude> includes;
     // Outline of the file (ie, for code lens).
@@ -191,6 +193,7 @@ struct QueryFile {
 };
 MAKE_REFLECT_STRUCT(QueryFile::Def,
                     path,
+                    language,
                     outline,
                     all_symbols,
                     inactive_regions);

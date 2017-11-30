@@ -171,6 +171,7 @@ void CompareGroups(std::vector<T>& previous_data,
 QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
   QueryFile::Def def;
   def.path = indexed.path;
+  def.language = indexed.language;
   def.includes = indexed.includes;
   def.inactive_regions = indexed.skipped_by_preprocessor;
 

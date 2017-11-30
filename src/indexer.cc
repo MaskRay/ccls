@@ -995,6 +995,24 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!db)
     return;
 
+
+  // update the file language
+  // TODO: only do this when |is_first_ownership| in ConsumeFile is true
+  switch (clang_getCursorLanguage(decl->cursor)) {
+  case CXLanguage_C:
+    db->language = "c";
+    break;
+  case CXLanguage_CPlusPlus:
+    db->language = "c++";
+    break;
+  case CXLanguage_ObjC:
+    db->language = "objc";
+    break;
+  case CXLanguage_Invalid:
+    db->language = "invalid";
+    break;
+  }
+
   NamespaceHelper* ns = &param->ns;
 
   // std::cerr << "DECL kind=" << decl->entityInfo->kind << " at " <<
