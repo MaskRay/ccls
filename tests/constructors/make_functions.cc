@@ -26,7 +26,6 @@ void caller22() {
 /*
 OUTPUT: make_functions.h
 {
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/constructors/make_functions.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@S@Bar",
@@ -83,9 +82,8 @@ OUTPUT: make_functions.cc
 {
   "includes": [{
       "line": 1,
-      "resolved_path": "C:/Users/jacob/Desktop/cquery/tests/constructors/make_functions.h"
+      "resolved_path": "&make_functions.h"
     }],
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/constructors/make_functions.h"],
   "types": [{
       "id": 0,
       "usr": "c:make_functions.cc@41",

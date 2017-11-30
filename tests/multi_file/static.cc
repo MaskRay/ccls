@@ -5,7 +5,6 @@ void Buffer::CreateSharedBuffer() {}
 /*
 OUTPUT: static.h
 {
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/static.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@S@Buffer",
@@ -33,9 +32,8 @@ OUTPUT: static.cc
 {
   "includes": [{
       "line": 1,
-      "resolved_path": "C:/Users/jacob/Desktop/cquery/tests/multi_file/static.h"
+      "resolved_path": "&static.h"
     }],
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/static.h"],
   "types": [{
       "id": 0,
       "usr": "c:@S@Buffer",

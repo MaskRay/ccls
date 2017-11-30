@@ -7,7 +7,6 @@ void Impl() {
 /*
 OUTPUT: header.h
 {
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/impl.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@S@Base",
@@ -123,9 +122,8 @@ OUTPUT: impl.cc
 {
   "includes": [{
       "line": 1,
-      "resolved_path": "C:/Users/jacob/Desktop/cquery/tests/multi_file/header.h"
+      "resolved_path": "&header.h"
     }],
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/header.h"],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@Impl#",

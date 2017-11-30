@@ -7,7 +7,6 @@ void impl() {
 /*
 OUTPUT: simple_header.h
 {
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/simple_impl.cc"],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@header#",
@@ -24,9 +23,8 @@ OUTPUT: simple_impl.cc
 {
   "includes": [{
       "line": 1,
-      "resolved_path": "C:/Users/jacob/Desktop/cquery/tests/multi_file/simple_header.h"
+      "resolved_path": "&simple_header.h"
     }],
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/simple_header.h"],
   "funcs": [{
       "id": 0,
       "usr": "c:@F@impl#",

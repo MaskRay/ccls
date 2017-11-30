@@ -8,7 +8,6 @@ enum Foo {
 
 OUTPUT: funky_enum.h
 {
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/funky_enum.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
@@ -56,9 +55,8 @@ OUTPUT: funky_enum.cc
 {
   "includes": [{
       "line": 2,
-      "resolved_path": "C:/Users/jacob/Desktop/cquery/tests/multi_file/funky_enum.h"
+      "resolved_path": "&funky_enum.h"
     }],
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/multi_file/funky_enum.h"],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",

@@ -9,7 +9,6 @@ void Foo::Register(Manager* m) {
 /*
 OUTPUT: static_function_in_type.h
 {
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/outline/static_function_in_type.cc"],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@S@Manager",
@@ -42,9 +41,8 @@ OUTPUT: static_function_in_type.cc
 {
   "includes": [{
       "line": 1,
-      "resolved_path": "C:/Users/jacob/Desktop/cquery/tests/outline/static_function_in_type.h"
+      "resolved_path": "&static_function_in_type.h"
     }],
-  "dependencies": ["C:/Users/jacob/Desktop/cquery/tests/outline/static_function_in_type.h"],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@S@Foo",

@@ -137,391 +137,397 @@ OUTPUT:
 {
   "includes": [{
       "line": 1,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/assert.h"
+      "resolved_path": "&assert.h"
     }, {
       "line": 2,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/complex.h"
+      "resolved_path": "&complex.h"
     }, {
       "line": 3,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/ctype.h"
+      "resolved_path": "&ctype.h"
     }, {
       "line": 4,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/errno.h"
+      "resolved_path": "&errno.h"
     }, {
       "line": 5,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/fenv.h"
+      "resolved_path": "&fenv.h"
     }, {
       "line": 6,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/float.h"
+      "resolved_path": "&float.h"
     }, {
       "line": 7,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/inttypes.h"
+      "resolved_path": "&inttypes.h"
     }, {
       "line": 8,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iso646.h"
+      "resolved_path": "&iso646.h"
     }, {
       "line": 9,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/limits.h"
+      "resolved_path": "&limits.h"
     }, {
       "line": 10,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/locale.h"
+      "resolved_path": "&locale.h"
     }, {
       "line": 11,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/math.h"
+      "resolved_path": "&math.h"
     }, {
       "line": 12,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/setjmp.h"
+      "resolved_path": "&setjmp.h"
     }, {
       "line": 13,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/signal.h"
+      "resolved_path": "&signal.h"
     }, {
-      "line": 14
+      "line": 14,
+      "resolved_path": "&"
     }, {
       "line": 15,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdarg.h"
+      "resolved_path": "&stdarg.h"
     }, {
-      "line": 16
+      "line": 16,
+      "resolved_path": "&"
     }, {
       "line": 17,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdbool.h"
+      "resolved_path": "&stdbool.h"
     }, {
       "line": 18,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stddef.h"
+      "resolved_path": "&stddef.h"
     }, {
       "line": 19,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdint.h"
+      "resolved_path": "&stdint.h"
     }, {
       "line": 20,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stdio.h"
+      "resolved_path": "&stdio.h"
     }, {
       "line": 21,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stdlib.h"
+      "resolved_path": "&stdlib.h"
     }, {
-      "line": 22
+      "line": 22,
+      "resolved_path": "&"
     }, {
       "line": 23,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/string.h"
+      "resolved_path": "&string.h"
     }, {
-      "line": 24
+      "line": 24,
+      "resolved_path": "&"
     }, {
-      "line": 25
+      "line": 25,
+      "resolved_path": "&"
     }, {
       "line": 26,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/time.h"
+      "resolved_path": "&time.h"
     }, {
       "line": 27,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/uchar.h"
+      "resolved_path": "&uchar.h"
     }, {
       "line": 28,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/wchar.h"
+      "resolved_path": "&wchar.h"
     }, {
       "line": 29,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/wctype.h"
+      "resolved_path": "&wctype.h"
     }, {
       "line": 32,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/string"
+      "resolved_path": "&string"
     }, {
       "line": 33,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xiosbase"
+      "resolved_path": "&xiosbase"
     }, {
       "line": 34,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/algorithm"
+      "resolved_path": "&algorithm"
     }, {
       "line": 35,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/type_traits"
+      "resolved_path": "&type_traits"
     }, {
       "line": 36,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iterator"
+      "resolved_path": "&iterator"
     }, {
       "line": 37,
-      "resolved_path": "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stdlib.h"
+      "resolved_path": "&stdlib.h"
     }, {
       "line": 38,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstddef"
+      "resolved_path": "&cstddef"
     }, {
       "line": 39,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cmath"
+      "resolved_path": "&cmath"
     }, {
       "line": 40,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/set"
+      "resolved_path": "&set"
     }, {
       "line": 41,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iosfwd"
+      "resolved_path": "&iosfwd"
     }, {
       "line": 42,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/streambuf"
+      "resolved_path": "&streambuf"
     }, {
       "line": 43,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ostream"
+      "resolved_path": "&ostream"
     }, {
       "line": 44,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/fstream"
+      "resolved_path": "&fstream"
     }, {
       "line": 45,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/memory"
+      "resolved_path": "&memory"
     }, {
       "line": 46,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdexcept"
+      "resolved_path": "&stdexcept"
     }, {
       "line": 47,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vector"
+      "resolved_path": "&vector"
     }, {
       "line": 48,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/sstream"
+      "resolved_path": "&sstream"
     }, {
       "line": 49,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iomanip"
+      "resolved_path": "&iomanip"
     }, {
       "line": 50,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/limits"
+      "resolved_path": "&limits"
     }, {
       "line": 51,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/tuple"
+      "resolved_path": "&tuple"
     }, {
       "line": 52,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdlib"
+      "resolved_path": "&cstdlib"
     }, {
       "line": 53,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/csignal"
+      "resolved_path": "&csignal"
     }, {
       "line": 54,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/csetjmp"
+      "resolved_path": "&csetjmp"
     }, {
       "line": 55,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdarg"
+      "resolved_path": "&cstdarg"
     }, {
       "line": 56,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/typeinfo"
+      "resolved_path": "&typeinfo"
     }, {
       "line": 57,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/typeindex"
+      "resolved_path": "&typeindex"
     }, {
       "line": 58,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/type_traits"
+      "resolved_path": "&type_traits"
     }, {
       "line": 59,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/bitset"
+      "resolved_path": "&bitset"
     }, {
       "line": 60,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/functional"
+      "resolved_path": "&functional"
     }, {
       "line": 61,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/utility"
+      "resolved_path": "&utility"
     }, {
       "line": 62,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ctime"
+      "resolved_path": "&ctime"
     }, {
       "line": 63,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/chrono"
+      "resolved_path": "&chrono"
     }, {
       "line": 64,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstddef"
+      "resolved_path": "&cstddef"
     }, {
       "line": 65,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/initializer_list"
+      "resolved_path": "&initializer_list"
     }, {
       "line": 66,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/tuple"
+      "resolved_path": "&tuple"
     }, {
       "line": 67,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/any"
+      "resolved_path": "&any"
     }, {
       "line": 68,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/optional"
+      "resolved_path": "&optional"
     }, {
       "line": 69,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/variant"
+      "resolved_path": "&variant"
     }, {
       "line": 70,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/new"
+      "resolved_path": "&new"
     }, {
       "line": 71,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/memory"
+      "resolved_path": "&memory"
     }, {
       "line": 72,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/scoped_allocator"
+      "resolved_path": "&scoped_allocator"
     }, {
-      "line": 73
+      "line": 73,
+      "resolved_path": "&"
     }, {
       "line": 74,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/climits"
+      "resolved_path": "&climits"
     }, {
       "line": 75,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cfloat"
+      "resolved_path": "&cfloat"
     }, {
       "line": 76,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdint"
+      "resolved_path": "&cstdint"
     }, {
       "line": 77,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cinttypes"
+      "resolved_path": "&cinttypes"
     }, {
       "line": 78,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/limits"
+      "resolved_path": "&limits"
     }, {
       "line": 79,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/exception"
+      "resolved_path": "&exception"
     }, {
       "line": 80,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdexcept"
+      "resolved_path": "&stdexcept"
     }, {
       "line": 81,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cassert"
+      "resolved_path": "&cassert"
     }, {
       "line": 82,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/system_error"
+      "resolved_path": "&system_error"
     }, {
       "line": 83,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cerrno"
+      "resolved_path": "&cerrno"
     }, {
       "line": 84,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cctype"
+      "resolved_path": "&cctype"
     }, {
       "line": 85,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cwctype"
+      "resolved_path": "&cwctype"
     }, {
       "line": 86,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstring"
+      "resolved_path": "&cstring"
     }, {
       "line": 87,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cwchar"
+      "resolved_path": "&cwchar"
     }, {
       "line": 88,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cuchar"
+      "resolved_path": "&cuchar"
     }, {
       "line": 89,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/string"
+      "resolved_path": "&string"
     }, {
       "line": 90,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/string_view"
+      "resolved_path": "&string_view"
     }, {
       "line": 91,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/array"
+      "resolved_path": "&array"
     }, {
       "line": 92,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vector"
+      "resolved_path": "&vector"
     }, {
       "line": 93,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/deque"
+      "resolved_path": "&deque"
     }, {
       "line": 94,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/list"
+      "resolved_path": "&list"
     }, {
       "line": 95,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/forward_list"
+      "resolved_path": "&forward_list"
     }, {
       "line": 96,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/set"
+      "resolved_path": "&set"
     }, {
       "line": 97,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/map"
+      "resolved_path": "&map"
     }, {
       "line": 98,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/unordered_set"
+      "resolved_path": "&unordered_set"
     }, {
       "line": 99,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/unordered_map"
+      "resolved_path": "&unordered_map"
     }, {
       "line": 100,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stack"
+      "resolved_path": "&stack"
     }, {
       "line": 101,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/queue"
+      "resolved_path": "&queue"
     }, {
       "line": 102,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/algorithm"
+      "resolved_path": "&algorithm"
     }, {
-      "line": 103
+      "line": 103,
+      "resolved_path": "&"
     }, {
       "line": 104,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iterator"
+      "resolved_path": "&iterator"
     }, {
       "line": 105,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cmath"
+      "resolved_path": "&cmath"
     }, {
       "line": 106,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/complex"
+      "resolved_path": "&complex"
     }, {
       "line": 107,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/valarray"
+      "resolved_path": "&valarray"
     }, {
       "line": 108,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/random"
+      "resolved_path": "&random"
     }, {
       "line": 109,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/numeric"
+      "resolved_path": "&numeric"
     }, {
       "line": 110,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ratio"
+      "resolved_path": "&ratio"
     }, {
       "line": 111,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cfenv"
+      "resolved_path": "&cfenv"
     }, {
       "line": 112,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iosfwd"
+      "resolved_path": "&iosfwd"
     }, {
       "line": 113,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ios"
+      "resolved_path": "&ios"
     }, {
       "line": 114,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/istream"
+      "resolved_path": "&istream"
     }, {
       "line": 115,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ostream"
+      "resolved_path": "&ostream"
     }, {
       "line": 116,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iostream"
+      "resolved_path": "&iostream"
     }, {
       "line": 117,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/fstream"
+      "resolved_path": "&fstream"
     }, {
       "line": 118,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/sstream"
+      "resolved_path": "&sstream"
     }, {
       "line": 119,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/strstream"
+      "resolved_path": "&strstream"
     }, {
       "line": 120,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iomanip"
+      "resolved_path": "&iomanip"
     }, {
       "line": 121,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/streambuf"
+      "resolved_path": "&streambuf"
     }, {
       "line": 122,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdio"
+      "resolved_path": "&cstdio"
     }, {
       "line": 123,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/locale"
+      "resolved_path": "&locale"
     }, {
       "line": 124,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/clocale"
+      "resolved_path": "&clocale"
     }, {
       "line": 125,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/codecvt"
+      "resolved_path": "&codecvt"
     }, {
       "line": 126,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/regex"
+      "resolved_path": "&regex"
     }, {
       "line": 127,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/atomic"
+      "resolved_path": "&atomic"
     }, {
       "line": 128,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thread"
+      "resolved_path": "&thread"
     }, {
       "line": 129,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/mutex"
+      "resolved_path": "&mutex"
     }, {
       "line": 130,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/shared_mutex"
+      "resolved_path": "&shared_mutex"
     }, {
       "line": 131,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/future"
+      "resolved_path": "&future"
     }, {
       "line": 132,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/condition_variable"
+      "resolved_path": "&condition_variable"
     }, {
       "line": 133,
-      "resolved_path": "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/filesystem"
-    }],
-  "dependencies": ["C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/assert.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vcruntime.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/sal.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/complex.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/ctype.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wctype.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/errno.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/fenv.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/float.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/inttypes.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdint.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/limits.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/locale.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/math.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_math.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/setjmp.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/signal.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdarg.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stddef.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stdio.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wstdio.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_stdio_config.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/stdlib.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_malloc.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_search.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wstdlib.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/string.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_memory.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_memcpy_s.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vcruntime_string.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wstring.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/time.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wtime.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/uchar.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/wchar.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wconio.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wdirect.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wio.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_wprocess.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/sys/stat.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/wctype.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/string", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/istream", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ostream", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ios", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocnum", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/climits", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/yvals.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/crtdefs.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cmath", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdlib", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xtgmath.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xtr1common", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdio", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/streambuf", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xiosbase", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocale", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstring", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stdexcept", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/exception", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/type_traits", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xstddef", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstddef", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/initializer_list", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/malloc.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vcruntime_exception.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/eh.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/corecrt_terminate.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xstring", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xmemory0", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdint", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/limits", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ymath.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cfloat", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cwchar", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/new", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vcruntime_new.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xutility", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/utility", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iosfwd", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/crtdbg.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vcruntime_new_debug.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xatomic0.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/typeinfo", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vcruntime_typeinfo.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocinfo", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocinfo.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xfacet", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/system_error", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cerrno", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/share.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xstring_insert.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/algorithm", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xmemory", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iterator", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/set", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xtree", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/fstream", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/memory", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vector", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/sstream", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iomanip", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocmon", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xloctime", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ctime", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/tuple", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/csignal", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/csetjmp", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cstdarg", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/typeindex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/bitset", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/functional", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xfunctional", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/chrono", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ratio", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thr/xtimec.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thr/xthrcommon.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/any", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/optional", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xsmf_control.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/variant", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/scoped_allocator", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cinttypes", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cassert", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cctype", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cwctype", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cuchar", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/string_view", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/array", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/deque", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/list", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/forward_list", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/map", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/unordered_set", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xhash", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/unordered_map", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/stack", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/queue", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/complex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ccomplex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/valarray", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/random", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/numeric", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/cfenv", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/iostream", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/strstream", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/locale", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocbuf", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xlocmes", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/clocale", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/codecvt", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/regex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/atomic", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xatomic.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thread", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thr/xthread", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thr/xtime", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/thr/xthreads.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/mutex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/shared_mutex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/condition_variable", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/future", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ppltasks.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/pplwin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/pplinterface.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ppltaskscheduler.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/pplcancellation_token.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/intrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/immintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/wmmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/nmmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/smmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/tmmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/pmmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/emmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xmmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/filesystem", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/vadefs.h", "C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt/sys/types.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/intrin0.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xcomplex", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/xxatomic", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/mmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/zmmintrin.h", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include/ammintrin.h"]
+      "resolved_path": "&filesystem"
+    }]
 }
 */
