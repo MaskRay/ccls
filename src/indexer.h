@@ -473,7 +473,6 @@ enum class LanguageId {
   Cpp = 2,
   ObjC = 3
 };
-
 MAKE_REFLECT_TYPE_PROXY(LanguageId, std::underlying_type<LanguageId>::type);
 
 struct IndexFile {

@@ -995,9 +995,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!db)
     return;
 
-
   // The language of this declaration
-  LanguageId declLang = [decl] () {
+  LanguageId decl_lang = [decl] () {
       switch (clang_getCursorLanguage(decl->cursor)) {
       case CXLanguage_C:
         return LanguageId::C;
@@ -1011,8 +1010,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   } ();
 
   // Only update the file language if the new language is "greater" than the old
-  if (declLang > db->language) {
-    db->language = declLang;
+  if (decl_lang > db->language) {
+    db->language = decl_lang;
   }
 
   NamespaceHelper* ns = &param->ns;
