@@ -58,7 +58,8 @@ struct MessageRegistry {
     };
   }
 
-  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin();
+  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin(
+      bool log_stdin_to_stderr);
   std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor);
 };
 

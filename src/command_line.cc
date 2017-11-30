@@ -52,6 +52,9 @@ std::vector<std::string> kEmptyArgs;
 // Expected client version. We show an error if this doesn't match.
 const int kExpectedClientVersion = 3;
 
+// If true stdout will be printed to stderr.
+bool g_log_stdin_stdout_to_stderr = false;
+
 // Cached completion information, so we can give fast completion results when
 // the user erases a character. vscode will resend the completion request if
 // that happens.
@@ -3027,7 +3030,8 @@ void LaunchStdinLoop(Config* config,
     IpcManager* ipc = IpcManager::instance();
 
     std::unique_ptr<BaseIpcMessage> message =
-        MessageRegistry::instance()->ReadMessageFromStdin();
+        MessageRegistry::instance()->ReadMessageFromStdin(
+            g_log_stdin_stdout_to_stderr);
 
     // Message parsing can fail if we don't recognize the method.
     if (!message)
@@ -3133,6 +3137,12 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
                                                       msg->original_ipc_id)));
           }
 
+          if (g_log_stdin_stdout_to_stderr) {
+            std::string printed = "[COUT] |" + msg->content + "|\n";
+            std::cerr << printed;
+            std::cerr.flush();
+          }
+
           std::cout << msg->content;
           std::cout.flush();
           break;
@@ -3210,6 +3220,9 @@ int main(int argc, char** argv) {
 
   bool print_help = true;
 
+  if (HasOption(options, "--log-stdin-stdout-to-stderr"))
+    g_log_stdin_stdout_to_stderr = true;
+
   if (HasOption(options, "--test-unit")) {
     print_help = false;
     doctest::Context context;
@@ -3248,6 +3261,10 @@ int main(int argc, char** argv) {
                   server spec over STDIN and STDOUT.
     --test-unit   Run unit tests.
     --test-index  Run index tests.
+    --log-stdin-stdout-to-stderr
+                  Print stdin and stdout messages to stderr. This is a aid for
+                  developing new language clients, as it makes it easier to
+                  figure out how the client is interacting with cquery.
 
   Configuration:
     When opening up a directory, cquery will look for a compile_commands.json

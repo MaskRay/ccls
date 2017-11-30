@@ -134,12 +134,21 @@ optional<char> ReadCharFromStdinBlocking() {
   return c;
 }
 
-std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin() {
+std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin(
+    bool log_stdin_to_stderr) {
   optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
     LOG_S(FATAL) << "Failed to read JsonRpc input; exiting";
     exit(1);
+  }
+
+  if (log_stdin_to_stderr) {
+    // TODO: This should go inside of ReadJsonRpcContentFrom since it does not
+    // print the header.
+    std::string printed = "[CIN] |" + *content + "|\n";
+    std::cerr << printed;
+    std::cerr.flush();
   }
 
   rapidjson::Document document;
