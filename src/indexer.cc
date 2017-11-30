@@ -1003,10 +1003,10 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     db->language = "c";
     break;
   case CXLanguage_CPlusPlus:
-    db->language = "c++";
+    db->language = "cpp";
     break;
   case CXLanguage_ObjC:
-    db->language = "objc";
+    db->language = "objectivec";
     break;
   case CXLanguage_Invalid:
     db->language = "invalid";
