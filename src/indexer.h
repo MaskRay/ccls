@@ -134,7 +134,7 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
     s += "~";
 
   // id.id is unsigned, special case 0 value
-  if (static_cast<ssize_t>(value.id.id) == -1) {
+  if (value.id.id == static_cast<size_t>(-1)) {
     s += "-1";
   } else {
     s += std::to_string(value.id.id);
