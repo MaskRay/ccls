@@ -463,7 +463,6 @@ struct IndexInclude {
   // Absolute path to the index.
   std::string resolved_path;
 };
-MAKE_REFLECT_STRUCT(IndexInclude, line, resolved_path);
 
 struct IndexFile {
   IdCache id_cache;

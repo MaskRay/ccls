@@ -2,8 +2,18 @@
 
 #include "indexer.h"
 
+#include <doctest/doctest.h>
+
 namespace {
 bool gTestOutputMode = false;
+
+std::string GetBaseName(const std::string& path) {
+  size_t last_slash = path.find_last_of('/');
+  if (last_slash != std::string::npos && (last_slash + 1) < path.size())
+    return path.substr(last_slash + 1);
+  return path;
+}
+
 }  // namespace
 
 // int16_t
@@ -64,6 +74,25 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
 }
 
 // TODO: Move this to indexer.cc
+void Reflect(Reader& visitor, IndexInclude& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(line);
+  REFLECT_MEMBER(resolved_path);
+  REFLECT_MEMBER_END();
+}
+void Reflect(Writer& visitor, IndexInclude& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(line);
+  if (gTestOutputMode) {
+    std::string basename = GetBaseName(value.resolved_path);
+    if (!StartsWith(value.resolved_path, "&"))
+      basename = "&" + basename;
+    REFLECT_MEMBER2("resolved_path", basename);
+  } else {
+    REFLECT_MEMBER(resolved_path);
+  }
+  REFLECT_MEMBER_END();
+}
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
@@ -144,7 +173,8 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
     REFLECT_MEMBER(args);
   }
   REFLECT_MEMBER(includes);
-  REFLECT_MEMBER(dependencies);
+  if (!gTestOutputMode)
+    REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(skipped_by_preprocessor);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);
@@ -207,4 +237,16 @@ std::unique_ptr<IndexFile> Deserialize(std::string path,
 
 void SetTestOutputMode() {
   gTestOutputMode = true;
+}
+
+TEST_SUITE("Serializer utils") {
+  TEST_CASE("GetBaseName") {
+    REQUIRE(GetBaseName("foo.cc") == "foo.cc");
+    REQUIRE(GetBaseName("foo/foo.cc") == "foo.cc");
+    REQUIRE(GetBaseName("/foo.cc") == "foo.cc");
+    REQUIRE(GetBaseName("///foo.cc") == "foo.cc");
+    REQUIRE(GetBaseName("bar/") == "bar/");
+    REQUIRE(GetBaseName("foobar/bar/") ==
+            "foobar/bar/");  // TODO: Should be bar, but good enough.
+  }
 }
