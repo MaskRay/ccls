@@ -1,5 +1,6 @@
 #include "clang_translation_unit.h"
 
+#include "clang_utils.h"
 #include "platform.h"
 #include "utils.h"
 
@@ -8,7 +9,64 @@
 #include <cassert>
 #include <fstream>
 #include <iostream>
+#include <mutex>
 #include <sstream>
+
+namespace {
+
+// We need to serialize requests to clang_parseTranslationUnit2FullArgv and
+// clang_reparseTranslationUnit. See
+// https://github.com/jacobdufault/cquery/issues/43#issuecomment-347614504.
+std::mutex g_parse_translation_unit_mutex;
+std::mutex g_reparse_translation_unit_mutex;
+
+void EmitDiagnostics(std::string path, CXTranslationUnit tu) {
+  std::string output = "Fatal errors while trying to parse " + path + "\n";
+
+  size_t num_diagnostics = clang_getNumDiagnostics(tu);
+  for (unsigned i = 0; i < num_diagnostics; ++i) {
+    output += "  - ";
+
+    CXDiagnostic diagnostic = clang_getDiagnostic(tu, i);
+
+    // Location.
+    CXFile file;
+    unsigned int line, column;
+    clang_getSpellingLocation(clang_getDiagnosticLocation(diagnostic), &file,
+                              &line, &column, nullptr);
+    std::string path = FileName(file);
+    output += path + ":" + std::to_string(line - 1) + ":" +
+              std::to_string(column) + " ";
+
+    // Severity
+    switch (clang_getDiagnosticSeverity(diagnostic)) {
+      case CXDiagnostic_Ignored:
+      case CXDiagnostic_Note:
+        output += "[info]";
+        break;
+      case CXDiagnostic_Warning:
+        output += "[warning]";
+        break;
+      case CXDiagnostic_Error:
+        output += "[error]";
+        break;
+      case CXDiagnostic_Fatal:
+        output += "[fatal]";
+        break;
+    }
+
+    // Content.
+    output += " " + ToString(clang_getDiagnosticSpelling(diagnostic));
+
+    clang_disposeDiagnostic(diagnostic);
+
+    output += "\n";
+  }
+
+  std::cerr << output;
+  std::cerr.flush();
+}
+}  // namespace
 
 // static
 std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
@@ -26,9 +84,16 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
     args.push_back(arg.c_str());
 
   CXTranslationUnit cx_tu;
-  CXErrorCode error_code = clang_parseTranslationUnit2FullArgv(
-      index->cx_index, filepath.c_str(), args.data(), (int)args.size(),
-      unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
+  CXErrorCode error_code;
+  {
+    std::lock_guard<std::mutex> lock(g_parse_translation_unit_mutex);
+    error_code = clang_parseTranslationUnit2FullArgv(
+        index->cx_index, filepath.c_str(), args.data(), (int)args.size(),
+        unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
+  }
+
+  if (error_code != CXError_Success && cx_tu)
+    EmitDiagnostics(filepath, cx_tu);
 
   switch (error_code) {
     case CXError_Success:
@@ -58,9 +123,17 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
 std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Reparse(
     std::unique_ptr<ClangTranslationUnit> tu,
     std::vector<CXUnsavedFile>& unsaved) {
-  int error_code = clang_reparseTranslationUnit(
-      tu->cx_tu, (unsigned)unsaved.size(), unsaved.data(),
-      clang_defaultReparseOptions(tu->cx_tu));
+  int error_code;
+  {
+    std::lock_guard<std::mutex> lock(g_reparse_translation_unit_mutex);
+    error_code = clang_reparseTranslationUnit(
+        tu->cx_tu, (unsigned)unsaved.size(), unsaved.data(),
+        clang_defaultReparseOptions(tu->cx_tu));
+  }
+
+  if (error_code != CXError_Success && tu->cx_tu)
+    EmitDiagnostics("<unknown>", tu->cx_tu);
+
   switch (error_code) {
     case CXError_Success:
       return tu;
