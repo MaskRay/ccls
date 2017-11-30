@@ -464,6 +464,18 @@ struct IndexInclude {
   std::string resolved_path;
 };
 
+// Used to identify the language at a file level. The ordering is important, as
+// a file previously identified as `C`, will be changed to `Cpp` if it
+// encounters a c++ declaration.
+enum class LanguageId {
+  Unknown = 0,
+  C = 1,
+  Cpp = 2,
+  ObjC = 3
+};
+
+MAKE_REFLECT_TYPE_PROXY(LanguageId, std::underlying_type<LanguageId>::type);
+
 struct IndexFile {
   IdCache id_cache;
 
@@ -473,9 +485,7 @@ struct IndexFile {
   std::string path;
   std::vector<std::string> args;
   int64_t last_modification_time = 0;
-  // markdown compatible language identifier.
-  // "cpp", "c", "objectivec", or invalid"
-  std::string language;
+  LanguageId language = LanguageId::Unknown;
 
   // The path to the translation unit cc file which caused the creation of this
   // IndexFile. When parsing a translation unit we generate many IndexFile

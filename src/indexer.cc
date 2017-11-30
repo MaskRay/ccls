@@ -996,21 +996,23 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     return;
 
 
-  // update the file language
-  // TODO: only do this when |is_first_ownership| in ConsumeFile is true
-  switch (clang_getCursorLanguage(decl->cursor)) {
-  case CXLanguage_C:
-    db->language = "c";
-    break;
-  case CXLanguage_CPlusPlus:
-    db->language = "cpp";
-    break;
-  case CXLanguage_ObjC:
-    db->language = "objectivec";
-    break;
-  case CXLanguage_Invalid:
-    db->language = "invalid";
-    break;
+  // The language of this declaration
+  LanguageId declLang = [decl] () {
+      switch (clang_getCursorLanguage(decl->cursor)) {
+      case CXLanguage_C:
+        return LanguageId::C;
+      case CXLanguage_CPlusPlus:
+        return LanguageId::Cpp;
+      case CXLanguage_ObjC:
+        return LanguageId::ObjC;
+      default:
+        return LanguageId::Unknown;
+      };
+  } ();
+
+  // Only update the file language if the new language is "greater" than the old
+  if (declLang > db->language) {
+    db->language = declLang;
   }
 
   NamespaceHelper* ns = &param->ns;
