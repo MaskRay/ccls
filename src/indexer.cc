@@ -472,13 +472,9 @@ bool Contains(const std::vector<T>& vec, const T& element) {
   return false;
 }
 
-int abortQuery(CXClientData client_data, void* reserved) {
-  // 0 -> continue
-  return 0;
-}
-void diagnostic(CXClientData client_data,
-                CXDiagnosticSet diagnostics,
-                void* reserved) {
+void OnIndexDiagnostic(CXClientData client_data,
+                       CXDiagnosticSet diagnostics,
+                       void* reserved) {
   IndexParam* param = static_cast<IndexParam*>(client_data);
 
   for (unsigned i = 0; i < clang_getNumDiagnosticsInSet(diagnostics); ++i) {
@@ -505,14 +501,8 @@ void diagnostic(CXClientData client_data,
   }
 }
 
-CXIdxClientFile enteredMainFile(CXClientData client_data,
-                                CXFile mainFile,
-                                void* reserved) {
-  return nullptr;
-}
-
-CXIdxClientFile ppIncludedFile(CXClientData client_data,
-                               const CXIdxIncludedFileInfo* file) {
+CXIdxClientFile OnIndexIncludedFile(CXClientData client_data,
+                                    const CXIdxIncludedFileInfo* file) {
   IndexParam* param = static_cast<IndexParam*>(client_data);
 
   // file->hashLoc only has the position of the hash. We don't have the full
@@ -531,16 +521,6 @@ CXIdxClientFile ppIncludedFile(CXClientData client_data,
   include.resolved_path = FileName(file->file);
   db->includes.push_back(include);
 
-  return nullptr;
-}
-
-CXIdxClientASTFile importedASTFile(CXClientData client_data,
-                                   const CXIdxImportedASTFileInfo*) {
-  return nullptr;
-}
-
-CXIdxClientContainer startedTranslationUnit(CXClientData client_data,
-                                            void* reserved) {
   return nullptr;
 }
 
@@ -972,7 +952,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
   return ClangCursor::VisitResult::Continue;
 }
 
-void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
+void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!kIndexStdDeclarations &&
       clang_Location_isInSystemHeader(
           clang_indexLoc_getCXSourceLocation(decl->loc)))
@@ -1388,8 +1368,7 @@ bool IsFunctionCallContext(CXCursorKind kind) {
   return false;
 }
 
-void indexEntityReference(CXClientData client_data,
-                          const CXIdxEntityRefInfo* ref) {
+void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   // Don't index references from or to system headers.
   if (clang_Location_isInSystemHeader(
           clang_indexLoc_getCXSourceLocation(ref->loc)) ||
@@ -1658,10 +1637,17 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     const std::vector<CXUnsavedFile>& file_contents) {
   Timer timer;
 
-  IndexerCallbacks callbacks[] = {{&abortQuery, &diagnostic, &enteredMainFile,
-                                   &ppIncludedFile, &importedASTFile,
-                                   &startedTranslationUnit, &indexDeclaration,
-                                   &indexEntityReference}};
+  IndexerCallbacks callback = {0};
+  // Available callbacks:
+  // - abortQuery
+  // - enteredMainFile
+  // - ppIncludedFile
+  // - importedASTFile
+  // - startedTranslationUnit
+  callback.diagnostic = &OnIndexDiagnostic;
+  callback.ppIncludedFile = &OnIndexIncludedFile;
+  callback.indexDeclaration = &OnIndexDeclaration;
+  callback.indexEntityReference = &OnIndexReference;
 
   FileConsumer file_consumer(file_consumer_shared, file);
   IndexParam param(tu, &file_consumer);
@@ -1675,11 +1661,24 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
 
   // std::cerr << "!! [START] Indexing " << file << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index->cx_index);
-  clang_indexTranslationUnit(index_action, &param, callbacks, sizeof(callbacks),
-                             CXIndexOpt_IndexFunctionLocalSymbols |
-                                 CXIndexOpt_SkipParsedBodiesInSession |
-                                 CXIndexOpt_IndexImplicitTemplateInstantiations,
-                             tu->cx_tu);
+
+  // NOTE: libclang re-enables crash recovery whenever a new index is created.
+  // To have clang crash toggle crash recovery right before calling
+  // clang_indexTranslationUnit.
+  // clang_toggleCrashRecovery(0);
+
+  // |index_result| is a CXErrorCode instance.
+  int index_result = clang_indexTranslationUnit(
+      index_action, &param, &callback, sizeof(IndexerCallbacks),
+      CXIndexOpt_IndexFunctionLocalSymbols |
+          CXIndexOpt_SkipParsedBodiesInSession |
+          CXIndexOpt_IndexImplicitTemplateInstantiations,
+      tu->cx_tu);
+  if (index_result != CXError_Success) {
+    LOG_S(WARNING) << "Indexing " << file
+                   << " failed with errno=" << index_result;
+    return {};
+  }
 
   clang_IndexAction_dispose(index_action);
   // std::cerr << "!! [END] Indexing " << file << std::endl;
