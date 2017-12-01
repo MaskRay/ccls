@@ -194,6 +194,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (!AnyStartsWith(result.args, "-resource-dir"))
     result.args.push_back("-resource-dir=" + config->resource_dir);
 
+  // There could be a clang version mismatch between what the project uses and
+  // what cquery uses. Make sure we do not emit warnings for mismatched options.
+  if (!AnyStartsWith(result.args, "-Wno-unknown-warning-option"))
+    result.args.push_back("-Wno-unknown-warning-option");
+
   return result;
 }
 
@@ -462,15 +467,18 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */ {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
-                        "-resource-dir=/w/resource_dir/"});
+                        "-resource-dir=/w/resource_dir/",
+                        "-Wno-unknown-warning-option"});
 
     CheckFlags(/* raw */ {"goma", "clang"},
                /* expected */ {"clang", "-xc++", "-std=c++11",
-                               "-resource-dir=/w/resource_dir/"});
+                               "-resource-dir=/w/resource_dir/",
+                               "-Wno-unknown-warning-option"});
 
     CheckFlags(/* raw */ {"goma", "clang", "--foo"},
                /* expected */ {"clang", "--foo", "-xc++", "-std=c++11",
-                               "-resource-dir=/w/resource_dir/"});
+                               "-resource-dir=/w/resource_dir/",
+                               "-Wno-unknown-warning-option"});
   }
 
   // FIXME: Fix this test.
@@ -479,7 +487,8 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/"});
+        {"cc", "-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what
@@ -824,7 +833,8 @@ TEST_SUITE("Project") {
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
          "-xc++",
-         "-resource-dir=/w/resource_dir/"});
+         "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
   }
 
   // Checks flag parsing for an example chromium file.
@@ -1143,7 +1153,8 @@ TEST_SUITE("Project") {
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
          "-xc++",
-         "-resource-dir=/w/resource_dir/"});
+         "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
   }
 
   TEST_CASE("Directory extraction") {
