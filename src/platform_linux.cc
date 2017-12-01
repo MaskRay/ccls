@@ -42,8 +42,8 @@
 
 namespace {
 
-// Returns the canonicalized absolute pathname, without expanding symbolic links.
-// This is a variant of realpath(2), C++ rewrite of
+// Returns the canonicalized absolute pathname, without expanding symbolic
+// links. This is a variant of realpath(2), C++ rewrite of
 // https://github.com/freebsd/freebsd/blob/master/lib/libc/stdlib/realpath.c
 optional<std::string> RealPathNotExpandSymlink(std::string path) {
   if (path.empty()) {

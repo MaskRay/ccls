@@ -33,9 +33,9 @@ struct Project {
   //
   // If |opt_compilation_db_dir| is not empty, the compile_commands.json
   // file in it will be used to discover all files and args. If it's empty and
-  // |root_directory| contains a compile_commands.json file, that one will be used
-  // instead. Otherwise, a recursive directory listing of all *.cpp, *.cc, *.h,
-  // and *.hpp files will be used. clang arguments can be specified in a
+  // |root_directory| contains a compile_commands.json file, that one will be
+  // used instead. Otherwise, a recursive directory listing of all *.cpp, *.cc,
+  // *.h, and *.hpp files will be used. clang arguments can be specified in a
   // .cquery file located inside of |root_directory|.
   void Load(const std::vector<std::string>& extra_flags,
             const std::string& opt_compilation_db_dir,

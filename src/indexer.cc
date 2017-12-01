@@ -996,8 +996,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     return;
 
   // The language of this declaration
-  LanguageId decl_lang = [decl] () {
-      switch (clang_getCursorLanguage(decl->cursor)) {
+  LanguageId decl_lang = [decl]() {
+    switch (clang_getCursorLanguage(decl->cursor)) {
       case CXLanguage_C:
         return LanguageId::C;
       case CXLanguage_CPlusPlus:
@@ -1006,8 +1006,8 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         return LanguageId::ObjC;
       default:
         return LanguageId::Unknown;
-      };
-  } ();
+    };
+  }();
 
   // Only update the file language if the new language is "greater" than the old
   if (decl_lang > db->language) {
@@ -1188,8 +1188,10 @@ void indexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (!is_template_specialization) {
         func->def.short_name = decl->entityInfo->name;
 
-        // Set the |is_operator| flag to true if the function name starts with "operator"
-        func->def.is_operator = func->def.short_name.compare(0, 8, "operator") == 0;
+        // Set the |is_operator| flag to true if the function name starts with
+        // "operator"
+        func->def.is_operator =
+            func->def.short_name.compare(0, 8, "operator") == 0;
 
         // Build detailed name. The type desc looks like void (void *). We
         // insert the qualified name before the first '('.

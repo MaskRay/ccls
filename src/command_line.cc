@@ -172,7 +172,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (!func->def)
           continue;  // applies to for loop
         if (func->def->is_operator)
-          continue; // applies to for loop
+          continue;  // applies to for loop
         is_type_member = func->def->declaring_type.has_value();
         break;
       }
@@ -805,7 +805,7 @@ struct IndexManager {
 };
 
 // Send indexing progress to client if reporting is enabled.
-void EmitProgress(Config *config, QueueManager* queue) {
+void EmitProgress(Config* config, QueueManager* queue) {
   if (config->enableProgressReports) {
     Out_Progress out;
     out.params.indexRequestCount = queue->index_request.Size();
@@ -1578,8 +1578,8 @@ bool QueryDbMainLoop(Config* config,
 
           // Open up / load the project.
           project->Load(config->extraClangArguments,
-                        config->compilationDatabaseDirectory,
-                        project_path, config->resourceDirectory);
+                        config->compilationDatabaseDirectory, project_path,
+                        config->resourceDirectory);
           time.ResetAndPrint("[perf] Loaded compilation entries (" +
                              std::to_string(project->entries.size()) +
                              " files)");
@@ -2027,7 +2027,6 @@ bool QueryDbMainLoop(Config* config,
                is_global_completion, existing_completion,
                msg](const NonElidedVector<lsCompletionItem>& results,
                     bool is_cached_result) {
-
                 Out_TextDocumentComplete complete_response;
                 complete_response.id = msg->id;
                 complete_response.result.items = results;
@@ -2070,7 +2069,6 @@ bool QueryDbMainLoop(Config* config,
                 [global_code_complete_cache](
                     NonElidedVector<lsCompletionItem> results,
                     bool is_cached_result) {
-
                   assert(!is_cached_result);
 
                   // note: path is updated in the normal completion handler.

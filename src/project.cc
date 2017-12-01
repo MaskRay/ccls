@@ -202,8 +202,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
 
   std::vector<std::string> args;
   std::cerr << "Using arguments: ";
-  for (const std::string& line :
-       ReadLines(config->project_dir + "/.cquery")) {
+  for (const std::string& line : ReadLines(config->project_dir + "/.cquery")) {
     if (line.empty() || StartsWith(line, "#"))
       continue;
     if (!args.empty())
@@ -232,17 +231,16 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     ProjectConfig* config,
     const std::string& opt_compilation_db_dir) {
   // Try to load compile_commands.json, but fallback to a project listing.
-  const auto& compilation_db_dir  = opt_compilation_db_dir.empty()
-                                    ? config->project_dir
-                                    : opt_compilation_db_dir;
+  const auto& compilation_db_dir = opt_compilation_db_dir.empty()
+                                       ? config->project_dir
+                                       : opt_compilation_db_dir;
   LOG_S(INFO) << "Trying to load compile_commands.json";
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
       compilation_db_dir.c_str(), &cx_db_load_error);
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
     LOG_S(INFO) << "Unable to load compile_commands.json located at \""
-                << compilation_db_dir
-                << "\"; using directory listing instead.";
+                << compilation_db_dir << "\"; using directory listing instead.";
     return LoadFromDirectoryListing(config);
   }
 
@@ -351,8 +349,8 @@ void Project::Load(const std::vector<std::string>& extra_flags,
   config.extra_flags = extra_flags;
   config.project_dir = root_directory;
   config.resource_dir = resource_directory;
-  entries = LoadCompilationEntriesFromDirectory(&config,
-                                                opt_compilation_db_dir);
+  entries =
+      LoadCompilationEntriesFromDirectory(&config, opt_compilation_db_dir);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(config.quote_dirs.begin(),

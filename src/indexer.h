@@ -471,12 +471,7 @@ struct IndexInclude {
 // Used to identify the language at a file level. The ordering is important, as
 // a file previously identified as `C`, will be changed to `Cpp` if it
 // encounters a c++ declaration.
-enum class LanguageId {
-  Unknown = 0,
-  C = 1,
-  Cpp = 2,
-  ObjC = 3
-};
+enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3 };
 MAKE_REFLECT_TYPE_PROXY(LanguageId, std::underlying_type<LanguageId>::type);
 
 struct IndexFile {
