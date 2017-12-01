@@ -185,6 +185,9 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         is_type_member = var->def->declaring_type.has_value();
         break;
       }
+      case SymbolKind::Type: {
+        break;
+      }
       default:
         continue;  // applies to for loop
     }
