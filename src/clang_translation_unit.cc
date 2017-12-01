@@ -24,8 +24,14 @@ namespace {
 // std::mutex g_parse_translation_unit_mutex;
 // std::mutex g_reparse_translation_unit_mutex;
 
-void EmitDiagnostics(std::string path, CXTranslationUnit tu) {
+void EmitDiagnostics(std::string path,
+                     std::vector<const char*> args,
+                     CXTranslationUnit tu) {
   std::string output = "Fatal errors while trying to parse " + path + "\n";
+  output +=
+      "Args: " +
+      StringJoinMap(args, [](const char* arg) { return std::string(arg); }) +
+      "\n";
 
   size_t num_diagnostics = clang_getNumDiagnostics(tu);
   for (unsigned i = 0; i < num_diagnostics; ++i) {
@@ -97,7 +103,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
   }
 
   if (error_code != CXError_Success && cx_tu)
-    EmitDiagnostics(filepath, cx_tu);
+    EmitDiagnostics(filepath, args, cx_tu);
 
   switch (error_code) {
     case CXError_Success:
@@ -136,7 +142,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Reparse(
   }
 
   if (error_code != CXError_Success && tu->cx_tu)
-    EmitDiagnostics("<unknown>", tu->cx_tu);
+    EmitDiagnostics("<unknown>", {}, tu->cx_tu);
 
   switch (error_code) {
     case CXError_Success:
