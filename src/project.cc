@@ -86,6 +86,15 @@ bool IsCFile(const std::string& path) {
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {
+  auto cleanup_maybe_relative_path = [&](const std::string& path) {
+    // TODO/FIXME: Normalization will fail for paths that do not exist. Should
+    // it return an optional<std::string>?
+    assert(!path.empty());
+    if (path[0] == '/' || entry.directory.empty())
+      return NormalizePathWithTestOptOut(path);
+    return NormalizePathWithTestOptOut(entry.directory + "/" + path);
+  };
+
   Project::Entry result;
   result.filename = NormalizePathWithTestOptOut(entry.file);
 
@@ -107,15 +116,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   result.args.reserve(entry.args.size() + config->extra_flags.size());
   for (; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
-
-    auto cleanup_maybe_relative_path = [&](const std::string& path) {
-      // TODO/FIXME: Normalization will fail for paths that do not exist. Should
-      // it return an optional<std::string>?
-      assert(!path.empty());
-      if (path[0] == '/' || entry.directory.empty())
-        return NormalizePathWithTestOptOut(path);
-      return NormalizePathWithTestOptOut(entry.directory + "/" + path);
-    };
 
     // Do not include path.
     if (result.filename == cleanup_maybe_relative_path(arg))
