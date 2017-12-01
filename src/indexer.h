@@ -267,6 +267,9 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
+  // Used for semantic highlighting
+  bool is_operator = false;
+
   FuncDefDefinitionData() {}  // For reflection.
   FuncDefDefinitionData(const std::string& usr) : usr(usr) {
     // assert(usr.size() > 0);
@@ -308,6 +311,7 @@ void Reflect(
   REFLECT_MEMBER(base);
   REFLECT_MEMBER(locals);
   REFLECT_MEMBER(callees);
+  REFLECT_MEMBER(is_operator);
   REFLECT_MEMBER_END();
 }
 

@@ -50,6 +50,7 @@ optional<QueryFunc::DefUpdate> ToQuery(const IdMap& id_map,
   result.base = id_map.ToQuery(func.base);
   result.locals = id_map.ToQuery(func.locals);
   result.callees = id_map.ToQuery(func.callees);
+  result.is_operator = func.is_operator;
   return result;
 }
 
