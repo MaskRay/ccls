@@ -555,3 +555,5 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     const std::vector<CXUnsavedFile>& file_contents);
 
 void IndexInit();
+
+void ClangSanityCheck();

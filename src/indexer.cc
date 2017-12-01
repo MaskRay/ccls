@@ -1716,3 +1716,53 @@ void IndexInit() {
   clang_enableStackTraces();
   clang_toggleCrashRecovery(1);
 }
+
+void ClangSanityCheck() {
+  std::vector<const char*> args = {"clang", "tests/vars/class_member.cc"};
+  unsigned opts = 0;
+  CXIndex index = clang_createIndex(0, 1);
+  CXTranslationUnit tu;
+  clang_parseTranslationUnit2FullArgv(index, nullptr, args.data(), args.size(),
+                                      nullptr, 0, opts, &tu);
+  assert(tu);
+
+  IndexerCallbacks callback = {0};
+  callback.abortQuery = [](CXClientData client_data, void* reserved) {
+    return 0;
+  };
+  callback.diagnostic = [](CXClientData client_data,
+                           CXDiagnosticSet diagnostics, void* reserved) {};
+  callback.enteredMainFile = [](CXClientData client_data, CXFile mainFile,
+                                void* reserved) -> CXIdxClientFile {
+    return nullptr;
+  };
+  callback.ppIncludedFile =
+      [](CXClientData client_data,
+         const CXIdxIncludedFileInfo* file) -> CXIdxClientFile {
+    return nullptr;
+  };
+  callback.importedASTFile =
+      [](CXClientData client_data,
+         const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
+    return nullptr;
+  };
+  callback.startedTranslationUnit = [](CXClientData client_data,
+                                       void* reserved) -> CXIdxClientContainer {
+    return nullptr;
+  };
+  callback.indexDeclaration = [](CXClientData client_data,
+                                 const CXIdxDeclInfo* decl) {};
+  callback.indexEntityReference = [](CXClientData client_data,
+                                     const CXIdxEntityRefInfo* ref) {};
+
+  const unsigned kIndexOpts = 0;
+  CXIndexAction index_action = clang_IndexAction_create(index);
+  int index_param = 0;
+  clang_toggleCrashRecovery(0);
+  clang_indexTranslationUnit(index_action, &index_param, &callback,
+                             sizeof(IndexerCallbacks), kIndexOpts, tu);
+  clang_IndexAction_dispose(index_action);
+
+  clang_disposeTranslationUnit(tu);
+  clang_disposeIndex(index);
+}

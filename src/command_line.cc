@@ -3227,6 +3227,11 @@ int main(int argc, char** argv) {
 
   bool print_help = true;
 
+  if (HasOption(options, "--clang-sanity-check")) {
+    print_help = false;
+    ClangSanityCheck();
+  }
+
   if (HasOption(options, "--log-stdin-stdout-to-stderr"))
     g_log_stdin_stdout_to_stderr = true;
 
@@ -3272,6 +3277,9 @@ int main(int argc, char** argv) {
                   Print stdin and stdout messages to stderr. This is a aid for
                   developing new language clients, as it makes it easier to
                   figure out how the client is interacting with cquery.
+    --clang-sanity-check
+                  Run a simple index test. Verifies basic clang functionality.
+                  Needs to be executed from the cquery root checkout directory.
 
   Configuration:
     When opening up a directory, cquery will look for a compile_commands.json
