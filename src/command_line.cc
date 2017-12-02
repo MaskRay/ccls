@@ -1474,7 +1474,6 @@ bool QueryDbMainLoop(Config* config,
 
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
           EnsureEndsInSlash(config->cacheDirectory);
-          MakeDirectoryRecursive(config->cacheDirectory);
 
           // Ensure there is a resource directory.
           if (config->resourceDirectory.empty()) {
@@ -1553,6 +1552,8 @@ bool QueryDbMainLoop(Config* config,
           config->projectRoot =
               NormalizePath(request->params.rootUri->GetPath());
           EnsureEndsInSlash(config->projectRoot);
+          MakeDirectoryRecursive(
+              config->cacheDirectory + EscapeFileName(config->projectRoot));
 
           // Start indexer threads.
           if (config->indexerCount == 0) {

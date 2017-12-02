@@ -10,14 +10,19 @@
 
 namespace {
 
-std::string GetCachedBaseFileName(const std::string& cache_directory,
-                                  std::string source_file) {
-  assert(!cache_directory.empty());
-  std::replace(source_file.begin(), source_file.end(), '\\', '_');
-  std::replace(source_file.begin(), source_file.end(), '/', '_');
-  std::replace(source_file.begin(), source_file.end(), ':', '_');
+std::string GetCachedBaseFileName(Config* config,
+                                  const std::string& source_file,
+                                  bool create_dir = false) {
+  assert(!config->cacheDirectory.empty());
+  std::string cache_file;
+  size_t len = config->projectRoot.size();
+  if (StartsWith(source_file, config->projectRoot)) {
+    cache_file = EscapeFileName(config->projectRoot) + '/' +
+      EscapeFileName(source_file.substr(len));
+  } else
+    cache_file = EscapeFileName(source_file);
 
-  return cache_directory + source_file;
+  return config->cacheDirectory + cache_file;
 }
 
 }  // namespace
@@ -28,7 +33,7 @@ std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
     return nullptr;
 
   optional<std::string> file_content = ReadContent(
-      GetCachedBaseFileName(config->cacheDirectory, filename) + ".json");
+      GetCachedBaseFileName(config, filename) + ".json");
   if (!file_content)
     return nullptr;
 
@@ -40,7 +45,7 @@ optional<std::string> LoadCachedFileContents(Config* config,
   if (!config->enableCacheRead)
     return nullopt;
 
-  return ReadContent(GetCachedBaseFileName(config->cacheDirectory, filename));
+  return ReadContent(GetCachedBaseFileName(config, filename));
 }
 
 void WriteToCache(Config* config, IndexFile& file) {
@@ -48,7 +53,7 @@ void WriteToCache(Config* config, IndexFile& file) {
     return;
 
   std::string cache_basename =
-      GetCachedBaseFileName(config->cacheDirectory, file.path);
+      GetCachedBaseFileName(config, file.path);
 
   if (file.file_contents_.empty()) {
     LOG_S(ERROR) << "No cached file contents; performing potentially stale "

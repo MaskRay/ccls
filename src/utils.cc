@@ -195,6 +195,15 @@ void EnsureEndsInSlash(std::string& path) {
     path += '/';
 }
 
+std::string EscapeFileName(std::string path) {
+  if (path.size() && path.back() == '/')
+    path.pop_back();
+  std::replace(path.begin(), path.end(), '\\', '_');
+  std::replace(path.begin(), path.end(), '/', '_');
+  std::replace(path.begin(), path.end(), ':', '_');
+  return path;
+}
+
 // http://stackoverflow.com/a/6089413
 std::istream& SafeGetline(std::istream& is, std::string& t) {
   t.clear();

@@ -69,6 +69,10 @@ void GetFilesInFolder(std::string folder,
 // Ensures that |path| ends in a slash.
 void EnsureEndsInSlash(std::string& path);
 
+// Converts a file path to one that can be used as filename.
+// e.g. foo/bar.c => foo_bar.c
+std::string EscapeFileName(std::string path);
+
 optional<std::string> ReadContent(const std::string& filename);
 std::vector<std::string> ReadLines(std::string filename);
 std::vector<std::string> ToLines(const std::string& content,
