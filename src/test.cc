@@ -128,18 +128,9 @@ void RunIndexTests() {
       // Run test.
       // std::cout << "[START] " << path << std::endl;
       PerformanceImportFile perf;
-      std::vector<std::unique_ptr<IndexFile>> dbs = Parse(
-          &config, &file_consumer_shared, path,
-          {"-xc++", "-std=c++11",
-           "-IC:/Users/jacob/Desktop/cquery/third_party/",
-           "-IC:/Users/jacob/Desktop/cquery/third_party/doctest/",
-           "-IC:/Users/jacob/Desktop/cquery/third_party/rapidjson/include",
-           "-IC:/Users/jacob/Desktop/cquery/src",
-           "-isystemC:/Program Files (x86)/Microsoft Visual "
-           "Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
-           "-isystemC:/Program Files (x86)/Windows "
-           "Kits/10/Include/10.0.15063.0/ucrt"},
-          {}, &perf, &index, false /*dump_ast*/);
+      std::vector<std::unique_ptr<IndexFile>> dbs =
+          Parse(&config, &file_consumer_shared, path, {"-xc++", "-std=c++11"},
+                {}, &perf, &index, false /*dump_ast*/);
 
       // Parse expected output from the test, parse it into JSON document.
       std::unordered_map<std::string, std::string> all_expected_output =
