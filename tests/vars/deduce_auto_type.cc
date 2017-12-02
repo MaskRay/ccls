@@ -19,6 +19,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@f#",
       "short_name": "f",
       "detailed_name": "void f()",

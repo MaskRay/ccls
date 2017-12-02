@@ -18,6 +18,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@FT@>1#TFoo#v#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",

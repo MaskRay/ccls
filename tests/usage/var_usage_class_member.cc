@@ -33,6 +33,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
@@ -45,6 +46,7 @@ OUTPUT:
       "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "detailed_name": "void accept(int *)",
@@ -57,6 +59,7 @@ OUTPUT:
       "callers": ["2@16:3-16:9"]
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",

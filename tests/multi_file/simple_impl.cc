@@ -9,6 +9,7 @@ OUTPUT: simple_header.h
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@header#",
       "short_name": "header",
       "detailed_name": "void header()",
@@ -27,6 +28,7 @@ OUTPUT: simple_impl.cc
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@impl#",
       "short_name": "impl",
       "detailed_name": "void impl()",
@@ -35,6 +37,7 @@ OUTPUT: simple_impl.cc
       "callees": ["1@4:3-4:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@header#",
       "callers": ["0@4:3-4:9"]
     }]

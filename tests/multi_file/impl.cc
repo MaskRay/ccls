@@ -54,6 +54,7 @@ OUTPUT: header.h
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@FT@>1#TFoo1#v#",
       "short_name": "Foo1",
       "detailed_name": "void Foo1()",
@@ -126,6 +127,7 @@ OUTPUT: impl.cc
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@Impl#",
       "short_name": "Impl",
       "detailed_name": "void Impl()",
@@ -134,6 +136,7 @@ OUTPUT: impl.cc
       "callees": ["1@4:3-4:7"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@FT@>1#TFoo1#v#",
       "callers": ["0@4:3-4:7"]
     }]

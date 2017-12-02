@@ -23,6 +23,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@foo#*$@S@ForwardType#$@S@ImplementedType#",
       "short_name": "foo",
       "detailed_name": "void foo(ForwardType *, ImplementedType)",

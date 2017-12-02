@@ -46,6 +46,7 @@ OUTPUT: make_functions.h
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar()",
@@ -54,6 +55,7 @@ OUTPUT: make_functions.h
       "declaring_type": 1
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#I#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar(int)",
@@ -62,6 +64,7 @@ OUTPUT: make_functions.h
       "declaring_type": 1
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#&&I#*$@S@Bar#*b#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar(int &&, Bar *, bool *)",
@@ -70,6 +73,7 @@ OUTPUT: make_functions.h
       "declaring_type": 1
     }, {
       "id": 3,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#I#*$@S@Bar#*b#",
       "short_name": "Foobar",
       "detailed_name": "void Foobar::Foobar(int, Bar *, bool *)",
@@ -111,6 +115,7 @@ OUTPUT: make_functions.cc
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@FT@>2#T#pTMakeUnique#P&&t0.1#*t0.0#",
       "short_name": "MakeUnique",
       "detailed_name": "T *MakeUnique(Args &&...)",
@@ -119,6 +124,7 @@ OUTPUT: make_functions.cc
       "callers": ["2@14:3-14:13", "2@15:3-15:13", "2@16:3-16:13"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@FT@>2#T#pTmaKE_NoRefs#Pt0.1#*t0.0#",
       "short_name": "maKE_NoRefs",
       "detailed_name": "T *maKE_NoRefs(Args...)",
@@ -127,6 +133,7 @@ OUTPUT: make_functions.cc
       "callers": ["2@17:3-17:14"]
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@caller22#",
       "short_name": "caller22",
       "detailed_name": "void caller22()",
@@ -135,18 +142,22 @@ OUTPUT: make_functions.cc
       "callees": ["0@14:3-14:13", "0@15:3-15:13", "0@16:3-16:13", "1@17:3-17:14"]
     }, {
       "id": 3,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#",
       "callers": ["~-1@14:3-14:13"]
     }, {
       "id": 4,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#I#",
       "callers": ["~-1@15:3-15:13"]
     }, {
       "id": 5,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#&&I#*$@S@Bar#*b#",
       "callers": ["~-1@16:3-16:13"]
     }, {
       "id": 6,
+      "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#I#*$@S@Bar#*b#",
       "callers": ["~-1@17:3-17:14"]
     }],

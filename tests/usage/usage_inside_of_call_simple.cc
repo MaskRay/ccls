@@ -11,6 +11,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "detailed_name": "void called(int)",
@@ -23,6 +24,7 @@ OUTPUT:
       "callers": ["2@6:3-6:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "detailed_name": "int gen()",
@@ -31,6 +33,7 @@ OUTPUT:
       "callers": ["2@6:10-6:13", "2@6:18-6:21"]
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",

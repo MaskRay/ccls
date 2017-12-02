@@ -7,6 +7,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:anonymous_function.cc@aN@F@foo#",
       "short_name": "foo",
       "detailed_name": "void ::foo()",

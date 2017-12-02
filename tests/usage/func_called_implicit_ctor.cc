@@ -23,6 +23,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Wrapper@F@Wrapper#I#",
       "short_name": "Wrapper",
       "detailed_name": "void Wrapper::Wrapper(int)",
@@ -36,6 +37,7 @@ OUTPUT:
       "callers": ["~2@8:10-8:16"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "int called()",
@@ -44,6 +46,7 @@ OUTPUT:
       "callers": ["2@8:10-8:16"]
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "detailed_name": "Wrapper caller()",

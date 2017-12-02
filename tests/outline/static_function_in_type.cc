@@ -25,6 +25,7 @@ OUTPUT: static_function_in_type.h
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@N@ns@S@Foo@F@Register#*$@N@ns@S@Manager#S",
       "short_name": "Register",
       "detailed_name": "void ns::Foo::Register(ns::Manager *)",
@@ -56,6 +57,7 @@ OUTPUT: static_function_in_type.cc
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@N@ns@S@Foo@F@Register#*$@N@ns@S@Manager#S",
       "short_name": "Register",
       "detailed_name": "void ns::Foo::Register(ns::Manager *)",

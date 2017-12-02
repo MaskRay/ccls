@@ -16,6 +16,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "void called()",
@@ -27,6 +28,7 @@ OUTPUT:
       "callers": ["1@5:3-5:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@FT@>1#Tcaller#v#",
       "short_name": "caller",
       "detailed_name": "void caller()",
@@ -36,6 +38,7 @@ OUTPUT:
       "callees": ["0@5:3-5:9"]
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",

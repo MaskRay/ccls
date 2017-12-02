@@ -27,6 +27,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@ST>1#T@Template@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Template::Foo()",

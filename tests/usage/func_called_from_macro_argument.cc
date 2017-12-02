@@ -11,6 +11,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@called#b#b#",
       "short_name": "called",
       "detailed_name": "bool called(bool, bool)",
@@ -23,6 +24,7 @@ OUTPUT:
       "callers": ["1@6:14-6:20"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "detailed_name": "void caller()",

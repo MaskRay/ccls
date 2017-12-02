@@ -9,6 +9,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
       "detailed_name": "int foo(int, int)",

@@ -21,6 +21,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void hello::Foo::foo()",

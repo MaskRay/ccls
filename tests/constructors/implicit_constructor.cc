@@ -23,6 +23,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Type@F@Type#",
       "short_name": "Type",
       "detailed_name": "void Type::Type()",
@@ -32,6 +33,7 @@ OUTPUT:
       "callers": ["~1@6:8-6:11"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@Make#",
       "short_name": "Make",
       "detailed_name": "void Make()",

@@ -54,6 +54,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@accept#*$@S@Foo#",
       "short_name": "accept",
       "detailed_name": "void accept(Foo *)",
@@ -61,6 +62,7 @@ OUTPUT:
       "definition_extent": "7:1-7:21"
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@accept1#**$@S@Foo#",
       "short_name": "accept1",
       "detailed_name": "void accept1(Foo1 *)",
@@ -68,6 +70,7 @@ OUTPUT:
       "definition_extent": "8:1-8:23"
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@accept2#*$@S@Foo#",
       "short_name": "accept2",
       "detailed_name": "void accept2(Foo2 *)",
@@ -75,6 +78,7 @@ OUTPUT:
       "definition_extent": "9:1-9:23"
     }, {
       "id": 3,
+      "is_operator": false,
       "usr": "c:@F@accept3#**$@S@Foo#",
       "short_name": "accept3",
       "detailed_name": "void accept3(Foo3 *)",

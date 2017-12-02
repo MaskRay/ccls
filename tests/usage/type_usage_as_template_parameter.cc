@@ -29,6 +29,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@return_type#",
       "short_name": "return_type",
       "detailed_name": "unique_ptr<S> *return_type()",

@@ -21,6 +21,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
       "detailed_name": "void Foo::declonly()",
@@ -32,6 +33,7 @@ OUTPUT:
       "declaring_type": 0
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
       "detailed_name": "void Foo::purevirtual()",
@@ -43,6 +45,7 @@ OUTPUT:
       "declaring_type": 0
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@def#",
       "short_name": "def",
       "detailed_name": "void Foo::def()",

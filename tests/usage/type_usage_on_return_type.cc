@@ -36,6 +36,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "Type *foo()",
@@ -52,6 +53,7 @@ OUTPUT:
       "definition_extent": "5:1-5:15"
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@Get#I#",
       "short_name": "Get",
       "detailed_name": "Type *Foo::Get(int)",
@@ -66,6 +68,7 @@ OUTPUT:
       "declaring_type": 1
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@Empty#",
       "short_name": "Empty",
       "detailed_name": "void Foo::Empty()",
@@ -79,6 +82,7 @@ OUTPUT:
       "declaring_type": 1
     }, {
       "id": 3,
+      "is_operator": false,
       "usr": "c:@F@external#",
       "short_name": "external",
       "detailed_name": "const Type &external()",
@@ -89,6 +93,7 @@ OUTPUT:
         }]
     }, {
       "id": 4,
+      "is_operator": false,
       "usr": "c:type_usage_on_return_type.cc@F@bar#",
       "short_name": "bar",
       "detailed_name": "Type *bar()",

@@ -30,6 +30,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@Bar#&$@S@Template>#d#",
       "short_name": "Bar",
       "detailed_name": "void Foo::Bar(Template<double> &)",

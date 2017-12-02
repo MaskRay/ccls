@@ -23,6 +23,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@ST>1#T@Foo@F@foo#S",
       "short_name": "foo",
       "detailed_name": "int Foo::foo()",

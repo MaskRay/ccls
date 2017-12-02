@@ -22,6 +22,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
@@ -34,6 +35,7 @@ OUTPUT:
       "callers": ["1@8:3-8:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",

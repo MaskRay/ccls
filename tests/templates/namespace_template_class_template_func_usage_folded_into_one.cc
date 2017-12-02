@@ -26,6 +26,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@N@ns@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int ns::Foo::foo()",

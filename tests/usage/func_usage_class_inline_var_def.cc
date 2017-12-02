@@ -21,6 +21,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:func_usage_class_inline_var_def.cc@F@helper#",
       "short_name": "helper",
       "detailed_name": "int helper()",

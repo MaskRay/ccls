@@ -14,6 +14,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@N@ns@F@Accept#I#",
       "short_name": "Accept",
       "detailed_name": "void ns::Accept(int)",
@@ -22,6 +23,7 @@ OUTPUT:
       "callers": ["1@7:7-7:13", "1@9:3-9:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@Runner#",
       "short_name": "Runner",
       "detailed_name": "void Runner()",

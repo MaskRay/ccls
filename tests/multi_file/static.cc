@@ -17,6 +17,7 @@ OUTPUT: static.h
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",
@@ -42,6 +43,7 @@ OUTPUT: static.cc
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",

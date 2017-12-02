@@ -22,6 +22,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@Foo#&&$@S@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo(Foo &&)",

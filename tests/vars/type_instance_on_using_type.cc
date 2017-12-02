@@ -30,6 +30,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo()",

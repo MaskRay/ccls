@@ -24,6 +24,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
@@ -33,6 +34,7 @@ OUTPUT:
       "callers": ["~1@7:7-7:8", "1@8:17-8:20"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",

@@ -13,6 +13,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "detailed_name": "void foo(Foo *, Foo *)",

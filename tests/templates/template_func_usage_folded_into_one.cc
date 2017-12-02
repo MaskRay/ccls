@@ -14,6 +14,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
       "short_name": "foo",
       "detailed_name": "int foo()",

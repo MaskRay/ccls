@@ -27,6 +27,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@act#*$@U@Foo#",
       "short_name": "act",
       "detailed_name": "void act(Foo *)",

@@ -107,6 +107,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@as_return_type#*$@S@unique_ptr>#$@S@S1#$@S@S2#",
       "short_name": "as_return_type",
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> *as_return_type(unique_ptr<S1, S2> *)",
@@ -114,6 +115,7 @@ OUTPUT:
       "definition_extent": "33:1-33:92"
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@no_return_type#I#",
       "short_name": "no_return_type",
       "detailed_name": "void no_return_type(int)",
@@ -121,6 +123,7 @@ OUTPUT:
       "definition_extent": "40:1-40:28"
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@empty#",
       "short_name": "empty",
       "detailed_name": "void empty()",
@@ -128,6 +131,7 @@ OUTPUT:
       "definition_extent": "53:1-55:2"
     }, {
       "id": 3,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "unique_ptr<S1, S2> *Foo::foo()",

@@ -16,6 +16,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@make1#",
       "short_name": "make1",
       "detailed_name": "int make1()",
@@ -24,6 +25,7 @@ OUTPUT:
       "callers": ["1@12:5-12:10"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@a#",
       "short_name": "a",
       "detailed_name": "int a()",

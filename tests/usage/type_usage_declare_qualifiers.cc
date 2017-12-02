@@ -21,6 +21,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@foo#&$@S@Type#&1S1_#",
       "short_name": "foo",
       "detailed_name": "void foo(Type &, const Type &)",

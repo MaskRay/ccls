@@ -25,6 +25,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "detailed_name": "Foo *Foo::make()",

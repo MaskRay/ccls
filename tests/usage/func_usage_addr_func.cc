@@ -12,6 +12,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@consume#*v#",
       "short_name": "consume",
       "detailed_name": "void consume(void *)",
@@ -20,6 +21,7 @@ OUTPUT:
       "callers": ["2@7:3-7:10"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@used#",
       "short_name": "used",
       "detailed_name": "void used()",
@@ -28,6 +30,7 @@ OUTPUT:
       "callers": ["2@6:13-6:17", "2@7:12-7:16"]
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@user#",
       "short_name": "user",
       "detailed_name": "void user()",

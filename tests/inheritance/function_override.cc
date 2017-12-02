@@ -31,6 +31,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Root@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Root::foo()",
@@ -43,6 +44,7 @@ OUTPUT:
       "derived": [1]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@S@Derived@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Derived::foo()",

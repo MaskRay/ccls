@@ -29,6 +29,7 @@ OUTPUT:
     }],
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
@@ -38,6 +39,7 @@ OUTPUT:
       "callers": ["~2@8:7-8:8"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@S@Foo@F@~Foo#",
       "short_name": "~Foo",
       "detailed_name": "void Foo::~Foo() noexcept",
@@ -46,6 +48,7 @@ OUTPUT:
       "declaring_type": 0
     }, {
       "id": 2,
+      "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",

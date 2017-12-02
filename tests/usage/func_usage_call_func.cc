@@ -8,6 +8,7 @@ OUTPUT:
 {
   "funcs": [{
       "id": 0,
+      "is_operator": false,
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "void called()",
@@ -16,6 +17,7 @@ OUTPUT:
       "callers": ["1@3:3-3:9"]
     }, {
       "id": 1,
+      "is_operator": false,
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "detailed_name": "void caller()",
