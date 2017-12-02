@@ -5,6 +5,8 @@
 #include "platform.h"
 #include "utils.h"
 
+#include <loguru.hpp>
+
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
   return a.data[0] == b.data[0] && a.data[1] == b.data[1] &&
          a.data[2] == b.data[2];
@@ -88,8 +90,7 @@ void FileConsumer::EmitError(CXFile file) const {
   std::string file_name = ToString(clang_getFileName(file));
   // TODO: Investigate this more, why can we get an empty file name?
   if (!file_name.empty()) {
-    std::string error_message = "Could not get unique file id for " +
-                                file_name + " when parsing " + parse_file_;
-    std::cerr << error_message << std::endl;
+    LOG_S(ERROR) << "Could not get unique file id for " << file_name
+                 << " when parsing " << parse_file_;
   }
 }

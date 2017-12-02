@@ -73,8 +73,7 @@ void EmitDiagnostics(std::string path,
     output += "\n";
   }
 
-  std::cerr << output;
-  std::cerr.flush();
+  LOG_S(WARNING) << output;
 }
 }  // namespace
 

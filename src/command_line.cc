@@ -1161,12 +1161,11 @@ bool IndexMain_DoCreateIndexUpdate(Config* config,
   PRINT_SECTION(index_make_delta);
   output << "\n       total: " << FormatMicroseconds(total);
   output << " path: " << response->current_index->path;
-  output << std::endl;
-  std::cerr << output.rdbuf();
+  LOG_S(INFO) << output.rdbuf();
 #undef PRINT_SECTION
 
   if (response->is_interactive)
-    std::cerr << "Applying IndexUpdate" << std::endl << update.ToString() << std::endl;
+    LOG_S(INFO) << "Applying IndexUpdate" << std::endl << update.ToString();
 #endif
 
   Index_OnIndexed reply(update, response->perf);
@@ -1432,7 +1431,7 @@ bool QueryDbMainLoop(Config* config,
         rapidjson::StringBuffer output;
         Writer writer(output);
         Reflect(writer, request->params.initializationOptions);
-        std::cerr << output.GetString() << std::endl;
+        LOG_S(INFO) << "Init parameters: " << output.GetString();
 
         if (request->params.rootUri) {
           std::string project_path = request->params.rootUri->GetPath();
@@ -1591,9 +1590,6 @@ bool QueryDbMainLoop(Config* config,
           time.Reset();
           project->ForAllFilteredFiles(
               config, [&](int i, const Project::Entry& entry) {
-                // std::cerr << "[" << i << "/" << (project->entries.size() - 1)
-                //  << "] Dispatching index request for file " << entry.filename
-                //  << std::endl;
                 bool is_interactive =
                     working_files->GetFileByFilename(entry.filename) != nullptr;
                 queue->index_request.Enqueue(Index_Request(
@@ -3044,8 +3040,6 @@ void LaunchStdinLoop(Config* config,
 
     (*request_times)[message->method_id] = Timer();
 
-    // std::cerr << "[stdin] Got message " << IpcIdToString(message->method_id)
-    // << std::endl;
     switch (message->method_id) {
       case IpcId::Initialized: {
         // TODO: don't send output until we get this notification
@@ -3129,9 +3123,6 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
     }
 
     for (auto& message : messages) {
-      // std::cerr << "[stdout] Processing message " <<
-      // IpcIdToString(message->method_id) << std::endl;
-
       switch (message->method_id) {
         case IpcId::Cout: {
           auto msg = message->As<Ipc_Cout>();

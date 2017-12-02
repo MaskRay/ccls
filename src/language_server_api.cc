@@ -19,7 +19,7 @@ void Reflect(Reader& visitor, lsRequestId& id) {
   else if (visitor.IsString())
     Reflect(visitor, id.id1);
   else
-    std::cerr << "Unable to deserialize id" << std::endl;
+    LOG_S(WARNING) << "Unable to deserialize id";
 }
 
 MessageRegistry* MessageRegistry::instance_ = nullptr;
@@ -161,7 +161,7 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin(
 std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
   if (!visitor.HasMember("jsonrpc") ||
       std::string(visitor["jsonrpc"].GetString()) != "2.0") {
-    std::cerr << "Bad or missing jsonrpc version" << std::endl;
+    LOG_S(FATAL) << "Bad or missing jsonrpc version";
     exit(1);
   }
 
@@ -170,7 +170,7 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
 
   if (allocators.find(method) == allocators.end()) {
     LOG_S(ERROR) << "Unable to find registered handler for method \"" << method
-                 << "\"" << std::endl;
+                 << "\"";
     return nullptr;
   }
 
@@ -233,7 +233,6 @@ void lsDocumentUri::SetPath(const std::string& path) {
 #else
   raw_uri = "file://" + raw_uri;
 #endif
-  // std::cerr << "Set uri to " << raw_uri << " from " << path;
 }
 
 std::string lsDocumentUri::GetPath() const {

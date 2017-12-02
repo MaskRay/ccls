@@ -445,7 +445,6 @@ std::string IndexFile::ToString() {
 IndexType::IndexType(IndexTypeId id, const std::string& usr)
     : def(usr), id(id) {
   assert(usr.size() > 0);
-  // std::cerr << "Creating type with usr " << usr << std::endl;
 }
 
 void RemoveItem(std::vector<Range>& ranges, Range to_remove) {
@@ -699,10 +698,6 @@ optional<IndexTypeId> AddDeclTypeUsages(
     ClangCursor decl_cursor,
     const CXIdxContainerInfo* semantic_container,
     const CXIdxContainerInfo* lexical_container) {
-  // std::cerr << std::endl << "AddDeclUsages " << decl_cursor.get_spelling() <<
-  // std::endl;
-  // Dump(decl_cursor);
-
   //
   // The general AST format for definitions follows this pattern:
   //
@@ -793,13 +788,9 @@ optional<IndexTypeId> AddDeclTypeUsages(
     //  Foo::Foo() {}
     //
     if (!decl_cursor.is_definition()) {
-      // TODO: I don't think this resolution ever works.
       ClangCursor def = decl_cursor.get_definition();
-      if (def.get_kind() != CXCursor_FirstInvalid) {
-        std::cerr << "Successful resolution of decl usage to definition"
-                  << std::endl;
+      if (def.get_kind() != CXCursor_FirstInvalid)
         decl_cursor = def;
-      }
     }
     process_last_type_ref = false;
   }
@@ -872,8 +863,6 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
         break;
 
       Range loc = ResolveSpelling(cursor.cx_cursor);
-      // std::cerr << "Adding usage to id=" << ref_id.id << " usr=" << ref_usr
-      // << " at " << loc.ToString() << std::endl;
       IndexVarId ref_id = db->ToVarId(ref_usr);
       IndexVar* ref_def = db->Resolve(ref_id);
       UniqueAdd(ref_def->uses, loc);
@@ -996,10 +985,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
   NamespaceHelper* ns = &param->ns;
 
-  // std::cerr << "DECL kind=" << decl->entityInfo->kind << " at " <<
-  // db->id_cache.Resolve(decl->cursor, false).ToPrettyString(&db->id_cache) <<
-  // std::endl;
-
   switch (decl->entityInfo->kind) {
     case CXIdxEntity_CXXNamespace: {
       ns->RegisterQualifiedName(decl->entityInfo->USR, decl->semanticContainer,
@@ -1051,9 +1036,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         var->def.declaration = ResolveSpelling(decl->cursor);
       }
       UniqueAdd(var->uses, decl_loc_spelling);
-
-      // std::cerr << std::endl << "Visiting declaration" << std::endl;
-      // Dump(decl_cursor);
 
       AddDeclInitializerUsages(db, decl_cursor);
       var = db->Resolve(var_id);
@@ -1213,9 +1195,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
           // FIXME: this happens for destructors when there are multiple
           // parent classes.
-          if (num_overridden > 1)
+          if (num_overridden > 1) {
             std::cerr << "[indexer]: warning: multiple base overrides for "
                       << func->def.detailed_name << std::endl;
+          }
 
           for (unsigned i = 0; i < num_overridden; ++i) {
             ClangCursor parent = overridden[i];
@@ -1376,14 +1359,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           clang_getCursorLocation(ref->referencedEntity->cursor)))
     return;
 
-  // assert(AreEqualLocations(ref->loc, ref->cursor));
-
-  //  if (clang_Location_isInSystemHeader(clang_getCursorLocation(ref->cursor))
-  //  ||
-  //      clang_Location_isInSystemHeader(
-  //          clang_getCursorLocation(ref->referencedEntity->cursor)))
-  //    return;
-
   // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file,
@@ -1392,22 +1367,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   IndexFile* db = ConsumeFile(param, file);
   if (!db)
     return;
-
-  // ref->cursor mainFile=0
-  // ref->loc mainFile=1
-  // ref->referencedEntity mainFile=1
-  //
-  // Regardless, we need to do more advanced location processing to handle
-  // multiple output IndexFile instances.
-  // bool mainFile =
-  // clang_Location_isFromMainFile(clang_indexLoc_getCXSourceLocation(ref->loc));
-  // Range loc_spelling = param->db->id_cache.ForceResolveSpelling(ref->cursor,
-  // false /*interesting*/);  std::cerr << "mainFile: " << mainFile << ", loc: "
-  // << loc_spelling.ToString() << std::endl;
-
-  // Don't index references that are not from the main file.
-  // if (!clang_Location_isFromMainFile(clang_getCursorLocation(ref->cursor)))
-  //  return;
 
   ClangCursor cursor(ref->cursor);
 
@@ -1659,7 +1618,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   CXFile cx_file = clang_getFile(tu->cx_tu, file.c_str());
   param.primary_file = ConsumeFile(&param, cx_file);
 
-  // std::cerr << "!! [START] Indexing " << file << std::endl;
   CXIndexAction index_action = clang_IndexAction_create(index->cx_index);
 
   // NOTE: libclang re-enables crash recovery whenever a new index is created.
@@ -1681,7 +1639,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   }
 
   clang_IndexAction_dispose(index_action);
-  // std::cerr << "!! [END] Indexing " << file << std::endl;
 
   ClangCursor(clang_getTranslationUnitCursor(tu->cx_tu))
       .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);

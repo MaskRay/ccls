@@ -1,5 +1,7 @@
 #include "options.h"
 
+#include <loguru.hpp>
+
 #include <iostream>
 
 std::unordered_map<std::string, std::string> ParseOptions(int argc,
@@ -13,8 +15,7 @@ std::unordered_map<std::string, std::string> ParseOptions(int argc,
 
     if (arg[0] != '-') {
       if (previous_arg.size() == 0) {
-        std::cerr << "Invalid arguments; switches must start with -"
-                  << std::endl;
+        LOG_S(FATAL) << "Invalid arguments; switches must start with -";
         exit(1);
       }
 

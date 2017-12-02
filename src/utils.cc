@@ -240,15 +240,8 @@ std::vector<std::string> ReadLines(std::string filename) {
   std::vector<std::string> result;
 
   std::ifstream input(filename);
-  for (std::string line; SafeGetline(input, line);) {
-#if false
-    LOG_S(INFO) << "!! got line |" << line << "|";
-    for (char c : line)
-      std::cout << (int)c << ",";
-    std::cout << std::endl;
-#endif
+  for (std::string line; SafeGetline(input, line);)
     result.push_back(line);
-  }
 
   return result;
 }

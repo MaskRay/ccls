@@ -1,13 +1,14 @@
 #include "platform.h"
 
+#include <doctest/doctest.h>
+#include <loguru.hpp>
+
 #include <iostream>
 #include <iterator>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <vector>
-
-#include <doctest/doctest.h>
 
 namespace {
 
@@ -73,16 +74,15 @@ void MakeDirectoryRecursive(std::string path) {
   }
 
   if (first_success == -1) {
-    std::cerr << "Failed to make any parent directory for " << path
-              << std::endl;
+    LOG_S(FATAL) << "Failed to make any parent directory for " << path;
     exit(1);
   }
 
   // Make all child directories.
   for (size_t i = first_success + 1; i <= components.size(); ++i) {
     if (TryMakeDirectory(prefix + Join(components, '/', i)) == false) {
-      std::cerr << "Failed making directory for " << path
-                << " even after creating parent directories" << std::endl;
+      LOG_S(FATAL) << "Failed making directory for " << path
+                   << " even after creating parent directories";
       exit(1);
     }
   }
