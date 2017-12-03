@@ -63,7 +63,7 @@ static std::vector<std::string> kBlacklist = {
 static std::vector<std::string> kPathArgs = {
     "-I",        "-iquote",        "-isystem",     "--sysroot=",
     "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
-    "-F",        "-imacros"};
+    "-F",        "-imacros",       "-include"};
 
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
