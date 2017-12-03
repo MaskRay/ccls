@@ -645,6 +645,7 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
   MessageRegistry::instance()->Register<Ipc_Exit>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
+  MessageRegistry::instance()->Register<Ipc_CqueryTextDocumentDidView>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
   MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
@@ -1888,6 +1889,25 @@ bool QueryDbMainLoop(Config* config,
         break;
       }
 
+      case IpcId::CqueryTextDocumentDidView: {
+        auto msg = message->As<Ipc_CqueryTextDocumentDidView>();
+        std::string path = msg->params.textDocumentUri.GetPath();
+
+        WorkingFile* working_file = working_files->GetFileByFilename(path);
+        if (!working_file)
+          break;
+        QueryFile* file = nullptr;
+        if (!FindFileOrFail(db, nullopt, path, &file))
+          break;
+
+        clang_complete->NotifyView(path);
+        if (file->def) {
+          EmitInactiveLines(working_file, file->def->inactive_regions);
+          EmitSemanticHighlighting(db, semantic_cache, working_file, file);
+        }
+        break;
+      }
+
       case IpcId::TextDocumentDidChange: {
         auto msg = message->As<Ipc_TextDocumentDidChange>();
         std::string path = msg->params.textDocument.uri.GetPath();
@@ -2834,16 +2854,6 @@ bool QueryDbMainLoop(Config* config,
 
         ipc->SendOutMessageToClient(IpcId::TextDocumentCodeLens, response);
 
-        // TODO: We need to move this to a separate request, as the user may
-        // have turned code lens off (ie, a custom DidView notification).
-        if (file && file->def) {
-          WorkingFile* working_file =
-              working_files->GetFileByFilename(file->def->path);
-          EmitInactiveLines(working_file, file->def->inactive_regions);
-          // Do not emit semantic highlighting information here, as it has not
-          // been updated.
-        }
-
         break;
       }
 
@@ -3069,6 +3079,7 @@ void LaunchStdinLoop(Config* config,
 
       case IpcId::Initialize:
       case IpcId::TextDocumentDidOpen:
+      case IpcId::CqueryTextDocumentDidView:
       case IpcId::TextDocumentDidChange:
       case IpcId::TextDocumentDidClose:
       case IpcId::TextDocumentDidSave:

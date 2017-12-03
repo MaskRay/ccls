@@ -969,7 +969,7 @@ struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
 };
 MAKE_REFLECT_STRUCT(Ipc_CancelRequest, id);
 
-// Open, update, close file
+// Open, view, change, close file
 struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
   struct Params {
     lsTextDocumentItem textDocument;
@@ -980,6 +980,17 @@ struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen, params);
+struct Ipc_CqueryTextDocumentDidView
+    : public IpcMessage<Ipc_CqueryTextDocumentDidView> {
+  struct Params {
+    lsDocumentUri textDocumentUri;
+  };
+
+  const static IpcId kIpcId = IpcId::CqueryTextDocumentDidView;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView::Params, textDocumentUri);
+MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView, params);
 struct Ipc_TextDocumentDidChange
     : public IpcMessage<Ipc_TextDocumentDidChange> {
   struct lsTextDocumentContentChangeEvent {

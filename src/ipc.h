@@ -31,6 +31,9 @@ enum class IpcId : int {
   WorkspaceSymbol,
 
   // Custom notifications
+  // Comes from the client. Does various things, like update semantic
+  // highlighting.
+  CqueryTextDocumentDidView,
   CqueryPublishInactiveRegions,
   CqueryPublishSemanticHighlighting,
 
