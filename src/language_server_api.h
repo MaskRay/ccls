@@ -1517,8 +1517,9 @@ struct Out_CqueryPublishSemanticHighlighting
     : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
   enum class SymbolType { Type = 0, Function, Variable };
   struct Symbol {
+    std::size_t stableId = 0;
     SymbolType type = SymbolType::Type;
-    bool is_type_member = false;
+    bool isTypeMember = false;
     NonElidedVector<lsRange> ranges;
   };
   struct Params {
@@ -1531,7 +1532,8 @@ struct Out_CqueryPublishSemanticHighlighting
 MAKE_REFLECT_TYPE_PROXY(Out_CqueryPublishSemanticHighlighting::SymbolType, int);
 MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
                     type,
-                    is_type_member,
+                    isTypeMember,
+                    stableId,
                     ranges);
 MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Params,
                     uri,

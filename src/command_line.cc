@@ -7,6 +7,7 @@
 #include "ipc_manager.h"
 #include "language_server_api.h"
 #include "lex_utils.h"
+#include "lru_cache.h"
 #include "match.h"
 #include "options.h"
 #include "platform.h"
@@ -144,9 +145,59 @@ void EmitInactiveLines(WorkingFile* working_file,
       IpcId::CqueryPublishInactiveRegions, out);
 }
 
+// Caches symbols for a single file for semantic highlighting to provide
+// relatively stable ids. Only supports xxx files at a time.
+struct SemanticHighlightSymbolCache {
+  struct Entry {
+    // The path this cache belongs to.
+    std::string path;
+    // Detailed symbol name to stable id.
+    using TNameToId = std::unordered_map<std::string, int>;
+    TNameToId detailed_type_name_to_stable_id;
+    TNameToId detailed_func_name_to_stable_id;
+    TNameToId detailed_var_name_to_stable_id;
+
+    explicit Entry(const std::string& path) : path(path) {}
+
+    int GetStableId(SymbolKind kind, const std::string& detailed_name) {
+      TNameToId* map = nullptr;
+      switch (kind) {
+        case SymbolKind::Type:
+          map = &detailed_type_name_to_stable_id;
+          break;
+        case SymbolKind::Func:
+          map = &detailed_func_name_to_stable_id;
+          break;
+        case SymbolKind::Var:
+          map = &detailed_var_name_to_stable_id;
+          break;
+        default:
+          assert(false);
+          return 0;
+      }
+      assert(map);
+      auto it = map->find(detailed_name);
+      if (it != map->end())
+        return it->second;
+      return (*map)[detailed_name] = map->size();
+    }
+  };
+
+  constexpr static int kCacheSize = 10;
+  LruCache<std::string, Entry> cache_;
+
+  SemanticHighlightSymbolCache() : cache_(kCacheSize) {}
+
+  std::shared_ptr<Entry> GetCacheForFile(const std::string& path) {
+    return cache_.Get(path, [&]() { return std::make_shared<Entry>(path); });
+  }
+};
+
 void EmitSemanticHighlighting(QueryDatabase* db,
+                              SemanticHighlightSymbolCache* semantic_cache,
                               WorkingFile* working_file,
                               QueryFile* file) {
+  assert(file->def);
   auto map_symbol_kind_to_symbol_type = [](SymbolKind kind) {
     switch (kind) {
       case SymbolKind::Type:
@@ -161,11 +212,16 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     }
   };
 
+  auto semantic_cache_for_file =
+      semantic_cache->GetCacheForFile(file->def->path);
+
   // Group symbols together.
   std::unordered_map<SymbolIdx, Out_CqueryPublishSemanticHighlighting::Symbol>
       grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
+    std::string detailed_name;
     bool is_type_member = false;
+    // This switch statement also filters out symbols that are not highlighted.
     switch (sym.idx.kind) {
       case SymbolKind::Func: {
         QueryFunc* func = &db->funcs[sym.idx.idx];
@@ -174,6 +230,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (func->def->is_operator)
           continue;  // applies to for loop
         is_type_member = func->def->declaring_type.has_value();
+        detailed_name = func->def->short_name;
         break;
       }
       case SymbolKind::Var: {
@@ -183,9 +240,14 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (!var->def->is_local && !var->def->declaring_type)
           continue;  // applies to for loop
         is_type_member = var->def->declaring_type.has_value();
+        detailed_name = var->def->short_name;
         break;
       }
       case SymbolKind::Type: {
+        QueryType* type = &db->types[sym.idx.idx];
+        if (!type->def)
+          continue;  // applies to for loop
+        detailed_name = type->def->detailed_name;
         break;
       }
       default:
@@ -199,8 +261,10 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         it->second.ranges.push_back(*loc);
       } else {
         Out_CqueryPublishSemanticHighlighting::Symbol symbol;
+        symbol.stableId =
+            semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
         symbol.type = map_symbol_kind_to_symbol_type(sym.idx.kind);
-        symbol.is_type_member = is_type_member;
+        symbol.isTypeMember = is_type_member;
         symbol.ranges.push_back(*loc);
         grouped_symbols[sym.idx] = symbol;
       }
@@ -1265,6 +1329,7 @@ bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,
                         ImportManager* import_manager,
                         QueueManager* queue,
+                        SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files) {
   EmitProgress(config, queue);
 
@@ -1369,7 +1434,7 @@ bool QueryDb_ImportMain(Config* config,
         QueryFileId file_id =
             db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
         QueryFile* file = &db->files[file_id.id];
-        EmitSemanticHighlighting(db, working_file, file);
+        EmitSemanticHighlighting(db, semantic_cache, working_file, file);
       }
     }
 
@@ -1409,6 +1474,7 @@ bool QueryDbMainLoop(Config* config,
                      FileConsumer::SharedState* file_consumer_shared,
                      ImportManager* import_manager,
                      TimestampManager* timestamp_manager,
+                     SemanticHighlightSymbolCache* semantic_cache,
                      WorkingFiles* working_files,
                      ClangCompleteManager* clang_complete,
                      IncludeComplete* include_complete,
@@ -1870,7 +1936,7 @@ bool QueryDbMainLoop(Config* config,
         FindFileOrFail(db, nullopt, path, &file);
         if (file && file->def) {
           EmitInactiveLines(working_file, file->def->inactive_regions);
-          EmitSemanticHighlighting(db, working_file, file);
+          EmitSemanticHighlighting(db, semantic_cache, working_file, file);
         }
 
         time.ResetAndPrint(
@@ -2924,7 +2990,7 @@ bool QueryDbMainLoop(Config* config,
           has_work |= import_manager->HasActiveQuerydbImports();
           has_work |= queue->HasWork();
           has_work |= QueryDb_ImportMain(config, db, import_manager, queue,
-                                         working_files);
+                                         semantic_cache, working_files);
           if (!has_work)
             ++idle_count;
           else
@@ -2956,8 +3022,10 @@ bool QueryDbMainLoop(Config* config,
   // TODO: consider rate-limiting and checking for IPC messages so we don't
   // block requests / we can serve partial requests.
 
-  if (QueryDb_ImportMain(config, db, import_manager, queue, working_files))
+  if (QueryDb_ImportMain(config, db, import_manager, queue, semantic_cache,
+                         working_files)) {
     did_work = true;
+  }
 
   return did_work;
 }
@@ -2968,6 +3036,7 @@ void RunQueryDbThread(const std::string& bin_name,
                       QueueManager* queue) {
   bool exit_when_idle = false;
   Project project;
+  SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
   FileConsumer::SharedState file_consumer_shared;
 
@@ -2993,7 +3062,7 @@ void RunQueryDbThread(const std::string& bin_name,
     bool did_work = QueryDbMainLoop(
         config, &db, &exit_when_idle, waiter, queue, &project,
         &file_consumer_shared, &import_manager, &timestamp_manager,
-        &working_files, &clang_complete, &include_complete,
+        &semantic_cache, &working_files, &clang_complete, &include_complete,
         global_code_complete_cache.get(), non_global_code_complete_cache.get(),
         signature_cache.get());
 

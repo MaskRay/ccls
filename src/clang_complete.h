@@ -2,6 +2,7 @@
 #include "clang_index.h"
 #include "clang_translation_unit.h"
 #include "language_server_api.h"
+#include "lru_cache.h"
 #include "project.h"
 #include "threaded_queue.h"
 #include "working_files.h"
@@ -31,21 +32,6 @@ struct CompletionSession
 
   CompletionSession(const Project::Entry& file, WorkingFiles* working_files);
   ~CompletionSession();
-};
-
-struct LruSessionCache {
-  std::vector<std::shared_ptr<CompletionSession>> entries_;
-  int max_entries_;
-
-  LruSessionCache(int max_entries);
-
-  // Fetches the entry for |filename| and updates it's usage so it is less
-  // likely to be evicted.
-  std::shared_ptr<CompletionSession> TryGetEntry(const std::string& filename);
-  // TryGetEntry, except the return value captures ownership.
-  std::shared_ptr<CompletionSession> TryTakeEntry(const std::string& fiilename);
-  // Inserts an entry. Evicts the oldest unused entry if there is no space.
-  void InsertEntry(std::shared_ptr<CompletionSession> session);
 };
 
 struct ClangCompleteManager {
@@ -118,6 +104,8 @@ struct ClangCompleteManager {
   WorkingFiles* working_files_;
   OnDiagnostic on_diagnostic_;
   OnIndex on_index_;
+
+  using LruSessionCache = LruCache<std::string, CompletionSession>;
 
   // CompletionSession instances which are preloaded, ie, files which the user
   // has viewed but not requested code completion for.
