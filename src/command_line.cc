@@ -2188,7 +2188,6 @@ bool QueryDbMainLoop(Config* config,
                               const NonElidedVector<lsCompletionItem>& results,
                               bool is_cached_result) {
               auto msg = message->As<Ipc_TextDocumentSignatureHelp>();
-              auto ipc = IpcManager::instance();
 
               Out_TextDocumentSignatureHelp out;
               out.id = msg->id;
