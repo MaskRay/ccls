@@ -5,7 +5,7 @@
 
 #include <memory>
 
-class lsBaseOutMessage;
+struct lsBaseOutMessage;
 
 struct IpcManager {
   struct StdoutMessage {
