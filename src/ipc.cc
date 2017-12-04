@@ -73,8 +73,8 @@ const char* IpcIdToString(IpcId id) {
     case IpcId::CqueryDerived:
       return "$cquery/derived";
 
-    case IpcId::Cout:
-      return "$cout";
+    case IpcId::Unknown:
+      return "$unknown";
 
     case IpcId::CqueryIndexFile:
       return "$cquery/indexFile";

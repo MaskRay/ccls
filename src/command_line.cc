@@ -85,7 +85,7 @@ bool ShouldDisplayIpcTiming(IpcId id) {
   switch (id) {
     case IpcId::TextDocumentPublishDiagnostics:
     case IpcId::CqueryPublishInactiveRegions:
-    case IpcId::Cout:
+    case IpcId::Unknown:
       return false;
     default:
       return true;
@@ -126,7 +126,7 @@ bool FindFileOrFail(QueryDatabase* db,
     out.id = *id;
     out.error.code = lsErrorCodes::InternalError;
     out.error.message = "Unable to find file " + absolute_path;
-    IpcManager::WriteStdout(IpcId::Cout, out);
+    IpcManager::WriteStdout(IpcId::Unknown, out);
   }
 
   return false;
@@ -876,7 +876,7 @@ void EmitProgress(Config* config, QueueManager* queue) {
     out.params.onIdMappedCount = queue->on_id_mapped.Size();
     out.params.onIndexedCount = queue->on_indexed.Size();
 
-    IpcManager::WriteStdout(IpcId::Cout, out);
+    IpcManager::WriteStdout(IpcId::Unknown, out);
   }
 }
 

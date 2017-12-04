@@ -50,7 +50,7 @@ enum class IpcId : int {
   CqueryDerived,  // Show all derived types/methods.
 
   // Internal implementation detail.
-  Cout,
+  Unknown,
 
   // Index the given file contents. Used in tests.
   CqueryIndexFile,
@@ -79,13 +79,6 @@ template <typename T>
 struct IpcMessage : public BaseIpcMessage {
   IpcMessage() : BaseIpcMessage(T::kIpcId) {}
 };
-
-struct Ipc_Cout : public IpcMessage<Ipc_Cout> {
-  static constexpr IpcId kIpcId = IpcId::Cout;
-  std::string content;
-  IpcId original_ipc_id;
-};
-MAKE_REFLECT_STRUCT(Ipc_Cout, content);
 
 struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
   static constexpr IpcId kIpcId = IpcId::CqueryIndexFile;
