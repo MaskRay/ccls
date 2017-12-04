@@ -114,7 +114,7 @@ void LruCache<TKey, TValue>::IncrementScore() {
   // Overflow.
   if (next_score_ == 0) {
     std::sort(entries_.begin(), entries_.end(), [](const Entry& a, const Entry& b) {
-      return a.score > b.score;
+      return a.score < b.score;
     });
     for (Entry& entry : entries_)
       entry.score = next_score_++;
