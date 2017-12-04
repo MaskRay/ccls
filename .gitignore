@@ -1,3 +1,4 @@
+*.cquery
 *.pyc 
 *.sln
 *.swp
