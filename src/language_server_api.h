@@ -1517,7 +1517,7 @@ struct Out_CqueryPublishSemanticHighlighting
     : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
   enum class SymbolType { Type = 0, Function, Variable };
   struct Symbol {
-    std::size_t stableId = 0;
+    int stableId = 0;
     SymbolType type = SymbolType::Type;
     bool isTypeMember = false;
     NonElidedVector<lsRange> ranges;
