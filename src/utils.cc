@@ -245,7 +245,7 @@ optional<std::string> ReadContent(const std::string& filename) {
   }
 }
 
-std::vector<std::string> ReadLines(std::string filename) {
+std::vector<std::string> ReadLinesWithEnding(std::string filename) {
   std::vector<std::string> result;
 
   std::ifstream input(filename);
@@ -296,7 +296,7 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(
   std::string active_output_filename;
   std::string active_output_contents;
 
-  for (std::string line_with_ending : ReadLines(filename)) {
+  for (std::string line_with_ending : ReadLinesWithEnding(filename)) {
     if (StartsWith(line_with_ending, "*/"))
       break;
 

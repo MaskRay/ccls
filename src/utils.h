@@ -74,7 +74,7 @@ void EnsureEndsInSlash(std::string& path);
 std::string EscapeFileName(std::string path);
 
 optional<std::string> ReadContent(const std::string& filename);
-std::vector<std::string> ReadLines(std::string filename);
+std::vector<std::string> ReadLinesWithEnding(std::string filename);
 std::vector<std::string> ToLines(const std::string& content,
                                  bool trim_whitespace);
 

@@ -52,10 +52,15 @@ static std::vector<std::string> kBlacklistMulti = {
 
 // Blacklisted flags which are always removed from the command line.
 static std::vector<std::string> kBlacklist = {
-    "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics",
+    "-c",
+    "-MP",
+    "-MD",
+    "-MMD",
+    "--fcolor-diagnostics",
 
     // This strips path-like args but is a bit hacky.
-    "/", "..",
+    "/",
+    "..",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
@@ -207,7 +212,9 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
 
   std::vector<std::string> args;
   std::cerr << "Using arguments: ";
-  for (const std::string& line : ReadLines(config->project_dir + "/.cquery")) {
+  for (std::string line :
+       ReadLinesWithEnding(config->project_dir + "/.cquery")) {
+    Trim(line);
     if (line.empty() || StartsWith(line, "#"))
       continue;
     if (!args.empty())
