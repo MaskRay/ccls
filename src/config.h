@@ -67,8 +67,9 @@ struct Config {
   // Enables code lens on parameter and function variables.
   bool codeLensOnLocalVariables = true;
 
-  // Version of the client.
-  int clientVersion = 0;
+  // Version of the client. If undefined the version check is skipped. Used to
+  // inform users their vscode client is too old and needs to be updated.
+  optional<int> clientVersion;
 
   // If true parameter declarations are included in code completion when calling
   // a function or method

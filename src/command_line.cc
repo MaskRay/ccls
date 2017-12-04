@@ -1511,13 +1511,13 @@ bool QueryDbMainLoop(Config* config,
           *config = *request->params.initializationOptions;
 
           // Check client version.
-          if (config->clientVersion != kExpectedClientVersion &&
-              config->clientVersion != -1 /*disable check*/) {
+          if (config->clientVersion.has_value() &&
+              *config->clientVersion != kExpectedClientVersion) {
             Out_ShowLogMessage out;
             out.display_type = Out_ShowLogMessage::DisplayType::Show;
             out.params.type = lsMessageType::Error;
             out.params.message =
-                "cquery client (v" + std::to_string(config->clientVersion) +
+                "cquery client (v" + std::to_string(*config->clientVersion) +
                 ") and server (v" + std::to_string(kExpectedClientVersion) +
                 ") version mismatch. Please update ";
             if (config->clientVersion > kExpectedClientVersion)
