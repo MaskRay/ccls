@@ -165,7 +165,7 @@ def configure(conf):
 def build(bld):
   # todo: configure vars
 
-  cc_files = bld.path.ant_glob(['src/*.cc'])
+  cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc'])
 
   lib = []
   if sys.platform.startswith('linux'):
@@ -180,6 +180,7 @@ def build(bld):
       use='clang',
       cxxflags=['-g', '-O3', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror'],
       includes=[
+        'src/',
         'third_party/',
         'third_party/doctest/',
         'third_party/loguru/',
