@@ -1,3 +1,5 @@
+#pragma once
+
 #include "atomic_object.h"
 #include "clang_index.h"
 #include "clang_translation_unit.h"

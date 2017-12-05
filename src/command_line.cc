@@ -1,5 +1,6 @@
 // TODO: cleanup includes
 #include "cache.h"
+#include "cache_loader.h"
 #include "clang_complete.h"
 #include "file_consumer.h"
 #include "include_complete.h"
@@ -9,6 +10,7 @@
 #include "lex_utils.h"
 #include "lru_cache.h"
 #include "match.h"
+#include "message_handler.h"
 #include "options.h"
 #include "platform.h"
 #include "project.h"
@@ -19,6 +21,7 @@
 #include "test.h"
 #include "threaded_queue.h"
 #include "timer.h"
+#include "timestamp_manager.h"
 #include "work_thread.h"
 #include "working_files.h"
 
@@ -50,34 +53,8 @@ namespace {
 
 std::vector<std::string> kEmptyArgs;
 
-// Expected client version. We show an error if this doesn't match.
-const int kExpectedClientVersion = 3;
-
 // If true stdout will be printed to stderr.
 bool g_log_stdin_stdout_to_stderr = false;
-
-// Cached completion information, so we can give fast completion results when
-// the user erases a character. vscode will resend the completion request if
-// that happens.
-struct CodeCompleteCache {
-  // NOTE: Make sure to access these variables under |WithLock|.
-  optional<std::string> cached_path_;
-  optional<lsPosition> cached_completion_position_;
-  NonElidedVector<lsCompletionItem> cached_results_;
-
-  std::mutex mutex_;
-
-  void WithLock(std::function<void()> action) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    action();
-  }
-
-  bool IsCacheValid(lsTextDocumentPositionParams position) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    return cached_path_ == position.textDocument.uri.GetPath() &&
-           cached_completion_position_ == position.position;
-  }
-};
 
 // This function returns true if e2e timing should be displayed for the given
 // IpcId.
@@ -604,103 +581,8 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
   }
 }
 
-struct Index_Request {
-  std::string path;
-  // TODO: make |args| a string that is parsed lazily.
-  std::vector<std::string> args;
-  bool is_interactive;
-  optional<std::string> contents;  // Preloaded contents. Useful for tests.
-
-  Index_Request(const std::string& path,
-                const std::vector<std::string>& args,
-                bool is_interactive,
-                optional<std::string> contents)
-      : path(path),
-        args(args),
-        is_interactive(is_interactive),
-        contents(contents) {}
-};
-
-struct Index_DoIdMap {
-  std::unique_ptr<IndexFile> current;
-  std::unique_ptr<IndexFile> previous;
-
-  PerformanceImportFile perf;
-  bool is_interactive = false;
-  bool write_to_disk = false;
-  bool load_previous = false;
-
-  Index_DoIdMap(std::unique_ptr<IndexFile> current,
-                PerformanceImportFile perf,
-                bool is_interactive,
-                bool write_to_disk)
-      : current(std::move(current)),
-        perf(perf),
-        is_interactive(is_interactive),
-        write_to_disk(write_to_disk) {
-    assert(this->current);
-  }
-};
-
-struct Index_OnIdMapped {
-  struct File {
-    std::unique_ptr<IndexFile> file;
-    std::unique_ptr<IdMap> ids;
-
-    File(std::unique_ptr<IndexFile> file, std::unique_ptr<IdMap> ids)
-        : file(std::move(file)), ids(std::move(ids)) {}
-  };
-
-  std::unique_ptr<File> previous;
-  std::unique_ptr<File> current;
-
-  PerformanceImportFile perf;
-  bool is_interactive;
-  bool write_to_disk;
-
-  Index_OnIdMapped(PerformanceImportFile perf,
-                   bool is_interactive,
-                   bool write_to_disk)
-      : perf(perf),
-        is_interactive(is_interactive),
-        write_to_disk(write_to_disk) {}
-};
-
-struct Index_OnIndexed {
-  IndexUpdate update;
-  PerformanceImportFile perf;
-
-  Index_OnIndexed(IndexUpdate& update, PerformanceImportFile perf)
-      : update(update), perf(perf) {}
-};
-
-struct QueueManager {
-  using Index_RequestQueue = ThreadedQueue<Index_Request>;
-  using Index_DoIdMapQueue = ThreadedQueue<Index_DoIdMap>;
-  using Index_OnIdMappedQueue = ThreadedQueue<Index_OnIdMapped>;
-  using Index_OnIndexedQueue = ThreadedQueue<Index_OnIndexed>;
-
-  Index_RequestQueue index_request;
-  Index_DoIdMapQueue do_id_map;
-  Index_DoIdMapQueue load_previous_index;
-  Index_OnIdMappedQueue on_id_mapped;
-  Index_OnIndexedQueue on_indexed;
-
-  QueueManager(MultiQueueWaiter* waiter)
-      : index_request(waiter),
-        do_id_map(waiter),
-        load_previous_index(waiter),
-        on_id_mapped(waiter),
-        on_indexed(waiter) {}
-
-  bool HasWork() {
-    return !index_request.IsEmpty() || !do_id_map.IsEmpty() ||
-           !load_previous_index.IsEmpty() || !on_id_mapped.IsEmpty() ||
-           !on_indexed.IsEmpty();
-  }
-};
-
 void RegisterMessageTypes() {
+  // TODO: use automatic registration similar to MessageHandler.
   MessageRegistry::instance()->Register<Ipc_CancelRequest>();
   MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
   MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
@@ -735,136 +617,6 @@ void RegisterMessageTypes() {
   MessageRegistry::instance()->Register<Ipc_CqueryQueryDbWaitForIdleIndexer>();
   MessageRegistry::instance()->Register<Ipc_CqueryExitWhenIdle>();
 }
-
-// Manages files inside of the indexing pipeline so we don't have the same file
-// being imported multiple times.
-//
-// NOTE: This is not thread safe and should only be used on the querydb thread.
-struct ImportManager {
-  // Try to mark the given dependency as imported. A dependency can only ever be
-  // imported once.
-  bool TryMarkDependencyImported(const std::string& path) {
-    std::lock_guard<std::mutex> lock(depdency_mutex_);
-    return depdency_imported_.insert(path).second;
-  }
-
-  // Try to import the given file into querydb. We should only ever be
-  // importing a file into querydb once per file. Returns true if the file
-  // can be imported.
-  bool StartQueryDbImport(const std::string& path) {
-    return querydb_processing_.insert(path).second;
-  }
-
-  // The file has been fully imported and can be imported again later on.
-  void DoneQueryDbImport(const std::string& path) {
-    querydb_processing_.erase(path);
-  }
-
-  // Returns true if there any any files currently being imported.
-  bool HasActiveQuerydbImports() { return !querydb_processing_.empty(); }
-
-  std::unordered_set<std::string> querydb_processing_;
-
-  // TODO: use std::shared_mutex so we can have multiple readers.
-  std::mutex depdency_mutex_;
-  std::unordered_set<std::string> depdency_imported_;
-};
-
-// Manages loading caches from file paths for the indexer process.
-struct CacheLoader {
-  explicit CacheLoader(Config* config) : config_(config) {}
-
-  IndexFile* TryLoad(const std::string& path) {
-    auto it = caches.find(path);
-    if (it != caches.end())
-      return it->second.get();
-
-    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config_, path);
-    if (!cache)
-      return nullptr;
-
-    caches[path] = std::move(cache);
-    return caches[path].get();
-  }
-
-  // Takes the existing cache or loads the cache at |path|. May return nullptr
-  // if the cache does not exist.
-  std::unique_ptr<IndexFile> TryTakeOrLoad(const std::string& path) {
-    auto it = caches.find(path);
-    if (it != caches.end()) {
-      auto result = std::move(it->second);
-      caches.erase(it);
-      return result;
-    }
-
-    return LoadCachedIndex(config_, path);
-  }
-
-  // Takes the existing cache or loads the cache at |path|. Asserts the cache
-  // exists.
-  std::unique_ptr<IndexFile> TakeOrLoad(const std::string& path) {
-    auto result = TryTakeOrLoad(path);
-    assert(result);
-    return result;
-  }
-
-  std::unordered_map<std::string, std::unique_ptr<IndexFile>> caches;
-  Config* config_;
-};
-
-// Caches timestamps of cc files so we can avoid a filesystem reads. This is
-// important for import perf, as during dependency checking the same files are
-// checked over and over again if they are common headers.
-struct TimestampManager {
-  optional<int64_t> GetLastCachedModificationTime(CacheLoader* cache_loader,
-                                                  const std::string& path) {
-    {
-      std::lock_guard<std::mutex> guard(mutex_);
-      auto it = timestamps_.find(path);
-      if (it != timestamps_.end())
-        return it->second;
-    }
-    IndexFile* file = cache_loader->TryLoad(path);
-    if (!file)
-      return nullopt;
-
-    UpdateCachedModificationTime(path, file->last_modification_time);
-    return file->last_modification_time;
-  }
-
-  void UpdateCachedModificationTime(const std::string& path,
-                                    int64_t timestamp) {
-    std::lock_guard<std::mutex> guard(mutex_);
-    timestamps_[path] = timestamp;
-  }
-
-  // TODO: use std::shared_mutex so we can have multiple readers.
-  std::mutex mutex_;
-  std::unordered_map<std::string, int64_t> timestamps_;
-};
-
-struct IndexManager {
-  std::unordered_set<std::string> files_being_indexed_;
-  std::mutex mutex_;
-
-  // Marks a file as being indexed. Returns true if the file is not already
-  // being indexed.
-  bool MarkIndex(const std::string& path) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    return files_being_indexed_.insert(path).second;
-  }
-
-  // Unmarks a file as being indexed, so it can get indexed again in the
-  // future.
-  void ClearIndex(const std::string& path) {
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    auto it = files_being_indexed_.find(path);
-    assert(it != files_being_indexed_.end());
-    files_being_indexed_.erase(it);
-  }
-};
 
 // Send indexing progress to client if reporting is enabled.
 void EmitProgress(Config* config, QueueManager* queue) {
@@ -1487,183 +1239,17 @@ bool QueryDbMainLoop(Config* config,
   for (auto& message : messages) {
     did_work = true;
 
-    switch (message->method_id) {
-      case IpcId::Initialize: {
-        auto request = message->As<Ipc_InitializeRequest>();
-
-        // Log initialization parameters.
-        rapidjson::StringBuffer output;
-        Writer writer(output);
-        Reflect(writer, request->params.initializationOptions);
-        LOG_S(INFO) << "Init parameters: " << output.GetString();
-
-        if (request->params.rootUri) {
-          std::string project_path = request->params.rootUri->GetPath();
-          LOG_S(INFO) << "[querydb] Initialize in directory " << project_path
-                      << " with uri " << request->params.rootUri->raw_uri;
-
-          if (!request->params.initializationOptions) {
-            LOG_S(FATAL) << "Initialization parameters (particularily "
-                            "cacheDirectory) are required";
-            exit(1);
-          }
-
-          *config = *request->params.initializationOptions;
-
-          // Check client version.
-          if (config->clientVersion.has_value() &&
-              *config->clientVersion != kExpectedClientVersion) {
-            Out_ShowLogMessage out;
-            out.display_type = Out_ShowLogMessage::DisplayType::Show;
-            out.params.type = lsMessageType::Error;
-            out.params.message =
-                "cquery client (v" + std::to_string(*config->clientVersion) +
-                ") and server (v" + std::to_string(kExpectedClientVersion) +
-                ") version mismatch. Please update ";
-            if (config->clientVersion > kExpectedClientVersion)
-              out.params.message += "the cquery binary.";
-            else
-              out.params.message +=
-                  "your extension client (VSIX file). Make sure to uninstall "
-                  "the cquery extension and restart vscode before "
-                  "reinstalling.";
-            out.Write(std::cout);
-          }
-
-          // Make sure cache directory is valid.
-          if (config->cacheDirectory.empty()) {
-            LOG_S(FATAL) << "Exiting; no cache directory";
-            exit(1);
-          }
-
-          config->cacheDirectory = NormalizePath(config->cacheDirectory);
-          EnsureEndsInSlash(config->cacheDirectory);
-
-          // Ensure there is a resource directory.
-          if (config->resourceDirectory.empty()) {
-            config->resourceDirectory = GetWorkingDirectory();
-#if defined(_WIN32)
-            config->resourceDirectory +=
-                std::string("../../clang_resource_dir/");
-#else
-            config->resourceDirectory += std::string("../clang_resource_dir/");
-#endif
-          }
-          config->resourceDirectory = NormalizePath(config->resourceDirectory);
-          LOG_S(INFO) << "Using -resource-dir=" << config->resourceDirectory;
-
-          // Send initialization before starting indexers, so we don't send a
-          // status update too early.
-          // TODO: query request->params.capabilities.textDocument and support
-          // only things the client supports.
-
-          Out_InitializeResponse out;
-          out.id = request->id;
-
-          // out.result.capabilities.textDocumentSync =
-          // lsTextDocumentSyncOptions();
-          // out.result.capabilities.textDocumentSync->openClose = true;
-          // out.result.capabilities.textDocumentSync->change =
-          // lsTextDocumentSyncKind::Full;
-          // out.result.capabilities.textDocumentSync->willSave = true;
-          // out.result.capabilities.textDocumentSync->willSaveWaitUntil =
-          // true;
-          out.result.capabilities.textDocumentSync =
-              lsTextDocumentSyncKind::Incremental;
-
-          out.result.capabilities.renameProvider = true;
-
-          out.result.capabilities.completionProvider = lsCompletionOptions();
-          out.result.capabilities.completionProvider->resolveProvider = false;
-          // vscode doesn't support trigger character sequences, so we use ':'
-          // for
-          // '::' and '>' for '->'. See
-          // https://github.com/Microsoft/language-server-protocol/issues/138.
-          out.result.capabilities.completionProvider->triggerCharacters = {
-              ".", ":", ">", "#"};
-
-          out.result.capabilities.signatureHelpProvider =
-              lsSignatureHelpOptions();
-          // NOTE: If updating signature help tokens make sure to also update
-          // WorkingFile::FindClosestCallNameInBuffer.
-          out.result.capabilities.signatureHelpProvider->triggerCharacters = {
-              "(", ","};
-
-          out.result.capabilities.codeLensProvider = lsCodeLensOptions();
-          out.result.capabilities.codeLensProvider->resolveProvider = false;
-
-          out.result.capabilities.definitionProvider = true;
-          out.result.capabilities.documentHighlightProvider = true;
-          out.result.capabilities.hoverProvider = true;
-          out.result.capabilities.referencesProvider = true;
-
-          out.result.capabilities.codeActionProvider = true;
-
-          out.result.capabilities.documentSymbolProvider = true;
-          out.result.capabilities.workspaceSymbolProvider = true;
-
-          out.result.capabilities.documentLinkProvider =
-              lsDocumentLinkOptions();
-          out.result.capabilities.documentLinkProvider->resolveProvider = false;
-
-          IpcManager::WriteStdout(IpcId::Initialize, out);
-
-          // Set project root.
-          config->projectRoot =
-              NormalizePath(request->params.rootUri->GetPath());
-          EnsureEndsInSlash(config->projectRoot);
-          MakeDirectoryRecursive(config->cacheDirectory +
-                                 EscapeFileName(config->projectRoot));
-
-          // Start indexer threads.
-          if (config->indexerCount == 0) {
-            // If the user has not specified how many indexers to run, try to
-            // guess an appropriate value. Default to 80% utilization.
-            const float kDefaultTargetUtilization = 0.8;
-            config->indexerCount =
-                std::thread::hardware_concurrency() * kDefaultTargetUtilization;
-            if (config->indexerCount <= 0)
-              config->indexerCount = 1;
-          }
-          LOG_S(INFO) << "Starting " << config->indexerCount << " indexers";
-          for (int i = 0; i < config->indexerCount; ++i) {
-            WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
-              return IndexMain(config, file_consumer_shared, timestamp_manager,
-                               import_manager, project, working_files, waiter,
-                               queue);
-            });
-          }
-
-          Timer time;
-
-          // Open up / load the project.
-          project->Load(config->extraClangArguments,
-                        config->compilationDatabaseDirectory, project_path,
-                        config->resourceDirectory);
-          time.ResetAndPrint("[perf] Loaded compilation entries (" +
-                             std::to_string(project->entries.size()) +
-                             " files)");
-
-          // Start scanning include directories before dispatching project
-          // files, because that takes a long time.
-          include_complete->Rescan();
-
-          time.Reset();
-          project->ForAllFilteredFiles(
-              config, [&](int i, const Project::Entry& entry) {
-                bool is_interactive =
-                    working_files->GetFileByFilename(entry.filename) != nullptr;
-                queue->index_request.Enqueue(Index_Request(
-                    entry.filename, entry.args, is_interactive, nullopt));
-              });
-
-          // We need to support multiple concurrent index processes.
-          time.ResetAndPrint("[perf] Dispatched initial index requests");
-        }
-
+    for (MessageHandler* handler : *MessageHandler::message_handlers) {
+      if (handler->GetId() == message->method_id) {
+        handler->Run(std::move(message));
         break;
       }
+    }
+    if (!message)
+      continue;
+    // FIXME: assert(!message), ie, verify that a handler was run.
 
+    switch (message->method_id) {
       case IpcId::Exit: {
         LOG_S(INFO) << "Exiting; got IpcId::Exit";
         exit(0);
@@ -3036,10 +2622,30 @@ void RunQueryDbThread(const std::string& bin_name,
   auto signature_cache = MakeUnique<CodeCompleteCache>();
   ImportManager import_manager;
   TimestampManager timestamp_manager;
+  QueryDatabase db;
+
+  // Setup shared references.
+  for (MessageHandler* handler : *MessageHandler::message_handlers) {
+    handler->config = config;
+    handler->db = &db;
+    handler->exit_when_idle = &exit_when_idle;
+    handler->waiter = waiter;
+    handler->queue = queue;
+    handler->project = &project;
+    handler->file_consumer_shared = &file_consumer_shared;
+    handler->import_manager = &import_manager;
+    handler->timestamp_manager = &timestamp_manager;
+    handler->working_files = &working_files;
+    handler->clang_complete = &clang_complete;
+    handler->include_complete = &include_complete;
+    handler->global_code_complete_cache = global_code_complete_cache.get();
+    handler->non_global_code_complete_cache =
+        non_global_code_complete_cache.get();
+    handler->signature_cache = signature_cache.get();
+  }
 
   // Run query db main loop.
   SetCurrentThreadName("querydb");
-  QueryDatabase db;
   while (true) {
     bool did_work = QueryDbMainLoop(
         config, &db, &exit_when_idle, waiter, queue, &project,
