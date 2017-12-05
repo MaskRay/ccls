@@ -1250,12 +1250,6 @@ bool QueryDbMainLoop(Config* config,
     // FIXME: assert(!message), ie, verify that a handler was run.
 
     switch (message->method_id) {
-      case IpcId::Exit: {
-        LOG_S(INFO) << "Exiting; got IpcId::Exit";
-        exit(0);
-        break;
-      }
-
       case IpcId::CqueryFreshenIndex: {
         LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
 
