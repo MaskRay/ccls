@@ -135,6 +135,7 @@ void BuildDetailString(CXCompletionString completion_string,
                        std::string& label,
                        std::string& detail,
                        std::string& insert,
+                       lsInsertTextFormat& format,
                        std::vector<std::string>* parameters,
                        bool include_snippets) {
   int num_chunks = clang_getNumCompletionChunks(completion_string);
@@ -146,7 +147,7 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_Optional: {
         CXCompletionString nested =
             clang_getCompletionChunkCompletionString(completion_string, i);
-        BuildDetailString(nested, label, detail, insert, parameters,
+        BuildDetailString(nested, label, detail, insert, format, parameters,
                           include_snippets);
         break;
       }
@@ -160,6 +161,7 @@ void BuildDetailString(CXCompletionString completion_string,
         if (include_snippets) {
           insert +=
               "${" + std::to_string(parameters->size()) + ":" + text + "}";
+          format = lsInsertTextFormat::Snippet;
         }
         break;
       }
@@ -204,6 +206,7 @@ void BuildDetailString(CXCompletionString completion_string,
         // Put cursor between parentheses if snippets are not enabled
         if (!include_snippets) {
           insert += "$1";
+          format = lsInsertTextFormat::Snippet;
         }
         break;
       case CXCompletionChunk_RightParen:
@@ -260,8 +263,6 @@ void BuildDetailString(CXCompletionString completion_string,
         break;
     }
   }
-
-  insert += "$0";
 }
 
 void TryEnsureDocumentParsed(ClangCompleteManager* manager,
@@ -420,8 +421,11 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             BuildDetailString(
                 result.CompletionString, ls_completion_item.label,
                 ls_completion_item.detail, ls_completion_item.insertText,
+                ls_completion_item.insertTextFormat,
                 &ls_completion_item.parameters_,
                 completion_manager->config_->enableSnippetInsertion);
+            if (ls_completion_item.insertTextFormat == lsInsertTextFormat::Snippet)
+                ls_completion_item.insertText += "$0";
 
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));

@@ -360,7 +360,7 @@ struct lsCompletionItem {
 
   // The format of the insert text. The format applies to both the `insertText`
   // property and the `newText` property of a provided `textEdit`.
-  lsInsertTextFormat insertTextFormat = lsInsertTextFormat::Snippet;
+  lsInsertTextFormat insertTextFormat = lsInsertTextFormat::PlainText;
 
   // An edit which is applied to a document when selecting this completion. When
   // an edit is provided the value of `insertText` is ignored.
