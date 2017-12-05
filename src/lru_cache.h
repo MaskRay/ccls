@@ -9,7 +9,8 @@ template <typename TKey, typename TValue>
 struct LruCache {
   explicit LruCache(int max_entries);
 
-  // Fetches an entry for |key|. If it does not exist, |allocator| will be invoked to create one.
+  // Fetches an entry for |key|. If it does not exist, |allocator| will be
+  // invoked to create one.
   template <typename TAllocator>
   std::shared_ptr<TValue> Get(const TKey& key, TAllocator allocator);
   // Fetches the entry for |filename| and updates it's usage so it is less
@@ -47,7 +48,8 @@ LruCache<TKey, TValue>::LruCache(int max_entries) : max_entries_(max_entries) {
 
 template <typename TKey, typename TValue>
 template <typename TAllocator>
-std::shared_ptr<TValue> LruCache<TKey, TValue>::Get(const TKey& key, TAllocator allocator) {
+std::shared_ptr<TValue> LruCache<TKey, TValue>::Get(const TKey& key,
+                                                    TAllocator allocator) {
   std::shared_ptr<TValue> result = TryGet(key);
   if (!result)
     Insert(key, result = allocator());
@@ -82,7 +84,8 @@ std::shared_ptr<TValue> LruCache<TKey, TValue>::TryTake(const TKey& key) {
 }
 
 template <typename TKey, typename TValue>
-void LruCache<TKey, TValue>::Insert(const TKey& key, const std::shared_ptr<TValue>& value) {
+void LruCache<TKey, TValue>::Insert(const TKey& key,
+                                    const std::shared_ptr<TValue>& value) {
   if (entries_.size() >= max_entries_) {
     // Find entry with the lowest score.
     size_t lowest_idx = 0;
@@ -113,9 +116,8 @@ void LruCache<TKey, TValue>::IncrementScore() {
 
   // Overflow.
   if (next_score_ == 0) {
-    std::sort(entries_.begin(), entries_.end(), [](const Entry& a, const Entry& b) {
-      return a.score < b.score;
-    });
+    std::sort(entries_.begin(), entries_.end(),
+              [](const Entry& a, const Entry& b) { return a.score < b.score; });
     for (Entry& entry : entries_)
       entry.score = next_score_++;
   }

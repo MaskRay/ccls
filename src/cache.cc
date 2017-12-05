@@ -18,7 +18,7 @@ std::string GetCachedBaseFileName(Config* config,
   size_t len = config->projectRoot.size();
   if (StartsWith(source_file, config->projectRoot)) {
     cache_file = EscapeFileName(config->projectRoot) + '/' +
-      EscapeFileName(source_file.substr(len));
+                 EscapeFileName(source_file.substr(len));
   } else
     cache_file = EscapeFileName(source_file);
 
@@ -32,8 +32,8 @@ std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
   if (!config->enableCacheRead)
     return nullptr;
 
-  optional<std::string> file_content = ReadContent(
-      GetCachedBaseFileName(config, filename) + ".json");
+  optional<std::string> file_content =
+      ReadContent(GetCachedBaseFileName(config, filename) + ".json");
   if (!file_content)
     return nullptr;
 
@@ -52,8 +52,7 @@ void WriteToCache(Config* config, IndexFile& file) {
   if (!config->enableCacheWrite)
     return;
 
-  std::string cache_basename =
-      GetCachedBaseFileName(config, file.path);
+  std::string cache_basename = GetCachedBaseFileName(config, file.path);
 
   if (file.file_contents_.empty()) {
     LOG_S(ERROR) << "No cached file contents; performing potentially stale "
