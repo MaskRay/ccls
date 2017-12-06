@@ -899,32 +899,6 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities,
                     documentLinkProvider,
                     executeCommandProvider);
 
-struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
-  const static IpcId kIpcId = IpcId::Initialize;
-
-  lsRequestId id;
-  lsInitializeParams params;
-};
-MAKE_REFLECT_STRUCT(Ipc_InitializeRequest, id, params);
-
-struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
-  struct InitializeResult {
-    lsServerCapabilities capabilities;
-  };
-  lsRequestId id;
-  InitializeResult result;
-};
-MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
-MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
-
-struct Ipc_InitializedNotification
-    : public IpcMessage<Ipc_InitializedNotification> {
-  const static IpcId kIpcId = IpcId::Initialized;
-
-  lsRequestId id;
-};
-MAKE_REFLECT_STRUCT(Ipc_InitializedNotification, id);
-
 struct Ipc_Exit : public IpcMessage<Ipc_Exit> {
   static const IpcId kIpcId = IpcId::Exit;
 };

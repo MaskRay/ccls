@@ -86,8 +86,6 @@ void EmitDiagnostics(WorkingFiles* working_files,
 }
 
 REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
-REGISTER_IPC_MESSAGE(Ipc_InitializeRequest);
-REGISTER_IPC_MESSAGE(Ipc_InitializedNotification);
 REGISTER_IPC_MESSAGE(Ipc_Exit);
 REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidOpen);
 REGISTER_IPC_MESSAGE(Ipc_CqueryTextDocumentDidView);
