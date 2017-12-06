@@ -27,10 +27,12 @@ unsigned Flags() {
       ;
 }
 
-int GetCompletionPriority(const CXCompletionString& str,
+unsigned GetCompletionPriority(const CXCompletionString& str,
                           CXCursorKind result_kind,
                           const std::string& label) {
-  int priority = clang_getCompletionPriority(str);
+  unsigned priority = clang_getCompletionPriority(str);
+
+  // XXX: What happens if priority overflows?
   if (result_kind == CXCursor_Destructor) {
     priority *= 100;
   }
@@ -42,6 +44,20 @@ int GetCompletionPriority(const CXCompletionString& str,
     priority *= 100;
   }
   return priority;
+}
+
+template<typename T>
+char *tofixedbase64(T input, char *out) {
+  const char *digits = "./0123456789"
+                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                       "abcdefghijklmnopqrstuvwxyz";
+  int len = (sizeof(T)*8-1)/6+1;
+  for (int i = len-1; i >= 0; i--) {
+    out[i] = digits[input%64];
+    input /= 64;
+  }
+  out[len] = '\0';
+  return out;
 }
 
 /*
@@ -431,10 +447,12 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
+
+            char buf[16];
             ls_completion_item.sortText =
-                (const char)uint64_t(GetCompletionPriority(
+                tofixedbase64(GetCompletionPriority(
                     result.CompletionString, result.CursorKind,
-                    ls_completion_item.label));
+                    ls_completion_item.label), buf);
 
             ls_result.push_back(ls_completion_item);
           }
