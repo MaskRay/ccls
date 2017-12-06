@@ -40,6 +40,9 @@ void Reflect(Reader& visitor, lsRequestId& id);
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
+#define REGISTER_IPC_MESSAGE(type) \
+  static MessageRegistryRegister<type> type##message_handler_instance_;
+
 struct MessageRegistry {
   static MessageRegistry* instance_;
   static MessageRegistry* instance();
@@ -48,19 +51,21 @@ struct MessageRegistry {
       std::function<std::unique_ptr<BaseIpcMessage>(Reader& visitor)>;
   std::unordered_map<std::string, Allocator> allocators;
 
-  template <typename T>
-  void Register() {
+  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin(
+      bool log_stdin_to_stderr);
+  std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor);
+};
+
+template <typename T>
+struct MessageRegistryRegister {
+  MessageRegistryRegister() {
     std::string method_name = IpcIdToString(T::kIpcId);
-    allocators[method_name] = [](Reader& visitor) {
+    MessageRegistry::instance()->allocators[method_name] = [](Reader& visitor) {
       auto result = MakeUnique<T>();
       Reflect(visitor, *result);
       return result;
     };
   }
-
-  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin(
-      bool log_stdin_to_stderr);
-  std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor);
 };
 
 struct lsBaseOutMessage {

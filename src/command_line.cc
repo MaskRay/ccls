@@ -85,42 +85,39 @@ void EmitDiagnostics(WorkingFiles* working_files,
   });
 }
 
-void RegisterMessageTypes() {
-  // TODO: use automatic registration similar to MessageHandler.
-  MessageRegistry::instance()->Register<Ipc_CancelRequest>();
-  MessageRegistry::instance()->Register<Ipc_InitializeRequest>();
-  MessageRegistry::instance()->Register<Ipc_InitializedNotification>();
-  MessageRegistry::instance()->Register<Ipc_Exit>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidOpen>();
-  MessageRegistry::instance()->Register<Ipc_CqueryTextDocumentDidView>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidChange>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidClose>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDidSave>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentRename>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentComplete>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentSignatureHelp>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDefinition>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentHighlight>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentHover>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentReferences>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentSymbol>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentDocumentLink>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentCodeAction>();
-  MessageRegistry::instance()->Register<Ipc_TextDocumentCodeLens>();
-  MessageRegistry::instance()->Register<Ipc_CodeLensResolve>();
-  MessageRegistry::instance()->Register<Ipc_WorkspaceSymbol>();
-  MessageRegistry::instance()->Register<Ipc_CqueryFreshenIndex>();
-  MessageRegistry::instance()->Register<Ipc_CqueryTypeHierarchyTree>();
-  MessageRegistry::instance()->Register<Ipc_CqueryCallTreeInitial>();
-  MessageRegistry::instance()->Register<Ipc_CqueryCallTreeExpand>();
-  MessageRegistry::instance()->Register<Ipc_CqueryVars>();
-  MessageRegistry::instance()->Register<Ipc_CqueryCallers>();
-  MessageRegistry::instance()->Register<Ipc_CqueryBase>();
-  MessageRegistry::instance()->Register<Ipc_CqueryDerived>();
-  MessageRegistry::instance()->Register<Ipc_CqueryIndexFile>();
-  MessageRegistry::instance()->Register<Ipc_CqueryQueryDbWaitForIdleIndexer>();
-  MessageRegistry::instance()->Register<Ipc_CqueryExitWhenIdle>();
-}
+REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
+REGISTER_IPC_MESSAGE(Ipc_InitializeRequest);
+REGISTER_IPC_MESSAGE(Ipc_InitializedNotification);
+REGISTER_IPC_MESSAGE(Ipc_Exit);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidOpen);
+REGISTER_IPC_MESSAGE(Ipc_CqueryTextDocumentDidView);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidChange);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidClose);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidSave);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentRename);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentComplete);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentSignatureHelp);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDefinition);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentHighlight);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentHover);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentReferences);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentSymbol);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentLink);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeAction);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeLens);
+REGISTER_IPC_MESSAGE(Ipc_CodeLensResolve);
+REGISTER_IPC_MESSAGE(Ipc_WorkspaceSymbol);
+REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
+REGISTER_IPC_MESSAGE(Ipc_CqueryTypeHierarchyTree);
+REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeInitial);
+REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeExpand);
+REGISTER_IPC_MESSAGE(Ipc_CqueryVars);
+REGISTER_IPC_MESSAGE(Ipc_CqueryCallers);
+REGISTER_IPC_MESSAGE(Ipc_CqueryBase);
+REGISTER_IPC_MESSAGE(Ipc_CqueryDerived);
+REGISTER_IPC_MESSAGE(Ipc_CqueryIndexFile);
+REGISTER_IPC_MESSAGE(Ipc_CqueryQueryDbWaitForIdleIndexer);
+REGISTER_IPC_MESSAGE(Ipc_CqueryExitWhenIdle);
 
 // Send indexing progress to client if reporting is enabled.
 void EmitProgress(Config* config, QueueManager* queue) {
@@ -1037,8 +1034,6 @@ int main(int argc, char** argv) {
 
   PlatformInit();
   IndexInit();
-
-  RegisterMessageTypes();
 
   std::unordered_map<std::string, std::string> options =
       ParseOptions(argc, argv);
