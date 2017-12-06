@@ -2,6 +2,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+#include <climits>
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
