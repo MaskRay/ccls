@@ -1,5 +1,6 @@
 #include "message_handler.h"
 
+namespace {
 struct Ipc_TextDocumentDidChange
     : public IpcMessage<Ipc_TextDocumentDidChange> {
   const static IpcId kIpcId = IpcId::TextDocumentDidChange;
@@ -20,3 +21,4 @@ struct TextDocumentDidChangeHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidChangeHandler);
+}  // namespace

@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct Ipc_CqueryBase : public IpcMessage<Ipc_CqueryBase> {
   const static IpcId kIpcId = IpcId::CqueryBase;
   lsRequestId id;
@@ -48,3 +49,4 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryBaseHandler);
+}  // namespace

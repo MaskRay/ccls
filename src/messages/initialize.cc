@@ -5,6 +5,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
 
@@ -202,3 +203,4 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
   }
 };
 REGISTER_MESSAGE_HANDLER(InitializeHandler);
+}  // namespace

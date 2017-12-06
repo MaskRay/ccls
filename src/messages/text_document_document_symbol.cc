@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
 };
@@ -52,3 +53,4 @@ struct TextDocumentDocumentSymbolHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDocumentSymbolHandler);
+}  // namespace

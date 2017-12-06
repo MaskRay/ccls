@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct Ipc_CqueryTypeHierarchyTree
     : public IpcMessage<Ipc_CqueryTypeHierarchyTree> {
   const static IpcId kIpcId = IpcId::CqueryTypeHierarchyTree;
@@ -189,3 +190,4 @@ struct CqueryTypeHierarchyTreeHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryTypeHierarchyTreeHandler);
+}  // namespace

@@ -3,6 +3,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_CqueryExitWhenIdle : public IpcMessage<Ipc_CqueryExitWhenIdle> {
   static constexpr IpcId kIpcId = IpcId::CqueryExitWhenIdle;
 };
@@ -17,3 +18,4 @@ struct CqueryExitWhenIdleHandler : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryExitWhenIdleHandler);
+}  // namespace

@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct lsDocumentCodeLensParams {
   lsTextDocumentIdentifier textDocument;
 };
@@ -252,3 +253,4 @@ struct TextDocumentCodeLensHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentCodeLensHandler);
+}  // namespace

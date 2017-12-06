@@ -1,5 +1,6 @@
 #include "message_handler.h"
 
+namespace {
 struct Ipc_CqueryTextDocumentDidView
     : public IpcMessage<Ipc_CqueryTextDocumentDidView> {
   struct Params {
@@ -33,3 +34,4 @@ struct CqueryDidViewHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryDidViewHandler);
+}  // namespace

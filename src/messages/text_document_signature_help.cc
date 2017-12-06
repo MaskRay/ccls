@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "timer.h"
 
+namespace {
 struct Ipc_TextDocumentSignatureHelp
     : public IpcMessage<Ipc_TextDocumentSignatureHelp> {
   const static IpcId kIpcId = IpcId::TextDocumentSignatureHelp;
@@ -161,3 +162,4 @@ struct TextDocumentSignatureHelpHandler : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentSignatureHelpHandler);
+}  // namespace

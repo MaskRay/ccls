@@ -3,6 +3,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_CqueryQueryDbWaitForIdleIndexer
     : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
   static constexpr IpcId kIpcId = IpcId::CqueryQueryDbWaitForIdleIndexer;
@@ -37,3 +38,4 @@ struct CqueryQueryDbWaitForIdleIndexerHandler : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryQueryDbWaitForIdleIndexerHandler);
+}  // namespace

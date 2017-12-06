@@ -1,5 +1,6 @@
 #include "message_handler.h"
 
+namespace {
 struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {
   struct Params {
     lsTextDocumentItem textDocument;
@@ -28,3 +29,4 @@ struct TextDocumentDidCloseHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidCloseHandler);
+}  // namespace

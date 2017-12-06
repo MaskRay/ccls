@@ -3,6 +3,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
   lsRequestId id;
@@ -49,3 +50,4 @@ struct CqueryFreshenIndexHandler : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryFreshenIndexHandler);
+}  // namespace

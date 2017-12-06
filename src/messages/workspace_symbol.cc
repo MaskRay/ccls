@@ -4,6 +4,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct lsWorkspaceSymbolParams {
   std::string query;
 };
@@ -73,3 +74,4 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
   }
 };
 REGISTER_MESSAGE_HANDLER(WorkspaceSymbolHandler);
+}  // namespace

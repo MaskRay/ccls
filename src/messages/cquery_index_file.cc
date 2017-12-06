@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "platform.h"
 
+namespace {
 struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
   static constexpr IpcId kIpcId = IpcId::CqueryIndexFile;
 
@@ -28,3 +29,4 @@ struct CqueryIndexFileHandler : BaseMessageHandler<Ipc_CqueryIndexFile> {
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryIndexFileHandler);
+}  // namespace

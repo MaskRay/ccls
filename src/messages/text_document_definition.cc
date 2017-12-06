@@ -7,7 +7,6 @@ void PushBack(NonElidedVector<lsLocation>* result,
   if (location)
     result->push_back(*location);
 }
-}  // namespace
 
 struct Ipc_TextDocumentDefinition
     : public IpcMessage<Ipc_TextDocumentDefinition> {
@@ -112,3 +111,4 @@ struct TextDocumentDefinitionHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDefinitionHandler);
+}  // namespace

@@ -2,6 +2,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_Exit : public IpcMessage<Ipc_Exit> {
   static const IpcId kIpcId = IpcId::Exit;
 };
@@ -17,3 +18,4 @@ struct ExitHandler : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(ExitHandler);
+}  // namespace

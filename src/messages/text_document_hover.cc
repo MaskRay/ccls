@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {
   const static IpcId kIpcId = IpcId::TextDocumentHover;
 
@@ -55,3 +56,4 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentHoverHandler);
+}  // namespace

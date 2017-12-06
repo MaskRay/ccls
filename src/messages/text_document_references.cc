@@ -3,6 +3,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_TextDocumentReferences
     : public IpcMessage<Ipc_TextDocumentReferences> {
   struct lsReferenceContext {
@@ -78,3 +79,4 @@ struct TextDocumentReferencesHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentReferencesHandler);
+}  // namespace

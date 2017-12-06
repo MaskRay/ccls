@@ -2,6 +2,7 @@
 #include "message_handler.h"
 #include "timer.h"
 
+namespace {
 // Open, view, change, close file
 struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
   struct Params {
@@ -53,3 +54,4 @@ struct TextDocumentDidOpenHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidOpenHandler);
+}  // namespace

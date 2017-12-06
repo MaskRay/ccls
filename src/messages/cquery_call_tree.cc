@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct Ipc_CqueryCallTreeInitial
     : public IpcMessage<Ipc_CqueryCallTreeInitial> {
   const static IpcId kIpcId = IpcId::CqueryCallTreeInitial;
@@ -215,3 +216,4 @@ struct CqueryCallTreeExpandHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryCallTreeExpandHandler);
+}  // namespace

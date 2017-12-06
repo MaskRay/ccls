@@ -1,5 +1,6 @@
 #include "message_handler.h"
 
+namespace {
 struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
   struct Params {
     // The document that was saved.
@@ -42,3 +43,4 @@ struct TextDocumentDidSaveHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidSaveHandler);
+}  // namespace

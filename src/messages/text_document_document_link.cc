@@ -3,6 +3,7 @@
 
 #include <loguru.hpp>
 
+namespace {
 struct Ipc_TextDocumentDocumentLink
     : public IpcMessage<Ipc_TextDocumentDocumentLink> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentLink;
@@ -83,3 +84,4 @@ struct TextDocumentDocumentLinkHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDocumentLinkHandler);
+}  // namespace

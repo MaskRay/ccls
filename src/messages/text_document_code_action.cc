@@ -247,8 +247,6 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
   return nullopt;
 }
 
-}  // namespace
-
 struct Ipc_TextDocumentCodeAction
     : public IpcMessage<Ipc_TextDocumentCodeAction> {
   const static IpcId kIpcId = IpcId::TextDocumentCodeAction;
@@ -593,3 +591,4 @@ TEST_SUITE("FindIncludeLine") {
     REQUIRE(FindIncludeLine(lines, "#include <e>") == 7);
   }
 }
+}  // namespace

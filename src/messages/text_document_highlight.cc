@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct Ipc_TextDocumentDocumentHighlight
     : public IpcMessage<Ipc_TextDocumentDocumentHighlight> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentHighlight;
@@ -61,3 +62,4 @@ struct TextDocumentDocumentHighlightHandler
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDocumentHighlightHandler);
+}  // namespace

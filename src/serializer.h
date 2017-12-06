@@ -31,7 +31,7 @@ struct IndexFile;
   template <typename TVisitor>                   \
   void Reflect(TVisitor& visitor, type& value) { \
     auto value0 = static_cast<as_type>(value);   \
-    Reflect(visitor, value0);                    \
+    ::Reflect(visitor, value0);                  \
     value = static_cast<type>(value0);           \
   }
 

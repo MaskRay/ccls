@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+namespace {
 struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
   struct Params {
     // The document to format.
@@ -61,3 +62,4 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentRenameHandler);
+}  // namespace
