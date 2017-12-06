@@ -9,6 +9,7 @@
 #include "ipc_manager.h"
 #include "project.h"
 #include "query.h"
+#include "semantic_highlight_symbol_cache.h"
 #include "threaded_queue.h"
 #include "timestamp_manager.h"
 #include "working_files.h"
@@ -36,6 +37,7 @@ struct MessageHandler {
   FileConsumer::SharedState* file_consumer_shared = nullptr;
   ImportManager* import_manager = nullptr;
   TimestampManager* timestamp_manager = nullptr;
+  SemanticHighlightSymbolCache* semantic_cache = nullptr;
   WorkingFiles* working_files = nullptr;
   ClangCompleteManager* clang_complete = nullptr;
   IncludeComplete* include_complete = nullptr;
@@ -62,3 +64,23 @@ struct BaseMessageHandler : MessageHandler {
     Run(message->As<TMessage>());
   }
 };
+
+bool FindFileOrFail(QueryDatabase* db,
+                    optional<lsRequestId> id,
+                    const std::string& absolute_path,
+                    QueryFile** out_query_file,
+                    QueryFileId* out_file_id = nullptr);
+
+void EmitInactiveLines(WorkingFile* working_file,
+                       const std::vector<Range>& inactive_regions);
+
+void EmitSemanticHighlighting(QueryDatabase* db,
+                              SemanticHighlightSymbolCache* semantic_cache,
+                              WorkingFile* working_file,
+                              QueryFile* file);
+
+// Pre-filters completion responses before sending to vscode. This results in a
+// significantly snappier completion experience as vscode is easily overloaded
+// when given 1000+ completion items.
+void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
+                              const std::string& complete_text);

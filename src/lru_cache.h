@@ -1,7 +1,9 @@
 #pragma once
 
+#include <cassert>
 #include <limits>
 #include <memory>
+#include <vector>
 
 // Cache that evicts old entries which have not been used recently. Implemented
 // using array/linear search so this works well for small array sizes.

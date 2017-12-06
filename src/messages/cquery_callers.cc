@@ -1,0 +1,34 @@
+#include "message_handler.h"
+#include "query_utils.h"
+
+struct CqueryCallersHandler : BaseMessageHandler<Ipc_CqueryCallers> {
+  void Run(Ipc_CqueryCallers* request) override {
+    QueryFile* file;
+    if (!FindFileOrFail(db, request->id,
+                        request->params.textDocument.uri.GetPath(), &file)) {
+      return;
+    }
+
+    WorkingFile* working_file =
+        working_files->GetFileByFilename(file->def->path);
+
+    Out_LocationList out;
+    out.id = request->id;
+    for (const SymbolRef& ref :
+         FindSymbolsAtLocation(working_file, file, request->params.position)) {
+      if (ref.idx.kind == SymbolKind::Func) {
+        QueryFunc& func = db->funcs[ref.idx.idx];
+        std::vector<QueryLocation> locations =
+            ToQueryLocation(db, func.callers);
+        for (QueryFuncRef func_ref : GetCallersForAllBaseFunctions(db, func))
+          locations.push_back(func_ref.loc);
+        for (QueryFuncRef func_ref : GetCallersForAllDerivedFunctions(db, func))
+          locations.push_back(func_ref.loc);
+
+        out.result = GetLsLocations(db, working_files, locations);
+      }
+    }
+    IpcManager::WriteStdout(IpcId::CqueryCallers, out);
+  }
+};
+REGISTER_MESSAGE_HANDLER(CqueryCallersHandler);
