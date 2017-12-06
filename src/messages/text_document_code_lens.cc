@@ -22,6 +22,7 @@ void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
   Reflect(visitor, value.locations);
   visitor.EndArray();
 }
+#if false
 void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
   auto it = visitor.Begin();
   Reflect(*it, value.uri);
@@ -30,6 +31,7 @@ void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
   ++it;
   Reflect(*it, value.locations);
 }
+#endif
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
 struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
