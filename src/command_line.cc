@@ -986,11 +986,14 @@ void LanguageServerMain(const std::string& bin_name,
 // MAIN ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char** argv) {
-  loguru::init(argc, argv);
-  loguru::add_file("cquery_diagnostics.log", loguru::Truncate,
-                   loguru::Verbosity_MAX);
+  std::unordered_map<std::string, std::string> options =
+      ParseOptions(argc, argv);
+
+  if (!HasOption(options, "--log-all-to-stderr"))
+    loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
+
   loguru::g_flush_interval_ms = 0;
-  loguru::g_stderr_verbosity = 1;
+  loguru::init(argc, argv);
 
   MultiQueueWaiter waiter;
   IpcManager::CreateInstance(&waiter);
@@ -1003,18 +1006,20 @@ int main(int argc, char** argv) {
   PlatformInit();
   IndexInit();
 
-  std::unordered_map<std::string, std::string> options =
-      ParseOptions(argc, argv);
-
   bool print_help = true;
+
+  if (HasOption(options, "--log-file")) {
+    loguru::add_file(options["--log-file"].c_str(), loguru::Truncate,
+                     loguru::Verbosity_MAX);
+  }
+
+  if (HasOption(options, "--log-stdin-stdout-to-stderr"))
+    g_log_stdin_stdout_to_stderr = true;
 
   if (HasOption(options, "--clang-sanity-check")) {
     print_help = false;
     ClangSanityCheck();
   }
-
-  if (HasOption(options, "--log-stdin-stdout-to-stderr"))
-    g_log_stdin_stdout_to_stderr = true;
 
   if (HasOption(options, "--test-unit")) {
     print_help = false;
@@ -1043,36 +1048,40 @@ int main(int argc, char** argv) {
   }
 
   if (print_help) {
-    std::cout << R"help(cquery help:
+    std::cout << R"help(cquery is a low-latency C++ language server.
 
-  cquery is a low-latency C++ language server.
+Command line options:
+  --language-server
+                Run as a language server. This implements the language server
+                spec over STDIN and STDOUT.
+  --test-unit   Run unit tests.
+  --test-index  Run index tests.
+  --log-stdin-stdout-to-stderr
+                Print stdin and stdout messages to stderr. This is a aid for
+                developing new language clients, as it makes it easier to figure
+                out how the client is interacting with cquery.
+  --log-file <absoulte_path>
+                Emit diagnostic logging to the given path, which is taken
+                literally, ie, it will be relative to the current working
+                directory.
+  --log-all-to-stderr
+                Write all log messages to STDERR.
+  --clang-sanity-check
+                Run a simple index test. Verifies basic clang functionality.
+                Needs to be executed from the cquery root checkout directory.
+  --help        Print this help information.
 
-  General:
-    --help        Print this help information.
-    --language-server
-                  Run as a language server. This implements the language
-                  server spec over STDIN and STDOUT.
-    --test-unit   Run unit tests.
-    --test-index  Run index tests.
-    --log-stdin-stdout-to-stderr
-                  Print stdin and stdout messages to stderr. This is a aid for
-                  developing new language clients, as it makes it easier to
-                  figure out how the client is interacting with cquery.
-    --clang-sanity-check
-                  Run a simple index test. Verifies basic clang functionality.
-                  Needs to be executed from the cquery root checkout directory.
+Configuration:
+  When opening up a directory, cquery will look for a compile_commands.json file
+  emitted by your preferred build system. If not present, cquery will use a
+  recursive directory listing instead. Command line flags can be provided by
+  adding a file named `.cquery` in the top-level directory. Each line in that
+  file is a separate argument.
 
-  Configuration:
-    When opening up a directory, cquery will look for a compile_commands.json
-    file emitted by your preferred build system. If not present, cquery will
-    use a recursive directory listing instead. Command line flags can be
-    provided by adding a file named `.cquery` in the top-level directory. Each
-    line in that file is a separate argument.
-
-    There are also a number of configuration options available when
-    initializing the language server - your editor should have tooling to
-    describe those options. See |Config| in this source code for a detailed
-    list of all currently supported options.
+  There are also a number of configuration options available when initializing
+  the language server - your editor should have tooling to describe those
+  options.  See |Config| in this source code for a detailed list of all
+  currently supported options.
 )help";
   }
 
