@@ -3,6 +3,12 @@
 
 #include <loguru.hpp>
 
+struct Ipc_CqueryExitWhenIdle : public IpcMessage<Ipc_CqueryExitWhenIdle> {
+  static constexpr IpcId kIpcId = IpcId::CqueryExitWhenIdle;
+};
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryExitWhenIdle);
+REGISTER_IPC_MESSAGE(Ipc_CqueryExitWhenIdle);
+
 struct CqueryExitWhenIdleHandler : MessageHandler {
   IpcId GetId() const override { return IpcId::CqueryExitWhenIdle; }
   void Run(std::unique_ptr<BaseIpcMessage> request) override {

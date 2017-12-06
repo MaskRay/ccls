@@ -1,5 +1,18 @@
 #include "message_handler.h"
 
+struct Ipc_CqueryTextDocumentDidView
+    : public IpcMessage<Ipc_CqueryTextDocumentDidView> {
+  struct Params {
+    lsDocumentUri textDocumentUri;
+  };
+
+  const static IpcId kIpcId = IpcId::CqueryTextDocumentDidView;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView::Params, textDocumentUri);
+MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView, params);
+REGISTER_IPC_MESSAGE(Ipc_CqueryTextDocumentDidView);
+
 struct CqueryDidViewHandler
     : BaseMessageHandler<Ipc_CqueryTextDocumentDidView> {
   void Run(Ipc_CqueryTextDocumentDidView* request) override {

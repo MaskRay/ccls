@@ -78,9 +78,3 @@ void EmitSemanticHighlighting(QueryDatabase* db,
                               SemanticHighlightSymbolCache* semantic_cache,
                               WorkingFile* working_file,
                               QueryFile* file);
-
-// Pre-filters completion responses before sending to vscode. This results in a
-// significantly snappier completion experience as vscode is easily overloaded
-// when given 1000+ completion items.
-void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
-                              const std::string& complete_text);

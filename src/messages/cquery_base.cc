@@ -1,6 +1,14 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+struct Ipc_CqueryBase : public IpcMessage<Ipc_CqueryBase> {
+  const static IpcId kIpcId = IpcId::CqueryBase;
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryBase, id, params);
+REGISTER_IPC_MESSAGE(Ipc_CqueryBase);
+
 struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
   void Run(Ipc_CqueryBase* request) override {
     QueryFile* file;

@@ -291,15 +291,15 @@ void WorkingFiles::DoActionOnFile(
   action(file);
 }
 
-WorkingFile* WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
+WorkingFile* WorkingFiles::OnOpen(const lsTextDocumentItem& open) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
-  std::string filename = open.textDocument.uri.GetPath();
-  std::string content = open.textDocument.text;
+  std::string filename = open.uri.GetPath();
+  std::string content = open.text;
 
   // The file may already be open.
   if (WorkingFile* file = GetFileByFilenameNoLock(filename)) {
-    file->version = open.textDocument.version;
+    file->version = open.version;
     file->buffer_content = content;
     file->OnBufferContentUpdated();
     return file;
@@ -309,7 +309,7 @@ WorkingFile* WorkingFiles::OnOpen(const Ipc_TextDocumentDidOpen::Params& open) {
   return files[files.size() - 1].get();
 }
 
-void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
+void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = change.textDocument.uri.GetPath();
@@ -322,8 +322,7 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
 
   file->version = change.textDocument.version;
 
-  for (const Ipc_TextDocumentDidChange::lsTextDocumentContentChangeEvent& diff :
-       change.contentChanges) {
+  for (const lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
     // Per the spec replace everything if the rangeLength and range are not set.
     // See https://github.com/Microsoft/language-server-protocol/issues/9.
     if (diff.rangeLength == -1 &&
@@ -348,10 +347,10 @@ void WorkingFiles::OnChange(const Ipc_TextDocumentDidChange::Params& change) {
   }
 }
 
-void WorkingFiles::OnClose(const Ipc_TextDocumentDidClose::Params& close) {
+void WorkingFiles::OnClose(const lsTextDocumentItem& close) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
-  std::string filename = close.textDocument.uri.GetPath();
+  std::string filename = close.uri.GetPath();
 
   for (int i = 0; i < files.size(); ++i) {
     if (files[i]->filename == filename) {

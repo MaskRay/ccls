@@ -1,5 +1,22 @@
 #include "message_handler.h"
 
+struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
+  struct Params {
+    // The document that was saved.
+    lsTextDocumentIdentifier textDocument;
+
+    // Optional the content when saved. Depends on the includeText value
+    // when the save notifcation was requested.
+    // std::string text;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentDidSave;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave::Params, textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidSave);
+
 struct TextDocumentDidSaveHandler
     : BaseMessageHandler<Ipc_TextDocumentDidSave> {
   void Run(Ipc_TextDocumentDidSave* request) override {

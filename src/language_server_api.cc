@@ -338,22 +338,6 @@ void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
   }
 }
 
-void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
-  visitor.StartArray();
-  Reflect(visitor, value.uri);
-  Reflect(visitor, value.position);
-  Reflect(visitor, value.locations);
-  visitor.EndArray();
-}
-void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
-  auto it = visitor.Begin();
-  Reflect(*it, value.uri);
-  ++it;
-  Reflect(*it, value.position);
-  ++it;
-  Reflect(*it, value.locations);
-}
-
 std::string Out_ShowLogMessage::method() {
   if (display_type == DisplayType::Log)
     return "window/logMessage";

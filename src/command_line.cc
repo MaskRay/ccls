@@ -86,36 +86,6 @@ void EmitDiagnostics(WorkingFiles* working_files,
 }
 
 REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
-REGISTER_IPC_MESSAGE(Ipc_Exit);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidOpen);
-REGISTER_IPC_MESSAGE(Ipc_CqueryTextDocumentDidView);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidChange);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidClose);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidSave);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentRename);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentComplete);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentSignatureHelp);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDefinition);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentHighlight);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentHover);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentReferences);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentSymbol);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentLink);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeAction);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeLens);
-REGISTER_IPC_MESSAGE(Ipc_CodeLensResolve);
-REGISTER_IPC_MESSAGE(Ipc_WorkspaceSymbol);
-REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
-REGISTER_IPC_MESSAGE(Ipc_CqueryTypeHierarchyTree);
-REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeInitial);
-REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeExpand);
-REGISTER_IPC_MESSAGE(Ipc_CqueryVars);
-REGISTER_IPC_MESSAGE(Ipc_CqueryCallers);
-REGISTER_IPC_MESSAGE(Ipc_CqueryBase);
-REGISTER_IPC_MESSAGE(Ipc_CqueryDerived);
-REGISTER_IPC_MESSAGE(Ipc_CqueryIndexFile);
-REGISTER_IPC_MESSAGE(Ipc_CqueryQueryDbWaitForIdleIndexer);
-REGISTER_IPC_MESSAGE(Ipc_CqueryExitWhenIdle);
 
 // Send indexing progress to client if reporting is enabled.
 void EmitProgress(Config* config, QueueManager* queue) {

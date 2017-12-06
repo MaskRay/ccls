@@ -9,6 +9,23 @@ void PushBack(NonElidedVector<lsLocation>* result,
 }
 }  // namespace
 
+struct Ipc_TextDocumentDefinition
+    : public IpcMessage<Ipc_TextDocumentDefinition> {
+  const static IpcId kIpcId = IpcId::TextDocumentDefinition;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDefinition, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDefinition);
+
+struct Out_TextDocumentDefinition
+    : public lsOutMessage<Out_TextDocumentDefinition> {
+  lsRequestId id;
+  NonElidedVector<lsLocation> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
+
 struct TextDocumentDefinitionHandler
     : BaseMessageHandler<Ipc_TextDocumentDefinition> {
   void Run(Ipc_TextDocumentDefinition* request) override {

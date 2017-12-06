@@ -3,6 +3,13 @@
 
 #include <loguru.hpp>
 
+struct Ipc_CqueryQueryDbWaitForIdleIndexer
+    : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
+  static constexpr IpcId kIpcId = IpcId::CqueryQueryDbWaitForIdleIndexer;
+};
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryQueryDbWaitForIdleIndexer);
+REGISTER_IPC_MESSAGE(Ipc_CqueryQueryDbWaitForIdleIndexer);
+
 struct CqueryQueryDbWaitForIdleIndexerHandler : MessageHandler {
   IpcId GetId() const override {
     return IpcId::CqueryQueryDbWaitForIdleIndexer;

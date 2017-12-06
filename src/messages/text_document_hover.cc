@@ -1,6 +1,27 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {
+  const static IpcId kIpcId = IpcId::TextDocumentHover;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentHover, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentHover);
+
+struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
+  struct Result {
+    lsMarkedString contents;
+    optional<lsRange> range;
+  };
+
+  lsRequestId id;
+  Result result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
+MAKE_REFLECT_STRUCT(Out_TextDocumentHover, jsonrpc, id, result);
+
 struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
   void Run(Ipc_TextDocumentHover* request) override {
     QueryFile* file;

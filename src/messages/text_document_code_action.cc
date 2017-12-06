@@ -2,8 +2,9 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
-#include <climits>
 #include <doctest/doctest.h>
+
+#include <climits>
 #include <loguru.hpp>
 
 namespace {
@@ -247,6 +248,53 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
 }
 
 }  // namespace
+
+struct Ipc_TextDocumentCodeAction
+    : public IpcMessage<Ipc_TextDocumentCodeAction> {
+  const static IpcId kIpcId = IpcId::TextDocumentCodeAction;
+  // Contains additional diagnostic information about the context in which
+  // a code action is run.
+  struct lsCodeActionContext {
+    // An array of diagnostics.
+    NonElidedVector<lsDiagnostic> diagnostics;
+  };
+  // Params for the CodeActionRequest
+  struct lsCodeActionParams {
+    // The document in which the command was invoked.
+    lsTextDocumentIdentifier textDocument;
+    // The range for which the command was invoked.
+    lsRange range;
+    // Context carrying additional information.
+    lsCodeActionContext context;
+  };
+
+  lsRequestId id;
+  lsCodeActionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionContext,
+                    diagnostics);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionParams,
+                    textDocument,
+                    range,
+                    context);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeAction);
+
+struct Out_TextDocumentCodeAction
+    : public lsOutMessage<Out_TextDocumentCodeAction> {
+  struct CommandArgs {
+    lsDocumentUri textDocumentUri;
+    NonElidedVector<lsTextEdit> edits;
+  };
+  using Command = lsCommand<CommandArgs>;
+
+  lsRequestId id;
+  NonElidedVector<Command> result;
+};
+MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(Out_TextDocumentCodeAction::CommandArgs,
+                                    textDocumentUri,
+                                    edits);
+MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
 
 struct TextDocumentCodeActionHandler
     : BaseMessageHandler<Ipc_TextDocumentCodeAction> {

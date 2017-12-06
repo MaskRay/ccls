@@ -79,32 +79,3 @@ template <typename T>
 struct IpcMessage : public BaseIpcMessage {
   IpcMessage() : BaseIpcMessage(T::kIpcId) {}
 };
-
-struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
-  static constexpr IpcId kIpcId = IpcId::CqueryIndexFile;
-
-  struct Params {
-    std::string path;
-    std::vector<std::string> args;
-    bool is_interactive = false;
-    std::string contents;
-  };
-  Params params;
-};
-MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile::Params,
-                    path,
-                    args,
-                    is_interactive,
-                    contents);
-MAKE_REFLECT_STRUCT(Ipc_CqueryIndexFile, params);
-
-struct Ipc_CqueryQueryDbWaitForIdleIndexer
-    : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
-  static constexpr IpcId kIpcId = IpcId::CqueryQueryDbWaitForIdleIndexer;
-};
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryQueryDbWaitForIdleIndexer);
-
-struct Ipc_CqueryExitWhenIdle : public IpcMessage<Ipc_CqueryExitWhenIdle> {
-  static constexpr IpcId kIpcId = IpcId::CqueryExitWhenIdle;
-};
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryExitWhenIdle);

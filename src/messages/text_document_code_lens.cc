@@ -1,6 +1,119 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+struct lsDocumentCodeLensParams {
+  lsTextDocumentIdentifier textDocument;
+};
+MAKE_REFLECT_STRUCT(lsDocumentCodeLensParams, textDocument);
+
+struct lsCodeLensUserData {};
+MAKE_REFLECT_EMPTY_STRUCT(lsCodeLensUserData);
+
+struct lsCodeLensCommandArguments {
+  lsDocumentUri uri;
+  lsPosition position;
+  NonElidedVector<lsLocation> locations;
+};
+void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
+  visitor.StartArray();
+  Reflect(visitor, value.uri);
+  Reflect(visitor, value.position);
+  Reflect(visitor, value.locations);
+  visitor.EndArray();
+}
+void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
+  auto it = visitor.Begin();
+  Reflect(*it, value.uri);
+  ++it;
+  Reflect(*it, value.position);
+  ++it;
+  Reflect(*it, value.locations);
+}
+
+using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
+struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
+  const static IpcId kIpcId = IpcId::TextDocumentCodeLens;
+  lsRequestId id;
+  lsDocumentCodeLensParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeLens, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeLens);
+
+struct Out_TextDocumentCodeLens
+    : public lsOutMessage<Out_TextDocumentCodeLens> {
+  lsRequestId id;
+  NonElidedVector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>>
+      result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
+
+#if false
+struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve> {
+  const static IpcId kIpcId = IpcId::CodeLensResolve;
+
+  lsRequestId id;
+  TCodeLens params;
+};
+MAKE_REFLECT_STRUCT(Ipc_CodeLensResolve, id, params);
+REGISTER_IPC_MESSAGE(Ipc_CodeLensResolve);
+
+struct Out_CodeLensResolve : public lsOutMessage<Out_CodeLensResolve> {
+  lsRequestId id;
+  TCodeLens result;
+};
+MAKE_REFLECT_STRUCT(Out_CodeLensResolve, jsonrpc, id, result);
+#endif
+
+struct CommonCodeLensParams {
+  std::vector<TCodeLens>* result;
+  QueryDatabase* db;
+  WorkingFiles* working_files;
+  WorkingFile* working_file;
+};
+
+void AddCodeLens(const char* singular,
+                 const char* plural,
+                 CommonCodeLensParams* common,
+                 QueryLocation loc,
+                 const std::vector<QueryLocation>& uses,
+                 optional<QueryLocation> excluded,
+                 bool force_display) {
+  TCodeLens code_lens;
+  optional<lsRange> range = GetLsRange(common->working_file, loc.range);
+  if (!range)
+    return;
+  code_lens.range = *range;
+  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+  code_lens.command->command = "cquery.showReferences";
+  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, loc.path);
+  code_lens.command->arguments.position = code_lens.range.start;
+
+  // Add unique uses.
+  std::unordered_set<lsLocation> unique_uses;
+  for (const QueryLocation& use : uses) {
+    if (excluded == use)
+      continue;
+    optional<lsLocation> location =
+        GetLsLocation(common->db, common->working_files, use);
+    if (!location)
+      continue;
+    unique_uses.insert(*location);
+  }
+  code_lens.command->arguments.locations.assign(unique_uses.begin(),
+                                                unique_uses.end());
+
+  // User visible label
+  size_t num_usages = unique_uses.size();
+  code_lens.command->title = std::to_string(num_usages) + " ";
+  if (num_usages == 1)
+    code_lens.command->title += singular;
+  else
+    code_lens.command->title += plural;
+
+  if (force_display || unique_uses.size() > 0)
+    common->result->push_back(code_lens);
+}
+
 struct TextDocumentCodeLensHandler
     : BaseMessageHandler<Ipc_TextDocumentCodeLens> {
   void Run(Ipc_TextDocumentCodeLens* request) override {

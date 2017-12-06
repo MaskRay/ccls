@@ -4,6 +4,25 @@
 
 #include <loguru.hpp>
 
+struct lsWorkspaceSymbolParams {
+  std::string query;
+};
+MAKE_REFLECT_STRUCT(lsWorkspaceSymbolParams, query);
+
+struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol> {
+  const static IpcId kIpcId = IpcId::WorkspaceSymbol;
+  lsRequestId id;
+  lsWorkspaceSymbolParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_WorkspaceSymbol, id, params);
+REGISTER_IPC_MESSAGE(Ipc_WorkspaceSymbol);
+
+struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
+  lsRequestId id;
+  NonElidedVector<lsSymbolInformation> result;
+};
+MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
+
 struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
   void Run(Ipc_WorkspaceSymbol* request) override {
     // TODO: implement fuzzy search, see

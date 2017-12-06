@@ -2,6 +2,19 @@
 #include "message_handler.h"
 #include "timer.h"
 
+// Open, view, change, close file
+struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
+  struct Params {
+    lsTextDocumentItem textDocument;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentDidOpen;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen::Params, textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidOpen);
+
 struct TextDocumentDidOpenHandler
     : BaseMessageHandler<Ipc_TextDocumentDidOpen> {
   void Run(Ipc_TextDocumentDidOpen* request) override {
@@ -10,7 +23,8 @@ struct TextDocumentDidOpenHandler
 
     Timer time;
     std::string path = request->params.textDocument.uri.GetPath();
-    WorkingFile* working_file = working_files->OnOpen(request->params);
+    WorkingFile* working_file =
+        working_files->OnOpen(request->params.textDocument);
     optional<std::string> cached_file_contents =
         LoadCachedFileContents(config, path);
     if (cached_file_contents)

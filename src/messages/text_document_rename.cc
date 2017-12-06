@@ -1,6 +1,37 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
+  struct Params {
+    // The document to format.
+    lsTextDocumentIdentifier textDocument;
+
+    // The position at which this request was sent.
+    lsPosition position;
+
+    // The new name of the symbol. If the given name is not valid the
+    // request must return a [ResponseError](#ResponseError) with an
+    // appropriate message set.
+    std::string newName;
+  };
+  const static IpcId kIpcId = IpcId::TextDocumentRename;
+
+  lsRequestId id;
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename::Params,
+                    textDocument,
+                    position,
+                    newName);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentRename);
+
+struct Out_TextDocumentRename : public lsOutMessage<Out_TextDocumentRename> {
+  lsRequestId id;
+  lsWorkspaceEdit result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
+
 struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
   void Run(Ipc_TextDocumentRename* request) override {
     QueryFileId file_id;

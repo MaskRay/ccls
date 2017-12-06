@@ -1,6 +1,23 @@
 #include "message_handler.h"
 #include "query_utils.h"
 
+struct Ipc_TextDocumentDocumentHighlight
+    : public IpcMessage<Ipc_TextDocumentDocumentHighlight> {
+  const static IpcId kIpcId = IpcId::TextDocumentDocumentHighlight;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentHighlight, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentHighlight);
+
+struct Out_TextDocumentDocumentHighlight
+    : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
+  lsRequestId id;
+  NonElidedVector<lsDocumentHighlight> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentHighlight, jsonrpc, id, result);
+
 struct TextDocumentDocumentHighlightHandler
     : BaseMessageHandler<Ipc_TextDocumentDocumentHighlight> {
   void Run(Ipc_TextDocumentDocumentHighlight* request) override {

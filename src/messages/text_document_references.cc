@@ -3,6 +3,39 @@
 
 #include <loguru.hpp>
 
+struct Ipc_TextDocumentReferences
+    : public IpcMessage<Ipc_TextDocumentReferences> {
+  struct lsReferenceContext {
+    // Include the declaration of the current symbol.
+    bool includeDeclaration;
+  };
+  struct lsReferenceParams : public lsTextDocumentPositionParams {
+    lsTextDocumentIdentifier textDocument;
+    lsPosition position;
+    lsReferenceContext context;
+  };
+
+  const static IpcId kIpcId = IpcId::TextDocumentReferences;
+
+  lsRequestId id;
+  lsReferenceParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext,
+                    includeDeclaration);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceParams,
+                    textDocument,
+                    position,
+                    context);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentReferences);
+
+struct Out_TextDocumentReferences
+    : public lsOutMessage<Out_TextDocumentReferences> {
+  lsRequestId id;
+  NonElidedVector<lsLocation> result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
+
 struct TextDocumentReferencesHandler
     : BaseMessageHandler<Ipc_TextDocumentReferences> {
   void Run(Ipc_TextDocumentReferences* request) override {

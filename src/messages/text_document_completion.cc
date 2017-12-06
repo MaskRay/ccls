@@ -2,6 +2,107 @@
 
 #include "lex_utils.h"
 
+#include <loguru.hpp>
+
+namespace {
+
+struct Ipc_TextDocumentComplete : public IpcMessage<Ipc_TextDocumentComplete> {
+  const static IpcId kIpcId = IpcId::TextDocumentCompletion;
+
+  lsRequestId id;
+  lsTextDocumentPositionParams params;
+};
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentComplete, id, params);
+REGISTER_IPC_MESSAGE(Ipc_TextDocumentComplete);
+
+struct lsTextDocumentCompleteResult {
+  // This list it not complete. Further typing should result in recomputing
+  // this list.
+  bool isIncomplete = false;
+  // The completion items.
+  NonElidedVector<lsCompletionItem> items;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentCompleteResult, isIncomplete, items);
+
+struct Out_TextDocumentComplete
+    : public lsOutMessage<Out_TextDocumentComplete> {
+  lsRequestId id;
+  lsTextDocumentCompleteResult result;
+};
+MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
+
+// Pre-filters completion responses before sending to vscode. This results in a
+// significantly snappier completion experience as vscode is easily overloaded
+// when given 1000+ completion items.
+void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
+                              const std::string& complete_text) {
+// Used to inject more completions.
+#if false
+  const size_t kNumIterations = 250;
+  size_t size = complete_response->result.items.size();
+  complete_response->result.items.reserve(size * (kNumIterations + 1));
+  for (size_t iteration = 0; iteration < kNumIterations; ++iteration) {
+    for (size_t i = 0; i < size; ++i) {
+      auto item = complete_response->result.items[i];
+      item.label += "#" + std::to_string(iteration);
+      complete_response->result.items.push_back(item);
+    }
+  }
+#endif
+
+  const size_t kMaxResultSize = 100u;
+  if (complete_response->result.items.size() > kMaxResultSize) {
+    if (complete_text.empty()) {
+      complete_response->result.items.resize(kMaxResultSize);
+    } else {
+      NonElidedVector<lsCompletionItem> filtered_result;
+      filtered_result.reserve(kMaxResultSize);
+
+      std::unordered_set<std::string> inserted;
+      inserted.reserve(kMaxResultSize);
+
+      // Find literal matches first.
+      for (const lsCompletionItem& item : complete_response->result.items) {
+        if (item.label.find(complete_text) != std::string::npos) {
+          // Don't insert the same completion entry.
+          if (!inserted.insert(item.InsertedContent()).second)
+            continue;
+
+          filtered_result.push_back(item);
+          if (filtered_result.size() >= kMaxResultSize)
+            break;
+        }
+      }
+
+      // Find fuzzy matches if we haven't found all of the literal matches.
+      if (filtered_result.size() < kMaxResultSize) {
+        for (const lsCompletionItem& item : complete_response->result.items) {
+          if (SubstringMatch(complete_text, item.label)) {
+            // Don't insert the same completion entry.
+            if (!inserted.insert(item.InsertedContent()).second)
+              continue;
+
+            filtered_result.push_back(item);
+            if (filtered_result.size() >= kMaxResultSize)
+              break;
+          }
+        }
+      }
+
+      complete_response->result.items = filtered_result;
+    }
+
+    // Assuming the client does not support out-of-order completion (ie, ao
+    // matches against oa), our filtering is guaranteed to contain any
+    // potential matches, so the completion is only incomplete if we have the
+    // max number of emitted matches.
+    if (complete_response->result.items.size() >= kMaxResultSize) {
+      LOG_S(INFO) << "Marking completion results as incomplete";
+      complete_response->result.isIncomplete = true;
+    }
+  }
+}
+
 struct TextDocumentCompletionHandler : MessageHandler {
   IpcId GetId() const override { return IpcId::TextDocumentCompletion; }
 
@@ -122,3 +223,5 @@ struct TextDocumentCompletionHandler : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentCompletionHandler);
+
+}  // namespace

@@ -93,9 +93,9 @@ struct WorkingFiles {
   void DoActionOnFile(const std::string& filename,
                       const std::function<void(WorkingFile* file)>& action);
 
-  WorkingFile* OnOpen(const Ipc_TextDocumentDidOpen::Params& open);
-  void OnChange(const Ipc_TextDocumentDidChange::Params& change);
-  void OnClose(const Ipc_TextDocumentDidClose::Params& close);
+  WorkingFile* OnOpen(const lsTextDocumentItem& open);
+  void OnChange(const lsTextDocumentDidChangeParams& change);
+  void OnClose(const lsTextDocumentItem& close);
 
   std::vector<CXUnsavedFile> AsUnsavedFiles();
 

@@ -2,6 +2,12 @@
 
 #include <loguru.hpp>
 
+struct Ipc_Exit : public IpcMessage<Ipc_Exit> {
+  static const IpcId kIpcId = IpcId::Exit;
+};
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_Exit);
+REGISTER_IPC_MESSAGE(Ipc_Exit);
+
 struct ExitHandler : MessageHandler {
   IpcId GetId() const override { return IpcId::Exit; }
 

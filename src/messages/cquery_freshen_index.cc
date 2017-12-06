@@ -3,6 +3,13 @@
 
 #include <loguru.hpp>
 
+struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
+  const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
+  lsRequestId id;
+};
+MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);
+REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
+
 struct CqueryFreshenIndexHandler : MessageHandler {
   IpcId GetId() const override { return IpcId::CqueryFreshenIndex; }
 
