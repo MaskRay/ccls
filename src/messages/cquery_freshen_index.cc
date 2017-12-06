@@ -14,7 +14,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
 struct CqueryFreshenIndexHandler : MessageHandler {
   IpcId GetId() const override { return IpcId::CqueryFreshenIndex; }
 
-  void Run(std::unique_ptr<BaseIpcMessage> request) {
+  void Run(std::unique_ptr<BaseIpcMessage> request) override {
     LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
 
     // TODO: think about this flow and test it more.
