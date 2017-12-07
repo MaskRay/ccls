@@ -4,6 +4,7 @@ def FlagsForFile( filename, **kwargs ):
       '-xc++',
       '-std=c++11',
       '-DLOGURU_WITH_STREAMS=1',
+      '-Isrc/',
       '-Ithird_party/',
       '-Ithird_party/doctest',
       '-Ithird_party/rapidjson/include',
