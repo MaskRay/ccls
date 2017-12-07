@@ -183,3 +183,6 @@ script:
   - ./waf configure
   - ./waf build
   
+notifications:
+  email: false
+  
