@@ -147,3 +147,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     out.params.symbols.push_back(entry.second);
   IpcManager::WriteStdout(IpcId::CqueryPublishSemanticHighlighting, out);
 }
+
+bool ShouldIgnoreFileForIndexing(const std::string& path) {
+  return StartsWith(path, "git:");
+}

@@ -78,3 +78,5 @@ void EmitSemanticHighlighting(QueryDatabase* db,
                               SemanticHighlightSymbolCache* semantic_cache,
                               WorkingFile* working_file,
                               QueryFile* file);
+
+bool ShouldIgnoreFileForIndexing(const std::string& path);

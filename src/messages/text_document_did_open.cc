@@ -24,6 +24,9 @@ struct TextDocumentDidOpenHandler
 
     Timer time;
     std::string path = request->params.textDocument.uri.GetPath();
+    if (ShouldIgnoreFileForIndexing(path))
+      return;
+
     WorkingFile* working_file =
         working_files->OnOpen(request->params.textDocument);
     optional<std::string> cached_file_contents =
