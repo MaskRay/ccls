@@ -28,8 +28,8 @@ unsigned Flags() {
 }
 
 unsigned GetCompletionPriority(const CXCompletionString& str,
-                          CXCursorKind result_kind,
-                          const std::string& label) {
+                               CXCursorKind result_kind,
+                               const std::string& label) {
   unsigned priority = clang_getCompletionPriority(str);
 
   // XXX: What happens if priority overflows?
@@ -46,14 +46,15 @@ unsigned GetCompletionPriority(const CXCompletionString& str,
   return priority;
 }
 
-template<typename T>
-char *tofixedbase64(T input, char *out) {
-  const char *digits = "./0123456789"
-                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                       "abcdefghijklmnopqrstuvwxyz";
-  int len = (sizeof(T)*8-1)/6+1;
-  for (int i = len-1; i >= 0; i--) {
-    out[i] = digits[input%64];
+template <typename T>
+char* tofixedbase64(T input, char* out) {
+  const char* digits =
+      "./0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  int len = (sizeof(T) * 8 - 1) / 6 + 1;
+  for (int i = len - 1; i >= 0; i--) {
+    out[i] = digits[input % 64];
     input /= 64;
   }
   out[len] = '\0';
@@ -450,9 +451,10 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
             char buf[16];
             ls_completion_item.sortText =
-                tofixedbase64(GetCompletionPriority(
-                    result.CompletionString, result.CursorKind,
-                    ls_completion_item.label), buf);
+                tofixedbase64(GetCompletionPriority(result.CompletionString,
+                                                    result.CursorKind,
+                                                    ls_completion_item.label),
+                              buf);
 
             ls_result.push_back(ls_completion_item);
           }
