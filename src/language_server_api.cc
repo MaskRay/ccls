@@ -223,9 +223,13 @@ void lsDocumentUri::SetPath(const std::string& path) {
                     "%3A");
   }
 
+  // subset of reserved characters from the URI standard
+  // http://www.ecma-international.org/ecma-262/6.0/#sec-uri-syntax-and-semantics
   raw_uri = ReplaceAll(raw_uri, " ", "%20");
   raw_uri = ReplaceAll(raw_uri, "(", "%28");
   raw_uri = ReplaceAll(raw_uri, ")", "%29");
+  raw_uri = ReplaceAll(raw_uri, "#", "%23");
+  raw_uri = ReplaceAll(raw_uri, ",", "%2C");
 
 // TODO: proper fix
 #if defined(_WIN32)
