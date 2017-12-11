@@ -98,8 +98,7 @@ std::unique_ptr<T> MakeUnique(Args&&... args) {
 
 template <typename T>
 void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
-  for (const T& e : to_add)
-    dest->push_back(e);
+  dest->insert(dest->end(), to_add.begin(), to_add.end());
 }
 
 template <typename T>

@@ -1657,8 +1657,10 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     // Update dependencies for the file. Do not include the file in its own
     // dependency set.
     entry->dependencies = param.seen_files;
-    entry->dependencies.erase(std::find(
-        entry->dependencies.begin(), entry->dependencies.end(), entry->path));
+    entry->dependencies.erase(
+        std::remove(entry->dependencies.begin(), entry->dependencies.end(),
+                    entry->path),
+        entry->dependencies.end());
 
     // Make sure we are using correct file contents.
     for (const CXUnsavedFile& contents : file_contents) {
@@ -1694,14 +1696,12 @@ void ClangSanityCheck() {
                                 void* reserved) -> CXIdxClientFile {
     return nullptr;
   };
-  callback.ppIncludedFile =
-      [](CXClientData client_data,
-         const CXIdxIncludedFileInfo* file) -> CXIdxClientFile {
-    return nullptr;
-  };
-  callback.importedASTFile =
-      [](CXClientData client_data,
-         const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
+  callback.ppIncludedFile = [](
+      CXClientData client_data,
+      const CXIdxIncludedFileInfo* file) -> CXIdxClientFile { return nullptr; };
+  callback.importedASTFile = [](
+      CXClientData client_data,
+      const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
     return nullptr;
   };
   callback.startedTranslationUnit = [](CXClientData client_data,
