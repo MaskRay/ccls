@@ -20,30 +20,46 @@ lsRange GetLsRangeForFixIt(const CXSourceRange& range) {
 
 }  // namespace
 
+// See clang_formatDiagnostic
 optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
                                                  const std::string& path) {
   // Get diagnostic location.
   CXFile file;
-  unsigned int line, column;
-  clang_getSpellingLocation(clang_getDiagnosticLocation(diagnostic), &file,
-                            &line, &column, nullptr);
+  unsigned start_line, start_column;
+  clang_getSpellingLocation(clang_getDiagnosticLocation(diagnostic),
+                            &file, &start_line, &start_column, nullptr);
 
-  // Only report diagnostics in the same file. Using
-  // clang_Location_isInSystemHeader causes crashes for some reason.
-  if (path != FileName(file)) {
+  if (file && path != FileName(file)) {
     clang_disposeDiagnostic(diagnostic);
     return nullopt;
   }
 
+  unsigned end_line = start_line, end_column = start_column,
+         num_ranges = clang_getDiagnosticNumRanges(diagnostic);
+  for (unsigned i = 0; i < num_ranges; i++) {
+    CXFile file0, file1;
+    unsigned line0, column0, line1, column1;
+    CXSourceRange range = clang_getDiagnosticRange(diagnostic, i);
+    clang_getSpellingLocation(clang_getRangeStart(range), &file0, &line0,
+                              &column0, nullptr);
+    clang_getSpellingLocation(clang_getRangeEnd(range), &file1, &line1,
+                              &column1, nullptr);
+    if (file0 != file1 || file0 != file)
+      continue;
+    if (line0 < start_line || (line0 == start_line && column0 < start_column)) {
+      start_line = line0;
+      start_column = column0;
+    }
+    if (line1 > end_line || (line1 == end_line && column1 > end_column)) {
+      end_line = line1;
+      end_column = column1;
+    }
+  }
+
   // Build diagnostic.
   lsDiagnostic ls_diagnostic;
-
-  // TODO: consider using clang_getDiagnosticRange
-  // TODO: ls_diagnostic.range is lsRange, we have Range. We should only be
-  // storing Range types when inside the indexer so that index <-> buffer
-  // remapping logic is applied.
-  ls_diagnostic.range =
-      lsRange(lsPosition(line - 1, column), lsPosition(line - 1, column));
+  ls_diagnostic.range = lsRange(lsPosition(start_line - 1, start_column - 1),
+                                lsPosition(end_line - 1, end_column - 1));
 
   ls_diagnostic.message = ToString(clang_getDiagnosticSpelling(diagnostic));
 
@@ -57,6 +73,8 @@ optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
 
   switch (clang_getDiagnosticSeverity(diagnostic)) {
     case CXDiagnostic_Ignored:
+      // llvm_unreachable
+      break;
     case CXDiagnostic_Note:
       ls_diagnostic.severity = lsDiagnosticSeverity::Information;
       break;
