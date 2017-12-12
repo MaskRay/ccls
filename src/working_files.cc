@@ -87,8 +87,10 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
   // TODO: reenable this assert once we are using the real indexed file.
   // assert(index_line >= 1 && index_line <= index_lines.size());
   if (index_line < 1 || index_line > index_lines.size()) {
+    loguru::Text stack = loguru::stacktrace();
     LOG_S(WARNING) << "Bad index_line (got " << index_line << ", expected [1, "
-                   << index_lines.size() << "])";
+                   << index_lines.size() << "]) in " << filename
+                   << stack.c_str();
     return nullopt;
   }
 
@@ -124,8 +126,10 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
   // Note: |index_line| and |buffer_line| are 1-based.
   // assert(buffer_line >= 1 && buffer_line < all_buffer_lines.size());
   if (buffer_line < 1 || buffer_line > all_buffer_lines.size()) {
+    loguru::Text stack = loguru::stacktrace();
     LOG_S(WARNING) << "Bad buffer_line (got " << buffer_line
-                   << ", expected [1, " << all_buffer_lines.size() << "])";
+                   << ", expected [1, " << all_buffer_lines.size() << "]) in "
+                   << filename << stack.c_str();
     return nullopt;
   }
 
