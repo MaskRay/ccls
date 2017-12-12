@@ -50,6 +50,8 @@ OUTPUT:
     }, {
       "id": 2,
       "usr": "c:template_var_usage_folded_into_one.cc@35",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["5:1-5:2"]
     }],
   "vars": [{

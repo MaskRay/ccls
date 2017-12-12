@@ -39,6 +39,8 @@ OUTPUT: simple_impl.cc
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@header#",
+      "short_name": "",
+      "detailed_name": "",
       "callers": ["0@4:3-4:9"]
     }]
 }

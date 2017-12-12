@@ -138,6 +138,8 @@ OUTPUT: impl.cc
       "id": 1,
       "is_operator": false,
       "usr": "c:@FT@>1#TFoo1#v#",
+      "short_name": "",
+      "detailed_name": "",
       "callers": ["0@4:3-4:7"]
     }]
 }

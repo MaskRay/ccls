@@ -15,6 +15,8 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["1:8-1:11", "2:14-2:17", "3:9-3:12", "7:13-7:16"]
     }, {
       "id": 1,

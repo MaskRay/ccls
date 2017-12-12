@@ -91,26 +91,38 @@ OUTPUT: make_functions.cc
   "types": [{
       "id": 0,
       "usr": "c:make_functions.cc@41",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["4:1-4:2"]
     }, {
       "id": 1,
       "usr": "c:make_functions.cc@53",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["4:15-4:19"]
     }, {
       "id": 2,
       "usr": "c:make_functions.cc@139",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["9:1-9:2"]
     }, {
       "id": 3,
       "usr": "c:make_functions.cc@151",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["9:16-9:20"]
     }, {
       "id": 4,
       "usr": "c:@S@Foobar",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["14:14-14:20", "15:14-15:20", "16:14-16:20", "17:15-17:21"]
     }, {
       "id": 5,
       "usr": "c:@S@Bar",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["16:29-16:32", "17:30-17:33"]
     }],
   "funcs": [{
@@ -144,21 +156,29 @@ OUTPUT: make_functions.cc
       "id": 3,
       "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#",
+      "short_name": "",
+      "detailed_name": "",
       "callers": ["~-1@14:3-14:13"]
     }, {
       "id": 4,
       "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#I#",
+      "short_name": "",
+      "detailed_name": "",
       "callers": ["~-1@15:3-15:13"]
     }, {
       "id": 5,
       "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#&&I#*$@S@Bar#*b#",
+      "short_name": "",
+      "detailed_name": "",
       "callers": ["~-1@16:3-16:13"]
     }, {
       "id": 6,
       "is_operator": false,
       "usr": "c:@S@Foobar@F@Foobar#I#*$@S@Bar#*b#",
+      "short_name": "",
+      "detailed_name": "",
       "callers": ["~-1@17:3-17:14"]
     }],
   "vars": [{

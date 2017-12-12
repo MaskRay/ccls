@@ -25,6 +25,8 @@ OUTPUT:
     }, {
       "id": 1,
       "usr": "c:@N@std@ST>2#T#T@vector",
+      "short_name": "",
+      "detailed_name": "",
       "instances": [2],
       "uses": ["6:8-6:14"]
     }],

@@ -12,6 +12,8 @@ OUTPUT: static_function_in_type.h
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@S@Manager",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["3:7-3:14", "6:24-6:31"]
     }, {
       "id": 1,
@@ -47,11 +49,15 @@ OUTPUT: static_function_in_type.cc
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@S@Foo",
+      "short_name": "",
+      "detailed_name": "",
       "funcs": [0],
       "uses": ["5:6-5:9"]
     }, {
       "id": 1,
       "usr": "c:@N@ns@S@Manager",
+      "short_name": "",
+      "detailed_name": "",
       "instances": [0],
       "uses": ["5:20-5:27"]
     }],

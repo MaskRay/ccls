@@ -10,6 +10,8 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#T@Foo",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["2:8-2:11", "4:14-4:17", "5:9-5:12"]
     }, {
       "id": 1,

@@ -6,6 +6,8 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
+      "short_name": "",
+      "detailed_name": "",
       "instances": [0],
       "uses": ["1:8-1:12", "2:8-2:12"]
     }],

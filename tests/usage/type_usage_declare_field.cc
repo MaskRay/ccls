@@ -12,6 +12,8 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
+      "short_name": "",
+      "detailed_name": "",
       "instances": [0],
       "uses": ["1:8-1:19", "5:3-5:14"]
     }, {

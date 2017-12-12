@@ -38,6 +38,8 @@ OUTPUT: static.cc
   "types": [{
       "id": 0,
       "usr": "c:@S@Buffer",
+      "short_name": "",
+      "detailed_name": "",
       "funcs": [0],
       "uses": ["3:6-3:12"]
     }],

@@ -20,6 +20,8 @@ OUTPUT:
     }, {
       "id": 1,
       "usr": "c:@S@S",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["4:8-4:9", "6:19-6:20"]
     }],
   "vars": [{

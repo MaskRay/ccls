@@ -11,6 +11,8 @@ OUTPUT: funky_enum.h
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
+      "short_name": "",
+      "detailed_name": "",
       "vars": [0, 1, 2]
     }],
   "vars": [{

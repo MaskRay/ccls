@@ -6,6 +6,8 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["1:8-1:19", "2:10-2:21"]
     }],
   "funcs": [{

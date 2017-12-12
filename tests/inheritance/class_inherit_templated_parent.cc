@@ -56,6 +56,8 @@ OUTPUT:
     }, {
       "id": 4,
       "usr": "c:class_inherit_templated_parent.cc@154",
+      "short_name": "",
+      "detailed_name": "",
       "uses": ["11:24-11:25"]
     }, {
       "id": 5,
