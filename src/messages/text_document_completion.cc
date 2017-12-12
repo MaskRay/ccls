@@ -20,7 +20,7 @@ struct lsTextDocumentCompleteResult {
   // this list.
   bool isIncomplete = false;
   // The completion items.
-  NonElidedVector<lsCompletionItem> items;
+  std::vector<lsCompletionItem> items;
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentCompleteResult, isIncomplete, items);
 
@@ -55,7 +55,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
     if (complete_text.empty()) {
       complete_response->result.items.resize(kMaxResultSize);
     } else {
-      NonElidedVector<lsCompletionItem> filtered_result;
+      std::vector<lsCompletionItem> filtered_result;
       filtered_result.reserve(kMaxResultSize);
 
       std::unordered_set<std::string> inserted;
@@ -157,7 +157,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
 
       ClangCompleteManager::OnComplete callback = std::bind(
           [this, is_global_completion, existing_completion, request](
-              const NonElidedVector<lsCompletionItem>& results,
+              const std::vector<lsCompletionItem>& results,
               bool is_cached_result) {
             Out_TextDocumentComplete out;
             out.id = request->id;
@@ -195,7 +195,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
       });
       if (is_cache_match) {
         ClangCompleteManager::OnComplete freshen_global =
-            [this](NonElidedVector<lsCompletionItem> results,
+            [this](std::vector<lsCompletionItem> results,
                    bool is_cached_result) {
               assert(!is_cached_result);
 

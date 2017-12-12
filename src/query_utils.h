@@ -52,7 +52,7 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id);
 optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    const QueryLocation& location);
-NonElidedVector<lsLocation> GetLsLocations(
+std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
     const std::vector<QueryLocation>& locations);

@@ -63,9 +63,6 @@ struct IndexFile;
     visitor.EndArray();                                \
   }
 
-template <typename T>
-struct NonElidedVector : public std::vector<T> {};
-
 // API:
 /*
 template<typename TVisitor, typename T>
@@ -138,16 +135,6 @@ void ReflectMember(Writer& visitor, const char* name, T& value) {
 }
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
-  visitor.Key(name);
-  visitor.StartArray();
-  for (auto& value : values)
-    Reflect(visitor, value);
-  visitor.EndArray();
-}
-template <typename T>
-void ReflectMember(Writer& visitor,
-                   const char* name,
-                   NonElidedVector<T>& values) {
   visitor.Key(name);
   visitor.StartArray();
   for (auto& value : values)

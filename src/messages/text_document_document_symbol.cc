@@ -20,7 +20,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentSymbol);
 struct Out_TextDocumentDocumentSymbol
     : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
   lsRequestId id;
-  NonElidedVector<lsSymbolInformation> result;
+  std::vector<lsSymbolInformation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
 

@@ -501,7 +501,7 @@ struct IndexFile {
   std::vector<IndexVar> vars;
 
   // Diagnostics found when indexing this file. Not serialized.
-  NonElidedVector<lsDiagnostic> diagnostics_;
+  std::vector<lsDiagnostic> diagnostics_;
   // File contents at the time of index. Not serialized.
   std::string file_contents_;
 

@@ -493,7 +493,7 @@ struct lsDiagnostic {
   std::string message;
 
   // Non-serialized set of fixits.
-  NonElidedVector<lsTextEdit> fixits_;
+  std::vector<lsTextEdit> fixits_;
 };
 MAKE_REFLECT_STRUCT(lsDiagnostic, range, severity, source, message);
 
@@ -792,7 +792,7 @@ struct lsDocumentOnTypeFormattingOptions {
   std::string firstTriggerCharacter;
 
   // More trigger characters.
-  NonElidedVector<std::string> moreTriggerCharacter;
+  std::vector<std::string> moreTriggerCharacter;
 };
 MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions,
                     firstTriggerCharacter,
@@ -808,7 +808,7 @@ MAKE_REFLECT_STRUCT(lsDocumentLinkOptions, resolveProvider);
 // Execute command options.
 struct lsExecuteCommandOptions {
   // The commands to be executed on the server
-  NonElidedVector<std::string> commands;
+  std::vector<std::string> commands;
 };
 MAKE_REFLECT_STRUCT(lsExecuteCommandOptions, commands);
 
@@ -951,7 +951,7 @@ struct Out_TextDocumentPublishDiagnostics
     lsDocumentUri uri;
 
     // An array of diagnostic information items.
-    NonElidedVector<lsDiagnostic> diagnostics;
+    std::vector<lsDiagnostic> diagnostics;
   };
 
   Params params;
@@ -1054,7 +1054,7 @@ struct Out_CquerySetInactiveRegion
     : public lsOutMessage<Out_CquerySetInactiveRegion> {
   struct Params {
     lsDocumentUri uri;
-    NonElidedVector<lsRange> inactiveRegions;
+    std::vector<lsRange> inactiveRegions;
   };
   std::string method = "$cquery/setInactiveRegions";
   Params params;
@@ -1069,11 +1069,11 @@ struct Out_CqueryPublishSemanticHighlighting
     int stableId = 0;
     SymbolType type = SymbolType::Type;
     bool isTypeMember = false;
-    NonElidedVector<lsRange> ranges;
+    std::vector<lsRange> ranges;
   };
   struct Params {
     lsDocumentUri uri;
-    NonElidedVector<Symbol> symbols;
+    std::vector<Symbol> symbols;
   };
   std::string method = "$cquery/publishSemanticHighlighting";
   Params params;
@@ -1094,6 +1094,6 @@ MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting,
 
 struct Out_LocationList : public lsOutMessage<Out_LocationList> {
   lsRequestId id;
-  NonElidedVector<lsLocation> result;
+  std::vector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_LocationList, jsonrpc, id, result);

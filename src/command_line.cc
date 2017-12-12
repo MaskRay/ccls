@@ -71,7 +71,7 @@ bool ShouldDisplayIpcTiming(IpcId id) {
 
 void EmitDiagnostics(WorkingFiles* working_files,
                      std::string path,
-                     NonElidedVector<lsDiagnostic> diagnostics) {
+                     std::vector<lsDiagnostic> diagnostics) {
   // Emit diagnostics.
   Out_TextDocumentPublishDiagnostics out;
   out.params.uri = lsDocumentUri::FromPath(path);

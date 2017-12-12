@@ -33,7 +33,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentReferences);
 struct Out_TextDocumentReferences
     : public lsOutMessage<Out_TextDocumentReferences> {
   lsRequestId id;
-  NonElidedVector<lsLocation> result;
+  std::vector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
 

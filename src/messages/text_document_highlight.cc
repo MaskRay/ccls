@@ -15,7 +15,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentHighlight);
 struct Out_TextDocumentDocumentHighlight
     : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
   lsRequestId id;
-  NonElidedVector<lsDocumentHighlight> result;
+  std::vector<lsDocumentHighlight> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentHighlight, jsonrpc, id, result);
 

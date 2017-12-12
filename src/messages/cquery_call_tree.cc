@@ -34,7 +34,7 @@ struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
   };
 
   lsRequestId id;
-  NonElidedVector<CallEntry> result;
+  std::vector<CallEntry> result;
 };
 MAKE_REFLECT_TYPE_PROXY(Out_CqueryCallTree::CallType, int);
 MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry,
@@ -45,7 +45,7 @@ MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry,
                     callType);
 MAKE_REFLECT_STRUCT(Out_CqueryCallTree, jsonrpc, id, result);
 
-NonElidedVector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
+std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
     QueryDatabase* db,
     WorkingFiles* working_files,
     QueryFuncId root) {
@@ -62,12 +62,12 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
   entry.usr = root_func.def->usr;
   entry.location = *def_loc;
   entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, root_func);
-  NonElidedVector<Out_CqueryCallTree::CallEntry> result;
+  std::vector<Out_CqueryCallTree::CallEntry> result;
   result.push_back(entry);
   return result;
 }
 
-NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
+std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     QueryDatabase* db,
     WorkingFiles* working_files,
     QueryFuncId root) {
@@ -96,7 +96,7 @@ NonElidedVector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     return base + ":" + std::to_string(location.range.start.line + 1);
   };
 
-  NonElidedVector<Out_CqueryCallTree::CallEntry> result;
+  std::vector<Out_CqueryCallTree::CallEntry> result;
   std::unordered_set<QueryLocation> seen_locations;
 
   auto handle_caller = [&](QueryFuncRef caller,

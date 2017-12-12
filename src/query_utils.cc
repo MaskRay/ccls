@@ -427,7 +427,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
   return lsLocation(uri, *range);
 }
 
-NonElidedVector<lsLocation> GetLsLocations(
+std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
     const std::vector<QueryLocation>& locations) {
@@ -440,7 +440,7 @@ NonElidedVector<lsLocation> GetLsLocations(
     unique_locations.insert(*location);
   }
 
-  NonElidedVector<lsLocation> result;
+  std::vector<lsLocation> result;
   result.reserve(unique_locations.size());
   result.assign(unique_locations.begin(), unique_locations.end());
   return result;

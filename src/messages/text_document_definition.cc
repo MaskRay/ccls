@@ -2,7 +2,7 @@
 #include "query_utils.h"
 
 namespace {
-void PushBack(NonElidedVector<lsLocation>* result,
+void PushBack(std::vector<lsLocation>* result,
               optional<lsLocation> location) {
   if (location)
     result->push_back(*location);
@@ -21,7 +21,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentDefinition);
 struct Out_TextDocumentDefinition
     : public lsOutMessage<Out_TextDocumentDefinition> {
   lsRequestId id;
-  NonElidedVector<lsLocation> result;
+  std::vector<lsLocation> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 

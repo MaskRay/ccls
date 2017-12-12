@@ -254,7 +254,7 @@ struct Ipc_TextDocumentCodeAction
   // a code action is run.
   struct lsCodeActionContext {
     // An array of diagnostics.
-    NonElidedVector<lsDiagnostic> diagnostics;
+    std::vector<lsDiagnostic> diagnostics;
   };
   // Params for the CodeActionRequest
   struct lsCodeActionParams {
@@ -282,12 +282,12 @@ struct Out_TextDocumentCodeAction
     : public lsOutMessage<Out_TextDocumentCodeAction> {
   struct CommandArgs {
     lsDocumentUri textDocumentUri;
-    NonElidedVector<lsTextEdit> edits;
+    std::vector<lsTextEdit> edits;
   };
   using Command = lsCommand<CommandArgs>;
 
   lsRequestId id;
-  NonElidedVector<Command> result;
+  std::vector<Command> result;
 };
 MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(Out_TextDocumentCodeAction::CommandArgs,
                                     textDocumentUri,

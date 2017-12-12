@@ -319,7 +319,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
       return;
     }
 
-    NonElidedVector<lsDiagnostic> ls_diagnostics;
+    std::vector<lsDiagnostic> ls_diagnostics;
     unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
     for (unsigned i = 0; i < num_diagnostics; ++i) {
       optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(
@@ -412,7 +412,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
       {
         if (request->on_complete) {
-          NonElidedVector<lsCompletionItem> ls_result;
+          std::vector<lsCompletionItem> ls_result;
           ls_result.reserve(cx_results->NumResults);
 
           timer.Reset();
@@ -487,7 +487,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       }
 
       size_t num_diagnostics = clang_getNumDiagnostics(session->tu->cx_tu);
-      NonElidedVector<lsDiagnostic> ls_diagnostics;
+      std::vector<lsDiagnostic> ls_diagnostics;
       ls_diagnostics.reserve(num_diagnostics);
       for (unsigned i = 0; i < num_diagnostics; ++i) {
         CXDiagnostic cx_diag = clang_getDiagnostic(session->tu->cx_tu, i);

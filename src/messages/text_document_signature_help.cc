@@ -47,7 +47,7 @@ MAKE_REFLECT_STRUCT(lsSignatureInformation, label, documentation, parameters);
 // active and only one active parameter.
 struct lsSignatureHelp {
   // One or more signatures.
-  NonElidedVector<lsSignatureInformation> signatures;
+  std::vector<lsSignatureInformation> signatures;
 
   // The active signature. If omitted or the value lies outside the
   // range of `signatures` the value defaults to zero or is ignored if
@@ -100,7 +100,7 @@ struct TextDocumentSignatureHelpHandler : MessageHandler {
 
     ClangCompleteManager::OnComplete callback = std::bind(
         [this](BaseIpcMessage* message, std::string search, int active_param,
-               const NonElidedVector<lsCompletionItem>& results,
+               const std::vector<lsCompletionItem>& results,
                bool is_cached_result) {
           auto msg = message->As<Ipc_TextDocumentSignatureHelp>();
 

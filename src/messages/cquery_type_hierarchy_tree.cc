@@ -16,7 +16,7 @@ struct Out_CqueryTypeHierarchyTree
   struct TypeEntry {
     std::string name;
     optional<lsLocation> location;
-    NonElidedVector<TypeEntry> children;
+    std::vector<TypeEntry> children;
   };
   lsRequestId id;
   optional<TypeEntry> result;
@@ -27,7 +27,7 @@ MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree::TypeEntry,
                     children);
 MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree, jsonrpc, id, result);
 
-NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry>
+std::vector<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildParentInheritanceHierarchyForType(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        QueryTypeId root) {
@@ -35,7 +35,7 @@ BuildParentInheritanceHierarchyForType(QueryDatabase* db,
   if (!root_type.def)
     return {};
 
-  NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
+  std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
   parent_entries.reserve(root_type.def->parents.size());
 
   for (QueryTypeId parent_id : root_type.def->parents) {
@@ -95,7 +95,7 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
   return entry;
 }
 
-NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry>
+std::vector<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        QueryFuncId root) {
@@ -115,7 +115,7 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
   parent_entry.children = BuildParentInheritanceHierarchyForFunc(
       db, working_files, *root_func.def->base);
 
-  NonElidedVector<Out_CqueryTypeHierarchyTree::TypeEntry> entries;
+  std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> entries;
   entries.push_back(parent_entry);
   return entries;
 }

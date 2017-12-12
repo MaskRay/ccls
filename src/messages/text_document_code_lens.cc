@@ -13,7 +13,7 @@ MAKE_REFLECT_EMPTY_STRUCT(lsCodeLensUserData);
 struct lsCodeLensCommandArguments {
   lsDocumentUri uri;
   lsPosition position;
-  NonElidedVector<lsLocation> locations;
+  std::vector<lsLocation> locations;
 };
 void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
   visitor.StartArray();
@@ -45,7 +45,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeLens);
 struct Out_TextDocumentCodeLens
     : public lsOutMessage<Out_TextDocumentCodeLens> {
   lsRequestId id;
-  NonElidedVector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>>
+  std::vector<lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>>
       result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);

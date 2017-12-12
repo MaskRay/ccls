@@ -20,7 +20,7 @@ REGISTER_IPC_MESSAGE(Ipc_WorkspaceSymbol);
 
 struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
   lsRequestId id;
-  NonElidedVector<lsSymbolInformation> result;
+  std::vector<lsSymbolInformation> result;
 };
 MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 

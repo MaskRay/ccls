@@ -16,7 +16,7 @@ struct CodeCompleteCache {
   // NOTE: Make sure to access these variables under |WithLock|.
   optional<std::string> cached_path_;
   optional<lsPosition> cached_completion_position_;
-  NonElidedVector<lsCompletionItem> cached_results_;
+  std::vector<lsCompletionItem> cached_results_;
 
   std::mutex mutex_;
 
