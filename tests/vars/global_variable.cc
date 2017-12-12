@@ -2,6 +2,10 @@ static int global = 0;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:global_variable.cc@global",

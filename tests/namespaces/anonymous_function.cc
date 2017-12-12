@@ -5,6 +5,9 @@ void foo();
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -14,8 +17,14 @@ OUTPUT:
       "declarations": [{
           "spelling": "2:6-2:9",
           "extent": "2:1-2:11",
-          "content": "void foo()"
-        }]
-    }]
+          "content": "void foo()",
+          "param_spellings": []
+        }],
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 */

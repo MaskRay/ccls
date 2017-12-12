@@ -13,6 +13,7 @@ OUTPUT:
       "line": 1,
       "resolved_path": "&vector"
     }],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@MergeableUpdate",
@@ -20,16 +21,27 @@ OUTPUT:
       "detailed_name": "MergeableUpdate",
       "definition_spelling": "3:8-3:23",
       "definition_extent": "3:1-7:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1, 2],
+      "instances": [],
       "uses": ["3:8-3:23"]
     }, {
       "id": 1,
       "usr": "c:@N@std@ST>2#T#T@vector",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [2],
       "uses": ["6:8-6:14"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@S@MergeableUpdate@FI@a",

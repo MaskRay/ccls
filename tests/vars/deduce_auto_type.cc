@@ -7,6 +7,8 @@ void f() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -14,6 +16,11 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-1:13",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1],
       "uses": ["1:7-1:10", "3:16-3:19", "4:17-4:20"]
     }],
@@ -23,8 +30,13 @@ OUTPUT:
       "usr": "c:@F@f#",
       "short_name": "f",
       "detailed_name": "void f()",
+      "declarations": [],
       "definition_spelling": "2:6-2:7",
-      "definition_extent": "2:1-5:2"
+      "definition_extent": "2:1-5:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

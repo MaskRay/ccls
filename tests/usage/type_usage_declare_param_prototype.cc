@@ -11,11 +11,18 @@ void foo(Foo* f, Foo*) {}
 
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["1:8-1:11", "3:10-3:13", "3:18-3:21", "4:10-4:13", "4:18-4:21"]
     }],
@@ -32,7 +39,11 @@ OUTPUT:
           "param_spellings": ["3:15-3:16", "3:22-3:22"]
         }],
       "definition_spelling": "4:6-4:9",
-      "definition_extent": "4:1-4:26"
+      "definition_extent": "4:1-4:26",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

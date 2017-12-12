@@ -10,6 +10,8 @@ void user() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -17,7 +19,11 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:8-1:11",
       "definition_extent": "1:1-3:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
       "instances": [0],
       "uses": ["1:8-1:11", "6:3-6:6"]
     }],
@@ -30,18 +36,26 @@ OUTPUT:
       "declarations": [{
           "spelling": "2:8-2:12",
           "extent": "2:3-2:14",
-          "content": "void Used()"
+          "content": "void Used()",
+          "param_spellings": []
         }],
       "declaring_type": 0,
-      "callers": ["1@7:6-7:10"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@7:6-7:10"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@user#",
       "short_name": "user",
       "detailed_name": "void user()",
+      "declarations": [],
       "definition_spelling": "5:6-5:10",
       "definition_extent": "5:1-8:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@7:6-7:10"]
     }],
   "vars": [{

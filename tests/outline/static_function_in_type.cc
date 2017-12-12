@@ -9,11 +9,19 @@ void Foo::Register(Manager* m) {
 /*
 OUTPUT: static_function_in_type.h
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@S@Manager",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["3:7-3:14", "6:24-6:31"]
     }, {
       "id": 1,
@@ -22,7 +30,12 @@ OUTPUT: static_function_in_type.h
       "detailed_name": "ns::Foo",
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:1-7:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["5:8-5:11"]
     }],
   "funcs": [{
@@ -37,8 +50,13 @@ OUTPUT: static_function_in_type.h
           "content": "static void Register(Manager*)",
           "param_spellings": ["6:32-6:32"]
         }],
-      "declaring_type": 1
-    }]
+      "declaring_type": 1,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 OUTPUT: static_function_in_type.cc
 {
@@ -46,18 +64,29 @@ OUTPUT: static_function_in_type.cc
       "line": 1,
       "resolved_path": "&static_function_in_type.h"
     }],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@S@Foo",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["5:6-5:9"]
     }, {
       "id": 1,
       "usr": "c:@N@ns@S@Manager",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["5:20-5:27"]
     }],
@@ -67,9 +96,14 @@ OUTPUT: static_function_in_type.cc
       "usr": "c:@N@ns@S@Foo@F@Register#*$@N@ns@S@Manager#S",
       "short_name": "Register",
       "detailed_name": "void ns::Foo::Register(ns::Manager *)",
+      "declarations": [],
       "definition_spelling": "5:11-5:19",
       "definition_extent": "5:1-6:2",
-      "declaring_type": 0
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

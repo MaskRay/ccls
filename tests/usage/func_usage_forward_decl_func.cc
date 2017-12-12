@@ -6,6 +6,9 @@ void usage() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -15,18 +18,27 @@ OUTPUT:
       "declarations": [{
           "spelling": "1:6-1:9",
           "extent": "1:1-1:11",
-          "content": "void foo()"
+          "content": "void foo()",
+          "param_spellings": []
         }],
-      "callers": ["1@4:3-4:6"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@4:3-4:6"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@usage#",
       "short_name": "usage",
       "detailed_name": "void usage()",
+      "declarations": [],
       "definition_spelling": "3:6-3:11",
       "definition_extent": "3:1-5:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@4:3-4:6"]
-    }]
+    }],
+  "vars": []
 }
 */

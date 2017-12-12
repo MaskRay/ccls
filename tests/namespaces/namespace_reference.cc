@@ -12,23 +12,34 @@ void Runner() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
       "usr": "c:@N@ns@F@Accept#I#",
       "short_name": "Accept",
       "detailed_name": "void ns::Accept(int)",
+      "declarations": [],
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:3-3:24",
-      "callers": ["1@7:7-7:13", "1@9:3-9:9"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@7:7-7:13", "1@9:3-9:9"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@Runner#",
       "short_name": "Runner",
       "detailed_name": "void Runner()",
+      "declarations": [],
       "definition_spelling": "6:6-6:12",
       "definition_extent": "6:1-10:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@7:7-7:13", "0@9:3-9:9"]
     }],
   "vars": [{

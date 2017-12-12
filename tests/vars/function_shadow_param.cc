@@ -4,14 +4,22 @@ void foo(int p) {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
       "usr": "c:@F@foo#I#",
       "short_name": "foo",
       "detailed_name": "void foo(int)",
+      "declarations": [],
       "definition_spelling": "1:6-1:9",
-      "definition_extent": "1:1-3:2"
+      "definition_extent": "1:1-3:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

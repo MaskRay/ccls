@@ -11,6 +11,8 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -18,6 +20,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:8-1:11",
       "definition_extent": "1:1-3:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["1:8-1:11", "8:10-8:13"]
     }],
   "funcs": [{
@@ -32,15 +40,22 @@ OUTPUT:
           "content": "void accept(int)",
           "param_spellings": ["5:16-5:16"]
         }],
-      "callers": ["1@8:3-8:9"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@8:3-8:9"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@8:3-8:9"]
     }],
   "vars": [{

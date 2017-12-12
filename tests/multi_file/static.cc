@@ -5,6 +5,8 @@ void Buffer::CreateSharedBuffer() {}
 /*
 OUTPUT: static.h
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Buffer",
@@ -12,7 +14,12 @@ OUTPUT: static.h
       "detailed_name": "Buffer",
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:1-5:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["3:8-3:14"]
     }],
   "funcs": [{
@@ -24,10 +31,16 @@ OUTPUT: static.h
       "declarations": [{
           "spelling": "4:15-4:33",
           "extent": "4:3-4:35",
-          "content": "static void CreateSharedBuffer()"
+          "content": "static void CreateSharedBuffer()",
+          "param_spellings": []
         }],
-      "declaring_type": 0
-    }]
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 OUTPUT: static.cc
 {
@@ -35,12 +48,18 @@ OUTPUT: static.cc
       "line": 1,
       "resolved_path": "&static.h"
     }],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Buffer",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["3:6-3:12"]
     }],
   "funcs": [{
@@ -49,9 +68,15 @@ OUTPUT: static.cc
       "usr": "c:@S@Buffer@F@CreateSharedBuffer#S",
       "short_name": "CreateSharedBuffer",
       "detailed_name": "void Buffer::CreateSharedBuffer()",
+      "declarations": [],
       "definition_spelling": "3:14-3:32",
       "definition_extent": "3:1-3:37",
-      "declaring_type": 0
-    }]
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 */

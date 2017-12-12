@@ -3,14 +3,22 @@ static Type t;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["1:8-1:12", "2:8-2:12"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:type_usage_declare_static.cc@t",

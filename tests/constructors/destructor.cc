@@ -16,6 +16,8 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -23,7 +25,11 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-5:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0, 1],
+      "vars": [],
       "instances": [0],
       "uses": ["1:7-1:10", "3:3-3:6", "4:4-4:7", "8:3-8:6"]
     }],
@@ -33,27 +39,40 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
+      "declarations": [],
       "definition_spelling": "3:3-3:6",
       "definition_extent": "3:3-3:11",
       "declaring_type": 0,
-      "callers": ["~2@8:7-8:8"]
+      "derived": [],
+      "locals": [],
+      "callers": ["~2@8:7-8:8"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@S@Foo@F@~Foo#",
       "short_name": "~Foo",
       "detailed_name": "void Foo::~Foo() noexcept",
+      "declarations": [],
       "definition_spelling": "4:3-4:7",
       "definition_extent": "4:3-4:12",
-      "declaring_type": 0
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }, {
       "id": 2,
       "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["~0@8:7-8:8"]
     }],
   "vars": [{

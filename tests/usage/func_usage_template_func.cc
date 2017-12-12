@@ -9,6 +9,9 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -21,16 +24,24 @@ OUTPUT:
           "content": "void accept(T)",
           "param_spellings": ["2:14-2:14"]
         }],
-      "callers": ["1@5:3-5:9", "1@6:3-6:9"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@5:3-5:9", "1@6:3-6:9"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-7:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@5:3-5:9", "0@6:3-6:9"]
-    }]
+    }],
+  "vars": []
 }
 */

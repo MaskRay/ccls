@@ -7,6 +7,8 @@ void Impl() {
 /*
 OUTPUT: header.h
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Base",
@@ -14,7 +16,12 @@ OUTPUT: header.h
       "detailed_name": "Base",
       "definition_spelling": "3:8-3:12",
       "definition_extent": "3:1-3:15",
+      "parents": [],
       "derived": [1],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["3:8-3:12", "5:26-5:30"]
     }, {
       "id": 1,
@@ -24,6 +31,11 @@ OUTPUT: header.h
       "definition_spelling": "5:8-5:23",
       "definition_extent": "5:1-5:33",
       "parents": [0],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["5:8-5:23", "7:14-7:29"]
     }, {
       "id": 2,
@@ -33,6 +45,12 @@ OUTPUT: header.h
       "definition_spelling": "7:7-7:11",
       "definition_extent": "7:1-7:29",
       "alias_of": 1,
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["7:7-7:11"]
     }, {
       "id": 3,
@@ -41,6 +59,12 @@ OUTPUT: header.h
       "detailed_name": "Foo2",
       "definition_spelling": "13:8-13:12",
       "definition_extent": "13:1-13:15",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["13:8-13:12"]
     }, {
       "id": 4,
@@ -49,7 +73,12 @@ OUTPUT: header.h
       "detailed_name": "Foo3",
       "definition_spelling": "15:6-15:10",
       "definition_extent": "15:1-15:22",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1, 2],
+      "instances": [],
       "uses": ["15:6-15:10"]
     }],
   "funcs": [{
@@ -58,8 +87,13 @@ OUTPUT: header.h
       "usr": "c:@FT@>1#TFoo1#v#",
       "short_name": "Foo1",
       "detailed_name": "void Foo1()",
+      "declarations": [],
       "definition_spelling": "10:6-10:10",
-      "definition_extent": "10:1-10:15"
+      "definition_extent": "10:1-10:15",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,
@@ -125,14 +159,20 @@ OUTPUT: impl.cc
       "line": 1,
       "resolved_path": "&header.h"
     }],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
       "usr": "c:@F@Impl#",
       "short_name": "Impl",
       "detailed_name": "void Impl()",
+      "declarations": [],
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["1@4:3-4:7"]
     }, {
       "id": 1,
@@ -140,7 +180,12 @@ OUTPUT: impl.cc
       "usr": "c:@FT@>1#TFoo1#v#",
       "short_name": "",
       "detailed_name": "",
-      "callers": ["0@4:3-4:7"]
-    }]
+      "declarations": [],
+      "derived": [],
+      "locals": [],
+      "callers": ["0@4:3-4:7"],
+      "callees": []
+    }],
+  "vars": []
 }
 */

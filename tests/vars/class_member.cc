@@ -4,6 +4,8 @@ class Foo {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -11,10 +13,15 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-3:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0],
       "instances": [0],
       "uses": ["1:7-1:10", "2:3-2:6"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@FI@member",

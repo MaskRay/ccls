@@ -8,13 +8,22 @@ enum Foo {
 
 OUTPUT: funky_enum.h
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
       "short_name": "",
       "detailed_name": "",
-      "vars": [0, 1, 2]
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [0, 1, 2],
+      "instances": [],
+      "uses": []
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@E@Foo@A",
@@ -59,6 +68,7 @@ OUTPUT: funky_enum.cc
       "line": 2,
       "resolved_path": "&funky_enum.h"
     }],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
@@ -66,7 +76,15 @@ OUTPUT: funky_enum.cc
       "detailed_name": "Foo",
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-3:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["1:6-1:9"]
-    }]
+    }],
+  "funcs": [],
+  "vars": []
 }
 */

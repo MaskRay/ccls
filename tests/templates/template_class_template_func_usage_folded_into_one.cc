@@ -12,6 +12,8 @@ int b = Foo<bool>::foo<double>();
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#T@Foo",
@@ -19,7 +21,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "2:8-2:11",
       "definition_extent": "2:1-7:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["2:8-2:11", "9:9-9:12", "10:9-10:12"]
     }],
   "funcs": [{
@@ -28,10 +35,14 @@ OUTPUT:
       "usr": "c:@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int Foo::foo()",
+      "declarations": [],
       "definition_spelling": "4:14-4:17",
       "definition_extent": "4:3-6:4",
       "declaring_type": 0,
-      "callers": ["-1@9:19-9:22", "-1@10:20-10:23"]
+      "derived": [],
+      "locals": [],
+      "callers": ["-1@9:19-9:22", "-1@10:20-10:23"],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

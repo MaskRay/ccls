@@ -9,6 +9,9 @@ void caller() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -21,15 +24,22 @@ OUTPUT:
           "content": "bool called(bool a, bool b)",
           "param_spellings": ["3:18-3:19", "3:26-3:27"]
         }],
-      "callers": ["1@6:14-6:20"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@6:14-6:20"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "detailed_name": "void caller()",
+      "declarations": [],
       "definition_spelling": "5:6-5:12",
       "definition_extent": "5:1-7:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@6:14-6:20"]
     }],
   "vars": [{

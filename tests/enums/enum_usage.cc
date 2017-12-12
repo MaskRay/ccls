@@ -8,6 +8,8 @@ Foo x = Foo::A;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
@@ -15,10 +17,15 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:12-1:15",
       "definition_extent": "1:1-4:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1],
       "instances": [2],
       "uses": ["1:12-1:15", "6:1-6:4", "6:9-6:12"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@E@Foo@A",

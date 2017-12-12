@@ -11,6 +11,8 @@ Foo<B> b;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@E@A",
@@ -18,6 +20,12 @@ OUTPUT:
       "detailed_name": "A",
       "definition_spelling": "1:6-1:7",
       "definition_extent": "1:1-1:10",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["1:6-1:7", "9:5-9:6"]
     }, {
       "id": 1,
@@ -26,6 +34,12 @@ OUTPUT:
       "detailed_name": "B",
       "definition_spelling": "2:6-2:7",
       "definition_extent": "2:1-2:10",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["2:6-2:7", "10:5-10:6"]
     }, {
       "id": 2,
@@ -34,6 +48,11 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:1-7:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [1],
       "uses": ["5:8-5:11", "9:1-9:4", "10:1-10:4"]
     }, {
@@ -43,9 +62,15 @@ OUTPUT:
       "detailed_name": "Foo::Inner",
       "definition_spelling": "6:10-6:15",
       "definition_extent": "6:3-6:18",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["6:10-6:15", "9:9-9:14"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@a",

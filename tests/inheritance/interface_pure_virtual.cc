@@ -5,6 +5,8 @@ class IFoo {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@IFoo",
@@ -12,7 +14,12 @@ OUTPUT:
       "detailed_name": "IFoo",
       "definition_spelling": "1:7-1:11",
       "definition_extent": "1:1-3:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["1:7-1:11"]
     }],
   "funcs": [{
@@ -21,9 +28,15 @@ OUTPUT:
       "usr": "c:@S@IFoo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void IFoo::foo()",
+      "declarations": [],
       "definition_spelling": "2:16-2:19",
       "definition_extent": "2:3-2:28",
-      "declaring_type": 0
-    }]
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 */

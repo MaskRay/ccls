@@ -81,12 +81,18 @@ unique_ptr<S1, S2>* Foo::foo() { return nullptr; }
 /*
 OUTPUT:
 {
+  "includes": [],
   "skipped_by_preprocessor": ["7:1-14:7", "17:1-32:7", "35:1-39:7", "42:1-52:7", "57:1-63:7", "68:1-78:7"],
   "types": [{
       "id": 0,
       "usr": "c:@ST>2#T#T@unique_ptr",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1],
       "uses": ["2:7-2:17", "15:8-15:18", "15:19-15:29", "33:1-33:11", "33:12-33:22", "33:52-33:62", "54:3-54:13", "54:14-54:24", "65:3-65:13", "79:1-79:11"]
     }, {
@@ -94,12 +100,24 @@ OUTPUT:
       "usr": "c:@S@S1",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["4:8-4:10", "15:30-15:32", "33:23-33:25", "33:63-33:65", "54:25-54:27", "65:14-65:16", "79:12-79:14"]
     }, {
       "id": 2,
       "usr": "c:@S@S2",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["5:8-5:10", "15:34-15:36", "15:39-15:41", "33:27-33:29", "33:32-33:34", "33:67-33:69", "54:29-54:31", "54:34-54:36", "65:18-65:20", "79:16-79:18"]
     }, {
       "id": 3,
@@ -108,7 +126,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "64:7-64:10",
       "definition_extent": "64:1-66:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [3],
+      "vars": [],
+      "instances": [],
       "uses": ["64:7-64:10", "79:21-79:24"]
     }],
   "funcs": [{
@@ -117,24 +140,39 @@ OUTPUT:
       "usr": "c:@F@as_return_type#*$@S@unique_ptr>#$@S@S1#$@S@S2#",
       "short_name": "as_return_type",
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> *as_return_type(unique_ptr<S1, S2> *)",
+      "declarations": [],
       "definition_spelling": "33:37-33:51",
-      "definition_extent": "33:1-33:92"
+      "definition_extent": "33:1-33:92",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
       "usr": "c:@F@no_return_type#I#",
       "short_name": "no_return_type",
       "detailed_name": "void no_return_type(int)",
+      "declarations": [],
       "definition_spelling": "40:6-40:20",
-      "definition_extent": "40:1-40:28"
+      "definition_extent": "40:1-40:28",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }, {
       "id": 2,
       "is_operator": false,
       "usr": "c:@F@empty#",
       "short_name": "empty",
       "detailed_name": "void empty()",
+      "declarations": [],
       "definition_spelling": "53:6-53:11",
-      "definition_extent": "53:1-55:2"
+      "definition_extent": "53:1-55:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }, {
       "id": 3,
       "is_operator": false,
@@ -144,11 +182,16 @@ OUTPUT:
       "declarations": [{
           "spelling": "65:23-65:26",
           "extent": "65:3-65:28",
-          "content": "unique_ptr<S1, S2>* foo()"
+          "content": "unique_ptr<S1, S2>* foo()",
+          "param_spellings": []
         }],
       "definition_spelling": "79:26-79:29",
       "definition_extent": "79:1-79:51",
-      "declaring_type": 3
+      "declaring_type": 3,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

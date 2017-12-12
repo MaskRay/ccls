@@ -9,6 +9,8 @@ class Foo {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -16,7 +18,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "5:7-5:10",
       "definition_extent": "5:1-7:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0],
+      "instances": [],
       "uses": ["5:7-5:10"]
     }],
   "funcs": [{
@@ -25,9 +32,13 @@ OUTPUT:
       "usr": "c:func_usage_class_inline_var_def.cc@F@helper#",
       "short_name": "helper",
       "detailed_name": "int helper()",
+      "declarations": [],
       "definition_spelling": "1:12-1:18",
       "definition_extent": "1:1-3:2",
-      "callers": ["-1@6:11-6:17"]
+      "derived": [],
+      "locals": [],
+      "callers": ["-1@6:11-6:17"],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

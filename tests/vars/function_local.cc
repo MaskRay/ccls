@@ -7,11 +7,18 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["1:8-1:11", "4:3-4:6"]
     }],
@@ -21,8 +28,13 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "3:6-3:9",
-      "definition_extent": "3:1-5:2"
+      "definition_extent": "3:1-5:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

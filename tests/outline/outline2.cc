@@ -21,6 +21,7 @@ OUTPUT:
       "line": 4,
       "resolved_path": "&vector"
     }],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@CompilationEntry",
@@ -28,13 +29,23 @@ OUTPUT:
       "detailed_name": "CompilationEntry",
       "definition_spelling": "6:8-6:24",
       "definition_extent": "6:1-10:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1, 2],
+      "instances": [],
       "uses": ["6:8-6:24", "12:13-12:29"]
     }, {
       "id": 1,
       "usr": "c:@N@std@T@string",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1],
       "uses": ["7:8-7:14", "8:8-8:14", "9:20-9:26"]
     }, {
@@ -42,6 +53,11 @@ OUTPUT:
       "usr": "c:@N@std@ST>2#T#T@vector",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [2],
       "uses": ["9:8-9:14", "12:6-12:12"]
     }],
@@ -56,7 +72,11 @@ OUTPUT:
           "extent": "12:1-12:104",
           "content": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory)",
           "param_spellings": ["12:86-12:103"]
-        }]
+        }],
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

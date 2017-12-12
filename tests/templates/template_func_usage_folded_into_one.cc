@@ -12,15 +12,22 @@ int b = foo<bool>();
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
       "short_name": "foo",
       "detailed_name": "int foo()",
+      "declarations": [],
       "definition_spelling": "2:12-2:15",
       "definition_extent": "2:1-4:2",
-      "callers": ["-1@6:9-6:12", "-1@7:9-7:12"]
+      "derived": [],
+      "locals": [],
+      "callers": ["-1@6:9-6:12", "-1@7:9-7:12"],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

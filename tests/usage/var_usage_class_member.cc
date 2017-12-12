@@ -20,6 +20,8 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -27,6 +29,10 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-5:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1],
       "instances": [2],
       "uses": ["1:7-1:10", "11:3-11:6"]
@@ -43,7 +49,10 @@ OUTPUT:
           "content": "void accept(int)",
           "param_spellings": ["7:16-7:16"]
         }],
-      "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"]
+      "derived": [],
+      "locals": [],
+      "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
@@ -56,15 +65,22 @@ OUTPUT:
           "content": "void accept(int*)",
           "param_spellings": ["8:17-8:17"]
         }],
-      "callers": ["2@16:3-16:9"]
+      "derived": [],
+      "locals": [],
+      "callers": ["2@16:3-16:9"],
+      "callees": []
     }, {
       "id": 2,
       "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "10:6-10:9",
       "definition_extent": "10:1-18:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@14:3-14:9", "0@15:3-15:9", "1@16:3-16:9", "0@17:3-17:9"]
     }],
   "vars": [{

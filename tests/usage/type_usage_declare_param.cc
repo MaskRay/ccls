@@ -6,11 +6,18 @@ void foo(ForwardType* f, ImplementedType a) {}
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["1:8-1:19", "4:10-4:21"]
     }, {
@@ -20,6 +27,11 @@ OUTPUT:
       "detailed_name": "ImplementedType",
       "definition_spelling": "2:8-2:23",
       "definition_extent": "2:1-2:26",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [1],
       "uses": ["2:8-2:23", "4:26-4:41"]
     }],
@@ -29,8 +41,13 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@ForwardType#$@S@ImplementedType#",
       "short_name": "foo",
       "detailed_name": "void foo(ForwardType *, ImplementedType)",
+      "declarations": [],
       "definition_spelling": "4:6-4:9",
-      "definition_extent": "4:1-4:47"
+      "definition_extent": "4:1-4:47",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

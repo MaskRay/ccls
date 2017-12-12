@@ -10,6 +10,8 @@ void Foo::Bar(Template<double>&) {}
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#T@Template",
@@ -17,6 +19,12 @@ OUTPUT:
       "detailed_name": "Template",
       "definition_spelling": "2:7-2:15",
       "definition_extent": "2:1-2:18",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["2:7-2:15", "5:12-5:20", "8:15-8:23"]
     }, {
       "id": 1,
@@ -25,7 +33,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "4:8-4:11",
       "definition_extent": "4:1-6:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["4:8-4:11", "8:6-8:9"]
     }],
   "funcs": [{
@@ -42,7 +55,12 @@ OUTPUT:
         }],
       "definition_spelling": "8:11-8:14",
       "definition_extent": "8:1-8:36",
-      "declaring_type": 1
-    }]
+      "declaring_type": 1,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 */

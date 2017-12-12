@@ -9,11 +9,18 @@ struct Foo {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@ForwardType",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["1:8-1:19", "5:3-5:14"]
     }, {
@@ -23,6 +30,11 @@ OUTPUT:
       "detailed_name": "ImplementedType",
       "definition_spelling": "2:8-2:23",
       "definition_extent": "2:1-2:26",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [1],
       "uses": ["2:8-2:23", "6:3-6:18"]
     }, {
@@ -32,9 +44,15 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "4:8-4:11",
       "definition_extent": "4:1-7:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1],
+      "instances": [],
       "uses": ["4:8-4:11"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@S@Foo@FI@a",

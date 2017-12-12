@@ -30,6 +30,7 @@ UnexposedDecl var
 /*
 OUTPUT:
 {
+  "includes": [],
   "skipped_by_preprocessor": ["12:1-28:7"],
   "types": [{
       "id": 0,
@@ -38,6 +39,12 @@ OUTPUT:
       "detailed_name": "A",
       "definition_spelling": "1:6-1:7",
       "definition_extent": "1:1-1:10",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["1:6-1:7", "7:13-7:14"]
     }, {
       "id": 1,
@@ -46,14 +53,27 @@ OUTPUT:
       "detailed_name": "B",
       "definition_spelling": "2:6-2:7",
       "definition_extent": "2:1-2:10",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["2:6-2:7", "8:13-8:14"]
     }, {
       "id": 2,
       "usr": "c:template_var_usage_folded_into_one.cc@35",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["5:1-5:2"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@VT>1#T@var",

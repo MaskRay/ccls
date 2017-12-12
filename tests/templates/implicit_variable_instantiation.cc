@@ -17,6 +17,8 @@ namespace ns {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@E@VarType",
@@ -24,6 +26,11 @@ OUTPUT:
       "detailed_name": "ns::VarType",
       "definition_spelling": "2:8-2:15",
       "definition_extent": "2:3-2:18",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["2:8-2:15", "6:22-6:29", "6:44-6:51", "10:18-10:25"]
     }, {
@@ -33,9 +40,15 @@ OUTPUT:
       "detailed_name": "ns::Holder",
       "definition_spelling": "5:10-5:16",
       "definition_extent": "5:3-7:4",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0],
+      "instances": [],
       "uses": ["5:10-5:16", "10:26-10:32", "13:13-13:19", "14:14-14:20"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@N@ns@ST>1#T@Holder@static_var",

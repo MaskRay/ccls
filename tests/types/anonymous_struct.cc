@@ -6,6 +6,8 @@ union vector3 {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@U@vector3",
@@ -13,7 +15,12 @@ OUTPUT:
       "detailed_name": "vector3",
       "definition_spelling": "1:7-1:14",
       "definition_extent": "1:1-4:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [3],
+      "instances": [],
       "uses": ["1:7-1:14"]
     }, {
       "id": 1,
@@ -22,9 +29,15 @@ OUTPUT:
       "detailed_name": "vector3::<anonymous>",
       "definition_spelling": "2:3-2:9",
       "definition_extent": "2:3-2:28",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1, 2],
+      "instances": [],
       "uses": ["2:3-2:9"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@U@vector3@Sa@FI@x",

@@ -14,6 +14,8 @@ void act(Foo*) {
 
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@U@Foo",
@@ -21,6 +23,10 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-4:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1],
       "instances": [2],
       "uses": ["1:7-1:10", "6:1-6:4", "8:10-8:13"]
@@ -31,8 +37,13 @@ OUTPUT:
       "usr": "c:@F@act#*$@U@Foo#",
       "short_name": "act",
       "detailed_name": "void act(Foo *)",
+      "declarations": [],
       "definition_spelling": "8:6-8:9",
-      "definition_extent": "8:1-10:2"
+      "definition_extent": "8:1-10:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

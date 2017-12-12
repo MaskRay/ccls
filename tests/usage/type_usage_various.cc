@@ -12,6 +12,8 @@ extern Foo foo;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -19,7 +21,11 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-3:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
       "instances": [0, 1],
       "uses": ["1:7-1:10", "2:3-2:6", "5:1-5:4", "5:6-5:9", "6:3-6:6", "10:8-10:11"]
     }],
@@ -32,11 +38,16 @@ OUTPUT:
       "declarations": [{
           "spelling": "2:8-2:12",
           "extent": "2:3-2:14",
-          "content": "Foo* make()"
+          "content": "Foo* make()",
+          "param_spellings": []
         }],
       "definition_spelling": "5:11-5:15",
       "definition_extent": "5:1-8:2",
-      "declaring_type": 0
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

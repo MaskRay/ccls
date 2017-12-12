@@ -9,6 +9,8 @@ namespace ns {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@ST>1#T@Foo",
@@ -16,9 +18,15 @@ OUTPUT:
       "detailed_name": "ns::Foo",
       "definition_spelling": "3:9-3:12",
       "definition_extent": "3:3-3:15",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1],
       "uses": ["3:9-3:12", "5:3-5:6", "6:3-6:6"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@N@ns@a",

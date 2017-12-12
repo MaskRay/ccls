@@ -10,6 +10,8 @@ int x = A;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -17,7 +19,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "4:8-4:11",
       "definition_extent": "4:1-6:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["4:8-4:11", "5:12-5:15"]
     }],
   "funcs": [{
@@ -26,9 +33,14 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#&&$@S@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo(Foo &&)",
+      "declarations": [],
       "definition_spelling": "5:12-5:15",
       "definition_extent": "5:12-5:16",
-      "declaring_type": 0
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

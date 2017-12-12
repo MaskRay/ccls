@@ -14,15 +14,22 @@ FOO(make1(), make2);
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
       "usr": "c:@F@make1#",
       "short_name": "make1",
       "detailed_name": "int make1()",
+      "declarations": [],
       "definition_spelling": "6:5-6:10",
       "definition_extent": "6:1-8:2",
-      "callers": ["1@12:5-12:10"]
+      "derived": [],
+      "locals": [],
+      "callers": ["1@12:5-12:10"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
@@ -32,10 +39,14 @@ OUTPUT:
       "declarations": [{
           "spelling": "12:1-12:20",
           "extent": "12:1-12:20",
-          "content": "int a();\n   int a() { return aaa + bbb; }\n\n\n int make1() {\n   return 3;\n }\n const int make2 = 5;\n\n\n FOO(make1(), make2)"
+          "content": "int a();\n   int a() { return aaa + bbb; }\n\n\n int make1() {\n   return 3;\n }\n const int make2 = 5;\n\n\n FOO(make1(), make2)",
+          "param_spellings": []
         }],
       "definition_spelling": "12:1-12:20",
       "definition_extent": "12:1-12:20",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@12:5-12:10"]
     }],
   "vars": [{

@@ -6,6 +6,10 @@
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:include_guard.cc@21@macro@FOO",

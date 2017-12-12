@@ -6,6 +6,8 @@ enum Foo : int {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@E@Foo",
@@ -13,9 +15,15 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-4:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0, 1],
+      "instances": [],
       "uses": ["1:6-1:9"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@E@Foo@A",

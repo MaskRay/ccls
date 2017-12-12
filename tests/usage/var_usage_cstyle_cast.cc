@@ -10,6 +10,8 @@ const VarType Holder::static_var;
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@E@VarType",
@@ -17,6 +19,11 @@ OUTPUT:
       "detailed_name": "VarType",
       "definition_spelling": "1:6-1:13",
       "definition_extent": "1:1-1:16",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["1:6-1:13", "4:20-4:27", "4:42-4:49", "7:7-7:14"]
     }, {
@@ -26,9 +33,15 @@ OUTPUT:
       "detailed_name": "Holder",
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:1-5:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [0],
+      "instances": [],
       "uses": ["3:8-3:14", "7:15-7:21"]
     }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@S@Holder@static_var",

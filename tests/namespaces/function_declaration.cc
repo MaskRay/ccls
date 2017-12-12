@@ -5,6 +5,9 @@ void foo(int a, int b);
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -16,7 +19,12 @@ OUTPUT:
           "extent": "2:1-2:23",
           "content": "void foo(int a, int b)",
           "param_spellings": ["2:14-2:15", "2:21-2:22"]
-        }]
-    }]
+        }],
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 */

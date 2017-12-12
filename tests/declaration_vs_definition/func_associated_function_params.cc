@@ -7,6 +7,9 @@ int foo(int a, int b) { return 0; }
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -30,7 +33,11 @@ OUTPUT:
           "param_spellings": ["4:13-4:16", "4:22-4:25"]
         }],
       "definition_spelling": "5:5-5:8",
-      "definition_extent": "5:1-5:36"
+      "definition_extent": "5:1-5:36",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

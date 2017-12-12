@@ -528,6 +528,10 @@ OUTPUT:
     }, {
       "line": 133,
       "resolved_path": "&filesystem"
-    }]
+    }],
+  "skipped_by_preprocessor": [],
+  "types": [],
+  "funcs": [],
+  "vars": []
 }
 */

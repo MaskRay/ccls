@@ -9,6 +9,8 @@ void Foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@S",
@@ -16,6 +18,12 @@ OUTPUT:
       "detailed_name": "S",
       "definition_spelling": "1:8-1:9",
       "definition_extent": "1:1-1:12",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["1:8-1:9", "2:11-2:12"]
     }, {
       "id": 1,
@@ -25,6 +33,11 @@ OUTPUT:
       "definition_spelling": "2:7-2:8",
       "definition_extent": "2:1-2:12",
       "alias_of": 0,
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0],
       "uses": ["2:7-2:8", "4:3-4:4"]
     }],
@@ -34,8 +47,13 @@ OUTPUT:
       "usr": "c:@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo()",
+      "declarations": [],
       "definition_spelling": "3:6-3:9",
-      "definition_extent": "3:1-5:2"
+      "definition_extent": "3:1-5:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

@@ -7,6 +7,9 @@ void impl() {
 /*
 OUTPUT: simple_header.h
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
@@ -16,9 +19,15 @@ OUTPUT: simple_header.h
       "declarations": [{
           "spelling": "3:6-3:12",
           "extent": "3:1-3:14",
-          "content": "void header()"
-        }]
-    }]
+          "content": "void header()",
+          "param_spellings": []
+        }],
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 OUTPUT: simple_impl.cc
 {
@@ -26,14 +35,20 @@ OUTPUT: simple_impl.cc
       "line": 1,
       "resolved_path": "&simple_header.h"
     }],
+  "skipped_by_preprocessor": [],
+  "types": [],
   "funcs": [{
       "id": 0,
       "is_operator": false,
       "usr": "c:@F@impl#",
       "short_name": "impl",
       "detailed_name": "void impl()",
+      "declarations": [],
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["1@4:3-4:9"]
     }, {
       "id": 1,
@@ -41,7 +56,12 @@ OUTPUT: simple_impl.cc
       "usr": "c:@F@header#",
       "short_name": "",
       "detailed_name": "",
-      "callers": ["0@4:3-4:9"]
-    }]
+      "declarations": [],
+      "derived": [],
+      "locals": [],
+      "callers": ["0@4:3-4:9"],
+      "callees": []
+    }],
+  "vars": []
 }
 */

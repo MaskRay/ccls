@@ -14,6 +14,8 @@ namespace ns {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@N@ns@ST>1#T@Foo",
@@ -21,7 +23,12 @@ OUTPUT:
       "detailed_name": "ns::Foo",
       "definition_spelling": "3:10-3:13",
       "definition_extent": "3:3-8:4",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["3:10-3:13", "10:11-10:14", "11:11-11:14"]
     }],
   "funcs": [{
@@ -30,10 +37,14 @@ OUTPUT:
       "usr": "c:@N@ns@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int ns::Foo::foo()",
+      "declarations": [],
       "definition_spelling": "5:16-5:19",
       "definition_extent": "5:5-7:6",
       "declaring_type": 0,
-      "callers": ["-1@10:21-10:24", "-1@11:22-11:25"]
+      "derived": [],
+      "locals": [],
+      "callers": ["-1@10:21-10:24", "-1@11:22-11:25"],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

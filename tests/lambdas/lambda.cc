@@ -14,12 +14,20 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:lambda.cc@47@F@foo#@Sa",
       "short_name": "",
       "detailed_name": "",
-      "instances": [1]
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [1],
+      "uses": []
     }],
   "funcs": [{
       "id": 0,
@@ -27,8 +35,12 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-12:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["1@9:14-9:15", "1@10:14-10:15", "1@11:14-11:15"]
     }, {
       "id": 1,
@@ -36,7 +48,11 @@ OUTPUT:
       "usr": "c:lambda.cc@57@F@foo#@Sa@F@operator()#I#1",
       "short_name": "",
       "detailed_name": "",
-      "callers": ["0@9:14-9:15", "0@10:14-10:15", "0@11:14-11:15"]
+      "declarations": [],
+      "derived": [],
+      "locals": [],
+      "callers": ["0@9:14-9:15", "0@10:14-10:15", "0@11:14-11:15"],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

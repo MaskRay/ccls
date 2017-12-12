@@ -138,8 +138,6 @@ void ReflectMember(Writer& visitor, const char* name, T& value) {
 }
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
-  if (values.empty())
-    return;
   visitor.Key(name);
   visitor.StartArray();
   for (auto& value : values)

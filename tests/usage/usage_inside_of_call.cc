@@ -17,6 +17,8 @@ void foo() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
@@ -24,7 +26,12 @@ OUTPUT:
       "detailed_name": "Foo",
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:1-8:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
       "vars": [1, 0],
+      "instances": [],
       "uses": ["5:8-5:11", "10:5-10:8", "14:22-14:25", "14:40-14:43"]
     }],
   "funcs": [{
@@ -39,7 +46,10 @@ OUTPUT:
           "content": "void called(int a)",
           "param_spellings": ["1:17-1:18"]
         }],
-      "callers": ["2@14:3-14:9"]
+      "derived": [],
+      "locals": [],
+      "callers": ["2@14:3-14:9"],
+      "callees": []
     }, {
       "id": 1,
       "is_operator": false,
@@ -49,17 +59,25 @@ OUTPUT:
       "declarations": [{
           "spelling": "3:5-3:8",
           "extent": "3:1-3:10",
-          "content": "int gen()"
+          "content": "int gen()",
+          "param_spellings": []
         }],
-      "callers": ["2@14:14-14:17"]
+      "derived": [],
+      "locals": [],
+      "callers": ["2@14:14-14:17"],
+      "callees": []
     }, {
       "id": 2,
       "is_operator": false,
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
+      "declarations": [],
       "definition_spelling": "12:6-12:9",
       "definition_extent": "12:1-15:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
       "callees": ["0@14:3-14:9", "1@14:14-14:17"]
     }],
   "vars": [{

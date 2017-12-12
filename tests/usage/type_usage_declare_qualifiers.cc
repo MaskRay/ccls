@@ -9,6 +9,8 @@ void foo(Type& a0, const Type& a1) {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
@@ -16,6 +18,11 @@ OUTPUT:
       "detailed_name": "Type",
       "definition_spelling": "1:8-1:12",
       "definition_extent": "1:1-1:15",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1, 2, 3, 4, 5],
       "uses": ["1:8-1:12", "3:10-3:14", "3:26-3:30", "4:3-4:7", "5:3-5:7", "6:9-6:13", "7:9-7:13"]
     }],
@@ -25,8 +32,13 @@ OUTPUT:
       "usr": "c:@F@foo#&$@S@Type#&1S1_#",
       "short_name": "foo",
       "detailed_name": "void foo(Type &, const Type &)",
+      "declarations": [],
       "definition_spelling": "3:6-3:9",
-      "definition_extent": "3:1-8:2"
+      "definition_extent": "3:1-8:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

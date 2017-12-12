@@ -7,6 +7,8 @@ class Foo {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@N@hello@S@Foo",
@@ -14,7 +16,12 @@ OUTPUT:
       "detailed_name": "hello::Foo",
       "definition_spelling": "2:7-2:10",
       "definition_extent": "2:1-4:2",
+      "parents": [],
+      "derived": [],
+      "types": [],
       "funcs": [0],
+      "vars": [],
+      "instances": [],
       "uses": ["2:7-2:10"]
     }],
   "funcs": [{
@@ -26,9 +33,15 @@ OUTPUT:
       "declarations": [{
           "spelling": "3:8-3:11",
           "extent": "3:3-3:13",
-          "content": "void foo()"
+          "content": "void foo()",
+          "param_spellings": []
         }],
-      "declaring_type": 0
-    }]
+      "declaring_type": 0,
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
+    }],
+  "vars": []
 }
 */

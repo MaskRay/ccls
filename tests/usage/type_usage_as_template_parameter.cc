@@ -13,11 +13,18 @@ unique_ptr<S>* return_type() {
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#T@unique_ptr",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1, 2],
       "uses": ["2:7-2:17", "6:8-6:18", "7:8-7:18", "9:1-9:11", "10:3-10:13"]
     }, {
@@ -27,6 +34,12 @@ OUTPUT:
       "detailed_name": "S",
       "definition_spelling": "4:8-4:9",
       "definition_extent": "4:1-4:12",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
       "uses": ["4:8-4:9", "7:19-7:20", "9:12-9:13", "10:14-10:15"]
     }],
   "funcs": [{
@@ -35,8 +48,13 @@ OUTPUT:
       "usr": "c:@F@return_type#",
       "short_name": "return_type",
       "detailed_name": "unique_ptr<S> *return_type()",
+      "declarations": [],
       "definition_spelling": "9:16-9:27",
-      "definition_extent": "9:1-12:2"
+      "definition_extent": "9:1-12:2",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,

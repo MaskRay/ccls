@@ -5,11 +5,18 @@ void foo(Foo* p0, Foo* p1) {}
 /*
 OUTPUT:
 {
+  "includes": [],
+  "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
       "usr": "c:@S@Foo",
       "short_name": "",
       "detailed_name": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
       "instances": [0, 1],
       "uses": ["1:8-1:11", "3:10-3:13", "3:19-3:22"]
     }],
@@ -19,8 +26,13 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "detailed_name": "void foo(Foo *, Foo *)",
+      "declarations": [],
       "definition_spelling": "3:6-3:9",
-      "definition_extent": "3:1-3:30"
+      "definition_extent": "3:1-3:30",
+      "derived": [],
+      "locals": [],
+      "callers": [],
+      "callees": []
     }],
   "vars": [{
       "id": 0,
