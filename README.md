@@ -45,19 +45,16 @@ Building cquery is simple. The external dependencies are few:
 $ clang --version  # if missing, sudo apt-get install clang
 $ git clone https://github.com/jacobdufault/cquery --recursive
 $ cd cquery
-$ ./waf configure --prefix ~/.local/stow/cquery
-$ ./waf build
-# -g -O3, built build/release/bin/cquery
-$ ./waf install
-# optional, copies the executable to $PREFIX/bin/cquery
+$ ./waf configure --prefix ~/.local/stow/cquery  # --prefix is optional, it specifies install directory
+$ ./waf build    # -g -O3, built build/release/bin/cquery
+$ ./waf install  # optional, copies the executable to $PREFIX/bin/cquery
 ```
 
 For a debug build:
 
 ```bash
 $ ./waf configure --variant=debug
-$ ./waf build --variant=debug
-# -g -O0, built build/debug/bin/cquery
+$ ./waf build --variant=debug  # -g -O0, built build/debug/bin/cquery
 ```
 
 ## Install extension
