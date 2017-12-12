@@ -1394,24 +1394,31 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       IndexVarId var_id = db->ToVarId(referenced.get_usr());
       IndexVar* var = db->Resolve(var_id);
       // Lambda paramaters are not processed by OnIndexDeclaration and
-      // may not have a short_name yet.
+      // may not have a short_name yet. Note that we only process the lambda
+      // parameter as a definition if it is in the same file as the reference,
+      // as lambdas cannot be split across files.
       if (var->def.short_name.empty()) {
-        // TODO Some of the logic here duplicates CXIdxEntity_Variable branch of
-        // OnIndexDeclaration.
-        // But there `decl` is of type CXIdxDeclInfo and has more information,
-        // thus not easy to reuse the code.
-        var->def.short_name = referenced.get_spelling();
-        std::string type_name = ToString(
-            clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
-        var->def.detailed_name = type_name + " " + var->def.short_name;
-        var->def.is_local = false;
-        var->def.definition_spelling = ResolveSpelling(referenced.cx_cursor);
-        var->def.definition_extent = ResolveSpelling(referenced.cx_cursor);
-        UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
-        AddDeclInitializerUsages(db, referenced.cx_cursor);
-        // TODO Use proper semantic_container and lexical_container.
-        AddDeclTypeUsages(db, referenced.cx_cursor, nullptr, nullptr);
-        // TODO Other logic in OnIndexDeclaration may need to be adapted.
+        CXFile referenced_file;
+        Range spelling = ResolveSpelling(referenced.cx_cursor, &referenced_file);
+        if (file == referenced_file) {
+          var->def.definition_spelling = spelling;
+          var->def.definition_extent = ResolveExtent(referenced.cx_cursor);
+
+          // TODO Some of the logic here duplicates CXIdxEntity_Variable branch of
+          // OnIndexDeclaration.
+          // But there `decl` is of type CXIdxDeclInfo and has more information,
+          // thus not easy to reuse the code.
+          var->def.short_name = referenced.get_spelling();
+          std::string type_name = ToString(
+              clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
+          var->def.detailed_name = type_name + " " + var->def.short_name;
+          var->def.is_local = false;
+          UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
+          AddDeclInitializerUsages(db, referenced.cx_cursor);
+          // TODO Use proper semantic_container and lexical_container.
+          AddDeclTypeUsages(db, referenced.cx_cursor, nullptr, nullptr);
+          // TODO Other logic in OnIndexDeclaration may need to be adapted.
+        }
       }
       UniqueAdd(var->uses, loc_spelling);
       break;
