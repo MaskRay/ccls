@@ -2,8 +2,7 @@
 #include "query_utils.h"
 
 namespace {
-void PushBack(std::vector<lsLocation>* result,
-              optional<lsLocation> location) {
+void PushBack(std::vector<lsLocation>* result, optional<lsLocation> location) {
   if (location)
     result->push_back(*location);
 }

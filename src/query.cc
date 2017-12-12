@@ -617,8 +617,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 #undef PROCESS_UPDATE_DIFF
 }
 
+// This function runs on an indexer thread.
 void IndexUpdate::Merge(const IndexUpdate& update) {
-  // This function runs on an indexer thread.
 
 #define INDEX_UPDATE_APPEND(name) AddRange(&name, update.name);
 #define INDEX_UPDATE_MERGE(name) AddMergeableRange(&name, update.name);

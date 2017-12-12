@@ -1396,8 +1396,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
         // But there `decl` is of type CXIdxDeclInfo and has more information,
         // thus not easy to reuse the code.
         var->def.short_name = referenced.get_spelling();
-        std::string type_name =
-          ToString(clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
+        std::string type_name = ToString(
+            clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
         var->def.detailed_name = type_name + " " + var->def.short_name;
         var->def.is_local = false;
         var->def.definition_spelling = ResolveSpelling(referenced.cx_cursor);
@@ -1716,12 +1716,14 @@ void ClangSanityCheck() {
                                 void* reserved) -> CXIdxClientFile {
     return nullptr;
   };
-  callback.ppIncludedFile = [](
-      CXClientData client_data,
-      const CXIdxIncludedFileInfo* file) -> CXIdxClientFile { return nullptr; };
-  callback.importedASTFile = [](
-      CXClientData client_data,
-      const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
+  callback.ppIncludedFile =
+      [](CXClientData client_data,
+         const CXIdxIncludedFileInfo* file) -> CXIdxClientFile {
+    return nullptr;
+  };
+  callback.importedASTFile =
+      [](CXClientData client_data,
+         const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
     return nullptr;
   };
   callback.startedTranslationUnit = [](CXClientData client_data,

@@ -26,8 +26,8 @@ optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
   // Get diagnostic location.
   CXFile file;
   unsigned start_line, start_column;
-  clang_getSpellingLocation(clang_getDiagnosticLocation(diagnostic),
-                            &file, &start_line, &start_column, nullptr);
+  clang_getSpellingLocation(clang_getDiagnosticLocation(diagnostic), &file,
+                            &start_line, &start_column, nullptr);
 
   if (file && path != FileName(file)) {
     clang_disposeDiagnostic(diagnostic);
@@ -35,7 +35,7 @@ optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
   }
 
   unsigned end_line = start_line, end_column = start_column,
-         num_ranges = clang_getDiagnosticNumRanges(diagnostic);
+           num_ranges = clang_getDiagnosticNumRanges(diagnostic);
   for (unsigned i = 0; i < num_ranges; i++) {
     CXFile file0, file1;
     unsigned line0, column0, line1, column1;
