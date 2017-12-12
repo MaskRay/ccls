@@ -50,6 +50,9 @@ def options(opt):
                  help='specify path to llvm-config for automatic configuration [default: %default]')
   grp.add_option('--clang-prefix', dest='clang_prefix', default='',
                  help='enable fallback configuration method by specifying a clang installation prefix (e.g. /opt/llvm)')
+  # TODO Default to 'release' and disallow empty variant
+  grp.add_option('--variant', default='',
+                 help='variant name for saving configuration and build results. Variants other than "debug" turn on -O3')
 
 def download_and_extract(destdir, url):
   dest = destdir + '.tar.xz'
@@ -73,45 +76,54 @@ def download_and_extract(destdir, url):
   else:
     print('Found extracted at {0}'.format(destdir))
 
-def configure(conf):
-  conf.load('compiler_cxx')
-  conf.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
-  conf.load('clang_compilation_database', tooldir='.')
+def configure(ctx):
+  ctx.resetenv(ctx.options.variant)
 
-  conf.env['use_system_clang'] = conf.options.use_system_clang
-  if conf.options.use_system_clang:
+  ctx.load('compiler_cxx')
+  cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
+  if ctx.options.variant == 'debug':
+    ctx.env.CXXFLAGS = cxxflags
+  else:
+    ctx.env.CXXFLAGS = cxxflags + ['-O3']
+
+  ctx.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
+
+  ctx.load('clang_compilation_database', tooldir='.')
+
+  ctx.env['use_system_clang'] = ctx.options.use_system_clang
+  if ctx.options.use_system_clang:
     # Ask llvm-config for cflags and ldflags
-    conf.find_program(conf.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
-    if conf.env.LLVM_CONFIG:
-      conf.check_cfg(msg='Checking for clang flags',
-                    path=conf.env.LLVM_CONFIG,
+    ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
+    if ctx.env.LLVM_CONFIG:
+      ctx.check_cfg(msg='Checking for clang flags',
+                    path=ctx.env.LLVM_CONFIG,
                     package='',
                     uselib_store='clang',
                     args='--cppflags --ldflags')
       # llvm-config does not provide the actual library we want so we check for it
       # using the provided info so far.
-      conf.check_cxx(lib='clang', uselib_store='clang', use='clang')
+      ctx.check_cxx(lib='clang', uselib_store='clang', use='clang')
 
     else: # Fallback method using a prefix path
-      conf.start_msg('Checking for clang prefix')
-      if not conf.options.clang_prefix:
-        raise conf.errors.ConfigurationError('not found (--clang-prefix must be specified when llvm-config is not found)')
+      ctx.start_msg('Checking for clang prefix')
+      if not ctx.options.clang_prefix:
+        raise ctx.errors.ConfigurationError('not found (--clang-prefix must be specified when llvm-config is not found)')
 
-      prefix = conf.root.find_node(conf.options.clang_prefix)
+      prefix = ctx.root.find_node(ctx.options.clang_prefix)
       if not prefix:
-        raise conf.errors.ConfigurationError('clang prefix not found: "%s"'%conf.options.clang_prefix)
+        raise ctx.errors.ConfigurationError('clang prefix not found: "%s"'%ctx.options.clang_prefix)
 
-      conf.end_msg(prefix)
+      ctx.end_msg(prefix)
 
       includes = [ n.abspath() for n in [ prefix.find_node('include') ] if n ]
       libpath  = [ n.abspath() for n in [ prefix.find_node(l) for l in ('lib', 'lib64')] if n ]
-      conf.check_cxx(msg='Checking for library clang', lib='clang', uselib_store='clang', includes=includes, libpath=libpath)
+      ctx.check_cxx(msg='Checking for library clang', lib='clang', uselib_store='clang', includes=includes, libpath=libpath)
 
   else:
     global CLANG_TARBALL_NAME
 
     # TODO Remove these after dropping clang 4 (after we figure out how to index Chrome)
-    if conf.options.bundled_clang[0] == '4':
+    if ctx.options.bundled_clang[0] == '4':
       if sys.platform == 'darwin':
         CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
       elif sys.platform.startswith('linux'):
@@ -122,23 +134,23 @@ def configure(conf):
         sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
         sys.exit(1)
 
-    CLANG_TARBALL_NAME = string.Template(CLANG_TARBALL_NAME).substitute(version=conf.options.bundled_clang)
+    CLANG_TARBALL_NAME = string.Template(CLANG_TARBALL_NAME).substitute(version=ctx.options.bundled_clang)
     # Directory clang has been extracted to.
     CLANG_DIRECTORY = '{0}/{1}'.format(out, CLANG_TARBALL_NAME)
     # URL of the tarball to download.
-    CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}.tar.xz'.format(conf.options.bundled_clang, CLANG_TARBALL_NAME)
+    CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}.tar.xz'.format(ctx.options.bundled_clang, CLANG_TARBALL_NAME)
 
     print('Checking for clang')
     download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL)
-    clang_node = conf.path.find_dir(CLANG_DIRECTORY)
+    clang_node = ctx.path.find_dir(CLANG_DIRECTORY)
 
-    conf.check_cxx(uselib_store='clang',
-                   includes=clang_node.find_dir('include').abspath(),
-                   libpath=clang_node.find_dir('lib').abspath(),
-                   lib='clang')
+    ctx.check_cxx(uselib_store='clang',
+                  includes=clang_node.find_dir('include').abspath(),
+                  libpath=clang_node.find_dir('lib').abspath(),
+                  lib='clang')
 
-  conf.msg('Clang includes', conf.env.INCLUDES_clang)
-  conf.msg('Clang library dir', conf.env.LIBPATH_clang)
+  ctx.msg('Clang includes', ctx.env.INCLUDES_clang)
+  ctx.msg('Clang library dir', ctx.env.LIBPATH_clang)
 
   """
   # Download and save the compressed tarball as |compressed_file_name|.
@@ -163,8 +175,6 @@ def configure(conf):
   """
 
 def build(bld):
-  # todo: configure vars
-
   cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc'])
 
   lib = []
@@ -178,7 +188,6 @@ def build(bld):
   bld.program(
       source=cc_files,
       use='clang',
-      cxxflags=['-g', '-O3', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror'],
       includes=[
         'src/',
         'third_party/',
@@ -207,3 +216,19 @@ def build(bld):
   #  bld.check(header_name='sadlib.h', features='cxx cxxprogram', mandatory=False)
   #  bld.logger = None
 
+def init(ctx):
+  from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
+  for y in (BuildContext, CleanContext, InstallContext, UninstallContext):
+    class tmp(y):
+      variant = ctx.options.variant
+
+  # This is needed because waf initializes the ConfigurationContext with
+  # an arbitrary setenv('') which would rewrite the previous configuration
+  # cache for the default variant if the configure step finishes.
+  # Ideally ConfigurationContext should just let us override this at class
+  # level like the other Context subclasses do with variant
+  from waflib.Configure import ConfigurationContext
+  class cctx(ConfigurationContext):
+    def resetenv(self, name):
+      self.all_envs = {}
+      self.setenv(name)
