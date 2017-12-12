@@ -50,8 +50,7 @@ def options(opt):
                  help='specify path to llvm-config for automatic configuration [default: %default]')
   grp.add_option('--clang-prefix', dest='clang_prefix', default='',
                  help='enable fallback configuration method by specifying a clang installation prefix (e.g. /opt/llvm)')
-  # TODO Default to 'release' and disallow empty variant
-  grp.add_option('--variant', default='',
+  grp.add_option('--variant', default='release',
                  help='variant name for saving configuration and build results. Variants other than "debug" turn on -O3')
 
 def download_and_extract(destdir, url):
@@ -199,7 +198,7 @@ def build(bld):
       defines=['LOGURU_WITH_STREAMS=1'],
       lib=lib,
       rpath=[] if bld.env['use_system_clang'] else bld.env['LIBPATH_clang'],
-      target='app')
+      target='bin/cquery')
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
   #bld.shlib(source='a.cpp', target='mylib2', vnum='9.8.7', cnum='9.8')
