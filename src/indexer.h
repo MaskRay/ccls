@@ -147,7 +147,6 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
-  std::string usr;
   std::string short_name;
   std::string detailed_name;
 
@@ -175,12 +174,9 @@ struct TypeDefDefinitionData {
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
 
-  TypeDefDefinitionData() {}  // For reflection.
-  TypeDefDefinitionData(const std::string& usr) : usr(usr) {}
-
   bool operator==(
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return usr == other.usr && short_name == other.short_name &&
+    return short_name == other.short_name &&
            detailed_name == other.detailed_name &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
@@ -201,7 +197,6 @@ template <typename TVisitor,
 void Reflect(TVisitor& visitor,
              TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(definition_spelling);
@@ -217,9 +212,11 @@ void Reflect(TVisitor& visitor,
 struct IndexType {
   using Def =
       TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
-  Def def;
 
+  std::string usr;
   IndexTypeId id;
+
+  Def def;
 
   // Immediate derived types.
   std::vector<IndexTypeId> derived;
@@ -231,16 +228,12 @@ struct IndexType {
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Range> uses;
 
-  IndexType() : def("") {}  // For serialization
-
+  IndexType() {}  // For serialization.
   IndexType(IndexTypeId id, const std::string& usr);
 
-  bool operator<(const IndexType& other) const {
-    return def.usr < other.def.usr;
-  }
+  bool operator<(const IndexType& other) const { return id < other.id; }
 };
-
-MAKE_HASHABLE(IndexType, t.def.usr);
+MAKE_HASHABLE(IndexType, t.id);
 
 template <typename TypeId,
           typename FuncId,
@@ -249,7 +242,6 @@ template <typename TypeId,
           typename Range>
 struct FuncDefDefinitionData {
   // General metadata.
-  std::string usr;
   std::string short_name;
   std::string detailed_name;
   optional<Range> definition_spelling;
@@ -270,15 +262,10 @@ struct FuncDefDefinitionData {
   // Used for semantic highlighting
   bool is_operator = false;
 
-  FuncDefDefinitionData() {}  // For reflection.
-  FuncDefDefinitionData(const std::string& usr) : usr(usr) {
-    // assert(usr.size() > 0);
-  }
-
   bool operator==(
       const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
       const {
-    return usr == other.usr && short_name == other.short_name &&
+    return short_name == other.short_name &&
            detailed_name == other.detailed_name &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
@@ -302,7 +289,6 @@ void Reflect(
     TVisitor& visitor,
     FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(definition_spelling);
@@ -321,9 +307,11 @@ struct IndexFunc {
                                     IndexVarId,
                                     IndexFuncRef,
                                     Range>;
-  Def def;
 
+  std::string usr;
   IndexFuncId id;
+
+  Def def;
 
   struct Declaration {
     // Range of only the function name.
@@ -349,16 +337,14 @@ struct IndexFunc {
   // def.definition_spelling.
   std::vector<IndexFuncRef> callers;
 
-  IndexFunc() {}  // For reflection.
-  IndexFunc(IndexFuncId id, const std::string& usr) : def(usr), id(id) {
+  IndexFunc() {}  // For serialization.
+  IndexFunc(IndexFuncId id, const std::string& usr) : usr(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
-  bool operator<(const IndexFunc& other) const {
-    return def.usr < other.def.usr;
-  }
+  bool operator<(const IndexFunc& other) const { return id < other.id; }
 };
-MAKE_HASHABLE(IndexFunc, t.def.usr);
+MAKE_HASHABLE(IndexFunc, t.id);
 MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
                     spelling,
                     extent,
@@ -368,7 +354,6 @@ MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct VarDefDefinitionData {
   // General metadata.
-  std::string usr;
   std::string short_name;
   std::string detailed_name;
   optional<Range> declaration;
@@ -388,12 +373,9 @@ struct VarDefDefinitionData {
   // Is this a macro, ie, #define FOO?
   bool is_macro = false;
 
-  VarDefDefinitionData() {}  // For reflection.
-  VarDefDefinitionData(const std::string& usr) : usr(usr) {}
-
   bool operator==(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return usr == other.usr && short_name == other.short_name &&
+    return short_name == other.short_name &&
            detailed_name == other.detailed_name &&
            declaration == other.declaration &&
            definition_spelling == other.definition_spelling &&
@@ -415,7 +397,6 @@ template <typename TVisitor,
 void Reflect(TVisitor& visitor,
              VarDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(definition_spelling);
@@ -429,24 +410,23 @@ void Reflect(TVisitor& visitor,
 
 struct IndexVar {
   using Def = VarDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
-  Def def;
 
+  std::string usr;
   IndexVarId id;
+
+  Def def;
 
   // Usages.
   std::vector<Range> uses;
 
-  IndexVar() : def("") {}  // For serialization
-
-  IndexVar(IndexVarId id, const std::string& usr) : def(usr), id(id) {
+  IndexVar() {}  // For serialization.
+  IndexVar(IndexVarId id, const std::string& usr) : usr(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
-  bool operator<(const IndexVar& other) const {
-    return def.usr < other.def.usr;
-  }
+  bool operator<(const IndexVar& other) const { return id < other.id; }
 };
-MAKE_HASHABLE(IndexVar, t.def.usr);
+MAKE_HASHABLE(IndexVar, t.id);
 
 struct IdCache {
   std::string primary_file;

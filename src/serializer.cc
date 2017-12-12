@@ -96,7 +96,7 @@ template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
-  REFLECT_MEMBER2("usr", value.def.usr);
+  REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
@@ -117,7 +117,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("is_operator", value.def.is_operator);
-  REFLECT_MEMBER2("usr", value.def.usr);
+  REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("declarations", value.declarations);
@@ -136,7 +136,7 @@ template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
-  REFLECT_MEMBER2("usr", value.def.usr);
+  REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("declaration", value.def.declaration);
@@ -220,16 +220,16 @@ std::unique_ptr<IndexFile> Deserialize(std::string path,
   file->path = path;
   file->id_cache.primary_file = file->path;
   for (const auto& type : file->types) {
-    file->id_cache.type_id_to_usr[type.id] = type.def.usr;
-    file->id_cache.usr_to_type_id[type.def.usr] = type.id;
+    file->id_cache.type_id_to_usr[type.id] = type.usr;
+    file->id_cache.usr_to_type_id[type.usr] = type.id;
   }
   for (const auto& func : file->funcs) {
-    file->id_cache.func_id_to_usr[func.id] = func.def.usr;
-    file->id_cache.usr_to_func_id[func.def.usr] = func.id;
+    file->id_cache.func_id_to_usr[func.id] = func.usr;
+    file->id_cache.usr_to_func_id[func.usr] = func.id;
   }
   for (const auto& var : file->vars) {
-    file->id_cache.var_id_to_usr[var.id] = var.def.usr;
-    file->id_cache.usr_to_var_id[var.def.usr] = var.id;
+    file->id_cache.var_id_to_usr[var.id] = var.usr;
+    file->id_cache.usr_to_var_id[var.usr] = var.id;
   }
 
   return file;

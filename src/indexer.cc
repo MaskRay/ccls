@@ -443,7 +443,7 @@ std::string IndexFile::ToString() {
 }
 
 IndexType::IndexType(IndexTypeId id, const std::string& usr)
-    : def(usr), id(id) {
+    : usr(usr), id(id) {
   assert(usr.size() > 0);
 }
 

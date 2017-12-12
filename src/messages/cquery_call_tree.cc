@@ -59,7 +59,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
 
   Out_CqueryCallTree::CallEntry entry;
   entry.name = root_func.def->short_name;
-  entry.usr = root_func.def->usr;
+  entry.usr = root_func.usr;
   entry.location = *def_loc;
   entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, root_func);
   std::vector<Out_CqueryCallTree::CallEntry> result;
@@ -133,7 +133,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
       call_entry.name =
           call_func.def->short_name + " (" +
           format_location(*call_location, call_func.def->declaring_type) + ")";
-      call_entry.usr = call_func.def->usr;
+      call_entry.usr = call_func.usr;
       call_entry.location = *call_location;
       call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, call_func);
       call_entry.callType = call_type;

@@ -166,6 +166,21 @@ void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
   REFLECT_MEMBER_END();
 }
 
+template <typename T>
+struct WithUsr {
+  Usr usr;
+  T value;
+
+  WithUsr(const Usr& usr, const T& value) : usr(usr), value(value) {}
+};
+template <typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, WithUsr<T>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(value);
+  REFLECT_MEMBER_END();
+}
+
 struct QueryFile {
   struct Def {
     std::string path;
@@ -186,7 +201,7 @@ struct QueryFile {
   optional<DefUpdate> def;
   size_t detailed_name_idx = (size_t)-1;
 
-  QueryFile(const std::string& path) {
+  explicit QueryFile(const std::string& path) {
     def = DefUpdate();
     def->path = path;
   }
@@ -199,52 +214,58 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     inactive_regions);
 
 struct QueryType {
-  using DefUpdate = TypeDefDefinitionData<QueryTypeId,
-                                          QueryFuncId,
-                                          QueryVarId,
-                                          QueryLocation>;
+  using Def = TypeDefDefinitionData<QueryTypeId,
+                                    QueryFuncId,
+                                    QueryVarId,
+                                    QueryLocation>;
+  using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
-  optional<DefUpdate> def;
+  Usr usr;
+  optional<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
   size_t detailed_name_idx = (size_t)-1;
 
-  QueryType(const Usr& usr) : def(usr) {}
+  explicit QueryType(const Usr& usr) : usr(usr) {}
 };
 
 struct QueryFunc {
-  using DefUpdate = FuncDefDefinitionData<QueryTypeId,
-                                          QueryFuncId,
-                                          QueryVarId,
-                                          QueryFuncRef,
-                                          QueryLocation>;
+  using Def = FuncDefDefinitionData<QueryTypeId,
+                                    QueryFuncId,
+                                    QueryVarId,
+                                    QueryFuncRef,
+                                    QueryLocation>;
+  using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryFuncId, QueryLocation>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
-  optional<DefUpdate> def;
+  Usr usr;
+  optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
   size_t detailed_name_idx = (size_t)-1;
 
-  QueryFunc(const Usr& usr) : def(usr) {}
+  explicit QueryFunc(const Usr& usr) : usr(usr) {}
 };
 
 struct QueryVar {
-  using DefUpdate =
+  using Def =
       VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
+  using DefUpdate = WithUsr<Def>;
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
 
-  optional<DefUpdate> def;
+  Usr usr;
+  optional<Def> def;
   std::vector<QueryLocation> uses;
   size_t detailed_name_idx = (size_t)-1;
 
-  QueryVar(const Usr& usr) : def(usr) {}
+  explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
 
 struct IndexUpdate {
