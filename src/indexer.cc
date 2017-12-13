@@ -923,13 +923,14 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       UniqueAdd(var_def->uses, decl_loc_spelling);
 
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
+        CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
         var_def->def.short_name = cursor.get_display_name();
-        var_def->def.detailed_name = var_def->def.short_name;
         var_def->def.is_local = false;
         var_def->def.is_macro = true;
         var_def->def.definition_spelling = decl_loc_spelling;
-        var_def->def.definition_extent = ResolveExtent(cursor.cx_cursor);
-        ;
+        var_def->def.definition_extent = Resolve(cx_extent, nullptr);
+        var_def->def.detailed_name =
+            "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
       }
 
       break;
