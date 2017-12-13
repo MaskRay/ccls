@@ -141,8 +141,21 @@ def configure(ctx):
 
     print('Checking for clang')
     download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL)
-    clang_node = ctx.path.find_dir(CLANG_DIRECTORY)
+    bundled_clang_dir = os.path.join(out, ctx.options.variant, 'lib', CLANG_TARBALL_NAME)
+    try:
+      os.makedirs(os.path.dirname(bundled_clang_dir))
+    except OSError:
+      pass
+    try:
+      os.symlink('../../' + CLANG_TARBALL_NAME, bundled_clang_dir)
+    except OSError:
+      pass
+    try:
+      os.symlink(os.path.join('lib/clang', ctx.options.bundled_clang), os.path.join(bundled_clang_dir, 'resource-dir'))
+    except OSError:
+      pass
 
+    clang_node = ctx.path.find_dir(bundled_clang_dir)
     ctx.check_cxx(uselib_store='clang',
                   includes=clang_node.find_dir('include').abspath(),
                   libpath=clang_node.find_dir('lib').abspath(),
@@ -184,6 +197,14 @@ def build(bld):
   elif sys.platform == 'darwin':
     lib.append('pthread')
 
+  clang_tarball_name = None
+  if bld.env['use_system_clang']:
+    rpath = []
+  elif sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
+    clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
+    rpath = '$ORIGIN/../lib/' + clang_tarball_name + '/lib'
+  else:
+    rpath = bld.env['LIBPATH_clang']
   bld.program(
       source=cc_files,
       use='clang',
@@ -197,8 +218,13 @@ def build(bld):
         'third_party/sparsepp/'],
       defines=['LOGURU_WITH_STREAMS=1'],
       lib=lib,
-      rpath=[] if bld.env['use_system_clang'] else bld.env['LIBPATH_clang'],
+      rpath=rpath,
       target='bin/cquery')
+
+  if bld.cmd == 'install':
+    if clang_tarball_name is not None:
+      bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/clang+llvm*/lib/libclang.so.[4-9]'))
+      bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/resource-dir/include', bld.path.get_bld().ant_glob('lib/clang+llvm*/lib/clang/[4-9]*/include/*'))
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
   #bld.shlib(source='a.cpp', target='mylib2', vnum='9.8.7', cnum='9.8')
