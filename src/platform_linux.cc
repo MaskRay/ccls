@@ -210,6 +210,27 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 
 void PlatformInit() {}
 
+#ifdef __APPLE__
+extern "C" int _NSGetExecutablePath(char* buf,uint32_t* bufsize);
+#endif
+
+// See https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
+std::string GetExecutablePath() {
+#ifndef __APPLE__
+  char buffer[PATH_MAX+1] = {0};
+  readlink("/proc/self/exe", buffer, PATH_MAX);
+  return std::string(buffer);
+#else
+  uint32_t size = 0;
+  _NSGetExecutablePath(nullptr, &size);
+  char *buffer = new char[size];
+  _NSGetExecutablePath(buffer, &size);
+  std::string result(buffer);
+  delete[] buffer;
+  return result;
+#endif
+}
+
 std::string GetWorkingDirectory() {
   char result[FILENAME_MAX];
   if (!getcwd(result, sizeof(result)))

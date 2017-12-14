@@ -86,12 +86,15 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
 
       // Ensure there is a resource directory.
       if (config->resourceDirectory.empty()) {
-        config->resourceDirectory = GetWorkingDirectory();
-#if defined(_WIN32)
-        config->resourceDirectory += std::string("../../clang_resource_dir/");
-#else
-        config->resourceDirectory += std::string("../clang_resource_dir/");
-#endif
+        std::string defaultResourceDirectory = std::string(DEFAULT_RESOURCE_DIRECTORY);
+        if (defaultResourceDirectory.find("..") != std::string::npos) {
+          std::string executablePath = GetExecutablePath();
+          size_t pos = executablePath.find_last_of('/');
+          config->resourceDirectory = executablePath.substr(0, pos+1);
+          config->resourceDirectory += defaultResourceDirectory;
+        } else {
+          config->resourceDirectory = defaultResourceDirectory;
+        }
       }
       config->resourceDirectory = NormalizePath(config->resourceDirectory);
       LOG_S(INFO) << "Using -resource-dir=" << config->resourceDirectory;

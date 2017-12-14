@@ -10,6 +10,7 @@ import os.path
 import string
 import subprocess
 import sys
+import re
 
 VERSION = '0.0.1'
 APPNAME = 'cquery'
@@ -198,11 +199,25 @@ def build(bld):
     lib.append('pthread')
 
   clang_tarball_name = None
+  # Fallback for windows
+  default_resource_directory = os.path.join(os.getcwd(), 'resource_dir')
   if bld.env['use_system_clang']:
     rpath = []
+
+    output = subprocess.check_output(['clang', '-###', '-xc', '/dev/null'], stderr=subprocess.STDOUT)
+    match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M | re.I)
+    if match:
+        default_resource_directory = match.group(1)
+    else:
+        print("Failed to found system clang resource directory. Falling back.")
   elif sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
     clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
     rpath = '$ORIGIN/../lib/' + clang_tarball_name + '/lib'
+    default_resource_directory = '../lib/' + clang_tarball_name + '/resource-dir'
+  elif sys.platform == 'darwin':
+    clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
+    rpath = '@loader_path/../lib/' + clang_tarball_name + '/lib'
+    default_resource_directory = '../lib/' + clang_tarball_name + '/resource-dir'
   else:
     rpath = bld.env['LIBPATH_clang']
   bld.program(
@@ -216,15 +231,15 @@ def build(bld):
         'third_party/rapidjson/include/',
         'third_party/sparsehash/src/',
         'third_party/sparsepp/'],
-      defines=['LOGURU_WITH_STREAMS=1'],
+      defines=['LOGURU_WITH_STREAMS=1',
+               'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'],
       lib=lib,
       rpath=rpath,
       target='bin/cquery')
 
-  if bld.cmd == 'install':
-    if clang_tarball_name is not None:
-      bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/clang+llvm*/lib/libclang.so.[4-9]'))
-      bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/resource-dir/include', bld.path.get_bld().ant_glob('lib/clang+llvm*/lib/clang/[4-9]*/include/*'))
+  if clang_tarball_name is not None:
+    bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
+    bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/resource-dir/include', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/clang/[4-9]*/include/*', quiet=True))
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
   #bld.shlib(source='a.cpp', target='mylib2', vnum='9.8.7', cnum='9.8')

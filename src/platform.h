@@ -31,6 +31,7 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 
 void PlatformInit();
 
+std::string GetExecutablePath();
 std::string GetWorkingDirectory();
 std::string NormalizePath(const std::string& path);
 // Creates a directory at |path|. Creates directories recursively if needed.

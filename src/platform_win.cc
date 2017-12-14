@@ -127,6 +127,13 @@ void PlatformInit() {
   _setmode(_fileno(stdin), O_BINARY);
 }
 
+// See https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
+std::string GetExecutablePath() {
+  char result[MAX_PATH] = {0};
+  GetModuleFileName(NULL, result, MAX_PATH);
+  return std::string(result);
+}
+
 // See http://stackoverflow.com/a/19535628
 std::string GetWorkingDirectory() {
   char result[MAX_PATH];
