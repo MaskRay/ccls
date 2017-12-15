@@ -956,8 +956,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     param->ctors.NotifyConstructor(decl->cursor);
   }
 
-  assert(AreEqualLocations(decl->loc, decl->cursor));
-
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(decl->loc),
                             &file, nullptr, nullptr, nullptr);

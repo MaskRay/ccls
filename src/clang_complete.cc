@@ -85,6 +85,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
 
     case CXCursor_ObjCInstanceMethodDecl:
     case CXCursor_CXXMethod:
+    case CXCursor_ObjCClassMethodDecl:
       return lsCompletionItemKind::Method;
 
     case CXCursor_FunctionTemplate:
@@ -101,6 +102,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
 
     case CXCursor_VarDecl:
     case CXCursor_ParmDecl:
+    case CXCursor_ObjCIvarDecl:
       return lsCompletionItemKind::Variable;
 
     case CXCursor_UnionDecl:
@@ -112,6 +114,11 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_TypedefDecl:
     case CXCursor_TypeAliasDecl:
     case CXCursor_TypeAliasTemplateDecl:
+    case CXCursor_ObjCCategoryDecl:
+    case CXCursor_ObjCProtocolDecl:
+    case CXCursor_ObjCPropertyDecl:
+    case CXCursor_ObjCImplementationDecl:
+    case CXCursor_ObjCCategoryImplDecl:
       return lsCompletionItemKind::Class;
 
     case CXCursor_EnumConstantDecl:
@@ -120,6 +127,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
 
     case CXCursor_MacroInstantiation:
     case CXCursor_MacroDefinition:
+    case CXCursor_ObjCInterfaceDecl:
       return lsCompletionItemKind::Interface;
 
     case CXCursor_Namespace:
@@ -129,6 +137,9 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
 
     case CXCursor_MemberRef:
     case CXCursor_TypeRef:
+    case CXCursor_ObjCSuperClassRef:
+    case CXCursor_ObjCProtocolRef:
+    case CXCursor_ObjCClassRef:
       return lsCompletionItemKind::Reference;
 
       // return lsCompletionItemKind::Property;

@@ -84,8 +84,16 @@ bool ShouldAddToAngleIncludes(const std::string& arg) {
 
 // Returns true if we should use the C, not C++, language spec for the given
 // file.
-bool IsCFile(const std::string& path) {
-  return EndsWith(path, ".c");
+optional<std::string> SourceFileType(const std::string& path) {
+  if (EndsWith(path, ".c"))
+    return std::string("c");
+  else if (EndsWith(path, ".cpp") || EndsWith(path, ".cc"))
+    return std::string("c++");
+  else if (EndsWith(path, ".mm"))
+    return std::string("objective-c++");
+  else if (EndsWith(path, ".m"))
+    return std::string("objective-c");
+  return nullopt;
 }
 
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
@@ -181,17 +189,17 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Clang does not have good hueristics for determining source language, we
   // should explicitly specify it.
-  if (!AnyStartsWith(result.args, "-x")) {
-    if (IsCFile(entry.file))
-      result.args.push_back("-xc");
-    else
-      result.args.push_back("-xc++");
-  }
-  if (!AnyStartsWith(result.args, "-std=")) {
-    if (IsCFile(entry.file))
-      result.args.push_back("-std=c11");
-    else
-      result.args.push_back("-std=c++11");
+  if (auto source_file_type = SourceFileType(entry.file)) {
+    if (AnyStartsWith(result.args, "-x")) {
+      result.args.push_back("-x" + *source_file_type);
+    }
+    if (!AnyStartsWith(result.args, "-std=")) {
+      if (*source_file_type == "c")
+        result.args.push_back("-std=c11");
+      else if (*source_file_type == "c++")
+        result.args.push_back("-std=c++11");
+    }
+
   }
 
   // Add -resource-dir so clang can correctly resolve system includes like
@@ -227,8 +235,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::vector<std::string> files = GetFilesInFolder(
       config->project_dir, true /*recursive*/, true /*add_folder_to_path*/);
   for (const std::string& file : files) {
-    if (EndsWith(file, ".cc") || EndsWith(file, ".cpp") ||
-        EndsWith(file, ".c")) {
+    if (SourceFileType(file)) {
       CompileCommandsEntry e;
       e.file = NormalizePathWithTestOptOut(file);
       e.args = args;

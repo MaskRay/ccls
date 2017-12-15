@@ -1048,7 +1048,7 @@ int main(int argc, char** argv) {
   }
 
   if (print_help) {
-    std::cout << R"help(cquery is a low-latency C++ language server.
+    std::cout << R"help(cquery is a low-latency C/C++/Objective-C language server.
 
 Command line options:
   --language-server
