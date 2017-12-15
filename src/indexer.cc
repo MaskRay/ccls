@@ -1078,6 +1078,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       break;
     }
 
+    case CXIdxEntity_ObjCInstanceMethod:
+    case CXIdxEntity_ObjCClassMethod:
     case CXIdxEntity_Function:
     case CXIdxEntity_CXXConstructor:
     case CXIdxEntity_CXXDestructor:
@@ -1247,6 +1249,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       break;
     }
 
+    case CXIdxEntity_ObjCProtocol:
+    case CXIdxEntity_ObjCCategory:
+    case CXIdxEntity_ObjCClass:
     case CXIdxEntity_Enum:
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
@@ -1375,6 +1380,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       break;
     }
 
+    case CXIdxEntity_ObjCProperty:
+    case CXIdxEntity_ObjCIvar:
     case CXIdxEntity_EnumConstant:
     case CXIdxEntity_CXXStaticVariable:
     case CXIdxEntity_Variable:
@@ -1420,6 +1427,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXConversionFunction:
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXInstanceMethod:
+    case CXIdxEntity_ObjCInstanceMethod:
+    case CXIdxEntity_ObjCClassMethod:
     case CXIdxEntity_Function:
     case CXIdxEntity_CXXConstructor:
     case CXIdxEntity_CXXDestructor: {
@@ -1511,6 +1520,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       break;
     }
 
+    case CXIdxEntity_ObjCCategory:
+    case CXIdxEntity_ObjCProtocol:
+    case CXIdxEntity_ObjCClass:
     case CXIdxEntity_Typedef:
     case CXIdxEntity_CXXTypeAlias:
     case CXIdxEntity_Enum:
