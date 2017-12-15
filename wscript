@@ -91,6 +91,7 @@ def configure(ctx):
   ctx.load('clang_compilation_database', tooldir='.')
 
   ctx.env['use_system_clang'] = ctx.options.use_system_clang
+  ctx.env['bundled_clang'] = ctx.options.bundled_clang
   if ctx.options.use_system_clang:
     # Ask llvm-config for cflags and ldflags
     ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
@@ -151,10 +152,6 @@ def configure(ctx):
       os.symlink('../../' + CLANG_TARBALL_NAME, bundled_clang_dir)
     except OSError:
       pass
-    try:
-      os.symlink(os.path.join('lib/clang', ctx.options.bundled_clang), os.path.join(bundled_clang_dir, 'resource-dir'))
-    except OSError:
-      pass
 
     clang_node = ctx.path.find_dir(bundled_clang_dir)
     ctx.check_cxx(uselib_store='clang',
@@ -213,11 +210,11 @@ def build(bld):
   elif sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
     clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
     rpath = '$ORIGIN/../lib/' + clang_tarball_name + '/lib'
-    default_resource_directory = '../lib/' + clang_tarball_name + '/resource-dir'
+    default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
   elif sys.platform == 'darwin':
     clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
     rpath = '@loader_path/../lib/' + clang_tarball_name + '/lib'
-    default_resource_directory = '../lib/' + clang_tarball_name + '/resource-dir'
+    default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
   else:
     rpath = bld.env['LIBPATH_clang']
   bld.program(
@@ -239,7 +236,9 @@ def build(bld):
 
   if clang_tarball_name is not None:
     bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
-    bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/resource-dir/include', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/clang/[4-9]*/include/*', quiet=True))
+    if bld.cmd == 'install':
+      # TODO This may be cached and cannot be re-triggered. Use proper shell escape.
+      bld(rule='rsync -aR {}/./lib/{}/lib/clang/*/include {}/'.format(bld.path.get_bld(), clang_tarball_name, bld.env['PREFIX']))
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
   #bld.shlib(source='a.cpp', target='mylib2', vnum='9.8.7', cnum='9.8')
