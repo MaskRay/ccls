@@ -201,7 +201,7 @@ def build(bld):
   if bld.env['use_system_clang']:
     rpath = []
 
-    output = subprocess.check_output(['clang', '-###', '-xc', '/dev/null'], stderr=subprocess.STDOUT)
+    output = subprocess.check_output(['clang', '-###', '-xc', '/dev/null'], stderr=subprocess.STDOUT).decode()
     match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M | re.I)
     if match:
         default_resource_directory = match.group(1)
