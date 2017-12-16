@@ -190,7 +190,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // Clang does not have good hueristics for determining source language, we
   // should explicitly specify it.
   if (auto source_file_type = SourceFileType(entry.file)) {
-    if (AnyStartsWith(result.args, "-x")) {
+    if (!AnyStartsWith(result.args, "-x")) {
       result.args.push_back("-x" + *source_file_type);
     }
     if (!AnyStartsWith(result.args, "-std=")) {
