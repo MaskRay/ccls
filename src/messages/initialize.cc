@@ -5,9 +5,6 @@
 
 #include <loguru.hpp>
 
-#define _STRINGIFY(x) #x
-#define ENSURE_STRING_MACRO_ARGUMENT(x) _STRINGIFY(x)
-
 namespace {
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
@@ -88,19 +85,8 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       EnsureEndsInSlash(config->cacheDirectory);
 
       // Ensure there is a resource directory.
-      if (config->resourceDirectory.empty()) {
-        std::string defaultResourceDirectory = std::string(
-            ENSURE_STRING_MACRO_ARGUMENT(DEFAULT_RESOURCE_DIRECTORY));
-        if (defaultResourceDirectory.find("..") != std::string::npos) {
-          std::string executablePath = GetExecutablePath();
-          size_t pos = executablePath.find_last_of('/');
-          config->resourceDirectory = executablePath.substr(0, pos + 1);
-          config->resourceDirectory += defaultResourceDirectory;
-        } else {
-          config->resourceDirectory = defaultResourceDirectory;
-        }
-      }
-      config->resourceDirectory = NormalizePath(config->resourceDirectory);
+      if (config->resourceDirectory.empty())
+        config->resourceDirectory = GetDefaultResourceDirectory();
       LOG_S(INFO) << "Using -resource-dir=" << config->resourceDirectory;
 
       // Send initialization before starting indexers, so we don't send a
