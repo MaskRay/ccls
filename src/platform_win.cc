@@ -131,7 +131,7 @@ void PlatformInit() {
 std::string GetExecutablePath() {
   char result[MAX_PATH] = {0};
   GetModuleFileName(NULL, result, MAX_PATH);
-  return std::string(result);
+  return NormalizePath(result);
 }
 
 // See http://stackoverflow.com/a/19535628
