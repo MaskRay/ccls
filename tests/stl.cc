@@ -176,13 +176,13 @@ OUTPUT:
       "resolved_path": "&signal.h"
     }, {
       "line": 14,
-      "resolved_path": "&"
+      "resolved_path": "&stdalign.h"
     }, {
       "line": 15,
       "resolved_path": "&stdarg.h"
     }, {
       "line": 16,
-      "resolved_path": "&"
+      "resolved_path": "&stdatomic.h"
     }, {
       "line": 17,
       "resolved_path": "&stdbool.h"
@@ -200,16 +200,13 @@ OUTPUT:
       "resolved_path": "&stdlib.h"
     }, {
       "line": 22,
-      "resolved_path": "&"
+      "resolved_path": "&stdnoreturn.h"
     }, {
       "line": 23,
       "resolved_path": "&string.h"
     }, {
       "line": 24,
-      "resolved_path": "&"
-    }, {
-      "line": 25,
-      "resolved_path": "&"
+      "resolved_path": "&tgmath.h"
     }, {
       "line": 26,
       "resolved_path": "&time.h"
@@ -346,9 +343,6 @@ OUTPUT:
       "line": 72,
       "resolved_path": "&scoped_allocator"
     }, {
-      "line": 73,
-      "resolved_path": "&"
-    }, {
       "line": 74,
       "resolved_path": "&climits"
     }, {
@@ -435,9 +429,6 @@ OUTPUT:
     }, {
       "line": 102,
       "resolved_path": "&algorithm"
-    }, {
-      "line": 103,
-      "resolved_path": "&"
     }, {
       "line": 104,
       "resolved_path": "&iterator"

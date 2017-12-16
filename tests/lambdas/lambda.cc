@@ -81,7 +81,7 @@ OUTPUT:
       "short_name": "y",
       "detailed_name": "int y",
       "definition_spelling": "4:31-4:32",
-      "definition_extent": "4:31-4:32",
+      "definition_extent": "4:27-4:32",
       "is_local": false,
       "is_macro": false,
       "uses": ["4:31-4:32", "6:7-6:8"]

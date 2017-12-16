@@ -120,7 +120,7 @@ void RunIndexTests() {
     float memory_after = -1.;
 
     {
-      // if (path != "tests/constructors/make_functions.cc") continue;
+      // if (path != "tests/stl.cc") continue;
 
       Config config;
       FileConsumer::SharedState file_consumer_shared;
@@ -129,7 +129,9 @@ void RunIndexTests() {
       // std::cout << "[START] " << path << std::endl;
       PerformanceImportFile perf;
       std::vector<std::unique_ptr<IndexFile>> dbs =
-          Parse(&config, &file_consumer_shared, path, {"-xc++", "-std=c++11"},
+          Parse(&config, &file_consumer_shared, path,
+                {"-xc++", "-std=c++11",
+                 "-resource-dir=" + GetDefaultResourceDirectory()},
                 {}, &perf, &index, false /*dump_ast*/);
 
       // Parse expected output from the test, parse it into JSON document.

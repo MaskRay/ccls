@@ -63,7 +63,7 @@ OUTPUT:
       "id": 1,
       "usr": "c:complex.cc@8@macro@FOO",
       "short_name": "FOO",
-      "detailed_name": "FOO",
+      "detailed_name": "#define FOO(aaa, bbb)\n   int a();\n   int a() { return aaa + bbb; }",
       "definition_spelling": "1:9-1:12",
       "definition_extent": "1:9-3:32",
       "is_local": false,

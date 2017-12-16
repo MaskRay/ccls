@@ -518,7 +518,8 @@ CXIdxClientFile OnIndexIncludedFile(CXClientData client_data,
   IndexInclude include;
   include.line = line;
   include.resolved_path = FileName(file->file);
-  db->includes.push_back(include);
+  if (!include.resolved_path.empty())
+    db->includes.push_back(include);
 
   return nullptr;
 }

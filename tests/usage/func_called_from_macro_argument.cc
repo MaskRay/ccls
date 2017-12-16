@@ -46,7 +46,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:func_called_from_macro_argument.cc@8@macro@MACRO_CALL",
       "short_name": "MACRO_CALL",
-      "detailed_name": "MACRO_CALL",
+      "detailed_name": "#define MACRO_CALL(e) e",
       "definition_spelling": "1:9-1:19",
       "definition_extent": "1:9-1:24",
       "is_local": false,
