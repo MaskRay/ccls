@@ -226,7 +226,6 @@ def build(bld):
         'third_party/doctest/',
         'third_party/loguru/',
         'third_party/rapidjson/include/',
-        'third_party/sparsehash/src/',
         'third_party/sparsepp/'],
       defines=['LOGURU_WITH_STREAMS=1',
                'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'],
