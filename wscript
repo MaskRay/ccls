@@ -11,6 +11,8 @@ import string
 import subprocess
 import sys
 import re
+import ctypes
+import shutil
 
 VERSION = '0.0.1'
 APPNAME = 'cquery'
@@ -24,6 +26,7 @@ out = 'build'
 #   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu14.04.tar.xz
 #   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-x86_64-apple-darwin.tar.xz
 
+CLANG_TARBALL_EXT = '.tar.xz'
 if sys.platform == 'darwin':
   CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
 elif sys.platform.startswith('freebsd'):
@@ -32,13 +35,43 @@ elif sys.platform.startswith('freebsd'):
 elif sys.platform.startswith('linux'):
   # These executable depend on libtinfo.so.5
   CLANG_TARBALL_NAME = 'clang+llvm-$version-linux-x86_64-ubuntu14.04'
+elif sys.platform == 'win32':
+  CLANG_TARBALL_NAME = 'LLVM-$version-win64'
+  CLANG_TARBALL_EXT = '.exe'
 else:
-  # TODO: windows support (it's an exe!)
   sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
   sys.exit(1)
 
 from waflib.Tools.compiler_cxx import cxx_compiler
 cxx_compiler['linux'] = ['clang++', 'g++']
+
+if sys.version_info < (3, 0):
+  if sys.platform == 'win32':
+    kdll = ctypes.windll.kernel32
+    def symlink(source, link_name, target_is_directory=False):
+      # SYMBOLIC_LINK_FLAG_DIRECTORY: 0x1
+      SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2
+      flags = int(target_is_directory)
+      ret = kdll.CreateSymbolicLinkA(link_name, source, flags)
+      if ret == 0:
+        err = ctypes.WinError()
+        ERROR_PRIVILEGE_NOT_HELD = 1314
+        # Creating symbolic link on Windows requires a special priviledge SeCreateSymboliclinkPrivilege, 
+        # which an non-elevated process lacks. Starting with Windows 10 build 14972, this got relaxed 
+        # when Developer Mode is enabled. Triggering this new behaviour requires a new flag. Try again.
+        if err[0] == ERROR_PRIVILEGE_NOT_HELD:
+          flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+          ret = kdll.CreateSymbolicLinkA(link_name, source, flags)
+          if ret != 0:
+            return
+          err = ctypes.WinError()
+        raise err
+  else:
+    # Python 3 compatibility
+    real_symlink = os.symlink
+    def symlink(source, link_name, target_is_directory=False):
+      return real_symlink(source, link_name)
+  os.symlink = symlink
 
 def options(opt):
   opt.load('compiler_cxx')
@@ -54,8 +87,8 @@ def options(opt):
   grp.add_option('--variant', default='release',
                  help='variant name for saving configuration and build results. Variants other than "debug" turn on -O3')
 
-def download_and_extract(destdir, url):
-  dest = destdir + '.tar.xz'
+def download_and_extract(destdir, url, ext):
+  dest = destdir + ext
   # Download and save the compressed tarball as |compressed_file_name|.
   if not os.path.isfile(dest):
     print('Downloading tarball')
@@ -72,7 +105,10 @@ def download_and_extract(destdir, url):
   if not os.path.isdir(destdir):
     print('Extracting')
     # TODO: make portable.
-    subprocess.call(['tar', '-x', '-C', out, '-f', dest])
+    if ext == '.exe':
+      subprocess.call(['7z', 'x', '-o{0}'.format(destdir), '-xr!$PLUGINSDIR', dest])
+    else:
+      subprocess.call(['tar', '-x', '-C', out, '-f', dest])
   else:
     print('Found extracted at {0}'.format(destdir))
 
@@ -80,13 +116,20 @@ def configure(ctx):
   ctx.resetenv(ctx.options.variant)
 
   ctx.load('compiler_cxx')
-  if not ctx.env.CXXFLAGS:
+  cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
+  # /Zi: -g, /WX: -Werror, /W3: roughly -Wall, there is no -std=c++11 equivalent in MSVC.
+  # /wd4722: ignores warning C4722 (destructor never returns) in loguru
+  # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
+  msvcflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800']
+  if ctx.options.variant != 'debug':
+    cxxflags.append('-O3')
+    msvcflags.append('/O2') # There is no O3
+  if ctx.env.CXX_NAME != 'msvc':
     # If environment variable CXXFLAGS is unset, provide a sane default.
-    cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
-    if ctx.options.variant != 'debug':
-      ctx.env.CXXFLAGS = cxxflags + ['-O3']
-    else:
+    if not ctx.env.CXXFLAGS:
       ctx.env.CXXFLAGS = cxxflags
+  else:
+    ctx.env.CXXFLAGS = msvcflags
 
   ctx.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
 
@@ -94,6 +137,11 @@ def configure(ctx):
 
   ctx.env['use_system_clang'] = ctx.options.use_system_clang
   ctx.env['bundled_clang'] = ctx.options.bundled_clang
+  def libname(lib):
+    # Newer MinGW and MSVC both wants full file name
+    if sys.platform == 'win32':
+      return 'lib' + lib
+    return lib
   if ctx.options.use_system_clang:
     # Ask llvm-config for cflags and ldflags
     ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
@@ -105,7 +153,7 @@ def configure(ctx):
                     args='--cppflags --ldflags')
       # llvm-config does not provide the actual library we want so we check for it
       # using the provided info so far.
-      ctx.check_cxx(lib='clang', uselib_store='clang', use='clang')
+      ctx.check_cxx(lib=libname('clang'), uselib_store='clang', use='clang')
 
     else: # Fallback method using a prefix path
       ctx.start_msg('Checking for clang prefix')
@@ -120,20 +168,23 @@ def configure(ctx):
 
       includes = [ n.abspath() for n in [ prefix.find_node('include') ] if n ]
       libpath  = [ n.abspath() for n in [ prefix.find_node(l) for l in ('lib', 'lib64')] if n ]
-      ctx.check_cxx(msg='Checking for library clang', lib='clang', uselib_store='clang', includes=includes, libpath=libpath)
+      ctx.check_cxx(msg='Checking for library clang', lib=libname('clang'), uselib_store='clang', includes=includes, libpath=libpath)
 
   else:
     global CLANG_TARBALL_NAME
 
     # TODO Remove these after dropping clang 4 (after we figure out how to index Chrome)
     if ctx.options.bundled_clang[0] == '4':
+      CLANG_TARBALL_EXT = '.tar.xz'
       if sys.platform == 'darwin':
         CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
       elif sys.platform.startswith('linux'):
         # These executable depend on libtinfo.so.5
         CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04'
+      elif sys.platform == 'win32':
+        CLANG_TARBALL_NAME = 'LLVM-$version-win64'
+        CLANG_TARBALL_EXT = '.exe'
       else:
-        # TODO: windows support (it's an exe!)
         sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
         sys.exit(1)
 
@@ -141,17 +192,21 @@ def configure(ctx):
     # Directory clang has been extracted to.
     CLANG_DIRECTORY = '{0}/{1}'.format(out, CLANG_TARBALL_NAME)
     # URL of the tarball to download.
-    CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}.tar.xz'.format(ctx.options.bundled_clang, CLANG_TARBALL_NAME)
+    CLANG_TARBALL_URL = 'http://releases.llvm.org/{0}/{1}{2}'.format(ctx.options.bundled_clang, CLANG_TARBALL_NAME, CLANG_TARBALL_EXT)
 
     print('Checking for clang')
-    download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL)
+    download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL, CLANG_TARBALL_EXT)
     bundled_clang_dir = os.path.join(out, ctx.options.variant, 'lib', CLANG_TARBALL_NAME)
     try:
       os.makedirs(os.path.dirname(bundled_clang_dir))
     except OSError:
       pass
+    clang_dir = os.path.normpath('../../' + CLANG_TARBALL_NAME)
     try:
-      os.symlink('../../' + CLANG_TARBALL_NAME, bundled_clang_dir)
+      os.symlink(clang_dir, bundled_clang_dir, target_is_directory=True)
+    except NotImplementedError:
+      # Copying the whole directory instead.
+      shutil.copytree(clang_dir, bundled_clang_dir)
     except OSError:
       pass
 
@@ -159,32 +214,10 @@ def configure(ctx):
     ctx.check_cxx(uselib_store='clang',
                   includes=clang_node.find_dir('include').abspath(),
                   libpath=clang_node.find_dir('lib').abspath(),
-                  lib='clang')
+                  lib=libname('clang'))
 
   ctx.msg('Clang includes', ctx.env.INCLUDES_clang)
   ctx.msg('Clang library dir', ctx.env.LIBPATH_clang)
-
-  """
-  # Download and save the compressed tarball as |compressed_file_name|.
-  if not os.path.isfile(CLANG_TARBALL_LOCAL_PATH):
-    print('Downloading clang tarball')
-    print('   destination: {0}'.format(CLANG_TARBALL_LOCAL_PATH))
-    print('   source:      {0}'.format(CLANG_TARBALL_URL))
-    # TODO: verify checksum
-    response = urlopen(CLANG_TARBALL_URL)
-    with open(CLANG_TARBALL_LOCAL_PATH, 'wb') as f:
-      f.write(response.read())
-  else:
-    print('Found clang tarball at {0}'.format(CLANG_TARBALL_LOCAL_PATH))
-
-  # Extract the tarball.
-  if not os.path.isdir(CLANG_DIRECTORY):
-    print('Extracting clang')
-    # TODO: make portable.
-    call(['tar', 'xf', CLANG_TARBALL_LOCAL_PATH, '-C', out])
-  else:
-    print('Found extracted clang at {0}'.format(CLANG_DIRECTORY))
-  """
 
 def build(bld):
   cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc'])
@@ -199,11 +232,12 @@ def build(bld):
 
   clang_tarball_name = None
   # Fallback for windows
-  default_resource_directory = os.path.join(os.getcwd(), 'resource_dir')
+  default_resource_directory = os.path.join(os.getcwd(), 'clang_resource_dir')
   if bld.env['use_system_clang']:
     rpath = []
 
-    output = subprocess.check_output(['clang', '-###', '-xc', '/dev/null'], stderr=subprocess.STDOUT).decode()
+    devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
+    output = subprocess.check_output(['clang', '-###', '-xc', devnull], stderr=subprocess.STDOUT).decode()
     match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M | re.I)
     if match:
         default_resource_directory = match.group(1)
@@ -217,6 +251,16 @@ def build(bld):
     clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
     rpath = '@loader_path/../lib/' + clang_tarball_name + '/lib'
     default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
+  elif sys.platform == 'win32':
+    rpath = [] # Unsupported
+    name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
+    # Poor Windows users' RPATH
+    out_clang_dll = os.path.join(bld.path.get_bld().abspath(), 'bin', 'libclang.dll')
+    try:
+      os.makedirs(os.path.dirname(out_clang_dll))
+      os.symlink(os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll'), out_clang_dll)
+    except OSError:
+      pass
   else:
     rpath = bld.env['LIBPATH_clang']
   bld.program(
