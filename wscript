@@ -45,8 +45,8 @@ def options(opt):
   grp = opt.add_option_group('Configuration options related to use of clang from the system (not recommended)')
   grp.add_option('--use-system-clang', dest='use_system_clang', default=False, action='store_true',
                  help='enable use of clang from the system')
-  grp.add_option('--bundled-clang', dest='bundled_clang', default='4.0.0', choices=('4.0.0', '5.0.0'),
-                 help='bundled clang version')
+  grp.add_option('--bundled-clang', dest='bundled_clang', default='4.0.0',
+                 help='bundled clang version, downloaded from http://releases.llvm.org/ , e.g. 4.0.0 5.0.0')
   grp.add_option('--llvm-config', dest='llvm_config', default='llvm-config',
                  help='specify path to llvm-config for automatic configuration [default: %default]')
   grp.add_option('--clang-prefix', dest='clang_prefix', default='',
@@ -80,11 +80,13 @@ def configure(ctx):
   ctx.resetenv(ctx.options.variant)
 
   ctx.load('compiler_cxx')
-  cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
-  if ctx.options.variant == 'debug':
-    ctx.env.CXXFLAGS = cxxflags
-  else:
-    ctx.env.CXXFLAGS = cxxflags + ['-O3']
+  if not ctx.env.CXXFLAGS:
+    # If environment variable CXXFLAGS is unset, provide a sane default.
+    cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
+    if ctx.options.variant != 'debug':
+      ctx.env.CXXFLAGS = cxxflags + ['-O3']
+    else:
+      ctx.env.CXXFLAGS = cxxflags
 
   ctx.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
 
@@ -237,7 +239,7 @@ def build(bld):
     bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
     if bld.cmd == 'install':
       # TODO This may be cached and cannot be re-triggered. Use proper shell escape.
-      bld(rule='rsync -aR {}/./lib/{}/lib/clang/*/include {}/'.format(bld.path.get_bld(), clang_tarball_name, bld.env['PREFIX']))
+      bld(rule='rsync -rtR {}/./lib/{}/lib/clang/*/include {}/'.format(bld.path.get_bld(), clang_tarball_name, bld.env['PREFIX']))
 
   #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
   #bld.shlib(source='a.cpp', target='mylib2', vnum='9.8.7', cnum='9.8')

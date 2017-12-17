@@ -57,6 +57,9 @@ $ ./waf configure --variant=debug
 $ ./waf build --variant=debug  # -g -O0, built build/debug/bin/cquery
 ```
 
+See [wiki](https://github.com/jacobdufault/cquery/wiki) for more build instructions
+(e.g. using system clang instead of bundled clang+llvm) and other topics.
+
 ## Install extension
 
 cquery includes a vscode extension; it is part of the repository. Launch vscode
