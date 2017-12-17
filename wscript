@@ -79,7 +79,7 @@ def options(opt):
   grp.add_option('--use-system-clang', dest='use_system_clang', default=False, action='store_true',
                  help='enable use of clang from the system')
   grp.add_option('--bundled-clang', dest='bundled_clang', default='4.0.0',
-                 help='bundled clang version, downloaded from http://releases.llvm.org/ , e.g. 4.0.0 5.0.0')
+                 help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 4.0.0 5.0.0')
   grp.add_option('--llvm-config', dest='llvm_config', default='llvm-config',
                  help='specify path to llvm-config for automatic configuration [default: %default]')
   grp.add_option('--clang-prefix', dest='clang_prefix', default='',
@@ -178,6 +178,8 @@ def configure(ctx):
       CLANG_TARBALL_EXT = '.tar.xz'
       if sys.platform == 'darwin':
         CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
+      elif sys.platform.startswith('freebsd'):
+        CLANG_TARBALL_NAME = 'clang+llvm-$version-amd64-unknown-freebsd10'
       elif sys.platform.startswith('linux'):
         # These executable depend on libtinfo.so.5
         CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04'
@@ -185,7 +187,7 @@ def configure(ctx):
         CLANG_TARBALL_NAME = 'LLVM-$version-win64'
         CLANG_TARBALL_EXT = '.exe'
       else:
-        sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
+        sys.stderr.write('ERROR: releases.llvm.org does not provide pre-built binaries for your platform {0}\n'.format(sys.platform))
         sys.exit(1)
 
     CLANG_TARBALL_NAME = string.Template(CLANG_TARBALL_NAME).substitute(version=ctx.options.bundled_clang)
@@ -227,6 +229,12 @@ def build(bld):
     lib.append('rt')
     lib.append('pthread')
     lib.append('dl')
+  elif sys.platform.startswith('freebsd'):
+    # loguru::stacktrace_as_stdstring calls backtrace_symbols
+    lib.append('execinfo')
+
+    lib.append('pthread')
+    lib.append('thr')
   elif sys.platform == 'darwin':
     lib.append('pthread')
 

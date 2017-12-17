@@ -1,4 +1,4 @@
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__unix__) || defined(__APPLE__)
 #include "platform.h"
 
 #include "utils.h"
@@ -32,12 +32,12 @@
 #include <semaphore.h>
 #include <sys/mman.h>
 
-#ifndef __APPLE__
-#include <sys/prctl.h>
-#endif
-
-#if defined(__linux__)
-#include <malloc.h>
+#if defined(__FreeBSD__)
+# include <sys/param.h>  // MAXPATHLEN
+# include <sys/sysctl.h>  // sysctl
+#elif defined(__linux__)
+# include <malloc.h>
+# include <sys/prctl.h>
 #endif
 
 namespace {
@@ -216,11 +216,7 @@ extern "C" int _NSGetExecutablePath(char* buf,uint32_t* bufsize);
 
 // See https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
 std::string GetExecutablePath() {
-#ifndef __APPLE__
-  char buffer[PATH_MAX+1] = {0};
-  readlink("/proc/self/exe", buffer, PATH_MAX);
-  return std::string(buffer);
-#else
+#ifdef __APPLE__
   uint32_t size = 0;
   _NSGetExecutablePath(nullptr, &size);
   char *buffer = new char[size];
@@ -228,6 +224,19 @@ std::string GetExecutablePath() {
   std::string result(buffer);
   delete[] buffer;
   return result;
+#elif defined(__FreeBSD__)
+  static const int name[] = {
+    CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1,
+  };
+  char path[MAXPATHLEN];
+  size_t len = sizeof(path);
+  path[0] = '\0';
+  (void)sysctl(name, 4, path, &len, NULL, 0);
+  return std::string(path);
+#else
+  char buffer[PATH_MAX] = {0};
+  readlink("/proc/self/exe", buffer, PATH_MAX);
+  return std::string(buffer);
 #endif
 }
 
@@ -256,7 +265,7 @@ bool TryMakeDirectory(const std::string& absolute_path) {
 
 void SetCurrentThreadName(const std::string& thread_name) {
   loguru::set_thread_name(thread_name.c_str());
-#ifndef __APPLE__
+#ifdef __linux__
   prctl(PR_SET_NAME, thread_name.c_str(), 0, 0, 0);
 #endif
 }
