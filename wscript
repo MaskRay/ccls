@@ -171,7 +171,7 @@ def configure(ctx):
       ctx.check_cxx(msg='Checking for library clang', lib=libname('clang'), uselib_store='clang', includes=includes, libpath=libpath)
 
   else:
-    global CLANG_TARBALL_NAME
+    global CLANG_TARBALL_NAME, CLANG_TARBALL_EXT
 
     # TODO Remove these after dropping clang 4 (after we figure out how to index Chrome)
     if ctx.options.bundled_clang[0] == '4':
