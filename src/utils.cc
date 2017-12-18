@@ -19,8 +19,9 @@
 #include <sparsepp/spp_memory.h>
 #endif
 
-#define _STRINGIFY(x) #x
-#define ENSURE_STRING_MACRO_ARGUMENT(x) _STRINGIFY(x)
+//#define _STRINGIFY(x) #x
+//#define ENSURE_STRING_MACRO_ARGUMENT(x) _STRINGIFY(x)
+#define ENSURE_STRING_MACRO_ARGUMENT(x) x
 
 // See http://stackoverflow.com/a/217605
 void TrimStart(std::string& s) {
