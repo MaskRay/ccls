@@ -992,6 +992,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       break;
     }
 
+    case CXIdxEntity_ObjCProperty:
+    case CXIdxEntity_ObjCIvar:
     case CXIdxEntity_EnumConstant:
     case CXIdxEntity_Field:
     case CXIdxEntity_Variable:
