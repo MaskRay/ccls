@@ -242,7 +242,10 @@ def build(bld):
   # Fallback for windows
   default_resource_directory = os.path.join(os.getcwd(), 'clang_resource_dir')
   if bld.env['use_system_clang']:
-    rpath = []
+    if sys.platform == 'darwin':
+      rpath = bld.env['LIBPATH_clang'][0]
+    else:
+      rpath = []
 
     devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
     output = subprocess.check_output(['clang', '-###', '-xc', devnull], stderr=subprocess.STDOUT).decode()
