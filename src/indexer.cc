@@ -1357,13 +1357,6 @@ bool IsFunctionCallContext(CXCursorKind kind) {
 }
 
 void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
-  // Don't index references from or to system headers.
-  if (clang_Location_isInSystemHeader(
-          clang_indexLoc_getCXSourceLocation(ref->loc)) ||
-      clang_Location_isInSystemHeader(
-          clang_getCursorLocation(ref->referencedEntity->cursor)))
-    return;
-
   // TODO: Use clang_getFileUniqueID
   CXFile file;
   clang_getSpellingLocation(clang_indexLoc_getCXSourceLocation(ref->loc), &file,
