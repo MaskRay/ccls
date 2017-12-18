@@ -579,18 +579,22 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   // important for macros which generate code so that we can resolving the
   // macro argument takes priority over the entire macro body.
   //
-  // Order functions before other types, which makes goto definition work
+  // Order SymbolKind::Var before SymbolKind::Type. Macro calls are treated as Var
+  // currently. If a macro expands to tokens led by a SymbolKind::Type, the
+  // macro and the Type have the same range. We want to find the macro
+  // definition instead of the Type definition.
+  //
+  // Then order functions before other types, which makes goto definition work
   // better on constructors.
   std::sort(symbols.begin(), symbols.end(),
             [](const SymbolRef& a, const SymbolRef& b) {
               int a_size = ComputeRangeSize(a.loc.range);
               int b_size = ComputeRangeSize(b.loc.range);
 
-              if (a_size == b_size)
-                return a.idx.kind != b.idx.kind &&
-                       a.idx.kind == SymbolKind::Func;
-
-              return a_size < b_size;
+              if (a_size != b_size)
+                return a_size < b_size;
+              // operator> orders Var/Func in front of orders.
+              return static_cast<int>(a.idx.kind) > static_cast<int>(b.idx.kind);
             });
 
   return symbols;
