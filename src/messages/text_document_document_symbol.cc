@@ -38,7 +38,7 @@ struct TextDocumentDocumentSymbolHandler
 
     for (SymbolRef ref : file->def->outline) {
       optional<lsSymbolInformation> info =
-          GetSymbolInfo(db, working_files, ref.idx);
+          GetSymbolInfo(db, working_files, ref.idx, true /*use_short_name*/);
       if (!info)
         continue;
 

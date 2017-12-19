@@ -58,7 +58,8 @@ std::vector<lsLocation> GetLsLocations(
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
-                                            SymbolIdx symbol);
+                                            SymbolIdx symbol,
+                                            bool use_short_name);
 
 lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
                                    WorkingFiles* working_files,
@@ -68,9 +69,3 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position);
-
-// Lookup |symbol| in |db| and insert the value into |result|.
-void InsertSymbolIntoResult(QueryDatabase* db,
-                            WorkingFiles* working_files,
-                            SymbolIdx symbol,
-                            std::vector<lsSymbolInformation>* result);

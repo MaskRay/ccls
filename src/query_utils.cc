@@ -420,7 +420,8 @@ std::vector<lsLocation> GetLsLocations(
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
-                                            SymbolIdx symbol) {
+                                            SymbolIdx symbol,
+                                            bool use_short_name) {
   switch (symbol.kind) {
     case SymbolKind::File: {
       QueryFile& file = db->files[symbol.idx];
@@ -438,7 +439,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = type.def->short_name;
+      info.name = use_short_name ? type.def->short_name : type.def->detailed_name;
       if (type.def->detailed_name != type.def->short_name)
         info.containerName = type.def->detailed_name;
       info.kind = lsSymbolKind::Class;
@@ -450,7 +451,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = func.def->short_name;
+      info.name = use_short_name ? func.def->short_name : func.def->detailed_name;
       info.containerName = func.def->detailed_name;
       info.kind = lsSymbolKind::Function;
 
@@ -468,7 +469,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name += var.def->short_name;
+      info.name = use_short_name ? var.def->short_name : var.def->detailed_name;
       info.containerName = var.def->detailed_name;
       info.kind = lsSymbolKind::Variable;
       return info;
@@ -569,28 +570,4 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
             });
 
   return symbols;
-}
-
-void InsertSymbolIntoResult(QueryDatabase* db,
-                            WorkingFiles* working_files,
-                            SymbolIdx symbol,
-                            std::vector<lsSymbolInformation>* result) {
-  optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol);
-  if (!info)
-    return;
-
-  optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, symbol);
-  if (!location) {
-    auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
-    if (decls.empty())
-      return;
-    location = decls[0];
-  }
-
-  optional<lsLocation> ls_location =
-      GetLsLocation(db, working_files, *location);
-  if (!ls_location)
-    return;
-  info->location = *ls_location;
-  result->push_back(*info);
 }

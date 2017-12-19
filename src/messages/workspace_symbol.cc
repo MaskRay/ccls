@@ -5,6 +5,32 @@
 #include <loguru.hpp>
 
 namespace {
+
+// Lookup |symbol| in |db| and insert the value into |result|.
+void InsertSymbolIntoResult(QueryDatabase* db,
+                            WorkingFiles* working_files,
+                            SymbolIdx symbol,
+                            std::vector<lsSymbolInformation>* result) {
+  optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol, false /*use_short_name*/);
+  if (!info)
+    return;
+
+  optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, symbol);
+  if (!location) {
+    auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
+    if (decls.empty())
+      return;
+    location = decls[0];
+  }
+
+  optional<lsLocation> ls_location =
+      GetLsLocation(db, working_files, *location);
+  if (!ls_location)
+    return;
+  info->location = *ls_location;
+  result->push_back(*info);
+}
+
 struct lsWorkspaceSymbolParams {
   std::string query;
 };
