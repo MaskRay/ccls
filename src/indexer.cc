@@ -926,12 +926,13 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
         CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
         var_def->def.short_name = cursor.get_display_name();
+        var_def->def.detailed_name = cursor.get_display_name();
+        var_def->def.hover =
+            "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.is_local = false;
         var_def->def.is_macro = true;
         var_def->def.definition_spelling = decl_loc_spelling;
         var_def->def.definition_extent = Resolve(cx_extent, nullptr);
-        var_def->def.detailed_name =
-            "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
       }
 
       break;
@@ -1023,6 +1024,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       var->def.detailed_name =
           type_name + " " +
           ns->QualifiedName(decl->semanticContainer, var->def.short_name);
+      var->def.hover = type_name;
 
       var->def.is_local =
           !decl->semanticContainer ||
@@ -1172,6 +1174,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // type_desc is probably the name of a typedef.
           func->def.detailed_name = type_desc + " " + qualified_name;
         }
+        func->def.hover = func->def.detailed_name;
 
         // Add function usage information. We only want to do it once per
         // definition/declaration. Do it on definition since there should only
@@ -1240,15 +1243,18 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       if (alias_of)
         type->def.alias_of = alias_of.value();
-      type->def.short_name = decl->entityInfo->name;
 
       Range spell = ResolveSpelling(decl->cursor);
       Range extent = ResolveExtent(decl->cursor);
       type->def.definition_spelling = spell;
       type->def.definition_extent = extent;
 
+      type->def.short_name = decl->entityInfo->name;
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+
+      type->def.hover = type->def.detailed_name;
+
       // For single line Typedef/CXXTypeAlias, display the declaration line,
       // with spelling name replaced with qualified name.
       // TODO Think how to display multi-line declaration like `typedef struct { ... } foo;`
@@ -1256,7 +1262,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         std::string decl_text = GetDocumentContentInRange(
             param->tu->cx_tu, clang_getCursorExtent(decl->cursor));
         if (decl_text.size() == extent.end.column - extent.start.column) {
-          type->def.detailed_name =
+          type->def.hover  =
               decl_text.substr(0, spell.start.column - extent.start.column) +
               type->def.detailed_name +
               decl_text.substr(spell.end.column - extent.start.column);
@@ -1297,7 +1303,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
-
+      type->def.hover = type->def.detailed_name;
       // }
 
       if (decl->isDefinition) {
@@ -1430,6 +1436,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           std::string type_name = ToString(
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
           var->def.detailed_name = type_name + " " + var->def.short_name;
+          var->def.hover = type_name;
           var->def.is_local = false;
           UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
           AddDeclInitializerUsages(db, referenced.cx_cursor);

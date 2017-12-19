@@ -100,35 +100,6 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
-  switch (symbol.kind) {
-    case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
-      if (type.def)
-        return type.def->detailed_name;
-      break;
-    }
-    case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
-      if (func.def)
-        return func.def->detailed_name;
-      break;
-    }
-    case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
-      if (var.def)
-        return var.def->detailed_name;
-      break;
-    }
-    case SymbolKind::File:
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
-    }
-  }
-  return "";
-}
-
 optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   const SymbolIdx& symbol) {
   switch (symbol.kind) {

@@ -25,6 +25,7 @@ OUTPUT:
       "usr": "c:objc(cs)AClass",
       "short_name": "AClass",
       "detailed_name": "AClass",
+      "hover": "AClass",
       "definition_spelling": "7:17-7:23",
       "definition_extent": "7:1-9:2",
       "parents": [],
@@ -41,6 +42,7 @@ OUTPUT:
       "usr": "c:objc(cs)AClass(cm)test",
       "short_name": "test",
       "detailed_name": " AClass::test",
+      "hover": " AClass::test",
       "declarations": [{
           "spelling": "2:11-2:15",
           "extent": "2:3-2:16",
@@ -57,6 +59,7 @@ OUTPUT:
       "usr": "c:objc(cs)AClass(im)anInstanceMethod",
       "short_name": "anInstanceMethod",
       "detailed_name": " AClass::anInstanceMethod",
+      "hover": " AClass::anInstanceMethod",
       "declarations": [{
           "spelling": "3:11-3:27",
           "extent": "3:3-3:28",
@@ -75,6 +78,7 @@ OUTPUT:
       "usr": "c:objc(cs)AClass(im)aProp",
       "short_name": "aProp",
       "detailed_name": " AClass::aProp",
+      "hover": " AClass::aProp",
       "declarations": [{
           "spelling": "0:0-0:0",
           "extent": "4:29-4:34",
@@ -91,6 +95,7 @@ OUTPUT:
       "usr": "c:objc(cs)AClass(im)setAProp:",
       "short_name": "setAProp:",
       "detailed_name": " AClass::setAProp:",
+      "hover": " AClass::setAProp:",
       "declarations": [{
           "spelling": "0:0-0:0",
           "extent": "4:29-4:34",
@@ -107,6 +112,7 @@ OUTPUT:
       "usr": "c:@F@main#",
       "short_name": "main",
       "detailed_name": "int main()",
+      "hover": "int main()",
       "declarations": [],
       "definition_spelling": "11:5-11:9",
       "definition_extent": "11:1-16:2",
@@ -120,6 +126,7 @@ OUTPUT:
       "usr": "c:objc(cs)AClass(py)aProp",
       "short_name": "aProp",
       "detailed_name": "int AClass::aProp",
+      "hover": "int",
       "declaration": "4:29-4:34",
       "is_local": true,
       "is_macro": false,
@@ -129,6 +136,7 @@ OUTPUT:
       "usr": "c:class.m@191@F@main#@instance",
       "short_name": "instance",
       "detailed_name": "AClass * instance",
+      "hover": "AClass *",
       "definition_spelling": "13:11-13:19",
       "definition_extent": "13:3-13:35",
       "is_local": true,

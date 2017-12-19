@@ -16,6 +16,7 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "detailed_name": "Foo",
+      "hover": "Foo",
       "definition_spelling": "1:7-1:10",
       "definition_extent": "1:1-5:2",
       "parents": [],
@@ -32,6 +33,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@declonly#",
       "short_name": "declonly",
       "detailed_name": "void Foo::declonly()",
+      "hover": "void Foo::declonly()",
       "declarations": [{
           "spelling": "2:8-2:16",
           "extent": "2:3-2:18",
@@ -49,6 +51,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@purevirtual#",
       "short_name": "purevirtual",
       "detailed_name": "void Foo::purevirtual()",
+      "hover": "void Foo::purevirtual()",
       "declarations": [{
           "spelling": "3:16-3:27",
           "extent": "3:3-3:33",
@@ -66,6 +69,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@def#",
       "short_name": "def",
       "detailed_name": "void Foo::def()",
+      "hover": "void Foo::def()",
       "declarations": [{
           "spelling": "4:8-4:11",
           "extent": "4:3-4:13",

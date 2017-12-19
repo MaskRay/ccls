@@ -16,6 +16,7 @@ OUTPUT:
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
       "detailed_name": "int foo(int, int)",
+      "hover": "int foo(int, int)",
       "declarations": [{
           "spelling": "1:5-1:8",
           "extent": "1:1-1:18",
@@ -44,6 +45,7 @@ OUTPUT:
       "usr": "c:func_associated_function_params.cc@91@F@foo#I#I#@a",
       "short_name": "a",
       "detailed_name": "int a",
+      "hover": "int",
       "definition_spelling": "5:13-5:14",
       "definition_extent": "5:9-5:14",
       "is_local": true,
@@ -54,6 +56,7 @@ OUTPUT:
       "usr": "c:func_associated_function_params.cc@98@F@foo#I#I#@b",
       "short_name": "b",
       "detailed_name": "int b",
+      "hover": "int",
       "definition_spelling": "5:20-5:21",
       "definition_extent": "5:16-5:21",
       "is_local": true,

@@ -17,7 +17,6 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const SymbolIdx& symbol);
 optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
                                                     const SymbolIdx& symbol);
-std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol);
 optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   const SymbolIdx& symbol);
 std::vector<QueryLocation> ToQueryLocation(

@@ -149,6 +149,7 @@ struct TypeDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
+  std::string hover;
 
   // While a class/type can technically have a separate declaration/definition,
   // it doesn't really happen in practice. The declaration never contains
@@ -178,6 +179,7 @@ struct TypeDefDefinitionData {
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return short_name == other.short_name &&
            detailed_name == other.detailed_name &&
+           hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            alias_of == other.alias_of && parents == other.parents &&
@@ -199,6 +201,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(hover);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(alias_of);
@@ -244,6 +247,7 @@ struct FuncDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
+  std::string hover;
   optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
@@ -267,6 +271,7 @@ struct FuncDefDefinitionData {
       const {
     return short_name == other.short_name &&
            detailed_name == other.detailed_name &&
+           hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            declaring_type == other.declaring_type && base == other.base &&
@@ -291,6 +296,7 @@ void Reflect(
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(hover);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(declaring_type);
@@ -356,6 +362,7 @@ struct VarDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
+  std::string hover;
   optional<Range> declaration;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
@@ -377,6 +384,7 @@ struct VarDefDefinitionData {
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return short_name == other.short_name &&
            detailed_name == other.detailed_name &&
+           hover == other.hover &&
            declaration == other.declaration &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
@@ -399,6 +407,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(hover);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);

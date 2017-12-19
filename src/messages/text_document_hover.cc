@@ -2,6 +2,36 @@
 #include "query_utils.h"
 
 namespace {
+  
+std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    case SymbolKind::Type: {
+      QueryType& type = db->types[symbol.idx];
+      if (type.def)
+        return type.def->hover;
+      break;
+    }
+    case SymbolKind::Func: {
+      QueryFunc& func = db->funcs[symbol.idx];
+      if (func.def)
+        return func.def->hover;
+      break;
+    }
+    case SymbolKind::Var: {
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def)
+        return var.def->hover;
+      break;
+    }
+    case SymbolKind::File:
+    case SymbolKind::Invalid: {
+      assert(false && "unexpected");
+      break;
+    }
+  }
+  return "";
+}
+
 struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {
   const static IpcId kIpcId = IpcId::TextDocumentHover;
 
@@ -50,6 +80,14 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
 
       out.result.range = *ls_range;
       break;
+    }
+
+    if (out.result.contents.value.empty()) {
+      Out_Error out;
+      out.id = request->id;
+      out.error.code = lsErrorCodes::InternalError;
+      IpcManager::WriteStdout(IpcId::Unknown, out);
+      return;
     }
 
     IpcManager::WriteStdout(IpcId::TextDocumentHover, out);

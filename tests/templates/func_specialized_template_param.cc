@@ -17,6 +17,7 @@ OUTPUT:
       "usr": "c:@ST>1#T@Template",
       "short_name": "Template",
       "detailed_name": "Template",
+      "hover": "Template",
       "definition_spelling": "2:7-2:15",
       "definition_extent": "2:1-2:18",
       "parents": [],
@@ -31,6 +32,7 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "detailed_name": "Foo",
+      "hover": "Foo",
       "definition_spelling": "4:8-4:11",
       "definition_extent": "4:1-6:2",
       "parents": [],
@@ -47,6 +49,7 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Bar#&$@S@Template>#d#",
       "short_name": "Bar",
       "detailed_name": "void Foo::Bar(Template<double> &)",
+      "hover": "void Foo::Bar(Template<double> &)",
       "declarations": [{
           "spelling": "5:8-5:11",
           "extent": "5:3-5:30",
