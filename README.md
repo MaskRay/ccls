@@ -97,9 +97,14 @@ can add the flags to a file called `.cquery` located in the top-level
 workspace directory.
 
 Each argument in that file is separated by a newline. Lines starting with `#`
-are skipped. Here's an example:
+are skipped. The first line can optionally be the path to the intended compiler,
+which can help if the standard library paths are relative to the binary.
+Here's an example:
 
 ```
+# Driver
+/usr/bin/clang++-4.0
+
 # Language
 -xc++
 -std=c++11
