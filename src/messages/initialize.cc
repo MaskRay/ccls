@@ -149,7 +149,18 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       MakeDirectoryRecursive(config->cacheDirectory +
                              EscapeFileName(config->projectRoot));
 
-      // Start indexer threads.
+      Timer time;
+
+      // Open up / load the project.
+      project->Load(config->extraClangArguments,
+                    config->compilationDatabaseDirectory, project_path,
+                    config->resourceDirectory);
+      time.ResetAndPrint("[perf] Loaded compilation entries (" +
+                         std::to_string(project->entries.size()) + " files)");
+
+      // Start indexer threads. Start this after loading the project, as that
+      // may take a long time. Indexer threads will emit status/progress
+      // reports.
       if (config->indexerCount == 0) {
         // If the user has not specified how many indexers to run, try to
         // guess an appropriate value. Default to 80% utilization.
@@ -167,15 +178,6 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
                            queue);
         });
       }
-
-      Timer time;
-
-      // Open up / load the project.
-      project->Load(config->extraClangArguments,
-                    config->compilationDatabaseDirectory, project_path,
-                    config->resourceDirectory);
-      time.ResetAndPrint("[perf] Loaded compilation entries (" +
-                         std::to_string(project->entries.size()) + " files)");
 
       // Start scanning include directories before dispatching project
       // files, because that takes a long time.
