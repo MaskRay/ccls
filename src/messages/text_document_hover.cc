@@ -48,7 +48,7 @@ struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   };
 
   lsRequestId id;
-  Result result;
+  optional<Result> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover, jsonrpc, id, result);
@@ -75,11 +75,14 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       if (!ls_range)
         continue;
 
-      out.result.contents.value = GetHoverForSymbol(db, ref.idx);
-      out.result.contents.language = file->def->language;
-
-      out.result.range = *ls_range;
-      break;
+      std::string hover = GetHoverForSymbol(db, ref.idx);
+      if (!hover.empty()) {
+        out.result = Out_TextDocumentHover::Result();
+        out.result->contents.value = hover;
+        out.result->contents.language = file->def->language;
+        out.result->range = *ls_range;
+        break;
+      }
     }
 
     IpcManager::WriteStdout(IpcId::TextDocumentHover, out);
