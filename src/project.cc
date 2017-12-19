@@ -511,6 +511,14 @@ TEST_SUITE("Project") {
          "-Wno-unknown-warning-option"});
   }
 
+  TEST_CASE("Implied binary") {
+    CheckFlags("/home/user", "/home/user/foo/bar.cc",
+        /* raw */ {"-DDONT_IGNORE_ME"},
+        /* expected */ {"clang++", "-DDONT_IGNORE_ME", "-xc++", "-std=c++11",
+                        "-resource-dir=/w/resource_dir/",
+                        "-Wno-unknown-warning-option"});
+  }
+
   // Checks flag parsing for a random chromium file in comparison to what
   // YouCompleteMe fetches.
   TEST_CASE("ycm") {
