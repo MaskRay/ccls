@@ -37,6 +37,7 @@ OUTPUT: static.h
           "param_spellings": []
         }],
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -76,6 +77,7 @@ OUTPUT: static.cc
       "definition_spelling": "3:14-3:32",
       "definition_extent": "3:1-3:37",
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

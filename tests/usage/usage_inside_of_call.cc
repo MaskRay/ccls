@@ -48,6 +48,7 @@ OUTPUT:
           "content": "void called(int a)",
           "param_spellings": ["1:17-1:18"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@14:3-14:9"],
@@ -65,6 +66,7 @@ OUTPUT:
           "content": "int gen()",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@14:14-14:17"],
@@ -79,6 +81,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "12:6-12:9",
       "definition_extent": "12:1-15:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

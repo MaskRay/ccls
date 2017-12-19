@@ -255,7 +255,7 @@ struct FuncDefDefinitionData {
   optional<TypeId> declaring_type;
 
   // Method this method overrides.
-  optional<FuncId> base;
+  std::vector<FuncId> base;
 
   // Local variables defined in this function.
   std::vector<VarId> locals;

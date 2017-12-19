@@ -54,6 +54,7 @@ OUTPUT:
       "definition_spelling": "7:19-7:22",
       "definition_extent": "6:1-7:24",
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

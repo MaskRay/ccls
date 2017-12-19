@@ -21,6 +21,7 @@ OUTPUT:
           "content": "void foo()",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

@@ -31,6 +31,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-3:30",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

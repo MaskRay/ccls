@@ -30,6 +30,7 @@ OUTPUT:
           "content": "void called()",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["1@5:3-5:9"],
@@ -44,6 +45,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "4:6-4:12",
       "definition_extent": "4:1-6:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@9:3-9:9"],
@@ -58,6 +60,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "8:6-8:9",
       "definition_extent": "8:1-10:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

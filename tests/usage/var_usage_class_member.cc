@@ -51,6 +51,7 @@ OUTPUT:
           "content": "void accept(int)",
           "param_spellings": ["7:16-7:16"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@14:3-14:9", "2@15:3-15:9", "2@17:3-17:9"],
@@ -68,6 +69,7 @@ OUTPUT:
           "content": "void accept(int*)",
           "param_spellings": ["8:17-8:17"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@16:3-16:9"],
@@ -82,6 +84,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "10:6-10:9",
       "definition_extent": "10:1-18:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

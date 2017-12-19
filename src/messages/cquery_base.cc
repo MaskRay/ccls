@@ -34,15 +34,9 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
         out.result = GetLsLocations(db, working_files, locations);
       } else if (ref.idx.kind == SymbolKind::Func) {
         QueryFunc& func = db->funcs[ref.idx.idx];
-        optional<QueryLocation> location =
-            GetBaseDefinitionOrDeclarationSpelling(db, func);
-        if (!location)
-          continue;
-        optional<lsLocation> ls_loc =
-            GetLsLocation(db, working_files, *location);
-        if (!ls_loc)
-          continue;
-        out.result.push_back(*ls_loc);
+        std::vector<QueryLocation> locations =
+            ToQueryLocation(db, func.def->base);
+        out.result = GetLsLocations(db, working_files, locations);
       }
     }
     IpcManager::WriteStdout(IpcId::CqueryBase, out);

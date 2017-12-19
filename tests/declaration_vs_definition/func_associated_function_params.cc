@@ -35,6 +35,7 @@ OUTPUT:
         }],
       "definition_spelling": "5:5-5:8",
       "definition_extent": "5:1-5:36",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

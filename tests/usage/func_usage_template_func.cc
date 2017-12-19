@@ -25,6 +25,7 @@ OUTPUT:
           "content": "void accept(T)",
           "param_spellings": ["2:14-2:14"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["1@5:3-5:9", "1@6:3-6:9"],
@@ -39,6 +40,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-7:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

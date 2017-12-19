@@ -21,6 +21,7 @@ OUTPUT:
           "content": "void foo(int a, int b)",
           "param_spellings": ["2:14-2:15", "2:21-2:22"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

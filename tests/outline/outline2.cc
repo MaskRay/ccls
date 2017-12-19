@@ -77,6 +77,7 @@ OUTPUT:
           "content": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory)",
           "param_spellings": ["12:86-12:103"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

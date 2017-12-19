@@ -55,6 +55,7 @@ OUTPUT:
           "param_spellings": []
         }],
       "declaring_type": 0,
+      "base": [],
       "derived": [1],
       "locals": [],
       "callers": [],
@@ -70,7 +71,7 @@ OUTPUT:
       "definition_spelling": "5:8-5:11",
       "definition_extent": "5:3-5:25",
       "declaring_type": 1,
-      "base": 0,
+      "base": [0],
       "derived": [],
       "locals": [],
       "callers": [],

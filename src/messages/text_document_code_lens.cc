@@ -201,26 +201,32 @@ struct TextDocumentCodeLensHandler
                       false /*force_display*/);
 
           // "Base"
-          optional<QueryLocation> base_loc =
-              GetBaseDefinitionOrDeclarationSpelling(db, func);
-          if (base_loc) {
-            optional<lsLocation> ls_base =
+          if (func.def->base.size() == 1) {
+            optional<QueryLocation> base_loc = GetDefinitionSpellingOfSymbol(db, func.def->base[0]);
+            if (base_loc) {
+              optional<lsLocation> ls_base =
                 GetLsLocation(db, working_files, *base_loc);
-            if (ls_base) {
-              optional<lsRange> range =
+              if (ls_base) {
+                optional<lsRange> range =
                   GetLsRange(common.working_file, ref.loc.range);
-              if (range) {
-                TCodeLens code_lens;
-                code_lens.range = *range;
-                code_lens.range.start.character += offset++;
-                code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-                code_lens.command->title = "Base";
-                code_lens.command->command = "cquery.goto";
-                code_lens.command->arguments.uri = ls_base->uri;
-                code_lens.command->arguments.position = ls_base->range.start;
-                out.result.push_back(code_lens);
+                if (range) {
+                  TCodeLens code_lens;
+                  code_lens.range = *range;
+                  code_lens.range.start.character += offset++;
+                  code_lens.command = lsCommand<lsCodeLensCommandArguments>();
+                  code_lens.command->title = "Base";
+                  code_lens.command->command = "cquery.goto";
+                  code_lens.command->arguments.uri = ls_base->uri;
+                  code_lens.command->arguments.position = ls_base->range.start;
+                  out.result.push_back(code_lens);
+                }
               }
             }
+          } else {
+            AddCodeLens("base", "base", &common,
+              ref.loc.OffsetStartColumn(1),
+              ToQueryLocation(db, func.def->base), nullopt,
+              false /*force_display*/);
           }
 
           break;

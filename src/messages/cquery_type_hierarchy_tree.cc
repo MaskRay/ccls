@@ -99,24 +99,28 @@ std::vector<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        QueryFuncId root) {
-  QueryFunc& root_func = db->funcs[root.id];
-  if (!root_func.def || !root_func.def->base)
-    return {};
-
-  QueryFunc& parent_func = db->funcs[root_func.def->base->id];
-  if (!parent_func.def)
-    return {};
-
-  Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-  parent_entry.name = parent_func.def->detailed_name;
-  if (parent_func.def->definition_spelling)
-    parent_entry.location =
-        GetLsLocation(db, working_files, *parent_func.def->definition_spelling);
-  parent_entry.children = BuildParentInheritanceHierarchyForFunc(
-      db, working_files, *root_func.def->base);
-
   std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> entries;
-  entries.push_back(parent_entry);
+
+  QueryFunc& root_func = db->funcs[root.id];
+  if (!root_func.def || root_func.def->base.empty())
+    return {};
+
+  for (QueryFuncId parent_id : root_func.def->base) {
+    QueryFunc& parent_func = db->funcs[parent_id.id];
+    if (!parent_func.def)
+      continue;
+
+    Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
+    parent_entry.name = parent_func.def->detailed_name;
+    if (parent_func.def->definition_spelling)
+      parent_entry.location =
+      GetLsLocation(db, working_files, *parent_func.def->definition_spelling);
+    parent_entry.children = BuildParentInheritanceHierarchyForFunc(
+      db, working_files, parent_id);
+
+    entries.push_back(parent_entry);
+  }
+
   return entries;
 }
 

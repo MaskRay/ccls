@@ -25,6 +25,7 @@ OUTPUT:
           "content": "void called(int a)",
           "param_spellings": ["1:17-1:18"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@6:3-6:9"],
@@ -39,6 +40,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "3:5-3:8",
       "definition_extent": "3:1-3:24",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["2@6:10-6:13", "2@6:18-6:21"],
@@ -53,6 +55,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "5:6-5:9",
       "definition_extent": "5:1-7:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

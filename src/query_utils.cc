@@ -245,39 +245,24 @@ std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
   return {};
 }
 
-optional<QueryLocation> GetBaseDefinitionOrDeclarationSpelling(
-    QueryDatabase* db,
-    QueryFunc& func) {
-  if (!func.def->base)
-    return nullopt;
-  QueryFunc& base = db->funcs[func.def->base->id];
-
-  optional<QueryLocation> def;
-  if (base.def)
-    def = base.def->definition_spelling;
-  if (!def && !base.declarations.empty())
-    def = base.declarations[0];
-  return def;
-}
-
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
   // Check self.
   if (!root.callers.empty())
     return true;
 
   // Check for base calls.
-  optional<QueryFuncId> func_id = root.def->base;
-  while (func_id) {
-    QueryFunc& func = db->funcs[func_id->id];
+  std::queue<QueryFuncId> queue;
+  PushRange(&queue, root.def->base);
+  while (!queue.empty()) {
+    QueryFunc& func = db->funcs[queue.front().id];
+    queue.pop();
     if (!func.callers.empty())
       return true;
-    if (!func.def)
-      break;
-    func_id = func.def->base;
+    if (func.def)
+      PushRange(&queue, func.def->base);
   }
 
   // Check for derived calls.
-  std::queue<QueryFuncId> queue;
   PushRange(&queue, root.derived);
   while (!queue.empty()) {
     QueryFunc& func = db->funcs[queue.front().id];
@@ -294,14 +279,15 @@ std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
                                                         QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
 
-  optional<QueryFuncId> func_id = root.def->base;
-  while (func_id) {
-    QueryFunc& func = db->funcs[func_id->id];
-    AddRange(&callers, func.callers);
+  std::queue<QueryFuncId> queue;
+  PushRange(&queue, root.def->base);
+  while (!queue.empty()) {
+    QueryFunc& func = db->funcs[queue.front().id];
+    queue.pop();
 
-    if (!func.def)
-      break;
-    func_id = func.def->base;
+    AddRange(&callers, func.callers);
+    if (func.def)
+      PushRange(&queue, func.def->base);
   }
 
   return callers;

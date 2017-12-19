@@ -23,6 +23,7 @@ OUTPUT: simple_header.h
           "content": "void header()",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -48,6 +49,7 @@ OUTPUT: simple_impl.cc
       "declarations": [],
       "definition_spelling": "3:6-3:10",
       "definition_extent": "3:1-5:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -60,6 +62,7 @@ OUTPUT: simple_impl.cc
       "detailed_name": "",
       "hover": "",
       "declarations": [],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["0@4:3-4:9"],

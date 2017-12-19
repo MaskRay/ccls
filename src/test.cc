@@ -120,7 +120,7 @@ void RunIndexTests() {
     float memory_after = -1.;
 
     {
-      // if (path != "tests/stl.cc") continue;
+      // if (path != "tests/inheritance/multiple_base_functions.cc") continue;
 
       Config config;
       FileConsumer::SharedState file_consumer_shared;

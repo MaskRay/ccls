@@ -16,6 +16,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "1:6-1:9",
       "definition_extent": "1:1-1:14",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

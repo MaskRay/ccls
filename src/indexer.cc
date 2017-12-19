@@ -368,7 +368,7 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
 }  // namespace
 
 // static
-int IndexFile::kCurrentVersion = 5;
+int IndexFile::kCurrentVersion = 6;
 
 IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
@@ -1205,20 +1205,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           clang_getOverriddenCursors(decl->cursor, &overridden,
                                      &num_overridden);
 
-          // FIXME: this happens for destructors when there are multiple
-          // parent classes.
-          if (num_overridden > 1) {
-            std::cerr << "[indexer]: warning: multiple base overrides for "
-                      << func->def.detailed_name << std::endl;
-          }
-
           for (unsigned i = 0; i < num_overridden; ++i) {
             ClangCursor parent = overridden[i];
             IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
             IndexFunc* parent_def = db->Resolve(parent_id);
             func = db->Resolve(func_id);  // ToFuncId invalidated func_def
 
-            func->def.base = parent_id;
+            func->def.base.push_back(parent_id);
             parent_def->derived.push_back(func_id);
           }
 

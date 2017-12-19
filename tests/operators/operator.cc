@@ -38,6 +38,7 @@ OUTPUT:
       "definition_spelling": "2:8-2:18",
       "definition_extent": "2:3-2:27",
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -56,6 +57,7 @@ OUTPUT:
           "param_spellings": ["3:23-3:23"]
         }],
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -74,6 +76,7 @@ OUTPUT:
           "param_spellings": ["4:22-4:23", "4:29-4:30"]
         }],
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -91,6 +94,7 @@ OUTPUT:
           "content": "friend Foo &operator += (const Foo&, const Type&)",
           "param_spellings": ["7:36-7:36", "7:49-7:49"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

@@ -25,6 +25,7 @@ OUTPUT:
           "content": "bool called(bool a, bool b)",
           "param_spellings": ["3:18-3:19", "3:26-3:27"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["1@6:14-6:20"],
@@ -39,6 +40,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "5:6-5:12",
       "definition_extent": "5:1-7:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

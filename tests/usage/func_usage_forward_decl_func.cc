@@ -22,6 +22,7 @@ OUTPUT:
           "content": "void foo()",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["1@4:3-4:6"],
@@ -36,6 +37,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "3:6-3:11",
       "definition_extent": "3:1-5:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

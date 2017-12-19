@@ -39,6 +39,7 @@ OUTPUT:
           "param_spellings": []
         }],
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

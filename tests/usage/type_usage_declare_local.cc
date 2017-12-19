@@ -50,6 +50,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-7:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

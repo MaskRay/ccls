@@ -54,6 +54,7 @@ OUTPUT: static_function_in_type.h
           "param_spellings": ["6:32-6:32"]
         }],
       "declaring_type": 1,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -106,6 +107,7 @@ OUTPUT: static_function_in_type.cc
       "definition_spelling": "5:11-5:19",
       "definition_extent": "5:1-6:2",
       "declaring_type": 0,
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],

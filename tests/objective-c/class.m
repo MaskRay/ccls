@@ -49,6 +49,7 @@ OUTPUT:
           "content": "+ (void)test;",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -68,6 +69,7 @@ OUTPUT:
         }],
       "definition_spelling": "8:9-8:25",
       "definition_extent": "8:1-8:28",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["4@14:13-14:29"],
@@ -85,6 +87,7 @@ OUTPUT:
           "content": "aProp",
           "param_spellings": []
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
@@ -102,6 +105,7 @@ OUTPUT:
           "content": "aProp",
           "param_spellings": ["4:29-4:34"]
         }],
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": ["4@0:0-0:0"],
@@ -116,6 +120,7 @@ OUTPUT:
       "declarations": [],
       "definition_spelling": "11:5-11:9",
       "definition_extent": "11:1-16:2",
+      "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
