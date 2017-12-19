@@ -121,6 +121,12 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // Include the compiler in the args.
   if (i > 0)
     result.args.push_back(entry.args[i - 1]);
+  else {
+    // Args probably came from a /.cquery file, which likely has just flags.
+    // clang_parseTranslationUnit2FullArgv() expects the binary path as the
+    // first arg, so the first flag would end up being ignored. Add a dummy.
+    result.args.push_back("clang++");
+  }
 
   bool next_flag_is_path = false;
   bool add_next_flag_to_quote_dirs = false;
@@ -147,7 +153,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     // Cleanup path for previous argument.
     if (next_flag_is_path) {
       arg = cleanup_maybe_relative_path(arg);
-
       if (add_next_flag_to_quote_dirs)
         config->quote_dirs.insert(arg);
       if (add_next_flag_to_angle_dirs)
@@ -239,6 +244,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
       CompileCommandsEntry e;
       e.file = NormalizePathWithTestOptOut(file);
       e.args = args;
+      e.directory = config->project_dir;
       result.push_back(GetCompilationEntryFromCompileCommandEntry(config, e));
     }
   }
