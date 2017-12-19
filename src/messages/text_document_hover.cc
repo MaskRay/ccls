@@ -51,7 +51,20 @@ struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   optional<Result> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
-MAKE_REFLECT_STRUCT(Out_TextDocumentHover, jsonrpc, id, result);
+void Reflect(Writer& visitor, Out_TextDocumentHover& value) {     
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(jsonrpc);
+  REFLECT_MEMBER(id);
+  if (value.result)
+    REFLECT_MEMBER(result);
+  else {
+    // Empty optional<> is elided by the default serializer, we need to write
+    // |null| to be compliant with the LSP.
+    visitor.Key("result");
+    visitor.Null();
+  }
+  REFLECT_MEMBER_END();
+}
 
 struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
   void Run(Ipc_TextDocumentHover* request) override {
