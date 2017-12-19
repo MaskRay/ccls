@@ -17,7 +17,11 @@
 
 namespace {
 
-const bool kIndexStdDeclarations = true;
+constexpr bool kIndexStdDeclarations = true;
+
+// For typedef/using spanning less than or equal to (this number) of lines,
+// display their declarations on hover.
+constexpr int kMaxLinesDisplayTypeAliasDeclarations = 3;
 
 void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
   if (!result->empty() && (*result)[result->size() - 1] == ref)
@@ -195,7 +199,7 @@ struct ConstructorCache {
 struct IndexParam {
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
-  std::unordered_map<std::string, std::string> file_contents;
+  std::unordered_map<std::string, FileContentsWithOffsets> file_contents;
   std::unordered_map<std::string, int64_t> file_modification_times;
 
   // Only use this when strictly needed (ie, primary translation unit is
@@ -242,10 +246,10 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
       // Capture file contents in |param->file_contents| if it was not specified
       // at the start of indexing.
       if (db &&
-          param->file_contents.find(file_name) == param->file_contents.end()) {
+          !param->file_contents.count(file_name)) {
         optional<std::string> content = ReadContent(file_name);
         if (content)
-          param->file_contents[file_name] = *content;
+          param->file_contents.emplace(file_name, *content);
         else
           LOG_S(ERROR) << "[indexer] Failed to read file content for "
                        << file_name;
@@ -1248,17 +1252,21 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type->def.hover = type->def.detailed_name;
 
-      // For single line Typedef/CXXTypeAlias, display the declaration line,
+      // For Typedef/CXXTypeAlias spanning a few lines, display the declaration line,
       // with spelling name replaced with qualified name.
       // TODO Think how to display multi-line declaration like `typedef struct { ... } foo;`
-      if (extent.start.line == extent.end.line) {
-        std::string decl_text = GetDocumentContentInRange(
-            param->tu->cx_tu, clang_getCursorExtent(decl->cursor));
-        if (decl_text.size() == extent.end.column - extent.start.column) {
-          type->def.hover  =
-              decl_text.substr(0, spell.start.column - extent.start.column) +
+      if (extent.end.line - extent.start.line <
+          kMaxLinesDisplayTypeAliasDeclarations) {
+        FileContentsWithOffsets& fc = param->file_contents[db->path];
+        optional<int> extent_start = fc.ToOffset(extent.start),
+                      spell_start = fc.ToOffset(spell.start),
+                      spell_end = fc.ToOffset(spell.end),
+                      extent_end = fc.ToOffset(extent.end);
+        if (extent_start && spell_start && spell_end && extent_end) {
+          type->def.hover =
+              fc.contents.substr(*extent_start, *spell_start - *extent_start) +
               type->def.detailed_name +
-              decl_text.substr(spell.end.column - extent.start.column);
+              fc.contents.substr(*spell_end, *extent_end - *spell_end);
         }
       }
 
@@ -1604,6 +1612,33 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 FileContents::FileContents(const std::string& path, const std::string& content)
     : path(path), content(content) {}
 
+FileContentsWithOffsets::FileContentsWithOffsets() : line_offsets_{0} {}
+
+FileContentsWithOffsets::FileContentsWithOffsets(std::string s) {
+  contents = s;
+  line_offsets_.push_back(0);
+  for (size_t i = 0; i < s.size(); i++)
+    if (s[i] == '\n')
+      line_offsets_.push_back(i + 1);
+}
+
+optional<int> FileContentsWithOffsets::ToOffset(Position p) const {
+  if (0 < p.line && size_t(p.line) <= line_offsets_.size()) {
+    int ret = line_offsets_[p.line - 1] + p.column - 1;
+    if (size_t(ret) <= contents.size())
+      return {ret};
+  }
+  return nullopt;
+}
+
+optional<std::string> FileContentsWithOffsets::ContentsInRange(Range range) const {
+  optional<int> start_offset = ToOffset(range.start),
+                end_offset = ToOffset(range.end);
+  if (start_offset && end_offset && *start_offset < *end_offset)
+    return {contents.substr(*start_offset, *end_offset - *start_offset)};
+  return nullopt;
+}
+
 std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
     FileConsumer::SharedState* file_consumer_shared,
@@ -1670,8 +1705,8 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   FileConsumer file_consumer(file_consumer_shared, file);
   IndexParam param(tu, &file_consumer);
   for (const CXUnsavedFile& contents : file_contents) {
-    param.file_contents[contents.Filename] =
-        std::string(contents.Contents, contents.Length);
+    param.file_contents.emplace(
+        contents.Filename, std::string(contents.Contents, contents.Length));
   }
 
   CXFile cx_file = clang_getFile(tu->cx_tu, file.c_str());
@@ -1710,7 +1745,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     entry->args = args;
 
     // Update file contents and modification time.
-    entry->file_contents_ = param.file_contents[entry->path];
+    entry->file_contents_ = param.file_contents[entry->path].contents;
     entry->last_modification_time = param.file_modification_times[entry->path];
 
     // Update dependencies for the file. Do not include the file in its own

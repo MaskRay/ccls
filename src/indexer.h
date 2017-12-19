@@ -516,6 +516,18 @@ struct FileContents {
   FileContents(const std::string& path, const std::string& content);
 };
 
+struct FileContentsWithOffsets {
+  std::string contents;
+  // {0, 1 + position of first newline, 1 + position of second newline, ...}
+  std::vector<int> line_offsets_;
+
+  FileContentsWithOffsets();
+  FileContentsWithOffsets(std::string s);
+
+  optional<int> ToOffset(Position p) const;
+  optional<std::string> ContentsInRange(Range range) const;
+};
+
 // |import_file| is the cc file which is what gets passed to clang.
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a
