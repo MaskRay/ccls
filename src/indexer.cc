@@ -1240,13 +1240,29 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       if (alias_of)
         type->def.alias_of = alias_of.value();
-
       type->def.short_name = decl->entityInfo->name;
+
+      Range spell = ResolveSpelling(decl->cursor);
+      Range extent = ResolveExtent(decl->cursor);
+      type->def.definition_spelling = spell;
+      type->def.definition_extent = extent;
+
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+      // For single line Typedef/CXXTypeAlias, display the declaration line,
+      // with spelling name replaced with qualified name.
+      // TODO Think how to display multi-line declaration like `typedef struct { ... } foo;`
+      if (extent.start.line == extent.end.line) {
+        std::string decl_text = GetDocumentContentInRange(
+            param->tu->cx_tu, clang_getCursorExtent(decl->cursor));
+        if (decl_text.size() == extent.end.column - extent.start.column) {
+          type->def.detailed_name =
+              decl_text.substr(0, spell.start.column - extent.start.column) +
+              type->def.detailed_name +
+              decl_text.substr(spell.end.column - extent.start.column);
+        }
+      }
 
-      type->def.definition_spelling = ResolveSpelling(decl->cursor);
-      type->def.definition_extent = ResolveExtent(decl->cursor);
       UniqueAdd(type->uses, decl_loc_spelling);
       break;
     }
