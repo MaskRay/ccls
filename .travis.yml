@@ -38,12 +38,12 @@ matrix:
           packages: ["g++-5"]
           sources: *apt_sources
 
-    - env: COMPILER=g++-6
-      compiler: gcc
-      addons: &gcc6
-        apt:
-          packages: ["g++-6"]
-          sources: *apt_sources
+    # - env: COMPILER=g++-6
+    #   compiler: gcc
+    #   addons: &gcc6
+    #     apt:
+    #       packages: ["g++-6"]
+    #       sources: *apt_sources
 
     - env: COMPILER=g++-7
       compiler: gcc
@@ -58,35 +58,35 @@ matrix:
           packages: ["clang-3.5", "g++-7"]
           sources: *apt_sources
 
-    - env: COMPILER=clang++-3.6
-      addons: &clang36
-        apt:
-          packages: ["clang-3.6", "g++-7"]
-          sources: *apt_sources
+    # - env: COMPILER=clang++-3.6
+    #   addons: &clang36
+    #     apt:
+    #       packages: ["clang-3.6", "g++-7"]
+    #       sources: *apt_sources
 
-    - env: COMPILER=clang++-3.7
-      addons: &clang37
-        apt:
-          packages: ["clang-3.7", "g++-7"]
-          sources: *apt_sources
+    # - env: COMPILER=clang++-3.7
+    #   addons: &clang37
+    #     apt:
+    #       packages: ["clang-3.7", "g++-7"]
+    #       sources: *apt_sources
 
-    - env: COMPILER=clang++-3.8
-      addons: &clang38
-        apt:
-          packages: ["clang-3.8", "g++-7"]
-          sources: *apt_sources
+    # - env: COMPILER=clang++-3.8
+    #   addons: &clang38
+    #     apt:
+    #       packages: ["clang-3.8", "g++-7"]
+    #       sources: *apt_sources
 
-    - env: COMPILER=clang++-3.9
-      addons: &clang39
-        apt:
-          packages: ["clang-3.9", "g++-7"]
-          sources: *apt_sources
+    # - env: COMPILER=clang++-3.9
+    #   addons: &clang39
+    #     apt:
+    #       packages: ["clang-3.9", "g++-7"]
+    #       sources: *apt_sources
 
-    - env: COMPILER=clang++-4.0
-      addons: &clang40
-        apt:
-          packages: ["clang-4.0", "g++-7"]
-          sources: *apt_sources
+    # - env: COMPILER=clang++-4.0
+    #   addons: &clang40
+    #     apt:
+    #       packages: ["clang-4.0", "g++-7"]
+    #       sources: *apt_sources
 
     - env: COMPILER=clang++-5.0
       addons: &clang50
@@ -98,29 +98,29 @@ matrix:
       osx_image: xcode6.4
       os: osx
 
-    - env: COMPILER=clang++
-      osx_image: xcode7.3
-      os: osx
+    # - env: COMPILER=clang++
+    #   osx_image: xcode7.3
+    #   os: osx
 
-    - env: COMPILER=clang++
-      osx_image: xcode8
-      os: osx
+    # - env: COMPILER=clang++
+    #   osx_image: xcode8
+    #   os: osx
 
-    - env: COMPILER=clang++
-      osx_image: xcode8.1
-      os: osx
+    # - env: COMPILER=clang++
+    #   osx_image: xcode8.1
+    #   os: osx
 
-    - env: COMPILER=clang++
-      osx_image: xcode8.2
-      os: osx
+    # - env: COMPILER=clang++
+    #   osx_image: xcode8.2
+    #   os: osx
 
-    - env: COMPILER=clang++
-      osx_image: xcode8.3
-      os: osx
+    # - env: COMPILER=clang++
+    #   osx_image: xcode8.3
+    #   os: osx
 
-    - env: COMPILER=clang++
-      osx_image: xcode9
-      os: osx
+    # - env: COMPILER=clang++
+    #   osx_image: xcode9
+    #   os: osx
 
     - env: COMPILER=clang++
       osx_image: xcode9.1
@@ -131,10 +131,10 @@ matrix:
       osx_image: xcode9.1
       os: osx
 
-    - env: COMPILER=g++-6
-      compiler: gcc
-      osx_image: xcode9.1
-      os: osx
+    # - env: COMPILER=g++-6
+    #   compiler: gcc
+    #   osx_image: xcode9.1
+    #   os: osx
 
     - env: COMPILER=g++-7
       compiler: gcc
