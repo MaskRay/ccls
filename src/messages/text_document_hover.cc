@@ -82,14 +82,6 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       break;
     }
 
-    if (out.result.contents.value.empty()) {
-      Out_Error out;
-      out.id = request->id;
-      out.error.code = lsErrorCodes::InternalError;
-      IpcManager::WriteStdout(IpcId::Unknown, out);
-      return;
-    }
-
     IpcManager::WriteStdout(IpcId::TextDocumentHover, out);
   }
 };
