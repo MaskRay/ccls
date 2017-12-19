@@ -41,7 +41,7 @@ OUTPUT: header.h
       "id": 2,
       "usr": "c:@Foo0",
       "short_name": "Foo0",
-      "detailed_name": "Foo0",
+      "detailed_name": "using Foo0 = SameFileDerived",
       "definition_spelling": "7:7-7:11",
       "definition_extent": "7:1-7:29",
       "alias_of": 1,

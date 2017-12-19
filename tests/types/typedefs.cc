@@ -10,7 +10,7 @@ OUTPUT:
       "id": 0,
       "usr": "c:typedefs.cc@T@func",
       "short_name": "func",
-      "detailed_name": "func",
+      "detailed_name": "typedef int (func)(const int *a, const int *b)",
       "definition_spelling": "1:14-1:18",
       "definition_extent": "1:1-1:47",
       "parents": [],

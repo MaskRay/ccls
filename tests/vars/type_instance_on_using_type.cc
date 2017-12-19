@@ -29,7 +29,7 @@ OUTPUT:
       "id": 1,
       "usr": "c:@F",
       "short_name": "F",
-      "detailed_name": "F",
+      "detailed_name": "using F = S",
       "definition_spelling": "2:7-2:8",
       "definition_extent": "2:1-2:12",
       "alias_of": 0,
