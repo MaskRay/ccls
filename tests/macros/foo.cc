@@ -22,26 +22,12 @@ OUTPUT:
       "parents": [],
       "derived": [],
       "types": [],
-      "funcs": [0],
+      "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:8-4:11", "5:12-5:15"]
+      "uses": ["4:8-4:11"]
     }],
-  "funcs": [{
-      "id": 0,
-      "is_operator": false,
-      "usr": "c:@S@Foo@F@Foo#&&$@S@Foo#",
-      "short_name": "Foo",
-      "detailed_name": "void Foo::Foo(Foo &&)",
-      "declarations": [],
-      "definition_spelling": "5:12-5:15",
-      "definition_extent": "5:12-5:16",
-      "declaring_type": 0,
-      "derived": [],
-      "locals": [],
-      "callers": [],
-      "callees": []
-    }],
+  "funcs": [],
   "vars": [{
       "id": 0,
       "usr": "c:@x",

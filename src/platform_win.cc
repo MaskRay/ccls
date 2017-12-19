@@ -227,7 +227,23 @@ bool IsSymLink(const std::string& path) {
 }
 
 std::vector<std::string> GetPlatformClangArguments() {
-  return {"-fms-compatibility", "-fdelayed-template-parsing"};
+  //
+  // Found by executing
+  //
+  //   $ clang++ -E -x c++ - -v
+  //
+
+  return {
+    "-isystem","C:/Program Files/Microsoft Visual Studio 10.0/VC/include",
+    "-isystem","C:/Program Files/Microsoft Visual Studio 9.0/VC/include",
+    "-isystem","C:/Program Files/Microsoft Visual Studio 9.0/VC/PlatformSDK/Include",
+    "-isystem","C:/Program Files/Microsoft Visual Studio 8/VC/include",
+    "-isystem","C:/Program Files/Microsoft Visual Studio 8/VC/PlatformSDK/Include",
+    "-isystem","C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
+    "-isystem","C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt",
+    "-isystem","C:/Program Files/LLVM/lib/clang/4.0.0/include",
+    "-fms-extensions", "-fms-compatibility", "-fms-compatibility-version=18", "-fdelayed-template-parsing"
+  };
 }
 
 void FreeUnusedMemory() {}
