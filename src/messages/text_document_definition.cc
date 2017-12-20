@@ -24,6 +24,29 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
+std::vector<QueryLocation> GetGotoDefinitionTargets(
+    QueryDatabase* db,
+    const SymbolIdx& symbol) {
+  switch (symbol.kind) {
+    // Returns GetDeclarationsOfSymbolForGotoDefinition and
+    // variable type definition.
+    case SymbolKind::Var: {
+      std::vector<QueryLocation> ret =
+          GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
+      QueryVar& var = db->vars[symbol.idx];
+      if (var.def && var.def->variable_type) {
+        std::vector<QueryLocation> types =
+            GetDeclarationsOfSymbolForGotoDefinition(
+                db, SymbolIdx(SymbolKind::Type, var.def->variable_type->id));
+        ret.insert(ret.end(), types.begin(), types.end());
+      }
+      return ret;
+    }
+    default:
+      return GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
+  }
+}
+
 struct TextDocumentDefinitionHandler
     : BaseMessageHandler<Ipc_TextDocumentDefinition> {
   void Run(Ipc_TextDocumentDefinition* request) override {
@@ -72,13 +95,13 @@ struct TextDocumentDefinitionHandler
                        def_loc->range.Contains(target_line, target_column))) {
         // Goto declaration.
 
-        std::vector<QueryLocation> declarations =
-            GetDeclarationsOfSymbolForGotoDefinition(db, ref.idx);
-        for (auto declaration : declarations) {
-          optional<lsLocation> ls_declaration =
-              GetLsLocation(db, working_files, declaration);
-          if (ls_declaration)
-            out.result.push_back(*ls_declaration);
+        std::vector<QueryLocation> targets =
+            GetGotoDefinitionTargets(db, ref.idx);
+        for (QueryLocation target : targets) {
+          optional<lsLocation> ls_target =
+              GetLsLocation(db, working_files, target);
+          if (ls_target)
+            out.result.push_back(*ls_target);
         }
         // We found some declarations. Break so we don't add the definition
         // location.

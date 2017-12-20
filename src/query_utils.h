@@ -33,6 +33,7 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
 std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     const SymbolIdx& symbol);
+
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
                                                         QueryFunc& root);
