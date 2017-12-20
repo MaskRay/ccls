@@ -4,7 +4,7 @@ class Foo {
   int operator()(int a, int b);
 };
 
-friend Foo &operator += (const Foo&, const Type&);
+Foo &operator += (const Foo&, const int&);
 
 /*
 OUTPUT:
@@ -25,7 +25,7 @@ OUTPUT:
       "funcs": [0, 1, 2],
       "vars": [],
       "instances": [],
-      "uses": ["1:7-1:10", "7:8-7:11", "7:32-7:35"]
+      "uses": ["1:7-1:10", "7:1-7:4", "7:25-7:28"]
     }],
   "funcs": [{
       "id": 0,
@@ -89,10 +89,10 @@ OUTPUT:
       "detailed_name": "Foo &operator+=(const Foo &, const int &)",
       "hover": "Foo &operator+=(const Foo &, const int &)",
       "declarations": [{
-          "spelling": "7:13-7:24",
-          "extent": "7:1-7:50",
-          "content": "friend Foo &operator += (const Foo&, const Type&)",
-          "param_spellings": ["7:36-7:36", "7:49-7:49"]
+          "spelling": "7:6-7:17",
+          "extent": "7:1-7:42",
+          "content": "Foo &operator += (const Foo&, const int&)",
+          "param_spellings": ["7:29-7:29", "7:41-7:41"]
         }],
       "base": [],
       "derived": [],

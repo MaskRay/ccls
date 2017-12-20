@@ -3,8 +3,8 @@ struct Type {
 };
 
 void Make() {
-  Type foo;
-  auto foo = Type();
+  Type foo0;
+  auto foo1 = Type();
 }
 
 /*
@@ -25,8 +25,8 @@ OUTPUT:
       "types": [],
       "funcs": [0],
       "vars": [],
-      "instances": [0],
-      "uses": ["1:8-1:12", "2:3-2:7", "6:3-6:7"]
+      "instances": [0, 1],
+      "uses": ["1:8-1:12", "2:3-2:7", "6:3-6:7", "7:15-7:19"]
     }],
   "funcs": [{
       "id": 0,
@@ -42,7 +42,7 @@ OUTPUT:
       "base": [],
       "derived": [],
       "locals": [],
-      "callers": ["~1@6:8-6:11"],
+      "callers": ["~1@6:8-6:12", "1@7:15-7:19"],
       "callees": []
     }, {
       "id": 1,
@@ -58,31 +58,32 @@ OUTPUT:
       "derived": [],
       "locals": [],
       "callers": [],
-      "callees": ["~0@6:8-6:11"]
+      "callees": ["~0@6:8-6:12", "0@7:15-7:19"]
     }],
   "vars": [{
       "id": 0,
-      "usr": "c:implicit_constructor.cc@51@F@Make#@foo",
-      "short_name": "foo",
-      "detailed_name": "Type foo",
+      "usr": "c:implicit_constructor.cc@51@F@Make#@foo0",
+      "short_name": "foo0",
+      "detailed_name": "Type foo0",
       "hover": "Type",
-      "definition_spelling": "6:8-6:11",
-      "definition_extent": "6:3-6:11",
+      "definition_spelling": "6:8-6:12",
+      "definition_extent": "6:3-6:12",
       "variable_type": 0,
       "is_local": true,
       "is_macro": false,
-      "uses": ["6:8-6:11"]
+      "uses": ["6:8-6:12"]
     }, {
       "id": 1,
-      "usr": "c:implicit_constructor.cc@64@F@Make#@foo",
-      "short_name": "foo",
-      "detailed_name": "auto foo",
-      "hover": "auto",
-      "definition_spelling": "7:8-7:11",
-      "definition_extent": "7:3-7:11",
+      "usr": "c:implicit_constructor.cc@65@F@Make#@foo1",
+      "short_name": "foo1",
+      "detailed_name": "Type foo1",
+      "hover": "Type",
+      "definition_spelling": "7:8-7:12",
+      "definition_extent": "7:3-7:21",
+      "variable_type": 0,
       "is_local": true,
       "is_macro": false,
-      "uses": ["7:8-7:11"]
+      "uses": ["7:8-7:12"]
     }]
 }
 */

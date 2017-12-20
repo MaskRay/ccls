@@ -1,5 +1,5 @@
 class IFoo {
-  virtual void foo() = 0 {}
+  virtual void foo() = 0;
 };
 
 /*
@@ -30,9 +30,12 @@ OUTPUT:
       "short_name": "foo",
       "detailed_name": "void IFoo::foo()",
       "hover": "void IFoo::foo()",
-      "declarations": [],
-      "definition_spelling": "2:16-2:19",
-      "definition_extent": "2:3-2:28",
+      "declarations": [{
+          "spelling": "2:16-2:19",
+          "extent": "2:3-2:25",
+          "content": "virtual void foo() = 0",
+          "param_spellings": []
+        }],
       "declaring_type": 0,
       "base": [],
       "derived": [],

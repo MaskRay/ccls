@@ -5,10 +5,10 @@ namespace foo {
          }
     }
 }
- 
+
 namespace fbz = foo::bar::baz;
 
-void foo() {
+void func() {
   int a = foo::bar::baz::qux;
   int b = fbz::qux;
 }
@@ -22,12 +22,12 @@ OUTPUT:
   "funcs": [{
       "id": 0,
       "is_operator": false,
-      "usr": "c:@F@foo#",
-      "short_name": "foo",
-      "detailed_name": "void foo()",
-      "hover": "void foo()",
+      "usr": "c:@F@func#",
+      "short_name": "func",
+      "detailed_name": "void func()",
+      "hover": "void func()",
       "declarations": [],
-      "definition_spelling": "11:6-11:9",
+      "definition_spelling": "11:6-11:10",
       "definition_extent": "11:1-14:2",
       "base": [],
       "derived": [],
@@ -48,7 +48,7 @@ OUTPUT:
       "uses": ["4:18-4:21", "12:26-12:29", "13:16-13:19"]
     }, {
       "id": 1,
-      "usr": "c:namespace_alias.cc@167@F@foo#@a",
+      "usr": "c:namespace_alias.cc@167@F@func#@a",
       "short_name": "a",
       "detailed_name": "int a",
       "hover": "int",
@@ -59,7 +59,7 @@ OUTPUT:
       "uses": ["12:7-12:8"]
     }, {
       "id": 2,
-      "usr": "c:namespace_alias.cc@198@F@foo#@b",
+      "usr": "c:namespace_alias.cc@198@F@func#@b",
       "short_name": "b",
       "detailed_name": "int b",
       "hover": "int",

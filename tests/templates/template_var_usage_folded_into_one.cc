@@ -2,10 +2,10 @@ enum A {};
 enum B {};
 
 template<typename T>
-T var = 3;
+T var = T();
 
-int a = var<A>;
-int b = var<B>;
+A a = var<A>;
+B b = var<B>;
 
 // NOTE: libclang before 4.0 doesn't expose template usage on |var|.
 
@@ -28,6 +28,9 @@ UnexposedDecl var
 #endif
 
 /*
+EXTRA_FLAGS:
+-std=c++14
+
 OUTPUT:
 {
   "includes": [],
@@ -45,8 +48,8 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [],
-      "uses": ["1:6-1:7", "7:13-7:14"]
+      "instances": [1],
+      "uses": ["1:6-1:7", "7:1-7:2", "7:11-7:12"]
     }, {
       "id": 1,
       "usr": "c:@E@B",
@@ -60,8 +63,8 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [],
-      "uses": ["2:6-2:7", "8:13-8:14"]
+      "instances": [2],
+      "uses": ["2:6-2:7", "8:1-8:2", "8:11-8:12"]
     }, {
       "id": 2,
       "usr": "c:template_var_usage_folded_into_one.cc@35",
@@ -74,7 +77,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:1-5:2"]
+      "uses": ["5:1-5:2", "5:9-5:10"]
     }],
   "funcs": [],
   "vars": [{
@@ -84,32 +87,34 @@ OUTPUT:
       "detailed_name": "T var",
       "hover": "T",
       "definition_spelling": "5:3-5:6",
-      "definition_extent": "5:1-5:10",
+      "definition_extent": "5:1-5:12",
       "is_local": false,
       "is_macro": false,
-      "uses": ["5:3-5:6", "7:9-7:12", "8:9-8:12"]
+      "uses": ["5:3-5:6", "7:7-7:10", "8:7-8:10"]
     }, {
       "id": 1,
       "usr": "c:@a",
       "short_name": "a",
-      "detailed_name": "int a",
-      "hover": "int",
-      "definition_spelling": "7:5-7:6",
-      "definition_extent": "7:1-7:15",
+      "detailed_name": "A a",
+      "hover": "A",
+      "definition_spelling": "7:3-7:4",
+      "definition_extent": "7:1-7:13",
+      "variable_type": 0,
       "is_local": false,
       "is_macro": false,
-      "uses": ["7:5-7:6"]
+      "uses": ["7:3-7:4"]
     }, {
       "id": 2,
       "usr": "c:@b",
       "short_name": "b",
-      "detailed_name": "int b",
-      "hover": "int",
-      "definition_spelling": "8:5-8:6",
-      "definition_extent": "8:1-8:15",
+      "detailed_name": "B b",
+      "hover": "B",
+      "definition_spelling": "8:3-8:4",
+      "definition_extent": "8:1-8:13",
+      "variable_type": 1,
       "is_local": false,
       "is_macro": false,
-      "uses": ["8:5-8:6"]
+      "uses": ["8:3-8:4"]
     }]
 }
 */

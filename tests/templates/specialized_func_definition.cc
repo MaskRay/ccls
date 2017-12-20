@@ -6,6 +6,7 @@ class Template {
 template<class T>
 void Template<T>::Foo() {}
 
+template<>
 void Template<void>::Foo() {}
 
 
@@ -31,7 +32,7 @@ OUTPUT:
       "funcs": [0],
       "vars": [],
       "instances": [],
-      "uses": ["2:7-2:15", "7:6-7:14", "9:6-9:14"]
+      "uses": ["2:7-2:15", "7:6-7:14", "10:6-10:14"]
     }],
   "funcs": [{
       "id": 0,
@@ -46,9 +47,9 @@ OUTPUT:
           "content": "void Foo()",
           "param_spellings": []
         }, {
-          "spelling": "9:22-9:25",
-          "extent": "9:1-9:30",
-          "content": "void Template<void>::Foo() {}",
+          "spelling": "10:22-10:25",
+          "extent": "9:1-10:30",
+          "content": "template<>\n void Template<void>::Foo() {}",
           "param_spellings": []
         }],
       "definition_spelling": "7:19-7:22",

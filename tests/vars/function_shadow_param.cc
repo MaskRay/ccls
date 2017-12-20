@@ -1,5 +1,5 @@
 void foo(int p) {
-  int p = 0;
+  { int p = 0; }
 }
 /*
 OUTPUT:
@@ -36,15 +36,15 @@ OUTPUT:
       "uses": ["1:14-1:15"]
     }, {
       "id": 1,
-      "usr": "c:function_shadow_param.cc@21@F@foo#I#@p",
+      "usr": "c:function_shadow_param.cc@23@F@foo#I#@p",
       "short_name": "p",
       "detailed_name": "int p",
       "hover": "int",
-      "definition_spelling": "2:7-2:8",
-      "definition_extent": "2:3-2:8",
+      "definition_spelling": "2:9-2:10",
+      "definition_extent": "2:5-2:14",
       "is_local": true,
       "is_macro": false,
-      "uses": ["2:7-2:8"]
+      "uses": ["2:9-2:10"]
     }]
 }
 */

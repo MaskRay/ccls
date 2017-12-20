@@ -1,4 +1,4 @@
-struct Type;
+struct Type {};
 static Type t;
 /*
 OUTPUT:
@@ -8,9 +8,11 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@S@Type",
-      "short_name": "",
-      "detailed_name": "",
-      "hover": "",
+      "short_name": "Type",
+      "detailed_name": "Type",
+      "hover": "Type",
+      "definition_spelling": "1:8-1:12",
+      "definition_extent": "1:1-1:15",
       "parents": [],
       "derived": [],
       "types": [],

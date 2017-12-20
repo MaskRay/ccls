@@ -1,5 +1,5 @@
 template<typename T>
-class unique_ptr;
+class unique_ptr {};
 
 struct S {};
 
@@ -18,9 +18,11 @@ OUTPUT:
   "types": [{
       "id": 0,
       "usr": "c:@ST>1#T@unique_ptr",
-      "short_name": "",
-      "detailed_name": "",
-      "hover": "",
+      "short_name": "unique_ptr",
+      "detailed_name": "unique_ptr",
+      "hover": "unique_ptr",
+      "definition_spelling": "2:7-2:17",
+      "definition_extent": "2:1-2:20",
       "parents": [],
       "derived": [],
       "types": [],
@@ -86,7 +88,7 @@ OUTPUT:
       "uses": ["7:22-7:24"]
     }, {
       "id": 2,
-      "usr": "c:type_usage_as_template_parameter.cc@150@F@return_type#@local",
+      "usr": "c:type_usage_as_template_parameter.cc@153@F@return_type#@local",
       "short_name": "local",
       "detailed_name": "unique_ptr<S> * local",
       "hover": "unique_ptr<S> *",

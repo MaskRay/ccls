@@ -4,7 +4,7 @@ void foo(Type& a0, const Type& a1) {
   Type a2;
   Type* a3;
   const Type* a4;
-  const Type const* a5;
+  const Type* const a5 = nullptr;
 }
 /*
 OUTPUT:
@@ -107,10 +107,10 @@ OUTPUT:
       "id": 5,
       "usr": "c:type_usage_declare_qualifiers.cc@103@F@foo#&$@S@Type#&1S1_#@a5",
       "short_name": "a5",
-      "detailed_name": "const Type * a5",
-      "hover": "const Type *",
+      "detailed_name": "const Type *const a5",
+      "hover": "const Type *const",
       "definition_spelling": "7:21-7:23",
-      "definition_extent": "7:3-7:23",
+      "definition_extent": "7:3-7:33",
       "variable_type": 0,
       "is_local": true,
       "is_macro": false,
