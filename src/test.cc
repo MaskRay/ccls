@@ -174,6 +174,7 @@ void RunIndexTests(const std::string& filter_path) {
               return "hint ";
           }
           assert(false && "not reached");
+          return "";
         };
 
         // Get output from index operation.
