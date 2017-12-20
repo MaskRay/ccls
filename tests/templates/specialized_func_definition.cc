@@ -14,6 +14,10 @@ void Template<void>::Foo() {}
 // TODO: usage information on Template is bad.
 // TODO: Foo() should have multiple definitions.
 
+EXTRA_FLAGS:
+-fms-compatibility
+-fdelayed-template-parsing
+
 OUTPUT:
 {
   "includes": [],
