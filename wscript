@@ -232,6 +232,8 @@ def build(bld):
   elif sys.platform.startswith('freebsd'):
     # loguru::stacktrace_as_stdstring calls backtrace_symbols
     lib.append('execinfo')
+    # sparsepp/spp_memory.h uses libkvm
+    lib.append('kvm')
 
     lib.append('pthread')
     lib.append('thr')
