@@ -79,7 +79,8 @@ std::vector<std::string> ToLines(const std::string& content,
                                  bool trim_whitespace);
 
 std::unordered_map<std::string, std::string> ParseTestExpectation(
-    std::string filename);
+    std::string filename,
+    std::vector<std::string>* flags);
 void UpdateTestExpectation(const std::string& filename,
                            const std::string& expectation,
                            const std::string& actual);

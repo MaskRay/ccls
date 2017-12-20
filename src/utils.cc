@@ -281,9 +281,7 @@ std::vector<std::string> ToLines(const std::string& content,
 }
 
 std::unordered_map<std::string, std::string> ParseTestExpectation(
-    std::string filename) {
-  bool in_output = false;
-
+    std::string filename, std::vector<std::string>* flags) {
 #if false
 #include "bar.h"
 
@@ -292,6 +290,12 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(
   /*
   // if no name is given assume to be this file name
   // no output section means we don't check that index.
+
+  // EXTRA_FLAGS parses until the first newline.
+
+  EXTRA_FLAGS:
+  -std=c++14
+
   OUTPUT: bar.cc
   {}
 
@@ -305,11 +309,29 @@ std::unordered_map<std::string, std::string> ParseTestExpectation(
   std::string active_output_filename;
   std::string active_output_contents;
 
+  bool in_output = false;
+  for (std::string line_with_ending : ReadLinesWithEnding(filename)) {
+    if (StartsWith(line_with_ending, "EXTRA_FLAGS:")) {
+      assert(!in_output && "multiple EXTRA_FLAGS sections");
+      in_output = true;
+      continue;
+    }
+
+    Trim(line_with_ending);
+    if (in_output && line_with_ending.empty())
+      break;
+
+    if (in_output)
+      flags->push_back(line_with_ending);
+  }
+
+  in_output = false;
   for (std::string line_with_ending : ReadLinesWithEnding(filename)) {
     if (StartsWith(line_with_ending, "*/"))
       break;
 
     if (StartsWith(line_with_ending, "OUTPUT:")) {
+      // Terminate the previous output section if we found a new one.
       if (in_output) {
         result[active_output_filename] = active_output_contents;
       }

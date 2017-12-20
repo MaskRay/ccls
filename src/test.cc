@@ -107,7 +107,7 @@ IndexFile* FindDbForPathEnding(
   return nullptr;
 }
 
-void RunIndexTests() {
+void RunIndexTests(const std::string& filter_path) {
   SetTestOutputMode();
 
   // TODO: Assert that we need to be on clang >= 3.9.1
@@ -120,7 +120,24 @@ void RunIndexTests() {
     float memory_after = -1.;
 
     {
-      // if (path != "tests/inheritance/multiple_base_functions.cc") continue;
+      if (!EndsWith(path, filter_path))
+        continue;
+
+      // Parse expected output from the test, parse it into JSON document.
+      std::vector<std::string> flags;
+      std::unordered_map<std::string, std::string> all_expected_output =
+          ParseTestExpectation(path, &flags);
+      bool had_extra_flags = !flags.empty();
+      if (!AnyStartsWith(flags, "-x"))
+        flags.push_back("-xc++");
+      if (!AnyStartsWith(flags, "-std"))
+        flags.push_back("-std=c++11");
+      flags.push_back("-resource_dir=" + GetDefaultResourceDirectory());
+
+      if (had_extra_flags) {
+        std::cout << "For " << path << std::endl;
+        std::cout << "  flags: " << StringJoin(flags) << std::endl;
+      }
 
       Config config;
       FileConsumer::SharedState file_consumer_shared;
@@ -129,20 +146,49 @@ void RunIndexTests() {
       // std::cout << "[START] " << path << std::endl;
       PerformanceImportFile perf;
       std::vector<std::unique_ptr<IndexFile>> dbs =
-          Parse(&config, &file_consumer_shared, path,
-                {"-xc++", "-std=c++11",
-                 "-resource-dir=" + GetDefaultResourceDirectory()},
+          Parse(&config, &file_consumer_shared, path, flags,
                 {}, &perf, &index, false /*dump_ast*/);
 
-      // Parse expected output from the test, parse it into JSON document.
-      std::unordered_map<std::string, std::string> all_expected_output =
-          ParseTestExpectation(path);
       for (auto& entry : all_expected_output) {
         const std::string& expected_path = entry.first;
         const std::string& expected_output = entry.second;
 
+        // FIXME: promote to utils, find and remove duplicates (ie,
+        // cquery_call_tree.cc, maybe something in project.cc).
+        auto basename = [](const std::string& path) {
+          size_t last_index = path.find_last_of('/');
+          if (last_index == std::string::npos)
+            return path;
+          return path.substr(last_index + 1);
+        };
+
+        auto severity_to_string = [](const lsDiagnosticSeverity& severity) {
+          switch (severity) {
+            case lsDiagnosticSeverity::Error:
+              return "error ";
+            case lsDiagnosticSeverity::Warning:
+              return "warning ";
+            case lsDiagnosticSeverity::Information:
+              return "information ";
+            case lsDiagnosticSeverity::Hint:
+              return "hint ";
+          }
+          assert(false && "not reached");
+        };
+
         // Get output from index operation.
         IndexFile* db = FindDbForPathEnding(expected_path, dbs);
+        if (!db->diagnostics_.empty()) {
+          for (const lsDiagnostic& diagnostic : db->diagnostics_) {
+            std::cout << "  ";
+            if (diagnostic.severity)
+              std::cout << severity_to_string(*diagnostic.severity);
+            std::cout << basename(db->path) << ":"
+                      << diagnostic.range.start.ToString() << "-"
+                      << diagnostic.range.end.ToString() << ": "
+                      << diagnostic.message << std::endl;
+          }
+        }
         std::string actual_output = "{}";
         if (db) {
           VerifySerializeToFrom(db);

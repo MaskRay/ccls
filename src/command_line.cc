@@ -1035,7 +1035,7 @@ int main(int argc, char** argv) {
 
   if (HasOption(options, "--test-index")) {
     print_help = false;
-    RunIndexTests();
+    RunIndexTests(options["--test-index"]);
 #if defined(_WIN32)
     std::cerr << std::endl << "[Enter] to exit" << std::endl;
     std::cin.get();
@@ -1058,7 +1058,9 @@ Command line options:
                 Run as a language server. This implements the language server
                 spec over STDIN and STDOUT.
   --test-unit   Run unit tests.
-  --test-index  Run index tests.
+  --test-index <opt_filter_path>
+                Run index tests. opt_filter_path can be used to specify which
+                test to run. If not provided all tests are run.
   --log-stdin-stdout-to-stderr
                 Print stdin and stdout messages to stderr. This is a aid for
                 developing new language clients, as it makes it easier to figure

@@ -1,3 +1,5 @@
 #pragma once
 
-void RunIndexTests();
+#include <string>
+
+void RunIndexTests(const std::string& filter_path);
