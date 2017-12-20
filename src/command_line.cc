@@ -830,6 +830,10 @@ void RunQueryDbThread(const std::string& bin_name,
 // |ipc| is connected to a server.
 void LaunchStdinLoop(Config* config,
                      std::unordered_map<IpcId, Timer>* request_times) {
+  // If flushing cin requires flushing cout there could be deadlocks in some
+  // clients.
+  std::cin.tie(nullptr);
+
   WorkThread::StartThread("stdin", [request_times]() {
     IpcManager* ipc = IpcManager::instance();
 
@@ -956,7 +960,6 @@ void LanguageServerMain(const std::string& bin_name,
   QueueManager queue(waiter);
   std::unordered_map<IpcId, Timer> request_times;
 
-  std::cin.tie(NULL);
   LaunchStdinLoop(config, &request_times);
 
   // We run a dedicated thread for writing to stdout because there can be an
