@@ -1478,12 +1478,16 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // or implicit), but libclang only supports implicit for objective-c.
       bool is_implicit =
           CanBeCalledImplicitly(ref->referencedEntity->kind) &&
-          // For explicit destructor call, ref->cursor may be "~" while called->def.short_name is "~A"
-          // "~A" is not a substring of ref->cursor, but we should take this case as not `is_implicit`.
-          called->def.short_name.size() && called->def.short_name[0] != '~' &&
-
-          !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
-                                        called->def.short_name);
+          // Treats empty short_name as an implicit call like implicit move
+          // constructor in `vector<int> a = f();`
+          (called->def.short_name.empty() ||
+           // For explicit destructor call, ref->cursor may be "~" while
+           // called->def.short_name is "~A"
+           // "~A" is not a substring of ref->cursor, but we should take this
+           // case as not `is_implicit`.
+           (called->def.short_name[0] != '~' &&
+            !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
+                                          called->def.short_name)));
 
       if (IsFunctionCallContext(ref->container->cursor.kind)) {
         IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
