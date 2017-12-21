@@ -155,7 +155,7 @@ void RunIndexTests(const std::string& filter_path) {
 
         // FIXME: promote to utils, find and remove duplicates (ie,
         // cquery_call_tree.cc, maybe something in project.cc).
-        auto basename = [](const std::string& path) {
+        auto basename = [](const std::string& path) -> std::string {
           size_t last_index = path.find_last_of('/');
           if (last_index == std::string::npos)
             return path;
