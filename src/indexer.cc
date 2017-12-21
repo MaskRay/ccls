@@ -1211,7 +1211,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                                      &num_overridden);
 
           for (unsigned i = 0; i < num_overridden; ++i) {
-            ClangCursor parent = overridden[i];
+            ClangCursor parent =
+                ClangCursor(overridden[i])
+                    .template_specialization_to_template_definition();
             IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
             IndexFunc* parent_def = db->Resolve(parent_id);
             func = db->Resolve(func_id);  // ToFuncId invalidated func_def
