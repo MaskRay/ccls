@@ -54,41 +54,42 @@ Range ResolveExtent(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
 }
 
 struct NamespaceHelper {
-  std::unordered_map<std::string, std::string> container_usr_to_qualified_name;
+  std::unordered_map<ClangCursor, std::string>
+      container_cursor_to_qualified_name;
 
   void RegisterQualifiedName(std::string usr,
                              const CXIdxContainerInfo* container,
                              std::string qualified_name) {
-    if (container) {
-      std::string container_usr = ClangCursor(container->cursor).get_usr();
-      auto it = container_usr_to_qualified_name.find(container_usr);
-      if (it != container_usr_to_qualified_name.end()) {
-        container_usr_to_qualified_name[usr] =
-            it->second + qualified_name + "::";
-        return;
-      }
-    }
-
-    container_usr_to_qualified_name[usr] = qualified_name + "::";
   }
 
   std::string QualifiedName(const CXIdxContainerInfo* container,
                             std::string unqualified_name) {
-    if (container) {
-      std::string container_usr = ClangCursor(container->cursor).get_usr();
-      auto it = container_usr_to_qualified_name.find(container_usr);
-      if (it != container_usr_to_qualified_name.end())
-        return it->second + unqualified_name;
-
-      // Anonymous namespaces are not processed by indexDeclaration. If we
-      // encounter one insert it into map.
-      if (container->cursor.kind == CXCursor_Namespace) {
-        // assert(ClangCursor(container->cursor).get_spelling() == "");
-        container_usr_to_qualified_name[container_usr] = "::";
-        return "::" + unqualified_name;
+    if (!container)
+      return unqualified_name;
+    // Anonymous namespaces are not processed by indexDeclaration. We trace
+    // nested namespaces bottom-up through clang_getCursorSemanticParent until
+    // one that we know its qualified name. Then do another trace top-down and
+    // put their names into a map of USR -> qualified_name.
+    ClangCursor cursor = container->cursor;
+    std::vector<ClangCursor> namespaces;
+    std::string qualifier;
+    while (cursor.get_kind() == CXCursor_Namespace) {
+      auto it = container_cursor_to_qualified_name.find(cursor);
+      if (it != container_cursor_to_qualified_name.end()) {
+        qualifier = it->second;
+        break;
       }
+      namespaces.push_back(cursor);
+      cursor = clang_getCursorSemanticParent(cursor.cx_cursor);
     }
-    return unqualified_name;
+    for (size_t i = namespaces.size(); i > 0; ) {
+      i--;
+      std::string name = namespaces[i].get_spelling();
+      qualifier += name.empty() ? "(anon)" : name;
+      qualifier += "::";
+      container_cursor_to_qualified_name[namespaces[i]] = qualifier;
+    }
+    return qualifier + unqualified_name;
   }
 };
 

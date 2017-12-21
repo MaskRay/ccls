@@ -85,3 +85,12 @@ class ClangCursor {
 
   CXCursor cx_cursor;
 };
+
+namespace std {
+template <>
+struct hash<ClangCursor> {
+  size_t operator()(const ClangCursor& x) const {
+    return clang_hashCursor(x.cx_cursor);
+  }
+};
+}
