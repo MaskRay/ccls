@@ -5,6 +5,7 @@
 @end
 
 @implementation AClass
++ (void)test {}
 - (void)anInstanceMethod {}
 @end
 
@@ -27,14 +28,14 @@ OUTPUT:
       "detailed_name": "AClass",
       "hover": "AClass",
       "definition_spelling": "7:17-7:23",
-      "definition_extent": "7:1-9:2",
+      "definition_extent": "7:1-10:2",
       "parents": [],
       "derived": [],
       "types": [],
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["1:12-1:18", "7:17-7:23", "13:3-13:9", "13:23-13:29"]
+      "uses": ["1:12-1:18", "7:17-7:23", "14:3-14:9", "14:23-14:29"]
     }],
   "funcs": [{
       "id": 0,
@@ -49,6 +50,8 @@ OUTPUT:
           "content": "+ (void)test;",
           "param_spellings": []
         }],
+      "definition_spelling": "8:9-8:13",
+      "definition_extent": "8:1-8:16",
       "base": [],
       "derived": [],
       "locals": [],
@@ -67,12 +70,12 @@ OUTPUT:
           "content": "- (void)anInstanceMethod;",
           "param_spellings": []
         }],
-      "definition_spelling": "8:9-8:25",
-      "definition_extent": "8:1-8:28",
+      "definition_spelling": "9:9-9:25",
+      "definition_extent": "9:1-9:28",
       "base": [],
       "derived": [],
       "locals": [],
-      "callers": ["4@14:13-14:29"],
+      "callers": ["4@15:13-15:29"],
       "callees": []
     }, {
       "id": 2,
@@ -118,13 +121,13 @@ OUTPUT:
       "detailed_name": "int main()",
       "hover": "int main()",
       "declarations": [],
-      "definition_spelling": "11:5-11:9",
-      "definition_extent": "11:1-16:2",
+      "definition_spelling": "12:5-12:9",
+      "definition_extent": "12:1-17:2",
       "base": [],
       "derived": [],
       "locals": [],
       "callers": [],
-      "callees": ["1@14:13-14:29", "3@0:0-0:0"]
+      "callees": ["1@15:13-15:29", "3@0:0-0:0"]
     }],
   "vars": [{
       "id": 0,
@@ -135,18 +138,29 @@ OUTPUT:
       "declaration": "4:29-4:34",
       "is_local": true,
       "is_macro": false,
-      "uses": ["4:29-4:34", "15:12-15:17"]
+      "uses": ["4:29-4:34", "16:12-16:17"]
     }, {
       "id": 1,
-      "usr": "c:class.m@191@F@main#@instance",
+      "usr": "c:objc(cs)AClass@_aProp",
+      "short_name": "_aProp",
+      "detailed_name": "int _aProp",
+      "hover": "int",
+      "definition_spelling": "4:29-4:34",
+      "definition_extent": "4:29-4:34",
+      "is_local": true,
+      "is_macro": false,
+      "uses": ["4:29-4:34"]
+    }, {
+      "id": 2,
+      "usr": "c:class.m@195@F@main#@instance",
       "short_name": "instance",
       "detailed_name": "AClass * instance",
       "hover": "AClass *",
-      "definition_spelling": "13:11-13:19",
-      "definition_extent": "13:3-13:35",
+      "definition_spelling": "14:11-14:19",
+      "definition_extent": "14:3-14:35",
       "is_local": true,
       "is_macro": false,
-      "uses": ["13:11-13:19", "14:4-14:12", "15:3-15:11"]
+      "uses": ["14:11-14:19", "15:4-15:12", "16:3-16:11"]
     }]
 }
 */
