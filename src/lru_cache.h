@@ -24,6 +24,11 @@ struct LruCache {
   // Inserts an entry. Evicts the oldest unused entry if there is no space.
   void Insert(const TKey& key, const std::shared_ptr<TValue>& value);
 
+  // Call |func| on existing entries. If |func| returns false iteration
+  // temrinates early.
+  template <typename TFunc>
+  void IterateValues(TFunc func);
+
  private:
   // There is a global score counter, when we access an element we increase
   // its score to the current global value, so it has the highest overall
@@ -111,6 +116,15 @@ void LruCache<TKey, TValue>::Insert(const TKey& key,
   entry.key = key;
   entry.value = value;
   entries_.push_back(entry);
+}
+
+template <typename TKey, typename TValue>
+template <typename TFunc>
+void LruCache<TKey, TValue>::IterateValues(TFunc func) {
+  for (Entry& entry : entries_) {
+    if (!func(entry.value))
+      break;
+  }
 }
 
 template <typename TKey, typename TValue>
