@@ -1027,6 +1027,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       std::string type_name =
           ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
+      // clang may report "(lambda at foo.cc)" which end up being a very long
+      // string. Shorten it to just "lambda".
+      if (type_name.find("(lambda at") != std::string::npos)
+        type_name = "lambda";
+
       var->def.detailed_name =
           type_name + " " +
           ns->QualifiedName(decl->semanticContainer, var->def.short_name);
