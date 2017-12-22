@@ -1186,15 +1186,26 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         std::string qualified_name =
             ns->QualifiedName(decl->semanticContainer, func->def.short_name);
         std::string type_desc = decl_cursor.get_type_description();
-        size_t offset = type_desc.find('(');
-        if (offset != std::string::npos) {
-          type_desc.insert(offset, qualified_name);
-          func->def.detailed_name = type_desc;
-        } else {
-          // type_desc is probably the name of a typedef.
-          func->def.detailed_name = type_desc + " " + qualified_name;
+        {
+          size_t offset = 0;
+          if (type_desc.back() == ')') {
+            size_t balance = 0;
+            for (offset = type_desc.size(); offset; ) {
+              offset--;
+              if (type_desc[offset] == ')')
+                balance++;
+              else if (type_desc[offset] == '(' && --balance == 0)
+                break;
+            }
+          }
+          if (offset > 0) {
+            type_desc.insert(offset, qualified_name);
+            func->def.detailed_name = type_desc;
+          } else {
+            // type_desc is probably the name of a typedef.
+            func->def.detailed_name = type_desc + " " + qualified_name;
+          }
         }
-        func->def.hover = func->def.detailed_name;
 
         // Add function usage information. We only want to do it once per
         // definition/declaration. Do it on definition since there should only
