@@ -12,6 +12,11 @@ struct CompilationEntry {
 std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string& project_directory);
 
 /*
+TEXT_REPLACE:
+c:@N@std@T@string <===> c:@N@std@N@__1@T@string
+c:@N@std@ST>2#T#T@vector <===> c:@N@std@N@__1@ST>2#T#T@vector
+c:@F@LoadCompilationEntriesFromDirectory#&1$@N@std@N@__1@S@basic_string>#C#$@N@std@N@__1@S@char_traits>#C#$@N@std@N@__1@S@allocator>#C# <===> c:@F@LoadCompilationEntriesFromDirectory#&1$@N@std@S@basic_string>#C#$@N@std@S@char_traits>#C#$@N@std@S@allocator>#C#
+
 OUTPUT:
 {
   "includes": [{

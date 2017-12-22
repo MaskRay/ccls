@@ -154,7 +154,7 @@ void LexFunctionDeclaration(const std::string& buffer_content,
   if (type_name && !type_name->empty())
     result += *type_name + "::";
   result += buffer_content.substr(name_start, end - name_start);
-  TrimEnd(result);
+  TrimEndInPlace(result);
   result += " {\n}";
   *insert_text = result;
 }

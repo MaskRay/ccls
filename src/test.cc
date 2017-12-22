@@ -124,34 +124,36 @@ void RunIndexTests(const std::string& filter_path) {
         continue;
 
       // Parse expected output from the test, parse it into JSON document.
+      std::vector<std::string> lines_with_endings = ReadLinesWithEnding(path);
+      TextReplacer text_replacer;
       std::vector<std::string> flags;
-      std::unordered_map<std::string, std::string> all_expected_output =
-          ParseTestExpectation(path, &flags);
+      std::unordered_map<std::string, std::string> all_expected_output;
+      ParseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
+                           &all_expected_output);
+
+      // Build flags.
       bool had_extra_flags = !flags.empty();
       if (!AnyStartsWith(flags, "-x"))
         flags.push_back("-xc++");
       if (!AnyStartsWith(flags, "-std"))
         flags.push_back("-std=c++11");
       flags.push_back("-resource_dir=" + GetDefaultResourceDirectory());
-
       if (had_extra_flags) {
         std::cout << "For " << path << std::endl;
         std::cout << "  flags: " << StringJoin(flags) << std::endl;
       }
 
+      // Run test.
       Config config;
       FileConsumer::SharedState file_consumer_shared;
-
-      // Run test.
-      // std::cout << "[START] " << path << std::endl;
       PerformanceImportFile perf;
       std::vector<std::unique_ptr<IndexFile>> dbs =
-          Parse(&config, &file_consumer_shared, path, flags,
-                {}, &perf, &index, false /*dump_ast*/);
+          Parse(&config, &file_consumer_shared, path, flags, {}, &perf, &index,
+                false /*dump_ast*/);
 
-      for (auto& entry : all_expected_output) {
+      for (const auto& entry : all_expected_output) {
         const std::string& expected_path = entry.first;
-        const std::string& expected_output = entry.second;
+        std::string expected_output = text_replacer.Apply(entry.second);
 
         // FIXME: promote to utils, find and remove duplicates (ie,
         // cquery_call_tree.cc, maybe something in project.cc).
@@ -195,6 +197,7 @@ void RunIndexTests(const std::string& filter_path) {
           VerifySerializeToFrom(db);
           actual_output = db->ToString();
         }
+        actual_output = text_replacer.Apply(actual_output);
 
         // Compare output via rapidjson::Document to ignore any formatting
         // differences.

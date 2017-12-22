@@ -14,11 +14,12 @@ using std::experimental::nullopt;
 using std::experimental::optional;
 
 // Trim from start (in place)
-void TrimStart(std::string& s);
+void TrimStartInPlace(std::string& s);
 // Trim from end (in place)
-void TrimEnd(std::string& s);
+void TrimEndInPlace(std::string& s);
 // Trim from both ends (in place)
-void Trim(std::string& s);
+void TrimInPlace(std::string& s);
+std::string Trim(std::string s);
 
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(const std::string& value, const std::string& start);
@@ -78,9 +79,24 @@ std::vector<std::string> ReadLinesWithEnding(std::string filename);
 std::vector<std::string> ToLines(const std::string& content,
                                  bool trim_whitespace);
 
-std::unordered_map<std::string, std::string> ParseTestExpectation(
-    std::string filename,
-    std::vector<std::string>* flags);
+struct TextReplacer {
+  struct Replacement {
+    std::string from;
+    std::string to;
+  };
+
+  std::vector<Replacement> replacements;
+
+  std::string Apply(const std::string& content);
+};
+
+void ParseTestExpectation(
+    const std::string& filename,
+    const std::vector<std::string>& lines_with_endings,
+    TextReplacer* text_replacer,
+    std::vector<std::string>* flags,
+    std::unordered_map<std::string, std::string>* output_sections);
+
 void UpdateTestExpectation(const std::string& filename,
                            const std::string& expectation,
                            const std::string& actual);

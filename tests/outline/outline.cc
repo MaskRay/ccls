@@ -7,6 +7,9 @@ struct MergeableUpdate {
 };
 
 /*
+TEXT_REPLACE:
+c:@N@std@ST>2#T#T@vector <===> c:@N@std@N@__1@ST>2#T#T@vector
+
 OUTPUT:
 {
   "includes": [{

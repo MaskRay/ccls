@@ -227,7 +227,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::cerr << "Using arguments: ";
   for (std::string line :
        ReadLinesWithEnding(config->project_dir + "/.cquery")) {
-    Trim(line);
+    TrimInPlace(line);
     if (line.empty() || StartsWith(line, "#"))
       continue;
     if (!args.empty())
