@@ -53,6 +53,20 @@ Range ResolveExtent(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
   return Resolve(cx_range, cx_file);
 }
 
+bool IsLocalSemanticContainer(CXCursorKind kind) {
+  switch (kind) {
+    case CXCursor_Namespace:
+    case CXCursor_TranslationUnit:
+    case CXCursor_StructDecl:
+    case CXCursor_UnionDecl:
+    case CXCursor_ClassDecl:
+    case CXCursor_EnumDecl:
+      return false;
+    default:
+      return true;
+  }
+}
+
 struct NamespaceHelper {
   std::unordered_map<ClangCursor, std::string>
       container_cursor_to_qualified_name;
@@ -73,7 +87,8 @@ struct NamespaceHelper {
     ClangCursor cursor = container->cursor;
     std::vector<ClangCursor> namespaces;
     std::string qualifier;
-    while (cursor.get_kind() == CXCursor_Namespace) {
+    while (cursor.get_kind() != CXCursor_TranslationUnit &&
+           !IsLocalSemanticContainer(cursor.get_kind())) {
       auto it = container_cursor_to_qualified_name.find(cursor);
       if (it != container_cursor_to_qualified_name.end()) {
         qualifier = it->second;
@@ -272,20 +287,6 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   }
 
   return db;
-}
-
-bool IsLocalSemanticContainer(CXCursorKind kind) {
-  switch (kind) {
-    case CXCursor_Namespace:
-    case CXCursor_TranslationUnit:
-    case CXCursor_StructDecl:
-    case CXCursor_UnionDecl:
-    case CXCursor_ClassDecl:
-    case CXCursor_EnumDecl:
-      return false;
-    default:
-      return true;
-  }
 }
 
 // Returns true if the given entity kind can be called implicitly, ie, without
