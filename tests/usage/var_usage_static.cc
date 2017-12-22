@@ -31,7 +31,6 @@ OUTPUT:
       "usr": "c:var_usage_static.cc@a",
       "short_name": "a",
       "detailed_name": "int a",
-      "hover": "int",
       "definition_spelling": "1:12-1:13",
       "definition_extent": "1:1-1:13",
       "is_local": false,

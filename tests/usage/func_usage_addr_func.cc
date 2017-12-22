@@ -64,7 +64,6 @@ OUTPUT:
       "usr": "c:func_usage_addr_func.cc@66@F@user#@x",
       "short_name": "x",
       "detailed_name": "void (*)() x",
-      "hover": "void (*)()",
       "definition_spelling": "6:10-6:11",
       "definition_extent": "6:3-6:22",
       "is_local": true,

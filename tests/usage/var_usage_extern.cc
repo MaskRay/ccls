@@ -30,7 +30,6 @@ OUTPUT:
       "usr": "c:@a",
       "short_name": "a",
       "detailed_name": "int a",
-      "hover": "int",
       "declaration": "1:12-1:13",
       "is_local": false,
       "is_macro": false,

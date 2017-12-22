@@ -27,7 +27,6 @@ OUTPUT:
       "usr": "c:@ST>1#T@Template",
       "short_name": "Template",
       "detailed_name": "Template",
-      "hover": "Template",
       "definition_spelling": "2:7-2:15",
       "definition_extent": "2:1-4:2",
       "parents": [],

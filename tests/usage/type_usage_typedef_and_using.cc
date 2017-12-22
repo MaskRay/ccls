@@ -19,7 +19,6 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "",
       "detailed_name": "",
-      "hover": "",
       "parents": [],
       "derived": [],
       "types": [],

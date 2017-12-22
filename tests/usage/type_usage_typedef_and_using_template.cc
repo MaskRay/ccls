@@ -14,7 +14,6 @@ OUTPUT:
       "usr": "c:@ST>1#T@Foo",
       "short_name": "",
       "detailed_name": "",
-      "hover": "",
       "parents": [],
       "derived": [],
       "types": [],

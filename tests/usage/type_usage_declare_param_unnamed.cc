@@ -10,7 +10,6 @@ OUTPUT:
       "usr": "c:@S@ForwardType",
       "short_name": "",
       "detailed_name": "",
-      "hover": "",
       "parents": [],
       "derived": [],
       "types": [],

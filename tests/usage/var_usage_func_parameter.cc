@@ -28,7 +28,6 @@ OUTPUT:
       "usr": "c:var_usage_func_parameter.cc@9@F@foo#I#@a",
       "short_name": "a",
       "detailed_name": "int a",
-      "hover": "int",
       "definition_spelling": "1:14-1:15",
       "definition_extent": "1:10-1:15",
       "is_local": true,

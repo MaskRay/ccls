@@ -18,7 +18,6 @@ OUTPUT:
       "usr": "c:@S@Foo",
       "short_name": "Foo",
       "detailed_name": "Foo",
-      "hover": "Foo",
       "definition_spelling": "3:8-3:11",
       "definition_extent": "3:1-5:2",
       "parents": [],

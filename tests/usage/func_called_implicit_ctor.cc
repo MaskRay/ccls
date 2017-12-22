@@ -18,7 +18,6 @@ OUTPUT:
       "usr": "c:@S@Wrapper",
       "short_name": "Wrapper",
       "detailed_name": "Wrapper",
-      "hover": "Wrapper",
       "definition_spelling": "1:8-1:15",
       "definition_extent": "1:1-3:2",
       "parents": [],

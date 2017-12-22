@@ -58,7 +58,6 @@ OUTPUT:
       "usr": "c:complex.cc@make2",
       "short_name": "make2",
       "detailed_name": "const int make2",
-      "hover": "const int",
       "definition_spelling": "9:11-9:16",
       "definition_extent": "9:1-9:20",
       "is_local": false,

@@ -29,7 +29,6 @@ OUTPUT:
       "usr": "c:var_usage_local.cc@16@F@foo#@x",
       "short_name": "x",
       "detailed_name": "int x",
-      "hover": "int",
       "definition_spelling": "2:7-2:8",
       "definition_extent": "2:3-2:8",
       "is_local": true,

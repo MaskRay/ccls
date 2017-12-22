@@ -12,7 +12,6 @@ OUTPUT:
       "usr": "c:@S@IFoo",
       "short_name": "IFoo",
       "detailed_name": "IFoo",
-      "hover": "IFoo",
       "definition_spelling": "1:7-1:11",
       "definition_extent": "1:1-3:2",
       "parents": [],

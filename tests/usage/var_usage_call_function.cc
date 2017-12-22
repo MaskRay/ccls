@@ -49,7 +49,6 @@ OUTPUT:
       "usr": "c:var_usage_call_function.cc@39@F@caller#@x",
       "short_name": "x",
       "detailed_name": "void (*)() x",
-      "hover": "void (*)()",
       "definition_spelling": "4:8-4:9",
       "definition_extent": "4:3-4:19",
       "is_local": true,
