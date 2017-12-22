@@ -189,6 +189,8 @@ before_script:
 script:
   - ./waf configure
   - ./waf build
+  - ./build/release/bin/cquery --log-all-to-stderr --test-unit
+  - ./build/release/bin/cquery --log-all-to-stderr --test-index
 
 notifications:
   email: false

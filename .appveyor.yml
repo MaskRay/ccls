@@ -19,6 +19,8 @@ build_script:
       copy "build\release\bin\*" "${dir}\build\release\bin"
       copy -recurse "build\LLVM-4.0.0-win64\lib\clang\4.0.0\include" "${dir}\build\release\lib\LLVM-4.0.0-win64\lib\clang\4.0.0\"
       7z a -tzip "C:\projects\cquery\${dir}.zip" "${dir}"
+  - build\release\bin\cquery --log-all-to-stderr --test-unit
+  - build\release\bin\cquery --log-all-to-stderr --test-index
 
 artifacts:
   - path: 'cquery-*.zip'
