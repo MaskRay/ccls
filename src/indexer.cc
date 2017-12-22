@@ -87,8 +87,7 @@ struct NamespaceHelper {
     ClangCursor cursor = container->cursor;
     std::vector<ClangCursor> namespaces;
     std::string qualifier;
-    while (cursor.get_kind() != CXCursor_TranslationUnit &&
-           !IsLocalSemanticContainer(cursor.get_kind())) {
+    while (cursor.get_kind() != CXCursor_TranslationUnit) {
       auto it = container_cursor_to_qualified_name.find(cursor);
       if (it != container_cursor_to_qualified_name.end()) {
         qualifier = it->second;
