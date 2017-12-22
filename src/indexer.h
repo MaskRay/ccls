@@ -149,7 +149,7 @@ struct TypeDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
-  std::string hover;
+  optional<std::string> hover;
 
   // While a class/type can technically have a separate declaration/definition,
   // it doesn't really happen in practice. The declaration never contains
@@ -247,7 +247,7 @@ struct FuncDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
-  std::string hover;
+  optional<std::string> hover;
   optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
@@ -362,7 +362,7 @@ struct VarDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
-  std::string hover;
+  optional<std::string> hover;
   optional<Range> declaration;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??

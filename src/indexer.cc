@@ -61,6 +61,9 @@ bool IsLocalSemanticContainer(CXCursorKind kind) {
     case CXCursor_UnionDecl:
     case CXCursor_ClassDecl:
     case CXCursor_EnumDecl:
+    // TODO Add more Objective-C containers
+    case CXCursor_ObjCInterfaceDecl:
+    case CXCursor_ObjCImplementationDecl:
       return false;
     default:
       return true;
@@ -87,7 +90,8 @@ struct NamespaceHelper {
     ClangCursor cursor = container->cursor;
     std::vector<ClangCursor> namespaces;
     std::string qualifier;
-    while (cursor.get_kind() != CXCursor_TranslationUnit) {
+    while (cursor.get_kind() != CXCursor_TranslationUnit &&
+           !IsLocalSemanticContainer(cursor.get_kind())) {
       auto it = container_cursor_to_qualified_name.find(cursor);
       if (it != container_cursor_to_qualified_name.end()) {
         qualifier = it->second;
@@ -99,6 +103,8 @@ struct NamespaceHelper {
     for (size_t i = namespaces.size(); i > 0; ) {
       i--;
       std::string name = namespaces[i].get_spelling();
+      // Empty name indicates unnamed namespace, anonymous struct, anonymous
+      // union, ...
       qualifier += name.empty() ? "(anon)" : name;
       qualifier += "::";
       container_cursor_to_qualified_name[namespaces[i]] = qualifier;
@@ -1031,10 +1037,14 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (type_name.find("(lambda at") != std::string::npos)
         type_name = "lambda";
 
-      var->def.detailed_name =
-          type_name + " " +
-          ns->QualifiedName(decl->semanticContainer, var->def.short_name);
-      var->def.hover = type_name;
+      {
+        std::string qualified_name =
+            ns->QualifiedName(decl->semanticContainer, var->def.short_name);
+        if (decl->entityInfo->kind == CXIdxEntity_EnumConstant)
+          var->def.detailed_name = std::move(qualified_name);
+        else
+          var->def.detailed_name = type_name + " " + std::move(qualified_name);
+      }
 
       var->def.is_local =
           !decl->semanticContainer ||
@@ -1258,11 +1268,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
 
-      type->def.hover = type->def.detailed_name;
-
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration line,
       // with spelling name replaced with qualified name.
       // TODO Think how to display multi-line declaration like `typedef struct { ... } foo;`
+      // https://github.com/jacobdufault/cquery/issues/29
       if (extent.end.line - extent.start.line <
           kMaxLinesDisplayTypeAliasDeclarations) {
         FileContentsWithOffsets& fc = param->file_contents[db->path];
@@ -1312,7 +1321,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
-      type->def.hover = type->def.detailed_name;
       // }
 
       if (decl->isDefinition) {
@@ -1445,7 +1453,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           std::string type_name = ToString(
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
           var->def.detailed_name = type_name + " " + var->def.short_name;
-          var->def.hover = type_name;
           var->def.is_local = false;
           UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
           AddDeclInitializerUsages(db, referenced.cx_cursor);

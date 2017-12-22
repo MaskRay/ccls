@@ -7,20 +7,29 @@ std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
-      if (type.def)
-        return type.def->hover;
+      if (type.def) {
+        if (type.def->hover)
+          return *type.def->hover;
+        return type.def->detailed_name;
+      }
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[symbol.idx];
-      if (func.def)
-        return func.def->hover;
+      if (func.def) {
+        if (func.def->hover)
+          return *func.def->hover;
+        return func.def->detailed_name;
+      }
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
-      if (var.def)
-        return var.def->hover;
+      if (var.def) {
+        if (var.def->hover)
+          return *var.def->hover;
+        return var.def->detailed_name;
+      }
       break;
     }
     case SymbolKind::File:
