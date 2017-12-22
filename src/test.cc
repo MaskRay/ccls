@@ -5,6 +5,8 @@
 #include "serializer.h"
 #include "utils.h"
 
+#include <loguru.hpp>
+
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)
     std::cout << str << std::endl;
@@ -116,6 +118,12 @@ void RunIndexTests(const std::string& filter_path) {
 
   for (std::string path : GetFilesInFolder("tests", true /*recursive*/,
                                            true /*add_folder_to_path*/)) {
+    if (!RunObjectiveCIndexTests() && EndsWithAny(path, {".m", ".mm"})) {
+      LOG_S(INFO) << "Skipping \"" << path
+                  << "\" since this platform does not support running "
+                     "Objective-C tests.";
+    }
+
     float memory_before = GetProcessMemoryUsedInMb();
     float memory_after = -1.;
 

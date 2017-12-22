@@ -356,4 +356,12 @@ void FreeUnusedMemory() {
 #endif
 }
 
+bool RunObjectiveCIndexTests() {
+#if defined(__APPLE__)
+  return true;
+#else
+  return false;
+#endif
+}
+
 #endif

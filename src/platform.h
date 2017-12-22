@@ -55,3 +55,6 @@ std::vector<std::string> GetPlatformClangArguments();
 
 // Free any unused memory and return it to the system.
 void FreeUnusedMemory();
+
+// If true objective-c index tests will be run.
+bool RunObjectiveCIndexTests();

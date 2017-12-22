@@ -248,4 +248,8 @@ std::vector<std::string> GetPlatformClangArguments() {
 
 void FreeUnusedMemory() {}
 
+bool RunObjectiveCIndexTests() {
+  return false;
+}
+
 #endif
