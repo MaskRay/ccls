@@ -335,8 +335,13 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
     for (unsigned i = 0; i < num_diagnostics; ++i) {
       optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(
           clang_getDiagnostic((*tu)->cx_tu, i), session->file.filename);
-      if (diagnostic)
+      if (diagnostic) {
+        // "too many errors emitted, stopping now [-ferror-limit=]" has line = 0
+        // and got subtracted by 1 after conversion to lsDiagnostic
+        if (diagnostic->range.start.line == -1)
+          break;
         ls_diagnostics.push_back(*diagnostic);
+      }
     }
     manager->on_diagnostic_(session->file.filename, ls_diagnostics);
   }
@@ -504,8 +509,13 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         CXDiagnostic cx_diag = clang_getDiagnostic(session->tu->cx_tu, i);
         optional<lsDiagnostic> diagnostic =
             BuildAndDisposeDiagnostic(cx_diag, path);
-        if (diagnostic)
+        if (diagnostic) {
+          // "too many errors emitted, stopping now [-ferror-limit=]" has line = 0
+          // and got subtracted by 1 after conversion to lsDiagnostic
+          if (diagnostic->range.start.line == -1)
+            break;
           ls_diagnostics.push_back(*diagnostic);
+        }
       }
       completion_manager->on_diagnostic_(session->file.filename,
                                          ls_diagnostics);
