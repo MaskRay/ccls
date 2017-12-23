@@ -53,7 +53,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@S@Foo@F@~Foo#",
       "short_name": "~Foo",
-      "detailed_name": "void () noexcept Foo::~Foo",
+      "detailed_name": "void Foo::~Foo() noexcept",
       "declarations": [],
       "definition_spelling": "4:3-4:7",
       "definition_extent": "4:3-4:12",

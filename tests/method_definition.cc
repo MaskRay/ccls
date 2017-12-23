@@ -29,7 +29,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@S@Foo@F@foo#1",
       "short_name": "foo",
-      "detailed_name": "void () const Foo::foo",
+      "detailed_name": "void Foo::foo() const",
       "declarations": [{
           "spelling": "2:8-2:11",
           "extent": "2:3-2:19",
