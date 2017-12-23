@@ -59,11 +59,6 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             SymbolIdx symbol,
                                             bool use_short_name);
 
-lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
-                                   WorkingFiles* working_files,
-                                   const std::vector<QueryLocation>& locations,
-                                   const std::string& new_text);
-
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position);

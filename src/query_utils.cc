@@ -470,51 +470,6 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
   return nullopt;
 }
 
-lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
-                                   WorkingFiles* working_files,
-                                   const std::vector<QueryLocation>& locations,
-                                   const std::string& new_text) {
-  std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
-
-  for (auto& location : locations) {
-    optional<lsLocation> ls_location =
-        GetLsLocation(db, working_files, location);
-    if (!ls_location)
-      continue;
-
-    if (path_to_edit.find(location.path) == path_to_edit.end()) {
-      path_to_edit[location.path] = lsTextDocumentEdit();
-
-      QueryFile& file = db->files[location.path.id];
-      if (!file.def)
-        continue;
-
-      const std::string& path = file.def->path;
-      path_to_edit[location.path].textDocument.uri =
-          lsDocumentUri::FromPath(path);
-
-      WorkingFile* working_file = working_files->GetFileByFilename(path);
-      if (working_file)
-        path_to_edit[location.path].textDocument.version =
-            working_file->version;
-    }
-
-    lsTextEdit edit;
-    edit.range = ls_location->range;
-    edit.newText = new_text;
-
-    // vscode complains if we submit overlapping text edits.
-    auto& edits = path_to_edit[location.path].edits;
-    if (std::find(edits.begin(), edits.end(), edit) == edits.end())
-      edits.push_back(edit);
-  }
-
-  lsWorkspaceEdit edit;
-  for (const auto& changes : path_to_edit)
-    edit.documentChanges.push_back(changes.second);
-  return edit;
-}
-
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position) {
