@@ -3,6 +3,8 @@
 #include <clang-c/Index.h>
 
 // Simple RAII wrapper about CXIndex.
+// Note: building a ClangIndex instance acquires a global lock, since libclang
+// API does not appear to be thread-safe here.
 class ClangIndex {
  public:
   ClangIndex();

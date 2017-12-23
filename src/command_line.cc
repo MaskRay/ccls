@@ -505,14 +505,12 @@ WorkThread::Result IndexMain(Config* config,
                              QueueManager* queue) {
   EmitProgress(config, queue);
 
-  // TODO: dispose of index after it is not used for a while.
+  // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndex index;
 
   // TODO: process all off IndexMain_DoIndex before calling
-  // IndexMain_DoCreateIndexUpdate for
-  //       better icache behavior. We need to have some threads spinning on
-  //       both though
-  //       otherwise memory usage will get bad.
+  // IndexMain_DoCreateIndexUpdate for better icache behavior. We need to have
+  // some threads spinning on both though otherwise memory usage will get bad.
 
   // We need to make sure to run both IndexMain_DoParse and
   // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
