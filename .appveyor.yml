@@ -14,12 +14,10 @@ build_script:
   - ps: |
       $dir = "cquery-${env:appveyor_build_version}-win64"
       cd C:\projects\cquery
-      mkdir "${dir}"
-      mkdir "${dir}\build"
-      mkdir "${dir}\build\release"
-      mkdir "${dir}\build\release\bin"
+      mkdir "${dir}\build\release\bin" -ea 0
+      mkdir "${dir}\build\release\lib\LLVM-4.0.0-win64\lib\clang\4.0.0\"
       copy "build\release\bin\*" "${dir}\build\release\bin"
-      copy -recurse "clang_resource_dir" "${dir}\clang_resource_dir"
+      copy -recurse "build\LLVM-4.0.0-win64\lib\clang\4.0.0\include" "${dir}\build\release\lib\LLVM-4.0.0-win64\lib\clang\4.0.0\"
       7z a -tzip "C:\projects\cquery\${dir}.zip" "${dir}"
 
 artifacts:

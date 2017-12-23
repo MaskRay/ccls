@@ -227,9 +227,6 @@ def build(bld):
   elif sys.platform == 'darwin':
     lib.append('pthread')
 
-  clang_tarball_name = None
-  # Fallback for windows
-  default_resource_directory = os.path.join(os.getcwd(), 'clang_resource_dir')
   if bld.env['use_system_clang']:
     if sys.platform == 'darwin':
       rpath = bld.env['LIBPATH_clang'][0]
@@ -242,27 +239,28 @@ def build(bld):
     if match:
         default_resource_directory = match.group(1)
     else:
-        print("Failed to found system clang resource directory. Falling back.")
-  elif sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
-    clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
-    rpath = '$ORIGIN/../lib/' + clang_tarball_name + '/lib'
-    default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
-  elif sys.platform == 'darwin':
-    clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
-    rpath = '@loader_path/../lib/' + clang_tarball_name + '/lib'
-    default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
-  elif sys.platform == 'win32':
-    rpath = [] # Unsupported
-    name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
-    # Poor Windows users' RPATH
-    out_clang_dll = os.path.join(bld.path.get_bld().abspath(), 'bin', 'libclang.dll')
-    try:
-      os.makedirs(os.path.dirname(out_clang_dll))
-      os.symlink(os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll'), out_clang_dll)
-    except OSError:
-      pass
+        bld.fatal("Failed to found system clang resource directory.")
+
   else:
-    rpath = bld.env['LIBPATH_clang']
+    clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
+    default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
+
+    if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
+      rpath = '$ORIGIN/../lib/' + clang_tarball_name + '/lib'
+    elif sys.platform == 'darwin':
+      rpath = '@loader_path/../lib/' + clang_tarball_name + '/lib'
+    elif sys.platform == 'win32':
+      rpath = [] # Unsupported
+      name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
+      # Poor Windows users' RPATH
+      out_clang_dll = os.path.join(bld.path.get_bld().abspath(), 'bin', 'libclang.dll')
+      try:
+        os.makedirs(os.path.dirname(out_clang_dll))
+        os.symlink(os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll'), out_clang_dll)
+      except OSError:
+        pass
+    else:
+      rpath = bld.env['LIBPATH_clang']
   bld.program(
       source=cc_files,
       use='clang',
@@ -279,7 +277,7 @@ def build(bld):
       rpath=rpath,
       target='bin/cquery')
 
-  if clang_tarball_name is not None:
+  if not bld.env['use_system_clang'] and sys.platform != 'win32':
     bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
     if bld.cmd == 'install':
       # TODO This may be cached and cannot be re-triggered. Use proper shell escape.
