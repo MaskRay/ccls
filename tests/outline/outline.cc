@@ -58,6 +58,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["4:7-4:8"]
     }, {
       "id": 1,
@@ -70,6 +72,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["5:7-5:8"]
     }, {
       "id": 2,
@@ -83,6 +87,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["6:20-6:26"]
     }]
 }

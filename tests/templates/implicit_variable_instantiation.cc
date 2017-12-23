@@ -61,6 +61,8 @@ OUTPUT:
       "declaring_type": 1,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": true,
       "uses": ["6:30-6:40", "10:37-10:47", "13:26-13:36", "14:27-14:37"]
     }, {
       "id": 1,
@@ -71,6 +73,8 @@ OUTPUT:
       "definition_extent": "13:3-13:36",
       "is_local": false,
       "is_macro": false,
+      "is_global": true,
+      "is_member": false,
       "uses": ["13:7-13:10"]
     }, {
       "id": 2,
@@ -81,6 +85,8 @@ OUTPUT:
       "definition_extent": "14:3-14:37",
       "is_local": false,
       "is_macro": false,
+      "is_global": true,
+      "is_member": false,
       "uses": ["14:7-14:11"]
     }]
 }

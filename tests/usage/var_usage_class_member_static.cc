@@ -70,6 +70,8 @@ OUTPUT:
       "declaration": "2:14-2:15",
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["2:14-2:15", "8:15-8:16"]
     }]
 }

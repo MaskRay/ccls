@@ -53,7 +53,7 @@ Range ResolveExtent(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
   return Resolve(cx_range, cx_file);
 }
 
-bool IsLocalSemanticContainer(CXCursorKind kind) {
+bool IsScopeSemanticContainer(CXCursorKind kind) {
   switch (kind) {
     case CXCursor_Namespace:
     case CXCursor_TranslationUnit:
@@ -91,7 +91,7 @@ struct NamespaceHelper {
     std::vector<ClangCursor> namespaces;
     std::string qualifier;
     while (cursor.get_kind() != CXCursor_TranslationUnit &&
-           !IsLocalSemanticContainer(cursor.get_kind())) {
+           !IsScopeSemanticContainer(cursor.get_kind())) {
       auto it = container_cursor_to_qualified_name.find(cursor);
       if (it != container_cursor_to_qualified_name.end()) {
         qualifier = it->second;
@@ -600,6 +600,19 @@ optional<ClangCursor> FindType(ClangCursor cursor) {
   return result;
 }
 
+bool IsGlobalContainer(const CXIdxContainerInfo* container) {
+    if (!container)
+      return false;
+
+    switch (container->cursor.kind) {
+    case CXCursor_Namespace:
+    case CXCursor_TranslationUnit:
+      return true;
+    default:
+      return false;
+    }
+}
+
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {
   if (!container)
     return false;
@@ -1046,9 +1059,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           var->def.detailed_name = type_name + " " + std::move(qualified_name);
       }
 
-      var->def.is_local =
-          !decl->semanticContainer ||
-          IsLocalSemanticContainer(decl->semanticContainer->cursor.kind);
+      bool is_system = clang_Location_isInSystemHeader(
+                         clang_indexLoc_getCXSourceLocation(decl->loc));
+      var->def.is_global =
+          !is_system && IsGlobalContainer(decl->semanticContainer);
+      var->def.is_member =
+          !is_system && IsTypeDefinition(decl->semanticContainer);
+      var->def.is_local = !is_system && !var->def.is_global && !var->def.is_member;
 
       //}
 
@@ -1465,6 +1482,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
           var->def.detailed_name = type_name + " " + var->def.short_name;
           var->def.is_local = false;
+          var->def.is_member = true;
           UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
           AddDeclInitializerUsages(db, referenced.cx_cursor);
           // TODO Use proper semantic_container and lexical_container.

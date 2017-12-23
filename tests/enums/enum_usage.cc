@@ -37,6 +37,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": true,
       "uses": ["2:3-2:4", "6:14-6:15"]
     }, {
       "id": 1,
@@ -49,6 +51,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": true,
       "uses": ["3:3-3:4"]
     }, {
       "id": 2,
@@ -60,6 +64,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": true,
+      "is_member": false,
       "uses": ["6:5-6:6"]
     }]
 }

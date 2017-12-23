@@ -50,6 +50,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["3:8-3:9"]
     }, {
       "id": 1,
@@ -61,6 +63,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["4:9-4:10"]
     }]
 }

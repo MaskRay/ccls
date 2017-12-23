@@ -37,6 +37,8 @@ OUTPUT: funky_enum.h
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["4:1-4:2"]
     }, {
       "id": 1,
@@ -50,6 +52,8 @@ OUTPUT: funky_enum.h
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["5:1-5:2"]
     }, {
       "id": 2,
@@ -63,6 +67,8 @@ OUTPUT: funky_enum.h
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["6:1-6:2"]
     }]
 }

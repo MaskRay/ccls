@@ -54,6 +54,8 @@ OUTPUT:
       "declaring_type": 1,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": true,
       "uses": ["4:28-4:38", "7:23-7:33"]
     }]
 }

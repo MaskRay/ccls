@@ -50,6 +50,8 @@ OUTPUT:
       "definition_extent": "5:9-5:14",
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["5:13-5:14"]
     }, {
       "id": 1,
@@ -60,6 +62,8 @@ OUTPUT:
       "definition_extent": "5:16-5:21",
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["5:20-5:21"]
     }]
 }

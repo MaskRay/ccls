@@ -52,6 +52,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["6:7-6:8"]
     }]
 }

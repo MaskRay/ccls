@@ -210,6 +210,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["15:43-15:44"]
     }, {
       "id": 1,
@@ -221,6 +223,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["54:39-54:44"]
     }]
 }

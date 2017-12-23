@@ -119,6 +119,8 @@ OUTPUT: static_function_in_type.cc
       "variable_type": 1,
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["5:29-5:30"]
     }]
 }

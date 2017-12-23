@@ -102,6 +102,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["7:15-7:24"]
     }, {
       "id": 1,
@@ -115,6 +117,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["8:15-8:23"]
     }, {
       "id": 2,
@@ -128,6 +132,8 @@ OUTPUT:
       "declaring_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["9:28-9:32"]
     }]
 }

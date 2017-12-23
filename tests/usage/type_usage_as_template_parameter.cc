@@ -70,6 +70,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["6:25-6:27"]
     }, {
       "id": 1,
@@ -81,6 +83,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["7:22-7:24"]
     }, {
       "id": 2,
@@ -92,6 +96,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["10:18-10:23"]
     }]
 }

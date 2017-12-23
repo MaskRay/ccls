@@ -114,6 +114,8 @@ OUTPUT: header.h
       "declaring_type": 4,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["15:13-15:14"]
     }, {
       "id": 1,
@@ -127,6 +129,8 @@ OUTPUT: header.h
       "declaring_type": 4,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["15:16-15:17"]
     }, {
       "id": 2,
@@ -140,6 +144,8 @@ OUTPUT: header.h
       "declaring_type": 4,
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["15:19-15:20"]
     }, {
       "id": 3,
@@ -151,6 +157,8 @@ OUTPUT: header.h
       "definition_extent": "17:1-17:9",
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["17:5-17:9"]
     }, {
       "id": 4,
@@ -162,6 +170,8 @@ OUTPUT: header.h
       "definition_extent": "18:1-18:16",
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["18:12-18:16"]
     }]
 }

@@ -53,6 +53,8 @@ OUTPUT:
       "definition_extent": "8:1-8:10",
       "is_local": false,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["8:5-8:6"]
     }, {
       "id": 1,
@@ -64,6 +66,8 @@ OUTPUT:
       "definition_extent": "1:9-1:12",
       "is_local": false,
       "is_macro": true,
+      "is_global": false,
+      "is_member": false,
       "uses": ["1:9-1:10", "8:9-8:10"]
     }, {
       "id": 2,
@@ -75,6 +79,8 @@ OUTPUT:
       "definition_extent": "2:9-2:46",
       "is_local": false,
       "is_macro": true,
+      "is_global": false,
+      "is_member": false,
       "uses": ["2:9-2:17", "5:3-5:11"]
     }]
 }

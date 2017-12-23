@@ -31,6 +31,8 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
+      "is_global": true,
+      "is_member": false,
       "uses": ["3:10-3:11"]
     }]
 }

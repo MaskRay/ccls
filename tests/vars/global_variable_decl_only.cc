@@ -14,6 +14,8 @@ OUTPUT:
       "declaration": "1:12-1:18",
       "is_local": false,
       "is_macro": false,
+      "is_global": true,
+      "is_member": false,
       "uses": ["1:12-1:18"]
     }]
 }

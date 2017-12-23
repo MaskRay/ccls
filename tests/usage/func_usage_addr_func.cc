@@ -68,6 +68,8 @@ OUTPUT:
       "definition_extent": "6:3-6:22",
       "is_local": true,
       "is_macro": false,
+      "is_global": false,
+      "is_member": false,
       "uses": ["6:10-6:11"]
     }]
 }

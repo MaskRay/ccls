@@ -379,6 +379,10 @@ struct VarDefDefinitionData {
   bool is_local = false;
   // Is this a macro, ie, #define FOO?
   bool is_macro = false;
+  // Is this a global variable?
+  bool is_global = false;
+  // Is this a member variable of struct/union/class/enum?
+  bool is_member = false;
 
   bool operator==(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
@@ -414,6 +418,8 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(is_local);
   REFLECT_MEMBER(is_macro);
+  REFLECT_MEMBER(is_global);
+  REFLECT_MEMBER(is_member);
   REFLECT_MEMBER_END();
 }
 
