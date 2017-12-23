@@ -181,3 +181,6 @@ float GetProcessMemoryUsedInMb();
 std::string FormatMicroseconds(long long microseconds);
 
 std::string GetDefaultResourceDirectory();
+
+// Makes sure all newlines in |output| are in \r\n format.
+std::string UpdateToRnNewlines(std::string output);

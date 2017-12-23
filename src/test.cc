@@ -19,7 +19,8 @@ std::string ToString(const rapidjson::Document& document) {
 
   buffer.Clear();
   document.Accept(writer);
-  return buffer.GetString();
+  std::string output = buffer.GetString();
+  return UpdateToRnNewlines(output);
 }
 
 void DiffDocuments(std::string path,
@@ -110,7 +111,16 @@ IndexFile* FindDbForPathEnding(
 void RunIndexTests(const std::string& filter_path) {
   SetTestOutputMode();
 
-  // TODO: Assert that we need to be on clang >= 3.9.1
+  // Index tests change based on the version of clang used.
+  static constexpr const char* kRequiredClangVersion =
+      "clang version 4.0.0 (tags/RELEASE_400/final)";
+  if (GetClangVersion() != kRequiredClangVersion) {
+    std::cerr << "Index tests must be run using clang version \""
+              << kRequiredClangVersion << "\" (cquery is running with \""
+              << GetClangVersion() << "\")" << std::endl;
+    exit(1);
+  }
+
   bool update_all = false;
   ClangIndex index;
 
@@ -230,8 +240,9 @@ void RunIndexTests(const std::string& filter_path) {
             update_all = true;
 
           if (update_all || c == 'u') {
-            UpdateTestExpectation(path, expected_output,
-                                  ToString(actual) + "\n");
+            // Note: we use |entry.second| instead of |expected_output| because
+            // |expected_output| has had text replacements applied.
+            UpdateTestExpectation(path, entry.second, ToString(actual) + "\n");
           }
         }
       }

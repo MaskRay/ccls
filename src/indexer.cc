@@ -1868,3 +1868,7 @@ void ClangSanityCheck() {
   clang_disposeTranslationUnit(tu);
   clang_disposeIndex(index);
 }
+
+std::string GetClangVersion() {
+  return ToString(clang_getClangVersion());
+}

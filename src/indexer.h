@@ -559,3 +559,5 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
 void IndexInit();
 
 void ClangSanityCheck();
+
+std::string GetClangVersion();
