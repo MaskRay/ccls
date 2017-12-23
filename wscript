@@ -256,7 +256,13 @@ def build(bld):
       out_clang_dll = os.path.join(bld.path.get_bld().abspath(), 'bin', 'libclang.dll')
       try:
         os.makedirs(os.path.dirname(out_clang_dll))
-        os.symlink(os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll'), out_clang_dll)
+      except OSError:
+        pass
+      try:
+        dst = os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll')
+        os.symlink(dst, out_clang_dll)
+      except NotImplementedError:
+        shutil.copy(dst, out_clang_dll)
       except OSError:
         pass
     else:
