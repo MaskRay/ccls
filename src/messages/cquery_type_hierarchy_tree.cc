@@ -113,10 +113,10 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
     Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
     parent_entry.name = parent_func.def->detailed_name;
     if (parent_func.def->definition_spelling)
-      parent_entry.location =
-      GetLsLocation(db, working_files, *parent_func.def->definition_spelling);
-    parent_entry.children = BuildParentInheritanceHierarchyForFunc(
-      db, working_files, parent_id);
+      parent_entry.location = GetLsLocation(
+          db, working_files, *parent_func.def->definition_spelling);
+    parent_entry.children =
+        BuildParentInheritanceHierarchyForFunc(db, working_files, parent_id);
 
     entries.push_back(parent_entry);
   }

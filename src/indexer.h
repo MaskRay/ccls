@@ -178,8 +178,7 @@ struct TypeDefDefinitionData {
   bool operator==(
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return short_name == other.short_name &&
-           detailed_name == other.detailed_name &&
-           hover == other.hover &&
+           detailed_name == other.detailed_name && hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            alias_of == other.alias_of && parents == other.parents &&
@@ -270,8 +269,7 @@ struct FuncDefDefinitionData {
       const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
       const {
     return short_name == other.short_name &&
-           detailed_name == other.detailed_name &&
-           hover == other.hover &&
+           detailed_name == other.detailed_name && hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            declaring_type == other.declaring_type && base == other.base &&
@@ -387,8 +385,7 @@ struct VarDefDefinitionData {
   bool operator==(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return short_name == other.short_name &&
-           detailed_name == other.detailed_name &&
-           hover == other.hover &&
+           detailed_name == other.detailed_name && hover == other.hover &&
            declaration == other.declaration &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&

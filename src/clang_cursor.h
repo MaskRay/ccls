@@ -93,4 +93,4 @@ struct hash<ClangCursor> {
     return clang_hashCursor(x.cx_cursor);
   }
 };
-}
+}  // namespace std

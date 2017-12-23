@@ -142,13 +142,13 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_ObjCClassRef:
       return lsCompletionItemKind::Reference;
 
-      // return lsCompletionItemKind::Property;
-      // return lsCompletionItemKind::Unit;
-      // return lsCompletionItemKind::Value;
-      // return lsCompletionItemKind::Keyword;
-      // return lsCompletionItemKind::Snippet;
-      // return lsCompletionItemKind::Color;
-      // return lsCompletionItemKind::File;
+    // return lsCompletionItemKind::Property;
+    // return lsCompletionItemKind::Unit;
+    // return lsCompletionItemKind::Value;
+    // return lsCompletionItemKind::Keyword;
+    // return lsCompletionItemKind::Snippet;
+    // return lsCompletionItemKind::Color;
+    // return lsCompletionItemKind::File;
 
     case CXCursor_NotImplemented:
       return lsCompletionItemKind::Text;

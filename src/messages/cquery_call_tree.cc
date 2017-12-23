@@ -75,9 +75,9 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
   if (!root_func.def)
     return {};
 
-  auto format_location =
-      [&](const lsLocation& location,
-          optional<QueryTypeId> declaring_type) -> std::string {
+  auto format_location = [&](
+      const lsLocation& location,
+      optional<QueryTypeId> declaring_type) -> std::string {
     std::string base;
 
     if (declaring_type) {

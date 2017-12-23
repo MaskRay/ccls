@@ -52,15 +52,10 @@ static std::vector<std::string> kBlacklistMulti = {
 
 // Blacklisted flags which are always removed from the command line.
 static std::vector<std::string> kBlacklist = {
-    "-c",
-    "-MP",
-    "-MD",
-    "-MMD",
-    "--fcolor-diagnostics",
+    "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics",
 
     // This strips path-like args but is a bit hacky.
-    "/",
-    "..",
+    "/", "..",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
@@ -204,7 +199,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       else if (*source_file_type == "c++")
         result.args.push_back("-std=c++11");
     }
-
   }
 
   // Add -resource-dir so clang can correctly resolve system includes like
@@ -486,19 +480,21 @@ TEST_SUITE("Project") {
   TEST_CASE("strip meta-compiler invocations") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
-        /* expected */ {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
-                        "-resource-dir=/w/resource_dir/",
-                        "-Wno-unknown-warning-option"});
+        /* expected */
+        {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
 
-    CheckFlags(/* raw */ {"goma", "clang"},
-               /* expected */ {"clang", "-xc++", "-std=c++11",
-                               "-resource-dir=/w/resource_dir/",
-                               "-Wno-unknown-warning-option"});
+    CheckFlags(
+        /* raw */ {"goma", "clang"},
+        /* expected */
+        {"clang", "-xc++", "-std=c++11", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
 
-    CheckFlags(/* raw */ {"goma", "clang", "--foo"},
-               /* expected */ {"clang", "--foo", "-xc++", "-std=c++11",
-                               "-resource-dir=/w/resource_dir/",
-                               "-Wno-unknown-warning-option"});
+    CheckFlags(
+        /* raw */ {"goma", "clang", "--foo"},
+        /* expected */
+        {"clang", "--foo", "-xc++", "-std=c++11",
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
   }
 
   // FIXME: Fix this test.
@@ -512,11 +508,12 @@ TEST_SUITE("Project") {
   }
 
   TEST_CASE("Implied binary") {
-    CheckFlags("/home/user", "/home/user/foo/bar.cc",
+    CheckFlags(
+        "/home/user", "/home/user/foo/bar.cc",
         /* raw */ {"-DDONT_IGNORE_ME"},
-        /* expected */ {"clang++", "-DDONT_IGNORE_ME", "-xc++", "-std=c++11",
-                        "-resource-dir=/w/resource_dir/",
-                        "-Wno-unknown-warning-option"});
+        /* expected */
+        {"clang++", "-DDONT_IGNORE_ME", "-xc++", "-std=c++11",
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what

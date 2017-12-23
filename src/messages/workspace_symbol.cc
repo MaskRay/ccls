@@ -11,7 +11,8 @@ void InsertSymbolIntoResult(QueryDatabase* db,
                             WorkingFiles* working_files,
                             SymbolIdx symbol,
                             std::vector<lsSymbolInformation>* result) {
-  optional<lsSymbolInformation> info = GetSymbolInfo(db, working_files, symbol, false /*use_short_name*/);
+  optional<lsSymbolInformation> info =
+      GetSymbolInfo(db, working_files, symbol, false /*use_short_name*/);
   if (!info)
     return;
 

@@ -33,11 +33,11 @@
 #include <sys/mman.h>
 
 #if defined(__FreeBSD__)
-# include <sys/param.h>  // MAXPATHLEN
-# include <sys/sysctl.h>  // sysctl
+#include <sys/param.h>   // MAXPATHLEN
+#include <sys/sysctl.h>  // sysctl
 #elif defined(__linux__)
-# include <malloc.h>
-# include <sys/prctl.h>
+#include <malloc.h>
+#include <sys/prctl.h>
 #endif
 
 namespace {
@@ -211,22 +211,23 @@ std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
 void PlatformInit() {}
 
 #ifdef __APPLE__
-extern "C" int _NSGetExecutablePath(char* buf,uint32_t* bufsize);
+extern "C" int _NSGetExecutablePath(char* buf, uint32_t* bufsize);
 #endif
 
-// See https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
+// See
+// https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
 std::string GetExecutablePath() {
 #ifdef __APPLE__
   uint32_t size = 0;
   _NSGetExecutablePath(nullptr, &size);
-  char *buffer = new char[size];
+  char* buffer = new char[size];
   _NSGetExecutablePath(buffer, &size);
   std::string result(buffer);
   delete[] buffer;
   return result;
 #elif defined(__FreeBSD__)
   static const int name[] = {
-    CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1,
+      CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1,
   };
   char path[MAXPATHLEN];
   size_t len = sizeof(path);

@@ -2,7 +2,7 @@
 #include "query_utils.h"
 
 namespace {
-  
+
 std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
@@ -60,7 +60,7 @@ struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   optional<Result> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
-void Reflect(Writer& visitor, Out_TextDocumentHover& value) {     
+void Reflect(Writer& visitor, Out_TextDocumentHover& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
   REFLECT_MEMBER(id);

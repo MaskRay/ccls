@@ -24,9 +24,8 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
-std::vector<QueryLocation> GetGotoDefinitionTargets(
-    QueryDatabase* db,
-    const SymbolIdx& symbol) {
+std::vector<QueryLocation> GetGotoDefinitionTargets(QueryDatabase* db,
+                                                    const SymbolIdx& symbol) {
   switch (symbol.kind) {
     // Returns GetDeclarationsOfSymbolForGotoDefinition and
     // variable type definition.

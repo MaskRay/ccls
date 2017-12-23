@@ -127,7 +127,8 @@ void PlatformInit() {
   _setmode(_fileno(stdin), O_BINARY);
 }
 
-// See https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
+// See
+// https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
 std::string GetExecutablePath() {
   char result[MAX_PATH] = {0};
   GetModuleFileName(NULL, result, MAX_PATH);
@@ -233,6 +234,7 @@ std::vector<std::string> GetPlatformClangArguments() {
   //   $ clang++ -E -x c++ - -v
   //
 
+  // clang-format off
   return {
     "-isystem","C:/Program Files/Microsoft Visual Studio 10.0/VC/include",
     "-isystem","C:/Program Files/Microsoft Visual Studio 9.0/VC/include",
@@ -244,6 +246,7 @@ std::vector<std::string> GetPlatformClangArguments() {
     "-isystem","C:/Program Files/LLVM/lib/clang/4.0.0/include",
     "-fms-extensions", "-fms-compatibility", "-fms-compatibility-version=18", "-fdelayed-template-parsing"
   };
+  // clang-format on
 }
 
 void FreeUnusedMemory() {}

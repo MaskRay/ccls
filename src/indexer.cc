@@ -76,8 +76,7 @@ struct NamespaceHelper {
 
   void RegisterQualifiedName(std::string usr,
                              const CXIdxContainerInfo* container,
-                             std::string qualified_name) {
-  }
+                             std::string qualified_name) {}
 
   std::string QualifiedName(const CXIdxContainerInfo* container,
                             std::string unqualified_name) {
@@ -100,7 +99,7 @@ struct NamespaceHelper {
       namespaces.push_back(cursor);
       cursor = clang_getCursorSemanticParent(cursor.cx_cursor);
     }
-    for (size_t i = namespaces.size(); i > 0; ) {
+    for (size_t i = namespaces.size(); i > 0;) {
       i--;
       std::string name = namespaces[i].get_spelling();
       // Empty name indicates unnamed namespace, anonymous struct, anonymous
@@ -266,8 +265,7 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
 
       // Capture file contents in |param->file_contents| if it was not specified
       // at the start of indexing.
-      if (db &&
-          !param->file_contents.count(file_name)) {
+      if (db && !param->file_contents.count(file_name)) {
         optional<std::string> content = ReadContent(file_name);
         if (content)
           param->file_contents.emplace(file_name, *content);
@@ -601,16 +599,16 @@ optional<ClangCursor> FindType(ClangCursor cursor) {
 }
 
 bool IsGlobalContainer(const CXIdxContainerInfo* container) {
-    if (!container)
-      return false;
+  if (!container)
+    return false;
 
-    switch (container->cursor.kind) {
+  switch (container->cursor.kind) {
     case CXCursor_Namespace:
     case CXCursor_TranslationUnit:
       return true;
     default:
       return false;
-    }
+  }
 }
 
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {
@@ -1060,12 +1058,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       }
 
       bool is_system = clang_Location_isInSystemHeader(
-                         clang_indexLoc_getCXSourceLocation(decl->loc));
+          clang_indexLoc_getCXSourceLocation(decl->loc));
       var->def.is_global =
           !is_system && IsGlobalContainer(decl->semanticContainer);
       var->def.is_member =
           !is_system && IsTypeDefinition(decl->semanticContainer);
-      var->def.is_local = !is_system && !var->def.is_global && !var->def.is_member;
+      var->def.is_local =
+          !is_system && !var->def.is_global && !var->def.is_member;
 
       //}
 
@@ -1207,7 +1206,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           size_t offset = 0;
           if (type_desc.back() == ')') {
             size_t balance = 0;
-            for (offset = type_desc.size(); offset; ) {
+            for (offset = type_desc.size(); offset;) {
               offset--;
               if (type_desc[offset] == ')')
                 balance++;
@@ -1296,10 +1295,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
 
-      // For Typedef/CXXTypeAlias spanning a few lines, display the declaration line,
-      // with spelling name replaced with qualified name.
-      // TODO Think how to display multi-line declaration like `typedef struct { ... } foo;`
-      // https://github.com/jacobdufault/cquery/issues/29
+      // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
+      // line, with spelling name replaced with qualified name.
+      // TODO Think how to display multi-line declaration like `typedef struct {
+      // ... } foo;` https://github.com/jacobdufault/cquery/issues/29
       if (extent.end.line - extent.start.line <
           kMaxLinesDisplayTypeAliasDeclarations) {
         FileContentsWithOffsets& fc = param->file_contents[db->path];
@@ -1468,15 +1467,15 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // as lambdas cannot be split across files.
       if (var->def.short_name.empty()) {
         CXFile referenced_file;
-        Range spelling = ResolveSpelling(referenced.cx_cursor, &referenced_file);
+        Range spelling =
+            ResolveSpelling(referenced.cx_cursor, &referenced_file);
         if (file == referenced_file) {
           var->def.definition_spelling = spelling;
           var->def.definition_extent = ResolveExtent(referenced.cx_cursor);
 
-          // TODO Some of the logic here duplicates CXIdxEntity_Variable branch of
-          // OnIndexDeclaration.
-          // But there `decl` is of type CXIdxDeclInfo and has more information,
-          // thus not easy to reuse the code.
+          // TODO Some of the logic here duplicates CXIdxEntity_Variable branch
+          // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
+          // and has more information, thus not easy to reuse the code.
           var->def.short_name = referenced.get_spelling();
           std::string type_name = ToString(
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
@@ -1679,7 +1678,8 @@ optional<int> FileContentsWithOffsets::ToOffset(Position p) const {
   return nullopt;
 }
 
-optional<std::string> FileContentsWithOffsets::ContentsInRange(Range range) const {
+optional<std::string> FileContentsWithOffsets::ContentsInRange(
+    Range range) const {
   optional<int> start_offset = ToOffset(range.start),
                 end_offset = ToOffset(range.end);
   if (start_offset && end_offset && *start_offset < *end_offset)
@@ -1838,14 +1838,12 @@ void ClangSanityCheck() {
                                 void* reserved) -> CXIdxClientFile {
     return nullptr;
   };
-  callback.ppIncludedFile =
-      [](CXClientData client_data,
-         const CXIdxIncludedFileInfo* file) -> CXIdxClientFile {
-    return nullptr;
-  };
-  callback.importedASTFile =
-      [](CXClientData client_data,
-         const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
+  callback.ppIncludedFile = [](
+      CXClientData client_data,
+      const CXIdxIncludedFileInfo* file) -> CXIdxClientFile { return nullptr; };
+  callback.importedASTFile = [](
+      CXClientData client_data,
+      const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
     return nullptr;
   };
   callback.startedTranslationUnit = [](CXClientData client_data,

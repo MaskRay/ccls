@@ -202,13 +202,14 @@ struct TextDocumentCodeLensHandler
 
           // "Base"
           if (func.def->base.size() == 1) {
-            optional<QueryLocation> base_loc = GetDefinitionSpellingOfSymbol(db, func.def->base[0]);
+            optional<QueryLocation> base_loc =
+                GetDefinitionSpellingOfSymbol(db, func.def->base[0]);
             if (base_loc) {
               optional<lsLocation> ls_base =
-                GetLsLocation(db, working_files, *base_loc);
+                  GetLsLocation(db, working_files, *base_loc);
               if (ls_base) {
                 optional<lsRange> range =
-                  GetLsRange(common.working_file, ref.loc.range);
+                    GetLsRange(common.working_file, ref.loc.range);
                 if (range) {
                   TCodeLens code_lens;
                   code_lens.range = *range;
@@ -223,10 +224,9 @@ struct TextDocumentCodeLensHandler
               }
             }
           } else {
-            AddCodeLens("base", "base", &common,
-              ref.loc.OffsetStartColumn(1),
-              ToQueryLocation(db, func.def->base), nullopt,
-              false /*force_display*/);
+            AddCodeLens("base", "base", &common, ref.loc.OffsetStartColumn(1),
+                        ToQueryLocation(db, func.def->base), nullopt,
+                        false /*force_display*/);
           }
 
           break;
