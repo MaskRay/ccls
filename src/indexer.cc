@@ -1203,16 +1203,23 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             ns->QualifiedName(decl->semanticContainer, func->def.short_name);
         std::string type_desc = decl_cursor.get_type_description();
         {
-          size_t offset = 0;
-          if (type_desc.back() == ')') {
-            size_t balance = 0;
-            for (offset = type_desc.size(); offset;) {
-              offset--;
-              if (type_desc[offset] == ')')
-                balance++;
-              else if (type_desc[offset] == '(' && --balance == 0)
-                break;
-            }
+          size_t balance = 0, offset;
+          for (offset = type_desc.size(); offset;) {
+            offset--;
+            if (type_desc[offset] == ')')
+              balance++;
+            // Balanced paren pair that may appear before the paren enclosing
+            // function parameters, see clang/lib/AST/TypePrinter.cpp
+            else if (type_desc[offset] == '(' && --balance == 0 &&
+                     !((offset >= 5 &&
+                        !type_desc.compare(offset - 5, 5, "throw")) ||
+                       (offset >= 6 &&
+                        !type_desc.compare(offset - 6, 6, "typeof")) ||
+                       (offset >= 8 &&
+                        !type_desc.compare(offset - 8, 8, "decltype")) ||
+                       (offset >= 13 &&
+                        !type_desc.compare(offset - 13, 13, "__attribute__"))))
+              break;
           }
           if (offset > 0) {
             type_desc.insert(offset, qualified_name);
