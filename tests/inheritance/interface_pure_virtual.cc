@@ -28,7 +28,6 @@ OUTPUT:
       "usr": "c:@S@IFoo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void IFoo::foo()",
-      "hover": "void IFoo::foo()",
       "declarations": [{
           "spelling": "2:16-2:19",
           "extent": "2:3-2:25",

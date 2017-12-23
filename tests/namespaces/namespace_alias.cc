@@ -25,7 +25,6 @@ OUTPUT:
       "usr": "c:@F@func#",
       "short_name": "func",
       "detailed_name": "void func()",
-      "hover": "void func()",
       "declarations": [],
       "definition_spelling": "11:6-11:10",
       "definition_extent": "11:1-14:2",
@@ -44,7 +43,7 @@ OUTPUT:
       "definition_extent": "4:14-4:26",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["4:18-4:21", "12:26-12:29", "13:16-13:19"]
     }, {

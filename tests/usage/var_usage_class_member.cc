@@ -43,7 +43,6 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
-      "hover": "void accept(int)",
       "declarations": [{
           "spelling": "7:6-7:12",
           "extent": "7:1-7:17",
@@ -61,7 +60,6 @@ OUTPUT:
       "usr": "c:@F@accept#*I#",
       "short_name": "accept",
       "detailed_name": "void accept(int *)",
-      "hover": "void accept(int *)",
       "declarations": [{
           "spelling": "8:6-8:12",
           "extent": "8:1-8:18",
@@ -79,7 +77,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "hover": "void foo()",
       "declarations": [],
       "definition_spelling": "10:6-10:9",
       "definition_extent": "10:1-18:2",
@@ -100,7 +97,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["3:7-3:8", "12:5-12:6", "13:5-13:6", "14:12-14:13", "15:12-15:13", "16:13-16:14"]
     }, {
       "id": 1,
@@ -113,7 +110,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["4:7-4:8", "17:12-17:13"]
     }, {
       "id": 2,

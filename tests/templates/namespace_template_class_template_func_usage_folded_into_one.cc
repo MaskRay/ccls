@@ -37,7 +37,6 @@ OUTPUT:
       "usr": "c:@N@ns@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int ns::Foo::foo()",
-      "hover": "int ns::Foo::foo()",
       "declarations": [],
       "definition_spelling": "5:16-5:19",
       "definition_extent": "5:5-7:6",
@@ -57,7 +56,7 @@ OUTPUT:
       "definition_extent": "10:3-10:33",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["10:7-10:8"]
     }, {
@@ -69,7 +68,7 @@ OUTPUT:
       "definition_extent": "11:3-11:35",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["11:7-11:8"]
     }]

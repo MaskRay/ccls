@@ -40,7 +40,6 @@ OUTPUT:
       "usr": "c:@F@called#I#",
       "short_name": "called",
       "detailed_name": "void called(int)",
-      "hover": "void called(int)",
       "declarations": [{
           "spelling": "1:6-1:12",
           "extent": "1:1-1:19",
@@ -58,7 +57,6 @@ OUTPUT:
       "usr": "c:@F@gen#",
       "short_name": "gen",
       "detailed_name": "int gen()",
-      "hover": "int gen()",
       "declarations": [{
           "spelling": "3:5-3:8",
           "extent": "3:1-3:10",
@@ -76,7 +74,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "hover": "void foo()",
       "declarations": [],
       "definition_spelling": "12:6-12:9",
       "definition_extent": "12:1-15:2",
@@ -98,7 +95,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["6:14-6:24", "10:10-10:20", "14:45-14:55"]
     }, {
       "id": 1,
@@ -111,7 +108,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["7:7-7:16", "14:28-14:37"]
     }, {
       "id": 2,

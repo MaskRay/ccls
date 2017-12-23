@@ -35,7 +35,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@make#",
       "short_name": "make",
       "detailed_name": "Foo *Foo::make()",
-      "hover": "Foo *Foo::make()",
       "declarations": [{
           "spelling": "2:8-2:12",
           "extent": "2:3-2:14",
@@ -73,7 +72,7 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["10:12-10:15"]
     }]

@@ -21,7 +21,6 @@ OUTPUT:
       "usr": "c:@N@ns@F@Accept#I#",
       "short_name": "Accept",
       "detailed_name": "void ns::Accept(int)",
-      "hover": "void ns::Accept(int)",
       "declarations": [],
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:3-3:24",
@@ -36,7 +35,6 @@ OUTPUT:
       "usr": "c:@F@Runner#",
       "short_name": "Runner",
       "detailed_name": "void Runner()",
-      "hover": "void Runner()",
       "declarations": [],
       "definition_spelling": "6:6-6:12",
       "definition_extent": "6:1-10:2",
@@ -55,7 +53,7 @@ OUTPUT:
       "definition_extent": "2:3-2:10",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["2:7-2:10", "7:18-7:21", "9:10-9:13"]
     }, {

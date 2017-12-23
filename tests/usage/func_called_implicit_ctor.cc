@@ -34,7 +34,6 @@ OUTPUT:
       "usr": "c:@S@Wrapper@F@Wrapper#I#",
       "short_name": "Wrapper",
       "detailed_name": "void Wrapper::Wrapper(int)",
-      "hover": "void Wrapper::Wrapper(int)",
       "declarations": [{
           "spelling": "2:3-2:10",
           "extent": "2:3-2:17",
@@ -53,7 +52,6 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "int called()",
-      "hover": "int called()",
       "declarations": [],
       "definition_spelling": "5:5-5:11",
       "definition_extent": "5:1-5:27",
@@ -68,7 +66,6 @@ OUTPUT:
       "usr": "c:@F@caller#",
       "short_name": "caller",
       "detailed_name": "Wrapper caller()",
-      "hover": "Wrapper caller()",
       "declarations": [],
       "definition_spelling": "7:9-7:15",
       "definition_extent": "7:1-9:2",

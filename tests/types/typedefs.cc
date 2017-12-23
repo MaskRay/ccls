@@ -28,7 +28,6 @@ OUTPUT:
       "usr": "c:typedefs.cc@F@g#*1I#S0_#",
       "short_name": "g",
       "detailed_name": "func g",
-      "hover": "func g",
       "declarations": [{
           "spelling": "2:13-2:14",
           "extent": "2:1-2:14",

@@ -35,7 +35,6 @@ OUTPUT:
       "usr": "c:@ST>1#T@Foo@FT@>1#Tfoo#I#S",
       "short_name": "foo",
       "detailed_name": "int Foo::foo()",
-      "hover": "int Foo::foo()",
       "declarations": [],
       "definition_spelling": "4:14-4:17",
       "definition_extent": "4:3-6:4",
@@ -55,7 +54,7 @@ OUTPUT:
       "definition_extent": "9:1-9:31",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["9:5-9:6"]
     }, {
@@ -67,7 +66,7 @@ OUTPUT:
       "definition_extent": "10:1-10:33",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["10:5-10:6"]
     }]

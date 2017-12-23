@@ -32,7 +32,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@operator()#I#",
       "short_name": "operator()",
       "detailed_name": "void Foo::operator()(int)",
-      "hover": "void Foo::operator()(int)",
       "declarations": [],
       "definition_spelling": "2:8-2:18",
       "definition_extent": "2:3-2:27",
@@ -48,7 +47,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@operator()#b#",
       "short_name": "operator()",
       "detailed_name": "void Foo::operator()(bool)",
-      "hover": "void Foo::operator()(bool)",
       "declarations": [{
           "spelling": "3:8-3:18",
           "extent": "3:3-3:24",
@@ -67,7 +65,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@operator()#I#I#",
       "short_name": "operator()",
       "detailed_name": "int Foo::operator()(int, int)",
-      "hover": "int Foo::operator()(int, int)",
       "declarations": [{
           "spelling": "4:7-4:17",
           "extent": "4:3-4:31",
@@ -86,7 +83,6 @@ OUTPUT:
       "usr": "c:@F@operator+=#&1$@S@Foo#&1I#",
       "short_name": "operator+=",
       "detailed_name": "Foo &operator+=(const Foo &, const int &)",
-      "hover": "Foo &operator+=(const Foo &, const int &)",
       "declarations": [{
           "spelling": "7:6-7:17",
           "extent": "7:1-7:42",

@@ -34,7 +34,6 @@ OUTPUT:
       "usr": "c:@S@CompilationEntry",
       "short_name": "CompilationEntry",
       "detailed_name": "CompilationEntry",
-      "hover": "CompilationEntry",
       "definition_spelling": "6:8-6:24",
       "definition_extent": "6:1-10:2",
       "parents": [],
@@ -46,10 +45,9 @@ OUTPUT:
       "uses": ["6:8-6:24", "12:13-12:29"]
     }, {
       "id": 1,
-      "usr": "c:@N@std@T@string",
+      "usr": "c:@N@std@N@__1@T@string",
       "short_name": "",
       "detailed_name": "",
-      "hover": "",
       "parents": [],
       "derived": [],
       "types": [],
@@ -59,10 +57,9 @@ OUTPUT:
       "uses": ["7:8-7:14", "8:8-8:14", "9:20-9:26", "12:78-12:84"]
     }, {
       "id": 2,
-      "usr": "c:@N@std@ST>2#T#T@vector",
+      "usr": "c:@N@std@N@__1@ST>2#T#T@vector",
       "short_name": "",
       "detailed_name": "",
-      "hover": "",
       "parents": [],
       "derived": [],
       "types": [],
@@ -77,7 +74,6 @@ OUTPUT:
       "usr": "c:@F@LoadCompilationEntriesFromDirectory#&1$@N@std@S@basic_string>#C#$@N@std@S@char_traits>#C#$@N@std@S@allocator>#C#",
       "short_name": "LoadCompilationEntriesFromDirectory",
       "detailed_name": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string &)",
-      "hover": "std::vector<CompilationEntry> LoadCompilationEntriesFromDirectory(const std::string &)",
       "declarations": [{
           "spelling": "12:31-12:66",
           "extent": "12:1-12:104",
@@ -95,7 +91,6 @@ OUTPUT:
       "usr": "c:@S@CompilationEntry@FI@directory",
       "short_name": "directory",
       "detailed_name": "std::string CompilationEntry::directory",
-      "hover": "std::string",
       "definition_spelling": "7:15-7:24",
       "definition_extent": "7:3-7:24",
       "variable_type": 1,
@@ -103,14 +98,13 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["7:15-7:24"]
     }, {
       "id": 1,
       "usr": "c:@S@CompilationEntry@FI@filename",
       "short_name": "filename",
       "detailed_name": "std::string CompilationEntry::filename",
-      "hover": "std::string",
       "definition_spelling": "8:15-8:23",
       "definition_extent": "8:3-8:23",
       "variable_type": 1,
@@ -118,14 +112,13 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["8:15-8:23"]
     }, {
       "id": 2,
       "usr": "c:@S@CompilationEntry@FI@args",
       "short_name": "args",
       "detailed_name": "std::vector<std::string> CompilationEntry::args",
-      "hover": "std::vector<std::string>",
       "definition_spelling": "9:28-9:32",
       "definition_extent": "9:3-9:32",
       "variable_type": 2,
@@ -133,7 +126,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["9:28-9:32"]
     }]
 }

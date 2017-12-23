@@ -47,7 +47,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Bar#&$@S@Template>#d#",
       "short_name": "Bar",
       "detailed_name": "void Foo::Bar(Template<double> &)",
-      "hover": "void Foo::Bar(Template<double> &)",
       "declarations": [{
           "spelling": "5:8-5:11",
           "extent": "5:3-5:30",

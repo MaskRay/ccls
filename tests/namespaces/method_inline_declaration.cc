@@ -30,7 +30,6 @@ OUTPUT:
       "usr": "c:@N@hello@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void hello::Foo::foo()",
-      "hover": "void hello::Foo::foo()",
       "declarations": [],
       "definition_spelling": "3:8-3:11",
       "definition_extent": "3:3-3:16",

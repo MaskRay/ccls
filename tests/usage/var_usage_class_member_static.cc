@@ -34,7 +34,6 @@ OUTPUT:
       "usr": "c:@F@accept#I#",
       "short_name": "accept",
       "detailed_name": "void accept(int)",
-      "hover": "void accept(int)",
       "declarations": [{
           "spelling": "5:6-5:12",
           "extent": "5:1-5:17",
@@ -52,7 +51,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "hover": "void foo()",
       "declarations": [],
       "definition_spelling": "7:6-7:9",
       "definition_extent": "7:1-9:2",
@@ -71,7 +69,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["2:14-2:15", "8:15-8:16"]
     }]
 }

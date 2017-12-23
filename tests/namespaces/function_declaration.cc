@@ -14,7 +14,6 @@ OUTPUT:
       "usr": "c:@N@hello@F@foo#I#I#",
       "short_name": "foo",
       "detailed_name": "void hello::foo(int, int)",
-      "hover": "void hello::foo(int, int)",
       "declarations": [{
           "spelling": "2:6-2:9",
           "extent": "2:1-2:23",

@@ -140,7 +140,6 @@ OUTPUT:
       "usr": "c:@F@as_return_type#*$@S@unique_ptr>#$@S@S1#$@S@S2#",
       "short_name": "as_return_type",
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> *as_return_type(unique_ptr<S1, S2> *)",
-      "hover": "unique_ptr<unique_ptr<S1, S2>, S2> *as_return_type(unique_ptr<S1, S2> *)",
       "declarations": [],
       "definition_spelling": "33:37-33:51",
       "definition_extent": "33:1-33:92",
@@ -155,7 +154,6 @@ OUTPUT:
       "usr": "c:@F@no_return_type#I#",
       "short_name": "no_return_type",
       "detailed_name": "void no_return_type(int)",
-      "hover": "void no_return_type(int)",
       "declarations": [],
       "definition_spelling": "40:6-40:20",
       "definition_extent": "40:1-40:28",
@@ -170,7 +168,6 @@ OUTPUT:
       "usr": "c:@F@empty#",
       "short_name": "empty",
       "detailed_name": "void empty()",
-      "hover": "void empty()",
       "declarations": [],
       "definition_spelling": "53:6-53:11",
       "definition_extent": "53:1-55:2",
@@ -185,7 +182,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "unique_ptr<S1, S2> *Foo::foo()",
-      "hover": "unique_ptr<S1, S2> *Foo::foo()",
       "declarations": [{
           "spelling": "65:23-65:26",
           "extent": "65:3-65:28",
@@ -210,7 +206,7 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["15:43-15:44"]
     }, {

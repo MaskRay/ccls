@@ -33,7 +33,6 @@ OUTPUT:
       "usr": "c:@S@Foo@FT@>1#TFoo#v#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
-      "hover": "void Foo::Foo()",
       "declarations": [],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:11",

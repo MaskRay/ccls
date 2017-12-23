@@ -23,7 +23,6 @@ OUTPUT:
       "usr": "c:@F@make1#",
       "short_name": "make1",
       "detailed_name": "int make1()",
-      "hover": "int make1()",
       "declarations": [],
       "definition_spelling": "6:5-6:10",
       "definition_extent": "6:1-8:2",
@@ -38,7 +37,6 @@ OUTPUT:
       "usr": "c:@F@a#",
       "short_name": "a",
       "detailed_name": "int a()",
-      "hover": "int a()",
       "declarations": [{
           "spelling": "12:1-12:20",
           "extent": "12:1-12:20",
@@ -62,7 +60,7 @@ OUTPUT:
       "definition_extent": "9:1-9:20",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["9:11-9:16", "12:14-12:19"]
     }, {

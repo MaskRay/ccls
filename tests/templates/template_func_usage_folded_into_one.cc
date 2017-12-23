@@ -21,7 +21,6 @@ OUTPUT:
       "usr": "c:template_func_usage_folded_into_one.cc@FT@>1#Tfoo#I#",
       "short_name": "foo",
       "detailed_name": "int foo()",
-      "hover": "int foo()",
       "declarations": [],
       "definition_spelling": "2:12-2:15",
       "definition_extent": "2:1-4:2",
@@ -40,7 +39,7 @@ OUTPUT:
       "definition_extent": "6:1-6:19",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["6:5-6:6"]
     }, {
@@ -52,7 +51,7 @@ OUTPUT:
       "definition_extent": "7:1-7:20",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["7:5-7:6"]
     }]

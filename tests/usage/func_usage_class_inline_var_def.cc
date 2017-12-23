@@ -32,7 +32,6 @@ OUTPUT:
       "usr": "c:func_usage_class_inline_var_def.cc@F@helper#",
       "short_name": "helper",
       "detailed_name": "int helper()",
-      "hover": "int helper()",
       "declarations": [],
       "definition_spelling": "1:12-1:18",
       "definition_extent": "1:1-3:2",
@@ -53,7 +52,7 @@ OUTPUT:
       "is_local": false,
       "is_macro": false,
       "is_global": false,
-      "is_member": false,
+      "is_member": true,
       "uses": ["6:7-6:8"]
     }]
 }

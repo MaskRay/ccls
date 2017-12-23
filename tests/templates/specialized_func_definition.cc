@@ -43,7 +43,6 @@ OUTPUT:
       "usr": "c:@ST>1#T@Template@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Template::Foo()",
-      "hover": "void Template::Foo()",
       "declarations": [{
           "spelling": "3:8-3:11",
           "extent": "3:3-3:13",

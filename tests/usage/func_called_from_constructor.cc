@@ -34,7 +34,6 @@ OUTPUT:
       "usr": "c:@F@called#",
       "short_name": "called",
       "detailed_name": "void called()",
-      "hover": "void called()",
       "declarations": [],
       "definition_spelling": "1:6-1:12",
       "definition_extent": "1:1-1:17",
@@ -49,7 +48,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@Foo#",
       "short_name": "Foo",
       "detailed_name": "void Foo::Foo()",
-      "hover": "void Foo::Foo()",
       "declarations": [{
           "spelling": "4:3-4:6",
           "extent": "4:3-4:8",

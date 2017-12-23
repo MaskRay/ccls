@@ -16,7 +16,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "hover": "void foo()",
       "declarations": [],
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-5:2",
@@ -35,7 +34,7 @@ OUTPUT:
       "definition_extent": "1:1-1:13",
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["1:12-1:13", "4:3-4:4"]
     }]

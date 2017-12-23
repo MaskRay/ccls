@@ -28,7 +28,6 @@ OUTPUT:
       "usr": "c:@F@foo#",
       "short_name": "foo",
       "detailed_name": "void foo()",
-      "hover": "void foo()",
       "declarations": [],
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-5:2",

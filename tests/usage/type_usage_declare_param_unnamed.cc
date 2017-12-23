@@ -24,7 +24,6 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@ForwardType#",
       "short_name": "foo",
       "detailed_name": "void foo(ForwardType *)",
-      "hover": "void foo(ForwardType *)",
       "declarations": [],
       "definition_spelling": "2:6-2:9",
       "definition_extent": "2:1-2:26",

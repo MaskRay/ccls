@@ -50,7 +50,6 @@ OUTPUT:
       "usr": "c:@F@return_type#",
       "short_name": "return_type",
       "detailed_name": "unique_ptr<S> *return_type()",
-      "hover": "unique_ptr<S> *return_type()",
       "declarations": [],
       "definition_spelling": "9:16-9:27",
       "definition_extent": "9:1-12:2",
@@ -70,7 +69,7 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["6:25-6:27"]
     }, {
@@ -83,7 +82,7 @@ OUTPUT:
       "variable_type": 0,
       "is_local": false,
       "is_macro": false,
-      "is_global": false,
+      "is_global": true,
       "is_member": false,
       "uses": ["7:22-7:24"]
     }, {

@@ -32,7 +32,6 @@ OUTPUT:
       "usr": "c:@S@Foo@F@foo#",
       "short_name": "foo",
       "detailed_name": "void Foo::foo()",
-      "hover": "void Foo::foo()",
       "declarations": [{
           "spelling": "2:8-2:11",
           "extent": "2:3-2:13",
@@ -51,7 +50,6 @@ OUTPUT:
       "usr": "c:@F@usage#",
       "short_name": "usage",
       "detailed_name": "void usage()",
-      "hover": "void usage()",
       "declarations": [],
       "definition_spelling": "5:6-5:11",
       "definition_extent": "5:1-8:2",

@@ -26,7 +26,6 @@ OUTPUT:
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
       "detailed_name": "void foo(Foo *, Foo *)",
-      "hover": "void foo(Foo *, Foo *)",
       "declarations": [],
       "definition_spelling": "3:6-3:9",
       "definition_extent": "3:1-3:30",
