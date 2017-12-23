@@ -1215,8 +1215,12 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                         !type_desc.compare(offset - 5, 5, "throw")) ||
                        (offset >= 6 &&
                         !type_desc.compare(offset - 6, 6, "typeof")) ||
+                       (offset >= 7 &&
+                        !type_desc.compare(offset - 7, 7, "_Atomic")) ||
                        (offset >= 8 &&
                         !type_desc.compare(offset - 8, 8, "decltype")) ||
+                       (offset >= 8 &&
+                        !type_desc.compare(offset - 8, 8, "noexcept")) ||
                        (offset >= 13 &&
                         !type_desc.compare(offset - 13, 13, "__attribute__"))))
               break;
