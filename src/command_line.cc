@@ -1036,10 +1036,6 @@ int main(int argc, char** argv) {
   if (HasOption(options, "--test-index")) {
     print_help = false;
     RunIndexTests(options["--test-index"]);
-#if defined(_WIN32)
-    std::cerr << std::endl << "[Enter] to exit" << std::endl;
-    std::cin.get();
-#endif
   }
 
   if (HasOption(options, "--language-server")) {
@@ -1048,6 +1044,11 @@ int main(int argc, char** argv) {
     auto config = MakeUnique<Config>();
     LanguageServerMain(argv[0], config.get(), &waiter);
     return 0;
+  }
+
+  if (HasOption(options, "--wait-for-input")) {
+    std::cerr << std::endl << "[Enter] to exit" << std::endl;
+    std::cin.get();
   }
 
   if (print_help) {
@@ -1075,6 +1076,9 @@ Command line options:
   --clang-sanity-check
                 Run a simple index test. Verifies basic clang functionality.
                 Needs to be executed from the cquery root checkout directory.
+  --wait-for-input
+                If true, cquery will wait for an '[Enter]' before exiting.
+                Useful on windows.
   --help        Print this help information.
 
 Configuration:
