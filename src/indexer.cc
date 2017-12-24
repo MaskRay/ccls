@@ -104,7 +104,26 @@ struct NamespaceHelper {
       std::string name = namespaces[i].get_spelling();
       // Empty name indicates unnamed namespace, anonymous struct, anonymous
       // union, ...
-      qualifier += name.empty() ? "(anon)" : name;
+      if (name.size())
+        qualifier += name;
+      else
+        switch (namespaces[i].get_kind()) {
+          case CXCursor_ClassDecl:
+            qualifier += "(anon class)";
+            break;
+          case CXCursor_EnumDecl:
+            qualifier += "(anon enum)";
+            break;
+          case CXCursor_StructDecl:
+            qualifier += "(anon struct)";
+            break;
+          case CXCursor_UnionDecl:
+            qualifier += "(anon union)";
+            break;
+          default:
+            qualifier += "(anon)";
+            break;
+        }
       qualifier += "::";
       container_cursor_to_qualified_name[namespaces[i]] = qualifier;
     }

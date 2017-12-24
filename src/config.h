@@ -24,7 +24,7 @@ struct Config {
   bool logSkippedPathsForIndex = false;
 
   // Maximum workspace search results.
-  int maxWorkspaceSearchResults = 200;
+  int maxWorkspaceSearchResults = 500;
 
   // Force a certain number of indexer threads. If less than 1 a default value
   // should be used.

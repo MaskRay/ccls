@@ -160,13 +160,10 @@ int FuzzyEvaluate(const std::string& pattern,
     pfirst = pstart = false;
   }
 
-  // Enumerate the end position of the match in str.
+  // Enumerate the end position of the match in str. Each removed trailing
+  // character has a penulty of kGapScore.
   lefts = kMinScore;
   for (int i = 0; i < int(str.size()); i++)
-    // For function types, db->detailed_names may have trailing characters for
-    // parameters. We do not want to penalize them.
-    // If we use `short_name` instead of `detailed_name` for fuzzy matching, the
-    // penulty kGapScore can be used.
     lefts = std::max(lefts + kGapScore, dp[i]);
   return lefts;
 }
@@ -227,27 +224,24 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     }
 
     // Sort results with a fuzzy matching algorithm.
-    if (unsorted_results.size() < config->maxWorkspaceSearchResults) {
-      int longest = 0;
-      for (int i: result_indices)
-        longest = std::max(longest, int(db->short_names[i].size()));
+    int longest = 0;
+    for (int i: result_indices)
+      longest = std::max(longest, int(db->short_names[i].size()));
 
-      std::vector<int> score(longest), // score for each position
-          dp(longest); // dp[i]: maximum value by aligning pattern to str[0..i]
-      std::vector<std::pair<int, int>> permutation(result_indices.size());
-      for (int i = 0; i < int(result_indices.size()); i++) {
-        permutation[i] = {
-            FuzzyEvaluate(query, db->short_names[result_indices[i]], score,
-                          dp),
-            i};
-      }
-      std::sort(permutation.begin(), permutation.end(),
-                std::greater<std::pair<int, int>>());
-      out.result.reserve(result_indices.size());
-      for (int i = 0; i < int(result_indices.size()); i++)
-        out.result.push_back(std::move(unsorted_results[permutation[i].second]));
-    } else
-      out.result = std::move(unsorted_results);
+    std::vector<int> score(longest), // score for each position
+        dp(longest); // dp[i]: maximum value by aligning pattern to str[0..i]
+    std::vector<std::pair<int, int>> permutation(result_indices.size());
+    for (int i = 0; i < int(result_indices.size()); i++) {
+      permutation[i] = {
+          FuzzyEvaluate(query, db->short_names[result_indices[i]], score,
+                        dp),
+          i};
+    }
+    std::sort(permutation.begin(), permutation.end(),
+              std::greater<std::pair<int, int>>());
+    out.result.reserve(result_indices.size());
+    for (int i = 0; i < int(result_indices.size()); i++)
+      out.result.push_back(std::move(unsorted_results[permutation[i].second]));
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
                 << " results for query " << query;
