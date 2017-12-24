@@ -37,7 +37,7 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
         out.result = GetLsLocations(db, working_files, locations);
       }
     }
-    IpcManager::WriteStdout(IpcId::CqueryDerived, out);
+    QueueManager::WriteStdout(IpcId::CqueryDerived, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryDerivedHandler);

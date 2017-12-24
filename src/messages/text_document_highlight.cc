@@ -58,7 +58,7 @@ struct TextDocumentDocumentHighlightHandler
       break;
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentDocumentHighlight, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentDocumentHighlight, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDocumentHighlightHandler);

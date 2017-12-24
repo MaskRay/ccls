@@ -190,7 +190,7 @@ struct CqueryTypeHierarchyTreeHandler
       }
     }
 
-    IpcManager::WriteStdout(IpcId::CqueryTypeHierarchyTree, out);
+    QueueManager::WriteStdout(IpcId::CqueryTypeHierarchyTree, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryTypeHierarchyTreeHandler);

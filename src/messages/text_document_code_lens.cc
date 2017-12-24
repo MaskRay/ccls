@@ -257,7 +257,7 @@ struct TextDocumentCodeLensHandler
       };
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentCodeLens, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentCodeLens, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentCodeLensHandler);

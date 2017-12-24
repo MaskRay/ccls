@@ -52,7 +52,7 @@ struct TextDocumentDidOpenHandler
 
     // Submit new index request.
     const Project::Entry& entry = project->FindCompilationEntryForFile(path);
-    queue->index_request.PriorityEnqueue(Index_Request(
+    QueueManager::instance()->index_request.PriorityEnqueue(Index_Request(
         entry.filename, entry.args, true /*is_interactive*/, nullopt));
   }
 };

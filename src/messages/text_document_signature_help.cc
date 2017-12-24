@@ -135,7 +135,7 @@ struct TextDocumentSignatureHelpHandler : MessageHandler {
           out.result.activeParameter = active_param;
 
           Timer timer;
-          IpcManager::WriteStdout(IpcId::TextDocumentSignatureHelp, out);
+          QueueManager::WriteStdout(IpcId::TextDocumentSignatureHelp, out);
 
           if (!is_cached_result) {
             signature_cache->WithLock([&]() {

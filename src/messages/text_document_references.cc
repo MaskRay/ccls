@@ -75,7 +75,7 @@ struct TextDocumentReferencesHandler
       break;
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentReferences, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentReferences, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentReferencesHandler);

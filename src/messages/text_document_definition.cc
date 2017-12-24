@@ -128,7 +128,7 @@ struct TextDocumentDefinitionHandler
       }
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentDefinition, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentDefinition, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDefinitionHandler);

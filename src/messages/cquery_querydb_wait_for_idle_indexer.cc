@@ -21,9 +21,9 @@ struct CqueryQueryDbWaitForIdleIndexerHandler : MessageHandler {
     while (true) {
       bool has_work = false;
       has_work |= import_manager->HasActiveQuerydbImports();
-      has_work |= queue->HasWork();
-      has_work |= QueryDb_ImportMain(config, db, import_manager, queue,
-                                     semantic_cache, working_files);
+      has_work |= QueueManager::instance()->HasWork();
+      has_work |= QueryDb_ImportMain(config, db, import_manager, semantic_cache,
+                                     working_files);
       if (!has_work)
         ++idle_count;
       else

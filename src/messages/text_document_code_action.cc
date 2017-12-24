@@ -531,7 +531,7 @@ struct TextDocumentCodeActionHandler
       }
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentCodeAction, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentCodeAction, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentCodeActionHandler);

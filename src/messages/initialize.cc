@@ -141,7 +141,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       out.result.capabilities.documentLinkProvider = lsDocumentLinkOptions();
       out.result.capabilities.documentLinkProvider->resolveProvider = false;
 
-      IpcManager::WriteStdout(IpcId::Initialize, out);
+      QueueManager::WriteStdout(IpcId::Initialize, out);
 
       // Set project root.
       config->projectRoot = NormalizePath(request->params.rootUri->GetPath());
@@ -174,8 +174,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       for (int i = 0; i < config->indexerCount; ++i) {
         WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
           return IndexMain(config, file_consumer_shared, timestamp_manager,
-                           import_manager, project, working_files, waiter,
-                           queue);
+                           import_manager, project, working_files, waiter);
         });
       }
 
@@ -183,6 +182,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       // files, because that takes a long time.
       include_complete->Rescan();
 
+      auto* queue = QueueManager::instance();
       time.Reset();
       project->ForAllFilteredFiles(
           config, [&](int i, const Project::Entry& entry) {

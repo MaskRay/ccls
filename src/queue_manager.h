@@ -7,28 +7,11 @@
 
 #include <memory>
 
-// TODO/FIXME: Merge IpcManager and QueueManager.
-
 struct lsBaseOutMessage;
 
-struct IpcManager {
-  struct StdoutMessage {
-    IpcId id;
-    std::string content;
-  };
-
-  ThreadedQueue<StdoutMessage> for_stdout;
-  ThreadedQueue<std::unique_ptr<BaseIpcMessage>> for_querydb;
-
-  static IpcManager* instance();
-  static void CreateInstance(MultiQueueWaiter* waiter);
-
-  static void WriteStdout(IpcId id, lsBaseOutMessage& response);
-
- private:
-  explicit IpcManager(MultiQueueWaiter* waiter);
-
-  static IpcManager* instance_;
+struct Stdout_Request {
+  IpcId id;
+  std::string content;
 };
 
 struct Index_Request {
@@ -87,18 +70,26 @@ struct Index_OnIndexed {
 };
 
 struct QueueManager {
-  using Index_RequestQueue = ThreadedQueue<Index_Request>;
-  using Index_DoIdMapQueue = ThreadedQueue<Index_DoIdMap>;
-  using Index_OnIdMappedQueue = ThreadedQueue<Index_OnIdMapped>;
-  using Index_OnIndexedQueue = ThreadedQueue<Index_OnIndexed>;
-
-  Index_RequestQueue index_request;
-  Index_DoIdMapQueue do_id_map;
-  Index_DoIdMapQueue load_previous_index;
-  Index_OnIdMappedQueue on_id_mapped;
-  Index_OnIndexedQueue on_indexed;
-
-  QueueManager(MultiQueueWaiter* waiter);
+  static QueueManager* instance();
+  static void CreateInstance(MultiQueueWaiter* waiter);
+  static void WriteStdout(IpcId id, lsBaseOutMessage& response);
 
   bool HasWork();
+
+  // Runs on stdout thread.
+  ThreadedQueue<Stdout_Request> for_stdout;
+  // Runs on querydb thread.
+  ThreadedQueue<std::unique_ptr<BaseIpcMessage>> for_querydb;
+
+  // Runs on indexer threads.
+  ThreadedQueue<Index_Request> index_request;
+  ThreadedQueue<Index_DoIdMap> do_id_map;
+  ThreadedQueue<Index_DoIdMap> load_previous_index;
+  ThreadedQueue<Index_OnIdMapped> on_id_mapped;
+  ThreadedQueue<Index_OnIndexed> on_indexed;
+
+ private:
+  explicit QueueManager(MultiQueueWaiter* waiter);
+
+  static QueueManager* instance_;
 };

@@ -32,7 +32,7 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
         out.result = GetLsLocations(db, working_files, locations);
       }
     }
-    IpcManager::WriteStdout(IpcId::CqueryVars, out);
+    QueueManager::WriteStdout(IpcId::CqueryVars, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryVarsHandler);

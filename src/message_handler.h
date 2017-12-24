@@ -6,7 +6,7 @@
 #include "config.h"
 #include "import_manager.h"
 #include "include_complete.h"
-#include "ipc_manager.h"
+#include "queue_manager.h"
 #include "project.h"
 #include "query.h"
 #include "semantic_highlight_symbol_cache.h"
@@ -32,7 +32,6 @@ struct MessageHandler {
   QueryDatabase* db = nullptr;
   bool* exit_when_idle = nullptr;
   MultiQueueWaiter* waiter = nullptr;
-  QueueManager* queue = nullptr;
   Project* project = nullptr;
   FileConsumer::SharedState* file_consumer_shared = nullptr;
   ImportManager* import_manager = nullptr;

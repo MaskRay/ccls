@@ -97,7 +97,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
                 << " results for query " << query;
-    IpcManager::WriteStdout(IpcId::WorkspaceSymbol, out);
+    QueueManager::WriteStdout(IpcId::WorkspaceSymbol, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(WorkspaceSymbolHandler);

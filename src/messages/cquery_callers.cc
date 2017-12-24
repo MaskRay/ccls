@@ -37,7 +37,7 @@ struct CqueryCallersHandler : BaseMessageHandler<Ipc_CqueryCallers> {
         out.result = GetLsLocations(db, working_files, locations);
       }
     }
-    IpcManager::WriteStdout(IpcId::CqueryCallers, out);
+    QueueManager::WriteStdout(IpcId::CqueryCallers, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryCallersHandler);

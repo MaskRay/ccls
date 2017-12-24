@@ -5,7 +5,6 @@
 #include "file_consumer.h"
 #include "include_complete.h"
 #include "indexer.h"
-#include "ipc_manager.h"
 #include "language_server_api.h"
 #include "lex_utils.h"
 #include "lru_cache.h"
@@ -16,6 +15,7 @@
 #include "project.h"
 #include "query.h"
 #include "query_utils.h"
+#include "queue_manager.h"
 #include "serializer.h"
 #include "standard_includes.h"
 #include "test.h"
@@ -76,7 +76,7 @@ void EmitDiagnostics(WorkingFiles* working_files,
   Out_TextDocumentPublishDiagnostics out;
   out.params.uri = lsDocumentUri::FromPath(path);
   out.params.diagnostics = diagnostics;
-  IpcManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
+  QueueManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
 
   // Cache diagnostics so we can show fixits.
   working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
@@ -88,8 +88,9 @@ void EmitDiagnostics(WorkingFiles* working_files,
 REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
 
 // Send indexing progress to client if reporting is enabled.
-void EmitProgress(Config* config, QueueManager* queue) {
+void EmitProgress(Config* config) {
   if (config->enableProgressReports) {
+    auto* queue = QueueManager::instance();
     Out_Progress out;
     out.params.indexRequestCount = queue->index_request.Size();
     out.params.doIdMapCount = queue->do_id_map.Size();
@@ -97,7 +98,7 @@ void EmitProgress(Config* config, QueueManager* queue) {
     out.params.onIdMappedCount = queue->on_id_mapped.Size();
     out.params.onIndexedCount = queue->on_indexed.Size();
 
-    IpcManager::WriteStdout(IpcId::Unknown, out);
+    QueueManager::WriteStdout(IpcId::Unknown, out);
   }
 }
 
@@ -307,7 +308,6 @@ std::vector<Index_DoIdMap> DoParseFile(
 // real-time indexing.
 // TODO: add option to disable this.
 void IndexWithTuFromCodeCompletion(
-    QueueManager* queue,
     FileConsumer::SharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
@@ -335,7 +335,7 @@ void IndexWithTuFromCodeCompletion(
   LOG_IF_S(WARNING, result.size() > 1)
       << "Code completion index update generated more than one index";
 
-  queue->do_id_map.EnqueueAll(std::move(result));
+  QueueManager::instance()->do_id_map.EnqueueAll(std::move(result));
 }
 
 std::vector<Index_DoIdMap> ParseFile(
@@ -366,11 +366,11 @@ std::vector<Index_DoIdMap> ParseFile(
 
 bool IndexMain_DoParse(Config* config,
                        WorkingFiles* working_files,
-                       QueueManager* queue,
                        FileConsumer::SharedState* file_consumer_shared,
                        TimestampManager* timestamp_manager,
                        ImportManager* import_manager,
                        ClangIndex* index) {
+  auto* queue = QueueManager::instance();
   optional<Index_Request> request = queue->index_request.TryDequeue();
   if (!request)
     return false;
@@ -392,8 +392,8 @@ bool IndexMain_DoParse(Config* config,
 }
 
 bool IndexMain_DoCreateIndexUpdate(Config* config,
-                                   QueueManager* queue,
                                    TimestampManager* timestamp_manager) {
+  auto* queue = QueueManager::instance();
   optional<Index_OnIdMapped> response = queue->on_id_mapped.TryDequeue();
   if (!response)
     return false;
@@ -457,7 +457,8 @@ bool IndexMain_DoCreateIndexUpdate(Config* config,
   return true;
 }
 
-bool IndexMain_LoadPreviousIndex(Config* config, QueueManager* queue) {
+bool IndexMain_LoadPreviousIndex(Config* config) {
+  auto* queue = QueueManager::instance();
   optional<Index_DoIdMap> response = queue->load_previous_index.TryDequeue();
   if (!response)
     return false;
@@ -471,7 +472,8 @@ bool IndexMain_LoadPreviousIndex(Config* config, QueueManager* queue) {
   return true;
 }
 
-bool IndexMergeIndexUpdates(QueueManager* queue) {
+bool IndexMergeIndexUpdates() {
+  auto* queue = QueueManager::instance();
   optional<Index_OnIndexed> root = queue->on_indexed.TryDequeue();
   if (!root)
     return false;
@@ -501,9 +503,8 @@ WorkThread::Result IndexMain(Config* config,
                              ImportManager* import_manager,
                              Project* project,
                              WorkingFiles* working_files,
-                             MultiQueueWaiter* waiter,
-                             QueueManager* queue) {
-  EmitProgress(config, queue);
+                             MultiQueueWaiter* waiter) {
+  EmitProgress(config);
 
   // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndex index;
@@ -517,19 +518,21 @@ WorkThread::Result IndexMain(Config* config,
   // work. Running both also lets the user query the partially constructed
   // index.
   bool did_parse =
-      IndexMain_DoParse(config, working_files, queue, file_consumer_shared,
+      IndexMain_DoParse(config, working_files, file_consumer_shared,
                         timestamp_manager, import_manager, &index);
 
   bool did_create_update =
-      IndexMain_DoCreateIndexUpdate(config, queue, timestamp_manager);
+      IndexMain_DoCreateIndexUpdate(config, timestamp_manager);
 
-  bool did_load_previous = IndexMain_LoadPreviousIndex(config, queue);
+  bool did_load_previous = IndexMain_LoadPreviousIndex(config);
 
   // Nothing to index and no index updates to create, so join some already
   // created index updates to reduce work on querydb thread.
   bool did_merge = false;
   if (!did_parse && !did_create_update && !did_load_previous)
-    did_merge = IndexMergeIndexUpdates(queue);
+    did_merge = IndexMergeIndexUpdates();
+
+  auto* queue = QueueManager::instance();
 
   // We didn't do any work, so wait for a notification.
   if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
@@ -544,10 +547,10 @@ WorkThread::Result IndexMain(Config* config,
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,
                         ImportManager* import_manager,
-                        QueueManager* queue,
                         SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files) {
-  EmitProgress(config, queue);
+  auto* queue = QueueManager::instance();
+  EmitProgress(config);
 
   bool did_work = false;
 
@@ -685,7 +688,6 @@ bool QueryDbMainLoop(Config* config,
                      QueryDatabase* db,
                      bool* exit_when_idle,
                      MultiQueueWaiter* waiter,
-                     QueueManager* queue,
                      Project* project,
                      FileConsumer::SharedState* file_consumer_shared,
                      ImportManager* import_manager,
@@ -697,12 +699,11 @@ bool QueryDbMainLoop(Config* config,
                      CodeCompleteCache* global_code_complete_cache,
                      CodeCompleteCache* non_global_code_complete_cache,
                      CodeCompleteCache* signature_cache) {
-  IpcManager* ipc = IpcManager::instance();
-
+  auto* queue = QueueManager::instance();
   bool did_work = false;
 
   std::vector<std::unique_ptr<BaseIpcMessage>> messages =
-      ipc->for_querydb.DequeueAll();
+      queue->for_querydb.DequeueAll();
   for (auto& message : messages) {
     did_work = true;
 
@@ -722,7 +723,7 @@ bool QueryDbMainLoop(Config* config,
   // TODO: consider rate-limiting and checking for IPC messages so we don't
   // block requests / we can serve partial requests.
 
-  if (QueryDb_ImportMain(config, db, import_manager, queue, semantic_cache,
+  if (QueryDb_ImportMain(config, db, import_manager, semantic_cache,
                          working_files)) {
     did_work = true;
   }
@@ -732,8 +733,7 @@ bool QueryDbMainLoop(Config* config,
 
 void RunQueryDbThread(const std::string& bin_name,
                       Config* config,
-                      MultiQueueWaiter* waiter,
-                      QueueManager* queue) {
+                      MultiQueueWaiter* waiter) {
   bool exit_when_idle = false;
   Project project;
   SemanticHighlightSymbolCache semantic_cache;
@@ -744,7 +744,7 @@ void RunQueryDbThread(const std::string& bin_name,
       config, &project, &working_files,
       std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1,
                 std::placeholders::_2),
-      std::bind(&IndexWithTuFromCodeCompletion, queue, &file_consumer_shared,
+      std::bind(&IndexWithTuFromCodeCompletion, &file_consumer_shared,
                 std::placeholders::_1, std::placeholders::_2,
                 std::placeholders::_3, std::placeholders::_4));
 
@@ -762,7 +762,6 @@ void RunQueryDbThread(const std::string& bin_name,
     handler->db = &db;
     handler->exit_when_idle = &exit_when_idle;
     handler->waiter = waiter;
-    handler->queue = queue;
     handler->project = &project;
     handler->file_consumer_shared = &file_consumer_shared;
     handler->import_manager = &import_manager;
@@ -781,11 +780,10 @@ void RunQueryDbThread(const std::string& bin_name,
   SetCurrentThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
-        config, &db, &exit_when_idle, waiter, queue, &project,
-        &file_consumer_shared, &import_manager, &timestamp_manager,
-        &semantic_cache, &working_files, &clang_complete, &include_complete,
-        global_code_complete_cache.get(), non_global_code_complete_cache.get(),
-        signature_cache.get());
+        config, &db, &exit_when_idle, waiter, &project, &file_consumer_shared,
+        &import_manager, &timestamp_manager, &semantic_cache, &working_files,
+        &clang_complete, &include_complete, global_code_complete_cache.get(),
+        non_global_code_complete_cache.get(), signature_cache.get());
 
     // No more work left and exit request. Exit.
     if (!did_work && exit_when_idle && WorkThread::num_active_threads == 0) {
@@ -797,7 +795,8 @@ void RunQueryDbThread(const std::string& bin_name,
     FreeUnusedMemory();
 
     if (!did_work) {
-      waiter->Wait({&IpcManager::instance()->for_querydb, &queue->do_id_map,
+      auto* queue = QueueManager::instance();
+      waiter->Wait({&QueueManager::instance()->for_querydb, &queue->do_id_map,
                     &queue->on_indexed});
     }
   }
@@ -833,8 +832,7 @@ void LaunchStdinLoop(Config* config,
   std::cin.tie(nullptr);
 
   WorkThread::StartThread("stdin", [request_times]() {
-    IpcManager* ipc = IpcManager::instance();
-
+    auto* queue = QueueManager::instance();
     std::unique_ptr<BaseIpcMessage> message =
         MessageRegistry::instance()->ReadMessageFromStdin(
             g_log_stdin_stdout_to_stderr);
@@ -867,7 +865,7 @@ void LaunchStdinLoop(Config* config,
         // loop to exit the thread. If we keep parsing input stdin is likely
         // closed so cquery will exit.
         LOG_S(INFO) << "cquery will exit when all threads are idle";
-        ipc->for_querydb.Enqueue(std::move(message));
+        queue->for_querydb.Enqueue(std::move(message));
         return WorkThread::Result::ExitThread;
       }
 
@@ -899,7 +897,7 @@ void LaunchStdinLoop(Config* config,
       case IpcId::CqueryDerived:
       case IpcId::CqueryIndexFile:
       case IpcId::CqueryQueryDbWaitForIdleIndexer: {
-        ipc->for_querydb.Enqueue(std::move(message));
+        queue->for_querydb.Enqueue(std::move(message));
         break;
       }
 
@@ -915,15 +913,13 @@ void LaunchStdinLoop(Config* config,
 }
 
 void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
-                        MultiQueueWaiter* waiter,
-                        QueueManager* queue) {
+                        MultiQueueWaiter* waiter) {
   WorkThread::StartThread("stdout", [=]() {
-    IpcManager* ipc = IpcManager::instance();
+    auto* queue = QueueManager::instance();
 
-    std::vector<IpcManager::StdoutMessage> messages =
-        ipc->for_stdout.DequeueAll();
+    std::vector<Stdout_Request> messages = queue->for_stdout.DequeueAll();
     if (messages.empty()) {
-      waiter->Wait({&ipc->for_stdout});
+      waiter->Wait({&queue->for_stdout});
       return queue->HasWork() ? WorkThread::Result::MoreWork
                               : WorkThread::Result::NoWork;
     }
@@ -955,18 +951,17 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
 void LanguageServerMain(const std::string& bin_name,
                         Config* config,
                         MultiQueueWaiter* waiter) {
-  QueueManager queue(waiter);
   std::unordered_map<IpcId, Timer> request_times;
 
   LaunchStdinLoop(config, &request_times);
 
   // We run a dedicated thread for writing to stdout because there can be an
   // unknown number of delays when output information.
-  LaunchStdoutThread(&request_times, waiter, &queue);
+  LaunchStdoutThread(&request_times, waiter);
 
   // Start querydb which takes over this thread. The querydb will launch
   // indexer threads as needed.
-  RunQueryDbThread(bin_name, config, waiter, &queue);
+  RunQueryDbThread(bin_name, config, waiter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -997,7 +992,7 @@ int main(int argc, char** argv) {
   loguru::init(argc, argv);
 
   MultiQueueWaiter waiter;
-  IpcManager::CreateInstance(&waiter);
+  QueueManager::CreateInstance(&waiter);
 
   // bool loop = true;
   // while (loop)

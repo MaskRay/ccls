@@ -49,7 +49,7 @@ struct TextDocumentDocumentSymbolHandler
       out.result.push_back(*info);
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentDocumentSymbol, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentDocumentSymbol, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDocumentSymbolHandler);

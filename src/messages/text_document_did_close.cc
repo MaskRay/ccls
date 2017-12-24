@@ -21,7 +21,7 @@ struct TextDocumentDidCloseHandler
     // Clear any diagnostics for the file.
     Out_TextDocumentPublishDiagnostics out;
     out.params.uri = request->params.textDocument.uri;
-    IpcManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
 
     // Remove internal state.
     working_files->OnClose(request->params.textDocument);

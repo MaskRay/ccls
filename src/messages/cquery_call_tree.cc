@@ -197,7 +197,7 @@ struct CqueryCallTreeInitialHandler
       }
     }
 
-    IpcManager::WriteStdout(IpcId::CqueryCallTreeInitial, out);
+    QueueManager::WriteStdout(IpcId::CqueryCallTreeInitial, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryCallTreeInitialHandler);
@@ -212,7 +212,7 @@ struct CqueryCallTreeExpandHandler
     if (func_id != db->usr_to_func.end())
       out.result = BuildExpandCallTree(db, working_files, func_id->second);
 
-    IpcManager::WriteStdout(IpcId::CqueryCallTreeExpand, out);
+    QueueManager::WriteStdout(IpcId::CqueryCallTreeExpand, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryCallTreeExpandHandler);

@@ -104,7 +104,7 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
       break;
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentRename, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentRename, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentRenameHandler);

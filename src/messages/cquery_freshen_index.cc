@@ -37,6 +37,8 @@ struct CqueryFreshenIndexHandler : MessageHandler {
         file_consumer_shared->Reset(file.def->path);
     }
 
+    auto* queue = QueueManager::instance();
+
     // Send index requests for every file.
     project->ForAllFilteredFiles(config, [&](int i,
                                              const Project::Entry& entry) {

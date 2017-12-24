@@ -145,7 +145,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
 
       FilterCompletionResponse(&out, buffer_line);
-      IpcManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+      QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
       bool is_global_completion = false;
       std::string existing_completion;
@@ -165,7 +165,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
 
             // Emit completion results.
             FilterCompletionResponse(&out, existing_completion);
-            IpcManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+            QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
 
             // Cache completion results.
             if (!is_cached_result) {

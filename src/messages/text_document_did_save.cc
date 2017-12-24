@@ -39,7 +39,7 @@ struct TextDocumentDidSaveHandler
     //      if so, ignore that index response.
     // TODO: send as priority request
     Project::Entry entry = project->FindCompilationEntryForFile(path);
-    queue->index_request.Enqueue(Index_Request(
+    QueueManager::instance()->index_request.Enqueue(Index_Request(
         entry.filename, entry.args, true /*is_interactive*/, nullopt));
 
     clang_complete->NotifySave(path);

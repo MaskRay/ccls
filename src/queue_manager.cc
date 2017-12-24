@@ -1,35 +1,9 @@
-#include "ipc_manager.h"
+#include "queue_manager.h"
 
 #include "language_server_api.h"
 #include "query.h"
 
 #include <sstream>
-
-IpcManager* IpcManager::instance_ = nullptr;
-
-// static
-IpcManager* IpcManager::instance() {
-  return instance_;
-}
-
-// static
-void IpcManager::CreateInstance(MultiQueueWaiter* waiter) {
-  instance_ = new IpcManager(waiter);
-}
-
-// static
-void IpcManager::WriteStdout(IpcId id, lsBaseOutMessage& response) {
-  std::ostringstream sstream;
-  response.Write(sstream);
-
-  StdoutMessage out;
-  out.content = sstream.str();
-  out.id = id;
-  instance()->for_stdout.Enqueue(std::move(out));
-}
-
-IpcManager::IpcManager(MultiQueueWaiter* waiter)
-    : for_stdout(waiter), for_querydb(waiter) {}
 
 Index_Request::Index_Request(const std::string& path,
                              const std::vector<std::string>& args,
@@ -66,8 +40,33 @@ Index_OnIndexed::Index_OnIndexed(IndexUpdate& update,
                                  PerformanceImportFile perf)
     : update(update), perf(perf) {}
 
+QueueManager* QueueManager::instance_ = nullptr;
+
+// static
+QueueManager* QueueManager::instance() {
+  return instance_;
+}
+
+// static
+void QueueManager::CreateInstance(MultiQueueWaiter* waiter) {
+  instance_ = new QueueManager(waiter);
+}
+
+// static
+void QueueManager::WriteStdout(IpcId id, lsBaseOutMessage& response) {
+  std::ostringstream sstream;
+  response.Write(sstream);
+
+  Stdout_Request out;
+  out.content = sstream.str();
+  out.id = id;
+  instance()->for_stdout.Enqueue(std::move(out));
+}
+
 QueueManager::QueueManager(MultiQueueWaiter* waiter)
-    : index_request(waiter),
+    : for_stdout(waiter),
+      for_querydb(waiter),
+      index_request(waiter),
       do_id_map(waiter),
       load_previous_index(waiter),
       on_id_mapped(waiter),

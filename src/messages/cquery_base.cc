@@ -39,7 +39,7 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
         out.result = GetLsLocations(db, working_files, locations);
       }
     }
-    IpcManager::WriteStdout(IpcId::CqueryBase, out);
+    QueueManager::WriteStdout(IpcId::CqueryBase, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryBaseHandler);

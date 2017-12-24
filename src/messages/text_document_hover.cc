@@ -107,7 +107,7 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       }
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentHover, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentHover, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentHoverHandler);

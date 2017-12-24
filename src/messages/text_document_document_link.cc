@@ -80,7 +80,7 @@ struct TextDocumentDocumentLinkHandler
       }
     }
 
-    IpcManager::WriteStdout(IpcId::TextDocumentDocumentLink, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentDocumentLink, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDocumentLinkHandler);

@@ -1,6 +1,6 @@
 #include "match.h"
 
-#include "ipc_manager.h"
+#include "queue_manager.h"
 #include "language_server_api.h"
 
 #include <doctest/doctest.h>
@@ -34,7 +34,7 @@ optional<Matcher> Matcher::Create(const std::string& search) {
     out.params.type = lsMessageType::Error;
     out.params.message = "cquery: Parsing EMCAScript regex \"" + search +
                          "\" failed; " + e.what();
-    IpcManager::WriteStdout(IpcId::Unknown, out);
+    QueueManager::WriteStdout(IpcId::Unknown, out);
     return nullopt;
   }
 }
