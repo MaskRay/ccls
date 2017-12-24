@@ -416,6 +416,7 @@ bool IsFunctionCallContext(CXCursorKind kind) {
 void OnIndexReference_Function(IndexFile* db,
                                Range loc_spelling,
                                ClangCursor caller_cursor,
+                               IndexFuncId called_id,
                                IndexFunc* called,
                                const std::string& called_usr,
                                bool is_implicit) {
@@ -423,6 +424,7 @@ void OnIndexReference_Function(IndexFile* db,
     IndexFuncId caller_id = db->ToFuncId(caller_cursor.cx_cursor);
     IndexFunc* caller = db->Resolve(caller_id);
     // Calling db->ToFuncId invalidates the FuncDef* ptrs.
+    called = db->Resolve(called_id);
 
     AddFuncRef(&caller->def.callees,
                IndexFuncRef(called->id, loc_spelling, is_implicit));
@@ -1056,6 +1058,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             OnIndexReference_Function(data->db,
                                       ResolveSpelling(cursor.cx_cursor),
                                       data->container,
+                                      called_id,
                                       called,
                                       ref_usr,
                                       /*implicit=*/ false);
@@ -1642,6 +1645,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       OnIndexReference_Function(db, loc_spelling,
                                 ref->container->cursor,
+                                called_id,
                                 called,
                                 ref->referencedEntity->USR, is_implicit);
 
