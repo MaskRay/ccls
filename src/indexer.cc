@@ -418,7 +418,6 @@ void OnIndexReference_Function(IndexFile* db,
                                ClangCursor caller_cursor,
                                IndexFuncId called_id,
                                IndexFunc* called,
-                               const std::string& called_usr,
                                bool is_implicit) {
   if (IsFunctionCallContext(caller_cursor.get_kind())) {
     IndexFuncId caller_id = db->ToFuncId(caller_cursor.cx_cursor);
@@ -1045,15 +1044,14 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_ClassTemplate:
       break;
     case CXCursor_OverloadedDeclRef: {
-      break; // TODO data->db seems to be incorrect and may cause deadlock
-
       unsigned num_overloaded = clang_getNumOverloadedDecls(cursor.cx_cursor);
       for (unsigned i = 0; i != num_overloaded; i++) {
         ClangCursor overloaded = clang_getOverloadedDecl(cursor.cx_cursor, i);
         switch (overloaded.get_kind()) {
           default:
             break;
-          case CXCursor_FunctionDecl: {
+          case CXCursor_FunctionDecl:
+          case CXCursor_FunctionTemplate: {
             std::string ref_usr = overloaded.get_usr();
             IndexFuncId called_id = data->db->ToFuncId(ref_usr);
             IndexFunc* called = data->db->Resolve(called_id);
@@ -1062,7 +1060,6 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                       data->container,
                                       called_id,
                                       called,
-                                      ref_usr,
                                       /*implicit=*/ false);
             break;
           }
@@ -1351,11 +1348,12 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // OnIndexReference, thus we use TemplateVisitor to collect function
         // references.
         if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
-          // TODO put db and caller into client data
           TemplateVisitorData data;
           data.db = db;
           data.container = decl_cursor;
           decl_cursor.VisitChildren(&TemplateVisitor, &data);
+          // TemplateVisitor calls ToFuncId which invalidates func
+          func = db->Resolve(func_id);
         }
 
         // Add function usage information. We only want to do it once per
@@ -1650,7 +1648,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
                                 ref->container->cursor,
                                 called_id,
                                 called,
-                                ref->referencedEntity->USR, is_implicit);
+                                is_implicit);
 
       // Checks if |str| starts with |start|. Ignores case.
       auto str_begin = [](const char* start, const char* str) {
