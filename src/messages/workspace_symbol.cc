@@ -82,7 +82,7 @@ constexpr int kCamelScore = kWordStartScore + kGapScore - 1;
 
 enum class CharClass { Lower, Upper, Digit, NonWord };
 
-static enum CharClass GetCharClass(int c) {
+static CharClass GetCharClass(int c) {
   if (islower(c)) return CharClass::Lower;
   if (isupper(c)) return CharClass::Upper;
   if (isdigit(c)) return CharClass::Digit;

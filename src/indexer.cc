@@ -393,24 +393,43 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
   return result;
 }
 
-ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
-                                         ClangCursor parent,
-                                         void* client_data) {
-  switch (cursor.get_kind()) {
-    default:
-      cursor.VisitChildren(&TemplateVisitor, client_data);
-      /* fallthrough */
+bool IsFunctionCallContext(CXCursorKind kind) {
+  switch (kind) {
+    case CXCursor_FunctionDecl:
+    case CXCursor_CXXMethod:
+    case CXCursor_Constructor:
+    case CXCursor_Destructor:
+    case CXCursor_ConversionFunction:
     case CXCursor_FunctionTemplate:
-    case CXCursor_ClassTemplate:
-      return ClangCursor::VisitResult::Continue;
-    case CXCursor_OverloadedDeclRef: {
-      unsigned num_overloaded = clang_getNumOverloadedDecls(cursor.cx_cursor);
-      for (unsigned i = 0; i != num_overloaded; i++) {
-        // ClangCursor overloaded = clang_getOverloadedDecl(cursor.cx_cursor, i);
-        // TODO handle references
-      }
-      return ClangCursor::VisitResult::Continue;
-    }
+    case CXCursor_OverloadedDeclRef:
+      // TODO: we need to test lambdas
+    case CXCursor_LambdaExpr:
+      return true;
+
+    default:
+      break;
+  }
+
+  return false;
+}
+
+void OnIndexReference_Function(IndexFile* db,
+                               Range loc_spelling,
+                               ClangCursor caller_cursor,
+                               IndexFunc* called,
+                               const std::string& called_usr,
+                               bool is_implicit) {
+  if (IsFunctionCallContext(caller_cursor.get_kind())) {
+    IndexFuncId caller_id = db->ToFuncId(caller_cursor.cx_cursor);
+    IndexFunc* caller = db->Resolve(caller_id);
+    // Calling db->ToFuncId invalidates the FuncDef* ptrs.
+
+    AddFuncRef(&caller->def.callees,
+               IndexFuncRef(called->id, loc_spelling, is_implicit));
+    AddFuncRef(&called->callers,
+               IndexFuncRef(caller->id, loc_spelling, is_implicit));
+  } else {
+    AddFuncRef(&called->callers, IndexFuncRef(loc_spelling, is_implicit));
   }
 }
 
@@ -1005,6 +1024,52 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
   return ClangCursor::VisitResult::Continue;
 }
 
+namespace {
+
+struct TemplateVisitorData {
+  IndexFile* db;
+  ClangCursor container;
+};
+
+ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
+                                         ClangCursor parent,
+                                         TemplateVisitorData* data) {
+  switch (cursor.get_kind()) {
+    default:
+      if (!IsFunctionCallContext(cursor.get_kind()))
+        cursor.VisitChildren(&TemplateVisitor, data);
+      /* fallthrough */
+    // TODO Add other containers not covered by IsFunctionCallContext
+    case CXCursor_ClassTemplate:
+      return ClangCursor::VisitResult::Continue;
+    case CXCursor_OverloadedDeclRef: {
+      unsigned num_overloaded = clang_getNumOverloadedDecls(cursor.cx_cursor);
+      for (unsigned i = 0; i != num_overloaded; i++) {
+        ClangCursor overloaded = clang_getOverloadedDecl(cursor.cx_cursor, i);
+        switch (overloaded.get_kind()) {
+          default:
+            break;
+          case CXCursor_FunctionDecl: {
+            std::string ref_usr = overloaded.get_usr();
+            IndexFuncId called_id = data->db->ToFuncId(ref_usr);
+            IndexFunc* called = data->db->Resolve(called_id);
+            OnIndexReference_Function(data->db,
+                                      ResolveSpelling(cursor.cx_cursor),
+                                      data->container,
+                                      called,
+                                      ref_usr,
+                                      /*implicit=*/ false);
+            break;
+          }
+        }
+      }
+      return ClangCursor::VisitResult::Continue;
+    }
+  }
+}
+
+} // namespace
+
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!kIndexStdDeclarations &&
       clang_Location_isInSystemHeader(
@@ -1281,7 +1346,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // references.
         if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
           // TODO put db and caller into client data
-          decl_cursor.VisitChildren(&TemplateVisitor, (void*)0);
+          TemplateVisitorData data;
+          data.db = db;
+          data.container = decl_cursor;
+          decl_cursor.VisitChildren(&TemplateVisitor, &data);
         }
 
         // Add function usage information. We only want to do it once per
@@ -1470,26 +1538,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 }
 
-bool IsFunctionCallContext(CXCursorKind kind) {
-  switch (kind) {
-    case CXCursor_FunctionDecl:
-    case CXCursor_CXXMethod:
-    case CXCursor_Constructor:
-    case CXCursor_Destructor:
-    case CXCursor_ConversionFunction:
-    case CXCursor_FunctionTemplate:
-    case CXCursor_OverloadedDeclRef:
-    // TODO: we need to test lambdas
-    case CXCursor_LambdaExpr:
-      return true;
-
-    default:
-      break;
-  }
-
-  return false;
-}
-
 void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   // TODO: Use clang_getFileUniqueID
   CXFile file;
@@ -1592,19 +1640,10 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
             !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
                                           called->def.short_name)));
 
-      if (IsFunctionCallContext(ref->container->cursor.kind)) {
-        IndexFuncId caller_id = db->ToFuncId(ref->container->cursor);
-        IndexFunc* caller = db->Resolve(caller_id);
-        // Calling db->ToFuncId invalidates the FuncDef* ptrs.
-        called = db->Resolve(called_id);
-
-        AddFuncRef(&caller->def.callees,
-                   IndexFuncRef(called_id, loc_spelling, is_implicit));
-        AddFuncRef(&called->callers,
-                   IndexFuncRef(caller_id, loc_spelling, is_implicit));
-      } else {
-        AddFuncRef(&called->callers, IndexFuncRef(loc_spelling, is_implicit));
-      }
+      OnIndexReference_Function(db, loc_spelling,
+                                ref->container->cursor,
+                                called,
+                                ref->referencedEntity->USR, is_implicit);
 
       // Checks if |str| starts with |start|. Ignores case.
       auto str_begin = [](const char* start, const char* str) {
