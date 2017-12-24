@@ -1043,8 +1043,10 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       /* fallthrough */
     // TODO Add other containers not covered by IsFunctionCallContext
     case CXCursor_ClassTemplate:
-      return ClangCursor::VisitResult::Continue;
+      break;
     case CXCursor_OverloadedDeclRef: {
+      break; // TODO data->db seems to be incorrect and may cause deadlock
+
       unsigned num_overloaded = clang_getNumOverloadedDecls(cursor.cx_cursor);
       for (unsigned i = 0; i != num_overloaded; i++) {
         ClangCursor overloaded = clang_getOverloadedDecl(cursor.cx_cursor, i);
@@ -1066,9 +1068,10 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           }
         }
       }
-      return ClangCursor::VisitResult::Continue;
+      break;
     }
   }
+  return ClangCursor::VisitResult::Continue;
 }
 
 } // namespace
