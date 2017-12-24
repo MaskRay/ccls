@@ -62,3 +62,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position);
+
+void EmitDiagnostics(WorkingFiles* working_files,
+                     std::string path,
+                     std::vector<lsDiagnostic> diagnostics);

@@ -12,8 +12,7 @@
 // RAII wrapper around CXTranslationUnit which also makes it much more
 // challenging to use a CXTranslationUnit instance that is not correctly
 // initialized.
-class ClangTranslationUnit {
- public:
+struct ClangTranslationUnit {
   static std::unique_ptr<ClangTranslationUnit> Create(
       ClangIndex* index,
       const std::string& filepath,
