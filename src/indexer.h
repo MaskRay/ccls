@@ -387,7 +387,7 @@ struct VarDefDefinitionData {
   // Type which declares this one.
   optional<TypeId> declaring_type;
 
-  VarClass cls;
+  VarClass cls = VarClass::Unknown;
 
   bool is_local() const { return cls == VarClass::Local; }
   bool is_macro() const { return cls == VarClass::Macro; }
