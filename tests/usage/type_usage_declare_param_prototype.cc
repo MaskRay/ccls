@@ -54,10 +54,7 @@ OUTPUT:
       "definition_spelling": "4:15-4:16",
       "definition_extent": "4:10-4:16",
       "variable_type": 0,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["4:15-4:16"]
     }]
 }

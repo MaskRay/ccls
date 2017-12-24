@@ -54,10 +54,7 @@ OUTPUT:
       "detailed_name": "int ns::a",
       "definition_spelling": "10:7-10:8",
       "definition_extent": "10:3-10:33",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["10:7-10:8"]
     }, {
       "id": 1,
@@ -66,10 +63,7 @@ OUTPUT:
       "detailed_name": "int ns::b",
       "definition_spelling": "11:7-11:8",
       "definition_extent": "11:3-11:35",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["11:7-11:8"]
     }]
 }

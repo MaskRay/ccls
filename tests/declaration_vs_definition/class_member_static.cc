@@ -34,10 +34,7 @@ OUTPUT:
       "definition_spelling": "5:10-5:13",
       "definition_extent": "5:1-5:13",
       "declaring_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["2:14-2:17", "5:10-5:13"]
     }]
 }

@@ -106,8 +106,14 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryVar* var = &db->vars[sym.idx.idx];
         if (!var->def)
           continue;  // applies to for loop
-        if (!var->def->is_local && !var->def->is_global && !var->def->is_member)
-          continue;  // applies to for loop
+        switch (var->def->cls) {
+          case VarClass::Local:
+          case VarClass::Global:
+          case VarClass::Member:
+            break;
+          default:
+              continue;  // applies to for loop
+        }
         is_type_member = var->def->declaring_type.has_value();
         detailed_name = var->def->short_name;
         break;

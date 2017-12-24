@@ -69,10 +69,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.definition_extent = id_map.ToQuery(var.definition_extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
   result.declaring_type = id_map.ToQuery(var.declaring_type);
-  result.is_local = var.is_local;
-  result.is_macro = var.is_macro;
-  result.is_global = var.is_global;
-  result.is_member = var.is_member;
+  result.cls = var.cls;
   return result;
 }
 
@@ -828,7 +825,7 @@ void QueryDatabase::ImportOrUpdate(
       continue;
 
     existing.def = def.value;
-    if (!def.value.is_local)
+    if (!def.value.is_local())
       UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var,
                           it->second.id, def.value.detailed_name);
   }

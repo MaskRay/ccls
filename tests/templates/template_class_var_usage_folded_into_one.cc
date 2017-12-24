@@ -33,10 +33,7 @@ OUTPUT:
       "short_name": "var",
       "detailed_name": "const int Foo::var",
       "declaration": "3:24-3:27",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["3:24-3:27", "6:19-6:22", "7:20-7:23"]
     }, {
       "id": 1,
@@ -45,10 +42,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "6:5-6:6",
       "definition_extent": "6:1-6:22",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["6:5-6:6"]
     }, {
       "id": 2,
@@ -57,10 +51,7 @@ OUTPUT:
       "detailed_name": "int b",
       "definition_spelling": "7:5-7:6",
       "definition_extent": "7:1-7:23",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["7:5-7:6"]
     }]
 }

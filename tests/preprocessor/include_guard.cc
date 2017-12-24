@@ -18,10 +18,7 @@ OUTPUT:
       "hover": "#define FOO",
       "definition_spelling": "2:9-2:12",
       "definition_extent": "2:9-2:12",
-      "is_local": false,
-      "is_macro": true,
-      "is_global": false,
-      "is_member": false,
+      "cls": 2,
       "uses": ["2:9-2:12"]
     }]
 }

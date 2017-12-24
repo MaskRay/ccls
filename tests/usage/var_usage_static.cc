@@ -32,10 +32,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "1:12-1:13",
       "definition_extent": "1:1-1:13",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["1:12-1:13", "4:3-4:4"]
     }]
 }

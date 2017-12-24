@@ -115,10 +115,7 @@ OUTPUT: static_function_in_type.cc
       "definition_spelling": "5:29-5:30",
       "definition_extent": "5:20-5:30",
       "variable_type": 1,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["5:29-5:30"]
     }]
 }

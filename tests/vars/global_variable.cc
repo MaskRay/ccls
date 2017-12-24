@@ -13,10 +13,7 @@ OUTPUT:
       "detailed_name": "int global",
       "definition_spelling": "1:12-1:18",
       "definition_extent": "1:1-1:22",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["1:12-1:18"]
     }]
 }

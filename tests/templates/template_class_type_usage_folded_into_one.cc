@@ -98,10 +98,7 @@ OUTPUT:
       "definition_spelling": "9:15-9:16",
       "definition_extent": "9:1-9:16",
       "variable_type": 3,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["9:15-9:16"]
     }, {
       "id": 1,
@@ -111,10 +108,7 @@ OUTPUT:
       "definition_spelling": "10:15-10:16",
       "definition_extent": "10:1-10:16",
       "variable_type": 3,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["10:15-10:16"]
     }]
 }

@@ -37,10 +37,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "6:5-6:6",
       "definition_extent": "6:1-6:19",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["6:5-6:6"]
     }, {
       "id": 1,
@@ -49,10 +46,7 @@ OUTPUT:
       "detailed_name": "int b",
       "definition_spelling": "7:5-7:6",
       "definition_extent": "7:1-7:20",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["7:5-7:6"]
     }]
 }

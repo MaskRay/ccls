@@ -33,10 +33,7 @@ OUTPUT:
       "definition_spelling": "4:10-4:11",
       "definition_extent": "4:1-4:11",
       "variable_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["4:10-4:11"]
     }, {
       "id": 1,
@@ -46,10 +43,7 @@ OUTPUT:
       "definition_spelling": "5:11-5:12",
       "definition_extent": "5:1-5:12",
       "variable_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["5:11-5:12"]
     }]
 }

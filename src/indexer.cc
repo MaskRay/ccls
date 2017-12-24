@@ -951,8 +951,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.detailed_name = cursor.get_display_name();
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
-        var_def->def.is_local = false;
-        var_def->def.is_macro = true;
+        var_def->def.cls = VarClass::Macro;
         var_def->def.definition_spelling = decl_loc_spelling;
         var_def->def.definition_extent = Resolve(cx_extent, nullptr);
       }
@@ -1059,13 +1058,16 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       bool is_system = clang_Location_isInSystemHeader(
           clang_indexLoc_getCXSourceLocation(decl->loc));
-      var->def.is_global =
-          !is_system && IsGlobalContainer(decl->semanticContainer);
-      var->def.is_member =
-          !is_system && IsTypeDefinition(decl->semanticContainer);
-      var->def.is_local =
-          !is_system && !var->def.is_global && !var->def.is_member;
-
+      if (is_system)
+        var->def.cls = VarClass::Unknown;
+      else {
+        if (IsGlobalContainer(decl->semanticContainer))
+          var->def.cls = VarClass::Global;
+        else if (IsTypeDefinition(decl->semanticContainer))
+          var->def.cls = VarClass::Member;
+        else
+          var->def.cls = VarClass::Local;
+      }
       //}
 
       if (decl->isDefinition) {
@@ -1491,8 +1493,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           std::string type_name = ToString(
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
           var->def.detailed_name = type_name + " " + var->def.short_name;
-          var->def.is_local = false;
-          var->def.is_member = true;
+          var->def.cls = VarClass::Member;
           UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
           AddDeclInitializerUsages(db, referenced.cx_cursor);
           // TODO Use proper semantic_container and lexical_container.

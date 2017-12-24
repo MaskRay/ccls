@@ -49,10 +49,7 @@ OUTPUT:
       "definition_spelling": "6:7-6:8",
       "definition_extent": "6:3-6:19",
       "declaring_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["6:7-6:8"]
     }]
 }

@@ -30,10 +30,7 @@ OUTPUT:
       "detailed_name": "int x",
       "definition_spelling": "2:7-2:8",
       "definition_extent": "2:3-2:8",
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["2:7-2:8", "3:3-3:4"]
     }]
 }

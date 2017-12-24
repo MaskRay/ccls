@@ -53,10 +53,7 @@ OUTPUT:
       "definition_spelling": "4:7-4:8",
       "definition_extent": "4:3-4:8",
       "declaring_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["4:7-4:8"]
     }, {
       "id": 1,
@@ -66,10 +63,7 @@ OUTPUT:
       "definition_spelling": "5:7-5:8",
       "definition_extent": "5:3-5:8",
       "declaring_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["5:7-5:8"]
     }, {
       "id": 2,
@@ -80,10 +74,7 @@ OUTPUT:
       "definition_extent": "6:3-6:26",
       "variable_type": 1,
       "declaring_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["6:20-6:26"]
     }]
 }

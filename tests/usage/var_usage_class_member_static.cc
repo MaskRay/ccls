@@ -66,10 +66,7 @@ OUTPUT:
       "short_name": "x",
       "detailed_name": "int Foo::x",
       "declaration": "2:14-2:15",
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["2:14-2:15", "8:15-8:16"]
     }]
 }

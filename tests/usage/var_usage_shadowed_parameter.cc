@@ -35,10 +35,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "1:14-1:15",
       "definition_extent": "1:10-1:15",
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["1:14-1:15", "2:3-2:4", "7:3-7:4"]
     }, {
       "id": 1,
@@ -47,10 +44,7 @@ OUTPUT:
       "detailed_name": "int a",
       "definition_spelling": "4:9-4:10",
       "definition_extent": "4:5-4:10",
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["4:9-4:10", "5:5-5:6"]
     }]
 }

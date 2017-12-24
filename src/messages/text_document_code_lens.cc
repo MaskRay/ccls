@@ -236,13 +236,13 @@ struct TextDocumentCodeLensHandler
           if (!var.def)
             continue;
 
-          if (var.def->is_local && !config->codeLensOnLocalVariables)
+          if (var.def->is_local() && !config->codeLensOnLocalVariables)
             continue;
 
           bool force_display = true;
           // Do not show 0 refs on macro with no uses, as it is most likely
           // a header guard.
-          if (var.def->is_macro)
+          if (var.def->is_macro())
             force_display = false;
 
           AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),

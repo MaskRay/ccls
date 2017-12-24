@@ -86,10 +86,7 @@ OUTPUT:
       "definition_spelling": "8:7-8:8",
       "definition_extent": "8:3-8:8",
       "variable_type": 0,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["8:7-8:8"]
     }]
 }

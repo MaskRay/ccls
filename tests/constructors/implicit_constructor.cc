@@ -65,10 +65,7 @@ OUTPUT:
       "definition_spelling": "6:8-6:12",
       "definition_extent": "6:3-6:12",
       "variable_type": 0,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["6:8-6:12"]
     }, {
       "id": 1,
@@ -78,10 +75,7 @@ OUTPUT:
       "definition_spelling": "7:8-7:12",
       "definition_extent": "7:3-7:21",
       "variable_type": 0,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["7:8-7:12"]
     }]
 }

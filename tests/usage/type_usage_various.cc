@@ -58,10 +58,7 @@ OUTPUT:
       "definition_spelling": "6:7-6:8",
       "definition_extent": "6:3-6:8",
       "variable_type": 0,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["6:7-6:8"]
     }, {
       "id": 1,
@@ -70,10 +67,7 @@ OUTPUT:
       "detailed_name": "Foo foo",
       "declaration": "10:12-10:15",
       "variable_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": true,
-      "is_member": false,
+      "cls": 3,
       "uses": ["10:12-10:15"]
     }]
 }

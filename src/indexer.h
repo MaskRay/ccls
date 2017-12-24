@@ -355,6 +355,20 @@ MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
                     content,
                     param_spellings);
 
+enum class VarClass {
+  // probably a variable in system headers
+  Unknown = 0,
+  // a parameter or function variable
+  Local = 1,
+  // a macro, ie, #define FOO
+  Macro = 2,
+  // a global variable
+  Global = 3,
+  // a member variable of struct/union/class/enum
+  Member = 4
+};
+MAKE_REFLECT_TYPE_PROXY(VarClass, std::underlying_type<VarClass>::type);
+
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct VarDefDefinitionData {
   // General metadata.
@@ -373,14 +387,10 @@ struct VarDefDefinitionData {
   // Type which declares this one.
   optional<TypeId> declaring_type;
 
-  // Is this a parameter or function variable?
-  bool is_local = false;
-  // Is this a macro, ie, #define FOO?
-  bool is_macro = false;
-  // Is this a global variable?
-  bool is_global = false;
-  // Is this a member variable of struct/union/class/enum?
-  bool is_member = false;
+  VarClass cls;
+
+  bool is_local() const { return cls == VarClass::Local; }
+  bool is_macro() const { return cls == VarClass::Macro; }
 
   bool operator==(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
@@ -413,10 +423,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(declaring_type);
-  REFLECT_MEMBER(is_local);
-  REFLECT_MEMBER(is_macro);
-  REFLECT_MEMBER(is_global);
-  REFLECT_MEMBER(is_member);
+  REFLECT_MEMBER(cls);
   REFLECT_MEMBER_END();
 }
 

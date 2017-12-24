@@ -65,10 +65,7 @@ OUTPUT:
       "definition_spelling": "4:5-4:6",
       "definition_extent": "4:3-4:6",
       "variable_type": 1,
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["4:5-4:6"]
     }]
 }

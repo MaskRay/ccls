@@ -298,10 +298,7 @@ OUTPUT: make_functions.cc
       "detailed_name": "Args &&... args",
       "definition_spelling": "4:25-4:29",
       "definition_extent": "4:15-4:29",
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["4:25-4:29"]
     }, {
       "id": 1,
@@ -310,10 +307,7 @@ OUTPUT: make_functions.cc
       "detailed_name": "Args... args",
       "definition_spelling": "9:24-9:28",
       "definition_extent": "9:16-9:28",
-      "is_local": true,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": false,
+      "cls": 1,
       "uses": ["9:24-9:28"]
     }]
 }

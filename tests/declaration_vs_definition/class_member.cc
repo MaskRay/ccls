@@ -31,10 +31,7 @@ OUTPUT:
       "definition_spelling": "2:7-2:10",
       "definition_extent": "2:3-2:10",
       "declaring_type": 0,
-      "is_local": false,
-      "is_macro": false,
-      "is_global": false,
-      "is_member": true,
+      "cls": 4,
       "uses": ["2:7-2:10"]
     }]
 }
