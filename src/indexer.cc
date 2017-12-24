@@ -393,6 +393,27 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
   return result;
 }
 
+ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
+                                         ClangCursor parent,
+                                         void* client_data) {
+  switch (cursor.get_kind()) {
+    default:
+      cursor.VisitChildren(&TemplateVisitor, client_data);
+      /* fallthrough */
+    case CXCursor_FunctionTemplate:
+    case CXCursor_ClassTemplate:
+      return ClangCursor::VisitResult::Continue;
+    case CXCursor_OverloadedDeclRef: {
+      unsigned num_overloaded = clang_getNumOverloadedDecls(cursor.cx_cursor);
+      for (unsigned i = 0; i != num_overloaded; i++) {
+        // ClangCursor overloaded = clang_getOverloadedDecl(cursor.cx_cursor, i);
+        // TODO handle references
+      }
+      return ClangCursor::VisitResult::Continue;
+    }
+  }
+}
+
 }  // namespace
 
 // static
@@ -1253,6 +1274,14 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             // type_desc is probably the name of a typedef.
             func->def.detailed_name = type_desc + " " + qualified_name;
           }
+        }
+
+        // CXCursor_OverloadedDeclRef in templates are not processed by
+        // OnIndexReference, thus we use TemplateVisitor to collect function
+        // references.
+        if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
+          // TODO put db and caller into client data
+          decl_cursor.VisitChildren(&TemplateVisitor, (void*)0);
         }
 
         // Add function usage information. We only want to do it once per
