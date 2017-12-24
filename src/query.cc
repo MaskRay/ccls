@@ -27,6 +27,7 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.short_name = type.short_name;
   result.detailed_name = type.detailed_name;
   result.hover = type.hover;
+  result.comments = type.comments;
   result.definition_spelling = id_map.ToQuery(type.definition_spelling);
   result.definition_extent = id_map.ToQuery(type.definition_extent);
   result.alias_of = id_map.ToQuery(type.alias_of);
@@ -46,6 +47,7 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.short_name = func.short_name;
   result.detailed_name = func.detailed_name;
   result.hover = func.hover;
+  result.comments = func.comments;
   result.definition_spelling = id_map.ToQuery(func.definition_spelling);
   result.definition_extent = id_map.ToQuery(func.definition_extent);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
@@ -64,6 +66,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
   result.hover = var.hover;
+  result.comments = var.comments;
   result.declaration = id_map.ToQuery(var.declaration);
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);

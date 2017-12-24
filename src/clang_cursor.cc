@@ -182,12 +182,15 @@ std::string ClangCursor::get_type_description() const {
   return ::ToString(clang_getTypeSpelling(type));
 }
 
-std::string ClangCursor::get_comments() const {
+optional<std::string> ClangCursor::get_comments() const {
+  return nullopt;
+  // TODO
   ClangCursor referenced = get_referenced();
   if (referenced)
+    // Get unformatted comments. Returns multiple paragraphs.
     return ::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor));
-
-  return "";
+  // Get formatted comments. Returns only the first paragraph.
+  return ::ToString(clang_Cursor_getBriefCommentText(referenced.cx_cursor));
 }
 
 std::string ClangCursor::ToString() const {

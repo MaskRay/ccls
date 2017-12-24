@@ -3,33 +3,36 @@
 
 namespace {
 
+static std::string getHoverString(const optional<std::string>& hover,
+                                  const optional<std::string>& comments,
+                                  const std::string& detailed_name) {
+  // TODO: Properly format multi-line comments.
+  std::string ret;
+  if (comments) {
+    ret += *comments;
+    ret += '\n';
+  }
+  return ret + hover.value_or(detailed_name);
+}
+
 std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
-      if (type.def) {
-        if (type.def->hover)
-          return *type.def->hover;
-        return type.def->detailed_name;
-      }
+      if (type.def)
+        return getHoverString(type.def->hover, type.def->comments, type.def->detailed_name);
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[symbol.idx];
-      if (func.def) {
-        if (func.def->hover)
-          return *func.def->hover;
-        return func.def->detailed_name;
-      }
+      if (func.def)
+        return getHoverString(func.def->hover, func.def->comments, func.def->detailed_name);
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
-      if (var.def) {
-        if (var.def->hover)
-          return *var.def->hover;
-        return var.def->detailed_name;
-      }
+      if (var.def)
+        return getHoverString(var.def->hover, var.def->comments, var.def->detailed_name);
       break;
     }
     case SymbolKind::File:

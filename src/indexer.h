@@ -150,6 +150,7 @@ struct TypeDefDefinitionData {
   std::string short_name;
   std::string detailed_name;
   optional<std::string> hover;
+  optional<std::string> comments;
 
   // While a class/type can technically have a separate declaration/definition,
   // it doesn't really happen in practice. The declaration never contains
@@ -201,6 +202,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(hover);
+  REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(alias_of);
@@ -247,6 +249,7 @@ struct FuncDefDefinitionData {
   std::string short_name;
   std::string detailed_name;
   optional<std::string> hover;
+  optional<std::string> comments;
   optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
@@ -295,6 +298,7 @@ void Reflect(
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(hover);
+  REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(declaring_type);
@@ -375,6 +379,7 @@ struct VarDefDefinitionData {
   std::string short_name;
   std::string detailed_name;
   optional<std::string> hover;
+  optional<std::string> comments;
   optional<Range> declaration;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
@@ -419,6 +424,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(hover);
+  REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);

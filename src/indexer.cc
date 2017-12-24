@@ -1012,6 +1012,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.cls = VarClass::Macro;
+        var_def->def.comments = cursor.get_comments();
         var_def->def.definition_spelling = decl_loc_spelling;
         var_def->def.definition_extent = Resolve(cx_extent, nullptr);
       }
@@ -1154,6 +1155,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // string. Shorten it to just "lambda".
       if (type_name.find("(lambda at") != std::string::npos)
         type_name = "lambda";
+      var->def.comments = decl_cursor.get_comments();
 
       {
         std::string qualified_name =
@@ -1246,6 +1248,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       IndexFuncId func_id = db->ToFuncId(decl_cursor_resolved.cx_cursor);
       IndexFunc* func = db->Resolve(func_id);
+      func->def.comments = decl_cursor.get_comments();
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
@@ -1428,6 +1431,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
 
+      ClangCursor decl_cursor = decl->cursor;
+      type->def.comments = decl_cursor.get_comments();
+
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
       // line, with spelling name replaced with qualified name.
       // TODO Think how to display multi-line declaration like `typedef struct {
@@ -1481,6 +1487,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+      ClangCursor decl_cursor = decl->cursor;
+      type->def.comments = decl_cursor.get_comments();
       // }
 
       if (decl->isDefinition) {
@@ -1594,6 +1602,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
           var->def.detailed_name = type_name + " " + var->def.short_name;
           var->def.cls = VarClass::Member;
+          ClangCursor decl_cursor = referenced;
+          var->def.comments = decl_cursor.get_comments();
           UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
           AddDeclInitializerUsages(db, referenced.cx_cursor);
           // TODO Use proper semantic_container and lexical_container.

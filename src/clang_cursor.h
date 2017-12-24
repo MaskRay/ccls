@@ -1,9 +1,13 @@
 #pragma once
 
+#include <optional.h>
+
 #include <clang-c/Index.h>
 
 #include <string>
 #include <vector>
+
+using std::experimental::optional;
 
 class ClangType {
  public:
@@ -65,7 +69,7 @@ class ClangCursor {
   bool is_valid_kind() const;
 
   std::string get_type_description() const;
-  std::string get_comments() const;
+  optional<std::string> get_comments() const;
 
   std::string ToString() const;
 
