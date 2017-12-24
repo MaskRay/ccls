@@ -340,6 +340,7 @@ struct QueryDatabase {
   // Indicies between lookup vectors are related to symbols, ie, index 5 in
   // |detailed_names| matches index 5 in |symbols|.
   std::vector<std::string> detailed_names;
+  std::vector<std::string> short_names;
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage. Accessible via SymbolIdx instances.
@@ -367,7 +368,8 @@ struct QueryDatabase {
   void UpdateDetailedNames(size_t* qualified_name_index,
                            SymbolKind kind,
                            size_t symbol_index,
-                           const std::string& name);
+                           const std::string& short_name,
+                           const std::string& detailed_name);
 };
 
 struct IdMap {

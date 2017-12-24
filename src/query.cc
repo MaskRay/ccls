@@ -754,7 +754,7 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::File,
-                        it->second.id, def.path);
+                        it->second.id, def.path, def.path);
   }
 }
 
@@ -778,7 +778,7 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def.value;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Type,
-                        it->second.id, def.value.detailed_name);
+                        it->second.id, def.value.short_name, def.value.detailed_name);
   }
 }
 
@@ -802,7 +802,7 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def.value;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func,
-                        it->second.id, def.value.detailed_name);
+                        it->second.id, def.value.short_name, def.value.detailed_name);
   }
 }
 
@@ -827,20 +827,23 @@ void QueryDatabase::ImportOrUpdate(
     existing.def = def.value;
     if (!def.value.is_local())
       UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var,
-                          it->second.id, def.value.detailed_name);
+                          it->second.id, def.value.short_name, def.value.detailed_name);
   }
 }
 
 void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index,
                                         SymbolKind kind,
                                         size_t symbol_index,
-                                        const std::string& name) {
+                                        const std::string& short_name,
+                                        const std::string& detailed_name) {
   if (*qualified_name_index == -1) {
-    detailed_names.push_back(name);
+    short_names.push_back(short_name);
+    detailed_names.push_back(detailed_name);
     symbols.push_back(SymbolIdx(kind, symbol_index));
     *qualified_name_index = detailed_names.size() - 1;
   } else {
-    detailed_names[*qualified_name_index] = name;
+    short_names[*qualified_name_index] = short_name;
+    detailed_names[*qualified_name_index] = detailed_name;
   }
 }
 

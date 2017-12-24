@@ -71,8 +71,9 @@ constexpr int kGapScore = -5;
 // greater than 1
 constexpr int kPatternStartMultiplier = 2;
 
-constexpr int kWordStartScore = 100;
-constexpr int kNonWordScore = 90;
+constexpr int kWordStartScore = 50;
+constexpr int kNonWordScore = 40;
+constexpr int kCaseMatchScore = 2;
 
 // Less than kWordStartScore
 constexpr int kConsecutiveScore = kWordStartScore + kGapScore;
@@ -81,14 +82,14 @@ constexpr int kCamelScore = kWordStartScore + kGapScore - 1;
 
 enum class CharClass { Lower, Upper, Digit, NonWord };
 
-static enum CharClass getCharClass(int c) {
+static enum CharClass GetCharClass(int c) {
   if (islower(c)) return CharClass::Lower;
   if (isupper(c)) return CharClass::Upper;
   if (isdigit(c)) return CharClass::Digit;
   return CharClass::NonWord;
 }
 
-static int getScoreFor(CharClass prev, CharClass curr) {
+static int GetScoreFor(CharClass prev, CharClass curr) {
   if (prev == CharClass::NonWord && curr != CharClass::NonWord)
     return kWordStartScore;
   if ((prev == CharClass::Lower && curr == CharClass::Upper) ||
@@ -115,7 +116,7 @@ dp[0][j] = leading_gap_penalty(0, j) + score[j]
 dp[i][j] = max(dp[i-1][j-1] + CONSECUTIVE_SCORE, max(dp[i-1][k] + gap_penalty(k+1, j) + score[j] : k < j))
 The first dimension can be suppressed since we do not need a matching scheme, which reduces the space complexity from O(N*M) to O(M)
 */
-int fuzzyEvaluate(const std::string& pattern,
+int FuzzyEvaluate(const std::string& pattern,
                   const std::string& str,
                   std::vector<int>& score,
                   std::vector<int>& dp) {
@@ -128,8 +129,8 @@ int fuzzyEvaluate(const std::string& pattern,
   // Calculate position score for each character in str.
   CharClass prev = CharClass::NonWord;
   for (int i = 0; i < int(str.size()); i++) {
-    CharClass cur = getCharClass(str[i]);
-    score[i] = getScoreFor(prev, cur);
+    CharClass cur = GetCharClass(str[i]);
+    score[i] = GetScoreFor(prev, cur);
     prev = cur;
   }
   std::fill_n(dp.begin(), str.size(), kMinScore);
@@ -145,10 +146,12 @@ int fuzzyEvaluate(const std::string& pattern,
     for (int i = 0; i < int(str.size()); i++) {
       left = dp[i];
       lefts = std::max(lefts + kGapScore, left);
+      // Use lower() if case-insensitive
       if (tolower(pc) == tolower(str[i])) {
         int t = score[i] * (pstart ? kPatternStartMultiplier : 1);
-        dp[i] = pfirst ? kLeadingGapScore * i + t
-                       : std::max(uleft + kConsecutiveScore, ulefts + t);
+        dp[i] = (pfirst ? kLeadingGapScore * i + t
+                        : std::max(uleft + kConsecutiveScore, ulefts + t)) +
+                (pc == str[i] ? kCaseMatchScore : 0);
       } else
         dp[i] = kMinScore;
       uleft = left;
@@ -164,7 +167,7 @@ int fuzzyEvaluate(const std::string& pattern,
     // parameters. We do not want to penalize them.
     // If we use `short_name` instead of `detailed_name` for fuzzy matching, the
     // penulty kGapScore can be used.
-    lefts = std::max(lefts /*+ kGapScore */, dp[i]);
+    lefts = std::max(lefts + kGapScore, dp[i]);
   return lefts;
 }
 
@@ -181,65 +184,70 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     std::unordered_set<std::string> inserted_results;
     // db->detailed_names indices of each lsSymbolInformation in out.result
     std::vector<int> result_indices;
+    std::vector<lsSymbolInformation> unsorted_results;
     inserted_results.reserve(config->maxWorkspaceSearchResults);
     result_indices.reserve(config->maxWorkspaceSearchResults);
 
-    for (int i = 0; i < db->detailed_names.size(); ++i) {
-      if (db->detailed_names[i].find(query) != std::string::npos) {
+    // Find exact substring matches.
+    for (int i = 0; i < db->short_names.size(); ++i) {
+      if (db->short_names[i].find(query) != std::string::npos) {
         // Do not show the same entry twice.
         if (!inserted_results.insert(db->detailed_names[i]).second)
           continue;
 
-        if (InsertSymbolIntoResult(db, working_files, db->symbols[i], &out.result)) {
+        if (InsertSymbolIntoResult(db, working_files, db->symbols[i], &unsorted_results)) {
           result_indices.push_back(i);
-          if (out.result.size() >= config->maxWorkspaceSearchResults)
+          if (unsorted_results.size() >= config->maxWorkspaceSearchResults)
             break;
         }
       }
     }
 
-    if (out.result.size() < config->maxWorkspaceSearchResults) {
+    // Find subsequence matches.
+    if (unsorted_results.size() < config->maxWorkspaceSearchResults) {
       std::string query_without_space;
       query_without_space.reserve(query.size());
       for (char c: query)
         if (!isspace(c))
           query_without_space += c;
 
-      for (int i = 0; i < db->detailed_names.size(); ++i) {
-        if (SubstringMatch(query_without_space, db->detailed_names[i])) {
+      for (int i = 0; i < db->short_names.size(); ++i) {
+        if (SubstringMatch(query_without_space, db->short_names[i])) {
           // Do not show the same entry twice.
           if (!inserted_results.insert(db->detailed_names[i]).second)
             continue;
 
-          if (InsertSymbolIntoResult(db, working_files, db->symbols[i], &out.result)) {
+          if (InsertSymbolIntoResult(db, working_files, db->symbols[i], &unsorted_results)) {
             result_indices.push_back(i);
-            if (out.result.size() >= config->maxWorkspaceSearchResults)
+            if (unsorted_results.size() >= config->maxWorkspaceSearchResults)
               break;
           }
         }
       }
     }
 
-    if (out.result.size() < config->maxWorkspaceSearchResults) {
+    // Sort results with a fuzzy matching algorithm.
+    if (unsorted_results.size() < config->maxWorkspaceSearchResults) {
       int longest = 0;
       for (int i: result_indices)
-        longest = std::max(longest, int(db->detailed_names[i].size()));
+        longest = std::max(longest, int(db->short_names[i].size()));
 
       std::vector<int> score(longest), // score for each position
-          dp(longest); // dp[i]: maximum value by aligning pattern[0..pi] to str[0..si]
+          dp(longest); // dp[i]: maximum value by aligning pattern to str[0..i]
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
-            fuzzyEvaluate(query, db->detailed_names[result_indices[i]], score,
+            FuzzyEvaluate(query, db->short_names[result_indices[i]], score,
                           dp),
             i};
       }
       std::sort(permutation.begin(), permutation.end(),
                 std::greater<std::pair<int, int>>());
+      out.result.reserve(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++)
-        if (i != permutation[i].second)
-          std::swap(out.result[i], out.result[permutation[i].second]);
-    }
+        out.result.push_back(std::move(unsorted_results[permutation[i].second]));
+    } else
+      out.result = std::move(unsorted_results);
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
                 << " results for query " << query;
