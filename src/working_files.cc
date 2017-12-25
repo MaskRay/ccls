@@ -324,28 +324,25 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
     return;
   }
 
-  file->version = change.textDocument.version;
+  if (change.textDocument.version)
+    file->version = *change.textDocument.version;
 
   for (const lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
     // Per the spec replace everything if the rangeLength and range are not set.
     // See https://github.com/Microsoft/language-server-protocol/issues/9.
-    if (diff.rangeLength == -1 &&
-        diff.range.start == lsPosition::kZeroPosition &&
-        diff.range.end == lsPosition::kZeroPosition) {
+    if (!diff.range) {
       file->buffer_content = diff.text;
       file->OnBufferContentUpdated();
     } else {
       int start_offset =
-          GetOffsetForPosition(diff.range.start, file->buffer_content);
+          GetOffsetForPosition(diff.range->start, file->buffer_content);
       int end_offset =
-          GetOffsetForPosition(diff.range.end, file->buffer_content);
-      int length = diff.rangeLength;
-      if (length == -1) {
-        length = end_offset - start_offset;
-      }
+          diff.rangeLength
+              ? start_offset + *diff.rangeLength
+              : GetOffsetForPosition(diff.range->end, file->buffer_content);
       file->buffer_content.replace(
           file->buffer_content.begin() + start_offset,
-          file->buffer_content.begin() + start_offset + length, diff.text);
+          file->buffer_content.begin() + end_offset, diff.text);
       file->OnBufferContentUpdated();
     }
   }

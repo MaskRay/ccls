@@ -260,7 +260,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
 struct lsVersionedTextDocumentIdentifier {
   lsDocumentUri uri;
   // The version number of this document.
-  int version = 0;
+  optional<int> version;
 
   lsTextDocumentIdentifier AsTextDocumentIdentifier() const;
 };
@@ -990,9 +990,9 @@ MAKE_REFLECT_STRUCT(lsMarkedString, language, value);
 
 struct lsTextDocumentContentChangeEvent {
   // The range of the document that changed.
-  lsRange range;
+  optional<lsRange> range;
   // The length of the range that got replaced.
-  int rangeLength = -1;
+  optional<int> rangeLength;
   // The new text of the range/document.
   std::string text;
 };
