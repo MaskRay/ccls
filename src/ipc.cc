@@ -34,6 +34,8 @@ const char* IpcIdToString(IpcId id) {
       return "textDocument/documentHighlight";
     case IpcId::TextDocumentHover:
       return "textDocument/hover";
+    case IpcId::TextDocumentFormatting:
+      return "textDocument/formatting";
     case IpcId::TextDocumentReferences:
       return "textDocument/references";
     case IpcId::TextDocumentDocumentSymbol:

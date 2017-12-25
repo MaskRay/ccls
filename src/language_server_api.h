@@ -273,6 +273,25 @@ struct lsTextDocumentPositionParams {
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentPositionParams, textDocument, position);
 
+struct lsFormattingOptions {
+  // Size of a tab in spaces.
+  int tabSize;
+  // Prefer spaces over tabs.
+  bool insertSpaces;
+};
+MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
+
+struct lsTextDocumentFormattingParams {
+  // The text document.
+  lsTextDocumentIdentifier textDocument;
+
+  // The format options, like tabs or spaces.
+  lsFormattingOptions formattingOptions;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams,
+                    textDocument,
+                    formattingOptions);
+
 struct lsTextEdit {
   // The range of the text document to be manipulated. To insert
   // text into a document create a range where start === end.
