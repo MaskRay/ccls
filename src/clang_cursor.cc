@@ -188,17 +188,30 @@ std::string ClangCursor::get_type_description() const {
 optional<std::string> ClangCursor::get_comments() const {
   if (!g_enable_comments)
     return nullopt;
-  ClangCursor referenced = get_referenced();
-  // TODO Format comments
-  std::string ret =
-      referenced
-          // Get unformatted comments. Returns multiple paragraphs.
-          ? ::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor))
-          // Get formatted comments. Returns only the first paragraph.
-          : ::ToString(clang_Cursor_getBriefCommentText(referenced.cx_cursor));
-  if (ret.empty())
+  CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
+  if (clang_Range_isNull(range))
     return nullopt;
-  return ret;
+
+  unsigned start_column;
+  clang_getSpellingLocation(clang_getRangeStart(range), nullptr, nullptr,
+                            &start_column, nullptr);
+
+  // Get associated comment text.
+  CXString cx_raw = clang_Cursor_getRawCommentText(cx_cursor);
+  // The first line starts with a comment marker, but the rest needs un-indenting.
+  std::string unindented;
+  for (const char* p = clang_getCString(cx_raw); *p; ) {
+    auto skip = start_column - 1;
+    for (; skip > 0 && (*p == ' ' || *p == '\t'); p++)
+      skip--;
+    const char* q = p;
+    while (*q != '\n' && *q) q++;
+    if (*q) q++;
+    unindented.insert(unindented.end(), p, q);
+    p = q;
+  }
+  clang_disposeString(cx_raw);
+  return unindented;
 }
 
 std::string ClangCursor::ToString() const {
