@@ -15,12 +15,24 @@ ClangFormat::ClangFormat(llvm::StringRef document_filename,
       insert_spaces_(insert_spaces) {}
 ClangFormat::~ClangFormat(){};
 
+static FormatStyle::LanguageKind getLanguageKindFromFilename(
+    llvm::StringRef filename) {
+  if (filename.endswith(".m") || filename.endswith(".mm")) {
+    return FormatStyle::LK_ObjC;
+  }
+  return FormatStyle::LK_Cpp;
+}
+
 std::vector<Replacement> ClangFormat::FormatWholeDocument() {
-  // TODO: Construct a valid style.
-  FormatStyle style = getChromiumStyle(FormatStyle::LK_Cpp);
-  style.UseTab = insert_spaces_ ? FormatStyle::UseTabStyle::UT_Never
-                                : FormatStyle::UseTabStyle::UT_Always;
-  style.IndentWidth = tab_size_;
+  const auto language_kind = getLanguageKindFromFilename(document_filename_);
+  FormatStyle predefined_style;
+  getPredefinedStyle("chromium", language_kind, &predefined_style);
+  auto style = getStyle("file", document_filename_, "chromium");
+  if (style == predefined_style) {
+    style.UseTab = insert_spaces_ ? FormatStyle::UseTabStyle::UT_Never
+                                  : FormatStyle::UseTabStyle::UT_Always;
+    style.IndentWidth = tab_size_;
+  }
   auto format_result = reformat(style, document_, ranges_, document_filename_);
   return std::vector<Replacement>(format_result.begin(), format_result.end());
 }
