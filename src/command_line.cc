@@ -439,6 +439,12 @@ int main(int argc, char** argv) {
     RunIndexTests(options["--test-index"]);
   }
 
+  if (HasOption(options, "--enable-comments")) {
+    // TODO Place this global variable into config
+    extern bool g_enable_comments;
+    g_enable_comments = true;
+  }
+
   if (HasOption(options, "--language-server")) {
     print_help = false;
     // std::cerr << "Running language server" << std::endl;

@@ -5,6 +5,9 @@
 #include <algorithm>
 #include <cassert>
 
+// TODO Place this global variable into config
+bool g_enable_comments = false;
+
 ClangType::ClangType() : cx_type() {}
 
 ClangType::ClangType(const CXType& other) : cx_type(other) {}
@@ -183,14 +186,19 @@ std::string ClangCursor::get_type_description() const {
 }
 
 optional<std::string> ClangCursor::get_comments() const {
-  return nullopt;
-  // TODO
+  if (!g_enable_comments)
+    return nullopt;
   ClangCursor referenced = get_referenced();
-  if (referenced)
-    // Get unformatted comments. Returns multiple paragraphs.
-    return ::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor));
-  // Get formatted comments. Returns only the first paragraph.
-  return ::ToString(clang_Cursor_getBriefCommentText(referenced.cx_cursor));
+  // TODO Format comments
+  std::string ret =
+      referenced
+          // Get unformatted comments. Returns multiple paragraphs.
+          ? ::ToString(clang_Cursor_getRawCommentText(referenced.cx_cursor))
+          // Get formatted comments. Returns only the first paragraph.
+          : ::ToString(clang_Cursor_getBriefCommentText(referenced.cx_cursor));
+  if (ret.empty())
+    return nullopt;
+  return ret;
 }
 
 std::string ClangCursor::ToString() const {
