@@ -56,8 +56,8 @@ if sys.version_info < (3, 0):
       if ret == 0:
         err = ctypes.WinError()
         ERROR_PRIVILEGE_NOT_HELD = 1314
-        # Creating symbolic link on Windows requires a special priviledge SeCreateSymboliclinkPrivilege, 
-        # which an non-elevated process lacks. Starting with Windows 10 build 14972, this got relaxed 
+        # Creating symbolic link on Windows requires a special priviledge SeCreateSymboliclinkPrivilege,
+        # which an non-elevated process lacks. Starting with Windows 10 build 14972, this got relaxed
         # when Developer Mode is enabled. Triggering this new behaviour requires a new flag. Try again.
         if err[0] == ERROR_PRIVILEGE_NOT_HELD:
           flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
@@ -234,6 +234,16 @@ def build(bld):
     cc_files += bld.path.ant_glob(['src/clang_cxx/*.cc'])
 
   lib = []
+  # clang-format support
+  lib.append('clangBasic')
+  lib.append('clangFormat')
+  lib.append('clangLex')
+  lib.append('clangRewrite')
+  lib.append('clangToolingCore')
+  lib.append('LLVMCore')
+  lib.append('LLVMDemangle')
+  lib.append('LLVMSupport')
+  lib.append('ncurses')
   if sys.platform.startswith('linux'):
     lib.append('rt')
     lib.append('pthread')
