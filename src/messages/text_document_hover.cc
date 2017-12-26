@@ -3,7 +3,7 @@
 
 namespace {
 
-std::pair<optional<std::string>, std::string> GetHoverForSymbol(
+std::pair<optional<std::string>, std::string> GetCommentsAndHover(
     QueryDatabase* db,
     const SymbolIdx& symbol) {
   switch (symbol.kind) {
@@ -94,12 +94,12 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
         continue;
 
       std::pair<optional<std::string>, std::string> comments_hover =
-          GetHoverForSymbol(db, ref.idx);
+          GetCommentsAndHover(db, ref.idx);
       if (comments_hover.first || comments_hover.second.size()) {
         out.result = Out_TextDocumentHover::Result();
         if (comments_hover.first) {
           out.result->contents.emplace_back(
-              lsMarkedString{file->def->language, *comments_hover.first});
+              lsMarkedString{"text", *comments_hover.first});
         }
         if (comments_hover.second.size()) {
           out.result->contents.emplace_back(
