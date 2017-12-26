@@ -3,36 +3,29 @@
 
 namespace {
 
-static std::string getHoverString(const optional<std::string>& hover,
-                                  const optional<std::string>& comments,
-                                  const std::string& detailed_name) {
-  // TODO: Properly format multi-line comments.
-  std::string ret;
-  if (comments) {
-    ret += *comments;
-    ret += '\n';
-  }
-  return ret + hover.value_or(detailed_name);
-}
-
-std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
+std::pair<optional<std::string>, std::string> GetHoverForSymbol(
+    QueryDatabase* db,
+    const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
       if (type.def)
-        return getHoverString(type.def->hover, type.def->comments, type.def->detailed_name);
+        return {type.def->comments,
+                type.def->hover.value_or(type.def->detailed_name)};
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[symbol.idx];
       if (func.def)
-        return getHoverString(func.def->hover, func.def->comments, func.def->detailed_name);
+        return {func.def->comments,
+                func.def->hover.value_or(func.def->detailed_name)};
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
       if (var.def)
-        return getHoverString(var.def->hover, var.def->comments, var.def->detailed_name);
+        return {var.def->comments,
+                var.def->hover.value_or(var.def->detailed_name)};
       break;
     }
     case SymbolKind::File:
@@ -41,7 +34,7 @@ std::string GetHoverForSymbol(QueryDatabase* db, const SymbolIdx& symbol) {
       break;
     }
   }
-  return "";
+  return {nullopt, ""};
 }
 
 struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {
@@ -55,7 +48,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentHover);
 
 struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   struct Result {
-    lsMarkedString contents;
+    std::vector<lsMarkedString> contents;
     optional<lsRange> range;
   };
 
@@ -100,11 +93,18 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       if (!ls_range)
         continue;
 
-      std::string hover = GetHoverForSymbol(db, ref.idx);
-      if (!hover.empty()) {
+      std::pair<optional<std::string>, std::string> comments_hover =
+          GetHoverForSymbol(db, ref.idx);
+      if (comments_hover.first || comments_hover.second.size()) {
         out.result = Out_TextDocumentHover::Result();
-        out.result->contents.value = hover;
-        out.result->contents.language = file->def->language;
+        if (comments_hover.first) {
+          out.result->contents.emplace_back(
+              lsMarkedString{file->def->language, *comments_hover.first});
+        }
+        if (comments_hover.second.size()) {
+          out.result->contents.emplace_back(
+              lsMarkedString{file->def->language, comments_hover.second});
+        }
         out.result->range = *ls_range;
         break;
       }
