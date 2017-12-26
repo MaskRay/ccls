@@ -50,10 +50,35 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
   }
 #endif
 
+  auto &items = complete_response->result.items;
+
+  // If the text doesn't start with underscore,
+  // remove all candidates that start with underscore.
+  if (!complete_text.empty() && complete_text[0] != '_') {
+    items.erase(std::remove_if(items.begin(), items.end(),
+                               [](const lsCompletionItem& item) {
+                                 return item.label[0] == '_';
+                               }), items.end());
+  }
+
+  // find the exact text
+  const bool found = !complete_text.empty() &&
+                     std::find_if(items.begin(), items.end(),
+                                  [&](const lsCompletionItem& item) {
+                                    return item.label == complete_text;
+                                  }) != items.end();
+  // If found, remove all candidates that do not start with it.
+  if (found) {
+    items.erase(std::remove_if(items.begin(), items.end(),
+                               [&](const lsCompletionItem& item) {
+                                 return item.label.find(complete_text) != 0;
+                               }), items.end());
+  }
+
   const size_t kMaxResultSize = 100u;
-  if (complete_response->result.items.size() > kMaxResultSize) {
+  if (items.size() > kMaxResultSize) {
     if (complete_text.empty()) {
-      complete_response->result.items.resize(kMaxResultSize);
+      items.resize(kMaxResultSize);
     } else {
       std::vector<lsCompletionItem> filtered_result;
       filtered_result.reserve(kMaxResultSize);
@@ -62,7 +87,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
       inserted.reserve(kMaxResultSize);
 
       // Find literal matches first.
-      for (const lsCompletionItem& item : complete_response->result.items) {
+      for (const auto& item : items) {
         if (item.label.find(complete_text) != std::string::npos) {
           // Don't insert the same completion entry.
           if (!inserted.insert(item.InsertedContent()).second)
@@ -76,7 +101,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
       // Find fuzzy matches if we haven't found all of the literal matches.
       if (filtered_result.size() < kMaxResultSize) {
-        for (const lsCompletionItem& item : complete_response->result.items) {
+        for (const auto& item : items) {
           if (SubstringMatch(complete_text, item.label)) {
             // Don't insert the same completion entry.
             if (!inserted.insert(item.InsertedContent()).second)
@@ -89,14 +114,14 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
         }
       }
 
-      complete_response->result.items = filtered_result;
+      items = filtered_result;
     }
 
     // Assuming the client does not support out-of-order completion (ie, ao
     // matches against oa), our filtering is guaranteed to contain any
     // potential matches, so the completion is only incomplete if we have the
     // max number of emitted matches.
-    if (complete_response->result.items.size() >= kMaxResultSize) {
+    if (items.size() >= kMaxResultSize) {
       LOG_S(INFO) << "Marking completion results as incomplete";
       complete_response->result.isIncomplete = true;
     }
