@@ -145,6 +145,7 @@ def configure(ctx):
   ctx.load('clang_compilation_database', tooldir='.')
 
   ctx.env['use_system_clang'] = ctx.options.use_system_clang
+  ctx.env['llvm_config'] = ctx.options.llvm_config
   ctx.env['bundled_clang'] = ctx.options.bundled_clang
   def libname(lib):
     # Newer MinGW and MSVC both wants full file name
@@ -237,13 +238,27 @@ def build(bld):
     lib.append('pthread')
 
   if bld.env['use_system_clang']:
-    if sys.platform == 'darwin':
-      rpath = bld.env['LIBPATH_clang'][0]
+    if bld.env['llvm_config']:
+      # If --llvm-config is specified, set RPATH and use $bindir/bin/clang -###
+      # to detect recource directory.
+      output = str(subprocess.check_output(
+          [bld.env['llvm_config'], '--bindir'],
+          stderr=subprocess.STDOUT).decode()).strip()
+      clang = os.path.join(output, 'clang')
+      rpath = str(subprocess.check_output(
+          [bld.env['llvm_config'], '--libdir'],
+          stderr=subprocess.STDOUT).decode()).strip()
     else:
-      rpath = []
+      clang = 'clang'
+      if sys.platform == 'darwin':
+        rpath = bld.env['LIBPATH_clang'][0]
+      else:
+        rpath = []
 
     devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
-    output = subprocess.check_output(['clang', '-###', '-xc', devnull], stderr=subprocess.STDOUT).decode()
+    output = subprocess.check_output(
+        [clang, '-###', '-xc', devnull],
+        stderr=subprocess.STDOUT).decode()
     match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M | re.I)
     if match:
         default_resource_directory = match.group(1)
