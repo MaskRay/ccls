@@ -303,9 +303,6 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
 
   std::vector<std::string> args = session->file.args;
 
-  // Show comment docstrings.
-  args.push_back("-fparse-all-comments");
-
   // -fspell-checking enables FixIts for, ie, misspelled types.
   if (!AnyStartsWith(args, "-fno-spell-checking") &&
       !AnyStartsWith(args, "-fspell-checking")) {

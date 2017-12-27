@@ -211,6 +211,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (!AnyStartsWith(result.args, "-Wno-unknown-warning-option"))
     result.args.push_back("-Wno-unknown-warning-option");
 
+  // Using -fparse-all-comments enables documententation in the indexer and in
+  // code completion.
+  if (!AnyStartsWith(result.args, "-fparse-all-comments"))
+    result.args.push_back("-fparse-all-comments");
+
   return result;
 }
 
@@ -482,19 +487,21 @@ TEST_SUITE("Project") {
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
         {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
         {"clang", "-xc++", "-std=c++11", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
         {"clang", "--foo", "-xc++", "-std=c++11",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
   }
 
   // FIXME: Fix this test.
@@ -504,16 +511,16 @@ TEST_SUITE("Project") {
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
         {"cc", "-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Implied binary") {
-    CheckFlags(
-        "/home/user", "/home/user/foo/bar.cc",
-        /* raw */ {"-DDONT_IGNORE_ME"},
-        /* expected */
-        {"clang++", "-DDONT_IGNORE_ME", "-xc++", "-std=c++11",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+    CheckFlags("/home/user", "/home/user/foo/bar.cc",
+               /* raw */ {"-DDONT_IGNORE_ME"},
+               /* expected */
+               {"clang++", "-DDONT_IGNORE_ME", "-xc++", "-std=c++11",
+                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+                "-fparse-all-comments"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what
@@ -859,7 +866,8 @@ TEST_SUITE("Project") {
          "-fvisibility-inlines-hidden",
          "-xc++",
          "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
   }
 
   // Checks flag parsing for an example chromium file.
@@ -1179,7 +1187,8 @@ TEST_SUITE("Project") {
          "-fvisibility-inlines-hidden",
          "-xc++",
          "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
   }
 
   TEST_CASE("Directory extraction") {
