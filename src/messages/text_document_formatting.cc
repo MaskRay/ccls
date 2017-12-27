@@ -2,6 +2,25 @@
 #include "message_handler.h"
 
 namespace {
+struct lsFormattingOptions {
+  // Size of a tab in spaces.
+  int tabSize;
+  // Prefer spaces over tabs.
+  bool insertSpaces;
+};
+MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
+
+struct lsTextDocumentFormattingParams {
+  // The text document.
+  lsTextDocumentIdentifier textDocument;
+
+  // The format options, like tabs or spaces.
+  lsFormattingOptions formattingOptions;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams,
+                    textDocument,
+                    formattingOptions);
+
 struct Ipc_TextDocumentFormatting
     : public IpcMessage<Ipc_TextDocumentFormatting> {
   const static IpcId kIpcId = IpcId::TextDocumentFormatting;
