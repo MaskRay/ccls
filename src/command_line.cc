@@ -430,7 +430,7 @@ int main(int argc, char** argv) {
     doctest::Context context;
     context.applyCommandLine(argc, argv);
     int res = context.run();
-    if (context.shouldExit())
+    if (res != 0 || context.shouldExit())
       return res;
   }
 
