@@ -40,7 +40,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@F@foo#*$@S@ForwardType#$@S@ImplementedType#",
       "short_name": "foo",
-      "detailed_name": "void foo(ForwardType *, ImplementedType)",
+      "detailed_name": "void foo(ForwardType *f, ImplementedType a)",
       "declarations": [],
       "definition_spelling": "4:6-4:9",
       "definition_extent": "4:1-4:47",

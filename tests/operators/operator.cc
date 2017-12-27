@@ -64,7 +64,7 @@ OUTPUT:
       "is_operator": true,
       "usr": "c:@S@Foo@F@operator()#I#I#",
       "short_name": "operator()",
-      "detailed_name": "int Foo::operator()(int, int)",
+      "detailed_name": "int Foo::operator()(int a, int b)",
       "declarations": [{
           "spelling": "4:7-4:17",
           "extent": "4:3-4:31",

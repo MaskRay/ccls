@@ -20,7 +20,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@N@ns@F@Accept#I#",
       "short_name": "Accept",
-      "detailed_name": "void ns::Accept(int)",
+      "detailed_name": "void ns::Accept(int a)",
       "declarations": [],
       "definition_spelling": "3:8-3:14",
       "definition_extent": "3:3-3:24",

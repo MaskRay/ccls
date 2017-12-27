@@ -39,7 +39,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@F@called#I#",
       "short_name": "called",
-      "detailed_name": "void called(int)",
+      "detailed_name": "void called(int a)",
       "declarations": [{
           "spelling": "1:6-1:12",
           "extent": "1:1-1:19",

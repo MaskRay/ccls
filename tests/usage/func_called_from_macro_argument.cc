@@ -17,7 +17,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@F@called#b#b#",
       "short_name": "called",
-      "detailed_name": "bool called(bool, bool)",
+      "detailed_name": "bool called(bool a, bool b)",
       "declarations": [{
           "spelling": "3:6-3:12",
           "extent": "3:1-3:28",

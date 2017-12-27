@@ -33,7 +33,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@S@Wrapper@F@Wrapper#I#",
       "short_name": "Wrapper",
-      "detailed_name": "void Wrapper::Wrapper(int)",
+      "detailed_name": "void Wrapper::Wrapper(int i)",
       "declarations": [{
           "spelling": "2:3-2:10",
           "extent": "2:3-2:17",

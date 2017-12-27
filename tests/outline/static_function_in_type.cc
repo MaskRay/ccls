@@ -96,7 +96,7 @@ OUTPUT: static_function_in_type.cc
       "is_operator": false,
       "usr": "c:@N@ns@S@Foo@F@Register#*$@N@ns@S@Manager#S",
       "short_name": "Register",
-      "detailed_name": "void ns::Foo::Register(ns::Manager *)",
+      "detailed_name": "void ns::Foo::Register(ns::Manager *m)",
       "declarations": [],
       "definition_spelling": "5:11-5:19",
       "definition_extent": "5:1-6:2",

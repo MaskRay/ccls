@@ -31,7 +31,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@F@foo#*$@S@Foo#S0_#",
       "short_name": "foo",
-      "detailed_name": "void foo(Foo *, Foo *)",
+      "detailed_name": "void foo(Foo *f, Foo *)",
       "declarations": [{
           "spelling": "3:6-3:9",
           "extent": "3:1-3:23",

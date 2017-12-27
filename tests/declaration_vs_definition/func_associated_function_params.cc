@@ -15,7 +15,7 @@ OUTPUT:
       "is_operator": false,
       "usr": "c:@F@foo#I#I#",
       "short_name": "foo",
-      "detailed_name": "int foo(int, int)",
+      "detailed_name": "int foo(int a, int b)",
       "declarations": [{
           "spelling": "1:5-1:8",
           "extent": "1:1-1:18",

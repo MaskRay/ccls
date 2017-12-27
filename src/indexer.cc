@@ -1072,6 +1072,108 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
 
 }  // namespace
 
+// Build a detailed function signature, including argument names.
+static std::string get_function_signature(IndexFile* db,
+                                          NamespaceHelper* ns,
+                                          const CXIdxDeclInfo* decl) {
+  // Build the function name, with scope and parameters
+  ClangCursor decl_cursor = decl->cursor;
+  std::string type_desc = decl_cursor.get_type_description();
+  int args_num = clang_Cursor_getNumArguments(decl->cursor);
+  std::string function_name =
+      ns->QualifiedName(decl->semanticContainer, decl->entityInfo->name);
+
+  std::vector<std::string> arg_names;
+  for (int i = 0; i < args_num; i++) {
+    CXCursor arg = clang_Cursor_getArgument(decl->cursor, i);
+    auto id = ::ToString(clang_getCursorDisplayName(arg));
+    arg_names.push_back(id);
+  }
+
+  if (clang_Cursor_isVariadic(decl->cursor)) {
+    arg_names.push_back("");
+    args_num++;
+  }
+
+  size_t balance = 0, offset;
+  size_t closing_bracket_offset = 0;
+
+  // Scan the function type backwards.
+
+  // First pass: find the position of the closing bracket in the type.
+  for (offset = type_desc.size(); offset;) {
+    offset--;
+    // Remember that ) was seen.
+    if (type_desc[offset] == ')') {
+      balance++;
+      if (balance == 1) {
+        closing_bracket_offset = offset;
+      }
+    }
+    // Balanced paren pair that may appear before the paren enclosing
+    // function parameters, see clang/lib/AST/TypePrinter.cpp
+    else if (type_desc[offset] == '(' && --balance == 0 &&
+             !((offset >= 5 && !type_desc.compare(offset - 5, 5, "throw")) ||
+               (offset >= 6 && !type_desc.compare(offset - 6, 6, "typeof")) ||
+               (offset >= 7 && !type_desc.compare(offset - 7, 7, "_Atomic")) ||
+               (offset >= 8 && !type_desc.compare(offset - 8, 8, "decltype")) ||
+               (offset >= 8 && !type_desc.compare(offset - 8, 8, "noexcept")) ||
+               (offset >= 13 &&
+                !type_desc.compare(offset - 13, 13, "__attribute__"))))
+      break;
+  }
+
+  size_t function_name_offset = offset;
+
+  if (closing_bracket_offset > 0) {
+    // Insert the name of the last parameter right before the closing bracket.
+    int arg_idx = args_num - 1;
+    if (args_num > 0) {
+      if (!arg_names[arg_idx].empty()) {
+        type_desc.insert(closing_bracket_offset, arg_names[arg_idx]);
+        // Insert a space between the type and the argument name if required.
+        if (!isspace(type_desc[closing_bracket_offset - 1]) &&
+            type_desc[closing_bracket_offset - 1] != '*' &&
+            type_desc[closing_bracket_offset - 1] != '&')
+          type_desc.insert(closing_bracket_offset, " ");
+      }
+      arg_idx--;
+    }
+
+    balance = 1;
+    // Second pass: Insert argument names before each comma.
+    for (offset = closing_bracket_offset;
+         offset >= function_name_offset && args_num > 0;) {
+      offset--;
+      // Remember that ) was seen.
+      if (type_desc[offset] == ')' || type_desc[offset] == '>' ||
+          type_desc[offset] == ']' || type_desc[offset] == '}') {
+        balance++;
+      } else if (type_desc[offset] == ',' && balance == 1) {
+        if (!arg_names[arg_idx].empty()) {
+          type_desc.insert(offset, arg_names[arg_idx]);
+          // Insert a space between the type and the argument name if required.
+          if (!isspace(type_desc[offset - 1]) && type_desc[offset - 1] != '*' &&
+              type_desc[offset - 1] != '&')
+            type_desc.insert(offset, " ");
+        }
+        arg_idx--;
+      } else if (type_desc[offset] == '<' || type_desc[offset] == '[' ||
+                 type_desc[offset] == '{')
+        balance--;
+      else if (type_desc[offset] == '(' && --balance == 0)
+        break;
+    }
+  }
+  if (function_name_offset > 0) {
+    type_desc.insert(function_name_offset, function_name);
+  } else {
+    type_desc.append(" " + function_name);
+  }
+
+  return type_desc;
+}
+
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!kIndexStdDeclarations &&
       clang_Location_isInSystemHeader(
@@ -1310,40 +1412,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
         // Build detailed name. The type desc looks like void (void *). We
         // insert the qualified name before the first '('.
-        std::string qualified_name =
-            ns->QualifiedName(decl->semanticContainer, func->def.short_name);
-        std::string type_desc = decl_cursor.get_type_description();
-        {
-          size_t balance = 0, offset;
-          for (offset = type_desc.size(); offset;) {
-            offset--;
-            if (type_desc[offset] == ')')
-              balance++;
-            // Balanced paren pair that may appear before the paren enclosing
-            // function parameters, see clang/lib/AST/TypePrinter.cpp
-            else if (type_desc[offset] == '(' && --balance == 0 &&
-                     !((offset >= 5 &&
-                        !type_desc.compare(offset - 5, 5, "throw")) ||
-                       (offset >= 6 &&
-                        !type_desc.compare(offset - 6, 6, "typeof")) ||
-                       (offset >= 7 &&
-                        !type_desc.compare(offset - 7, 7, "_Atomic")) ||
-                       (offset >= 8 &&
-                        !type_desc.compare(offset - 8, 8, "decltype")) ||
-                       (offset >= 8 &&
-                        !type_desc.compare(offset - 8, 8, "noexcept")) ||
-                       (offset >= 13 &&
-                        !type_desc.compare(offset - 13, 13, "__attribute__"))))
-              break;
-          }
-          if (offset > 0) {
-            type_desc.insert(offset, qualified_name);
-            func->def.detailed_name = type_desc;
-          } else {
-            // type_desc is probably the name of a typedef.
-            func->def.detailed_name = type_desc + " " + qualified_name;
-          }
-        }
+        func->def.detailed_name = get_function_signature(db, ns, decl);
 
         // CXCursor_OverloadedDeclRef in templates are not processed by
         // OnIndexReference, thus we use TemplateVisitor to collect function
