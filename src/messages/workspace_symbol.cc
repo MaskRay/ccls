@@ -57,7 +57,6 @@ struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
 };
 MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 
-
 ///// Fuzzy matching
 
 // Negative but far from INT_MIN so that intermediate results are hard to
@@ -83,9 +82,12 @@ constexpr int kCamelScore = kWordStartScore + kGapScore - 1;
 enum class CharClass { Lower, Upper, Digit, NonWord };
 
 static CharClass GetCharClass(int c) {
-  if (islower(c)) return CharClass::Lower;
-  if (isupper(c)) return CharClass::Upper;
-  if (isdigit(c)) return CharClass::Digit;
+  if (islower(c))
+    return CharClass::Lower;
+  if (isupper(c))
+    return CharClass::Upper;
+  if (isdigit(c))
+    return CharClass::Digit;
   return CharClass::NonWord;
 }
 
@@ -101,20 +103,27 @@ static int GetScoreFor(CharClass prev, CharClass curr) {
 }
 
 /*
-fuzzyEvaluate implements a global sequence alignment algorithm to find the maximum accumulated score by aligning `pattern` to `str`. It applies when `pattern` is a subsequence of `str`.
+fuzzyEvaluate implements a global sequence alignment algorithm to find the
+maximum accumulated score by aligning `pattern` to `str`. It applies when
+`pattern` is a subsequence of `str`.
 
 Scoring criteria
-- Prefer matches at the start of a word, or the start of subwords in CamelCase/camelCase/camel123 words. See kWordStartScore/kCamelScore
+- Prefer matches at the start of a word, or the start of subwords in
+CamelCase/camelCase/camel123 words. See kWordStartScore/kCamelScore
 - Non-word characters matter. See kNonWordScore
-- The first characters of words of `pattern` receive bonus because they usually have more significance than the rest. See kPatternStartMultiplier
-- Superfluous characters in `str` will reduce the score (gap penalty). See kGapScore
+- The first characters of words of `pattern` receive bonus because they usually
+have more significance than the rest. See kPatternStartMultiplier
+- Superfluous characters in `str` will reduce the score (gap penalty). See
+kGapScore
 - Prefer early occurrence of the first character. See kLeadingGapScore/kGapScore
 
 The recurrence of the dynamic programming:
 dp[i][j]: maximum accumulated score by aligning pattern[0..i] to str[0..j]
 dp[0][j] = leading_gap_penalty(0, j) + score[j]
-dp[i][j] = max(dp[i-1][j-1] + CONSECUTIVE_SCORE, max(dp[i-1][k] + gap_penalty(k+1, j) + score[j] : k < j))
-The first dimension can be suppressed since we do not need a matching scheme, which reduces the space complexity from O(N*M) to O(M)
+dp[i][j] = max(dp[i-1][j-1] + CONSECUTIVE_SCORE, max(dp[i-1][k] +
+gap_penalty(k+1, j) + score[j] : k < j))
+The first dimension can be suppressed since we do not need a matching scheme,
+which reduces the space complexity from O(N*M) to O(M)
 */
 int FuzzyEvaluate(const std::string& pattern,
                   const std::string& str,
@@ -136,7 +145,7 @@ int FuzzyEvaluate(const std::string& pattern,
   std::fill_n(dp.begin(), str.size(), kMinScore);
 
   // Align each character of pattern.
-  for (unsigned char pc: pattern) {
+  for (unsigned char pc : pattern) {
     if (isspace(pc)) {
       pstart = true;
       continue;
@@ -192,7 +201,8 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
         if (!inserted_results.insert(db->detailed_names[i]).second)
           continue;
 
-        if (InsertSymbolIntoResult(db, working_files, db->symbols[i], &unsorted_results)) {
+        if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
+                                   &unsorted_results)) {
           result_indices.push_back(i);
           if (unsorted_results.size() >= config->maxWorkspaceSearchResults)
             break;
@@ -204,7 +214,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     if (unsorted_results.size() < config->maxWorkspaceSearchResults) {
       std::string query_without_space;
       query_without_space.reserve(query.size());
-      for (char c: query)
+      for (char c : query)
         if (!isspace(c))
           query_without_space += c;
 
@@ -214,7 +224,8 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
           if (!inserted_results.insert(db->detailed_names[i]).second)
             continue;
 
-          if (InsertSymbolIntoResult(db, working_files, db->symbols[i], &unsorted_results)) {
+          if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
+                                     &unsorted_results)) {
             result_indices.push_back(i);
             if (unsorted_results.size() >= config->maxWorkspaceSearchResults)
               break;
@@ -225,16 +236,15 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
 
     // Sort results with a fuzzy matching algorithm.
     int longest = 0;
-    for (int i: result_indices)
+    for (int i : result_indices)
       longest = std::max(longest, int(db->short_names[i].size()));
 
-    std::vector<int> score(longest), // score for each position
-        dp(longest); // dp[i]: maximum value by aligning pattern to str[0..i]
+    std::vector<int> score(longest),  // score for each position
+        dp(longest);  // dp[i]: maximum value by aligning pattern to str[0..i]
     std::vector<std::pair<int, int>> permutation(result_indices.size());
     for (int i = 0; i < int(result_indices.size()); i++) {
       permutation[i] = {
-          FuzzyEvaluate(query, db->short_names[result_indices[i]], score,
-                        dp),
+          FuzzyEvaluate(query, db->short_names[result_indices[i]], score, dp),
           i};
     }
     std::sort(permutation.begin(), permutation.end(),

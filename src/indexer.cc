@@ -402,7 +402,7 @@ bool IsFunctionCallContext(CXCursorKind kind) {
     case CXCursor_ConversionFunction:
     case CXCursor_FunctionTemplate:
     case CXCursor_OverloadedDeclRef:
-      // TODO: we need to test lambdas
+    // TODO: we need to test lambdas
     case CXCursor_LambdaExpr:
       return true;
 
@@ -1040,7 +1040,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     default:
       if (!IsFunctionCallContext(cursor.get_kind()))
         cursor.VisitChildren(&TemplateVisitor, data);
-      /* fallthrough */
+    /* fallthrough */
     // TODO Add other containers not covered by IsFunctionCallContext
     case CXCursor_ClassTemplate:
       break;
@@ -1058,10 +1058,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             IndexFunc* called = data->db->Resolve(called_id);
             OnIndexReference_Function(data->db,
                                       ResolveSpelling(cursor.cx_cursor),
-                                      data->container,
-                                      called_id,
-                                      called,
-                                      /*implicit=*/ false);
+                                      data->container, called_id, called,
+                                      /*implicit=*/false);
             break;
           }
         }
@@ -1072,7 +1070,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
   return ClangCursor::VisitResult::Continue;
 }
 
-} // namespace
+}  // namespace
 
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!kIndexStdDeclarations &&
@@ -1654,11 +1652,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
             !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
                                           called->def.short_name)));
 
-      OnIndexReference_Function(db, loc_spelling,
-                                ref->container->cursor,
-                                called_id,
-                                called,
-                                is_implicit);
+      OnIndexReference_Function(db, loc_spelling, ref->container->cursor,
+                                called_id, called, is_implicit);
 
       // Checks if |str| starts with |start|. Ignores case.
       auto str_begin = [](const char* start, const char* str) {

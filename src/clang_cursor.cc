@@ -198,15 +198,18 @@ optional<std::string> ClangCursor::get_comments() const {
 
   // Get associated comment text.
   CXString cx_raw = clang_Cursor_getRawCommentText(cx_cursor);
-  // The first line starts with a comment marker, but the rest needs un-indenting.
+  // The first line starts with a comment marker, but the rest needs
+  // un-indenting.
   std::string unindented;
-  for (const char* p = clang_getCString(cx_raw); *p; ) {
+  for (const char* p = clang_getCString(cx_raw); *p;) {
     auto skip = start_column - 1;
     for (; skip > 0 && (*p == ' ' || *p == '\t'); p++)
       skip--;
     const char* q = p;
-    while (*q != '\n' && *q) q++;
-    if (*q) q++;
+    while (*q != '\n' && *q)
+      q++;
+    if (*q)
+      q++;
     unindented.insert(unindented.end(), p, q);
     p = q;
   }

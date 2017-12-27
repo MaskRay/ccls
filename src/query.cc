@@ -781,7 +781,8 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def.value;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Type,
-                        it->second.id, def.value.short_name, def.value.detailed_name);
+                        it->second.id, def.value.short_name,
+                        def.value.detailed_name);
   }
 }
 
@@ -805,7 +806,8 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def.value;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func,
-                        it->second.id, def.value.short_name, def.value.detailed_name);
+                        it->second.id, def.value.short_name,
+                        def.value.detailed_name);
   }
 }
 
@@ -830,7 +832,8 @@ void QueryDatabase::ImportOrUpdate(
     existing.def = def.value;
     if (!def.value.is_local())
       UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var,
-                          it->second.id, def.value.short_name, def.value.detailed_name);
+                          it->second.id, def.value.short_name,
+                          def.value.detailed_name);
   }
 }
 

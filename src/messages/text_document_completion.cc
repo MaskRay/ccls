@@ -50,7 +50,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
   }
 #endif
 
-  auto &items = complete_response->result.items;
+  auto& items = complete_response->result.items;
 
   // If the text doesn't start with underscore,
   // remove all candidates that start with underscore.
@@ -58,7 +58,8 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
     items.erase(std::remove_if(items.begin(), items.end(),
                                [](const lsCompletionItem& item) {
                                  return item.label[0] == '_';
-                               }), items.end());
+                               }),
+                items.end());
   }
 
   // find the exact text
@@ -72,7 +73,8 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
     items.erase(std::remove_if(items.begin(), items.end(),
                                [&](const lsCompletionItem& item) {
                                  return item.label.find(complete_text) != 0;
-                               }), items.end());
+                               }),
+                items.end());
   }
 
   const size_t kMaxResultSize = 100u;

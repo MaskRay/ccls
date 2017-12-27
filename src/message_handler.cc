@@ -112,7 +112,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           case VarClass::Member:
             break;
           default:
-              continue;  // applies to for loop
+            continue;  // applies to for loop
         }
         is_type_member = var->def->declaring_type.has_value();
         detailed_name = var->def->short_name;

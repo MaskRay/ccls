@@ -340,9 +340,9 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
           diff.rangeLength
               ? start_offset + *diff.rangeLength
               : GetOffsetForPosition(diff.range->end, file->buffer_content);
-      file->buffer_content.replace(
-          file->buffer_content.begin() + start_offset,
-          file->buffer_content.begin() + end_offset, diff.text);
+      file->buffer_content.replace(file->buffer_content.begin() + start_offset,
+                                   file->buffer_content.begin() + end_offset,
+                                   diff.text);
       file->OnBufferContentUpdated();
     }
   }
