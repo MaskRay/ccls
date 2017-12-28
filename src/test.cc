@@ -124,7 +124,7 @@ void RunIndexTests(const std::string& filter_path) {
   bool update_all = false;
   ClangIndex index;
 
-  for (std::string path : GetFilesInFolder("tests", true /*recursive*/,
+  for (std::string path : GetFilesInFolder("index_tests", true /*recursive*/,
                                            true /*add_folder_to_path*/)) {
     if (!RunObjectiveCIndexTests() && EndsWithAny(path, {".m", ".mm"})) {
       std::cout << "Skipping \"" << path << "\" since this platform does not "

@@ -2041,7 +2041,7 @@ void IndexInit() {
 }
 
 void ClangSanityCheck() {
-  std::vector<const char*> args = {"clang", "tests/vars/class_member.cc"};
+  std::vector<const char*> args = {"clang", "index_tests/vars/class_member.cc"};
   unsigned opts = 0;
   CXIndex index = clang_createIndex(0, 1);
   CXTranslationUnit tu;
