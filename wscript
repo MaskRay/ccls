@@ -80,7 +80,7 @@ def options(opt):
                  help='enable use of clang from the system')
   grp.add_option('--use-clang-cxx', dest='use_clang_cxx', default=False, action='store_true',
                  help='use clang C++ API')
-  grp.add_option('--bundled-clang', dest='bundled_clang', default='4.0.0',
+  grp.add_option('--bundled-clang', dest='bundled_clang', default='5.0.1',
                  help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 4.0.0 5.0.1')
   grp.add_option('--llvm-config', dest='llvm_config', default='llvm-config',
                  help='specify path to llvm-config for automatic configuration [default: %default]')

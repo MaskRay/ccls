@@ -113,7 +113,7 @@ void RunIndexTests(const std::string& filter_path) {
 
   // Index tests change based on the version of clang used.
   static constexpr const char* kRequiredClangVersion =
-      "clang version 4.0.0 (tags/RELEASE_400/final)";
+      "clang version 5.0.1 (tags/RELEASE_501/final)";
   if (GetClangVersion() != kRequiredClangVersion) {
     std::cerr << "Index tests must be run using clang version \""
               << kRequiredClangVersion << "\" (cquery is running with \""
