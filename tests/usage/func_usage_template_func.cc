@@ -11,7 +11,21 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [],
+  "types": [{
+      "id": 0,
+      "usr": "c:func_usage_template_func.cc@9",
+      "short_name": "T",
+      "detailed_name": "T",
+      "definition_spelling": "1:19-1:20",
+      "definition_extent": "1:10-1:20",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": ["2:13-2:14"]
+    }],
   "funcs": [{
       "id": 0,
       "is_operator": false,
