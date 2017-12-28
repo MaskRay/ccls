@@ -14,6 +14,7 @@
 Debug
 build
 cquery_diagnostics.log
+e2e_cache
 foo
 libcxx
 waf-*
