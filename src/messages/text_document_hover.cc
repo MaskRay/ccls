@@ -98,12 +98,11 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       if (comments_hover.first || comments_hover.second.size()) {
         out.result = Out_TextDocumentHover::Result();
         if (comments_hover.first) {
-          out.result->contents.emplace_back(
-              lsMarkedString{"text", *comments_hover.first});
+          out.result->contents.emplace_back(*comments_hover.first);
         }
         if (comments_hover.second.size()) {
           out.result->contents.emplace_back(
-              lsMarkedString{file->def->language, comments_hover.second});
+              lsMarkedString1{file->def->language, comments_hover.second});
         }
         out.result->range = *ls_range;
         break;

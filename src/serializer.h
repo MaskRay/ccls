@@ -1,13 +1,14 @@
 #pragma once
 
-#include <macro_map.h>
-#include <optional.h>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-
 #include <memory>
 #include <string>
 #include <vector>
+
+#include "macro_map.h"
+#include "optional.h"
+#include "variant.h"
+#include "rapidjson/document.h"
+#include "rapidjson/prettywriter.h"
 
 using std::experimental::nullopt;
 using std::experimental::optional;
@@ -112,9 +113,16 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
   visitor.EndArray();
 }
 template <typename T>
-void Reflect(Writer& visitor, optional<T> value) {
+void Reflect(Writer& visitor, optional<T>& value) {
   if (value)
     Reflect(visitor, value.value());
+}
+template <typename T0, typename T1>
+void Reflect(Writer& visitor, std::variant<T0, T1>& value) {
+  if (value.index() == 0)
+    Reflect(visitor, std::get<0>(value));
+  else
+    Reflect(visitor, std::get<1>(value));
 }
 inline void DefaultReflectMemberStart(Writer& visitor) {
   visitor.StartObject();

@@ -5,7 +5,8 @@
 #include "serializer.h"
 #include "utils.h"
 
-#include <optional.h>
+#include "optional.h"
+#include "variant.h"
 #include <rapidjson/writer.h>
 
 #include <algorithm>
@@ -982,11 +983,12 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params,
 //
 // Note that markdown strings will be sanitized - that means html will be
 // escaped.
-struct lsMarkedString {
+struct lsMarkedString1 {
   std::string language;
   std::string value;
 };
-MAKE_REFLECT_STRUCT(lsMarkedString, language, value);
+using lsMarkedString = std::variant<std::string, lsMarkedString1>;
+MAKE_REFLECT_STRUCT(lsMarkedString1, language, value);
 
 struct lsTextDocumentContentChangeEvent {
   // The range of the document that changed.
