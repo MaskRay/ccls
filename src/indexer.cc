@@ -1103,6 +1103,7 @@ std::string GetFunctionSignature(IndexFile* db,
              !((i >= 5 && !type_desc.compare(i - 5, 5, "throw")) ||
                (i >= 6 && !type_desc.compare(i - 6, 6, "typeof")) ||
                (i >= 7 && !type_desc.compare(i - 7, 7, "_Atomic")) ||
+               (i >= 7 && !type_desc.compare(i - 7, 7, "typeof ")) ||
                (i >= 8 && !type_desc.compare(i - 8, 8, "decltype")) ||
                (i >= 8 && !type_desc.compare(i - 8, 8, "noexcept")) ||
                (i >= 13 &&
@@ -1113,7 +1114,6 @@ std::string GetFunctionSignature(IndexFile* db,
       break;
     }
   }
-  //volatile int z=0;while(!z)asm("pause");
 
   if (function_name_offset >= 0) {
     if (num_args > 0) {
