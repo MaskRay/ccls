@@ -40,6 +40,7 @@ struct LruCache {
     uint32_t score = 0;
     TKey key;
     std::shared_ptr<TValue> value;
+    bool operator<(const Entry &other) const { return score < other.score; }
   };
 
   void IncrementScore();
@@ -69,8 +70,8 @@ std::shared_ptr<TValue> LruCache<TKey, TValue>::TryGet(const TKey& key) {
   // Assign new score.
   for (Entry& entry : entries_) {
     if (entry.key == key) {
-      IncrementScore();
       entry.score = next_score_;
+      IncrementScore();
       return entry.value;
     }
   }
@@ -94,25 +95,12 @@ std::shared_ptr<TValue> LruCache<TKey, TValue>::TryTake(const TKey& key) {
 template <typename TKey, typename TValue>
 void LruCache<TKey, TValue>::Insert(const TKey& key,
                                     const std::shared_ptr<TValue>& value) {
-  if (entries_.size() >= max_entries_) {
-    // Find entry with the lowest score.
-    size_t lowest_idx = 0;
-    uint32_t lowest_score = std::numeric_limits<uint32_t>::max();
-    for (size_t i = 0; i < entries_.size(); ++i) {
-      if (entries_[i].score < lowest_score) {
-        lowest_idx = i;
-        lowest_score = entries_[i].score;
-      }
-    }
-
-    // Remove it.
-    entries_.erase(entries_.begin() + lowest_idx);
-  }
-
-  IncrementScore();
+  if (entries_.size() >= max_entries_)
+    entries_.erase(std::min_element(entries_.begin(), entries_.end()));
 
   Entry entry;
   entry.score = next_score_;
+  IncrementScore();
   entry.key = key;
   entry.value = value;
   entries_.push_back(entry);
@@ -129,12 +117,9 @@ void LruCache<TKey, TValue>::IterateValues(TFunc func) {
 
 template <typename TKey, typename TValue>
 void LruCache<TKey, TValue>::IncrementScore() {
-  next_score_ += 1;
-
   // Overflow.
-  if (next_score_ == 0) {
-    std::sort(entries_.begin(), entries_.end(),
-              [](const Entry& a, const Entry& b) { return a.score < b.score; });
+  if (++next_score_ == 0) {
+    std::sort(entries_.begin(), entries_.end());
     for (Entry& entry : entries_)
       entry.score = next_score_++;
   }
