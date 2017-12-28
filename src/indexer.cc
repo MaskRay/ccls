@@ -1028,6 +1028,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
 
 namespace {
 
+// TODO Move to another file and use clang C++ API
 struct TemplateVisitorData {
   IndexFile* db;
   ClangCursor container;
@@ -1038,8 +1039,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                          TemplateVisitorData* data) {
   switch (cursor.get_kind()) {
     default:
-      if (!IsFunctionCallContext(cursor.get_kind()))
-        cursor.VisitChildren(&TemplateVisitor, data);
+      //if (!IsFunctionCallContext(cursor.get_kind()))
+      cursor.VisitChildren(&TemplateVisitor, data);
     /* fallthrough */
     // TODO Add other containers not covered by IsFunctionCallContext
     case CXCursor_ClassTemplate:
@@ -1607,6 +1608,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       }
       UniqueAdd(type->uses, decl_loc_spelling);
 
+      if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
+        TemplateVisitorData data;
+        data.db = db;
+        data.container = decl_cursor;
+        decl_cursor.VisitChildren(&TemplateVisitor, &data);
+      }
+
       // type_def->alias_of
       // type_def->funcs
       // type_def->types
@@ -1624,7 +1632,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                             decl->lexicalContainer);
           optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
-          // type_def ptr could be invalidated by ResolveToDeclarationType.
+          // type_def ptr could be invalidated by ResolveToDeclarationType and TemplateVisitor.
           type = db->Resolve(type_id);
           if (parent_type_id) {
             IndexType* parent_type_def = db->Resolve(parent_type_id.value());
