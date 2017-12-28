@@ -1049,6 +1049,12 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
         IndexVar* ref_index =
             data->db->Resolve(data->db->ToVarId(ref_cursor.get_usr()));
+        if (ref_index->def.short_name.empty()) {
+          ref_index->def.definition_spelling = ResolveSpelling(ref_cursor.cx_cursor);
+          ref_index->def.definition_extent = ResolveExtent(ref_cursor.cx_cursor);
+          ref_index->def.short_name = ref_cursor.get_spelling();
+          ref_index->def.detailed_name = ref_index->def.short_name;
+        }
         UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
       } else
         cursor.VisitChildren(&TemplateVisitor, data);
@@ -1081,8 +1087,20 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
         IndexType* ref_index =
             data->db->Resolve(data->db->ToTypeId(ref_cursor.get_usr()));
+        // TODO It seems difficult to get a FunctionTemplate's template parameters.
+        // CXCursor_TemplateTypeParameter can be visited by visiting
+        // CXCursor_TranslationUnit, but not (confirm this) by visiting
+        // FunctionTemplate. Thus we need to initialize it here.
+        if (ref_index->def.short_name.empty()) {
+          ref_index->def.definition_spelling = ResolveSpelling(ref_cursor.cx_cursor);
+          ref_index->def.definition_extent = ResolveExtent(ref_cursor.cx_cursor);
+          ref_index->def.short_name = ref_cursor.get_spelling();
+          ref_index->def.detailed_name = ref_index->def.short_name;
+        }
         UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
-      }
+      } else
+        cursor.VisitChildren(&TemplateVisitor, data);
+      // TODO Can CXCursor_TemplateTemplateParameter appear here?
       break;
     }
   }
