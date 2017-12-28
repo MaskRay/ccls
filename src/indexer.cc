@@ -1044,6 +1044,16 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     // TODO Add other containers not covered by IsFunctionCallContext
     case CXCursor_ClassTemplate:
       break;
+    case CXCursor_DeclRefExpr: {
+      ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
+      if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
+        IndexVar* ref_index =
+            data->db->Resolve(data->db->ToVarId(ref_cursor.get_usr()));
+        UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
+      } else
+        cursor.VisitChildren(&TemplateVisitor, data);
+      break;
+    }
     case CXCursor_OverloadedDeclRef: {
       unsigned num_overloaded = clang_getNumOverloadedDecls(cursor.cx_cursor);
       for (unsigned i = 0; i != num_overloaded; i++) {
