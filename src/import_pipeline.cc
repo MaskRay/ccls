@@ -78,7 +78,6 @@ std::vector<Index_DoIdMap> DoParseFile(
   // Always run this block, even if we are interactive, so we can check
   // dependencies and reset files in |file_consumer_shared|.
   IndexFile* previous_index = cache_loader->TryLoad(path);
-  LOG_S(ERROR) << "!! DoParseFile " << path << ", previous_index=" << previous_index;
   if (previous_index) {
     // If none of the dependencies have changed and the index is not
     // interactive (ie, requested by a file save), skip parsing and just load
@@ -313,14 +312,12 @@ bool IndexMain_DoParse(Config* config,
   if (!request)
     return false;
 
-  LOG_S(INFO) << "IndexMain_DoParse request->path=" << request->path;
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
   std::vector<Index_DoIdMap> responses = ParseFile(
       config, working_files, index, file_consumer_shared, timestamp_manager,
       import_manager, request->is_interactive, entry, request->contents);
-  LOG_S(INFO) << "IndexMain_DoParse request->path=" << request->path << " responses.size()=" << responses.size();
 
   // Don't bother sending an IdMap request if there are no responses.
   if (responses.empty())

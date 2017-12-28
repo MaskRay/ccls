@@ -38,11 +38,13 @@ bool FindFileOrFail(QueryDatabase* db,
     *out_file_id = QueryFileId((size_t)-1);
 
   LOG_S(INFO) << "Unable to find file \"" << absolute_path << "\"";
+  /*
   LOG_S(INFO) << "Files (size=" << db->usr_to_file.size() << "): "
               << StringJoinMap(db->usr_to_file,
                                [](const std::pair<Usr, QueryFileId>& entry) {
                                  return entry.first;
                                });
+  */
 
   if (id) {
     Out_Error out;
