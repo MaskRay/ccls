@@ -454,7 +454,8 @@ Command line options:
   --test-unit   Run unit tests.
   --test-index <opt_filter_path>
                 Run index tests. opt_filter_path can be used to specify which
-                test to run. If not provided all tests are run.
+                test to run (ie, "foo" will run all tests which contain "foo"
+                in the path). If not provided all tests are run.
   --log-stdin-stdout-to-stderr
                 Print stdin and stdout messages to stderr. This is a aid for
                 developing new language clients, as it makes it easier to figure

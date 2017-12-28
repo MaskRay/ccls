@@ -132,116 +132,117 @@ void RunIndexTests(const std::string& filter_path) {
       continue;
     }
 
-    {
-      if (!EndsWith(path, filter_path))
-        continue;
+    if (path.find(filter_path) == std::string::npos)
+      continue;
 
-      // Parse expected output from the test, parse it into JSON document.
-      std::vector<std::string> lines_with_endings = ReadLinesWithEnding(path);
-      TextReplacer text_replacer;
-      std::vector<std::string> flags;
-      std::unordered_map<std::string, std::string> all_expected_output;
-      ParseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
-                           &all_expected_output);
+    if (!filter_path.empty())
+      std::cout << "Running " << path << std::endl;
 
-      // Build flags.
-      bool had_extra_flags = !flags.empty();
-      if (!AnyStartsWith(flags, "-x"))
-        flags.push_back("-xc++");
-      if (!AnyStartsWith(flags, "-std"))
-        flags.push_back("-std=c++11");
-      flags.push_back("-resource_dir=" + GetDefaultResourceDirectory());
-      if (had_extra_flags) {
+    // Parse expected output from the test, parse it into JSON document.
+    std::vector<std::string> lines_with_endings = ReadLinesWithEnding(path);
+    TextReplacer text_replacer;
+    std::vector<std::string> flags;
+    std::unordered_map<std::string, std::string> all_expected_output;
+    ParseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
+                         &all_expected_output);
+
+    // Build flags.
+    bool had_extra_flags = !flags.empty();
+    if (!AnyStartsWith(flags, "-x"))
+      flags.push_back("-xc++");
+    if (!AnyStartsWith(flags, "-std"))
+      flags.push_back("-std=c++11");
+    flags.push_back("-resource_dir=" + GetDefaultResourceDirectory());
+    if (had_extra_flags) {
+      std::cout << "For " << path << std::endl;
+      std::cout << "  flags: " << StringJoin(flags) << std::endl;
+    }
+
+    // Run test.
+    Config config;
+    FileConsumer::SharedState file_consumer_shared;
+    PerformanceImportFile perf;
+    std::vector<std::unique_ptr<IndexFile>> dbs =
+        Parse(&config, &file_consumer_shared, path, flags, {}, &perf, &index,
+              false /*dump_ast*/);
+
+    for (const auto& entry : all_expected_output) {
+      const std::string& expected_path = entry.first;
+      std::string expected_output = text_replacer.Apply(entry.second);
+
+      // FIXME: promote to utils, find and remove duplicates (ie,
+      // cquery_call_tree.cc, maybe something in project.cc).
+      auto basename = [](const std::string& path) -> std::string {
+        size_t last_index = path.find_last_of('/');
+        if (last_index == std::string::npos)
+          return path;
+        return path.substr(last_index + 1);
+      };
+
+      auto severity_to_string = [](const lsDiagnosticSeverity& severity) {
+        switch (severity) {
+          case lsDiagnosticSeverity::Error:
+            return "error ";
+          case lsDiagnosticSeverity::Warning:
+            return "warning ";
+          case lsDiagnosticSeverity::Information:
+            return "information ";
+          case lsDiagnosticSeverity::Hint:
+            return "hint ";
+        }
+        assert(false && "not reached");
+        return "";
+      };
+
+      // Get output from index operation.
+      IndexFile* db = FindDbForPathEnding(expected_path, dbs);
+      if (!db->diagnostics_.empty()) {
         std::cout << "For " << path << std::endl;
-        std::cout << "  flags: " << StringJoin(flags) << std::endl;
+        for (const lsDiagnostic& diagnostic : db->diagnostics_) {
+          std::cout << "  ";
+          if (diagnostic.severity)
+            std::cout << severity_to_string(*diagnostic.severity);
+          std::cout << basename(db->path) << ":"
+                    << diagnostic.range.start.ToString() << "-"
+                    << diagnostic.range.end.ToString() << ": "
+                    << diagnostic.message << std::endl;
+        }
       }
+      std::string actual_output = "{}";
+      if (db) {
+        VerifySerializeToFrom(db);
+        actual_output = db->ToString();
+      }
+      actual_output = text_replacer.Apply(actual_output);
 
-      // Run test.
-      Config config;
-      FileConsumer::SharedState file_consumer_shared;
-      PerformanceImportFile perf;
-      std::vector<std::unique_ptr<IndexFile>> dbs =
-          Parse(&config, &file_consumer_shared, path, flags, {}, &perf, &index,
-                false /*dump_ast*/);
+      // Compare output via rapidjson::Document to ignore any formatting
+      // differences.
+      rapidjson::Document actual;
+      actual.Parse(actual_output.c_str());
+      rapidjson::Document expected;
+      expected.Parse(expected_output.c_str());
 
-      for (const auto& entry : all_expected_output) {
-        const std::string& expected_path = entry.first;
-        std::string expected_output = text_replacer.Apply(entry.second);
-
-        // FIXME: promote to utils, find and remove duplicates (ie,
-        // cquery_call_tree.cc, maybe something in project.cc).
-        auto basename = [](const std::string& path) -> std::string {
-          size_t last_index = path.find_last_of('/');
-          if (last_index == std::string::npos)
-            return path;
-          return path.substr(last_index + 1);
-        };
-
-        auto severity_to_string = [](const lsDiagnosticSeverity& severity) {
-          switch (severity) {
-            case lsDiagnosticSeverity::Error:
-              return "error ";
-            case lsDiagnosticSeverity::Warning:
-              return "warning ";
-            case lsDiagnosticSeverity::Information:
-              return "information ";
-            case lsDiagnosticSeverity::Hint:
-              return "hint ";
-          }
-          assert(false && "not reached");
-          return "";
-        };
-
-        // Get output from index operation.
-        IndexFile* db = FindDbForPathEnding(expected_path, dbs);
-        if (!db->diagnostics_.empty()) {
-          std::cout << "For " << path << std::endl;
-          for (const lsDiagnostic& diagnostic : db->diagnostics_) {
-            std::cout << "  ";
-            if (diagnostic.severity)
-              std::cout << severity_to_string(*diagnostic.severity);
-            std::cout << basename(db->path) << ":"
-                      << diagnostic.range.start.ToString() << "-"
-                      << diagnostic.range.end.ToString() << ": "
-                      << diagnostic.message << std::endl;
-          }
+      if (actual == expected) {
+        // std::cout << "[PASSED] " << path << std::endl;
+      } else {
+        DiffDocuments(path, expected_path, expected, actual);
+        std::cout << std::endl;
+        std::cout << std::endl;
+        std::cout
+            << "[Enter to continue - type u to update test, a to update all]";
+        char c = 'u';
+        if (!update_all) {
+          c = (char)std::cin.get();
+          std::cin.get();
         }
-        std::string actual_output = "{}";
-        if (db) {
-          VerifySerializeToFrom(db);
-          actual_output = db->ToString();
-        }
-        actual_output = text_replacer.Apply(actual_output);
 
-        // Compare output via rapidjson::Document to ignore any formatting
-        // differences.
-        rapidjson::Document actual;
-        actual.Parse(actual_output.c_str());
-        rapidjson::Document expected;
-        expected.Parse(expected_output.c_str());
+        if (c == 'a')
+          update_all = true;
 
-        if (actual == expected) {
-          // std::cout << "[PASSED] " << path << std::endl;
-        } else {
-          DiffDocuments(path, expected_path, expected, actual);
-          std::cout << std::endl;
-          std::cout << std::endl;
-          std::cout
-              << "[Enter to continue - type u to update test, a to update all]";
-          char c = 'u';
-          if (!update_all) {
-            c = (char)std::cin.get();
-            std::cin.get();
-          }
-
-          if (c == 'a')
-            update_all = true;
-
-          if (update_all || c == 'u') {
-            // Note: we use |entry.second| instead of |expected_output| because
-            // |expected_output| has had text replacements applied.
-            UpdateTestExpectation(path, entry.second, ToString(actual) + "\n");
-          }
+        if (update_all || c == 'u') {
+          // Note: we use |entry.second| instead of |expected_output| because
+          // |expected_output| has had text replacements applied.
+          UpdateTestExpectation(path, entry.second, ToString(actual) + "\n");
         }
       }
     }
