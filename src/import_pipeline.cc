@@ -44,6 +44,8 @@
 #include <unordered_map>
 #include <vector>
 
+ImportPipelineStatus::ImportPipelineStatus() : num_active_threads(0) {}
+
 // Send indexing progress to client if reporting is enabled.
 void EmitProgress(Config* config) {
   if (config->enableProgressReports) {
@@ -442,6 +444,7 @@ void IndexMain(Config* config,
                Project* project,
                WorkingFiles* working_files,
                MultiQueueWaiter* waiter) {
+  auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndex index;
 
@@ -474,8 +477,6 @@ void IndexMain(Config* config,
       did_merge = IndexMergeIndexUpdates();
 
     status->num_active_threads--;
-
-    auto* queue = QueueManager::instance();
 
     // We didn't do any work, so wait for a notification.
     if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
