@@ -132,9 +132,6 @@ void RunIndexTests(const std::string& filter_path) {
       continue;
     }
 
-    float memory_before = GetProcessMemoryUsedInMb();
-    float memory_after = -1.;
-
     {
       if (!EndsWith(path, filter_path))
         continue;
@@ -198,6 +195,7 @@ void RunIndexTests(const std::string& filter_path) {
         // Get output from index operation.
         IndexFile* db = FindDbForPathEnding(expected_path, dbs);
         if (!db->diagnostics_.empty()) {
+          std::cout << "For " << path << std::endl;
           for (const lsDiagnostic& diagnostic : db->diagnostics_) {
             std::cout << "  ";
             if (diagnostic.severity)
@@ -223,7 +221,7 @@ void RunIndexTests(const std::string& filter_path) {
         expected.Parse(expected_output.c_str());
 
         if (actual == expected) {
-          std::cout << "[PASSED] " << path << std::endl;
+          // std::cout << "[PASSED] " << path << std::endl;
         } else {
           DiffDocuments(path, expected_path, expected, actual);
           std::cout << std::endl;
@@ -246,26 +244,8 @@ void RunIndexTests(const std::string& filter_path) {
           }
         }
       }
-
-      memory_after = GetProcessMemoryUsedInMb();
     }
-
-    float memory_cleanup = GetProcessMemoryUsedInMb();
-    std::cerr << "[memory] before=" << memory_before
-              << "mb, after=" << memory_after
-              << "mb, cleanup=" << memory_cleanup << "mb" << std::endl;
   }
-
-  std::cerr << "[final presleep] " << GetProcessMemoryUsedInMb() << "mb"
-            << std::endl;
-  // std::this_thread::sleep_for(std::chrono::seconds(10));
-  // std::cerr << "[final postsleep] " << GetProcessMemoryUsedInMb() << "mb" <<
-  // std::endl;
-  std::cerr << std::endl;
-  std::cerr << std::endl;
-  std::cerr << std::endl;
-  std::cerr << std::endl;
-  std::cerr << std::endl;
 }
 
 // TODO: ctor/dtor, copy ctor
