@@ -78,10 +78,8 @@ const char* IpcIdToString(IpcId id) {
 
     case IpcId::CqueryIndexFile:
       return "$cquery/indexFile";
-    case IpcId::CqueryQueryDbWaitForIdleIndexer:
-      return "$cquery/queryDbWaitForIdleIndexer";
-    case IpcId::CqueryExitWhenIdle:
-      return "$cquery/exitWhenIdle";
+    case IpcId::CqueryWait:
+      return "$cquery/wait";
 
     default:
       assert(false && "missing IpcId string name");

@@ -1,6 +1,8 @@
 #include "message_handler.h"
 #include "platform.h"
 
+#include <loguru/loguru.hpp>
+
 namespace {
 struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
   static constexpr IpcId kIpcId = IpcId::CqueryIndexFile;
@@ -23,6 +25,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryIndexFile);
 
 struct CqueryIndexFileHandler : BaseMessageHandler<Ipc_CqueryIndexFile> {
   void Run(Ipc_CqueryIndexFile* request) override {
+    LOG_S(INFO) << "Indexing file " << request->params.path;
     QueueManager::instance()->index_request.Enqueue(Index_Request(
         NormalizePath(request->params.path), request->params.args,
         request->params.is_interactive, request->params.contents));

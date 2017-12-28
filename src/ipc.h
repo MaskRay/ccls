@@ -54,10 +54,8 @@ enum class IpcId : int {
 
   // Index the given file contents. Used in tests.
   CqueryIndexFile,
-  // Make querydb wait for the indexer to be idle. Used in tests.
-  CqueryQueryDbWaitForIdleIndexer,
-  // Exit after all messages have been read/processes. Used in tests.
-  CqueryExitWhenIdle
+  // Wait until all cquery threads are idle. Used in tests.
+  CqueryWait,
 };
 MAKE_ENUM_HASHABLE(IpcId)
 MAKE_REFLECT_TYPE_PROXY(IpcId, int)

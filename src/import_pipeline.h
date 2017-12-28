@@ -2,6 +2,7 @@
 
 #include "file_consumer.h"
 
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -11,6 +12,10 @@ struct ImportManager;
 struct QueryDatabase;
 struct SemanticHighlightSymbolCache;
 struct WorkingFiles;
+
+struct ImportPipelineStatus {
+  std::atomic<int> num_active_threads;
+};
 
 void IndexWithTuFromCodeCompletion(
     FileConsumer::SharedState* file_consumer_shared,

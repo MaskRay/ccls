@@ -3,6 +3,7 @@
 #include "config.h"
 #include "file_consumer.h"
 #include "import_manager.h"
+#include "import_pipeline.h"
 #include "queue_manager.h"
 #include "project.h"
 #include "semantic_highlight_symbol_cache.h"
@@ -23,6 +24,7 @@ WorkThread::Result IndexMain(Config* config,
                              FileConsumer::SharedState* file_consumer_shared,
                              TimestampManager* timestamp_manager,
                              ImportManager* import_manager,
+                             ImportPipelineStatus* status,
                              Project* project,
                              WorkingFiles* working_files,
                              MultiQueueWaiter* waiter);

@@ -1,7 +1,9 @@
 #pragma once
 
-#include <optional.h>
+#include "utils.h"
 #include "work_thread.h"
+
+#include <optional.h>
 
 #include <algorithm>
 #include <atomic>
@@ -43,11 +45,8 @@ struct MultiQueueWaiter {
     // HasState() is called data gets posted but before we begin waiting for
     // the condition variable, we will miss the notification. The timeout of 5
     // means that if this happens we will delay operation for 5 seconds.
-    //
-    // If we're trying to exit (WorkThread::request_exit_on_idle), do not
-    // bother waiting.
 
-    while (!HasState(queues) && !WorkThread::request_exit_on_idle) {
+    while (!HasState(queues)) {
       std::unique_lock<std::mutex> l(m);
       cv.wait_for(l, std::chrono::seconds(5));
     }

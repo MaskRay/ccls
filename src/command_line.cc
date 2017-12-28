@@ -94,7 +94,6 @@ REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
 
 bool QueryDbMainLoop(Config* config,
                      QueryDatabase* db,
-                     bool* exit_when_idle,
                      MultiQueueWaiter* waiter,
                      Project* project,
                      FileConsumer::SharedState* file_consumer_shared,
@@ -142,7 +141,6 @@ bool QueryDbMainLoop(Config* config,
 void RunQueryDbThread(const std::string& bin_name,
                       Config* config,
                       MultiQueueWaiter* waiter) {
-  bool exit_when_idle = false;
   Project project;
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
@@ -161,6 +159,7 @@ void RunQueryDbThread(const std::string& bin_name,
   auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
   auto signature_cache = MakeUnique<CodeCompleteCache>();
   ImportManager import_manager;
+  ImportPipelineStatus import_pipeline_status;
   TimestampManager timestamp_manager;
   QueryDatabase db;
 
@@ -168,11 +167,11 @@ void RunQueryDbThread(const std::string& bin_name,
   for (MessageHandler* handler : *MessageHandler::message_handlers) {
     handler->config = config;
     handler->db = &db;
-    handler->exit_when_idle = &exit_when_idle;
     handler->waiter = waiter;
     handler->project = &project;
     handler->file_consumer_shared = &file_consumer_shared;
     handler->import_manager = &import_manager;
+    handler->import_pipeline_status = &import_pipeline_status;
     handler->timestamp_manager = &timestamp_manager;
     handler->semantic_cache = &semantic_cache;
     handler->working_files = &working_files;
@@ -188,16 +187,10 @@ void RunQueryDbThread(const std::string& bin_name,
   SetCurrentThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
-        config, &db, &exit_when_idle, waiter, &project, &file_consumer_shared,
+        config, &db, waiter, &project, &file_consumer_shared,
         &import_manager, &timestamp_manager, &semantic_cache, &working_files,
         &clang_complete, &include_complete, global_code_complete_cache.get(),
         non_global_code_complete_cache.get(), signature_cache.get());
-
-    // No more work left and exit request. Exit.
-    if (!did_work && exit_when_idle && WorkThread::num_active_threads == 0) {
-      LOG_S(INFO) << "Exiting; exit_when_idle is set and there is no more work";
-      exit(0);
-    }
 
     // Cleanup and free any unused memory.
     FreeUnusedMemory();
@@ -249,9 +242,12 @@ void LaunchStdinLoop(Config* config,
     if (!message)
       return WorkThread::Result::MoreWork;
 
+    // Cache |method_id| so we can access it after moving |message|.
+    IpcId method_id = message->method_id;
+
     (*request_times)[message->method_id] = Timer();
 
-    switch (message->method_id) {
+    switch (method_id) {
       case IpcId::Initialized: {
         // TODO: don't send output until we get this notification
         break;
@@ -262,21 +258,7 @@ void LaunchStdinLoop(Config* config,
         break;
       }
 
-      case IpcId::Exit: {
-        LOG_S(INFO) << "Exiting";
-        exit(0);
-        break;
-      }
-
-      case IpcId::CqueryExitWhenIdle: {
-        // querydb needs to know to exit when idle. We return out of the stdin
-        // loop to exit the thread. If we keep parsing input stdin is likely
-        // closed so cquery will exit.
-        LOG_S(INFO) << "cquery will exit when all threads are idle";
-        queue->for_querydb.Enqueue(std::move(message));
-        return WorkThread::Result::ExitThread;
-      }
-
+      case IpcId::Exit:
       case IpcId::Initialize:
       case IpcId::TextDocumentDidOpen:
       case IpcId::CqueryTextDocumentDidView:
@@ -304,17 +286,22 @@ void LaunchStdinLoop(Config* config,
       case IpcId::CqueryBase:
       case IpcId::CqueryDerived:
       case IpcId::CqueryIndexFile:
-      case IpcId::CqueryQueryDbWaitForIdleIndexer: {
+      case IpcId::CqueryWait: {
         queue->for_querydb.Enqueue(std::move(message));
         break;
       }
 
       default: {
         LOG_S(ERROR) << "Unhandled IPC message "
-                     << IpcIdToString(message->method_id);
+                     << IpcIdToString(method_id);
         exit(1);
       }
     }
+
+    // If the message was to exit then querydb will take care of the actual
+    // exit. Stop reading from stdin since it might be detached.
+    if (method_id == IpcId::Exit)
+      return WorkThread::Result::ExitThread;
 
     return WorkThread::Result::MoreWork;
   });

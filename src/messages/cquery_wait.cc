@@ -4,22 +4,26 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_CqueryQueryDbWaitForIdleIndexer
-    : public IpcMessage<Ipc_CqueryQueryDbWaitForIdleIndexer> {
-  static constexpr IpcId kIpcId = IpcId::CqueryQueryDbWaitForIdleIndexer;
+struct Ipc_CqueryWait
+    : public IpcMessage<Ipc_CqueryWait> {
+  static constexpr IpcId kIpcId = IpcId::CqueryWait;
 };
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryQueryDbWaitForIdleIndexer);
-REGISTER_IPC_MESSAGE(Ipc_CqueryQueryDbWaitForIdleIndexer);
+MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryWait);
+REGISTER_IPC_MESSAGE(Ipc_CqueryWait);
 
-struct CqueryQueryDbWaitForIdleIndexerHandler : MessageHandler {
+struct CqueryWaitHandler : MessageHandler {
   IpcId GetId() const override {
-    return IpcId::CqueryQueryDbWaitForIdleIndexer;
+    return IpcId::CqueryWait;
   }
   void Run(std::unique_ptr<BaseIpcMessage> request) override {
+    // TODO: use status message system here, then run querydb as normal? Maybe
+    // this cannot be a normal message, ie, it needs to be re-entrant.
+
     LOG_S(INFO) << "Waiting for idle";
     int idle_count = 0;
     while (true) {
       bool has_work = false;
+      has_work |= import_pipeline_status->num_active_threads != 0;
       has_work |= import_manager->HasActiveQuerydbImports();
       has_work |= QueueManager::instance()->HasWork();
       has_work |= QueryDb_ImportMain(config, db, import_manager, semantic_cache,
@@ -37,5 +41,5 @@ struct CqueryQueryDbWaitForIdleIndexerHandler : MessageHandler {
     LOG_S(INFO) << "Done waiting for idle";
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryQueryDbWaitForIdleIndexerHandler);
+REGISTER_MESSAGE_HANDLER(CqueryWaitHandler);
 }  // namespace

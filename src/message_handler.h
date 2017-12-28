@@ -5,6 +5,7 @@
 #include "code_complete_cache.h"
 #include "config.h"
 #include "import_manager.h"
+#include "import_pipeline.h"
 #include "include_complete.h"
 #include "queue_manager.h"
 #include "project.h"
@@ -30,11 +31,11 @@
 struct MessageHandler {
   Config* config = nullptr;
   QueryDatabase* db = nullptr;
-  bool* exit_when_idle = nullptr;
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;
   FileConsumer::SharedState* file_consumer_shared = nullptr;
   ImportManager* import_manager = nullptr;
+  ImportPipelineStatus* import_pipeline_status = nullptr;
   TimestampManager* timestamp_manager = nullptr;
   SemanticHighlightSymbolCache* semantic_cache = nullptr;
   WorkingFiles* working_files = nullptr;

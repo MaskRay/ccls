@@ -1,22 +1,29 @@
+#!/usr/bin/python
+
 import json
 import re
 import shlex
+import shutil
 from subprocess import Popen, PIPE
 
 
-CQUERY_PATH = 'x64/Debug/cquery.exe'
+# FIXME: instead of $cquery/exitWhenIdle, just send $cquery/wait and the normal
+# lsp exit. This requires renaming $cquery/queryDbWaitForIdle to just
+# $cquery/wait.
+
+CQUERY_PATH = 'build/asan/bin/cquery'
 CACHE_DIR = 'e2e_CACHE'
 
-    # Content-Length: ...\r\n
-    # \r\n
-    # {
-    #   "jsonrpc": "2.0",
-    #   "id": 1,
-    #   "method": "textDocument/didOpen",
-    #   "params": {
-    #     ...
-    #   }
-    # }
+# Content-Length: ...\r\n
+# \r\n
+# {
+#   "jsonrpc": "2.0",
+#   "id": 1,
+#   "method": "textDocument/didOpen",
+#   "params": {
+#     ...
+#   }
+# }
 
 # We write test files in python. The test runner collects all python files in
 # the directory and executes them. The test function just creates a test object
@@ -25,6 +32,7 @@ CACHE_DIR = 'e2e_CACHE'
 # Test functions are automatically discovered; they just need to be in the
 # global environment and start with `Test_`.
 
+
 class TestBuilder:
   def __init__(self):
     self.sent = []
@@ -32,28 +40,26 @@ class TestBuilder:
 
   def IndexFile(self, path, contents):
     """
-    Writes the file contents to disk so that the language server can access it.
+    Indexes the given file with contents.
     """
     self.Send({
-      'method': '$cquery/indexFile',
-      'params': {
-        'path': path,
-        'contents': contents,
-        'args': [
-          '-xc++',
-          '-std=c++11',
-          '-isystemC:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include',
-          '-isystemC:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt'
-        ]
-      }
+        'method': '$cquery/indexFile',
+        'params': {
+            'path': path,
+            'contents': contents,
+            'args': [
+                '-xc++',
+                '-std=c++11'
+            ]
+        }
     })
     return self
 
   def WaitForIdle(self):
     """
-    Blocks the querydb thread until any active imports are complete.
+    cquery will pause processing messages until it is idle.
     """
-    self.Send({'method': '$cquery/queryDbWaitForIdleIndexer'})
+    self.Send({'method': '$cquery/wait'})
     return self
 
   def Send(self, stdin):
@@ -77,51 +83,51 @@ class TestBuilder:
     Add initialize/initialized messages.
     """
     self.Send({
-      'id': 0,
-      'method': 'initialize',
-      'params': {
-        'processId': 123,
-        'rootUri': 'cquery',
-        'capabilities': {},
-        'trace': 'off',
-        'initializationOptions': {
-          'cacheDirectory': CACHE_DIR,
-          'clientVersion': -1 # Disables the check
+        'id': 0,
+        'method': 'initialize',
+        'params': {
+            'processId': 123,
+            'rootUri': 'cquery',
+            'capabilities': {},
+            'trace': 'off',
+            'initializationOptions': {
+                'cacheDirectory': CACHE_DIR
+            }
         }
-      }
     })
     self.Expect({
-      'id': 0,
-      'result': {
-        'capabilities': {
-          'textDocumentSync': 2,
-          'hoverProvider': True,
-          'completionProvider': {
-            'resolveProvider': False,
-            'triggerCharacters': [ '.', ':', '>', '#' ]
-          },
-          'signatureHelpProvider': {
-            'triggerCharacters': [ '(', ',' ]
-          },
-          'definitionProvider': True,
-          'referencesProvider': True,
-          'documentHighlightProvider': True,
-          'documentSymbolProvider': True,
-          'workspaceSymbolProvider': True,
-          'codeActionProvider': True,
-          'codeLensProvider': {
-            'resolveProvider': False
-          },
-          'documentFormattingProvider': False,
-          'documentRangeFormattingProvider': False,
-          'renameProvider': True,
-          'documentLinkProvider': {
-            'resolveProvider': False
-          }
+        'id': 0,
+        'result': {
+            'capabilities': {
+                'textDocumentSync': 2,
+                'hoverProvider': True,
+                'completionProvider': {
+                    'resolveProvider': False,
+                    'triggerCharacters': ['.', ':', '>', '#']
+                },
+                'signatureHelpProvider': {
+                    'triggerCharacters': ['(', ',']
+                },
+                'definitionProvider': True,
+                'referencesProvider': True,
+                'documentHighlightProvider': True,
+                'documentSymbolProvider': True,
+                'workspaceSymbolProvider': True,
+                'codeActionProvider': True,
+                'codeLensProvider': {
+                    'resolveProvider': False
+                },
+                'documentFormattingProvider': False,
+                'documentRangeFormattingProvider': False,
+                'renameProvider': True,
+                'documentLinkProvider': {
+                    'resolveProvider': False
+                }
+            }
         }
-      }
     })
     return self
+
 
 def _ExecuteTest(name, func):
   """
@@ -129,12 +135,17 @@ def _ExecuteTest(name, func):
 
   |func| must return a TestBuilder object.
   """
+
+  # Delete cache directory.
+  shutil.rmtree(CACHE_DIR, ignore_errors=True)
+
   test_builder = func()
   if not isinstance(test_builder, TestBuilder):
     raise Exception('%s does not return a TestBuilder instance' % name)
 
   # Add a final exit message.
-  test_builder.Send({ 'method': '$cquery/exitWhenIdle' })
+  test_builder.Send({'method': '$cquery/wait'})
+  test_builder.Send({'method': 'exit'})
 
   # Convert messages to a stdin byte array.
   stdin = ''
@@ -151,7 +162,15 @@ def _ExecuteTest(name, func):
       start = match.span()[1]
       length = int(match.groups()[0])
       message = string[start:start + length]
-      messages.append(json.loads(message))
+      decoded = json.loads(message)
+      # Do not report '$cquery/progress' messages.
+      if 'method' in decoded and decoded['method'] == '$cquery/progress':
+        continue
+      # Do not report 'textDocument/publishDiagnostic' messages.
+      if 'method' in decoded and decoded['method'] == 'textDocument/publishDiagnostics':
+        continue
+
+      messages.append(decoded)
     return messages
 
   # Utility method to print a byte array.
@@ -160,10 +179,10 @@ def _ExecuteTest(name, func):
       print(line.decode('utf8'))
 
   # Execute program.
-  cmd = "%s --language-server" % CQUERY_PATH
+  cmd = "%s --language-server --log-all-to-stderr" % CQUERY_PATH
   process = Popen(shlex.split(cmd), stdin=PIPE, stdout=PIPE, stderr=PIPE)
   (stdout, stderr) = process.communicate(stdin_bytes)
-  exit_code = process.wait();
+  exit_code = process.wait()
 
   # Check if test succeeded.
   actual = GetMessages(stdout.decode('utf8'))
@@ -215,6 +234,7 @@ def _DiscoverTests():
       continue
     yield (name, value)
 
+
 def _RunTests():
   """
   Executes all tests.
@@ -223,55 +243,62 @@ def _RunTests():
     _ExecuteTest(name, func)
 
 
-
-
-
-
 #### EXAMPLE TESTS ####
 
 
 class lsSymbolKind:
   Function = 1
 
+
 def lsSymbolInfo(name, position, kind):
   return {
-    'name': name,
-    'position': position,
-    'kind': kind
+      'name': name,
+      'position': position,
+      'kind': kind
   }
+
 
 def DISABLED_Test_Init():
   return (TestBuilder()
-    .SetupCommonInit()
-  )
+          .SetupCommonInit()
+          )
+
 
 def Test_Outline():
   return (TestBuilder()
-    .SetupCommonInit()
-    # .IndexFile("file:///C%3A/Users/jacob/Desktop/cquery/foo.cc",
-    .IndexFile("foo.cc",
-      """void foobar();""")
-    .WaitForIdle()
-    .Send({
-      'id': 1,
-      'method': 'textDocument/documentSymbol',
-      'params': {
-        'textDocument': {
-          'uri': 'C:/Users/jacob/Desktop/cquery/foo.cc'
-        }
-      }
-    })
-    # .Expect({
-    #   'jsonrpc': '2.0',
-    #   'id': 1,
-    #   'error': {'code': -32603, 'message': 'Unable to find file '}
-    # }))
-    .Expect({
-      'id': 1,
-      'result': [
-        lsSymbolInfo('void main()', (1, 1), lsSymbolKind.Function)
-      ]
-    }))
+          .SetupCommonInit()
+          .IndexFile("foo.cc",
+                     """void foobar();""")
+          .WaitForIdle()
+          .Send({
+              'id': 1,
+              'method': 'textDocument/documentSymbol',
+              'params': {
+                  'textDocument': {
+                      'uri': 'foo.cc'
+                  }
+              }
+          })
+          .Expect({
+              'jsonrpc': '2.0',
+              'id': 1, 'result': [
+                  {
+                      'containerName': 'void foobar()',
+                      'kind': 12,
+                      'name': 'foobar',
+                      'location': {
+                          'range': {
+                              'start': {
+                                  'line': 0,
+                                  'character': 5},
+                              'end': {
+                                  'line': 0,
+                                  'character': 11
+                              }
+                          },
+                          'uri': 'file://foo.cc'
+                      }
+                  }]}))
 
 
 if __name__ == '__main__':
