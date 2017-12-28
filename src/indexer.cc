@@ -1066,6 +1066,15 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       }
       break;
     }
+    case CXCursor_TypeRef: {
+      ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
+      if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
+        IndexType* ref_index =
+            data->db->Resolve(data->db->ToTypeId(ref_cursor.get_usr()));
+        UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
+      }
+      break;
+    }
   }
   return ClangCursor::VisitResult::Continue;
 }
