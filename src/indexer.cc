@@ -1050,8 +1050,10 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         IndexVar* ref_index =
             data->db->Resolve(data->db->ToVarId(ref_cursor.get_usr()));
         if (ref_index->def.short_name.empty()) {
-          ref_index->def.definition_spelling = ResolveSpelling(ref_cursor.cx_cursor);
-          ref_index->def.definition_extent = ResolveExtent(ref_cursor.cx_cursor);
+          ref_index->def.definition_spelling =
+              ResolveSpelling(ref_cursor.cx_cursor);
+          ref_index->def.definition_extent =
+              ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
         }
@@ -1087,13 +1089,16 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
         IndexType* ref_index =
             data->db->Resolve(data->db->ToTypeId(ref_cursor.get_usr()));
-        // TODO It seems difficult to get a FunctionTemplate's template parameters.
+        // TODO It seems difficult to get a FunctionTemplate's template
+        // parameters.
         // CXCursor_TemplateTypeParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // FunctionTemplate. Thus we need to initialize it here.
         if (ref_index->def.short_name.empty()) {
-          ref_index->def.definition_spelling = ResolveSpelling(ref_cursor.cx_cursor);
-          ref_index->def.definition_extent = ResolveExtent(ref_cursor.cx_cursor);
+          ref_index->def.definition_spelling =
+              ResolveSpelling(ref_cursor.cx_cursor);
+          ref_index->def.definition_extent =
+              ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
         }
@@ -1131,7 +1136,7 @@ std::string GetFunctionSignature(IndexFile* db,
 
   // Scan the function type backwards.
   // First pass: find the position of the closing bracket in the type.
-  for (int balance = 0, i = int(type_desc.size()); i--; ) {
+  for (int balance = 0, i = int(type_desc.size()); i--;) {
     if (type_desc[i] == ')')
       balance++;
     // Balanced paren pair that may appear before the paren enclosing
@@ -1143,8 +1148,7 @@ std::string GetFunctionSignature(IndexFile* db,
                (i >= 7 && !type_desc.compare(i - 7, 7, "typeof ")) ||
                (i >= 8 && !type_desc.compare(i - 8, 8, "decltype")) ||
                (i >= 8 && !type_desc.compare(i - 8, 8, "noexcept")) ||
-               (i >= 13 &&
-                !type_desc.compare(i - 13, 13, "__attribute__")))) {
+               (i >= 13 && !type_desc.compare(i - 13, 13, "__attribute__")))) {
       // Do not bother with function types which return function pointers.
       if (type_desc.find("(*") >= std::string::size_type(i))
         function_name_offset = i;
@@ -1177,10 +1181,13 @@ std::string GetFunctionSignature(IndexFile* db,
       std::string type_desc_with_names;
       for (auto& arg : args) {
         if (arg.first < 0) {
-          LOG_S(ERROR) << "When adding argument names to '" << type_desc << "', failed to detect positions to insert argument names";
+          LOG_S(ERROR)
+              << "When adding argument names to '" << type_desc
+              << "', failed to detect positions to insert argument names";
           break;
         }
-        if (arg.second.empty()) continue;
+        if (arg.second.empty())
+          continue;
         type_desc_with_names.insert(type_desc_with_names.end(), &type_desc[i],
                                     &type_desc[arg.first]);
         i = arg.first;

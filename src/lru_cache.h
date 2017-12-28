@@ -40,7 +40,7 @@ struct LruCache {
     uint32_t score = 0;
     TKey key;
     std::shared_ptr<TValue> value;
-    bool operator<(const Entry &other) const { return score < other.score; }
+    bool operator<(const Entry& other) const { return score < other.score; }
   };
 
   void IncrementScore();
