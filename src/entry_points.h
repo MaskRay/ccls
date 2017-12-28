@@ -20,11 +20,11 @@ bool QueryDb_ImportMain(Config* config,
                         SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files);
 
-WorkThread::Result IndexMain(Config* config,
-                             FileConsumer::SharedState* file_consumer_shared,
-                             TimestampManager* timestamp_manager,
-                             ImportManager* import_manager,
-                             ImportPipelineStatus* status,
-                             Project* project,
-                             WorkingFiles* working_files,
-                             MultiQueueWaiter* waiter);
+void IndexMain(Config* config,
+               FileConsumer::SharedState* file_consumer_shared,
+               TimestampManager* timestamp_manager,
+               ImportManager* import_manager,
+               ImportPipelineStatus* status,
+               Project* project,
+               WorkingFiles* working_files,
+               MultiQueueWaiter* waiter);

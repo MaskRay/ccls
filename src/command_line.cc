@@ -187,9 +187,9 @@ void RunQueryDbThread(const std::string& bin_name,
   SetCurrentThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
-        config, &db, waiter, &project, &file_consumer_shared,
-        &import_manager, &timestamp_manager, &semantic_cache, &working_files,
-        &clang_complete, &include_complete, global_code_complete_cache.get(),
+        config, &db, waiter, &project, &file_consumer_shared, &import_manager,
+        &timestamp_manager, &semantic_cache, &working_files, &clang_complete,
+        &include_complete, global_code_complete_cache.get(),
         non_global_code_complete_cache.get(), signature_cache.get());
 
     // Cleanup and free any unused memory.
@@ -234,76 +234,75 @@ void LaunchStdinLoop(Config* config,
 
   WorkThread::StartThread("stdin", [request_times]() {
     auto* queue = QueueManager::instance();
-    std::unique_ptr<BaseIpcMessage> message =
-        MessageRegistry::instance()->ReadMessageFromStdin(
-            g_log_stdin_stdout_to_stderr);
+    while (true) {
+      std::unique_ptr<BaseIpcMessage> message =
+          MessageRegistry::instance()->ReadMessageFromStdin(
+              g_log_stdin_stdout_to_stderr);
 
-    // Message parsing can fail if we don't recognize the method.
-    if (!message)
-      return WorkThread::Result::MoreWork;
+      // Message parsing can fail if we don't recognize the method.
+      if (!message)
+        continue;
 
-    // Cache |method_id| so we can access it after moving |message|.
-    IpcId method_id = message->method_id;
+      // Cache |method_id| so we can access it after moving |message|.
+      IpcId method_id = message->method_id;
 
-    (*request_times)[message->method_id] = Timer();
+      (*request_times)[message->method_id] = Timer();
 
-    switch (method_id) {
-      case IpcId::Initialized: {
-        // TODO: don't send output until we get this notification
+      switch (method_id) {
+        case IpcId::Initialized: {
+          // TODO: don't send output until we get this notification
+          break;
+        }
+
+        case IpcId::CancelRequest: {
+          // TODO: support cancellation
+          break;
+        }
+
+        case IpcId::Exit:
+        case IpcId::Initialize:
+        case IpcId::TextDocumentDidOpen:
+        case IpcId::CqueryTextDocumentDidView:
+        case IpcId::TextDocumentDidChange:
+        case IpcId::TextDocumentDidClose:
+        case IpcId::TextDocumentDidSave:
+        case IpcId::TextDocumentRename:
+        case IpcId::TextDocumentCompletion:
+        case IpcId::TextDocumentSignatureHelp:
+        case IpcId::TextDocumentDefinition:
+        case IpcId::TextDocumentDocumentHighlight:
+        case IpcId::TextDocumentHover:
+        case IpcId::TextDocumentReferences:
+        case IpcId::TextDocumentDocumentSymbol:
+        case IpcId::TextDocumentDocumentLink:
+        case IpcId::TextDocumentCodeAction:
+        case IpcId::TextDocumentCodeLens:
+        case IpcId::WorkspaceSymbol:
+        case IpcId::CqueryFreshenIndex:
+        case IpcId::CqueryTypeHierarchyTree:
+        case IpcId::CqueryCallTreeInitial:
+        case IpcId::CqueryCallTreeExpand:
+        case IpcId::CqueryVars:
+        case IpcId::CqueryCallers:
+        case IpcId::CqueryBase:
+        case IpcId::CqueryDerived:
+        case IpcId::CqueryIndexFile:
+        case IpcId::CqueryWait: {
+          queue->for_querydb.Enqueue(std::move(message));
+          break;
+        }
+
+        default: {
+          LOG_S(ERROR) << "Unhandled IPC message " << IpcIdToString(method_id);
+          exit(1);
+        }
+      }
+
+      // If the message was to exit then querydb will take care of the actual
+      // exit. Stop reading from stdin since it might be detached.
+      if (method_id == IpcId::Exit)
         break;
-      }
-
-      case IpcId::CancelRequest: {
-        // TODO: support cancellation
-        break;
-      }
-
-      case IpcId::Exit:
-      case IpcId::Initialize:
-      case IpcId::TextDocumentDidOpen:
-      case IpcId::CqueryTextDocumentDidView:
-      case IpcId::TextDocumentDidChange:
-      case IpcId::TextDocumentDidClose:
-      case IpcId::TextDocumentDidSave:
-      case IpcId::TextDocumentRename:
-      case IpcId::TextDocumentCompletion:
-      case IpcId::TextDocumentSignatureHelp:
-      case IpcId::TextDocumentDefinition:
-      case IpcId::TextDocumentDocumentHighlight:
-      case IpcId::TextDocumentHover:
-      case IpcId::TextDocumentReferences:
-      case IpcId::TextDocumentDocumentSymbol:
-      case IpcId::TextDocumentDocumentLink:
-      case IpcId::TextDocumentCodeAction:
-      case IpcId::TextDocumentCodeLens:
-      case IpcId::WorkspaceSymbol:
-      case IpcId::CqueryFreshenIndex:
-      case IpcId::CqueryTypeHierarchyTree:
-      case IpcId::CqueryCallTreeInitial:
-      case IpcId::CqueryCallTreeExpand:
-      case IpcId::CqueryVars:
-      case IpcId::CqueryCallers:
-      case IpcId::CqueryBase:
-      case IpcId::CqueryDerived:
-      case IpcId::CqueryIndexFile:
-      case IpcId::CqueryWait: {
-        queue->for_querydb.Enqueue(std::move(message));
-        break;
-      }
-
-      default: {
-        LOG_S(ERROR) << "Unhandled IPC message "
-                     << IpcIdToString(method_id);
-        exit(1);
-      }
     }
-
-    // If the message was to exit then querydb will take care of the actual
-    // exit. Stop reading from stdin since it might be detached.
-    if (method_id == IpcId::Exit)
-      return WorkThread::Result::ExitThread;
-
-    return WorkThread::Result::MoreWork;
   });
 }
 
@@ -312,34 +311,33 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
   WorkThread::StartThread("stdout", [=]() {
     auto* queue = QueueManager::instance();
 
-    std::vector<Stdout_Request> messages = queue->for_stdout.DequeueAll();
-    if (messages.empty()) {
-      waiter->Wait({&queue->for_stdout});
-      return queue->HasWork() ? WorkThread::Result::MoreWork
-                              : WorkThread::Result::NoWork;
-    }
-
-    for (auto& message : messages) {
-      if (ShouldDisplayIpcTiming(message.id)) {
-        Timer time = (*request_times)[message.id];
-        time.ResetAndPrint("[e2e] Running " +
-                           std::string(IpcIdToString(message.id)));
+    while (true) {
+      std::vector<Stdout_Request> messages = queue->for_stdout.DequeueAll();
+      if (messages.empty()) {
+        waiter->Wait({&queue->for_stdout});
+        continue;
       }
 
-      if (g_log_stdin_stdout_to_stderr) {
-        std::ostringstream sstream;
-        sstream << "[COUT] |";
-        sstream << message.content;
-        sstream << "|\n";
-        std::cerr << sstream.str();
-        std::cerr.flush();
+      for (auto& message : messages) {
+        if (ShouldDisplayIpcTiming(message.id)) {
+          Timer time = (*request_times)[message.id];
+          time.ResetAndPrint("[e2e] Running " +
+                             std::string(IpcIdToString(message.id)));
+        }
+
+        if (g_log_stdin_stdout_to_stderr) {
+          std::ostringstream sstream;
+          sstream << "[COUT] |";
+          sstream << message.content;
+          sstream << "|\n";
+          std::cerr << sstream.str();
+          std::cerr.flush();
+        }
+
+        std::cout << message.content;
+        std::cout.flush();
       }
-
-      std::cout << message.content;
-      std::cout.flush();
     }
-
-    return WorkThread::Result::MoreWork;
   });
 }
 

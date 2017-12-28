@@ -4,17 +4,14 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_CqueryWait
-    : public IpcMessage<Ipc_CqueryWait> {
+struct Ipc_CqueryWait : public IpcMessage<Ipc_CqueryWait> {
   static constexpr IpcId kIpcId = IpcId::CqueryWait;
 };
 MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryWait);
 REGISTER_IPC_MESSAGE(Ipc_CqueryWait);
 
 struct CqueryWaitHandler : MessageHandler {
-  IpcId GetId() const override {
-    return IpcId::CqueryWait;
-  }
+  IpcId GetId() const override { return IpcId::CqueryWait; }
   void Run(std::unique_ptr<BaseIpcMessage> request) override {
     // TODO: use status message system here, then run querydb as normal? Maybe
     // this cannot be a normal message, ie, it needs to be re-entrant.

@@ -434,56 +434,55 @@ bool IndexMergeIndexUpdates() {
   }
 }
 
-WorkThread::Result IndexMain(Config* config,
-                             FileConsumer::SharedState* file_consumer_shared,
-                             TimestampManager* timestamp_manager,
-                             ImportManager* import_manager,
-                             ImportPipelineStatus* status,
-                             Project* project,
-                             WorkingFiles* working_files,
-                             MultiQueueWaiter* waiter) {
-  status->num_active_threads++;
-
-  EmitProgress(config);
-
+void IndexMain(Config* config,
+               FileConsumer::SharedState* file_consumer_shared,
+               TimestampManager* timestamp_manager,
+               ImportManager* import_manager,
+               ImportPipelineStatus* status,
+               Project* project,
+               WorkingFiles* working_files,
+               MultiQueueWaiter* waiter) {
   // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndex index;
 
-  // TODO: process all off IndexMain_DoIndex before calling
-  // IndexMain_DoCreateIndexUpdate for better icache behavior. We need to have
-  // some threads spinning on both though otherwise memory usage will get bad.
+  while (true) {
+    status->num_active_threads++;
 
-  // We need to make sure to run both IndexMain_DoParse and
-  // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
-  // work. Running both also lets the user query the partially constructed
-  // index.
-  bool did_parse =
-      IndexMain_DoParse(config, working_files, file_consumer_shared,
-                        timestamp_manager, import_manager, &index);
+    EmitProgress(config);
 
-  bool did_create_update =
-      IndexMain_DoCreateIndexUpdate(config, timestamp_manager);
+    // TODO: process all off IndexMain_DoIndex before calling
+    // IndexMain_DoCreateIndexUpdate for better icache behavior. We need to have
+    // some threads spinning on both though otherwise memory usage will get bad.
 
-  bool did_load_previous = IndexMain_LoadPreviousIndex(config);
+    // We need to make sure to run both IndexMain_DoParse and
+    // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
+    // work. Running both also lets the user query the partially constructed
+    // index.
+    bool did_parse =
+        IndexMain_DoParse(config, working_files, file_consumer_shared,
+                          timestamp_manager, import_manager, &index);
 
-  // Nothing to index and no index updates to create, so join some already
-  // created index updates to reduce work on querydb thread.
-  bool did_merge = false;
-  if (!did_parse && !did_create_update && !did_load_previous)
-    did_merge = IndexMergeIndexUpdates();
+    bool did_create_update =
+        IndexMain_DoCreateIndexUpdate(config, timestamp_manager);
 
-  status->num_active_threads--;
+    bool did_load_previous = IndexMain_LoadPreviousIndex(config);
 
-  auto* queue = QueueManager::instance();
+    // Nothing to index and no index updates to create, so join some already
+    // created index updates to reduce work on querydb thread.
+    bool did_merge = false;
+    if (!did_parse && !did_create_update && !did_load_previous)
+      did_merge = IndexMergeIndexUpdates();
 
-  // We didn't do any work, so wait for a notification.
-  if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
-    waiter->Wait({&queue->index_request, &queue->on_id_mapped,
-                  &queue->load_previous_index, &queue->on_indexed});
+    status->num_active_threads--;
+
+    auto* queue = QueueManager::instance();
+
+    // We didn't do any work, so wait for a notification.
+    if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
+      waiter->Wait({&queue->index_request, &queue->on_id_mapped,
+                    &queue->load_previous_index, &queue->on_indexed});
+    }
   }
-
-  return queue->HasWork() ? WorkThread::Result::MoreWork
-                          : WorkThread::Result::NoWork;
 }
 
 bool QueryDb_ImportMain(Config* config,

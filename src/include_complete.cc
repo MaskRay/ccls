@@ -136,8 +136,6 @@ void IncludeComplete::Rescan() {
 
     timer.ResetAndPrint("[perf] Scanning for includes");
     is_scanning = false;
-
-    return WorkThread::Result::ExitThread;
   });
 }
 
