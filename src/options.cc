@@ -8,22 +8,16 @@ std::unordered_map<std::string, std::string> ParseOptions(int argc,
                                                           char** argv) {
   std::unordered_map<std::string, std::string> output;
 
-  std::string previous_arg;
-
   for (int i = 1; i < argc; ++i) {
     std::string arg = argv[i];
-
-    if (arg[0] != '-') {
-      if (previous_arg.size() == 0) {
-        LOG_S(FATAL) << "Invalid arguments; switches must start with -";
-        exit(1);
-      }
-
-      output[previous_arg] = arg;
-      previous_arg = "";
-    } else {
-      output[arg] = "";
-      previous_arg = arg;
+    if (arg[0] == '-') {
+      auto equal = arg.find('=');
+      if (equal != std::string::npos) {
+        output[arg.substr(0, equal)] = arg.substr(equal + 1);
+      } else if (i + 1 < argc && argv[i + 1][0] != '-')
+        output[arg] = argv[++i];
+      else
+        output[arg] = "";
     }
   }
 
