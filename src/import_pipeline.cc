@@ -49,7 +49,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     bool is_interactive,
     const std::string& path,
     const std::vector<std::string>& args,
-    const optional<FileContents>& contents) {
+    const FileContents& contents) {
   std::vector<Index_DoIdMap> result;
 
   // Always run this block, even if we are interactive, so we can check
@@ -168,17 +168,13 @@ std::vector<Index_DoIdMap> DoParseFile(
   // TODO: We might be able to optimize perf by only copying for files in
   //       working_files. We can pass that same set of files to the indexer as
   //       well. We then default to a fast file-copy if not in working set.
-  bool loaded_primary = false;
-  std::vector<FileContents> file_contents;
-  if (contents) {
-    loaded_primary = loaded_primary || contents->path == path;
-    file_contents.push_back(*contents);
-  }
+  bool loaded_primary = contents.path == path;
+  std::vector<FileContents> file_contents = {contents};
   cache_manager->IterateLoadedCaches([&](IndexFile* index) {
     // FIXME: ReadContent should go through |cache_manager|.
     optional<std::string> index_content = ReadContent(index->path);
     if (!index_content) {
-      LOG_S(ERROR) << "Failed to preload index content for " << index->path;
+      LOG_S(ERROR) << "Failed to load index content for " << index->path;
       return;
     }
 
@@ -226,10 +222,8 @@ std::vector<Index_DoIdMap> ParseFile(
     ImportManager* import_manager,
     bool is_interactive,
     const Project::Entry& entry,
-    const optional<std::string>& contents) {
-  optional<FileContents> file_contents;
-  if (contents)
-    file_contents = FileContents(entry.filename, *contents);
+    const std::string& contents) {
+  FileContents file_contents(entry.filename, contents);
 
   std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
 

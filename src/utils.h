@@ -71,6 +71,7 @@ void EnsureEndsInSlash(std::string& path);
 // e.g. foo/bar.c => foo_bar.c
 std::string EscapeFileName(std::string path);
 
+// FIXME: Move ReadContent into ICacheManager?
 optional<std::string> ReadContent(const std::string& filename);
 std::vector<std::string> ReadLinesWithEnding(std::string filename);
 std::vector<std::string> ToLines(const std::string& content,

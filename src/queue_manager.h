@@ -19,12 +19,12 @@ struct Index_Request {
   // TODO: make |args| a string that is parsed lazily.
   std::vector<std::string> args;
   bool is_interactive;
-  optional<std::string> contents;  // Preloaded contents. Useful for tests.
+  std::string contents;  // Preloaded contents. Useful for tests.
 
   Index_Request(const std::string& path,
                 const std::vector<std::string>& args,
                 bool is_interactive,
-                optional<std::string> contents);
+                const std::string& contents);
 };
 
 struct Index_DoIdMap {

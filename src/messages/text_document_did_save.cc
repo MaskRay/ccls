@@ -3,6 +3,8 @@
 #include "project.h"
 #include "queue_manager.h"
 
+#include <loguru/loguru.hpp>
+
 namespace {
 struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
   struct Params {
@@ -41,9 +43,14 @@ struct TextDocumentDidSaveHandler
     //      mutex and check to see if we should skip the current request.
     //      if so, ignore that index response.
     // TODO: send as priority request
-    Project::Entry entry = project->FindCompilationEntryForFile(path);
-    QueueManager::instance()->index_request.Enqueue(Index_Request(
-        entry.filename, entry.args, true /*is_interactive*/, nullopt));
+    optional<std::string> content = ReadContent(path);
+    if (!content) {
+      LOG_S(ERROR) << "Unable to read file content after saving " << path;
+    } else {
+      Project::Entry entry = project->FindCompilationEntryForFile(path);
+      QueueManager::instance()->index_request.Enqueue(Index_Request(
+          entry.filename, entry.args, true /*is_interactive*/, *content));
+    }
 
     clang_complete->NotifySave(path);
   }

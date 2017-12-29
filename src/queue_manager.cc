@@ -8,7 +8,7 @@
 Index_Request::Index_Request(const std::string& path,
                              const std::vector<std::string>& args,
                              bool is_interactive,
-                             optional<std::string> contents)
+                             const std::string& contents)
     : path(path),
       args(args),
       is_interactive(is_interactive),

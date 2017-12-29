@@ -45,15 +45,19 @@ struct CqueryFreshenIndexHandler : MessageHandler {
     auto* queue = QueueManager::instance();
 
     // Send index requests for every file.
-    project->ForAllFilteredFiles(config, [&](int i,
-                                             const Project::Entry& entry) {
-      LOG_S(INFO) << "[" << i << "/" << (project->entries.size() - 1)
-                  << "] Dispatching index request for file " << entry.filename;
-      bool is_interactive =
-          working_files->GetFileByFilename(entry.filename) != nullptr;
-      queue->index_request.Enqueue(
-          Index_Request(entry.filename, entry.args, is_interactive, nullopt));
-    });
+    project->ForAllFilteredFiles(
+        config, [&](int i, const Project::Entry& entry) {
+          optional<std::string> content = ReadContent(entry.filename);
+          if (!content) {
+            LOG_S(ERROR) << "When freshening index, cannot read file "
+                         << entry.filename;
+            return;
+          }
+          bool is_interactive =
+              working_files->GetFileByFilename(entry.filename) != nullptr;
+          queue->index_request.Enqueue(Index_Request(entry.filename, entry.args,
+                                                     is_interactive, *content));
+        });
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryFreshenIndexHandler);

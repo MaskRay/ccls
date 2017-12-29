@@ -191,10 +191,16 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       time.Reset();
       project->ForAllFilteredFiles(
           config, [&](int i, const Project::Entry& entry) {
+            optional<std::string> content = ReadContent(entry.filename);
+            if (!content) {
+              LOG_S(ERROR) << "When loading project, canont read file "
+                           << entry.filename;
+              return;
+            }
             bool is_interactive =
                 working_files->GetFileByFilename(entry.filename) != nullptr;
             queue->index_request.Enqueue(Index_Request(
-                entry.filename, entry.args, is_interactive, nullopt));
+                entry.filename, entry.args, is_interactive, *content));
           });
 
       // We need to support multiple concurrent index processes.

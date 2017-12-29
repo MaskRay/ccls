@@ -57,8 +57,9 @@ struct TextDocumentDidOpenHandler
 
     // Submit new index request.
     const Project::Entry& entry = project->FindCompilationEntryForFile(path);
-    QueueManager::instance()->index_request.PriorityEnqueue(Index_Request(
-        entry.filename, entry.args, true /*is_interactive*/, nullopt));
+    QueueManager::instance()->index_request.PriorityEnqueue(
+        Index_Request(entry.filename, entry.args, true /*is_interactive*/,
+                      request->params.textDocument.text));
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidOpenHandler);
