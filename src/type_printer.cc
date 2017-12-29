@@ -26,29 +26,45 @@ namespace {
 
 // TODO int(*sig(int(*)(int)))(int); is incorrect
 // int(A::*(*y())(int))() is correct
-int GetNameInsertingPosition(const std::string& type_desc) {
+int GetNameInsertingPosition(const std::string& type_desc,
+                             const std::string& return_type) {
   int ret = -1;
-
-  // Scan the function type backwards.
-  // First pass: find the position of the closing bracket in the type.
-  for (int balance = 0, i = int(type_desc.size()); i--;) {
-    if (type_desc[i] == ')')
-      balance++;
-    // Balanced paren pair that may appear before the paren enclosing
-    // function parameters, see clang/lib/AST/TypePrinter.cpp
-    else if (type_desc[i] == '(' && --balance == 0 &&
-             !((i >= 5 && !type_desc.compare(i - 5, 5, "throw")) ||
-               (i >= 6 && !type_desc.compare(i - 6, 6, "typeof")) ||
-               (i >= 7 && !type_desc.compare(i - 7, 7, "_Atomic")) ||
-               (i >= 7 && !type_desc.compare(i - 7, 7, "typeof ")) ||
-               (i >= 8 && !type_desc.compare(i - 8, 8, "decltype")) ||
-               (i >= 8 && !type_desc.compare(i - 8, 8, "noexcept")) ||
-               (i >= 13 && !type_desc.compare(i - 13, 13, "__attribute__")))) {
-      // Do not bother with function types which return function pointers.
-      if (type_desc.find("(*") >= std::string::size_type(i) &&
-          type_desc.find("(&") >= std::string::size_type(i))
+  // Check if type_desc contains an (.
+  if (!type_desc.empty() && type_desc.find("(", 0) != std::string::npos) {
+    // Find a first character where the return_type differs from the
+    // function_type. In most cases this is the place where the function name
+    // should be inserted.
+    for (int i = 0, e = std::min(return_type.size(), type_desc.size()); i < e;
+         ++i) {
+      if (return_type[i] != type_desc[i]) {
         ret = i;
-      break;
+        break;
+      }
+    }
+
+    // return type and function type do not overlap at all.
+    if (ret == 0) {
+      // Check if it is auto ... -> return type.
+      if (type_desc.find("auto", 0) == 0) {
+        auto arrow_offset = type_desc.find(" -> ", 0);
+        if (arrow_offset != std::string::npos &&
+            type_desc.substr(arrow_offset + 4).compare(return_type) == 0)
+          ret = 4;
+      }
+    } else if (ret < 0) {
+      // Return type is just a prefix of the function_type.
+      ret = return_type.size();
+    }
+
+    if (ret >= 0) {
+      // Skip any eventual spaces after the return type.
+      for (int e = type_desc.size(); ret < e && isspace(type_desc[ret]);
+           ++ret) {
+      }
+
+      // An ( is expected after the matched part of the return type.
+      if (ret >= type_desc.size() || type_desc.at(ret) != '(')
+        ret = -1;
     }
   }
   return ret;
@@ -103,7 +119,9 @@ std::string GetFunctionSignature(IndexFile* db,
   }
 #else
   type_desc = ClangCursor(decl->cursor).get_type_description();
-  function_name_offset = GetNameInsertingPosition(type_desc);
+  std::string return_type = ::ToString(
+      clang_getTypeSpelling(clang_getCursorResultType(decl->cursor)));
+  function_name_offset = GetNameInsertingPosition(type_desc, return_type);
 #endif
 
   if (function_name_offset >= 0) {
