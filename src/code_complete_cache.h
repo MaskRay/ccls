@@ -6,9 +6,6 @@
 
 #include <mutex>
 
-using namespace std::experimental;
-using std::experimental::nullopt;
-
 // Cached completion information, so we can give fast completion results when
 // the user erases a character. vscode will resend the completion request if
 // that happens.

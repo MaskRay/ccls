@@ -6,9 +6,6 @@
 #include <string>
 #include <vector>
 
-using std::experimental::nullopt;
-using std::experimental::optional;
-
 struct PlatformMutex {
   virtual ~PlatformMutex();
 };

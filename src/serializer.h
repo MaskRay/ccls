@@ -1,17 +1,14 @@
 #pragma once
 
+#include <macro_map.h>
+#include <optional.h>
+#include <variant.h>
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "macro_map.h"
-#include "optional.h"
-#include "variant.h"
-#include "rapidjson/document.h"
-#include "rapidjson/prettywriter.h"
-
-using std::experimental::nullopt;
-using std::experimental::optional;
 
 using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
 using Writer = rapidjson::Writer<rapidjson::StringBuffer>;

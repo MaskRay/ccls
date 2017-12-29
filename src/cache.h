@@ -1,11 +1,9 @@
 #pragma once
 
 #include <optional.h>
+
 #include <memory>
 #include <string>
-
-using std::experimental::nullopt;
-using std::experimental::optional;
 
 struct Config;
 struct IndexFile;

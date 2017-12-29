@@ -7,9 +7,6 @@
 #include <mutex>
 #include <unordered_map>
 
-using namespace std::experimental;
-using std::experimental::nullopt;
-
 // Caches timestamps of cc files so we can avoid a filesystem reads. This is
 // important for import perf, as during dependency checking the same files are
 // checked over and over again if they are common headers.

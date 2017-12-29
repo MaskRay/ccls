@@ -1,13 +1,10 @@
 #pragma once
 
-#include <optional.h>
-
 #include <clang-c/Index.h>
+#include <optional.h>
 
 #include <string>
 #include <vector>
-
-using std::experimental::optional;
 
 class ClangType {
  public:

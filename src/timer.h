@@ -5,9 +5,6 @@
 #include <chrono>
 #include <string>
 
-using std::experimental::nullopt;
-using std::experimental::optional;
-
 struct Timer {
   using Clock = std::chrono::high_resolution_clock;
 

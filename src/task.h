@@ -9,9 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-using std::experimental::optional;
-using std::experimental::nullopt;
-
 enum class TaskThread {
   Indexer,
   QueryDb,

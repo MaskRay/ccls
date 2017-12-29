@@ -5,18 +5,15 @@
 #include "serializer.h"
 #include "utils.h"
 
-#include "optional.h"
-#include "variant.h"
+#include <optional.h>
 #include <rapidjson/writer.h>
+#include <variant.h>
 
 #include <algorithm>
 #include <iostream>
 #include <sstream>
 #include <unordered_map>
 #include <unordered_set>
-
-using std::experimental::nullopt;
-using std::experimental::optional;
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////

@@ -11,9 +11,6 @@
 #include <mutex>
 #include <queue>
 
-using std::experimental::nullopt;
-using std::experimental::optional;
-
 // TODO: cleanup includes.
 
 struct BaseThreadQueue {

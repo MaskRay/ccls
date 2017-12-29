@@ -3,11 +3,10 @@
 #include "lru_cache.h"
 #include "query.h"
 
+#include <optional.h>
+
 #include <string>
 #include <unordered_map>
-
-using std::experimental::nullopt;
-using std::experimental::optional;
 
 // Caches symbols for a single file for semantic highlighting to provide
 // relatively stable ids. Only supports xxx files at a time.

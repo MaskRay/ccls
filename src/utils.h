@@ -10,9 +10,6 @@
 #include <unordered_map>
 #include <vector>
 
-using std::experimental::nullopt;
-using std::experimental::optional;
-
 // Trim from start (in place)
 void TrimStartInPlace(std::string& s);
 // Trim from end (in place)

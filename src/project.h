@@ -10,9 +10,6 @@
 #include <string>
 #include <vector>
 
-using std::experimental::nullopt;
-using std::experimental::optional;
-
 struct Project {
   struct Entry {
     std::string filename;

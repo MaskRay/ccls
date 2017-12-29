@@ -9,9 +9,6 @@
 #include <mutex>
 #include <string>
 
-using std::experimental::nullopt;
-using std::experimental::optional;
-
 struct WorkingFile {
   int version = 0;
   std::string filename;
