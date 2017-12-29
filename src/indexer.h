@@ -544,6 +544,18 @@ struct FileContentsWithOffsets {
   optional<std::string> ContentsInRange(Range range) const;
 };
 
+struct NamespaceHelper {
+  std::unordered_map<ClangCursor, std::string>
+      container_cursor_to_qualified_name;
+
+  void RegisterQualifiedName(std::string usr,
+                             const CXIdxContainerInfo* container,
+                             std::string qualified_name) {}
+
+  std::string QualifiedName(const CXIdxContainerInfo* container,
+                            std::string unqualified_name);
+};
+
 // |import_file| is the cc file which is what gets passed to clang.
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a

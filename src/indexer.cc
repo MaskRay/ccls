@@ -5,6 +5,7 @@
 #include "platform.h"
 #include "serializer.h"
 #include "timer.h"
+#include "type_printer.h"
 
 #include <loguru.hpp>
 
@@ -70,66 +71,6 @@ bool IsScopeSemanticContainer(CXCursorKind kind) {
   }
 }
 
-struct NamespaceHelper {
-  std::unordered_map<ClangCursor, std::string>
-      container_cursor_to_qualified_name;
-
-  void RegisterQualifiedName(std::string usr,
-                             const CXIdxContainerInfo* container,
-                             std::string qualified_name) {}
-
-  std::string QualifiedName(const CXIdxContainerInfo* container,
-                            std::string unqualified_name) {
-    if (!container)
-      return unqualified_name;
-    // Anonymous namespaces are not processed by indexDeclaration. We trace
-    // nested namespaces bottom-up through clang_getCursorSemanticParent until
-    // one that we know its qualified name. Then do another trace top-down and
-    // put their names into a map of USR -> qualified_name.
-    ClangCursor cursor = container->cursor;
-    std::vector<ClangCursor> namespaces;
-    std::string qualifier;
-    while (cursor.get_kind() != CXCursor_TranslationUnit &&
-           !IsScopeSemanticContainer(cursor.get_kind())) {
-      auto it = container_cursor_to_qualified_name.find(cursor);
-      if (it != container_cursor_to_qualified_name.end()) {
-        qualifier = it->second;
-        break;
-      }
-      namespaces.push_back(cursor);
-      cursor = clang_getCursorSemanticParent(cursor.cx_cursor);
-    }
-    for (size_t i = namespaces.size(); i > 0;) {
-      i--;
-      std::string name = namespaces[i].get_spelling();
-      // Empty name indicates unnamed namespace, anonymous struct, anonymous
-      // union, ...
-      if (name.size())
-        qualifier += name;
-      else
-        switch (namespaces[i].get_kind()) {
-          case CXCursor_ClassDecl:
-            qualifier += "(anon class)";
-            break;
-          case CXCursor_EnumDecl:
-            qualifier += "(anon enum)";
-            break;
-          case CXCursor_StructDecl:
-            qualifier += "(anon struct)";
-            break;
-          case CXCursor_UnionDecl:
-            qualifier += "(anon union)";
-            break;
-          default:
-            qualifier += "(anon)";
-            break;
-        }
-      qualifier += "::";
-      container_cursor_to_qualified_name[namespaces[i]] = qualifier;
-    }
-    return qualifier + unqualified_name;
-  }
-};
 
 // Caches all instances of constructors, regardless if they are indexed or not.
 // The constructor may have a make_unique call associated with it that we need
@@ -1113,110 +1054,59 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
   return ClangCursor::VisitResult::Continue;
 }
 
-// Build a detailed function signature, including argument names.
-std::string GetFunctionSignature(IndexFile* db,
-                                 NamespaceHelper* ns,
-                                 const CXIdxDeclInfo* decl) {
-  // Build the function name, with scope and parameters
-  std::string type_desc = ClangCursor(decl->cursor).get_type_description();
-  int num_args = clang_Cursor_getNumArguments(decl->cursor);
-  std::string function_name =
-      ns->QualifiedName(decl->semanticContainer, decl->entityInfo->name);
+}  // namespace
 
-  std::vector<std::pair<int, std::string>> args;
-  for (int i = 0; i < num_args; i++) {
-    args.emplace_back(-1, ::ToString(clang_getCursorDisplayName(
-                              clang_Cursor_getArgument(decl->cursor, i))));
-  }
-  if (clang_Cursor_isVariadic(decl->cursor)) {
-    args.emplace_back(-1, "");
-    num_args++;
-  }
-
-  int function_name_offset = -1;
-
-  // Scan the function type backwards.
-  // First pass: find the position of the closing bracket in the type.
-  for (int balance = 0, i = int(type_desc.size()); i--;) {
-    if (type_desc[i] == ')')
-      balance++;
-    // Balanced paren pair that may appear before the paren enclosing
-    // function parameters, see clang/lib/AST/TypePrinter.cpp
-    else if (type_desc[i] == '(' && --balance == 0 &&
-             !((i >= 5 && !type_desc.compare(i - 5, 5, "throw")) ||
-               (i >= 6 && !type_desc.compare(i - 6, 6, "typeof")) ||
-               (i >= 7 && !type_desc.compare(i - 7, 7, "_Atomic")) ||
-               (i >= 7 && !type_desc.compare(i - 7, 7, "typeof ")) ||
-               (i >= 8 && !type_desc.compare(i - 8, 8, "decltype")) ||
-               (i >= 8 && !type_desc.compare(i - 8, 8, "noexcept")) ||
-               (i >= 13 && !type_desc.compare(i - 13, 13, "__attribute__")))) {
-      // Do not bother with function types which return function pointers.
-      if (type_desc.find("(*") >= std::string::size_type(i))
-        function_name_offset = i;
+std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
+                                           std::string unqualified_name) {
+  if (!container)
+    return unqualified_name;
+  // Anonymous namespaces are not processed by indexDeclaration. We trace
+  // nested namespaces bottom-up through clang_getCursorSemanticParent until
+  // one that we know its qualified name. Then do another trace top-down and
+  // put their names into a map of USR -> qualified_name.
+  ClangCursor cursor = container->cursor;
+  std::vector<ClangCursor> namespaces;
+  std::string qualifier;
+  while (cursor.get_kind() != CXCursor_TranslationUnit &&
+         !IsScopeSemanticContainer(cursor.get_kind())) {
+    auto it = container_cursor_to_qualified_name.find(cursor);
+    if (it != container_cursor_to_qualified_name.end()) {
+      qualifier = it->second;
       break;
     }
+    namespaces.push_back(cursor);
+    cursor = clang_getCursorSemanticParent(cursor.cx_cursor);
   }
-
-  if (function_name_offset >= 0) {
-    if (num_args > 0) {
-      // Find positions to insert argument names.
-      // Last argument name is before ')'
-      num_args = 0;
-      // Other argument names come before ','
-      for (int balance = 0, i = function_name_offset;
-           i < int(type_desc.size()) && num_args < int(args.size()); i++) {
-        if (type_desc[i] == '(' || type_desc[i] == '<' || type_desc[i] == '[')
-          balance++;
-        else if (type_desc[i] == ')' || type_desc[i] == '>' ||
-                 type_desc[i] == ']') {
-          if (--balance <= 0) {
-            args[num_args].first = i;
-            break;
-          }
-        } else if (type_desc[i] == ',' && balance == 1)
-          args[num_args++].first = i;
-      }
-
-      // Second pass: Insert argument names before each comma.
-      int i = 0;
-      std::string type_desc_with_names;
-      for (auto& arg : args) {
-        if (arg.first < 0) {
-          LOG_S(ERROR)
-              << "When adding argument names to '" << type_desc
-              << "', failed to detect positions to insert argument names";
+  for (size_t i = namespaces.size(); i > 0;) {
+    i--;
+    std::string name = namespaces[i].get_spelling();
+    // Empty name indicates unnamed namespace, anonymous struct, anonymous
+    // union, ...
+    if (name.size())
+      qualifier += name;
+    else
+      switch (namespaces[i].get_kind()) {
+        case CXCursor_ClassDecl:
+          qualifier += "(anon class)";
           break;
-        }
-        if (arg.second.empty())
-          continue;
-        type_desc_with_names.insert(type_desc_with_names.end(), &type_desc[i],
-                                    &type_desc[arg.first]);
-        i = arg.first;
-        if (type_desc_with_names.size() &&
-            (type_desc_with_names.back() != ' ' &&
-             type_desc_with_names.back() != '*' &&
-             type_desc_with_names.back() != '&'))
-          type_desc_with_names.push_back(' ');
-        type_desc_with_names.append(arg.second);
+        case CXCursor_EnumDecl:
+          qualifier += "(anon enum)";
+          break;
+        case CXCursor_StructDecl:
+          qualifier += "(anon struct)";
+          break;
+        case CXCursor_UnionDecl:
+          qualifier += "(anon union)";
+          break;
+        default:
+          qualifier += "(anon)";
+          break;
       }
-      type_desc_with_names.insert(type_desc_with_names.end(),
-                                  type_desc.begin() + i, type_desc.end());
-      type_desc = std::move(type_desc_with_names);
-    }
-
-    // TODO auto f() -> int(*)() ; int(*f())()
-    type_desc.insert(function_name_offset, function_name);
-  } else {
-    // type_desc is either a typedef, or some complicated type we cannot handle.
-    // Append the function_name in this case.
-    type_desc.push_back(' ');
-    type_desc.append(function_name);
+    qualifier += "::";
+    container_cursor_to_qualified_name[namespaces[i]] = qualifier;
   }
-
-  return type_desc;
+  return qualifier + unqualified_name;
 }
-
-}  // namespace
 
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   if (!kIndexStdDeclarations &&

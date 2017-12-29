@@ -226,7 +226,7 @@ def configure(ctx):
 def build(bld):
   cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc'])
   if bld.env['use_clang_cxx']:
-    cc_files += bld.path.ant_glob(['src/cxx/*.cc'])
+    cc_files += bld.path.ant_glob(['src/clang_cxx/*.cc'])
 
   lib = []
   if sys.platform.startswith('linux'):
@@ -326,17 +326,19 @@ def build(bld):
       source=cc_files,
       use='clang',
       includes=[
-        #'libclang/',
         'src/',
         'third_party/',
         'third_party/doctest/',
         'third_party/loguru/',
         'third_party/rapidjson/include/',
-        'third_party/sparsepp/'],
-      defines=[#'_GLIBCXX_USE_CXX11_ABI=0',  'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04' is pre CXX11_ABI
+        'third_party/sparsepp/'] +
+        (['libclang'] if bld.env['use_clang_cxx'] else []),
+      defines=[
+          #'_GLIBCXX_USE_CXX11_ABI=0',  'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04' is pre CXX11_ABI
                #'LOGURU_STACKTRACES=0',
-               'LOGURU_WITH_STREAMS=1',
-               'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'],
+        'LOGURU_WITH_STREAMS=1',
+        'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'] +
+        (['USE_CLANG_CXX=1'] if bld.env['use_clang_cxx'] else []),
       lib=lib,
       rpath=rpath,
       target='bin/cquery')
