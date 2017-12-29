@@ -3,12 +3,15 @@
 
 #include "utils.h"
 
-#include <loguru.hpp>
+#include "loguru.hpp"
 
 #include <pthread.h>
-#include <cassert>
-#include <iostream>
-#include <string>
+#if defined(__FreeBSD__)
+# include <pthread_np.h>
+# include <sys/thr.h>
+#elif defined(__OpenBSD__)
+# include <pthread_np.h>
+#endif
 
 #include <assert.h>
 #include <errno.h>
@@ -27,7 +30,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <unistd.h>
 
 #include <semaphore.h>
 #include <sys/mman.h>
@@ -38,6 +40,9 @@
 #elif defined(__linux__)
 #include <malloc.h>
 #endif
+
+#include <iostream>
+#include <string>
 
 namespace {
 
