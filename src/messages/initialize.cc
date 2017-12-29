@@ -1,4 +1,4 @@
-#include "entry_points.h"
+#include "import_pipeline.h"
 #include "message_handler.h"
 #include "platform.h"
 #include "timer.h"

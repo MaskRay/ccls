@@ -9,8 +9,11 @@
 struct ClangTranslationUnit;
 struct Config;
 struct ImportManager;
+struct MultiQueueWaiter;
+struct Project;
 struct QueryDatabase;
 struct SemanticHighlightSymbolCache;
+struct TimestampManager;
 struct WorkingFiles;
 
 struct ImportPipelineStatus {
@@ -25,6 +28,15 @@ void IndexWithTuFromCodeCompletion(
     const std::vector<CXUnsavedFile>& file_contents,
     const std::string& path,
     const std::vector<std::string>& args);
+
+void IndexMain(Config* config,
+               FileConsumer::SharedState* file_consumer_shared,
+               TimestampManager* timestamp_manager,
+               ImportManager* import_manager,
+               ImportPipelineStatus* status,
+               Project* project,
+               WorkingFiles* working_files,
+               MultiQueueWaiter* waiter);
 
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,
