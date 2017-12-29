@@ -1,5 +1,7 @@
 #include "clang_format.h"
 
+#include <loguru.hpp>
+
 using namespace clang::format;
 using namespace clang::tooling;
 
@@ -27,12 +29,18 @@ std::vector<Replacement> ClangFormat::FormatWholeDocument() {
   const auto language_kind = getLanguageKindFromFilename(document_filename_);
   FormatStyle predefined_style;
   getPredefinedStyle("chromium", language_kind, &predefined_style);
-  auto style = getStyle("file", document_filename_, "chromium");
-  if (style == predefined_style) {
-    style.UseTab = insert_spaces_ ? FormatStyle::UseTabStyle::UT_Never
-                                  : FormatStyle::UseTabStyle::UT_Always;
-    style.IndentWidth = tab_size_;
+  llvm::Expected<FormatStyle> style =
+      getStyle("file", document_filename_, "chromium");
+  if (!style) {
+    LOG_S(ERROR) << llvm::toString(style.takeError());
+    return {};
   }
-  auto format_result = reformat(style, document_, ranges_, document_filename_);
+
+  if (*style == predefined_style) {
+    style->UseTab = insert_spaces_ ? FormatStyle::UseTabStyle::UT_Never
+                                  : FormatStyle::UseTabStyle::UT_Always;
+    style->IndentWidth = tab_size_;
+  }
+  auto format_result = reformat(*style, document_, ranges_, document_filename_);
   return std::vector<Replacement>(format_result.begin(), format_result.end());
 }
