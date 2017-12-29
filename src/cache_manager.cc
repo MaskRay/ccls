@@ -12,6 +12,34 @@
 
 namespace {
 
+std::string GetCachedBaseFileName(Config* config,
+                                  const std::string& source_file,
+                                  bool create_dir = false) {
+  assert(!config->cacheDirectory.empty());
+  std::string cache_file;
+  size_t len = config->projectRoot.size();
+  if (StartsWith(source_file, config->projectRoot)) {
+    cache_file = EscapeFileName(config->projectRoot) + '/' +
+                 EscapeFileName(source_file.substr(len));
+  } else
+    cache_file = EscapeFileName(source_file);
+
+  return config->cacheDirectory + cache_file;
+}
+
+std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
+                                           const std::string& filename) {
+  if (!config->enableCacheRead)
+    return nullptr;
+
+  optional<std::string> file_content =
+      ReadContent(GetCachedBaseFileName(config, filename) + ".json");
+  if (!file_content)
+    return nullptr;
+
+  return Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
+}
+
 // Manages loading caches from file paths for the indexer process.
 struct RealCacheManager : ICacheManager {
   explicit RealCacheManager(Config* config) : config_(config) {}
@@ -39,6 +67,14 @@ struct RealCacheManager : ICacheManager {
     }
 
     return LoadCachedIndex(config_, path);
+  }
+
+  optional<std::string> LoadCachedFileContents(
+      const std::string& filename) override {
+    if (!config_->enableCacheRead)
+      return nullopt;
+
+    return ReadContent(GetCachedBaseFileName(config_, filename));
   }
 
   void IterateLoadedCaches(std::function<void(IndexFile*)> fn) override {
@@ -79,46 +115,6 @@ std::unique_ptr<IndexFile> ICacheManager::TakeOrLoad(const std::string& path) {
   auto result = TryTakeOrLoad(path);
   assert(result);
   return result;
-}
-
-namespace {
-
-std::string GetCachedBaseFileName(Config* config,
-                                  const std::string& source_file,
-                                  bool create_dir = false) {
-  assert(!config->cacheDirectory.empty());
-  std::string cache_file;
-  size_t len = config->projectRoot.size();
-  if (StartsWith(source_file, config->projectRoot)) {
-    cache_file = EscapeFileName(config->projectRoot) + '/' +
-                 EscapeFileName(source_file.substr(len));
-  } else
-    cache_file = EscapeFileName(source_file);
-
-  return config->cacheDirectory + cache_file;
-}
-
-}  // namespace
-
-std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
-                                           const std::string& filename) {
-  if (!config->enableCacheRead)
-    return nullptr;
-
-  optional<std::string> file_content =
-      ReadContent(GetCachedBaseFileName(config, filename) + ".json");
-  if (!file_content)
-    return nullptr;
-
-  return Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
-}
-
-optional<std::string> LoadCachedFileContents(Config* config,
-                                             const std::string& filename) {
-  if (!config->enableCacheRead)
-    return nullopt;
-
-  return ReadContent(GetCachedBaseFileName(config, filename));
 }
 
 void WriteToCache(Config* config, IndexFile& file) {

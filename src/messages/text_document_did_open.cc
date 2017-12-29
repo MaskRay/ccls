@@ -32,10 +32,11 @@ struct TextDocumentDidOpenHandler
     if (ShouldIgnoreFileForIndexing(path))
       return;
 
+    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
     WorkingFile* working_file =
         working_files->OnOpen(request->params.textDocument);
     optional<std::string> cached_file_contents =
-        LoadCachedFileContents(config, path);
+        cache_manager->LoadCachedFileContents(path);
     if (cached_file_contents)
       working_file->SetIndexContent(*cached_file_contents);
     else

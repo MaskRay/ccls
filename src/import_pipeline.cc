@@ -330,13 +330,13 @@ bool IndexMain_DoCreateIndexUpdate(Config* config,
   return true;
 }
 
-bool IndexMain_LoadPreviousIndex(Config* config) {
+bool IndexMain_LoadPreviousIndex(ICacheManager* cache_manager) {
   auto* queue = QueueManager::instance();
   optional<Index_DoIdMap> response = queue->load_previous_index.TryDequeue();
   if (!response)
     return false;
 
-  response->previous = LoadCachedIndex(config, response->current->path);
+  response->previous = cache_manager->TryTakeOrLoad(response->current->path);
   LOG_IF_S(ERROR, !response->previous)
       << "Unable to load previous index for already imported index "
       << response->current->path;
@@ -417,6 +417,7 @@ void Indexer_Main(Config* config,
                   Project* project,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter) {
+  std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndex index;
@@ -441,7 +442,7 @@ void Indexer_Main(Config* config,
     bool did_create_update =
         IndexMain_DoCreateIndexUpdate(config, timestamp_manager);
 
-    bool did_load_previous = IndexMain_LoadPreviousIndex(config);
+    bool did_load_previous = IndexMain_LoadPreviousIndex(cache_manager.get());
 
     // Nothing to index and no index updates to create, so join some already
     // created index updates to reduce work on querydb thread.
@@ -464,6 +465,7 @@ bool QueryDb_ImportMain(Config* config,
                         ImportManager* import_manager,
                         SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files) {
+  std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
   auto* queue = QueueManager::instance();
   EmitProgress(config);
 
@@ -538,7 +540,7 @@ bool QueryDb_ImportMain(Config* config,
           working_files->GetFileByFilename(updated_file.path);
       if (working_file) {
         optional<std::string> cached_file_contents =
-            LoadCachedFileContents(config, updated_file.path);
+            cache_manager->LoadCachedFileContents(updated_file.path);
         if (cached_file_contents)
           working_file->SetIndexContent(*cached_file_contents);
         else
