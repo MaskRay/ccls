@@ -24,52 +24,34 @@ static inline CXTranslationUnit GetTU(CXType CT) {
 
 namespace {
 
-// TODO int(*sig(int(*)(int)))(int); is incorrect
-// int(A::*(*y())(int))() is correct
 int GetNameInsertingPosition(const std::string& type_desc,
                              const std::string& return_type) {
-  int ret = -1;
   // Check if type_desc contains an (.
-  if (!type_desc.empty() && type_desc.find("(", 0) != std::string::npos) {
-    // Find a first character where the return_type differs from the
-    // function_type. In most cases this is the place where the function name
-    // should be inserted.
-    for (int i = 0, e = std::min(return_type.size(), type_desc.size()); i < e;
-         ++i) {
-      if (return_type[i] != type_desc[i]) {
-        ret = i;
-        break;
-      }
-    }
+  if (type_desc.empty() || type_desc.size() <= return_type.size() ||
+      type_desc.find("(", 0) == std::string::npos)
+    return -1;
+  // Find a first character where the return_type differs from the
+  // function_type. In most cases this is the place where the function name
+  // should be inserted.
+  int ret = 0;
+  while (return_type[ret] == type_desc[ret])
+    ret++;
 
-    // return type and function type do not overlap at all.
-    if (ret == 0) {
-      // Check if it is auto ... -> return type.
-      if (type_desc.find("auto", 0) == 0) {
-        auto arrow_offset = type_desc.find(" -> ", 0);
-        if (arrow_offset != std::string::npos &&
-            type_desc.substr(arrow_offset + 4).compare(return_type) == 0)
-          ret = 4;
-      }
-    } else if (ret < 0) {
-      // Return type is just a prefix of the function_type.
-      ret = return_type.size();
-    }
-
-    if (ret >= 0) {
-      // Skip any eventual spaces after the return type.
-      for (int e = type_desc.size(); ret < e && isspace(type_desc[ret]);
-           ++ret) {
-      }
-
-      // An ( is expected after the matched part of the return type.
-      if (ret >= type_desc.size() || type_desc.at(ret) != '(')
-        ret = -1;
-    }
+  if (ret == 0) {
+    // If return type and function type do not overlap at all,
+    // check if it is `auto (...) ->` trailing return type.
+    if (type_desc.compare(0, 5, "auto ") == 0 &&
+        type_desc.find(" -> ") != std::string::npos)
+      ret = 5;
+  } else {
+    // Otherwise return type is just a prefix of the function_type.
+    // Skip any eventual spaces after the return type.
+    while (ret < int(type_desc.size()) && type_desc[ret] == ' ')
+      ret++;
   }
   return ret;
 }
-}
+}  // namespace
 
 // Build a detailed function signature, including argument names.
 std::string GetFunctionSignature(IndexFile* db,
@@ -124,7 +106,7 @@ std::string GetFunctionSignature(IndexFile* db,
   function_name_offset = GetNameInsertingPosition(type_desc, return_type);
 #endif
 
-  if (function_name_offset >= 0) {
+  if (function_name_offset >= 0 && type_desc[function_name_offset] == '(') {
     if (num_args > 0) {
       // Find positions to insert argument names.
       // Last argument name is before ')'
@@ -172,12 +154,15 @@ std::string GetFunctionSignature(IndexFile* db,
       type_desc = std::move(type_desc_with_names);
     }
 
-    // TODO auto f() -> int(*)() ; int(*f())()
     type_desc.insert(function_name_offset, function_name);
   } else {
     // type_desc is either a typedef, or some complicated type we cannot handle.
     // Append the function_name in this case.
-    type_desc.push_back(' ');
+    if (type_desc.size() &&
+        (type_desc.back() != ' ' &&
+         type_desc.back() != '*' &&
+         type_desc.back() != '&'))
+      type_desc.push_back(' ');
     type_desc.append(function_name);
   }
 
