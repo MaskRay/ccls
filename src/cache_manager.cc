@@ -1,5 +1,6 @@
-#include "cache.h"
+#include "cache_manager.h"
 
+#include "config.h"
 #include "indexer.h"
 #include "language_server_api.h"
 #include "platform.h"
@@ -7,6 +8,78 @@
 #include <loguru/loguru.hpp>
 
 #include <algorithm>
+#include <unordered_map>
+
+namespace {
+
+// Manages loading caches from file paths for the indexer process.
+struct RealCacheManager : ICacheManager {
+  explicit RealCacheManager(Config* config) : config_(config) {}
+  ~RealCacheManager() override = default;
+
+  IndexFile* TryLoad(const std::string& path) override {
+    auto it = caches.find(path);
+    if (it != caches.end())
+      return it->second.get();
+
+    std::unique_ptr<IndexFile> cache = LoadCachedIndex(config_, path);
+    if (!cache)
+      return nullptr;
+
+    caches[path] = std::move(cache);
+    return caches[path].get();
+  }
+
+  std::unique_ptr<IndexFile> TryTakeOrLoad(const std::string& path) override {
+    auto it = caches.find(path);
+    if (it != caches.end()) {
+      auto result = std::move(it->second);
+      caches.erase(it);
+      return result;
+    }
+
+    return LoadCachedIndex(config_, path);
+  }
+
+  void IterateLoadedCaches(std::function<void(IndexFile*)> fn) override {
+    for (const auto& it : caches) {
+      assert(it.second);
+      fn(it.second.get());
+    }
+  }
+
+  std::unordered_map<std::string, std::unique_ptr<IndexFile>> caches;
+  Config* config_;
+};
+
+// struct FakeCacheManager : ICacheManager {
+//   explicit FakeCacheManager(const std::vector<FakeCacheEntry>& entries) {
+//     assert(false && "TODO");
+//   }
+// };
+
+}  // namespace
+
+// static
+std::unique_ptr<ICacheManager> ICacheManager::Make(Config* config) {
+  return MakeUnique<RealCacheManager>(config);
+}
+
+// static
+std::unique_ptr<ICacheManager> ICacheManager::MakeFake(
+    const std::vector<FakeCacheEntry>& entries) {
+  // return MakeUnique<FakeCacheManager>(entries);
+  assert(false && "TODO");
+  return nullptr;
+}
+
+ICacheManager::~ICacheManager() = default;
+
+std::unique_ptr<IndexFile> ICacheManager::TakeOrLoad(const std::string& path) {
+  auto result = TryTakeOrLoad(path);
+  assert(result);
+  return result;
+}
 
 namespace {
 

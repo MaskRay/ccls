@@ -1,6 +1,5 @@
 // TODO: cleanup includes
-#include "cache.h"
-#include "cache_loader.h"
+#include "cache_manager.h"
 #include "clang_complete.h"
 #include "code_complete_cache.h"
 #include "file_consumer.h"

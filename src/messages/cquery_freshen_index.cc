@@ -1,4 +1,4 @@
-#include "cache_loader.h"
+#include "cache_manager.h"
 #include "message_handler.h"
 #include "platform.h"
 #include "project.h"
@@ -25,7 +25,7 @@ struct CqueryFreshenIndexHandler : MessageHandler {
     // TODO: think about this flow and test it more.
 
     // Unmark all files whose timestamp has changed.
-    CacheLoader cache_loader(config);
+    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
     for (const auto& file : db->files) {
       if (!file.def)
         continue;
@@ -36,7 +36,7 @@ struct CqueryFreshenIndexHandler : MessageHandler {
         continue;
 
       optional<int64_t> cached_modification =
-          timestamp_manager->GetLastCachedModificationTime(&cache_loader,
+          timestamp_manager->GetLastCachedModificationTime(cache_manager.get(),
                                                            file.def->path);
       if (modification_timestamp != cached_modification)
         file_consumer_shared->Reset(file.def->path);

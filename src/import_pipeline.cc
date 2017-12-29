@@ -1,7 +1,6 @@
 #include "import_pipeline.h"
 
-#include "cache.h"
-#include "cache_loader.h"
+#include "cache_manager.h"
 #include "config.h"
 #include "import_manager.h"
 #include "language_server_api.h"
@@ -21,6 +20,7 @@
 #include <vector>
 
 namespace {
+
 // Send indexing progress to client if reporting is enabled.
 void EmitProgress(Config* config) {
   if (config->enableProgressReports) {
@@ -45,7 +45,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
-    CacheLoader* cache_loader,
+    ICacheManager* cache_manager,
     bool is_interactive,
     const std::string& path,
     const std::vector<std::string>& args,
@@ -54,7 +54,7 @@ std::vector<Index_DoIdMap> DoParseFile(
 
   // Always run this block, even if we are interactive, so we can check
   // dependencies and reset files in |file_consumer_shared|.
-  IndexFile* previous_index = cache_loader->TryLoad(path);
+  IndexFile* previous_index = cache_manager->TryLoad(path);
   if (previous_index) {
     // If none of the dependencies have changed and the index is not
     // interactive (ie, requested by a file save), skip parsing and just load
@@ -78,7 +78,7 @@ std::vector<Index_DoIdMap> DoParseFile(
         return FileParseQuery::NoSuchFile;
 
       optional<int64_t> last_cached_modification =
-          timestamp_manager->GetLastCachedModificationTime(cache_loader, path);
+          timestamp_manager->GetLastCachedModificationTime(cache_manager, path);
 
       // File has been changed.
       if (!last_cached_modification ||
@@ -126,7 +126,7 @@ std::vector<Index_DoIdMap> DoParseFile(
 
       // TODO/FIXME: real perf
       PerformanceImportFile perf;
-      result.push_back(Index_DoIdMap(cache_loader->TakeOrLoad(path), perf,
+      result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path), perf,
                                      is_interactive, false /*write_to_disk*/));
       for (const std::string& dependency : previous_index->dependencies) {
         // Only load a dependency if it is not already loaded.
@@ -140,7 +140,7 @@ std::vector<Index_DoIdMap> DoParseFile(
                     << previous_index->path << ")";
 
         std::unique_ptr<IndexFile> dependency_index =
-            cache_loader->TryTakeOrLoad(dependency);
+            cache_manager->TryTakeOrLoad(dependency);
 
         // |dependency_index| may be null if there is no cache for it but
         // another file has already started importing it.
@@ -174,18 +174,18 @@ std::vector<Index_DoIdMap> DoParseFile(
     loaded_primary = loaded_primary || contents->path == path;
     file_contents.push_back(*contents);
   }
-  for (const auto& it : cache_loader->caches) {
-    const std::unique_ptr<IndexFile>& index = it.second;
-    assert(index);
+  cache_manager->IterateLoadedCaches([&](IndexFile* index) {
+    // FIXME: ReadContent should go through |cache_manager|.
     optional<std::string> index_content = ReadContent(index->path);
     if (!index_content) {
       LOG_S(ERROR) << "Failed to preload index content for " << index->path;
-      continue;
+      return;
     }
+
     file_contents.push_back(FileContents(index->path, *index_content));
 
     loaded_primary = loaded_primary || index->path == path;
-  }
+  });
   if (!loaded_primary) {
     optional<std::string> content = ReadContent(path);
     if (!content) {
@@ -231,15 +231,15 @@ std::vector<Index_DoIdMap> ParseFile(
   if (contents)
     file_contents = FileContents(entry.filename, *contents);
 
-  CacheLoader cache_loader(config);
+  std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
 
   // Try to determine the original import file by loading the file from cache.
   // This lets the user request an index on a header file, which clang will
   // complain about if indexed by itself.
-  IndexFile* entry_cache = cache_loader.TryLoad(entry.filename);
+  IndexFile* entry_cache = cache_manager->TryLoad(entry.filename);
   std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
   return DoParseFile(config, working_files, index, file_consumer_shared,
-                     timestamp_manager, import_manager, &cache_loader,
+                     timestamp_manager, import_manager, cache_manager.get(),
                      is_interactive, tu_path, entry.args, file_contents);
 }
 
@@ -586,3 +586,32 @@ bool QueryDb_ImportMain(Config* config,
 
   return did_work;
 }
+
+#if false
+TEST_SUITE("ImportPipeline") {
+  TEST_CASE("hello") {
+    MultiQueueWaiter waiter;
+    QueueManager::CreateInstance(&waiter);
+    auto* queue = QueueManager::instance();
+
+    std::string path = "foo.cc";
+    std::vector<std::string> args = {};
+    bool is_interactive = false;
+    optional<std::string> contents = std::string("void foo();");
+    queue->index_request.Enqueue(
+        Index_Request(path, args, is_interactive, contents));
+
+    Config config;
+    WorkingFiles working_files;
+    FileConsumerSharedState file_consumer_shared;
+    TimestampManager timestamp_manager;
+    ImportManager import_manager;
+    ClangIndex index;
+    IndexMain_DoParse(&config, &working_files, &file_consumer_shared,
+                      &timestamp_manager, &import_manager, &index);
+
+    REQUIRE(queue->index_request.Size() == 0);
+    REQUIRE(queue->do_id_map.Size() == 1);
+  }
+}
+#endif

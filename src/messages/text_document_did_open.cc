@@ -1,4 +1,4 @@
-#include "cache.h"
+#include "cache_manager.h"
 #include "clang_complete.h"
 #include "include_complete.h"
 #include "message_handler.h"

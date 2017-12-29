@@ -1,17 +1,17 @@
 #pragma once
 
-#include "cache_loader.h"
-
 #include <optional.h>
 
 #include <mutex>
 #include <unordered_map>
 
+struct ICacheManager;
+
 // Caches timestamps of cc files so we can avoid a filesystem reads. This is
 // important for import perf, as during dependency checking the same files are
 // checked over and over again if they are common headers.
 struct TimestampManager {
-  optional<int64_t> GetLastCachedModificationTime(CacheLoader* cache_loader,
+  optional<int64_t> GetLastCachedModificationTime(ICacheManager* cache_manager,
                                                   const std::string& path);
 
   void UpdateCachedModificationTime(const std::string& path, int64_t timestamp);
