@@ -78,6 +78,8 @@ def options(opt):
   grp = opt.add_option_group('Configuration options related to use of clang from the system (not recommended)')
   grp.add_option('--use-system-clang', dest='use_system_clang', default=False, action='store_true',
                  help='enable use of clang from the system')
+  grp.add_option('--use-clang-cxx', dest='use_clang_cxx', default=False, action='store_true',
+                 help='use clang C++ API')
   grp.add_option('--bundled-clang', dest='bundled_clang', default='4.0.0',
                  help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 4.0.0 5.0.1')
   grp.add_option('--llvm-config', dest='llvm_config', default='llvm-config',
@@ -145,6 +147,7 @@ def configure(ctx):
   ctx.load('clang_compilation_database', tooldir='.')
 
   ctx.env['use_system_clang'] = ctx.options.use_system_clang
+  ctx.env['use_clang_cxx'] = ctx.options.use_clang_cxx
   ctx.env['llvm_config'] = ctx.options.llvm_config
   ctx.env['bundled_clang'] = ctx.options.bundled_clang
   def libname(lib):
@@ -220,6 +223,8 @@ def configure(ctx):
 
 def build(bld):
   cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc'])
+  if bld.env['use_clang_cxx']:
+    cc_files += bld.path.ant_glob(['src/cxx/*.cc'])
 
   lib = []
   if sys.platform.startswith('linux'):
@@ -236,6 +241,22 @@ def build(bld):
     lib.append('thr')
   elif sys.platform == 'darwin':
     lib.append('pthread')
+
+  if bld.env['use_clang_cxx']:
+    # -fno-rtti is required for object files using clang/llvm C++ API
+
+    # The order is derived by topological sorting LINK_LIBS in clang/lib/*/CMakeLists.txt
+    lib.append('clangAST')
+    lib.append('clangLex')
+    lib.append('clangBasic')
+
+    # The order is derived from llvm-config --libs core
+    lib.append('LLVMCore')
+    lib.append('LLVMBinaryFormat')
+    lib.append('LLVMSupport')
+    lib.append('LLVMDemangle')
+
+    lib.append('ncurses')
 
   if bld.env['use_system_clang']:
     if bld.env['llvm_config']:
@@ -291,17 +312,28 @@ def build(bld):
         pass
     else:
       rpath = bld.env['LIBPATH_clang']
+
+  #obj_type_printer = bld.objects(
+  #    source='src/cxx/type_printer.cc',
+  #    use='clang',
+  #    cxxflags=['-fno-rtti'],
+  #    includes=['libclang/'])
+
+  # https://waf.io/apidocs/tools/c_aliases.html#waflib.Tools.c_aliases.program
   bld.program(
       source=cc_files,
       use='clang',
       includes=[
+        #'libclang/',
         'src/',
         'third_party/',
         'third_party/doctest/',
         'third_party/loguru/',
         'third_party/rapidjson/include/',
         'third_party/sparsepp/'],
-      defines=['LOGURU_WITH_STREAMS=1',
+      defines=[#'_GLIBCXX_USE_CXX11_ABI=0',  'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04' is pre CXX11_ABI
+               #'LOGURU_STACKTRACES=0',
+               'LOGURU_WITH_STREAMS=1',
                'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'],
       lib=lib,
       rpath=rpath,
