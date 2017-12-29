@@ -139,6 +139,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
 
     std::string path = request->params.textDocument.uri.GetPath();
     WorkingFile* file = working_files->GetFileByFilename(path);
+    assert(file);
 
     // It shouldn't be possible, but sometimes vscode will send queries out
     // of order, ie, we get completion request before buffer content update.
