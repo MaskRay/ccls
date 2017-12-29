@@ -37,7 +37,6 @@
 #include <sys/sysctl.h>  // sysctl
 #elif defined(__linux__)
 #include <malloc.h>
-#include <sys/prctl.h>
 #endif
 
 namespace {
@@ -266,8 +265,12 @@ bool TryMakeDirectory(const std::string& absolute_path) {
 
 void SetCurrentThreadName(const std::string& thread_name) {
   loguru::set_thread_name(thread_name.c_str());
-#ifdef __linux__
-  prctl(PR_SET_NAME, thread_name.c_str(), 0, 0, 0);
+#if defined(__APPLE__)
+  pthread_setname_np(thread_name.c_str());
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
+  pthread_set_name_np(pthread_self(), thread_name.c_str());
+#elif defined(__linux__)
+  pthread_setname_np(pthread_self(), thread_name.c_str());
 #endif
 }
 
