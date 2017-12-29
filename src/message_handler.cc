@@ -2,6 +2,8 @@
 
 #include "lex_utils.h"
 #include "query_utils.h"
+#include "queue_manager.h"
+#include "semantic_highlight_symbol_cache.h"
 
 #include <loguru.hpp>
 

@@ -1,5 +1,10 @@
+#include "cache_loader.h"
 #include "message_handler.h"
 #include "platform.h"
+#include "project.h"
+#include "queue_manager.h"
+#include "timestamp_manager.h"
+#include "working_files.h"
 
 #include <loguru.hpp>
 

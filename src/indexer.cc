@@ -1808,7 +1808,7 @@ optional<std::string> FileContentsWithOffsets::ContentsInRange(
 
 std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
-    FileConsumer::SharedState* file_consumer_shared,
+    FileConsumerSharedState* file_consumer_shared,
     std::string file,
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
@@ -1848,7 +1848,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 }
 
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
-    FileConsumer::SharedState* file_consumer_shared,
+    FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
     ClangIndex* index,

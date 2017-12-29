@@ -1,6 +1,11 @@
 #include "cache.h"
+#include "clang_complete.h"
+#include "include_complete.h"
 #include "message_handler.h"
+#include "project.h"
+#include "queue_manager.h"
 #include "timer.h"
+#include "working_files.h"
 
 namespace {
 // Open, view, change, close file

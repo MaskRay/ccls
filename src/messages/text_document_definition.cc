@@ -1,5 +1,6 @@
 #include "message_handler.h"
 #include "query_utils.h"
+#include "queue_manager.h"
 
 namespace {
 void PushBack(std::vector<lsLocation>* result, optional<lsLocation> location) {

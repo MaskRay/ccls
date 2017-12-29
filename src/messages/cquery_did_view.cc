@@ -1,4 +1,6 @@
+#include "clang_complete.h"
 #include "message_handler.h"
+#include "working_files.h"
 
 namespace {
 struct Ipc_CqueryTextDocumentDidView

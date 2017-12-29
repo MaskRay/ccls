@@ -1,47 +1,23 @@
 #include "import_pipeline.h"
 
-// TODO: cleanup includes
 #include "cache.h"
 #include "cache_loader.h"
-#include "clang_complete.h"
-#include "file_consumer.h"
-#include "include_complete.h"
-#include "indexer.h"
+#include "config.h"
+#include "import_manager.h"
 #include "language_server_api.h"
-#include "lex_utils.h"
-#include "lru_cache.h"
-#include "match.h"
 #include "message_handler.h"
-#include "options.h"
 #include "platform.h"
 #include "project.h"
-#include "query.h"
 #include "query_utils.h"
 #include "queue_manager.h"
-#include "serializer.h"
-#include "standard_includes.h"
-#include "test.h"
-#include "threaded_queue.h"
 #include "timer.h"
 #include "timestamp_manager.h"
-#include "work_thread.h"
-#include "working_files.h"
 
 #include <doctest/doctest.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/ostreamwrapper.h>
 #include <loguru.hpp>
 
-#include <climits>
-#include <fstream>
-#include <functional>
-#include <future>
-#include <iostream>
-#include <iterator>
-#include <sstream>
+#include <memory>
 #include <string>
-#include <thread>
-#include <unordered_map>
 #include <vector>
 
 ImportPipelineStatus::ImportPipelineStatus() : num_active_threads(0) {}
@@ -67,7 +43,7 @@ std::vector<Index_DoIdMap> DoParseFile(
     Config* config,
     WorkingFiles* working_files,
     ClangIndex* index,
-    FileConsumer::SharedState* file_consumer_shared,
+    FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
     CacheLoader* cache_loader,
@@ -247,7 +223,7 @@ std::vector<Index_DoIdMap> DoParseFile(
 // real-time indexing.
 // TODO: add option to disable this.
 void IndexWithTuFromCodeCompletion(
-    FileConsumer::SharedState* file_consumer_shared,
+    FileConsumerSharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
     const std::string& path,
@@ -281,7 +257,7 @@ std::vector<Index_DoIdMap> ParseFile(
     Config* config,
     WorkingFiles* working_files,
     ClangIndex* index,
-    FileConsumer::SharedState* file_consumer_shared,
+    FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
     bool is_interactive,
@@ -305,7 +281,7 @@ std::vector<Index_DoIdMap> ParseFile(
 
 bool IndexMain_DoParse(Config* config,
                        WorkingFiles* working_files,
-                       FileConsumer::SharedState* file_consumer_shared,
+                       FileConsumerSharedState* file_consumer_shared,
                        TimestampManager* timestamp_manager,
                        ImportManager* import_manager,
                        ClangIndex* index) {
@@ -437,7 +413,7 @@ bool IndexMergeIndexUpdates() {
 }
 
 void Indexer_Main(Config* config,
-                  FileConsumer::SharedState* file_consumer_shared,
+                  FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
                   ImportManager* import_manager,
                   ImportPipelineStatus* status,

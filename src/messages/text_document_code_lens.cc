@@ -1,5 +1,7 @@
+#include "clang_complete.h"
 #include "message_handler.h"
 #include "query_utils.h"
+#include "queue_manager.h"
 
 namespace {
 struct lsDocumentCodeLensParams {

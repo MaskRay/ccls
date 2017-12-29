@@ -1,13 +1,14 @@
+#include "lex_utils.h"
+#include "message_handler.h"
+#include "query_utils.h"
+#include "queue_manager.h"
+
+#include <loguru.hpp>
+
 #include <ctype.h>
 #include <limits.h>
 #include <algorithm>
 #include <functional>
-
-#include "lex_utils.h"
-#include "message_handler.h"
-#include "query_utils.h"
-
-#include <loguru.hpp>
 
 namespace {
 

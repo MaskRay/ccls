@@ -1,5 +1,6 @@
 #include "message_handler.h"
 #include "query_utils.h"
+#include "queue_manager.h"
 
 namespace {
 struct Ipc_CqueryCallers : public IpcMessage<Ipc_CqueryCallers> {

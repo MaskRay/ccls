@@ -160,7 +160,7 @@ void RunIndexTests(const std::string& filter_path) {
 
     // Run test.
     Config config;
-    FileConsumer::SharedState file_consumer_shared;
+    FileConsumerSharedState file_consumer_shared;
     PerformanceImportFile perf;
     std::vector<std::unique_ptr<IndexFile>> dbs =
         Parse(&config, &file_consumer_shared, path, flags, {}, &perf, &index,

@@ -1,7 +1,11 @@
 #include "import_pipeline.h"
+#include "include_complete.h"
 #include "message_handler.h"
 #include "platform.h"
+#include "project.h"
+#include "queue_manager.h"
 #include "timer.h"
+#include "working_files.h"
 
 #include <loguru.hpp>
 
@@ -174,8 +178,8 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       for (int i = 0; i < config->indexerCount; ++i) {
         WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
           Indexer_Main(config, file_consumer_shared, timestamp_manager,
-                    import_manager, import_pipeline_status, project,
-                    working_files, waiter);
+                       import_manager, import_pipeline_status, project,
+                       working_files, waiter);
         });
       }
 

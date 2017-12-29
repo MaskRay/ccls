@@ -1,4 +1,7 @@
+#include "clang_complete.h"
+#include "code_complete_cache.h"
 #include "message_handler.h"
+#include "queue_manager.h"
 #include "timer.h"
 
 namespace {

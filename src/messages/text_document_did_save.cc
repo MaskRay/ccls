@@ -1,4 +1,7 @@
+#include "clang_complete.h"
 #include "message_handler.h"
+#include "project.h"
+#include "queue_manager.h"
 
 namespace {
 struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {

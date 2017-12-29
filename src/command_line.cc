@@ -2,7 +2,9 @@
 #include "cache.h"
 #include "cache_loader.h"
 #include "clang_complete.h"
+#include "code_complete_cache.h"
 #include "file_consumer.h"
+#include "import_manager.h"
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "indexer.h"
@@ -17,6 +19,7 @@
 #include "query.h"
 #include "query_utils.h"
 #include "queue_manager.h"
+#include "semantic_highlight_symbol_cache.h"
 #include "serializer.h"
 #include "standard_includes.h"
 #include "test.h"
@@ -96,7 +99,7 @@ bool QueryDbMainLoop(Config* config,
                      QueryDatabase* db,
                      MultiQueueWaiter* waiter,
                      Project* project,
-                     FileConsumer::SharedState* file_consumer_shared,
+                     FileConsumerSharedState* file_consumer_shared,
                      ImportManager* import_manager,
                      TimestampManager* timestamp_manager,
                      SemanticHighlightSymbolCache* semantic_cache,
@@ -144,7 +147,7 @@ void RunQueryDbThread(const std::string& bin_name,
   Project project;
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
-  FileConsumer::SharedState file_consumer_shared;
+  FileConsumerSharedState file_consumer_shared;
 
   ClangCompleteManager clang_complete(
       config, &project, &working_files,

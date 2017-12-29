@@ -12,19 +12,19 @@ bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
          a.data[2] == b.data[2];
 }
 
-bool FileConsumer::SharedState::Mark(const std::string& file) {
+bool FileConsumerSharedState::Mark(const std::string& file) {
   std::lock_guard<std::mutex> lock(mutex);
   return files.insert(file).second;
 }
 
-void FileConsumer::SharedState::Reset(const std::string& file) {
+void FileConsumerSharedState::Reset(const std::string& file) {
   std::lock_guard<std::mutex> lock(mutex);
   auto it = files.find(file);
   if (it != files.end())
     files.erase(it);
 }
 
-FileConsumer::FileConsumer(SharedState* shared_state,
+FileConsumer::FileConsumer(FileConsumerSharedState* shared_state,
                            const std::string& parse_file)
     : shared_(shared_state), parse_file_(parse_file) {}
 

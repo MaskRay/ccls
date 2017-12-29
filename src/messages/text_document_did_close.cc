@@ -1,4 +1,7 @@
+#include "clang_complete.h"
 #include "message_handler.h"
+#include "queue_manager.h"
+#include "working_files.h"
 
 namespace {
 struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {

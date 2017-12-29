@@ -1,5 +1,6 @@
 #include "message_handler.h"
 #include "platform.h"
+#include "queue_manager.h"
 
 #include <loguru/loguru.hpp>
 

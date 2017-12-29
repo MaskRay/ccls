@@ -1,6 +1,7 @@
 #pragma once
 
-#include "file_consumer.h"
+// FIXME: do not include clang-c outside of clang_ files.
+#include <clang-c/Index.h>
 
 #include <atomic>
 #include <string>
@@ -8,6 +9,7 @@
 
 struct ClangTranslationUnit;
 struct Config;
+struct FileConsumerSharedState;
 struct ImportManager;
 struct MultiQueueWaiter;
 struct Project;
@@ -23,14 +25,14 @@ struct ImportPipelineStatus {
 };
 
 void IndexWithTuFromCodeCompletion(
-    FileConsumer::SharedState* file_consumer_shared,
+    FileConsumerSharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
     const std::string& path,
     const std::vector<std::string>& args);
 
 void Indexer_Main(Config* config,
-                  FileConsumer::SharedState* file_consumer_shared,
+                  FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
                   ImportManager* import_manager,
                   ImportPipelineStatus* status,

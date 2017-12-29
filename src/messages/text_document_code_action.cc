@@ -1,6 +1,8 @@
+#include "include_complete.h"
 #include "lex_utils.h"
 #include "message_handler.h"
 #include "query_utils.h"
+#include "queue_manager.h"
 
 #include <doctest/doctest.h>
 

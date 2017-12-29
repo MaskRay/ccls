@@ -1,4 +1,9 @@
+#include "clang_complete.h"
+#include "code_complete_cache.h"
+#include "include_complete.h"
 #include "message_handler.h"
+#include "queue_manager.h"
+#include "working_files.h"
 
 #include "lex_utils.h"
 
@@ -222,14 +227,16 @@ struct TextDocumentCompletionHandler : MessageHandler {
                          !global_code_complete_cache->cached_results_.empty();
       });
       if (is_cache_match) {
-        ClangCompleteManager::OnComplete freshen_global = [this](
-            std::vector<lsCompletionItem> results, bool is_cached_result) {
-          assert(!is_cached_result);
+        ClangCompleteManager::OnComplete freshen_global =
+            [this](std::vector<lsCompletionItem> results,
+                   bool is_cached_result) {
+              assert(!is_cached_result);
 
-          // note: path is updated in the normal completion handler.
-          global_code_complete_cache->WithLock(
-              [&]() { global_code_complete_cache->cached_results_ = results; });
-        };
+              // note: path is updated in the normal completion handler.
+              global_code_complete_cache->WithLock([&]() {
+                global_code_complete_cache->cached_results_ = results;
+              });
+            };
 
         global_code_complete_cache->WithLock([&]() {
           callback(global_code_complete_cache->cached_results_,

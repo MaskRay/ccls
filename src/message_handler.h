@@ -1,19 +1,28 @@
 #pragma once
 
-#include "cache_loader.h"
-#include "clang_complete.h"
-#include "code_complete_cache.h"
-#include "config.h"
-#include "import_manager.h"
-#include "import_pipeline.h"
-#include "include_complete.h"
-#include "queue_manager.h"
-#include "project.h"
+#include "ipc.h"
+#include "language_server_api.h"
 #include "query.h"
-#include "semantic_highlight_symbol_cache.h"
-#include "threaded_queue.h"
-#include "timestamp_manager.h"
-#include "working_files.h"
+
+#include <optional.h>
+
+#include <memory>
+#include <vector>
+
+struct ClangCompleteManager;
+struct CodeCompleteCache;
+struct Config;
+struct FileConsumerSharedState;
+struct ImportManager;
+struct ImportPipelineStatus;
+struct IncludeComplete;
+struct MultiQueueWaiter;
+struct Project;
+struct QueryDatabase;
+struct SemanticHighlightSymbolCache;
+struct TimestampManager;
+struct WorkingFile;
+struct WorkingFiles;
 
 // Usage:
 //
@@ -33,7 +42,7 @@ struct MessageHandler {
   QueryDatabase* db = nullptr;
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;
-  FileConsumer::SharedState* file_consumer_shared = nullptr;
+  FileConsumerSharedState* file_consumer_shared = nullptr;
   ImportManager* import_manager = nullptr;
   ImportPipelineStatus* import_pipeline_status = nullptr;
   TimestampManager* timestamp_manager = nullptr;
