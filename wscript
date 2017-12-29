@@ -137,6 +137,8 @@ def configure(ctx):
     # If environment variable CXXFLAGS is unset, provide a sane default.
     if not ctx.env.CXXFLAGS:
       ctx.env.CXXFLAGS = cxxflags
+    elif all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):
+      ctx.env.CXXFLAGS.append('-std=c++11')
     if not ctx.env.LDFLAGS:
       ctx.env.LDFLAGS = ldflags
   else:
