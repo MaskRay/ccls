@@ -29,14 +29,14 @@ void IndexWithTuFromCodeCompletion(
     const std::string& path,
     const std::vector<std::string>& args);
 
-void IndexMain(Config* config,
-               FileConsumer::SharedState* file_consumer_shared,
-               TimestampManager* timestamp_manager,
-               ImportManager* import_manager,
-               ImportPipelineStatus* status,
-               Project* project,
-               WorkingFiles* working_files,
-               MultiQueueWaiter* waiter);
+void Indexer_Main(Config* config,
+                  FileConsumer::SharedState* file_consumer_shared,
+                  TimestampManager* timestamp_manager,
+                  ImportManager* import_manager,
+                  ImportPipelineStatus* status,
+                  Project* project,
+                  WorkingFiles* working_files,
+                  MultiQueueWaiter* waiter);
 
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,

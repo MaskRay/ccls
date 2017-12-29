@@ -436,14 +436,14 @@ bool IndexMergeIndexUpdates() {
   }
 }
 
-void IndexMain(Config* config,
-               FileConsumer::SharedState* file_consumer_shared,
-               TimestampManager* timestamp_manager,
-               ImportManager* import_manager,
-               ImportPipelineStatus* status,
-               Project* project,
-               WorkingFiles* working_files,
-               MultiQueueWaiter* waiter) {
+void Indexer_Main(Config* config,
+                  FileConsumer::SharedState* file_consumer_shared,
+                  TimestampManager* timestamp_manager,
+                  ImportManager* import_manager,
+                  ImportPipelineStatus* status,
+                  Project* project,
+                  WorkingFiles* working_files,
+                  MultiQueueWaiter* waiter) {
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndex index;

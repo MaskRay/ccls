@@ -173,7 +173,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       LOG_S(INFO) << "Starting " << config->indexerCount << " indexers";
       for (int i = 0; i < config->indexerCount; ++i) {
         WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
-          IndexMain(config, file_consumer_shared, timestamp_manager,
+          Indexer_Main(config, file_consumer_shared, timestamp_manager,
                     import_manager, import_pipeline_status, project,
                     working_files, waiter);
         });
