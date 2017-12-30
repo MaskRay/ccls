@@ -160,7 +160,7 @@ struct TextDocumentSignatureHelpHandler : MessageHandler {
         callback(signature_cache->cached_results_, true /*is_cached_result*/);
       });
     } else {
-      clang_complete->CodeComplete(params, std::move(callback));
+      clang_complete->CodeComplete(params, search, std::move(callback));
     }
   }
 };

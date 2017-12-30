@@ -69,15 +69,16 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
   // find the exact text
   const bool found = !complete_text.empty() &&
-                     std::find_if(items.begin(), items.end(),
-                                  [&](const lsCompletionItem& item) {
-                                    return item.label == complete_text;
-                                  }) != items.end();
+                     std::any_of(items.begin(), items.end(),
+                                 [&](const lsCompletionItem& item) {
+                                   return item.pos_ == 0 &&
+                                       item.label.length() == complete_text.length();
+                                 });
   // If found, remove all candidates that do not start with it.
   if (found) {
     items.erase(std::remove_if(items.begin(), items.end(),
                                [&](const lsCompletionItem& item) {
-                                 return item.label.find(complete_text) != 0;
+                                 return item.pos_ != 0;
                                }),
                 items.end());
   }
@@ -242,7 +243,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
           callback(global_code_complete_cache->cached_results_,
                    true /*is_cached_result*/);
         });
-        clang_complete->CodeComplete(request->params, freshen_global);
+        clang_complete->CodeComplete(request->params, existing_completion, freshen_global);
       } else if (non_global_code_complete_cache->IsCacheValid(
                      request->params)) {
         non_global_code_complete_cache->WithLock([&]() {
@@ -250,7 +251,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
                    true /*is_cached_result*/);
         });
       } else {
-        clang_complete->CodeComplete(request->params, callback);
+        clang_complete->CodeComplete(request->params, existing_completion, callback);
       }
     }
   }

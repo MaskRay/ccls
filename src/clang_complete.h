@@ -57,6 +57,7 @@ struct ClangCompleteManager {
   struct CompletionRequest {
     lsTextDocumentIdentifier document;
     optional<lsPosition> position;
+    std::string existing_text;
     OnComplete on_complete;  // May be null/empty.
     bool emit_diagnostics = false;
   };
@@ -71,6 +72,7 @@ struct ClangCompleteManager {
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.
   void CodeComplete(const lsTextDocumentPositionParams& completion_location,
+                    const std::string &existing_text,
                     const OnComplete& on_complete);
   // Request a diagnostics update.
   void DiagnosticsUpdate(const lsTextDocumentIdentifier& document);

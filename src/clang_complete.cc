@@ -46,6 +46,18 @@ unsigned GetCompletionPriority(const CXCompletionString& str,
   return priority;
 }
 
+bool CompareLsCompletionItem(const lsCompletionItem &item1,
+                             const lsCompletionItem &item2)
+{
+  if (item1.pos_ != item2.pos_)
+    return item1.pos_ < item2.pos_;
+  if (item1.priority_ != item2.priority_)
+    return item1.priority_ < item2.priority_;
+  if (item1.label.length() != item2.label.length())
+    return item1.label.length() < item2.label.length();
+  return item1.label < item2.label;
+}
+
 template <typename T>
 char* tofixedbase64(T input, char* out) {
   const char* digits =
@@ -464,15 +476,22 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
 
-            char buf[16];
-            ls_completion_item.sortText =
-                tofixedbase64(GetCompletionPriority(result.CompletionString,
-                                                    result.CursorKind,
-                                                    ls_completion_item.label),
-                              buf);
+            ls_completion_item.pos_ =
+                ls_completion_item.label.find(request->existing_text);
+
+            ls_completion_item.priority_ =
+                GetCompletionPriority(result.CompletionString, result.CursorKind,
+                                      ls_completion_item.label);
 
             ls_result.push_back(ls_completion_item);
           }
+
+          // order all items and set |sortText|
+          std::sort(ls_result.begin(), ls_result.end(), CompareLsCompletionItem);
+          char buf[16];
+          for (size_t i = 0; i < ls_result.size(); ++i)
+            ls_result[i].sortText = tofixedbase64(i, buf);
+
           timer.ResetAndPrint("[complete] Building " +
                               std::to_string(ls_result.size()) +
                               " completion results");
@@ -569,6 +588,7 @@ ClangCompleteManager::~ClangCompleteManager() {}
 
 void ClangCompleteManager::CodeComplete(
     const lsTextDocumentPositionParams& completion_location,
+    const std::string &existing_text,
     const OnComplete& on_complete) {
   completion_request_.WithLock(
       [&](std::unique_ptr<CompletionRequest>& request_storage) {
@@ -579,6 +599,7 @@ void ClangCompleteManager::CodeComplete(
         // Make the request send out code completion information.
         request_storage->document = completion_location.textDocument;
         request_storage->position = completion_location.position;
+        request_storage->existing_text = existing_text;
         request_storage->on_complete = on_complete;
       });
 }

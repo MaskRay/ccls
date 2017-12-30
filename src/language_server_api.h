@@ -356,6 +356,10 @@ struct lsCompletionItem {
   // A human-readable string that represents a doc-comment.
   std::string documentation;
 
+  // Internal information to order candidates.
+  std::string::size_type pos_;
+  unsigned priority_;
+
   // A string that shoud be used when comparing this item
   // with other items. When `falsy` the label is used.
   std::string sortText;
