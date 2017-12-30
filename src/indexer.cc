@@ -1193,8 +1193,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             ns->QualifiedName(decl->semanticContainer, var->def.short_name);
         if (decl->entityInfo->kind == CXIdxEntity_EnumConstant)
           var->def.detailed_name = std::move(qualified_name);
-        else
-          var->def.detailed_name = type_name + " " + std::move(qualified_name);
+        else {
+          var->def.detailed_name = std::move(type_name);
+          ConcatTypeAndName(var->def.detailed_name, qualified_name);
+        }
       }
 
       bool is_system = clang_Location_isInSystemHeader(
@@ -1603,10 +1605,10 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
           // and has more information, thus not easy to reuse the code.
           var->def.short_name = referenced.get_spelling();
-          std::string type_name = ToString(
+          var->def.detailed_name = ToString(
               clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
-          var->def.detailed_name = type_name + " " + var->def.short_name;
-          var->def.cls = VarClass::Member;
+          ConcatTypeAndName(var->def.detailed_name, var->def.short_name);
+          var->def.cls = VarClass::Local;
           ClangCursor decl_cursor = referenced;
           var->def.comments = decl_cursor.get_comments();
           UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
@@ -1928,6 +1930,13 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   }
 
   return result;
+}
+
+void ConcatTypeAndName(std::string& type, const std::string& name) {
+  if (type.size() &&
+      (type.back() != ' ' && type.back() != '*' && type.back() != '&'))
+    type.push_back(' ');
+  type.append(name);
 }
 
 void IndexInit() {

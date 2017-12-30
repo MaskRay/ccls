@@ -578,6 +578,8 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     const std::vector<std::string>& args,
     const std::vector<CXUnsavedFile>& file_contents);
 
+void ConcatTypeAndName(std::string& type, const std::string& name);
+
 void IndexInit();
 
 void ClangSanityCheck();

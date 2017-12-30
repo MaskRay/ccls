@@ -4,13 +4,6 @@
 
 namespace {
 
-void AddName(std::string& before, const std::string& name) {
-  if (before.size() &&
-      (before.back() != ' ' && before.back() != '*' && before.back() != '&'))
-    before.push_back(' ');
-  before.append(name);
-}
-
 int GetNameInsertingPosition(const std::string& type_desc,
                              const std::string& return_type) {
   // Check if type_desc contains an (.
@@ -99,7 +92,7 @@ std::string GetFunctionSignature(IndexFile* db,
       type_desc_with_names.insert(type_desc_with_names.end(), &type_desc[i],
                                   &type_desc[arg.first]);
       i = arg.first;
-      AddName(type_desc_with_names, arg.second);
+      ConcatTypeAndName(type_desc_with_names, arg.second);
     }
     type_desc_with_names.insert(type_desc_with_names.end(),
                                 type_desc.begin() + i, type_desc.end());
@@ -107,7 +100,7 @@ std::string GetFunctionSignature(IndexFile* db,
   } else {
     // type_desc is either a typedef, or some complicated type we cannot handle.
     // Append the function_name in this case.
-    AddName(type_desc, function_name);
+    ConcatTypeAndName(type_desc, function_name);
   }
 
   return type_desc;
