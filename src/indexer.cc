@@ -355,7 +355,7 @@ bool IsFunctionCallContext(CXCursorKind kind) {
 }
 
 void OnIndexReference_Function(IndexFile* db,
-                               Range loc_spelling,
+                               Range loc,
                                ClangCursor caller_cursor,
                                IndexFuncId called_id,
                                IndexFunc* called,
@@ -367,11 +367,11 @@ void OnIndexReference_Function(IndexFile* db,
     called = db->Resolve(called_id);
 
     AddFuncRef(&caller->def.callees,
-               IndexFuncRef(called->id, loc_spelling, is_implicit));
+               IndexFuncRef(called->id, loc, is_implicit));
     AddFuncRef(&called->callers,
-               IndexFuncRef(caller->id, loc_spelling, is_implicit));
+               IndexFuncRef(caller->id, loc, is_implicit));
   } else {
-    AddFuncRef(&called->callers, IndexFuncRef(loc_spelling, is_implicit));
+    AddFuncRef(&called->callers, IndexFuncRef(loc, is_implicit));
   }
 }
 
@@ -1640,7 +1640,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //  }
 
       // TODO: search full history?
-      Range loc_spelling = ResolveSpelling(ref->cursor);
+      Range loc = ResolveSpelling(ref->cursor);
 
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
       IndexFunc* called = db->Resolve(called_id);
@@ -1661,7 +1661,12 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
             !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
                                           called->def.short_name)));
 
-      OnIndexReference_Function(db, loc_spelling, ref->container->cursor,
+      // Extents have larger ranges and thus less specific, and will be overriden
+      // by other functions if exist.
+      if (is_implicit)
+        loc = ResolveExtent(ref->cursor);
+
+      OnIndexReference_Function(db, loc, ref->container->cursor,
                                 called_id, called, is_implicit);
 
       // Checks if |str| starts with |start|. Ignores case.
@@ -1703,7 +1708,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
             AddFuncRef(&ctor->callers,
-                       IndexFuncRef(loc_spelling, true /*is_implicit*/));
+                       IndexFuncRef(loc, true /*is_implicit*/));
           }
         }
       }

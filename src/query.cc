@@ -221,8 +221,8 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
       add_outline(id_map.ToSymbol(func.id), decl.spelling);
     }
     for (const IndexFuncRef& caller : func.callers) {
-      if (caller.is_implicit)
-        continue;
+      // if (caller.is_implicit)
+      //   continue;
       add_all_symbols(id_map.ToSymbol(func.id), caller.loc);
     }
   }
