@@ -923,9 +923,6 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       // Resolve location, find IndexFile instance.
       CXSourceRange cx_source_range =
           clang_Cursor_getSpellingNameRange(cursor.cx_cursor, 0, 0);
-      CXSourceLocation start = clang_getRangeStart(cx_source_range);
-      if (clang_Location_isInSystemHeader(start))
-        break;
       CXFile file;
       Range decl_loc_spelling = Resolve(cx_source_range, &file);
       IndexFile* db = ConsumeFile(param, file);
