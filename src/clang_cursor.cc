@@ -198,11 +198,12 @@ optional<std::string> ClangCursor::get_comments() const {
 
   // Get associated comment text.
   CXString cx_raw = clang_Cursor_getRawCommentText(cx_cursor);
-  // The first line starts with a comment marker, but the rest needs
-  // un-indenting.
-  std::string unindented;
+  int pad = -1;
+  std::string ret;
   for (const char* p = clang_getCString(cx_raw); *p;) {
-    auto skip = start_column - 1;
+    // The first line starts with a comment marker, but the rest needs
+    // un-indenting.
+    unsigned skip = start_column - 1;
     for (; skip > 0 && (*p == ' ' || *p == '\t'); p++)
       skip--;
     const char* q = p;
@@ -210,11 +211,37 @@ optional<std::string> ClangCursor::get_comments() const {
       q++;
     if (*q)
       q++;
-    unindented.insert(unindented.end(), p, q);
+    // A minimalist approach to skip Doxygen comment markers.
+    // See https://www.stack.nl/~dimitri/doxygen/manual/docblocks.html
+    if (pad < 0) {
+      // First line, detect the length of comment marker and put into |pad|
+      const char* begin = p;
+      while (*p == '/' || *p == '*')
+        p++;
+      if (*p == '<' || *p == '!')
+        p++;
+      if (*p == ' ')
+        p++;
+      pad = int(p - begin);
+    } else {
+      // Other lines, skip |pad| bytes
+      int prefix = pad;
+      while (prefix > 0 &&
+             (*p == ' ' || *p == '/' || *p == '*' || *p == '<' || *p == '!'))
+        prefix--, p++;
+    }
+    ret.insert(ret.end(), p, q);
     p = q;
   }
   clang_disposeString(cx_raw);
-  return unindented;
+  while (ret.size() && isspace(ret.back()))
+    ret.pop_back();
+  if (ret.size() >= 2 && ret.compare(ret.size() - 2, 2, "*/") == 0) {
+    ret.resize(ret.size() - 2);
+    while (ret.size() && isspace(ret.back()))
+      ret.pop_back();
+  }
+  return ret;
 }
 
 std::string ClangCursor::ToString() const {
