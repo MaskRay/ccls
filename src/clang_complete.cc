@@ -109,7 +109,6 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_ClassTemplate:
     case CXCursor_ClassTemplatePartialSpecialization:
     case CXCursor_ClassDecl:
-    case CXCursor_StructDecl:
     case CXCursor_UsingDeclaration:
     case CXCursor_TypedefDecl:
     case CXCursor_TypeAliasDecl:
@@ -121,7 +120,6 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_ObjCCategoryImplDecl:
       return lsCompletionItemKind::Class;
 
-    case CXCursor_EnumConstantDecl:
     case CXCursor_EnumDecl:
       return lsCompletionItemKind::Enum;
 
@@ -152,6 +150,12 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
 
     case CXCursor_NotImplemented:
       return lsCompletionItemKind::Text;
+
+    case CXCursor_EnumConstantDecl:
+      return lsCompletionItemKind::EnumMember;
+
+    case CXCursor_StructDecl:
+      return lsCompletionItemKind::Struct;
 
     default:
       LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
