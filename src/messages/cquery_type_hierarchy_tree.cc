@@ -167,7 +167,7 @@ struct CqueryTypeHierarchyTreeHandler
     : BaseMessageHandler<Ipc_CqueryTypeHierarchyTree> {
   void Run(Ipc_CqueryTypeHierarchyTree* request) override {
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file))
       return;
 

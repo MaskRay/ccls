@@ -52,7 +52,7 @@ struct TextDocumentDefinitionHandler
   void Run(Ipc_TextDocumentDefinition* request) override {
     QueryFileId file_id;
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
                         &file_id)) {
       return;

@@ -3,6 +3,7 @@
 #include "ipc.h"
 #include "language_server_api.h"
 #include "query.h"
+#include "project.h"
 
 #include <optional.h>
 
@@ -17,7 +18,6 @@ struct ImportManager;
 struct ImportPipelineStatus;
 struct IncludeComplete;
 struct MultiQueueWaiter;
-struct Project;
 struct QueryDatabase;
 struct SemanticHighlightSymbolCache;
 struct TimestampManager;
@@ -75,6 +75,7 @@ struct BaseMessageHandler : MessageHandler {
 };
 
 bool FindFileOrFail(QueryDatabase* db,
+                    const Project *project,
                     optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,

@@ -25,7 +25,7 @@ struct CqueryDidViewHandler
     if (!working_file)
       return;
     QueryFile* file = nullptr;
-    if (!FindFileOrFail(db, nullopt, path, &file))
+    if (!FindFileOrFail(db, project, nullopt, path, &file))
       return;
 
     clang_complete->NotifyView(path);

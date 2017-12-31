@@ -75,7 +75,7 @@ void Reflect(Writer& visitor, Out_TextDocumentHover& value) {
 struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
   void Run(Ipc_TextDocumentHover* request) override {
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
       return;
     }

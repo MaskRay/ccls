@@ -19,6 +19,7 @@ MessageHandler::MessageHandler() {
 std::vector<MessageHandler*>* MessageHandler::message_handlers = nullptr;
 
 bool FindFileOrFail(QueryDatabase* db,
+                    const Project *project,
                     optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
@@ -39,7 +40,12 @@ bool FindFileOrFail(QueryDatabase* db,
   if (out_file_id)
     *out_file_id = QueryFileId((size_t)-1);
 
-  LOG_S(INFO) << "Unable to find file \"" << absolute_path << "\"";
+  bool indexing = project->absolute_path_to_entry_index_.find(absolute_path) !=
+                  project->absolute_path_to_entry_index_.end();
+  if (indexing)
+    LOG_S(INFO) << "\"" << absolute_path << "\" is being indexed.";
+  else
+    LOG_S(INFO) << "Unable to find file \"" << absolute_path << "\"";
   /*
   LOG_S(INFO) << "Files (size=" << db->usr_to_file.size() << "): "
               << StringJoinMap(db->usr_to_file,
@@ -51,8 +57,13 @@ bool FindFileOrFail(QueryDatabase* db,
   if (id) {
     Out_Error out;
     out.id = *id;
-    out.error.code = lsErrorCodes::InternalError;
-    out.error.message = "Unable to find file " + absolute_path;
+    if (indexing) {
+      out.error.code = lsErrorCodes::ServerNotInitialized;
+      out.error.message = absolute_path + " is being indexed.";
+    } else {
+      out.error.code = lsErrorCodes::InternalError;
+      out.error.message = "Unable to find file " + absolute_path;
+    }
     QueueManager::WriteStdout(IpcId::Unknown, out);
   }
 

@@ -42,7 +42,7 @@ struct TextDocumentReferencesHandler
     : BaseMessageHandler<Ipc_TextDocumentReferences> {
   void Run(Ipc_TextDocumentReferences* request) override {
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
       return;
     }

@@ -43,7 +43,7 @@ struct TextDocumentDidOpenHandler
       working_file->SetIndexContent(working_file->buffer_content);
 
     QueryFile* file = nullptr;
-    FindFileOrFail(db, nullopt, path, &file);
+    FindFileOrFail(db, project, nullopt, path, &file);
     if (file && file->def) {
       EmitInactiveLines(working_file, file->def->inactive_regions);
       EmitSemanticHighlighting(db, semantic_cache, working_file, file);

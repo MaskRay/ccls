@@ -14,7 +14,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryDerived);
 struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
   void Run(Ipc_CqueryDerived* request) override {
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
       return;
     }

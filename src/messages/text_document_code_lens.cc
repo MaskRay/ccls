@@ -131,7 +131,7 @@ struct TextDocumentCodeLensHandler
     clang_complete->NotifyView(path);
 
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
       return;
     }

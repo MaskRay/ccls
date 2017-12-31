@@ -84,7 +84,7 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
   void Run(Ipc_TextDocumentRename* request) override {
     QueryFileId file_id;
     QueryFile* file;
-    if (!FindFileOrFail(db, request->id,
+    if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
                         &file_id)) {
       return;
