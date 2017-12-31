@@ -117,10 +117,16 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (i > 0)
     result.args.push_back(entry.args[i - 1]);
   else {
+    // TODO Drop this back compatibility
     // Args probably came from a /.cquery file, which likely has just flags.
     // clang_parseTranslationUnit2FullArgv() expects the binary path as the
     // first arg, so the first flag would end up being ignored. Add a dummy.
     result.args.push_back("clang++");
+  }
+
+  if (!AnyStartsWith(entry.args, "-working-directory")) {
+    result.args.emplace_back("-working-directory");
+    result.args.push_back(entry.directory);
   }
 
   // Clang does not have good hueristics for determining source language, we
@@ -486,20 +492,20 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-xc++", "-std=c++11", "-lstdc++", "myfile.cc",
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11", "-lstdc++", "myfile.cc",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
-        {"clang", "-xc++", "-std=c++11", "-resource-dir=/w/resource_dir/",
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
-        {"clang", "-xc++", "-std=c++11", "--foo",
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11", "--foo",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
   }
@@ -510,7 +516,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-xc", "-std=c11", "-O0", "-resource-dir=/w/resource_dir/",
+        {"cc", "-working-directory", "/home/user", "-xc", "-std=c11", "-O0", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
@@ -518,7 +524,7 @@ TEST_SUITE("Project") {
     CheckFlags("/home/user", "/home/user/foo/bar.cc",
                /* raw */ {"-DDONT_IGNORE_ME"},
                /* expected */
-               {"clang++", "-xc++", "-std=c++11", "-DDONT_IGNORE_ME",
+               {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++11", "-DDONT_IGNORE_ME",
                 "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
                 "-fparse-all-comments"});
   }
@@ -708,6 +714,8 @@ TEST_SUITE("Project") {
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
+         "-working-directory",
+         "/w/c/s/out/Release",
          "-xc++",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
@@ -1039,6 +1047,8 @@ TEST_SUITE("Project") {
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
+         "-working-directory",
+         "/w/c/s/out/Release",
          "-xc++",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
