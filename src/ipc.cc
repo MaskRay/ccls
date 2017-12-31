@@ -36,6 +36,10 @@ const char* IpcIdToString(IpcId id) {
       return "textDocument/hover";
     case IpcId::TextDocumentFormatting:
       return "textDocument/formatting";
+    case IpcId::TextDocumentRangeFormatting:
+      return "textDocument/rangeFormatting";
+    case IpcId::TextDocumentOnTypeFormatting:
+      return "textDocument/onTypeFormatting";
     case IpcId::TextDocumentReferences:
       return "textDocument/references";
     case IpcId::TextDocumentDocumentSymbol:

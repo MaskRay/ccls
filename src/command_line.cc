@@ -268,6 +268,9 @@ void LaunchStdinLoop(Config* config,
         case IpcId::TextDocumentDidChange:
         case IpcId::TextDocumentDidClose:
         case IpcId::TextDocumentDidSave:
+        case IpcId::TextDocumentFormatting:
+        case IpcId::TextDocumentRangeFormatting:
+        case IpcId::TextDocumentOnTypeFormatting:
         case IpcId::TextDocumentRename:
         case IpcId::TextDocumentCompletion:
         case IpcId::TextDocumentSignatureHelp:
