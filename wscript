@@ -111,6 +111,10 @@ def download_and_extract(destdir, url, ext):
       subprocess.call(['7z', 'x', '-o{0}'.format(destdir), '-xr!$PLUGINSDIR', dest])
     else:
       subprocess.call(['tar', '-x', '-C', out, '-f', dest])
+      # TODO Remove after migrating to a clang release newer than 5.0.1
+      # For 5.0.1 Mac OS X, the directory and the tarball have different name
+      if destdir == 'build/clang+llvm-5.0.1-x86_64-apple-darwin':
+        os.rename(destdir.replace('5.0.1', '5.0.1-final'), destdir)
   else:
     print('Found extracted at {0}'.format(destdir))
 
@@ -200,11 +204,6 @@ def configure(ctx):
 
     print('Checking for clang')
     download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL, CLANG_TARBALL_EXT)
-
-    # TODO Remove after migrating to a clang release newer than 5.0.1
-    # For 5.0.1 Mac OS X, the directory and the tarball have different name
-    if ctx.options.bundled_clang == '5.0.1' and sys.platform == 'darwin':
-      CLANG_TARBALL_NAME = 'clang+llvm-5.0.1-final-x86_64-apple-darwin'
 
     bundled_clang_dir = os.path.join(out, ctx.options.variant, 'lib', CLANG_TARBALL_NAME)
     try:
