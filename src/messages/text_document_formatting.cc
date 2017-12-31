@@ -19,11 +19,11 @@ struct lsTextDocumentFormattingParams {
   lsTextDocumentIdentifier textDocument;
 
   // The format options, like tabs or spaces.
-  lsFormattingOptions formattingOptions;
+  lsFormattingOptions options;
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams,
                     textDocument,
-                    formattingOptions);
+                    options);
 
 struct Ipc_TextDocumentFormatting
     : public IpcMessage<Ipc_TextDocumentFormatting> {
@@ -57,8 +57,8 @@ struct TextDocumentFormattingHandler
     WorkingFile* working_file =
         working_files->GetFileByFilename(file->def->path);
 
-    int tab_size = request->params.formattingOptions.tabSize;
-    bool insert_spaces = request->params.formattingOptions.insertSpaces;
+    int tab_size = request->params.options.tabSize;
+    bool insert_spaces = request->params.options.insertSpaces;
 
     const auto clang_format = std::unique_ptr<ClangFormat>(new ClangFormat(
         working_file->filename, working_file->buffer_content,
