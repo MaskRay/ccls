@@ -22,6 +22,7 @@ enum class IpcId : int {
   TextDocumentDefinition,
   TextDocumentDocumentHighlight,
   TextDocumentHover,
+  TextDocumentFormatting,
   TextDocumentReferences,
   TextDocumentDocumentSymbol,
   TextDocumentDocumentLink,

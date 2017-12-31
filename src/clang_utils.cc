@@ -104,6 +104,30 @@ optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
   return ls_diagnostic;
 }
 
+#if USE_CLANG_CXX
+static lsPosition OffsetToRange(llvm::StringRef document, size_t offset) {
+  // TODO: Support Windows line endings, etc.
+  llvm::StringRef text_before = document.substr(0, offset);
+  int num_line = text_before.count('\n');
+  int num_column = text_before.size() - text_before.rfind('\n') - 1;
+  return {num_line, num_column};
+}
+
+std::vector<lsTextEdit> ConvertClangReplacementsIntoTextEdits(
+    llvm::StringRef document,
+    const std::vector<clang::tooling::Replacement>& clang_replacements) {
+  std::vector<lsTextEdit> text_edits_result;
+  for (const auto& replacement : clang_replacements) {
+    const auto startPosition = OffsetToRange(document, replacement.getOffset());
+    const auto endPosition = OffsetToRange(
+        document, replacement.getOffset() + replacement.getLength());
+    text_edits_result.push_back(
+        {{startPosition, endPosition}, replacement.getReplacementText()});
+  }
+  return text_edits_result;
+}
+#endif
+
 std::string FileName(CXFile file) {
   CXString cx_name = clang_getFileName(file);
   std::string name = ToString(cx_name);
