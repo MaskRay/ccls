@@ -1,3 +1,5 @@
+#if USE_CLANG_CXX
+
 #include "clang_format.h"
 
 #include <loguru.hpp>
@@ -44,3 +46,5 @@ std::vector<Replacement> ClangFormat::FormatWholeDocument() {
   auto format_result = reformat(*style, document_, ranges_, document_filename_);
   return std::vector<Replacement>(format_result.begin(), format_result.end());
 }
+
+#endif

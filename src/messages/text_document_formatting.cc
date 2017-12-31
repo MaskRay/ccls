@@ -3,6 +3,8 @@
 #include "queue_manager.h"
 #include "working_files.h"
 
+#include <loguru.hpp>
+
 namespace {
 struct lsFormattingOptions {
   // Size of a tab in spaces.
@@ -43,6 +45,9 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentFormatting, jsonrpc, id, result);
 struct TextDocumentFormattingHandler
     : BaseMessageHandler<Ipc_TextDocumentFormatting> {
   void Run(Ipc_TextDocumentFormatting* request) override {
+    Out_TextDocumentFormatting response;
+    response.id = request->id;
+#if USE_CLANG_CXX
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -55,9 +60,6 @@ struct TextDocumentFormattingHandler
     int tab_size = request->params.formattingOptions.tabSize;
     bool insert_spaces = request->params.formattingOptions.insertSpaces;
 
-    Out_TextDocumentFormatting response;
-    response.id = request->id;
-
     const auto clang_format = std::unique_ptr<ClangFormat>(new ClangFormat(
         working_file->filename, working_file->buffer_content,
         {clang::tooling::Range(0, working_file->buffer_content.size())},
@@ -65,6 +67,12 @@ struct TextDocumentFormattingHandler
     const auto replacements = clang_format->FormatWholeDocument();
     response.result = ConvertClangReplacementsIntoTextEdits(
         working_file->buffer_content, replacements);
+#else
+    LOG_S(WARNING) << "You must compile cquery with --use-clang-cxx to use "
+                      "document formatting.";
+    // TODO: Fallback to execute the clang-format binary?
+    response.result = {};
+#endif
 
     QueueManager::WriteStdout(IpcId::TextDocumentFormatting, response);
   }

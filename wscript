@@ -234,16 +234,6 @@ def build(bld):
     cc_files += bld.path.ant_glob(['src/clang_cxx/*.cc'])
 
   lib = []
-  # clang-format support
-  lib.append('clangBasic')
-  lib.append('clangFormat')
-  lib.append('clangLex')
-  lib.append('clangRewrite')
-  lib.append('clangToolingCore')
-  lib.append('LLVMCore')
-  lib.append('LLVMDemangle')
-  lib.append('LLVMSupport')
-  lib.append('ncurses')
   if sys.platform.startswith('linux'):
     lib.append('rt')
     lib.append('pthread')
@@ -266,6 +256,9 @@ def build(bld):
     lib.append('clangAST')
     lib.append('clangLex')
     lib.append('clangBasic')
+    lib.append('clangFormat')
+    lib.append('clangToolingCore')
+    lib.append('clangRewrite')
 
     # The order is derived from llvm-config --libs core
     lib.append('LLVMCore')

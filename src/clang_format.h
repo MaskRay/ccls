@@ -1,3 +1,7 @@
+#if USE_CLANG_CXX
+
+#pragma once
+
 #include <clang/Format/Format.h>
 
 #include <vector>
@@ -18,3 +22,5 @@ struct ClangFormat {
 
   std::vector<clang::tooling::Replacement> FormatWholeDocument();
 };
+
+#endif
