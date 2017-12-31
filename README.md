@@ -7,7 +7,7 @@ and designed for large code bases like
 [Chromium](https://chromium.googlesource.com/chromium/src/). cquery provides
 accurate and fast semantic analysis without interrupting workflow.
 
-![Demo](/images/demo.png?raw=true)
+![Demo](https://ptpb.pw/GlSQ.png?raw=true)
 
 cquery implements almost the entire language server protocol and provides
 some extra features to boot:
