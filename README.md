@@ -43,8 +43,9 @@ Building cquery is simple. The external dependencies are few:
 
 ```bash
 $ clang --version  # if missing, sudo apt-get install clang
-$ git clone https://github.com/jacobdufault/cquery --recursive
+$ git clone https://github.com/jacobdufault/cquery --single-branch
 $ cd cquery
+$ git submodule update --init
 $ ./waf configure --prefix ~/.local/stow/cquery  # --prefix is optional, it specifies install directory
 $ ./waf build    # -g -O3, built build/release/bin/cquery
 $ ./waf install  # optional, copies the executable to $PREFIX/bin/cquery
