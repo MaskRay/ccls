@@ -60,10 +60,11 @@ struct TextDocumentFormattingHandler
     int tab_size = request->params.options.tabSize;
     bool insert_spaces = request->params.options.insertSpaces;
 
-    const auto clang_format = std::unique_ptr<ClangFormat>(new ClangFormat(
+    const auto clang_format = MakeUnique<ClangFormat>(
         working_file->filename, working_file->buffer_content,
-        {clang::tooling::Range(0, working_file->buffer_content.size())},
-        tab_size, insert_spaces));
+        llvm::ArrayRef<clang::tooling::Range>(
+            clang::tooling::Range(0, working_file->buffer_content.size())),
+        tab_size, insert_spaces);
     const auto replacements = clang_format->FormatWholeDocument();
     response.result = ConvertClangReplacementsIntoTextEdits(
         working_file->buffer_content, replacements);
