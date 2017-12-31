@@ -62,13 +62,13 @@ See [wiki](https://github.com/jacobdufault/cquery/wiki) for more build instructi
 
 ## Install extension
 
-cquery includes a vscode extension; it is part of the repository. Launch vscode
-and install the `vscode-extension.tsix` extension. To do this:
+cquery includes a vscode extension; it is released in <https://github.com/jacobdufault/cquery/releases>. Launch vscode
+and install the `vscode-extension.vsix` extension. To do this:
 
 - Hit `F1`; execute the command `Install from VSIX`.
 - Select `vscode-extension.vsix` in the file chooser.
 
-**IMPORTANT:** Please reinstall the extension when you sync the code base - it is
+**IMPORTANT:** Please reinstall the extension when you download it - it is
 still being developed.
 
 If you run into issues, you can view debug output by running the
