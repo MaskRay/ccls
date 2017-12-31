@@ -123,6 +123,20 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     result.args.push_back("clang++");
   }
 
+  // Clang does not have good hueristics for determining source language, we
+  // should explicitly specify it.
+  if (auto source_file_type = SourceFileType(entry.file)) {
+    if (!AnyStartsWith(entry.args, "-x")) {
+      result.args.push_back("-x" + *source_file_type);
+    }
+    if (!AnyStartsWith(entry.args, "-std=")) {
+      if (*source_file_type == "c")
+        result.args.push_back("-std=c11");
+      else if (*source_file_type == "c++")
+        result.args.push_back("-std=c++11");
+    }
+  }
+
   bool next_flag_is_path = false;
   bool add_next_flag_to_quote_dirs = false;
   bool add_next_flag_to_angle_dirs = false;
@@ -186,20 +200,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // We don't do any special processing on user-given extra flags.
   for (const auto& flag : config->extra_flags)
     result.args.push_back(flag);
-
-  // Clang does not have good hueristics for determining source language, we
-  // should explicitly specify it.
-  if (auto source_file_type = SourceFileType(entry.file)) {
-    if (!AnyStartsWith(result.args, "-x")) {
-      result.args.push_back("-x" + *source_file_type);
-    }
-    if (!AnyStartsWith(result.args, "-std=")) {
-      if (*source_file_type == "c")
-        result.args.push_back("-std=c11");
-      else if (*source_file_type == "c++")
-        result.args.push_back("-std=c++11");
-    }
-  }
 
   // Add -resource-dir so clang can correctly resolve system includes like
   // <cstddef>
@@ -486,7 +486,7 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-lstdc++", "myfile.cc", "-xc++", "-std=c++11",
+        {"clang", "-xc++", "-std=c++11", "-lstdc++", "myfile.cc",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
@@ -499,7 +499,7 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
-        {"clang", "--foo", "-xc++", "-std=c++11",
+        {"clang", "-xc++", "-std=c++11", "--foo",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
   }
@@ -510,7 +510,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-O0", "-xc", "-std=c11", "-resource-dir=/w/resource_dir/",
+        {"cc", "-xc", "-std=c11", "-O0", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
@@ -518,7 +518,7 @@ TEST_SUITE("Project") {
     CheckFlags("/home/user", "/home/user/foo/bar.cc",
                /* raw */ {"-DDONT_IGNORE_ME"},
                /* expected */
-               {"clang++", "-DDONT_IGNORE_ME", "-xc++", "-std=c++11",
+               {"clang++", "-xc++", "-std=c++11", "-DDONT_IGNORE_ME",
                 "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
                 "-fparse-all-comments"});
   }
@@ -708,6 +708,7 @@ TEST_SUITE("Project") {
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
+         "-xc++",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
          "-DUSE_UDEV",
@@ -864,7 +865,6 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "-xc++",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
@@ -1039,6 +1039,7 @@ TEST_SUITE("Project") {
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
+         "-xc++",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
          "-DUSE_UDEV",
@@ -1185,7 +1186,6 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "-xc++",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
