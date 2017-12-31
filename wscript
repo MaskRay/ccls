@@ -200,6 +200,12 @@ def configure(ctx):
 
     print('Checking for clang')
     download_and_extract(CLANG_DIRECTORY, CLANG_TARBALL_URL, CLANG_TARBALL_EXT)
+
+    # TODO Remove after migrating to a clang release newer than 5.0.1
+    # For 5.0.1 Mac OS X, the directory and the tarball have different name
+    if ctx.options.bundled_clang == '5.0.1' and sys.platform == 'darwin':
+      CLANG_TARBALL_NAME = 'clang+llvm-5.0.1-final-x86_64-apple-darwin'
+
     bundled_clang_dir = os.path.join(out, ctx.options.variant, 'lib', CLANG_TARBALL_NAME)
     try:
       os.makedirs(os.path.dirname(bundled_clang_dir))
