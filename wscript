@@ -253,12 +253,12 @@ def build(bld):
     # -fno-rtti is required for object files using clang/llvm C++ API
 
     # The order is derived by topological sorting LINK_LIBS in clang/lib/*/CMakeLists.txt
-    lib.append('clangAST')
-    lib.append('clangLex')
-    lib.append('clangBasic')
     lib.append('clangFormat')
     lib.append('clangToolingCore')
     lib.append('clangRewrite')
+    lib.append('clangAST')
+    lib.append('clangLex')
+    lib.append('clangBasic')
 
     # The order is derived from llvm-config --libs core
     lib.append('LLVMCore')
