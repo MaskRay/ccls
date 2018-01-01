@@ -34,15 +34,15 @@ std::vector<Replacement> ClangFormat::FormatWholeDocument() {
   llvm::Expected<FormatStyle> style =
       getStyle("file", document_filename_, "chromium");
   if (!style) {
+    // If, for some reason, we cannot get a format style, use Chromium's with
+    // tab configuration provided by the client editor.
     LOG_S(ERROR) << llvm::toString(style.takeError());
-    return {};
+    predefined_style.UseTab = insert_spaces_
+                                  ? FormatStyle::UseTabStyle::UT_Never
+                                  : FormatStyle::UseTabStyle::UT_Always;
+    predefined_style.IndentWidth = tab_size_;
   }
 
-  if (*style == predefined_style) {
-    style->UseTab = insert_spaces_ ? FormatStyle::UseTabStyle::UT_Never
-                                  : FormatStyle::UseTabStyle::UT_Always;
-    style->IndentWidth = tab_size_;
-  }
   auto format_result = reformat(*style, document_, ranges_, document_filename_);
   return std::vector<Replacement>(format_result.begin(), format_result.end());
 }
