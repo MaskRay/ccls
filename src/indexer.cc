@@ -44,11 +44,6 @@ Range Resolve(const CXSourceRange& range, CXFile* cx_file = nullptr) {
                Position((int16_t)end_line, (int16_t)end_column) /*end*/);
 }
 
-Range ResolveSpelling(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
-  CXSourceRange cx_range = clang_Cursor_getSpellingNameRange(cx_cursor, 0, 0);
-  return Resolve(cx_range, cx_file);
-}
-
 Range ResolveExtent(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
   CXSourceRange cx_range = clang_getCursorExtent(cx_cursor);
   return Resolve(cx_range, cx_file);
@@ -1547,9 +1542,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     }
 
     default:
-      std::cerr << "!! Unhandled indexDeclaration:     "
-                << ClangCursor(decl->cursor).ToString() << " at "
-                << ResolveSpelling(decl->cursor).start.ToString() << std::endl;
+      std::cerr
+          << "!! Unhandled indexDeclaration:     "
+          << ClangCursor(decl->cursor).ToString() << " at "
+          << ClangCursor(decl->cursor).get_spelling_range().start.ToString()
+          << std::endl;
       std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind
                 << std::endl;
       std::cerr << "     entityInfo->USR   = " << decl->entityInfo->USR
@@ -1653,7 +1650,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //  }
 
       // TODO: search full history?
-      Range loc = ResolveSpelling(ref->cursor);
+      ClangCursor ref_cursor(ref->cursor);
+      Range loc = ref_cursor.get_spelling_range();
 
       IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
       IndexFunc* called = db->Resolve(called_id);
@@ -1738,12 +1736,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
-      ClangCursor referenced_cursor = ref->referencedEntity->cursor;
-      referenced_cursor =
-          referenced_cursor.template_specialization_to_template_definition();
-      IndexTypeId referenced_id = db->ToTypeId(referenced_cursor.get_usr());
-
-      IndexType* referenced = db->Resolve(referenced_id);
+      ClangCursor ref_cursor = ref->referencedEntity->cursor;
+      ref_cursor = ref_cursor.template_specialization_to_template_definition();
+      IndexType* referenced = db->Resolve(db->ToTypeId(ref_cursor.get_usr()));
 
       //
       // The following will generate two TypeRefs to Foo, both located at the
@@ -1760,13 +1755,13 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //    Foo f;
       //  }
       //
-      UniqueAdd(referenced->uses, ResolveSpelling(ref->cursor));
+      UniqueAdd(referenced->uses, ref_cursor.get_spelling_range());
       break;
     }
 
     default:
       std::cerr << "!! Unhandled indexEntityReference: " << cursor.ToString()
-                << " at " << ResolveSpelling(ref->cursor).start.ToString()
+                << " at " << ClangCursor(ref->cursor).get_spelling_range().start.ToString()
                 << std::endl;
       std::cerr << "     ref->referencedEntity->kind = "
                 << ref->referencedEntity->kind << std::endl;
@@ -1774,7 +1769,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
         std::cerr << "     ref->parentEntity->kind = "
                   << ref->parentEntity->kind << std::endl;
       std::cerr << "     ref->loc          = "
-                << ResolveSpelling(ref->cursor).start.ToString() << std::endl;
+                << ClangCursor(ref->cursor).get_spelling_range().start.ToString() << std::endl;
       std::cerr << "     ref->kind         = " << ref->kind << std::endl;
       if (ref->parentEntity)
         std::cerr << "     parentEntity      = "
