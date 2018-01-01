@@ -30,25 +30,6 @@ void AddFuncRef(std::vector<IndexFuncRef>* result, IndexFuncRef ref) {
   result->push_back(ref);
 }
 
-Range Resolve(const CXSourceRange& range, CXFile* cx_file = nullptr) {
-  CXSourceLocation start = clang_getRangeStart(range);
-  CXSourceLocation end = clang_getRangeEnd(range);
-
-  unsigned int start_line, start_column;
-  clang_getSpellingLocation(start, cx_file, &start_line, &start_column,
-                            nullptr);
-  unsigned int end_line, end_column;
-  clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
-
-  return Range(Position((int16_t)start_line, (int16_t)start_column) /*start*/,
-               Position((int16_t)end_line, (int16_t)end_column) /*end*/);
-}
-
-Range ResolveExtent(const CXCursor& cx_cursor, CXFile* cx_file = nullptr) {
-  CXSourceRange cx_range = clang_getCursorExtent(cx_cursor);
-  return Resolve(cx_range, cx_file);
-}
-
 bool IsScopeSemanticContainer(CXCursorKind kind) {
   switch (kind) {
     case CXCursor_Namespace:
@@ -235,7 +216,7 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
     // Report skipped source range list.
     CXSourceRangeList* skipped = clang_getSkippedRanges(param->tu->cx_tu, file);
     for (unsigned i = 0; i < skipped->count; ++i) {
-      Range range = Resolve(skipped->ranges[i]);
+      Range range = ResolveCXSourceRange(skipped->ranges[i]);
       // clang_getSkippedRanges reports start one token after the '#', move it
       // back so it starts at the '#'
       range.start.column -= 1;
@@ -299,7 +280,7 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
 
   for (unsigned i = 0; i < num_tokens; ++i) {
     // Add whitespace between the previous token and this one.
-    Range token_range = Resolve(clang_getTokenExtent(cx_tu, tokens[i]));
+    Range token_range = ResolveCXSourceRange(clang_getTokenExtent(cx_tu, tokens[i]));
     if (previous_token_range) {
       // Insert newlines.
       int16_t line_delta =
@@ -919,7 +900,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       CXSourceRange cx_source_range =
           clang_Cursor_getSpellingNameRange(cursor.cx_cursor, 0, 0);
       CXFile file;
-      Range decl_loc_spelling = Resolve(cx_source_range, &file);
+      Range decl_loc_spelling = ResolveCXSourceRange(cx_source_range, &file);
       IndexFile* db = ConsumeFile(param, file);
       if (!db)
         break;
@@ -947,7 +928,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.cls = VarClass::Macro;
         var_def->def.comments = cursor.get_comments();
         var_def->def.definition_spelling = decl_loc_spelling;
-        var_def->def.definition_extent = Resolve(cx_extent, nullptr);
+        var_def->def.definition_extent = ResolveCXSourceRange(cx_extent, nullptr);
       }
 
       break;
@@ -982,7 +963,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_spelling =
               ref_cursor.get_spelling_range();
           ref_index->def.definition_extent =
-              ResolveExtent(ref_cursor.cx_cursor);
+              ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
@@ -1027,7 +1008,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_spelling =
               ref_cursor.get_spelling_range();
           ref_index->def.definition_extent =
-              ResolveExtent(ref_cursor.cx_cursor);
+              ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
@@ -1050,7 +1031,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_spelling =
               ref_cursor.get_spelling_range();
           ref_index->def.definition_extent =
-              ResolveExtent(ref_cursor.cx_cursor);
+              ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
@@ -1226,7 +1207,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       if (decl->isDefinition) {
         var->def.definition_spelling = decl_spell;
-        var->def.definition_extent = ResolveExtent(decl->cursor);
+        var->def.definition_extent = decl_cursor.get_extent();
       } else {
         var->def.declaration = decl_spell;
       }
@@ -1283,7 +1264,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXConversionFunction: {
       ClangCursor decl_cursor = decl->cursor;
       Range decl_spelling = decl_cursor.get_spelling_range();
-      Range decl_extent = ResolveExtent(decl->cursor);
+      Range decl_extent = decl_cursor.get_extent();
 
       ClangCursor decl_cursor_resolved =
           decl_cursor.template_specialization_to_template_definition();
@@ -1432,7 +1413,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       ClangCursor decl_cursor = decl->cursor;
       Range spell = decl_cursor.get_spelling_range();
-      Range extent = ResolveExtent(decl->cursor);
+      Range extent = decl_cursor.get_extent();
       type->def.definition_spelling = spell;
       type->def.definition_extent = extent;
 
@@ -1501,7 +1482,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       if (decl->isDefinition) {
         type->def.definition_spelling = decl_loc_spelling;
-        type->def.definition_extent = ResolveExtent(decl->cursor);
+        type->def.definition_extent = decl_cursor.get_extent();
       }
       UniqueAdd(type->uses, decl_loc_spelling);
 
@@ -1609,7 +1590,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
         Range spelling = referenced.get_spelling_range(&referenced_file);
         if (file == referenced_file) {
           var->def.definition_spelling = spelling;
-          var->def.definition_extent = ResolveExtent(referenced.cx_cursor);
+          var->def.definition_extent = referenced.get_extent();
 
           // TODO Some of the logic here duplicates CXIdxEntity_Variable branch
           // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
@@ -1675,7 +1656,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // Extents have larger ranges and thus less specific, and will be overriden
       // by other functions if exist.
       if (is_implicit)
-        loc = ResolveExtent(ref->cursor);
+        loc = ref_cursor.get_extent();
 
       OnIndexReference_Function(db, loc, ref->container->cursor,
                                 called_id, called, is_implicit);
@@ -1755,7 +1736,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //    Foo f;
       //  }
       //
-      UniqueAdd(referenced->uses, ref_cursor.get_spelling_range());
+      UniqueAdd(referenced->uses, ClangCursor(ref->cursor).get_spelling_range());
       break;
     }
 

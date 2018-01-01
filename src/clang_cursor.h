@@ -8,6 +8,9 @@
 #include <string>
 #include <vector>
 
+Range ResolveCXSourceRange(const CXSourceRange& range,
+                           CXFile* cx_file = nullptr);
+
 class ClangType {
  public:
   ClangType();
@@ -48,6 +51,7 @@ class ClangCursor {
   ClangType get_type() const;
   std::string get_spelling() const;
   Range get_spelling_range(CXFile* cx_file = nullptr) const;
+  Range get_extent() const;
   std::string get_display_name() const;
   std::string get_usr() const;
 

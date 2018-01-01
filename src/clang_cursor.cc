@@ -5,6 +5,20 @@
 #include <algorithm>
 #include <cassert>
 
+Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
+  CXSourceLocation start = clang_getRangeStart(range);
+  CXSourceLocation end = clang_getRangeEnd(range);
+
+  unsigned int start_line, start_column;
+  clang_getSpellingLocation(start, cx_file, &start_line, &start_column,
+                            nullptr);
+  unsigned int end_line, end_column;
+  clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
+
+  return Range(Position((int16_t)start_line, (int16_t)start_column) /*start*/,
+               Position((int16_t)end_line, (int16_t)end_column) /*end*/);
+}
+
 // TODO Place this global variable into config
 bool g_enable_comments = false;
 
@@ -127,15 +141,12 @@ Range ClangCursor::get_spelling_range(CXFile* cx_file) const {
   // TODO for Objective-C methods and Objective-C message expressions, there are
   // multiple pieces for each selector identifier.
   CXSourceRange range = clang_Cursor_getSpellingNameRange(cx_cursor, 0, 0);
-  CXSourceLocation start = clang_getRangeStart(range);
-  CXSourceLocation end = clang_getRangeEnd(range);
+  return ResolveCXSourceRange(range, cx_file);
+}
 
-  unsigned int start_line, start_column;
-  clang_getSpellingLocation(start, cx_file, &start_line, &start_column, nullptr);
-  unsigned int end_line, end_column;
-  clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
-  return Range(Position((int16_t)start_line, (int16_t)start_column) /*start*/,
-               Position((int16_t)end_line, (int16_t)end_column) /*end*/);
+Range ClangCursor::get_extent() const {
+  CXSourceRange range = clang_getCursorExtent(cx_cursor);
+  return ResolveCXSourceRange(range, nullptr);
 }
 
 std::string ClangCursor::get_display_name() const {
