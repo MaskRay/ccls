@@ -118,12 +118,21 @@ bool ComputeDifferenceForUpdate(std::vector<T>& previous,
   std::sort(previous.begin(), previous.end());
   std::sort(current.begin(), current.end());
 
-  // Returns the elements in |previous| that are not in |current|.
-  std::set_difference(previous.begin(), previous.end(), current.begin(),
-                      current.end(), std::back_inserter(*removed));
-  // Returns the elements in |current| that are not in |previous|.
-  std::set_difference(current.begin(), current.end(), previous.begin(),
-                      previous.end(), std::back_inserter(*added));
+  auto it0 = previous.begin(), it1 = current.begin();
+  while (it0 != previous.end() && it1 != current.end()) {
+    // Elements in |previous| that are not in |current|.
+    if (*it0 < *it1)
+      removed->push_back(*it0++);
+    // Elements in |current| that are not in |previous|.
+    else if (*it1 < *it0)
+      added->push_back(*it1++);
+    else
+      ++it0, ++it1;
+  }
+  while (it0 != previous.end())
+    removed->push_back(*it0++);
+  while (it1 != current.end())
+    added->push_back(*it1++);
 
   return !removed->empty() || !added->empty();
 }

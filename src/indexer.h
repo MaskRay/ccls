@@ -183,7 +183,8 @@ struct TypeDefDefinitionData {
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            alias_of == other.alias_of && parents == other.parents &&
-           types == other.types && funcs == other.funcs && vars == other.vars;
+           types == other.types && funcs == other.funcs && vars == other.vars &&
+           hover == other.hover && comments == other.comments;
   }
 
   bool operator!=(
@@ -276,7 +277,8 @@ struct FuncDefDefinitionData {
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            declaring_type == other.declaring_type && base == other.base &&
-           locals == other.locals && callees == other.callees;
+           locals == other.locals && callees == other.callees &&
+           hover == other.hover && comments == other.comments;
   }
   bool operator!=(
       const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
@@ -405,7 +407,8 @@ struct VarDefDefinitionData {
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            variable_type == other.variable_type &&
-           declaring_type == other.declaring_type;
+           declaring_type == other.declaring_type && hover == other.hover &&
+           comments == other.comments;
   }
   bool operator!=(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
