@@ -459,6 +459,24 @@ enum class lsDocumentHighlightKind {
 };
 MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind, int);
 
+
+struct lsFormattingOptions {
+  // Size of a tab in spaces.
+  int tabSize;
+  // Prefer spaces over tabs.
+  bool insertSpaces;
+};
+MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
+
+struct lsTextDocumentFormattingParams {
+  // The text document.
+  lsTextDocumentIdentifier textDocument;
+
+  // The format options, like tabs or spaces.
+  lsFormattingOptions options;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams, textDocument, options);
+
 // A document highlight is a range inside a text document which deserves
 // special attention. Usually a document highlight is visualized by changing
 // the background color of its range.

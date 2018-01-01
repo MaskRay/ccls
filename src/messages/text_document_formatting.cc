@@ -6,25 +6,6 @@
 #include <loguru.hpp>
 
 namespace {
-struct lsFormattingOptions {
-  // Size of a tab in spaces.
-  int tabSize;
-  // Prefer spaces over tabs.
-  bool insertSpaces;
-};
-MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
-
-struct lsTextDocumentFormattingParams {
-  // The text document.
-  lsTextDocumentIdentifier textDocument;
-
-  // The format options, like tabs or spaces.
-  lsFormattingOptions options;
-};
-MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams,
-                    textDocument,
-                    options);
-
 struct Ipc_TextDocumentFormatting
     : public IpcMessage<Ipc_TextDocumentFormatting> {
   const static IpcId kIpcId = IpcId::TextDocumentFormatting;
@@ -57,20 +38,14 @@ struct TextDocumentFormattingHandler
     WorkingFile* working_file =
         working_files->GetFileByFilename(file->def->path);
 
-    int tab_size = request->params.options.tabSize;
-    bool insert_spaces = request->params.options.insertSpaces;
-
-    const auto clang_format = MakeUnique<ClangFormat>(
-        working_file->filename, working_file->buffer_content,
-        llvm::ArrayRef<clang::tooling::Range>(
-            clang::tooling::Range(0, working_file->buffer_content.size())),
-        tab_size, insert_spaces);
-    const auto replacements = clang_format->FormatWholeDocument();
     response.result = ConvertClangReplacementsIntoTextEdits(
-        working_file->buffer_content, replacements);
+        working_file->buffer_content,
+        ClangFormatDocument(working_file, 0,
+                            working_file->buffer_content.size(),
+                            request->params.options));
 #else
     LOG_S(WARNING) << "You must compile cquery with --use-clang-cxx to use "
-                      "document formatting.";
+                      "textDocument/formatting.";
     // TODO: Fallback to execute the clang-format binary?
     response.result = {};
 #endif

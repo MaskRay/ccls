@@ -142,6 +142,11 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       out.result.capabilities.documentSymbolProvider = true;
       out.result.capabilities.workspaceSymbolProvider = true;
 
+#if USE_CLANG_CXX
+      out.result.capabilities.documentFormattingProvider = true;
+      out.result.capabilities.documentRangeFormattingProvider = true;
+#endif
+
       out.result.capabilities.documentLinkProvider = lsDocumentLinkOptions();
       out.result.capabilities.documentLinkProvider->resolveProvider = false;
 
