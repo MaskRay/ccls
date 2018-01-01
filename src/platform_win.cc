@@ -243,7 +243,7 @@ std::vector<std::string> GetPlatformClangArguments() {
     "-isystem","C:/Program Files/Microsoft Visual Studio 8/VC/PlatformSDK/Include",
     "-isystem","C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/VC/Tools/MSVC/14.10.25017/include",
     "-isystem","C:/Program Files (x86)/Windows Kits/10/Include/10.0.15063.0/ucrt",
-    "-isystem","C:/Program Files/LLVM/lib/clang/4.0.0/include",
+    "-isystem","C:/Program Files/LLVM/lib/clang/5.0.1/include",
     "-fms-extensions", "-fms-compatibility", "-fms-compatibility-version=18", "-fdelayed-template-parsing"
   };
   // clang-format on
