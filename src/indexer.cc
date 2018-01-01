@@ -977,11 +977,6 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                          TemplateVisitorData* data) {
   switch (cursor.get_kind()) {
     default:
-      //if (!IsFunctionCallContext(cursor.get_kind()))
-      cursor.VisitChildren(&TemplateVisitor, data);
-    /* fallthrough */
-    // TODO Add other containers not covered by IsFunctionCallContext
-    case CXCursor_ClassTemplate:
       break;
     case CXCursor_DeclRefExpr: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
@@ -995,10 +990,10 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
               ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
+          ref_index->uses.push_back(ResolveSpelling(ref_cursor.cx_cursor));
         }
         UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
-      } else
-        cursor.VisitChildren(&TemplateVisitor, data);
+      }
       break;
     }
     case CXCursor_OverloadedDeclRef: {
@@ -1023,6 +1018,29 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       }
       break;
     }
+    case CXCursor_TemplateRef: {
+      ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
+      if (ref_cursor.get_kind() == CXCursor_TemplateTemplateParameter) {
+        IndexType* ref_index =
+            data->db->Resolve(data->db->ToTypeId(ref_cursor.get_usr()));
+        // TODO It seems difficult to get references to template template
+        // parameters.
+        // CXCursor_TemplateTemplateParameter can be visited by visiting
+        // CXCursor_TranslationUnit, but not (confirm this) by visiting
+        // {Class,Function}Template. Thus we need to initialize it here.
+        if (ref_index->def.short_name.empty()) {
+          ref_index->def.definition_spelling =
+              ResolveSpelling(ref_cursor.cx_cursor);
+          ref_index->def.definition_extent =
+              ResolveExtent(ref_cursor.cx_cursor);
+          ref_index->def.short_name = ref_cursor.get_spelling();
+          ref_index->def.detailed_name = ref_index->def.short_name;
+          ref_index->uses.push_back(ResolveSpelling(ref_cursor.cx_cursor));
+        }
+        UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
+      }
+      break;
+    }
     case CXCursor_TypeRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
@@ -1032,7 +1050,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // parameters.
         // CXCursor_TemplateTypeParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
-        // FunctionTemplate. Thus we need to initialize it here.
+        // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_index->def.short_name.empty()) {
           ref_index->def.definition_spelling =
               ResolveSpelling(ref_cursor.cx_cursor);
@@ -1040,15 +1058,14 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
               ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
+          ref_index->uses.push_back(ResolveSpelling(ref_cursor.cx_cursor));
         }
         UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
-      } else
-        cursor.VisitChildren(&TemplateVisitor, data);
-      // TODO Can CXCursor_TemplateTemplateParameter appear here?
+      }
       break;
     }
   }
-  return ClangCursor::VisitResult::Continue;
+  return ClangCursor::VisitResult::Recurse;
 }
 
 }  // namespace
