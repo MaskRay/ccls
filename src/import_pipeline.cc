@@ -454,8 +454,8 @@ void Indexer_Main(Config* config,
 
     // We didn't do any work, so wait for a notification.
     if (!did_parse && !did_create_update && !did_merge && !did_load_previous) {
-      waiter->Wait({&queue->index_request, &queue->on_id_mapped,
-                    &queue->load_previous_index, &queue->on_indexed});
+      waiter->Wait(&queue->on_indexed, &queue->index_request,
+                   &queue->on_id_mapped, &queue->load_previous_index);
     }
   }
 }

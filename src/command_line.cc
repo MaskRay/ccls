@@ -199,8 +199,7 @@ void RunQueryDbThread(const std::string& bin_name,
 
     if (!did_work) {
       auto* queue = QueueManager::instance();
-      waiter->Wait({&QueueManager::instance()->for_querydb, &queue->do_id_map,
-                    &queue->on_indexed});
+      waiter->Wait(&queue->on_indexed, &queue->for_querydb, &queue->do_id_map);
     }
   }
 }
@@ -319,7 +318,7 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
     while (true) {
       std::vector<Stdout_Request> messages = queue->for_stdout.DequeueAll();
       if (messages.empty()) {
-        waiter->Wait({&queue->for_stdout});
+        waiter->Wait(&queue->for_stdout);
         continue;
       }
 
