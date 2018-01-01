@@ -657,7 +657,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   IndexType* ref_type_def = db->Resolve(ref_type_id);
   // TODO: Should we even be visiting this if the file is not from the main
   // def? Try adding assert on |loc| later.
-  Range loc = ResolveSpelling(cursor.cx_cursor);
+  Range loc = cursor.get_spelling_range();
   UniqueAdd(ref_type_def->uses, loc);
 }
 
@@ -886,7 +886,7 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
       if (ref_usr == "")
         break;
 
-      Range loc = ResolveSpelling(cursor.cx_cursor);
+      Range loc = cursor.get_spelling_range();
       IndexVarId ref_id = db->ToVarId(ref_usr);
       IndexVar* ref_def = db->Resolve(ref_id);
       UniqueAdd(ref_def->uses, loc);
@@ -985,14 +985,14 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             data->db->Resolve(data->db->ToVarId(ref_cursor.get_usr()));
         if (ref_index->def.short_name.empty()) {
           ref_index->def.definition_spelling =
-              ResolveSpelling(ref_cursor.cx_cursor);
+              ref_cursor.get_spelling_range();
           ref_index->def.definition_extent =
               ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
-          ref_index->uses.push_back(ResolveSpelling(ref_cursor.cx_cursor));
+          ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
-        UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
+        UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
       break;
     }
@@ -1009,7 +1009,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             IndexFuncId called_id = data->db->ToFuncId(ref_usr);
             IndexFunc* called = data->db->Resolve(called_id);
             OnIndexReference_Function(data->db,
-                                      ResolveSpelling(cursor.cx_cursor),
+                                      cursor.get_spelling_range(),
                                       data->container, called_id, called,
                                       /*implicit=*/false);
             break;
@@ -1030,14 +1030,14 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_index->def.short_name.empty()) {
           ref_index->def.definition_spelling =
-              ResolveSpelling(ref_cursor.cx_cursor);
+              ref_cursor.get_spelling_range();
           ref_index->def.definition_extent =
               ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
-          ref_index->uses.push_back(ResolveSpelling(ref_cursor.cx_cursor));
+          ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
-        UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
+        UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
       break;
     }
@@ -1053,14 +1053,14 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_index->def.short_name.empty()) {
           ref_index->def.definition_spelling =
-              ResolveSpelling(ref_cursor.cx_cursor);
+              ref_cursor.get_spelling_range();
           ref_index->def.definition_extent =
               ResolveExtent(ref_cursor.cx_cursor);
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
-          ref_index->uses.push_back(ResolveSpelling(ref_cursor.cx_cursor));
+          ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
-        UniqueAdd(ref_index->uses, ResolveSpelling(cursor.cx_cursor));
+        UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
       break;
     }
@@ -1177,9 +1177,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Field:
     case CXIdxEntity_Variable:
     case CXIdxEntity_CXXStaticVariable: {
-      Range decl_loc_spelling = ResolveSpelling(decl->cursor);
-
       ClangCursor decl_cursor = decl->cursor;
+      Range decl_spell = decl_cursor.get_spelling_range();
 
       // Do not index implicit template instantiations.
       if (decl_cursor !=
@@ -1231,13 +1230,12 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       //}
 
       if (decl->isDefinition) {
-        var->def.definition_spelling = ResolveSpelling(decl->cursor);
+        var->def.definition_spelling = decl_spell;
         var->def.definition_extent = ResolveExtent(decl->cursor);
-        ;
       } else {
-        var->def.declaration = ResolveSpelling(decl->cursor);
+        var->def.declaration = decl_spell;
       }
-      UniqueAdd(var->uses, decl_loc_spelling);
+      UniqueAdd(var->uses, decl_spell);
 
       AddDeclInitializerUsages(db, decl_cursor);
       var = db->Resolve(var_id);
@@ -1288,10 +1286,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXInstanceMethod:
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXConversionFunction: {
-      Range decl_spelling = ResolveSpelling(decl->cursor);
+      ClangCursor decl_cursor = decl->cursor;
+      Range decl_spelling = decl_cursor.get_spelling_range();
       Range decl_extent = ResolveExtent(decl->cursor);
 
-      ClangCursor decl_cursor = decl->cursor;
       ClangCursor decl_cursor_resolved =
           decl_cursor.template_specialization_to_template_definition();
       bool is_template_specialization = decl_cursor != decl_cursor_resolved;
@@ -1326,7 +1324,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         for (ClangCursor arg : decl_cursor.get_arguments()) {
           switch (arg.get_kind()) {
             case CXCursor_ParmDecl: {
-              Range param_spelling = ResolveSpelling(arg.cx_cursor);
+              Range param_spelling = arg.get_spelling_range();
 
               // If the name is empty (which is common for parameters), clang
               // will report a range with length 1, which is not correct.
@@ -1425,8 +1423,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     case CXIdxEntity_Typedef:
     case CXIdxEntity_CXXTypeAlias: {
-      Range decl_loc_spelling = ResolveSpelling(decl->cursor);
-
       // Note we want to fetch the first TypeRef. Running
       // ResolveCursorType(decl->cursor) would return
       // the type of the typedef/using, not the type of the referenced type.
@@ -1439,7 +1435,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (alias_of)
         type->def.alias_of = alias_of.value();
 
-      Range spell = ResolveSpelling(decl->cursor);
+      ClangCursor decl_cursor = decl->cursor;
+      Range spell = decl_cursor.get_spelling_range();
       Range extent = ResolveExtent(decl->cursor);
       type->def.definition_spelling = spell;
       type->def.definition_extent = extent;
@@ -1448,7 +1445,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
 
-      ClangCursor decl_cursor = decl->cursor;
       type->def.comments = decl_cursor.get_comments();
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
@@ -1470,7 +1466,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         }
       }
 
-      UniqueAdd(type->uses, decl_loc_spelling);
+      UniqueAdd(type->uses, spell);
       break;
     }
 
@@ -1481,7 +1477,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
-      Range decl_loc_spelling = ResolveSpelling(decl->cursor);
+      ClangCursor decl_cursor = decl->cursor;
+      Range decl_loc_spelling = decl_cursor.get_spelling_range();
 
       IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
       IndexType* type = db->Resolve(type_id);
@@ -1504,12 +1501,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
-      ClangCursor decl_cursor = decl->cursor;
       type->def.comments = decl_cursor.get_comments();
       // }
 
       if (decl->isDefinition) {
-        type->def.definition_spelling = ResolveSpelling(decl->cursor);
+        type->def.definition_spelling = decl_loc_spelling;
         type->def.definition_extent = ResolveExtent(decl->cursor);
       }
       UniqueAdd(type->uses, decl_loc_spelling);
@@ -1599,7 +1595,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXStaticVariable:
     case CXIdxEntity_Variable:
     case CXIdxEntity_Field: {
-      Range loc_spelling = ResolveSpelling(ref->cursor);
+      ClangCursor ref_cursor(ref->cursor);
+      Range loc_spelling = ref_cursor.get_spelling_range();
 
       ClangCursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
@@ -1612,8 +1609,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // as lambdas cannot be split across files.
       if (var->def.short_name.empty()) {
         CXFile referenced_file;
-        Range spelling =
-            ResolveSpelling(referenced.cx_cursor, &referenced_file);
+        Range spelling = referenced.get_spelling_range(&referenced_file);
         if (file == referenced_file) {
           var->def.definition_spelling = spelling;
           var->def.definition_extent = ResolveExtent(referenced.cx_cursor);
@@ -1628,7 +1624,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           var->def.cls = VarClass::Local;
           ClangCursor decl_cursor = referenced;
           var->def.comments = decl_cursor.get_comments();
-          UniqueAdd(var->uses, ResolveSpelling(referenced.cx_cursor));
+          UniqueAdd(var->uses, referenced.get_spelling_range());
           AddDeclInitializerUsages(db, referenced.cx_cursor);
           // TODO Use proper semantic_container and lexical_container.
           AddDeclTypeUsages(db, referenced.cx_cursor, nullptr, nullptr);

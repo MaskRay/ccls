@@ -1,5 +1,7 @@
 #pragma once
 
+#include "position.h"
+
 #include <clang-c/Index.h>
 #include <optional.h>
 
@@ -45,6 +47,7 @@ class ClangCursor {
   ClangCursor get_declaration() const;
   ClangType get_type() const;
   std::string get_spelling() const;
+  Range get_spelling_range(CXFile* cx_file = nullptr) const;
   std::string get_display_name() const;
   std::string get_usr() const;
 
