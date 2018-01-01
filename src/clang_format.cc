@@ -5,11 +5,13 @@
 
 #include <loguru.hpp>
 
-using namespace clang::format;
-using namespace clang::tooling;
+using namespace clang;
+using clang::format::FormatStyle;
 
 namespace {
 
+// TODO Objective-C 'header/interface' files may use .h, we should get this from
+// project information.
 FormatStyle::LanguageKind getLanguageKindFromFilename(
     llvm::StringRef filename) {
   if (filename.endswith(".m") || filename.endswith(".mm")) {
@@ -20,16 +22,17 @@ FormatStyle::LanguageKind getLanguageKindFromFilename(
 
 }  // namespace
 
-std::vector<Replacement> ClangFormatDocument(WorkingFile* working_file,
-                                             int start,
-                                             int end,
-                                             lsFormattingOptions options) {
+std::vector<tooling::Replacement> ClangFormatDocument(
+    WorkingFile* working_file,
+    int start,
+    int end,
+    lsFormattingOptions options) {
   const auto language_kind =
       getLanguageKindFromFilename(working_file->filename);
   FormatStyle predefined_style;
   getPredefinedStyle("chromium", language_kind, &predefined_style);
   llvm::Expected<FormatStyle> style =
-      getStyle("file", working_file->filename, "chromium");
+      format::getStyle("file", working_file->filename, "chromium");
   if (!style) {
     // If, for some reason, we cannot get a format style, use Chromium's with
     // tab configuration provided by the client editor.
@@ -42,9 +45,10 @@ std::vector<Replacement> ClangFormatDocument(WorkingFile* working_file,
 
   auto format_result = reformat(
       *style, working_file->buffer_content,
-      llvm::ArrayRef<clang::tooling::Range>(clang::tooling::Range(start, end)),
+      llvm::ArrayRef<tooling::Range>(tooling::Range(start, end - start)),
       working_file->filename);
-  return std::vector<Replacement>(format_result.begin(), format_result.end());
+  return std::vector<tooling::Replacement>(format_result.begin(),
+                                           format_result.end());
 }
 
 #endif
