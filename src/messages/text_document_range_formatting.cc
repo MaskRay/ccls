@@ -7,15 +7,25 @@
 #include <loguru.hpp>
 
 namespace {
+
+struct lsTextDocumentRangeFormattingParams {
+  lsTextDocumentIdentifier textDocument;
+  lsRange range;
+  lsFormattingOptions options;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentRangeFormattingParams,
+                    textDocument,
+                    range,
+                    options);
+
 struct Ipc_TextDocumentRangeFormatting
     : public IpcMessage<Ipc_TextDocumentRangeFormatting> {
   const static IpcId kIpcId = IpcId::TextDocumentRangeFormatting;
 
   lsRequestId id;
-  lsRange range;
-  lsTextDocumentFormattingParams params;
+  lsTextDocumentRangeFormattingParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentRangeFormatting, id, range, params);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentRangeFormatting, id, params);
 REGISTER_IPC_MESSAGE(Ipc_TextDocumentRangeFormatting);
 
 struct Out_TextDocumentRangeFormatting
@@ -40,9 +50,9 @@ struct TextDocumentRangeFormattingHandler
     WorkingFile* working_file =
         working_files->GetFileByFilename(file->def->path);
 
-    int start = GetOffsetForPosition(request->range.start,
+    int start = GetOffsetForPosition(request->params.range.start,
                                      working_file->buffer_content),
-        end = GetOffsetForPosition(request->range.end,
+        end = GetOffsetForPosition(request->params.range.end,
                                    working_file->buffer_content);
     response.result = ConvertClangReplacementsIntoTextEdits(
         working_file->buffer_content,

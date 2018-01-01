@@ -6,6 +6,13 @@
 #include <loguru.hpp>
 
 namespace {
+
+struct lsTextDocumentFormattingParams {
+  lsTextDocumentIdentifier textDocument;
+  lsFormattingOptions options;
+};
+MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams, textDocument, options);
+
 struct Ipc_TextDocumentFormatting
     : public IpcMessage<Ipc_TextDocumentFormatting> {
   const static IpcId kIpcId = IpcId::TextDocumentFormatting;
