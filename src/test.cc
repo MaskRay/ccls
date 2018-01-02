@@ -152,7 +152,7 @@ void RunIndexTests(const std::string& filter_path) {
       flags.push_back("-xc++");
     if (!AnyStartsWith(flags, "-std"))
       flags.push_back("-std=c++11");
-    flags.push_back("-resource_dir=" + GetDefaultResourceDirectory());
+    flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
     if (had_extra_flags) {
       std::cout << "For " << path << std::endl;
       std::cout << "  flags: " << StringJoin(flags) << std::endl;

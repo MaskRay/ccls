@@ -2,9 +2,9 @@
 # encoding: utf-8
 
 try:
-    from urllib2 import urlopen # Python 2
+    from urllib2 import urlopen, URLError # Python 2
 except ImportError:
-    from urllib.request import urlopen # Python 3
+    from urllib.request import urlopen, URLError # Python 3
 
 import os.path
 import string
@@ -97,7 +97,13 @@ def download_and_extract(destdir, url, ext):
     print('   destination: {0}'.format(dest))
     print('   source:      {0}'.format(url))
     # TODO: verify checksum
-    response = urlopen(url)
+    for _ in range(5):
+      try:
+        response = urlopen(url, timeout=60)
+        break
+      except URLError:
+        print('Retry')
+        continue
     with open(dest, 'wb') as f:
       f.write(response.read())
   else:
