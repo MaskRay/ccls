@@ -48,8 +48,10 @@ QueueManager* QueueManager::instance() {
 }
 
 // static
-void QueueManager::CreateInstance(MultiQueueWaiter* waiter) {
-  instance_ = new QueueManager(waiter);
+void QueueManager::CreateInstance(MultiQueueWaiter* querydb_waiter,
+                                  MultiQueueWaiter* indexer_waiter,
+                                  MultiQueueWaiter* stdout_waiter) {
+  instance_ = new QueueManager(querydb_waiter, indexer_waiter, stdout_waiter);
 }
 
 // static
@@ -63,14 +65,17 @@ void QueueManager::WriteStdout(IpcId id, lsBaseOutMessage& response) {
   instance()->for_stdout.Enqueue(std::move(out));
 }
 
-QueueManager::QueueManager(MultiQueueWaiter* waiter)
-    : for_stdout(waiter),
-      for_querydb(waiter),
-      index_request(waiter),
-      do_id_map(waiter),
-      load_previous_index(waiter),
-      on_id_mapped(waiter),
-      on_indexed(waiter) {}
+QueueManager::QueueManager(MultiQueueWaiter* querydb_waiter,
+                           MultiQueueWaiter* indexer_waiter,
+                           MultiQueueWaiter* stdout_waiter)
+    : for_stdout(stdout_waiter),
+      for_querydb(querydb_waiter),
+      do_id_map(querydb_waiter),
+      index_request(indexer_waiter),
+      load_previous_index(indexer_waiter),
+      on_id_mapped(indexer_waiter),
+      // TODO on_indexed is shared by "querydb" and "indexer"
+      on_indexed(querydb_waiter, indexer_waiter) {}
 
 bool QueueManager::HasWork() {
   return !index_request.IsEmpty() || !do_id_map.IsEmpty() ||

@@ -71,25 +71,33 @@ struct Index_OnIndexed {
 
 struct QueueManager {
   static QueueManager* instance();
-  static void CreateInstance(MultiQueueWaiter* waiter);
+  static void CreateInstance(MultiQueueWaiter* querydb_waiter,
+                             MultiQueueWaiter* indexer_waiter,
+                             MultiQueueWaiter* stdout_waiter);
   static void WriteStdout(IpcId id, lsBaseOutMessage& response);
 
   bool HasWork();
 
   // Runs on stdout thread.
   ThreadedQueue<Stdout_Request> for_stdout;
+
   // Runs on querydb thread.
   ThreadedQueue<std::unique_ptr<BaseIpcMessage>> for_querydb;
+  ThreadedQueue<Index_DoIdMap> do_id_map;
 
   // Runs on indexer threads.
   ThreadedQueue<Index_Request> index_request;
-  ThreadedQueue<Index_DoIdMap> do_id_map;
   ThreadedQueue<Index_DoIdMap> load_previous_index;
   ThreadedQueue<Index_OnIdMapped> on_id_mapped;
+
+  // Shared by querydb and indexer.
+  // TODO split on_indexed
   ThreadedQueue<Index_OnIndexed> on_indexed;
 
  private:
-  explicit QueueManager(MultiQueueWaiter* waiter);
+  explicit QueueManager(MultiQueueWaiter* querydb_waiter,
+                        MultiQueueWaiter* indexer_waiter,
+                        MultiQueueWaiter* stdout_waiter);
 
   static QueueManager* instance_;
 };

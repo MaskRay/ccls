@@ -142,7 +142,8 @@ bool QueryDbMainLoop(Config* config,
 
 void RunQueryDbThread(const std::string& bin_name,
                       Config* config,
-                      MultiQueueWaiter* waiter) {
+                      MultiQueueWaiter* querydb_waiter,
+                      MultiQueueWaiter* indexer_waiter) {
   Project project;
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
@@ -169,7 +170,7 @@ void RunQueryDbThread(const std::string& bin_name,
   for (MessageHandler* handler : *MessageHandler::message_handlers) {
     handler->config = config;
     handler->db = &db;
-    handler->waiter = waiter;
+    handler->waiter = indexer_waiter;
     handler->project = &project;
     handler->file_consumer_shared = &file_consumer_shared;
     handler->import_manager = &import_manager;
@@ -189,7 +190,7 @@ void RunQueryDbThread(const std::string& bin_name,
   SetCurrentThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
-        config, &db, waiter, &project, &file_consumer_shared, &import_manager,
+        config, &db, querydb_waiter, &project, &file_consumer_shared, &import_manager,
         &timestamp_manager, &semantic_cache, &working_files, &clang_complete,
         &include_complete, global_code_complete_cache.get(),
         non_global_code_complete_cache.get(), signature_cache.get());
@@ -199,7 +200,8 @@ void RunQueryDbThread(const std::string& bin_name,
 
     if (!did_work) {
       auto* queue = QueueManager::instance();
-      waiter->Wait(&queue->on_indexed, &queue->for_querydb, &queue->do_id_map);
+      querydb_waiter->Wait(&queue->on_indexed, &queue->for_querydb,
+                           &queue->do_id_map);
     }
   }
 }
@@ -347,18 +349,20 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
 
 void LanguageServerMain(const std::string& bin_name,
                         Config* config,
-                        MultiQueueWaiter* waiter) {
+                        MultiQueueWaiter* querydb_waiter,
+                        MultiQueueWaiter* indexer_waiter,
+                        MultiQueueWaiter* stdout_waiter) {
   std::unordered_map<IpcId, Timer> request_times;
 
   LaunchStdinLoop(config, &request_times);
 
   // We run a dedicated thread for writing to stdout because there can be an
   // unknown number of delays when output information.
-  LaunchStdoutThread(&request_times, waiter);
+  LaunchStdoutThread(&request_times, stdout_waiter);
 
   // Start querydb which takes over this thread. The querydb will launch
   // indexer threads as needed.
-  RunQueryDbThread(bin_name, config, waiter);
+  RunQueryDbThread(bin_name, config, querydb_waiter, indexer_waiter);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,8 +392,9 @@ int main(int argc, char** argv) {
   loguru::g_flush_interval_ms = 0;
   loguru::init(argc, argv);
 
-  MultiQueueWaiter waiter;
-  QueueManager::CreateInstance(&waiter);
+  MultiQueueWaiter querydb_waiter, indexer_waiter, stdout_waiter;
+  QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
+                               &stdout_waiter);
 
   // bool loop = true;
   // while (loop)
@@ -438,7 +443,8 @@ int main(int argc, char** argv) {
     print_help = false;
     // std::cerr << "Running language server" << std::endl;
     auto config = MakeUnique<Config>();
-    LanguageServerMain(argv[0], config.get(), &waiter);
+    LanguageServerMain(argv[0], config.get(), &querydb_waiter, &indexer_waiter,
+                       &stdout_waiter);
     return 0;
   }
 
