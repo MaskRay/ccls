@@ -19,13 +19,6 @@ struct PlatformSharedMemory {
   std::string name;
 };
 
-std::unique_ptr<PlatformMutex> CreatePlatformMutex(const std::string& name);
-std::unique_ptr<PlatformScopedMutexLock> CreatePlatformScopedMutexLock(
-    PlatformMutex* mutex);
-std::unique_ptr<PlatformSharedMemory> CreatePlatformSharedMemory(
-    const std::string& name,
-    size_t size);
-
 void PlatformInit();
 
 std::string GetExecutablePath();
