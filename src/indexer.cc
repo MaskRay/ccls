@@ -330,6 +330,31 @@ bool IsFunctionCallContext(CXCursorKind kind) {
   return false;
 }
 
+void SetVarDetail(IndexVar::Def* def,
+                  const ClangCursor& cursor,
+                  const CXIdxContainerInfo* semanticContainer,
+                  IndexParam* param) {
+  NamespaceHelper* ns = &param->ns;
+  std::string type_name =
+      ToString(clang_getTypeSpelling(clang_getCursorType(cursor.cx_cursor)));
+  // clang may report "(lambda at foo.cc)" which end up being a very long
+  // string. Shorten it to just "lambda".
+  if (type_name.find("(lambda at") != std::string::npos)
+    type_name = "lambda";
+  def->comments = cursor.get_comments();
+
+  std::string qualified_name =
+        semanticContainer
+            ? ns->QualifiedName(semanticContainer, def->short_name)
+            : def->short_name;
+  if (semanticContainer && semanticContainer->cursor.kind == CXCursor_EnumDecl)
+    def->detailed_name = std::move(qualified_name);
+  else {
+    def->detailed_name = std::move(type_name);
+    ConcatTypeAndName(def->detailed_name, qualified_name);
+  }
+}
+
 void OnIndexReference_Function(IndexFile* db,
                                Range loc,
                                ClangCursor caller_cursor,
@@ -945,6 +970,7 @@ namespace {
 // TODO Move to another file and use clang C++ API
 struct TemplateVisitorData {
   IndexFile* db;
+  IndexParam* param;
   ClangCursor container;
 };
 
@@ -965,7 +991,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_extent =
               ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
-          ref_index->def.detailed_name = ref_index->def.short_name;
+          SetVarDetail(&ref_index->def, ref_cursor, nullptr, data->param);
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
@@ -1141,12 +1167,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   NamespaceHelper* ns = &param->ns;
 
   switch (decl->entityInfo->kind) {
-    case CXIdxEntity_CXXNamespace: {
-      ns->RegisterQualifiedName(decl->entityInfo->USR, decl->semanticContainer,
-                                decl->entityInfo->name);
-      break;
-    }
-
     case CXIdxEntity_ObjCProperty:
     case CXIdxEntity_ObjCIvar:
     case CXIdxEntity_EnumConstant:
@@ -1172,24 +1192,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // if (!decl->isRedeclaration) {
       var->def.short_name = decl->entityInfo->name;
 
-      std::string type_name =
-          ToString(clang_getTypeSpelling(clang_getCursorType(decl->cursor)));
-      // clang may report "(lambda at foo.cc)" which end up being a very long
-      // string. Shorten it to just "lambda".
-      if (type_name.find("(lambda at") != std::string::npos)
-        type_name = "lambda";
-      var->def.comments = decl_cursor.get_comments();
-
-      {
-        std::string qualified_name =
-            ns->QualifiedName(decl->semanticContainer, var->def.short_name);
-        if (decl->entityInfo->kind == CXIdxEntity_EnumConstant)
-          var->def.detailed_name = std::move(qualified_name);
-        else {
-          var->def.detailed_name = std::move(type_name);
-          ConcatTypeAndName(var->def.detailed_name, qualified_name);
-        }
-      }
+      SetVarDetail(&var->def, decl->cursor, decl->semanticContainer, param);
 
       bool is_system = clang_Location_isInSystemHeader(
           clang_indexLoc_getCXSourceLocation(decl->loc));
@@ -1467,9 +1470,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // name can be null in an anonymous struct (see
       // tests/types/anonymous_struct.cc).
       if (decl->entityInfo->name) {
-        ns->RegisterQualifiedName(decl->entityInfo->USR,
-                                  decl->semanticContainer,
-                                  decl->entityInfo->name);
         type->def.short_name = decl->entityInfo->name;
       } else {
         type->def.short_name = "<anonymous>";
@@ -1490,6 +1490,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         TemplateVisitorData data;
         data.db = db;
         data.container = decl_cursor;
+        data.param = param;
         decl_cursor.VisitChildren(&TemplateVisitor, &data);
       }
 
@@ -1596,12 +1597,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
           // and has more information, thus not easy to reuse the code.
           var->def.short_name = referenced.get_spelling();
-          var->def.detailed_name = ToString(
-              clang_getTypeSpelling(clang_getCursorType(referenced.cx_cursor)));
-          ConcatTypeAndName(var->def.detailed_name, var->def.short_name);
+          SetVarDetail(&var->def, referenced, nullptr, param);
           var->def.cls = VarClass::Local;
-          ClangCursor decl_cursor = referenced;
-          var->def.comments = decl_cursor.get_comments();
           UniqueAdd(var->uses, referenced.get_spelling_range());
           AddDeclInitializerUsages(db, referenced.cx_cursor);
           // TODO Use proper semantic_container and lexical_container.
