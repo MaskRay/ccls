@@ -32,7 +32,7 @@ os: linux
 cache:
   directories:
     - build/clang+llvm-5.0.1-x86_64-linux-gnu-ubuntu-14.04/
-    - build/clang+llvm-5.0.1-final-x86_64-apple-darwin/
+    - build/clang+llvm-5.0.1-x86_64-apple-darwin/
 
 matrix:
   fast_finish: true
@@ -193,7 +193,7 @@ before_script:
   - ${CXX} --version
 
 script:
-  - ./waf configure
+  - travis_retry ./waf configure
   - ./waf build
   - ./build/release/bin/cquery --log-all-to-stderr --test-unit
   - ./build/release/bin/cquery --log-all-to-stderr --test-index
