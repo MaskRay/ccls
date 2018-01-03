@@ -72,10 +72,6 @@ ClangType ClangType::get_return_type() const {
 
 std::vector<ClangType> ClangType::get_arguments() const {
   int size = clang_getNumArgTypes(cx_type);
-  assert(size >= 0);
-  if (size < 0)
-    return std::vector<ClangType>();
-
   std::vector<ClangType> types(size);
   for (int i = 0; i < size; ++i)
     types.emplace_back(clang_getArgType(cx_type, i));
