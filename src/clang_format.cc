@@ -44,7 +44,7 @@ std::vector<tooling::Replacement> ClangFormatDocument(
   }
 
   auto format_result = reformat(
-      *style, working_file->buffer_content,
+      style ? *style : predefined_style, working_file->buffer_content,
       llvm::ArrayRef<tooling::Range>(tooling::Range(start, end - start)),
       working_file->filename);
   return std::vector<tooling::Replacement>(format_result.begin(),
