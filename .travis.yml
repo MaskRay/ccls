@@ -21,12 +21,10 @@ addons:
 compiler: clang
 os: linux
 
-#cache:
-#  directories:
-#    build/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04/
-#    build/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04.tar.xz
-#    build/clang+llvm-4.0.0-x86_64-apple-darwin/
-#    build/clang+llvm-4.0.0-x86_64-apple-darwin.tar.xz
+cache:
+  directories:
+    - build/clang+llvm-5.0.1-x86_64-linux-gnu-ubuntu-14.04/
+    - build/clang+llvm-5.0.1-final-x86_64-apple-darwin/
 
 matrix:
   fast_finish: true
