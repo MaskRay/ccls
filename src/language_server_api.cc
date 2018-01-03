@@ -243,35 +243,30 @@ std::string lsDocumentUri::GetPath() const {
   // c:/Program%20Files%20%28x86%29/Microsoft%20Visual%20Studio%2014.0/VC/include/vcruntime.
   // C:/Program Files (x86)
 
-  // TODO: make this not a hack.
-  std::string result = raw_uri;
-
-  result = ReplaceAll(result, "%20", " ");
-  result = ReplaceAll(result, "%28", "(");
-  result = ReplaceAll(result, "%29", ")");
-
-  size_t index = result.find("%3A");
-  if (index != std::string::npos) {
-    result.replace(result.begin() + index, result.begin() + index + 3, ":");
-  }
-
-  index = result.find("file://");
-  if (index != std::string::npos) {
-// TODO: proper fix
-#if defined(_WIN32)
-    result.replace(result.begin() + index, result.begin() + index + 8, "");
+  std::string ret;
+  if (raw_uri.compare(0, 8, "file:///"))
+    return ret;
+#ifdef _WIN32
+  size_t i = 8;
 #else
-    result.replace(result.begin() + index, result.begin() + index + 7, "");
+  size_t i = 7;
 #endif
+  auto from_hex = [](unsigned char c) {
+    return c - '0' < 10 ? c - '0' : (c | 32) - 'a' + 10;
+  };
+  for (; i < raw_uri.size(); i++) {
+    if (i + 3 <= raw_uri.size() && raw_uri[i] == '%') {
+      ret.push_back(from_hex(raw_uri[i + 1]) * 16 + from_hex(raw_uri[i + 2]));
+      i += 2;
+    } else
+      ret.push_back(raw_uri[i] == '\\' ? '/' : raw_uri[i]);
   }
-
-  std::replace(result.begin(), result.end(), '\\', '/');
 
 #if defined(_WIN32)
 // std::transform(result.begin(), result.end(), result.begin(), ::tolower);
 #endif
 
-  return result;
+  return ret;
 }
 
 lsPosition::lsPosition() {}
