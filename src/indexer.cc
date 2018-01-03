@@ -330,28 +330,57 @@ bool IsFunctionCallContext(CXCursorKind kind) {
   return false;
 }
 
-void SetVarDetail(IndexVar::Def* def,
+// Finds the cursor associated with the declaration type of |cursor|. This
+// strips
+// qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
+// (ie, Foo<A,B> => Foo<*,*>).
+optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
+                                               ClangCursor cursor) {
+  ClangCursor declaration = cursor.get_declaration();
+  declaration = declaration.template_specialization_to_template_definition();
+  std::string usr = declaration.get_usr();
+  if (usr != "")
+    return db->ToTypeId(usr);
+  return nullopt;
+}
+
+void SetVarDetail(IndexVar* var,
                   const ClangCursor& cursor,
                   const CXIdxContainerInfo* semanticContainer,
+                  bool is_first_seen,
+                  IndexFile* db,
                   IndexParam* param) {
-  NamespaceHelper* ns = &param->ns;
+  IndexVar::Def& def = var->def;
   std::string type_name =
       ToString(clang_getTypeSpelling(clang_getCursorType(cursor.cx_cursor)));
   // clang may report "(lambda at foo.cc)" which end up being a very long
   // string. Shorten it to just "lambda".
   if (type_name.find("(lambda at") != std::string::npos)
     type_name = "lambda";
-  def->comments = cursor.get_comments();
+  def.comments = cursor.get_comments();
 
   std::string qualified_name =
         semanticContainer
-            ? ns->QualifiedName(semanticContainer, def->short_name)
-            : def->short_name;
+            ? param->ns.QualifiedName(semanticContainer, def.short_name)
+            : def.short_name;
   if (semanticContainer && semanticContainer->cursor.kind == CXCursor_EnumDecl)
-    def->detailed_name = std::move(qualified_name);
+    def.detailed_name = std::move(qualified_name);
   else {
-    def->detailed_name = std::move(type_name);
-    ConcatTypeAndName(def->detailed_name, qualified_name);
+    def.detailed_name = std::move(type_name);
+    ConcatTypeAndName(def.detailed_name, qualified_name);
+  }
+
+  if (is_first_seen) {
+    optional<IndexTypeId> var_type = ResolveToDeclarationType(db, cursor);
+    if (var_type) {
+      // Don't treat enum definition variables as instantiations.
+      bool is_enum_member = semanticContainer &&
+                            semanticContainer->cursor.kind == CXCursor_EnumDecl;
+      if (!is_enum_member)
+        db->Resolve(var_type.value())->instances.push_back(var->id);
+
+      def.variable_type = *var_type;
+    }
   }
 }
 
@@ -699,20 +728,6 @@ ClangCursor::VisitResult VisitDeclForTypeUsageVisitor(
   return ClangCursor::VisitResult::Continue;
 }
 
-// Finds the cursor associated with the declaration type of |cursor|. This
-// strips
-// qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
-// (ie, Foo<A,B> => Foo<*,*>).
-optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
-                                               ClangCursor cursor) {
-  ClangCursor declaration = cursor.get_declaration();
-  declaration = declaration.template_specialization_to_template_definition();
-  std::string usr = declaration.get_usr();
-  if (usr != "")
-    return db->ToTypeId(usr);
-  return nullopt;
-}
-
 // Add usages to any seen TypeRef or TemplateRef under the given |decl_cursor|.
 // This returns the first seen TypeRef or TemplateRef value, which can be
 // useful if trying to figure out ie, what a using statement refers to. If
@@ -991,7 +1006,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_extent =
               ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
-          SetVarDetail(&ref_index->def, ref_cursor, nullptr, data->param);
+          SetVarDetail(ref_index, ref_cursor, nullptr, true, data->db, data->param);
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
@@ -1192,7 +1207,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // if (!decl->isRedeclaration) {
       var->def.short_name = decl->entityInfo->name;
 
-      SetVarDetail(&var->def, decl->cursor, decl->semanticContainer, param);
+      SetVarDetail(var, decl->cursor, decl->semanticContainer,
+                   !decl->isRedeclaration, db, param);
 
       bool is_system = clang_Location_isInSystemHeader(
           clang_indexLoc_getCXSourceLocation(decl->loc));
@@ -1230,18 +1246,18 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // We don't need to assign declaring type multiple times if this variable
       // has already been seen.
       if (!decl->isRedeclaration) {
-        optional<IndexTypeId> var_type =
-            ResolveToDeclarationType(db, decl_cursor);
-        if (var_type.has_value()) {
-          // Don't treat enum definition variables as instantiations.
-          bool is_enum_member =
-              decl->semanticContainer &&
-              decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
-          if (!is_enum_member)
-            db->Resolve(var_type.value())->instances.push_back(var_id);
+        //optional<IndexTypeId> var_type =
+        //    ResolveToDeclarationType(db, decl_cursor);
+        //if (var_type.has_value()) {
+        //  // Don't treat enum definition variables as instantiations.
+        //  bool is_enum_member =
+        //      decl->semanticContainer &&
+        //      decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
+        //  if (!is_enum_member)
+        //    db->Resolve(var_type.value())->instances.push_back(var_id);
 
-          var->def.variable_type = var_type.value();
-        }
+        //  var->def.variable_type = var_type.value();
+        //}
       }
 
       // TODO: Refactor handlers so more things are under 'if
@@ -1597,13 +1613,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
           // and has more information, thus not easy to reuse the code.
           var->def.short_name = referenced.get_spelling();
-          SetVarDetail(&var->def, referenced, nullptr, param);
+          SetVarDetail(var, referenced, nullptr, true, db, param);
           var->def.cls = VarClass::Local;
           UniqueAdd(var->uses, referenced.get_spelling_range());
-          AddDeclInitializerUsages(db, referenced.cx_cursor);
-          // TODO Use proper semantic_container and lexical_container.
-          AddDeclTypeUsages(db, referenced.cx_cursor, nullptr, nullptr);
-          // TODO Other logic in OnIndexDeclaration may need to be adapted.
         }
       }
       UniqueAdd(var->uses, loc_spelling);
