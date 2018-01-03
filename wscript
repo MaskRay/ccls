@@ -124,6 +124,11 @@ def configure(ctx):
 
   ctx.load('compiler_cxx')
   cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
+  if ctx.options.use_clang_cxx:
+    # include/clang/Format/Format.h error: multi-line comment
+    cxxflags.append('-Wno-comment')
+    # otherwise use of some Clang C++ functions may report `undefined references to typeinfo`
+    cxxflags.append('-fno-rtti')
   ldflags = []
   # /Zi: -g, /WX: -Werror, /W3: roughly -Wall, there is no -std=c++11 equivalent in MSVC.
   # /wd4722: ignores warning C4722 (destructor never returns) in loguru
@@ -344,10 +349,11 @@ def build(bld):
         (['libclang'] if bld.env['use_clang_cxx'] else []),
       defines=[
           #'_GLIBCXX_USE_CXX11_ABI=0',  'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04' is pre CXX11_ABI
-               #'LOGURU_STACKTRACES=0',
         'LOGURU_WITH_STREAMS=1',
         'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'] +
-        (['USE_CLANG_CXX=1'] if bld.env['use_clang_cxx'] else []),
+        (['USE_CLANG_CXX=1', 'LOGURU_RTTI=0']
+            if bld.env['use_clang_cxx']
+            else []),
       lib=lib,
       rpath=rpath,
       target='bin/cquery')
