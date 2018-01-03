@@ -36,11 +36,39 @@ struct Out_TextDocumentComplete
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
+bool CompareLsCompletionItem(const lsCompletionItem &item1,
+                             const lsCompletionItem &item2)
+{
+  if (item1.pos_ != item2.pos_)
+    return item1.pos_ < item2.pos_;
+  if (item1.priority_ != item2.priority_)
+    return item1.priority_ < item2.priority_;
+  if (item1.label.length() != item2.label.length())
+    return item1.label.length() < item2.label.length();
+  return item1.label < item2.label;
+}
+
+template <typename T>
+char* tofixedbase64(T input, char* out) {
+  const char* digits =
+      "./0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  int len = (sizeof(T) * 8 - 1) / 6 + 1;
+  for (int i = len - 1; i >= 0; i--) {
+    out[i] = digits[input % 64];
+    input /= 64;
+  }
+  out[len] = '\0';
+  return out;
+}
+
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
-void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
-                              const std::string& complete_text) {
+void SortAndFilterCompletionResponse(
+    Out_TextDocumentComplete* complete_response,
+    const std::string& complete_text) {
 // Used to inject more completions.
 #if false
   const size_t kNumIterations = 250;
@@ -57,32 +85,40 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
   auto& items = complete_response->result.items;
 
+  // Find the appearance of |complete_text| in all candidates.
+  bool found = false;
+  for (auto &item : items) {
+    item.pos_ = item.label.find(complete_text);
+    if (item.pos_ == 0 && item.label.length() == complete_text.length())
+      found = true;
+  }
+
+  // If found, remove all candidates that do not start with it.
+  if (!complete_text.empty() && found) {
+    auto filter = [](const lsCompletionItem& item) {
+      return item.pos_ != 0;
+    };
+    items.erase(std::remove_if(items.begin(), items.end(), filter),
+                items.end());
+  }
+
   // If the text doesn't start with underscore,
   // remove all candidates that start with underscore.
   if (!complete_text.empty() && complete_text[0] != '_') {
-    items.erase(std::remove_if(items.begin(), items.end(),
-                               [](const lsCompletionItem& item) {
-                                 return item.label[0] == '_';
-                               }),
+    auto filter = [](const lsCompletionItem& item) {
+      return item.label[0] == '_';
+    };
+    items.erase(std::remove_if(items.begin(), items.end(), filter),
                 items.end());
   }
 
-  // find the exact text
-  const bool found = !complete_text.empty() &&
-                     std::any_of(items.begin(), items.end(),
-                                 [&](const lsCompletionItem& item) {
-                                   return item.pos_ == 0 &&
-                                       item.label.length() == complete_text.length();
-                                 });
-  // If found, remove all candidates that do not start with it.
-  if (found) {
-    items.erase(std::remove_if(items.begin(), items.end(),
-                               [&](const lsCompletionItem& item) {
-                                 return item.pos_ != 0;
-                               }),
-                items.end());
-  }
+  // Order all items and set |sortText|.
+  std::sort(items.begin(), items.end(), CompareLsCompletionItem);
+  char buf[16];
+  for (size_t i = 0; i < items.size(); ++i)
+    items[i].sortText = tofixedbase64(i, buf);
 
+  // If there are too many results...
   const size_t kMaxResultSize = 100u;
   if (items.size() > kMaxResultSize) {
     if (complete_text.empty()) {
@@ -96,7 +132,7 @@ void FilterCompletionResponse(Out_TextDocumentComplete* complete_response,
 
       // Find literal matches first.
       for (const auto& item : items) {
-        if (item.label.find(complete_text) != std::string::npos) {
+        if (item.pos_ != std::string::npos) {
           // Don't insert the same completion entry.
           if (!inserted.insert(item.InsertedContent()).second)
             continue;
@@ -178,7 +214,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
         }
       }
 
-      FilterCompletionResponse(&out, buffer_line);
+      SortAndFilterCompletionResponse(&out, buffer_line);
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
       bool is_global_completion = false;
@@ -198,7 +234,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
             out.result.items = results;
 
             // Emit completion results.
-            FilterCompletionResponse(&out, existing_completion);
+            SortAndFilterCompletionResponse(&out, existing_completion);
             QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
 
             // Cache completion results.
@@ -243,7 +279,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
           callback(global_code_complete_cache->cached_results_,
                    true /*is_cached_result*/);
         });
-        clang_complete->CodeComplete(request->params, existing_completion, freshen_global);
+        clang_complete->CodeComplete(request->params, freshen_global);
       } else if (non_global_code_complete_cache->IsCacheValid(
                      request->params)) {
         non_global_code_complete_cache->WithLock([&]() {
@@ -251,7 +287,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
                    true /*is_cached_result*/);
         });
       } else {
-        clang_complete->CodeComplete(request->params, existing_completion, callback);
+        clang_complete->CodeComplete(request->params, callback);
       }
     }
   }
