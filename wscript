@@ -93,7 +93,7 @@ def download_and_extract(destdir, url, ext):
   dest = destdir + ext
 
   # Extract the tarball.
-  if not os.path.isdir(destdir):
+  if not os.path.isdir(os.path.join(destdir, 'include')):
     # Download and save the compressed tarball as |compressed_file_name|.
     if not os.path.isfile(dest):
       print('Downloading tarball')
