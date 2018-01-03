@@ -1594,7 +1594,25 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_Variable:
     case CXIdxEntity_Field: {
       ClangCursor ref_cursor(ref->cursor);
-      Range loc_spelling = ref_cursor.get_spelling_range();
+      // TODO https://github.com/jacobdufault/cquery/issues/174 Members of
+      // non-concrete template types do not have useful spelling ranges
+      // (likely unexposed).
+      //
+      // C<int> f; f.x // .x produces a MemberRefExpr which has a spelling range
+      // of `x`.
+      //
+      // C<T> e; e.x // .x produces a MemberRefExpr which has a spelling range
+      // of `e` (weird).
+      //
+      // To make `e.x` (MemberRefExpr with empty spelling name) able to find
+      // definition, We use cursor extent (larger than spelling range) `e.x`. It
+      // would be better if we could restrict the ranges to `.x` or just `x`.
+      // Nevertheless, larger ranges are less specific, and should do no harm
+      // because they will be overriden by more specific variable references `e`.
+      Range loc = ref->cursor.kind == CXCursor_MemberRefExpr &&
+                          ref_cursor.get_spelling().empty()
+                      ? ref_cursor.get_extent()
+                      : ref_cursor.get_spelling_range();
 
       ClangCursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
@@ -1621,7 +1639,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           UniqueAdd(var->uses, referenced.get_spelling_range());
         }
       }
-      UniqueAdd(var->uses, loc_spelling);
+      UniqueAdd(var->uses, loc);
       break;
     }
 
@@ -1667,7 +1685,11 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       // Extents have larger ranges and thus less specific, and will be overriden
       // by other functions if exist.
-      if (is_implicit)
+      //
+      // Members of non-concrete template types do not have useful spelling ranges.
+      // See the comment above for the CXIdxEntity_Field case.
+      if (is_implicit || (ref->cursor.kind == CXCursor_MemberRefExpr &&
+                          ref_cursor.get_spelling().empty()))
         loc = ref_cursor.get_extent();
 
       OnIndexReference_Function(db, loc, ref->container->cursor,
