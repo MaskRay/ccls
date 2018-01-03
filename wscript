@@ -91,27 +91,28 @@ def options(opt):
 
 def download_and_extract(destdir, url, ext):
   dest = destdir + ext
-  # Download and save the compressed tarball as |compressed_file_name|.
-  if not os.path.isfile(dest):
-    print('Downloading tarball')
-    print('   destination: {0}'.format(dest))
-    print('   source:      {0}'.format(url))
-    # TODO: verify checksum
-    for _ in range(5):
-      try:
-        response = urlopen(url, timeout=60)
-        break
-      except URLError:
-        print('Retry')
-        continue
-    with open(dest, 'wb') as f:
-      f.write(response.read())
-  else:
-    print('Found tarball at {0}'.format(dest))
 
   # Extract the tarball.
   if not os.path.isdir(destdir):
-    print('Extracting')
+    # Download and save the compressed tarball as |compressed_file_name|.
+    if not os.path.isfile(dest):
+      print('Downloading tarball')
+      print('   destination: {0}'.format(dest))
+      print('   source:      {0}'.format(url))
+      # TODO: verify checksum
+      for _ in range(5):
+        try:
+          response = urlopen(url, timeout=60)
+          break
+        except URLError:
+          print('Retry')
+          continue
+      with open(dest, 'wb') as f:
+        f.write(response.read())
+    else:
+      print('Found tarball at {0}'.format(dest))
+
+    print('Extracting {0}'.format(dest))
     # TODO: make portable.
     if ext == '.exe':
       subprocess.call(['7z', 'x', '-o{0}'.format(destdir), '-xr!$PLUGINSDIR', dest])
