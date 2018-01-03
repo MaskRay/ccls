@@ -1182,6 +1182,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   NamespaceHelper* ns = &param->ns;
 
   switch (decl->entityInfo->kind) {
+    case CXIdxEntity_CXXNamespace:
+      break;
+
     case CXIdxEntity_ObjCProperty:
     case CXIdxEntity_ObjCIvar:
     case CXIdxEntity_EnumConstant:
