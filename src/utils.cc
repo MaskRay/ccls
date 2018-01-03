@@ -14,6 +14,7 @@
 #include <iostream>
 #include <locale>
 #include <sstream>
+#include <string>
 #include <unordered_map>
 
 #if !defined(__APPLE__)
@@ -490,6 +491,13 @@ std::string GetDefaultResourceDirectory() {
 
   std::string resource_directory =
       std::string(ENSURE_STRING_MACRO_ARGUMENT(DEFAULT_RESOURCE_DIRECTORY));
+  // Remove double quoted resource dir if it was passed with quotes
+  // by the build system.
+  if (resource_directory.size() >= 2 && resource_directory[0] == '"' &&
+      resource_directory[resource_directory.size() - 1] == '"') {
+    resource_directory =
+        resource_directory.substr(1, resource_directory.size() - 2);
+  }
   if (resource_directory.find("..") != std::string::npos) {
     std::string executable_path = GetExecutablePath();
     size_t pos = executable_path.find_last_of('/');
@@ -499,7 +507,11 @@ std::string GetDefaultResourceDirectory() {
     result = resource_directory;
   }
 
-  return NormalizePath(result);
+  result = NormalizePath(result);
+#if defined(_WIN32)
+  std::replace(result.begin(), result.end(), '/', '\\');
+#endif
+  return result;
 }
 
 std::string UpdateToRnNewlines(std::string output) {

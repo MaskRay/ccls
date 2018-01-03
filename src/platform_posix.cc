@@ -139,8 +139,9 @@ std::string GetExecutablePath() {
   return std::string(path);
 #else
   char buffer[PATH_MAX] = {0};
-  readlink("/proc/self/exe", buffer, PATH_MAX);
-  return std::string(buffer);
+  if(-1 == readlink("/proc/self/exe", buffer, PATH_MAX))
+    return "";
+  return buffer;
 #endif
 }
 
