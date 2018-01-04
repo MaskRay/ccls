@@ -99,8 +99,6 @@ void UpdateTestExpectation(const std::string& filename,
                            const std::string& expectation,
                            const std::string& actual);
 
-void Fail(const std::string& message);
-
 void WriteToFile(const std::string& filename, const std::string& content);
 
 // note: this implementation does not disable this overload for array types

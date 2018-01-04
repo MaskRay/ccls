@@ -456,15 +456,14 @@ void UpdateTestExpectation(const std::string& filename,
   of.close();
 }
 
-void Fail(const std::string& message) {
-  LOG_S(FATAL) << "Fatal error: " << message;
-  std::exit(1);
-}
-
 void WriteToFile(const std::string& filename, const std::string& content) {
   std::ofstream file(filename,
                      std::ios::out | std::ios::trunc | std::ios::binary);
-  assert(file.good());
+  if (!file.good()) {
+    LOG_S(ERROR) << "Cannot write to " << filename;
+    return;
+  }
+
   file << content;
 }
 
