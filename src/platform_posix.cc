@@ -259,7 +259,7 @@ std::vector<std::string> GetPlatformClangArguments() {
 }
 
 void FreeUnusedMemory() {
-#if defined(__linux__)
+#if defined(__GLIBC__)
   malloc_trim(0);
 #endif
 }
