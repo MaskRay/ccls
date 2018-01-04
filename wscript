@@ -73,6 +73,21 @@ if sys.version_info < (3, 0):
       return real_symlink(source, link_name)
   os.symlink = symlink
 
+# TODO https://reviews.llvm.org/D41575
+# There is a null pointer dereference issue in tools/libclang/CXIndexDataConsumer.cpp handleReference.
+def patch_byte_in_libclang(filename, offset, old, new):
+  with open(filename, 'rb+') as f:
+    f.seek(offset)
+    t = f.read(1)
+    if t == old:
+      f.seek(offset)
+      f.write(new)
+      print('Applied byte patch hack at 0x{:x}'.format(offset))
+      print('This is a makeshift for indexing default arguments of template template parameters, which otherwise would crash libclang')
+      print('See https://github.com/jacobdufault/cquery/issues/219 for details')
+    else:
+      assert t == new
+
 def options(opt):
   opt.load('compiler_cxx')
   grp = opt.add_option_group('Configuration options related to use of clang from the system (not recommended)')
@@ -116,6 +131,13 @@ def download_and_extract(destdir, url, ext):
       # For 5.0.1 Mac OS X, the directory and the tarball have different name
       if destdir == 'build/clang+llvm-5.0.1-x86_64-apple-darwin':
         os.rename(destdir.replace('5.0.1', '5.0.1-final'), destdir)
+      # TODO Byte patch hack for other prebuilt binaries
+      elif destdir == 'build/clang+llvm-4.0.0-x86_64-linux-gnu-ubuntu-14.04':
+        patch_byte_in_libclang(os.path.join(destdir, 'lib/libclang.so.4.0'),
+            0x4172b5, b'\x48', b'\x4d')
+      elif destdir == 'build/clang+llvm-5.0.1-x86_64-linux-gnu-ubuntu-14.04':
+        patch_byte_in_libclang(os.path.join(destdir, 'lib/libclang.so.5.0'),
+            0x47aece, b'\x48', b'\x4d')
   else:
     print('Found extracted at {0}'.format(destdir))
 
