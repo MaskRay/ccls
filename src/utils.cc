@@ -462,7 +462,9 @@ void Fail(const std::string& message) {
 }
 
 void WriteToFile(const std::string& filename, const std::string& content) {
-  std::ofstream file(filename);
+  std::ofstream file(filename,
+                     std::ios::out | std::ios::trunc | std::ios::binary);
+  assert(file.good());
   file << content;
 }
 

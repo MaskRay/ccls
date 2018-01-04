@@ -136,9 +136,5 @@ void WriteToCache(Config* config, IndexFile& file) {
   }
 
   std::string indexed_content = Serialize(file);
-  std::ofstream cache;
-  cache.open(cache_basename + ".json");
-  assert(cache.good());
-  cache << indexed_content;
-  cache.close();
+  WriteToFile(cache_basename + ".json", indexed_content);
 }
