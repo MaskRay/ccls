@@ -2,4 +2,4 @@
 
 #include <string>
 
-void RunIndexTests(const std::string& filter_path);
+bool RunIndexTests(const std::string& filter_path, bool enable_update);

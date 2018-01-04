@@ -195,8 +195,8 @@ before_script:
 script:
   - travis_retry ./waf configure
   - ./waf build
-  - ./build/release/bin/cquery --log-all-to-stderr --test-unit
-  - ./build/release/bin/cquery --log-all-to-stderr --test-index
+  - ./build/release/bin/cquery --ci --log-all-to-stderr --test-unit
+  - ./build/release/bin/cquery --ci --log-all-to-stderr --test-index
 
 notifications:
   email: false

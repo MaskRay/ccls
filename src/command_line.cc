@@ -430,7 +430,8 @@ int main(int argc, char** argv) {
 
   if (HasOption(options, "--test-index")) {
     print_help = false;
-    RunIndexTests(options["--test-index"]);
+    if (!RunIndexTests(options["--test-index"], !HasOption(options, "--ci")))
+      return -1;
   }
 
   if (HasOption(options, "--enable-comments")) {
@@ -483,6 +484,9 @@ Command line options:
                 If true, cquery will wait for an '[Enter]' before exiting.
                 Useful on windows.
   --help        Print this help information.
+  --ci          Prevents tests from prompting the user for input. Used for
+                continuous integration so it can fail faster instead of timing
+                out.
 
 Configuration:
   When opening up a directory, cquery will look for a compile_commands.json file

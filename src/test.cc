@@ -108,7 +108,7 @@ IndexFile* FindDbForPathEnding(
   return nullptr;
 }
 
-void RunIndexTests(const std::string& filter_path) {
+bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   SetTestOutputMode();
 
   // Index tests change based on the version of clang used.
@@ -121,6 +121,7 @@ void RunIndexTests(const std::string& filter_path) {
     exit(1);
   }
 
+  bool success = true;
   bool update_all = false;
   ClangIndex index;
 
@@ -226,28 +227,33 @@ void RunIndexTests(const std::string& filter_path) {
       if (actual == expected) {
         // std::cout << "[PASSED] " << path << std::endl;
       } else {
+        success = false;
         DiffDocuments(path, expected_path, expected, actual);
         std::cout << std::endl;
         std::cout << std::endl;
-        std::cout
+        if (enable_update) {
+          std::cout
             << "[Enter to continue - type u to update test, a to update all]";
-        char c = 'u';
-        if (!update_all) {
-          c = (char)std::cin.get();
-          std::cin.get();
-        }
+          char c = 'u';
+          if (!update_all) {
+            c = (char)std::cin.get();
+            std::cin.get();
+          }
 
-        if (c == 'a')
-          update_all = true;
+          if (c == 'a')
+            update_all = true;
 
-        if (update_all || c == 'u') {
-          // Note: we use |entry.second| instead of |expected_output| because
-          // |expected_output| has had text replacements applied.
-          UpdateTestExpectation(path, entry.second, ToString(actual) + "\n");
+          if (update_all || c == 'u') {
+            // Note: we use |entry.second| instead of |expected_output| because
+            // |expected_output| has had text replacements applied.
+            UpdateTestExpectation(path, entry.second, ToString(actual) + "\n");
+          }
         }
       }
     }
   }
+
+  return success;
 }
 
 // TODO: ctor/dtor, copy ctor
