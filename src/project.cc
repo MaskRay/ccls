@@ -137,7 +137,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     }
     if (!AnyStartsWith(entry.args, "-std=")) {
       if (*source_file_type == "c")
-        result.args.push_back("-std=c11");
+        result.args.push_back("-std=gnu11");
       else if (*source_file_type == "c++")
         result.args.push_back("-std=c++11");
     }
@@ -516,7 +516,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-working-directory", "/home/user", "-xc", "-std=c11", "-O0", "-resource-dir=/w/resource_dir/",
+        {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
