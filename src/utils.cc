@@ -508,11 +508,7 @@ std::string GetDefaultResourceDirectory() {
     result = resource_directory;
   }
 
-  result = NormalizePath(result);
-#if defined(_WIN32)
-  std::replace(result.begin(), result.end(), '/', '\\');
-#endif
-  return result;
+  return NormalizePath(result);
 }
 
 std::string UpdateToRnNewlines(std::string output) {
