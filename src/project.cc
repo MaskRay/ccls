@@ -109,17 +109,18 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // as there may be non-compiler related commands beforehand,
   // ie, compiler schedular such as goma. This allows correct parsing for
   // command lines like "goma clang -c foo".
+  std::string::size_type dot;
   while (i < entry.args.size() && entry.args[i][0] != '-' &&
          // Do not skip over main source filename
          NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
          // There may be other filenames (e.g. more than one source filenames)
-         // preceding main source filename.
-         // We use a heuristic here. `.` may occur in both command names and
-         // source filenames. If `.` occurs in the last 4 bytes of
-         // entry.args[i], e.g. .c .cpp, We take it as a source filename. Others
-         // (like ./a/b/goma) are seen as commands.
-         (entry.args[i].rfind('.') == std::string::npos ||
-          entry.args[i].rfind('.') + 4 < entry.args[i].size()))
+         // preceding main source filename. We use a heuristic here. `.` may
+         // occur in both command names and source filenames. If `.` occurs in
+         // the last 4 bytes of entry.args[i] and not followed by a digit, e.g.
+         // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
+         // clang-4.0) are seen as commands.
+         ((dot = entry.args[i].rfind('.')) == std::string::npos ||
+          dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot+1])))
     ++i;
   // Include the compiler in the args.
   if (i > 0)
