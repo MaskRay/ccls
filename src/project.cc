@@ -47,25 +47,30 @@ struct ProjectConfig {
 
 // TODO: See
 // https://github.com/Valloric/ycmd/blob/master/ycmd/completers/cpp/flags.py.
-static std::vector<std::string> kBlacklistMulti = {
+std::vector<std::string> kBlacklistMulti = {
     "-MF", "-MT", "-MQ", "-o", "--serialize-diagnostics", "-Xclang"};
 
 // Blacklisted flags which are always removed from the command line.
-static std::vector<std::string> kBlacklist = {
+std::vector<std::string> kBlacklist = {
     "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics",
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
 // all relative paths absolute, otherwise libclang will not resolve them.
-static std::vector<std::string> kPathArgs = {
+std::vector<std::string> kPathArgs = {
     "-I",        "-iquote",        "-isystem",     "--sysroot=",
     "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
     "-F",        "-imacros",       "-include"};
 
+// Arguments which always require an absolute path, ie, clang -working-directory
+// does not work as expected. Argument processing assumes that this is a subset
+// of kPathArgs.
+std::vector<std::string> kNormalizePathArgs = { "--sysroot=" };
+
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
-static std::vector<std::string> kQuoteIncludeArgs = {"-iquote"};
-static std::vector<std::string> kAngleIncludeArgs = {"-I", "-isystem"};
+std::vector<std::string> kQuoteIncludeArgs = {"-iquote"};
+std::vector<std::string> kAngleIncludeArgs = {"-I", "-isystem"};
 
 bool ShouldAddToQuoteIncludes(const std::string& arg) {
   return StartsWithAny(arg, kQuoteIncludeArgs);
@@ -156,6 +161,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   bool add_next_flag_to_quote_dirs = false;
   bool add_next_flag_to_angle_dirs = false;
 
+  // Note that when processing paths, some arguments support multiple forms, ie,
+  // {"-Ifoo"} or {"-I", "foo"}.  Support both styles.
+
   result.args.reserve(entry.args.size() + config->extra_flags.size());
   for (; i < entry.args.size(); ++i) {
     std::string arg = entry.args[i];
@@ -170,7 +178,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         continue;
     }
 
-    // Cleanup path for previous argument.
+    // Finish processing path for the previous argument, which was a switch.
+    // {"-I", "foo"} style.
     if (next_flag_is_path) {
       std::string normalized_arg = cleanup_maybe_relative_path(arg);
       if (add_next_flag_to_quote_dirs)
@@ -183,25 +192,30 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       add_next_flag_to_angle_dirs = false;
     }
 
-    // Update arg if it is a path.
-    for (const std::string& flag_type : kPathArgs) {
-      if (arg == flag_type) {
-        next_flag_is_path = true;
-        add_next_flag_to_quote_dirs = ShouldAddToQuoteIncludes(arg);
-        add_next_flag_to_angle_dirs = ShouldAddToAngleIncludes(arg);
-        break;
-      }
+    else {
+      // Check to see if arg is a path and needs to be updated.
+      for (const std::string& flag_type : kPathArgs) {
+        // {"-I", "foo"} style.
+        if (arg == flag_type) {
+          next_flag_is_path = true;
+          add_next_flag_to_quote_dirs = ShouldAddToQuoteIncludes(arg);
+          add_next_flag_to_angle_dirs = ShouldAddToAngleIncludes(arg);
+          break;
+        }
 
-      if (StartsWith(arg, flag_type)) {
-        std::string path = arg.substr(flag_type.size());
-        assert(!path.empty());
-        path = cleanup_maybe_relative_path(path);
-        std::string normalized_path = flag_type + path;
-        if (ShouldAddToQuoteIncludes(normalized_path))
-          config->quote_dirs.insert(path);
-        if (ShouldAddToAngleIncludes(normalized_path))
-          config->angle_dirs.insert(path);
-        break;
+        // {"-Ifoo"} style.
+        if (StartsWith(arg, flag_type)) {
+          std::string path = arg.substr(flag_type.size());
+          assert(!path.empty());
+          path = cleanup_maybe_relative_path(path);
+          if (StartsWithAny(arg, kNormalizePathArgs))
+            arg = flag_type + path;
+          if (ShouldAddToQuoteIncludes(flag_type))
+            config->quote_dirs.insert(path);
+          if (ShouldAddToAngleIncludes(flag_type))
+            config->angle_dirs.insert(path);
+          break;
+        }
       }
     }
 
@@ -474,16 +488,12 @@ TEST_SUITE("Project") {
       std::cout << "Expected: " << StringJoin(expected) << std::endl;
       std::cout << "Actual:   " << StringJoin(result.args) << std::endl;
     }
-    bool printed_header = false;
     for (int i = 0; i < std::min(result.args.size(), expected.size()); ++i) {
       if (result.args[i] != expected[i]) {
-        if (!printed_header) {
-          printed_header = true;
-          std::cout << "Expected - Actual\n\n";
-        }
-
-        std::cout << "mismatch at " << i << "; expected " << expected[i]
-                  << " but got " << result.args[i] << std::endl;
+        std::cout << std::endl;
+        std::cout << "mismatch at " << i << std::endl;
+        std::cout << "  expected: " << expected[i] << std::endl;
+        std::cout << "  actual:   " << result.args[i] << std::endl;
       }
     }
     REQUIRE(result.args == expected);
@@ -875,7 +885,7 @@ TEST_SUITE("Project") {
          "-isystem../../buildtools/third_party/libc++abi/"
          "trunk/"
          "include",
-         "--sysroot=../../build/linux/"
+         "--sysroot=&/w/c/s/out/Release/../../build/linux/"
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
@@ -1200,7 +1210,7 @@ TEST_SUITE("Project") {
          "-isystem../../buildtools/third_party/libc++abi/"
          "trunk/"
          "include",
-         "--sysroot=../../build/linux/"
+         "--sysroot=&/w/c/s/out/Release/../../build/linux/"
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
