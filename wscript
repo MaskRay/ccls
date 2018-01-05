@@ -20,12 +20,7 @@ APPNAME = 'cquery'
 top = '.'
 out = 'build'
 
-
-# Example URLs
-#   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu16.04.tar.xz
-#   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-linux-x86_64-ubuntu14.04.tar.xz
-#   http://releases.llvm.org/5.0.0/clang+llvm-5.0.0-x86_64-apple-darwin.tar.xz
-
+CLANG_TARBALL_NAME = None
 CLANG_TARBALL_EXT = '.tar.xz'
 if sys.platform == 'darwin':
   CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
@@ -38,9 +33,6 @@ elif sys.platform.startswith('linux'):
 elif sys.platform == 'win32':
   CLANG_TARBALL_NAME = 'LLVM-$version-win64'
   CLANG_TARBALL_EXT = '.exe'
-else:
-  sys.stderr.write('ERROR: Unknown platform {0}\n'.format(sys.platform))
-  sys.exit(1)
 
 from waflib.Tools.compiler_cxx import cxx_compiler
 cxx_compiler['linux'] = ['clang++', 'g++']
@@ -219,6 +211,10 @@ def configure(ctx):
 
   else:
     global CLANG_TARBALL_NAME, CLANG_TARBALL_EXT
+
+    if CLANG_TARBALL_NAME is None:
+      sys.stderr.write('ERROR: releases.llvm.org does not provide prebuilt binary for your platform {0}\n'.format(sys.platform))
+      sys.exit(1)
 
     # TODO Remove after 5.0.1 is stable
     if ctx.options.bundled_clang == '5.0.0' and sys.platform.startswith('linux'):
