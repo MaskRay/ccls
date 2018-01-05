@@ -195,9 +195,16 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     inserted_results.reserve(config->maxWorkspaceSearchResults);
     result_indices.reserve(config->maxWorkspaceSearchResults);
 
+    // We use detailed_names for exact matches and short_names for fuzzy matches
+    // because otherwise the fuzzy match is likely to match on parameter names
+    // and the like.
+    // TODO: make detailed_names not include function parameter information (or
+    // introduce additional metadata) so that we can do fuzzy search with
+    // detailed_names.
+
     // Find exact substring matches.
-    for (int i = 0; i < db->short_names.size(); ++i) {
-      if (db->short_names[i].find(query) != std::string::npos) {
+    for (int i = 0; i < db->detailed_names.size(); ++i) {
+      if (db->detailed_names[i].find(query) != std::string::npos) {
         // Do not show the same entry twice.
         if (!inserted_results.insert(db->detailed_names[i]).second)
           continue;
