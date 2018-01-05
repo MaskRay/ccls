@@ -450,10 +450,7 @@ void UpdateTestExpectation(const std::string& filename,
   str.replace(it, expectation.size(), actual);
 
   // Write it back out.
-  std::ofstream of(filename,
-                   std::ios::out | std::ios::trunc | std::ios::binary);
-  of.write(str.c_str(), str.size());
-  of.close();
+  WriteToFile(filename, str);
 }
 
 void WriteToFile(const std::string& filename, const std::string& content) {

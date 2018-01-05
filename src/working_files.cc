@@ -71,6 +71,11 @@ void WorkingFile::OnBufferContentUpdated() {
     else
       it->second.push_back(i + 1);
   }
+
+  std::string path = filename;
+  path = ReplaceAll(path, "/", "_");
+  WriteToFile("/usr/local/google/home/jdufault/cquery/tmp/" + path,
+              buffer_content);
 }
 
 optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {

@@ -128,11 +128,7 @@ void WriteToCache(Config* config, IndexFile& file) {
                  << "file-copy for " << file.path;
     CopyFileTo(cache_basename, file.path);
   } else {
-    std::ofstream cache_content;
-    cache_content.open(cache_basename);
-    assert(cache_content.good());
-    cache_content << file.file_contents_;
-    cache_content.close();
+    WriteToFile(cache_basename, file.file_contents_);
   }
 
   std::string indexed_content = Serialize(file);
