@@ -150,7 +150,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
-  REFLECT_MEMBER2("cls", value.def.cls);
+  REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }

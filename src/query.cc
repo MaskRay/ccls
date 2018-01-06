@@ -72,7 +72,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.definition_extent = id_map.ToQuery(var.definition_extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
   result.declaring_type = id_map.ToQuery(var.declaring_type);
-  result.cls = var.cls;
+  result.kind = var.kind;
   return result;
 }
 

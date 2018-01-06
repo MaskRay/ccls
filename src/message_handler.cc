@@ -126,10 +126,11 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryVar* var = &db->vars[sym.idx.idx];
         if (!var->def)
           continue;  // applies to for loop
-        switch (var->def->cls) {
-          case VarClass::Local:
-          case VarClass::Global:
-          case VarClass::Member:
+        switch (var->def->kind) {
+          case ClangSymbolKind::Field:
+          case ClangSymbolKind::Macro:
+          case ClangSymbolKind::Module:
+          case ClangSymbolKind::Variable:
             break;
           default:
             continue;  // applies to for loop

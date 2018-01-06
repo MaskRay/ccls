@@ -78,6 +78,45 @@ using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
+// TODO Rename query.h:SymbolKind to another name; change int16_t to uint8_t
+// clang/Index/IndexSymbol.h clang::index::SymbolKind
+enum class ClangSymbolKind : int16_t {
+  Unknown,
+
+  Module,
+  Namespace,
+  NamespaceAlias,
+  Macro,
+
+  Enum,
+  Struct,
+  Class,
+  Protocol,
+  Extension,
+  Union,
+  TypeAlias,
+
+  Function,
+  Variable,
+  Field,
+  EnumConstant,
+
+  InstanceMethod,
+  ClassMethod,
+  StaticMethod,
+  InstanceProperty,
+  ClassProperty,
+  StaticProperty,
+
+  Constructor,
+  Destructor,
+  ConversionFunction,
+
+  Parameter,
+  Using,
+};
+MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind, std::underlying_type<ClangSymbolKind>::type);
+
 struct IndexFuncRef {
   // NOTE: id can be -1 if the function call is not coming from a function.
   IndexFuncId id;
@@ -149,6 +188,7 @@ struct TypeDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
+  ClangSymbolKind kind = ClangSymbolKind::Unknown;
   optional<std::string> hover;
   optional<std::string> comments;
 
@@ -202,6 +242,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(kind);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
@@ -249,6 +290,7 @@ struct FuncDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
+  ClangSymbolKind kind = ClangSymbolKind::Unknown;
   optional<std::string> hover;
   optional<std::string> comments;
   optional<Range> definition_spelling;
@@ -299,6 +341,7 @@ void Reflect(
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(kind);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
@@ -361,25 +404,12 @@ MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
                     content,
                     param_spellings);
 
-enum class VarClass {
-  // probably a variable in system headers
-  Unknown = 0,
-  // a parameter or function variable
-  Local = 1,
-  // a macro, ie, #define FOO
-  Macro = 2,
-  // a global variable
-  Global = 3,
-  // a member variable of struct/union/class/enum
-  Member = 4
-};
-MAKE_REFLECT_TYPE_PROXY(VarClass, std::underlying_type<VarClass>::type);
-
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct VarDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
+  ClangSymbolKind kind = ClangSymbolKind::Unknown;
   optional<std::string> hover;
   optional<std::string> comments;
   optional<Range> declaration;
@@ -394,10 +424,9 @@ struct VarDefDefinitionData {
   // Type which declares this one.
   optional<TypeId> declaring_type;
 
-  VarClass cls = VarClass::Unknown;
-
-  bool is_local() const { return cls == VarClass::Local; }
-  bool is_macro() const { return cls == VarClass::Macro; }
+  // FIXME
+  bool is_local() const { return kind == ClangSymbolKind::Variable; }
+  bool is_macro() const { return kind == ClangSymbolKind::Macro; }
 
   bool operator==(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
@@ -426,13 +455,13 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(kind);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(declaring_type);
-  REFLECT_MEMBER(cls);
   REFLECT_MEMBER_END();
 }
 

@@ -408,7 +408,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-int IndexFile::kCurrentVersion = 6;
+int IndexFile::kCurrentVersion = 7;
 
 IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
@@ -965,7 +965,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.detailed_name = cursor.get_display_name();
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
-        var_def->def.cls = VarClass::Macro;
+        var_def->def.kind = ClangSymbolKind::Macro;
         var_def->def.comments = cursor.get_comments();
         var_def->def.definition_spelling = decl_loc_spelling;
         var_def->def.definition_extent = ResolveCXSourceRange(cx_extent, nullptr);
@@ -1213,18 +1213,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetVarDetail(var, decl->cursor, decl->semanticContainer,
                    !decl->isRedeclaration, db, param);
 
-      bool is_system = clang_Location_isInSystemHeader(
-          clang_indexLoc_getCXSourceLocation(decl->loc));
-      if (is_system)
-        var->def.cls = VarClass::Unknown;
-      else {
-        if (IsGlobalContainer(decl->semanticContainer))
-          var->def.cls = VarClass::Global;
-        else if (IsTypeDefinition(decl->semanticContainer))
-          var->def.cls = VarClass::Member;
-        else
-          var->def.cls = VarClass::Local;
-      }
+      // FIXME https://github.com/jacobdufault/cquery/issues/239
+      if (IsGlobalContainer(decl->semanticContainer))
+        var->def.kind = ClangSymbolKind::Module;
+      else if (IsTypeDefinition(decl->semanticContainer))
+        var->def.kind = ClangSymbolKind::Field;
+      else
+        var->def.kind = ClangSymbolKind::Variable;
       //}
 
       if (decl->isDefinition) {
@@ -1635,7 +1630,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // and has more information, thus not easy to reuse the code.
           var->def.short_name = referenced.get_spelling();
           SetVarDetail(var, referenced, nullptr, true, db, param);
-          var->def.cls = VarClass::Local;
+          var->def.kind = ClangSymbolKind::Parameter;
           UniqueAdd(var->uses, referenced.get_spelling_range());
         }
       }
