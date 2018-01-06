@@ -24,6 +24,7 @@ void Reflect(Reader& visitor, int16_t& value) {
 void Reflect(Writer& visitor, int16_t& value) {
   visitor.Int(value);
 }
+
 // int32_t
 void Reflect(Reader& visitor, int32_t& value) {
   if (visitor.IsInt())
@@ -32,6 +33,7 @@ void Reflect(Reader& visitor, int32_t& value) {
 void Reflect(Writer& visitor, int32_t& value) {
   visitor.Int(value);
 }
+
 // int64_t
 void Reflect(Reader& visitor, int64_t& value) {
   if (visitor.IsInt64())
@@ -40,6 +42,7 @@ void Reflect(Reader& visitor, int64_t& value) {
 void Reflect(Writer& visitor, int64_t& value) {
   visitor.Int64(value);
 }
+
 // uint64_t
 void Reflect(Reader& visitor, uint64_t& value) {
   if (visitor.IsUint64())
@@ -48,6 +51,7 @@ void Reflect(Reader& visitor, uint64_t& value) {
 void Reflect(Writer& visitor, uint64_t& value) {
   visitor.Uint64(value);
 }
+
 // bool
 void Reflect(Reader& visitor, bool& value) {
   if (visitor.IsBool())
@@ -56,6 +60,7 @@ void Reflect(Reader& visitor, bool& value) {
 void Reflect(Writer& visitor, bool& value) {
   visitor.Bool(value);
 }
+
 // std::string
 void Reflect(Reader& visitor, std::string& value) {
   if (visitor.IsString())

@@ -97,23 +97,27 @@ void Reflect(Writer& visitor, uint64_t& value);
 // bool
 void Reflect(Reader& visitor, bool& value);
 void Reflect(Writer& visitor, bool& value);
+
 // std::string
 void Reflect(Reader& visitor, std::string& value);
 void Reflect(Writer& visitor, std::string& value);
 
-// Writer:
+// std::optional
 template <typename T>
-void Reflect(Writer& visitor, std::vector<T>& values) {
-  visitor.StartArray();
-  for (auto& value : values)
-    Reflect(visitor, value);
-  visitor.EndArray();
+void Reflect(Reader& visitor, optional<T>& value) {
+  if (visitor.IsNull())
+    return;
+  T real_value{};
+  Reflect(visitor, real_value);
+  value = real_value;
 }
 template <typename T>
 void Reflect(Writer& visitor, optional<T>& value) {
   if (value)
     Reflect(visitor, value.value());
 }
+
+// std::variant (Writer only)
 template <typename T0, typename T1>
 void Reflect(Writer& visitor, std::variant<T0, T1>& value) {
   if (value.index() == 0)
@@ -121,6 +125,28 @@ void Reflect(Writer& visitor, std::variant<T0, T1>& value) {
   else
     Reflect(visitor, std::get<1>(value));
 }
+
+// std::vector
+template <typename T>
+void Reflect(Reader& visitor, std::vector<T>& values) {
+  if (!visitor.IsArray())
+    return;
+  for (auto& entry : visitor.GetArray()) {
+    T entry_value;
+    Reflect(entry, entry_value);
+    values.push_back(entry_value);
+  }
+}
+template <typename T>
+void Reflect(Writer& visitor, std::vector<T>& values) {
+  visitor.StartArray();
+  for (auto& value : values)
+    Reflect(visitor, value);
+  visitor.EndArray();
+}
+
+// Writer:
+
 inline void DefaultReflectMemberStart(Writer& visitor) {
   visitor.StartObject();
 }
@@ -156,24 +182,8 @@ void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
 
 // Reader:
-template <typename T>
-void Reflect(Reader& visitor, std::vector<T>& values) {
-  if (!visitor.IsArray())
-    return;
-  for (auto& entry : visitor.GetArray()) {
-    T entry_value;
-    Reflect(entry, entry_value);
-    values.push_back(entry_value);
-  }
-}
-template <typename T>
-void Reflect(Reader& visitor, optional<T>& value) {
-  if (visitor.IsNull())
-    return;
-  T real_value{};
-  Reflect(visitor, real_value);
-  value = real_value;
-}
+
+
 inline void DefaultReflectMemberStart(Reader& visitor) {}
 template <typename T>
 bool ReflectMemberStart(Reader& visitor, T& value) {
