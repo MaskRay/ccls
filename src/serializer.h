@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+enum class SerializeFormat { Json, MessagePack };
+
 class Reader {
  public:
   virtual ~Reader() {}
@@ -236,7 +238,8 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 }
 
 std::string Serialize(IndexFile& file);
-std::unique_ptr<IndexFile> Deserialize(std::string path,
+std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
+                                       std::string path,
                                        std::string serialized,
                                        optional<int> expected_version);
 

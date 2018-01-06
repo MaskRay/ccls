@@ -11,6 +11,8 @@ struct Config {
   std::string compilationDatabaseDirectory;
   // Cache directory for indexed files.
   std::string cacheDirectory;
+  // Cache serialization format
+  SerializeFormat cacheFormat = SerializeFormat::Json;
   // Value to use for clang -resource-dir if not present in
   // compile_commands.json.
   std::string resourceDirectory;

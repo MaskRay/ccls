@@ -2,6 +2,7 @@
 
 // TODO Move Json* to serializers/json.cc
 #include "serializers/json.h"
+//#include "serializers/msgpack.h"
 
 #include "indexer.h"
 
@@ -208,7 +209,8 @@ std::string Serialize(IndexFile& file) {
   return output.GetString();
 }
 
-std::unique_ptr<IndexFile> Deserialize(std::string path,
+std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
+                                       std::string path,
                                        std::string serialized,
                                        optional<int> expected_version) {
   rapidjson::Document reader;
@@ -226,6 +228,8 @@ std::unique_ptr<IndexFile> Deserialize(std::string path,
     }
   }
 
+  // TODO msgpack
+  (void)format;
   auto file = MakeUnique<IndexFile>(path);
   JsonReader json_reader{&reader};
   Reflect(json_reader, *file);

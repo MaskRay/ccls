@@ -27,17 +27,27 @@ std::string GetCachedBaseFileName(Config* config,
   return config->cacheDirectory + cache_file;
 }
 
+std::string GetCacheFileName(Config* config, const std::string& base) {
+  switch (config->cacheFormat) {
+    case SerializeFormat::Json:
+      return base + "json";
+    case SerializeFormat::MessagePack:
+      return base + "mpack";
+  }
+}
+
 std::unique_ptr<IndexFile> LoadCachedIndex(Config* config,
                                            const std::string& filename) {
   if (!config->enableCacheRead)
     return nullptr;
 
-  optional<std::string> file_content =
-      ReadContent(GetCachedBaseFileName(config, filename) + ".json");
+  optional<std::string> file_content = ReadContent(
+      GetCacheFileName(config, GetCachedBaseFileName(config, filename)));
   if (!file_content)
     return nullptr;
 
-  return Deserialize(filename, *file_content, IndexFile::kCurrentVersion);
+  return Deserialize(config->cacheFormat, filename, *file_content,
+                     IndexFile::kCurrentVersion);
 }
 
 // Manages loading caches from file paths for the indexer process.
@@ -132,5 +142,5 @@ void WriteToCache(Config* config, IndexFile& file) {
   }
 
   std::string indexed_content = Serialize(file);
-  WriteToFile(cache_basename + ".json", indexed_content);
+  WriteToFile(GetCacheFileName(config, cache_basename), indexed_content);
 }
