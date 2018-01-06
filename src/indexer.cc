@@ -1932,25 +1932,29 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
   std::unordered_map<std::string, int> inc_to_line;
-  for (auto &inc : param.primary_file->includes)
-    inc_to_line[inc.resolved_path] = inc.line;
+  // TODO
+  if (param.primary_file)
+    for (auto &inc : param.primary_file->includes)
+      inc_to_line[inc.resolved_path] = inc.line;
 
   auto result = param.file_consumer->TakeLocalState();
   for (std::unique_ptr<IndexFile>& entry : result) {
     entry->import_file = file;
     entry->args = args;
 
-    // If there are errors, show at least one at the include position.
-    auto it = inc_to_line.find(entry->path);
-    if (it != inc_to_line.end()) {
-      int line = it->second;
-      for (auto ls_diagnostic : entry->diagnostics_) {
-        if (ls_diagnostic.severity != lsDiagnosticSeverity::Error)
-          continue;
-        ls_diagnostic.range =
-            lsRange(lsPosition(line, 10), lsPosition(line, 10));
-        param.primary_file->diagnostics_.push_back(ls_diagnostic);
-        break;
+    if (param.primary_file) {
+      // If there are errors, show at least one at the include position.
+      auto it = inc_to_line.find(entry->path);
+      if (it != inc_to_line.end()) {
+        int line = it->second;
+        for (auto ls_diagnostic : entry->diagnostics_) {
+          if (ls_diagnostic.severity != lsDiagnosticSeverity::Error)
+            continue;
+          ls_diagnostic.range =
+              lsRange(lsPosition(line, 10), lsPosition(line, 10));
+          param.primary_file->diagnostics_.push_back(ls_diagnostic);
+          break;
+        }
       }
     }
 
