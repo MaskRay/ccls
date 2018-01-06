@@ -70,8 +70,15 @@ struct WorkingFile {
   lsPosition FindStableCompletionSource(lsPosition position,
                                         bool* is_global_completion,
                                         std::string* existing_completion) const;
+};
 
-  CXUnsavedFile AsUnsavedFile() const;
+struct WorkingFilesSnapshot {
+  std::vector<CXUnsavedFile> AsUnsavedFiles() const;
+  struct File {
+    std::string filename;
+    std::string content;
+  };
+  std::vector<File> files;
 };
 
 struct WorkingFiles {
@@ -94,7 +101,7 @@ struct WorkingFiles {
   void OnChange(const lsTextDocumentDidChangeParams& change);
   void OnClose(const lsTextDocumentItem& close);
 
-  std::vector<CXUnsavedFile> AsUnsavedFiles();
+  WorkingFilesSnapshot AsSnapshot();
 
   // Use unique_ptrs so we can handout WorkingFile ptrs and not have them
   // invalidated if we resize files.

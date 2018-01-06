@@ -265,14 +265,6 @@ lsPosition WorkingFile::FindStableCompletionSource(
   return GetPositionForOffset(buffer_content, offset);
 }
 
-CXUnsavedFile WorkingFile::AsUnsavedFile() const {
-  CXUnsavedFile result;
-  result.Filename = filename.c_str();
-  result.Contents = buffer_content.c_str();
-  result.Length = (unsigned long)buffer_content.size();
-  return result;
-}
-
 WorkingFile* WorkingFiles::GetFileByFilename(const std::string& filename) {
   std::lock_guard<std::mutex> lock(files_mutex);
   return GetFileByFilenameNoLock(filename);
@@ -369,13 +361,27 @@ void WorkingFiles::OnClose(const lsTextDocumentItem& close) {
                  << " because it was not open";
 }
 
-std::vector<CXUnsavedFile> WorkingFiles::AsUnsavedFiles() {
-  std::lock_guard<std::mutex> lock(files_mutex);
-
+std::vector<CXUnsavedFile> WorkingFilesSnapshot::AsUnsavedFiles() const {
   std::vector<CXUnsavedFile> result;
   result.reserve(files.size());
+  for (auto& file : files) {
+    CXUnsavedFile unsaved;
+    unsaved.Filename = file.filename.c_str();
+    unsaved.Contents = file.content.c_str();
+    unsaved.Length = (unsigned long)file.content.size();
+
+    result.push_back(unsaved);
+  }
+  return result;
+}
+
+WorkingFilesSnapshot WorkingFiles::AsSnapshot() {
+  std::lock_guard<std::mutex> lock(files_mutex);
+
+  WorkingFilesSnapshot result;
+  result.files.reserve(files.size());
   for (auto& file : files)
-    result.push_back(file->AsUnsavedFile());
+    result.files.push_back({file->filename, file->buffer_content});
   return result;
 }
 
