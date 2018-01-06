@@ -39,8 +39,8 @@ class Writer {
 
   virtual void Null() = 0;
   virtual void Bool(bool x) = 0;
-  virtual void Int(uint64_t x) = 0;
-  virtual void Int64(uint64_t x) = 0;
+  virtual void Int(int x) = 0;
+  virtual void Int64(int64_t x) = 0;
   virtual void Uint64(uint64_t x) = 0;
   virtual void String(const char* x) = 0;
   virtual void String(const char* x, size_t len) = 0;
