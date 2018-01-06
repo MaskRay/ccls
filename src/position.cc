@@ -153,7 +153,7 @@ void Reflect(Reader& visitor, Position& value) {
 }
 void Reflect(Writer& visitor, Position& value) {
   std::string output = value.ToString();
-  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
+  visitor.String(output.c_str(), output.size());
 }
 
 // Range
@@ -165,5 +165,5 @@ void Reflect(Reader& visitor, Range& value) {
 }
 void Reflect(Writer& visitor, Range& value) {
   std::string output = value.ToString();
-  visitor.String(output.c_str(), (rapidjson::SizeType)output.size());
+  visitor.String(output.c_str(), output.size());
 }

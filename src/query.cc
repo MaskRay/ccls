@@ -1,6 +1,7 @@
 #include "query.h"
 
 #include "indexer.h"
+#include "serializers/json.h"
 
 #include <doctest/doctest.h>
 #include <optional.h>
@@ -674,9 +675,10 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
 std::string IndexUpdate::ToString() {
   rapidjson::StringBuffer output;
-  Writer writer(output);
+  rapidjson::Writer<rapidjson::StringBuffer> writer;
+  JsonWriter json_writer(&writer);
   IndexUpdate& update = *this;
-  Reflect(writer, update);
+  Reflect(json_writer, update);
   return output.GetString();
 }
 

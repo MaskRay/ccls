@@ -1,5 +1,7 @@
 #include "language_server_api.h"
 
+#include "serializers/json.h"
+
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
@@ -155,12 +157,13 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin(
   document.Parse(content->c_str(), content->length());
   assert(!document.HasParseError());
 
-  return Parse(document);
+  JsonReader json_reader{&document};
+  return Parse(json_reader);
 }
 
 std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
   if (!visitor.HasMember("jsonrpc") ||
-      std::string(visitor["jsonrpc"].GetString()) != "2.0") {
+      std::string(visitor["jsonrpc"]->GetString()) != "2.0") {
     LOG_S(FATAL) << "Bad or missing jsonrpc version";
     exit(1);
   }

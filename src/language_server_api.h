@@ -3,6 +3,7 @@
 #include "config.h"
 #include "ipc.h"
 #include "serializer.h"
+#include "serializers/json.h"
 #include "utils.h"
 
 #include <optional.h>
@@ -79,9 +80,10 @@ struct lsOutMessage : lsBaseOutMessage {
   // Send the message to the language client by writing it to stdout.
   void Write(std::ostream& out) override {
     rapidjson::StringBuffer output;
-    Writer writer(output);
+    rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+    JsonWriter json_writer(&writer);
     auto that = static_cast<TDerived*>(this);
-    Reflect(writer, *that);
+    Reflect(json_writer, *that);
 
     out << "Content-Length: " << output.GetSize();
     out << (char)13 << char(10) << char(13) << char(10);  // CRLFCRLF

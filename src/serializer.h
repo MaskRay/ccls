@@ -3,15 +3,54 @@
 #include <macro_map.h>
 #include <optional.h>
 #include <variant.h>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-using Reader = rapidjson::GenericValue<rapidjson::UTF8<>>;
-using Writer = rapidjson::Writer<rapidjson::StringBuffer>;
+class Reader {
+ public:
+  virtual ~Reader() {}
+
+  virtual bool IsBool() = 0;
+  virtual bool IsNull() = 0;
+  virtual bool IsArray() = 0;
+  virtual bool IsInt() = 0;
+  virtual bool IsInt64() = 0;
+  virtual bool IsUint64() = 0;
+  virtual bool IsString() = 0;
+
+  virtual bool GetBool() = 0;
+  virtual int GetInt() = 0;
+  virtual int64_t GetInt64() = 0;
+  virtual uint64_t GetUint64() = 0;
+  virtual const char* GetString() = 0;
+
+  virtual bool HasMember(const char* x) = 0;
+  virtual std::unique_ptr<Reader> operator[](const char* x) = 0;
+
+  virtual void IterArray(std::function<void(Reader&)> fn) = 0;
+  virtual void DoMember(const char* name, std::function<void(Reader&)> fn) = 0;
+};
+
+class Writer {
+ public:
+  virtual ~Writer() {}
+
+  virtual void Null() = 0;
+  virtual void Bool(bool x) = 0;
+  virtual void Int(uint64_t x) = 0;
+  virtual void Int64(uint64_t x) = 0;
+  virtual void Uint64(uint64_t x) = 0;
+  virtual void String(const char* x) = 0;
+  virtual void String(const char* x, size_t len) = 0;
+  virtual void StartArray() = 0;
+  virtual void EndArray() = 0;
+  virtual void StartObject() = 0;
+  virtual void EndObject() = 0;
+  virtual void Key(const char* name) = 0;
+};
+
 struct IndexFile;
 
 #define REFLECT_MEMBER_START()             \
@@ -131,11 +170,11 @@ template <typename T>
 void Reflect(Reader& visitor, std::vector<T>& values) {
   if (!visitor.IsArray())
     return;
-  for (auto& entry : visitor.GetArray()) {
+  visitor.IterArray([&](Reader& entry) {
     T entry_value;
     Reflect(entry, entry_value);
     values.push_back(entry_value);
-  }
+  });
 }
 template <typename T>
 void Reflect(Writer& visitor, std::vector<T>& values) {
@@ -193,11 +232,7 @@ template <typename T>
 void ReflectMemberEnd(Reader& visitor, T& value) {}
 template <typename T>
 void ReflectMember(Reader& visitor, const char* name, T& value) {
-  auto it = visitor.FindMember(name);
-  if (it != visitor.MemberEnd()) {
-    Reader& child_visitor = it->value;
-    Reflect(child_visitor, value);
-  }
+  visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
 }
 
 std::string Serialize(IndexFile& file);

@@ -4,6 +4,7 @@
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
+#include "serializers/json.h"
 #include "timer.h"
 #include "working_files.h"
 
@@ -42,8 +43,9 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
   void Run(Ipc_InitializeRequest* request) override {
     // Log initialization parameters.
     rapidjson::StringBuffer output;
-    Writer writer(output);
-    Reflect(writer, request->params.initializationOptions);
+    rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+    JsonWriter json_writer(&writer);
+    Reflect(json_writer, request->params.initializationOptions);
     LOG_S(INFO) << "Init parameters: " << output.GetString();
 
     if (request->params.rootUri) {

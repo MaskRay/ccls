@@ -1,5 +1,8 @@
 #include "serializer.h"
 
+// TODO Move Json* to serializers/json.cc
+#include "serializers/json.h"
+
 #include "indexer.h"
 
 #include <doctest/doctest.h>
@@ -195,12 +198,12 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
 std::string Serialize(IndexFile& file) {
   rapidjson::StringBuffer output;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-  // Writer writer(output);
   writer.SetFormatOptions(
       rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
   writer.SetIndent(' ', 2);
 
-  Reflect(writer, file);
+  JsonWriter json_writer(&writer);
+  Reflect(json_writer, file);
 
   return output.GetString();
 }
@@ -224,7 +227,8 @@ std::unique_ptr<IndexFile> Deserialize(std::string path,
   }
 
   auto file = MakeUnique<IndexFile>(path);
-  Reflect(reader, *file);
+  JsonReader json_reader{&reader};
+  Reflect(json_reader, *file);
 
   // Restore non-serialized state.
   file->path = path;
