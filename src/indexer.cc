@@ -519,15 +519,18 @@ void OnIndexDiagnostic(CXClientData client_data,
   for (unsigned i = 0; i < clang_getNumDiagnosticsInSet(diagnostics); ++i) {
     CXDiagnostic diagnostic = clang_getDiagnosticInSet(diagnostics, i);
 
-    // Skip diagnostics in system headers.
     CXSourceLocation diag_loc = clang_getDiagnosticLocation(diagnostic);
-    if (clang_Location_isInSystemHeader(diag_loc))
-      continue;
+    // Skip diagnostics in system headers.
+    // if (clang_Location_isInSystemHeader(diag_loc))
+    //   continue;
 
     // Get db so we can attribute diagnostic to the right indexed file.
     CXFile file;
     unsigned int line, column;
     clang_getSpellingLocation(diag_loc, &file, &line, &column, nullptr);
+    // Skip empty diagnostic.
+    if(!line && !column)
+        continue;
     IndexFile* db = ConsumeFile(param, file);
     if (!db)
       continue;
@@ -1928,10 +1931,28 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
 
   perf->index_build = timer.ElapsedMicrosecondsAndReset();
 
+  std::unordered_map<std::string, int> inc_to_line;
+  for (auto &inc : param.primary_file->includes)
+    inc_to_line[inc.resolved_path] = inc.line;
+
   auto result = param.file_consumer->TakeLocalState();
   for (std::unique_ptr<IndexFile>& entry : result) {
     entry->import_file = file;
     entry->args = args;
+
+    // If there are errors, show at least one at the include position.
+    auto it = inc_to_line.find(entry->path);
+    if (it != inc_to_line.end()) {
+      int line = it->second;
+      for (auto ls_diagnostic : entry->diagnostics_) {
+        if (ls_diagnostic.severity != lsDiagnosticSeverity::Error)
+          continue;
+        ls_diagnostic.range =
+            lsRange(lsPosition(line, 10), lsPosition(line, 10));
+        param.primary_file->diagnostics_.push_back(ls_diagnostic);
+        break;
+      }
+    }
 
     // Update file contents and modification time.
     entry->file_contents_ = param.file_contents[entry->path].contents;
