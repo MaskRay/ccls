@@ -245,6 +245,8 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
     }
 
     case SerializeFormat::MessagePack: {
+      if (serialized.empty())
+        return nullptr;
       try {
         msgpack::object_handle oh =
             msgpack::unpack(serialized.data(), serialized.size());
