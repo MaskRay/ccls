@@ -257,7 +257,8 @@ bool IndexMain_DoParse(Config* config,
                 import_manager, cache_manager, indexer, request->is_interactive,
                 entry, request->contents);
 
-  // Don't bother sending an IdMap request if there are no responses.
+  // Don't bother sending an IdMap request if there are no responses. This
+  // avoids a lock.
   if (responses.empty())
     return false;
 
