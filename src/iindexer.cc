@@ -52,8 +52,12 @@ struct TestIndexer : IIndexer {
       const std::vector<FileContents>& file_contents,
       PerformanceImportFile* perf) {
     auto it = indexes.find(file);
-    if (it == indexes.end())
+    if (it == indexes.end()) {
+      // Don't return any indexes for unexpected data.
+      assert(false && "no indexes");
       return {};
+    }
+
     // FIXME: allow user to control how many times we return the index for a
     // specific file (atm it is always 1)
     auto result = std::move(it->second);
