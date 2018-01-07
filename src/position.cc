@@ -77,21 +77,18 @@ Range::Range(Position position) : Range(position, position) {}
 Range::Range(Position start, Position end) : start(start), end(end) {}
 
 Range::Range(const char* encoded) {
-  end = start;
+  char* p = const_cast<char*>(encoded);
+  start.line = strtol(p, &p, 10);
+  assert(*p == ':');
+  p++;
+  start.column = strtol(p, &p, 10);
+  assert(*p == '-');
+  p++;
 
-  start.line = (int16_t)atoi(encoded);
-
-  encoded = SkipAfter(encoded, ':');
-  assert(encoded);
-  start.column = (int16_t)atoi(encoded);
-
-  encoded = SkipAfter(encoded, '-');
-  assert(encoded);
-  end.line = (int16_t)atoi(encoded);
-
-  encoded = SkipAfter(encoded, ':');
-  assert(encoded);
-  end.column = (int16_t)atoi(encoded);
+  end.line = strtol(p, &p, 10);
+  assert(*p == ':');
+  p++;
+  end.column = strtol(p, nullptr, 10);
 }
 
 bool Range::Contains(int line, int column) const {
