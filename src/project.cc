@@ -65,7 +65,7 @@ std::vector<std::string> kPathArgs = {
 // Arguments which always require an absolute path, ie, clang -working-directory
 // does not work as expected. Argument processing assumes that this is a subset
 // of kPathArgs.
-std::vector<std::string> kNormalizePathArgs = { "--sysroot=" };
+std::vector<std::string> kNormalizePathArgs = {"--sysroot="};
 
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
@@ -125,7 +125,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
          // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
          // clang-4.0) are seen as commands.
          ((dot = entry.args[i].rfind('.')) == std::string::npos ||
-          dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot+1])))
+          dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1])))
     ++i;
   // Include the compiler in the args.
   if (i > 0)
@@ -248,18 +248,20 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::vector<Project::Entry> result;
 
   std::vector<std::string> args;
-  std::cerr << "Using arguments: ";
   for (std::string line :
        ReadLinesWithEnding(config->project_dir + "/.cquery")) {
     TrimInPlace(line);
     if (line.empty() || StartsWith(line, "#"))
       continue;
-    if (!args.empty())
-      std::cerr << ", ";
-    std::cerr << line;
     args.push_back(line);
   }
-  std::cerr << std::endl;
+  LOG_IF_S(INFO, !args.empty())
+      << "Using .cquery arguments " << StringJoin(args);
+  LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.cquery") &&
+                        config->extra_flags.empty())
+      << "cquery has no clang arguments. Considering adding either a "
+         "compile_commands.json or .cquery file. See the cquery README for "
+         "more information.";
 
   std::vector<std::string> files = GetFilesInFolder(
       config->project_dir, true /*recursive*/, true /*add_folder_to_path*/);
@@ -280,6 +282,10 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     ProjectConfig* config,
     const std::string& opt_compilation_db_dir) {
+  // If there is a .cquery file always load using directory listing.
+  if (FileExists(config->project_dir + "/.cquery"))
+    return LoadFromDirectoryListing(config);
+
   // Try to load compile_commands.json, but fallback to a project listing.
   const auto& compilation_db_dir = opt_compilation_db_dir.empty()
                                        ? config->project_dir
@@ -508,15 +514,16 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11", "-lstdc++", "myfile.cc",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-         "-fparse-all-comments"});
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11",
+         "-lstdc++", "myfile.cc", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11",
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
@@ -528,21 +535,22 @@ TEST_SUITE("Project") {
 
   // FIXME: Fix this test.
   TEST_CASE("Path in args") {
-    CheckFlags(
-        "/home/user", "/home/user/foo/bar.c",
-        /* raw */ {"cc", "-O0", "foo/bar.c"},
-        /* expected */
-        {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0", "foo/bar.c", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+    CheckFlags("/home/user", "/home/user/foo/bar.c",
+               /* raw */ {"cc", "-O0", "foo/bar.c"},
+               /* expected */
+               {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11",
+                "-O0", "foo/bar.c", "-resource-dir=/w/resource_dir/",
+                "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Implied binary") {
-    CheckFlags("/home/user", "/home/user/foo/bar.cc",
-               /* raw */ {"-DDONT_IGNORE_ME"},
-               /* expected */
-               {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++11", "-DDONT_IGNORE_ME",
-                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-                "-fparse-all-comments"});
+    CheckFlags(
+        "/home/user", "/home/user/foo/bar.cc",
+        /* raw */ {"-DDONT_IGNORE_ME"},
+        /* expected */
+        {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++11",
+         "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what

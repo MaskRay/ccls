@@ -248,6 +248,11 @@ std::istream& SafeGetline(std::istream& is, std::string& t) {
   }
 }
 
+bool FileExists(const std::string& filename) {
+  std::ifstream cache(filename);
+  return cache.is_open();
+}
+
 optional<std::string> ReadContent(const std::string& filename) {
   std::ifstream cache;
   cache.open(filename);
