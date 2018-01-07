@@ -147,13 +147,16 @@ def configure(ctx):
   # /Zi: -g, /WX: -Werror, /W3: roughly -Wall, there is no -std=c++11 equivalent in MSVC.
   # /wd4722: ignores warning C4722 (destructor never returns) in loguru
   # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
-  msvcflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800']
+  # /MD: use multithread c library from DLL
+  msvcflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
+
   if ctx.options.variant == 'asan':
     cxxflags.append('-fsanitize=address,undefined')
     cxxflags.append('-O')
     ldflags.append('-fsanitize=address,undefined')
   elif ctx.options.variant == 'debug':
-    pass
+    msvcflags += ['/Zi', '/FS']
+    ldflags += ['/DEBUG']
   else:
     cxxflags.append('-O3')
     msvcflags.append('/O2') # There is no O3
@@ -237,11 +240,13 @@ def configure(ctx):
     clang_dir = os.path.normpath('../../' + CLANG_TARBALL_NAME)
     try:
       os.symlink(clang_dir, bundled_clang_dir, target_is_directory=True)
-    except NotImplementedError:
+    except (OSError, NotImplementedError):
       # Copying the whole directory instead.
-      shutil.copytree(clang_dir, bundled_clang_dir)
-    except OSError:
-      pass
+      print ('shutil.copytree({0}, {1})'.format(os.path.join(out, CLANG_TARBALL_NAME), bundled_clang_dir))
+      try:
+        shutil.copytree(os.path.join(out, CLANG_TARBALL_NAME), bundled_clang_dir)
+      except Exception as e:
+        print('Failed to copy tree, ', e)
 
     clang_node = ctx.path.find_dir(bundled_clang_dir)
     ctx.check_cxx(uselib_store='clang',
@@ -340,10 +345,8 @@ def build(bld):
       try:
         dst = os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll')
         os.symlink(dst, out_clang_dll)
-      except NotImplementedError:
+      except (OSError, NotImplementedError):
         shutil.copy(dst, out_clang_dll)
-      except OSError:
-        pass
     else:
       rpath = bld.env['LIBPATH_clang']
 
