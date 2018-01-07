@@ -123,7 +123,7 @@ void IncludeComplete::Rescan() {
                                     config_->includeCompletionBlacklist);
 
   is_scanning = true;
-  WorkThread::StartThread("include_scanner", [this]() {
+  WorkThread::StartThread("scan_includes", [this]() {
     Timer timer;
 
     InsertStlIncludes();

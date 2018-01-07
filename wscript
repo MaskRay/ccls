@@ -137,39 +137,45 @@ def configure(ctx):
   ctx.resetenv(ctx.options.variant)
 
   ctx.load('compiler_cxx')
-  cxxflags = ['-g', '-std=c++11', '-Wall', '-Wno-sign-compare', '-Werror']
-  if ctx.options.use_clang_cxx:
-    # include/clang/Format/Format.h error: multi-line comment
-    cxxflags.append('-Wno-comment')
-    # otherwise use of some Clang C++ functions may report `undefined references to typeinfo`
-    cxxflags.append('-fno-rtti')
   ldflags = []
-  # /Zi: -g, /WX: -Werror, /W3: roughly -Wall, there is no -std=c++11 equivalent in MSVC.
-  # /wd4722: ignores warning C4722 (destructor never returns) in loguru
-  # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
-  # /MD: use multithread c library from DLL
-  msvcflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
+  if ctx.env.CXX_NAME == 'msvc':
+    # /Zi: -g, /WX: -Werror, /W3: roughly -Wall, there is no -std=c++11 equivalent in MSVC.
+    # /wd4722: ignores warning C4722 (destructor never returns) in loguru
+    # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
+    # /MD: use multithread c library from DLL
+    cxxflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
+    if ctx.options.variant == 'debug':
+      cxxflags += ['/Zi', '/FS']
+      ldflags += ['/DEBUG']
+    else:
+      cxxflags.append('/O2') # There is no O3
+  else:
+    if ctx.env.CXXFLAGS:
+      cxxflags = ctx.env.CXXFLAGS
+    else:
+      cxxflags = ['-g', '-Wall', '-Wno-sign-compare', '-Werror']
 
-  if ctx.options.variant == 'asan':
-    cxxflags.append('-fsanitize=address,undefined')
-    cxxflags.append('-O')
-    ldflags.append('-fsanitize=address,undefined')
-  elif ctx.options.variant == 'debug':
-    msvcflags += ['/Zi', '/FS']
-    ldflags += ['/DEBUG']
-  else:
-    cxxflags.append('-O3')
-    msvcflags.append('/O2') # There is no O3
-  if ctx.env.CXX_NAME != 'msvc':
-    # If environment variable CXXFLAGS is unset, provide a sane default.
-    if not ctx.env.CXXFLAGS:
-      ctx.env.CXXFLAGS = cxxflags
-    elif all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):
-      ctx.env.CXXFLAGS.append('-std=c++11')
-    if not ctx.env.LDFLAGS:
-      ctx.env.LDFLAGS = ldflags
-  else:
-    ctx.env.CXXFLAGS = msvcflags
+    if all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):
+      cxxflags.append('-std=c++11')
+
+    if ctx.options.use_clang_cxx:
+      # include/clang/Format/Format.h error: multi-line comment
+      cxxflags.append('-Wno-comment')
+      # Without -fno-rtti, some Clang C++ functions may report `undefined references to typeinfo`
+      cxxflags.append('-fno-rtti')
+
+    if ctx.options.variant == 'asan':
+      cxxflags.append('-fsanitize=address,undefined')
+      cxxflags.append('-O')
+      ldflags.append('-fsanitize=address,undefined')
+    elif ctx.options.variant == 'debug':
+      pass
+    else:
+      cxxflags.append('-O3')
+
+  ctx.env.CXXFLAGS = cxxflags
+  if not ctx.env.LDFLAGS:
+    ctx.env.LDFLAGS = ldflags
 
   ctx.check(header_name='stdio.h', features='cxx cxxprogram', mandatory=True)
 
@@ -370,8 +376,9 @@ def build(bld):
         'third_party/sparsepp/'] +
         (['libclang'] if bld.env['use_clang_cxx'] else []),
       defines=[
-          #'_GLIBCXX_USE_CXX11_ABI=0',  'clang+llvm-$version-x86_64-linux-gnu-ubuntu-14.04' is pre CXX11_ABI
         'LOGURU_WITH_STREAMS=1',
+        'LOGURU_FILENAME_WIDTH=18',
+        'LOGURU_THREADNAME_WIDTH=13',
         'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'] +
         (['USE_CLANG_CXX=1', 'LOGURU_RTTI=0']
             if bld.env['use_clang_cxx']
