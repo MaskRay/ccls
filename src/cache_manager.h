@@ -5,6 +5,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct Config;
@@ -25,21 +26,25 @@ struct ICacheManager {
 
   // Tries to load a cache for |path|, returning null if there is none. The
   // cache loader still owns the cache.
-  virtual IndexFile* TryLoad(const std::string& path) = 0;
+  IndexFile* TryLoad(const std::string& path);
 
   // Takes the existing cache or loads the cache at |path|. May return null if
   // the cache does not exist.
-  virtual std::unique_ptr<IndexFile> TryTakeOrLoad(const std::string& path) = 0;
+  std::unique_ptr<IndexFile> TryTakeOrLoad(const std::string& path);
 
   // Takes the existing cache or loads the cache at |path|. Asserts the cache
   // exists.
   std::unique_ptr<IndexFile> TakeOrLoad(const std::string& path);
 
+  virtual void WriteToCache(IndexFile& file) = 0;
+
   virtual optional<std::string> LoadCachedFileContents(
-      const std::string& filename) = 0;
+      const std::string& path) = 0;
 
   // Iterate over all loaded caches.
-  virtual void IterateLoadedCaches(std::function<void(IndexFile*)> fn) = 0;
-};
+  void IterateLoadedCaches(std::function<void(IndexFile*)> fn);
 
-void WriteToCache(Config* config, IndexFile& file);
+ protected:
+  virtual std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) = 0;
+  std::unordered_map<std::string, std::unique_ptr<IndexFile>> caches_;
+};

@@ -2,6 +2,7 @@
 
 #include "cache_manager.h"
 #include "config.h"
+#include "iindexer.h"
 #include "import_manager.h"
 #include "language_server_api.h"
 #include "message_handler.h"
@@ -41,11 +42,11 @@ enum class FileParseQuery { NeedsParse, DoesNotNeedParse, NoSuchFile };
 std::vector<Index_DoIdMap> DoParseFile(
     Config* config,
     WorkingFiles* working_files,
-    ClangIndex* index,
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
     ICacheManager* cache_manager,
+    IIndexer* indexer,
     bool is_interactive,
     const std::string& path,
     const std::vector<std::string>& args,
@@ -192,8 +193,8 @@ std::vector<Index_DoIdMap> DoParseFile(
   }
 
   PerformanceImportFile perf;
-  std::vector<std::unique_ptr<IndexFile>> indexes = Parse(
-      config, file_consumer_shared, path, args, file_contents, &perf, index);
+  std::vector<std::unique_ptr<IndexFile>> indexes = indexer->Index(
+      config, file_consumer_shared, path, args, file_contents, &perf);
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
@@ -216,24 +217,23 @@ std::vector<Index_DoIdMap> DoParseFile(
 std::vector<Index_DoIdMap> ParseFile(
     Config* config,
     WorkingFiles* working_files,
-    ClangIndex* index,
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     ImportManager* import_manager,
+    ICacheManager* cache_manager,
+    IIndexer* indexer,
     bool is_interactive,
     const Project::Entry& entry,
     const std::string& contents) {
   FileContents file_contents(entry.filename, contents);
-
-  std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
 
   // Try to determine the original import file by loading the file from cache.
   // This lets the user request an index on a header file, which clang will
   // complain about if indexed by itself.
   IndexFile* entry_cache = cache_manager->TryLoad(entry.filename);
   std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
-  return DoParseFile(config, working_files, index, file_consumer_shared,
-                     timestamp_manager, import_manager, cache_manager.get(),
+  return DoParseFile(config, working_files, file_consumer_shared,
+                     timestamp_manager, import_manager, cache_manager, indexer,
                      is_interactive, tu_path, entry.args, file_contents);
 }
 
@@ -242,7 +242,8 @@ bool IndexMain_DoParse(Config* config,
                        FileConsumerSharedState* file_consumer_shared,
                        TimestampManager* timestamp_manager,
                        ImportManager* import_manager,
-                       ClangIndex* index) {
+                       ICacheManager* cache_manager,
+                       IIndexer* indexer) {
   auto* queue = QueueManager::instance();
   optional<Index_Request> request = queue->index_request.TryDequeue();
   if (!request)
@@ -251,9 +252,10 @@ bool IndexMain_DoParse(Config* config,
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  std::vector<Index_DoIdMap> responses = ParseFile(
-      config, working_files, index, file_consumer_shared, timestamp_manager,
-      import_manager, request->is_interactive, entry, request->contents);
+  std::vector<Index_DoIdMap> responses =
+      ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
+                import_manager, cache_manager, indexer, request->is_interactive,
+                entry, request->contents);
 
   // Don't bother sending an IdMap request if there are no responses.
   if (responses.empty())
@@ -264,8 +266,8 @@ bool IndexMain_DoParse(Config* config,
   return true;
 }
 
-bool IndexMain_DoCreateIndexUpdate(Config* config,
-                                   TimestampManager* timestamp_manager) {
+bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager,
+                                   ICacheManager* cache_manager) {
   auto* queue = QueueManager::instance();
   optional<Index_OnIdMapped> response = queue->on_id_mapped.TryDequeue();
   if (!response)
@@ -293,7 +295,7 @@ bool IndexMain_DoCreateIndexUpdate(Config* config,
     LOG_S(INFO) << "Writing cached index to disk for "
                 << response->current->file->path;
     time.Reset();
-    WriteToCache(config, *response->current->file);
+    cache_manager->WriteToCache(*response->current->file);
     response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
     timestamp_manager->UpdateCachedModificationTime(
         response->current->file->path,
@@ -420,7 +422,7 @@ void Indexer_Main(Config* config,
   std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
-  ClangIndex index;
+  auto indexer = IIndexer::MakeClangIndexer();
 
   while (true) {
     status->num_active_threads++;
@@ -435,12 +437,13 @@ void Indexer_Main(Config* config,
     // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
     // work. Running both also lets the user query the partially constructed
     // index.
-    bool did_parse =
-        IndexMain_DoParse(config, working_files, file_consumer_shared,
-                          timestamp_manager, import_manager, &index);
+    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
+    bool did_parse = IndexMain_DoParse(
+        config, working_files, file_consumer_shared, timestamp_manager,
+        import_manager, cache_manager.get(), indexer.get());
 
     bool did_create_update =
-        IndexMain_DoCreateIndexUpdate(config, timestamp_manager);
+        IndexMain_DoCreateIndexUpdate(timestamp_manager, cache_manager.get());
 
     bool did_load_previous = IndexMain_LoadPreviousIndex(cache_manager.get());
 
@@ -583,17 +586,19 @@ bool QueryDb_ImportMain(Config* config,
   return did_work;
 }
 
-#if false
 TEST_SUITE("ImportPipeline") {
   TEST_CASE("hello") {
-    MultiQueueWaiter waiter;
-    QueueManager::CreateInstance(&waiter);
+    MultiQueueWaiter querydb_waiter;
+    MultiQueueWaiter indexer_waiter;
+    MultiQueueWaiter stdout_waiter;
+    QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
+                                 &stdout_waiter);
     auto* queue = QueueManager::instance();
 
     std::string path = "foo.cc";
     std::vector<std::string> args = {};
     bool is_interactive = false;
-    optional<std::string> contents = std::string("void foo();");
+    std::string contents = std::string("void foo();");
     queue->index_request.Enqueue(
         Index_Request(path, args, is_interactive, contents));
 
@@ -602,12 +607,15 @@ TEST_SUITE("ImportPipeline") {
     FileConsumerSharedState file_consumer_shared;
     TimestampManager timestamp_manager;
     ImportManager import_manager;
-    ClangIndex index;
+
+    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::MakeFake({});
+    auto indexer = IIndexer::MakeTestIndexer({{"foo.cc", 1}});
+
     IndexMain_DoParse(&config, &working_files, &file_consumer_shared,
-                      &timestamp_manager, &import_manager, &index);
+                      &timestamp_manager, &import_manager, cache_manager.get(),
+                      indexer.get());
 
     REQUIRE(queue->index_request.Size() == 0);
     REQUIRE(queue->do_id_map.Size() == 1);
   }
 }
-#endif
