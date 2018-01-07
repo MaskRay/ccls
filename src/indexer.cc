@@ -1040,9 +1040,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
 
           ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
-          IndexType* ref_type_index =
-              db->Resolve(db->ToTypeId(ref_type.get_usr()));
-          ref_type_index->uses.push_back(ref_cursor.get_spelling_range());
+          if (ref_type.get_usr().size()) {
+            IndexType* ref_type_index =
+                db->Resolve(db->ToTypeId(ref_type.get_usr()));
+            ref_type_index->uses.push_back(ref_cursor.get_spelling_range());
+          }
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
