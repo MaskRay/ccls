@@ -9,7 +9,7 @@ install:
 
 build_script:
   - cd C:\projects\cquery
-  - python waf configure --msvc_version="msvc 14.0" --msvc_targets=x64
+  - python waf configure --msvc_version="msvc 15.0"
   - python waf build
   - ps: |
       $dir = "cquery-${env:appveyor_build_version}-win64"
@@ -26,7 +26,5 @@ artifacts:
   - path: 'cquery-*.zip'
 
 cache:
-  - C:\projects\cquery\build\LLVM-4.0.0-win64.exe
   - C:\projects\cquery\build\LLVM-5.0.1-win64.exe
-  - C:\projects\cquery\build\LLVM-4.0.0-win64\
   - C:\projects\cquery\build\LLVM-5.0.1-win64\

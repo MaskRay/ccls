@@ -124,6 +124,8 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
 
   bool success = true;
   bool update_all = false;
+  // FIXME: show diagnostics in STL/headers when running tests. At the moment
+  // this can be done by constructing ClangIndex index(1, 1);
   ClangIndex index;
 
   for (std::string path : GetFilesInFolder("index_tests", true /*recursive*/,
@@ -152,8 +154,9 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
     bool had_extra_flags = !flags.empty();
     if (!AnyStartsWith(flags, "-x"))
       flags.push_back("-xc++");
+    // Use c++14 by default, because MSVC STL is written assuming that.
     if (!AnyStartsWith(flags, "-std"))
-      flags.push_back("-std=c++11");
+      flags.push_back("-std=c++14");
     flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
     if (had_extra_flags) {
       std::cout << "For " << path << std::endl;
