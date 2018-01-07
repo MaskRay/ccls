@@ -6,6 +6,7 @@
 #include "indexer.h"
 
 #include <doctest/doctest.h>
+#include <loguru.hpp>
 
 namespace {
 bool gTestOutputMode = false;
@@ -252,7 +253,8 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
         Reflect(reader, *file);
         if (file->version != expected_version)
           return nullptr;
-      } catch (msgpack::insufficient_bytes&) {
+      } catch (msgpack::unpack_error& ex) {
+        LOG_S(ERROR) << "msgpack::unpack_err for '" << path << "' " << ex.what();
         return nullptr;
       }
       break;

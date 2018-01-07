@@ -25,7 +25,7 @@ class MessagePackReader : public Reader {
   int GetInt() override { return o_.as<int>(); }
   int64_t GetInt64() override { return o_.as<int64_t>(); }
   uint64_t GetUint64() override { return o_.as<uint64_t>(); }
-  const char* GetCString() override { return o_.as<char*>(); }
+  std::string GetString() override { return o_.as<std::string>(); }
 
   bool HasMember(const char* x) override { return true; }
   std::unique_ptr<Reader> operator[](const char* x) override {

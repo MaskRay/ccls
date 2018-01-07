@@ -27,8 +27,7 @@ class Reader {
   virtual int GetInt() = 0;
   virtual int64_t GetInt64() = 0;
   virtual uint64_t GetUint64() = 0;
-  virtual const char* GetCString() = 0;
-  virtual std::string GetString() { return GetCString(); }
+  virtual std::string GetString() = 0;
 
   virtual bool HasMember(const char* x) = 0;
   virtual std::unique_ptr<Reader> operator[](const char* x) = 0;
@@ -163,8 +162,12 @@ void Reflect(Reader& visitor, optional<T>& value) {
 }
 template <typename T>
 void Reflect(Writer& visitor, optional<T>& value) {
+  // We omit optional fields for JsonWriter to reduce output.
+  // But don't omit them for other serialization formats.
   if (value)
-    Reflect(visitor, value.value());
+    Reflect(visitor, *value);
+  else if (visitor.Format() != SerializeFormat::Json)
+    visitor.Null();
 }
 
 // std::variant (Writer only)
@@ -179,8 +182,6 @@ void Reflect(Writer& visitor, std::variant<T0, T1>& value) {
 // std::vector
 template <typename T>
 void Reflect(Reader& visitor, std::vector<T>& values) {
-  if (!visitor.IsArray())
-    return;
   visitor.IterArray([&](Reader& entry) {
     T entry_value;
     Reflect(entry, entry_value);
@@ -224,10 +225,10 @@ void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
 }
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
-  if (!value)
-    return;
-  visitor.Key(name);
-  Reflect(visitor, value);
+  if (value || visitor.Format() != SerializeFormat::Json) {
+    visitor.Key(name);
+    Reflect(visitor, value);
+  }
 }
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
 

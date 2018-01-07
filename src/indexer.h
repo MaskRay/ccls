@@ -154,7 +154,8 @@ inline bool operator!=(const IndexFuncRef& a, const IndexFuncRef& b) {
 }
 
 inline void Reflect(Reader& visitor, IndexFuncRef& value) {
-  const char* str_value = visitor.GetCString();
+  std::string s = visitor.GetString();
+  const char* str_value = s.c_str();
   if (str_value[0] == '~') {
     value.is_implicit = true;
     ++str_value;

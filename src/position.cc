@@ -148,8 +148,10 @@ bool Range::operator<(const Range& that) const {
 void Reflect(Reader& visitor, Position& value) {
   if (!visitor.IsString())
     value = Position();
-  else
-    value = Position(visitor.GetCString());
+  else {
+    std::string s = visitor.GetString();
+    value = Position(s.c_str());
+  }
 }
 void Reflect(Writer& visitor, Position& value) {
   std::string output = value.ToString();
@@ -160,8 +162,10 @@ void Reflect(Writer& visitor, Position& value) {
 void Reflect(Reader& visitor, Range& value) {
   if (!visitor.IsString())
     value = Range();
-  else
-    value = Range(visitor.GetCString());
+  else {
+    std::string s = visitor.GetString();
+    value = Range(s.c_str());
+  }
 }
 void Reflect(Writer& visitor, Range& value) {
   std::string output = value.ToString();
