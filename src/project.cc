@@ -514,21 +514,21 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11",
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
          "-lstdc++", "myfile.cc", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11",
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++11", "--foo",
+        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14", "--foo",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
   }
@@ -548,7 +548,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.cc",
         /* raw */ {"-DDONT_IGNORE_ME"},
         /* expected */
-        {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++11",
+        {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++14",
          "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
