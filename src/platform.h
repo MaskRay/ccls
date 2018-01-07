@@ -48,3 +48,5 @@ void FreeUnusedMemory();
 
 // If true objective-c index tests will be run.
 bool RunObjectiveCIndexTests();
+
+void TraceMe();

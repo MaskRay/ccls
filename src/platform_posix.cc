@@ -37,8 +37,11 @@
 #if defined(__FreeBSD__)
 #include <sys/param.h>   // MAXPATHLEN
 #include <sys/sysctl.h>  // sysctl
+#elif defined(__APPLE__) || defined(__BSD__)
+#include <sys/ptrace.h>
 #elif defined(__linux__)
 #include <malloc.h>
+#include <sys/ptrace.h>
 #endif
 
 #include <iostream>
@@ -270,6 +273,14 @@ bool RunObjectiveCIndexTests() {
 #else
   return false;
 #endif
+}
+
+void TraceMe() {
+  // If the environment variable is defined, wait for a debugger.
+  // In gdb, you need to invoke `signal SIGCONT` if you want cquery to continue
+  // after detaching.
+  if (getenv("CQUERY_TRACEME"))
+    raise(SIGTSTP);
 }
 
 #endif
