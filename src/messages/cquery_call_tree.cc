@@ -76,27 +76,6 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
   if (!root_func.def)
     return {};
 
-  auto format_location = [&](
-      const lsLocation& location,
-      optional<QueryTypeId> declaring_type) -> std::string {
-    std::string base;
-
-    if (declaring_type) {
-      QueryType type = db->types[declaring_type->id];
-      if (type.def)
-        base = type.def->detailed_name;
-    }
-
-    if (base.empty()) {
-      base = location.uri.GetPath();
-      size_t last_index = base.find_last_of('/');
-      if (last_index != std::string::npos)
-        base = base.substr(last_index + 1);
-    }
-
-    return base + ":" + std::to_string(location.range.start.line + 1);
-  };
-
   std::vector<Out_CqueryCallTree::CallEntry> result;
   std::unordered_set<QueryLocation> seen_locations;
 
@@ -131,9 +110,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
         return;
 
       Out_CqueryCallTree::CallEntry call_entry;
-      call_entry.name =
-          call_func.def->short_name + " (" +
-          format_location(*call_location, call_func.def->declaring_type) + ")";
+      call_entry.name = call_func.def->short_name;
       call_entry.usr = call_func.usr;
       call_entry.location = *call_location;
       call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, call_func);
