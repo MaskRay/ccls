@@ -40,6 +40,9 @@ class JsonReader : public Reader {
   }
 
   void DoMember(const char* name, std::function<void(Reader&)> fn) override {
+    if (m_->GetType() != rapidjson::Type::kObjectType)
+      return; // FIXME: signal an error that object was not deserialized correctly?
+
     auto it = m_->FindMember(name);
     if (it != m_->MemberEnd()) {
       JsonReader sub(&it->value);
