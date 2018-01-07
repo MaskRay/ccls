@@ -244,8 +244,17 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
     }
 
     case SerializeFormat::MessagePack: {
-      msgpack::object_handle oh = msgpack::unpack(serialized.data(), serialized.size());
-      (void)oh;
+      try {
+        msgpack::object_handle oh =
+            msgpack::unpack(serialized.data(), serialized.size());
+        file = MakeUnique<IndexFile>(path);
+        MessagePackReader reader(oh.get());
+        Reflect(reader, *file);
+        if (file->version != expected_version)
+          return nullptr;
+      } catch (msgpack::insufficient_bytes&) {
+        return nullptr;
+      }
       break;
     }
   }

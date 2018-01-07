@@ -5,48 +5,27 @@
 #include <msgpack.hpp>
 
 class MessagePackReader : public Reader {
-  msgpack::unpacker* m_;
-  msgpack::object_handle oh_;
-
-  void next() { m_->next(oh_); }
+  msgpack::object o_;
+  size_t idx_ = 0;
+  std::vector<msgpack::object> children_;
 
  public:
-  MessagePackReader(msgpack::unpacker* m) : m_(m) { next(); }
+  MessagePackReader(msgpack::object o) : o_(o) {}
   SerializeFormat Format() const override { return SerializeFormat::MessagePack; }
 
-  bool IsNull() override { return oh_.get().is_nil(); }
-  bool IsArray() override { return oh_.get().type == msgpack::type::ARRAY; }
+  bool IsNull() override { return o_.is_nil(); }
+  bool IsArray() override { return o_.type == msgpack::type::ARRAY; }
   bool IsInt() override {
-    return oh_.get().type == msgpack::type::POSITIVE_INTEGER ||
-           oh_.get().type == msgpack::type::NEGATIVE_INTEGER;
+    return o_.type == msgpack::type::POSITIVE_INTEGER ||
+           o_.type == msgpack::type::NEGATIVE_INTEGER;
   }
-  bool IsString() override { return oh_.get().type == msgpack::type::STR; }
+  bool IsString() override { return o_.type == msgpack::type::STR; }
 
-  bool GetBool() override {
-    auto ret = oh_.get().as<bool>();
-    next();
-    return ret;
-  }
-  int GetInt() override {
-    auto ret = oh_.get().as<int>();
-    next();
-    return ret;
-  }
-  int64_t GetInt64() override {
-    auto ret = oh_.get().as<int64_t>();
-    next();
-    return ret;
-  }
-  uint64_t GetUint64() override {
-    auto ret = oh_.get().as<uint64_t>();
-    next();
-    return ret;
-  }
-  const char* GetCString() override {
-    auto ret = oh_.get().as<char*>();
-    next();
-    return ret;
-  }
+  bool GetBool() override { return o_.as<bool>(); }
+  int GetInt() override { return o_.as<int>(); }
+  int64_t GetInt64() override { return o_.as<int64_t>(); }
+  uint64_t GetUint64() override { return o_.as<uint64_t>(); }
+  const char* GetCString() override { return o_.as<char*>(); }
 
   bool HasMember(const char* x) override { return true; }
   std::unique_ptr<Reader> operator[](const char* x) override {
@@ -54,11 +33,17 @@ class MessagePackReader : public Reader {
   }
 
   void IterArray(std::function<void(Reader&)> fn) override {
+    for (auto& entry : o_.as<std::vector<msgpack::object>>()) {
+      MessagePackReader sub(entry);
+      fn(sub);
+    }
   }
 
   void DoMember(const char* name, std::function<void(Reader&)> fn) override {
-    const char* key = GetCString();
-    fn(*this);
+    if (idx_ == 0)
+      children_ = o_.as<std::vector<msgpack::object>>();
+    MessagePackReader sub(children_[idx_++]);
+    fn(sub);
   }
 };
 
@@ -79,8 +64,7 @@ class MessagePackWriter : public Writer {
   void String(const char* x, size_t len) override { m_->pack(std::string(x, len)); }
   void StartArray(size_t n) override { m_->pack_array(uint32_t(n)); }
   void EndArray() override {}
-  // TODO pack_array
-  void StartObject(size_t n) override { m_->pack_map(uint32_t(n)); }
+  void StartObject(size_t n) override { m_->pack_array(uint32_t(n)); }
   void EndObject() override {}
-  void Key(const char* name) override { m_->pack(name); }
+  void Key(const char* name) override {}
 };
