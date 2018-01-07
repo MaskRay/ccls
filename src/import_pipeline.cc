@@ -587,35 +587,79 @@ bool QueryDb_ImportMain(Config* config,
 }
 
 TEST_SUITE("ImportPipeline") {
-  TEST_CASE("hello") {
+  struct Fixture {
+    Fixture() {
+      QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
+                                   &stdout_waiter);
+
+      queue = QueueManager::instance();
+      cache_manager = ICacheManager::MakeFake({});
+      indexer = IIndexer::MakeTestIndexer({});
+    }
+
+    bool PumpOnce() {
+      return IndexMain_DoParse(&config, &working_files, &file_consumer_shared,
+                               &timestamp_manager, &import_manager,
+                               cache_manager.get(), indexer.get());
+    }
+
+    void MakeRequest(const std::string& path,
+                     const std::vector<std::string>& args = {},
+                     bool is_interactive = false,
+                     const std::string& contents = "void foo();") {
+      queue->index_request.Enqueue(
+          Index_Request(path, args, is_interactive, contents));
+    }
+
     MultiQueueWaiter querydb_waiter;
     MultiQueueWaiter indexer_waiter;
     MultiQueueWaiter stdout_waiter;
-    QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
-                                 &stdout_waiter);
-    auto* queue = QueueManager::instance();
 
-    std::string path = "foo.cc";
-    std::vector<std::string> args = {};
-    bool is_interactive = false;
-    std::string contents = std::string("void foo();");
-    queue->index_request.Enqueue(
-        Index_Request(path, args, is_interactive, contents));
-
+    QueueManager* queue = nullptr;
     Config config;
     WorkingFiles working_files;
     FileConsumerSharedState file_consumer_shared;
     TimestampManager timestamp_manager;
     ImportManager import_manager;
+    std::unique_ptr<ICacheManager> cache_manager;
+    std::unique_ptr<IIndexer> indexer;
+  };
 
-    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::MakeFake({});
-    auto indexer = IIndexer::MakeTestIndexer({{"foo.cc", 1}});
+  TEST_CASE_FIXTURE(Fixture, "index request with zero results") {
+    indexer = IIndexer::MakeTestIndexer({{"foo.cc", 0}});
 
-    IndexMain_DoParse(&config, &working_files, &file_consumer_shared,
-                      &timestamp_manager, &import_manager, cache_manager.get(),
-                      indexer.get());
+    MakeRequest("foo.cc");
 
+    REQUIRE(queue->index_request.Size() == 1);
+    REQUIRE(queue->do_id_map.Size() == 0);
+    PumpOnce();
     REQUIRE(queue->index_request.Size() == 0);
-    REQUIRE(queue->do_id_map.Size() == 1);
+    REQUIRE(queue->do_id_map.Size() == 0);
+  }
+
+  TEST_CASE_FIXTURE(Fixture, "one index request") {
+    indexer = IIndexer::MakeTestIndexer({{"foo.cc", 100}});
+
+    MakeRequest("foo.cc");
+
+    REQUIRE(queue->index_request.Size() == 1);
+    REQUIRE(queue->do_id_map.Size() == 0);
+    PumpOnce();
+    REQUIRE(queue->index_request.Size() == 0);
+    REQUIRE(queue->do_id_map.Size() == 100);
+  }
+
+  TEST_CASE_FIXTURE(Fixture, "multiple index requests") {
+    indexer = IIndexer::MakeTestIndexer({{"foo.cc", 100}, {"bar.cc", 5}});
+
+    MakeRequest("foo.cc");
+    MakeRequest("bar.cc");
+
+    REQUIRE(queue->index_request.Size() == 2);
+    REQUIRE(queue->do_id_map.Size() == 0);
+    while (PumpOnce()) {
+    }
+    REQUIRE(queue->index_request.Size() == 0);
+    REQUIRE(queue->do_id_map.Size() == 105);
   }
 }
