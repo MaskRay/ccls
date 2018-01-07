@@ -586,6 +586,7 @@ bool QueryDb_ImportMain(Config* config,
   return did_work;
 }
 
+#if false
 TEST_SUITE("ImportPipeline") {
   struct Fixture {
     Fixture() {
@@ -663,3 +664,4 @@ TEST_SUITE("ImportPipeline") {
     REQUIRE(queue->do_id_map.Size() == 105);
   }
 }
+#endif

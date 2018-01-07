@@ -12,7 +12,7 @@ struct ClangIndexer : IIndexer {
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents,
-      PerformanceImportFile* perf) {
+      PerformanceImportFile* perf) override {
     return Parse(config, file_consumer_shared, file, args, file_contents, perf,
                  &index);
   }
@@ -50,7 +50,7 @@ struct TestIndexer : IIndexer {
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents,
-      PerformanceImportFile* perf) {
+      PerformanceImportFile* perf) override {
     auto it = indexes.find(file);
     if (it == indexes.end()) {
       // Don't return any indexes for unexpected data.
