@@ -148,26 +148,54 @@ bool Range::operator<(const Range& that) const {
 void Reflect(Reader& visitor, Position& value) {
   if (!visitor.IsString())
     value = Position();
-  else {
+  else if (visitor.Format() == SerializeFormat::Json) {
     std::string s = visitor.GetString();
     value = Position(s.c_str());
+  } else {
+    REFLECT_MEMBER_START(2);
+    Reflect(visitor, value.line);
+    Reflect(visitor, value.column);
+    REFLECT_MEMBER_END();
   }
 }
 void Reflect(Writer& visitor, Position& value) {
-  std::string output = value.ToString();
-  visitor.String(output.c_str(), output.size());
+  if (visitor.Format() == SerializeFormat::Json) {
+    std::string output = value.ToString();
+    visitor.String(output.c_str(), output.size());
+  } else {
+    REFLECT_MEMBER_START(2);
+    Reflect(visitor, value.line);
+    Reflect(visitor, value.column);
+    REFLECT_MEMBER_END();
+  }
 }
 
 // Range
 void Reflect(Reader& visitor, Range& value) {
   if (!visitor.IsString())
     value = Range();
-  else {
+  else if (visitor.Format() == SerializeFormat::Json) {
     std::string s = visitor.GetString();
     value = Range(s.c_str());
+  } else {
+    REFLECT_MEMBER_START(4);
+    Reflect(visitor, value.start.line);
+    Reflect(visitor, value.start.column);
+    Reflect(visitor, value.end.line);
+    Reflect(visitor, value.end.column);
+    REFLECT_MEMBER_END();
   }
 }
 void Reflect(Writer& visitor, Range& value) {
-  std::string output = value.ToString();
-  visitor.String(output.c_str(), output.size());
+  if (visitor.Format() == SerializeFormat::Json) {
+    std::string output = value.ToString();
+    visitor.String(output.c_str(), output.size());
+  } else {
+    REFLECT_MEMBER_START(4);
+    Reflect(visitor, value.start.line);
+    Reflect(visitor, value.start.column);
+    Reflect(visitor, value.end.line);
+    Reflect(visitor, value.end.column);
+    REFLECT_MEMBER_END();
+  }
 }
