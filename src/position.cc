@@ -149,7 +149,7 @@ void Reflect(Reader& visitor, Position& value) {
   if (!visitor.IsString())
     value = Position();
   else
-    value = Position(visitor.GetString());
+    value = Position(visitor.GetCString());
 }
 void Reflect(Writer& visitor, Position& value) {
   std::string output = value.ToString();
@@ -161,7 +161,7 @@ void Reflect(Reader& visitor, Range& value) {
   if (!visitor.IsString())
     value = Range();
   else
-    value = Range(visitor.GetString());
+    value = Range(visitor.GetCString());
 }
 void Reflect(Writer& visitor, Range& value) {
   std::string output = value.ToString();

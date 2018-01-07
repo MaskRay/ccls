@@ -1,6 +1,5 @@
 #include "serializer.h"
 
-// TODO Move Json* to serializers/json.cc
 #include "serializers/json.h"
 #include "serializers/msgpack.h"
 
@@ -192,43 +191,64 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_END();
 }
 
-std::string Serialize(IndexFile& file) {
-  rapidjson::StringBuffer output;
-  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
-  writer.SetFormatOptions(
-      rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
-  writer.SetIndent(' ', 2);
+std::string Serialize(SerializeFormat format, IndexFile& file) {
 
-  JsonWriter json_writer(&writer);
-  Reflect(json_writer, file);
-
-  return output.GetString();
+  switch (format) {
+    case SerializeFormat::Json: {
+      rapidjson::StringBuffer output;
+      rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
+      writer.SetFormatOptions(
+          rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
+      writer.SetIndent(' ', 2);
+      JsonWriter json_writer(&writer);
+      Reflect(json_writer, file);
+      return output.GetString();
+    }
+    case SerializeFormat::MessagePack: {
+      msgpack::sbuffer buf;
+      msgpack::packer<msgpack::sbuffer> pk(&buf);
+      MessagePackWriter msgpack_writer(&pk);
+      Reflect(msgpack_writer, file);
+      return std::string(buf.data(), buf.size());
+    }
+  }
+  return "";
 }
 
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
                                        std::string path,
                                        std::string serialized,
                                        optional<int> expected_version) {
-  rapidjson::Document reader;
-  reader.Parse(serialized.c_str());
-  if (reader.HasParseError())
-    return nullptr;
+  std::unique_ptr<IndexFile> file;
+  switch (format) {
+    case SerializeFormat::Json: {
+      rapidjson::Document reader;
+      reader.Parse(serialized.c_str());
+      if (reader.HasParseError())
+        return nullptr;
 
-  // Do not deserialize a document with a bad version. Doing so could cause a
-  // crash because the file format may have changed.
-  if (expected_version) {
-    auto actual_version = reader.FindMember("version");
-    if (actual_version == reader.MemberEnd() ||
-        actual_version->value.GetInt() != expected_version) {
-      return nullptr;
+      // Do not deserialize a document with a bad version. Doing so could cause a
+      // crash because the file format may have changed.
+      if (expected_version) {
+        auto actual_version = reader.FindMember("version");
+        if (actual_version == reader.MemberEnd() ||
+            actual_version->value.GetInt() != expected_version) {
+          return nullptr;
+        }
+      }
+
+      file = MakeUnique<IndexFile>(path);
+      JsonReader json_reader{&reader};
+      Reflect(json_reader, *file);
+      break;
+    }
+
+    case SerializeFormat::MessagePack: {
+      msgpack::object_handle oh = msgpack::unpack(serialized.data(), serialized.size());
+      (void)oh;
+      break;
     }
   }
-
-  // TODO msgpack
-  (void)format;
-  auto file = MakeUnique<IndexFile>(path);
-  JsonReader json_reader{&reader};
-  Reflect(json_reader, *file);
 
   // Restore non-serialized state.
   file->path = path;

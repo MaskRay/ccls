@@ -27,7 +27,8 @@ class Reader {
   virtual int GetInt() = 0;
   virtual int64_t GetInt64() = 0;
   virtual uint64_t GetUint64() = 0;
-  virtual const char* GetString() = 0;
+  virtual const char* GetCString() = 0;
+  virtual std::string GetString() { return GetCString(); }
 
   virtual bool HasMember(const char* x) = 0;
   virtual std::unique_ptr<Reader> operator[](const char* x) = 0;
@@ -245,7 +246,7 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
   visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
 }
 
-std::string Serialize(IndexFile& file);
+std::string Serialize(SerializeFormat format, IndexFile& file);
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
                                        std::string path,
                                        std::string serialized,

@@ -31,7 +31,7 @@ struct RealCacheManager : ICacheManager {
       WriteToFile(cache_path, file.file_contents_);
     }
 
-    std::string indexed_content = Serialize(file);
+    std::string indexed_content = Serialize(config_->cacheFormat, file);
     WriteToFile(AppendSerializationFormat(cache_path), indexed_content);
   }
 

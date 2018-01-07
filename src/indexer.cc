@@ -479,7 +479,7 @@ IndexVar* IndexFile::Resolve(IndexVarId id) {
 }
 
 std::string IndexFile::ToString() {
-  return Serialize(*this);
+  return Serialize(SerializeFormat::Json, *this);
 }
 
 IndexType::IndexType(IndexTypeId id, const std::string& usr)
