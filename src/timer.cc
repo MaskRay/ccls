@@ -12,7 +12,6 @@ long long Timer::ElapsedMicroseconds() const {
   std::chrono::time_point<Clock> end = Clock::now();
   long long elapsed = elapsed_;
   if (start_.has_value()) {
-    // TODO: clang-format this file.
     elapsed +=
         std::chrono::duration_cast<std::chrono::microseconds>(end - *start_)
             .count();

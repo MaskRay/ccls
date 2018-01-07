@@ -25,8 +25,9 @@ struct CqueryWaitHandler : MessageHandler {
       has_work |= import_pipeline_status->num_active_threads != 0;
       has_work |= import_manager->HasActiveQuerydbImports();
       has_work |= QueueManager::instance()->HasWork();
-      has_work |= QueryDb_ImportMain(config, db, import_manager, semantic_cache,
-                                     working_files);
+      has_work |=
+          QueryDb_ImportMain(config, db, import_manager, import_pipeline_status,
+                             semantic_cache, working_files);
       if (!has_work)
         ++idle_count;
       else

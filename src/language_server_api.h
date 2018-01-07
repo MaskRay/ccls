@@ -1059,6 +1059,7 @@ struct Out_Progress : public lsOutMessage<Out_Progress> {
     int loadPreviousIndexCount = 0;
     int onIdMappedCount = 0;
     int onIndexedCount = 0;
+    int activeThreads = 0;
   };
   std::string method = "$cquery/progress";
   Params params;
@@ -1068,7 +1069,8 @@ MAKE_REFLECT_STRUCT(Out_Progress::Params,
                     doIdMapCount,
                     loadPreviousIndexCount,
                     onIdMappedCount,
-                    onIndexedCount);
+                    onIndexedCount,
+                    activeThreads);
 MAKE_REFLECT_STRUCT(Out_Progress, jsonrpc, method, params);
 
 struct Out_CquerySetInactiveRegion

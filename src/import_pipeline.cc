@@ -16,15 +16,27 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
+#include <atomic>
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
 
 namespace {
 
+long long GetCurrentTimeInMilliseconds() {
+  auto time_since_epoch = Timer::Clock::now().time_since_epoch();
+  long long elapsed_milliseconds =
+      std::chrono::duration_cast<std::chrono::milliseconds>(time_since_epoch)
+          .count();
+  return elapsed_milliseconds;
+}
+
 // Send indexing progress to client if reporting is enabled.
-void EmitProgress(Config* config) {
-  if (config->enableProgressReports) {
+void EmitProgress(Config* config, ImportPipelineStatus* status) {
+  static std::atomic<long long> next_output = 0;
+
+  if (config->progressReportFrequencyMs >= 0) {
     auto* queue = QueueManager::instance();
     Out_Progress out;
     out.params.indexRequestCount = queue->index_request.Size();
@@ -32,6 +44,21 @@ void EmitProgress(Config* config) {
     out.params.loadPreviousIndexCount = queue->load_previous_index.Size();
     out.params.onIdMappedCount = queue->on_id_mapped.Size();
     out.params.onIndexedCount = queue->on_indexed.Size();
+    out.params.activeThreads = status->num_active_threads;
+
+    // Ignore this progress update if the last update was too recent.
+    if (config->progressReportFrequencyMs != 0) {
+      // Make sure we output a status update if queue lengths are zero.
+      bool has_state =
+          out.params.indexRequestCount != 0 || out.params.doIdMapCount != 0 ||
+          out.params.loadPreviousIndexCount != 0 ||
+          out.params.onIdMappedCount != 0 || out.params.onIndexedCount != 0 ||
+          out.params.activeThreads != 0;
+      if (!has_state || GetCurrentTimeInMilliseconds() < next_output)
+        return;
+      next_output =
+          GetCurrentTimeInMilliseconds() + config->progressReportFrequencyMs;
+    }
 
     QueueManager::WriteStdout(IpcId::Unknown, out);
   }
@@ -428,7 +455,7 @@ void Indexer_Main(Config* config,
   while (true) {
     status->num_active_threads++;
 
-    EmitProgress(config);
+    EmitProgress(config, status);
 
     // TODO: process all off IndexMain_DoIndex before calling
     // IndexMain_DoCreateIndexUpdate for better icache behavior. We need to have
@@ -467,11 +494,14 @@ void Indexer_Main(Config* config,
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,
                         ImportManager* import_manager,
+                        ImportPipelineStatus* status,
                         SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files) {
   std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
   auto* queue = QueueManager::instance();
-  EmitProgress(config);
+  EmitProgress(config, status);
+
+  status->num_active_threads++;
 
   bool did_work = false;
 
@@ -583,6 +613,8 @@ bool QueryDb_ImportMain(Config* config,
     for (auto& updated_file : response->update.files_def_update)
       import_manager->DoneQueryDbImport(updated_file.path);
   }
+
+  status->num_active_threads--;
 
   return did_work;
 }

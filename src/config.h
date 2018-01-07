@@ -39,7 +39,17 @@ struct Config {
   bool enableCacheRead = true;
 
   // If true, cquery will send progress reports while indexing
-  bool enableProgressReports = true;
+  // How often should cquery send progress report messages?
+  //  -1: never
+  //   0: as often as possible
+  //   xxx: at most every xxx milliseconds
+  //
+  // Empty progress reports (ie, idle) are delivered as often as they are
+  // available and may exceed this value.
+  //
+  // This does not guarantee a progress report will be delivered every
+  // interval; it could take significantly longer if cquery is completely idle.
+  int progressReportFrequencyMs = 500;
 
   // If true, document links are reported for #include directives.
   bool showDocumentLinksOnIncludes = true;
@@ -94,7 +104,7 @@ MAKE_REFLECT_STRUCT(Config,
                     enableIndexing,
                     enableCacheWrite,
                     enableCacheRead,
-                    enableProgressReports,
+                    progressReportFrequencyMs,
 
                     includeCompletionMaximumPathLength,
                     includeCompletionWhitelistLiteralEnding,

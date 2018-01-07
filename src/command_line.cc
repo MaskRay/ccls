@@ -100,6 +100,7 @@ bool QueryDbMainLoop(Config* config,
                      Project* project,
                      FileConsumerSharedState* file_consumer_shared,
                      ImportManager* import_manager,
+                     ImportPipelineStatus* status,
                      TimestampManager* timestamp_manager,
                      SemanticHighlightSymbolCache* semantic_cache,
                      WorkingFiles* working_files,
@@ -132,7 +133,7 @@ bool QueryDbMainLoop(Config* config,
   // TODO: consider rate-limiting and checking for IPC messages so we don't
   // block requests / we can serve partial requests.
 
-  if (QueryDb_ImportMain(config, db, import_manager, semantic_cache,
+  if (QueryDb_ImportMain(config, db, import_manager, status, semantic_cache,
                          working_files)) {
     did_work = true;
   }
@@ -190,10 +191,11 @@ void RunQueryDbThread(const std::string& bin_name,
   SetCurrentThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
-        config, &db, querydb_waiter, &project, &file_consumer_shared, &import_manager,
-        &timestamp_manager, &semantic_cache, &working_files, &clang_complete,
-        &include_complete, global_code_complete_cache.get(),
-        non_global_code_complete_cache.get(), signature_cache.get());
+        config, &db, querydb_waiter, &project, &file_consumer_shared,
+        &import_manager, &import_pipeline_status, &timestamp_manager,
+        &semantic_cache, &working_files, &clang_complete, &include_complete,
+        global_code_complete_cache.get(), non_global_code_complete_cache.get(),
+        signature_cache.get());
 
     // Cleanup and free any unused memory.
     FreeUnusedMemory();
