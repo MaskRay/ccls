@@ -242,24 +242,32 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       }
     }
 
-    // Sort results with a fuzzy matching algorithm.
-    int longest = 0;
-    for (int i : result_indices)
-      longest = std::max(longest, int(db->short_names[i].size()));
+    if (config->sortWorkspaceSearchResults) {
+      // Sort results with a fuzzy matching algorithm.
+      int longest = 0;
+      for (int i : result_indices)
+        longest = std::max(longest, int(db->short_names[i].size()));
 
-    std::vector<int> score(longest),  // score for each position
-        dp(longest);  // dp[i]: maximum value by aligning pattern to str[0..i]
-    std::vector<std::pair<int, int>> permutation(result_indices.size());
-    for (int i = 0; i < int(result_indices.size()); i++) {
-      permutation[i] = {
-          FuzzyEvaluate(query, db->short_names[result_indices[i]], score, dp),
-          i};
+      std::vector<int> score(longest);  // score for each position
+      std::vector<int> dp(longest);  // dp[i]: maximum value by aligning pattern to str[0..i]
+      std::vector<std::pair<int, int>> permutation(result_indices.size());
+      for (int i = 0; i < int(result_indices.size()); i++) {
+        permutation[i] = {
+            FuzzyEvaluate(query, db->short_names[result_indices[i]], score, dp),
+            i};
+      }
+      std::sort(permutation.begin(), permutation.end(),
+                std::greater<std::pair<int, int>>());
+      out.result.reserve(result_indices.size());
+      for (int i = 0; i < int(result_indices.size()); i++)
+        out.result.push_back(std::move(unsorted_results[permutation[i].second]));
     }
-    std::sort(permutation.begin(), permutation.end(),
-              std::greater<std::pair<int, int>>());
-    out.result.reserve(result_indices.size());
-    for (int i = 0; i < int(result_indices.size()); i++)
-      out.result.push_back(std::move(unsorted_results[permutation[i].second]));
+    else {
+      out.result.reserve(unsorted_results.size());
+      for (const auto& entry : unsorted_results)
+        out.result.push_back(std::move(entry));
+    }
+
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
                 << " results for query " << query;

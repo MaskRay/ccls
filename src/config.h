@@ -27,6 +27,10 @@ struct Config {
 
   // Maximum workspace search results.
   int maxWorkspaceSearchResults = 500;
+  // If true, workspace search results will be dynamically rescored/reordered
+  // as the search progresses. Some clients do their own ordering and assume
+  // that the results stay sorted in the same order as the search progresses.
+  bool sortWorkspaceSearchResults = true;
 
   // Force a certain number of indexer threads. If less than 1 a default value
   // should be used.
@@ -100,6 +104,8 @@ MAKE_REFLECT_STRUCT(Config,
                     logSkippedPathsForIndex,
 
                     maxWorkspaceSearchResults,
+                    sortWorkspaceSearchResults,
+
                     indexerCount,
                     enableIndexing,
                     enableCacheWrite,
