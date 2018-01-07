@@ -20,6 +20,7 @@ struct WorkingFiles;
 
 struct ImportPipelineStatus {
   std::atomic<int> num_active_threads;
+  std::atomic<long long> next_progress_output;
 
   ImportPipelineStatus();
 };

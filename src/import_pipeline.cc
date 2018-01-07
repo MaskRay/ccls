@@ -34,8 +34,6 @@ long long GetCurrentTimeInMilliseconds() {
 
 // Send indexing progress to client if reporting is enabled.
 void EmitProgress(Config* config, ImportPipelineStatus* status) {
-  static std::atomic<long long> next_output = 0;
-
   if (config->progressReportFrequencyMs >= 0) {
     auto* queue = QueueManager::instance();
     Out_Progress out;
@@ -54,9 +52,10 @@ void EmitProgress(Config* config, ImportPipelineStatus* status) {
           out.params.loadPreviousIndexCount != 0 ||
           out.params.onIdMappedCount != 0 || out.params.onIndexedCount != 0 ||
           out.params.activeThreads != 0;
-      if (!has_state || GetCurrentTimeInMilliseconds() < next_output)
+      if (!has_state ||
+          GetCurrentTimeInMilliseconds() < status->next_progress_output)
         return;
-      next_output =
+      status->next_progress_output =
           GetCurrentTimeInMilliseconds() + config->progressReportFrequencyMs;
     }
 
@@ -402,7 +401,8 @@ bool IndexMergeIndexUpdates() {
 
 }  // namespace
 
-ImportPipelineStatus::ImportPipelineStatus() : num_active_threads(0) {}
+ImportPipelineStatus::ImportPipelineStatus()
+    : num_active_threads(0), next_progress_output(0) {}
 
 // Index a file using an already-parsed translation unit from code completion.
 // Since most of the time for indexing a file comes from parsing, we can do
@@ -499,9 +499,9 @@ bool QueryDb_ImportMain(Config* config,
                         WorkingFiles* working_files) {
   std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
   auto* queue = QueueManager::instance();
-  EmitProgress(config, status);
 
   status->num_active_threads++;
+  EmitProgress(config, status);
 
   bool did_work = false;
 
@@ -615,6 +615,7 @@ bool QueryDb_ImportMain(Config* config,
   }
 
   status->num_active_threads--;
+  EmitProgress(config, status);
 
   return did_work;
 }
