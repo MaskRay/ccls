@@ -71,6 +71,9 @@ struct TestIndexer : IIndexer {
 
 }  // namespace
 
+IIndexer::TestEntry::TestEntry(const std::string& path, int num_indexes)
+    : path(path), num_indexes(num_indexes) {}
+
 // static
 std::unique_ptr<IIndexer> IIndexer::MakeClangIndexer() {
   return MakeUnique<ClangIndexer>();
@@ -78,6 +81,6 @@ std::unique_ptr<IIndexer> IIndexer::MakeClangIndexer() {
 
 // static
 std::unique_ptr<IIndexer> IIndexer::MakeTestIndexer(
-    const std::vector<TestEntry>& entries) {
+    std::initializer_list<TestEntry> entries) {
   return TestIndexer::FromEntries(entries);
 }

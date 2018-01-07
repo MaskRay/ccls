@@ -627,7 +627,7 @@ TEST_SUITE("ImportPipeline") {
   };
 
   TEST_CASE_FIXTURE(Fixture, "index request with zero results") {
-    indexer = IIndexer::MakeTestIndexer({{"foo.cc", 0}});
+    indexer = IIndexer::MakeTestIndexer({IIndexer::TestEntry{"foo.cc", 0}});
 
     MakeRequest("foo.cc");
 
@@ -639,7 +639,7 @@ TEST_SUITE("ImportPipeline") {
   }
 
   TEST_CASE_FIXTURE(Fixture, "one index request") {
-    indexer = IIndexer::MakeTestIndexer({{"foo.cc", 100}});
+    indexer = IIndexer::MakeTestIndexer({IIndexer::TestEntry{"foo.cc", 100}});
 
     MakeRequest("foo.cc");
 
@@ -651,7 +651,8 @@ TEST_SUITE("ImportPipeline") {
   }
 
   TEST_CASE_FIXTURE(Fixture, "multiple index requests") {
-    indexer = IIndexer::MakeTestIndexer({{"foo.cc", 100}, {"bar.cc", 5}});
+    indexer = IIndexer::MakeTestIndexer(
+        {IIndexer::TestEntry{"foo.cc", 100}, IIndexer::TestEntry{"bar.cc", 5}});
 
     MakeRequest("foo.cc");
     MakeRequest("bar.cc");

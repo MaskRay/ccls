@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -22,11 +23,13 @@ struct IIndexer {
   struct TestEntry {
     std::string path;
     int num_indexes = 0;
+
+    TestEntry(const std::string& path, int num_indexes);
   };
 
   static std::unique_ptr<IIndexer> MakeClangIndexer();
   static std::unique_ptr<IIndexer> MakeTestIndexer(
-      const std::vector<TestEntry>& entries);
+      std::initializer_list<TestEntry> entries);
 
   virtual ~IIndexer() = default;
   virtual std::vector<std::unique_ptr<IndexFile>> Index(
