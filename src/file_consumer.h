@@ -16,7 +16,7 @@ MAKE_HASHABLE(CXFileUniqueID, t.data[0], t.data[1], t.data[2]);
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b);
 
 struct FileConsumerSharedState {
-  mutable std::unordered_set<std::string> files;
+  mutable std::unordered_set<std::string> used_files;
   mutable std::mutex mutex;
 
   // Mark the file as used. Returns true if the file was not previously used.

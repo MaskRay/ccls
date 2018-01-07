@@ -55,6 +55,11 @@ std::string StringJoin(const TValues& values) {
   return StringJoinMap(values, [](const std::string& entry) { return entry; });
 }
 
+template <typename TCollection, typename TValue>
+bool ContainsValue(const TCollection& collection, const TValue& value) {
+  return collection.find(value) != collection.end();
+}
+
 // Finds all files in the given folder. This is recursive.
 std::vector<std::string> GetFilesInFolder(std::string folder,
                                           bool recursive,

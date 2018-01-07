@@ -14,14 +14,14 @@ bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
 
 bool FileConsumerSharedState::Mark(const std::string& file) {
   std::lock_guard<std::mutex> lock(mutex);
-  return files.insert(file).second;
+  return used_files.insert(file).second;
 }
 
 void FileConsumerSharedState::Reset(const std::string& file) {
   std::lock_guard<std::mutex> lock(mutex);
-  auto it = files.find(file);
-  if (it != files.end())
-    files.erase(it);
+  auto it = used_files.find(file);
+  if (it != used_files.end())
+    used_files.erase(it);
 }
 
 FileConsumer::FileConsumer(FileConsumerSharedState* shared_state,

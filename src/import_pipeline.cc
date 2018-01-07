@@ -625,6 +625,13 @@ TEST_SUITE("ImportPipeline") {
     std::unique_ptr<IIndexer> indexer;
   };
 
+  // FIXME: validate other state like timestamp_manager, etc.
+  // FIXME: add more interesting tests that are not the happy path
+  // FIXME: test
+  //   - IndexMain_DoCreateIndexUpdate
+  //   - IndexMain_LoadPreviousIndex
+  //   - QueryDb_ImportMain
+
   TEST_CASE_FIXTURE(Fixture, "index request with zero results") {
     indexer = IIndexer::MakeTestIndexer({IIndexer::TestEntry{"foo.cc", 0}});
 
@@ -635,6 +642,8 @@ TEST_SUITE("ImportPipeline") {
     PumpOnce();
     REQUIRE(queue->index_request.Size() == 0);
     REQUIRE(queue->do_id_map.Size() == 0);
+
+    REQUIRE(file_consumer_shared.used_files.empty());
   }
 
   TEST_CASE_FIXTURE(Fixture, "one index request") {
@@ -647,6 +656,8 @@ TEST_SUITE("ImportPipeline") {
     PumpOnce();
     REQUIRE(queue->index_request.Size() == 0);
     REQUIRE(queue->do_id_map.Size() == 100);
+
+    REQUIRE(file_consumer_shared.used_files.empty());
   }
 
   TEST_CASE_FIXTURE(Fixture, "multiple index requests") {
@@ -662,5 +673,7 @@ TEST_SUITE("ImportPipeline") {
     }
     REQUIRE(queue->index_request.Size() == 0);
     REQUIRE(queue->do_id_map.Size() == 105);
+
+    REQUIRE(file_consumer_shared.used_files.empty());
   }
 }
