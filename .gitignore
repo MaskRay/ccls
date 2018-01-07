@@ -18,4 +18,6 @@ e2e_cache
 foo
 libcxx
 waf-*
+waf2*
+waf3*
 x64
