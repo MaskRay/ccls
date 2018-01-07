@@ -80,6 +80,7 @@ struct Config {
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,
+                    cacheFormat,
                     resourceDirectory,
 
                     extraClangArguments,

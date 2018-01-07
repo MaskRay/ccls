@@ -79,8 +79,8 @@ struct IndexFile;
 
 // clang-format off
 // Config has many fields, we need to support at least its number of fields.
-#define NUM_VA_ARGS_IMPL(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,N,...) N
-#define NUM_VA_ARGS(...) NUM_VA_ARGS_IMPL(__VA_ARGS__,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1)
+#define NUM_VA_ARGS_IMPL(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,N,...) N
+#define NUM_VA_ARGS(...) NUM_VA_ARGS_IMPL(__VA_ARGS__,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1)
 // clang-format on
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
@@ -245,6 +245,8 @@ template <typename T>
 void ReflectMember(Reader& visitor, const char* name, T& value) {
   visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
 }
+
+MAKE_REFLECT_TYPE_PROXY(SerializeFormat, int)
 
 std::string Serialize(SerializeFormat format, IndexFile& file);
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
