@@ -58,6 +58,7 @@ void WorkingFile::SetIndexContent(const std::string& index_content) {
 
 void WorkingFile::OnBufferContentUpdated() {
   all_buffer_lines = ToLines(buffer_content, true /*trim_whitespace*/);
+  raw_buffer_lines = ToLines(buffer_content, false /*trim_whitespace*/);
 
   // Build lookup buffer.
   all_buffer_lines_lookup.clear();

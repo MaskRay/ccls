@@ -11,11 +11,44 @@
 
 namespace {
 
+// How a completion was triggered
+enum class lsCompletionTriggerKind {
+  // Completion was triggered by typing an identifier (24x7 code
+  // complete), manual invocation (e.g Ctrl+Space) or via API.
+  Invoked = 1,
+
+  // Completion was triggered by a trigger character specified by
+  // the `triggerCharacters` properties of the `CompletionRegistrationOptions`.
+  TriggerCharacter = 2
+};
+MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind,
+                        std::underlying_type<lsCompletionTriggerKind>::type);
+
+// Contains additional information about the context in which a completion
+// request is triggered.
+struct lsCompletionContext {
+  // How the completion was triggered.
+  lsCompletionTriggerKind triggerKind;
+
+  // The trigger character (a single character) that has trigger code complete.
+  // Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
+  optional<std::string> triggerCharacter;
+};
+MAKE_REFLECT_STRUCT(lsCompletionContext, triggerKind, triggerCharacter);
+
+struct lsCompletionParams : lsTextDocumentPositionParams {
+  // The completion context. This is only available it the client specifies to
+  // send this using
+  // `ClientCapabilities.textDocument.completion.contextSupport === true`
+  optional<lsCompletionContext> context;
+};
+MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
+
 struct Ipc_TextDocumentComplete : public IpcMessage<Ipc_TextDocumentComplete> {
   const static IpcId kIpcId = IpcId::TextDocumentCompletion;
 
   lsRequestId id;
-  lsTextDocumentPositionParams params;
+  lsCompletionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentComplete, id, params);
 REGISTER_IPC_MESSAGE(Ipc_TextDocumentComplete);
@@ -36,9 +69,8 @@ struct Out_TextDocumentComplete
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
-bool CompareLsCompletionItem(const lsCompletionItem &item1,
-                             const lsCompletionItem &item2)
-{
+bool CompareLsCompletionItem(const lsCompletionItem& item1,
+                             const lsCompletionItem& item2) {
   if (item1.pos_ != item2.pos_)
     return item1.pos_ < item2.pos_;
   if (item1.priority_ != item2.priority_)
@@ -87,7 +119,7 @@ void SortAndFilterCompletionResponse(
 
   // Find the appearance of |complete_text| in all candidates.
   bool found = false;
-  for (auto &item : items) {
+  for (auto& item : items) {
     item.pos_ = item.label.find(complete_text);
     if (item.pos_ == 0 && item.label.length() == complete_text.length())
       found = true;
@@ -95,9 +127,7 @@ void SortAndFilterCompletionResponse(
 
   // If found, remove all candidates that do not start with it.
   if (!complete_text.empty() && found) {
-    auto filter = [](const lsCompletionItem& item) {
-      return item.pos_ != 0;
-    };
+    auto filter = [](const lsCompletionItem& item) { return item.pos_ != 0; };
     items.erase(std::remove_if(items.begin(), items.end(), filter),
                 items.end());
   }
@@ -187,8 +217,40 @@ struct TextDocumentCompletionHandler : MessageHandler {
     // of order, ie, we get completion request before buffer content update.
     std::string buffer_line;
     if (request->params.position.line >= 0 &&
-        request->params.position.line < file->all_buffer_lines.size()) {
-      buffer_line = file->all_buffer_lines[request->params.position.line];
+        request->params.position.line < file->raw_buffer_lines.size()) {
+      buffer_line = file->raw_buffer_lines[request->params.position.line];
+    }
+
+    // Check for - and : before completing -> or ::, since vscode does not
+    // support multi-character trigger characters.
+    if (request->params.context &&
+        request->params.context->triggerKind ==
+            lsCompletionTriggerKind::TriggerCharacter &&
+        request->params.context->triggerCharacter) {
+      bool did_fail_check = false;
+
+      std::string character = *request->params.context->triggerCharacter;
+      char preceding_index = request->params.position.character - 2;
+
+      // If the character is > or : and we are at the start of the line, do not
+      // show completion results.
+      if ((character == ">" || character == ":") && preceding_index < 0) {
+        did_fail_check = true;
+      }
+      // If the character is > but - does not preced it, or if it is : and :
+      // does not preced it, do not show completion results.
+      else if (preceding_index < buffer_line.size()) {
+        char preceding = buffer_line[preceding_index];
+        did_fail_check = (preceding != '-' && character == ">") ||
+                         (preceding != ':' && character == ":");
+      }
+
+      if (did_fail_check) {
+        Out_TextDocumentComplete out;
+        out.id = request->id;
+        QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+        return;
+      }
     }
 
     if (ShouldRunIncludeCompletion(buffer_line)) {

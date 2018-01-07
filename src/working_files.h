@@ -17,7 +17,10 @@ struct WorkingFile {
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
   std::vector<std::string> index_lines;
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
+  // Note: all_buffer_lines is whitespace stripped.
   std::vector<std::string> all_buffer_lines;
+  // Note: This assumes 0-based lines (1-based lines are normally assumed).
+  std::vector<std::string> raw_buffer_lines;
   // This map goes from disk-line -> indicies+1 in index_lines.
   // Note: The items in the value entry are 1-based lines.
   std::unordered_map<std::string, std::vector<int>> index_lines_lookup;
