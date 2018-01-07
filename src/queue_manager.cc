@@ -51,6 +51,8 @@ QueueManager* QueueManager::instance() {
 void QueueManager::CreateInstance(MultiQueueWaiter* querydb_waiter,
                                   MultiQueueWaiter* indexer_waiter,
                                   MultiQueueWaiter* stdout_waiter) {
+  if (instance_)
+    delete instance_;
   instance_ = new QueueManager(querydb_waiter, indexer_waiter, stdout_waiter);
 }
 
