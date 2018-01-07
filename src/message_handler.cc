@@ -128,10 +128,13 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (!var->def)
           continue;  // applies to for loop
         switch (var->def->kind) {
+          // TODO
+          case ClangSymbolKind::EnumConstant:
           case ClangSymbolKind::Field:
           case ClangSymbolKind::Macro:
           case ClangSymbolKind::Module:
           case ClangSymbolKind::Parameter:
+          case ClangSymbolKind::StaticProperty:
           case ClangSymbolKind::Variable:
             break;
           default:

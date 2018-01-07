@@ -47,32 +47,61 @@ bool IsScopeSemanticContainer(CXCursorKind kind) {
   }
 }
 
+// Inverse of libclang/CXIndexDataConsumer.cpp getEntityKindFromSymbolKind
 ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   switch (kind) {
     default:
       return ClangSymbolKind::Unknown;
-    case CXIdxEntity_CXXConstructor:
-      return ClangSymbolKind::Constructor;
-    case CXIdxEntity_CXXDestructor:
-      return ClangSymbolKind::Destructor;
-    case CXIdxEntity_CXXStaticMethod:
-    case CXIdxEntity_ObjCClassMethod:
-      return ClangSymbolKind::StaticMethod;
-    case CXIdxEntity_CXXInstanceMethod:
-    case CXIdxEntity_ObjCInstanceMethod:
-      return ClangSymbolKind::InstanceMethod;
-    case CXIdxEntity_Function:
-      return ClangSymbolKind::Function;
 
     case CXIdxEntity_Enum:
       return ClangSymbolKind::Enum;
-    case CXIdxEntity_CXXClass:
-    case CXIdxEntity_ObjCClass:
-      return ClangSymbolKind::Class;
     case CXIdxEntity_Struct:
       return ClangSymbolKind::Struct;
     case CXIdxEntity_Union:
       return ClangSymbolKind::Union;
+    case CXIdxEntity_CXXTypeAlias:
+    case CXIdxEntity_Typedef:
+      return ClangSymbolKind::TypeAlias;
+
+    case CXIdxEntity_Function:
+      return ClangSymbolKind::Function;
+    case CXIdxEntity_Variable:
+      // Can also be Parameter
+      return ClangSymbolKind::Variable;
+    case CXIdxEntity_Field:
+    case CXIdxEntity_ObjCIvar:
+      return ClangSymbolKind::Field;
+    case CXIdxEntity_EnumConstant:
+      return ClangSymbolKind::EnumConstant;
+    case CXIdxEntity_CXXClass:
+    case CXIdxEntity_ObjCClass:
+      return ClangSymbolKind::Class;
+    case CXIdxEntity_CXXInterface:
+    case CXIdxEntity_ObjCProtocol:
+      return ClangSymbolKind::Protocol;
+    case CXIdxEntity_ObjCCategory:
+      return ClangSymbolKind::Extension;
+    case CXIdxEntity_CXXInstanceMethod:
+    case CXIdxEntity_ObjCInstanceMethod:
+      return ClangSymbolKind::InstanceMethod;
+    case CXIdxEntity_ObjCClassMethod:
+      return ClangSymbolKind::ClassMethod;
+    case CXIdxEntity_CXXStaticMethod:
+      return ClangSymbolKind::StaticMethod;
+    case CXIdxEntity_ObjCProperty:
+      return ClangSymbolKind::InstanceProperty;
+    case CXIdxEntity_CXXStaticVariable:
+      return ClangSymbolKind::StaticProperty;
+    case CXIdxEntity_CXXNamespace:
+      return ClangSymbolKind::Namespace;
+    case CXIdxEntity_CXXNamespaceAlias:
+      return ClangSymbolKind::NamespaceAlias;
+    case CXIdxEntity_CXXConstructor:
+      return ClangSymbolKind::Constructor;
+    case CXIdxEntity_CXXDestructor:
+      return ClangSymbolKind::Destructor;
+    case CXIdxEntity_CXXConversionFunction:
+      return ClangSymbolKind::ConversionFunction;
   }
 }
 
@@ -437,7 +466,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-int IndexFile::kCurrentVersion = 7;
+int IndexFile::kCurrentVersion = 8;
 
 IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
@@ -1244,12 +1273,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                    !decl->isRedeclaration, db, param);
 
       // FIXME https://github.com/jacobdufault/cquery/issues/239
-      if (IsGlobalContainer(decl->semanticContainer))
-        var->def.kind = ClangSymbolKind::Module;
-      else if (IsTypeDefinition(decl->semanticContainer))
-        var->def.kind = ClangSymbolKind::Field;
-      else
-        var->def.kind = ClangSymbolKind::Variable;
+      var->def.kind = GetSymbolKind(decl->entityInfo->kind);
+      if (var->def.kind == ClangSymbolKind::Variable &&
+          decl->cursor.kind == CXCursor_ParmDecl)
+        var->def.kind = ClangSymbolKind::Parameter;
       //}
 
       if (decl->isDefinition) {
@@ -1468,7 +1495,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.short_name = decl->entityInfo->name;
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
-      type->def.kind = ClangSymbolKind::TypeAlias;
+      type->def.kind = GetSymbolKind(decl->entityInfo->kind);
 
       type->def.comments = decl_cursor.get_comments();
 
