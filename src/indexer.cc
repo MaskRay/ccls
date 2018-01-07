@@ -1072,7 +1072,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           if (ref_type.get_usr().size()) {
             IndexType* ref_type_index =
                 db->Resolve(db->ToTypeId(ref_type.get_usr()));
-            ref_type_index->uses.push_back(ref_cursor.get_spelling_range());
+            // The cursor extent includes `type name`, not just `name`. There
+            // seems no way to extract the spelling range of `type` and we do
+            // not want to do subtraction here.
+            // See https://github.com/jacobdufault/cquery/issues/252
+            ref_type_index->uses.push_back(ref_cursor.get_extent());
           }
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
