@@ -37,11 +37,8 @@
 #if defined(__FreeBSD__)
 #include <sys/param.h>   // MAXPATHLEN
 #include <sys/sysctl.h>  // sysctl
-#elif defined(__APPLE__) || defined(__BSD__)
-#include <sys/ptrace.h>
 #elif defined(__linux__)
 #include <malloc.h>
-#include <sys/ptrace.h>
 #endif
 
 #include <iostream>
