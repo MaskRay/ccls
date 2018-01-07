@@ -995,22 +995,25 @@ struct TemplateVisitorData {
 ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                          ClangCursor parent,
                                          TemplateVisitorData* data) {
+  IndexFile* db = data->db;
   switch (cursor.get_kind()) {
     default:
       break;
     case CXCursor_DeclRefExpr: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
-        IndexVar* ref_index =
-            data->db->Resolve(data->db->ToVarId(ref_cursor.get_usr()));
+        IndexVar* ref_index = db->Resolve(db->ToVarId(ref_cursor.get_usr()));
         if (ref_index->def.short_name.empty()) {
-          ref_index->def.definition_spelling =
-              ref_cursor.get_spelling_range();
-          ref_index->def.definition_extent =
-              ref_cursor.get_extent();
+          ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
+          ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
-          SetVarDetail(ref_index, ref_cursor, nullptr, true, data->db, data->param);
+          SetVarDetail(ref_index, ref_cursor, nullptr, true, db, data->param);
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
+
+          ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
+          IndexType* ref_type_index =
+              db->Resolve(db->ToTypeId(ref_type.get_usr()));
+          ref_type_index->uses.push_back(ref_cursor.get_spelling_range());
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
@@ -1026,10 +1029,9 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           case CXCursor_FunctionDecl:
           case CXCursor_FunctionTemplate: {
             std::string ref_usr = overloaded.get_usr();
-            IndexFuncId called_id = data->db->ToFuncId(ref_usr);
-            IndexFunc* called = data->db->Resolve(called_id);
-            OnIndexReference_Function(data->db,
-                                      cursor.get_spelling_range(),
+            IndexFuncId called_id = db->ToFuncId(ref_usr);
+            IndexFunc* called = db->Resolve(called_id);
+            OnIndexReference_Function(db, cursor.get_spelling_range(),
                                       data->container, called_id, called,
                                       /*implicit=*/false);
             break;
@@ -1041,18 +1043,15 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TemplateRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTemplateParameter) {
-        IndexType* ref_index =
-            data->db->Resolve(data->db->ToTypeId(ref_cursor.get_usr()));
+        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr()));
         // TODO It seems difficult to get references to template template
         // parameters.
         // CXCursor_TemplateTemplateParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_index->def.short_name.empty()) {
-          ref_index->def.definition_spelling =
-              ref_cursor.get_spelling_range();
-          ref_index->def.definition_extent =
-              ref_cursor.get_extent();
+          ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
+          ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
@@ -1064,18 +1063,15 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TypeRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
-        IndexType* ref_index =
-            data->db->Resolve(data->db->ToTypeId(ref_cursor.get_usr()));
+        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr()));
         // TODO It seems difficult to get a FunctionTemplate's template
         // parameters.
         // CXCursor_TemplateTypeParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_index->def.short_name.empty()) {
-          ref_index->def.definition_spelling =
-              ref_cursor.get_spelling_range();
-          ref_index->def.definition_extent =
-              ref_cursor.get_extent();
+          ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
+          ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
