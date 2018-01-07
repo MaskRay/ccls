@@ -47,6 +47,35 @@ bool IsScopeSemanticContainer(CXCursorKind kind) {
   }
 }
 
+ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
+  switch (kind) {
+    default:
+      return ClangSymbolKind::Unknown;
+    case CXIdxEntity_CXXConstructor:
+      return ClangSymbolKind::Constructor;
+    case CXIdxEntity_CXXDestructor:
+      return ClangSymbolKind::Destructor;
+    case CXIdxEntity_CXXStaticMethod:
+    case CXIdxEntity_ObjCClassMethod:
+      return ClangSymbolKind::StaticMethod;
+    case CXIdxEntity_CXXInstanceMethod:
+    case CXIdxEntity_ObjCInstanceMethod:
+      return ClangSymbolKind::InstanceMethod;
+    case CXIdxEntity_Function:
+      return ClangSymbolKind::Function;
+
+    case CXIdxEntity_Enum:
+      return ClangSymbolKind::Enum;
+    case CXIdxEntity_CXXClass:
+    case CXIdxEntity_ObjCClass:
+      return ClangSymbolKind::Class;
+    case CXIdxEntity_Struct:
+      return ClangSymbolKind::Struct;
+    case CXIdxEntity_Union:
+      return ClangSymbolKind::Union;
+  }
+}
+
 
 // Caches all instances of constructors, regardless if they are indexed or not.
 // The constructor may have a make_unique call associated with it that we need
@@ -1289,6 +1318,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       IndexFuncId func_id = db->ToFuncId(decl_cursor_resolved.cx_cursor);
       IndexFunc* func = db->Resolve(func_id);
       func->def.comments = decl_cursor.get_comments();
+      func->def.kind = GetSymbolKind(decl->entityInfo->kind);
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
@@ -1436,6 +1466,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.short_name = decl->entityInfo->name;
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+      type->def.kind = ClangSymbolKind::TypeAlias;
 
       type->def.comments = decl_cursor.get_comments();
 
@@ -1490,6 +1521,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       type->def.detailed_name =
           ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+      type->def.kind = GetSymbolKind(decl->entityInfo->kind);
+
       type->def.comments = decl_cursor.get_comments();
       // }
 

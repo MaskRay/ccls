@@ -131,6 +131,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           case ClangSymbolKind::Field:
           case ClangSymbolKind::Macro:
           case ClangSymbolKind::Module:
+          case ClangSymbolKind::Parameter:
           case ClangSymbolKind::Variable:
             break;
           default:
