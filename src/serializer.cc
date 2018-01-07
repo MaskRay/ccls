@@ -2,7 +2,7 @@
 
 // TODO Move Json* to serializers/json.cc
 #include "serializers/json.h"
-//#include "serializers/msgpack.h"
+#include "serializers/msgpack.h"
 
 #include "indexer.h"
 
@@ -31,8 +31,7 @@ void Reflect(Writer& visitor, int16_t& value) {
 
 // int32_t
 void Reflect(Reader& visitor, int32_t& value) {
-  if (visitor.IsInt())
-    value = visitor.GetInt();
+  value = visitor.GetInt();
 }
 void Reflect(Writer& visitor, int32_t& value) {
   visitor.Int(value);
@@ -40,8 +39,7 @@ void Reflect(Writer& visitor, int32_t& value) {
 
 // int64_t
 void Reflect(Reader& visitor, int64_t& value) {
-  if (visitor.IsInt64())
-    value = visitor.GetInt64();
+  value = visitor.GetInt64();
 }
 void Reflect(Writer& visitor, int64_t& value) {
   visitor.Int64(value);
@@ -49,8 +47,7 @@ void Reflect(Writer& visitor, int64_t& value) {
 
 // uint64_t
 void Reflect(Reader& visitor, uint64_t& value) {
-  if (visitor.IsUint64())
-    value = visitor.GetUint64();
+  value = visitor.GetUint64();
 }
 void Reflect(Writer& visitor, uint64_t& value) {
   visitor.Uint64(value);
@@ -58,8 +55,7 @@ void Reflect(Writer& visitor, uint64_t& value) {
 
 // bool
 void Reflect(Reader& visitor, bool& value) {
-  if (visitor.IsBool())
-    value = visitor.GetBool();
+  value = visitor.GetBool();
 }
 void Reflect(Writer& visitor, bool& value) {
   visitor.Bool(value);
@@ -82,13 +78,13 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
 
 // TODO: Move this to indexer.cc
 void Reflect(Reader& visitor, IndexInclude& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(2);
   REFLECT_MEMBER(line);
   REFLECT_MEMBER(resolved_path);
   REFLECT_MEMBER_END();
 }
 void Reflect(Writer& visitor, IndexInclude& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(2);
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
     std::string basename = GetBaseName(value.resolved_path);
@@ -103,7 +99,7 @@ void Reflect(Writer& visitor, IndexInclude& value) {
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(16);
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
@@ -125,7 +121,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFunc& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(16);
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("is_operator", value.def.is_operator);
   REFLECT_MEMBER2("usr", value.usr);
@@ -147,7 +143,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexVar& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(13);
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
@@ -165,7 +161,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
 }
 
 // IndexFile
-bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
+bool ReflectMemberStart(Writer& visitor, IndexFile& value, size_t n) {
   auto it = value.id_cache.usr_to_type_id.find("");
   if (it != value.id_cache.usr_to_type_id.end()) {
     value.Resolve(it->second)->def.short_name = "<fundamental>";
@@ -173,12 +169,12 @@ bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   }
 
   value.version = IndexFile::kCurrentVersion;
-  DefaultReflectMemberStart(visitor);
+  DefaultReflectMemberStart(visitor, n);
   return true;
 }
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFile& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(5 + (gTestOutputMode ? 0 : 6));
   if (!gTestOutputMode) {
     REFLECT_MEMBER(version);
     REFLECT_MEMBER(last_modification_time);

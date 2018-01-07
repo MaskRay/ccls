@@ -10,13 +10,14 @@ class JsonReader : public Reader {
 
  public:
   JsonReader(rapidjson::GenericValue<rapidjson::UTF8<>>* m) : m_(m) {}
+  SerializeFormat Format() const override { return SerializeFormat::Json; }
 
-  bool IsBool() override { return m_->IsBool(); }
+  //bool IsBool() override { return m_->IsBool(); }
   bool IsNull() override { return m_->IsNull(); }
   bool IsArray() override { return m_->IsArray(); }
   bool IsInt() override { return m_->IsInt(); }
-  bool IsInt64() override { return m_->IsInt64(); }
-  bool IsUint64() override { return m_->IsUint64(); }
+  //bool IsInt64() override { return m_->IsInt64(); }
+  //bool IsUint64() override { return m_->IsUint64(); }
   bool IsString() override { return m_->IsString(); }
 
   bool GetBool() override { return m_->GetBool(); }
@@ -52,6 +53,7 @@ class JsonWriter : public Writer {
 
  public:
   JsonWriter(rapidjson::Writer<rapidjson::StringBuffer>* m) : m_(m) {}
+  SerializeFormat Format() const override { return SerializeFormat::Json; }
 
   void Null() override { m_->Null(); }
   void Bool(bool x) override { m_->Bool(x); }
@@ -60,9 +62,9 @@ class JsonWriter : public Writer {
   void Uint64(uint64_t x) override { m_->Uint64(x); }
   void String(const char* x) override { m_->String(x); }
   void String(const char* x, size_t len) override { m_->String(x, len); }
-  void StartArray() override { m_->StartArray(); }
+  void StartArray(size_t) override { m_->StartArray(); }
   void EndArray() override { m_->EndArray(); }
-  void StartObject() override { m_->StartObject(); }
+  void StartObject(size_t) override { m_->StartObject(); }
   void EndObject() override { m_->EndObject(); }
   void Key(const char* name) override { m_->Key(name); }
 };

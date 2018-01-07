@@ -64,8 +64,7 @@ bool operator!=(const Id<T>& a, const Id<T>& b) {
 
 template <typename T>
 void Reflect(Reader& visitor, Id<T>& id) {
-  if (visitor.IsUint64())
-    id.id = visitor.GetUint64();
+  id.id = visitor.GetUint64();
 }
 template <typename T>
 void Reflect(Writer& visitor, Id<T>& value) {
@@ -239,7 +238,7 @@ template <typename TVisitor,
           typename Range>
 void Reflect(TVisitor& visitor,
              TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(12);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);
@@ -338,7 +337,7 @@ template <typename TVisitor,
 void Reflect(
     TVisitor& visitor,
     FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(12);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);
@@ -452,7 +451,7 @@ template <typename TVisitor,
           typename Range>
 void Reflect(TVisitor& visitor,
              VarDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
-  REFLECT_MEMBER_START();
+  REFLECT_MEMBER_START(9);
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);

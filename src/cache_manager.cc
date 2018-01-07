@@ -43,7 +43,7 @@ struct RealCacheManager : ICacheManager {
     return ReadContent(GetCachePath(path));
   }
 
-  std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) {
+  std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     if (!config_->enableCacheRead)
       return nullptr;
 
@@ -102,7 +102,7 @@ struct FakeCacheManager : ICacheManager {
     return nullopt;
   }
 
-  std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) {
+  std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     for (const FakeCacheEntry& entry : entries_) {
       if (entry.path == path) {
         return Deserialize(SerializeFormat::Json, path, entry.json, nullopt);

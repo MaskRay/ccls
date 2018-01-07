@@ -18,7 +18,7 @@ struct lsCodeLensCommandArguments {
   std::vector<lsLocation> locations;
 };
 void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
-  visitor.StartArray();
+  visitor.StartArray(3);
   Reflect(visitor, value.uri);
   Reflect(visitor, value.position);
   Reflect(visitor, value.locations);

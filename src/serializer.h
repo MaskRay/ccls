@@ -13,13 +13,14 @@ enum class SerializeFormat { Json, MessagePack };
 class Reader {
  public:
   virtual ~Reader() {}
+  virtual SerializeFormat Format() const = 0;
 
-  virtual bool IsBool() = 0;
+  //virtual bool IsBool() = 0;
   virtual bool IsNull() = 0;
   virtual bool IsArray() = 0;
   virtual bool IsInt() = 0;
-  virtual bool IsInt64() = 0;
-  virtual bool IsUint64() = 0;
+  //virtual bool IsInt64() = 0;
+  //virtual bool IsUint64() = 0;
   virtual bool IsString() = 0;
 
   virtual bool GetBool() = 0;
@@ -38,6 +39,7 @@ class Reader {
 class Writer {
  public:
   virtual ~Writer() {}
+  virtual SerializeFormat Format() const = 0;
 
   virtual void Null() = 0;
   virtual void Bool(bool x) = 0;
@@ -46,17 +48,17 @@ class Writer {
   virtual void Uint64(uint64_t x) = 0;
   virtual void String(const char* x) = 0;
   virtual void String(const char* x, size_t len) = 0;
-  virtual void StartArray() = 0;
+  virtual void StartArray(size_t) = 0;
   virtual void EndArray() = 0;
-  virtual void StartObject() = 0;
+  virtual void StartObject(size_t) = 0;
   virtual void EndObject() = 0;
   virtual void Key(const char* name) = 0;
 };
 
 struct IndexFile;
 
-#define REFLECT_MEMBER_START()             \
-  if (!ReflectMemberStart(visitor, value)) \
+#define REFLECT_MEMBER_START(n)             \
+  if (!ReflectMemberStart(visitor, value, n)) \
   return
 #define REFLECT_MEMBER_START1(value)       \
   if (!ReflectMemberStart(visitor, value)) \
@@ -74,19 +76,25 @@ struct IndexFile;
     value = static_cast<type>(value0);           \
   }
 
+// clang-format off
+// Config has many fields, we need to support at least its number of fields.
+#define NUM_VA_ARGS_IMPL(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,N,...) N
+#define NUM_VA_ARGS(...) NUM_VA_ARGS_IMPL(__VA_ARGS__,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1)
+// clang-format on
+
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
 
 #define MAKE_REFLECT_EMPTY_STRUCT(type, ...)     \
   template <typename TVisitor>                   \
   void Reflect(TVisitor& visitor, type& value) { \
-    REFLECT_MEMBER_START();                      \
+    REFLECT_MEMBER_START(0);                     \
     REFLECT_MEMBER_END();                        \
   }
 
 #define MAKE_REFLECT_STRUCT(type, ...)               \
   template <typename TVisitor>                       \
   void Reflect(TVisitor& visitor, type& value) {     \
-    REFLECT_MEMBER_START();                          \
+    REFLECT_MEMBER_START(NUM_VA_ARGS(__VA_ARGS__));  \
     MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__) \
     REFLECT_MEMBER_END();                            \
   }
@@ -97,7 +105,7 @@ struct IndexFile;
 // This currently only supports writers.
 #define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...) \
   inline void Reflect(Writer& visitor, type& value) {  \
-    visitor.StartArray();                              \
+    visitor.StartArray(NUM_VA_ARGS(__VA_ARGS__));      \
     MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)    \
     visitor.EndArray();                                \
   }
@@ -180,7 +188,7 @@ void Reflect(Reader& visitor, std::vector<T>& values) {
 }
 template <typename T>
 void Reflect(Writer& visitor, std::vector<T>& values) {
-  visitor.StartArray();
+  visitor.StartArray(values.size());
   for (auto& value : values)
     Reflect(visitor, value);
   visitor.EndArray();
@@ -188,12 +196,12 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
 
 // Writer:
 
-inline void DefaultReflectMemberStart(Writer& visitor) {
-  visitor.StartObject();
+inline void DefaultReflectMemberStart(Writer& visitor, size_t n) {
+  visitor.StartObject(n);
 }
 template <typename T>
-bool ReflectMemberStart(Writer& visitor, T& value) {
-  visitor.StartObject();
+bool ReflectMemberStart(Writer& visitor, T& value, size_t n) {
+  visitor.StartObject(n);
   return true;
 }
 template <typename T>
@@ -208,7 +216,7 @@ void ReflectMember(Writer& visitor, const char* name, T& value) {
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
   visitor.Key(name);
-  visitor.StartArray();
+  visitor.StartArray(values.size());
   for (auto& value : values)
     Reflect(visitor, value);
   visitor.EndArray();
@@ -225,9 +233,9 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value);
 // Reader:
 
 
-inline void DefaultReflectMemberStart(Reader& visitor) {}
+inline void DefaultReflectMemberStart(Reader& visitor, size_t n) {}
 template <typename T>
-bool ReflectMemberStart(Reader& visitor, T& value) {
+bool ReflectMemberStart(Reader& visitor, T& value, size_t n) {
   return true;
 }
 template <typename T>

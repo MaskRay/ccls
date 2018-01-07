@@ -194,7 +194,7 @@ void lsResponseError::Write(Writer& visitor) {
   auto& value = *this;
   int code2 = static_cast<int>(this->code);
 
-  visitor.StartObject();
+  visitor.StartObject(2 + !!data);
   REFLECT_MEMBER2("code", code2);
   REFLECT_MEMBER(message);
   if (data) {
