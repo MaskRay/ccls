@@ -153,7 +153,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       if (*source_file_type == "c")
         result.args.push_back("-std=gnu11");
       else if (*source_file_type == "c++")
-        result.args.push_back("-std=c++11");
+        result.args.push_back("-std=c++14");
     }
   }
 
