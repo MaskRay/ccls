@@ -239,7 +239,7 @@ template <typename TVisitor,
           typename Range>
 void Reflect(TVisitor& visitor,
              TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
-  REFLECT_MEMBER_START(12);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);
@@ -338,7 +338,7 @@ template <typename TVisitor,
 void Reflect(
     TVisitor& visitor,
     FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& value) {
-  REFLECT_MEMBER_START(12);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);
@@ -452,7 +452,7 @@ template <typename TVisitor,
           typename Range>
 void Reflect(TVisitor& visitor,
              VarDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
-  REFLECT_MEMBER_START(9);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);

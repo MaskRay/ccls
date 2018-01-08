@@ -66,9 +66,9 @@ bool Position::operator!=(const Position& that) const {
 }
 
 bool Position::operator<(const Position& that) const {
-  if (line < that.line)
-    return true;
-  return line == that.line && column < that.column;
+  if (line != that.line)
+    return line < that.line;
+  return column < that.column;
 }
 
 Range::Range() {}
@@ -137,9 +137,9 @@ bool Range::operator!=(const Range& that) const {
 }
 
 bool Range::operator<(const Range& that) const {
-  if (start < that.start)
-    return true;
-  return start == that.start && end < that.end;
+  if (start != that.start)
+    return start < that.start;
+  return end < that.end;
 }
 
 // Position
@@ -148,18 +148,8 @@ void Reflect(Reader& visitor, Position& value) {
     std::string s = visitor.GetString();
     value = Position(s.c_str());
   } else {
-    int i = 0;
-    // FIXME
-    static_cast<MessagePackReader&>(visitor).IterArray([&](Reader& entry) {
-      switch (i++) {
-        case 0:
-          Reflect(entry, value.line);
-          break;
-        case 1:
-          Reflect(entry, value.column);
-          break;
-      }
-    });
+    Reflect(visitor, value.line);
+    Reflect(visitor, value.column);
   }
 }
 void Reflect(Writer& visitor, Position& value) {
@@ -167,10 +157,8 @@ void Reflect(Writer& visitor, Position& value) {
     std::string output = value.ToString();
     visitor.String(output.c_str(), output.size());
   } else {
-    REFLECT_MEMBER_START(2);
     Reflect(visitor, value.line);
     Reflect(visitor, value.column);
-    REFLECT_MEMBER_END();
   }
 }
 
@@ -180,25 +168,10 @@ void Reflect(Reader& visitor, Range& value) {
     std::string s = visitor.GetString();
     value = Range(s.c_str());
   } else {
-    int i = 0;
-    // FIXME
-    static_cast<MessagePackReader&>(visitor).IterArray([&](Reader& entry) {
-      switch (i++) {
-        case 0:
-          Reflect(entry, value.start.line);
-          break;
-        case 1:
-          Reflect(entry, value.start.column);
-          break;
-        case 2:
-          Reflect(entry, value.end.line);
-          break;
-        case 3:
-          Reflect(entry, value.end.column);
-          break;
-      }
-      i++;
-    });
+    Reflect(visitor, value.start.line);
+    Reflect(visitor, value.start.column);
+    Reflect(visitor, value.end.line);
+    Reflect(visitor, value.end.column);
   }
 }
 void Reflect(Writer& visitor, Range& value) {
@@ -206,11 +179,9 @@ void Reflect(Writer& visitor, Range& value) {
     std::string output = value.ToString();
     visitor.String(output.c_str(), output.size());
   } else {
-    REFLECT_MEMBER_START(4);
     Reflect(visitor, value.start.line);
     Reflect(visitor, value.start.column);
     Reflect(visitor, value.end.line);
     Reflect(visitor, value.end.column);
-    REFLECT_MEMBER_END();
   }
 }

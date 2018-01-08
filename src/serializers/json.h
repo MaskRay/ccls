@@ -20,6 +20,7 @@ class JsonReader : public Reader {
   //bool IsUint64() override { return m_->IsUint64(); }
   bool IsString() override { return m_->IsString(); }
 
+  void GetNull() override {}
   bool GetBool() override { return m_->GetBool(); }
   int GetInt() override { return m_->GetInt(); }
   int64_t GetInt64() override { return m_->GetInt64(); }
@@ -67,7 +68,7 @@ class JsonWriter : public Writer {
   void String(const char* x, size_t len) override { m_->String(x, len); }
   void StartArray(size_t) override { m_->StartArray(); }
   void EndArray() override { m_->EndArray(); }
-  void StartObject(size_t) override { m_->StartObject(); }
+  void StartObject() override { m_->StartObject(); }
   void EndObject() override { m_->EndObject(); }
   void Key(const char* name) override { m_->Key(name); }
 };

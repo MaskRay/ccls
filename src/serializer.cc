@@ -85,13 +85,13 @@ void ReflectMember(Writer& visitor, const char* name, std::string& value) {
 
 // TODO: Move this to indexer.cc
 void Reflect(Reader& visitor, IndexInclude& value) {
-  REFLECT_MEMBER_START(2);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(line);
   REFLECT_MEMBER(resolved_path);
   REFLECT_MEMBER_END();
 }
 void Reflect(Writer& visitor, IndexInclude& value) {
-  REFLECT_MEMBER_START(2);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
     std::string basename = GetBaseName(value.resolved_path);
@@ -106,7 +106,7 @@ void Reflect(Writer& visitor, IndexInclude& value) {
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
-  REFLECT_MEMBER_START(17);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
@@ -129,7 +129,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFunc& value) {
-  REFLECT_MEMBER_START(17);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("is_operator", value.def.is_operator);
   REFLECT_MEMBER2("usr", value.usr);
@@ -152,7 +152,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexVar& value) {
-  REFLECT_MEMBER_START(13);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
@@ -170,7 +170,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
 }
 
 // IndexFile
-bool ReflectMemberStart(Writer& visitor, IndexFile& value, size_t n) {
+bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   auto it = value.id_cache.usr_to_type_id.find("");
   if (it != value.id_cache.usr_to_type_id.end()) {
     value.Resolve(it->second)->def.short_name = "<fundamental>";
@@ -178,12 +178,12 @@ bool ReflectMemberStart(Writer& visitor, IndexFile& value, size_t n) {
   }
 
   value.version = IndexFile::kCurrentVersion;
-  DefaultReflectMemberStart(visitor, n);
+  DefaultReflectMemberStart(visitor);
   return true;
 }
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFile& value) {
-  REFLECT_MEMBER_START(5 + (gTestOutputMode ? 0 : 6));
+  REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
     REFLECT_MEMBER(version);
     REFLECT_MEMBER(last_modification_time);
@@ -257,10 +257,12 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
       if (serialized.empty())
         return nullptr;
       try {
-        msgpack::object_handle oh =
-            msgpack::unpack(serialized.data(), serialized.size());
+        msgpack::unpacker upk;
+        upk.reserve_buffer(serialized.size());
+        memcpy(upk.buffer(), serialized.data(), serialized.size());
+        upk.buffer_consumed(serialized.size());
         file = MakeUnique<IndexFile>(path);
-        MessagePackReader reader(oh.get());
+        MessagePackReader reader(&upk);
         Reflect(reader, *file);
         if (file->version != expected_version)
           return nullptr;

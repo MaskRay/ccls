@@ -226,7 +226,7 @@ struct lsCommand {
 };
 template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, lsCommand<T>& value) {
-  REFLECT_MEMBER_START(3);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(title);
   REFLECT_MEMBER(command);
   REFLECT_MEMBER(arguments);
@@ -245,7 +245,7 @@ struct lsCodeLens {
 };
 template <typename TVisitor, typename TData, typename TCommandArguments>
 void Reflect(TVisitor& visitor, lsCodeLens<TData, TCommandArguments>& value) {
-  REFLECT_MEMBER_START(3);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(range);
   REFLECT_MEMBER(command);
   REFLECT_MEMBER(data);
@@ -979,7 +979,7 @@ struct Out_TextDocumentPublishDiagnostics
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
   std::string method = "textDocument/publishDiagnostics";
-  REFLECT_MEMBER_START(3);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
   REFLECT_MEMBER2("method", method);
   REFLECT_MEMBER(params);
@@ -1044,7 +1044,7 @@ struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
 };
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
-  REFLECT_MEMBER_START(3);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
   std::string method = value.method();
   REFLECT_MEMBER2("method", method);

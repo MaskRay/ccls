@@ -161,7 +161,7 @@ struct MergeableUpdate {
 };
 template <typename TVisitor, typename TId, typename TValue>
 void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
-  REFLECT_MEMBER_START(3);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(id);
   REFLECT_MEMBER(to_add);
   REFLECT_MEMBER(to_remove);
@@ -177,7 +177,7 @@ struct WithUsr {
 };
 template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, WithUsr<T>& value) {
-  REFLECT_MEMBER_START(2);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(usr);
   REFLECT_MEMBER(value);
   REFLECT_MEMBER_END();

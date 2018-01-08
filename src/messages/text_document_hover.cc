@@ -58,7 +58,7 @@ struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
 void Reflect(Writer& visitor, Out_TextDocumentHover& value) {
-  REFLECT_MEMBER_START(3);
+  REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
   REFLECT_MEMBER(id);
   if (value.result)
