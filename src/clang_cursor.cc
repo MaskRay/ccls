@@ -258,11 +258,13 @@ optional<std::string> ClangCursor::get_comments() const {
   clang_disposeString(cx_raw);
   while (ret.size() && isspace(ret.back()))
     ret.pop_back();
-  if (ret.size() >= 2 && ret.compare(ret.size() - 2, 2, "*/") == 0) {
+  if (EndsWith(ret, "*/")) {
     ret.resize(ret.size() - 2);
-    while (ret.size() && isspace(ret.back()))
-      ret.pop_back();
+  } else if (EndsWith(ret, "\n/")) {
+    ret.resize(ret.size() - 2);
   }
+  while (ret.size() && isspace(ret.back()))
+    ret.pop_back();
   return ret;
 }
 
