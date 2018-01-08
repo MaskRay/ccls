@@ -310,7 +310,13 @@ def build(bld):
       output = str(subprocess.check_output(
           [bld.env['llvm_config'], '--bindir'],
           stderr=subprocess.STDOUT).decode()).strip()
-      clang = os.path.join(output, 'clang')
+
+      # Use --check-cxx-compiler value if it is "clang".
+      # See https://github.com/jacobdufault/cquery/issues/237
+      clang = bld.env.get_flat('CXX')
+      if 'clang' not in clang:
+        clang = os.path.join(output, 'clang')
+
       rpath = str(subprocess.check_output(
           [bld.env['llvm_config'], '--libdir'],
           stderr=subprocess.STDOUT).decode()).strip()
