@@ -90,6 +90,11 @@ struct Config {
   // If true parameter declarations are included in code completion when calling
   // a function or method
   bool enableSnippetInsertion = true;
+
+  //// For debugging
+
+  // Dump AST after parsing if some pattern matches the source filename.
+  std::vector<std::string> dumpAST;
 };
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
@@ -125,7 +130,10 @@ MAKE_REFLECT_STRUCT(Config,
                     codeLensOnLocalVariables,
 
                     clientVersion,
-                    enableSnippetInsertion);
+                    enableSnippetInsertion,
+
+                    dumpAST
+                    );
 
 // Expected client version. We show an error if this doesn't match.
 constexpr const int kExpectedClientVersion = 3;
