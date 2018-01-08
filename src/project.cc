@@ -79,8 +79,6 @@ bool ShouldAddToAngleIncludes(const std::string& arg) {
   return StartsWithAny(arg, kAngleIncludeArgs);
 }
 
-// Returns true if we should use the C, not C++, language spec for the given
-// file.
 optional<std::string> SourceFileType(const std::string& path) {
   if (EndsWith(path, ".c"))
     return std::string("c");
