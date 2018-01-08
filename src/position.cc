@@ -78,17 +78,17 @@ Range::Range(Position start, Position end) : start(start), end(end) {}
 
 Range::Range(const char* encoded) {
   char* p = const_cast<char*>(encoded);
-  start.line = strtol(p, &p, 10);
+  start.line = int16_t(strtol(p, &p, 10));
   assert(*p == ':');
   p++;
-  start.column = strtol(p, &p, 10);
+  start.column = int16_t(strtol(p, &p, 10));
   assert(*p == '-');
   p++;
 
-  end.line = strtol(p, &p, 10);
+  end.line = int16_t(strtol(p, &p, 10));
   assert(*p == ':');
   p++;
-  end.column = strtol(p, nullptr, 10);
+  end.column = int16_t(strtol(p, nullptr, 10));
 }
 
 bool Range::Contains(int line, int column) const {
