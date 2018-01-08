@@ -140,49 +140,53 @@ static void GetFilesInFolderHelper(
     bool recursive,
     std::string output_prefix,
     const std::function<void(const std::string&)>& handler) {
-  tinydir_dir dir;
-  if (tinydir_open(&dir, folder.c_str()) == -1) {
-    LOG_S(WARNING) << "Unable to open directory " << folder;
-    goto bail;
-  }
-
-  while (dir.has_next) {
-    tinydir_file file;
-    if (tinydir_readfile(&dir, &file) == -1) {
-      LOG_S(WARNING) << "Unable to read file " << file.name
-                     << " when reading directory " << folder;
+  std::queue<std::pair<std::string, std::string>> q;
+  q.push(make_pair(folder, output_prefix));
+  while(!q.empty()) {
+    tinydir_dir dir;
+    if (tinydir_open(&dir, q.front().first.c_str()) == -1) {
+      LOG_S(WARNING) << "Unable to open directory " << folder;
       goto bail;
     }
 
-    // Skip all dot files.
-    //
-    // The nested ifs are intentional, branching order is subtle here.
-    //
-    // Note that in the future if we do support dot directories/files, we must
-    // always ignore the '.' and '..' directories otherwise this will loop
-    // infinitely.
-    if (file.name[0] != '.') {
-      if (file.is_dir) {
-        if (recursive) {
-          std::string child_dir = output_prefix + file.name + "/";
-          if (!IsSymLink(child_dir))
-            GetFilesInFolderHelper(file.path, true /*recursive*/, child_dir,
-                                   handler);
+    while (dir.has_next) {
+      tinydir_file file;
+      if (tinydir_readfile(&dir, &file) == -1) {
+        LOG_S(WARNING) << "Unable to read file " << file.name
+                       << " when reading directory " << folder;
+        goto bail;
+      }
+
+      // Skip all dot files.
+      //
+      // The nested ifs are intentional, branching order is subtle here.
+      //
+      // Note that in the future if we do support dot directories/files, we must
+      // always ignore the '.' and '..' directories otherwise this will loop
+      // infinitely.
+      if (file.name[0] != '.') {
+        if (file.is_dir) {
+          if (recursive) {
+            std::string child_dir = output_prefix + file.name + "/";
+            if (!IsSymLink(child_dir))
+              q.push(make_pair(file.path, child_dir));
+          }
+        } else {
+          handler(q.front().second + file.name);
         }
-      } else {
-        handler(output_prefix + file.name);
+      }
+
+      if (tinydir_next(&dir) == -1) {
+        LOG_S(WARNING) << "Unable to fetch next file when reading directory "
+                       << folder;
+        goto bail;
       }
     }
 
-    if (tinydir_next(&dir) == -1) {
-      LOG_S(WARNING) << "Unable to fetch next file when reading directory "
-                     << folder;
-      goto bail;
-    }
+  bail:
+    tinydir_close(&dir);
+    q.pop();
   }
-
-bail:
-  tinydir_close(&dir);
 }
 
 std::vector<std::string> GetFilesInFolder(std::string folder,
