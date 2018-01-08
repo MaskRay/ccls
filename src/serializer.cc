@@ -20,10 +20,17 @@ std::string GetBaseName(const std::string& path) {
 
 }  // namespace
 
+// uint8_t
+void Reflect(Reader& visitor, uint8_t& value) {
+  value = (uint8_t)visitor.GetInt();
+}
+void Reflect(Writer& visitor, uint8_t& value) {
+  visitor.Int(value);
+}
+
 // int16_t
 void Reflect(Reader& visitor, int16_t& value) {
-  if (visitor.IsInt())
-    value = (int16_t)visitor.GetInt();
+  value = (int16_t)visitor.GetInt();
 }
 void Reflect(Writer& visitor, int16_t& value) {
   visitor.Int(value);

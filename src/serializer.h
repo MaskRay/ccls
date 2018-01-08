@@ -131,6 +131,9 @@ void ReflectMemberEnd(TVisitor& visitor, T& value) {
 }
 */
 
+// uint8_t
+void Reflect(Reader& visitor, uint8_t& value);
+void Reflect(Writer& visitor, uint8_t& value);
 // int16_t
 void Reflect(Reader& visitor, int16_t& value);
 void Reflect(Writer& visitor, int16_t& value);
