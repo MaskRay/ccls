@@ -90,6 +90,8 @@ optional<std::string> SourceFileType(const std::string& path) {
     return std::string("objective-c++");
   else if (EndsWith(path, ".m"))
     return std::string("objective-c");
+  else if (path.find('.') == std::string::npos)
+    return std::string("c++-header");
   return nullopt;
 }
 
