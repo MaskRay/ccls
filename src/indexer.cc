@@ -409,8 +409,8 @@ void SetVarDetail(IndexVar* var,
                   IndexFile* db,
                   IndexParam* param) {
   IndexVar::Def& def = var->def;
-  std::string type_name =
-      ToString(clang_getTypeSpelling(clang_getCursorType(cursor.cx_cursor)));
+  const CXType cx_type = clang_getCursorType(cursor.cx_cursor);
+  std::string type_name = ToString(clang_getTypeSpelling(cx_type));
   // clang may report "(lambda at foo.cc)" which end up being a very long
   // string. Shorten it to just "lambda".
   if (type_name.find("(lambda at") != std::string::npos)
@@ -427,6 +427,12 @@ void SetVarDetail(IndexVar* var,
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
   }
+  // TODO Initial values of variables are useful. For now, enable it for const
+  // qualified types. Qualified names may also be useful but they can not be
+  // easily combined.
+  if (clang_isConstQualifiedType(cx_type))
+    def.hover = GetDocumentContentInRange(
+        param->tu->cx_tu, clang_getCursorExtent(cursor.cx_cursor));
 
   if (is_first_seen) {
     optional<IndexTypeId> var_type = ResolveToDeclarationType(db, cursor);
