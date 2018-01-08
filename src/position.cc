@@ -1,4 +1,5 @@
 #include "position.h"
+#include "serializers/msgpack.h"
 
 namespace {
 // Skips until the character immediately following |skip_after|.
@@ -143,16 +144,22 @@ bool Range::operator<(const Range& that) const {
 
 // Position
 void Reflect(Reader& visitor, Position& value) {
-  if (!visitor.IsString())
-    value = Position();
-  else if (visitor.Format() == SerializeFormat::Json) {
+  if (visitor.Format() == SerializeFormat::Json) {
     std::string s = visitor.GetString();
     value = Position(s.c_str());
   } else {
-    REFLECT_MEMBER_START(2);
-    Reflect(visitor, value.line);
-    Reflect(visitor, value.column);
-    REFLECT_MEMBER_END();
+    int i = 0;
+    // FIXME
+    static_cast<MessagePackReader&>(visitor).IterArray([&](Reader& entry) {
+      switch (i++) {
+        case 0:
+          Reflect(entry, value.line);
+          break;
+        case 1:
+          Reflect(entry, value.column);
+          break;
+      }
+    });
   }
 }
 void Reflect(Writer& visitor, Position& value) {
@@ -169,18 +176,29 @@ void Reflect(Writer& visitor, Position& value) {
 
 // Range
 void Reflect(Reader& visitor, Range& value) {
-  if (!visitor.IsString())
-    value = Range();
-  else if (visitor.Format() == SerializeFormat::Json) {
+  if (visitor.Format() == SerializeFormat::Json) {
     std::string s = visitor.GetString();
     value = Range(s.c_str());
   } else {
-    REFLECT_MEMBER_START(4);
-    Reflect(visitor, value.start.line);
-    Reflect(visitor, value.start.column);
-    Reflect(visitor, value.end.line);
-    Reflect(visitor, value.end.column);
-    REFLECT_MEMBER_END();
+    int i = 0;
+    // FIXME
+    static_cast<MessagePackReader&>(visitor).IterArray([&](Reader& entry) {
+      switch (i++) {
+        case 0:
+          Reflect(entry, value.start.line);
+          break;
+        case 1:
+          Reflect(entry, value.start.column);
+          break;
+        case 2:
+          Reflect(entry, value.end.line);
+          break;
+        case 3:
+          Reflect(entry, value.end.column);
+          break;
+      }
+      i++;
+    });
   }
 }
 void Reflect(Writer& visitor, Range& value) {
