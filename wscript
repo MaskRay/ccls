@@ -65,7 +65,6 @@ if sys.version_info < (3, 0):
       return real_symlink(source, link_name)
   os.symlink = symlink
 
-# TODO https://reviews.llvm.org/D41575
 # There is a null pointer dereference issue in tools/libclang/CXIndexDataConsumer.cpp handleReference.
 def patch_byte_in_libclang(filename, offset, old, new):
   with open(filename, 'rb+') as f:
@@ -245,7 +244,8 @@ def configure(ctx):
       pass
     clang_dir = os.path.normpath('../../' + CLANG_TARBALL_NAME)
     try:
-      os.symlink(clang_dir, bundled_clang_dir, target_is_directory=True)
+      if not os.path.exists(bundled_clang_dir):
+        os.symlink(clang_dir, bundled_clang_dir, target_is_directory=True)
     except (OSError, NotImplementedError):
       # Copying the whole directory instead.
       print ('shutil.copytree({0}, {1})'.format(os.path.join(out, CLANG_TARBALL_NAME), bundled_clang_dir))
@@ -355,12 +355,6 @@ def build(bld):
     else:
       rpath = bld.env['LIBPATH_clang']
 
-  #obj_type_printer = bld.objects(
-  #    source='src/cxx/type_printer.cc',
-  #    use='clang',
-  #    cxxflags=['-fno-rtti'],
-  #    includes=['libclang/'])
-
   # https://waf.io/apidocs/tools/c_aliases.html#waflib.Tools.c_aliases.program
   bld.program(
       source=cc_files,
@@ -391,21 +385,6 @@ def build(bld):
     if bld.cmd == 'install':
       # TODO This may be cached and cannot be re-triggered. Use proper shell escape.
       bld(rule='rsync -rtR {}/./lib/{}/lib/clang/*/include {}/'.format(bld.path.get_bld(), clang_tarball_name, bld.env['PREFIX']))
-
-  #bld.shlib(source='a.cpp', target='mylib', vnum='9.8.7')
-  #bld.shlib(source='a.cpp', target='mylib2', vnum='9.8.7', cnum='9.8')
-  #bld.shlib(source='a.cpp', target='mylib3')
-  #bld.program(source=cc_files, target='app', use='mylib')
-  #bld.stlib(target='foo', source='b.cpp')
-
-  # just a test to check if the .c is compiled as c++ when no c compiler is found
-  #bld.program(features='cxx cxxprogram', source='main.c', target='app2')
-
-  #if bld.cmd != 'clean':
-  #  from waflib import Logs
-  #  bld.logger = Logs.make_logger('test.log', 'build') # just to get a clean output
-  #  bld.check(header_name='sadlib.h', features='cxx cxxprogram', mandatory=False)
-  #  bld.logger = None
 
 def init(ctx):
   from waflib.Build import BuildContext, CleanContext, InstallContext, UninstallContext
