@@ -88,8 +88,6 @@ optional<std::string> SourceFileType(const std::string& path) {
     return std::string("objective-c++");
   else if (EndsWith(path, ".m"))
     return std::string("objective-c");
-  else if (path.find('.') == std::string::npos)
-    return std::string("c++-header");
   return nullopt;
 }
 
@@ -152,7 +150,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     if (!AnyStartsWith(entry.args, "-std=")) {
       if (*source_file_type == "c")
         result.args.push_back("-std=gnu11");
-      else if (*source_file_type == "c++" || *source_file_type == "c++-header")
+      else if (*source_file_type == "c++")
         result.args.push_back("-std=c++14");
     }
   }

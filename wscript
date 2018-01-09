@@ -304,38 +304,31 @@ def build(bld):
     lib.append('ncurses')
 
   if bld.env['use_system_clang']:
-    if bld.env['llvm_config']:
-      # If --llvm-config is specified, set RPATH and use $bindir/bin/clang -###
-      # to detect recource directory.
+    rpath = str(subprocess.check_output(
+        [bld.env['llvm_config'], '--libdir'],
+        stderr=subprocess.STDOUT).decode()).strip()
+
+    # Use CXX set by --check-cxx-compiler if it is "clang".
+    # See https://github.com/jacobdufault/cquery/issues/237
+    clang = bld.env.get_flat('CXX')
+    if 'clang' not in clang:
+      # Otherwise, infer the clang executable path with llvm-config --bindir
       output = str(subprocess.check_output(
           [bld.env['llvm_config'], '--bindir'],
           stderr=subprocess.STDOUT).decode()).strip()
+      clang = os.path.join(output, 'clang')
 
-      # Use --check-cxx-compiler value if it is "clang".
-      # See https://github.com/jacobdufault/cquery/issues/237
-      clang = bld.env.get_flat('CXX')
-      if 'clang' not in clang:
-        clang = os.path.join(output, 'clang')
-
-      rpath = str(subprocess.check_output(
-          [bld.env['llvm_config'], '--libdir'],
-          stderr=subprocess.STDOUT).decode()).strip()
-    else:
-      clang = 'clang'
-      if sys.platform == 'darwin':
-        rpath = bld.env['LIBPATH_clang'][0]
-      else:
-        rpath = []
-
+    # Use the detected clang executable to infer resource directory
+    # Use `clang -### -xc /dev/null` instead of `clang -print-resource-dir` because the option is unavailable in 4.0.0
     devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
     output = subprocess.check_output(
         [clang, '-###', '-xc', devnull],
         stderr=subprocess.STDOUT).decode()
-    match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M | re.I)
+    match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M)
     if match:
-        default_resource_directory = match.group(1)
+      default_resource_directory = match.group(1)
     else:
-        bld.fatal("Failed to found system clang resource directory.")
+      bld.fatal("Failed to found system clang resource directory.")
 
   else:
     clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
