@@ -253,7 +253,12 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
   visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
 }
 
-MAKE_REFLECT_TYPE_PROXY(SerializeFormat, int)
+// Specializations
+
+void Reflect(Reader& visitor, SerializeFormat& value);
+void Reflect(Writer& visitor, SerializeFormat& value);
+
+// API
 
 std::string Serialize(SerializeFormat format, IndexFile& file);
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
