@@ -10,6 +10,8 @@ const char* IpcIdToString(IpcId id) {
       return "initialize";
     case IpcId::Initialized:
       return "initialized";
+    case IpcId::Shutdown:
+      return "shutdown";
     case IpcId::Exit:
       return "exit";
     case IpcId::TextDocumentDidOpen:

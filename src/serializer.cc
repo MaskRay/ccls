@@ -201,6 +201,14 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_END();
 }
 
+void Reflect(Reader& visitor, std::monostate&) {
+  visitor.GetNull();
+}
+
+void Reflect(Writer& visitor, std::monostate&) {
+  visitor.Null();
+}
+
 void Reflect(Reader& visitor, SerializeFormat& value) {
   std::string fmt = visitor.GetString();
   value = fmt[0] == 'm' ? SerializeFormat::MessagePack : SerializeFormat::Json;

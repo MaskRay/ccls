@@ -255,6 +255,9 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 
 // Specializations
 
+void Reflect(Reader& visitor, std::monostate&);
+void Reflect(Writer& visitor, std::monostate&);
+
 void Reflect(Reader& visitor, SerializeFormat& value);
 void Reflect(Writer& visitor, SerializeFormat& value);
 
