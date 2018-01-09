@@ -12,7 +12,7 @@
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
-extern bool g_enable_comments;
+extern int g_enable_comments;
 
 namespace {
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
@@ -176,7 +176,8 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       Timer time;
 
       // Open up / load the project.
-      project->Load(config->extraClangArguments,
+      project->Load(config,
+                    config->extraClangArguments,
                     config->compilationDatabaseDirectory, project_path,
                     config->resourceDirectory);
       time.ResetAndPrint("[perf] Loaded compilation entries (" +

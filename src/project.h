@@ -34,7 +34,8 @@ struct Project {
   // used instead. Otherwise, a recursive directory listing of all *.cpp, *.cc,
   // *.h, and *.hpp files will be used. clang arguments can be specified in a
   // .cquery file located inside of |root_directory|.
-  void Load(const std::vector<std::string>& extra_flags,
+  void Load(Config* initOpts,
+            const std::vector<std::string>& extra_flags,
             const std::string& opt_compilation_db_dir,
             const std::string& root_directory,
             const std::string& resource_directory);

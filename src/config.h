@@ -91,7 +91,9 @@ struct Config {
   // a function or method
   bool enableSnippetInsertion = true;
 
-  bool enableComments = false;
+  // 0: no; 1: Doxygen comment markers; 2: -fparse-all-comments, which includes
+  // plain // /*
+  int enableComments = 0;
 
   //// For debugging
 

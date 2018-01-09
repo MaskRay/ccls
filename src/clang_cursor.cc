@@ -20,7 +20,7 @@ Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
 }
 
 // TODO Place this global variable into config
-bool g_enable_comments = false;
+int g_enable_comments;
 
 ClangType::ClangType() : cx_type() {}
 
