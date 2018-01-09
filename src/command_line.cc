@@ -20,6 +20,7 @@
 #include "queue_manager.h"
 #include "semantic_highlight_symbol_cache.h"
 #include "serializer.h"
+#include "serializers/json.h"
 #include "standard_includes.h"
 #include "test.h"
 #include "threaded_queue.h"
@@ -29,14 +30,11 @@
 #include "working_files.h"
 
 #include <doctest/doctest.h>
-#include <rapidjson/istreamwrapper.h>
-#include <rapidjson/ostreamwrapper.h>
 #include <loguru.hpp>
+#include <rapidjson/error/en.h>
 
 #include <climits>
-#include <fstream>
 #include <functional>
-#include <future>
 #include <iostream>
 #include <iterator>
 #include <sstream>
@@ -51,6 +49,8 @@
 
 // TODO: implement ThreadPool type which monitors CPU usage / number of work
 // items per second completed and scales up/down number of running threads.
+
+std::string g_init_options;
 
 namespace {
 
@@ -438,10 +438,22 @@ int main(int argc, char** argv) {
       return -1;
   }
 
-  if (HasOption(options, "--enable-comments")) {
-    // TODO Place this global variable into config
-    extern bool g_enable_comments;
-    g_enable_comments = true;
+  if (HasOption(options, "--init")) {
+    // We check syntax error here but override client-side initializationOptions
+    // in messages/initialize.cc
+    g_init_options = options["--init"];
+    rapidjson::Document reader;
+    rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
+    if (!ok) {
+      std::cerr << "Failed to parse --init as JSON: "
+                << rapidjson::GetParseError_En(ok.Code()) << " (" << ok.Offset()
+                << ")\n";
+      return 1;
+    }
+    if (!reader.IsObject()) {
+      std::cerr << "--init must be a JSON object\n";
+      return 1;
+    }
   }
 
   if (HasOption(options, "--language-server")) {

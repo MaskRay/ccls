@@ -91,6 +91,8 @@ struct Config {
   // a function or method
   bool enableSnippetInsertion = true;
 
+  bool enableComments = false;
+
   //// For debugging
 
   // Dump AST after parsing if some pattern matches the source filename.
@@ -131,6 +133,8 @@ MAKE_REFLECT_STRUCT(Config,
 
                     clientVersion,
                     enableSnippetInsertion,
+
+                    enableComments,
 
                     dumpAST
                     );

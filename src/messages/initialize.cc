@@ -10,6 +10,10 @@
 
 #include <loguru.hpp>
 
+// TODO Cleanup global variables
+extern std::string g_init_options;
+extern bool g_enable_comments;
+
 namespace {
 struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
@@ -60,6 +64,15 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       }
 
       *config = *request->params.initializationOptions;
+      {
+        rapidjson::Document reader;
+        reader.Parse(g_init_options.c_str());
+        if (!reader.HasParseError()) {
+          JsonReader json_reader{&reader};
+          Reflect(json_reader, *config);
+        }
+      }
+      g_enable_comments = config->enableComments;
 
       // Check client version.
       if (config->clientVersion.has_value() &&
