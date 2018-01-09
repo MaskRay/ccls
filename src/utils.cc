@@ -167,7 +167,7 @@ static void GetFilesInFolderHelper(
       if (file.name[0] != '.') {
         if (file.is_dir) {
           if (recursive) {
-            std::string child_dir = output_prefix + file.name + "/";
+            std::string child_dir = q.front().second + file.name + "/";
             if (!IsSymLink(child_dir))
               q.push(make_pair(file.path, child_dir));
           }
