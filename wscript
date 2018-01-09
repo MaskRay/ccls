@@ -304,9 +304,12 @@ def build(bld):
     lib.append('ncurses')
 
   if bld.env['use_system_clang']:
-    rpath = str(subprocess.check_output(
+    if bld.env['llvm_config']:
+      rpath = str(subprocess.check_output(
         [bld.env['llvm_config'], '--libdir'],
         stderr=subprocess.STDOUT).decode()).strip()
+    else:
+      rpath = []
 
     # Use CXX set by --check-cxx-compiler if it is "clang".
     # See https://github.com/jacobdufault/cquery/issues/237
