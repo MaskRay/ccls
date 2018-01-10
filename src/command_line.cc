@@ -480,6 +480,8 @@ Command line options:
   --language-server
                 Run as a language server. This implements the language server
                 spec over STDIN and STDOUT.
+  --init <initializationOptions>
+                Override user provided initialization options.
   --test-unit   Run unit tests.
   --test-index <opt_filter_path>
                 Run index tests. opt_filter_path can be used to specify which

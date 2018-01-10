@@ -2,6 +2,8 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 
+#include <loguru.hpp>
+
 namespace {
 struct Ipc_CqueryCallTreeInitial
     : public IpcMessage<Ipc_CqueryCallTreeInitial> {
@@ -100,7 +102,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
     // TODO: basically, querydb gets duplicate references inserted into it.
     if (!seen_locations.insert(caller.loc).second) {
-      std::cerr << "!!!! FIXME DUPLICATE REFERENCE IN QUERYDB" << std::endl;
+      LOG_S(ERROR) << "!!!! FIXME DUPLICATE REFERENCE IN QUERYDB" << std::endl;
       return;
     }
 

@@ -10,6 +10,8 @@
 
 #include <loguru.hpp>
 
+#include <iostream>
+
 // TODO Cleanup global variables
 extern std::string g_init_options;
 extern int g_enable_comments;

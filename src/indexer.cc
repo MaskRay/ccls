@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <climits>
+#include <iostream>
 
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
