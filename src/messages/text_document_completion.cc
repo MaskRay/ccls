@@ -298,12 +298,11 @@ struct TextDocumentCompletionHandler : MessageHandler {
           [this, is_global_completion, existing_completion, request](
               const std::vector<lsCompletionItem>& results,
               bool is_cached_result) {
-            Out_TextDocumentComplete out;
-            out.id = request->id;
-            out.result.items = results;
-
-            // Emit completion results.
-            if (existing_completion.empty() && is_global_completion) {
+            //If existing completion is empty, dont return completion results
+            //Only do this when trigger is not manual and context doesn't exist
+            //(for Atom support)
+            if (existing_completion.empty() && is_global_completion && !(request->params.context) &&
+              request->params.context->triggerKind == lsCompletionTriggerKind::TriggerCharacter) {
               LOG_S(INFO) << "Existing completion is empty, no completion results will be returned";
               Out_TextDocumentComplete out;
               out.id = request->id;
@@ -311,6 +310,11 @@ struct TextDocumentCompletionHandler : MessageHandler {
               return;
             }
 
+            Out_TextDocumentComplete out;
+            out.id = request->id;
+            out.result.items = results;
+
+            // Emit completion results.
             SortAndFilterCompletionResponse(&out, existing_completion);
             QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
 
