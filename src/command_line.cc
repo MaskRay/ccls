@@ -264,6 +264,7 @@ void LaunchStdinLoop(Config* config,
           break;
         }
 
+        case IpcId::Shutdown:
         case IpcId::Exit:
         case IpcId::Initialize:
         case IpcId::TextDocumentDidOpen:
