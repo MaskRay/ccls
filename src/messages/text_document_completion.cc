@@ -303,6 +303,14 @@ struct TextDocumentCompletionHandler : MessageHandler {
             out.result.items = results;
 
             // Emit completion results.
+            if (existing_completion.size()==0 && is_global_completion) {
+              LOG_S(INFO) << "Existing completion is empty, no completion results will be returned";
+              Out_TextDocumentComplete out;
+              out.id = request->id;
+              QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+              return;
+            }
+            
             SortAndFilterCompletionResponse(&out, existing_completion);
             QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
 
