@@ -11,8 +11,6 @@
 #include <variant.h>
 
 #include <algorithm>
-#include <iostream>
-#include <sstream>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -254,10 +252,11 @@ struct lsTextDocumentIdentifier {
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
 
+void Reflect(Reader& visitor, std::variant<std::monostate, int>& version);
 struct lsVersionedTextDocumentIdentifier {
   lsDocumentUri uri;
-  // The version number of this document.
-  optional<int> version;
+  // The version number of this document.  number | null
+  std::variant<std::monostate, int> version;
 
   lsTextDocumentIdentifier AsTextDocumentIdentifier() const;
 };

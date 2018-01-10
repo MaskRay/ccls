@@ -160,6 +160,12 @@ void Reflect(Writer& visitor, bool& value);
 void Reflect(Reader& visitor, std::string& value);
 void Reflect(Writer& visitor, std::string& value);
 
+void Reflect(Reader& visitor, std::monostate&);
+void Reflect(Writer& visitor, std::monostate&);
+
+void Reflect(Reader& visitor, SerializeFormat& value);
+void Reflect(Writer& visitor, SerializeFormat& value);
+
 // std::optional
 template <typename T>
 void Reflect(Reader& visitor, optional<T>& value) {
@@ -271,14 +277,6 @@ template <typename T>
 void ReflectMember(Reader& visitor, const char* name, T& value) {
   visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
 }
-
-// Specializations
-
-void Reflect(Reader& visitor, std::monostate&);
-void Reflect(Writer& visitor, std::monostate&);
-
-void Reflect(Reader& visitor, SerializeFormat& value);
-void Reflect(Writer& visitor, SerializeFormat& value);
 
 // API
 
