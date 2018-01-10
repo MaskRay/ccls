@@ -60,6 +60,14 @@ void Reflect(Writer& visitor, uint64_t& value) {
   visitor.Uint64(value);
 }
 
+// double
+void Reflect(Reader& visitor, double& value) {
+  value = visitor.GetDouble();
+}
+void Reflect(Writer& visitor, double& value) {
+  visitor.Double(value);
+}
+
 // bool
 void Reflect(Reader& visitor, bool& value) {
   value = visitor.GetBool();

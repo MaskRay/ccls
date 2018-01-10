@@ -5,22 +5,17 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
-void Reflect(Writer& visitor, lsRequestId& value) {
-  assert(value.id0.has_value() || value.id1.has_value());
-
-  if (value.id0) {
-    Reflect(visitor, value.id0.value());
-  } else {
-    Reflect(visitor, value.id1.value());
-  }
-}
-
 void Reflect(Reader& visitor, lsRequestId& id) {
-  if (visitor.IsInt())
-    Reflect(visitor, id.id0);
-  else if (visitor.IsString())
-    Reflect(visitor, id.id1);
-  else
+  if (visitor.IsInt()) {
+    int v;
+    Reflect(visitor, v);
+    id = v;
+  }
+  else if (visitor.IsString()) {
+    std::string v;
+    Reflect(visitor, v);
+    id = v;
+  } else
     LOG_S(WARNING) << "Unable to deserialize id";
 }
 

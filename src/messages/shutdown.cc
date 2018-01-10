@@ -10,16 +10,14 @@ REGISTER_IPC_MESSAGE(Ipc_Shutdown);
 
 struct Out_Shutdown
     : public lsOutMessage<Out_Shutdown> {
-  lsRequestId id;
-  std::monostate result;
+  lsRequestId id;  // defaults to std::monostate (null)
+  std::monostate result;  // null
 };
 MAKE_REFLECT_STRUCT(Out_Shutdown, jsonrpc, id, result);
 
 struct ShutdownHandler : BaseMessageHandler<Ipc_Shutdown> {
   void Run(Ipc_Shutdown* request) override {
     Out_Shutdown out;
-    // FIXME lsRequestId should be number | string | null
-    out.id.id0 = 0;
     QueueManager::WriteStdout(IpcId::TextDocumentDefinition, out);
   }
 };

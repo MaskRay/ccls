@@ -32,6 +32,7 @@ class MessagePackReader : public Reader {
   int GetInt() override { return Get<int>(); }
   int64_t GetInt64() override { return Get<int64_t>(); }
   uint64_t GetUint64() override { return Get<uint64_t>(); }
+  double GetDouble() override { return Get<double>(); }
   std::string GetString() override { return Get<std::string>(); }
 
   bool HasMember(const char* x) override { return true; }
@@ -62,6 +63,7 @@ class MessagePackWriter : public Writer {
   void Int(int x) override { m_->pack(x); }
   void Int64(int64_t x) override { m_->pack(x); }
   void Uint64(uint64_t x) override { m_->pack(x); }
+  void Double(double x) override { m_->pack(x); }
   void String(const char* x) override { m_->pack(x); }
   // TODO Remove std::string
   void String(const char* x, size_t len) override { m_->pack(std::string(x, len)); }

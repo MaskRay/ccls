@@ -209,7 +209,6 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   std::vector<uint8_t> deleted(id, 0);
   int top = 0;
   for (size_t i = 0; i < events.size(); i++) {
-    // |start| is used as liveness tag here.
     while (top && deleted[events[top - 1].id])
       top--;
     // Order [a, b0) after [a, b1) if b0 < b1. The range comes later overrides

@@ -28,6 +28,7 @@ class Reader {
   virtual int GetInt() = 0;
   virtual int64_t GetInt64() = 0;
   virtual uint64_t GetUint64() = 0;
+  virtual double GetDouble() = 0;
   virtual std::string GetString() = 0;
 
   virtual bool HasMember(const char* x) = 0;
@@ -47,6 +48,7 @@ class Writer {
   virtual void Int(int x) = 0;
   virtual void Int64(int64_t x) = 0;
   virtual void Uint64(uint64_t x) = 0;
+  virtual void Double(double x) = 0;
   virtual void String(const char* x) = 0;
   virtual void String(const char* x, size_t len) = 0;
   virtual void StartArray(size_t) = 0;
@@ -147,6 +149,9 @@ void Reflect(Writer& visitor, int64_t& value);
 // uint64_t
 void Reflect(Reader& visitor, uint64_t& value);
 void Reflect(Writer& visitor, uint64_t& value);
+// double
+void Reflect(Reader& visitor, double& value);
+void Reflect(Writer& visitor, double& value);
 // bool
 void Reflect(Reader& visitor, bool& value);
 void Reflect(Writer& visitor, bool& value);
@@ -176,13 +181,27 @@ void Reflect(Writer& visitor, optional<T>& value) {
     visitor.Null();
 }
 
-// std::variant (Writer only)
-template <typename T0, typename T1>
-void Reflect(Writer& visitor, std::variant<T0, T1>& value) {
-  if (value.index() == 0)
+template <size_t N, typename... Ts>
+struct ReflectVariant {
+  void operator()(Writer& visitor, std::variant<Ts...>& value) {
+    if (value.index() == N - 1)
+      Reflect(visitor, std::get<N - 1>(value));
+    else
+      ReflectVariant<N - 1, Ts...>()(visitor, value);
+  }
+};
+
+template <typename... Ts>
+struct ReflectVariant<1, Ts...> {
+  void operator()(Writer& visitor, std::variant<Ts...>& value) {
     Reflect(visitor, std::get<0>(value));
-  else
-    Reflect(visitor, std::get<1>(value));
+  }
+};
+
+// std::variant (Writer only)
+template <typename... Ts>
+void Reflect(Writer& visitor, std::variant<Ts...>& value) {
+  ReflectVariant<sizeof...(Ts), Ts...>()(visitor, value);
 }
 
 // std::vector

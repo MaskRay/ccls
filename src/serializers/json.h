@@ -25,6 +25,7 @@ class JsonReader : public Reader {
   int GetInt() override { return m_->GetInt(); }
   int64_t GetInt64() override { return m_->GetInt64(); }
   uint64_t GetUint64() override { return m_->GetUint64(); }
+  double GetDouble() override { return m_->GetDouble(); }
   std::string GetString() override { return m_->GetString(); }
 
   bool HasMember(const char* x) override { return m_->HasMember(x); }
@@ -64,6 +65,7 @@ class JsonWriter : public Writer {
   void Int(int x) override { m_->Int(x); }
   void Int64(int64_t x) override { m_->Int64(x); }
   void Uint64(uint64_t x) override { m_->Uint64(x); }
+  void Double(double x) override { m_->Double(x); }
   void String(const char* x) override { m_->String(x); }
   void String(const char* x, size_t len) override { m_->String(x, len); }
   void StartArray(size_t) override { m_->StartArray(); }
