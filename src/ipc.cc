@@ -54,6 +54,8 @@ const char* IpcIdToString(IpcId id) {
       return "textDocument/codeLens";
     case IpcId::CodeLensResolve:
       return "codeLens/resolve";
+    case IpcId::WorkspaceDidChangeWatchedFiles:
+      return "workspace/didChangeWatchedFiles";
     case IpcId::WorkspaceSymbol:
       return "workspace/symbol";
 

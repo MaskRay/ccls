@@ -286,6 +286,7 @@ void LaunchStdinLoop(Config* config,
         case IpcId::TextDocumentDocumentLink:
         case IpcId::TextDocumentCodeAction:
         case IpcId::TextDocumentCodeLens:
+        case IpcId::WorkspaceDidChangeWatchedFiles:
         case IpcId::WorkspaceSymbol:
         case IpcId::CqueryFreshenIndex:
         case IpcId::CqueryTypeHierarchyTree:

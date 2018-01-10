@@ -32,6 +32,7 @@ enum class IpcId : int {
   TextDocumentCodeAction,
   TextDocumentCodeLens,
   CodeLensResolve,
+  WorkspaceDidChangeWatchedFiles,
   WorkspaceSymbol,
 
   // Custom notifications
