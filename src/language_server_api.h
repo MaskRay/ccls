@@ -148,6 +148,7 @@ struct lsPosition {
   lsPosition(int line, int character);
 
   bool operator==(const lsPosition& other) const;
+  bool operator<(const lsPosition& other) const;
 
   std::string ToString() const;
 

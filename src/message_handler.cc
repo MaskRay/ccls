@@ -8,6 +8,21 @@
 
 #include <loguru.hpp>
 
+#include <algorithm>
+
+namespace {
+struct ScanLineEvent {
+  lsPosition pos;
+  lsPosition end_pos;  // Second key when there is a tie for insertion events.
+  int id;
+  Out_CqueryPublishSemanticHighlighting::Symbol* symbol;
+  bool operator<(const ScanLineEvent& other) const {
+    // See the comments below when insertion/deletion events are inserted.
+    return !(pos == other.pos) ? pos < other.pos : other.end_pos < end_pos;
+  }
+};
+}
+
 MessageHandler::MessageHandler() {
   // Dynamically allocate |message_handlers|, otherwise there will be static
   // initialization order races.
@@ -172,11 +187,50 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     }
   }
 
+  // Make ranges non-overlapping using a scan line algorithm.
+  std::vector<ScanLineEvent> events;
+  int id = 0;
+  for (auto& entry : grouped_symbols) {
+    Out_CqueryPublishSemanticHighlighting::Symbol& symbol = entry.second;
+    for (auto& loc : symbol.ranges) {
+      // For ranges sharing the same start point, the one with leftmost end point
+      // comes first.
+      events.push_back({loc.start, loc.end, id, &symbol});
+      // For ranges sharing the same end point, their relative order does not
+      // matter, therefore we arbitrarily assign loc.end to them. We use
+      // negative id to indicate a deletion event.
+      events.push_back({loc.end, loc.end, ~id, &symbol});
+      id++;
+    }
+    symbol.ranges.clear();
+  }
+  std::sort(events.begin(), events.end());
+
+  std::vector<uint8_t> deleted(id, 0);
+  int top = 0;
+  for (size_t i = 0; i < events.size(); i++) {
+    // |start| is used as liveness tag here.
+    while (top && deleted[events[top - 1].id])
+      top--;
+    // Order [a, b0) after [a, b1) if b0 < b1. The range comes later overrides
+    // the ealier. The order of [a0, b) [a1, b) does not matter.
+    // The order of [a, b) [b, c) does not as long as we do not emit empty
+    // ranges.
+    // Attribute range [events[i-1].pos, events[i].pos) to events[top-1].symbol .
+    if (top && !(events[i - 1].pos == events[i].pos))
+      events[top - 1].symbol->ranges.emplace_back(events[i - 1].pos, events[i].pos);
+    if (events[i].id >= 0)
+      events[top++] = events[i];
+    else
+      deleted[~events[i].id] = 1;
+  }
+
   // Publish.
   Out_CqueryPublishSemanticHighlighting out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
   for (auto& entry : grouped_symbols)
-    out.params.symbols.push_back(entry.second);
+    if (entry.second.ranges.size())
+      out.params.symbols.push_back(entry.second);
   QueueManager::WriteStdout(IpcId::CqueryPublishSemanticHighlighting, out);
 }
 

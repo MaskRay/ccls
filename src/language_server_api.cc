@@ -280,6 +280,10 @@ bool lsPosition::operator==(const lsPosition& other) const {
   return line == other.line && character == other.character;
 }
 
+bool lsPosition::operator<(const lsPosition& other) const {
+  return line != other.line ? line < other.line : character < other.character;
+}
+
 std::string lsPosition::ToString() const {
   return std::to_string(line) + ":" + std::to_string(character);
 }
