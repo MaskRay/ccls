@@ -73,9 +73,7 @@ and install the `vscode-extension.vsix` extension. To do this:
 **IMPORTANT:** Please reinstall the extension when you download it - it is
 still being developed.
 
-To tell the extension where to find cquery, set "cquery.launch.workingDirectory" in User Settings to the location where cquery is installed.
-
-It's probably also worth mentioning that "cquery.launch.command" may need to be customized as well, especially if during building you used a prefix and installed into that prefix, and set "cquery.launch.workingDirectory" to the prefix (since then "cquery.launch.command" will need to be bin/cquery instead of the default release/bin/cquery).
+See the [wiki](https://github.com/jacobdufault/cquery/wiki/Visual-Studio-Code#setting-up-the-extension) for additional details on setting up the extension.
 
 If you run into issues, you can view debug output by running the
 (`F1`) `View: Toggle Output` command and opening the `cquery` output section.
