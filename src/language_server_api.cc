@@ -8,24 +8,26 @@
 #include <iostream>
 
 void Reflect(Reader& visitor, std::variant<std::monostate, int>& version) {
-  if (visitor.IsNull())
+  if (visitor.IsNull()) {
+    visitor.GetNull();
     version = std::monostate();
-  else
+  } else
     version = visitor.GetInt();
 }
 
 void Reflect(Reader& visitor, lsRequestId& id) {
-  if (visitor.IsInt()) {
-    int v;
-    Reflect(visitor, v);
-    id = v;
-  }
-  else if (visitor.IsString()) {
+  if (visitor.IsNull()) {
+    visitor.GetNull();
+    id = std::monostate();
+  } else if (visitor.IsString()) {
     std::string v;
     Reflect(visitor, v);
     id = v;
-  } else
-    LOG_S(WARNING) << "Unable to deserialize id";
+  } else {
+    int64_t v;
+    Reflect(visitor, v);
+    id = v;
+  }
 }
 
 MessageRegistry* MessageRegistry::instance_ = nullptr;
