@@ -26,6 +26,7 @@ some extra features to boot:
   * #include auto-complete, undefined type include insertion, include quick-jump
     (goto definition, document links)
   * auto-implement functions without a definition
+  * semantic highlighting, including support for [rainbow semantic highlighting](https://medium.com/@evnbr/coding-in-color-3a6db2743a1e)
 
 # Setup - build cquery, install extension, setup project
 
