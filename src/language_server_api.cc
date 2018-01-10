@@ -5,6 +5,8 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
+#include <iostream>
+
 void Reflect(Reader& visitor, std::variant<std::monostate, int>& version) {
   if (visitor.IsNull())
     version = std::monostate();

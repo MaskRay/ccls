@@ -5,6 +5,8 @@
 #include "serializer.h"
 #include "utils.h"
 
+#include <iostream>
+
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)
     std::cout << str << std::endl;
