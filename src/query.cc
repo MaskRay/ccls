@@ -19,6 +19,16 @@
 
 namespace {
 
+template <typename T>
+void VerifyUnique(const std::vector<T>& values0) {
+  // FIXME: Run on a big code-base for a while and verify no assertions are triggered.
+#if false
+  auto values = values0;
+  std::sort(values.begin(), values.end());
+  assert(std::unique(values.begin(), values.end()) == values.end());
+#endif
+}
+
 optional<QueryType::Def> ToQuery(const IdMap& id_map,
                                  const IndexType::Def& type) {
   if (type.detailed_name.empty())
@@ -740,6 +750,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     auto& def = storage_name[merge_update.id.id];                     \
     AddRange(&def.def_var_name, merge_update.to_add);                 \
     RemoveRange(&def.def_var_name, merge_update.to_remove);           \
+    VerifyUnique(def.def_var_name);                                   \
   }
 
   RemoveUsrs(SymbolKind::File, update->files_removed);
