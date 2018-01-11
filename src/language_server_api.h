@@ -24,7 +24,6 @@
 /////////////////////////////////////////////////////////////////////////////
 
 using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
-void Reflect(Reader& visitor, lsRequestId& id);
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -253,7 +252,6 @@ struct lsTextDocumentIdentifier {
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
 
-void Reflect(Reader& visitor, std::variant<std::monostate, int>& version);
 struct lsVersionedTextDocumentIdentifier {
   lsDocumentUri uri;
   // The version number of this document.  number | null

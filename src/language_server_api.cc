@@ -7,29 +7,6 @@
 
 #include <iostream>
 
-void Reflect(Reader& visitor, std::variant<std::monostate, int>& version) {
-  if (visitor.IsNull()) {
-    visitor.GetNull();
-    version = std::monostate();
-  } else
-    version = visitor.GetInt();
-}
-
-void Reflect(Reader& visitor, lsRequestId& id) {
-  if (visitor.IsNull()) {
-    visitor.GetNull();
-    id = std::monostate();
-  } else if (visitor.IsString()) {
-    std::string v;
-    Reflect(visitor, v);
-    id = v;
-  } else {
-    int64_t v;
-    Reflect(visitor, v);
-    id = v;
-  }
-}
-
 MessageRegistry* MessageRegistry::instance_ = nullptr;
 
 lsTextDocumentIdentifier

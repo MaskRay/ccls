@@ -27,6 +27,7 @@ class MessagePackReader : public Reader {
     return oh_.get().type == msgpack::type::POSITIVE_INTEGER ||
            oh_.get().type == msgpack::type::NEGATIVE_INTEGER;
   }
+  bool IsInt64() override { return IsInt(); }
   bool IsString() override { return oh_.get().type == msgpack::type::STR; }
 
   void GetNull() override { pk_->next(oh_); }

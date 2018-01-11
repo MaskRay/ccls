@@ -4,8 +4,10 @@
 #include <optional.h>
 #include <variant.h>
 
+#include <cassert>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 enum class SerializeFormat { Json, MessagePack };
@@ -19,7 +21,7 @@ class Reader {
   virtual bool IsNull() = 0;
   virtual bool IsArray() = 0;
   virtual bool IsInt() = 0;
-  // virtual bool IsInt64() = 0;
+  virtual bool IsInt64() = 0;
   // virtual bool IsUint64() = 0;
   virtual bool IsString() = 0;
 
@@ -187,8 +189,44 @@ void Reflect(Writer& visitor, optional<T>& value) {
     visitor.Null();
 }
 
+namespace {
+template <typename B0, typename... Bs>
+struct disjunction
+    : std::conditional<bool(B0::value), B0, disjunction<Bs...>>::type {};
+template <typename B0>
+struct disjunction<B0> : B0 {};
+}
+
 template <size_t N, typename... Ts>
 struct ReflectVariant {
+  template <typename T>
+  typename std::enable_if<disjunction<std::is_same<T, Ts>...>::value,
+                          void>::type
+  ReflectTag(Reader& visitor, std::variant<Ts...>& value) {
+    T a;
+    Reflect(visitor, a);
+    value = a;
+  }
+  template <typename T>
+  typename std::enable_if<!disjunction<std::is_same<T, Ts>...>::value,
+                          void>::type
+  ReflectTag(Reader&, std::variant<Ts...>&) {}
+
+  void operator()(Reader& visitor, std::variant<Ts...>& value) {
+    if (visitor.IsNull())
+      ReflectTag<std::monostate>(visitor, value);
+    // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int> if
+    // int is not in Ts...
+    else if (disjunction<std::is_same<int, Ts>...>::value && visitor.IsInt())
+      ReflectTag<int>(visitor, value);
+    else if (visitor.IsInt64())
+      ReflectTag<int64_t>(visitor, value);
+    else if (visitor.IsString())
+      ReflectTag<std::string>(visitor, value);
+    else
+      assert(0);
+  }
+
   void operator()(Writer& visitor, std::variant<Ts...>& value) {
     if (value.index() == N - 1)
       Reflect(visitor, std::get<N - 1>(value));
@@ -198,15 +236,13 @@ struct ReflectVariant {
 };
 
 template <typename... Ts>
-struct ReflectVariant<1, Ts...> {
-  void operator()(Writer& visitor, std::variant<Ts...>& value) {
-    Reflect(visitor, std::get<0>(value));
-  }
+struct ReflectVariant<0, Ts...> {
+  void operator()(Writer& visitor, std::variant<Ts...>& value) {}
 };
 
-// std::variant (Writer only)
-template <typename... Ts>
-void Reflect(Writer& visitor, std::variant<Ts...>& value) {
+// std::variant
+template <typename TVisitor, typename... Ts>
+void Reflect(TVisitor& visitor, std::variant<Ts...>& value) {
   ReflectVariant<sizeof...(Ts), Ts...>()(visitor, value);
 }
 
