@@ -136,39 +136,42 @@ void ReflectMemberEnd(TVisitor& visitor, T& value) {
 }
 */
 
-// uint8_t
+//// Elementary types
+
 void Reflect(Reader& visitor, uint8_t& value);
 void Reflect(Writer& visitor, uint8_t& value);
-// int16_t
+
 void Reflect(Reader& visitor, int16_t& value);
 void Reflect(Writer& visitor, int16_t& value);
-// int32_t
+
 void Reflect(Reader& visitor, int32_t& value);
 void Reflect(Writer& visitor, int32_t& value);
-// int64_t
+
 void Reflect(Reader& visitor, int64_t& value);
 void Reflect(Writer& visitor, int64_t& value);
-// uint64_t
+
 void Reflect(Reader& visitor, uint64_t& value);
 void Reflect(Writer& visitor, uint64_t& value);
-// double
+
 void Reflect(Reader& visitor, double& value);
 void Reflect(Writer& visitor, double& value);
-// bool
+
 void Reflect(Reader& visitor, bool& value);
 void Reflect(Writer& visitor, bool& value);
 
-// std::string
 void Reflect(Reader& visitor, std::string& value);
 void Reflect(Writer& visitor, std::string& value);
 
+// std::monostate is used to represent JSON null
 void Reflect(Reader& visitor, std::monostate&);
 void Reflect(Writer& visitor, std::monostate&);
 
 void Reflect(Reader& visitor, SerializeFormat& value);
 void Reflect(Writer& visitor, SerializeFormat& value);
 
-// std::optional
+//// Type constructors
+
+// Usually used for null | object
 template <typename T>
 void Reflect(Reader& visitor, optional<T>& value) {
   if (visitor.IsNull()) {
@@ -189,6 +192,7 @@ void Reflect(Writer& visitor, optional<T>& value) {
     visitor.Null();
 }
 
+// Backport C++17 std::disjunction
 namespace {
 template <typename B0, typename... Bs>
 struct disjunction
@@ -197,8 +201,11 @@ template <typename B0>
 struct disjunction<B0> : B0 {};
 }
 
+// Helper struct to reflect std::variant
 template <size_t N, typename... Ts>
 struct ReflectVariant {
+  // If T appears in Ts..., we should set the value of std::variant<Ts...> to
+  // what we get from Reader.
   template <typename T>
   typename std::enable_if<disjunction<std::is_same<T, Ts>...>::value,
                           void>::type
@@ -207,12 +214,15 @@ struct ReflectVariant {
     Reflect(visitor, a);
     value = a;
   }
+  // This SFINAE overload is used to prevent compile error. value = a; is not
+  // allowed if T does not appear in Ts...
   template <typename T>
   typename std::enable_if<!disjunction<std::is_same<T, Ts>...>::value,
                           void>::type
   ReflectTag(Reader&, std::variant<Ts...>&) {}
 
   void operator()(Reader& visitor, std::variant<Ts...>& value) {
+    // Based on tag dispatch, call different ReflectTag helper.
     if (visitor.IsNull())
       ReflectTag<std::monostate>(visitor, value);
     // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int> if
@@ -227,6 +237,7 @@ struct ReflectVariant {
       assert(0);
   }
 
+  // Check which type the variant contains and call corresponding Reflect.
   void operator()(Writer& visitor, std::variant<Ts...>& value) {
     if (value.index() == N - 1)
       Reflect(visitor, std::get<N - 1>(value));
@@ -235,6 +246,7 @@ struct ReflectVariant {
   }
 };
 
+// Writer feflection on std::variant recurses. This is induction basis.
 template <typename... Ts>
 struct ReflectVariant<0, Ts...> {
   void operator()(Writer& visitor, std::variant<Ts...>& value) {}
