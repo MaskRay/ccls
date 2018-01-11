@@ -213,7 +213,7 @@ struct ConstructorCache {
 struct IndexParam {
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
-  std::unordered_map<std::string, FileContentsWithOffsets> file_contents;
+  FileContentsMap file_contents;
   std::unordered_map<std::string, int64_t> file_modification_times;
 
   // Only use this when strictly needed (ie, primary translation unit is
@@ -236,8 +236,8 @@ struct IndexParam {
 
 IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   bool is_first_ownership = false;
-  IndexFile* db =
-      param->file_consumer->TryConsumeFile(file, &is_first_ownership);
+  IndexFile* db = param->file_consumer->TryConsumeFile(
+      file, &is_first_ownership, &param->file_contents);
 
   // If this is the first time we have seen the file (ignoring if we are
   // generating an index for it):
@@ -262,7 +262,7 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
       if (db && !param->file_contents.count(file_name)) {
         optional<std::string> content = ReadContent(file_name);
         if (content)
-          param->file_contents.emplace(file_name, *content);
+          param->file_contents[file_name] = FileContents(file_name, *content);
         else
           LOG_S(ERROR) << "[indexer] Failed to read file content for "
                        << file_name;
@@ -474,7 +474,9 @@ void OnIndexReference_Function(IndexFile* db,
 // static
 int IndexFile::kCurrentVersion = 8;
 
-IndexFile::IndexFile(const std::string& path) : id_cache(path), path(path) {
+IndexFile::IndexFile(const std::string& path,
+                     const optional<std::string>& contents)
+    : id_cache(path), path(path), file_contents_(contents) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
   // Preallocate any existing resolved ids.
   for (const auto& entry : id_cache.usr_to_type_id)
@@ -1516,16 +1518,16 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // ... } foo;` https://github.com/jacobdufault/cquery/issues/29
       if (extent.end.line - extent.start.line <
           kMaxLinesDisplayTypeAliasDeclarations) {
-        FileContentsWithOffsets& fc = param->file_contents[db->path];
+        FileContents& fc = param->file_contents[db->path];
         optional<int> extent_start = fc.ToOffset(extent.start),
                       spell_start = fc.ToOffset(spell.start),
                       spell_end = fc.ToOffset(spell.end),
                       extent_end = fc.ToOffset(extent.end);
         if (extent_start && spell_start && spell_end && extent_end) {
           type->def.hover =
-              fc.contents.substr(*extent_start, *spell_start - *extent_start) +
+              fc.content.substr(*extent_start, *spell_start - *extent_start) +
               type->def.detailed_name +
-              fc.contents.substr(*spell_end, *extent_end - *spell_end);
+              fc.content.substr(*spell_end, *extent_end - *spell_end);
         }
       }
 
@@ -1875,37 +1877,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   }
 }
 
-FileContents::FileContents(const std::string& path, const std::string& content)
-    : path(path), content(content) {}
-
-FileContentsWithOffsets::FileContentsWithOffsets() : line_offsets_{0} {}
-
-FileContentsWithOffsets::FileContentsWithOffsets(std::string s) {
-  contents = s;
-  line_offsets_.push_back(0);
-  for (size_t i = 0; i < s.size(); i++)
-    if (s[i] == '\n')
-      line_offsets_.push_back(i + 1);
-}
-
-optional<int> FileContentsWithOffsets::ToOffset(Position p) const {
-  if (0 < p.line && size_t(p.line) <= line_offsets_.size()) {
-    int ret = line_offsets_[p.line - 1] + p.column - 1;
-    if (size_t(ret) <= contents.size())
-      return {ret};
-  }
-  return nullopt;
-}
-
-optional<std::string> FileContentsWithOffsets::ContentsInRange(
-    Range range) const {
-  optional<int> start_offset = ToOffset(range.start),
-                end_offset = ToOffset(range.end);
-  if (start_offset && end_offset && *start_offset < *end_offset)
-    return {contents.substr(*start_offset, *end_offset - *start_offset)};
-  return nullopt;
-}
-
 std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
@@ -1972,7 +1943,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   FileConsumer file_consumer(file_consumer_shared, file);
   IndexParam param(tu, &file_consumer);
   for (const CXUnsavedFile& contents : file_contents) {
-    param.file_contents.emplace(
+    param.file_contents[contents.Filename] = FileContents(
         contents.Filename, std::string(contents.Contents, contents.Length));
   }
 
@@ -2034,7 +2005,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     }
 
     // Update file contents and modification time.
-    entry->file_contents_ = param.file_contents[entry->path].contents;
     entry->last_modification_time = param.file_modification_times[entry->path];
 
     // Update dependencies for the file. Do not include the file in its own
@@ -2044,12 +2014,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
         std::remove(entry->dependencies.begin(), entry->dependencies.end(),
                     entry->path),
         entry->dependencies.end());
-
-    // Make sure we are using correct file contents.
-    for (const CXUnsavedFile& contents : file_contents) {
-      if (entry->path == contents.Filename)
-        entry->file_contents_ = std::string(contents.Contents, contents.Length);
-    }
   }
 
   return result;

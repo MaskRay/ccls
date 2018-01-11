@@ -4,6 +4,7 @@
 #include "clang_translation_unit.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
+#include "file_contents.h"
 #include "language_server_api.h"
 #include "performance.h"
 #include "position.h"
@@ -539,9 +540,9 @@ struct IndexFile {
   // Diagnostics found when indexing this file. Not serialized.
   std::vector<lsDiagnostic> diagnostics_;
   // File contents at the time of index. Not serialized.
-  std::string file_contents_;
+  optional<std::string> file_contents_;
 
-  IndexFile(const std::string& path);
+  IndexFile(const std::string& path, const optional<std::string>& contents);
 
   IndexTypeId ToTypeId(const std::string& usr);
   IndexFuncId ToFuncId(const std::string& usr);
@@ -554,25 +555,6 @@ struct IndexFile {
   IndexVar* Resolve(IndexVarId id);
 
   std::string ToString();
-};
-
-struct FileContents {
-  std::string path;
-  std::string content;
-
-  FileContents(const std::string& path, const std::string& content);
-};
-
-struct FileContentsWithOffsets {
-  std::string contents;
-  // {0, 1 + position of first newline, 1 + position of second newline, ...}
-  std::vector<int> line_offsets_;
-
-  FileContentsWithOffsets();
-  FileContentsWithOffsets(std::string s);
-
-  optional<int> ToOffset(Position p) const;
-  optional<std::string> ContentsInRange(Range range) const;
 };
 
 struct NamespaceHelper {

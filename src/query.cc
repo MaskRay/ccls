@@ -442,7 +442,7 @@ IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map,
 
   if (!previous_id_map) {
     assert(!previous);
-    IndexFile empty(current->path);
+    IndexFile empty(current->path, nullopt);
     return IndexUpdate(*current_id_map, *current_id_map, empty, *current);
   }
   return IndexUpdate(*previous_id_map, *current_id_map, *previous, *current);
@@ -882,8 +882,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("remove defs") {
-    IndexFile previous("foo.cc");
-    IndexFile current("foo.cc");
+    IndexFile previous("foo.cc", nullopt);
+    IndexFile current("foo.cc", nullopt);
 
     previous.Resolve(previous.ToTypeId("usr1"))->def.definition_spelling =
         Range(Position(1, 0));
@@ -900,8 +900,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("do not remove ref-only defs") {
-    IndexFile previous("foo.cc");
-    IndexFile current("foo.cc");
+    IndexFile previous("foo.cc", nullopt);
+    IndexFile current("foo.cc", nullopt);
 
     previous.Resolve(previous.ToTypeId("usr1"))
         ->uses.push_back(Range(Position(1, 0)));
@@ -919,8 +919,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("func callers") {
-    IndexFile previous("foo.cc");
-    IndexFile current("foo.cc");
+    IndexFile previous("foo.cc", nullopt);
+    IndexFile current("foo.cc", nullopt);
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
     IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));
@@ -944,8 +944,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("type usages") {
-    IndexFile previous("foo.cc");
-    IndexFile current("foo.cc");
+    IndexFile previous("foo.cc", nullopt);
+    IndexFile current("foo.cc", nullopt);
 
     IndexType* pt = previous.Resolve(previous.ToTypeId("usr"));
     IndexType* ct = current.Resolve(current.ToTypeId("usr"));
@@ -965,8 +965,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("apply delta") {
-    IndexFile previous("foo.cc");
-    IndexFile current("foo.cc");
+    IndexFile previous("foo.cc", nullopt);
+    IndexFile current("foo.cc", nullopt);
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId("usr"));
     IndexFunc* cf = current.Resolve(current.ToFuncId("usr"));

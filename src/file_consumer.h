@@ -1,5 +1,6 @@
 #pragma once
 
+#include "file_contents.h"
 #include "utils.h"
 
 #include <clang-c/Index.h>
@@ -42,10 +43,18 @@ struct FileConsumer {
   // Returns IndexFile for the file or nullptr. |is_first_ownership| is set
   // to true iff the function just took ownership over the file. Otherwise it
   // is set to false.
-  IndexFile* TryConsumeFile(CXFile file, bool* is_first_ownership);
+  //
+  // note: file_contents is passed as a parameter instead of as a member
+  // variable since it is large and we do not want to copy it.
+  IndexFile* TryConsumeFile(CXFile file,
+                            bool* is_first_ownership,
+                            FileContentsMap* file_contents);
 
   // Forcibly create a local file, even if it has already been parsed.
-  IndexFile* ForceLocal(CXFile file);
+  //
+  // note: file_contents is passed as a parameter instead of as a member
+  // variable since it is large and we do not want to copy it.
+  IndexFile* ForceLocal(CXFile file, FileContentsMap* file_contents);
 
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();

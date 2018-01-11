@@ -23,12 +23,12 @@ struct RealCacheManager : ICacheManager {
 
     std::string cache_path = GetCachePath(file.path);
 
-    if (file.file_contents_.empty()) {
+    if (!file.file_contents_.has_value()) {
       LOG_S(ERROR) << "No cached file contents; performing potentially stale "
                    << "file-copy for " << file.path;
       CopyFileTo(cache_path, file.path);
     } else {
-      WriteToFile(cache_path, file.file_contents_);
+      WriteToFile(cache_path, *file.file_contents_);
     }
 
     std::string indexed_content = Serialize(config_->cacheFormat, file);

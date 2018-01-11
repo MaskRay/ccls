@@ -270,7 +270,7 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
         }
       }
 
-      file = MakeUnique<IndexFile>(path);
+      file = MakeUnique<IndexFile>(path, nullopt);
       JsonReader json_reader{&reader};
       Reflect(json_reader, *file);
       break;
@@ -284,7 +284,7 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
         upk.reserve_buffer(serialized.size());
         memcpy(upk.buffer(), serialized.data(), serialized.size());
         upk.buffer_consumed(serialized.size());
-        file = MakeUnique<IndexFile>(path);
+        file = MakeUnique<IndexFile>(path, nullopt);
         MessagePackReader reader(&upk);
         Reflect(reader, *file);
         if (file->version != expected_version)

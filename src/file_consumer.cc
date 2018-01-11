@@ -7,6 +7,22 @@
 
 #include <loguru.hpp>
 
+namespace {
+
+optional<std::string> GetFileContents(const std::string& path,
+                                      FileContentsMap* file_contents) {
+  auto it = file_contents->find(path);
+  if (it == file_contents->end()) {
+    optional<std::string> content = ReadContent(path);
+    if (content)
+      (*file_contents)[path] = FileContents(path, *content);
+    return content;
+  }
+  return it->second.content;
+}
+
+}  // namespace
+
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
   return a.data[0] == b.data[0] && a.data[1] == b.data[1] &&
          a.data[2] == b.data[2];
@@ -28,7 +44,9 @@ FileConsumer::FileConsumer(FileConsumerSharedState* shared_state,
                            const std::string& parse_file)
     : shared_(shared_state), parse_file_(parse_file) {}
 
-IndexFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership) {
+IndexFile* FileConsumer::TryConsumeFile(CXFile file,
+                                        bool* is_first_ownership,
+                                        FileContentsMap* file_contents) {
   assert(is_first_ownership);
 
   CXFileUniqueID file_id;
@@ -49,16 +67,20 @@ IndexFile* FileConsumer::TryConsumeFile(CXFile file, bool* is_first_ownership) {
   // No result in local; we need to query global.
   bool did_insert = shared_->Mark(file_name);
   *is_first_ownership = did_insert;
-  local_[file_id] = did_insert ? MakeUnique<IndexFile>(file_name) : nullptr;
+  local_[file_id] =
+      did_insert ? MakeUnique<IndexFile>(
+                       file_name, GetFileContents(file_name, file_contents))
+                 : nullptr;
   return local_[file_id].get();
 }
 
-IndexFile* FileConsumer::ForceLocal(CXFile file) {
+IndexFile* FileConsumer::ForceLocal(CXFile file,
+                                    FileContentsMap* file_contents) {
   // Try to fetch the file using the normal system, which will insert the file
   // usage into global storage.
   {
     bool is_first;
-    IndexFile* cache = TryConsumeFile(file, &is_first);
+    IndexFile* cache = TryConsumeFile(file, &is_first, file_contents);
     if (cache)
       return cache;
   }
@@ -71,8 +93,11 @@ IndexFile* FileConsumer::ForceLocal(CXFile file) {
   }
 
   auto it = local_.find(file_id);
-  if (it == local_.end() || !it->second)
-    local_[file_id] = MakeUnique<IndexFile>(FileName(file));
+  if (it == local_.end() || !it->second) {
+    std::string file_name = FileName(file);
+    local_[file_id] = MakeUnique<IndexFile>(
+        file_name, GetFileContents(file_name, file_contents));
+  }
   assert(local_.find(file_id) != local_.end());
   return local_[file_id].get();
 }

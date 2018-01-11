@@ -101,10 +101,10 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
     // TODO: REMOVE |seen_locations| once we fix the querydb update bugs
     // TODO: basically, querydb gets duplicate references inserted into it.
-    if (!seen_locations.insert(caller.loc).second) {
-      LOG_S(ERROR) << "!!!! FIXME DUPLICATE REFERENCE IN QUERYDB" << std::endl;
-      return;
-    }
+    // if (!seen_locations.insert(caller.loc).second) {
+    //  LOG_S(ERROR) << "!!!! FIXME DUPLICATE REFERENCE IN QUERYDB" <<
+    //  std::endl; return;
+    //}
 
     if (caller.has_id()) {
       QueryFunc& call_func = db->funcs[caller.id_.id];
