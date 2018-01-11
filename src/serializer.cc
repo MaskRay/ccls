@@ -226,7 +226,6 @@ void Reflect(Writer& visitor, SerializeFormat& value) {
 }
 
 std::string Serialize(SerializeFormat format, IndexFile& file) {
-
   switch (format) {
     case SerializeFormat::Json: {
       rapidjson::StringBuffer output;
@@ -261,8 +260,8 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
       if (reader.HasParseError())
         return nullptr;
 
-      // Do not deserialize a document with a bad version. Doing so could cause a
-      // crash because the file format may have changed.
+      // Do not deserialize a document with a bad version. Doing so could cause
+      // a crash because the file format may have changed.
       if (expected_version) {
         auto actual_version = reader.FindMember("version");
         if (actual_version == reader.MemberEnd() ||
@@ -291,7 +290,8 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
         if (file->version != expected_version)
           return nullptr;
       } catch (msgpack::unpack_error& ex) {
-        LOG_S(ERROR) << "msgpack::unpack_err for '" << path << "' " << ex.what();
+        LOG_S(ERROR) << "msgpack::unpack_err for '" << path << "' "
+                     << ex.what();
         return nullptr;
       }
       break;

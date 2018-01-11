@@ -7,10 +7,10 @@
 
 #include <pthread.h>
 #if defined(__FreeBSD__)
-# include <pthread_np.h>
-# include <sys/thr.h>
+#include <pthread_np.h>
+#include <sys/thr.h>
 #elif defined(__OpenBSD__)
-# include <pthread_np.h>
+#include <pthread_np.h>
 #endif
 
 #include <assert.h>
@@ -130,7 +130,10 @@ std::string GetExecutablePath() {
   return result;
 #elif defined(__FreeBSD__)
   static const int name[] = {
-      CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1,
+      CTL_KERN,
+      KERN_PROC,
+      KERN_PROC_PATHNAME,
+      -1,
   };
   char path[MAXPATHLEN];
   size_t len = sizeof(path);
@@ -139,7 +142,7 @@ std::string GetExecutablePath() {
   return std::string(path);
 #else
   char buffer[PATH_MAX] = {0};
-  if(-1 == readlink("/proc/self/exe", buffer, PATH_MAX))
+  if (-1 == readlink("/proc/self/exe", buffer, PATH_MAX))
     return "";
   return buffer;
 #endif

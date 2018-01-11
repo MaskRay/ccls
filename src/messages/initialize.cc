@@ -178,8 +178,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       Timer time;
 
       // Open up / load the project.
-      project->Load(config,
-                    config->extraClangArguments,
+      project->Load(config, config->extraClangArguments,
                     config->compilationDatabaseDirectory, project_path,
                     config->resourceDirectory);
       time.ResetAndPrint("[perf] Loaded compilation entries (" +

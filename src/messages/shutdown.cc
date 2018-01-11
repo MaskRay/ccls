@@ -8,9 +8,8 @@ struct Ipc_Shutdown : public IpcMessage<Ipc_Shutdown> {
 MAKE_REFLECT_EMPTY_STRUCT(Ipc_Shutdown);
 REGISTER_IPC_MESSAGE(Ipc_Shutdown);
 
-struct Out_Shutdown
-    : public lsOutMessage<Out_Shutdown> {
-  lsRequestId id;  // defaults to std::monostate (null)
+struct Out_Shutdown : public lsOutMessage<Out_Shutdown> {
+  lsRequestId id;         // defaults to std::monostate (null)
   std::monostate result;  // null
 };
 MAKE_REFLECT_STRUCT(Out_Shutdown, jsonrpc, id, result);

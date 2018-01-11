@@ -503,16 +503,17 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   //
   // Then order functions before other types, which makes goto definition work
   // better on constructors.
-  std::sort(symbols.begin(), symbols.end(), [](const SymbolRef& a,
-                                               const SymbolRef& b) {
-    int a_size = ComputeRangeSize(a.loc.range);
-    int b_size = ComputeRangeSize(b.loc.range);
+  std::sort(symbols.begin(), symbols.end(),
+            [](const SymbolRef& a, const SymbolRef& b) {
+              int a_size = ComputeRangeSize(a.loc.range);
+              int b_size = ComputeRangeSize(b.loc.range);
 
-    if (a_size != b_size)
-      return a_size < b_size;
-    // operator> orders Var/Func in front of orders.
-    return static_cast<int>(a.idx.kind) > static_cast<int>(b.idx.kind);
-  });
+              if (a_size != b_size)
+                return a_size < b_size;
+              // operator> orders Var/Func in front of orders.
+              return static_cast<int>(a.idx.kind) >
+                     static_cast<int>(b.idx.kind);
+            });
 
   return symbols;
 }

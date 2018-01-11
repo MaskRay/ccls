@@ -17,7 +17,9 @@ class MessagePackReader : public Reader {
 
  public:
   MessagePackReader(msgpack::unpacker* pk) : pk_(pk) { pk->next(oh_); }
-  SerializeFormat Format() const override { return SerializeFormat::MessagePack; }
+  SerializeFormat Format() const override {
+    return SerializeFormat::MessagePack;
+  }
 
   bool IsNull() override { return oh_.get().is_nil(); }
   bool IsArray() override { return oh_.get().type == msgpack::type::ARRAY; }
@@ -36,9 +38,7 @@ class MessagePackReader : public Reader {
   std::string GetString() override { return Get<std::string>(); }
 
   bool HasMember(const char* x) override { return true; }
-  std::unique_ptr<Reader> operator[](const char* x) override {
-    return {};
-  }
+  std::unique_ptr<Reader> operator[](const char* x) override { return {}; }
 
   void IterArray(std::function<void(Reader&)> fn) override {
     size_t n = Get<size_t>();
@@ -56,7 +56,9 @@ class MessagePackWriter : public Writer {
 
  public:
   MessagePackWriter(msgpack::packer<msgpack::sbuffer>* m) : m_(m) {}
-  SerializeFormat Format() const override { return SerializeFormat::MessagePack; }
+  SerializeFormat Format() const override {
+    return SerializeFormat::MessagePack;
+  }
 
   void Null() override { m_->pack_nil(); }
   void Bool(bool x) override { m_->pack(x); }
@@ -66,7 +68,9 @@ class MessagePackWriter : public Writer {
   void Double(double x) override { m_->pack(x); }
   void String(const char* x) override { m_->pack(x); }
   // TODO Remove std::string
-  void String(const char* x, size_t len) override { m_->pack(std::string(x, len)); }
+  void String(const char* x, size_t len) override {
+    m_->pack(std::string(x, len));
+  }
   void StartArray(size_t n) override { m_->pack(n); }
   void EndArray() override {}
   void StartObject() override {}

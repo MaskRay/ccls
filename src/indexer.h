@@ -112,7 +112,8 @@ enum class ClangSymbolKind : uint8_t {
   Parameter = 25,
   Using,
 };
-MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind, std::underlying_type<ClangSymbolKind>::type);
+MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind,
+                        std::underlying_type<ClangSymbolKind>::type);
 
 struct IndexFuncRef {
   // NOTE: id can be -1 if the function call is not coming from a function.

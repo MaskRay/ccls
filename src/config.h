@@ -138,8 +138,7 @@ MAKE_REFLECT_STRUCT(Config,
 
                     enableComments,
 
-                    dumpAST
-                    );
+                    dumpAST);
 
 // Expected client version. We show an error if this doesn't match.
 constexpr const int kExpectedClientVersion = 3;

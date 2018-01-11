@@ -106,7 +106,6 @@ ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   }
 }
 
-
 // Caches all instances of constructors, regardless if they are indexed or not.
 // The constructor may have a make_unique call associated with it that we need
 // to export. If we do not capture the parameter type description for the
@@ -339,7 +338,8 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
 
   for (unsigned i = 0; i < num_tokens; ++i) {
     // Add whitespace between the previous token and this one.
-    Range token_range = ResolveCXSourceRange(clang_getTokenExtent(cx_tu, tokens[i]));
+    Range token_range =
+        ResolveCXSourceRange(clang_getTokenExtent(cx_tu, tokens[i]));
     if (previous_token_range) {
       // Insert newlines.
       int16_t line_delta =
@@ -419,9 +419,9 @@ void SetVarDetail(IndexVar* var,
   def.comments = cursor.get_comments();
 
   std::string qualified_name =
-        semanticContainer
-            ? param->ns.QualifiedName(semanticContainer, def.short_name)
-            : def.short_name;
+      semanticContainer
+          ? param->ns.QualifiedName(semanticContainer, def.short_name)
+          : def.short_name;
   if (semanticContainer && semanticContainer->cursor.kind == CXCursor_EnumDecl)
     def.detailed_name = std::move(qualified_name);
   else {
@@ -463,8 +463,7 @@ void OnIndexReference_Function(IndexFile* db,
 
     AddFuncRef(&caller->def.callees,
                IndexFuncRef(called->id, loc, is_implicit));
-    AddFuncRef(&called->callers,
-               IndexFuncRef(caller->id, loc, is_implicit));
+    AddFuncRef(&called->callers, IndexFuncRef(caller->id, loc, is_implicit));
   } else {
     AddFuncRef(&called->callers, IndexFuncRef(loc, is_implicit));
   }
@@ -594,8 +593,8 @@ void OnIndexDiagnostic(CXClientData client_data,
     unsigned int line, column;
     clang_getSpellingLocation(diag_loc, &file, &line, &column, nullptr);
     // Skip empty diagnostic.
-    if(!line && !column)
-        continue;
+    if (!line && !column)
+      continue;
     IndexFile* db = ConsumeFile(param, file);
     if (!db)
       continue;
@@ -1036,7 +1035,8 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.kind = ClangSymbolKind::Macro;
         var_def->def.comments = cursor.get_comments();
         var_def->def.definition_spelling = decl_loc_spelling;
-        var_def->def.definition_extent = ResolveCXSourceRange(cx_extent, nullptr);
+        var_def->def.definition_extent =
+            ResolveCXSourceRange(cx_extent, nullptr);
       }
 
       break;
@@ -1312,9 +1312,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // We don't need to assign declaring type multiple times if this variable
       // has already been seen.
       if (!decl->isRedeclaration) {
-        //optional<IndexTypeId> var_type =
+        // optional<IndexTypeId> var_type =
         //    ResolveToDeclarationType(db, decl_cursor);
-        //if (var_type.has_value()) {
+        // if (var_type.has_value()) {
         //  // Don't treat enum definition variables as instantiations.
         //  bool is_enum_member =
         //      decl->semanticContainer &&
@@ -1597,7 +1597,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                             decl->lexicalContainer);
           optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
-          // type_def ptr could be invalidated by ResolveToDeclarationType and TemplateVisitor.
+          // type_def ptr could be invalidated by ResolveToDeclarationType and
+          // TemplateVisitor.
           type = db->Resolve(type_id);
           if (parent_type_id) {
             IndexType* parent_type_def = db->Resolve(parent_type_id.value());
@@ -1675,7 +1676,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // definition, We use cursor extent (larger than spelling range) `e.x`. It
       // would be better if we could restrict the ranges to `.x` or just `x`.
       // Nevertheless, larger ranges are less specific, and should do no harm
-      // because they will be overriden by more specific variable references `e`.
+      // because they will be overriden by more specific variable references
+      // `e`.
       Range loc = ref->cursor.kind == CXCursor_MemberRefExpr &&
                           ref_cursor.get_spelling().empty()
                       ? ref_cursor.get_extent()
@@ -1750,17 +1752,17 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
             !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
                                           called->def.short_name)));
 
-      // Extents have larger ranges and thus less specific, and will be overriden
-      // by other functions if exist.
+      // Extents have larger ranges and thus less specific, and will be
+      // overriden by other functions if exist.
       //
-      // Members of non-concrete template types do not have useful spelling ranges.
-      // See the comment above for the CXIdxEntity_Field case.
+      // Members of non-concrete template types do not have useful spelling
+      // ranges. See the comment above for the CXIdxEntity_Field case.
       if (is_implicit || (ref->cursor.kind == CXCursor_MemberRefExpr &&
                           ref_cursor.get_spelling().empty()))
         loc = ref_cursor.get_extent();
 
-      OnIndexReference_Function(db, loc, ref->container->cursor,
-                                called_id, called, is_implicit);
+      OnIndexReference_Function(db, loc, ref->container->cursor, called_id,
+                                called, is_implicit);
 
       // Checks if |str| starts with |start|. Ignores case.
       auto str_begin = [](const char* start, const char* str) {
@@ -1800,8 +1802,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
-            AddFuncRef(&ctor->callers,
-                       IndexFuncRef(loc, true /*is_implicit*/));
+            AddFuncRef(&ctor->callers, IndexFuncRef(loc, true /*is_implicit*/));
           }
         }
       }
@@ -1837,21 +1838,26 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //    Foo f;
       //  }
       //
-      UniqueAdd(referenced->uses, ClangCursor(ref->cursor).get_spelling_range());
+      UniqueAdd(referenced->uses,
+                ClangCursor(ref->cursor).get_spelling_range());
       break;
     }
 
     default:
-      std::cerr << "!! Unhandled indexEntityReference: " << cursor.ToString()
-                << " at " << ClangCursor(ref->cursor).get_spelling_range().start.ToString()
-                << std::endl;
+      std::cerr
+          << "!! Unhandled indexEntityReference: " << cursor.ToString()
+          << " at "
+          << ClangCursor(ref->cursor).get_spelling_range().start.ToString()
+          << std::endl;
       std::cerr << "     ref->referencedEntity->kind = "
                 << ref->referencedEntity->kind << std::endl;
       if (ref->parentEntity)
         std::cerr << "     ref->parentEntity->kind = "
                   << ref->parentEntity->kind << std::endl;
-      std::cerr << "     ref->loc          = "
-                << ClangCursor(ref->cursor).get_spelling_range().start.ToString() << std::endl;
+      std::cerr
+          << "     ref->loc          = "
+          << ClangCursor(ref->cursor).get_spelling_range().start.ToString()
+          << std::endl;
       std::cerr << "     ref->kind         = " << ref->kind << std::endl;
       if (ref->parentEntity)
         std::cerr << "     parentEntity      = "
@@ -2003,7 +2009,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   std::unordered_map<std::string, int> inc_to_line;
   // TODO
   if (param.primary_file)
-    for (auto &inc : param.primary_file->includes)
+    for (auto& inc : param.primary_file->includes)
       inc_to_line[inc.resolved_path] = inc.line;
 
   auto result = param.file_consumer->TakeLocalState();
@@ -2080,12 +2086,14 @@ void ClangSanityCheck() {
                                 void* reserved) -> CXIdxClientFile {
     return nullptr;
   };
-  callback.ppIncludedFile = [](
-      CXClientData client_data,
-      const CXIdxIncludedFileInfo* file) -> CXIdxClientFile { return nullptr; };
-  callback.importedASTFile = [](
-      CXClientData client_data,
-      const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
+  callback.ppIncludedFile =
+      [](CXClientData client_data,
+         const CXIdxIncludedFileInfo* file) -> CXIdxClientFile {
+    return nullptr;
+  };
+  callback.importedASTFile =
+      [](CXClientData client_data,
+         const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
     return nullptr;
   };
   callback.startedTranslationUnit = [](CXClientData client_data,

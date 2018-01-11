@@ -249,7 +249,8 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
         longest = std::max(longest, int(db->short_names[i].size()));
 
       std::vector<int> score(longest);  // score for each position
-      std::vector<int> dp(longest);  // dp[i]: maximum value by aligning pattern to str[0..i]
+      std::vector<int> dp(
+          longest);  // dp[i]: maximum value by aligning pattern to str[0..i]
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
@@ -260,14 +261,13 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
                 std::greater<std::pair<int, int>>());
       out.result.reserve(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++)
-        out.result.push_back(std::move(unsorted_results[permutation[i].second]));
-    }
-    else {
+        out.result.push_back(
+            std::move(unsorted_results[permutation[i].second]));
+    } else {
       out.result.reserve(unsorted_results.size());
       for (const auto& entry : unsorted_results)
         out.result.push_back(std::move(entry));
     }
-
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
                 << " results for query " << query;

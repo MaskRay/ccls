@@ -21,7 +21,7 @@ struct ScanLineEvent {
     return !(pos == other.pos) ? pos < other.pos : other.end_pos < end_pos;
   }
 };
-}
+}  // namespace
 
 MessageHandler::MessageHandler() {
   // Dynamically allocate |message_handlers|, otherwise there will be static
@@ -35,7 +35,7 @@ MessageHandler::MessageHandler() {
 std::vector<MessageHandler*>* MessageHandler::message_handlers = nullptr;
 
 bool FindFileOrFail(QueryDatabase* db,
-                    const Project *project,
+                    const Project* project,
                     optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
@@ -143,14 +143,14 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         auto concise_name = detailed_name.substr(0, detailed_name.find('<'));
         if (sym.loc.range.start.line <= working_file->index_lines.size()) {
           std::string& line =
-            working_file->index_lines[sym.loc.range.start.line - 1];
+              working_file->index_lines[sym.loc.range.start.line - 1];
           auto pos = line.find(concise_name);
           sym.loc.range.end.line = sym.loc.range.start.line;
           if (pos == std::string::npos)
             sym.loc.range.end.column = sym.loc.range.start.column;
           else
             sym.loc.range.end.column =
-              sym.loc.range.start.column + concise_name.size();
+                sym.loc.range.start.column + concise_name.size();
         }
         break;
       }
@@ -209,8 +209,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   for (auto& entry : grouped_symbols) {
     Out_CqueryPublishSemanticHighlighting::Symbol& symbol = entry.second;
     for (auto& loc : symbol.ranges) {
-      // For ranges sharing the same start point, the one with leftmost end point
-      // comes first.
+      // For ranges sharing the same start point, the one with leftmost end
+      // point comes first.
       events.push_back({loc.start, loc.end, id, &symbol});
       // For ranges sharing the same end point, their relative order does not
       // matter, therefore we arbitrarily assign loc.end to them. We use
@@ -231,9 +231,11 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     // the ealier. The order of [a0, b) [a1, b) does not matter.
     // The order of [a, b) [b, c) does not as long as we do not emit empty
     // ranges.
-    // Attribute range [events[i-1].pos, events[i].pos) to events[top-1].symbol .
+    // Attribute range [events[i-1].pos, events[i].pos) to events[top-1].symbol
+    // .
     if (top && !(events[i - 1].pos == events[i].pos))
-      events[top - 1].symbol->ranges.emplace_back(events[i - 1].pos, events[i].pos);
+      events[top - 1].symbol->ranges.emplace_back(events[i - 1].pos,
+                                                  events[i].pos);
     if (events[i].id >= 0)
       events[top++] = events[i];
     else

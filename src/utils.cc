@@ -149,7 +149,7 @@ static void GetFilesInFolderHelper(
     const std::function<void(const std::string&)>& handler) {
   std::queue<std::pair<std::string, std::string>> q;
   q.push(make_pair(folder, output_prefix));
-  while(!q.empty()) {
+  while (!q.empty()) {
     tinydir_dir dir;
     if (tinydir_open(&dir, q.front().first.c_str()) == -1) {
       LOG_S(WARNING) << "Unable to open directory " << folder;

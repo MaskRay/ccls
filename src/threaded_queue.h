@@ -27,7 +27,7 @@ struct index_sequence {};
 
 template <size_t I, size_t... Is>
 struct make_index_sequence {
-  using type = typename make_index_sequence<I-1, I-1, Is...>::type;
+  using type = typename make_index_sequence<I - 1, I - 1, Is...>::type;
 };
 
 template <size_t... Is>
@@ -35,7 +35,7 @@ struct make_index_sequence<0, Is...> {
   using type = index_sequence<Is...>;
 };
 
-}
+}  // namespace
 
 // std::lock accepts two or more arguments. We define an overload for one
 // argument.
@@ -44,16 +44,12 @@ template <typename Lockable>
 void lock(Lockable& l) {
   l.lock();
 }
-}
+}  // namespace std
 
 template <typename... Queue>
 struct MultiQueueLock {
-  MultiQueueLock(Queue... lockable) : tuple_{lockable...} {
-    lock();
-  }
-  ~MultiQueueLock() {
-    unlock();
-  }
+  MultiQueueLock(Queue... lockable) : tuple_{lockable...} { lock(); }
+  ~MultiQueueLock() { unlock(); }
   void lock() {
     lock_impl(typename make_index_sequence<sizeof...(Queue)>::type{});
   }

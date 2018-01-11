@@ -458,7 +458,6 @@ enum class lsDocumentHighlightKind {
 };
 MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind, int);
 
-
 struct lsFormattingOptions {
   // Size of a tab in spaces.
   int tabSize;

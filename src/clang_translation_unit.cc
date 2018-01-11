@@ -19,8 +19,8 @@ void EmitDiagnostics(std::string path,
                      CXTranslationUnit tu) {
   std::string output = "Fatal errors while trying to parse " + path + "\n";
   output +=
-      "Args: " + StringJoinMap(
-                     args, [](const char* arg) { return std::string(arg); }) +
+      "Args: " +
+      StringJoinMap(args, [](const char* arg) { return std::string(arg); }) +
       "\n";
 
   size_t num_diagnostics = clang_getNumDiagnostics(tu);

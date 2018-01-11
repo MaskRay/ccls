@@ -1,7 +1,7 @@
 #include "match.h"
 
-#include "queue_manager.h"
 #include "language_server_api.h"
+#include "queue_manager.h"
 
 #include <doctest/doctest.h>
 #include <iostream>
@@ -22,11 +22,10 @@ optional<Matcher> Matcher::Create(const std::string& search) {
     Matcher m;
     m.regex_string = search;
     m.regex = std::regex(
-        search,
-        std::regex_constants::ECMAScript | std::regex_constants::icase |
-            std::regex_constants::optimize
+        search, std::regex_constants::ECMAScript | std::regex_constants::icase |
+                    std::regex_constants::optimize
         // std::regex_constants::nosubs
-        );
+    );
     return m;
   } catch (std::exception e) {
     Out_ShowLogMessage out;

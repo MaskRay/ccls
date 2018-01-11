@@ -75,8 +75,7 @@ std::string GetFunctionSignature(IndexFile* db,
 
     // Second pass: insert argument names before each comma and closing paren.
     int i = function_name_offset;
-    std::string type_desc_with_names(type_desc.begin(),
-                                     type_desc.begin() + i);
+    std::string type_desc_with_names(type_desc.begin(), type_desc.begin() + i);
     type_desc_with_names.append(function_name);
     for (auto& arg : args) {
       if (arg.first < 0) {

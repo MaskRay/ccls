@@ -95,7 +95,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     Config* init_opts,
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {
-  
   auto cleanup_maybe_relative_path = [&](const std::string& path) {
     // TODO/FIXME: Normalization will fail for paths that do not exist. Should
     // it return an optional<std::string>?
@@ -246,14 +245,16 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Using -fparse-all-comments enables documententation in the indexer and in
   // code completion.
-  if (init_opts->enableComments > 1 && !AnyStartsWith(result.args, "-fparse-all-comments")) {
+  if (init_opts->enableComments > 1 &&
+      !AnyStartsWith(result.args, "-fparse-all-comments")) {
     result.args.push_back("-fparse-all-comments");
   }
 
   return result;
 }
 
-std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts, ProjectConfig* config) {
+std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
+                                                     ProjectConfig* config) {
   std::vector<Project::Entry> result;
 
   std::vector<std::string> args;
@@ -281,7 +282,8 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts, ProjectC
       e.file = file;
       e.args = args;
       e.args.push_back(e.file);
-      result.push_back(GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
+      result.push_back(
+          GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
     }
   }
 
@@ -351,7 +353,8 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
       absolute_filename = directory + "/" + relative_filename;
     entry.file = NormalizePathWithTestOptOut(absolute_filename);
 
-    result.push_back(GetCompilationEntryFromCompileCommandEntry(init_opts, config, entry));
+    result.push_back(
+        GetCompilationEntryFromCompileCommandEntry(init_opts, config, entry));
     our_time.Pause();
   }
 
@@ -416,8 +419,8 @@ void Project::Load(Config* init_opts,
   config.extra_flags = extra_flags;
   config.project_dir = root_directory;
   config.resource_dir = resource_directory;
-  entries =
-      LoadCompilationEntriesFromDirectory(init_opts, &config, opt_compilation_db_dir);
+  entries = LoadCompilationEntriesFromDirectory(init_opts, &config,
+                                                opt_compilation_db_dir);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(config.quote_dirs.begin(),
@@ -545,12 +548,13 @@ TEST_SUITE("Project") {
 
   // FIXME: Fix this test.
   TEST_CASE("Path in args") {
-    CheckFlags("/home/user", "/home/user/foo/bar.c",
-               /* raw */ {"cc", "-O0", "foo/bar.c"},
-               /* expected */
-               {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11",
-                "-O0", "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
-                "-Wno-unknown-warning-option"});
+    CheckFlags(
+        "/home/user", "/home/user/foo/bar.c",
+        /* raw */ {"cc", "-O0", "foo/bar.c"},
+        /* expected */
+        {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0",
+         "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
   }
 
   TEST_CASE("Implied binary") {
@@ -907,7 +911,8 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "&/w/c/s/out/Release/../../ash/login/ui/lock_screen_sanity_unittest.cc",
+         "&/w/c/s/out/Release/../../ash/login/ui/"
+         "lock_screen_sanity_unittest.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option"});
   }

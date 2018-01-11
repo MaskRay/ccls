@@ -240,7 +240,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
         std::cout << std::endl;
         if (enable_update) {
           std::cout
-            << "[Enter to continue - type u to update test, a to update all]";
+              << "[Enter to continue - type u to update test, a to update all]";
           char c = 'u';
           if (!update_all) {
             c = (char)std::cin.get();

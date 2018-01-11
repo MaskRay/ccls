@@ -30,8 +30,8 @@
 #include "working_files.h"
 
 #include <doctest/doctest.h>
-#include <loguru.hpp>
 #include <rapidjson/error/en.h>
+#include <loguru.hpp>
 
 #include <climits>
 #include <functional>

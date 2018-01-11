@@ -233,8 +233,8 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
     for (const IndexFuncRef& caller : func.callers) {
       // Make ranges of implicit function calls larger (spanning one more column
       // to the left/right). This is hacky but useful. e.g.
-      // textDocument/definition on the space/semicolon in `A a;` or `return 42;`
-      // will take you to the constructor.
+      // textDocument/definition on the space/semicolon in `A a;` or `return
+      // 42;` will take you to the constructor.
       Range range = caller.loc;
       if (caller.is_implicit) {
         if (range.start.column > 1)

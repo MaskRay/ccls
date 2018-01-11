@@ -15,12 +15,12 @@ class Reader {
   virtual ~Reader() {}
   virtual SerializeFormat Format() const = 0;
 
-  //virtual bool IsBool() = 0;
+  // virtual bool IsBool() = 0;
   virtual bool IsNull() = 0;
   virtual bool IsArray() = 0;
   virtual bool IsInt() = 0;
-  //virtual bool IsInt64() = 0;
-  //virtual bool IsUint64() = 0;
+  // virtual bool IsInt64() = 0;
+  // virtual bool IsUint64() = 0;
   virtual bool IsString() = 0;
 
   virtual void GetNull() = 0;
@@ -60,12 +60,12 @@ class Writer {
 
 struct IndexFile;
 
-#define REFLECT_MEMBER_START()                  \
-  if (!ReflectMemberStart(visitor, value))      \
-    return
-#define REFLECT_MEMBER_START1(value)            \
-  if (!ReflectMemberStart(visitor, value))      \
-    return
+#define REFLECT_MEMBER_START()             \
+  if (!ReflectMemberStart(visitor, value)) \
+  return
+#define REFLECT_MEMBER_START1(value)       \
+  if (!ReflectMemberStart(visitor, value)) \
+  return
 #define REFLECT_MEMBER_END() ReflectMemberEnd(visitor, value);
 #define REFLECT_MEMBER_END1(value) ReflectMemberEnd(visitor, value);
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
@@ -106,11 +106,11 @@ struct IndexFile;
 
 // Reflects the struct so it is serialized as an array instead of an object.
 // This currently only supports writers.
-#define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...)  \
-  inline void Reflect(Writer& visitor, type& value) {   \
-    visitor.StartArray(NUM_VA_ARGS(__VA_ARGS__));       \
-    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)     \
-        visitor.EndArray();                             \
+#define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...) \
+  inline void Reflect(Writer& visitor, type& value) {  \
+    visitor.StartArray(NUM_VA_ARGS(__VA_ARGS__));      \
+    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)    \
+    visitor.EndArray();                                \
   }
 
 // API:
@@ -264,7 +264,6 @@ void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
 
 // Reader:
-
 
 inline void DefaultReflectMemberStart(Reader& visitor) {}
 template <typename T>

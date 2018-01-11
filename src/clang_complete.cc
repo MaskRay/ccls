@@ -125,13 +125,13 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_ObjCClassRef:
       return lsCompletionItemKind::Reference;
 
-    // return lsCompletionItemKind::Property;
-    // return lsCompletionItemKind::Unit;
-    // return lsCompletionItemKind::Value;
-    // return lsCompletionItemKind::Keyword;
-    // return lsCompletionItemKind::Snippet;
-    // return lsCompletionItemKind::Color;
-    // return lsCompletionItemKind::File;
+      // return lsCompletionItemKind::Property;
+      // return lsCompletionItemKind::Unit;
+      // return lsCompletionItemKind::Value;
+      // return lsCompletionItemKind::Keyword;
+      // return lsCompletionItemKind::Snippet;
+      // return lsCompletionItemKind::Color;
+      // return lsCompletionItemKind::File;
 
     case CXCursor_NotImplemented:
       return lsCompletionItemKind::Text;
@@ -389,7 +389,8 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     if (!session->tu)
       continue;
 
-    WorkingFilesSnapshot snapshot = completion_manager->working_files_->AsSnapshot();
+    WorkingFilesSnapshot snapshot =
+        completion_manager->working_files_->AsSnapshot();
     std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
 
     // Emit code completion data.
@@ -450,9 +451,9 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
 
-            ls_completion_item.priority_ =
-                GetCompletionPriority(result.CompletionString, result.CursorKind,
-                                      ls_completion_item.label);
+            ls_completion_item.priority_ = GetCompletionPriority(
+                result.CompletionString, result.CursorKind,
+                ls_completion_item.label);
 
             ls_result.push_back(ls_completion_item);
           }

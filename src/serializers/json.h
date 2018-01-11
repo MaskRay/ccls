@@ -12,12 +12,12 @@ class JsonReader : public Reader {
   JsonReader(rapidjson::GenericValue<rapidjson::UTF8<>>* m) : m_(m) {}
   SerializeFormat Format() const override { return SerializeFormat::Json; }
 
-  //bool IsBool() override { return m_->IsBool(); }
+  // bool IsBool() override { return m_->IsBool(); }
   bool IsNull() override { return m_->IsNull(); }
   bool IsArray() override { return m_->IsArray(); }
   bool IsInt() override { return m_->IsInt(); }
-  //bool IsInt64() override { return m_->IsInt64(); }
-  //bool IsUint64() override { return m_->IsUint64(); }
+  // bool IsInt64() override { return m_->IsInt64(); }
+  // bool IsUint64() override { return m_->IsUint64(); }
   bool IsString() override { return m_->IsString(); }
 
   void GetNull() override {}
@@ -43,7 +43,8 @@ class JsonReader : public Reader {
 
   void DoMember(const char* name, std::function<void(Reader&)> fn) override {
     if (m_->GetType() != rapidjson::Type::kObjectType)
-      return; // FIXME: signal an error that object was not deserialized correctly?
+      return;  // FIXME: signal an error that object was not deserialized
+               // correctly?
 
     auto it = m_->FindMember(name);
     if (it != m_->MemberEnd()) {

@@ -147,7 +147,6 @@ bool RunObjectiveCIndexTests() {
 }
 
 // TODO Wait for debugger to attach
-void TraceMe() {
-}
+void TraceMe() {}
 
 #endif
