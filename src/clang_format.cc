@@ -54,12 +54,12 @@ std::vector<tooling::Replacement> ClangFormatDocument(
 
 TEST_SUITE("ClangFormat") {
   TEST_CASE("entireDocument") {
-    const std::string sampleDocument = "int main() { int *i = 0; return 0; }";
-    WorkingFile* file = new WorkingFile("foo.cc", sampleDocument);
-    lsFormattingOptions formattingOptions;
-    formattingOptions.insertSpaces = true;
-    const auto replacements =
-        ClangFormatDocument(file, 0, sampleDocument.size(), formattingOptions);
+    const std::string sample_document = "int main() { int *i = 0; return 0; }";
+    WorkingFile* file = new WorkingFile("foo.cc", sample_document);
+    lsFormattingOptions formatting_options;
+    formatting_options.insertSpaces = true;
+    const auto replacements = ClangFormatDocument(
+        file, 0, sample_document.size(), formatting_options);
 
     // echo "int main() { int *i = 0; return 0; }" | clang-format
     // -style=Chromium -output-replacements-xml
