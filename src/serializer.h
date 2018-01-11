@@ -171,25 +171,37 @@ void Reflect(Writer& visitor, SerializeFormat& value);
 
 //// Type constructors
 
-// Usually used for null | object
+// ReflectMember optional<T> is used to represent TypeScript optional properties
+// (in `key: value` context).
+// Reflect optional<T> is used for a different purpose, whether an object is
+// nullable (possibly in `value` context). For the nullable semantics,
+// std::variant<std::monostate, T> is recommended.
 template <typename T>
 void Reflect(Reader& visitor, optional<T>& value) {
   if (visitor.IsNull()) {
     visitor.GetNull();
     return;
   }
-  T real_value{};
+  T real_value;
   Reflect(visitor, real_value);
   value = real_value;
 }
 template <typename T>
 void Reflect(Writer& visitor, optional<T>& value) {
-  // We omit optional fields for JsonWriter to reduce output.
-  // But don't omit them for other serialization formats.
   if (value)
     Reflect(visitor, *value);
-  else if (visitor.Format() != SerializeFormat::Json)
+  else
     visitor.Null();
+}
+template <typename T>
+void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
+  // For TypeScript optional property key?: value in the spec,
+  // We omit both key and value if value is std::nullopt (null) for JsonWriter
+  // to reduce output. But keep it for other serialization formats.
+  if (value || visitor.Format() != SerializeFormat::Json) {
+    visitor.Key(name);
+    Reflect(visitor, value);
+  }
 }
 
 // Backport C++17 std::disjunction
@@ -246,7 +258,7 @@ struct ReflectVariant {
   }
 };
 
-// Writer feflection on std::variant recurses. This is induction basis.
+// Writer reflection on std::variant recurses. This is induction basis.
 template <typename... Ts>
 struct ReflectVariant<0, Ts...> {
   void operator()(Writer& visitor, std::variant<Ts...>& value) {}
@@ -293,21 +305,6 @@ template <typename T>
 void ReflectMember(Writer& visitor, const char* name, T& value) {
   visitor.Key(name);
   Reflect(visitor, value);
-}
-template <typename T>
-void ReflectMember(Writer& visitor, const char* name, std::vector<T>& values) {
-  visitor.Key(name);
-  visitor.StartArray(values.size());
-  for (auto& value : values)
-    Reflect(visitor, value);
-  visitor.EndArray();
-}
-template <typename T>
-void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
-  if (value || visitor.Format() != SerializeFormat::Json) {
-    visitor.Key(name);
-    Reflect(visitor, value);
-  }
 }
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
 
