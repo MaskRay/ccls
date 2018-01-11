@@ -224,9 +224,9 @@ void EnsureEndsInSlash(std::string& path) {
 std::string EscapeFileName(std::string path) {
   if (path.size() && path.back() == '/')
     path.pop_back();
-  std::replace(path.begin(), path.end(), '\\', '_');
-  std::replace(path.begin(), path.end(), '/', '_');
-  std::replace(path.begin(), path.end(), ':', '_');
+  std::replace(path.begin(), path.end(), '\\', '@');
+  std::replace(path.begin(), path.end(), '/', '@');
+  std::replace(path.begin(), path.end(), ':', '@');
   return path;
 }
 
