@@ -37,6 +37,19 @@ std::string NormalizePathWithTestOptOut(const std::string& path) {
   return NormalizePath(path);
 }
 
+bool IsUnixAbsolutePath(const std::string& path) {
+  return !path.empty() && path[0] == '/';
+}
+
+bool IsWindowsAbsolutePath(const std::string& path) {
+  auto is_drive_letter = [](char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+  };
+
+  return path.size() > 3 && path[1] == ':' && path[2] == '/' &&
+         is_drive_letter(path[0]);
+}
+
 struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
@@ -99,8 +112,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     // TODO/FIXME: Normalization will fail for paths that do not exist. Should
     // it return an optional<std::string>?
     assert(!path.empty());
-    if (path[0] == '/' || entry.directory.empty())
+    if (entry.directory.empty() || IsUnixAbsolutePath(path) ||
+        IsWindowsAbsolutePath(path)) {
+      // We still want to normalize, as the path may contain .. characters.
       return NormalizePathWithTestOptOut(path);
+    }
     if (EndsWith(entry.directory, "/"))
       return NormalizePathWithTestOptOut(entry.directory + path);
     return NormalizePathWithTestOptOut(entry.directory + "/" + path);
@@ -546,7 +562,23 @@ TEST_SUITE("Project") {
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
   }
 
-  // FIXME: Fix this test.
+  TEST_CASE("Windows path normalization") {
+    CheckFlags(
+        "E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
+        /* expected */
+        {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
+         "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
+
+    CheckFlags(
+        "E:/workdir", "E:/workdir/bar.cc",
+        /* raw */ {"clang", "E:/workdir/bar.cc"},
+        /* expected */
+        {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
+         "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option"});
+  }
+
   TEST_CASE("Path in args") {
     CheckFlags(
         "/home/user", "/home/user/foo/bar.c",
