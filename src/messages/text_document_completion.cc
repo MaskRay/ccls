@@ -209,9 +209,18 @@ struct TextDocumentCompletionHandler : MessageHandler {
     auto request = std::shared_ptr<Ipc_TextDocumentComplete>(
         static_cast<Ipc_TextDocumentComplete*>(message.release()));
 
+    auto write_empty_result = [request]() {
+      Out_TextDocumentComplete out;
+      out.id = request->id;
+      QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+    };
+
     std::string path = request->params.textDocument.uri.GetPath();
     WorkingFile* file = working_files->GetFileByFilename(path);
-    assert(file);
+    if (!file) {
+      write_empty_result();
+      return;
+    }
 
     // It shouldn't be possible, but sometimes vscode will send queries out
     // of order, ie, we get completion request before buffer content update.
@@ -246,9 +255,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
 
       if (did_fail_check) {
-        Out_TextDocumentComplete out;
-        out.id = request->id;
-        QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+        write_empty_result();
         return;
       }
     }
