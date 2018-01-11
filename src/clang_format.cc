@@ -3,6 +3,7 @@
 #include "clang_format.h"
 #include "working_files.h"
 
+#include <doctest/doctest.h>
 #include <loguru.hpp>
 
 using namespace clang;
@@ -49,6 +50,68 @@ std::vector<tooling::Replacement> ClangFormatDocument(
       working_file->filename);
   return std::vector<tooling::Replacement>(format_result.begin(),
                                            format_result.end());
+}
+
+TEST_SUITE("ClangFormat") {
+  TEST_CASE("entireDocument") {
+    const std::string sampleDocument = "int main() { int *i = 0; return 0; }";
+    WorkingFile* file = new WorkingFile("foo.cc", sampleDocument);
+    lsFormattingOptions formattingOptions;
+    formattingOptions.insertSpaces = true;
+    const auto replacements =
+        ClangFormatDocument(file, 0, sampleDocument.size(), formattingOptions);
+
+    // echo "int main() { int *i = 0; return 0; }" | clang-format
+    // -style=Chromium -output-replacements-xml
+    //
+    // <?xml version='1.0'?>
+    // <replacements xml:space='preserve' incomplete_format='false'>
+    // <replacement offset='12' length='1'>&#10;  </replacement>
+    // <replacement offset='16' length='1'></replacement>
+    // <replacement offset='18' length='0'> </replacement>
+    // <replacement offset='24' length='1'>&#10;  </replacement>
+    // <replacement offset='34' length='1'>&#10;</replacement>
+    // </replacements>
+
+    REQUIRE(replacements.size() == 5);
+    REQUIRE(replacements[0].getOffset() == 12);
+    REQUIRE(replacements[0].getLength() == 1);
+    REQUIRE(replacements[0].getReplacementText() == "\n  ");
+
+    REQUIRE(replacements[1].getOffset() == 16);
+    REQUIRE(replacements[1].getLength() == 1);
+    REQUIRE(replacements[1].getReplacementText() == "");
+
+    REQUIRE(replacements[2].getOffset() == 18);
+    REQUIRE(replacements[2].getLength() == 0);
+    REQUIRE(replacements[2].getReplacementText() == " ");
+
+    REQUIRE(replacements[3].getOffset() == 24);
+    REQUIRE(replacements[3].getLength() == 1);
+    REQUIRE(replacements[3].getReplacementText() == "\n  ");
+
+    REQUIRE(replacements[4].getOffset() == 34);
+    REQUIRE(replacements[4].getLength() == 1);
+    REQUIRE(replacements[4].getReplacementText() == "\n");
+  }
+
+  TEST_CASE("range") {
+    const std::string sampleDocument = "int main() { int *i = 0; return 0; }";
+    WorkingFile* file = new WorkingFile("foo.cc", sampleDocument);
+    lsFormattingOptions formattingOptions;
+    formattingOptions.insertSpaces = true;
+    const auto replacements =
+        ClangFormatDocument(file, 30, sampleDocument.size(), formattingOptions);
+
+    REQUIRE(replacements.size() == 2);
+    REQUIRE(replacements[0].getOffset() == 24);
+    REQUIRE(replacements[0].getLength() == 1);
+    REQUIRE(replacements[0].getReplacementText() == "\n  ");
+
+    REQUIRE(replacements[1].getOffset() == 34);
+    REQUIRE(replacements[1].getLength() == 1);
+    REQUIRE(replacements[1].getReplacementText() == "\n");
+  }
 }
 
 #endif
