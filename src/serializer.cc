@@ -10,14 +10,6 @@
 
 namespace {
 bool gTestOutputMode = false;
-
-std::string GetBaseName(const std::string& path) {
-  size_t last_slash = path.find_last_of('/');
-  if (last_slash != std::string::npos && (last_slash + 1) < path.size())
-    return path.substr(last_slash + 1);
-  return path;
-}
-
 }  // namespace
 
 // uint8_t

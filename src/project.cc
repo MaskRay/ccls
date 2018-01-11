@@ -92,20 +92,24 @@ optional<std::string> SourceFileType(const std::string& path) {
 }
 
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
-    Config* initOpts,
+    Config* init_opts,
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {
+  
   auto cleanup_maybe_relative_path = [&](const std::string& path) {
     // TODO/FIXME: Normalization will fail for paths that do not exist. Should
     // it return an optional<std::string>?
     assert(!path.empty());
     if (path[0] == '/' || entry.directory.empty())
       return NormalizePathWithTestOptOut(path);
+    if (EndsWith(entry.directory, "/"))
+      return NormalizePathWithTestOptOut(entry.directory + path);
     return NormalizePathWithTestOptOut(entry.directory + "/" + path);
   };
 
   Project::Entry result;
   result.filename = NormalizePathWithTestOptOut(entry.file);
+  std::string base_name = GetBaseName(entry.file);
 
   size_t i = 0;
 
@@ -137,6 +141,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     result.args.push_back("clang++");
   }
 
+  // Add -working-directory if not provided.
   if (!AnyStartsWith(entry.args, "-working-directory")) {
     result.args.emplace_back("-working-directory");
     result.args.push_back(entry.directory);
@@ -144,14 +149,14 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Clang does not have good hueristics for determining source language, we
   // should explicitly specify it.
-  if (auto source_file_type = SourceFileType(entry.file)) {
+  if (optional<std::string> file_type = SourceFileType(entry.file)) {
     if (!AnyStartsWith(entry.args, "-x")) {
-      result.args.push_back("-x" + *source_file_type);
+      result.args.push_back("-x" + *file_type);
     }
     if (!AnyStartsWith(entry.args, "-std=")) {
-      if (*source_file_type == "c")
+      if (*file_type == "c")
         result.args.push_back("-std=gnu11");
-      else if (*source_file_type == "c++")
+      else if (*file_type == "c++")
         result.args.push_back("-std=c++14");
     }
   }
@@ -216,6 +221,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
           break;
         }
       }
+
+      // This is most likely the file path we will be passing to clang.
+      if (EndsWith(arg, base_name))
+        arg = cleanup_maybe_relative_path(arg);
     }
 
     result.args.push_back(arg);
@@ -237,13 +246,14 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Using -fparse-all-comments enables documententation in the indexer and in
   // code completion.
-  if (initOpts->enableComments > 1 && !AnyStartsWith(result.args, "-fparse-all-comments"))
+  if (init_opts->enableComments > 1 && !AnyStartsWith(result.args, "-fparse-all-comments")) {
     result.args.push_back("-fparse-all-comments");
+  }
 
   return result;
 }
 
-std::vector<Project::Entry> LoadFromDirectoryListing(Config* initOpts, ProjectConfig* config) {
+std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts, ProjectConfig* config) {
   std::vector<Project::Entry> result;
 
   std::vector<std::string> args;
@@ -271,7 +281,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* initOpts, ProjectCo
       e.file = file;
       e.args = args;
       e.args.push_back(e.file);
-      result.push_back(GetCompilationEntryFromCompileCommandEntry(initOpts, config, e));
+      result.push_back(GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
     }
   }
 
@@ -279,12 +289,12 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* initOpts, ProjectCo
 }
 
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
-    Config* initOpts,
+    Config* init_opts,
     ProjectConfig* config,
     const std::string& opt_compilation_db_dir) {
   // If there is a .cquery file always load using directory listing.
   if (FileExists(config->project_dir + "/.cquery"))
-    return LoadFromDirectoryListing(initOpts, config);
+    return LoadFromDirectoryListing(init_opts, config);
 
   // Try to load compile_commands.json, but fallback to a project listing.
   const auto& compilation_db_dir = opt_compilation_db_dir.empty()
@@ -297,7 +307,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
     LOG_S(INFO) << "Unable to load compile_commands.json located at \""
                 << compilation_db_dir << "\"; using directory listing instead.";
-    return LoadFromDirectoryListing(initOpts, config);
+    return LoadFromDirectoryListing(init_opts, config);
   }
 
   Timer clang_time;
@@ -341,7 +351,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
       absolute_filename = directory + "/" + relative_filename;
     entry.file = NormalizePathWithTestOptOut(absolute_filename);
 
-    result.push_back(GetCompilationEntryFromCompileCommandEntry(initOpts, config, entry));
+    result.push_back(GetCompilationEntryFromCompileCommandEntry(init_opts, config, entry));
     our_time.Pause();
   }
 
@@ -396,7 +406,7 @@ int ComputeGuessScore(const std::string& a, const std::string& b) {
 
 }  // namespace
 
-void Project::Load(Config* initOpts,
+void Project::Load(Config* init_opts,
                    const std::vector<std::string>& extra_flags,
                    const std::string& opt_compilation_db_dir,
                    const std::string& root_directory,
@@ -407,7 +417,7 @@ void Project::Load(Config* initOpts,
   config.project_dir = root_directory;
   config.resource_dir = resource_directory;
   entries =
-      LoadCompilationEntriesFromDirectory(initOpts, &config, opt_compilation_db_dir);
+      LoadCompilationEntriesFromDirectory(init_opts, &config, opt_compilation_db_dir);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(config.quote_dirs.begin(),
@@ -479,7 +489,7 @@ TEST_SUITE("Project") {
                   std::vector<std::string> expected) {
     g_disable_normalize_path_for_test = true;
 
-    Config initOpts;
+    Config init_opts;
     ProjectConfig config;
     config.project_dir = "/w/c/s/";
     config.resource_dir = "/w/resource_dir/";
@@ -489,7 +499,7 @@ TEST_SUITE("Project") {
     entry.args = raw;
     entry.file = file;
     Project::Entry result =
-        GetCompilationEntryFromCompileCommandEntry(&initOpts, &config, entry);
+        GetCompilationEntryFromCompileCommandEntry(&init_opts, &config, entry);
 
     if (result.args != expected) {
       std::cout << "Raw:      " << StringJoin(raw) << std::endl;
@@ -517,7 +527,7 @@ TEST_SUITE("Project") {
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
-         "-lstdc++", "myfile.cc", "-resource-dir=/w/resource_dir/",
+         "-lstdc++", "&/dir/myfile.cc", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option"});
 
     CheckFlags(
@@ -539,7 +549,7 @@ TEST_SUITE("Project") {
                /* raw */ {"cc", "-O0", "foo/bar.c"},
                /* expected */
                {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11",
-                "-O0", "foo/bar.c", "-resource-dir=/w/resource_dir/",
+                "-O0", "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option"});
   }
 
@@ -897,7 +907,7 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "../../ash/login/ui/lock_screen_sanity_unittest.cc",
+         "&/w/c/s/out/Release/../../ash/login/ui/lock_screen_sanity_unittest.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option"});
   }
@@ -1221,13 +1231,13 @@ TEST_SUITE("Project") {
          "debian_jessie_amd64-sysroot",
          "-fno-exceptions",
          "-fvisibility-inlines-hidden",
-         "../../apps/app_lifetime_monitor.cc",
+         "&/w/c/s/out/Release/../../apps/app_lifetime_monitor.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option"});
   }
 
   TEST_CASE("Directory extraction") {
-    Config initOpts;
+    Config init_opts;
     ProjectConfig config;
     config.project_dir = "/w/c/s/";
 
@@ -1257,7 +1267,7 @@ TEST_SUITE("Project") {
                   "foo.cc"};
     entry.file = "foo.cc";
     Project::Entry result =
-        GetCompilationEntryFromCompileCommandEntry(&initOpts, &config, entry);
+        GetCompilationEntryFromCompileCommandEntry(&init_opts, &config, entry);
 
     std::unordered_set<std::string> angle_expected{
         "&/a_absolute1", "&/a_absolute2", "&/base/a_relative1",

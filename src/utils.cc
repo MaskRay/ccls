@@ -86,6 +86,13 @@ bool EndsWithAny(const std::string& value,
       [&value](const std::string& ending) { return EndsWith(value, ending); });
 }
 
+std::string GetBaseName(const std::string& path) {
+  size_t last_slash = path.find_last_of('/');
+  if (last_slash != std::string::npos && (last_slash + 1) < path.size())
+    return path.substr(last_slash + 1);
+  return path;
+}
+
 // See http://stackoverflow.com/a/29752943
 std::string ReplaceAll(const std::string& source,
                        const std::string& from,

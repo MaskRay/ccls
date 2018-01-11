@@ -28,6 +28,9 @@ bool StartsWithAny(const std::string& value,
 bool EndsWithAny(const std::string& value,
                  const std::vector<std::string>& endings);
 
+// Returns the basename of |path|, ie, "foo/bar.cc" => "bar.cc".
+std::string GetBaseName(const std::string& path);
+
 std::string ReplaceAll(const std::string& source,
                        const std::string& from,
                        const std::string& to);
