@@ -481,6 +481,17 @@ Project::Entry Project::FindCompilationEntryForFile(
   result.filename = filename;
   if (best_entry)
     result.args = best_entry->args;
+
+  // |best_entry| probably has its own path in the arguments. We need to remap
+  // that path to the new filename.
+  std::string best_entry_base_name = GetBaseName(best_entry->filename);
+  for (std::string& arg : result.args) {
+    if (arg == best_entry->filename ||
+        GetBaseName(arg) == best_entry_base_name) {
+      arg = filename;
+    }
+  }
+
   return result;
 }
 
@@ -1353,6 +1364,22 @@ TEST_SUITE("Project") {
           p.FindCompilationEntryForFile("/a/b/c/new/new.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg2"});
+    }
+  }
+
+  TEST_CASE("Entry inference remaps file names") {
+    Project p;
+    {
+      Project::Entry e;
+      e.args = {"a", "b", "aaaa.cc", "d"};
+      e.filename = "absolute/aaaa.cc";
+      p.entries.push_back(e);
+    }
+
+    {
+      optional<Project::Entry> entry = p.FindCompilationEntryForFile("ee.cc");
+      REQUIRE(entry.has_value());
+      REQUIRE(entry->args == std::vector<std::string>{"a", "b", "ee.cc", "d"});
     }
   }
 
