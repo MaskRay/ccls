@@ -40,13 +40,13 @@ WorkingFile::WorkingFile(const std::string& filename,
 }
 
 void WorkingFile::SetIndexContent(const std::string& index_content) {
-  index_lines = ToLines(index_content, true /*trim_whitespace*/);
+  index_lines = ToLines(index_content, false /*trim_whitespace*/);
 
   // Build lookup buffer.
   index_lines_lookup.clear();
   index_lines_lookup.reserve(index_lines.size());
   for (int i = 0; i < index_lines.size(); ++i) {
-    const std::string& index_line = index_lines[i];
+    std::string index_line = Trim(index_lines[i]);
 
     auto it = index_lines_lookup.find(index_line);
     if (it == index_lines_lookup.end())
@@ -97,7 +97,7 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
 
   // Find the line in the cached index file. We'll try to find the most similar
   // line in the buffer and return the index for that.
-  std::string index = index_lines[index_line - 1];
+  std::string index = Trim(index_lines[index_line - 1]);
   auto buffer_it = all_buffer_lines_lookup.find(index);
   if (buffer_it == all_buffer_lines_lookup.end()) {
     // TODO: Use levenshtein distance to find the best match (but only to an

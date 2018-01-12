@@ -142,15 +142,15 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         // highlighted undesiredly.
         auto concise_name = detailed_name.substr(0, detailed_name.find('<'));
         if (sym.loc.range.start.line <= working_file->index_lines.size()) {
-          std::string& line =
+          const std::string& line =
               working_file->index_lines[sym.loc.range.start.line - 1];
-          auto pos = line.find(concise_name);
           sym.loc.range.end.line = sym.loc.range.start.line;
-          if (pos == std::string::npos)
-            sym.loc.range.end.column = sym.loc.range.start.column;
-          else
+          int col = sym.loc.range.start.column - 1;
+          if (line.compare(col, concise_name.size(), concise_name) == 0)
             sym.loc.range.end.column =
                 sym.loc.range.start.column + concise_name.size();
+          else
+            sym.loc.range.end.column = sym.loc.range.start.column;
         }
         break;
       }
