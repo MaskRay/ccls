@@ -260,6 +260,26 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
     }
 
+    bool is_global_completion = false;
+    std::string existing_completion;
+    if (file) {
+      request->params.position = file->FindStableCompletionSource(
+          request->params.position, &is_global_completion,
+          &existing_completion);
+    }
+    
+    //If existing completion is empty, dont return completion results
+    //Only do this when trigger is not manual or context doesn't exist
+    //(for Atom support)
+    if (existing_completion.empty() && is_global_completion && (!(request->params.context) ||
+      request->params.context->triggerKind == lsCompletionTriggerKind::TriggerCharacter)) {
+      LOG_S(INFO) << "Existing completion is empty, no completion results will be returned";
+      Out_TextDocumentComplete out;
+      out.id = request->id;
+      QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+      return;
+    }
+
     if (ShouldRunIncludeCompletion(buffer_line)) {
       Out_TextDocumentComplete out;
       out.id = request->id;
@@ -286,30 +306,10 @@ struct TextDocumentCompletionHandler : MessageHandler {
       SortAndFilterCompletionResponse(&out, buffer_line);
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
-      bool is_global_completion = false;
-      std::string existing_completion;
-      if (file) {
-        request->params.position = file->FindStableCompletionSource(
-            request->params.position, &is_global_completion,
-            &existing_completion);
-      }
-
       ClangCompleteManager::OnComplete callback = std::bind(
           [this, is_global_completion, existing_completion, request](
               const std::vector<lsCompletionItem>& results,
               bool is_cached_result) {
-            //If existing completion is empty, dont return completion results
-            //Only do this when trigger is not manual and context doesn't exist
-            //(for Atom support)
-            if (existing_completion.empty() && is_global_completion && !(request->params.context) &&
-              request->params.context->triggerKind == lsCompletionTriggerKind::TriggerCharacter) {
-              LOG_S(INFO) << "Existing completion is empty, no completion results will be returned";
-              Out_TextDocumentComplete out;
-              out.id = request->id;
-              QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
-              return;
-            }
-
             Out_TextDocumentComplete out;
             out.id = request->id;
             out.result.items = results;
