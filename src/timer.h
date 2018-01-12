@@ -29,3 +29,11 @@ struct Timer {
   // Elapsed time.
   long long elapsed_ = 0;
 };
+
+struct ScopedPerfTimer {
+  ScopedPerfTimer(const std::string& message);
+  ~ScopedPerfTimer();
+
+  Timer timer_;
+  std::string message_;
+};

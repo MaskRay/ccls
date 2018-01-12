@@ -55,3 +55,10 @@ void Timer::Resume() {
   assert(!start_.has_value());
   start_ = Clock::now();
 }
+
+ScopedPerfTimer::ScopedPerfTimer(const std::string& message) : message_(message) {}
+
+ScopedPerfTimer::~ScopedPerfTimer() {
+  timer_.ResetAndPrint(message_);
+}
+

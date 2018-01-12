@@ -479,6 +479,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       // TODO: before emitting diagnostics check if we have another completion
       // request and think about servicing that first, because it may be much
       // faster than reparsing the document.
+      // TODO: have a separate thread for diagnostics?
 
       timer.Reset();
       session->tu =

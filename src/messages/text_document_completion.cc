@@ -3,6 +3,7 @@
 #include "include_complete.h"
 #include "message_handler.h"
 #include "queue_manager.h"
+#include "timer.h"
 #include "working_files.h"
 
 #include "lex_utils.h"
@@ -101,6 +102,8 @@ char* tofixedbase64(T input, char* out) {
 void SortAndFilterCompletionResponse(
     Out_TextDocumentComplete* complete_response,
     const std::string& complete_text) {
+  ScopedPerfTimer timer("SortAndFilterCompletionResponse");
+
 // Used to inject more completions.
 #if false
   const size_t kNumIterations = 250;
