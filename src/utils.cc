@@ -86,10 +86,24 @@ bool EndsWithAny(const std::string& value,
       [&value](const std::string& ending) { return EndsWith(value, ending); });
 }
 
+bool FindAnyPartial(const std::string& value,
+                    const std::vector<std::string>& values) {
+  return std::any_of(
+      std::begin(values), std::end(values),
+      [&value](const std::string& v) { return value.find(v) != std::string::npos; });
+}
+
 std::string GetBaseName(const std::string& path) {
   size_t last_slash = path.find_last_of('/');
   if (last_slash != std::string::npos && (last_slash + 1) < path.size())
     return path.substr(last_slash + 1);
+  return path;
+}
+
+std::string StripFileType(const std::string& path) {
+  size_t last_period = path.find_last_of('.');
+  if (last_period != std::string::npos)
+    return path.substr(0, last_period);
   return path;
 }
 
@@ -607,5 +621,14 @@ TEST_SUITE("Update \\n to \\r\\n") {
     REQUIRE(UpdateToRnNewlines("\r\n\r\n") == "\r\n\r\n");
     REQUIRE(UpdateToRnNewlines("f1\nfo2\nfoo3") == "f1\r\nfo2\r\nfoo3");
     REQUIRE(UpdateToRnNewlines("f1\r\nfo2\r\nfoo3") == "f1\r\nfo2\r\nfoo3");
+  }
+}
+
+TEST_SUITE("StripFileType") {
+  TEST_CASE("all") {
+    REQUIRE(StripFileType("") == "");
+    REQUIRE(StripFileType("bar") == "bar");
+    REQUIRE(StripFileType("bar.cc") == "bar");
+    REQUIRE(StripFileType("foo/bar.cc") == "foo/bar");
   }
 }

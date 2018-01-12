@@ -31,6 +31,20 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
 
 }  // namespace
 
+std::vector<CXUnsavedFile> WorkingFiles::Snapshot::AsUnsavedFiles() const {
+  std::vector<CXUnsavedFile> result;
+  result.reserve(files.size());
+  for (auto& file : files) {
+    CXUnsavedFile unsaved;
+    unsaved.Filename = file.filename.c_str();
+    unsaved.Contents = file.content.c_str();
+    unsaved.Length = (unsigned long)file.content.size();
+
+    result.push_back(unsaved);
+  }
+  return result;
+}
+
 WorkingFile::WorkingFile(const std::string& filename,
                          const std::string& buffer_content)
     : filename(filename), buffer_content(buffer_content) {
@@ -358,27 +372,16 @@ void WorkingFiles::OnClose(const lsTextDocumentItem& close) {
                  << " because it was not open";
 }
 
-std::vector<CXUnsavedFile> WorkingFilesSnapshot::AsUnsavedFiles() const {
-  std::vector<CXUnsavedFile> result;
-  result.reserve(files.size());
-  for (auto& file : files) {
-    CXUnsavedFile unsaved;
-    unsaved.Filename = file.filename.c_str();
-    unsaved.Contents = file.content.c_str();
-    unsaved.Length = (unsigned long)file.content.size();
-
-    result.push_back(unsaved);
-  }
-  return result;
-}
-
-WorkingFilesSnapshot WorkingFiles::AsSnapshot() {
+WorkingFiles::Snapshot WorkingFiles::AsSnapshot(
+    const std::vector<std::string>& filter_paths) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
-  WorkingFilesSnapshot result;
+  Snapshot result;
   result.files.reserve(files.size());
-  for (auto& file : files)
-    result.files.push_back({file->filename, file->buffer_content});
+  for (const auto& file : files) {
+    if (filter_paths.empty() || FindAnyPartial(file->filename, filter_paths))
+      result.files.push_back({file->filename, file->buffer_content});
+  }
   return result;
 }
 

@@ -27,9 +27,13 @@ bool StartsWithAny(const std::string& value,
                    const std::vector<std::string>& startings);
 bool EndsWithAny(const std::string& value,
                  const std::vector<std::string>& endings);
+bool FindAnyPartial(const std::string& value,
+                    const std::vector<std::string>& values);
 
 // Returns the basename of |path|, ie, "foo/bar.cc" => "bar.cc".
 std::string GetBaseName(const std::string& path);
+// Returns |path| without the filetype, ie, "foo/bar.cc" => "foo/bar".
+std::string StripFileType(const std::string& path);
 
 std::string ReplaceAll(const std::string& source,
                        const std::string& from,

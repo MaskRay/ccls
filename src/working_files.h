@@ -75,16 +75,18 @@ struct WorkingFile {
                                         std::string* existing_completion) const;
 };
 
-struct WorkingFilesSnapshot {
-  std::vector<CXUnsavedFile> AsUnsavedFiles() const;
-  struct File {
-    std::string filename;
-    std::string content;
-  };
-  std::vector<File> files;
-};
-
 struct WorkingFiles {
+  struct Snapshot {
+    struct File {
+      std::string filename;
+      std::string content;
+    };
+
+    std::vector<CXUnsavedFile> AsUnsavedFiles() const;
+    std::vector<File> files;
+  };
+
+
   //
   // :: IMPORTANT :: All methods in this class are guarded by a single lock.
   //
@@ -104,7 +106,10 @@ struct WorkingFiles {
   void OnChange(const lsTextDocumentDidChangeParams& change);
   void OnClose(const lsTextDocumentItem& close);
 
-  WorkingFilesSnapshot AsSnapshot();
+  // If |filter_paths| is non-empty, only files which contain any of the given
+  // strings. For example, {"foo", "bar"} means that every result has either the
+  // string "foo" or "bar" contained within it.
+  Snapshot AsSnapshot(const std::vector<std::string>& filter_paths);
 
   // Use unique_ptrs so we can handout WorkingFile ptrs and not have them
   // invalidated if we resize files.
