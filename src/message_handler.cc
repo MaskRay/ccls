@@ -141,7 +141,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         // shrinking hack, the contained keywords and primitive types will be
         // highlighted undesiredly.
         auto concise_name = detailed_name.substr(0, detailed_name.find('<'));
-        if (sym.loc.range.start.line <= working_file->index_lines.size()) {
+        if (0 < sym.loc.range.start.line &&
+            sym.loc.range.start.line <= working_file->index_lines.size()) {
           const std::string& line =
               working_file->index_lines[sym.loc.range.start.line - 1];
           sym.loc.range.end.line = sym.loc.range.start.line;
