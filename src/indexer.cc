@@ -112,10 +112,10 @@ ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
 // constructor we will not be able to attribute the constructor call correctly.
 struct ConstructorCache {
   struct Constructor {
-    USR usr;
+    Usr usr;
     std::vector<std::string> param_type_desc;
   };
-  std::unordered_map<USR, std::vector<Constructor>> constructors_;
+  std::unordered_map<Usr, std::vector<Constructor>> constructors_;
 
   // This should be called whenever there is a constructor declaration.
   void NotifyConstructor(ClangCursor ctor_cursor) {
@@ -142,8 +142,8 @@ struct ConstructorCache {
 
   // Tries to lookup a constructor in |type_usr| that takes arguments most
   // closely aligned to |param_type_desc|.
-  optional<USR> TryFindConstructorUsr(
-      USR type_usr,
+  optional<Usr> TryFindConstructorUsr(
+      Usr type_usr,
       const std::vector<std::string>& param_type_desc) {
     auto count_matching_prefix_length = [](const char* a, const char* b) {
       int matched = 0;
@@ -170,7 +170,7 @@ struct ConstructorCache {
     if (ctors.empty())
       return nullopt;
 
-    USR best_usr;
+    Usr best_usr;
     int best_score = INT_MIN;
 
     // Scan constructors for the best possible match.
@@ -487,7 +487,7 @@ IndexFile::IndexFile(const std::string& path,
 }
 
 // TODO: Optimize for const char*?
-IndexTypeId IndexFile::ToTypeId(USR usr) {
+IndexTypeId IndexFile::ToTypeId(Usr usr) {
   auto it = id_cache.usr_to_type_id.find(usr);
   if (it != id_cache.usr_to_type_id.end())
     return it->second;
@@ -498,7 +498,7 @@ IndexTypeId IndexFile::ToTypeId(USR usr) {
   id_cache.type_id_to_usr[id] = usr;
   return id;
 }
-IndexFuncId IndexFile::ToFuncId(USR usr) {
+IndexFuncId IndexFile::ToFuncId(Usr usr) {
   auto it = id_cache.usr_to_func_id.find(usr);
   if (it != id_cache.usr_to_func_id.end())
     return it->second;
@@ -509,7 +509,7 @@ IndexFuncId IndexFile::ToFuncId(USR usr) {
   id_cache.func_id_to_usr[id] = usr;
   return id;
 }
-IndexVarId IndexFile::ToVarId(USR usr) {
+IndexVarId IndexFile::ToVarId(Usr usr) {
   auto it = id_cache.usr_to_var_id.find(usr);
   if (it != id_cache.usr_to_var_id.end())
     return it->second;
@@ -547,7 +547,7 @@ std::string IndexFile::ToString() {
   return Serialize(SerializeFormat::Json, *this);
 }
 
-IndexType::IndexType(IndexTypeId id, USR usr) : usr(usr), id(id) {}
+IndexType::IndexType(IndexTypeId id, Usr usr) : usr(usr), id(id) {}
 
 void RemoveItem(std::vector<Range>& ranges, Range to_remove) {
   auto it = std::find(ranges.begin(), ranges.end(), to_remove);
@@ -951,7 +951,7 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
         break;
 
       // TODO: when we resolve the template type to the definition, we get a
-      // different USR.
+      // different Usr.
 
       // ClangCursor ref =
       // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr_hash();
@@ -1011,7 +1011,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       // only real difference will be that we show 'callers' instead of 'refs'
       // (especially since macros cannot have overrides)
 
-      USR decl_usr;
+      Usr decl_usr;
       if (cursor.get_kind() == CXCursor_MacroDefinition)
         decl_usr = cursor.get_usr_hash();
       else
@@ -1777,7 +1777,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
         // the constructor function we add a usage to.
         optional<ClangCursor> opt_found_type = FindType(ref->cursor);
         if (opt_found_type) {
-          USR ctor_type_usr = opt_found_type->get_referenced().get_usr_hash();
+          Usr ctor_type_usr = opt_found_type->get_referenced().get_usr_hash();
           ClangCursor call_cursor = ref->cursor;
 
           // Build a type description from the parameters of the call, so we
@@ -1790,7 +1790,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           }
 
           // Try to find the constructor and add a reference.
-          optional<USR> ctor_usr =
+          optional<Usr> ctor_usr =
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));

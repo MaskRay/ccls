@@ -260,7 +260,7 @@ struct IndexType {
   using Def =
       TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
 
-  USR usr;
+  Usr usr;
   IndexTypeId id;
 
   Def def;
@@ -276,7 +276,7 @@ struct IndexType {
   std::vector<Range> uses;
 
   IndexType() {}  // For serialization.
-  IndexType(IndexTypeId id, USR usr);
+  IndexType(IndexTypeId id, Usr usr);
 
   bool operator<(const IndexType& other) const { return id < other.id; }
 };
@@ -362,7 +362,7 @@ struct IndexFunc {
                                     IndexFuncRef,
                                     Range>;
 
-  USR usr;
+  Usr usr;
   IndexFuncId id;
 
   Def def;
@@ -392,7 +392,7 @@ struct IndexFunc {
   std::vector<IndexFuncRef> callers;
 
   IndexFunc() {}  // For serialization.
-  IndexFunc(IndexFuncId id, USR usr) : usr(usr), id(id) {
+  IndexFunc(IndexFuncId id, Usr usr) : usr(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -469,7 +469,7 @@ void Reflect(TVisitor& visitor,
 struct IndexVar {
   using Def = VarDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
 
-  USR usr;
+  Usr usr;
   IndexVarId id;
 
   Def def;
@@ -478,7 +478,7 @@ struct IndexVar {
   std::vector<Range> uses;
 
   IndexVar() {}  // For serialization.
-  IndexVar(IndexVarId id, USR usr) : usr(usr), id(id) {
+  IndexVar(IndexVarId id, Usr usr) : usr(usr), id(id) {
     // assert(usr.size() > 0);
   }
 
@@ -488,12 +488,12 @@ MAKE_HASHABLE(IndexVar, t.id);
 
 struct IdCache {
   std::string primary_file;
-  std::unordered_map<USR, IndexTypeId> usr_to_type_id;
-  std::unordered_map<USR, IndexFuncId> usr_to_func_id;
-  std::unordered_map<USR, IndexVarId> usr_to_var_id;
-  std::unordered_map<IndexTypeId, USR> type_id_to_usr;
-  std::unordered_map<IndexFuncId, USR> func_id_to_usr;
-  std::unordered_map<IndexVarId, USR> var_id_to_usr;
+  std::unordered_map<Usr, IndexTypeId> usr_to_type_id;
+  std::unordered_map<Usr, IndexFuncId> usr_to_func_id;
+  std::unordered_map<Usr, IndexVarId> usr_to_var_id;
+  std::unordered_map<IndexTypeId, Usr> type_id_to_usr;
+  std::unordered_map<IndexFuncId, Usr> func_id_to_usr;
+  std::unordered_map<IndexVarId, Usr> var_id_to_usr;
 
   IdCache(const std::string& primary_file);
 };
@@ -545,9 +545,9 @@ struct IndexFile {
 
   IndexFile(const std::string& path, const optional<std::string>& contents);
 
-  IndexTypeId ToTypeId(USR usr);
-  IndexFuncId ToFuncId(USR usr);
-  IndexVarId ToVarId(USR usr);
+  IndexTypeId ToTypeId(Usr usr);
+  IndexFuncId ToFuncId(Usr usr);
+  IndexVarId ToVarId(Usr usr);
   IndexTypeId ToTypeId(const CXCursor& usr);
   IndexFuncId ToFuncId(const CXCursor& usr);
   IndexVarId ToVarId(const CXCursor& usr);

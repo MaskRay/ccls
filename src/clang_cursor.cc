@@ -60,7 +60,7 @@ std::string ClangType::get_usr() const {
   return ClangCursor(clang_getTypeDeclaration(cx_type)).get_usr();
 }
 
-USR ClangType::get_usr_hash() const {
+Usr ClangType::get_usr_hash() const {
   return ClangCursor(clang_getTypeDeclaration(cx_type)).get_usr_hash();
 }
 
@@ -172,9 +172,9 @@ std::string ClangCursor::get_usr() const {
   return ::ToString(clang_getCursorUSR(cx_cursor));
 }
 
-USR ClangCursor::get_usr_hash() const {
+Usr ClangCursor::get_usr_hash() const {
   CXString usr = clang_getCursorUSR(cx_cursor);
-  USR ret = HashUSR(clang_getCString(usr));
+  Usr ret = HashUSR(clang_getCString(usr));
   clang_disposeString(usr);
   return ret;
 }

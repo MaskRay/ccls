@@ -9,12 +9,12 @@
 #include <string>
 #include <vector>
 
-using USR = uint64_t;
+using Usr = uint64_t;
 
 Range ResolveCXSourceRange(const CXSourceRange& range,
                            CXFile* cx_file = nullptr);
 
-USR HashUSR(const char* usr);
+Usr HashUSR(const char* usr);
 
 class ClangType {
  public:
@@ -29,7 +29,7 @@ class ClangType {
   // ClangCursor is not defined so we have to return CXCursor
   CXCursor get_declaration() const;
   std::string get_usr() const;
-  USR get_usr_hash() const;
+  Usr get_usr_hash() const;
   std::string get_spelling() const;
   ClangType get_canonical() const;
 
@@ -60,7 +60,7 @@ class ClangCursor {
   Range get_extent() const;
   std::string get_display_name() const;
   std::string get_usr() const;
-  USR get_usr_hash() const;
+  Usr get_usr_hash() const;
 
   bool is_definition() const;
 

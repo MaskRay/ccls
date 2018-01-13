@@ -7,8 +7,6 @@
 
 #include <functional>
 
-using Usr = USR;
-
 struct QueryFile;
 struct QueryType;
 struct QueryFunc;
@@ -170,10 +168,10 @@ void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
 
 template <typename T>
 struct WithUsr {
-  USR usr;
+  Usr usr;
   T value;
 
-  WithUsr(USR usr, const T& value) : usr(usr), value(value) {}
+  WithUsr(Usr usr, const T& value) : usr(usr), value(value) {}
 };
 template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, WithUsr<T>& value) {
@@ -225,7 +223,7 @@ struct QueryType {
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
-  USR usr;
+  Usr usr;
   optional<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
@@ -246,7 +244,7 @@ struct QueryFunc {
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
-  USR usr;
+  Usr usr;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;

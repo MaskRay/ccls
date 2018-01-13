@@ -291,7 +291,7 @@ QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db,
   return QueryFileId(idx);
 }
 
-QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db, USR usr) {
+QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db, Usr usr) {
   auto it = query_db->usr_to_type.find(usr);
   if (it != query_db->usr_to_type.end())
     return QueryTypeId(it->second.id);
@@ -302,7 +302,7 @@ QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db, USR usr) {
   return QueryTypeId(idx);
 }
 
-QueryFuncId GetQueryFuncIdFromUsr(QueryDatabase* query_db, USR usr) {
+QueryFuncId GetQueryFuncIdFromUsr(QueryDatabase* query_db, Usr usr) {
   auto it = query_db->usr_to_func.find(usr);
   if (it != query_db->usr_to_func.end())
     return QueryFuncId(it->second.id);
