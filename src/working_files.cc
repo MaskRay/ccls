@@ -344,10 +344,9 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
     } else {
       int start_offset =
           GetOffsetForPosition(diff.range->start, file->buffer_content);
-      int end_offset =
-          diff.rangeLength
-              ? start_offset + *diff.rangeLength
-              : GetOffsetForPosition(diff.range->end, file->buffer_content);
+      // Ignore TextDocumentContentChangeEvent.rangeLength which causes trouble
+      // when UTF-16 surrogate pairs are used.
+      int end_offset = GetOffsetForPosition(diff.range->end, file->buffer_content);
       file->buffer_content.replace(file->buffer_content.begin() + start_offset,
                                    file->buffer_content.begin() + end_offset,
                                    diff.text);

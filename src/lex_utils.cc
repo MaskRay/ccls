@@ -4,20 +4,22 @@
 
 #include <algorithm>
 
+// VSCode (UTF-16) disagrees with Emacs lsp-mode (UTF-8) on how to represent
+// text documents.
+// We use a UTF-8 iterator to approximate UTF-16 in the specification (weird).
+// This is good enough and fails only for UTF-16 surrogate pairs.
 int GetOffsetForPosition(lsPosition position, const std::string& content) {
-  if (content.empty())
-    return 0;
-
-  int offset = 0;
-
-  int remaining_lines = position.line;
-  while (remaining_lines > 0 && offset < static_cast<int>(content.size())) {
-    if (content[offset] == '\n')
-      --remaining_lines;
-    ++offset;
-  }
-
-  return std::min<int>(offset + position.character, content.size());
+  size_t i = 0;
+  for (; position.line > 0 && i < content.size(); i++)
+    if (content[i] == '\n')
+      position.line--;
+  for (; position.character > 0 && i < content.size(); position.character--)
+    if (uint8_t(content[i++]) >= 128) {
+      // Skip 0b10xxxxxx
+      while (i < content.size() && uint8_t(content[i]) >= 128 && uint8_t(content[i]) < 192)
+        i++;
+    }
+  return int(i);
 }
 
 lsPosition CharPos(const std::string& search,
