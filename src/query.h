@@ -7,7 +7,7 @@
 
 #include <functional>
 
-using Usr = std::string;
+using Usr = USR;
 
 struct QueryFile;
 struct QueryType;
@@ -170,10 +170,10 @@ void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
 
 template <typename T>
 struct WithUsr {
-  Usr usr;
+  USR usr;
   T value;
 
-  WithUsr(const Usr& usr, const T& value) : usr(usr), value(value) {}
+  WithUsr(USR usr, const T& value) : usr(usr), value(value) {}
 };
 template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, WithUsr<T>& value) {
@@ -225,7 +225,7 @@ struct QueryType {
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
-  Usr usr;
+  USR usr;
   optional<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
@@ -246,7 +246,7 @@ struct QueryFunc {
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
-  Usr usr;
+  USR usr;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
@@ -352,7 +352,7 @@ struct QueryDatabase {
   // Lookup symbol based on a usr.
   // NOTE: For usr_to_file make sure to call LowerPathIfCaseInsensitive on key.
   // TODO: add type wrapper to enforce we call it
-  spp::sparse_hash_map<Usr, QueryFileId> usr_to_file;
+  spp::sparse_hash_map<std::string, QueryFileId> usr_to_file;
   spp::sparse_hash_map<Usr, QueryTypeId> usr_to_type;
   spp::sparse_hash_map<Usr, QueryFuncId> usr_to_func;
   spp::sparse_hash_map<Usr, QueryVarId> usr_to_var;

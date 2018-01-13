@@ -111,12 +111,11 @@ ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
 // to export. If we do not capture the parameter type description for the
 // constructor we will not be able to attribute the constructor call correctly.
 struct ConstructorCache {
-  using Usr = std::string;
   struct Constructor {
-    Usr usr;
+    USR usr;
     std::vector<std::string> param_type_desc;
   };
-  std::unordered_map<Usr, std::vector<Constructor>> constructors_;
+  std::unordered_map<USR, std::vector<Constructor>> constructors_;
 
   // This should be called whenever there is a constructor declaration.
   void NotifyConstructor(ClangCursor ctor_cursor) {
@@ -129,22 +128,22 @@ struct ConstructorCache {
       return type_desc;
     };
 
-    Constructor ctor{ctor_cursor.get_usr(), build_type_desc(ctor_cursor)};
+    Constructor ctor{ctor_cursor.get_usr_hash(), build_type_desc(ctor_cursor)};
 
     // Insert into |constructors_|.
-    std::string type_usr = ctor_cursor.get_semantic_parent().get_usr();
-    auto existing_ctors = constructors_.find(type_usr);
+    auto type_usr_hash = ctor_cursor.get_semantic_parent().get_usr_hash();
+    auto existing_ctors = constructors_.find(type_usr_hash);
     if (existing_ctors != constructors_.end()) {
       existing_ctors->second.push_back(ctor);
     } else {
-      constructors_[type_usr] = {ctor};
+      constructors_[type_usr_hash] = {ctor};
     }
   }
 
   // Tries to lookup a constructor in |type_usr| that takes arguments most
   // closely aligned to |param_type_desc|.
-  optional<std::string> TryFindConstructorUsr(
-      const std::string& type_usr,
+  optional<USR> TryFindConstructorUsr(
+      USR type_usr,
       const std::vector<std::string>& param_type_desc) {
     auto count_matching_prefix_length = [](const char* a, const char* b) {
       int matched = 0;
@@ -171,7 +170,7 @@ struct ConstructorCache {
     if (ctors.empty())
       return nullopt;
 
-    std::string best_usr;
+    USR best_usr;
     int best_score = INT_MIN;
 
     // Scan constructors for the best possible match.
@@ -192,7 +191,7 @@ struct ConstructorCache {
       // Do prefix-based match on parameter type description. This works well in
       // practice because clang appends qualifiers to the end of the type, ie,
       // |foo *&&|
-      for (int i = 0;
+      for (size_t i = 0;
            i < std::min(param_type_desc.size(), ctor.param_type_desc.size());
            ++i) {
         score += count_matching_prefix_length(param_type_desc[i].c_str(),
@@ -205,7 +204,6 @@ struct ConstructorCache {
       }
     }
 
-    assert(!best_usr.empty());
     return best_usr;
   }
 };
@@ -397,9 +395,10 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
                                                ClangCursor cursor) {
   ClangCursor declaration = cursor.get_declaration();
   declaration = declaration.template_specialization_to_template_definition();
+  // TODO optimize
   std::string usr = declaration.get_usr();
-  if (usr != "")
-    return db->ToTypeId(usr);
+  if (usr.size())
+    return db->ToTypeId(declaration.get_usr_hash());
   return nullopt;
 }
 
@@ -472,7 +471,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-int IndexFile::kCurrentVersion = 8;
+int IndexFile::kCurrentVersion = 9;
 
 IndexFile::IndexFile(const std::string& path,
                      const optional<std::string>& contents)
@@ -488,7 +487,7 @@ IndexFile::IndexFile(const std::string& path,
 }
 
 // TODO: Optimize for const char*?
-IndexTypeId IndexFile::ToTypeId(const std::string& usr) {
+IndexTypeId IndexFile::ToTypeId(USR usr) {
   auto it = id_cache.usr_to_type_id.find(usr);
   if (it != id_cache.usr_to_type_id.end())
     return it->second;
@@ -499,7 +498,7 @@ IndexTypeId IndexFile::ToTypeId(const std::string& usr) {
   id_cache.type_id_to_usr[id] = usr;
   return id;
 }
-IndexFuncId IndexFile::ToFuncId(const std::string& usr) {
+IndexFuncId IndexFile::ToFuncId(USR usr) {
   auto it = id_cache.usr_to_func_id.find(usr);
   if (it != id_cache.usr_to_func_id.end())
     return it->second;
@@ -510,7 +509,7 @@ IndexFuncId IndexFile::ToFuncId(const std::string& usr) {
   id_cache.func_id_to_usr[id] = usr;
   return id;
 }
-IndexVarId IndexFile::ToVarId(const std::string& usr) {
+IndexVarId IndexFile::ToVarId(USR usr) {
   auto it = id_cache.usr_to_var_id.find(usr);
   if (it != id_cache.usr_to_var_id.end())
     return it->second;
@@ -523,15 +522,15 @@ IndexVarId IndexFile::ToVarId(const std::string& usr) {
 }
 
 IndexTypeId IndexFile::ToTypeId(const CXCursor& cursor) {
-  return ToTypeId(ClangCursor(cursor).get_usr());
+  return ToTypeId(ClangCursor(cursor).get_usr_hash());
 }
 
 IndexFuncId IndexFile::ToFuncId(const CXCursor& cursor) {
-  return ToFuncId(ClangCursor(cursor).get_usr());
+  return ToFuncId(ClangCursor(cursor).get_usr_hash());
 }
 
 IndexVarId IndexFile::ToVarId(const CXCursor& cursor) {
-  return ToVarId(ClangCursor(cursor).get_usr());
+  return ToVarId(ClangCursor(cursor).get_usr_hash());
 }
 
 IndexType* IndexFile::Resolve(IndexTypeId id) {
@@ -548,10 +547,7 @@ std::string IndexFile::ToString() {
   return Serialize(SerializeFormat::Json, *this);
 }
 
-IndexType::IndexType(IndexTypeId id, const std::string& usr)
-    : usr(usr), id(id) {
-  assert(usr.size() > 0);
-}
+IndexType::IndexType(IndexTypeId id, USR usr) : usr(usr), id(id) {}
 
 void RemoveItem(std::vector<Range>& ranges, Range to_remove) {
   auto it = std::find(ranges.begin(), ranges.end(), to_remove);
@@ -741,14 +737,12 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   IndexFile* db = param->db;
 
   std::string referenced_usr =
-      cursor.get_referenced()
-          .template_specialization_to_template_definition()
-          .get_usr();
+      cursor.get_referenced().template_specialization_to_template_definition().get_usr();
   // TODO: things in STL cause this to be empty. Figure out why and document it.
   if (referenced_usr == "")
     return;
 
-  IndexTypeId ref_type_id = db->ToTypeId(referenced_usr);
+  IndexTypeId ref_type_id = db->ToTypeId(HashUSR(referenced_usr.c_str()));
 
   if (!param->initial_type)
     param->initial_type = ref_type_id;
@@ -960,19 +954,18 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
       // different USR.
 
       // ClangCursor ref =
-      // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr();
+      // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr_hash();
       // std::string ref_usr =
-      // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr();
-      std::string ref_usr =
-          cursor.get_referenced()
-              .template_specialization_to_template_definition()
-              .get_usr();
-      // std::string ref_usr = ref.get_usr();
+      // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr_hash();
+      auto ref_usr = cursor.get_referenced()
+                         .template_specialization_to_template_definition()
+                         .get_usr();
+      // std::string ref_usr = ref.get_usr_hash();
       if (ref_usr == "")
         break;
 
       Range loc = cursor.get_spelling_range();
-      IndexVarId ref_id = db->ToVarId(ref_usr);
+      IndexVarId ref_id = db->ToVarId(HashUSR(ref_usr.c_str()));
       IndexVar* ref_def = db->Resolve(ref_id);
       UniqueAdd(ref_def->uses, loc);
       break;
@@ -1018,11 +1011,11 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       // only real difference will be that we show 'callers' instead of 'refs'
       // (especially since macros cannot have overrides)
 
-      std::string decl_usr;
+      USR decl_usr;
       if (cursor.get_kind() == CXCursor_MacroDefinition)
-        decl_usr = cursor.get_usr();
+        decl_usr = cursor.get_usr_hash();
       else
-        decl_usr = cursor.get_referenced().get_usr();
+        decl_usr = cursor.get_referenced().get_usr_hash();
 
       IndexVarId var_id = db->ToVarId(decl_usr);
       IndexVar* var_def = db->Resolve(var_id);
@@ -1069,7 +1062,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_DeclRefExpr: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
-        IndexVar* ref_index = db->Resolve(db->ToVarId(ref_cursor.get_usr()));
+        IndexVar* ref_index = db->Resolve(db->ToVarId(ref_cursor.get_usr_hash()));
         if (ref_index->def.short_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
@@ -1078,9 +1071,10 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->uses.push_back(ref_cursor.get_spelling_range());
 
           ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
+          // TODO optimize
           if (ref_type.get_usr().size()) {
             IndexType* ref_type_index =
-                db->Resolve(db->ToTypeId(ref_type.get_usr()));
+                db->Resolve(db->ToTypeId(ref_type.get_usr_hash()));
             // The cursor extent includes `type name`, not just `name`. There
             // seems no way to extract the spelling range of `type` and we do
             // not want to do subtraction here.
@@ -1101,8 +1095,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             break;
           case CXCursor_FunctionDecl:
           case CXCursor_FunctionTemplate: {
-            std::string ref_usr = overloaded.get_usr();
-            IndexFuncId called_id = db->ToFuncId(ref_usr);
+            IndexFuncId called_id = db->ToFuncId(overloaded.get_usr_hash());
             IndexFunc* called = db->Resolve(called_id);
             OnIndexReference_Function(db, cursor.get_spelling_range(),
                                       data->container, called_id, called,
@@ -1116,7 +1109,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TemplateRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTemplateParameter) {
-        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr()));
+        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
         // TODO It seems difficult to get references to template template
         // parameters.
         // CXCursor_TemplateTemplateParameter can be visited by visiting
@@ -1136,7 +1129,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TypeRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
-        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr()));
+        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
         // TODO It seems difficult to get a FunctionTemplate's template
         // parameters.
         // CXCursor_TemplateTypeParameter can be visited by visiting
@@ -1271,9 +1264,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           decl_cursor.template_specialization_to_template_definition())
         break;
 
-      std::string decl_usr = decl_cursor.get_usr();
-
-      IndexVarId var_id = db->ToVarId(decl->entityInfo->USR);
+      IndexVarId var_id = db->ToVarId(HashUSR(decl->entityInfo->USR));
       IndexVar* var = db->Resolve(var_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
@@ -1471,7 +1462,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             ClangCursor parent =
                 ClangCursor(overridden[i])
                     .template_specialization_to_template_definition();
-            IndexFuncId parent_id = db->ToFuncId(parent.get_usr());
+            IndexFuncId parent_id = db->ToFuncId(parent.get_usr_hash());
             IndexFunc* parent_def = db->Resolve(parent_id);
             func = db->Resolve(func_id);  // ToFuncId invalidated func_def
 
@@ -1493,7 +1484,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       optional<IndexTypeId> alias_of = AddDeclTypeUsages(
           db, decl->cursor, decl->semanticContainer, decl->lexicalContainer);
 
-      IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
+      IndexTypeId type_id = db->ToTypeId(HashUSR(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
 
       if (alias_of)
@@ -1545,7 +1536,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       ClangCursor decl_cursor = decl->cursor;
       Range decl_loc_spelling = decl_cursor.get_spelling_range();
 
-      IndexTypeId type_id = db->ToTypeId(decl->entityInfo->USR);
+      IndexTypeId type_id = db->ToTypeId(HashUSR(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
@@ -1632,7 +1623,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                   << std::endl;
       if (decl->lexicalContainer)
         std::cerr << "     lexicalContainer  = "
-                  << ClangCursor(decl->lexicalContainer->cursor).get_usr()
+                  << ClangCursor(decl->lexicalContainer->cursor).get_usr_hash()
                   << std::endl;
       break;
   }
@@ -1688,7 +1679,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       ClangCursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
 
-      IndexVarId var_id = db->ToVarId(referenced.get_usr());
+      IndexVarId var_id = db->ToVarId(referenced.get_usr_hash());
       IndexVar* var = db->Resolve(var_id);
       // Lambda paramaters are not processed by OnIndexDeclaration and
       // may not have a short_name yet. Note that we only process the lambda
@@ -1735,7 +1726,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       ClangCursor ref_cursor(ref->cursor);
       Range loc = ref_cursor.get_spelling_range();
 
-      IndexFuncId called_id = db->ToFuncId(ref->referencedEntity->USR);
+      IndexFuncId called_id = db->ToFuncId(HashUSR(ref->referencedEntity->USR));
       IndexFunc* called = db->Resolve(called_id);
 
       // libclang doesn't provide a nice api to check if the given function
@@ -1786,8 +1777,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
         // the constructor function we add a usage to.
         optional<ClangCursor> opt_found_type = FindType(ref->cursor);
         if (opt_found_type) {
-          std::string ctor_type_usr =
-              opt_found_type->get_referenced().get_usr();
+          USR ctor_type_usr = opt_found_type->get_referenced().get_usr_hash();
           ClangCursor call_cursor = ref->cursor;
 
           // Build a type description from the parameters of the call, so we
@@ -1800,7 +1790,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           }
 
           // Try to find the constructor and add a reference.
-          optional<std::string> ctor_usr =
+          optional<USR> ctor_usr =
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
@@ -1823,7 +1813,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXClass: {
       ClangCursor ref_cursor = ref->referencedEntity->cursor;
       ref_cursor = ref_cursor.template_specialization_to_template_definition();
-      IndexType* referenced = db->Resolve(db->ToTypeId(ref_cursor.get_usr()));
+      IndexType* referenced = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
 
       //
       // The following will generate two TypeRefs to Foo, both located at the

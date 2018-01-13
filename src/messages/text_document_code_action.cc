@@ -104,7 +104,7 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
   LOG_S(INFO) << "!! Looking for impl file that starts with " << target_path;
 
   for (auto& entry : db->usr_to_file) {
-    Usr path = entry.first;
+    const std::string& path = entry.first;
 
     // Do not consider header files for implementation files.
     // TODO: make file extensions configurable.

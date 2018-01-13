@@ -4,6 +4,7 @@
 
 #include <loguru.hpp>
 
+// FIXME Interop with VSCode, change std::string usr to Usr (uint64_t)
 namespace {
 struct Ipc_CqueryCallTreeInitial
     : public IpcMessage<Ipc_CqueryCallTreeInitial> {
@@ -62,7 +63,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
 
   Out_CqueryCallTree::CallEntry entry;
   entry.name = root_func.def->short_name;
-  entry.usr = root_func.usr;
+  entry.usr = std::to_string(root_func.usr);
   entry.location = *def_loc;
   entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, root_func);
   std::vector<Out_CqueryCallTree::CallEntry> result;
@@ -113,7 +114,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
 
       Out_CqueryCallTree::CallEntry call_entry;
       call_entry.name = call_func.def->short_name;
-      call_entry.usr = call_func.usr;
+      call_entry.usr = std::to_string(call_func.usr);
       call_entry.location = *call_location;
       call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, call_func);
       call_entry.callType = call_type;
@@ -188,7 +189,8 @@ struct CqueryCallTreeExpandHandler
     Out_CqueryCallTree out;
     out.id = request->id;
 
-    auto func_id = db->usr_to_func.find(request->params.usr);
+    // FIXME
+    auto func_id = db->usr_to_func.find(std::stoull(request->params.usr));
     if (func_id != db->usr_to_func.end())
       out.result = BuildExpandCallTree(db, working_files, func_id->second);
 

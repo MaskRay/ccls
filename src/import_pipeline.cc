@@ -1,5 +1,6 @@
 #include "import_pipeline.h"
 
+#include "clang_cursor.h"  // HashUSR
 #include "cache_manager.h"
 #include "config.h"
 #include "iindexer.h"
@@ -621,8 +622,7 @@ bool QueryDb_ImportMain(Config* config,
       WorkingFile* working_file =
           working_files->GetFileByFilename(updated_file.path);
       if (working_file) {
-        QueryFileId file_id =
-            db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
+        QueryFileId file_id = db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
         QueryFile* file = &db->files[file_id.id];
         EmitSemanticHighlighting(db, semantic_cache, working_file, file);
       }
