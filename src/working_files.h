@@ -27,6 +27,10 @@ struct WorkingFile {
   // This map goes from buffer-line -> indices+1 in all_buffer_lines.
   // Note: The items in the value entry are 1-based liness.
   std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
+  // Mappings between index line number and buffer line number.
+  // Empty indicates stale.
+  std::vector<int> index_to_buffer;
+  std::vector<int> buffer_to_index;
   // A set of diagnostics that have been reported for this file.
   // NOTE: _ is appended because it must be accessed under the WorkingFiles
   // lock!
@@ -41,14 +45,14 @@ struct WorkingFile {
 
   // Find the buffer-line which should be shown for |indexed_line|. This
   // accepts and returns 1-based lines.
-  optional<int> GetBufferLineFromIndexLine(int indexed_line) const;
+  optional<int> GetBufferLineFromIndexLine(int indexed_line);
   // Find the indexed-line which should be shown for |buffer_line|. This
   // accepts and returns 1-based lines.
-  optional<int> GetIndexLineFromBufferLine(int buffer_line) const;
+  optional<int> GetIndexLineFromBufferLine(int buffer_line);
 
   optional<std::string> GetBufferLineContentFromIndexLine(
       int indexed_line,
-      optional<int>* out_buffer_line) const;
+      optional<int>* out_buffer_line);
 
   // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
   // lex_utils.h/cc
@@ -73,6 +77,10 @@ struct WorkingFile {
   lsPosition FindStableCompletionSource(lsPosition position,
                                         bool* is_global_completion,
                                         std::string* existing_completion) const;
+
+ private:
+  // Compute index_to_buffer and buffer_to_index.
+  void ComputeLineMapping();
 };
 
 struct WorkingFiles {

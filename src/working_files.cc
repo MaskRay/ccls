@@ -28,7 +28,6 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
 
   return result;
 }
-
 }  // namespace
 
 std::vector<CXUnsavedFile> WorkingFiles::Snapshot::AsUnsavedFiles() const {
@@ -56,6 +55,10 @@ WorkingFile::WorkingFile(const std::string& filename,
 void WorkingFile::SetIndexContent(const std::string& index_content) {
   index_lines = ToLines(index_content, false /*trim_whitespace*/);
 
+  index_to_buffer.clear();
+  buffer_to_index.clear();
+
+  // TODO Remove
   // Build lookup buffer.
   index_lines_lookup.clear();
   index_lines_lookup.reserve(index_lines.size());
@@ -74,6 +77,10 @@ void WorkingFile::OnBufferContentUpdated() {
   all_buffer_lines = ToLines(buffer_content, true /*trim_whitespace*/);
   raw_buffer_lines = ToLines(buffer_content, false /*trim_whitespace*/);
 
+  index_to_buffer.clear();
+  buffer_to_index.clear();
+
+  // TODO Remove
   // Build lookup buffer.
   all_buffer_lines_lookup.clear();
   all_buffer_lines_lookup.reserve(all_buffer_lines.size());
@@ -88,7 +95,79 @@ void WorkingFile::OnBufferContentUpdated() {
   }
 }
 
-optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
+// Variant of Paul Heckel's diff algorithm
+void WorkingFile::ComputeLineMapping() {
+  std::unordered_map<uint64_t, int> hash_to_unique;
+  std::vector<uint64_t> index_hashes(index_lines.size()),
+      buffer_hashes(all_buffer_lines.size());
+  std::vector<int>& from_index = index_to_buffer;
+  std::vector<int>& from_buffer = buffer_to_index;
+  from_index.resize(index_lines.size());
+  from_buffer.resize(all_buffer_lines.size());
+  hash_to_unique.reserve(std::max(from_index.size(), from_buffer.size()));
+  int i = 0;
+  for (auto& line : index_lines) {
+    std::string trimmed = Trim(line);
+    uint64_t h = HashUSR(trimmed.data(), trimmed.size());
+    auto it = hash_to_unique.find(h);
+    if (it == hash_to_unique.end()) {
+      hash_to_unique[h] = i;
+      from_index[i] = i;
+    } else {
+      if (it->second >= 0)
+        from_index[it->second] = -1;
+      from_index[i] = it->second = -1;
+    }
+    index_hashes[i++] = h;
+  }
+
+  i = 0;
+  hash_to_unique.clear();
+  for (auto& line : all_buffer_lines) {
+    uint64_t h = HashUSR(line.data(), line.size());
+    auto it = hash_to_unique.find(h);
+    if (it == hash_to_unique.end()) {
+      hash_to_unique[h] = i;
+      from_buffer[i] = i;
+    } else {
+      if (it->second >= 0)
+        from_buffer[it->second] = -1;
+      from_buffer[i] = it->second = -1;
+    }
+    buffer_hashes[i++] = h;
+  }
+
+  i = 0;
+  for (auto h : index_hashes) {
+    if (from_index[i] >= 0) {
+      auto it = hash_to_unique.find(h);
+      if (it != hash_to_unique.end() && it->second >= 0) {
+        from_index[i] = it->second;
+        from_buffer[it->second] = i;
+      } else
+        from_index[i] = -1;
+    }
+    i++;
+  }
+
+  for (i = 0; i < (int)index_hashes.size() - 1; i++) {
+    int j = from_index[i];
+    if (0 <= j && j + 1 < buffer_hashes.size() &&
+        index_hashes[i + 1] == buffer_hashes[j + 1]) {
+      from_index[i + 1] = j + 1;
+      from_buffer[j + 1] = i + 1;
+    }
+  }
+  for (i = (int)index_hashes.size(); --i > 0; ) {
+    int j = from_index[i];
+    if (0 < j && index_hashes[i - 1] == buffer_hashes[j - 1]) {
+      from_index[i - 1] = j - 1;
+      from_buffer[j - 1] = i - 1;
+    }
+  }
+}
+
+optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) {
   // The implementation is simple but works pretty well for most cases. We
   // lookup the line contents in the indexed file contents, and try to find the
   // most similar line in the current buffer file.
@@ -109,16 +188,39 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
     return nullopt;
   }
 
+  // TODO Remove all_buffer_lines_lookup and only use diff
   // Find the line in the cached index file. We'll try to find the most similar
   // line in the buffer and return the index for that.
   std::string index = Trim(index_lines[index_line - 1]);
   auto buffer_it = all_buffer_lines_lookup.find(index);
   if (buffer_it == all_buffer_lines_lookup.end()) {
-    // TODO: Use levenshtein distance to find the best match (but only to an
-    // extent)
-    return nullopt;
+    if (index_to_buffer.empty())
+      ComputeLineMapping();
+    index_line--;
+    int up = index_line, down = index_line + 1;
+    while (up >= 0 && index_to_buffer[up] < 0)
+      up--;
+    while (down < int(index_to_buffer.size()) && index_to_buffer[down] < 0)
+      down++;
+
+    int ret;
+    if (up >= 0) {
+      if (down == int(index_to_buffer.size()) ||
+          index_line - up < down - index_line)
+        ret = index_to_buffer[up] - up + index_line;
+      else
+        ret = index_to_buffer[down] - down + index_line;
+    } else if (down < int(index_to_buffer.size()))
+      ret = index_to_buffer[down] - down + index_line;
+    else
+      return nullopt;
+    ret = std::max(ret, 0);
+    ret = std::min(ret, int(buffer_to_index.size()) - 1);
+    return ret + 1;
   }
 
+  // TODO: Use levenshtein distance to find the best match (but only to an
+  // extent)
   // From all the identical lines, return the one which is closest to
   // |index_line|. There will usually only be one identical line.
   assert(!buffer_it->second.empty());
@@ -131,11 +233,11 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) const {
       closest_buffer_line = buffer_line;
     }
   }
-
   return closest_buffer_line;
+
 }
 
-optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
+optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
@@ -153,9 +255,29 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
   std::string buffer = all_buffer_lines[buffer_line - 1];
   auto index_it = index_lines_lookup.find(buffer);
   if (index_it == index_lines_lookup.end()) {
-    // TODO: Use levenshtein distance to find the best match (but only to an
-    // extent)
-    return nullopt;
+    if (buffer_to_index.empty())
+      ComputeLineMapping();
+    buffer_line--;
+    int up = buffer_line, down = buffer_line + 1;
+    while (up >= 0 && buffer_to_index[up] < 0)
+      up--;
+    while (down < int(buffer_to_index.size()) && buffer_to_index[down] < 0)
+      down++;
+
+    int ret;
+    if (up >= 0) {
+      if (down == int(buffer_to_index.size()) ||
+          buffer_line - up <= down - buffer_line)
+        ret = buffer_to_index[up] - up + buffer_line;
+      else
+        ret = buffer_to_index[down] - down + buffer_line;
+    } else if (down < int(buffer_to_index.size()))
+      ret = buffer_to_index[down] - down + buffer_line;
+    else
+      return nullopt;
+    ret = std::max(ret, 0);
+    ret = std::min(ret, int(index_to_buffer.size()) - 1);
+    return ret + 1;
   }
 
   // From all the identical lines, return the one which is closest to
@@ -170,13 +292,12 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) const {
       closest_index_line = index_line;
     }
   }
-
   return closest_index_line;
 }
 
 optional<std::string> WorkingFile::GetBufferLineContentFromIndexLine(
     int indexed_line,
-    optional<int>* out_buffer_line) const {
+    optional<int>* out_buffer_line) {
   optional<int> buffer_line = GetBufferLineFromIndexLine(indexed_line);
   if (out_buffer_line)
     *out_buffer_line = buffer_line;

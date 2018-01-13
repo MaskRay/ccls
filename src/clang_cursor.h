@@ -14,8 +14,6 @@ using Usr = uint64_t;
 Range ResolveCXSourceRange(const CXSourceRange& range,
                            CXFile* cx_file = nullptr);
 
-Usr HashUSR(const char* usr);
-
 class ClangType {
  public:
   ClangType();

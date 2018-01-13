@@ -21,19 +21,6 @@ Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
                Position((int16_t)end_line, (int16_t)end_column) /*end*/);
 }
 
-uint64_t HashUSR(const char* usr) {
-  extern int siphash(const uint8_t *in, const size_t inlen, const uint8_t *k,
-                     uint8_t *out, const size_t outlen);
-  union {
-    uint64_t ret;
-    uint8_t out[8];
-  };
-  const uint8_t k[16] = {0xd0, 0xe5, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52,
-                         0x61, 0x79, 0xea, 0x70, 0xca, 0x70, 0xf0, 0x0d};
-  (void)siphash(reinterpret_cast<const uint8_t*>(usr), strlen(usr), k, out, 8);
-  return ret;
-}
-
 // TODO Place this global variable into config
 int g_enable_comments;
 
