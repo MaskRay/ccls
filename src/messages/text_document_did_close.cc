@@ -6,7 +6,7 @@
 namespace {
 struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {
   struct Params {
-    lsTextDocumentItem textDocument;
+    lsTextDocumentIdentifier textDocument;
   };
 
   const static IpcId kIpcId = IpcId::TextDocumentDidClose;

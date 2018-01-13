@@ -104,7 +104,7 @@ struct WorkingFiles {
 
   WorkingFile* OnOpen(const lsTextDocumentItem& open);
   void OnChange(const lsTextDocumentDidChangeParams& change);
-  void OnClose(const lsTextDocumentItem& close);
+  void OnClose(const lsTextDocumentIdentifier& close);
 
   // If |filter_paths| is non-empty, only files which contain any of the given
   // strings. For example, {"foo", "bar"} means that every result has either the

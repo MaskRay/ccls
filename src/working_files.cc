@@ -356,7 +356,7 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
   }
 }
 
-void WorkingFiles::OnClose(const lsTextDocumentItem& close) {
+void WorkingFiles::OnClose(const lsTextDocumentIdentifier& close) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = close.uri.GetPath();
