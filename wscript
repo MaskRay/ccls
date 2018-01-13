@@ -152,8 +152,7 @@ def configure(ctx):
     if ctx.env.CXXFLAGS:
       cxxflags = ctx.env.CXXFLAGS
     else:
-      # FIXME Figure out how to treat siphash.c as C file so that we can remove -Wno-deprecated
-      cxxflags = ['-g', '-Wall', '-Wno-sign-compare', '-Wno-deprecated', '-Werror']
+      cxxflags = ['-g', '-Wall', '-Wno-sign-compare', '-Werror']
 
     if all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):
       cxxflags.append('-std=c++11')
@@ -359,7 +358,8 @@ def build(bld):
     else:
       rpath = bld.env['LIBPATH_clang']
 
-  bld.objects(name='siphash', source='third_party/siphash.c')
+  # FIXME Figure out how to mix C and C++ source files and change it back to .c
+  bld.objects(name='siphash', source='third_party/siphash.cc')
 
   # https://waf.io/apidocs/tools/c_aliases.html#waflib.Tools.c_aliases.program
   bld.program(
