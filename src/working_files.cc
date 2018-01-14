@@ -40,8 +40,8 @@ int MyersDiff(const char *a, int la, const char *b, int lb, int threshold) {
 	for (; a < ea && b < eb && *a == *b; a++, b++) {}
 	// Strip suffix
 	for (; a < ea && b < eb && ea[-1] == eb[-1]; ea--, eb--) {}
-	la = ea - a;
-	lb = eb - b;
+	la = int(ea - a);
+	lb = int(eb - b);
 
 	int* v = v_static + lb;
 	v[1] = 0;
@@ -113,6 +113,8 @@ void WorkingFile::ComputeLineMapping() {
   from_index.resize(index_lines.size());
   from_buffer.resize(all_buffer_lines.size());
   hash_to_unique.reserve(std::max(from_index.size(), from_buffer.size()));
+
+  // For index line i, set from_index[i] to -1 if line i is duplicated.
   int i = 0;
   for (auto& line : index_lines) {
     std::string trimmed = Trim(line);
@@ -129,6 +131,7 @@ void WorkingFile::ComputeLineMapping() {
     index_hashes[i++] = h;
   }
 
+  // For buffer line i, set from_buffer[i] to -1 if line i is duplicated.
   i = 0;
   hash_to_unique.clear();
   for (auto& line : all_buffer_lines) {
@@ -145,7 +148,8 @@ void WorkingFile::ComputeLineMapping() {
     buffer_hashes[i++] = h;
   }
 
-  // Align unique lines.
+  // Align unique lines of index and buffer by setting from_index[i] and
+  // from_buffer[j] pointing to each other.
   i = 0;
   for (auto h : index_hashes) {
     if (from_index[i] >= 0) {
@@ -160,7 +164,7 @@ void WorkingFile::ComputeLineMapping() {
     i++;
   }
 
-  // Extending upwards and downwards.
+  // Starting at unique lines, extend upwards and downwards.
   for (i = 0; i < (int)index_hashes.size() - 1; i++) {
     int j = from_index[i];
     if (0 <= j && j + 1 < buffer_hashes.size() &&

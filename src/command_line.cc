@@ -21,7 +21,6 @@
 #include "semantic_highlight_symbol_cache.h"
 #include "serializer.h"
 #include "serializers/json.h"
-#include "standard_includes.h"
 #include "test.h"
 #include "threaded_queue.h"
 #include "timer.h"
@@ -37,7 +36,6 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
-#include <sstream>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -336,16 +334,20 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
         }
 
         if (g_log_stdin_stdout_to_stderr) {
-          std::ostringstream sstream;
-          sstream << "[COUT] |";
-          sstream << message.content;
-          sstream << "|\n";
-          std::cerr << sstream.str();
-          std::cerr.flush();
+          try {
+            std::cerr << "[COUT] |" << message.content << "|\n";
+            std::cerr.flush();
+          } catch (std::ios_base::failure&) {
+            // TODO Ignore for now
+          }
         }
 
-        std::cout << message.content;
-        std::cout.flush();
+        try {
+          std::cout << message.content;
+          std::cout.flush();
+        } catch (std::ios_base::failure&) {
+          // TODO Ignore for now
+        }
       }
     }
   });
