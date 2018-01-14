@@ -5,6 +5,7 @@
 #include <doctest/doctest.h>
 #include <tinydir.h>
 #include <loguru/loguru.hpp>
+#include <siphash.h>
 
 #include <algorithm>
 #include <cassert>
@@ -52,17 +53,20 @@ std::string Trim(std::string s) {
   return s;
 }
 
-uint64_t HashUSR(const char* s) {
-  return HashUSR(s, strlen(s));
+uint64_t HashUsr(const std::string& s) {
+  return HashUsr(s.c_str(), s.size());
 }
 
-uint64_t HashUSR(const char* s, size_t n) {
-  extern int siphash(const uint8_t *in, const size_t inlen, const uint8_t *k,
-                     uint8_t *out, const size_t outlen);
+uint64_t HashUsr(const char* s) {
+  return HashUsr(s, strlen(s));
+}
+
+uint64_t HashUsr(const char* s, size_t n) {
   union {
     uint64_t ret;
     uint8_t out[8];
   };
+  // k is an arbitrary key. Don't change it.
   const uint8_t k[16] = {0xd0, 0xe5, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52,
                          0x61, 0x79, 0xea, 0x70, 0xca, 0x70, 0xf0, 0x0d};
   (void)siphash(reinterpret_cast<const uint8_t*>(s), n, k, out, 8);

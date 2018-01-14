@@ -18,8 +18,9 @@ void TrimEndInPlace(std::string& s);
 void TrimInPlace(std::string& s);
 std::string Trim(std::string s);
 
-uint64_t HashUSR(const char* s);
-uint64_t HashUSR(const char* s, size_t n);
+uint64_t HashUsr(const std::string& s);
+uint64_t HashUsr(const char* s);
+uint64_t HashUsr(const char* s, size_t n);
 
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(const std::string& value, const std::string& start);

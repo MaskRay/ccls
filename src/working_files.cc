@@ -144,7 +144,7 @@ void WorkingFile::ComputeLineMapping() {
   int i = 0;
   for (auto& line : index_lines) {
     std::string trimmed = Trim(line);
-    uint64_t h = HashUSR(trimmed.data(), trimmed.size());
+    uint64_t h = HashUsr(trimmed);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
@@ -162,7 +162,7 @@ void WorkingFile::ComputeLineMapping() {
   hash_to_unique.clear();
   for (auto& line : buffer_lines) {
     std::string trimmed = Trim(line);
-    uint64_t h = HashUSR(trimmed.data(), trimmed.size());
+    uint64_t h = HashUsr(trimmed);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;

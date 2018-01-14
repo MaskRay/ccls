@@ -161,7 +161,7 @@ std::string ClangCursor::get_usr() const {
 
 Usr ClangCursor::get_usr_hash() const {
   CXString usr = clang_getCursorUSR(cx_cursor);
-  Usr ret = HashUSR(clang_getCString(usr));
+  Usr ret = HashUsr(clang_getCString(usr));
   clang_disposeString(usr);
   return ret;
 }

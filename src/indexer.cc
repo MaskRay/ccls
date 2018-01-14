@@ -742,7 +742,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   if (referenced_usr == "")
     return;
 
-  IndexTypeId ref_type_id = db->ToTypeId(HashUSR(referenced_usr.c_str()));
+  IndexTypeId ref_type_id = db->ToTypeId(HashUsr(referenced_usr));
 
   if (!param->initial_type)
     param->initial_type = ref_type_id;
@@ -965,7 +965,7 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
         break;
 
       Range loc = cursor.get_spelling_range();
-      IndexVarId ref_id = db->ToVarId(HashUSR(ref_usr.c_str()));
+      IndexVarId ref_id = db->ToVarId(HashUsr(ref_usr));
       IndexVar* ref_def = db->Resolve(ref_id);
       UniqueAdd(ref_def->uses, loc);
       break;
@@ -1264,7 +1264,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           decl_cursor.template_specialization_to_template_definition())
         break;
 
-      IndexVarId var_id = db->ToVarId(HashUSR(decl->entityInfo->USR));
+      IndexVarId var_id = db->ToVarId(HashUsr(decl->entityInfo->USR));
       IndexVar* var = db->Resolve(var_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
@@ -1484,7 +1484,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       optional<IndexTypeId> alias_of = AddDeclTypeUsages(
           db, decl->cursor, decl->semanticContainer, decl->lexicalContainer);
 
-      IndexTypeId type_id = db->ToTypeId(HashUSR(decl->entityInfo->USR));
+      IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
 
       if (alias_of)
@@ -1536,7 +1536,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       ClangCursor decl_cursor = decl->cursor;
       Range decl_loc_spelling = decl_cursor.get_spelling_range();
 
-      IndexTypeId type_id = db->ToTypeId(HashUSR(decl->entityInfo->USR));
+      IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
 
       // TODO: Eventually run with this if. Right now I want to iron out bugs
@@ -1726,7 +1726,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       ClangCursor ref_cursor(ref->cursor);
       Range loc = ref_cursor.get_spelling_range();
 
-      IndexFuncId called_id = db->ToFuncId(HashUSR(ref->referencedEntity->USR));
+      IndexFuncId called_id = db->ToFuncId(HashUsr(ref->referencedEntity->USR));
       IndexFunc* called = db->Resolve(called_id);
 
       // libclang doesn't provide a nice api to check if the given function

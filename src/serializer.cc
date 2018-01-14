@@ -172,7 +172,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
 // IndexFile
 bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   // FIXME
-  auto it = value.id_cache.usr_to_type_id.find(HashUSR(""));
+  auto it = value.id_cache.usr_to_type_id.find(HashUsr(""));
   if (it != value.id_cache.usr_to_type_id.end()) {
     value.Resolve(it->second)->def.short_name = "<fundamental>";
     assert(value.Resolve(it->second)->uses.size() == 0);

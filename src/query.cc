@@ -898,30 +898,30 @@ TEST_SUITE("query") {
     IndexFile previous("foo.cc", nullopt);
     IndexFile current("foo.cc", nullopt);
 
-    previous.Resolve(previous.ToTypeId(HashUSR("usr1")))->def.definition_spelling =
+    previous.Resolve(previous.ToTypeId(HashUsr("usr1")))->def.definition_spelling =
         Range(Position(1, 0));
-    previous.Resolve(previous.ToFuncId(HashUSR("usr2")))->def.definition_spelling =
+    previous.Resolve(previous.ToFuncId(HashUsr("usr2")))->def.definition_spelling =
         Range(Position(2, 0));
-    previous.Resolve(previous.ToVarId(HashUSR("usr3")))->def.definition_spelling =
+    previous.Resolve(previous.ToVarId(HashUsr("usr3")))->def.definition_spelling =
         Range(Position(3, 0));
 
     IndexUpdate update = GetDelta(previous, current);
 
-    REQUIRE(update.types_removed == std::vector<Usr>{HashUSR("usr1")});
-    REQUIRE(update.funcs_removed == std::vector<Usr>{HashUSR("usr2")});
-    REQUIRE(update.vars_removed == std::vector<Usr>{HashUSR("usr3")});
+    REQUIRE(update.types_removed == std::vector<Usr>{HashUsr("usr1")});
+    REQUIRE(update.funcs_removed == std::vector<Usr>{HashUsr("usr2")});
+    REQUIRE(update.vars_removed == std::vector<Usr>{HashUsr("usr3")});
   }
 
   TEST_CASE("do not remove ref-only defs") {
     IndexFile previous("foo.cc", nullopt);
     IndexFile current("foo.cc", nullopt);
 
-    previous.Resolve(previous.ToTypeId(HashUSR("usr1")))
+    previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->uses.push_back(Range(Position(1, 0)));
-    previous.Resolve(previous.ToFuncId(HashUSR("usr2")))
+    previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
         ->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
                                          false /*is_implicit*/));
-    previous.Resolve(previous.ToVarId(HashUSR("usr3")))
+    previous.Resolve(previous.ToVarId(HashUsr("usr3")))
         ->uses.push_back(Range(Position(3, 0)));
 
     IndexUpdate update = GetDelta(previous, current);
@@ -935,8 +935,8 @@ TEST_SUITE("query") {
     IndexFile previous("foo.cc", nullopt);
     IndexFile current("foo.cc", nullopt);
 
-    IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUSR("usr")));
-    IndexFunc* cf = current.Resolve(current.ToFuncId(HashUSR("usr")));
+    IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
+    IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
 
     pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
                                        false /*is_implicit*/));
@@ -960,8 +960,8 @@ TEST_SUITE("query") {
     IndexFile previous("foo.cc", nullopt);
     IndexFile current("foo.cc", nullopt);
 
-    IndexType* pt = previous.Resolve(previous.ToTypeId(HashUSR("usr")));
-    IndexType* ct = current.Resolve(current.ToTypeId(HashUSR("usr")));
+    IndexType* pt = previous.Resolve(previous.ToTypeId(HashUsr("usr")));
+    IndexType* ct = current.Resolve(current.ToTypeId(HashUsr("usr")));
 
     pt->uses.push_back(Range(Position(1, 0)));
     ct->uses.push_back(Range(Position(2, 0)));
@@ -981,8 +981,8 @@ TEST_SUITE("query") {
     IndexFile previous("foo.cc", nullopt);
     IndexFile current("foo.cc", nullopt);
 
-    IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUSR("usr")));
-    IndexFunc* cf = current.Resolve(current.ToFuncId(HashUSR("usr")));
+    IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
+    IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
     pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
                                        false /*is_implicit*/));
     pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),

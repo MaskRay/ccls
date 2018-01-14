@@ -1,6 +1,5 @@
 #include "import_pipeline.h"
 
-#include "clang_cursor.h"  // HashUSR
 #include "cache_manager.h"
 #include "config.h"
 #include "iindexer.h"
