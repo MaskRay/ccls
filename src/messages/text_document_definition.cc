@@ -64,8 +64,8 @@ struct TextDocumentDefinitionHandler
     Out_TextDocumentDefinition out;
     out.id = request->id;
 
-    int target_line = request->params.position.line + 1;
-    int target_column = request->params.position.character + 1;
+    int target_line = request->params.position.line;
+    int target_column = request->params.position.character;
 
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {

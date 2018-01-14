@@ -247,7 +247,7 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
       // 42;` will take you to the constructor.
       Range range = caller.loc;
       if (caller.is_implicit) {
-        if (range.start.column > 1)
+        if (range.start.column > 0)
           range.start.column--;
         range.end.column++;
       }

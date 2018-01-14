@@ -17,8 +17,8 @@ Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
   unsigned int end_line, end_column;
   clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
 
-  return Range(Position((int16_t)start_line, (int16_t)start_column) /*start*/,
-               Position((int16_t)end_line, (int16_t)end_column) /*end*/);
+  return Range(Position((int16_t)start_line - 1, (int16_t)start_column - 1),
+               Position((int16_t)end_line - 1, (int16_t)end_column - 1));
 }
 
 // TODO Place this global variable into config

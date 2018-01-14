@@ -8,8 +8,8 @@
 #include "utils.h"
 
 struct Position {
-  int16_t line = -1;
-  int16_t column = -1;
+  int16_t line;
+  int16_t column;
 
   Position();
   Position(int16_t line, int16_t column);

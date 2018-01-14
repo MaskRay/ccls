@@ -12,9 +12,9 @@ FileContents::FileContents(const std::string& path, const std::string& content)
 }
 
 optional<int> FileContents::ToOffset(Position p) const {
-  if (0 < p.line && size_t(p.line) <= line_offsets_.size()) {
-    int ret = line_offsets_[p.line - 1] + p.column - 1;
-    if (size_t(ret) <= content.size())
+  if (0 <= p.line && size_t(p.line) < line_offsets_.size()) {
+    int ret = line_offsets_[p.line] + p.column;
+    if (size_t(ret) < content.size())
       return ret;
   }
   return nullopt;

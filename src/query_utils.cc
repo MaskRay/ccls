@@ -316,20 +316,20 @@ std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db,
 optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position) {
   if (!working_file)
-    return lsPosition(position.line - 1, position.column - 1);
+    return lsPosition(position.line, position.column);
 
   optional<int> start = working_file->GetBufferLineFromIndexLine(position.line);
   if (!start)
     return nullopt;
 
-  return lsPosition(*start - 1, position.column - 1);
+  return lsPosition(*start, position.column);
 }
 
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
     return lsRange(
-        lsPosition(location.start.line - 1, location.start.column - 1),
-        lsPosition(location.end.line - 1, location.end.column - 1));
+        lsPosition(location.start.line, location.start.column),
+        lsPosition(location.end.line, location.end.column));
   }
 
   optional<int> start =
@@ -348,8 +348,8 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (*end < *start)
     *end = *start + (location.end.line - location.start.line);
 
-  return lsRange(lsPosition(*start - 1, location.start.column - 1),
-                 lsPosition(*end - 1, location.end.column - 1));
+  return lsRange(lsPosition(*start, location.start.column),
+                 lsPosition(*end, location.end.column));
 }
 
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
@@ -478,8 +478,8 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   std::vector<SymbolRef> symbols;
   symbols.reserve(1);
 
-  int target_line = position.line + 1;
-  int target_column = position.character + 1;
+  int target_line = position.line;
+  int target_column = position.character;
   if (working_file) {
     optional<int> index_line =
         working_file->GetIndexLineFromBufferLine(target_line);

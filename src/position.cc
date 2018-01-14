@@ -11,17 +11,17 @@ const char* SkipAfter(const char* input, char skip_after) {
 }
 }  // namespace
 
-Position::Position() {}
+Position::Position() : line(0), column(0) {}
 
 Position::Position(int16_t line, int16_t column) : line(line), column(column) {}
 
 Position::Position(const char* encoded) {
   assert(encoded);
-  line = (int16_t)atoi(encoded);
+  line = (int16_t)atoi(encoded) - 1;
 
   encoded = SkipAfter(encoded, ':');
   assert(encoded);
-  column = (int16_t)atoi(encoded);
+  column = (int16_t)atoi(encoded) - 1;
 }
 
 std::string Position::ToString() {
@@ -33,9 +33,9 @@ std::string Position::ToString() {
   // 2 => column
 
   std::string result;
-  result += std::to_string(line);
+  result += std::to_string(line + 1);
   result += ':';
-  result += std::to_string(column);
+  result += std::to_string(column + 1);
   return result;
 }
 
@@ -51,9 +51,9 @@ std::string Position::ToPrettyString(const std::string& filename) {
   std::string result;
   result += filename;
   result += ':';
-  result += std::to_string(line);
+  result += std::to_string(line + 1);
   result += ':';
-  result += std::to_string(column);
+  result += std::to_string(column + 1);
   return result;
 }
 
@@ -79,17 +79,17 @@ Range::Range(Position start, Position end) : start(start), end(end) {}
 
 Range::Range(const char* encoded) {
   char* p = const_cast<char*>(encoded);
-  start.line = int16_t(strtol(p, &p, 10));
+  start.line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
   p++;
-  start.column = int16_t(strtol(p, &p, 10));
+  start.column = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == '-');
   p++;
 
-  end.line = int16_t(strtol(p, &p, 10));
+  end.line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
   p++;
-  end.column = int16_t(strtol(p, nullptr, 10));
+  end.column = int16_t(strtol(p, nullptr, 10)) - 1;
 }
 
 bool Range::Contains(int line, int column) const {
@@ -117,13 +117,13 @@ std::string Range::ToString() {
 
   std::string output;
 
-  output += std::to_string(start.line);
+  output += std::to_string(start.line + 1);
   output += ':';
-  output += std::to_string(start.column);
+  output += std::to_string(start.column + 1);
   output += '-';
-  output += std::to_string(end.line);
+  output += std::to_string(end.line + 1);
   output += ':';
-  output += std::to_string(end.column);
+  output += std::to_string(end.column + 1);
 
   return output;
 }

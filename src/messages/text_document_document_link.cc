@@ -69,7 +69,7 @@ struct TextDocumentDocumentLinkHandler
         // Subtract 1 from line because querydb stores 1-based lines but
         // vscode expects 0-based lines.
         optional<lsRange> between_quotes = ExtractQuotedRange(
-            *buffer_line - 1, working_file->buffer_lines[*buffer_line - 1]);
+            *buffer_line, working_file->buffer_lines[*buffer_line]);
         if (!between_quotes)
           continue;
 

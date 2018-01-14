@@ -69,9 +69,8 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                const std::vector<int>& index_to_buffer,
                                int line,
                                const std::vector<std::string>& buffer_lines) {
-  line--;
   if (index_to_buffer[line] >= 0)
-    return index_to_buffer[line] + 1;
+    return index_to_buffer[line];
   int up = line, down = line;
   while (--up >= 0 && index_to_buffer[up] < 0) {}
   while (++down < int(index_to_buffer.size()) && index_to_buffer[down] < 0) {}
@@ -89,7 +88,7 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
       best = i;
     }
   }
-  return best + 1;
+  return best;
 }
 
 }  // namespace
@@ -223,10 +222,10 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int line) {
 
   // TODO: reenable this assert once we are using the real indexed file.
   // assert(index_line >= 1 && index_line <= index_lines.size());
-  if (line < 1 || line > index_lines.size()) {
+  if (line < 0 || line >= (int)index_lines.size()) {
     loguru::Text stack = loguru::stacktrace();
-    LOG_S(WARNING) << "Bad index_line (got " << line << ", expected [1, "
-                   << index_lines.size() << "]) in " << filename
+    LOG_S(WARNING) << "Bad index_line (got " << line << ", expected [0, "
+                   << index_lines.size() << ")) in " << filename
                    << stack.c_str();
     return nullopt;
   }
@@ -240,7 +239,7 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int line) {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
-  if (line < 1 || line > buffer_lines.size()) {
+  if (line < 0 || line >= (int)buffer_lines.size()) {
     loguru::Text stack = loguru::stacktrace();
     LOG_S(WARNING) << "Bad buffer_line (got " << line
                    << ", expected [1, " << buffer_lines.size() << "]) in "
