@@ -12,7 +12,12 @@
 
 namespace {
 
-constexpr int kMaxDiff = 9;
+// When finding a best match of buffer line and index line, limit the max edit
+// distance.
+constexpr int kMaxDiff = 20;
+// Don't align index line to buffer line if one of the lengths is larger than
+// |kMaxColumnAlignSize|.
+constexpr int kMaxColumnAlignSize = 200;
 
 lsPosition GetPositionForOffset(const std::string& content, int offset) {
   if (offset >= content.size())
@@ -69,13 +74,13 @@ int MyersDiff(const std::string& a, const std::string& b, int threshold) {
   return MyersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
 }
 
-// Computes Levenshtein edit distance with O(N*M) Needleman-Wunsch algorithm
+// Computes edit distance with O(N*M) Needleman-Wunsch algorithm
 // and returns a distance vector where d[i] = cost of aligning a to b[0,i).
 //
 // Myers' diff algorithm is used to find best matching line while this one is
 // used to align a single column because Myers' needs some twiddling to return
 // distance vector.
-std::vector<int> LevenshteinDistance(std::string a, std::string b) {
+std::vector<int> EditDistanceVector(std::string a, std::string b) {
   std::vector<int> d(b.size() + 1);
   std::iota(d.begin(), d.end(), 0);
   for (int i = 0; i < (int)a.size(); i++) {
@@ -83,11 +88,52 @@ std::vector<int> LevenshteinDistance(std::string a, std::string b) {
     d[0] = i + 1;
     for (int j = 0; j < (int)b.size(); j++) {
       int t = d[j + 1];
-      d[j + 1] = a[i] == b[j] ? ul : std::min(ul, std::min(d[j], d[j + 1])) + 1;
+      d[j + 1] = a[i] == b[j] ? ul : std::min(d[j], d[j + 1]) + 1;
       ul = t;
     }
   }
   return d;
+}
+
+// Find matching position of |a[column]| in |b|.
+// This is actually a single step of Hirschberg's sequence alignment algorithm.
+int AlignColumn(const std::string& a, int column, std::string b) {
+  int head = 0, tail = 0;
+  while (head < (int)a.size() && head < (int)b.size() && a[head] == b[head])
+    head++;
+  while (tail < (int)a.size() && tail < (int)b.size() &&
+         a[a.size() - 1 - tail] == b[b.size() - 1 - tail])
+    tail++;
+  if (column < head)
+    return column;
+  if ((int)a.size() - tail <= column)
+    return column + b.size() - a.size();
+  if (std::max(a.size(), b.size()) - head - tail >= kMaxColumnAlignSize)
+    return std::min(column, (int)b.size());
+
+  // b[head, tail)
+  b = b.substr(head, b.size() - tail - head);
+
+  // left[i] = cost of aligning a[head, column) to b[head, head + i)
+  std::vector<int> left = EditDistanceVector(a.substr(head, column - head), b);
+
+  // right[i] = cost of aligning a[column, a.size() - tail) to b[head + i,
+  // b.size() - tail)
+  std::string a_rev = a.substr(column, a.size() - tail - column);
+  std::reverse(a_rev.begin(), a_rev.end());
+  std::reverse(b.begin(), b.end());
+  std::vector<int> right = EditDistanceVector(a_rev, b);
+  std::reverse(right.begin(), right.end());
+
+  int best = 0, best_cost = INT_MAX;
+  for (size_t i = 0; i < left.size(); i++) {
+    int cost = left[i] + right[i];
+    if (cost < best_cost) {
+      best_cost = cost;
+      best = i;
+    }
+  }
+  return head + best;
 }
 
 // Find matching buffer line of index_lines[line].
@@ -99,8 +145,12 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                int* column,
                                const std::vector<std::string>& buffer_lines) {
   // If this is a confident mapping, returns.
-  if (index_to_buffer[line] >= 0)
-    return index_to_buffer[line];
+  if (index_to_buffer[line] >= 0) {
+    int ret = index_to_buffer[line];
+    if (column)
+      *column = AlignColumn(index_lines[line], *column, buffer_lines[ret]);
+    return ret;
+  }
 
   // Find the nearest two confident lines above and below.
   int up = line, down = line;
@@ -123,6 +173,8 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
       best = i;
     }
   }
+  if (column)
+    *column = AlignColumn(index_lines[line], *column, buffer_lines[best]);
   return best;
 }
 
