@@ -145,6 +145,7 @@ void WorkingFile::ComputeLineMapping() {
     buffer_hashes[i++] = h;
   }
 
+  // Align unique lines.
   i = 0;
   for (auto h : index_hashes) {
     if (from_index[i] >= 0) {
@@ -159,22 +160,23 @@ void WorkingFile::ComputeLineMapping() {
     i++;
   }
 
-  std::fill(from_buffer.begin(), from_buffer.end(), -1);
+  // Extending upwards and downwards.
   for (i = 0; i < (int)index_hashes.size() - 1; i++) {
     int j = from_index[i];
     if (0 <= j && j + 1 < buffer_hashes.size() &&
-        index_hashes[i + 1] == buffer_hashes[j + 1]) {
+        index_hashes[i + 1] == buffer_hashes[j + 1])
       from_index[i + 1] = j + 1;
-      from_buffer[j + 1] = i + 1;
-    }
   }
   for (i = (int)index_hashes.size(); --i > 0; ) {
     int j = from_index[i];
-    if (0 < j && index_hashes[i - 1] == buffer_hashes[j - 1]) {
+    if (0 < j && index_hashes[i - 1] == buffer_hashes[j - 1])
       from_index[i - 1] = j - 1;
-      from_buffer[j - 1] = i - 1;
-    }
   }
+
+  std::fill(from_buffer.begin(), from_buffer.end(), -1);
+  for (i = 0; i < (int)index_hashes.size(); i++)
+    if (from_index[i] >= 0)
+      from_buffer[from_index[i]] = i;
 }
 
 optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) {
