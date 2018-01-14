@@ -149,13 +149,13 @@ void WorkingFile::OnBufferContentUpdated() {
 // to align other identical lines (but not unique).
 void WorkingFile::ComputeLineMapping() {
   std::unordered_map<uint64_t, int> hash_to_unique;
-  std::vector<uint64_t> index_hashes(index_lines.size()),
-      buffer_hashes(buffer_lines.size());
+  std::vector<uint64_t> index_hashes(index_lines.size());
+  std::vector<uint64_t> buffer_hashes(buffer_lines.size());
   index_to_buffer.resize(index_lines.size());
   buffer_to_index.resize(buffer_lines.size());
   hash_to_unique.reserve(std::max(index_to_buffer.size(), buffer_to_index.size()));
 
-  // For index line i, set from_index[i] to -1 if line i is duplicated.
+  // For index line i, set index_to_buffer[i] to -1 if line i is duplicated.
   int i = 0;
   for (auto& line : index_lines) {
     std::string trimmed = Trim(line);
@@ -172,7 +172,7 @@ void WorkingFile::ComputeLineMapping() {
     index_hashes[i++] = h;
   }
 
-  // For buffer line i, set from_buffer[i] to -1 if line i is duplicated.
+  // For buffer line i, set buffer_to_index[i] to -1 if line i is duplicated.
   i = 0;
   hash_to_unique.clear();
   for (auto& line : buffer_lines) {
@@ -218,7 +218,7 @@ void WorkingFile::ComputeLineMapping() {
       index_to_buffer[i - 1] = j - 1;
   }
 
-  // |buffer_to_index| is a reverse mapping of |index_to_buffer|.
+  // |buffer_to_index| is a inverse mapping of |index_to_buffer|.
   std::fill(buffer_to_index.begin(), buffer_to_index.end(), -1);
   for (i = 0; i < (int)index_hashes.size(); i++)
     if (index_to_buffer[i] >= 0)
