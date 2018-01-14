@@ -32,7 +32,11 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
   return result;
 }
 
-int MyersDiff(const char *a, int la, const char *b, int lb, int threshold) {
+// Computes the edit distance of strings [a,a+la) and [b,b+lb) with Eugene W.
+// Myers' O(ND) diff algorithm.
+// Costs: insertion=1, deletion=1, no substitution.
+// If the distance is larger than threshold, returns threshould + 1.
+int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
   assert(threshold <= kMaxDiff);
   static int v_static[kMaxDiff + 2];
 	const char *ea = a + la, *eb = b + lb;
@@ -64,13 +68,18 @@ int MyersDiff(const std::string& a, const std::string& b, int threshold) {
   return MyersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
 }
 
-// Find matching buffer line with index line and the converse.
+// Find matching buffer line of index_lines[line].
+// By symmetry, this can also be used to find matching index line of a buffer
+// line.
 optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                const std::vector<int>& index_to_buffer,
                                int line,
                                const std::vector<std::string>& buffer_lines) {
+  // If this is a confident mapping, returns.
   if (index_to_buffer[line] >= 0)
     return index_to_buffer[line];
+
+  // Find the nearest two confident lines above and below.
   int up = line, down = line;
   while (--up >= 0 && index_to_buffer[up] < 0) {}
   while (++down < int(index_to_buffer.size()) && index_to_buffer[down] < 0) {}
@@ -79,6 +88,9 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                              : index_to_buffer[down];
   if (up > down)
     return nullopt;
+
+  // Search for lines [up,down] and use Myers's diff algorithm to find the best
+  // match (least edit distance).
   int best = up, best_dist = kMaxDiff + 1;
   const std::string& needle = index_lines[line];
   for (int i = up; i <= down; i++) {
@@ -129,16 +141,19 @@ void WorkingFile::OnBufferContentUpdated() {
   buffer_to_index.clear();
 }
 
-// Variant of Paul Heckel's diff algorithm
+// Variant of Paul Heckel's diff algorithm to compute |index_to_buffer| and
+// |buffer_to_index|.
+// The core idea is that if a line is unique in both index and buffer,
+// we are confident that the line appeared in index maps to the one appeared in
+// buffer. And then using them as start points to extend upwards and downwards
+// to align other identical lines (but not unique).
 void WorkingFile::ComputeLineMapping() {
   std::unordered_map<uint64_t, int> hash_to_unique;
   std::vector<uint64_t> index_hashes(index_lines.size()),
       buffer_hashes(buffer_lines.size());
-  std::vector<int>& from_index = index_to_buffer;
-  std::vector<int>& from_buffer = buffer_to_index;
-  from_index.resize(index_lines.size());
-  from_buffer.resize(buffer_lines.size());
-  hash_to_unique.reserve(std::max(from_index.size(), from_buffer.size()));
+  index_to_buffer.resize(index_lines.size());
+  buffer_to_index.resize(buffer_lines.size());
+  hash_to_unique.reserve(std::max(index_to_buffer.size(), buffer_to_index.size()));
 
   // For index line i, set from_index[i] to -1 if line i is duplicated.
   int i = 0;
@@ -148,11 +163,11 @@ void WorkingFile::ComputeLineMapping() {
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
-      from_index[i] = i;
+      index_to_buffer[i] = i;
     } else {
       if (it->second >= 0)
-        from_index[it->second] = -1;
-      from_index[i] = it->second = -1;
+        index_to_buffer[it->second] = -1;
+      index_to_buffer[i] = it->second = -1;
     }
     index_hashes[i++] = h;
   }
@@ -166,47 +181,48 @@ void WorkingFile::ComputeLineMapping() {
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
-      from_buffer[i] = i;
+      buffer_to_index[i] = i;
     } else {
       if (it->second >= 0)
-        from_buffer[it->second] = -1;
-      from_buffer[i] = it->second = -1;
+        buffer_to_index[it->second] = -1;
+      buffer_to_index[i] = it->second = -1;
     }
     buffer_hashes[i++] = h;
   }
 
-  // If index line i is the same as buffer line j, and they are both unique,
+  // If index line i is the identical to buffer line j, and they are both unique,
   // align them by pointing from_index[i] to j.
   i = 0;
   for (auto h : index_hashes) {
-    if (from_index[i] >= 0) {
+    if (index_to_buffer[i] >= 0) {
       auto it = hash_to_unique.find(h);
       if (it != hash_to_unique.end() && it->second >= 0 &&
-          from_buffer[it->second] >= 0)
-        from_index[i] = it->second;
+          buffer_to_index[it->second] >= 0)
+        index_to_buffer[i] = it->second;
       else
-        from_index[i] = -1;
+        index_to_buffer[i] = -1;
     }
     i++;
   }
 
   // Starting at unique lines, extend upwards and downwards.
   for (i = 0; i < (int)index_hashes.size() - 1; i++) {
-    int j = from_index[i];
+    int j = index_to_buffer[i];
     if (0 <= j && j + 1 < buffer_hashes.size() &&
         index_hashes[i + 1] == buffer_hashes[j + 1])
-      from_index[i + 1] = j + 1;
+      index_to_buffer[i + 1] = j + 1;
   }
   for (i = (int)index_hashes.size(); --i > 0; ) {
-    int j = from_index[i];
+    int j = index_to_buffer[i];
     if (0 < j && index_hashes[i - 1] == buffer_hashes[j - 1])
-      from_index[i - 1] = j - 1;
+      index_to_buffer[i - 1] = j - 1;
   }
 
-  std::fill(from_buffer.begin(), from_buffer.end(), -1);
+  // |buffer_to_index| is a reverse mapping of |index_to_buffer|.
+  std::fill(buffer_to_index.begin(), buffer_to_index.end(), -1);
   for (i = 0; i < (int)index_hashes.size(); i++)
-    if (from_index[i] >= 0)
-      from_buffer[from_index[i]] = i;
+    if (index_to_buffer[i] >= 0)
+      buffer_to_index[index_to_buffer[i]] = i;
 }
 
 optional<int> WorkingFile::GetBufferLineFromIndexLine(int line) {

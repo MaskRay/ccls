@@ -19,7 +19,11 @@ struct WorkingFile {
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
   std::vector<std::string> buffer_lines;
   // Mappings between index line number and buffer line number.
-  // Empty indicates stale.
+  // Empty indicates either buffer or index has been changed and re-computation
+  // is required.
+  // For index_to_buffer[i] == j, if j >= 0, we are confident that index line
+  // i maps to buffer line j; if j == -1, FindMatchingLine will use the nearest
+  // confident lines to resolve its line number.
   std::vector<int> index_to_buffer;
   std::vector<int> buffer_to_index;
   // A set of diagnostics that have been reported for this file.
