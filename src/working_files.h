@@ -17,10 +17,7 @@ struct WorkingFile {
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
   std::vector<std::string> index_lines;
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
-  // Note: all_buffer_lines is whitespace stripped.
-  std::vector<std::string> all_buffer_lines;
-  // Note: This assumes 0-based lines (1-based lines are normally assumed).
-  std::vector<std::string> raw_buffer_lines;
+  std::vector<std::string> buffer_lines;
   // Mappings between index line number and buffer line number.
   // Empty indicates stale.
   std::vector<int> index_to_buffer;
@@ -43,10 +40,6 @@ struct WorkingFile {
   // Find the indexed-line which should be shown for |buffer_line|. This
   // accepts and returns 1-based lines.
   optional<int> GetIndexLineFromBufferLine(int buffer_line);
-
-  optional<std::string> GetBufferLineContentFromIndexLine(
-      int indexed_line,
-      optional<int>* out_buffer_line);
 
   // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
   // lex_utils.h/cc

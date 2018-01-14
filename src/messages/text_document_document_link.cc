@@ -61,17 +61,15 @@ struct TextDocumentDocumentLinkHandler
         return;
       }
       for (const IndexInclude& include : file->def->includes) {
-        optional<int> buffer_line;
-        optional<std::string> buffer_line_content =
-            working_file->GetBufferLineContentFromIndexLine(include.line,
-                                                            &buffer_line);
-        if (!buffer_line || !buffer_line_content)
+        optional<int> buffer_line =
+            working_file->GetBufferLineFromIndexLine(include.line);
+        if (!buffer_line)
           continue;
 
         // Subtract 1 from line because querydb stores 1-based lines but
         // vscode expects 0-based lines.
-        optional<lsRange> between_quotes =
-            ExtractQuotedRange(*buffer_line - 1, *buffer_line_content);
+        optional<lsRange> between_quotes = ExtractQuotedRange(
+            *buffer_line - 1, working_file->buffer_lines[*buffer_line - 1]);
         if (!between_quotes)
           continue;
 

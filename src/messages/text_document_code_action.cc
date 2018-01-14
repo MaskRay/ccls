@@ -35,14 +35,15 @@ optional<int> FindIncludeLine(const std::vector<std::string>& lines,
   int last_line_compare = 1;
 
   for (int line = 0; line < (int)lines.size(); ++line) {
-    if (!StartsWith(lines[line], "#include")) {
+    std::string text = Trim(lines[line]);
+    if (!StartsWith(text, "#include")) {
       last_line_compare = 1;
       continue;
     }
 
     last_include_line = line;
 
-    int current_line_compare = full_include_line.compare(lines[line]);
+    int current_line_compare = full_include_line.compare(text);
     if (current_line_compare == 0)
       return nullopt;
 
@@ -332,7 +333,7 @@ struct TextDocumentCodeActionHandler
 
     // TODO: auto-insert namespace?
 
-    int default_line = (int)working_file->all_buffer_lines.size();
+    int default_line = (int)working_file->buffer_lines.size();
 
     // Make sure to call EnsureImplFile before using these. We lazy load
     // them because computing the values could involve an entire project
@@ -497,7 +498,7 @@ struct TextDocumentCodeActionHandler
                include_insert_strings) {
             lsTextEdit edit;
             optional<int> include_line = FindIncludeLine(
-                working_file->all_buffer_lines, include_insert_string);
+                working_file->buffer_lines, include_insert_string);
             if (!include_line)
               continue;
 

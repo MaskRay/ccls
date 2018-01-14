@@ -64,6 +64,34 @@ int MyersDiff(const std::string& a, const std::string& b, int threshold) {
   return MyersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
 }
 
+// Find matching buffer line with index line and the converse.
+optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
+                               const std::vector<int>& index_to_buffer,
+                               int line,
+                               const std::vector<std::string>& buffer_lines) {
+  line--;
+  if (index_to_buffer[line] >= 0)
+    return index_to_buffer[line] + 1;
+  int up = line, down = line;
+  while (--up >= 0 && index_to_buffer[up] < 0) {}
+  while (++down < int(index_to_buffer.size()) && index_to_buffer[down] < 0) {}
+  up = up < 0 ? 0 : index_to_buffer[up];
+  down = down >= int(index_to_buffer.size()) ? int(buffer_lines.size()) - 1
+                                             : index_to_buffer[down];
+  if (up > down)
+    return nullopt;
+  int best = up, best_dist = kMaxDiff + 1;
+  const std::string& needle = index_lines[line];
+  for (int i = up; i <= down; i++) {
+    int dist = MyersDiff(needle, buffer_lines[i], kMaxDiff);
+    if (dist < best_dist) {
+      best_dist = dist;
+      best = i;
+    }
+  }
+  return best + 1;
+}
+
 }  // namespace
 
 std::vector<CXUnsavedFile> WorkingFiles::Snapshot::AsUnsavedFiles() const {
@@ -96,8 +124,7 @@ void WorkingFile::SetIndexContent(const std::string& index_content) {
 }
 
 void WorkingFile::OnBufferContentUpdated() {
-  all_buffer_lines = ToLines(buffer_content, true /*trim_whitespace*/);
-  raw_buffer_lines = ToLines(buffer_content, false /*trim_whitespace*/);
+  buffer_lines = ToLines(buffer_content, false /*trim_whitespace*/);
 
   index_to_buffer.clear();
   buffer_to_index.clear();
@@ -107,11 +134,11 @@ void WorkingFile::OnBufferContentUpdated() {
 void WorkingFile::ComputeLineMapping() {
   std::unordered_map<uint64_t, int> hash_to_unique;
   std::vector<uint64_t> index_hashes(index_lines.size()),
-      buffer_hashes(all_buffer_lines.size());
+      buffer_hashes(buffer_lines.size());
   std::vector<int>& from_index = index_to_buffer;
   std::vector<int>& from_buffer = buffer_to_index;
   from_index.resize(index_lines.size());
-  from_buffer.resize(all_buffer_lines.size());
+  from_buffer.resize(buffer_lines.size());
   hash_to_unique.reserve(std::max(from_index.size(), from_buffer.size()));
 
   // For index line i, set from_index[i] to -1 if line i is duplicated.
@@ -134,8 +161,9 @@ void WorkingFile::ComputeLineMapping() {
   // For buffer line i, set from_buffer[i] to -1 if line i is duplicated.
   i = 0;
   hash_to_unique.clear();
-  for (auto& line : all_buffer_lines) {
-    uint64_t h = HashUSR(line.data(), line.size());
+  for (auto& line : buffer_lines) {
+    std::string trimmed = Trim(line);
+    uint64_t h = HashUSR(trimmed.data(), trimmed.size());
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
@@ -148,17 +176,16 @@ void WorkingFile::ComputeLineMapping() {
     buffer_hashes[i++] = h;
   }
 
-  // Align unique lines of index and buffer by setting from_index[i] and
-  // from_buffer[j] pointing to each other.
+  // If index line i is the same as buffer line j, and they are both unique,
+  // align them by pointing from_index[i] to j.
   i = 0;
   for (auto h : index_hashes) {
     if (from_index[i] >= 0) {
       auto it = hash_to_unique.find(h);
       if (it != hash_to_unique.end() && it->second >= 0 &&
-          from_buffer[it->second] >= 0) {
+          from_buffer[it->second] >= 0)
         from_index[i] = it->second;
-        from_buffer[it->second] = i;
-      } else
+      else
         from_index[i] = -1;
     }
     i++;
@@ -183,7 +210,7 @@ void WorkingFile::ComputeLineMapping() {
       from_buffer[from_index[i]] = i;
 }
 
-optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) {
+optional<int> WorkingFile::GetBufferLineFromIndexLine(int line) {
   // The implementation is simple but works pretty well for most cases. We
   // lookup the line contents in the indexed file contents, and try to find the
   // most similar line in the current buffer file.
@@ -196,9 +223,9 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) {
 
   // TODO: reenable this assert once we are using the real indexed file.
   // assert(index_line >= 1 && index_line <= index_lines.size());
-  if (index_line < 1 || index_line > index_lines.size()) {
+  if (line < 1 || line > index_lines.size()) {
     loguru::Text stack = loguru::stacktrace();
-    LOG_S(WARNING) << "Bad index_line (got " << index_line << ", expected [1, "
+    LOG_S(WARNING) << "Bad index_line (got " << line << ", expected [1, "
                    << index_lines.size() << "]) in " << filename
                    << stack.c_str();
     return nullopt;
@@ -206,82 +233,24 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int index_line) {
 
   if (index_to_buffer.empty())
     ComputeLineMapping();
-  index_line--;
-  if (index_to_buffer[index_line] >= 0)
-    return index_to_buffer[index_line] + 1;
-  int up = index_line, down = index_line;
-  while (--up >= 0 && index_to_buffer[up] < 0) {}
-  while (++down < int(index_to_buffer.size()) && index_to_buffer[down] < 0) {}
-  up = up < 0 ? 0 : index_to_buffer[up];
-  down = down >= int(index_to_buffer.size()) ? buffer_to_index.size() - 1
-                  : index_to_buffer[down];
-  if (up > down)
-    return nullopt;
-  int best = up, best_dist = kMaxDiff + 1;
-  const std::string& needle = Trim(index_lines[index_line]);
-  for (int i = up; i <= down; i++) {
-    int dist = MyersDiff(needle, all_buffer_lines[i], kMaxDiff);
-    if (dist < best_dist) {
-      best_dist = dist;
-      best = i;
-    }
-  }
-  return best + 1;
+  return FindMatchingLine(index_lines, index_to_buffer, line, buffer_lines);
 }
 
-optional<int> WorkingFile::GetIndexLineFromBufferLine(int buffer_line) {
+optional<int> WorkingFile::GetIndexLineFromBufferLine(int line) {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
-  // assert(buffer_line >= 1 && buffer_line < all_buffer_lines.size());
-  if (buffer_line < 1 || buffer_line > all_buffer_lines.size()) {
+  if (line < 1 || line > buffer_lines.size()) {
     loguru::Text stack = loguru::stacktrace();
-    LOG_S(WARNING) << "Bad buffer_line (got " << buffer_line
-                   << ", expected [1, " << all_buffer_lines.size() << "]) in "
+    LOG_S(WARNING) << "Bad buffer_line (got " << line
+                   << ", expected [1, " << buffer_lines.size() << "]) in "
                    << filename << stack.c_str();
     return nullopt;
   }
 
   if (buffer_to_index.empty())
     ComputeLineMapping();
-  buffer_line--;
-  int up = buffer_line, down = buffer_line;
-  while (--up >= 0 && buffer_to_index[up] < 0) {}
-  while (++down < int(buffer_to_index.size()) && buffer_to_index[down] < 0) {}
-  up = up < 0 ? 0 : buffer_to_index[up];
-  down = down >= int(buffer_to_index.size()) ? index_to_buffer.size() - 1
-                  : buffer_to_index[down];
-  if (up > down)
-    return nullopt;
-  int best = up, best_dist = kMaxDiff + 1;
-  const std::string& needle = Trim(raw_buffer_lines[buffer_line]);
-  for (int i = up; i <= down; i++) {
-    int dist = MyersDiff(needle, index_lines[i], kMaxDiff);
-    if (dist < best_dist) {
-      best_dist = dist;
-      best = i;
-    }
-  }
-  return best + 1;
-}
-
-optional<std::string> WorkingFile::GetBufferLineContentFromIndexLine(
-    int indexed_line,
-    optional<int>* out_buffer_line) {
-  optional<int> buffer_line = GetBufferLineFromIndexLine(indexed_line);
-  if (out_buffer_line)
-    *out_buffer_line = buffer_line;
-
-  if (!buffer_line)
-    return nullopt;
-
-  if (*buffer_line < 1 || *buffer_line >= all_buffer_lines.size()) {
-    LOG_S(WARNING) << "GetBufferLineContentFromIndexLine buffer line lookup not"
-                   << " in all_buffer_lines";
-    return nullopt;
-  }
-
-  return all_buffer_lines[*buffer_line - 1];
+  return FindMatchingLine(buffer_lines, buffer_to_index, line, index_lines);
 }
 
 std::string WorkingFile::FindClosestCallNameInBuffer(

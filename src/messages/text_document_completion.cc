@@ -226,8 +226,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
     // of order, ie, we get completion request before buffer content update.
     std::string buffer_line;
     if (request->params.position.line >= 0 &&
-        request->params.position.line < file->raw_buffer_lines.size()) {
-      buffer_line = file->raw_buffer_lines[request->params.position.line];
+        request->params.position.line < file->buffer_lines.size()) {
+      buffer_line = file->buffer_lines[request->params.position.line];
     }
 
     // Check for - and : before completing -> or ::, since vscode does not
