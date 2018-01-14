@@ -318,11 +318,12 @@ optional<lsPosition> GetLsPosition(WorkingFile* working_file,
   if (!working_file)
     return lsPosition(position.line, position.column);
 
-  optional<int> start = working_file->GetBufferLineFromIndexLine(position.line);
+  int column = position.column;
+  optional<int> start = working_file->GetBufferPosFromIndexPos(position.line, &column);
   if (!start)
     return nullopt;
 
-  return lsPosition(*start, position.column);
+  return lsPosition(*start, column);
 }
 
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
@@ -332,10 +333,11 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
         lsPosition(location.end.line, location.end.column));
   }
 
+  int start_column = location.start.column, end_column = location.end.column;
   optional<int> start =
-      working_file->GetBufferLineFromIndexLine(location.start.line);
+      working_file->GetBufferPosFromIndexPos(location.start.line, &start_column);
   optional<int> end =
-      working_file->GetBufferLineFromIndexLine(location.end.line);
+      working_file->GetBufferPosFromIndexPos(location.end.line, &end_column);
   if (!start || !end)
     return nullopt;
 
@@ -348,8 +350,8 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (*end < *start)
     *end = *start + (location.end.line - location.start.line);
 
-  return lsRange(lsPosition(*start, location.start.column),
-                 lsPosition(*end, location.end.column));
+  return lsRange(lsPosition(*start, start_column),
+                 lsPosition(*end, end_column));
 }
 
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
@@ -482,7 +484,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   int target_column = position.character;
   if (working_file) {
     optional<int> index_line =
-        working_file->GetIndexLineFromBufferLine(target_line);
+        working_file->GetIndexPosFromBufferPos(target_line, &target_column);
     if (index_line)
       target_line = *index_line;
   }

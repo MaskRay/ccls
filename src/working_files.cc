@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <numeric>
 
 namespace {
 
@@ -68,12 +69,34 @@ int MyersDiff(const std::string& a, const std::string& b, int threshold) {
   return MyersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
 }
 
+// Computes Levenshtein edit distance with O(N*M) Needleman-Wunsch algorithm
+// and returns a distance vector where d[i] = cost of aligning a to b[0,i).
+//
+// Myers' diff algorithm is used to find best matching line while this one is
+// used to align a single column because Myers' needs some twiddling to return
+// distance vector.
+std::vector<int> LevenshteinDistance(std::string a, std::string b) {
+  std::vector<int> d(b.size() + 1);
+  std::iota(d.begin(), d.end(), 0);
+  for (int i = 0; i < (int)a.size(); i++) {
+    int ul = d[0];
+    d[0] = i + 1;
+    for (int j = 0; j < (int)b.size(); j++) {
+      int t = d[j + 1];
+      d[j + 1] = a[i] == b[j] ? ul : std::min(ul, std::min(d[j], d[j + 1])) + 1;
+      ul = t;
+    }
+  }
+  return d;
+}
+
 // Find matching buffer line of index_lines[line].
 // By symmetry, this can also be used to find matching index line of a buffer
 // line.
 optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                const std::vector<int>& index_to_buffer,
                                int line,
+                               int* column,
                                const std::vector<std::string>& buffer_lines) {
   // If this is a confident mapping, returns.
   if (index_to_buffer[line] >= 0)
@@ -225,7 +248,7 @@ void WorkingFile::ComputeLineMapping() {
       buffer_to_index[index_to_buffer[i]] = i;
 }
 
-optional<int> WorkingFile::GetBufferLineFromIndexLine(int line) {
+optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column) {
   // The implementation is simple but works pretty well for most cases. We
   // lookup the line contents in the indexed file contents, and try to find the
   // most similar line in the current buffer file.
@@ -248,10 +271,10 @@ optional<int> WorkingFile::GetBufferLineFromIndexLine(int line) {
 
   if (index_to_buffer.empty())
     ComputeLineMapping();
-  return FindMatchingLine(index_lines, index_to_buffer, line, buffer_lines);
+  return FindMatchingLine(index_lines, index_to_buffer, line, column, buffer_lines);
 }
 
-optional<int> WorkingFile::GetIndexLineFromBufferLine(int line) {
+optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int* column) {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
@@ -265,7 +288,7 @@ optional<int> WorkingFile::GetIndexLineFromBufferLine(int line) {
 
   if (buffer_to_index.empty())
     ComputeLineMapping();
-  return FindMatchingLine(buffer_lines, buffer_to_index, line, index_lines);
+  return FindMatchingLine(buffer_lines, buffer_to_index, line, column, index_lines);
 }
 
 std::string WorkingFile::FindClosestCallNameInBuffer(

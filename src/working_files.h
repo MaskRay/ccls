@@ -38,12 +38,12 @@ struct WorkingFile {
   // This should be called whenever |buffer_content| has changed.
   void OnBufferContentUpdated();
 
-  // Find the buffer-line which should be shown for |indexed_line|. This
-  // accepts and returns 1-based lines.
-  optional<int> GetBufferLineFromIndexLine(int indexed_line);
-  // Find the indexed-line which should be shown for |buffer_line|. This
-  // accepts and returns 1-based lines.
-  optional<int> GetIndexLineFromBufferLine(int buffer_line);
+  // Finds the buffer line number which maps to index line number |line|.
+  // Also resolves |column| if not NULL.
+  optional<int> GetBufferPosFromIndexPos(int line, int* column);
+  // Finds the index line number which maps to buffer line number |line|.
+  // Also resolves |column| if not NULL.
+  optional<int> GetIndexPosFromBufferPos(int line, int* column);
 
   // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
   // lex_utils.h/cc

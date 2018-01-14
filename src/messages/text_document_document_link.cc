@@ -62,7 +62,7 @@ struct TextDocumentDocumentLinkHandler
       }
       for (const IndexInclude& include : file->def->includes) {
         optional<int> buffer_line =
-            working_file->GetBufferLineFromIndexLine(include.line);
+            working_file->GetBufferPosFromIndexPos(include.line, nullptr);
         if (!buffer_line)
           continue;
 
