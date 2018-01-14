@@ -21,12 +21,6 @@ struct WorkingFile {
   std::vector<std::string> all_buffer_lines;
   // Note: This assumes 0-based lines (1-based lines are normally assumed).
   std::vector<std::string> raw_buffer_lines;
-  // This map goes from disk-line -> indicies+1 in index_lines.
-  // Note: The items in the value entry are 1-based lines.
-  std::unordered_map<std::string, std::vector<int>> index_lines_lookup;
-  // This map goes from buffer-line -> indices+1 in all_buffer_lines.
-  // Note: The items in the value entry are 1-based liness.
-  std::unordered_map<std::string, std::vector<int>> all_buffer_lines_lookup;
   // Mappings between index line number and buffer line number.
   // Empty indicates stale.
   std::vector<int> index_to_buffer;
