@@ -267,18 +267,6 @@ struct TextDocumentCompletionHandler : MessageHandler {
           request->params.position, &is_global_completion,
           &existing_completion);
     }
-    
-    //If existing completion is empty, dont return completion results
-    //Only do this when trigger is not manual or context doesn't exist
-    //(for Atom support)
-    if (existing_completion.empty() && is_global_completion && (!(request->params.context) ||
-      request->params.context->triggerKind == lsCompletionTriggerKind::TriggerCharacter)) {
-      LOG_S(INFO) << "Existing completion is empty, no completion results will be returned";
-      Out_TextDocumentComplete out;
-      out.id = request->id;
-      QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
-      return;
-    }
 
     if (ShouldRunIncludeCompletion(buffer_line)) {
       Out_TextDocumentComplete out;
@@ -303,9 +291,24 @@ struct TextDocumentCompletionHandler : MessageHandler {
         }
       }
 
+      TrimInPlace(buffer_line);
       SortAndFilterCompletionResponse(&out, buffer_line);
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
+      // If existing completion is empty, dont return clang-based completion
+      // results Only do this when trigger is not manual or context doesn't
+      // exist (for Atom support).
+      if (existing_completion.empty() && is_global_completion &&
+          (!request->params.context || request->params.context->triggerKind ==
+                                           lsCompletionTriggerKind::Invoked)) {
+        LOG_S(INFO) << "Existing completion is empty, no completion results "
+                       "will be returned";
+        Out_TextDocumentComplete out;
+        out.id = request->id;
+        QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+        return;
+      }
+
       ClangCompleteManager::OnComplete callback = std::bind(
           [this, is_global_completion, existing_completion, request](
               const std::vector<lsCompletionItem>& results,
