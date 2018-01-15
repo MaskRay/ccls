@@ -319,7 +319,7 @@ optional<lsPosition> GetLsPosition(WorkingFile* working_file,
     return lsPosition(position.line, position.column);
 
   int column = position.column;
-  optional<int> start = working_file->GetBufferPosFromIndexPos(position.line, &column);
+  optional<int> start = working_file->GetBufferPosFromIndexPos(position.line, &column, false);
   if (!start)
     return nullopt;
 
@@ -335,9 +335,9 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
 
   int start_column = location.start.column, end_column = location.end.column;
   optional<int> start =
-      working_file->GetBufferPosFromIndexPos(location.start.line, &start_column);
+      working_file->GetBufferPosFromIndexPos(location.start.line, &start_column, false);
   optional<int> end =
-      working_file->GetBufferPosFromIndexPos(location.end.line, &end_column);
+      working_file->GetBufferPosFromIndexPos(location.end.line, &end_column, true);
   if (!start || !end)
     return nullopt;
 
@@ -483,8 +483,8 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   int target_line = position.line;
   int target_column = position.character;
   if (working_file) {
-    optional<int> index_line =
-        working_file->GetIndexPosFromBufferPos(target_line, &target_column);
+    optional<int> index_line = working_file->GetIndexPosFromBufferPos(
+        target_line, &target_column, false);
     if (index_line)
       target_line = *index_line;
   }

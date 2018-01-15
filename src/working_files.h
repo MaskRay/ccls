@@ -40,10 +40,12 @@ struct WorkingFile {
 
   // Finds the buffer line number which maps to index line number |line|.
   // Also resolves |column| if not NULL.
-  optional<int> GetBufferPosFromIndexPos(int line, int* column);
+  // When resolving a range, use is_end = false for begin() and is_end =
+  // true for end() to get a better alignment of |column|.
+  optional<int> GetBufferPosFromIndexPos(int line, int* column, bool is_end);
   // Finds the index line number which maps to buffer line number |line|.
   // Also resolves |column| if not NULL.
-  optional<int> GetIndexPosFromBufferPos(int line, int* column);
+  optional<int> GetIndexPosFromBufferPos(int line, int* column, bool is_end);
 
   // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
   // lex_utils.h/cc

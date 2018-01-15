@@ -97,7 +97,7 @@ std::vector<int> EditDistanceVector(std::string a, std::string b) {
 
 // Find matching position of |a[column]| in |b|.
 // This is actually a single step of Hirschberg's sequence alignment algorithm.
-int AlignColumn(const std::string& a, int column, std::string b) {
+int AlignColumn(const std::string& a, int column, std::string b, bool is_end) {
   int head = 0, tail = 0;
   while (head < (int)a.size() && head < (int)b.size() && a[head] == b[head])
     head++;
@@ -106,12 +106,12 @@ int AlignColumn(const std::string& a, int column, std::string b) {
     tail++;
   if (column < head)
     return column;
-  if ((int)a.size() - tail <= column)
+  if ((int)a.size() - tail < column)
     return column + b.size() - a.size();
   if (std::max(a.size(), b.size()) - head - tail >= kMaxColumnAlignSize)
     return std::min(column, (int)b.size());
 
-  // b[head, tail)
+  // b[head, b.size() - tail)
   b = b.substr(head, b.size() - tail - head);
 
   // left[i] = cost of aligning a[head, column) to b[head, head + i)
@@ -128,7 +128,7 @@ int AlignColumn(const std::string& a, int column, std::string b) {
   int best = 0, best_cost = INT_MAX;
   for (size_t i = 0; i < left.size(); i++) {
     int cost = left[i] + right[i];
-    if (cost < best_cost) {
+    if (is_end ? cost < best_cost : cost <= best_cost) {
       best_cost = cost;
       best = i;
     }
@@ -143,12 +143,14 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                const std::vector<int>& index_to_buffer,
                                int line,
                                int* column,
-                               const std::vector<std::string>& buffer_lines) {
+                               const std::vector<std::string>& buffer_lines,
+                               bool is_end) {
   // If this is a confident mapping, returns.
   if (index_to_buffer[line] >= 0) {
     int ret = index_to_buffer[line];
     if (column)
-      *column = AlignColumn(index_lines[line], *column, buffer_lines[ret]);
+      *column =
+          AlignColumn(index_lines[line], *column, buffer_lines[ret], is_end);
     return ret;
   }
 
@@ -174,7 +176,8 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
     }
   }
   if (column)
-    *column = AlignColumn(index_lines[line], *column, buffer_lines[best]);
+    *column =
+        AlignColumn(index_lines[line], *column, buffer_lines[best], is_end);
   return best;
 }
 
@@ -300,7 +303,7 @@ void WorkingFile::ComputeLineMapping() {
       buffer_to_index[index_to_buffer[i]] = i;
 }
 
-optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column) {
+optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column, bool is_end) {
   // The implementation is simple but works pretty well for most cases. We
   // lookup the line contents in the indexed file contents, and try to find the
   // most similar line in the current buffer file.
@@ -323,10 +326,11 @@ optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column) {
 
   if (index_to_buffer.empty())
     ComputeLineMapping();
-  return FindMatchingLine(index_lines, index_to_buffer, line, column, buffer_lines);
+  return FindMatchingLine(index_lines, index_to_buffer, line, column,
+                          buffer_lines, is_end);
 }
 
-optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int* column) {
+optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int* column, bool is_end) {
   // See GetBufferLineFromIndexLine for additional comments.
 
   // Note: |index_line| and |buffer_line| are 1-based.
@@ -340,7 +344,8 @@ optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int* column) {
 
   if (buffer_to_index.empty())
     ComputeLineMapping();
-  return FindMatchingLine(buffer_lines, buffer_to_index, line, column, index_lines);
+  return FindMatchingLine(buffer_lines, buffer_to_index, line, column,
+                          index_lines, is_end);
 }
 
 std::string WorkingFile::FindClosestCallNameInBuffer(
