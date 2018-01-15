@@ -170,7 +170,7 @@ struct ConstructorCache {
     if (ctors.empty())
       return nullopt;
 
-    Usr best_usr;
+    Usr best_usr = ctors[0].usr;
     int best_score = INT_MIN;
 
     // Scan constructors for the best possible match.

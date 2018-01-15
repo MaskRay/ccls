@@ -1,5 +1,7 @@
 #pragma once
 
+#include "port.h"
+
 #include <macro_map.h>
 #include <optional.h>
 #include <variant.h>
@@ -73,12 +75,16 @@ struct IndexFile;
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
-#define MAKE_REFLECT_TYPE_PROXY(type, as_type)   \
-  template <typename TVisitor>                   \
-  void Reflect(TVisitor& visitor, type& value) { \
-    auto value0 = static_cast<as_type>(value);   \
-    ::Reflect(visitor, value0);                  \
-    value = static_cast<type>(value0);           \
+// TODO Make it inline because this macro can be used in header files.
+#define MAKE_REFLECT_TYPE_PROXY(type, as_type)                          \
+  ATTRIBUTE_UNUSED inline void Reflect(Reader& visitor, type& value) {  \
+    as_type value0;                                                     \
+    ::Reflect(visitor, value0);                                         \
+    value = static_cast<type>(value0);                                  \
+  }                                                                     \
+  inline void Reflect(Writer& visitor, type& value) {                   \
+    auto value0 = static_cast<as_type>(value);                          \
+    ::Reflect(visitor, value0);                                         \
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
