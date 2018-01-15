@@ -126,6 +126,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   for (SymbolRef sym : file->def->all_symbols) {
     std::string detailed_name;
     bool is_type_member = false;
+    ClangSymbolKind kind = ClangSymbolKind::Unknown;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.idx.kind) {
       case SymbolKind::Func: {
@@ -134,6 +135,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           continue;  // applies to for loop
         if (func->def->is_operator)
           continue;  // applies to for loop
+        kind = func->def->kind;
         is_type_member = func->def->declaring_type.has_value();
         detailed_name = func->def->short_name;
 
@@ -159,19 +161,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryVar* var = &db->vars[sym.idx.idx];
         if (!var->def)
           continue;  // applies to for loop
-        switch (var->def->kind) {
-          // TODO
-          case ClangSymbolKind::EnumConstant:
-          case ClangSymbolKind::Field:
-          case ClangSymbolKind::Macro:
-          case ClangSymbolKind::Module:
-          case ClangSymbolKind::Parameter:
-          case ClangSymbolKind::StaticProperty:
-          case ClangSymbolKind::Variable:
-            break;
-          default:
-            continue;  // applies to for loop
-        }
+        kind = var->def->kind;
         is_type_member = var->def->declaring_type.has_value();
         detailed_name = var->def->short_name;
         break;
@@ -180,6 +170,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryType* type = &db->types[sym.idx.idx];
         if (!type->def)
           continue;  // applies to for loop
+        kind = type->def->kind;
         detailed_name = type->def->detailed_name;
         break;
       }
@@ -196,6 +187,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         Out_CqueryPublishSemanticHighlighting::Symbol symbol;
         symbol.stableId =
             semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
+        symbol.kind = static_cast<int>(kind);
         symbol.type = map_symbol_kind_to_symbol_type(sym.idx.kind);
         symbol.isTypeMember = is_type_member;
         symbol.ranges.push_back(*loc);
