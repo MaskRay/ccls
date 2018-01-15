@@ -34,16 +34,15 @@ struct QueryLocation {
   }
 
   bool operator==(const QueryLocation& other) const {
-    // Note: We ignore |is_interesting|.
     return path == other.path && range == other.range;
   }
   bool operator!=(const QueryLocation& other) const {
     return !(*this == other);
   }
   bool operator<(const QueryLocation& o) const {
-    if (path < o.path)
-      return true;
-    return path == o.path && range < o.range;
+    if (path != o.path)
+      return path < o.path;
+    return range < o.range;
   }
 };
 MAKE_REFLECT_STRUCT(QueryLocation, path, range);
@@ -77,9 +76,9 @@ struct SymbolIdx {
   }
   bool operator!=(const SymbolIdx& that) const { return !(*this == that); }
   bool operator<(const SymbolIdx& that) const {
-    if (kind < that.kind)
-      return true;
-    return kind == that.kind && idx < that.idx;
+    if (kind != that.kind)
+      return kind < that.kind;
+    return idx < that.idx;
   }
 };
 MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
@@ -97,9 +96,9 @@ struct SymbolRef {
   }
   bool operator!=(const SymbolRef& that) const { return !(*this == that); }
   bool operator<(const SymbolRef& that) const {
-    if (idx < that.idx)
-      return true;
-    return idx == that.idx && loc.range.start < that.loc.range.start;
+    if (idx != that.idx)
+      return idx < that.idx;
+    return loc < that.loc;
   }
 };
 MAKE_REFLECT_STRUCT(SymbolRef, idx, loc);
@@ -122,12 +121,11 @@ struct QueryFuncRef {
   }
   bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
   bool operator<(const QueryFuncRef& that) const {
-    if (id_ < that.id_)
-      return true;
-    if (id_ == that.id_ && loc.range.start < that.loc.range.start)
-      return true;
-    return id_ == that.id_ && loc.range.start == that.loc.range.start &&
-           is_implicit < that.is_implicit;
+    if (id_ != that.id_)
+      return id_ <  that.id_;
+    if (loc != that.loc)
+      return loc < that.loc;
+    return is_implicit < that.is_implicit;
   }
 };
 MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc, is_implicit);

@@ -425,6 +425,10 @@ struct VarDefDefinitionData {
   // Type which declares this one.
   optional<TypeId> declaring_type;
 
+  // Function which declares this one.
+  // TODO Accept other container types.
+  optional<IndexFuncId> semantic_container;
+
   // FIXME
   bool is_local() const { return kind == ClangSymbolKind::Variable; }
   bool is_macro() const { return kind == ClangSymbolKind::Macro; }
