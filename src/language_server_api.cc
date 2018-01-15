@@ -107,9 +107,10 @@ TEST_SUITE("FindIncludeLine") {
 }
 
 optional<char> ReadCharFromStdinBlocking() {
-  char c = 0;
-  std::cin.read(&c, 1);
-  return c;
+  char c;
+  if (std::cin.read(&c, 1))
+    return c;
+  return nullopt;
 }
 
 std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin(
