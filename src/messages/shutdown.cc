@@ -6,7 +6,7 @@ struct Ipc_Shutdown : public IpcMessage<Ipc_Shutdown> {
   static const IpcId kIpcId = IpcId::Shutdown;
   lsRequestId id;
 };
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_Shutdown, id);
+MAKE_REFLECT_STRUCT(Ipc_Shutdown, id);
 REGISTER_IPC_MESSAGE(Ipc_Shutdown);
 
 struct Out_Shutdown : public lsOutMessage<Out_Shutdown> {

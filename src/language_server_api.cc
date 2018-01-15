@@ -107,13 +107,6 @@ TEST_SUITE("FindIncludeLine") {
 }
 
 optional<char> ReadCharFromStdinBlocking() {
-  // Bad stdin means parent process has probably exited. Either way, cquery
-  // can no longer be communicated with so just exit.
-  if (!std::cin.good()) {
-    LOG_S(FATAL) << "std::cin.good() is false; exiting";
-    exit(1);
-  }
-
   char c = 0;
   std::cin.read(&c, 1);
   return c;

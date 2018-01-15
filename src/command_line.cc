@@ -334,20 +334,12 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
         }
 
         if (g_log_stdin_stdout_to_stderr) {
-          try {
-            std::cerr << "[COUT] |" << message.content << "|\n";
-            std::cerr.flush();
-          } catch (std::ios_base::failure&) {
-            // TODO Ignore for now
-          }
+          std::cerr << "[COUT] |" << message.content << "|\n";
+          std::cerr.flush();
         }
 
-        try {
-          std::cout << message.content;
-          std::cout.flush();
-        } catch (std::ios_base::failure&) {
-          // TODO Ignore for now
-        }
+        std::cout << message.content;
+        std::cout.flush();
       }
     }
   });

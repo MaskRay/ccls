@@ -349,6 +349,8 @@ optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   // class/struct definitions.
   if (*end < *start)
     *end = *start + (location.end.line - location.start.line);
+  if (*start == *end && start_column > end_column)
+    end_column = start_column;
 
   return lsRange(lsPosition(*start, start_column),
                  lsPosition(*end, end_column));
