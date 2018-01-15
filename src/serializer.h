@@ -82,7 +82,7 @@ struct IndexFile;
     ::Reflect(visitor, value0);                                         \
     value = static_cast<type>(value0);                                  \
   }                                                                     \
-  inline void Reflect(Writer& visitor, type& value) {                   \
+  ATTRIBUTE_UNUSED inline void Reflect(Writer& visitor, type& value) {  \
     auto value0 = static_cast<as_type>(value);                          \
     ::Reflect(visitor, value0);                                         \
   }
