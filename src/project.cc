@@ -479,16 +479,19 @@ Project::Entry Project::FindCompilationEntryForFile(
   Project::Entry result;
   result.is_inferred = true;
   result.filename = filename;
-  if (best_entry)
+  if (!best_entry)
+    result.args.push_back(filename);
+  else {
     result.args = best_entry->args;
 
-  // |best_entry| probably has its own path in the arguments. We need to remap
-  // that path to the new filename.
-  std::string best_entry_base_name = GetBaseName(best_entry->filename);
-  for (std::string& arg : result.args) {
-    if (arg == best_entry->filename ||
-        GetBaseName(arg) == best_entry_base_name) {
-      arg = filename;
+    // |best_entry| probably has its own path in the arguments. We need to remap
+    // that path to the new filename.
+    std::string best_entry_base_name = GetBaseName(best_entry->filename);
+    for (std::string& arg : result.args) {
+      if (arg == best_entry->filename ||
+          GetBaseName(arg) == best_entry_base_name) {
+        arg = filename;
+      }
     }
   }
 
