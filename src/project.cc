@@ -479,9 +479,11 @@ Project::Entry Project::FindCompilationEntryForFile(
   Project::Entry result;
   result.is_inferred = true;
   result.filename = filename;
-  if (!best_entry)
+  if (!best_entry) {
+    // FIXME
+    result.args.push_back("clang++");
     result.args.push_back(filename);
-  else {
+  } else {
     result.args = best_entry->args;
 
     // |best_entry| probably has its own path in the arguments. We need to remap
