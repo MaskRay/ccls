@@ -1,5 +1,6 @@
 #pragma once
 
+#include "clang_symbol_kind.h"
 #include "config.h"
 #include "ipc.h"
 #include "serializer.h"
@@ -1086,7 +1087,7 @@ struct Out_CqueryPublishSemanticHighlighting
     int stableId = 0;
     // TODO Deprecate |type| in favor of fine-grained |kind|.
     SymbolType type = SymbolType::Type;
-    int kind;
+    ClangSymbolKind kind;
     bool isTypeMember = false;
     std::vector<lsRange> ranges;
   };

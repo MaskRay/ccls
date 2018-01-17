@@ -187,7 +187,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         Out_CqueryPublishSemanticHighlighting::Symbol symbol;
         symbol.stableId =
             semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
-        symbol.kind = static_cast<int>(kind);
+        symbol.kind = kind;
         symbol.type = map_symbol_kind_to_symbol_type(sym.idx.kind);
         symbol.isTypeMember = is_type_member;
         symbol.ranges.push_back(*loc);
