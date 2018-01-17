@@ -438,6 +438,7 @@ void SetVarDetail(IndexVar* var,
           fc.content.substr(*spell_end, *extent_end - *spell_end);
     }
   }
+
   if (semanticContainer && semanticContainer->cursor.kind == CXCursor_EnumDecl)
     def.detailed_name = std::move(qualified_name);
   else {
@@ -1286,6 +1287,12 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       SetVarDetail(var, decl->cursor, decl->semanticContainer,
                    !decl->isRedeclaration, db, param);
+      if (decl->entityInfo->kind == CXIdxEntity_EnumConstant) {
+        CXEvalResult eval = clang_Cursor_Evaluate(decl->cursor);
+        if (clang_EvalResult_getKind(eval) == CXEval_Int) {
+          var->def.hover = std::to_string(clang_EvalResult_getAsLongLong(eval));
+        }
+      }
 
       // FIXME https://github.com/jacobdufault/cquery/issues/239
       var->def.kind = GetSymbolKind(decl->entityInfo->kind);
