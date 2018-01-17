@@ -421,18 +421,29 @@ void SetVarDetail(IndexVar* var,
       semanticContainer
           ? param->ns.QualifiedName(semanticContainer, def.short_name)
           : def.short_name;
+  // TODO Initial values of variables are useful. For now, enable it for const
+  // qualified types.
+  if (clang_isConstQualifiedType(cx_type)) {
+    Range extent = cursor.get_extent();
+    const FileContents& fc = param->file_contents[db->path];
+    optional<int> extent_start = fc.ToOffset(extent.start),
+                  extent_end = fc.ToOffset(extent.end);
+    if (extent_start && extent_end) {
+      Range spell = cursor.get_spelling_range();
+      optional<int> spell_start = fc.ToOffset(spell.start),
+                    spell_end = fc.ToOffset(spell.end);
+      def.hover =
+          fc.content.substr(*extent_start, *spell_start - *extent_start) +
+          qualified_name +
+          fc.content.substr(*spell_end, *extent_end - *spell_end);
+    }
+  }
   if (semanticContainer && semanticContainer->cursor.kind == CXCursor_EnumDecl)
     def.detailed_name = std::move(qualified_name);
   else {
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
   }
-  // TODO Initial values of variables are useful. For now, enable it for const
-  // qualified types. Qualified names may also be useful but they can not be
-  // easily combined.
-  if (clang_isConstQualifiedType(cx_type))
-    def.hover = GetDocumentContentInRange(
-        param->tu->cx_tu, clang_getCursorExtent(cursor.cx_cursor));
 
   if (is_first_seen) {
     optional<IndexTypeId> var_type = ResolveToDeclarationType(db, cursor);
