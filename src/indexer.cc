@@ -421,23 +421,6 @@ void SetVarDetail(IndexVar* var,
       semanticContainer
           ? param->ns.QualifiedName(semanticContainer, def.short_name)
           : def.short_name;
-  // TODO Initial values of variables are useful. For now, enable it for const
-  // qualified types.
-  if (clang_isConstQualifiedType(cx_type)) {
-    Range extent = cursor.get_extent();
-    const FileContents& fc = param->file_contents[db->path];
-    optional<int> extent_start = fc.ToOffset(extent.start),
-                  extent_end = fc.ToOffset(extent.end);
-    if (extent_start && extent_end) {
-      Range spell = cursor.get_spelling_range();
-      optional<int> spell_start = fc.ToOffset(spell.start),
-                    spell_end = fc.ToOffset(spell.end);
-      def.hover =
-          fc.content.substr(*extent_start, *spell_start - *extent_start) +
-          qualified_name +
-          fc.content.substr(*spell_end, *extent_end - *spell_end);
-    }
-  }
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl) {
     CXType enum_type = clang_getEnumDeclIntegerType(semanticContainer->cursor);
@@ -449,11 +432,17 @@ void SetVarDetail(IndexVar* var,
              enum_type.kind == CXType_ULongLong)
       hover += std::to_string(
           clang_getEnumConstantDeclUnsignedValue(cursor.cx_cursor));
-    def.hover = hover;
     def.detailed_name = std::move(qualified_name);
+    def.hover = hover;
   } else {
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
+    const FileContents& fc = param->file_contents[db->path];
+    optional<int> spell_end = fc.ToOffset(cursor.get_spelling_range().end);
+    optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
+    if (extent_end && *spell_end < *extent_end)
+      def.hover = def.detailed_name +
+                  fc.content.substr(*spell_end, *extent_end - *spell_end);
   }
 
   if (is_first_seen) {
@@ -1445,6 +1434,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
           TemplateVisitorData data;
           data.db = db;
+          data.param = param;
           data.container = decl_cursor;
           decl_cursor.VisitChildren(&TemplateVisitor, &data);
           // TemplateVisitor calls ToFuncId which invalidates func
