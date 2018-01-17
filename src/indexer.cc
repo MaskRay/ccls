@@ -439,9 +439,19 @@ void SetVarDetail(IndexVar* var,
     }
   }
 
-  if (semanticContainer && semanticContainer->cursor.kind == CXCursor_EnumDecl)
+  if (cursor.get_kind() == CXCursor_EnumConstantDecl) {
+    CXType enum_type = clang_getEnumDeclIntegerType(semanticContainer->cursor);
+    std::string hover = qualified_name + " = ";
+    if (enum_type.kind == CXType_Int || enum_type.kind == CXType_Long ||
+        enum_type.kind == CXType_LongLong)
+      hover += std::to_string(clang_getEnumConstantDeclValue(cursor.cx_cursor));
+    else if (enum_type.kind == CXType_UInt || enum_type.kind == CXType_ULong ||
+             enum_type.kind == CXType_ULongLong)
+      hover += std::to_string(
+          clang_getEnumConstantDeclUnsignedValue(cursor.cx_cursor));
+    def.hover = hover;
     def.detailed_name = std::move(qualified_name);
-  else {
+  } else {
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
   }
@@ -1287,12 +1297,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       SetVarDetail(var, decl->cursor, decl->semanticContainer,
                    !decl->isRedeclaration, db, param);
-      if (decl->entityInfo->kind == CXIdxEntity_EnumConstant) {
-        CXEvalResult eval = clang_Cursor_Evaluate(decl->cursor);
-        if (clang_EvalResult_getKind(eval) == CXEval_Int) {
-          var->def.hover = std::to_string(clang_EvalResult_getAsLongLong(eval));
-        }
-      }
 
       // FIXME https://github.com/jacobdufault/cquery/issues/239
       var->def.kind = GetSymbolKind(decl->entityInfo->kind);
