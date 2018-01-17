@@ -637,6 +637,7 @@ CXIdxClientFile OnIndexIncludedFile(CXClientData client_data,
   CXFile cx_file;
   unsigned int line;
   clang_getSpellingLocation(hash_loc, &cx_file, &line, nullptr, nullptr);
+  line--;
 
   IndexFile* db = ConsumeFile(param, cx_file);
   if (!db)
