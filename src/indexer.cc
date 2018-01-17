@@ -441,10 +441,11 @@ void SetVarDetail(IndexVar* var,
     // which we can't display well.
     // For other types, append the textual initializer, bit field, constructor
     // or whatever.
-    CXType deref = cx_type, next;
-    while ((next = clang_getPointeeType(deref)).kind != CXType_Invalid)
-      deref = next;
-    if (clang_getResultType(deref).kind == CXType_Invalid &&
+    CXType deref = cx_type;
+    while (deref.kind == CXType_Pointer || deref.kind == CXType_MemberPointer)
+      deref = clang_getPointeeType(deref);
+    if (deref.kind != CXType_Unexposed &&
+        clang_getResultType(deref).kind == CXType_Invalid &&
         clang_getElementType(deref).kind == CXType_Invalid) {
       const FileContents& fc = param->file_contents[db->path];
       optional<int> spell_end = fc.ToOffset(cursor.get_spelling_range().end);
