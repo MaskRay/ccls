@@ -437,12 +437,22 @@ void SetVarDetail(IndexVar* var,
   } else {
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
-    const FileContents& fc = param->file_contents[db->path];
-    optional<int> spell_end = fc.ToOffset(cursor.get_spelling_range().end);
-    optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
-    if (extent_end && *spell_end < *extent_end)
-      def.hover = def.detailed_name +
-                  fc.content.substr(*spell_end, *extent_end - *spell_end);
+    // The following check is used to skip inside-out syntax and array types
+    // which we can't display well.
+    // For other types, append the textual initializer, bit field, constructor
+    // or whatever.
+    CXType deref = cx_type, next;
+    while ((next = clang_getPointeeType(deref)).kind != CXType_Invalid)
+      deref = next;
+    if (clang_getResultType(deref).kind == CXType_Invalid &&
+        clang_getElementType(deref).kind == CXType_Invalid) {
+      const FileContents& fc = param->file_contents[db->path];
+      optional<int> spell_end = fc.ToOffset(cursor.get_spelling_range().end);
+      optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
+      if (extent_end && *spell_end < *extent_end)
+        def.hover = def.detailed_name +
+            fc.content.substr(*spell_end, *extent_end - *spell_end);
+    }
   }
 
   if (is_first_seen) {
