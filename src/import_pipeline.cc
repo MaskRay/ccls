@@ -154,9 +154,20 @@ ShouldParse FileNeedsParse(
   }
 
   // Command-line arguments changed.
-  if (opt_previous_index && opt_previous_index->args != args) {
-    LOG_S(INFO) << "Arguments have changed for " << path << unwrap_opt(from);
-    return ShouldParse::Yes;
+  auto is_file = [](const std::string& arg) {
+    return EndsWithAny(arg, {".h", ".c", ".cc", ".cpp", ".hpp", ".m", ".mm"});
+  };
+  if (opt_previous_index) {
+    auto& prev_args = opt_previous_index->args;
+    bool same = prev_args.size() == args.size();
+    for (size_t i = 0; i < args.size() && same; ++i) {
+      same = prev_args[i] == args[i] ||
+             (is_file(prev_args[i]) && is_file(args[i]));
+    }
+    if (!same) {
+      LOG_S(INFO) << "Arguments have changed for " << path << unwrap_opt(from);
+      return ShouldParse::Yes;
+    }
   }
 
   // File has not changed, do not parse it.
