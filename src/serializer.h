@@ -30,6 +30,7 @@ class Reader {
   virtual void GetNull() = 0;
   virtual bool GetBool() = 0;
   virtual int GetInt() = 0;
+  virtual uint32_t GetUint32() = 0;
   virtual int64_t GetInt64() = 0;
   virtual uint64_t GetUint64() = 0;
   virtual double GetDouble() = 0;
@@ -50,6 +51,7 @@ class Writer {
   virtual void Null() = 0;
   virtual void Bool(bool x) = 0;
   virtual void Int(int x) = 0;
+  virtual void Uint32(uint32_t x) = 0;
   virtual void Int64(int64_t x) = 0;
   virtual void Uint64(uint64_t x) = 0;
   virtual void Double(double x) = 0;
@@ -152,6 +154,9 @@ void Reflect(Writer& visitor, int16_t& value);
 
 void Reflect(Reader& visitor, int32_t& value);
 void Reflect(Writer& visitor, int32_t& value);
+
+void Reflect(Reader& visitor, uint32_t& value);
+void Reflect(Writer& visitor, uint32_t& value);
 
 void Reflect(Reader& visitor, int64_t& value);
 void Reflect(Writer& visitor, int64_t& value);

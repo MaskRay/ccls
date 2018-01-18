@@ -12,7 +12,8 @@ namespace {
 bool gTestOutputMode = false;
 }  // namespace
 
-// uint8_t
+//// Elementary types
+
 void Reflect(Reader& visitor, uint8_t& value) {
   value = (uint8_t)visitor.GetInt();
 }
@@ -20,7 +21,6 @@ void Reflect(Writer& visitor, uint8_t& value) {
   visitor.Int(value);
 }
 
-// int16_t
 void Reflect(Reader& visitor, int16_t& value) {
   value = (int16_t)visitor.GetInt();
 }
@@ -28,7 +28,6 @@ void Reflect(Writer& visitor, int16_t& value) {
   visitor.Int(value);
 }
 
-// int32_t
 void Reflect(Reader& visitor, int32_t& value) {
   value = visitor.GetInt();
 }
@@ -36,7 +35,13 @@ void Reflect(Writer& visitor, int32_t& value) {
   visitor.Int(value);
 }
 
-// int64_t
+void Reflect(Reader& visitor, uint32_t& value) {
+  value = visitor.GetUint32();
+}
+void Reflect(Writer& visitor, uint32_t& value) {
+  visitor.Uint32(value);
+}
+
 void Reflect(Reader& visitor, int64_t& value) {
   value = visitor.GetInt64();
 }
@@ -44,7 +49,6 @@ void Reflect(Writer& visitor, int64_t& value) {
   visitor.Int64(value);
 }
 
-// uint64_t
 void Reflect(Reader& visitor, uint64_t& value) {
   value = visitor.GetUint64();
 }
@@ -52,7 +56,6 @@ void Reflect(Writer& visitor, uint64_t& value) {
   visitor.Uint64(value);
 }
 
-// double
 void Reflect(Reader& visitor, double& value) {
   value = visitor.GetDouble();
 }
@@ -60,7 +63,6 @@ void Reflect(Writer& visitor, double& value) {
   visitor.Double(value);
 }
 
-// bool
 void Reflect(Reader& visitor, bool& value) {
   value = visitor.GetBool();
 }

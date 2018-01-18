@@ -23,6 +23,7 @@ class JsonReader : public Reader {
   void GetNull() override {}
   bool GetBool() override { return m_->GetBool(); }
   int GetInt() override { return m_->GetInt(); }
+  uint32_t GetUint32() override { return uint32_t(m_->GetUint64()); }
   int64_t GetInt64() override { return m_->GetInt64(); }
   uint64_t GetUint64() override { return m_->GetUint64(); }
   double GetDouble() override { return m_->GetDouble(); }
@@ -64,6 +65,7 @@ class JsonWriter : public Writer {
   void Null() override { m_->Null(); }
   void Bool(bool x) override { m_->Bool(x); }
   void Int(int x) override { m_->Int(x); }
+  void Uint32(uint32_t x) override { m_->Uint64(x); }
   void Int64(int64_t x) override { m_->Int64(x); }
   void Uint64(uint64_t x) override { m_->Uint64(x); }
   void Double(double x) override { m_->Double(x); }

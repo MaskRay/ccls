@@ -33,6 +33,7 @@ class MessagePackReader : public Reader {
   void GetNull() override { pk_->next(oh_); }
   bool GetBool() override { return Get<bool>(); }
   int GetInt() override { return Get<int>(); }
+  uint32_t GetUint32() override { return Get<uint32_t>(); }
   int64_t GetInt64() override { return Get<int64_t>(); }
   uint64_t GetUint64() override { return Get<uint64_t>(); }
   double GetDouble() override { return Get<double>(); }
@@ -64,6 +65,7 @@ class MessagePackWriter : public Writer {
   void Null() override { m_->pack_nil(); }
   void Bool(bool x) override { m_->pack(x); }
   void Int(int x) override { m_->pack(x); }
+  void Uint32(uint32_t x) override { m_->pack(x); }
   void Int64(int64_t x) override { m_->pack(x); }
   void Uint64(uint64_t x) override { m_->pack(x); }
   void Double(double x) override { m_->pack(x); }
