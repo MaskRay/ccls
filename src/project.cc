@@ -143,7 +143,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
          // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
          // clang-4.0) are seen as commands.
          ((dot = entry.args[i].rfind('.')) == std::string::npos ||
-          dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1])))
+          dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
+          !entry.args[i].compare(dot + 1, 3, "exe")))
     ++i;
   // Include the compiler in the args.
   if (i > 0)
