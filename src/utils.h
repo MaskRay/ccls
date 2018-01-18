@@ -49,12 +49,14 @@ std::vector<std::string> SplitString(const std::string& str,
 std::string LowerPathIfCaseInsensitive(const std::string& path);
 
 template <typename TValues, typename TMap>
-std::string StringJoinMap(const TValues& values, const TMap& map) {
+std::string StringJoinMap(const TValues& values,
+                          const TMap& map,
+                          const std::string& sep = ", ") {
   std::string result;
   bool first = true;
   for (auto& entry : values) {
     if (!first)
-      result += ", ";
+      result += sep;
     first = false;
     result += map(entry);
   }
@@ -62,8 +64,9 @@ std::string StringJoinMap(const TValues& values, const TMap& map) {
 }
 
 template <typename TValues>
-std::string StringJoin(const TValues& values) {
-  return StringJoinMap(values, [](const std::string& entry) { return entry; });
+std::string StringJoin(const TValues& values, const std::string& sep = ", ") {
+  return StringJoinMap(values, [](const std::string& entry) { return entry; },
+                       sep);
 }
 
 template <typename TCollection, typename TValue>
