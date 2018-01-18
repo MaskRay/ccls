@@ -200,3 +200,8 @@ script:
 
 notifications:
   email: false
+  irc:
+    channels:
+      - "ircs://chat.freenode.net:6697/#cquery"
+    template:
+      - "[ %{repository_slug}#%{commit}] %{result} on %{branch} by %{author} (%{build_url})"
