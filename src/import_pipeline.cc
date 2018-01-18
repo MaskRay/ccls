@@ -182,18 +182,18 @@ std::vector<Index_DoIdMap> ParseFile(
   // If the file is inferred, we may not actually be able to parse that file
   // directly (ie, a header file, which are not listed in the project). If this
   // file is inferred, then try to use the file which originally imported it.
-  std::string path = entry.filename;
+  std::string path_to_index = entry.filename;
   if (entry.is_inferred) {
     IndexFile* entry_cache = cache_manager->TryLoad(entry.filename);
     if (entry_cache)
-      path = entry_cache->import_file;
+      path_to_index = entry_cache->import_file;
   }
 
   std::vector<Index_DoIdMap> result;
 
   // Always run this block, even if we are interactive, so we can check
   // dependencies and reset files in |file_consumer_shared|.
-  IndexFile* previous_index = cache_manager->TryLoad(path);
+  IndexFile* previous_index = cache_manager->TryLoad(path_to_index);
   if (previous_index) {
     // If none of the dependencies have changed and the index is not
     // interactive (ie, requested by a file save), skip parsing and just load
@@ -203,7 +203,7 @@ std::vector<Index_DoIdMap> ParseFile(
     ShouldParse path_state = FileNeedsParse(
         is_interactive, timestamp_manager, modification_timestamp_fetcher,
         import_manager, cache_manager, file_consumer_shared, previous_index,
-        path, entry.args, nullopt);
+        path_to_index, entry.args, nullopt);
 
     // Target file does not exist on disk, do not emit any indexes.
     // TODO: Dependencies should be reassigned to other files. We can do this by
@@ -231,12 +231,14 @@ std::vector<Index_DoIdMap> ParseFile(
 
     // No timestamps changed - load directly from cache.
     if (!needs_reparse) {
-      LOG_S(INFO) << "Skipping parse; no timestamp change for " << path;
+      LOG_S(INFO) << "Skipping parse; no timestamp change for "
+                  << path_to_index;
 
       // TODO/FIXME: real perf
       PerformanceImportFile perf;
-      result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path), perf,
-                                     is_interactive, false /*write_to_disk*/));
+      result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path_to_index),
+                                     perf, is_interactive,
+                                     false /*write_to_disk*/));
       for (const std::string& dependency : previous_index->dependencies) {
         // Only load a dependency if it is not already loaded.
         //
@@ -264,7 +266,7 @@ std::vector<Index_DoIdMap> ParseFile(
     }
   }
 
-  LOG_S(INFO) << "Parsing " << path;
+  LOG_S(INFO) << "Parsing " << path_to_index;
 
   // Load file contents for all dependencies into memory. If the dependencies
   // for the file changed we may not end up using all of the files we
@@ -277,7 +279,7 @@ std::vector<Index_DoIdMap> ParseFile(
   // TODO: We might be able to optimize perf by only copying for files in
   //       working_files. We can pass that same set of files to the indexer as
   //       well. We then default to a fast file-copy if not in working set.
-  bool loaded_primary = contents.path == path;
+  bool loaded_primary = contents.path == path_to_index;
   std::vector<FileContents> file_contents = {contents};
   cache_manager->IterateLoadedCaches([&](IndexFile* index) {
     // FIXME: ReadContent should go through |cache_manager|.
@@ -289,20 +291,22 @@ std::vector<Index_DoIdMap> ParseFile(
 
     file_contents.push_back(FileContents(index->path, *index_content));
 
-    loaded_primary = loaded_primary || index->path == path;
+    loaded_primary = loaded_primary || index->path == path_to_index;
   });
   if (!loaded_primary) {
-    optional<std::string> content = ReadContent(path);
+    optional<std::string> content = ReadContent(path_to_index);
     if (!content) {
-      LOG_S(ERROR) << "Skipping index (file cannot be found): " << path;
+      LOG_S(ERROR) << "Skipping index (file cannot be found): "
+                   << path_to_index;
       return result;
     }
-    file_contents.push_back(FileContents(path, *content));
+    file_contents.push_back(FileContents(path_to_index, *content));
   }
 
   PerformanceImportFile perf;
-  std::vector<std::unique_ptr<IndexFile>> indexes = indexer->Index(
-      config, file_consumer_shared, path, entry.args, file_contents, &perf);
+  std::vector<std::unique_ptr<IndexFile>> indexes =
+      indexer->Index(config, file_consumer_shared, path_to_index, entry.args,
+                     file_contents, &perf);
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
