@@ -43,14 +43,14 @@ void Reflect(Writer& visitor, unsigned& value) {
 }
 
 void Reflect(Reader& visitor, long& value) {
-  value = visitor.GetInt64();
+  value = long(visitor.GetInt64());
 }
 void Reflect(Writer& visitor, long& value) {
   visitor.Int64(value);
 }
 
 void Reflect(Reader& visitor, unsigned long& value) {
-  value = visitor.GetUint64();
+  value = (unsigned long)visitor.GetUint64();
 }
 void Reflect(Writer& visitor, unsigned long& value) {
   visitor.Uint64(value);
