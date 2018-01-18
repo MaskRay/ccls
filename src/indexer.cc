@@ -1984,7 +1984,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   if (index_result != CXError_Success) {
     LOG_S(WARNING) << "Indexing " << file
                    << " failed with errno=" << index_result;
-    return {};
   }
 
   clang_IndexAction_dispose(index_action);

@@ -129,8 +129,6 @@ std::vector<Index_DoIdMap> DoParseFile(
       if (!last_cached_modification ||
           modification_timestamp != *last_cached_modification) {
         file_consumer_shared->Reset(path);
-        timestamp_manager->UpdateCachedModificationTime(
-            path, *modification_timestamp);
         return FileParseQuery::NeedsParse;
       }
 
