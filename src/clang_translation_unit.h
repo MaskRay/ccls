@@ -17,7 +17,7 @@ struct ClangTranslationUnit {
       ClangIndex* index,
       const std::string& filepath,
       const std::vector<std::string>& arguments,
-      std::vector<CXUnsavedFile> unsaved_files,
+      std::vector<CXUnsavedFile>& unsaved_files,
       unsigned flags);
 
   static std::unique_ptr<ClangTranslationUnit> Reparse(

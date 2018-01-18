@@ -72,7 +72,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
     ClangIndex* index,
     const std::string& filepath,
     const std::vector<std::string>& arguments,
-    std::vector<CXUnsavedFile> unsaved_files,
+    std::vector<CXUnsavedFile>& unsaved_files,
     unsigned flags) {
   std::vector<const char*> args;
   for (const std::string& a : arguments)
