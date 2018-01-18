@@ -283,6 +283,8 @@ def build(bld):
     lib.append('thr')
   elif sys.platform == 'darwin':
     lib.append('pthread')
+  elif sys.platform == 'msys':
+    lib.append('psapi') # GetProcessMemoryInfo
 
   if bld.env['use_clang_cxx']:
     # -fno-rtti is required for object files using clang/llvm C++ API
