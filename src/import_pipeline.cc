@@ -83,7 +83,8 @@ struct ActiveThread {
 
 enum class FileParseQuery { NeedsParse, DoesNotNeedParse, NoSuchFile };
 
-std::vector<Index_DoIdMap> DoParseFile(
+
+std::vector<Index_DoIdMap> ParseFile(
     Config* config,
     WorkingFiles* working_files,
     FileConsumerSharedState* file_consumer_shared,
@@ -92,9 +93,21 @@ std::vector<Index_DoIdMap> DoParseFile(
     ICacheManager* cache_manager,
     IIndexer* indexer,
     bool is_interactive,
-    const std::string& path,
-    const std::vector<std::string>& args,
-    const FileContents& contents) {
+    const Project::Entry& entry,
+    const std::string& entry_contents) {
+
+  FileContents contents(entry.filename, entry_contents);
+
+  // If the file is inferred, we may not actually be able to parse that file
+  // directly (ie, a header file, which are not listed in the project). If this
+  // file is inferred, then try to use the file which originally imported it.
+  std::string path = entry.filename;
+  if (entry.is_inferred) {
+    IndexFile* entry_cache = cache_manager->TryLoad(entry.filename);
+    if (entry_cache)
+      path = entry_cache->import_file;
+  }
+
   std::vector<Index_DoIdMap> result;
 
   // Always run this block, even if we are interactive, so we can check
@@ -236,7 +249,7 @@ std::vector<Index_DoIdMap> DoParseFile(
 
   PerformanceImportFile perf;
   std::vector<std::unique_ptr<IndexFile>> indexes = indexer->Index(
-      config, file_consumer_shared, path, args, file_contents, &perf);
+      config, file_consumer_shared, path, entry.args, file_contents, &perf);
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
@@ -254,29 +267,6 @@ std::vector<Index_DoIdMap> DoParseFile(
   }
 
   return result;
-}
-
-std::vector<Index_DoIdMap> ParseFile(
-    Config* config,
-    WorkingFiles* working_files,
-    FileConsumerSharedState* file_consumer_shared,
-    TimestampManager* timestamp_manager,
-    ImportManager* import_manager,
-    ICacheManager* cache_manager,
-    IIndexer* indexer,
-    bool is_interactive,
-    const Project::Entry& entry,
-    const std::string& contents) {
-  FileContents file_contents(entry.filename, contents);
-
-  // Try to determine the original import file by loading the file from cache.
-  // This lets the user request an index on a header file, which clang will
-  // complain about if indexed by itself.
-  IndexFile* entry_cache = cache_manager->TryLoad(entry.filename);
-  std::string tu_path = entry_cache ? entry_cache->import_file : entry.filename;
-  return DoParseFile(config, working_files, file_consumer_shared,
-                     timestamp_manager, import_manager, cache_manager, indexer,
-                     is_interactive, tu_path, entry.args, file_contents);
 }
 
 bool IndexMain_DoParse(Config* config,
