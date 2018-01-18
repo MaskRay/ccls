@@ -83,6 +83,42 @@ struct ActiveThread {
 
 enum class FileParseQuery { NeedsParse, DoesNotNeedParse, NoSuchFile };
 
+// Checks if |path| needs to be reparsed. This will modify cached state
+// such that calling this function twice with the same path may return true
+// the first time but will return false the second.
+FileParseQuery FileNeedsParse(bool is_interactive,
+                              TimestampManager* timestamp_manager,
+                              ImportManager* import_manager,
+                              ICacheManager* cache_manager,
+                              FileConsumerSharedState* file_consumer_shared,
+                              const std::string& path,
+                              bool is_dependency) {
+  // If the file is a dependency but another file as already imported it,
+  // don't bother.
+  if (!is_interactive && is_dependency &&
+      !import_manager->TryMarkDependencyImported(path)) {
+    return FileParseQuery::DoesNotNeedParse;
+  }
+
+  optional<int64_t> modification_timestamp = GetLastModificationTime(path);
+
+  // Cannot find file.
+  if (!modification_timestamp)
+    return FileParseQuery::NoSuchFile;
+
+  optional<int64_t> last_cached_modification =
+      timestamp_manager->GetLastCachedModificationTime(cache_manager, path);
+
+  // File has been changed.
+  if (!last_cached_modification ||
+      modification_timestamp != *last_cached_modification) {
+    file_consumer_shared->Reset(path);
+    return FileParseQuery::NeedsParse;
+  }
+
+  // File has not changed, do not parse it.
+  return FileParseQuery::DoesNotNeedParse;
+};
 
 std::vector<Index_DoIdMap> ParseFile(
     Config* config,
@@ -95,7 +131,6 @@ std::vector<Index_DoIdMap> ParseFile(
     bool is_interactive,
     const Project::Entry& entry,
     const std::string& entry_contents) {
-
   FileContents contents(entry.filename, entry_contents);
 
   // If the file is inferred, we may not actually be able to parse that file
@@ -118,39 +153,10 @@ std::vector<Index_DoIdMap> ParseFile(
     // interactive (ie, requested by a file save), skip parsing and just load
     // from cache.
 
-    // Checks if |path| needs to be reparsed. This will modify cached state
-    // such that calling this function twice with the same path may return true
-    // the first time but will return false the second.
-    auto file_needs_parse = [&](const std::string& path, bool is_dependency) {
-      // If the file is a dependency but another file as already imported it,
-      // don't bother.
-      if (!is_interactive && is_dependency &&
-          !import_manager->TryMarkDependencyImported(path)) {
-        return FileParseQuery::DoesNotNeedParse;
-      }
-
-      optional<int64_t> modification_timestamp = GetLastModificationTime(path);
-
-      // Cannot find file.
-      if (!modification_timestamp)
-        return FileParseQuery::NoSuchFile;
-
-      optional<int64_t> last_cached_modification =
-          timestamp_manager->GetLastCachedModificationTime(cache_manager, path);
-
-      // File has been changed.
-      if (!last_cached_modification ||
-          modification_timestamp != *last_cached_modification) {
-        file_consumer_shared->Reset(path);
-        return FileParseQuery::NeedsParse;
-      }
-
-      // File has not changed, do not parse it.
-      return FileParseQuery::DoesNotNeedParse;
-    };
-
     // Check timestamps and update |file_consumer_shared|.
-    FileParseQuery path_state = file_needs_parse(path, false /*is_dependency*/);
+    FileParseQuery path_state = FileNeedsParse(
+        is_interactive, timestamp_manager, import_manager, cache_manager,
+        file_consumer_shared, path, false /*is_dependency*/);
 
     // Target file does not exist on disk, do not emit any indexes.
     // TODO: Dependencies should be reassigned to other files. We can do this by
@@ -166,7 +172,9 @@ std::vector<Index_DoIdMap> ParseFile(
       assert(!dependency.empty());
 
       // note: Use != as there are multiple failure results for FileParseQuery.
-      if (file_needs_parse(dependency, true /*is_dependency*/) !=
+      if (FileNeedsParse(is_interactive, timestamp_manager, import_manager,
+                         cache_manager, file_consumer_shared, dependency,
+                         true /*is_dependency*/) !=
           FileParseQuery::DoesNotNeedParse) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via "
                     << previous_index->path << ")";
@@ -609,7 +617,8 @@ bool QueryDb_ImportMain(Config* config,
       WorkingFile* working_file =
           working_files->GetFileByFilename(updated_file.path);
       if (working_file) {
-        QueryFileId file_id = db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
+        QueryFileId file_id =
+            db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
         QueryFile* file = &db->files[file_id.id];
         EmitSemanticHighlighting(db, semantic_cache, working_file, file);
       }
