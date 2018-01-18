@@ -152,17 +152,23 @@ void Reflect(Writer& visitor, uint8_t& value);
 void Reflect(Reader& visitor, int16_t& value);
 void Reflect(Writer& visitor, int16_t& value);
 
-void Reflect(Reader& visitor, int32_t& value);
-void Reflect(Writer& visitor, int32_t& value);
+void Reflect(Reader& visitor, int& value);
+void Reflect(Writer& visitor, int& value);
 
-void Reflect(Reader& visitor, uint32_t& value);
-void Reflect(Writer& visitor, uint32_t& value);
+void Reflect(Reader& visitor, unsigned& value);
+void Reflect(Writer& visitor, unsigned& value);
 
-void Reflect(Reader& visitor, int64_t& value);
-void Reflect(Writer& visitor, int64_t& value);
+void Reflect(Reader& visitor, long& value);
+void Reflect(Writer& visitor, long& value);
 
-void Reflect(Reader& visitor, uint64_t& value);
-void Reflect(Writer& visitor, uint64_t& value);
+void Reflect(Reader& visitor, unsigned long& value);
+void Reflect(Writer& visitor, unsigned long& value);
+
+void Reflect(Reader& visitor, long long& value);
+void Reflect(Writer& visitor, long long& value);
+
+void Reflect(Reader& visitor, unsigned long long& value);
+void Reflect(Writer& visitor, unsigned long long& value);
 
 void Reflect(Reader& visitor, double& value);
 void Reflect(Writer& visitor, double& value);

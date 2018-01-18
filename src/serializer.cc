@@ -28,31 +28,45 @@ void Reflect(Writer& visitor, int16_t& value) {
   visitor.Int(value);
 }
 
-void Reflect(Reader& visitor, int32_t& value) {
+void Reflect(Reader& visitor, int& value) {
   value = visitor.GetInt();
 }
-void Reflect(Writer& visitor, int32_t& value) {
+void Reflect(Writer& visitor, int& value) {
   visitor.Int(value);
 }
 
-void Reflect(Reader& visitor, uint32_t& value) {
+void Reflect(Reader& visitor, unsigned& value) {
   value = visitor.GetUint32();
 }
-void Reflect(Writer& visitor, uint32_t& value) {
+void Reflect(Writer& visitor, unsigned& value) {
   visitor.Uint32(value);
 }
 
-void Reflect(Reader& visitor, int64_t& value) {
+void Reflect(Reader& visitor, long& value) {
   value = visitor.GetInt64();
 }
-void Reflect(Writer& visitor, int64_t& value) {
+void Reflect(Writer& visitor, long& value) {
   visitor.Int64(value);
 }
 
-void Reflect(Reader& visitor, uint64_t& value) {
+void Reflect(Reader& visitor, unsigned long& value) {
   value = visitor.GetUint64();
 }
-void Reflect(Writer& visitor, uint64_t& value) {
+void Reflect(Writer& visitor, unsigned long& value) {
+  visitor.Uint64(value);
+}
+
+void Reflect(Reader& visitor, long long& value) {
+  value = visitor.GetInt64();
+}
+void Reflect(Writer& visitor, long long& value) {
+  visitor.Int64(value);
+}
+
+void Reflect(Reader& visitor, unsigned long long& value) {
+  value = visitor.GetUint64();
+}
+void Reflect(Writer& visitor, unsigned long long& value) {
   visitor.Uint64(value);
 }
 
