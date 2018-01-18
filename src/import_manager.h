@@ -24,6 +24,6 @@ struct ImportManager {
   std::unordered_set<std::string> querydb_processing_;
 
   // TODO: use std::shared_mutex so we can have multiple readers.
-  std::mutex depdency_mutex_;
-  std::unordered_set<std::string> depdency_imported_;
+  std::mutex dependency_mutex_;
+  std::unordered_set<std::string> dependency_imported_;
 };

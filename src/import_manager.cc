@@ -1,8 +1,8 @@
 #include "import_manager.h"
 
 bool ImportManager::TryMarkDependencyImported(const std::string& path) {
-  std::lock_guard<std::mutex> lock(depdency_mutex_);
-  return depdency_imported_.insert(path).second;
+  std::lock_guard<std::mutex> lock(dependency_mutex_);
+  return dependency_imported_.insert(path).second;
 }
 
 bool ImportManager::StartQueryDbImport(const std::string& path) {
