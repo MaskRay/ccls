@@ -422,7 +422,7 @@ void SetVarDetail(IndexVar* var,
           ? param->ns.QualifiedName(semanticContainer, def.short_name)
           : def.short_name;
 
-  if (cursor.get_kind() == CXCursor_EnumConstantDecl) {
+  if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
     CXType enum_type = clang_getEnumDeclIntegerType(semanticContainer->cursor);
     std::string hover = qualified_name + " = ";
     if (enum_type.kind == CXType_Int || enum_type.kind == CXType_Long ||
