@@ -150,14 +150,15 @@ ShouldParse FileNeedsParse(
   // File has been changed.
   if (!last_cached_modification ||
       modification_timestamp != *last_cached_modification) {
-    file_consumer_shared->Reset(path);
     LOG_S(INFO) << "Timestamp has changed for " << path << unwrap_opt(from);
+    file_consumer_shared->Reset(path);
     return ShouldParse::Yes;
   }
 
   // Command-line arguments changed.
   if (opt_previous_index && opt_previous_index->args != args) {
     LOG_S(INFO) << "Arguments have changed for " << path << unwrap_opt(from);
+    file_consumer_shared->Reset(path);
     return ShouldParse::Yes;
   }
 
@@ -165,18 +166,106 @@ ShouldParse FileNeedsParse(
   return ShouldParse::No;
 };
 
-std::vector<Index_DoIdMap> ParseFile(
-    Config* config,
-    WorkingFiles* working_files,
+enum CacheLoadResult { Parse, DoNotParse };
+CacheLoadResult TryLoadFromCache(
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
     IModificationTimestampFetcher* modification_timestamp_fetcher,
     ImportManager* import_manager,
     ICacheManager* cache_manager,
-    IIndexer* indexer,
     bool is_interactive,
     const Project::Entry& entry,
-    const std::string& entry_contents) {
+    const std::string& path_to_index) {
+  // Always run this block, even if we are interactive, so we can check
+  // dependencies and reset files in |file_consumer_shared|.
+  IndexFile* previous_index = cache_manager->TryLoad(path_to_index);
+  if (!previous_index)
+    return CacheLoadResult::Parse;
+
+  // If none of the dependencies have changed and the index is not
+  // interactive (ie, requested by a file save), skip parsing and just load
+  // from cache.
+
+  // Check timestamps and update |file_consumer_shared|.
+  ShouldParse path_state = FileNeedsParse(
+      is_interactive, timestamp_manager, modification_timestamp_fetcher,
+      import_manager, cache_manager, file_consumer_shared, previous_index,
+      path_to_index, entry.args, nullopt);
+
+  // Target file does not exist on disk, do not emit any indexes.
+  // TODO: Dependencies should be reassigned to other files. We can do this by
+  // updating the "primary_file" if it doesn't exist. Might not actually be a
+  // problem in practice.
+  if (path_state == ShouldParse::NoSuchFile)
+    return CacheLoadResult::DoNotParse;
+
+  bool needs_reparse = is_interactive || path_state == ShouldParse::Yes;
+
+  for (const std::string& dependency : previous_index->dependencies) {
+    assert(!dependency.empty());
+
+    // note: Use != as there are multiple failure results for FileParseQuery.
+    if (FileNeedsParse(
+            is_interactive, timestamp_manager, modification_timestamp_fetcher,
+            import_manager, cache_manager, file_consumer_shared, previous_index,
+            dependency, entry.args, previous_index->path) != ShouldParse::No) {
+      needs_reparse = true;
+      // SUBTLE: Do not break here, as |file_consumer_shared| is updated
+      // inside of |file_needs_parse|.
+    }
+  }
+
+  // FIXME: should we still load from cache?
+  if (needs_reparse)
+    return CacheLoadResult::Parse;
+
+  // No timestamps changed - load directly from cache.
+  LOG_S(INFO) << "Skipping parse; no timestamp change for " << path_to_index;
+
+  // TODO/FIXME: real perf
+  PerformanceImportFile perf;
+
+  std::vector<Index_DoIdMap> result;
+  result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path_to_index), perf,
+                                 is_interactive, false /*write_to_disk*/));
+  for (const std::string& dependency : previous_index->dependencies) {
+    // Only load a dependency if it is not already loaded.
+    //
+    // This is important for perf in large projects where there are lots of
+    // dependencies shared between many files.
+    if (!file_consumer_shared->Mark(dependency))
+      continue;
+
+    LOG_S(INFO) << "Emitting index result for " << dependency << " (via "
+                << previous_index->path << ")";
+
+    std::unique_ptr<IndexFile> dependency_index =
+        cache_manager->TryTakeOrLoad(dependency);
+
+    // |dependency_index| may be null if there is no cache for it but
+    // another file has already started importing it.
+    if (!dependency_index)
+      continue;
+
+    result.push_back(Index_DoIdMap(std::move(dependency_index), perf,
+                                   is_interactive, false /*write_to_disk*/));
+  }
+
+  QueueManager::instance()->do_id_map.EnqueueAll(std::move(result));
+  return CacheLoadResult::DoNotParse;
+}
+
+void ParseFile(Config* config,
+               WorkingFiles* working_files,
+               FileConsumerSharedState* file_consumer_shared,
+               TimestampManager* timestamp_manager,
+               IModificationTimestampFetcher* modification_timestamp_fetcher,
+               ImportManager* import_manager,
+               ICacheManager* cache_manager,
+               IIndexer* indexer,
+               bool is_interactive,
+               const Project::Entry& entry,
+               const std::string& entry_contents) {
   FileContents contents(entry.filename, entry_contents);
 
   // If the file is inferred, we may not actually be able to parse that file
@@ -189,81 +278,12 @@ std::vector<Index_DoIdMap> ParseFile(
       path_to_index = entry_cache->import_file;
   }
 
-  std::vector<Index_DoIdMap> result;
-
-  // Always run this block, even if we are interactive, so we can check
-  // dependencies and reset files in |file_consumer_shared|.
-  IndexFile* previous_index = cache_manager->TryLoad(path_to_index);
-  if (previous_index) {
-    // If none of the dependencies have changed and the index is not
-    // interactive (ie, requested by a file save), skip parsing and just load
-    // from cache.
-
-    // Check timestamps and update |file_consumer_shared|.
-    ShouldParse path_state = FileNeedsParse(
-        is_interactive, timestamp_manager, modification_timestamp_fetcher,
-        import_manager, cache_manager, file_consumer_shared, previous_index,
-        path_to_index, entry.args, nullopt);
-
-    // Target file does not exist on disk, do not emit any indexes.
-    // TODO: Dependencies should be reassigned to other files. We can do this by
-    // updating the "primary_file" if it doesn't exist. Might not actually be a
-    // problem in practice.
-    if (path_state == ShouldParse::NoSuchFile)
-      return result;
-
-    bool needs_reparse = is_interactive || path_state == ShouldParse::Yes;
-
-    for (const std::string& dependency : previous_index->dependencies) {
-      assert(!dependency.empty());
-
-      // note: Use != as there are multiple failure results for FileParseQuery.
-      if (FileNeedsParse(is_interactive, timestamp_manager,
-                         modification_timestamp_fetcher, import_manager,
-                         cache_manager, file_consumer_shared, previous_index,
-                         dependency, entry.args,
-                         previous_index->path) != ShouldParse::No) {
-        needs_reparse = true;
-        // SUBTLE: Do not break here, as |file_consumer_shared| is updated
-        // inside of |file_needs_parse|.
-      }
-    }
-
-    // No timestamps changed - load directly from cache.
-    if (!needs_reparse) {
-      LOG_S(INFO) << "Skipping parse; no timestamp change for "
-                  << path_to_index;
-
-      // TODO/FIXME: real perf
-      PerformanceImportFile perf;
-      result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path_to_index),
-                                     perf, is_interactive,
-                                     false /*write_to_disk*/));
-      for (const std::string& dependency : previous_index->dependencies) {
-        // Only load a dependency if it is not already loaded.
-        //
-        // This is important for perf in large projects where there are lots of
-        // dependencies shared between many files.
-        if (!file_consumer_shared->Mark(dependency))
-          continue;
-
-        LOG_S(INFO) << "Emitting index result for " << dependency << " (via "
-                    << previous_index->path << ")";
-
-        std::unique_ptr<IndexFile> dependency_index =
-            cache_manager->TryTakeOrLoad(dependency);
-
-        // |dependency_index| may be null if there is no cache for it but
-        // another file has already started importing it.
-        if (!dependency_index)
-          continue;
-
-        result.push_back(Index_DoIdMap(std::move(dependency_index), perf,
-                                       is_interactive,
-                                       false /*write_to_disk*/));
-      }
-      return result;
-    }
+  // Try to load the file from cache.
+  if (TryLoadFromCache(file_consumer_shared, timestamp_manager,
+                       modification_timestamp_fetcher, import_manager,
+                       cache_manager, is_interactive, entry,
+                       path_to_index) == CacheLoadResult::DoNotParse) {
+    return;
   }
 
   LOG_S(INFO) << "Parsing " << path_to_index;
@@ -296,13 +316,15 @@ std::vector<Index_DoIdMap> ParseFile(
   if (!loaded_primary) {
     optional<std::string> content = ReadContent(path_to_index);
     if (!content) {
+      // Modification timestamp should have detected this already.
       LOG_S(ERROR) << "Skipping index (file cannot be found): "
                    << path_to_index;
-      return result;
+      return;
     }
     file_contents.push_back(FileContents(path_to_index, *content));
   }
 
+  std::vector<Index_DoIdMap> result;
   PerformanceImportFile perf;
   std::vector<std::unique_ptr<IndexFile>> indexes =
       indexer->Index(config, file_consumer_shared, path_to_index, entry.args,
@@ -323,7 +345,7 @@ std::vector<Index_DoIdMap> ParseFile(
                                    true /*write_to_disk*/));
   }
 
-  return result;
+  QueueManager::instance()->do_id_map.EnqueueAll(std::move(result));
 }
 
 bool IndexMain_DoParse(
@@ -343,18 +365,9 @@ bool IndexMain_DoParse(
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  std::vector<Index_DoIdMap> responses =
-      ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
-                modification_timestamp_fetcher, import_manager, cache_manager,
-                indexer, request->is_interactive, entry, request->contents);
-
-  // Don't bother sending an IdMap request if there are no responses. This
-  // avoids a lock.
-  if (responses.empty())
-    return false;
-
-  // EnqueueAll will clear |responses|.
-  queue->do_id_map.EnqueueAll(std::move(responses));
+  ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
+            modification_timestamp_fetcher, import_manager, cache_manager,
+            indexer, request->is_interactive, entry, request->contents);
   return true;
 }
 

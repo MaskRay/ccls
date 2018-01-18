@@ -132,6 +132,9 @@ struct ThreadedQueue : public BaseThreadQueue {
 
   // Add a set of elements to the queue.
   void EnqueueAll(std::vector<T>&& elements) {
+    if (elements.empty())
+      return;
+
     std::lock_guard<std::mutex> lock(mutex_);
 
     total_count_ += elements.size();
