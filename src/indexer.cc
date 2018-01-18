@@ -437,14 +437,17 @@ void SetVarDetail(IndexVar* var,
   } else {
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
-    // The following check is used to skip inside-out syntax and array types
-    // which we can't display well.
-    // For other types, append the textual initializer, bit field, constructor
-    // or whatever.
+    // Append the textual initializer, bit field, constructor to |hover|.
+    // Omit |hover| for these types:
+    // int (*a)(); int (&a)(); int (&&a)(); int a[1]; auto x = ...
+    // We can take these into consideration after we have better support for
+    // inside-out syntax.
     CXType deref = cx_type;
-    while (deref.kind == CXType_Pointer || deref.kind == CXType_MemberPointer)
+    while (deref.kind == CXType_Pointer || deref.kind == CXType_MemberPointer ||
+           deref.kind == CXType_LValueReference ||
+           deref.kind == CXType_RValueReference)
       deref = clang_getPointeeType(deref);
-    if (deref.kind != CXType_Unexposed &&
+    if (deref.kind != CXType_Unexposed && deref.kind != CXType_Auto &&
         clang_getResultType(deref).kind == CXType_Invalid &&
         clang_getElementType(deref).kind == CXType_Invalid) {
       const FileContents& fc = param->file_contents[db->path];
