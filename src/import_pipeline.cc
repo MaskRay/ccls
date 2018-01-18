@@ -24,6 +24,31 @@
 
 namespace {
 
+struct IModificationTimestampFetcher {
+  virtual ~IModificationTimestampFetcher() = default;
+  virtual optional<int64_t> GetModificationTime(const std::string& path) = 0;
+};
+struct RealModificationTimestampFetcher : IModificationTimestampFetcher {
+  ~RealModificationTimestampFetcher() override = default;
+
+  // IModificationTimestamp:
+  optional<int64_t> GetModificationTime(const std::string& path) override {
+    return GetLastModificationTime(path);
+  }
+};
+struct FakeModificationTimestampFetcher : IModificationTimestampFetcher {
+  std::unordered_map<std::string, optional<int64_t>> entries;
+
+  ~FakeModificationTimestampFetcher() override = default;
+
+  // IModificationTimestamp:
+  optional<int64_t> GetModificationTime(const std::string& path) override {
+    auto it = entries.find(path);
+    assert(it != entries.end());
+    return it->second;
+  }
+};
+
 long long GetCurrentTimeInMilliseconds() {
   auto time_since_epoch = Timer::Clock::now().time_since_epoch();
   long long elapsed_milliseconds =
@@ -81,33 +106,35 @@ struct ActiveThread {
   ImportPipelineStatus* status_;
 };
 
-enum class FileParseQuery { NeedsParse, DoesNotNeedParse, NoSuchFile };
+enum class ShouldParse { Yes, No, NoSuchFile };
 
 // Checks if |path| needs to be reparsed. This will modify cached state
 // such that calling this function twice with the same path may return true
 // the first time but will return false the second.
-FileParseQuery FileNeedsParse(bool is_interactive,
-                              TimestampManager* timestamp_manager,
-                              ImportManager* import_manager,
-                              ICacheManager* cache_manager,
-                              FileConsumerSharedState* file_consumer_shared,
-                              IndexFile* opt_previous_index,
-                              const std::string& path,
-                              const std::vector<std::string>& args,
-                              bool is_dependency) {
+ShouldParse FileNeedsParse(
+    bool is_interactive,
+    TimestampManager* timestamp_manager,
+    IModificationTimestampFetcher* modification_timestamp_fetcher,
+    ImportManager* import_manager,
+    ICacheManager* cache_manager,
+    FileConsumerSharedState* file_consumer_shared,
+    IndexFile* opt_previous_index,
+    const std::string& path,
+    const std::vector<std::string>& args,
+    bool is_dependency) {
   // If the file is a dependency but another file as already imported it,
   // don't bother.
   if (!is_interactive && is_dependency &&
       !import_manager->TryMarkDependencyImported(path)) {
-    return FileParseQuery::DoesNotNeedParse;
+    return ShouldParse::No;
   }
 
-  // FIXME: allow test to fake GetLastModificationTime
-  optional<int64_t> modification_timestamp = GetLastModificationTime(path);
+  optional<int64_t> modification_timestamp =
+      modification_timestamp_fetcher->GetModificationTime(path);
 
   // Cannot find file.
   if (!modification_timestamp)
-    return FileParseQuery::NoSuchFile;
+    return ShouldParse::NoSuchFile;
 
   optional<int64_t> last_cached_modification =
       timestamp_manager->GetLastCachedModificationTime(cache_manager, path);
@@ -116,15 +143,15 @@ FileParseQuery FileNeedsParse(bool is_interactive,
   if (!last_cached_modification ||
       modification_timestamp != *last_cached_modification) {
     file_consumer_shared->Reset(path);
-    return FileParseQuery::NeedsParse;
+    return ShouldParse::Yes;
   }
 
   // Command-line arguments changed.
   if (opt_previous_index && opt_previous_index->args != args)
-    return FileParseQuery::NeedsParse;
+    return ShouldParse::Yes;
 
   // File has not changed, do not parse it.
-  return FileParseQuery::DoesNotNeedParse;
+  return ShouldParse::No;
 };
 
 std::vector<Index_DoIdMap> ParseFile(
@@ -132,6 +159,7 @@ std::vector<Index_DoIdMap> ParseFile(
     WorkingFiles* working_files,
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
+    IModificationTimestampFetcher* modification_timestamp_fetcher,
     ImportManager* import_manager,
     ICacheManager* cache_manager,
     IIndexer* indexer,
@@ -161,29 +189,29 @@ std::vector<Index_DoIdMap> ParseFile(
     // from cache.
 
     // Check timestamps and update |file_consumer_shared|.
-    FileParseQuery path_state =
-        FileNeedsParse(is_interactive, timestamp_manager, import_manager,
-                       cache_manager, file_consumer_shared, previous_index,
-                       path, entry.args, false /*is_dependency*/);
+    ShouldParse path_state = FileNeedsParse(
+        is_interactive, timestamp_manager, modification_timestamp_fetcher,
+        import_manager, cache_manager, file_consumer_shared, previous_index,
+        path, entry.args, false /*is_dependency*/);
 
     // Target file does not exist on disk, do not emit any indexes.
     // TODO: Dependencies should be reassigned to other files. We can do this by
     // updating the "primary_file" if it doesn't exist. Might not actually be a
     // problem in practice.
-    if (path_state == FileParseQuery::NoSuchFile)
+    if (path_state == ShouldParse::NoSuchFile)
       return result;
 
-    bool needs_reparse =
-        is_interactive || path_state == FileParseQuery::NeedsParse;
+    bool needs_reparse = is_interactive || path_state == ShouldParse::Yes;
 
     for (const std::string& dependency : previous_index->dependencies) {
       assert(!dependency.empty());
 
       // note: Use != as there are multiple failure results for FileParseQuery.
-      if (FileNeedsParse(is_interactive, timestamp_manager, import_manager,
+      if (FileNeedsParse(is_interactive, timestamp_manager,
+                         modification_timestamp_fetcher, import_manager,
                          cache_manager, file_consumer_shared, previous_index,
-                         dependency, entry.args, true /*is_dependency*/) !=
-          FileParseQuery::DoesNotNeedParse) {
+                         dependency, entry.args,
+                         true /*is_dependency*/) != ShouldParse::No) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via "
                     << previous_index->path << ")";
         needs_reparse = true;
@@ -285,13 +313,15 @@ std::vector<Index_DoIdMap> ParseFile(
   return result;
 }
 
-bool IndexMain_DoParse(Config* config,
-                       WorkingFiles* working_files,
-                       FileConsumerSharedState* file_consumer_shared,
-                       TimestampManager* timestamp_manager,
-                       ImportManager* import_manager,
-                       ICacheManager* cache_manager,
-                       IIndexer* indexer) {
+bool IndexMain_DoParse(
+    Config* config,
+    WorkingFiles* working_files,
+    FileConsumerSharedState* file_consumer_shared,
+    TimestampManager* timestamp_manager,
+    IModificationTimestampFetcher* modification_timestamp_fetcher,
+    ImportManager* import_manager,
+    ICacheManager* cache_manager,
+    IIndexer* indexer) {
   auto* queue = QueueManager::instance();
   optional<Index_Request> request = queue->index_request.TryDequeue();
   if (!request)
@@ -302,8 +332,8 @@ bool IndexMain_DoParse(Config* config,
   entry.args = request->args;
   std::vector<Index_DoIdMap> responses =
       ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
-                import_manager, cache_manager, indexer, request->is_interactive,
-                entry, request->contents);
+                modification_timestamp_fetcher, import_manager, cache_manager,
+                indexer, request->is_interactive, entry, request->contents);
 
   // Don't bother sending an IdMap request if there are no responses. This
   // avoids a lock.
@@ -469,7 +499,7 @@ void Indexer_Main(Config* config,
                   Project* project,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter) {
-  std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
+  RealModificationTimestampFetcher modification_timestamp_fetcher;
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
   auto indexer = IIndexer::MakeClangIndexer();
@@ -491,9 +521,10 @@ void Indexer_Main(Config* config,
       // index.
       std::unique_ptr<ICacheManager> cache_manager =
           ICacheManager::Make(config);
-      did_work = IndexMain_DoParse(config, working_files, file_consumer_shared,
-                                   timestamp_manager, import_manager,
-                                   cache_manager.get(), indexer.get()) ||
+      did_work = IndexMain_DoParse(
+                     config, working_files, file_consumer_shared,
+                     timestamp_manager, &modification_timestamp_fetcher,
+                     import_manager, cache_manager.get(), indexer.get()) ||
                  did_work;
 
       did_work = IndexMain_DoCreateIndexUpdate(timestamp_manager,
@@ -654,7 +685,8 @@ TEST_SUITE("ImportPipeline") {
 
     bool PumpOnce() {
       return IndexMain_DoParse(&config, &working_files, &file_consumer_shared,
-                               &timestamp_manager, &import_manager,
+                               &timestamp_manager,
+                               &modification_timestamp_fetcher, &import_manager,
                                cache_manager.get(), indexer.get());
     }
 
@@ -675,10 +707,66 @@ TEST_SUITE("ImportPipeline") {
     WorkingFiles working_files;
     FileConsumerSharedState file_consumer_shared;
     TimestampManager timestamp_manager;
+    FakeModificationTimestampFetcher modification_timestamp_fetcher;
     ImportManager import_manager;
     std::unique_ptr<ICacheManager> cache_manager;
     std::unique_ptr<IIndexer> indexer;
   };
+
+  TEST_CASE_FIXTURE(Fixture, "FileNeedsParse") {
+    auto check = [&](const std::string& file, bool is_dependency = false,
+                     bool is_interactive = false,
+                     const std::vector<std::string>& old_args = {},
+                     const std::vector<std::string>& new_args = {}) {
+      std::unique_ptr<IndexFile> opt_previous_index;
+      if (!old_args.empty()) {
+        opt_previous_index = MakeUnique<IndexFile>("---.cc", nullopt);
+        opt_previous_index->args = old_args;
+      }
+      return FileNeedsParse(is_interactive /*is_interactive*/,
+                            &timestamp_manager, &modification_timestamp_fetcher,
+                            &import_manager, cache_manager.get(),
+                            &file_consumer_shared, opt_previous_index.get(),
+                            file, new_args, is_dependency);
+    };
+
+    // A file with no timestamp is not imported, since this implies the file no
+    // longer exists on disk.
+    modification_timestamp_fetcher.entries["bar.h"] = nullopt;
+    REQUIRE(check("bar.h", false /*is_dependency*/) == ShouldParse::NoSuchFile);
+
+    // A dependency is only imported once.
+    modification_timestamp_fetcher.entries["foo.h"] = 5;
+    REQUIRE(check("foo.h", true /*is_dependency*/) == ShouldParse::Yes);
+    REQUIRE(check("foo.h", true /*is_dependency*/) == ShouldParse::No);
+
+    // An interactive dependency is imported.
+    REQUIRE(check("foo.h", true /*is_dependency*/) == ShouldParse::No);
+    REQUIRE(check("foo.h", true /*is_dependency*/, true /*is_interactive*/) ==
+            ShouldParse::Yes);
+
+    // A file whose timestamp has not changed is not imported. When the
+    // timestamp changes (either forward or backward) it is reimported.
+    auto check_timestamp_change = [&](int64_t timestamp) {
+      modification_timestamp_fetcher.entries["aa.cc"] = timestamp;
+      REQUIRE(check("aa.cc") == ShouldParse::Yes);
+      REQUIRE(check("aa.cc") == ShouldParse::Yes);
+      REQUIRE(check("aa.cc") == ShouldParse::Yes);
+      timestamp_manager.UpdateCachedModificationTime("aa.cc", timestamp);
+      REQUIRE(check("aa.cc") == ShouldParse::No);
+    };
+    check_timestamp_change(5);
+    check_timestamp_change(6);
+    check_timestamp_change(5);
+    check_timestamp_change(4);
+
+    // Argument change implies reimport, even if timestamp has not changed.
+    timestamp_manager.UpdateCachedModificationTime("aa.cc", 5);
+    modification_timestamp_fetcher.entries["aa.cc"] = 5;
+    REQUIRE(check("aa.cc", false /*is_dependency*/, false /*is_interactive*/,
+                  {"b"} /*old_args*/,
+                  {"b", "a"} /*new_args*/) == ShouldParse::Yes);
+  }
 
   // FIXME: validate other state like timestamp_manager, etc.
   // FIXME: add more interesting tests that are not the happy path
