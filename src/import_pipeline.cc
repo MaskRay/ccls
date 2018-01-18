@@ -91,7 +91,9 @@ FileParseQuery FileNeedsParse(bool is_interactive,
                               ImportManager* import_manager,
                               ICacheManager* cache_manager,
                               FileConsumerSharedState* file_consumer_shared,
+                              IndexFile* opt_previous_index,
                               const std::string& path,
+                              const std::vector<std::string>& args,
                               bool is_dependency) {
   // If the file is a dependency but another file as already imported it,
   // don't bother.
@@ -100,6 +102,7 @@ FileParseQuery FileNeedsParse(bool is_interactive,
     return FileParseQuery::DoesNotNeedParse;
   }
 
+  // FIXME: allow test to fake GetLastModificationTime
   optional<int64_t> modification_timestamp = GetLastModificationTime(path);
 
   // Cannot find file.
@@ -115,6 +118,10 @@ FileParseQuery FileNeedsParse(bool is_interactive,
     file_consumer_shared->Reset(path);
     return FileParseQuery::NeedsParse;
   }
+
+  // Command-line arguments changed.
+  if (opt_previous_index && opt_previous_index->args != args)
+    return FileParseQuery::NeedsParse;
 
   // File has not changed, do not parse it.
   return FileParseQuery::DoesNotNeedParse;
@@ -154,9 +161,10 @@ std::vector<Index_DoIdMap> ParseFile(
     // from cache.
 
     // Check timestamps and update |file_consumer_shared|.
-    FileParseQuery path_state = FileNeedsParse(
-        is_interactive, timestamp_manager, import_manager, cache_manager,
-        file_consumer_shared, path, false /*is_dependency*/);
+    FileParseQuery path_state =
+        FileNeedsParse(is_interactive, timestamp_manager, import_manager,
+                       cache_manager, file_consumer_shared, previous_index,
+                       path, entry.args, false /*is_dependency*/);
 
     // Target file does not exist on disk, do not emit any indexes.
     // TODO: Dependencies should be reassigned to other files. We can do this by
@@ -173,8 +181,8 @@ std::vector<Index_DoIdMap> ParseFile(
 
       // note: Use != as there are multiple failure results for FileParseQuery.
       if (FileNeedsParse(is_interactive, timestamp_manager, import_manager,
-                         cache_manager, file_consumer_shared, dependency,
-                         true /*is_dependency*/) !=
+                         cache_manager, file_consumer_shared, previous_index,
+                         dependency, entry.args, true /*is_dependency*/) !=
           FileParseQuery::DoesNotNeedParse) {
         LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via "
                     << previous_index->path << ")";
