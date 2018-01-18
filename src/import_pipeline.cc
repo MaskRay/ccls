@@ -255,6 +255,55 @@ CacheLoadResult TryLoadFromCache(
   return CacheLoadResult::DoNotParse;
 }
 
+std::vector<FileContents> PreloadFileContents(
+    ICacheManager* cache_manager,
+    const Project::Entry& entry,
+    const std::string& entry_contents,
+    const std::string& path_to_index) {
+  FileContents contents(entry.filename, entry_contents);
+
+  // Load file contents for all dependencies into memory. If the dependencies
+  // for the file changed we may not end up using all of the files we
+  // preloaded. If a new dependency was added the indexer will grab the file
+  // contents as soon as possible.
+  //
+  // We do this to minimize the race between indexing a file and capturing the
+  // file contents.
+  //
+  // TODO: We might be able to optimize perf by only copying for files in
+  //       working_files. We can pass that same set of files to the indexer as
+  //       well. We then default to a fast file-copy if not in working set.
+  bool loaded_primary = contents.path == path_to_index;
+
+  std::vector<FileContents> file_contents = {contents};
+  cache_manager->IterateLoadedCaches([&](IndexFile* index) {
+    optional<std::string> index_content =
+        cache_manager->LoadCachedFileContents(index->path);
+    if (!index_content) {
+      LOG_S(ERROR) << "Failed to load index content for " << index->path;
+      return;
+    }
+
+    file_contents.push_back(FileContents(index->path, *index_content));
+
+    loaded_primary = loaded_primary || index->path == path_to_index;
+  });
+
+  if (!loaded_primary) {
+    optional<std::string> content =
+        cache_manager->LoadCachedFileContents(path_to_index);
+    if (!content) {
+      // Modification timestamp should have detected this already.
+      LOG_S(ERROR) << "Skipping index (file cannot be found): "
+                   << path_to_index;
+    } else {
+      file_contents.push_back(FileContents(path_to_index, *content));
+    }
+  }
+
+  return file_contents;
+}
+
 void ParseFile(Config* config,
                WorkingFiles* working_files,
                FileConsumerSharedState* file_consumer_shared,
@@ -266,8 +315,6 @@ void ParseFile(Config* config,
                bool is_interactive,
                const Project::Entry& entry,
                const std::string& entry_contents) {
-  FileContents contents(entry.filename, entry_contents);
-
   // If the file is inferred, we may not actually be able to parse that file
   // directly (ie, a header file, which are not listed in the project). If this
   // file is inferred, then try to use the file which originally imported it.
@@ -287,42 +334,8 @@ void ParseFile(Config* config,
   }
 
   LOG_S(INFO) << "Parsing " << path_to_index;
-
-  // Load file contents for all dependencies into memory. If the dependencies
-  // for the file changed we may not end up using all of the files we
-  // preloaded. If a new dependency was added the indexer will grab the file
-  // contents as soon as possible.
-  //
-  // We do this to minimize the race between indexing a file and capturing the
-  // file contents.
-  //
-  // TODO: We might be able to optimize perf by only copying for files in
-  //       working_files. We can pass that same set of files to the indexer as
-  //       well. We then default to a fast file-copy if not in working set.
-  bool loaded_primary = contents.path == path_to_index;
-  std::vector<FileContents> file_contents = {contents};
-  cache_manager->IterateLoadedCaches([&](IndexFile* index) {
-    // FIXME: ReadContent should go through |cache_manager|.
-    optional<std::string> index_content = ReadContent(index->path);
-    if (!index_content) {
-      LOG_S(ERROR) << "Failed to load index content for " << index->path;
-      return;
-    }
-
-    file_contents.push_back(FileContents(index->path, *index_content));
-
-    loaded_primary = loaded_primary || index->path == path_to_index;
-  });
-  if (!loaded_primary) {
-    optional<std::string> content = ReadContent(path_to_index);
-    if (!content) {
-      // Modification timestamp should have detected this already.
-      LOG_S(ERROR) << "Skipping index (file cannot be found): "
-                   << path_to_index;
-      return;
-    }
-    file_contents.push_back(FileContents(path_to_index, *content));
-  }
+  std::vector<FileContents> file_contents =
+      PreloadFileContents(cache_manager, entry, entry_contents, path_to_index);
 
   std::vector<Index_DoIdMap> result;
   PerformanceImportFile perf;
