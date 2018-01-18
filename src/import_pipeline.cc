@@ -119,7 +119,6 @@ ShouldParse FileNeedsParse(
     IModificationTimestampFetcher* modification_timestamp_fetcher,
     ImportManager* import_manager,
     ICacheManager* cache_manager,
-    FileConsumerSharedState* file_consumer_shared,
     IndexFile* opt_previous_index,
     const std::string& path,
     const std::vector<std::string>& args,
@@ -151,14 +150,12 @@ ShouldParse FileNeedsParse(
   if (!last_cached_modification ||
       modification_timestamp != *last_cached_modification) {
     LOG_S(INFO) << "Timestamp has changed for " << path << unwrap_opt(from);
-    file_consumer_shared->Reset(path);
     return ShouldParse::Yes;
   }
 
   // Command-line arguments changed.
   if (opt_previous_index && opt_previous_index->args != args) {
     LOG_S(INFO) << "Arguments have changed for " << path << unwrap_opt(from);
-    file_consumer_shared->Reset(path);
     return ShouldParse::Yes;
   }
 
@@ -189,8 +186,10 @@ CacheLoadResult TryLoadFromCache(
   // Check timestamps and update |file_consumer_shared|.
   ShouldParse path_state = FileNeedsParse(
       is_interactive, timestamp_manager, modification_timestamp_fetcher,
-      import_manager, cache_manager, file_consumer_shared, previous_index,
-      path_to_index, entry.args, nullopt);
+      import_manager, cache_manager, previous_index, path_to_index, entry.args,
+      nullopt);
+  if (path_state == ShouldParse::Yes)
+    file_consumer_shared->Reset(path_to_index);
 
   // Target file does not exist on disk, do not emit any indexes.
   // TODO: Dependencies should be reassigned to other files. We can do this by
@@ -204,14 +203,15 @@ CacheLoadResult TryLoadFromCache(
   for (const std::string& dependency : previous_index->dependencies) {
     assert(!dependency.empty());
 
-    // note: Use != as there are multiple failure results for FileParseQuery.
-    if (FileNeedsParse(
-            is_interactive, timestamp_manager, modification_timestamp_fetcher,
-            import_manager, cache_manager, file_consumer_shared, previous_index,
-            dependency, entry.args, previous_index->path) != ShouldParse::No) {
+    if (FileNeedsParse(is_interactive, timestamp_manager,
+                       modification_timestamp_fetcher, import_manager,
+                       cache_manager, previous_index, dependency, entry.args,
+                       previous_index->path) == ShouldParse::Yes) {
       needs_reparse = true;
-      // SUBTLE: Do not break here, as |file_consumer_shared| is updated
-      // inside of |file_needs_parse|.
+
+      // Do not break here, as we need to update |file_consumer_shared| for
+      // every dependency that needs to be reparsed.
+      file_consumer_shared->Reset(dependency);
     }
   }
 
@@ -755,8 +755,7 @@ TEST_SUITE("ImportPipeline") {
       return FileNeedsParse(is_interactive /*is_interactive*/,
                             &timestamp_manager, &modification_timestamp_fetcher,
                             &import_manager, cache_manager.get(),
-                            &file_consumer_shared, opt_previous_index.get(),
-                            file, new_args, from);
+                            opt_previous_index.get(), file, new_args, from);
     };
 
     // A file with no timestamp is not imported, since this implies the file no
