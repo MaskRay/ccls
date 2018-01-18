@@ -17,7 +17,7 @@ struct Ipc_CqueryMemberHierarchyExpand
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
   lsRequestId id;
   struct Params {
-    uint64_t type_id;
+    size_t type_id;
   };
   Params params;
 };
@@ -29,7 +29,7 @@ struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
   struct Entry {
     std::string name;
-    uint64_t type_id; // FIXME: should be size_t
+    size_t type_id;
     lsLocation location;
   };
   lsRequestId id;
@@ -74,7 +74,7 @@ ExpandNode(QueryDatabase* db,
     Out_CqueryMemberHierarchy::Entry entry;
     entry.name = var.def->short_name;
     entry.type_id =
-        var.def->variable_type ? var.def->variable_type->id : uint64_t(-1);
+        var.def->variable_type ? var.def->variable_type->id : size_t(-1);
     if (var.def->definition_spelling) {
       optional<lsLocation> loc =
           GetLsLocation(db, working_files, *var.def->definition_spelling);
@@ -125,7 +125,7 @@ struct CqueryMemberHierarchyExpandHandler
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
     // |ExpandNode| uses -1 to indicate invalid |type_id|.
-    if (request->params.type_id != uint64_t(-1))
+    if (request->params.type_id != size_t(-1))
       out.result =
           ExpandNode(db, working_files, QueryTypeId(request->params.type_id));
 
