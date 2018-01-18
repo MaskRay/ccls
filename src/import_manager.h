@@ -21,9 +21,6 @@ struct ImportManager {
   // The file has been fully imported and can be imported again later on.
   void DoneQueryDbImport(const std::string& path);
 
-  // Returns true if there any any files currently being imported.
-  bool HasActiveQuerydbImports();
-
   std::unordered_set<std::string> querydb_processing_;
 
   // TODO: use std::shared_mutex so we can have multiple readers.

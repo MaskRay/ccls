@@ -12,7 +12,3 @@ bool ImportManager::StartQueryDbImport(const std::string& path) {
 void ImportManager::DoneQueryDbImport(const std::string& path) {
   querydb_processing_.erase(path);
 }
-
-bool ImportManager::HasActiveQuerydbImports() {
-  return !querydb_processing_.empty();
-}
