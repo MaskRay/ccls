@@ -111,6 +111,8 @@ enum class ShouldParse { Yes, No, NoSuchFile };
 // Checks if |path| needs to be reparsed. This will modify cached state
 // such that calling this function twice with the same path may return true
 // the first time but will return false the second.
+//
+// |from|: The file which generated the parse request for this file.
 ShouldParse FileNeedsParse(
     bool is_interactive,
     TimestampManager* timestamp_manager,
@@ -121,10 +123,16 @@ ShouldParse FileNeedsParse(
     IndexFile* opt_previous_index,
     const std::string& path,
     const std::vector<std::string>& args,
-    bool is_dependency) {
+    const optional<std::string>& from) {
+  auto unwrap_opt = [](const optional<std::string>& opt) -> std::string {
+    if (opt)
+      return " (via " + *opt + ")";
+    return "";
+  };
+
   // If the file is a dependency but another file as already imported it,
   // don't bother.
-  if (!is_interactive && is_dependency &&
+  if (!is_interactive && from &&
       !import_manager->TryMarkDependencyImported(path)) {
     return ShouldParse::No;
   }
@@ -143,12 +151,15 @@ ShouldParse FileNeedsParse(
   if (!last_cached_modification ||
       modification_timestamp != *last_cached_modification) {
     file_consumer_shared->Reset(path);
+    LOG_S(INFO) << "Timestamp has changed for " << path << unwrap_opt(from);
     return ShouldParse::Yes;
   }
 
   // Command-line arguments changed.
-  if (opt_previous_index && opt_previous_index->args != args)
+  if (opt_previous_index && opt_previous_index->args != args) {
+    LOG_S(INFO) << "Arguments have changed for " << path << unwrap_opt(from);
     return ShouldParse::Yes;
+  }
 
   // File has not changed, do not parse it.
   return ShouldParse::No;
@@ -192,7 +203,7 @@ std::vector<Index_DoIdMap> ParseFile(
     ShouldParse path_state = FileNeedsParse(
         is_interactive, timestamp_manager, modification_timestamp_fetcher,
         import_manager, cache_manager, file_consumer_shared, previous_index,
-        path, entry.args, false /*is_dependency*/);
+        path, entry.args, nullopt);
 
     // Target file does not exist on disk, do not emit any indexes.
     // TODO: Dependencies should be reassigned to other files. We can do this by
@@ -211,9 +222,7 @@ std::vector<Index_DoIdMap> ParseFile(
                          modification_timestamp_fetcher, import_manager,
                          cache_manager, file_consumer_shared, previous_index,
                          dependency, entry.args,
-                         true /*is_dependency*/) != ShouldParse::No) {
-        LOG_S(INFO) << "Timestamp has changed for " << dependency << " (via "
-                    << previous_index->path << ")";
+                         previous_index->path) != ShouldParse::No) {
         needs_reparse = true;
         // SUBTLE: Do not break here, as |file_consumer_shared| is updated
         // inside of |file_needs_parse|.
@@ -723,11 +732,14 @@ TEST_SUITE("ImportPipeline") {
         opt_previous_index = MakeUnique<IndexFile>("---.cc", nullopt);
         opt_previous_index->args = old_args;
       }
+      optional<std::string> from;
+      if (is_dependency)
+        from = std::string("---.cc");
       return FileNeedsParse(is_interactive /*is_interactive*/,
                             &timestamp_manager, &modification_timestamp_fetcher,
                             &import_manager, cache_manager.get(),
                             &file_consumer_shared, opt_previous_index.get(),
-                            file, new_args, is_dependency);
+                            file, new_args, from);
     };
 
     // A file with no timestamp is not imported, since this implies the file no
