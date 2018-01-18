@@ -13,11 +13,10 @@ cquery implements almost the entire language server protocol and provides
 some extra features to boot:
 
   * code completion (with both signature help and snippets)
-  * references
+  * finding definition/references
   * type hierarchy (parent type, derived types, expandable tree view)
-  * calls to functions, calls to base and derived functions, call tree
+  * finding base/derived methods/classes, call tree
   * symbol rename
-  * goto definition, goto base method
   * document and global symbol search
   * hover tooltips showing symbol type
   * diagnostics
@@ -34,33 +33,9 @@ There are three steps to get cquery up and running. Eventually, cquery will be
 published in the vscode extension marketplace which will reduce these three
 steps to only project setup.
 
-## Build cquery
+## [Getting started](https://github.com/jacobdufault/cquery/wiki/Getting-started)
 
-Building cquery is simple. The external dependencies are few:
-
-- relatively modern c++11 compiler (ie, clang 3.4 or greater)
-- python
-- git
-
-```bash
-$ clang --version  # if missing, sudo apt-get install clang
-$ git clone https://github.com/jacobdufault/cquery --single-branch
-$ cd cquery
-$ git submodule update --init
-$ ./waf configure --prefix ~/.local/stow/cquery  # --prefix is optional, it specifies install directory
-$ ./waf build    # -g -O3, built build/release/bin/cquery
-$ ./waf install  # optional, copies the executable to $PREFIX/bin/cquery
-```
-
-For a debug build:
-
-```bash
-$ ./waf configure --variant=debug
-$ ./waf build --variant=debug  # -g -O0, built build/debug/bin/cquery
-```
-
-See [wiki](https://github.com/jacobdufault/cquery/wiki) for more build instructions
-(e.g. using system clang instead of bundled clang+llvm) and other topics.
+And [wiki/Build](https://github.com/jacobdufault/cquery/wiki/Build).
 
 ## Install extension
 
