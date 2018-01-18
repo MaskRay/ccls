@@ -48,6 +48,8 @@ enum class IpcId : int {
   CqueryTypeHierarchyTree,
   CqueryCallTreeInitial,
   CqueryCallTreeExpand,
+  CqueryMemberHierarchyInitial,
+  CqueryMemberHierarchyExpand,
   // These are like DocumentReferences but show different types of data.
   CqueryVars,     // Show all variables of a type.
   CqueryCallers,  // Show all callers of a function.

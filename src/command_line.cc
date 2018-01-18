@@ -290,6 +290,8 @@ void LaunchStdinLoop(Config* config,
         case IpcId::CqueryTypeHierarchyTree:
         case IpcId::CqueryCallTreeInitial:
         case IpcId::CqueryCallTreeExpand:
+        case IpcId::CqueryMemberHierarchyInitial:
+        case IpcId::CqueryMemberHierarchyExpand:
         case IpcId::CqueryVars:
         case IpcId::CqueryCallers:
         case IpcId::CqueryBase:

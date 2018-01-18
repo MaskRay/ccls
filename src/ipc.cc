@@ -74,6 +74,10 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/callTreeInitial";
     case IpcId::CqueryCallTreeExpand:
       return "$cquery/callTreeExpand";
+    case IpcId::CqueryMemberHierarchyInitial:
+      return "$cquery/memberHierarchyInitial";
+    case IpcId::CqueryMemberHierarchyExpand:
+      return "$cquery/memberHierarchyExpand";
     case IpcId::CqueryVars:
       return "$cquery/vars";
     case IpcId::CqueryCallers:
