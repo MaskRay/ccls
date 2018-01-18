@@ -37,76 +37,6 @@ steps to only project setup.
 
 And [wiki/Build](https://github.com/jacobdufault/cquery/wiki/Build).
 
-## Install extension
-
-cquery includes a vscode extension; it is released in <https://github.com/jacobdufault/cquery/releases>. Launch vscode
-and install the `vscode-extension.vsix` extension. To do this:
-
-- Hit `F1`; execute the command `Install from VSIX`.
-- Select `vscode-extension.vsix` in the file chooser.
-
-**IMPORTANT:** Please reinstall the extension when you download it - it is
-still being developed.
-
-See the [wiki](https://github.com/jacobdufault/cquery/wiki/Visual-Studio-Code#setting-up-the-extension) for additional details on setting up the extension.
-
-If you run into issues, you can view debug output by running the
-(`F1`) `View: Toggle Output` command and opening the `cquery` output section.
-
-## Project setup
-
-### `compile_commands.json` (Best)
-
-See [wiki](https://github.com/jacobdufault/cquery/wiki) for how to generate `compile_commands.json` with CMake, Build EAR, Ninja, ...
-
-If the `compile_commands.json` is not in the top-level workspace directory,
-then the `cquery.misc.compilationDatabaseDirectory` setting can be used to
-specify its location.
-
-### `cquery.index.extraClangArguments`
-
-If for whatever reason you cannot generate a `compile_commands.json` file, you
-can add the flags to the `cquery.index.extraClangArguments` configuration
-option.
-
-### `.cquery`
-
-If for whatever reason you cannot generate a `compile_commands.json` file, you
-can add the flags to a file called `.cquery` located in the top-level
-workspace directory.
-
-Each argument in that file is separated by a newline. Lines starting with `#`
-are skipped. The first line can optionally be the path to the intended compiler,
-which can help if the standard library paths are relative to the binary.
-Here's an example:
-
-```
-# Driver
-/usr/bin/clang++-4.0
-
-# Language
--xc++
--std=c++11
-
-# Includes
--I/work/cquery/third_party
-```
-
-# Building extension
-
-If you wish to modify the vscode extension, you will need to build it locally.
-Luckily, it is pretty easy - the only dependency is npm.
-
-```bash
-# Build extension
-$ cd vscode-client
-$ npm install
-$ code .
-```
-
-When VSCode is running, you can hit `F5` to build and launch the extension
-locally.
-
 # Limitations
 
 cquery is able to respond to queries quickly because it caches a huge amount of
@@ -114,29 +44,6 @@ information. When a request comes in, cquery just looks it up in the cache
 without running many computations. As a result, there's a large memory overhead.
 For example, a full index of Chrome will take about 10gb of memory. If you
 exclude v8, webkit, and third_party, it goes down to about 6.5gb.
-
-# Wiki
-
-For Emacs/Vim/other editors integration and some additional tips, see [wiki](https://github.com/jacobdufault/cquery/wiki).
-
-# Chromium tips
-
-Chromium is a very large codebase, so cquery benefits from a bit of tuning.
-Optionally add these to your settings:
-
-```js
-  // Set slightly lower than your CPU core count to keep other tools responsive.
-  "cquery.misc.indexerCount": 50,
-  // Remove uncommonly used directories with large numbers of files.
-  "cquery.index.blacklist": [
-   ".*/src/base/third_party/.*",
-   ".*/src/native_client/.*",
-   ".*/src/native_client_sdk/.*",
-   ".*/src/third_party/.*",
-   ".*/src/v8/.*",
-   ".*/src/webkit/.*"
-  ]
-```
 
 # License
 
