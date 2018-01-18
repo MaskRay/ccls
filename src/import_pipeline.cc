@@ -277,8 +277,7 @@ std::vector<FileContents> PreloadFileContents(
 
   std::vector<FileContents> file_contents = {contents};
   cache_manager->IterateLoadedCaches([&](IndexFile* index) {
-    optional<std::string> index_content =
-        cache_manager->LoadCachedFileContents(index->path);
+    optional<std::string> index_content = ReadContent(index->path);
     if (!index_content) {
       LOG_S(ERROR) << "Failed to load index content for " << index->path;
       return;
@@ -290,8 +289,7 @@ std::vector<FileContents> PreloadFileContents(
   });
 
   if (!loaded_primary) {
-    optional<std::string> content =
-        cache_manager->LoadCachedFileContents(path_to_index);
+    optional<std::string> content = ReadContent(path_to_index);
     if (!content) {
       // Modification timestamp should have detected this already.
       LOG_S(ERROR) << "Skipping index (file cannot be found): "
