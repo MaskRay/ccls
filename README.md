@@ -27,15 +27,7 @@ some extra features to boot:
   * auto-implement functions without a definition
   * semantic highlighting, including support for [rainbow semantic highlighting](https://medium.com/@evnbr/coding-in-color-3a6db2743a1e)
 
-# Setup - build cquery, install extension, setup project
-
-There are three steps to get cquery up and running. Eventually, cquery will be
-published in the vscode extension marketplace which will reduce these three
-steps to only project setup.
-
-## [Getting started](https://github.com/jacobdufault/cquery/wiki/Getting-started)
-
-And [wiki/Build](https://github.com/jacobdufault/cquery/wiki/Build).
+# >>> [Getting started](https://github.com/jacobdufault/cquery/wiki/Getting-started) (CLICK HERE) <<<
 
 # Limitations
 
