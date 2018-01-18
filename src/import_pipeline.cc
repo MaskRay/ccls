@@ -92,7 +92,7 @@ struct ActiveThread {
           out.params.loadPreviousIndexCount == 0 &&
           out.params.onIdMappedCount == 0 && out.params.onIndexedCount == 0 &&
           out.params.activeThreads == 0;
-      if (!all_zero ||
+      if (!all_zero &&
           GetCurrentTimeInMilliseconds() < status_->next_progress_output)
         return;
       status_->next_progress_output =
