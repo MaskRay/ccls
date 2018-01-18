@@ -121,7 +121,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
     std::cerr << "Index tests must be run using clang version \""
               << kRequiredClangVersion << "\" (cquery is running with \""
               << GetClangVersion() << "\")" << std::endl;
-    exit(1);
+    return false;
   }
 
   bool success = true;
