@@ -304,6 +304,9 @@ def build(bld):
     lib.append('ncurses')
 
   if bld.env['use_system_clang']:
+    # If the user passed `--llvm-config=` (setting `llvm-config` to
+    # the empty string) to the configure phase, we should not try to
+    # run it.
     if bld.env['llvm_config']:
       rpath = str(subprocess.check_output(
         [bld.env['llvm_config'], '--libdir'],
