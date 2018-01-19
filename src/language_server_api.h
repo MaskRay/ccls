@@ -951,9 +951,8 @@ MAKE_REFLECT_STRUCT(Out_Error::lsResponseError, code, message);
 MAKE_REFLECT_STRUCT(Out_Error, jsonrpc, id, error);
 
 // Cancel an existing request.
-struct Ipc_CancelRequest : public IpcMessage<Ipc_CancelRequest> {
+struct Ipc_CancelRequest : public RequestMessage<Ipc_CancelRequest> {
   static const IpcId kIpcId = IpcId::CancelRequest;
-  lsRequestId id;
 };
 MAKE_REFLECT_STRUCT(Ipc_CancelRequest, id);
 

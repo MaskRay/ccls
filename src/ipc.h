@@ -83,11 +83,6 @@ struct BaseIpcMessage {
 };
 
 template <typename T>
-struct IpcMessage : public BaseIpcMessage {
-  IpcMessage() : BaseIpcMessage(T::kIpcId) {}
-};
-
-template <typename T>
 struct RequestMessage : public BaseIpcMessage {
   // number | string, actually no null
   lsRequestId id;

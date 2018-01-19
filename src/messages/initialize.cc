@@ -34,15 +34,6 @@ struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
 MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
 MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
 
-struct Ipc_InitializedNotification
-    : public IpcMessage<Ipc_InitializedNotification> {
-  const static IpcId kIpcId = IpcId::Initialized;
-
-  lsRequestId id;
-};
-MAKE_REFLECT_STRUCT(Ipc_InitializedNotification, id);
-REGISTER_IPC_MESSAGE(Ipc_InitializedNotification);
-
 struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
   void Run(Ipc_InitializeRequest* request) override {
     // Log initialization parameters.
