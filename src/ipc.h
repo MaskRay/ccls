@@ -75,6 +75,8 @@ struct BaseIpcMessage {
   BaseIpcMessage(IpcId method_id);
   virtual ~BaseIpcMessage();
 
+  virtual lsRequestId GetRequestId();
+
   template <typename T>
   T* As() {
     assert(method_id == T::kIpcId);
@@ -87,6 +89,10 @@ struct RequestMessage : public BaseIpcMessage {
   // number | string, actually no null
   lsRequestId id;
   RequestMessage() : BaseIpcMessage(T::kIpcId) {}
+
+  lsRequestId GetRequestId() override {
+    return id;
+  }
 };
 
 // NotificationMessage does not have |id|.
