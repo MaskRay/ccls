@@ -9,10 +9,8 @@ void PushBack(std::vector<lsLocation>* result, optional<lsLocation> location) {
 }
 
 struct Ipc_TextDocumentDefinition
-    : public IpcMessage<Ipc_TextDocumentDefinition> {
+    : public RequestMessage<Ipc_TextDocumentDefinition> {
   const static IpcId kIpcId = IpcId::TextDocumentDefinition;
-
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDefinition, id, params);

@@ -6,7 +6,7 @@
 
 namespace {
 struct Ipc_TextDocumentReferences
-    : public IpcMessage<Ipc_TextDocumentReferences> {
+    : public RequestMessage<Ipc_TextDocumentReferences> {
   struct lsReferenceContext {
     // Include the declaration of the current symbol.
     bool includeDeclaration;
@@ -19,7 +19,6 @@ struct Ipc_TextDocumentReferences
 
   const static IpcId kIpcId = IpcId::TextDocumentReferences;
 
-  lsRequestId id;
   lsReferenceParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext,

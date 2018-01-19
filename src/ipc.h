@@ -5,6 +5,8 @@
 
 #include <string>
 
+using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
+
 enum class IpcId : int {
   // Language server specific requests.
   CancelRequest = 0,
@@ -83,4 +85,17 @@ struct BaseIpcMessage {
 template <typename T>
 struct IpcMessage : public BaseIpcMessage {
   IpcMessage() : BaseIpcMessage(T::kIpcId) {}
+};
+
+template <typename T>
+struct RequestMessage : public BaseIpcMessage {
+  // number | string, actually no null
+  lsRequestId id;
+  RequestMessage() : BaseIpcMessage(T::kIpcId) {}
+};
+
+// NotificationMessage does not have |id|.
+template <typename T>
+struct NotificationMessage : public BaseIpcMessage {
+  NotificationMessage() : BaseIpcMessage(T::kIpcId) {}
 };
