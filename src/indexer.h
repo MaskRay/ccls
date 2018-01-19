@@ -35,6 +35,8 @@ template <typename T>
 struct Id {
   size_t id;
 
+  static constexpr size_t INVALID_ID = static_cast<size_t>(-1);
+
   Id() : id(0) {}  // Needed for containers. Do not use directly.
   explicit Id(size_t id) : id(id) {}
 
