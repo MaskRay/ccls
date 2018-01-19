@@ -7,17 +7,19 @@
 
 class JsonReader : public Reader {
   rapidjson::GenericValue<rapidjson::UTF8<>>* m_;
+  std::vector<const char*> path_;
 
  public:
   JsonReader(rapidjson::GenericValue<rapidjson::UTF8<>>* m) : m_(m) {}
   SerializeFormat Format() const override { return SerializeFormat::Json; }
 
-  // bool IsBool() override { return m_->IsBool(); }
+  bool IsBool() override { return m_->IsBool(); }
   bool IsNull() override { return m_->IsNull(); }
   bool IsArray() override { return m_->IsArray(); }
   bool IsInt() override { return m_->IsInt(); }
   bool IsInt64() override { return m_->IsInt64(); }
-  // bool IsUint64() override { return m_->IsUint64(); }
+  bool IsUint64() override { return m_->IsUint64(); }
+  bool IsDouble() override { return m_->IsDouble(); }
   bool IsString() override { return m_->IsString(); }
 
   void GetNull() override {}
@@ -36,22 +38,35 @@ class JsonReader : public Reader {
   }
 
   void IterArray(std::function<void(Reader&)> fn) override {
+    if (!m_->IsArray())
+      throw std::invalid_argument("array");
+    // Use "0" to indicate any element for now.
+    path_.push_back("0");
     for (auto& entry : m_->GetArray()) {
       JsonReader sub(&entry);
       fn(sub);
     }
+    path_.pop_back();
   }
 
   void DoMember(const char* name, std::function<void(Reader&)> fn) override {
-    if (m_->GetType() != rapidjson::Type::kObjectType)
-      return;  // FIXME: signal an error that object was not deserialized
-               // correctly?
-
+    path_.push_back(name);
     auto it = m_->FindMember(name);
     if (it != m_->MemberEnd()) {
       JsonReader sub(&it->value);
       fn(sub);
     }
+    path_.pop_back();
+  }
+
+  std::string GetPath() const {
+    std::string ret;
+    for (auto& t : path_) {
+      ret += '/';
+      ret += t;
+    }
+    ret.pop_back();
+    return ret;
   }
 };
 

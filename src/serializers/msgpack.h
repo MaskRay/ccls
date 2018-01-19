@@ -21,6 +21,7 @@ class MessagePackReader : public Reader {
     return SerializeFormat::MessagePack;
   }
 
+  bool IsBool() override { return oh_.get().type == msgpack::type::BOOLEAN; }
   bool IsNull() override { return oh_.get().is_nil(); }
   bool IsArray() override { return oh_.get().type == msgpack::type::ARRAY; }
   bool IsInt() override {
@@ -28,6 +29,8 @@ class MessagePackReader : public Reader {
            oh_.get().type == msgpack::type::NEGATIVE_INTEGER;
   }
   bool IsInt64() override { return IsInt(); }
+  bool IsUint64() override { return IsInt(); }
+  bool IsDouble() override { return oh_.get().type == msgpack::type::FLOAT64; };
   bool IsString() override { return oh_.get().type == msgpack::type::STR; }
 
   void GetNull() override { pk_->next(oh_); }

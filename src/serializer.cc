@@ -8,6 +8,8 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
+#include <stdexcept>
+
 namespace {
 bool gTestOutputMode = false;
 }  // namespace
@@ -15,6 +17,7 @@ bool gTestOutputMode = false;
 //// Elementary types
 
 void Reflect(Reader& visitor, uint8_t& value) {
+  if (!visitor.IsInt()) throw std::invalid_argument("uint8_t");
   value = (uint8_t)visitor.GetInt();
 }
 void Reflect(Writer& visitor, uint8_t& value) {
@@ -22,6 +25,7 @@ void Reflect(Writer& visitor, uint8_t& value) {
 }
 
 void Reflect(Reader& visitor, int16_t& value) {
+  if (!visitor.IsInt()) throw std::invalid_argument("int16_t");
   value = (int16_t)visitor.GetInt();
 }
 void Reflect(Writer& visitor, int16_t& value) {
@@ -29,6 +33,7 @@ void Reflect(Writer& visitor, int16_t& value) {
 }
 
 void Reflect(Reader& visitor, int& value) {
+  if (!visitor.IsInt()) throw std::invalid_argument("int");
   value = visitor.GetInt();
 }
 void Reflect(Writer& visitor, int& value) {
@@ -36,6 +41,7 @@ void Reflect(Writer& visitor, int& value) {
 }
 
 void Reflect(Reader& visitor, unsigned& value) {
+  if (!visitor.IsInt()) throw std::invalid_argument("unsigned");
   value = visitor.GetUint32();
 }
 void Reflect(Writer& visitor, unsigned& value) {
@@ -43,6 +49,7 @@ void Reflect(Writer& visitor, unsigned& value) {
 }
 
 void Reflect(Reader& visitor, long& value) {
+  if (!visitor.IsInt64()) throw std::invalid_argument("long");
   value = long(visitor.GetInt64());
 }
 void Reflect(Writer& visitor, long& value) {
@@ -50,6 +57,7 @@ void Reflect(Writer& visitor, long& value) {
 }
 
 void Reflect(Reader& visitor, unsigned long& value) {
+  if (!visitor.IsUint64()) throw std::invalid_argument("unsigned long");
   value = (unsigned long)visitor.GetUint64();
 }
 void Reflect(Writer& visitor, unsigned long& value) {
@@ -57,6 +65,7 @@ void Reflect(Writer& visitor, unsigned long& value) {
 }
 
 void Reflect(Reader& visitor, long long& value) {
+  if (!visitor.IsInt64()) throw std::invalid_argument("long long");
   value = visitor.GetInt64();
 }
 void Reflect(Writer& visitor, long long& value) {
@@ -64,6 +73,7 @@ void Reflect(Writer& visitor, long long& value) {
 }
 
 void Reflect(Reader& visitor, unsigned long long& value) {
+  if (!visitor.IsUint64()) throw std::invalid_argument("unsigned long long");
   value = visitor.GetUint64();
 }
 void Reflect(Writer& visitor, unsigned long long& value) {
@@ -71,6 +81,7 @@ void Reflect(Writer& visitor, unsigned long long& value) {
 }
 
 void Reflect(Reader& visitor, double& value) {
+  if (!visitor.IsDouble()) throw std::invalid_argument("double");
   value = visitor.GetDouble();
 }
 void Reflect(Writer& visitor, double& value) {
@@ -78,6 +89,7 @@ void Reflect(Writer& visitor, double& value) {
 }
 
 void Reflect(Reader& visitor, bool& value) {
+  if (!visitor.IsBool()) throw std::invalid_argument("bool");
   value = visitor.GetBool();
 }
 void Reflect(Writer& visitor, bool& value) {
@@ -86,8 +98,8 @@ void Reflect(Writer& visitor, bool& value) {
 
 // std::string
 void Reflect(Reader& visitor, std::string& value) {
-  if (visitor.IsString())
-    value = visitor.GetString();
+  if (!visitor.IsString()) throw std::invalid_argument("std::string");
+  value = visitor.GetString();
 }
 void Reflect(Writer& visitor, std::string& value) {
   visitor.String(value.c_str(), (rapidjson::SizeType)value.size());
@@ -289,7 +301,14 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
 
       file = MakeUnique<IndexFile>(path, nullopt);
       JsonReader json_reader{&reader};
-      Reflect(json_reader, *file);
+      try {
+        Reflect(json_reader, *file);
+      } catch (std::invalid_argument& e) {
+        LOG_S(ERROR) << "'" << path << "': failed to deserialize "
+                     << json_reader.GetPath() << "."
+                     << e.what();
+        return nullptr;
+      }
       break;
     }
 

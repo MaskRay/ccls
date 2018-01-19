@@ -19,12 +19,13 @@ class Reader {
   virtual ~Reader() {}
   virtual SerializeFormat Format() const = 0;
 
-  // virtual bool IsBool() = 0;
+  virtual bool IsBool() = 0;
   virtual bool IsNull() = 0;
   virtual bool IsArray() = 0;
   virtual bool IsInt() = 0;
   virtual bool IsInt64() = 0;
-  // virtual bool IsUint64() = 0;
+  virtual bool IsUint64() = 0;
+  virtual bool IsDouble() = 0;
   virtual bool IsString() = 0;
 
   virtual void GetNull() = 0;

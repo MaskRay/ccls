@@ -155,7 +155,13 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
   }
 
   Allocator& allocator = allocators[method];
-  return allocator(visitor);
+  // FIXME Print error message for deserialization error
+  try {
+    return allocator(visitor);
+  } catch (std::invalid_argument& e) {
+    LOG_S(ERROR) << "Unable to deserialize request '" << method << "'";
+    return nullptr;
+  }
 }
 
 MessageRegistry* MessageRegistry::instance() {

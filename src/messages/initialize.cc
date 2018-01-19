@@ -10,7 +10,7 @@
 
 #include <loguru.hpp>
 
-#include <iostream>
+#include <stdexcept>
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
@@ -71,7 +71,18 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
         reader.Parse(g_init_options.c_str());
         if (!reader.HasParseError()) {
           JsonReader json_reader{&reader};
-          Reflect(json_reader, *config);
+          try {
+            Reflect(json_reader, *config);
+          } catch (std::invalid_argument& ex) {
+            // FIXME This is not triggered. Need to pass error from
+            // MessageRegistry::Parse in language_server_api.cc
+            Out_ShowLogMessage out;
+            out.display_type = Out_ShowLogMessage::DisplayType::Show;
+            out.params.type = lsMessageType::Error;
+            out.params.message = "Failed to deserialize " +
+                                 json_reader.GetPath() + " " + ex.what();
+            out.Write(std::cout);
+          }
         }
       }
       g_enable_comments = config->enableComments;
