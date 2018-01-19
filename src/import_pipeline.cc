@@ -352,7 +352,7 @@ void ParseFile(Config* config,
 
   if (!indexes) {
     if (config->enableIndexing &&
-        std::holds_alternative<int64_t>(request.id)) {
+        !std::holds_alternative<std::monostate>(request.id)) {
       Out_Error out;
       out.id = request.id;
       out.error.code = lsErrorCodes::InternalError;
