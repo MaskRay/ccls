@@ -99,10 +99,11 @@ char* tofixedbase64(T input, char* out) {
 // Pre-filters completion responses before sending to vscode. This results in a
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
-void SortAndFilterCompletionResponse(
+void FilterAndSortCompletionResponse(
     Out_TextDocumentComplete* complete_response,
-    const std::string& complete_text) {
-  ScopedPerfTimer timer("SortAndFilterCompletionResponse");
+    const std::string& complete_text,
+    bool enable) {
+  ScopedPerfTimer timer("FilterAndSortCompletionResponse");
 
 // Used to inject more completions.
 #if false
@@ -119,6 +120,14 @@ void SortAndFilterCompletionResponse(
 #endif
 
   auto& items = complete_response->result.items;
+
+  if (!enable) {
+    // Just set the |sortText| to be the priority and return.
+    char buf[16];
+    for (auto& item : items)
+      item.sortText = tofixedbase64(item.priority_, buf);
+    return;
+  }
 
   // Find the appearance of |complete_text| in all candidates.
   bool found = false;
@@ -295,7 +304,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
 
       TrimInPlace(buffer_line);
-      SortAndFilterCompletionResponse(&out, buffer_line);
+      FilterAndSortCompletionResponse(&out, buffer_line,
+                                      config->filterAndSortCompletionResponse);
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
       // If existing completion is empty, dont return clang-based completion
@@ -321,7 +331,9 @@ struct TextDocumentCompletionHandler : MessageHandler {
             out.result.items = results;
 
             // Emit completion results.
-            SortAndFilterCompletionResponse(&out, existing_completion);
+            FilterAndSortCompletionResponse(
+                &out, existing_completion,
+                config->filterAndSortCompletionResponse);
             QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
 
             // Cache completion results.

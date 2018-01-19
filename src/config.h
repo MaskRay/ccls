@@ -95,6 +95,9 @@ struct Config {
   // plain // /*
   int enableComments = 0;
 
+  // If true, filter and sort completion response.
+  bool filterAndSortCompletionResponse = true;
+
   //// For debugging
 
   // Dump AST after parsing if some pattern matches the source filename.
@@ -137,6 +140,8 @@ MAKE_REFLECT_STRUCT(Config,
                     enableSnippetInsertion,
 
                     enableComments,
+
+                    filterAndSortCompletionResponse,
 
                     dumpAST);
 
