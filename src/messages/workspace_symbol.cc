@@ -39,16 +39,14 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
   return true;
 }
 
-struct lsWorkspaceSymbolParams {
-  std::string query;
-};
-MAKE_REFLECT_STRUCT(lsWorkspaceSymbolParams, query);
-
-struct Ipc_WorkspaceSymbol : public IpcMessage<Ipc_WorkspaceSymbol> {
+struct Ipc_WorkspaceSymbol : public RequestMessage<Ipc_WorkspaceSymbol> {
   const static IpcId kIpcId = IpcId::WorkspaceSymbol;
-  lsRequestId id;
-  lsWorkspaceSymbolParams params;
+  struct Params {
+    std::string query;
+  };
+  Params params;
 };
+MAKE_REFLECT_STRUCT(Ipc_WorkspaceSymbol::Params, query);
 MAKE_REFLECT_STRUCT(Ipc_WorkspaceSymbol, id, params);
 REGISTER_IPC_MESSAGE(Ipc_WorkspaceSymbol);
 

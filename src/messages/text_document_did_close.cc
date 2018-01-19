@@ -4,12 +4,12 @@
 #include "working_files.h"
 
 namespace {
-struct Ipc_TextDocumentDidClose : public IpcMessage<Ipc_TextDocumentDidClose> {
+struct Ipc_TextDocumentDidClose
+    : public NotificationMessage<Ipc_TextDocumentDidClose> {
+  const static IpcId kIpcId = IpcId::TextDocumentDidClose;
   struct Params {
     lsTextDocumentIdentifier textDocument;
   };
-
-  const static IpcId kIpcId = IpcId::TextDocumentDidClose;
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose::Params, textDocument);

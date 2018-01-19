@@ -4,7 +4,7 @@
 
 namespace {
 struct Ipc_TextDocumentDidChange
-    : public IpcMessage<Ipc_TextDocumentDidChange> {
+    : public NotificationMessage<Ipc_TextDocumentDidChange> {
   const static IpcId kIpcId = IpcId::TextDocumentDidChange;
   lsTextDocumentDidChangeParams params;
 };

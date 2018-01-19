@@ -7,19 +7,16 @@
 
 namespace {
 
-struct lsTextDocumentFormattingParams {
-  lsTextDocumentIdentifier textDocument;
-  lsFormattingOptions options;
-};
-MAKE_REFLECT_STRUCT(lsTextDocumentFormattingParams, textDocument, options);
-
 struct Ipc_TextDocumentFormatting
-    : public IpcMessage<Ipc_TextDocumentFormatting> {
+    : public RequestMessage<Ipc_TextDocumentFormatting> {
   const static IpcId kIpcId = IpcId::TextDocumentFormatting;
-
-  lsRequestId id;
-  lsTextDocumentFormattingParams params;
+  struct Params {
+    lsTextDocumentIdentifier textDocument;
+    lsFormattingOptions options;
+  };
+  Params params;
 };
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentFormatting::Params, textDocument, options);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentFormatting, id, params);
 REGISTER_IPC_MESSAGE(Ipc_TextDocumentFormatting);
 

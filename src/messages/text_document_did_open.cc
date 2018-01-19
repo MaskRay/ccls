@@ -9,12 +9,12 @@
 
 namespace {
 // Open, view, change, close file
-struct Ipc_TextDocumentDidOpen : public IpcMessage<Ipc_TextDocumentDidOpen> {
+struct Ipc_TextDocumentDidOpen
+    : public NotificationMessage<Ipc_TextDocumentDidOpen> {
+  const static IpcId kIpcId = IpcId::TextDocumentDidOpen;
   struct Params {
     lsTextDocumentItem textDocument;
   };
-
-  const static IpcId kIpcId = IpcId::TextDocumentDidOpen;
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen::Params, textDocument);

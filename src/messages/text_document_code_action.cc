@@ -251,7 +251,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
 }
 
 struct Ipc_TextDocumentCodeAction
-    : public IpcMessage<Ipc_TextDocumentCodeAction> {
+    : public RequestMessage<Ipc_TextDocumentCodeAction> {
   const static IpcId kIpcId = IpcId::TextDocumentCodeAction;
   // Contains additional diagnostic information about the context in which
   // a code action is run.
@@ -268,8 +268,6 @@ struct Ipc_TextDocumentCodeAction
     // Context carrying additional information.
     lsCodeActionContext context;
   };
-
-  lsRequestId id;
   lsCodeActionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionContext,

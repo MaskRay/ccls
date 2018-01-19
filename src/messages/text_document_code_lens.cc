@@ -36,9 +36,9 @@ void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
 #endif
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
-struct Ipc_TextDocumentCodeLens : public IpcMessage<Ipc_TextDocumentCodeLens> {
+struct Ipc_TextDocumentCodeLens
+    : public RequestMessage<Ipc_TextDocumentCodeLens> {
   const static IpcId kIpcId = IpcId::TextDocumentCodeLens;
-  lsRequestId id;
   lsDocumentCodeLensParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeLens, id, params);

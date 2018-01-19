@@ -49,7 +49,8 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
   return edit;
 }
 
-struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
+struct Ipc_TextDocumentRename : public RequestMessage<Ipc_TextDocumentRename> {
+  const static IpcId kIpcId = IpcId::TextDocumentRename;
   struct Params {
     // The document to format.
     lsTextDocumentIdentifier textDocument;
@@ -62,9 +63,6 @@ struct Ipc_TextDocumentRename : public IpcMessage<Ipc_TextDocumentRename> {
     // appropriate message set.
     std::string newName;
   };
-  const static IpcId kIpcId = IpcId::TextDocumentRename;
-
-  lsRequestId id;
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename::Params,

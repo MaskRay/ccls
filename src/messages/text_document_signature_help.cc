@@ -6,10 +6,8 @@
 
 namespace {
 struct Ipc_TextDocumentSignatureHelp
-    : public IpcMessage<Ipc_TextDocumentSignatureHelp> {
+    : public RequestMessage<Ipc_TextDocumentSignatureHelp> {
   const static IpcId kIpcId = IpcId::TextDocumentSignatureHelp;
-
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentSignatureHelp, id, params);

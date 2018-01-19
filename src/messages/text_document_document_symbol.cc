@@ -9,10 +9,8 @@ struct lsDocumentSymbolParams {
 MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument);
 
 struct Ipc_TextDocumentDocumentSymbol
-    : public IpcMessage<Ipc_TextDocumentDocumentSymbol> {
+    : public RequestMessage<Ipc_TextDocumentDocumentSymbol> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentSymbol;
-
-  lsRequestId id;
   lsDocumentSymbolParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentSymbol, id, params);

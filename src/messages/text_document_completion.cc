@@ -45,10 +45,9 @@ struct lsCompletionParams : lsTextDocumentPositionParams {
 };
 MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
 
-struct Ipc_TextDocumentComplete : public IpcMessage<Ipc_TextDocumentComplete> {
+struct Ipc_TextDocumentComplete
+    : public RequestMessage<Ipc_TextDocumentComplete> {
   const static IpcId kIpcId = IpcId::TextDocumentCompletion;
-
-  lsRequestId id;
   lsCompletionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentComplete, id, params);

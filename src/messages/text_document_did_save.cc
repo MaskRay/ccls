@@ -6,7 +6,9 @@
 #include <loguru/loguru.hpp>
 
 namespace {
-struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
+struct Ipc_TextDocumentDidSave
+    : public NotificationMessage<Ipc_TextDocumentDidSave> {
+  const static IpcId kIpcId = IpcId::TextDocumentDidSave;
   struct Params {
     // The document that was saved.
     lsTextDocumentIdentifier textDocument;
@@ -15,8 +17,6 @@ struct Ipc_TextDocumentDidSave : public IpcMessage<Ipc_TextDocumentDidSave> {
     // when the save notifcation was requested.
     // std::string text;
   };
-
-  const static IpcId kIpcId = IpcId::TextDocumentDidSave;
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidSave::Params, textDocument);

@@ -38,10 +38,8 @@ std::pair<optional<std::string>, std::string> GetCommentsAndHover(
   return {nullopt, ""};
 }
 
-struct Ipc_TextDocumentHover : public IpcMessage<Ipc_TextDocumentHover> {
+struct Ipc_TextDocumentHover : public RequestMessage<Ipc_TextDocumentHover> {
   const static IpcId kIpcId = IpcId::TextDocumentHover;
-
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentHover, id, params);

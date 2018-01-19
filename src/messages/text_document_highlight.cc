@@ -4,10 +4,8 @@
 
 namespace {
 struct Ipc_TextDocumentDocumentHighlight
-    : public IpcMessage<Ipc_TextDocumentDocumentHighlight> {
+    : public RequestMessage<Ipc_TextDocumentDocumentHighlight> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentHighlight;
-
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentHighlight, id, params);

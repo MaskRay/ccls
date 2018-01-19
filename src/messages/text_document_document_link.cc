@@ -7,18 +7,15 @@
 
 namespace {
 struct Ipc_TextDocumentDocumentLink
-    : public IpcMessage<Ipc_TextDocumentDocumentLink> {
+    : public RequestMessage<Ipc_TextDocumentDocumentLink> {
   const static IpcId kIpcId = IpcId::TextDocumentDocumentLink;
-
-  struct DocumentLinkParams {
+  struct Params {
     // The document to provide document links for.
     lsTextDocumentIdentifier textDocument;
   };
-
-  lsRequestId id;
-  DocumentLinkParams params;
+  Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::DocumentLinkParams,
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::Params,
                     textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink, id, params);
 REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentLink);

@@ -22,7 +22,7 @@ struct lsDidChangeWatchedFilesParams {
 MAKE_REFLECT_STRUCT(lsDidChangeWatchedFilesParams, changes);
 
 struct Ipc_WorkspaceDidChangeWatchedFiles
-    : public IpcMessage<Ipc_WorkspaceDidChangeWatchedFiles> {
+    : public NotificationMessage<Ipc_WorkspaceDidChangeWatchedFiles> {
   const static IpcId kIpcId = IpcId::WorkspaceDidChangeWatchedFiles;
   lsDidChangeWatchedFilesParams params;
 };

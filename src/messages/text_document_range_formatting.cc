@@ -19,10 +19,8 @@ MAKE_REFLECT_STRUCT(lsTextDocumentRangeFormattingParams,
                     options);
 
 struct Ipc_TextDocumentRangeFormatting
-    : public IpcMessage<Ipc_TextDocumentRangeFormatting> {
+    : public RequestMessage<Ipc_TextDocumentRangeFormatting> {
   const static IpcId kIpcId = IpcId::TextDocumentRangeFormatting;
-
-  lsRequestId id;
   lsTextDocumentRangeFormattingParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentRangeFormatting, id, params);
