@@ -113,8 +113,8 @@ optional<char> ReadCharFromStdinBlocking() {
   return nullopt;
 }
 
-std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin(
-    bool log_stdin_to_stderr) {
+std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
+MessageRegistry::ReadMessageFromStdin(bool log_stdin_to_stderr) {
   optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
@@ -138,7 +138,8 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::ReadMessageFromStdin(
   return Parse(json_reader);
 }
 
-std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
+std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
+    MessageRegistry::Parse(Reader& visitor) {
   if (!visitor.HasMember("jsonrpc") ||
       std::string(visitor["jsonrpc"]->GetString()) != "2.0") {
     LOG_S(FATAL) << "Bad or missing jsonrpc version";
@@ -148,19 +149,16 @@ std::unique_ptr<BaseIpcMessage> MessageRegistry::Parse(Reader& visitor) {
   std::string method;
   ReflectMember(visitor, "method", method);
 
-  if (allocators.find(method) == allocators.end()) {
-    LOG_S(ERROR) << "Unable to find registered handler for method \"" << method
-                 << "\"";
-    return nullptr;
-  }
+  if (allocators.find(method) == allocators.end())
+    return std::string("Unable to find registered handler for method '") +
+           method + "'";
 
   Allocator& allocator = allocators[method];
-  // FIXME Print error message for deserialization error
   try {
     return allocator(visitor);
   } catch (std::invalid_argument& e) {
-    LOG_S(ERROR) << "Unable to deserialize request '" << method << "'";
-    return nullptr;
+    return std::string("Unable to deserialize request '") + method + "' " +
+           static_cast<JsonReader&>(visitor).GetPath() + " " + e.what();
   }
 }
 

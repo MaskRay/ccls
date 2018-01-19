@@ -45,9 +45,10 @@ struct MessageRegistry {
       std::function<std::unique_ptr<BaseIpcMessage>(Reader& visitor)>;
   std::unordered_map<std::string, Allocator> allocators;
 
-  std::unique_ptr<BaseIpcMessage> ReadMessageFromStdin(
-      bool log_stdin_to_stderr);
-  std::unique_ptr<BaseIpcMessage> Parse(Reader& visitor);
+  std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
+      ReadMessageFromStdin(bool log_stdin_to_stderr);
+  std::variant<std::string, std::unique_ptr<BaseIpcMessage>> Parse(
+      Reader& visitor);
 };
 
 template <typename T>

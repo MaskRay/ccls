@@ -238,15 +238,30 @@ void LaunchStdinLoop(Config* config,
   WorkThread::StartThread("stdin", [request_times]() {
     auto* queue = QueueManager::instance();
     while (true) {
-      std::unique_ptr<BaseIpcMessage> message =
+      std::variant<std::string, std::unique_ptr<BaseIpcMessage>> err_or_message =
           MessageRegistry::instance()->ReadMessageFromStdin(
               g_log_stdin_stdout_to_stderr);
 
       // Message parsing can fail if we don't recognize the method.
-      if (!message)
+      auto* err = std::get_if<std::string>(&err_or_message);
+      if (err) {
+        // FIXME LanguageClient-neovim will error without the check, probably
+        // because we do not support didChangeConfiguration and do not fill in
+        // the |id| field.
+        if (err->find("workspace/didChangeConfiguration") ==
+            std::string::npos) {
+          Out_Error out;
+          // TODO We cannot fill in out.id because RequestMessage.id is not a base
+          // field.
+          out.error.code = lsErrorCodes::InvalidParams;
+          out.error.message = std::move(*err);
+          queue->WriteStdout(IpcId::Unknown, out);
+        }
         continue;
+      }
 
       // Cache |method_id| so we can access it after moving |message|.
+      auto& message = std::get<std::unique_ptr<BaseIpcMessage>>(err_or_message);
       IpcId method_id = message->method_id;
 
       (*request_times)[message->method_id] = Timer();
