@@ -113,8 +113,9 @@ optional<char> ReadCharFromStdinBlocking() {
   return nullopt;
 }
 
-std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
-MessageRegistry::ReadMessageFromStdin(bool log_stdin_to_stderr) {
+optional<std::string> MessageRegistry::ReadMessageFromStdin(
+    bool log_stdin_to_stderr,
+    std::unique_ptr<BaseIpcMessage>* message) {
   optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
@@ -135,11 +136,12 @@ MessageRegistry::ReadMessageFromStdin(bool log_stdin_to_stderr) {
   assert(!document.HasParseError());
 
   JsonReader json_reader{&document};
-  return Parse(json_reader);
+  return Parse(json_reader, message);
 }
 
-std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
-    MessageRegistry::Parse(Reader& visitor) {
+optional<std::string> MessageRegistry::Parse(
+    Reader& visitor,
+    std::unique_ptr<BaseIpcMessage>* message) {
   if (!visitor.HasMember("jsonrpc") ||
       std::string(visitor["jsonrpc"]->GetString()) != "2.0") {
     LOG_S(FATAL) << "Bad or missing jsonrpc version";
@@ -155,8 +157,11 @@ std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
 
   Allocator& allocator = allocators[method];
   try {
-    return allocator(visitor);
+    allocator(visitor, message);
+    return nullopt;
   } catch (std::invalid_argument& e) {
+    // *message is partially deserialized but some field (e.g. |id|) are likely
+    // available.
     return std::string("Unable to deserialize request '") + method + "' " +
            static_cast<JsonReader&>(visitor).GetPath() + " " + e.what();
   }

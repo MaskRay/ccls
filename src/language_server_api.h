@@ -40,24 +40,26 @@ struct MessageRegistry {
   static MessageRegistry* instance();
 
   using Allocator =
-      std::function<std::unique_ptr<BaseIpcMessage>(Reader& visitor)>;
+      std::function<void(Reader& visitor, std::unique_ptr<BaseIpcMessage>*)>;
   std::unordered_map<std::string, Allocator> allocators;
 
-  std::variant<std::string, std::unique_ptr<BaseIpcMessage>>
-      ReadMessageFromStdin(bool log_stdin_to_stderr);
-  std::variant<std::string, std::unique_ptr<BaseIpcMessage>> Parse(
-      Reader& visitor);
+  optional<std::string> ReadMessageFromStdin(
+      bool log_stdin_to_stderr,
+      std::unique_ptr<BaseIpcMessage>* message);
+  optional<std::string> Parse(Reader& visitor,
+                              std::unique_ptr<BaseIpcMessage>* message);
 };
 
 template <typename T>
 struct MessageRegistryRegister {
   MessageRegistryRegister() {
     std::string method_name = IpcIdToString(T::kIpcId);
-    MessageRegistry::instance()->allocators[method_name] = [](Reader& visitor) {
-      auto result = MakeUnique<T>();
-      Reflect(visitor, *result);
-      return result;
-    };
+    MessageRegistry::instance()->allocators[method_name] =
+        [](Reader& visitor, std::unique_ptr<BaseIpcMessage>* message) {
+          *message = MakeUnique<T>();
+          // Reflect may throw and *message will be partially deserialized.
+          Reflect(visitor, static_cast<T&>(**message));
+        };
   }
 };
 
