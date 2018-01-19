@@ -162,8 +162,8 @@ optional<std::string> MessageRegistry::Parse(
   } catch (std::invalid_argument& e) {
     // *message is partially deserialized but some field (e.g. |id|) are likely
     // available.
-    return std::string("Unable to deserialize request '") + method + "' " +
-           static_cast<JsonReader&>(visitor).GetPath() + " " + e.what();
+    return std::string("Fail to parse '") + method + "' " +
+           static_cast<JsonReader&>(visitor).GetPath() + ", expected " + e.what();
   }
 }
 

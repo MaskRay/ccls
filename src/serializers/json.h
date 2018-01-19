@@ -43,8 +43,10 @@ class JsonReader : public Reader {
     // Use "0" to indicate any element for now.
     path_.push_back("0");
     for (auto& entry : m_->GetArray()) {
-      JsonReader sub(&entry);
-      fn(sub);
+      auto saved = m_;
+      m_ = &entry;
+      fn(*this);
+      m_ = saved;
     }
     path_.pop_back();
   }
@@ -53,8 +55,10 @@ class JsonReader : public Reader {
     path_.push_back(name);
     auto it = m_->FindMember(name);
     if (it != m_->MemberEnd()) {
-      JsonReader sub(&it->value);
-      fn(sub);
+      auto saved = m_;
+      m_ = &it->value;
+      fn(*this);
+      m_ = saved;
     }
     path_.pop_back();
   }
