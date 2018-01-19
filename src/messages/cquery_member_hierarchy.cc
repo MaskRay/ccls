@@ -4,18 +4,16 @@
 
 namespace {
 struct Ipc_CqueryMemberHierarchyInitial
-    : public IpcMessage<Ipc_CqueryMemberHierarchyInitial> {
+    : public RequestMessage<Ipc_CqueryMemberHierarchyInitial> {
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyInitial;
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyInitial);
 
 struct Ipc_CqueryMemberHierarchyExpand
-    : public IpcMessage<Ipc_CqueryMemberHierarchyExpand> {
+    : public RequestMessage<Ipc_CqueryMemberHierarchyExpand> {
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
-  lsRequestId id;
   struct Params {
     size_t type_id;
   };

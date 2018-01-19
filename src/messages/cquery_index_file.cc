@@ -5,9 +5,8 @@
 #include <loguru/loguru.hpp>
 
 namespace {
-struct Ipc_CqueryIndexFile : public IpcMessage<Ipc_CqueryIndexFile> {
+struct Ipc_CqueryIndexFile : public NotificationMessage<Ipc_CqueryIndexFile> {
   static constexpr IpcId kIpcId = IpcId::CqueryIndexFile;
-
   struct Params {
     std::string path;
     std::vector<std::string> args;

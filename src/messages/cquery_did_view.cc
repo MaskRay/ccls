@@ -4,12 +4,11 @@
 
 namespace {
 struct Ipc_CqueryTextDocumentDidView
-    : public IpcMessage<Ipc_CqueryTextDocumentDidView> {
+    : public NotificationMessage<Ipc_CqueryTextDocumentDidView> {
+  const static IpcId kIpcId = IpcId::CqueryTextDocumentDidView;
   struct Params {
     lsDocumentUri textDocumentUri;
   };
-
-  const static IpcId kIpcId = IpcId::CqueryTextDocumentDidView;
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView::Params, textDocumentUri);

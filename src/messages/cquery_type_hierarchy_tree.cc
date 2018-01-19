@@ -4,9 +4,8 @@
 
 namespace {
 struct Ipc_CqueryTypeHierarchyTree
-    : public IpcMessage<Ipc_CqueryTypeHierarchyTree> {
+    : public RequestMessage<Ipc_CqueryTypeHierarchyTree> {
   const static IpcId kIpcId = IpcId::CqueryTypeHierarchyTree;
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryTypeHierarchyTree, id, params);

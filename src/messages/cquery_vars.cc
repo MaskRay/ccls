@@ -3,9 +3,8 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryVars : public IpcMessage<Ipc_CqueryVars> {
+struct Ipc_CqueryVars : public RequestMessage<Ipc_CqueryVars> {
   const static IpcId kIpcId = IpcId::CqueryVars;
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryVars, id, params);

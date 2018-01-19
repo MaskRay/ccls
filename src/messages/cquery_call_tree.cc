@@ -7,20 +7,18 @@
 // FIXME Interop with VSCode, change std::string usr to Usr (uint64_t)
 namespace {
 struct Ipc_CqueryCallTreeInitial
-    : public IpcMessage<Ipc_CqueryCallTreeInitial> {
+    : public RequestMessage<Ipc_CqueryCallTreeInitial> {
   const static IpcId kIpcId = IpcId::CqueryCallTreeInitial;
-  lsRequestId id;
   lsTextDocumentPositionParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeInitial, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeInitial);
 
-struct Ipc_CqueryCallTreeExpand : public IpcMessage<Ipc_CqueryCallTreeExpand> {
+struct Ipc_CqueryCallTreeExpand : public RequestMessage<Ipc_CqueryCallTreeExpand> {
+  const static IpcId kIpcId = IpcId::CqueryCallTreeExpand;
   struct Params {
     std::string usr;
   };
-  const static IpcId kIpcId = IpcId::CqueryCallTreeExpand;
-  lsRequestId id;
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeExpand::Params, usr);

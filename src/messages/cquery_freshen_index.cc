@@ -9,9 +9,9 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_CqueryFreshenIndex : public IpcMessage<Ipc_CqueryFreshenIndex> {
+struct Ipc_CqueryFreshenIndex : public RequestMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
-  lsRequestId id;
+  // FIXME fresh partial files
 };
 MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);
 REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);

@@ -6,7 +6,7 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_CqueryWait : public IpcMessage<Ipc_CqueryWait> {
+struct Ipc_CqueryWait : public NotificationMessage<Ipc_CqueryWait> {
   static constexpr IpcId kIpcId = IpcId::CqueryWait;
 };
 MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryWait);

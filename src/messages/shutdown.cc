@@ -2,9 +2,8 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_Shutdown : public IpcMessage<Ipc_Shutdown> {
+struct Ipc_Shutdown : public RequestMessage<Ipc_Shutdown> {
   static const IpcId kIpcId = IpcId::Shutdown;
-  lsRequestId id;
 };
 MAKE_REFLECT_STRUCT(Ipc_Shutdown, id);
 REGISTER_IPC_MESSAGE(Ipc_Shutdown);

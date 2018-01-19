@@ -17,10 +17,8 @@ extern std::string g_init_options;
 extern int g_enable_comments;
 
 namespace {
-struct Ipc_InitializeRequest : public IpcMessage<Ipc_InitializeRequest> {
+struct Ipc_InitializeRequest : public RequestMessage<Ipc_InitializeRequest> {
   const static IpcId kIpcId = IpcId::Initialize;
-
-  lsRequestId id;
   lsInitializeParams params;
 };
 MAKE_REFLECT_STRUCT(Ipc_InitializeRequest, id, params);
