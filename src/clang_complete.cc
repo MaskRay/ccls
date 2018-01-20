@@ -134,6 +134,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
       // return lsCompletionItemKind::File;
 
     case CXCursor_NotImplemented:
+    case CXCursor_OverloadCandidate:
       return lsCompletionItemKind::Text;
 
     case CXCursor_EnumConstantDecl:

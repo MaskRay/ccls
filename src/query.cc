@@ -282,8 +282,8 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
 }  // namespace
 
 QueryFileId GetQueryFileIdFromPath(QueryDatabase* query_db,
-                                             const std::string& path,
-                                             bool create_if_missing) {
+                                   const std::string& path,
+                                   bool create_if_missing) {
   auto it = query_db->usr_to_file.find(LowerPathIfCaseInsensitive(path));
   if (it != query_db->usr_to_file.end())
     return QueryFileId(it->second.id);
@@ -312,8 +312,8 @@ QueryTypeId GetQueryTypeIdFromUsr(QueryDatabase* query_db,
 }
 
 QueryFuncId GetQueryFuncIdFromUsr(QueryDatabase* query_db,
-                                            Usr usr,
-                                            bool create_if_missing) {
+                                  Usr usr,
+                                  bool create_if_missing) {
   auto it = query_db->usr_to_func.find(usr);
   if (it != query_db->usr_to_func.end())
     return QueryFuncId(it->second.id);
