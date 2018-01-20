@@ -321,9 +321,8 @@ void ParseFile(Config* config,
                ImportManager* import_manager,
                ICacheManager* cache_manager,
                IIndexer* indexer,
-               bool is_interactive,
-               const Project::Entry& entry,
-               const std::string& entry_contents) {
+               const Index_Request& request,
+               const Project::Entry& entry) {
   // If the file is inferred, we may not actually be able to parse that file
   // directly (ie, a header file, which are not listed in the project). If this
   // file is inferred, then try to use the file which originally imported it.
@@ -337,33 +336,46 @@ void ParseFile(Config* config,
   // Try to load the file from cache.
   if (TryLoadFromCache(file_consumer_shared, timestamp_manager,
                        modification_timestamp_fetcher, import_manager,
-                       cache_manager, is_interactive, entry,
+                       cache_manager, request.is_interactive, entry,
                        path_to_index) == CacheLoadResult::DoNotParse) {
     return;
   }
 
   LOG_S(INFO) << "Parsing " << path_to_index;
-  std::vector<FileContents> file_contents =
-      PreloadFileContents(cache_manager, entry, entry_contents, path_to_index);
+  std::vector<FileContents> file_contents = PreloadFileContents(
+      cache_manager, entry, request.contents, path_to_index);
 
   std::vector<Index_DoIdMap> result;
   PerformanceImportFile perf;
-  std::vector<std::unique_ptr<IndexFile>> indexes =
-      indexer->Index(config, file_consumer_shared, path_to_index, entry.args,
-                     file_contents, &perf);
-  for (std::unique_ptr<IndexFile>& new_index : indexes) {
+  auto indexes = indexer->Index(config, file_consumer_shared, path_to_index,
+                                entry.args, file_contents, &perf);
+
+  if (!indexes) {
+    if (config->enableIndexing &&
+        std::holds_alternative<int64_t>(request.id)) {
+      Out_Error out;
+      out.id = request.id;
+      out.error.code = lsErrorCodes::InternalError;
+      out.error.message = "Failed to index " + path_to_index;
+      QueueManager::WriteStdout(IpcId::Unknown, out);
+    }
+    return;
+  }
+
+  for (std::unique_ptr<IndexFile>& new_index : *indexes) {
     Timer time;
 
     // Only emit diagnostics for non-interactive sessions, which makes it easier
     // to identify indexing problems. For interactive sessions, diagnostics are
     // handled by code completion.
-    if (!is_interactive)
+    if (!request.is_interactive)
       EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
 
     // When main thread does IdMap request it will request the previous index if
     // needed.
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
-    result.push_back(Index_DoIdMap(std::move(new_index), perf, is_interactive,
+    result.push_back(Index_DoIdMap(std::move(new_index), perf,
+                                   request.is_interactive,
                                    true /*write_to_disk*/));
   }
 
@@ -389,7 +401,7 @@ bool IndexMain_DoParse(
   entry.args = request->args;
   ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
             modification_timestamp_fetcher, import_manager, cache_manager,
-            indexer, request->is_interactive, entry, request->contents);
+            indexer, request.value(), entry);
   return true;
 }
 
@@ -518,11 +530,13 @@ void IndexWithTuFromCodeCompletion(
 
   PerformanceImportFile perf;
   ClangIndex index;
-  std::vector<std::unique_ptr<IndexFile>> indexes = ParseWithTu(
+  auto indexes = ParseWithTu(
       file_consumer_shared, &perf, tu, &index, path, args, file_contents);
+  if (!indexes)
+    return;
 
   std::vector<Index_DoIdMap> result;
-  for (std::unique_ptr<IndexFile>& new_index : indexes) {
+  for (std::unique_ptr<IndexFile>& new_index : *indexes) {
     Timer time;
 
     // When main thread does IdMap request it will request the previous index if

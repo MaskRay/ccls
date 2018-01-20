@@ -170,9 +170,9 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
     Config config;
     FileConsumerSharedState file_consumer_shared;
     PerformanceImportFile perf;
-    std::vector<std::unique_ptr<IndexFile>> dbs =
-        Parse(&config, &file_consumer_shared, path, flags, {}, &perf, &index,
-              false /*dump_ast*/);
+    auto dbs = Parse(&config, &file_consumer_shared, path, flags, {}, &perf,
+                     &index, false /*dump_ast*/);
+    assert(dbs);
 
     for (const auto& entry : all_expected_output) {
       const std::string& expected_path = entry.first;
@@ -203,7 +203,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
       };
 
       // Get output from index operation.
-      IndexFile* db = FindDbForPathEnding(expected_path, dbs);
+      IndexFile* db = FindDbForPathEnding(expected_path, *dbs);
       assert(db);
       if (!db->diagnostics_.empty()) {
         std::cout << "For " << path << std::endl;

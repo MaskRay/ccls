@@ -20,11 +20,13 @@ struct Index_Request {
   std::vector<std::string> args;
   bool is_interactive;
   std::string contents;  // Preloaded contents. Useful for tests.
+  lsRequestId id;
 
   Index_Request(const std::string& path,
                 const std::vector<std::string>& args,
                 bool is_interactive,
-                const std::string& contents);
+                const std::string& contents,
+                lsRequestId id={});
 };
 
 struct Index_DoIdMap {

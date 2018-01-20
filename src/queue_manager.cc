@@ -8,11 +8,13 @@
 Index_Request::Index_Request(const std::string& path,
                              const std::vector<std::string>& args,
                              bool is_interactive,
-                             const std::string& contents)
+                             const std::string& contents,
+                             lsRequestId id)
     : path(path),
       args(args),
       is_interactive(is_interactive),
-      contents(contents) {}
+      contents(contents),
+      id(id) {}
 
 Index_DoIdMap::Index_DoIdMap(std::unique_ptr<IndexFile> current,
                              PerformanceImportFile perf,

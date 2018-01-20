@@ -1894,7 +1894,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   }
 }
 
-std::vector<std::unique_ptr<IndexFile>> Parse(
+optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
@@ -1924,7 +1924,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
       CXTranslationUnit_KeepGoing |
           CXTranslationUnit_DetailedPreprocessingRecord);
   if (!tu)
-    return {};
+    return nullopt;
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
@@ -1935,7 +1935,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
                      unsaved_files);
 }
 
-std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
+optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
@@ -1982,8 +1982,9 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
           CXIndexOpt_IndexImplicitTemplateInstantiations,
       tu->cx_tu);
   if (index_result != CXError_Success) {
-    LOG_S(WARNING) << "Indexing " << file
-                   << " failed with errno=" << index_result;
+    LOG_S(ERROR) << "Indexing " << file
+                 << " failed with errno=" << index_result;
+    return nullopt;
   }
 
   clang_IndexAction_dispose(index_action);
