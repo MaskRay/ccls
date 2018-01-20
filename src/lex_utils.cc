@@ -188,31 +188,17 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
   return content.substr(start, end - start + 1);
 }
 
-bool SubstringMatch(const std::string& search, const std::string& content) {
-  if (search.empty())
-    return true;
-
-  size_t search_index = 0;
-  char search_char = tolower(search[search_index]);
-
-  size_t content_index = 0;
-
-  while (true) {
-    char content_char = tolower(content[content_index]);
-
-    if (content_char == search_char) {
-      search_index += 1;
-      if (search_index >= search.size())
-        return true;
-      search_char = tolower(search[search_index]);
-    }
-
-    content_index += 1;
-    if (content_index >= content.size())
+bool SubsequenceMatch(const std::string& search, const std::string& content) {
+  size_t j = 0;
+  for (size_t i = 0; i < search.size(); i++) {
+    char search_char = tolower(search[i]);
+    while (j < content.size() && tolower(content[j]) != search_char)
+      j++;
+    if (j == content.size())
       return false;
+    j++;
   }
-
-  return false;
+  return true;
 }
 
 TEST_SUITE("Offset") {
@@ -239,32 +225,32 @@ TEST_SUITE("Offset") {
 TEST_SUITE("Substring") {
   TEST_CASE("match") {
     // Sanity.
-    REQUIRE(SubstringMatch("a", "aa"));
-    REQUIRE(SubstringMatch("aa", "aa"));
+    REQUIRE(SubsequenceMatch("a", "aa"));
+    REQUIRE(SubsequenceMatch("aa", "aa"));
 
     // Empty string matches anything.
-    REQUIRE(SubstringMatch("", ""));
-    REQUIRE(SubstringMatch("", "aa"));
+    REQUIRE(SubsequenceMatch("", ""));
+    REQUIRE(SubsequenceMatch("", "aa"));
 
     // Match in start/middle/end.
-    REQUIRE(SubstringMatch("a", "abbbb"));
-    REQUIRE(SubstringMatch("a", "bbabb"));
-    REQUIRE(SubstringMatch("a", "bbbba"));
-    REQUIRE(SubstringMatch("aa", "aabbb"));
-    REQUIRE(SubstringMatch("aa", "bbaab"));
-    REQUIRE(SubstringMatch("aa", "bbbaa"));
+    REQUIRE(SubsequenceMatch("a", "abbbb"));
+    REQUIRE(SubsequenceMatch("a", "bbabb"));
+    REQUIRE(SubsequenceMatch("a", "bbbba"));
+    REQUIRE(SubsequenceMatch("aa", "aabbb"));
+    REQUIRE(SubsequenceMatch("aa", "bbaab"));
+    REQUIRE(SubsequenceMatch("aa", "bbbaa"));
 
     // Capitalization.
-    REQUIRE(SubstringMatch("aa", "aA"));
-    REQUIRE(SubstringMatch("aa", "Aa"));
-    REQUIRE(SubstringMatch("aa", "AA"));
+    REQUIRE(SubsequenceMatch("aa", "aA"));
+    REQUIRE(SubsequenceMatch("aa", "Aa"));
+    REQUIRE(SubsequenceMatch("aa", "AA"));
 
     // Token skipping.
-    REQUIRE(SubstringMatch("ad", "abcd"));
-    REQUIRE(SubstringMatch("ad", "ABCD"));
+    REQUIRE(SubsequenceMatch("ad", "abcd"));
+    REQUIRE(SubsequenceMatch("ad", "ABCD"));
 
     // Ordering.
-    REQUIRE(!SubstringMatch("ad", "dcba"));
+    REQUIRE(!SubsequenceMatch("ad", "dcba"));
   }
 }
 

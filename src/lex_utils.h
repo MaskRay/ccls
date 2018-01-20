@@ -24,4 +24,5 @@ void LexFunctionDeclaration(const std::string& buffer_content,
 
 std::string LexWordAroundPos(lsPosition position, const std::string& content);
 
-bool SubstringMatch(const std::string& search, const std::string& content);
+// Case-insensitive subsequence matching.
+bool SubsequenceMatch(const std::string& search, const std::string& content);

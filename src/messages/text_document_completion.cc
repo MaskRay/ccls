@@ -128,6 +128,13 @@ void FilterAndSortCompletionResponse(
     return;
   }
 
+  items.erase(std::remove_if(items.begin(), items.end(),
+                             [&](const lsCompletionItem& item) {
+                               return !SubsequenceMatch(complete_text,
+                                                        item.label);
+                             }),
+              items.end());
+
   // Find the appearance of |complete_text| in all candidates.
   bool found = false;
   for (auto& item : items) {
@@ -187,15 +194,13 @@ void FilterAndSortCompletionResponse(
       // Find fuzzy matches if we haven't found all of the literal matches.
       if (filtered_result.size() < kMaxResultSize) {
         for (const auto& item : items) {
-          if (SubstringMatch(complete_text, item.label)) {
-            // Don't insert the same completion entry.
-            if (!inserted.insert(item.InsertedContent()).second)
-              continue;
+          // Don't insert the same completion entry.
+          if (!inserted.insert(item.InsertedContent()).second)
+            continue;
 
-            filtered_result.push_back(item);
-            if (filtered_result.size() >= kMaxResultSize)
-              break;
-          }
+          filtered_result.push_back(item);
+          if (filtered_result.size() >= kMaxResultSize)
+            break;
         }
       }
 

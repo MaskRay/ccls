@@ -225,7 +225,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
           query_without_space += c;
 
       for (int i = 0; i < db->short_names.size(); ++i) {
-        if (SubstringMatch(query_without_space, db->short_names[i])) {
+        if (SubsequenceMatch(query_without_space, db->short_names[i])) {
           // Do not show the same entry twice.
           if (!inserted_results.insert(db->detailed_names[i]).second)
             continue;
