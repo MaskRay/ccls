@@ -2033,7 +2033,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
         entry->dependencies.end());
   }
 
-  return result;
+  return std::move(result);
 }
 
 void ConcatTypeAndName(std::string& type, const std::string& name) {
