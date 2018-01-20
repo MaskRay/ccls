@@ -567,6 +567,12 @@ TEST_SUITE("Project") {
          "-Wno-unknown-warning-option"});
 
     CheckFlags(
+        /* raw */ {"clang.exe"},
+        /* expected */
+        {"clang.exe", "-working-directory", "/dir/", "-xc++", "-std=c++14",
+              "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+
+    CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",

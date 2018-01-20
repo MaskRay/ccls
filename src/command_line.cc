@@ -248,9 +248,10 @@ void LaunchStdinLoop(Config* config,
         // The message may be partially deserialized.
         // Emit an error ResponseMessage if |id| is available.
         if (message) {
-          Out_Error out;
-          out.id = message->GetRequestId();
-          if (!std::holds_alternative<std::monostate>(out.id)) {
+          lsRequestId id = message->GetRequestId();
+          if (!std::holds_alternative<std::monostate>(id)) {
+            Out_Error out;
+            out.id = id;
             out.error.code = lsErrorCodes::InvalidParams;
             out.error.message = std::move(*err);
             queue->WriteStdout(IpcId::Unknown, out);
