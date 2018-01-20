@@ -1,4 +1,5 @@
 #include "cache_manager.h"
+#include "match.h"
 #include "message_handler.h"
 #include "platform.h"
 #include "project.h"
@@ -11,23 +12,23 @@
 namespace {
 struct Ipc_CqueryFreshenIndex : public RequestMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
-  // FIXME fresh partial files
+  std::vector<std::string> whitelist;
+  std::vector<std::string> blacklist;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id);
+MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, id, whitelist, blacklist);
 REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
 
-struct CqueryFreshenIndexHandler : MessageHandler {
-  IpcId GetId() const override { return IpcId::CqueryFreshenIndex; }
-
-  void Run(std::unique_ptr<BaseIpcMessage> request) override {
+struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
+  void Run(Ipc_CqueryFreshenIndex* request) override {
     LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
 
     // TODO: think about this flow and test it more.
+    GroupMatch matcher(request->whitelist, request->blacklist);
 
     // Unmark all files whose timestamp has changed.
     std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
     for (const auto& file : db->files) {
-      if (!file.def)
+      if (!file.def || !matcher.IsMatch(file.def->path))
         continue;
 
       optional<int64_t> modification_timestamp =
@@ -47,6 +48,8 @@ struct CqueryFreshenIndexHandler : MessageHandler {
     // Send index requests for every file.
     project->ForAllFilteredFiles(
         config, [&](int i, const Project::Entry& entry) {
+          if (!matcher.IsMatch(entry.filename))
+            return;
           optional<std::string> content = ReadContent(entry.filename);
           if (!content) {
             LOG_S(ERROR) << "When freshening index, cannot read file "
