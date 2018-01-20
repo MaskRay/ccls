@@ -187,10 +187,11 @@ struct CqueryCallTreeExpandHandler
     Out_CqueryCallTree out;
     out.id = request->id;
 
-    // FIXME Change VSCode plugin to use number representation of USR hash
-    QueryFuncId func_id = db->GetQueryFuncIdFromUsr(std::stoull(request->params.usr));
-    if (func_id.id != QueryFuncId::INVALID_ID)
-      out.result = BuildExpandCallTree(db, working_files, func_id);
+    // FIXME
+    optional<QueryFuncId> func_id =
+        db->GetQueryFuncIdFromUsr(std::stoull(request->params.usr));
+    if (func_id)
+      out.result = BuildExpandCallTree(db, working_files, func_id.value());
 
     QueueManager::WriteStdout(IpcId::CqueryCallTreeExpand, out);
   }
