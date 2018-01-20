@@ -7,23 +7,22 @@
 namespace {
 struct Ipc_TextDocumentReferences
     : public RequestMessage<Ipc_TextDocumentReferences> {
+  const static IpcId kIpcId = IpcId::TextDocumentReferences;
   struct lsReferenceContext {
     // Include the declaration of the current symbol.
     bool includeDeclaration;
   };
-  struct lsReferenceParams : public lsTextDocumentPositionParams {
+  struct Params {
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
     lsReferenceContext context;
   };
 
-  const static IpcId kIpcId = IpcId::TextDocumentReferences;
-
-  lsReferenceParams params;
+  Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext,
                     includeDeclaration);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceParams,
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::Params,
                     textDocument,
                     position,
                     context);
@@ -74,6 +73,25 @@ struct TextDocumentReferencesHandler
       }
       break;
     }
+
+    if (out.result.empty())
+      for (const IndexInclude& include : file->def->includes)
+        if (include.line == request->params.position.line) {
+          // |include| is the line the cursor is on.
+          for (QueryFile& file1 : db->files)
+            if (file1.def)
+              for (const IndexInclude& include1 : file1.def->includes)
+                if (include1.resolved_path == include.resolved_path) {
+                  // Another file |file1| has the same include line.
+                  lsLocation result;
+                  result.uri = lsDocumentUri::FromPath(file1.def->path);
+                  result.range.start.line = result.range.end.line =
+                      include1.line;
+                  out.result.push_back(std::move(result));
+                  break;
+                }
+          break;
+        }
 
     QueueManager::WriteStdout(IpcId::TextDocumentReferences, out);
   }
