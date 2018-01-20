@@ -332,15 +332,8 @@ optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column, bool 
 
 optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int* column, bool is_end) {
   // See GetBufferLineFromIndexLine for additional comments.
-
-  // Note: |index_line| and |buffer_line| are 1-based.
-  if (line < 0 || line >= (int)buffer_lines.size()) {
-    loguru::Text stack = loguru::stacktrace();
-    LOG_S(WARNING) << "Bad buffer_line (got " << line
-                   << ", expected [1, " << buffer_lines.size() << "]) in "
-                   << filename << stack.c_str();
+  if (line < 0 || line >= (int)buffer_lines.size())
     return nullopt;
-  }
 
   if (buffer_to_index.empty())
     ComputeLineMapping();
