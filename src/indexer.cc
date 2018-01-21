@@ -414,8 +414,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   }
 
   ClangCursor declaration =
-      ClangCursor(type.get_declaration())
-          .template_specialization_to_template_definition();
+      type.get_declaration().template_specialization_to_template_definition();
   CXString cx_usr = clang_getCursorUSR(declaration.cx_cursor);
   const char* str_usr = clang_getCString(cx_usr);
   if (!str_usr || str_usr[0] == '\0') {

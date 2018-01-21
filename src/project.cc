@@ -262,7 +262,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Using -fparse-all-comments enables documententation in the indexer and in
   // code completion.
-  if (init_opts->enableComments > 1 &&
+  if (init_opts->index.comments > 1 &&
       !AnyStartsWith(result.args, "-fparse-all-comments")) {
     result.args.push_back("-fparse-all-comments");
   }

@@ -14,6 +14,8 @@ using Usr = uint64_t;
 Range ResolveCXSourceRange(const CXSourceRange& range,
                            CXFile* cx_file = nullptr);
 
+class ClangCursor;
+
 class ClangType {
  public:
   ClangType();
@@ -24,8 +26,7 @@ class ClangType {
   // Returns true if this is a fundamental type like int.
   bool is_fundamental() const;
 
-  // ClangCursor is not defined so we have to return CXCursor
-  CXCursor get_declaration() const;
+  ClangCursor get_declaration() const;
   std::string get_usr() const;
   Usr get_usr_hash() const;
   std::string get_spelling() const;

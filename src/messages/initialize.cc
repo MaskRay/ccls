@@ -77,7 +77,9 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       }
       g_index_builtin_types = config->index.builtin_types;
       // TODO Remove enableComments
-      g_enable_comments = std::max(config->enableComments, config->index.comments);
+      if (config->index.comments > 0)
+        config->enableComments = config->index.comments;
+      g_enable_comments = config->enableComments;
 
       // Check client version.
       if (config->clientVersion.has_value() &&

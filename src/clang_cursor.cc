@@ -39,7 +39,7 @@ bool ClangType::is_fundamental() const {
          cx_type.kind <= CXType_LastBuiltin;
 }
 
-CXCursor ClangType::get_declaration() const {
+ClangCursor ClangType::get_declaration() const {
   return clang_getTypeDeclaration(cx_type);
 }
 
