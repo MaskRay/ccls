@@ -17,6 +17,9 @@
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
 
+// TODO Global variable
+bool g_index_builtin_types;
+
 namespace {
 
 constexpr bool kIndexStdDeclarations = true;
@@ -393,13 +396,35 @@ bool IsFunctionCallContext(CXCursorKind kind) {
 // (ie, Foo<A,B> => Foo<*,*>).
 optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
                                                ClangCursor cursor) {
-  ClangCursor declaration = cursor.get_declaration();
-  declaration = declaration.template_specialization_to_template_definition();
-  // TODO optimize
-  std::string usr = declaration.get_usr();
-  if (usr.size())
-    return db->ToTypeId(declaration.get_usr_hash());
-  return nullopt;
+  ClangType type = cursor.get_type();
+
+  // auto x = new Foo() will not be deduced to |Foo| if we do not use the
+  // canonical type. However, a canonical type will look past typedefs so we
+  // will not accurately report variables on typedefs if we always do this.
+  if (type.cx_type.kind == CXType_Auto)
+    type = type.get_canonical();
+
+  type = type.strip_qualifiers();
+
+  if (CXType_FirstBuiltin <= type.cx_type.kind &&
+      type.cx_type.kind <= CXType_LastBuiltin) {
+    if (!g_index_builtin_types)
+      return nullopt;
+    return db->ToTypeId(type.cx_type.kind);
+  }
+
+  ClangCursor declaration =
+      ClangCursor(type.get_declaration())
+          .template_specialization_to_template_definition();
+  CXString cx_usr = clang_getCursorUSR(declaration.cx_cursor);
+  const char* str_usr = clang_getCString(cx_usr);
+  if (!str_usr || str_usr[0] == '\0') {
+    clang_disposeString(cx_usr);
+    return nullopt;
+  }
+  Usr usr = HashUsr(str_usr);
+  clang_disposeString(cx_usr);
+  return db->ToTypeId(usr);
 }
 
 void SetVarDetail(IndexVar* var,

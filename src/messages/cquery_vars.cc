@@ -25,11 +25,24 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
     out.id = request->id;
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      if (ref.idx.kind == SymbolKind::Type) {
-        QueryType& type = db->types[ref.idx.idx];
-        std::vector<QueryLocation> locations =
-            ToQueryLocation(db, type.instances);
-        out.result = GetLsLocations(db, working_files, locations);
+      size_t id = ref.idx.idx;
+      switch (ref.idx.kind) {
+        default:
+          break;
+        case SymbolKind::Var: {
+          QueryVar& var = db->vars[id];
+          if (!var.def || !var.def->variable_type)
+            continue;
+          id = var.def->variable_type->id;
+        }
+        // fallthrough
+        case SymbolKind::Type: {
+          QueryType& type = db->types[id];
+          std::vector<QueryLocation> locations =
+              ToQueryLocation(db, type.instances);
+          out.result = GetLsLocations(db, working_files, locations);
+          break;
+        }
       }
     }
     QueueManager::WriteStdout(IpcId::CqueryVars, out);

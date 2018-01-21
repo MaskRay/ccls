@@ -51,7 +51,6 @@ class ClangCursor {
   bool operator!=(const ClangCursor& rhs) const;
 
   CXCursorKind get_kind() const;
-  ClangCursor get_declaration() const;
   ClangType get_type() const;
   std::string get_spelling() const;
   Range get_spelling_range(CXFile* cx_file = nullptr) const;

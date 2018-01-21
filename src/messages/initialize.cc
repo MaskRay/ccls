@@ -14,6 +14,7 @@
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
+extern bool g_index_builtin_types;
 extern int g_enable_comments;
 
 namespace {
@@ -74,7 +75,9 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
           }
         }
       }
-      g_enable_comments = config->enableComments;
+      g_index_builtin_types = config->index.builtin_types;
+      // TODO Remove enableComments
+      g_enable_comments = std::max(config->enableComments, config->index.comments);
 
       // Check client version.
       if (config->clientVersion.has_value() &&

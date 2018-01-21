@@ -119,18 +119,6 @@ CXCursorKind ClangCursor::get_kind() const {
   return cx_cursor.kind;
 }
 
-ClangCursor ClangCursor::get_declaration() const {
-  ClangType type = get_type();
-
-  // auto x = new Foo() will not be deduced to |Foo| if we do not use the
-  // canonical type. However, a canonical type will look past typedefs so we
-  // will not accurately report variables on typedefs if we always do this.
-  if (type.cx_type.kind == CXType_Auto)
-    type = type.get_canonical();
-
-  return type.strip_qualifiers().get_declaration();
-}
-
 ClangType ClangCursor::get_type() const {
   return ClangType(clang_getCursorType(cx_cursor));
 }

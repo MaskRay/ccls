@@ -91,18 +91,27 @@ struct Config {
   // a function or method
   bool enableSnippetInsertion = true;
 
-  // 0: no; 1: Doxygen comment markers; 2: -fparse-all-comments, which includes
-  // plain // /*
+  // TODO Deprecated in favor of index.comments
   int enableComments = 0;
 
   // If true, filter and sort completion response.
   bool filterAndSortCompletionResponse = true;
+
+  struct Index {
+    bool builtin_types = false;
+
+    // 0: no; 1: Doxygen comment markers; 2: -fparse-all-comments, which includes
+    // plain // /*
+    int comments = 0;
+  };
+  Index index;
 
   //// For debugging
 
   // Dump AST after parsing if some pattern matches the source filename.
   std::vector<std::string> dumpAST;
 };
+MAKE_REFLECT_STRUCT(Config::Index, builtin_types, comments);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,
@@ -140,6 +149,8 @@ MAKE_REFLECT_STRUCT(Config,
                     enableSnippetInsertion,
 
                     enableComments,
+
+                    index,
 
                     filterAndSortCompletionResponse,
 
