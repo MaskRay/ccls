@@ -309,7 +309,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
 
       TrimInPlace(buffer_line);
       FilterAndSortCompletionResponse(&out, buffer_line,
-                                      config->filterAndSortCompletionResponse);
+                                      config->completion.filterAndSort);
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
       // If existing completion is empty, dont return clang-based completion
@@ -337,7 +337,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
             // Emit completion results.
             FilterAndSortCompletionResponse(
                 &out, existing_completion,
-                config->filterAndSortCompletionResponse);
+                config->completion.filterAndSort);
             QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
 
             // Cache completion results.

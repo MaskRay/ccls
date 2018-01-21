@@ -75,11 +75,19 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
           }
         }
       }
-      g_index_builtin_types = config->index.builtin_types;
+      g_index_builtin_types = config->index.builtinTypes;
       // TODO Remove enableComments
       if (config->index.comments > 0)
         config->enableComments = config->index.comments;
       g_enable_comments = config->enableComments;
+
+      // Client capabilities
+      if (request->params.capabilities.textDocument) {
+        const auto& cap = *request->params.capabilities.textDocument;
+        if (cap.completion && cap.completion->completionItem)
+          config->client.snippetSupport =
+              cap.completion->completionItem->snippetSupport.value_or(false);
+      }
 
       // Check client version.
       if (config->clientVersion.has_value() &&

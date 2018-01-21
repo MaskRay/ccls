@@ -87,18 +87,23 @@ struct Config {
   // inform users their vscode client is too old and needs to be updated.
   optional<int> clientVersion;
 
-  // If true parameter declarations are included in code completion when calling
-  // a function or method
-  bool enableSnippetInsertion = true;
-
   // TODO Deprecated in favor of index.comments
   int enableComments = 0;
 
-  // If true, filter and sort completion response.
-  bool filterAndSortCompletionResponse = true;
+  struct ClientCapability {
+    // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
+    bool snippetSupport = false;
+  };
+  ClientCapability client;
+
+  struct Completion {
+    // If true, filter and sort completion response.
+    bool filterAndSort = true;
+  };
+  Completion completion;
 
   struct Index {
-    bool builtin_types = false;
+    bool builtinTypes = false;
 
     // 0: no; 1: Doxygen comment markers; 2: -fparse-all-comments, which includes
     // plain // /*
@@ -111,7 +116,9 @@ struct Config {
   // Dump AST after parsing if some pattern matches the source filename.
   std::vector<std::string> dumpAST;
 };
-MAKE_REFLECT_STRUCT(Config::Index, builtin_types, comments);
+MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
+MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort);
+MAKE_REFLECT_STRUCT(Config::Index, builtinTypes, comments);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,
@@ -146,13 +153,12 @@ MAKE_REFLECT_STRUCT(Config,
                     codeLensOnLocalVariables,
 
                     clientVersion,
-                    enableSnippetInsertion,
 
                     enableComments,
 
+                    client,
+                    completion,
                     index,
-
-                    filterAndSortCompletionResponse,
 
                     dumpAST);
 

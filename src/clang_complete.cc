@@ -447,8 +447,9 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                 ls_completion_item.detail, ls_completion_item.insertText,
                 ls_completion_item.insertTextFormat,
                 &ls_completion_item.parameters_,
-                completion_manager->config_->enableSnippetInsertion);
-            if (ls_completion_item.insertTextFormat ==
+                completion_manager->config_->client.snippetSupport);
+            if (completion_manager->config_->client.snippetSupport &&
+                ls_completion_item.insertTextFormat ==
                 lsInsertTextFormat::Snippet) {
               ls_completion_item.insertText += "$0";
             }
