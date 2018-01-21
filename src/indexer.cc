@@ -1904,7 +1904,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     ClangIndex* index,
     bool dump_ast) {
   if (!config->enableIndexing)
-    return {};
+    return nullopt;
 
   file = NormalizePath(file);
 

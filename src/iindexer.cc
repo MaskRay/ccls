@@ -68,7 +68,7 @@ struct TestIndexer : IIndexer {
     // specific file (atm it is always 1)
     auto result = std::move(it->second);
     indexes.erase(it);
-    return result;
+    return std::move(result);
   }
 
   std::unordered_map<std::string, std::vector<std::unique_ptr<IndexFile>>>
