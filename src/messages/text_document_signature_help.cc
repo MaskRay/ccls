@@ -4,6 +4,8 @@
 #include "queue_manager.h"
 #include "timer.h"
 
+#include <stdint.h>
+
 namespace {
 struct Ipc_TextDocumentSignatureHelp
     : public RequestMessage<Ipc_TextDocumentSignatureHelp> {
@@ -122,13 +124,17 @@ struct TextDocumentSignatureHelpHandler : MessageHandler {
             out.result.signatures.push_back(signature);
           }
 
-          // Guess the signature the user wants based on available parameter
-          // count.
+          // Prefer the signature with least parameter count but still larger
+          // than active_param.
           out.result.activeSignature = 0;
-          for (size_t i = 0; i < out.result.signatures.size(); ++i) {
-            if (active_param < out.result.signatures.size()) {
-              out.result.activeSignature = (int)i;
-              break;
+          if (out.result.signatures.size()) {
+            size_t num_parameters = SIZE_MAX;
+            for (size_t i = 0; i < out.result.signatures.size(); ++i) {
+              size_t t = out.result.signatures[i].parameters.size();
+              if (active_param < t && t < num_parameters) {
+                out.result.activeSignature = int(i);
+                num_parameters = t;
+              }
             }
           }
 
