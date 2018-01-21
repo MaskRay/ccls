@@ -364,7 +364,8 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     our_time.Resume();
     entry.directory = directory;
     std::string absolute_filename;
-    if (!relative_filename.empty() && relative_filename[0] == '/')
+    if (IsUnixAbsolutePath(relative_filename) ||
+        IsWindowsAbsolutePath(relative_filename))
       absolute_filename = relative_filename;
     else
       absolute_filename = directory + "/" + relative_filename;
