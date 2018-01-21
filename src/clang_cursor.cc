@@ -60,6 +60,7 @@ ClangType ClangType::strip_qualifiers() const {
   switch (cx_type.kind) {
     case CXType_LValueReference:
     case CXType_Pointer:
+    case CXType_RValueReference:
       return clang_getPointeeType(cx_type);
     default:
       break;
