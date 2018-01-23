@@ -229,12 +229,9 @@ void lsDocumentUri::SetPath(const std::string& path) {
 }
 
 std::string lsDocumentUri::GetPath() const {
-  // c:/Program%20Files%20%28x86%29/Microsoft%20Visual%20Studio%2014.0/VC/include/vcruntime.
-  // C:/Program Files (x86)
-
-  std::string ret;
   if (raw_uri.compare(0, 8, "file:///"))
-    return ret;
+    return raw_uri;
+  std::string ret;
 #ifdef _WIN32
   size_t i = 8;
 #else
@@ -250,11 +247,6 @@ std::string lsDocumentUri::GetPath() const {
     } else
       ret.push_back(raw_uri[i] == '\\' ? '/' : raw_uri[i]);
   }
-
-#if defined(_WIN32)
-// std::transform(result.begin(), result.end(), result.begin(), ::tolower);
-#endif
-
   return ret;
 }
 
