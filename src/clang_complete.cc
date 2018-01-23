@@ -149,10 +149,13 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   }
 }
 
+// |do_insert|: if |!do_insert|, do not append strings to |insert| after
+// a placeholder.
 void BuildDetailString(CXCompletionString completion_string,
                        std::string& label,
                        std::string& detail,
                        std::string& insert,
+                       bool& do_insert,
                        lsInsertTextFormat& format,
                        std::vector<std::string>* parameters,
                        bool include_snippets) {
@@ -165,8 +168,8 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_Optional: {
         CXCompletionString nested =
             clang_getCompletionChunkCompletionString(completion_string, i);
-        BuildDetailString(nested, label, detail, insert, format, parameters,
-                          include_snippets);
+        BuildDetailString(nested, label, detail, insert, do_insert, format,
+                          parameters, include_snippets);
         break;
       }
 
@@ -180,7 +183,8 @@ void BuildDetailString(CXCompletionString completion_string,
           insert +=
               "${" + std::to_string(parameters->size()) + ":" + text + "}";
           format = lsInsertTextFormat::Snippet;
-        }
+        } else
+          do_insert = false;
         break;
       }
 
@@ -194,7 +198,8 @@ void BuildDetailString(CXCompletionString completion_string,
             ToString(clang_getCompletionChunkText(completion_string, i));
         label = text;
         detail += text;
-        insert += text;
+        if (do_insert)
+          insert += text;
         break;
       }
 
@@ -202,7 +207,8 @@ void BuildDetailString(CXCompletionString completion_string,
         std::string text =
             ToString(clang_getCompletionChunkText(completion_string, i));
         detail += text;
-        insert += text;
+        if (do_insert)
+          insert += text;
         break;
       }
 
@@ -220,64 +226,69 @@ void BuildDetailString(CXCompletionString completion_string,
 
       case CXCompletionChunk_LeftParen:
         detail += "(";
-        insert += "(";
-        // Put cursor between parentheses if snippets are not enabled
-        if (!include_snippets) {
-          insert += "$1";
-          format = lsInsertTextFormat::Snippet;
-        }
+        if (do_insert)
+          insert += "(";
         break;
       case CXCompletionChunk_RightParen:
         detail += ")";
-        insert += ")";
+        if (do_insert)
+          insert += ")";
         break;
       case CXCompletionChunk_LeftBracket:
         detail += "[";
-        insert += "[";
+        if (do_insert)
+          insert += "[";
         break;
       case CXCompletionChunk_RightBracket:
         detail += "]";
-        insert += "]";
+        if (do_insert)
+          insert += "]";
         break;
       case CXCompletionChunk_LeftBrace:
         detail += "{";
-        insert += "{";
+        if (do_insert)
+          insert += "{";
         break;
       case CXCompletionChunk_RightBrace:
         detail += "}";
-        insert += "}";
+        if (do_insert)
+          insert += "}";
         break;
       case CXCompletionChunk_LeftAngle:
         detail += "<";
-        insert += "<";
+        if (do_insert)
+          insert += "<";
         break;
       case CXCompletionChunk_RightAngle:
         detail += ">";
-        insert += ">";
+        if (do_insert)
+          insert += ">";
         break;
       case CXCompletionChunk_Comma:
         detail += ", ";
-        // Only put comma's between parentheses if snippets are enabled
-        if (include_snippets) {
+        if (do_insert)
           insert += ", ";
-        }
         break;
       case CXCompletionChunk_Colon:
         detail += ":";
-        insert += ":";
+        if (do_insert)
+          insert += ":";
         break;
       case CXCompletionChunk_SemiColon:
         detail += ";";
-        insert += ";";
+        if (do_insert)
+          insert += ";";
         break;
       case CXCompletionChunk_Equal:
         detail += "=";
-        insert += "=";
+        if (do_insert)
+          insert += "=";
         break;
       case CXCompletionChunk_HorizontalSpace:
       case CXCompletionChunk_VerticalSpace:
         detail += " ";
-        insert += " ";
+        if (do_insert)
+          insert += " ";
         break;
     }
   }
@@ -440,17 +451,18 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             // TODO: fill in more data
             lsCompletionItem ls_completion_item;
 
+            bool do_insert = true;
             // kind/label/detail/docs/sortText
             ls_completion_item.kind = GetCompletionKind(result.CursorKind);
             BuildDetailString(
                 result.CompletionString, ls_completion_item.label,
                 ls_completion_item.detail, ls_completion_item.insertText,
-                ls_completion_item.insertTextFormat,
+                do_insert, ls_completion_item.insertTextFormat,
                 &ls_completion_item.parameters_,
                 completion_manager->config_->client.snippetSupport);
             if (completion_manager->config_->client.snippetSupport &&
                 ls_completion_item.insertTextFormat ==
-                lsInsertTextFormat::Snippet) {
+                    lsInsertTextFormat::Snippet) {
               ls_completion_item.insertText += "$0";
             }
 
