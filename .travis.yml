@@ -139,3 +139,17 @@ notifications:
       - "ircs://chat.freenode.net:6697/#cquery"
     template:
       - "[ %{repository_slug}#%{commit}] %{result} on %{branch} by %{author} (%{build_url} )"
+
+before_deploy:
+- zip -r build/cquery-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip build/release/bin/ build/release/lib/clang+llvm-*/lib/libclang.* build/release/lib/clang+llvm-*/lib/clang/5.0.1/include/
+
+deploy:
+  provider: releases
+  api_key:
+    secure: Ahv4Wp1wveWILqp6HB8UmsXwwfZ103fuJV/u6W4oJFRpnbIXRCGFKaDR1Ql0hsHduKFd/76nNQGSVvNNuTXlWaK2n0bTu1EZ4VYmXk7Q7gn4ROP9XFrIZu0c9XKJ/bzehCLj3t6KT0R5MK5gQe+cBmx4S5uGsGG5/nM+GZpE1N4craRCh64UNXMvIx20sW4VQcgj1Ccrc/6Skb3HET7PKbY+IB/LXnaF3nM6V71LxKW2wlakBmzzaNatQ46QOcOCduY4edE8FqBs7yZ0eFktNZusmjiaZT12t0r1hVe0O8e0ER3u9/c3t+hbPUplMR2FAPBZXojgLVhSfFtBaj45T74oCIi0eUaDeS+Oxl6IzgyVho9RurOtaru3hLOVoaD9wR6lGhj6Nz/2Na3lOIorxHfAZ4OgUmluoFLCynO4ylMD03fMBGBshChnmYbrxLw0xLZP2005WUAj8JN64QOmFmLt3gV7TfVldSFHuwoZyESfkXPRM1Xn8RtgFi/89p4jtPtyBFLSaeDggCwfWEMfADCfJ/j8lXtAPdyEINoaKrxkH8qCPoMLNPXE7JhkP8L0Smdq4cFUEXg3wKWM2hXmWmh2Y25BAyh4qu9CrDPd5qqFcXMtyix4ZjmThLFs/oKYbbMUo4FQ5xT5dpt/VZOi4NpcAj0G/M3jWhu85tMdtTc=
+  file: build/cquery-$TRAVIS_TAG-$TRAVIS_OS_NAME.zip
+  skip_cleanup: true
+  on:
+    repo: cquery-project/cquery
+    tags: true
+
