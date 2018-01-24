@@ -543,9 +543,6 @@ TEST_SUITE("Project") {
       std::cout << "Expected: " << StringJoin(expected) << std::endl;
       std::cout << "Actual:   " << StringJoin(result.args) << std::endl;
     }
-    result.args.erase(std::remove(result.args.begin(), result.args.end(),
-                                  std::string("-fparse-all-comments")),
-                      result.args.end());
     for (int i = 0; i < std::min(result.args.size(), expected.size()); ++i) {
       if (result.args[i] != expected[i]) {
         std::cout << std::endl;
@@ -568,25 +565,28 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
          "-lstdc++", "&/dir/myfile.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"clang.exe"},
         /* expected */
         {"clang.exe", "-working-directory", "/dir/", "-xc++", "-std=c++14",
-              "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+              "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+              "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14", "--foo",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option"});
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
   }
 
   TEST_CASE("Windows path normalization") {
@@ -595,7 +595,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
          "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         "E:/workdir", "E:/workdir/bar.cc",
@@ -603,7 +603,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
          "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Path in args") {
@@ -613,7 +613,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0",
          "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Implied binary") {
@@ -623,7 +623,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++14",
          "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what
@@ -973,7 +973,9 @@ TEST_SUITE("Project") {
          "&/w/c/s/out/Release/../../ash/login/ui/"
          "lock_screen_sanity_unittest.cc",
          "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option",
+         "-fparse-all-comments"
+        });
   }
 
   // Checks flag parsing for an example chromium file.
@@ -1297,7 +1299,9 @@ TEST_SUITE("Project") {
          "-fvisibility-inlines-hidden",
          "&/w/c/s/out/Release/../../apps/app_lifetime_monitor.cc",
          "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option"});
+         "-Wno-unknown-warning-option",
+         "-fparse-all-comments"
+        });
   }
 
   TEST_CASE("Directory extraction") {
