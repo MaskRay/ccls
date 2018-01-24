@@ -758,6 +758,7 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
     return false;
 
   switch (container->cursor.kind) {
+    case CXCursor_Namespace:
     case CXCursor_EnumDecl:
     case CXCursor_UnionDecl:
     case CXCursor_StructDecl:
@@ -1293,8 +1294,33 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   NamespaceHelper* ns = &param->ns;
 
   switch (decl->entityInfo->kind) {
-    case CXIdxEntity_CXXNamespace:
+    case CXIdxEntity_CXXNamespace: {
+      ClangCursor decl_cursor = decl->cursor;
+      Range decl_spell = decl_cursor.get_spelling_range();
+      IndexTypeId ns_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
+      IndexType* ns = db->Resolve(ns_id);
+      ns->def.kind = GetSymbolKind(decl->entityInfo->kind);
+      if (ns->def.short_name.empty()) {
+        if (decl->entityInfo->name)
+          ns->def.short_name = decl->entityInfo->name;
+        else
+          ns->def.short_name = "(anon)";
+        ns->def.detailed_name = param->ns.QualifiedName(decl->semanticContainer,
+                                                        ns->def.short_name);
+        ns->def.definition_spelling = decl_spell;
+        ns->def.definition_extent = decl_cursor.get_extent();
+        if (decl->semanticContainer) {
+          IndexTypeId parent_id = db->ToTypeId(
+              ClangCursor(decl->semanticContainer->cursor).get_usr_hash());
+          db->Resolve(parent_id)->derived.push_back(ns_id);
+          // |ns| may be invalidated.
+          ns = db->Resolve(ns_id);
+          ns->def.parents.push_back(parent_id);
+        }
+      }
+      ns->uses.push_back(decl_spell);
       break;
+    }
 
     case CXIdxEntity_ObjCProperty:
     case CXIdxEntity_ObjCIvar:
@@ -1691,7 +1717,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   switch (ref->referencedEntity->kind) {
     case CXIdxEntity_CXXNamespaceAlias:
     case CXIdxEntity_CXXNamespace: {
-      // We don't index namespace usages.
+      ClangCursor referenced = ref->referencedEntity->cursor;
+      IndexType* ns = db->Resolve(db->ToTypeId(referenced.get_usr_hash()));
+      ns->uses.push_back(cursor.get_spelling_range());
       break;
     }
 

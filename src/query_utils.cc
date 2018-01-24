@@ -435,7 +435,15 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
           use_short_name ? type.def->short_name : type.def->detailed_name;
       if (type.def->detailed_name != type.def->short_name)
         info.containerName = type.def->detailed_name;
-      info.kind = lsSymbolKind::Class;
+      // TODO ClangSymbolKind -> lsSymbolKind
+      switch (type.def->kind) {
+      default:
+        info.kind = lsSymbolKind::Class;
+        break;
+      case ClangSymbolKind::Namespace:
+        info.kind = lsSymbolKind::Namespace;
+        break;
+      }
       return info;
     }
     case SymbolKind::Func: {
