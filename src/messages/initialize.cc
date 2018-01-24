@@ -75,11 +75,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
           }
         }
       }
-      g_index_builtin_types = config->index.builtinTypes;
-      // TODO Remove enableComments
-      if (config->index.comments > 0)
-        config->enableComments = config->index.comments;
-      g_enable_comments = config->enableComments;
+      g_enable_comments = config->index.comments;
 
       // Client capabilities
       if (request->params.capabilities.textDocument) {

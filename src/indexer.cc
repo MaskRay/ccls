@@ -17,9 +17,6 @@
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
 
-// TODO Global variable
-bool g_index_builtin_types;
-
 namespace {
 
 constexpr bool kIndexStdDeclarations = true;
@@ -408,8 +405,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
 
   if (CXType_FirstBuiltin <= type.cx_type.kind &&
       type.cx_type.kind <= CXType_LastBuiltin) {
-    if (!g_index_builtin_types)
-      return nullopt;
+    // For builtin types, use type kinds as USR hash.
     return db->ToTypeId(type.cx_type.kind);
   }
 

@@ -87,9 +87,6 @@ struct Config {
   // inform users their vscode client is too old and needs to be updated.
   optional<int> clientVersion;
 
-  // TODO Deprecated in favor of index.comments
-  int enableComments = 0;
-
   struct ClientCapability {
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = false;
@@ -107,7 +104,7 @@ struct Config {
 
     // 0: no; 1: Doxygen comment markers; 2: -fparse-all-comments, which includes
     // plain // /*
-    int comments = 0;
+    int comments = 2;
   };
   Index index;
 
@@ -153,8 +150,6 @@ MAKE_REFLECT_STRUCT(Config,
                     codeLensOnLocalVariables,
 
                     clientVersion,
-
-                    enableComments,
 
                     client,
                     completion,
