@@ -543,6 +543,9 @@ TEST_SUITE("Project") {
       std::cout << "Expected: " << StringJoin(expected) << std::endl;
       std::cout << "Actual:   " << StringJoin(result.args) << std::endl;
     }
+    result.args.erase(std::remove(result.args.begin(), result.args.end(),
+                                  std::string("-fparse-all-comments")),
+                      result.args.end());
     for (int i = 0; i < std::min(result.args.size(), expected.size()); ++i) {
       if (result.args[i] != expected[i]) {
         std::cout << std::endl;
