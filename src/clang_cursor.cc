@@ -48,6 +48,8 @@ std::string ClangType::get_usr() const {
 }
 
 Usr ClangType::get_usr_hash() const {
+  if (is_fundamental())
+    return static_cast<Usr>(cx_type.kind);
   return ClangCursor(clang_getTypeDeclaration(cx_type)).get_usr_hash();
 }
 

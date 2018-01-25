@@ -403,8 +403,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
 
   type = type.strip_qualifiers();
 
-  if (CXType_FirstBuiltin <= type.cx_type.kind &&
-      type.cx_type.kind <= CXType_LastBuiltin) {
+  if (type.is_fundamental()) {
     // For builtin types, use type kinds as USR hash.
     return db->ToTypeId(type.cx_type.kind);
   }
@@ -443,7 +442,8 @@ void SetVarDetail(IndexVar* var,
           : def.short_name;
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
-    CXType enum_type = clang_getEnumDeclIntegerType(semanticContainer->cursor);
+    CXType enum_type = clang_getCanonicalType(
+        clang_getEnumDeclIntegerType(semanticContainer->cursor));
     std::string hover = qualified_name + " = ";
     if (enum_type.kind == CXType_Int || enum_type.kind == CXType_Long ||
         enum_type.kind == CXType_LongLong)
@@ -1376,20 +1376,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // We don't need to assign declaring type multiple times if this variable
       // has already been seen.
-      if (!decl->isRedeclaration) {
-        // optional<IndexTypeId> var_type =
-        //    ResolveToDeclarationType(db, decl_cursor);
-        // if (var_type.has_value()) {
-        //  // Don't treat enum definition variables as instantiations.
-        //  bool is_enum_member =
-        //      decl->semanticContainer &&
-        //      decl->semanticContainer->cursor.kind == CXCursor_EnumDecl;
-        //  if (!is_enum_member)
-        //    db->Resolve(var_type.value())->instances.push_back(var_id);
-
-        //  var->def.variable_type = var_type.value();
-        //}
-      }
 
       // TODO: Refactor handlers so more things are under 'if
       // (!decl->isRedeclaration)'
@@ -1607,7 +1593,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
       ClangCursor decl_cursor = decl->cursor;
-      Range decl_loc_spelling = decl_cursor.get_spelling_range();
+      Range decl_spell = decl_cursor.get_spelling_range();
 
       IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
@@ -1633,10 +1619,21 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // }
 
       if (decl->isDefinition) {
-        type->def.definition_spelling = decl_loc_spelling;
+        type->def.definition_spelling = decl_spell;
         type->def.definition_extent = decl_cursor.get_extent();
+
+        if (decl_cursor.get_kind() == CXCursor_EnumDecl) {
+          ClangType enum_type = clang_getEnumDeclIntegerType(decl->cursor);
+          if (!enum_type.is_fundamental()) {
+            IndexType* int_type =
+              db->Resolve(db->ToTypeId(enum_type.get_usr_hash()));
+            int_type->uses.push_back(decl_spell);
+            // type is invalidated.
+            type = db->Resolve(type_id);
+          }
+        }
       }
-      UniqueAdd(type->uses, decl_loc_spelling);
+      UniqueAdd(type->uses, decl_spell);
 
       if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
         TemplateVisitorData data;
