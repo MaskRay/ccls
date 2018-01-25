@@ -32,7 +32,7 @@
 #include <rapidjson/error/en.h>
 #include <loguru.hpp>
 
-#include <climits>
+#include <stdio.h>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -478,7 +478,7 @@ int main(int argc, char** argv) {
 
   if (HasOption(options, "--wait-for-input")) {
     std::cerr << std::endl << "[Enter] to exit" << std::endl;
-    std::cin.get();
+    getchar();
   }
 
   if (print_help) {

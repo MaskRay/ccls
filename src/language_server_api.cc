@@ -5,6 +5,7 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
+#include <stdio.h>
 #include <iostream>
 
 MessageRegistry* MessageRegistry::instance_ = nullptr;
@@ -107,8 +108,8 @@ TEST_SUITE("FindIncludeLine") {
 }
 
 optional<char> ReadCharFromStdinBlocking() {
-  char c;
-  if (std::cin.read(&c, 1))
+  int c = getchar();
+  if (c >= 0)
     return c;
   return nullopt;
 }

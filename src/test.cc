@@ -5,6 +5,7 @@
 #include "serializer.h"
 #include "utils.h"
 
+#include <stdio.h>
 #include <iostream>
 
 void Write(const std::vector<std::string>& strs) {
@@ -96,8 +97,8 @@ std::string FindExpectedOutputForFilename(
   }
 
   std::cerr << "Couldn't find expected output for " << filename << std::endl;
-  std::cin.get();
-  std::cin.get();
+  getchar();
+  getchar();
   return "{}";
 }
 
@@ -243,8 +244,8 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
               << "[Enter to continue - type u to update test, a to update all]";
           char c = 'u';
           if (!update_all) {
-            c = (char)std::cin.get();
-            std::cin.get();
+            c = getchar();
+            getchar();
           }
 
           if (c == 'a')
