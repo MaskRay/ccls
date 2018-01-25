@@ -17,6 +17,9 @@
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
 
+// Defined in command_line.cc
+extern bool g_debug;
+
 namespace {
 
 constexpr bool kIndexStdDeclarations = true;
@@ -2014,11 +2017,6 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
 
   CXIndexAction index_action = clang_IndexAction_create(index->cx_index);
 
-  // NOTE: libclang re-enables crash recovery whenever a new index is created.
-  // To have clang crash toggle crash recovery right before calling
-  // clang_indexTranslationUnit.
-  // clang_toggleCrashRecovery(0);
-
   // |index_result| is a CXErrorCode instance.
   int index_result = clang_indexTranslationUnit(
       index_action, &param, &callback, sizeof(IndexerCallbacks),
@@ -2090,7 +2088,8 @@ void ConcatTypeAndName(std::string& type, const std::string& name) {
 
 void IndexInit() {
   clang_enableStackTraces();
-  clang_toggleCrashRecovery(1);
+  if (!g_debug)
+    clang_toggleCrashRecovery(1);
 }
 
 void ClangSanityCheck() {
@@ -2134,7 +2133,6 @@ void ClangSanityCheck() {
   const unsigned kIndexOpts = 0;
   CXIndexAction index_action = clang_IndexAction_create(index);
   int index_param = 0;
-  clang_toggleCrashRecovery(0);
   clang_indexTranslationUnit(index_action, &index_param, &callback,
                              sizeof(IndexerCallbacks), kIndexOpts, tu);
   clang_IndexAction_dispose(index_action);

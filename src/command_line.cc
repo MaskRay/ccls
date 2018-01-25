@@ -49,6 +49,7 @@
 // items per second completed and scales up/down number of running threads.
 
 std::string g_init_options;
+bool g_debug;
 
 namespace {
 
@@ -417,6 +418,7 @@ int main(int argc, char** argv) {
   // std::this_thread::sleep_for(std::chrono::seconds(10));
 
   PlatformInit();
+  g_debug = HasOption(options, "--debug");
   IndexInit();
 
   bool print_help = true;
@@ -435,6 +437,7 @@ int main(int argc, char** argv) {
   }
 
   if (HasOption(options, "--test-unit")) {
+    g_debug = true;
     print_help = false;
     doctest::Context context;
     context.applyCommandLine(argc, argv);
@@ -444,6 +447,7 @@ int main(int argc, char** argv) {
   }
 
   if (HasOption(options, "--test-index")) {
+    g_debug = true;
     print_help = false;
     if (!RunIndexTests(options["--test-index"], !HasOption(options, "--ci")))
       return -1;
@@ -485,17 +489,22 @@ int main(int argc, char** argv) {
     std::cout
         << R"help(cquery is a low-latency C/C++/Objective-C language server.
 
-Command line options:
+Mode:
   --language-server
                 Run as a language server. This implements the language server
                 spec over STDIN and STDOUT.
-  --init <initializationOptions>
-                Override user provided initialization options.
   --test-unit   Run unit tests.
   --test-index <opt_filter_path>
                 Run index tests. opt_filter_path can be used to specify which
                 test to run (ie, "foo" will run all tests which contain "foo"
                 in the path). If not provided all tests are run.
+
+Other command line options:
+  --debug       Disable libclang crash recovery so that in case of libclang or
+                indexer callback issue, the process will crash and we can
+                get a stack trace.
+  --init <initializationOptions>
+                Override user provided initialization options.
   --log-stdin-stdout-to-stderr
                 Print stdin and stdout messages to stderr. This is a aid for
                 developing new language clients, as it makes it easier to figure
