@@ -152,6 +152,8 @@ struct TextDocumentCodeLensHandler
           QueryType& type = db->types[symbol.idx];
           if (!type.def)
             continue;
+          if (type.def->kind == ClangSymbolKind::Namespace)
+            continue;
           AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
                       type.uses, type.def->definition_spelling,
                       true /*force_display*/);
