@@ -171,28 +171,41 @@ struct TextDocumentCodeLensHandler
 
           int16_t offset = 0;
 
+          // For functions, the outline will report a location that is using the extent since that is better for outline. This tries to convert the extent location to the spelling location.
+          auto try_ensure_spelling = [&](SymbolRef sym) {
+            optional<QueryLocation> def = GetDefinitionSpellingOfSymbol(db, sym.idx);
+            if (!def ||
+                def->path != sym.loc.path ||
+                def->range.start.line != sym.loc.range.start.line) {
+              return sym.loc;
+            }
+            return *def;
+          };
+
           std::vector<QueryFuncRef> base_callers =
               GetCallersForAllBaseFunctions(db, func);
           std::vector<QueryFuncRef> derived_callers =
               GetCallersForAllDerivedFunctions(db, func);
           if (base_callers.empty() && derived_callers.empty()) {
+            QueryLocation loc = try_ensure_spelling(ref);
             AddCodeLens("call", "calls", &common,
-                        ref.loc.OffsetStartColumn(offset++),
+                        loc.OffsetStartColumn(offset++),
                         ToQueryLocation(db, func.callers), nullopt,
                         true /*force_display*/);
           } else {
+            QueryLocation loc = try_ensure_spelling(ref);
             AddCodeLens("direct call", "direct calls", &common,
-                        ref.loc.OffsetStartColumn(offset++),
+                        loc.OffsetStartColumn(offset++),
                         ToQueryLocation(db, func.callers), nullopt,
                         false /*force_display*/);
             if (!base_callers.empty())
               AddCodeLens("base call", "base calls", &common,
-                          ref.loc.OffsetStartColumn(offset++),
+                          loc.OffsetStartColumn(offset++),
                           ToQueryLocation(db, base_callers), nullopt,
                           false /*force_display*/);
             if (!derived_callers.empty())
               AddCodeLens("derived call", "derived calls", &common,
-                          ref.loc.OffsetStartColumn(offset++),
+                          loc.OffsetStartColumn(offset++),
                           ToQueryLocation(db, derived_callers), nullopt,
                           false /*force_display*/);
           }
