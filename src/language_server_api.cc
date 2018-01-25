@@ -108,6 +108,10 @@ TEST_SUITE("FindIncludeLine") {
 }
 
 optional<char> ReadCharFromStdinBlocking() {
+  // We do not use std::cin because it does not read bytes once stuck in
+  // cin.bad(). We can call cin.clear() but C++ iostream has other annoyance like
+  // std::{cin,cout} is tied by default, which causes undesired cout flush for
+  // cin operations.
   int c = getchar();
   if (c >= 0)
     return c;

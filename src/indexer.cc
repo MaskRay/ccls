@@ -2017,6 +2017,10 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
 
   CXIndexAction index_action = clang_IndexAction_create(index->cx_index);
 
+  // NOTE: libclang re-enables crash recovery whenever a new index is created.
+  if (g_debug)
+    clang_toggleCrashRecovery(0);
+
   // |index_result| is a CXErrorCode instance.
   int index_result = clang_indexTranslationUnit(
       index_action, &param, &callback, sizeof(IndexerCallbacks),
@@ -2133,6 +2137,7 @@ void ClangSanityCheck() {
   const unsigned kIndexOpts = 0;
   CXIndexAction index_action = clang_IndexAction_create(index);
   int index_param = 0;
+  clang_toggleCrashRecovery(0);
   clang_indexTranslationUnit(index_action, &index_param, &callback,
                              sizeof(IndexerCallbacks), kIndexOpts, tu);
   clang_IndexAction_dispose(index_action);
