@@ -774,11 +774,13 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
 
 struct VisitDeclForTypeUsageParam {
   IndexFile* db;
+  optional<IndexTypeId> toplevel_type;
   int has_processed_any = false;
   optional<ClangCursor> previous_cursor;
   optional<IndexTypeId> initial_type;
 
-  VisitDeclForTypeUsageParam(IndexFile* db) : db(db) {}
+  VisitDeclForTypeUsageParam(IndexFile* db, optional<IndexTypeId> toplevel_type)
+      : db(db), toplevel_type(toplevel_type) {}
 };
 
 void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
@@ -786,8 +788,31 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   param->has_processed_any = true;
   IndexFile* db = param->db;
 
+  // For |A<int> a| where there is a specialization for |A<int>|,
+  // the |referenced_usr| below resolves to the primary template and
+  // attributes the use to the primary template instead of the specialization.
+  // |toplevel_type| is retrieved |clang_getCursorType| which can be a specialization.
+  // If its name is the same as the primary template's, we assume the use
+  // should be attributed to the specialization.
+  // This heuristic fails when a member class bears the same name with its container.
+  //
+  // template<class T>
+  // struct C { struct C {}; };
+  // C<int>::C a;
+  //
+  // We will attribute |::C| to the parent class.
+  if (param->toplevel_type) {
+    IndexType* ref_type = db->Resolve(*param->toplevel_type);
+    std::string name = cursor.get_referenced().get_spelling();
+    if (name == ref_type->def.short_name) {
+      UniqueAdd(ref_type->uses, cursor.get_spelling_range());
+      param->toplevel_type = nullopt;
+      return;
+    }
+  }
+
   std::string referenced_usr =
-      cursor.get_referenced().template_specialization_to_template_definition().get_usr();
+    cursor.get_referenced().template_specialization_to_template_definition().get_usr();
   // TODO: things in STL cause this to be empty. Figure out why and document it.
   if (referenced_usr == "")
     return;
@@ -846,9 +871,15 @@ ClangCursor::VisitResult VisitDeclForTypeUsageVisitor(
 // useful if trying to figure out ie, what a using statement refers to. If
 // trying to generally resolve a cursor to a type, use
 // ResolveToDeclarationType, which works in more scenarios.
+// If |decl_cursor| is a variable of a template type, clang_getCursorType
+// may return a specialized template which is preciser than the primary
+// template.
+// We use |toplevel_type| to attribute the use to the specialized template
+// instead of the primary template.
 optional<IndexTypeId> AddDeclTypeUsages(
     IndexFile* db,
     ClangCursor decl_cursor,
+    optional<IndexTypeId> toplevel_type,
     const CXIdxContainerInfo* semantic_container,
     const CXIdxContainerInfo* lexical_container) {
   //
@@ -948,7 +979,7 @@ optional<IndexTypeId> AddDeclTypeUsages(
     process_last_type_ref = false;
   }
 
-  VisitDeclForTypeUsageParam param(db);
+  VisitDeclForTypeUsageParam param(db, toplevel_type);
   decl_cursor.VisitChildren(&VisitDeclForTypeUsageVisitor, &param);
 
   // VisitDeclForTypeUsageVisitor guarantees that if there are multiple TypeRef
@@ -1374,8 +1405,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // the function declaration is encountered since we won't receive ParmDecl
       // declarations for unnamed parameters.
       // TODO: See if we can remove this function call.
-      AddDeclTypeUsages(db, decl_cursor, decl->semanticContainer,
-                        decl->lexicalContainer);
+      AddDeclTypeUsages(db, decl_cursor, var->def.variable_type,
+                        decl->semanticContainer, decl->lexicalContainer);
 
       // We don't need to assign declaring type multiple times if this variable
       // has already been seen.
@@ -1416,7 +1447,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
-      AddDeclTypeUsages(db, decl_cursor, decl->semanticContainer,
+      AddDeclTypeUsages(db, decl_cursor, nullopt, decl->semanticContainer,
                         decl->lexicalContainer);
 
       // Add definition or declaration. This is a bit tricky because we treat
@@ -1543,8 +1574,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // Note we want to fetch the first TypeRef. Running
       // ResolveCursorType(decl->cursor) would return
       // the type of the typedef/using, not the type of the referenced type.
-      optional<IndexTypeId> alias_of = AddDeclTypeUsages(
-          db, decl->cursor, decl->semanticContainer, decl->lexicalContainer);
+      optional<IndexTypeId> alias_of =
+          AddDeclTypeUsages(db, decl->cursor, nullopt, decl->semanticContainer,
+                            decl->lexicalContainer);
 
       IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
@@ -1659,8 +1691,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         for (unsigned int i = 0; i < class_info->numBases; ++i) {
           const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
-          AddDeclTypeUsages(db, base_class->cursor, decl->semanticContainer,
-                            decl->lexicalContainer);
+          AddDeclTypeUsages(db, base_class->cursor, nullopt,
+                            decl->semanticContainer, decl->lexicalContainer);
           optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor);
           // type_def ptr could be invalidated by ResolveToDeclarationType and
@@ -1888,7 +1920,20 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXClass: {
       ClangCursor ref_cursor = ref->referencedEntity->cursor;
       ref_cursor = ref_cursor.template_specialization_to_template_definition();
-      IndexType* referenced = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+      IndexType* ref_type = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+
+      // This example is handled by OnIndexReference, not OnIndexDeclaration,
+      // and it does not have |short_name|.
+      //
+      // template <class T> class A;
+      if (ref_type->def.short_name.empty()) {
+        ref_type->def.short_name = ref->referencedEntity->name;
+        ref_type->def.detailed_name = ref->referencedEntity->name;
+        if (!ref_type->def.definition_spelling) {
+          ref_type->def.definition_spelling = ref_cursor.get_spelling_range();
+          ref_type->def.definition_extent = ref_cursor.get_extent();
+        }
+      }
 
       //
       // The following will generate two TypeRefs to Foo, both located at the
@@ -1905,7 +1950,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //    Foo f;
       //  }
       //
-      UniqueAdd(referenced->uses,
+      UniqueAdd(ref_type->uses,
                 ClangCursor(ref->cursor).get_spelling_range());
       break;
     }
