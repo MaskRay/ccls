@@ -390,6 +390,16 @@ bool IsFunctionCallContext(CXCursorKind kind) {
   return false;
 }
 
+void SetTypeName(IndexType* type,
+                 const CXIdxContainerInfo* container,
+                 const char* name,
+                 NamespaceHelper* ns) {
+  // |name| can be null in an anonymous struct (see
+  // tests/types/anonymous_struct.cc).
+  type->def.short_name = name ? name : "(anon)";
+  type->def.detailed_name = ns->QualifiedName(container, type->def.short_name);
+}
+
 // Finds the cursor associated with the declaration type of |cursor|. This
 // strips
 // qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
@@ -421,7 +431,14 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   }
   Usr usr = HashUsr(str_usr);
   clang_disposeString(cx_usr);
-  return db->ToTypeId(usr);
+  IndexTypeId type_id = db->ToTypeId(usr);
+  IndexType* typ = db->Resolve(type_id);
+  if (typ->def.short_name.empty()) {
+    typ->def.short_name = declaration.get_spelling();
+    // TODO detailed_name
+    typ->def.detailed_name = declaration.get_spelling();
+  }
+  return type_id;
 }
 
 void SetVarDetail(IndexVar* var,
@@ -1590,11 +1607,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.definition_spelling = spell;
       type->def.definition_extent = extent;
 
-      type->def.short_name = decl->entityInfo->name;
-      type->def.detailed_name =
-          ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+      SetTypeName(type, decl->semanticContainer, decl->entityInfo->name, &param->ns);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
-
       type->def.comments = decl_cursor.get_comments();
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
@@ -1638,18 +1652,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: For type section, verify if this ever runs for non definitions?
       // if (!decl->isRedeclaration) {
 
-      // name can be null in an anonymous struct (see
-      // tests/types/anonymous_struct.cc).
-      if (decl->entityInfo->name) {
-        type->def.short_name = decl->entityInfo->name;
-      } else {
-        type->def.short_name = "<anonymous>";
-      }
-
-      type->def.detailed_name =
-          ns->QualifiedName(decl->semanticContainer, type->def.short_name);
+      SetTypeName(type, decl->semanticContainer, decl->entityInfo->name, &param->ns);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
-
       type->def.comments = decl_cursor.get_comments();
       // }
 
@@ -1927,14 +1931,14 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // and it does not have |short_name|.
       //
       // template <class T> class A;
-      //if (ref_type->def.short_name.empty()) {
-      //  ref_type->def.short_name = ref->referencedEntity->name;
-      //  ref_type->def.detailed_name = ref->referencedEntity->name;
-      //  if (!ref_type->def.definition_spelling) {
-      //    ref_type->def.definition_spelling = ref_cursor.get_spelling_range();
-      //    ref_type->def.definition_extent = ref_cursor.get_extent();
-      //  }
-      //}
+      if (ref_type->def.short_name.empty()) {
+        // TODO Replace |nullptr| with semantic container.
+        SetTypeName(ref_type, nullptr, ref->referencedEntity->name, &param->ns);
+        //if (!ref_type->def.definition_spelling) {
+        //  ref_type->def.definition_spelling = ref_cursor.get_spelling_range();
+        //  ref_type->def.definition_extent = ref_cursor.get_extent();
+        //}
+      }
 
       //
       // The following will generate two TypeRefs to Foo, both located at the
