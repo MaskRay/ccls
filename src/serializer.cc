@@ -164,6 +164,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("kind", value.def.kind);
+  REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("comments", value.def.comments);
   REFLECT_MEMBER2("declarations", value.declarations);
@@ -185,6 +186,8 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("kind", value.def.kind);
+  REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("comments", value.def.comments);
   REFLECT_MEMBER2("declaration", value.def.declaration);
@@ -192,7 +195,6 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
-  REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER_END();
 }
@@ -325,9 +327,9 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
         Reflect(reader, *file);
         if (file->version != expected_version)
           return nullptr;
-      } catch (msgpack::unpack_error& ex) {
-        LOG_S(ERROR) << "msgpack::unpack_err for '" << path << "' "
-                     << ex.what();
+      } catch (std::invalid_argument& e) {
+        LOG_S(ERROR) << "'" << path << "': failed to deserialize msgpack "
+                     << e.what();
         return nullptr;
       }
       break;

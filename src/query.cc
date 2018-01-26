@@ -60,6 +60,7 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.short_name = func.short_name;
   result.detailed_name = func.detailed_name;
   result.kind = func.kind;
+  result.storage = func.storage;
   result.hover = func.hover;
   result.comments = func.comments;
   result.definition_spelling = id_map.ToQuery(func.definition_spelling);
@@ -80,6 +81,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
   result.kind = var.kind;
+  result.storage = var.storage;
   result.hover = var.hover;
   result.comments = var.comments;
   result.declaration = id_map.ToQuery(var.declaration);

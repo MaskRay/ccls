@@ -127,6 +127,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     std::string detailed_name;
     bool is_type_member = false;
     ClangSymbolKind kind = ClangSymbolKind::Unknown;
+    ClangStorageClass storage = ClangStorageClass::SC_Invalid;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.idx.kind) {
       case SymbolKind::Func: {
@@ -162,6 +163,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (!var->def)
           continue;  // applies to for loop
         kind = var->def->kind;
+        storage = var->def->storage;
         is_type_member = var->def->declaring_type.has_value();
         detailed_name = var->def->short_name;
         break;
@@ -188,6 +190,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         symbol.stableId =
             semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
         symbol.kind = kind;
+        symbol.storage = storage;
         symbol.type = map_symbol_kind_to_symbol_type(sym.idx.kind);
         symbol.isTypeMember = is_type_member;
         symbol.ranges.push_back(*loc);

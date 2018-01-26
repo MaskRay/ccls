@@ -109,6 +109,26 @@ ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   }
 }
 
+ClangStorageClass GetStorageClass(CX_StorageClass storage) {
+  switch (storage) {
+    case CX_SC_Invalid:
+    case CX_SC_OpenCLWorkGroupLocal:
+      return ClangStorageClass::SC_Invalid;
+    case CX_SC_None:
+      return ClangStorageClass::SC_None;
+    case CX_SC_Extern:
+      return ClangStorageClass::SC_Extern;
+    case CX_SC_Static:
+      return ClangStorageClass::SC_Static;
+    case CX_SC_PrivateExtern:
+      return ClangStorageClass::SC_PrivateExtern;
+    case CX_SC_Auto:
+      return ClangStorageClass::SC_Auto;
+    case CX_SC_Register:
+      return ClangStorageClass::SC_Register;
+  }
+}
+
 // Caches all instances of constructors, regardless if they are indexed or not.
 // The constructor may have a make_unique call associated with it that we need
 // to export. If we do not capture the parameter type description for the
@@ -460,6 +480,7 @@ void SetVarDetail(IndexVar* var,
   if (type_name.find("(lambda at") != std::string::npos)
     type_name = "lambda";
   def.comments = cursor.get_comments();
+  def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   std::string qualified_name =
       param->ns.QualifiedName(semanticContainer, def.short_name);
@@ -1461,6 +1482,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       IndexFunc* func = db->Resolve(func_id);
       func->def.comments = decl_cursor.get_comments();
       func->def.kind = GetSymbolKind(decl->entityInfo->kind);
+      func->def.storage =
+          GetStorageClass(clang_Cursor_getStorageClass(decl->cursor));
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.

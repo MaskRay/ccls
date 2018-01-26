@@ -1088,6 +1088,8 @@ struct Out_CqueryPublishSemanticHighlighting
     // TODO Deprecate |type| in favor of fine-grained |kind|.
     SymbolType type = SymbolType::Type;
     ClangSymbolKind kind;
+    ClangStorageClass storage;
+    // TODO Deprecate |isTypeMember| in favor of semantic container.
     bool isTypeMember = false;
     std::vector<lsRange> ranges;
   };
@@ -1102,6 +1104,7 @@ MAKE_REFLECT_TYPE_PROXY(Out_CqueryPublishSemanticHighlighting::SymbolType, int);
 MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
                     type,
                     kind,
+                    storage,
                     isTypeMember,
                     stableId,
                     ranges);

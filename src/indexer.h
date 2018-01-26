@@ -253,6 +253,7 @@ struct FuncDefDefinitionData {
   std::string short_name;
   std::string detailed_name;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  ClangStorageClass storage = ClangStorageClass::SC_Invalid;
   optional<std::string> hover;
   optional<std::string> comments;
   optional<Range> definition_spelling;
@@ -304,6 +305,7 @@ void Reflect(
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);
+  REFLECT_MEMBER(storage);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
@@ -372,6 +374,7 @@ struct VarDefDefinitionData {
   std::string short_name;
   std::string detailed_name;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  ClangStorageClass storage = ClangStorageClass::SC_Invalid;
   optional<std::string> hover;
   optional<std::string> comments;
   optional<Range> declaration;
@@ -422,6 +425,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(kind);
+  REFLECT_MEMBER(storage);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
