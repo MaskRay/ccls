@@ -134,7 +134,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryFunc* func = &db->funcs[sym.idx.idx];
         if (!func->def)
           continue;  // applies to for loop
-        if (func->def->is_operator)
+        if (func->def->short_name.compare(0, 8, "operator") == 0)
           continue;  // applies to for loop
         kind = func->def->kind;
         is_type_member = func->def->declaring_type.has_value();

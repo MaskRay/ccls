@@ -271,9 +271,6 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
-  // Used for semantic highlighting
-  bool is_operator = false;
-
   bool operator==(
       const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
       const {
@@ -314,7 +311,6 @@ void Reflect(
   REFLECT_MEMBER(base);
   REFLECT_MEMBER(locals);
   REFLECT_MEMBER(callees);
-  REFLECT_MEMBER(is_operator);
   REFLECT_MEMBER_END();
 }
 

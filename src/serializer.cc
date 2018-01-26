@@ -159,7 +159,6 @@ template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
-  REFLECT_MEMBER2("is_operator", value.def.is_operator);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);

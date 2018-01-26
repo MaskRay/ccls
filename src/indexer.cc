@@ -1540,11 +1540,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (!is_template_specialization) {
         func->def.short_name = decl->entityInfo->name;
 
-        // Set the |is_operator| flag to true if the function name starts with
-        // "operator"
-        func->def.is_operator =
-            func->def.short_name.compare(0, 8, "operator") == 0;
-
         // Build detailed name. The type desc looks like void (void *). We
         // insert the qualified name before the first '('.
         func->def.detailed_name = GetFunctionSignature(db, ns, decl);
