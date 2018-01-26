@@ -1,5 +1,10 @@
+#include "clang_complete.h"
 #include "message_handler.h"
+#include "project.h"
 #include "queue_manager.h"
+#include "working_files.h"
+
+#include <loguru/loguru.hpp>
 
 namespace {
 enum class lsFileChangeType {
@@ -33,14 +38,25 @@ struct WorkspaceDidChangeWatchedFilesHandler
     : BaseMessageHandler<Ipc_WorkspaceDidChangeWatchedFiles> {
   void Run(Ipc_WorkspaceDidChangeWatchedFiles* request) override {
     for (lsFileEvent& event : request->params.changes) {
+      std::string path = event.uri.GetPath();
       switch (event.type) {
         case lsFileChangeType::Created:
-          // TODO
+        // TODO
+        case lsFileChangeType::Changed: {
+          Project::Entry entry = project->FindCompilationEntryForFile(path);
+          optional<std::string> content = ReadContent(path);
+          if (!content)
+            LOG_S(ERROR) << "Unable to read file content after saving " << path;
+          else {
+            bool is_interactive =
+              working_files->GetFileByFilename(entry.filename) != nullptr;
+            QueueManager::instance()->index_request.Enqueue(
+                Index_Request(path, entry.args, is_interactive, *content));
+            clang_complete->NotifySave(path);
+          }
           break;
+        }
         case lsFileChangeType::Deleted:
-          // TODO
-          break;
-        case lsFileChangeType::Changed:
           // TODO
           break;
       }
