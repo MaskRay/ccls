@@ -391,13 +391,18 @@ bool IsFunctionCallContext(CXCursorKind kind) {
 }
 
 void SetTypeName(IndexType* type,
+                 const ClangCursor& cursor,
                  const CXIdxContainerInfo* container,
                  const char* name,
                  NamespaceHelper* ns) {
+  CXIdxContainerInfo parent;
   // |name| can be null in an anonymous struct (see
   // tests/types/anonymous_struct.cc).
   type->def.short_name = name ? name : "(anon)";
-  type->def.detailed_name = ns->QualifiedName(container, type->def.short_name);
+  if (!container)
+    parent.cursor = cursor.get_semantic_parent().cx_cursor;
+  type->def.detailed_name =
+      ns->QualifiedName(container ? container : &parent, type->def.short_name);
 }
 
 // Finds the cursor associated with the declaration type of |cursor|. This
@@ -405,7 +410,8 @@ void SetTypeName(IndexType* type,
 // qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
 // (ie, Foo<A,B> => Foo<*,*>).
 optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
-                                               ClangCursor cursor) {
+                                               ClangCursor cursor,
+                                               NamespaceHelper* ns) {
   ClangType type = cursor.get_type();
 
   // auto x = new Foo() will not be deduced to |Foo| if we do not use the
@@ -434,9 +440,8 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   IndexTypeId type_id = db->ToTypeId(usr);
   IndexType* typ = db->Resolve(type_id);
   if (typ->def.short_name.empty()) {
-    typ->def.short_name = declaration.get_spelling();
-    // TODO detailed_name
-    typ->def.detailed_name = declaration.get_spelling();
+    std::string name = declaration.get_spelling();
+    SetTypeName(typ, declaration, nullptr, name.c_str(), ns);
   }
   return type_id;
 }
@@ -457,9 +462,7 @@ void SetVarDetail(IndexVar* var,
   def.comments = cursor.get_comments();
 
   std::string qualified_name =
-      semanticContainer
-          ? param->ns.QualifiedName(semanticContainer, def.short_name)
-          : def.short_name;
+      param->ns.QualifiedName(semanticContainer, def.short_name);
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
     CXType enum_type = clang_getCanonicalType(
@@ -500,7 +503,8 @@ void SetVarDetail(IndexVar* var,
   }
 
   if (is_first_seen) {
-    optional<IndexTypeId> var_type = ResolveToDeclarationType(db, cursor);
+    optional<IndexTypeId> var_type =
+        ResolveToDeclarationType(db, cursor, &param->ns);
     if (var_type) {
       // Don't treat enum definition variables as instantiations.
       bool is_enum_member = semanticContainer &&
@@ -1258,7 +1262,7 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
   // nested namespaces bottom-up through clang_getCursorSemanticParent until
   // one that we know its qualified name. Then do another trace top-down and
   // put their names into a map of USR -> qualified_name.
-  ClangCursor cursor = container->cursor;
+  ClangCursor cursor(container->cursor);
   std::vector<ClangCursor> namespaces;
   std::string qualifier;
   while (cursor.get_kind() != CXCursor_TranslationUnit &&
@@ -1352,12 +1356,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       IndexType* ns = db->Resolve(ns_id);
       ns->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (ns->def.short_name.empty()) {
-        if (decl->entityInfo->name)
-          ns->def.short_name = decl->entityInfo->name;
-        else
-          ns->def.short_name = "(anon)";
-        ns->def.detailed_name = param->ns.QualifiedName(decl->semanticContainer,
-                                                        ns->def.short_name);
+        SetTypeName(ns, decl_cursor, decl->semanticContainer,
+                    decl->entityInfo->name, &param->ns);
         ns->def.definition_spelling = decl_spell;
         ns->def.definition_extent = decl_cursor.get_extent();
         if (decl->semanticContainer) {
@@ -1607,7 +1607,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.definition_spelling = spell;
       type->def.definition_extent = extent;
 
-      SetTypeName(type, decl->semanticContainer, decl->entityInfo->name, &param->ns);
+      SetTypeName(type, decl_cursor, decl->semanticContainer,
+                  decl->entityInfo->name, &param->ns);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
       type->def.comments = decl_cursor.get_comments();
 
@@ -1652,7 +1653,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: For type section, verify if this ever runs for non definitions?
       // if (!decl->isRedeclaration) {
 
-      SetTypeName(type, decl->semanticContainer, decl->entityInfo->name, &param->ns);
+      SetTypeName(type, decl_cursor, decl->semanticContainer,
+                  decl->entityInfo->name, &param->ns);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
       type->def.comments = decl_cursor.get_comments();
       // }
@@ -1698,7 +1700,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           AddDeclTypeUsages(db, base_class->cursor, nullopt,
                             decl->semanticContainer, decl->lexicalContainer);
           optional<IndexTypeId> parent_type_id =
-              ResolveToDeclarationType(db, base_class->cursor);
+              ResolveToDeclarationType(db, base_class->cursor, &param->ns);
           // type_def ptr could be invalidated by ResolveToDeclarationType and
           // TemplateVisitor.
           type = db->Resolve(type_id);
@@ -1933,8 +1935,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // template <class T> class A;
       if (ref_type->def.short_name.empty()) {
         // TODO Replace |nullptr| with semantic container.
-        SetTypeName(ref_type, nullptr, ref->referencedEntity->name, &param->ns);
-        //if (!ref_type->def.definition_spelling) {
+        SetTypeName(ref_type, ref_cursor, nullptr, ref->referencedEntity->name,
+                    &param->ns);
+        // if (!ref_type->def.definition_spelling) {
         //  ref_type->def.definition_spelling = ref_cursor.get_spelling_range();
         //  ref_type->def.definition_extent = ref_cursor.get_extent();
         //}

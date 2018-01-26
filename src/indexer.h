@@ -527,10 +527,6 @@ struct NamespaceHelper {
   std::unordered_map<ClangCursor, std::string>
       container_cursor_to_qualified_name;
 
-  void RegisterQualifiedName(std::string usr,
-                             const CXIdxContainerInfo* container,
-                             std::string qualified_name) {}
-
   std::string QualifiedName(const CXIdxContainerInfo* container,
                             std::string unqualified_name);
 };
