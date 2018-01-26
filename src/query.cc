@@ -749,12 +749,6 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
   // and fully reloads from cache. This will address the memory leak above.
 
   switch (usr_kind) {
-    case SymbolKind::File: {
-      // FIXME
-      // for (const Usr& usr : to_remove)
-      //  files[usr_to_file[usr].id].def = nullopt;
-      break;
-    }
     case SymbolKind::Type: {
       for (const Usr& usr : to_remove)
         types[usr_to_type[usr].id].def = nullopt;
@@ -770,6 +764,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         vars[usr_to_var[usr].id].def = nullopt;
       break;
     }
+    case SymbolKind::File:
     case SymbolKind::Invalid:
       break;
   }
@@ -791,7 +786,8 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     VerifyUnique(def.def_var_name);                                   \
   }
 
-  RemoveUsrs(SymbolKind::File, update->files_removed);
+  for (const std::string& filename : update->files_removed)
+   files[usr_to_file[filename].id].def = nullopt;
   ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);

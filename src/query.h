@@ -282,7 +282,7 @@ struct IndexUpdate {
   std::string ToString();
 
   // File updates.
-  std::vector<Usr> files_removed;
+  std::vector<std::string> files_removed;
   std::vector<QueryFile::DefUpdate> files_def_update;
 
   // Type updates.
