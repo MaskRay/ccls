@@ -53,19 +53,11 @@ struct TextDocumentReferencesHandler
 
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      optional<QueryLocation> excluded_declaration;
-      if (!request->params.context.includeDeclaration) {
-        LOG_S(INFO) << "Excluding declaration in references";
-        excluded_declaration = GetDefinitionSpellingOfSymbol(db, ref.idx);
-      }
-
       // Found symbol. Return references.
-      std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
+      std::vector<QueryLocation> uses = GetUsesOfSymbol(
+          db, ref.idx, request->params.context.includeDeclaration);
       out.result.reserve(uses.size());
       for (const QueryLocation& use : uses) {
-        if (excluded_declaration.has_value() && use == *excluded_declaration)
-          continue;
-
         optional<lsLocation> ls_location =
             GetLsLocation(db, working_files, use);
         if (ls_location)

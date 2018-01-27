@@ -38,7 +38,7 @@ struct TextDocumentDocumentHighlightHandler
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to highlight.
-      std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
+      std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx, true);
       out.result.reserve(uses.size());
       for (const QueryLocation& use : uses) {
         if (use.path != file_id)

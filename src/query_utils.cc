@@ -182,7 +182,8 @@ std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
 }
 
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
-                                           const SymbolIdx& symbol) {
+                                           const SymbolIdx& symbol,
+                                           bool include_decl) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
@@ -192,9 +193,11 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
       // TODO: the vector allocation could be avoided.
       QueryFunc& func = db->funcs[symbol.idx];
       std::vector<QueryLocation> result = ToQueryLocation(db, func.callers);
-      AddRange(&result, func.declarations);
-      if (func.def && func.def->definition_spelling)
-        result.push_back(*func.def->definition_spelling);
+      if (include_decl) {
+        AddRange(&result, func.declarations);
+        if (func.def && func.def->definition_spelling)
+          result.push_back(*func.def->definition_spelling);
+      }
       return result;
     }
     case SymbolKind::Var: {

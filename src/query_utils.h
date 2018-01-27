@@ -29,7 +29,8 @@ std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
                                            const std::vector<QueryVarId>& ids);
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
-                                           const SymbolIdx& symbol);
+                                           const SymbolIdx& symbol,
+                                           bool include_decl);
 std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     const SymbolIdx& symbol);

@@ -97,7 +97,7 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to rename.
-      std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx);
+      std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx, true);
       out.result =
           BuildWorkspaceEdit(db, working_files, uses, request->params.newName);
       break;
