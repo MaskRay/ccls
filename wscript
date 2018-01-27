@@ -270,8 +270,11 @@ def build(bld):
 
   lib = []
   if sys.platform.startswith('linux'):
-    lib.append('rt')
+    # For __atomic_* when lock free instructions are unavailable
+    # (either through hardware or OS support)
+    lib.append('atomic')
     lib.append('pthread')
+    # loguru calls dladdr
     lib.append('dl')
   elif sys.platform.startswith('freebsd'):
     # loguru::stacktrace_as_stdstring calls backtrace_symbols
