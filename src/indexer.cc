@@ -10,6 +10,7 @@
 #include <loguru.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <climits>
 #include <iostream>
@@ -126,6 +127,8 @@ ClangStorageClass GetStorageClass(CX_StorageClass storage) {
       return ClangStorageClass::SC_Auto;
     case CX_SC_Register:
       return ClangStorageClass::SC_Register;
+    default:
+      assert(0);
   }
 }
 
