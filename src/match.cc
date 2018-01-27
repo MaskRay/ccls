@@ -41,7 +41,7 @@ optional<Matcher> Matcher::Create(const std::string& search) {
 bool Matcher::IsMatch(const std::string& value) const {
   // std::smatch match;
   // return std::regex_match(value, match, regex);
-  return std::regex_match(value, regex, std::regex_constants::match_any);
+  return std::regex_search(value, regex, std::regex_constants::match_any);
 }
 
 GroupMatch::GroupMatch(const std::vector<std::string>& whitelist,

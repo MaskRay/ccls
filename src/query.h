@@ -192,6 +192,8 @@ struct QueryFile {
     std::vector<SymbolRef> all_symbols;
     // Parts of the file which are disabled.
     std::vector<Range> inactive_regions;
+    // Used by |$cquery/freshenIndex|.
+    std::vector<std::string> dependencies;
   };
 
   using DefUpdate = Def;
@@ -209,7 +211,8 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     language,
                     outline,
                     all_symbols,
-                    inactive_regions);
+                    inactive_regions,
+                    dependencies);
 
 struct QueryType {
   using Def = TypeDefDefinitionData<QueryTypeId,

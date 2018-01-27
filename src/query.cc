@@ -201,6 +201,7 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
   def.path = indexed.path;
   def.includes = indexed.includes;
   def.inactive_regions = indexed.skipped_by_preprocessor;
+  def.dependencies = indexed.dependencies;
 
   // Convert enum to markdown compatible strings
   def.language = [indexed]() {
