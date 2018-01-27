@@ -561,7 +561,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-int IndexFile::kCurrentVersion = 9;
+int IndexFile::kCurrentVersion = 10;
 
 IndexFile::IndexFile(const std::string& path,
                      const optional<std::string>& contents)
@@ -1431,8 +1431,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         var->def.definition_spelling = decl_spell;
         var->def.definition_extent = decl_cursor.get_extent();
       } else {
-        var->def.declaration = decl_spell;
-        UniqueAdd(var->uses, decl_spell);
+        var->def.declarations.push_back(decl_spell);
       }
 
       AddDeclInitializerUsages(db, decl_cursor);

@@ -189,7 +189,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("comments", value.def.comments);
-  REFLECT_MEMBER2("declaration", value.def.declaration);
+  REFLECT_MEMBER2("declarations", value.def.declarations);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);

@@ -83,7 +83,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.storage = var.storage;
   result.hover = var.hover;
   result.comments = var.comments;
-  result.declaration = id_map.ToQuery(var.declaration);
+  result.declarations = id_map.ToQuery(var.declarations);
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
