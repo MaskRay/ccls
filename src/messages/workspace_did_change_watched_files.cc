@@ -39,25 +39,29 @@ struct WorkspaceDidChangeWatchedFilesHandler
   void Run(Ipc_WorkspaceDidChangeWatchedFiles* request) override {
     for (lsFileEvent& event : request->params.changes) {
       std::string path = event.uri.GetPath();
+      auto it = project->absolute_path_to_entry_index_.find(path);
+      if (it == project->absolute_path_to_entry_index_.end())
+        continue;
+      const Project::Entry& entry = project->entries[it->second];
+      bool is_interactive =
+          working_files->GetFileByFilename(entry.filename) != nullptr;
       switch (event.type) {
         case lsFileChangeType::Created:
-        // TODO
         case lsFileChangeType::Changed: {
-          Project::Entry entry = project->FindCompilationEntryForFile(path);
           optional<std::string> content = ReadContent(path);
           if (!content)
             LOG_S(ERROR) << "Unable to read file content after saving " << path;
           else {
-            bool is_interactive =
-              working_files->GetFileByFilename(entry.filename) != nullptr;
             QueueManager::instance()->index_request.Enqueue(
                 Index_Request(path, entry.args, is_interactive, *content));
-            clang_complete->NotifySave(path);
+            if (is_interactive)
+              clang_complete->NotifySave(path);
           }
           break;
         }
         case lsFileChangeType::Deleted:
-          // TODO
+          QueueManager::instance()->index_request.Enqueue(
+              Index_Request(path, entry.args, is_interactive, std::string()));
           break;
       }
     }
