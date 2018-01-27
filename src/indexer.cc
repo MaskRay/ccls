@@ -129,6 +129,7 @@ ClangStorageClass GetStorageClass(CX_StorageClass storage) {
       return ClangStorageClass::SC_Register;
     default:
       assert(0);
+      return ClangStorageClass::SC_Invalid;
   }
 }
 
