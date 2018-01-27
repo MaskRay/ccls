@@ -202,7 +202,10 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
-      return var.uses;
+      std::vector<QueryLocation> ret = var.uses;
+      if (include_decl && var.def && var.def->definition_spelling)
+        ret.push_back(*var.def->definition_spelling);
+      return ret;
     }
     case SymbolKind::File:
     case SymbolKind::Invalid: {

@@ -1432,8 +1432,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         var->def.definition_extent = decl_cursor.get_extent();
       } else {
         var->def.declaration = decl_spell;
+        UniqueAdd(var->uses, decl_spell);
       }
-      UniqueAdd(var->uses, decl_spell);
 
       AddDeclInitializerUsages(db, decl_cursor);
       var = db->Resolve(var_id);
@@ -1829,7 +1829,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           var->def.short_name = referenced.get_spelling();
           SetVarDetail(var, referenced, nullptr, true, db, param);
           var->def.kind = ClangSymbolKind::Parameter;
-          UniqueAdd(var->uses, referenced.get_spelling_range());
         }
       }
       UniqueAdd(var->uses, loc);
