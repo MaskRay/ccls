@@ -83,7 +83,6 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.storage = var.storage;
   result.hover = var.hover;
   result.comments = var.comments;
-  result.declarations = id_map.ToQuery(var.declarations);
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
@@ -264,6 +263,10 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
                       var.def.definition_spelling.value());
     if (var.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(var.id), var.def.definition_extent.value());
+    for (const Range& decl : var.declarations) {
+      add_all_symbols(id_map.ToSymbol(var.id), decl);
+      add_outline(id_map.ToSymbol(var.id), decl);
+    }
     for (const Range& use : var.uses)
       add_all_symbols(id_map.ToSymbol(var.id), use);
   }
@@ -658,6 +661,10 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         if (var->def.definition_spelling) {
           vars_removed.push_back(var->usr);
         } else {
+          if (!var->declarations.empty())
+            vars_declarations.push_back(QueryVar::DeclarationsUpdate(
+                previous_id_map.ToQuery(var->id), {},
+                previous_id_map.ToQuery(var->declarations)));
           if (!var->uses.empty())
             vars_uses.push_back(
                 QueryVar::UsesUpdate(previous_id_map.ToQuery(var->id), {},
@@ -669,6 +676,10 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         optional<QueryVar::Def> def_update = ToQuery(current_id_map, var->def);
         if (def_update)
           vars_def_update.push_back(QueryVar::DefUpdate(var->usr, *def_update));
+        if (!var->declarations.empty())
+          vars_declarations.push_back(QueryVar::DeclarationsUpdate(
+              current_id_map.ToQuery(var->id),
+              current_id_map.ToQuery(var->declarations)));
         if (!var->uses.empty())
           vars_uses.push_back(
               QueryVar::UsesUpdate(current_id_map.ToQuery(var->id),
@@ -687,6 +698,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
           vars_def_update.push_back(
               QueryVar::DefUpdate(current->usr, *current_remapped_def));
 
+        PROCESS_UPDATE_DIFF(QueryVarId, vars_declarations, declarations,
+                            QueryLocation);
         PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, QueryLocation);
       });
 
@@ -715,6 +728,7 @@ void IndexUpdate::Merge(const IndexUpdate& update) {
 
   INDEX_UPDATE_APPEND(vars_removed);
   INDEX_UPDATE_APPEND(vars_def_update);
+  INDEX_UPDATE_MERGE(vars_declarations);
   INDEX_UPDATE_MERGE(vars_uses);
 
 #undef INDEX_UPDATE_APPEND
@@ -805,6 +819,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
   RemoveUsrs(SymbolKind::Var, update->vars_removed);
   ImportOrUpdate(update->vars_def_update);
+  HANDLE_MERGEABLE(vars_declarations, declarations, vars);
   HANDLE_MERGEABLE(vars_uses, uses, vars);
 
 #undef HANDLE_MERGEABLE

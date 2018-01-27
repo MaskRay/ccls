@@ -373,7 +373,6 @@ struct VarDefDefinitionData {
   ClangStorageClass storage = ClangStorageClass::SC_Invalid;
   optional<std::string> hover;
   optional<std::string> comments;
-  std::vector<Range> declarations;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
   optional<Range> definition_spelling;
@@ -397,7 +396,6 @@ struct VarDefDefinitionData {
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return short_name == other.short_name &&
            detailed_name == other.detailed_name && hover == other.hover &&
-           declarations.size() == other.declarations.size() &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            variable_type == other.variable_type &&
@@ -439,6 +437,7 @@ struct IndexVar {
 
   Def def;
 
+  std::vector<Range> declarations;
   // Usages.
   std::vector<Range> uses;
 

@@ -256,10 +256,12 @@ struct QueryVar {
   using Def =
       VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
   using DefUpdate = WithUsr<Def>;
+  using DeclarationsUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
 
   Usr usr;
   optional<Def> def;
+  std::vector<QueryLocation> declarations;
   std::vector<QueryLocation> uses;
   size_t detailed_name_idx = (size_t)-1;
 
@@ -302,6 +304,7 @@ struct IndexUpdate {
   // Variable updates.
   std::vector<Usr> vars_removed;
   std::vector<QueryVar::DefUpdate> vars_def_update;
+  std::vector<QueryVar::DeclarationsUpdate> vars_declarations;
   std::vector<QueryVar::UsesUpdate> vars_uses;
 
  private:
@@ -328,6 +331,7 @@ MAKE_REFLECT_STRUCT(IndexUpdate,
                     funcs_callers,
                     vars_removed,
                     vars_def_update,
+                    vars_declarations,
                     vars_uses);
 
 // The query database is heavily optimized for fast queries. It is stored

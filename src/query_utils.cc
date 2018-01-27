@@ -203,11 +203,11 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
       std::vector<QueryLocation> ret = var.uses;
-      if (include_decl && var.def) {
-        if (var.def->definition_spelling)
+      if (include_decl) {
+        if (var.def && var.def->definition_spelling)
           ret.push_back(*var.def->definition_spelling);
-        ret.insert(ret.end(), var.def->declarations.begin(),
-                   var.def->declarations.end());
+        ret.insert(ret.end(), var.declarations.begin(),
+                   var.declarations.end());
       }
       return ret;
     }
@@ -242,10 +242,7 @@ std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
       return func.declarations;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
-      if (var.def)
-        return var.def->declarations;
-      break;
+      return db->vars[symbol.idx].declarations;
     }
     default:
       break;

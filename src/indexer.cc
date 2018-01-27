@@ -1431,7 +1431,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         var->def.definition_spelling = decl_spell;
         var->def.definition_extent = decl_cursor.get_extent();
       } else {
-        var->def.declarations.push_back(decl_spell);
+        var->declarations.push_back(decl_spell);
       }
 
       AddDeclInitializerUsages(db, decl_cursor);
