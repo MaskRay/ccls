@@ -45,19 +45,23 @@ MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind,
                         std::underlying_type<ClangSymbolKind>::type);
 
 // clang/Basic/Specifiers.h clang::StorageClass
-enum class ClangStorageClass : uint8_t {
+enum class StorageClass : uint8_t {
   // In |CX_StorageClass| but not in |clang::StorageClass|
-  SC_Invalid,
+  // e.g. non-type template parameters
+  Invalid,
 
   // These are legal on both functions and variables.
-  SC_None,
-  SC_Extern,
-  SC_Static,
-  SC_PrivateExtern,
+  // e.g. global functions/variables, local variables
+  None,
+  Extern,
+  Static,
+  // e.g. |__private_extern__ int a;|
+  PrivateExtern,
 
   // These are only legal on variables.
-  SC_Auto,
-  SC_Register
+  // e.g. explicit |auto int a;|
+  Auto,
+  Register
 };
-MAKE_REFLECT_TYPE_PROXY(ClangStorageClass,
-                        std::underlying_type<ClangStorageClass>::type);
+MAKE_REFLECT_TYPE_PROXY(StorageClass,
+                        std::underlying_type<StorageClass>::type);

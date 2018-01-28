@@ -31,6 +31,11 @@ struct IndexVar;
 
 using namespace std::experimental;
 
+// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
+// front of others.
+enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
+MAKE_REFLECT_TYPE_PROXY(SymbolKind, uint8_t);
+
 template <typename T>
 struct Id {
   size_t id;
@@ -253,7 +258,7 @@ struct FuncDefDefinitionData {
   std::string short_name;
   std::string detailed_name;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
-  ClangStorageClass storage = ClangStorageClass::SC_Invalid;
+  StorageClass storage = StorageClass::Invalid;
   optional<std::string> hover;
   optional<std::string> comments;
   optional<Range> definition_spelling;
@@ -369,8 +374,6 @@ struct VarDefDefinitionData {
   // General metadata.
   std::string short_name;
   std::string detailed_name;
-  ClangSymbolKind kind = ClangSymbolKind::Unknown;
-  ClangStorageClass storage = ClangStorageClass::SC_Invalid;
   optional<std::string> hover;
   optional<std::string> comments;
   // TODO: definitions should be a list of ranges, since there can be more
@@ -381,15 +384,19 @@ struct VarDefDefinitionData {
   // Type of the variable.
   optional<TypeId> variable_type;
 
-  // Type which declares this one.
-  optional<TypeId> declaring_type;
+  // Function/type which declares this one.
+  size_t semantic_parent_id = size_t(-1);
+  SymbolKind semantic_parent_kind = SymbolKind::Invalid;
 
-  // Function which declares this one.
-  // TODO Accept other container types.
-  optional<IndexFuncId> semantic_container;
+  ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  // Note a variable may have instances of both |None| and |Extern|
+  // (declaration).
+  StorageClass storage = StorageClass::Invalid;
 
-  // FIXME
-  bool is_local() const { return kind == ClangSymbolKind::Variable; }
+  bool is_local() const {
+    return kind == ClangSymbolKind::Parameter ||
+           kind == ClangSymbolKind::Variable;
+  }
   bool is_macro() const { return kind == ClangSymbolKind::Macro; }
 
   bool operator==(
@@ -398,9 +405,7 @@ struct VarDefDefinitionData {
            detailed_name == other.detailed_name && hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
-           variable_type == other.variable_type &&
-           declaring_type == other.declaring_type && hover == other.hover &&
-           comments == other.comments;
+           variable_type == other.variable_type && comments == other.comments;
   }
   bool operator!=(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
@@ -425,7 +430,6 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);
-  REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER_END();
 }
 

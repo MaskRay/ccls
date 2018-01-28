@@ -48,11 +48,6 @@ struct QueryLocation {
 MAKE_REFLECT_STRUCT(QueryLocation, path, range);
 MAKE_HASHABLE(QueryLocation, t.path, t.range);
 
-// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
-// front of others.
-enum class SymbolKind : int { Invalid, File, Type, Func, Var };
-MAKE_REFLECT_TYPE_PROXY(SymbolKind, int);
-
 namespace std {
 template <>
 struct hash<::SymbolKind> {

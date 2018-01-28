@@ -1082,15 +1082,10 @@ MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
 
 struct Out_CqueryPublishSemanticHighlighting
     : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
-  enum class SymbolType { Type = 0, Function, Variable };
   struct Symbol {
     int stableId = 0;
-    // TODO Deprecate |type| in favor of fine-grained |kind|.
-    SymbolType type = SymbolType::Type;
     ClangSymbolKind kind;
-    ClangStorageClass storage;
-    // TODO Deprecate |isTypeMember| in favor of semantic container.
-    bool isTypeMember = false;
+    StorageClass storage;
     std::vector<lsRange> ranges;
   };
   struct Params {
@@ -1100,12 +1095,9 @@ struct Out_CqueryPublishSemanticHighlighting
   std::string method = "$cquery/publishSemanticHighlighting";
   Params params;
 };
-MAKE_REFLECT_TYPE_PROXY(Out_CqueryPublishSemanticHighlighting::SymbolType, int);
 MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
-                    type,
                     kind,
                     storage,
-                    isTypeMember,
                     stableId,
                     ranges);
 MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Params,

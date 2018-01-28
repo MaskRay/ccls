@@ -110,26 +110,26 @@ ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   }
 }
 
-ClangStorageClass GetStorageClass(CX_StorageClass storage) {
+StorageClass GetStorageClass(CX_StorageClass storage) {
   switch (storage) {
     case CX_SC_Invalid:
     case CX_SC_OpenCLWorkGroupLocal:
-      return ClangStorageClass::SC_Invalid;
+      return StorageClass::Invalid;
     case CX_SC_None:
-      return ClangStorageClass::SC_None;
+      return StorageClass::None;
     case CX_SC_Extern:
-      return ClangStorageClass::SC_Extern;
+      return StorageClass::Extern;
     case CX_SC_Static:
-      return ClangStorageClass::SC_Static;
+      return StorageClass::Static;
     case CX_SC_PrivateExtern:
-      return ClangStorageClass::SC_PrivateExtern;
+      return StorageClass::PrivateExtern;
     case CX_SC_Auto:
-      return ClangStorageClass::SC_Auto;
+      return StorageClass::Auto;
     case CX_SC_Register:
-      return ClangStorageClass::SC_Register;
+      return StorageClass::Register;
     default:
       assert(0);
-      return ClangStorageClass::SC_Invalid;
+      return StorageClass::Invalid;
   }
 }
 
@@ -566,7 +566,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kCurrentVersion = 10;
-const uint64_t IndexFile::kMessagePackMagic = 0x6371657279;
+const uint64_t IndexFile::kMessagePackMagic = 0x637175657279; // "cquery"
 const int IndexFile::kMessagePackVersion = 0;
 
 IndexFile::IndexFile(const std::string& path,
@@ -1454,14 +1454,19 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // We don't need to assign declaring type multiple times if this variable
       // has already been seen.
 
-      // TODO: Refactor handlers so more things are under 'if
-      // (!decl->isRedeclaration)'
-      if (decl->isDefinition && IsTypeDefinition(decl->semanticContainer)) {
-        IndexTypeId declaring_type_id =
-            db->ToTypeId(decl->semanticContainer->cursor);
-        IndexType* declaring_type_def = db->Resolve(declaring_type_id);
-        var->def.declaring_type = declaring_type_id;
-        declaring_type_def->def.vars.push_back(var_id);
+      if (decl->isDefinition && decl->semanticContainer) {
+        if (IsFunctionCallContext(decl->semanticContainer->cursor.kind)) {
+          IndexFuncId parent_func_id =
+            db->ToFuncId(decl->semanticContainer->cursor);
+          var->def.semantic_parent_kind = SymbolKind::Func;
+          var->def.semantic_parent_id = size_t(parent_func_id);
+        } else if (IsTypeDefinition(decl->semanticContainer)) {
+          IndexTypeId parent_type_id =
+              db->ToTypeId(decl->semanticContainer->cursor);
+          var->def.semantic_parent_kind = SymbolKind::Type;
+          var->def.semantic_parent_id = size_t(parent_type_id);
+          db->Resolve(parent_type_id)->def.vars.push_back(var_id);
+        }
       }
 
       break;

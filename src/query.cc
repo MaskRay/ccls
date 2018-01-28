@@ -79,14 +79,15 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   QueryVar::Def result;
   result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
-  result.kind = var.kind;
-  result.storage = var.storage;
   result.hover = var.hover;
   result.comments = var.comments;
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
-  result.declaring_type = id_map.ToQuery(var.declaring_type);
+  result.semantic_parent_id = var.semantic_parent_id;
+  result.semantic_parent_kind = var.semantic_parent_kind;
+  result.kind = var.kind;
+  result.storage = var.storage;
   return result;
 }
 

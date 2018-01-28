@@ -103,20 +103,6 @@ void EmitSemanticHighlighting(QueryDatabase* db,
                               WorkingFile* working_file,
                               QueryFile* file) {
   assert(file->def);
-  auto map_symbol_kind_to_symbol_type = [](SymbolKind kind) {
-    switch (kind) {
-      case SymbolKind::Type:
-        return Out_CqueryPublishSemanticHighlighting::SymbolType::Type;
-      case SymbolKind::Func:
-        return Out_CqueryPublishSemanticHighlighting::SymbolType::Function;
-      case SymbolKind::Var:
-        return Out_CqueryPublishSemanticHighlighting::SymbolType::Variable;
-      default:
-        assert(false);
-        return Out_CqueryPublishSemanticHighlighting::SymbolType::Variable;
-    }
-  };
-
   auto semantic_cache_for_file =
       semantic_cache->GetCacheForFile(file->def->path);
 
@@ -125,9 +111,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
     std::string detailed_name;
-    bool is_type_member = false;
     ClangSymbolKind kind = ClangSymbolKind::Unknown;
-    ClangStorageClass storage = ClangStorageClass::SC_Invalid;
+    StorageClass storage = StorageClass::Invalid;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.idx.kind) {
       case SymbolKind::Func: {
@@ -137,7 +122,6 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (func->def->short_name.compare(0, 8, "operator") == 0)
           continue;  // applies to for loop
         kind = func->def->kind;
-        is_type_member = func->def->declaring_type.has_value();
         detailed_name = func->def->short_name;
 
         // TODO We use cursor extent for lambda definition. Without the region
@@ -164,7 +148,6 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           continue;  // applies to for loop
         kind = var->def->kind;
         storage = var->def->storage;
-        is_type_member = var->def->declaring_type.has_value();
         detailed_name = var->def->short_name;
         break;
       }
@@ -191,8 +174,6 @@ void EmitSemanticHighlighting(QueryDatabase* db,
             semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
         symbol.kind = kind;
         symbol.storage = storage;
-        symbol.type = map_symbol_kind_to_symbol_type(sym.idx.kind);
-        symbol.isTypeMember = is_type_member;
         symbol.ranges.push_back(*loc);
         grouped_symbols[sym.idx] = symbol;
       }
