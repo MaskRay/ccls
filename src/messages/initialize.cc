@@ -49,14 +49,11 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       LOG_S(INFO) << "[querydb] Initialize in directory " << project_path
                   << " with uri " << request->params.rootUri->raw_uri;
 
-      if (!request->params.initializationOptions) {
-        LOG_S(FATAL) << "Initialization parameters (particularily "
-                        "cacheDirectory) are required";
-        exit(1);
-      }
-
-      *config = *request->params.initializationOptions;
       {
+        if (request->params.initializationOptions)
+          *config = *request->params.initializationOptions;
+        else
+          *config = Config();
         rapidjson::Document reader;
         reader.Parse(g_init_options.c_str());
         if (!reader.HasParseError()) {
@@ -64,18 +61,20 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
           try {
             Reflect(json_reader, *config);
           } catch (std::invalid_argument& ex) {
-            // FIXME This is not triggered. Need to pass error from
+            // This will not trigger because parse error is handled in
             // MessageRegistry::Parse in language_server_api.cc
-            Out_ShowLogMessage out;
-            out.display_type = Out_ShowLogMessage::DisplayType::Show;
-            out.params.type = lsMessageType::Error;
-            out.params.message = "Failed to deserialize " +
-                                 json_reader.GetPath() + " " + ex.what();
-            out.Write(std::cout);
           }
         }
+
+        g_enable_comments = config->index.comments;
+        if (config->cacheDirectory.empty()) {
+          config->enableCacheRead = config->enableCacheWrite = false;
+          LOG_S(INFO) << "Disable cache files because cacheDirectory is empty";
+        } else {
+          config->cacheDirectory = NormalizePath(config->cacheDirectory);
+          EnsureEndsInSlash(config->cacheDirectory);
+        }
       }
-      g_enable_comments = config->index.comments;
 
       // Client capabilities
       if (request->params.capabilities.textDocument) {
@@ -104,15 +103,6 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
               "reinstalling.";
         out.Write(std::cout);
       }
-
-      // Make sure cache directory is valid.
-      if (config->cacheDirectory.empty()) {
-        LOG_S(FATAL) << "Exiting; no cache directory";
-        exit(1);
-      }
-
-      config->cacheDirectory = NormalizePath(config->cacheDirectory);
-      EnsureEndsInSlash(config->cacheDirectory);
 
       // Ensure there is a resource directory.
       if (config->resourceDirectory.empty())
