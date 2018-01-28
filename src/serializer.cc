@@ -271,6 +271,10 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
       msgpack::sbuffer buf;
       msgpack::packer<msgpack::sbuffer> pk(&buf);
       MessagePackWriter msgpack_writer(&pk);
+      uint64_t magic = IndexFile::kMessagePackMagic;
+      int version = IndexFile::kMessagePackVersion;
+      Reflect(msgpack_writer, magic);
+      Reflect(msgpack_writer, version);
       Reflect(msgpack_writer, file);
       return std::string(buf.data(), buf.size());
     }
@@ -305,7 +309,7 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
       try {
         Reflect(json_reader, *file);
       } catch (std::invalid_argument& e) {
-        LOG_S(ERROR) << "'" << path << "': failed to deserialize "
+        LOG_S(INFO) << "'" << path << "': failed to deserialize "
                      << json_reader.GetPath() << "."
                      << e.what();
         return nullptr;
@@ -317,18 +321,29 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
       if (serialized.empty())
         return nullptr;
       try {
+        uint64_t magic;
+        int version;
+        if (serialized.size() < 8)
+          throw std::invalid_argument("Invalid");
         msgpack::unpacker upk;
         upk.reserve_buffer(serialized.size());
         memcpy(upk.buffer(), serialized.data(), serialized.size());
         upk.buffer_consumed(serialized.size());
         file = MakeUnique<IndexFile>(path, nullopt);
         MessagePackReader reader(&upk);
-        Reflect(reader, *file);
-        if (file->version != expected_version)
+        Reflect(reader, magic);
+        if (magic != IndexFile::kMessagePackMagic)
+          throw std::invalid_argument("Invalid magic");
+        Reflect(reader, version);
+        if (version != IndexFile::kMessagePackVersion) {
+          LOG_S(INFO) << "'" << path << "': skip old msgpack version "
+                      << IndexFile::kMessagePackVersion;
           return nullptr;
+        }
+        Reflect(reader, *file);
       } catch (std::invalid_argument& e) {
-        LOG_S(ERROR) << "'" << path << "': failed to deserialize msgpack "
-                     << e.what();
+        LOG_S(INFO) << "Failed to deserialize msgpack '" << path
+                    << "': " << e.what();
         return nullptr;
       }
       break;

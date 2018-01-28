@@ -565,7 +565,9 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-int IndexFile::kCurrentVersion = 10;
+const int IndexFile::kCurrentVersion = 10;
+const uint64_t IndexFile::kMessagePackMagic = 0x6371657279;
+const int IndexFile::kMessagePackVersion = 0;
 
 IndexFile::IndexFile(const std::string& path,
                      const optional<std::string>& contents)

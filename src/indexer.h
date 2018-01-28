@@ -479,7 +479,13 @@ MAKE_REFLECT_TYPE_PROXY(LanguageId, std::underlying_type<LanguageId>::type);
 struct IndexFile {
   IdCache id_cache;
 
-  static int kCurrentVersion;
+  static const int kCurrentVersion;
+  static const uint64_t kMessagePackMagic;
+  // MessagePack cache files have its own version number.
+  // JSON has good forward compatibility because field addition/deletion do not
+  // harm but currently no efforts have been made to make old MessagePack cache
+  // files accepted by newer cquery.
+  static const int kMessagePackVersion;
   int version = 0;
 
   std::string path;
