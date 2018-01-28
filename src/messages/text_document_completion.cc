@@ -316,8 +316,9 @@ struct TextDocumentCompletionHandler : MessageHandler {
       // results Only do this when trigger is not manual or context doesn't
       // exist (for Atom support).
       if (existing_completion.empty() && is_global_completion &&
-          (!request->params.context || request->params.context->triggerKind ==
-                                           lsCompletionTriggerKind::Invoked)) {
+          (request->params.context &&
+           request->params.context->triggerKind !=
+               lsCompletionTriggerKind::Invoked)) {
         LOG_S(INFO) << "Existing completion is empty, no completion results "
                        "will be returned";
         Out_TextDocumentComplete out;
