@@ -14,7 +14,6 @@
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
-extern bool g_index_builtin_types;
 extern int g_enable_comments;
 
 namespace {

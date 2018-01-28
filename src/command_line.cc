@@ -100,7 +100,6 @@ Other command line options:
                 Print stdin (requests) and stdout (responses) to stderr
   --log-file <path>    Logging file for diagnostics
   --log-all-to-stderr  Write all log messages to STDERR.
-  --wait-for-input     Wait for an '[Enter]' before exiting
   --help        Print this help information.
   --ci          Prevents tests from prompting the user for input. Used for
                 continuous integration so it can fail faster instead of timing
@@ -502,8 +501,14 @@ int main(int argc, char** argv) {
                   << ")\n";
         return 1;
       }
-      if (!reader.IsObject()) {
-        std::cerr << "--init must be a JSON object\n";
+      JsonReader json_reader{&reader};
+      try {
+        Config config;
+        Reflect(json_reader, config);
+      } catch (std::invalid_argument& e) {
+        std::cerr << "Fail to parse --init "
+                  << static_cast<JsonReader&>(json_reader).GetPath()
+                  << ", expected " << e.what() << "\n";
         return 1;
       }
     }
@@ -512,11 +517,6 @@ int main(int argc, char** argv) {
     auto config = MakeUnique<Config>();
     LanguageServerMain(argv[0], config.get(), &querydb_waiter, &indexer_waiter,
                        &stdout_waiter);
-  }
-
-  if (HasOption(options, "--wait-for-input")) {
-    std::cerr << std::endl << "[Enter] to exit" << std::endl;
-    getchar();
   }
 
   return 0;
