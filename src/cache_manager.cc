@@ -54,7 +54,7 @@ struct RealCacheManager : ICacheManager {
       return nullptr;
 
     return Deserialize(config_->cacheFormat, path, *file_content,
-                       IndexFile::kCurrentVersion);
+                       IndexFile::kMajorVersion);
   }
 
   std::string GetCachePath(const std::string& source_file) {

@@ -565,9 +565,8 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-const int IndexFile::kCurrentVersion = 10;
-const uint64_t IndexFile::kMessagePackMagic = 0x637175657279; // "cquery"
-const int IndexFile::kMessagePackVersion = 0;
+const int IndexFile::kMajorVersion = 10;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path,
                      const optional<std::string>& contents)

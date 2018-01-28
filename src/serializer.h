@@ -344,8 +344,8 @@ void ReflectMember(Reader& visitor, const char* name, T& value) {
 
 std::string Serialize(SerializeFormat format, IndexFile& file);
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
-                                       std::string path,
-                                       std::string serialized,
+                                       const std::string& path,
+                                       const std::string& serialized,
                                        optional<int> expected_version);
 
 void SetTestOutputMode();

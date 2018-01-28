@@ -206,7 +206,6 @@ bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
     assert(value.Resolve(it->second)->uses.size() == 0);
   }
 
-  value.version = IndexFile::kCurrentVersion;
   DefaultReflectMemberStart(visitor);
   return true;
 }
@@ -214,7 +213,6 @@ template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
-    REFLECT_MEMBER(version);
     REFLECT_MEMBER(last_modification_time);
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(import_file);
@@ -263,6 +261,12 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
           rapidjson::PrettyFormatOptions::kFormatSingleLineArray);
       writer.SetIndent(' ', 2);
       JsonWriter json_writer(&writer);
+      if (!gTestOutputMode) {
+        std::string version = std::to_string(IndexFile::kMajorVersion);
+        for (char c : version)
+          output.Put(c);
+        output.Put('\n');
+      }
       Reflect(json_writer, file);
       return output.GetString();
     }
@@ -270,8 +274,8 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
       msgpack::sbuffer buf;
       msgpack::packer<msgpack::sbuffer> pk(&buf);
       MessagePackWriter msgpack_writer(&pk);
-      uint64_t magic = IndexFile::kMessagePackMagic;
-      int version = IndexFile::kMessagePackVersion;
+      uint64_t magic = IndexFile::kMajorVersion;
+      int version = IndexFile::kMinorVersion;
       Reflect(msgpack_writer, magic);
       Reflect(msgpack_writer, version);
       Reflect(msgpack_writer, file);
@@ -282,26 +286,25 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
 }
 
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
-                                       std::string path,
-                                       std::string serialized,
+                                       const std::string& path,
+                                       const std::string& serialized,
                                        optional<int> expected_version) {
   std::unique_ptr<IndexFile> file;
   switch (format) {
     case SerializeFormat::Json: {
       rapidjson::Document reader;
-      reader.Parse(serialized.c_str());
+      if (gTestOutputMode)
+        reader.Parse(serialized.c_str());
+      else {
+        const char* p = strchr(serialized.c_str(), '\n');
+        if (!p)
+          return nullptr;
+        if (expected_version && atoi(serialized.c_str()) != *expected_version)
+          return nullptr;
+        reader.Parse(p + 1);
+      }
       if (reader.HasParseError())
         return nullptr;
-
-      // Do not deserialize a document with a bad version. Doing so could cause
-      // a crash because the file format may have changed.
-      if (expected_version) {
-        auto actual_version = reader.FindMember("version");
-        if (actual_version == reader.MemberEnd() ||
-            actual_version->value.GetInt() != expected_version) {
-          return nullptr;
-        }
-      }
 
       file = MakeUnique<IndexFile>(path, nullopt);
       JsonReader json_reader{&reader};
@@ -320,8 +323,7 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
       if (serialized.empty())
         return nullptr;
       try {
-        uint64_t magic;
-        int version;
+        int major, minor;
         if (serialized.size() < 8)
           throw std::invalid_argument("Invalid");
         msgpack::unpacker upk;
@@ -330,15 +332,11 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
         upk.buffer_consumed(serialized.size());
         file = MakeUnique<IndexFile>(path, nullopt);
         MessagePackReader reader(&upk);
-        Reflect(reader, magic);
-        if (magic != IndexFile::kMessagePackMagic)
-          throw std::invalid_argument("Invalid magic");
-        Reflect(reader, version);
-        if (version != IndexFile::kMessagePackVersion) {
-          LOG_S(INFO) << "'" << path << "': skip old msgpack version "
-                      << IndexFile::kMessagePackVersion;
-          return nullptr;
-        }
+        Reflect(reader, major);
+        Reflect(reader, minor);
+        if (major != IndexFile::kMajorVersion ||
+            minor != IndexFile::kMinorVersion)
+          throw std::invalid_argument("Invalid version");
         Reflect(reader, *file);
       } catch (std::invalid_argument& e) {
         LOG_S(INFO) << "Failed to deserialize msgpack '" << path
