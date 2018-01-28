@@ -299,34 +299,6 @@ const std::string& lsCompletionItem::InsertedContent() const {
   return label;
 }
 
-void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
-  if (!reader.IsString()) {
-    value = lsInitializeParams::lsTrace::Off;
-    return;
-  }
-  std::string v = reader.GetString();
-  if (v == "off")
-    value = lsInitializeParams::lsTrace::Off;
-  else if (v == "messages")
-    value = lsInitializeParams::lsTrace::Messages;
-  else if (v == "verbose")
-    value = lsInitializeParams::lsTrace::Verbose;
-}
-
-void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
-  switch (value) {
-    case lsInitializeParams::lsTrace::Off:
-      writer.String("off");
-      break;
-    case lsInitializeParams::lsTrace::Messages:
-      writer.String("messages");
-      break;
-    case lsInitializeParams::lsTrace::Verbose:
-      writer.String("verbose");
-      break;
-  }
-}
-
 std::string Out_ShowLogMessage::method() {
   if (display_type == DisplayType::Log)
     return "window/logMessage";
