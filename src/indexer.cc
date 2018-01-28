@@ -1145,10 +1145,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       else
         decl_usr = cursor.get_referenced().get_usr_hash();
 
-      IndexVarId var_id = db->ToVarId(decl_usr);
-      IndexVar* var_def = db->Resolve(var_id);
-      UniqueAdd(var_def->uses, decl_loc_spelling);
-
+      IndexVar* var_def = db->Resolve(db->ToVarId(decl_usr));
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
         CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
         var_def->def.short_name = cursor.get_display_name();
@@ -1160,7 +1157,8 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.definition_spelling = decl_loc_spelling;
         var_def->def.definition_extent =
             ResolveCXSourceRange(cx_extent, nullptr);
-      }
+      } else
+        UniqueAdd(var_def->uses, decl_loc_spelling);
 
       break;
     }
