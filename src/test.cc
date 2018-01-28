@@ -6,7 +6,14 @@
 #include "utils.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <iostream>
+
+// The 'diff' utility is available and we can use dprintf(3).
+#if _POSIX_C_SOURCE >= 200809L
+#include <sys/wait.h>
+#include <unistd.h>
+#endif
 
 void Write(const std::vector<std::string>& strs) {
   for (const std::string& str : strs)
@@ -31,14 +38,38 @@ void DiffDocuments(std::string path,
                    rapidjson::Document& expected,
                    rapidjson::Document& actual) {
   std::string joined_actual_output = ToString(actual);
+  std::string joined_expected_output = ToString(expected);
+  std::cout << "[FAILED] " << path << " (section " << path_section << ")"
+            << std::endl;
+
+#if _POSIX_C_SOURCE >= 200809L
+  char expected_file[] = "/tmp/cquery.expected.XXXXXX";
+  char actual_file[] = "/tmp/cquery.actual.XXXXXX";
+  int expected_fd = mkstemp(expected_file);
+  int actual_fd = mkstemp(actual_file);
+  dprintf(expected_fd, "%s", joined_expected_output.c_str());
+  dprintf(actual_fd, "%s", joined_actual_output.c_str());
+  close(expected_fd);
+  close(actual_fd);
+  pid_t child = fork();
+  if (child == 0) {
+    execlp("diff", "diff", "-U", "3", expected_file, actual_file, NULL);
+    _Exit(127);
+  } else {
+    int status;
+    waitpid(child, &status, 0);
+    unlink(expected_file);
+    unlink(actual_file);
+    // 'diff' returns 0 or 1 if exitted normaly.
+    if (WEXITSTATUS(status) <= 1)
+      return;
+  }
+#endif
   std::vector<std::string> actual_output =
       SplitString(joined_actual_output, "\n");
-  std::string joined_expected_output = ToString(expected);
   std::vector<std::string> expected_output =
       SplitString(joined_expected_output, "\n");
 
-  std::cout << "[FAILED] " << path << " (section " << path_section << ")"
-            << std::endl;
   std::cout << "Expected output for " << path << " (section " << path_section
             << "):" << std::endl;
   std::cout << joined_expected_output << std::endl;
