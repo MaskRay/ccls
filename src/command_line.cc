@@ -33,6 +33,7 @@
 #include <loguru.hpp>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -72,6 +73,43 @@ bool ShouldDisplayIpcTiming(IpcId id) {
 }
 
 REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
+
+void PrintHelp(std::ostream& os) {
+  os << R"help(cquery is a low-latency C/C++/Objective-C language server.
+
+Mode:
+  --clang-sanity-check
+                Run a simple index test. Verifies basic clang functionality.
+                Needs to be executed from the cquery root checkout directory.
+  --test-unit   Run unit tests.
+  --test-index <opt_filter_path>
+                Run index tests. opt_filter_path can be used to specify which
+                test to run (ie, "foo" will run all tests which contain "foo"
+                in the path). If not provided all tests are run.
+  (default if no other mode is specified)
+                Run as a language server over stdin and stdout
+
+Other command line options:
+  --debug       Disable libclang crash recovery so that in case of libclang or
+                indexer callback issue, the process will crash and we can
+                get a stack trace.
+  --init <initializationOptions>
+                Override client provided initialization options
+         https://github.com/cquery-project/cquery/wiki/Initialization-options
+  --log-stdin-stdout-to-stderr
+                Print stdin (requests) and stdout (responses) to stderr
+  --log-file <path>    Logging file for diagnostics
+  --log-all-to-stderr  Write all log messages to STDERR.
+  --wait-for-input     Wait for an '[Enter]' before exiting
+  --help        Print this help information.
+  --ci          Prevents tests from prompting the user for input. Used for
+                continuous integration so it can fail faster instead of timing
+                out.
+
+See more on https://github.com/cquery-project/cquery/wiki
+)help";
+  exit(&os == &std::cout ? 0 : 1);
+}
 
 }  // namespace
 
@@ -402,6 +440,9 @@ int main(int argc, char** argv) {
   std::unordered_map<std::string, std::string> options =
       ParseOptions(argc, argv);
 
+  if (HasOption(options, "-h") || HasOption(options, "--help"))
+    PrintHelp(std::cout);
+
   if (!HasOption(options, "--log-all-to-stderr"))
     loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
 
@@ -412,16 +453,11 @@ int main(int argc, char** argv) {
   QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
                                &stdout_waiter);
 
-  // bool loop = true;
-  // while (loop)
-  //  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  // std::this_thread::sleep_for(std::chrono::seconds(10));
-
   PlatformInit();
   g_debug = HasOption(options, "--debug");
   IndexInit();
 
-  bool print_help = true;
+  bool language_server = true;
 
   if (HasOption(options, "--log-file")) {
     loguru::add_file(options["--log-file"].c_str(), loguru::Truncate,
@@ -432,13 +468,13 @@ int main(int argc, char** argv) {
     g_log_stdin_stdout_to_stderr = true;
 
   if (HasOption(options, "--clang-sanity-check")) {
-    print_help = false;
+    language_server = false;
     ClangSanityCheck();
   }
 
   if (HasOption(options, "--test-unit")) {
     g_debug = true;
-    print_help = false;
+    language_server = false;
     doctest::Context context;
     context.applyCommandLine(argc, argv);
     int res = context.run();
@@ -448,96 +484,39 @@ int main(int argc, char** argv) {
 
   if (HasOption(options, "--test-index")) {
     g_debug = true;
-    print_help = false;
+    language_server = false;
     if (!RunIndexTests(options["--test-index"], !HasOption(options, "--ci")))
       return -1;
   }
 
-  if (HasOption(options, "--init")) {
-    // We check syntax error here but override client-side initializationOptions
-    // in messages/initialize.cc
-    g_init_options = options["--init"];
-    rapidjson::Document reader;
-    rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
-    if (!ok) {
-      std::cerr << "Failed to parse --init as JSON: "
-                << rapidjson::GetParseError_En(ok.Code()) << " (" << ok.Offset()
-                << ")\n";
-      return 1;
+  if (language_server) {
+    if (HasOption(options, "--init")) {
+      // We check syntax error here but override client-side initializationOptions
+      // in messages/initialize.cc
+      g_init_options = options["--init"];
+      rapidjson::Document reader;
+      rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
+      if (!ok) {
+        std::cerr << "Failed to parse --init as JSON: "
+                  << rapidjson::GetParseError_En(ok.Code()) << " (" << ok.Offset()
+                  << ")\n";
+        return 1;
+      }
+      if (!reader.IsObject()) {
+        std::cerr << "--init must be a JSON object\n";
+        return 1;
+      }
     }
-    if (!reader.IsObject()) {
-      std::cerr << "--init must be a JSON object\n";
-      return 1;
-    }
-  }
 
-  if (HasOption(options, "--language-server")) {
-    print_help = false;
     // std::cerr << "Running language server" << std::endl;
     auto config = MakeUnique<Config>();
     LanguageServerMain(argv[0], config.get(), &querydb_waiter, &indexer_waiter,
                        &stdout_waiter);
-    return 0;
   }
 
   if (HasOption(options, "--wait-for-input")) {
     std::cerr << std::endl << "[Enter] to exit" << std::endl;
     getchar();
-  }
-
-  if (print_help) {
-    std::cout
-        << R"help(cquery is a low-latency C/C++/Objective-C language server.
-
-Mode:
-  --language-server
-                Run as a language server. This implements the language server
-                spec over STDIN and STDOUT.
-  --test-unit   Run unit tests.
-  --test-index <opt_filter_path>
-                Run index tests. opt_filter_path can be used to specify which
-                test to run (ie, "foo" will run all tests which contain "foo"
-                in the path). If not provided all tests are run.
-
-Other command line options:
-  --debug       Disable libclang crash recovery so that in case of libclang or
-                indexer callback issue, the process will crash and we can
-                get a stack trace.
-  --init <initializationOptions>
-                Override user provided initialization options.
-  --log-stdin-stdout-to-stderr
-                Print stdin and stdout messages to stderr. This is a aid for
-                developing new language clients, as it makes it easier to figure
-                out how the client is interacting with cquery.
-  --log-file <absoulte_path>
-                Emit diagnostic logging to the given path, which is taken
-                literally, ie, it will be relative to the current working
-                directory.
-  --log-all-to-stderr
-                Write all log messages to STDERR.
-  --clang-sanity-check
-                Run a simple index test. Verifies basic clang functionality.
-                Needs to be executed from the cquery root checkout directory.
-  --wait-for-input
-                If true, cquery will wait for an '[Enter]' before exiting.
-                Useful on windows.
-  --help        Print this help information.
-  --ci          Prevents tests from prompting the user for input. Used for
-                continuous integration so it can fail faster instead of timing
-                out.
-
-Configuration:
-  When opening up a directory, cquery will look for a compile_commands.json file
-  emitted by your preferred build system. If not present, cquery will use a
-  recursive directory listing instead. Command line flags can be provided by
-  adding a file named `.cquery` in the top-level directory. Each line in that
-  file is a separate argument.
-
-  There are also a number of configuration options available when initializing
-  the language server - your editor should have tooling to describe those
-  options.  See |Config| in this source code for a detailed list of all
-  currently supported options.
-)help";
   }
 
   return 0;
