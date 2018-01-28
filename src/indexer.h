@@ -385,8 +385,8 @@ struct VarDefDefinitionData {
   optional<TypeId> variable_type;
 
   // Function/type which declares this one.
-  size_t semantic_parent_id = size_t(-1);
-  SymbolKind semantic_parent_kind = SymbolKind::Invalid;
+  size_t parent_id = size_t(-1);
+  SymbolKind parent_kind = SymbolKind::Invalid;
 
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
@@ -423,13 +423,15 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(kind);
-  REFLECT_MEMBER(storage);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
   REFLECT_MEMBER(variable_type);
+  REFLECT_MEMBER(parent_id);
+  REFLECT_MEMBER(parent_kind);
+  REFLECT_MEMBER(kind);
+  REFLECT_MEMBER(storage);
   REFLECT_MEMBER_END();
 }
 

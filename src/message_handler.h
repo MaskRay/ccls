@@ -24,6 +24,36 @@ struct TimestampManager;
 struct WorkingFile;
 struct WorkingFiles;
 
+struct Out_CqueryPublishSemanticHighlighting
+  : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
+  struct Symbol {
+    int stableId = 0;
+    SymbolKind parentKind;
+    ClangSymbolKind kind;
+    StorageClass storage;
+    std::vector<lsRange> ranges;
+  };
+  struct Params {
+    lsDocumentUri uri;
+    std::vector<Symbol> symbols;
+  };
+  std::string method = "$cquery/publishSemanticHighlighting";
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
+                    stableId,
+                    parentKind,
+                    kind,
+                    storage,
+                    ranges);
+MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Params,
+                    uri,
+                    symbols);
+MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting,
+                    jsonrpc,
+                    method,
+                    params);
+
 // Usage:
 //
 //  struct FooHandler : MessageHandler {

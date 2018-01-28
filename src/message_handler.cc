@@ -111,6 +111,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
     std::string detailed_name;
+    SymbolKind parent_kind = SymbolKind::Invalid;
     ClangSymbolKind kind = ClangSymbolKind::Unknown;
     StorageClass storage = StorageClass::Invalid;
     // This switch statement also filters out symbols that are not highlighted.
@@ -146,6 +147,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryVar* var = &db->vars[sym.idx.idx];
         if (!var->def)
           continue;  // applies to for loop
+        parent_kind = var->def->parent_kind;
         kind = var->def->kind;
         storage = var->def->storage;
         detailed_name = var->def->short_name;
@@ -172,6 +174,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         Out_CqueryPublishSemanticHighlighting::Symbol symbol;
         symbol.stableId =
             semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
+        symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;
         symbol.ranges.push_back(*loc);

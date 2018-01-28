@@ -185,8 +185,6 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("kind", value.def.kind);
-  REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("comments", value.def.comments);
   REFLECT_MEMBER2("declarations", value.declarations);
@@ -194,6 +192,10 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("uses", value.uses);
+  REFLECT_MEMBER2("parent_id", value.def.parent_id);
+  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
+  REFLECT_MEMBER2("kind", value.def.kind);
+  REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER_END();
 }
 

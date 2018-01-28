@@ -1080,34 +1080,6 @@ struct Out_CquerySetInactiveRegion
 MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion::Params, uri, inactiveRegions);
 MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
 
-struct Out_CqueryPublishSemanticHighlighting
-    : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
-  struct Symbol {
-    int stableId = 0;
-    ClangSymbolKind kind;
-    StorageClass storage;
-    std::vector<lsRange> ranges;
-  };
-  struct Params {
-    lsDocumentUri uri;
-    std::vector<Symbol> symbols;
-  };
-  std::string method = "$cquery/publishSemanticHighlighting";
-  Params params;
-};
-MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
-                    kind,
-                    storage,
-                    stableId,
-                    ranges);
-MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Params,
-                    uri,
-                    symbols);
-MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting,
-                    jsonrpc,
-                    method,
-                    params);
-
 struct Out_LocationList : public lsOutMessage<Out_LocationList> {
   lsRequestId id;
   std::vector<lsLocation> result;

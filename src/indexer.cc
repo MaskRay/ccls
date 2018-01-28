@@ -566,7 +566,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kMajorVersion = 10;
-const int IndexFile::kMinorVersion = 0;
+const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(const std::string& path,
                      const optional<std::string>& contents)
@@ -1455,13 +1455,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         if (IsFunctionCallContext(decl->semanticContainer->cursor.kind)) {
           IndexFuncId parent_func_id =
             db->ToFuncId(decl->semanticContainer->cursor);
-          var->def.semantic_parent_kind = SymbolKind::Func;
-          var->def.semantic_parent_id = size_t(parent_func_id);
+          var->def.parent_kind = SymbolKind::Func;
+          var->def.parent_id = size_t(parent_func_id);
         } else if (IsTypeDefinition(decl->semanticContainer)) {
           IndexTypeId parent_type_id =
               db->ToTypeId(decl->semanticContainer->cursor);
-          var->def.semantic_parent_kind = SymbolKind::Type;
-          var->def.semantic_parent_id = size_t(parent_type_id);
+          var->def.parent_kind = SymbolKind::Type;
+          var->def.parent_id = size_t(parent_type_id);
           db->Resolve(parent_type_id)->def.vars.push_back(var_id);
         }
       }

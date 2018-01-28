@@ -84,8 +84,8 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
-  result.semantic_parent_id = var.semantic_parent_id;
-  result.semantic_parent_kind = var.semantic_parent_kind;
+  result.parent_id = var.parent_id;
+  result.parent_kind = var.parent_kind;
   result.kind = var.kind;
   result.storage = var.storage;
   return result;
