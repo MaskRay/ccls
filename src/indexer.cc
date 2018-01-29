@@ -1194,7 +1194,6 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           SetVarDetail(ref_index, ref_cursor, nullptr, true, db, data->param);
-          ref_index->uses.push_back(ref_cursor.get_spelling_range());
 
           ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
           // TODO optimize
@@ -1246,7 +1245,6 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
-          ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
@@ -1266,7 +1264,6 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.short_name = ref_cursor.get_spelling();
           ref_index->def.detailed_name = ref_index->def.short_name;
-          ref_index->uses.push_back(ref_cursor.get_spelling_range());
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
@@ -1727,6 +1724,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           SetTypeName(origin, origin_cursor, nullptr,
                       type->def.short_name.c_str(), ns);
           origin->def.kind = type->def.kind;
+        }
+        // TODO The name may be assigned in |ResolveToDeclarationType| but
+        // |definition_spelling| is nullopt.
+        if (!origin->def.definition_spelling) {
           origin->def.definition_spelling = origin_cursor.get_spelling_range();
           origin->def.definition_extent = origin_cursor.get_extent();
         }
