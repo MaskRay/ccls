@@ -219,18 +219,33 @@ void lsDocumentUri::SetPath(const std::string& path) {
 
   // subset of reserved characters from the URI standard
   // http://www.ecma-international.org/ecma-262/6.0/#sec-uri-syntax-and-semantics
-  raw_uri = ReplaceAll(raw_uri, " ", "%20");
-  raw_uri = ReplaceAll(raw_uri, "(", "%28");
-  raw_uri = ReplaceAll(raw_uri, ")", "%29");
-  raw_uri = ReplaceAll(raw_uri, "#", "%23");
-  raw_uri = ReplaceAll(raw_uri, ",", "%2C");
-
-// TODO: proper fix
+  std::string t;
+  t.reserve(8 + raw_uri.size());
+  // TODO: proper fix
 #if defined(_WIN32)
-  raw_uri = "file:///" + raw_uri;
+  t += "file:///";
 #else
-  raw_uri = "file://" + raw_uri;
+  t += "file://";
 #endif
+
+  // clang-format off
+  for (char c : raw_uri)
+    switch (c) {
+    case ' ': t += "%20"; break;
+    case '#': t += "%23"; break;
+    case '$': t += "%24"; break;
+    case '&': t += "%26"; break;
+    case '(': t += "%28"; break;
+    case ')': t += "%29"; break;
+    case '+': t += "%2B"; break;
+    case ',': t += "%2C"; break;
+    case ';': t += "%3B"; break;
+    case '?': t += "%3F"; break;
+    case '@': t += "%40"; break;
+    default: t += c; break;
+    }
+  // clang-format on
+  raw_uri = std::move(t);
 }
 
 std::string lsDocumentUri::GetPath() const {
