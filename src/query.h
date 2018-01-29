@@ -81,10 +81,12 @@ MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
 
 struct SymbolRef {
   SymbolIdx idx;
+  SymbolRole role;
   QueryLocation loc;
 
   SymbolRef() {}  // Do not use, needed for reflect.
-  SymbolRef(SymbolIdx idx, QueryLocation loc) : idx(idx), loc(loc) {}
+  SymbolRef(SymbolIdx idx, SymbolRole role, QueryLocation loc)
+      : idx(idx), role(role), loc(loc) {}
 
   bool operator==(const SymbolRef& that) const {
     return idx == that.idx && loc == that.loc;

@@ -488,6 +488,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
   return nullopt;
 }
 
+// TODO Sort only by range length, not |kind| or |idx|
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position) {

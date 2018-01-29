@@ -219,30 +219,31 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
   }();
 
   auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
-    def.outline.push_back(SymbolRef(idx, id_map.ToQuery(range)));
+    def.outline.push_back(
+        SymbolRef(idx, SymbolRole::Declaration, id_map.ToQuery(range)));
   };
-  auto add_all_symbols = [&def, &id_map](SymbolIdx idx, Range range) {
-    def.all_symbols.push_back(SymbolRef(idx, id_map.ToQuery(range)));
+  auto add_all_symbols = [&def, &id_map](SymbolIdx idx, SymbolRole role,
+                                         Range range) {
+    def.all_symbols.push_back(SymbolRef(idx, role, id_map.ToQuery(range)));
   };
 
   for (const IndexType& type : indexed.types) {
     if (type.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(type.id),
+      add_all_symbols(id_map.ToSymbol(type.id), SymbolRole::Definition,
                       type.def.definition_spelling.value());
     if (type.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(type.id), type.def.definition_extent.value());
     for (const Range& use : type.uses)
-      add_all_symbols(id_map.ToSymbol(type.id), use);
+      add_all_symbols(id_map.ToSymbol(type.id), SymbolRole::Reference, use);
   }
   for (const IndexFunc& func : indexed.funcs) {
     if (func.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(func.id),
+      add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Definition,
                       func.def.definition_spelling.value());
     if (func.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(func.id), func.def.definition_extent.value());
     for (const IndexFunc::Declaration& decl : func.declarations) {
-      // TODO: add more outline info?
-      add_all_symbols(id_map.ToSymbol(func.id), decl.spelling);
+      add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Declaration, decl.spelling);
       add_outline(id_map.ToSymbol(func.id), decl.spelling);
     }
     for (const IndexFuncRef& caller : func.callers) {
@@ -256,21 +257,22 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
           range.start.column--;
         range.end.column++;
       }
-      add_all_symbols(id_map.ToSymbol(func.id), range);
+      add_all_symbols(id_map.ToSymbol(func.id),
+                      SymbolRole::Implicit | SymbolRole::CalledBy, range);
     }
   }
   for (const IndexVar& var : indexed.vars) {
     if (var.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(var.id),
+      add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Definition,
                       var.def.definition_spelling.value());
     if (var.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(var.id), var.def.definition_extent.value());
     for (const Range& decl : var.declarations) {
-      add_all_symbols(id_map.ToSymbol(var.id), decl);
+      add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Declaration, decl);
       add_outline(id_map.ToSymbol(var.id), decl);
     }
     for (const Range& use : var.uses)
-      add_all_symbols(id_map.ToSymbol(var.id), use);
+      add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Reference, use);
   }
 
   std::sort(def.outline.begin(), def.outline.end(),

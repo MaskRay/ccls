@@ -65,3 +65,23 @@ enum class StorageClass : uint8_t {
 };
 MAKE_REFLECT_TYPE_PROXY(StorageClass,
                         std::underlying_type<StorageClass>::type);
+
+enum class SymbolRole : uint8_t {
+  Declaration = 1 << 0,
+  Definition = 1 << 1,
+  Reference = 1 << 2,
+  Implicit = 1 << 3,
+
+  ChildOf = 1 << 4,
+  BaseOf = 1 << 5,
+  CalledBy = 1 << 6,
+};
+MAKE_REFLECT_TYPE_PROXY(SymbolRole, std::underlying_type<SymbolRole>::type);
+
+inline uint8_t operator&(SymbolRole lhs, SymbolRole rhs) {
+  return uint8_t(lhs) & uint8_t(rhs);
+}
+
+inline SymbolRole operator|(SymbolRole lhs, SymbolRole rhs) {
+  return SymbolRole(uint8_t(lhs) | uint8_t(rhs));
+}
