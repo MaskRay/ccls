@@ -120,27 +120,14 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryFunc* func = &db->funcs[sym.idx.idx];
         if (!func->def)
           continue;  // applies to for loop
-        if (func->def->short_name.compare(0, 8, "operator") == 0)
+        // Don't highlight overloadable operators or implicit lambda ->
+        // std::function constructor.
+        if (func->def->short_name.compare(0, 8, "operator") == 0 ||
+            func->def->short_name.compare(0, 27,
+                                          "function<type-parameter-0-0") == 0)
           continue;  // applies to for loop
         kind = func->def->kind;
         detailed_name = func->def->short_name;
-
-        // TODO We use cursor extent for lambda definition. Without the region
-        // shrinking hack, the contained keywords and primitive types will be
-        // highlighted undesiredly.
-        auto concise_name = detailed_name.substr(0, detailed_name.find('<'));
-        if (0 <= sym.loc.range.start.line &&
-            sym.loc.range.start.line < working_file->index_lines.size()) {
-          const std::string& line =
-              working_file->index_lines[sym.loc.range.start.line];
-          sym.loc.range.end.line = sym.loc.range.start.line;
-          int col = sym.loc.range.start.column;
-          if (line.compare(col, concise_name.size(), concise_name) == 0)
-            sym.loc.range.end.column =
-                sym.loc.range.start.column + concise_name.size();
-          else
-            sym.loc.range.end.column = sym.loc.range.start.column;
-        }
         break;
       }
       case SymbolKind::Var: {
