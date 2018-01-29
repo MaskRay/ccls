@@ -101,7 +101,8 @@ struct Config {
   // An example value is { ".h", ".hpp" }
   //
   // This is significantly faster than using a regex.
-  std::vector<std::string> includeCompletionWhitelistLiteralEnding;
+  std::vector<std::string> includeCompletionWhitelistLiteralEnding = {
+      ".h", ".hpp", ".hh"};
   // Regex patterns to match include completion candidates against. They
   // receive the absolute file path.
   //

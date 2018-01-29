@@ -256,9 +256,17 @@ struct TextDocumentCompletionHandler : MessageHandler {
       std::string character = *request->params.context->triggerCharacter;
       char preceding_index = request->params.position.character - 2;
 
+      // If the character is '"' or '<', make sure the line is start with '#'.
+      if (character == "\"" || character == "<") {
+        size_t i = 0;
+        while (i < buffer_line.size() && isspace(buffer_line[i]))
+          ++i;
+        if (i >= buffer_line.size() || buffer_line[i] != '#')
+          did_fail_check = true;
+      }
       // If the character is > or : and we are at the start of the line, do not
       // show completion results.
-      if ((character == ">" || character == ":") && preceding_index < 0) {
+      else if ((character == ">" || character == ":") && preceding_index < 0) {
         did_fail_check = true;
       }
       // If the character is > but - does not preced it, or if it is : and :
@@ -283,7 +291,11 @@ struct TextDocumentCompletionHandler : MessageHandler {
           &existing_completion);
     }
 
-    if (ShouldRunIncludeCompletion(buffer_line)) {
+    bool yes;
+    std::string surround, prefix;
+    std::tie(yes, surround, prefix) = ShouldRunIncludeCompletion(buffer_line);
+
+    if (yes) {
       Out_TextDocumentComplete out;
       out.id = request->id;
 
@@ -296,19 +308,26 @@ struct TextDocumentCompletionHandler : MessageHandler {
                                 include_complete->completion_items.end());
         if (lock)
           lock.unlock();
-
-        // Update textEdit params.
-        for (lsCompletionItem& item : out.result.items) {
-          item.textEdit->range.start.line = request->params.position.line;
-          item.textEdit->range.start.character = 0;
-          item.textEdit->range.end.line = request->params.position.line;
-          item.textEdit->range.end.character = (int)buffer_line.size();
-        }
       }
 
-      TrimInPlace(buffer_line);
-      FilterAndSortCompletionResponse(&out, buffer_line,
+      FilterAndSortCompletionResponse(&out, prefix,
                                       config->completion.filterAndSort);
+
+      auto decorator = [&](std::string& text) {
+        std::string result = "#include ";
+        result += surround[0] + text + surround[1];
+        text = result;
+      };
+      LOG_S(INFO) << "DEBUG prefix " << prefix;
+      for (lsCompletionItem& item : out.result.items) {
+        item.textEdit->range.start.line = request->params.position.line;
+        item.textEdit->range.start.character = 0;
+        item.textEdit->range.end.line = request->params.position.line;
+        item.textEdit->range.end.character = (int)buffer_line.size();
+        decorator(item.textEdit->newText);
+        decorator(item.label);
+      }
+
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
       // If existing completion is empty, dont return clang-based completion

@@ -78,30 +78,21 @@ bool TrimPath(Project* project,
 
 lsCompletionItem BuildCompletionItem(Config* config,
                                      const std::string& path,
-                                     bool use_angle_brackets,
+                                     bool /*use_angle_brackets*/,
                                      bool is_stl) {
   lsCompletionItem item;
-  if (use_angle_brackets)
-    item.label = "#include <" + ElideLongPath(config, path) + ">";
-  else
-    item.label = "#include \"" + ElideLongPath(config, path) + "\"";
-
+  item.label = ElideLongPath(config, path);
   item.detail = path;
-
-  // Replace the entire existing content.
-  // NOTE: When submitting completion items, textEdit->range must be updated.
   item.textEdit = lsTextEdit();
-  if (use_angle_brackets)
-    item.textEdit->newText = "#include <" + path + ">";
-  else
-    item.textEdit->newText = "#include \"" + path + "\"";
-
+  item.textEdit->newText = path;
   item.insertTextFormat = lsInsertTextFormat::PlainText;
-  if (is_stl)
+  if (is_stl) {
     item.kind = lsCompletionItemKind::Module;
-  else
+    item.priority_ = 2;
+  } else {
     item.kind = lsCompletionItemKind::File;
-
+    item.priority_ = 1;
+  }
   return item;
 }
 
@@ -127,8 +118,8 @@ void IncludeComplete::Rescan() {
     Timer timer;
 
     InsertStlIncludes();
-    InsertIncludesFromDirectory(config_->projectRoot,
-                                false /*use_angle_brackets*/);
+    // InsertIncludesFromDirectory(config_->projectRoot,
+    //                             false /*use_angle_brackets*/);
     for (const std::string& dir : project_->quote_include_directories)
       InsertIncludesFromDirectory(dir, false /*use_angle_brackets*/);
     for (const std::string& dir : project_->angle_include_directories)

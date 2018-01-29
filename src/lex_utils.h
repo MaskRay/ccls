@@ -3,6 +3,7 @@
 #include "language_server_api.h"
 
 #include <string>
+#include <tuple>
 
 // Utility method to map |position| to an offset inside of |content|.
 int GetOffsetForPosition(lsPosition position, const std::string& content);
@@ -11,7 +12,8 @@ lsPosition CharPos(const std::string& search,
                    char character,
                    int character_offset = 0);
 
-bool ShouldRunIncludeCompletion(const std::string& line);
+std::tuple<bool, std::string, std::string> ShouldRunIncludeCompletion(
+    const std::string& line);
 
 // TODO: eliminate |line_number| param.
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);

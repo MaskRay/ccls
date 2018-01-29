@@ -45,11 +45,38 @@ lsPosition CharPos(const std::string& search,
   return result;
 }
 
-bool ShouldRunIncludeCompletion(const std::string& line) {
+std::tuple<bool, std::string, std::string> ShouldRunIncludeCompletion(
+    const std::string& line) {
   size_t start = 0;
   while (start < line.size() && isspace(line[start]))
     ++start;
-  return start < line.size() && line[start] == '#';
+  // Must start with '#'.
+  if (start >= line.size() || line[start] != '#')
+    return std::make_tuple(false, "", "");
+  ++start;
+  // Ingore "include" and following spaces.
+  if (line.compare(start, 7, "include") == 0) {
+    start += 7;
+    while (start < line.size() && isspace(line[start]))
+      ++start;
+  }
+  // Determine the surrounding characters.
+  std::string surround;
+  if (line[start] == '"') {
+    surround = "\"\"";
+    ++start;
+  } else if (line[start] == '<') {
+    surround = "<>";
+    ++start;
+  } else
+    surround = "<>";
+  // Fix the prefix for completion.
+  size_t end = start;
+  while (end < line.size() && line[end] != '\"' && line[end] != '>')
+    ++end;
+  std::string prefix = line.substr(start, end - start);
+
+  return std::make_tuple(true, surround, prefix);
 }
 
 // TODO: eliminate |line_number| param.
