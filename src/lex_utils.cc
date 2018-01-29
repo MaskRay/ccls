@@ -45,11 +45,32 @@ lsPosition CharPos(const std::string& search,
   return result;
 }
 
-bool ShouldRunIncludeCompletion(const std::string& line) {
+std::tuple<bool, std::string, std::string> ShouldRunIncludeCompletion(
+    const std::string& line) {
   size_t start = 0;
   while (start < line.size() && isspace(line[start]))
     ++start;
-  return start < line.size() && line[start] == '#';
+  if (start >= line.size() || line[start] != '#')
+    return std::make_tuple(false, "", "");
+  ++start;
+  if (line.compare(start, 7, "include") == 0) {
+    start += 7;
+    while (start < line.size() && isspace(line[start]))
+      ++start;
+  }
+  std::string surrounding, prefix;
+  if (start >= line.size())
+    return std::make_tuple(false, "", "");
+  else if (line[start] == '"')
+    surrounding = "\"\"";
+  else if (line[start] == '<')
+    surrounding = "<>";
+  else
+    return std::make_tuple(false, "", "");
+  ++start;
+  if (start < line.size())
+    prefix = line.substr(start);
+  return std::make_tuple(true, surrounding, prefix);
 }
 
 // TODO: eliminate |line_number| param.
