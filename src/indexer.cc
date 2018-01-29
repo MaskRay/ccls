@@ -1701,14 +1701,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       switch (decl->entityInfo->templateKind) {
       default:
         break;
-      case CXIdxEntity_Template: {
-        TemplateVisitorData data;
-        data.db = db;
-        data.container = decl_cursor;
-        data.param = param;
-        decl_cursor.VisitChildren(&TemplateVisitor, &data);
-        break;
-      }
       case CXIdxEntity_TemplateSpecialization:
       case CXIdxEntity_TemplatePartialSpecialization: {
         // TODO Use a different dimension
@@ -1733,6 +1725,14 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         }
         origin->derived.push_back(type_id);
         type->def.parents.push_back(origin_id);
+      }
+        // fallthrough
+      case CXIdxEntity_Template: {
+        TemplateVisitorData data;
+        data.db = db;
+        data.container = decl_cursor;
+        data.param = param;
+        decl_cursor.VisitChildren(&TemplateVisitor, &data);
         break;
       }
       }
