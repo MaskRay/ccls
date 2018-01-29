@@ -1698,15 +1698,42 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             type = db->Resolve(type_id);
           }
         }
-      }
-      UniqueAdd(type->uses, decl_spell);
+      } else
+        UniqueAdd(type->uses, decl_spell);
 
-      if (decl->entityInfo->templateKind == CXIdxEntity_Template) {
+      switch (decl->entityInfo->templateKind) {
+      default:
+        break;
+      case CXIdxEntity_Template: {
         TemplateVisitorData data;
         data.db = db;
         data.container = decl_cursor;
         data.param = param;
         decl_cursor.VisitChildren(&TemplateVisitor, &data);
+        break;
+      }
+      case CXIdxEntity_TemplateSpecialization:
+      case CXIdxEntity_TemplatePartialSpecialization: {
+        // TODO Use a different dimension
+        ClangCursor origin_cursor =
+            decl_cursor.template_specialization_to_template_definition();
+        IndexTypeId origin_id = db->ToTypeId(origin_cursor.get_usr_hash());
+        IndexType* origin = db->Resolve(origin_id);
+        // |type| may be invalidated.
+        type = db->Resolve(type_id);
+        // template<class T> class function; // not visited by OnIndexDeclaration
+        // template<> class function<int> {}; // current cursor
+        if (origin->def.short_name.empty()) {
+          SetTypeName(origin, origin_cursor, nullptr,
+                      type->def.short_name.c_str(), ns);
+          origin->def.kind = type->def.kind;
+          origin->def.definition_spelling = origin_cursor.get_spelling_range();
+          origin->def.definition_extent = origin_cursor.get_extent();
+        }
+        origin->derived.push_back(type_id);
+        type->def.parents.push_back(origin_id);
+        break;
+      }
       }
 
       // type_def->alias_of
@@ -1952,22 +1979,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       ref_cursor = ref_cursor.template_specialization_to_template_definition();
       IndexType* ref_type = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
 
-      // TODO
-      // This example is handled by OnIndexReference, not OnIndexDeclaration,
-      // and it does not have |short_name|.
-      //
-      // template <class T> class A;
-      if (ref_type->def.short_name.empty()) {
-        // TODO Replace |nullptr| with semantic container.
-        SetTypeName(ref_type, ref_cursor, nullptr, ref->referencedEntity->name,
-                    &param->ns);
-        // if (!ref_type->def.definition_spelling) {
-        //  ref_type->def.definition_spelling = ref_cursor.get_spelling_range();
-        //  ref_type->def.definition_extent = ref_cursor.get_extent();
-        //}
-      }
-
-      //
       // The following will generate two TypeRefs to Foo, both located at the
       // same spot (line 3, column 3). One of the parents will be set to
       // CXIdxEntity_Variable, the other will be CXIdxEntity_Function. There
