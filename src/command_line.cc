@@ -74,8 +74,8 @@ bool ShouldDisplayIpcTiming(IpcId id) {
 
 REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
 
-void PrintHelp(std::ostream& os) {
-  os << R"help(cquery is a low-latency C/C++/Objective-C language server.
+void PrintHelp() {
+  std::cout << R"help(cquery is a low-latency C/C++/Objective-C language server.
 
 Mode:
   --clang-sanity-check
@@ -100,6 +100,7 @@ Other command line options:
                 Print stdin (requests) and stdout (responses) to stderr
   --log-file <path>    Logging file for diagnostics
   --log-all-to-stderr  Write all log messages to STDERR.
+  --wait-for-input     Wait for an '[Enter]' before exiting
   --help        Print this help information.
   --ci          Prevents tests from prompting the user for input. Used for
                 continuous integration so it can fail faster instead of timing
@@ -107,7 +108,6 @@ Other command line options:
 
 See more on https://github.com/cquery-project/cquery/wiki
 )help";
-  exit(&os == &std::cout ? 0 : 1);
 }
 
 }  // namespace
@@ -439,8 +439,10 @@ int main(int argc, char** argv) {
   std::unordered_map<std::string, std::string> options =
       ParseOptions(argc, argv);
 
-  if (HasOption(options, "-h") || HasOption(options, "--help"))
-    PrintHelp(std::cout);
+  if (HasOption(options, "-h") || HasOption(options, "--help")) {
+    PrintHelp();
+    return 0;
+  }
 
   if (!HasOption(options, "--log-all-to-stderr"))
     loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
@@ -485,7 +487,7 @@ int main(int argc, char** argv) {
     g_debug = true;
     language_server = false;
     if (!RunIndexTests(options["--test-index"], !HasOption(options, "--ci")))
-      return -1;
+      return 1;
   }
 
   if (language_server) {
@@ -517,6 +519,11 @@ int main(int argc, char** argv) {
     auto config = MakeUnique<Config>();
     LanguageServerMain(argv[0], config.get(), &querydb_waiter, &indexer_waiter,
                        &stdout_waiter);
+  }
+
+  if (HasOption(options, "--wait-for-input")) {
+    std::cerr << std::endl << "[Enter] to exit" << std::endl;
+    getchar();
   }
 
   return 0;
