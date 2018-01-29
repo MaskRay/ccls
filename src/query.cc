@@ -258,7 +258,10 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
         range.end.column++;
       }
       add_all_symbols(id_map.ToSymbol(func.id),
-                      SymbolRole::Implicit | SymbolRole::CalledBy, range);
+                      caller.is_implicit
+                          ? SymbolRole::Implicit | SymbolRole::CalledBy
+                          : SymbolRole::CalledBy,
+                      range);
     }
   }
   for (const IndexVar& var : indexed.vars) {
