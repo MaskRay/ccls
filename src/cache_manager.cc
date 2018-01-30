@@ -50,7 +50,8 @@ struct RealCacheManager : ICacheManager {
       cache_file = EscapeFileName(config_->projectRoot) + '/' +
                    EscapeFileName(source_file.substr(len));
     } else {
-      cache_file = EscapeFileName(source_file);
+      cache_file = '@' + EscapeFileName(config_->projectRoot) + '/' +
+                   EscapeFileName(source_file);
     }
 
     return config_->cacheDirectory + cache_file;

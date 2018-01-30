@@ -572,8 +572,11 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       // Set project root.
       config->projectRoot = NormalizePath(request->params.rootUri->GetPath());
       EnsureEndsInSlash(config->projectRoot);
+      // Create two cache directories for files inside and outside of the project.
       MakeDirectoryRecursive(config->cacheDirectory +
                              EscapeFileName(config->projectRoot));
+      MakeDirectoryRecursive(config->cacheDirectory +
+                             '@' + EscapeFileName(config->projectRoot));
 
       Timer time;
 
