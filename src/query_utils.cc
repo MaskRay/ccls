@@ -188,7 +188,7 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
       std::vector<QueryLocation> ret = type.uses;
-      if (include_decl && type.def)
+      if (include_decl && type.def && type.def->definition_spelling)
         ret.push_back(*type.def->definition_spelling);
       return ret;
     }
