@@ -79,15 +79,15 @@ struct IndexFile;
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
 // TODO Make it inline because this macro can be used in header files.
-#define MAKE_REFLECT_TYPE_PROXY(type, as_type)                          \
-  ATTRIBUTE_UNUSED inline void Reflect(Reader& visitor, type& value) {  \
-    as_type value0;                                                     \
-    ::Reflect(visitor, value0);                                         \
-    value = static_cast<type>(value0);                                  \
-  }                                                                     \
-  ATTRIBUTE_UNUSED inline void Reflect(Writer& visitor, type& value) {  \
-    auto value0 = static_cast<as_type>(value);                          \
-    ::Reflect(visitor, value0);                                         \
+#define MAKE_REFLECT_TYPE_PROXY(type, as_type)                         \
+  ATTRIBUTE_UNUSED inline void Reflect(Reader& visitor, type& value) { \
+    as_type value0;                                                    \
+    ::Reflect(visitor, value0);                                        \
+    value = static_cast<type>(value0);                                 \
+  }                                                                    \
+  ATTRIBUTE_UNUSED inline void Reflect(Writer& visitor, type& value) { \
+    auto value0 = static_cast<as_type>(value);                         \
+    ::Reflect(visitor, value0);                                        \
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
@@ -229,7 +229,7 @@ struct disjunction
     : std::conditional<bool(B0::value), B0, disjunction<Bs...>>::type {};
 template <typename B0>
 struct disjunction<B0> : B0 {};
-}
+}  // namespace
 
 // Helper struct to reflect std::variant
 template <size_t N, typename... Ts>
@@ -255,8 +255,8 @@ struct ReflectVariant {
     // Based on tag dispatch, call different ReflectTag helper.
     if (visitor.IsNull())
       ReflectTag<std::monostate>(visitor, value);
-    // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int> if
-    // int is not in Ts...
+    // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int>
+    // if int is not in Ts...
     else if (disjunction<std::is_same<int, Ts>...>::value && visitor.IsInt())
       ReflectTag<int>(visitor, value);
     else if (visitor.IsInt64())

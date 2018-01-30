@@ -56,9 +56,9 @@ void Timer::Resume() {
   start_ = Clock::now();
 }
 
-ScopedPerfTimer::ScopedPerfTimer(const std::string& message) : message_(message) {}
+ScopedPerfTimer::ScopedPerfTimer(const std::string& message)
+    : message_(message) {}
 
 ScopedPerfTimer::~ScopedPerfTimer() {
   timer_.ResetAndPrint(message_);
 }
-

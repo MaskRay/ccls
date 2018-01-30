@@ -33,16 +33,11 @@ struct Out_CqueryMemberHierarchy
   lsRequestId id;
   std::vector<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry,
-                    name,
-                    type_id,
-                    location);
+MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry, name, type_id, location);
 MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 
-std::vector<Out_CqueryMemberHierarchy::Entry> BuildInitial(
-    QueryDatabase* db,
-    WorkingFiles* working_files,
-    QueryTypeId root) {
+std::vector<Out_CqueryMemberHierarchy::Entry>
+BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   QueryType& root_type = db->types[root.id];
   if (!root_type.def || !root_type.def->definition_spelling)
     return {};
@@ -59,9 +54,7 @@ std::vector<Out_CqueryMemberHierarchy::Entry> BuildInitial(
 }
 
 std::vector<Out_CqueryMemberHierarchy::Entry>
-ExpandNode(QueryDatabase* db,
-           WorkingFiles* working_files,
-           QueryTypeId root) {
+ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   QueryType& root_type = db->types[root.id];
   if (!root_type.def)
     return {};
@@ -99,7 +92,7 @@ struct CqueryMemberHierarchyInitialHandler
     out.id = request->id;
 
     for (const SymbolRef& ref :
-             FindSymbolsAtLocation(working_file, file, request->params.position)) {
+         FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (ref.idx.kind == SymbolKind::Type) {
         out.result = BuildInitial(db, working_files, QueryTypeId(ref.idx.idx));
         break;

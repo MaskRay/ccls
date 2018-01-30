@@ -25,7 +25,7 @@ struct WorkingFile;
 struct WorkingFiles;
 
 struct Out_CqueryPublishSemanticHighlighting
-  : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
+    : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
   struct Symbol {
     int stableId = 0;
     SymbolKind parentKind;

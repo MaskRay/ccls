@@ -90,9 +90,7 @@ struct RequestMessage : public BaseIpcMessage {
   lsRequestId id;
   RequestMessage() : BaseIpcMessage(T::kIpcId) {}
 
-  lsRequestId GetRequestId() override {
-    return id;
-  }
+  lsRequestId GetRequestId() override { return id; }
 };
 
 // NotificationMessage does not have |id|.

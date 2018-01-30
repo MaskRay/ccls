@@ -26,7 +26,7 @@ struct Index_Request {
                 const std::vector<std::string>& args,
                 bool is_interactive,
                 const std::string& contents,
-                lsRequestId id={});
+                lsRequestId id = {});
 };
 
 struct Index_DoIdMap {

@@ -87,7 +87,6 @@ struct WorkingFiles {
     std::vector<File> files;
   };
 
-
   //
   // :: IMPORTANT :: All methods in this class are guarded by a single lock.
   //

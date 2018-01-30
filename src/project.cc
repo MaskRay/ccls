@@ -571,8 +571,8 @@ TEST_SUITE("Project") {
         /* raw */ {"clang.exe"},
         /* expected */
         {"clang.exe", "-working-directory", "/dir/", "-xc++", "-std=c++14",
-              "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-              "-fparse-all-comments"});
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
@@ -974,8 +974,7 @@ TEST_SUITE("Project") {
          "lock_screen_sanity_unittest.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
-         "-fparse-all-comments"
-        });
+         "-fparse-all-comments"});
   }
 
   // Checks flag parsing for an example chromium file.
@@ -1300,8 +1299,7 @@ TEST_SUITE("Project") {
          "&/w/c/s/out/Release/../../apps/app_lifetime_monitor.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
-         "-fparse-all-comments"
-        });
+         "-fparse-all-comments"});
   }
 
   TEST_CASE("Directory extraction") {

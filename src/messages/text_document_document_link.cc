@@ -15,8 +15,7 @@ struct Ipc_TextDocumentDocumentLink
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::Params,
-                    textDocument);
+MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::Params, textDocument);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink, id, params);
 REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentLink);
 
@@ -58,8 +57,8 @@ struct TextDocumentDocumentLinkHandler
         return;
       }
       for (const IndexInclude& include : file->def->includes) {
-        optional<int> buffer_line =
-            working_file->GetBufferPosFromIndexPos(include.line, nullptr, false);
+        optional<int> buffer_line = working_file->GetBufferPosFromIndexPos(
+            include.line, nullptr, false);
         if (!buffer_line)
           continue;
 

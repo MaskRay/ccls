@@ -63,8 +63,7 @@ enum class StorageClass : uint8_t {
   Auto,
   Register
 };
-MAKE_REFLECT_TYPE_PROXY(StorageClass,
-                        std::underlying_type<StorageClass>::type);
+MAKE_REFLECT_TYPE_PROXY(StorageClass, std::underlying_type<StorageClass>::type);
 
 enum class SymbolRole : uint8_t {
   Declaration = 1 << 0,

@@ -119,7 +119,7 @@ struct QueryFuncRef {
   bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
   bool operator<(const QueryFuncRef& that) const {
     if (id_ != that.id_)
-      return id_ <  that.id_;
+      return id_ < that.id_;
     if (loc != that.loc)
       return loc < that.loc;
     return is_implicit < that.is_implicit;

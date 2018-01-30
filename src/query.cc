@@ -243,7 +243,8 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
     if (func.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(func.id), func.def.definition_extent.value());
     for (const IndexFunc::Declaration& decl : func.declarations) {
-      add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Declaration, decl.spelling);
+      add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Declaration,
+                      decl.spelling);
       add_outline(id_map.ToSymbol(func.id), decl.spelling);
     }
     for (const IndexFuncRef& caller : func.callers) {
@@ -321,8 +322,8 @@ inline optional<QueryTypeId> GetQueryTypeIdFromUsr(QueryDatabase* query_db,
 }
 
 inline optional<QueryFuncId> GetQueryFuncIdFromUsr(QueryDatabase* query_db,
-                                            Usr usr,
-                                            bool create_if_missing) {
+                                                   Usr usr,
+                                                   bool create_if_missing) {
   auto it = query_db->usr_to_func.find(usr);
   if (it != query_db->usr_to_func.end())
     return QueryFuncId(it->second.id);
@@ -336,8 +337,8 @@ inline optional<QueryFuncId> GetQueryFuncIdFromUsr(QueryDatabase* query_db,
 }
 
 inline optional<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
-                                          Usr usr,
-                                          bool create_if_missing) {
+                                                 Usr usr,
+                                                 bool create_if_missing) {
   auto it = query_db->usr_to_var.find(usr);
   if (it != query_db->usr_to_var.end())
     return QueryVarId(it->second.id);
@@ -809,7 +810,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   }
 
   for (const std::string& filename : update->files_removed)
-   files[usr_to_file[filename].id].def = nullopt;
+    files[usr_to_file[filename].id].def = nullopt;
   ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);

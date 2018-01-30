@@ -24,7 +24,7 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
     Out_LocationList out;
     out.id = request->id;
     std::vector<SymbolRef> refs =
-      FindSymbolsAtLocation(working_file, file, request->params.position);
+        FindSymbolsAtLocation(working_file, file, request->params.position);
     // A template definition may be a use of its primary template.
     // We want to get the definition instead of the use.
     // Order by |Definition| DESC, range size ASC.

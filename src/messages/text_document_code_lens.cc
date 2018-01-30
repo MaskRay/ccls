@@ -173,11 +173,13 @@ struct TextDocumentCodeLensHandler
 
           int16_t offset = 0;
 
-          // For functions, the outline will report a location that is using the extent since that is better for outline. This tries to convert the extent location to the spelling location.
+          // For functions, the outline will report a location that is using the
+          // extent since that is better for outline. This tries to convert the
+          // extent location to the spelling location.
           auto try_ensure_spelling = [&](SymbolRef sym) {
-            optional<QueryLocation> def = GetDefinitionSpellingOfSymbol(db, sym.idx);
-            if (!def ||
-                def->path != sym.loc.path ||
+            optional<QueryLocation> def =
+                GetDefinitionSpellingOfSymbol(db, sym.idx);
+            if (!def || def->path != sym.loc.path ||
                 def->range.start.line != sym.loc.range.start.line) {
               return sym.loc;
             }

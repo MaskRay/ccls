@@ -421,7 +421,7 @@ void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
     value = lsInitializeParams::lsTrace::Verbose;
 }
 
-#if 0 // unused
+#if 0  // unused
 void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
   switch (value) {
     case lsInitializeParams::lsTrace::Off:
@@ -610,20 +610,19 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
 
       auto* queue = QueueManager::instance();
       time.Reset();
-      project->ForAllFilteredFiles(
-          config, [&](int i, const Project::Entry& entry) {
-            optional<std::string> content = ReadContent(entry.filename);
-            if (!content) {
-              LOG_S(ERROR) << "When loading project, canont read file "
-                           << entry.filename;
-              return;
-            }
-            bool is_interactive =
-                working_files->GetFileByFilename(entry.filename) != nullptr;
-            queue->index_request.Enqueue(
-                Index_Request(entry.filename, entry.args, is_interactive,
-                              *content, request->id));
-          });
+      project->ForAllFilteredFiles(config, [&](int i,
+                                               const Project::Entry& entry) {
+        optional<std::string> content = ReadContent(entry.filename);
+        if (!content) {
+          LOG_S(ERROR) << "When loading project, canont read file "
+                       << entry.filename;
+          return;
+        }
+        bool is_interactive =
+            working_files->GetFileByFilename(entry.filename) != nullptr;
+        queue->index_request.Enqueue(Index_Request(
+            entry.filename, entry.args, is_interactive, *content, request->id));
+      });
 
       // We need to support multiple concurrent index processes.
       time.ResetAndPrint("[perf] Dispatched initial index requests");

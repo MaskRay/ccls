@@ -209,8 +209,7 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
       if (include_decl) {
         if (var.def && var.def->definition_spelling)
           ret.push_back(*var.def->definition_spelling);
-        ret.insert(ret.end(), var.declarations.begin(),
-                   var.declarations.end());
+        ret.insert(ret.end(), var.declarations.begin(), var.declarations.end());
       }
       return ret;
     }
@@ -326,7 +325,8 @@ optional<lsPosition> GetLsPosition(WorkingFile* working_file,
     return lsPosition(position.line, position.column);
 
   int column = position.column;
-  optional<int> start = working_file->GetBufferPosFromIndexPos(position.line, &column, false);
+  optional<int> start =
+      working_file->GetBufferPosFromIndexPos(position.line, &column, false);
   if (!start)
     return nullopt;
 
@@ -335,16 +335,15 @@ optional<lsPosition> GetLsPosition(WorkingFile* working_file,
 
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
-    return lsRange(
-        lsPosition(location.start.line, location.start.column),
-        lsPosition(location.end.line, location.end.column));
+    return lsRange(lsPosition(location.start.line, location.start.column),
+                   lsPosition(location.end.line, location.end.column));
   }
 
   int start_column = location.start.column, end_column = location.end.column;
-  optional<int> start =
-      working_file->GetBufferPosFromIndexPos(location.start.line, &start_column, false);
-  optional<int> end =
-      working_file->GetBufferPosFromIndexPos(location.end.line, &end_column, true);
+  optional<int> start = working_file->GetBufferPosFromIndexPos(
+      location.start.line, &start_column, false);
+  optional<int> end = working_file->GetBufferPosFromIndexPos(location.end.line,
+                                                             &end_column, true);
   if (!start || !end)
     return nullopt;
 
@@ -444,12 +443,12 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         info.containerName = type.def->detailed_name;
       // TODO ClangSymbolKind -> lsSymbolKind
       switch (type.def->kind) {
-      default:
-        info.kind = lsSymbolKind::Class;
-        break;
-      case ClangSymbolKind::Namespace:
-        info.kind = lsSymbolKind::Namespace;
-        break;
+        default:
+          info.kind = lsSymbolKind::Class;
+          break;
+        case ClangSymbolKind::Namespace:
+          info.kind = lsSymbolKind::Namespace;
+          break;
       }
       return info;
     }
@@ -523,19 +522,20 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   //
   // Then order functions before other types, which makes goto definition work
   // better on constructors.
-  std::sort(symbols.begin(), symbols.end(), [](const SymbolRef& a,
-                                               const SymbolRef& b) {
-    int a_size = ComputeRangeSize(a.loc.range);
-    int b_size = ComputeRangeSize(b.loc.range);
+  std::sort(symbols.begin(), symbols.end(),
+            [](const SymbolRef& a, const SymbolRef& b) {
+              int a_size = ComputeRangeSize(a.loc.range);
+              int b_size = ComputeRangeSize(b.loc.range);
 
-    if (a_size != b_size)
-      return a_size < b_size;
-    // operator> orders Var/Func before Type.
-    int t = static_cast<int>(a.idx.kind) - static_cast<int>(b.idx.kind);
-    if (t)
-      return t > 0;
-    return a.idx.idx < b.idx.idx;
-  });
+              if (a_size != b_size)
+                return a_size < b_size;
+              // operator> orders Var/Func before Type.
+              int t =
+                  static_cast<int>(a.idx.kind) - static_cast<int>(b.idx.kind);
+              if (t)
+                return t > 0;
+              return a.idx.idx < b.idx.idx;
+            });
 
   return symbols;
 }

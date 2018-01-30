@@ -16,7 +16,8 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
   for (; position.character > 0 && i < content.size(); position.character--)
     if (uint8_t(content[i++]) >= 128) {
       // Skip 0b10xxxxxx
-      while (i < content.size() && uint8_t(content[i]) >= 128 && uint8_t(content[i]) < 192)
+      while (i < content.size() && uint8_t(content[i]) >= 128 &&
+             uint8_t(content[i]) < 192)
         i++;
     }
   return int(i);

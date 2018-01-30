@@ -45,28 +45,32 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
 int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
   assert(threshold <= kMaxDiff);
   static int v_static[kMaxDiff + 2];
-	const char *ea = a + la, *eb = b + lb;
-	// Strip prefix
-	for (; a < ea && b < eb && *a == *b; a++, b++) {}
-	// Strip suffix
-	for (; a < ea && b < eb && ea[-1] == eb[-1]; ea--, eb--) {}
-	la = int(ea - a);
-	lb = int(eb - b);
+  const char *ea = a + la, *eb = b + lb;
+  // Strip prefix
+  for (; a < ea && b < eb && *a == *b; a++, b++) {
+  }
+  // Strip suffix
+  for (; a < ea && b < eb && ea[-1] == eb[-1]; ea--, eb--) {
+  }
+  la = int(ea - a);
+  lb = int(eb - b);
 
-	int* v = v_static + lb;
-	v[1] = 0;
-	for (int di = 0; di <= threshold; di++) {
-		int low = -di + 2 * std::max(0, di - lb), high = di - 2 * std::max(0, di - la);
-		for (int i = low; i <= high; i += 2) {
-			int x = i == -di || (i != di && v[i-1] < v[i+1]) ? v[i+1] : v[i-1] + 1,
+  int* v = v_static + lb;
+  v[1] = 0;
+  for (int di = 0; di <= threshold; di++) {
+    int low = -di + 2 * std::max(0, di - lb),
+        high = di - 2 * std::max(0, di - la);
+    for (int i = low; i <= high; i += 2) {
+      int x = i == -di || (i != di && v[i - 1] < v[i + 1]) ? v[i + 1]
+                                                           : v[i - 1] + 1,
           y = x - i;
-			while (x < la && y < lb && a[x] == b[y])
-				x++, y++;
-			v[i] = x;
-			if (x == la && y == lb)
+      while (x < la && y < lb && a[x] == b[y])
+        x++, y++;
+      v[i] = x;
+      if (x == la && y == lb)
         return di;
-		}
-	}
+    }
+  }
   return threshold + 1;
 }
 
@@ -156,8 +160,10 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
 
   // Find the nearest two confident lines above and below.
   int up = line, down = line;
-  while (--up >= 0 && index_to_buffer[up] < 0) {}
-  while (++down < int(index_to_buffer.size()) && index_to_buffer[down] < 0) {}
+  while (--up >= 0 && index_to_buffer[up] < 0) {
+  }
+  while (++down < int(index_to_buffer.size()) && index_to_buffer[down] < 0) {
+  }
   up = up < 0 ? 0 : index_to_buffer[up];
   down = down >= int(index_to_buffer.size()) ? int(buffer_lines.size()) - 1
                                              : index_to_buffer[down];
@@ -231,7 +237,8 @@ void WorkingFile::ComputeLineMapping() {
   std::vector<uint64_t> buffer_hashes(buffer_lines.size());
   index_to_buffer.resize(index_lines.size());
   buffer_to_index.resize(buffer_lines.size());
-  hash_to_unique.reserve(std::max(index_to_buffer.size(), buffer_to_index.size()));
+  hash_to_unique.reserve(
+      std::max(index_to_buffer.size(), buffer_to_index.size()));
 
   // For index line i, set index_to_buffer[i] to -1 if line i is duplicated.
   int i = 0;
@@ -268,8 +275,8 @@ void WorkingFile::ComputeLineMapping() {
     buffer_hashes[i++] = h;
   }
 
-  // If index line i is the identical to buffer line j, and they are both unique,
-  // align them by pointing from_index[i] to j.
+  // If index line i is the identical to buffer line j, and they are both
+  // unique, align them by pointing from_index[i] to j.
   i = 0;
   for (auto h : index_hashes) {
     if (index_to_buffer[i] >= 0) {
@@ -290,7 +297,7 @@ void WorkingFile::ComputeLineMapping() {
         index_hashes[i + 1] == buffer_hashes[j + 1])
       index_to_buffer[i + 1] = j + 1;
   }
-  for (i = (int)index_hashes.size(); --i > 0; ) {
+  for (i = (int)index_hashes.size(); --i > 0;) {
     int j = index_to_buffer[i];
     if (0 < j && index_hashes[i - 1] == buffer_hashes[j - 1])
       index_to_buffer[i - 1] = j - 1;
@@ -303,7 +310,9 @@ void WorkingFile::ComputeLineMapping() {
       buffer_to_index[index_to_buffer[i]] = i;
 }
 
-optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column, bool is_end) {
+optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
+                                                    int* column,
+                                                    bool is_end) {
   // The implementation is simple but works pretty well for most cases. We
   // lookup the line contents in the indexed file contents, and try to find the
   // most similar line in the current buffer file.
@@ -330,7 +339,9 @@ optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int* column, bool 
                           buffer_lines, is_end);
 }
 
-optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int* column, bool is_end) {
+optional<int> WorkingFile::GetIndexPosFromBufferPos(int line,
+                                                    int* column,
+                                                    bool is_end) {
   // See GetBufferLineFromIndexLine for additional comments.
   if (line < 0 || line >= (int)buffer_lines.size())
     return nullopt;
@@ -494,7 +505,8 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
           GetOffsetForPosition(diff.range->start, file->buffer_content);
       // Ignore TextDocumentContentChangeEvent.rangeLength which causes trouble
       // when UTF-16 surrogate pairs are used.
-      int end_offset = GetOffsetForPosition(diff.range->end, file->buffer_content);
+      int end_offset =
+          GetOffsetForPosition(diff.range->end, file->buffer_content);
       file->buffer_content.replace(file->buffer_content.begin() + start_offset,
                                    file->buffer_content.begin() + end_offset,
                                    diff.text);

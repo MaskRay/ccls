@@ -530,8 +530,8 @@ void IndexWithTuFromCodeCompletion(
 
   PerformanceImportFile perf;
   ClangIndex index;
-  auto indexes = ParseWithTu(
-      file_consumer_shared, &perf, tu, &index, path, args, file_contents);
+  auto indexes = ParseWithTu(file_consumer_shared, &perf, tu, &index, path,
+                             args, file_contents);
   if (!indexes)
     return;
 

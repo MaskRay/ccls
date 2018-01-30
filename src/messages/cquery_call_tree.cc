@@ -14,7 +14,8 @@ struct Ipc_CqueryCallTreeInitial
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallTreeInitial, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeInitial);
 
-struct Ipc_CqueryCallTreeExpand : public RequestMessage<Ipc_CqueryCallTreeExpand> {
+struct Ipc_CqueryCallTreeExpand
+    : public RequestMessage<Ipc_CqueryCallTreeExpand> {
   const static IpcId kIpcId = IpcId::CqueryCallTreeExpand;
   struct Params {
     std::string usr;

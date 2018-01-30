@@ -61,22 +61,22 @@ ClangType ClangType::strip_qualifiers() const {
   CXType cx = cx_type;
   while (1) {
     switch (cx.kind) {
-    default:
-      break;
-    case CXType_ConstantArray:
-    case CXType_DependentSizedArray:
-    case CXType_IncompleteArray:
-    case CXType_VariableArray:
-      cx = clang_getElementType(cx);
-      continue;
-    case CXType_BlockPointer:
-    case CXType_LValueReference:
-    case CXType_MemberPointer:
-    case CXType_ObjCObjectPointer:
-    case CXType_Pointer:
-    case CXType_RValueReference:
-      cx = clang_getPointeeType(cx);
-      continue;
+      default:
+        break;
+      case CXType_ConstantArray:
+      case CXType_DependentSizedArray:
+      case CXType_IncompleteArray:
+      case CXType_VariableArray:
+        cx = clang_getElementType(cx);
+        continue;
+      case CXType_BlockPointer:
+      case CXType_LValueReference:
+      case CXType_MemberPointer:
+      case CXType_ObjCObjectPointer:
+      case CXType_Pointer:
+      case CXType_RValueReference:
+        cx = clang_getPointeeType(cx);
+        continue;
     }
     break;
   }

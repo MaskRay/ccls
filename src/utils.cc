@@ -3,9 +3,9 @@
 #include "platform.h"
 
 #include <doctest/doctest.h>
+#include <siphash.h>
 #include <tinydir.h>
 #include <loguru/loguru.hpp>
-#include <siphash.h>
 
 #include <algorithm>
 #include <cassert>
@@ -110,9 +110,10 @@ bool EndsWithAny(const std::string& value,
 
 bool FindAnyPartial(const std::string& value,
                     const std::vector<std::string>& values) {
-  return std::any_of(
-      std::begin(values), std::end(values),
-      [&value](const std::string& v) { return value.find(v) != std::string::npos; });
+  return std::any_of(std::begin(values), std::end(values),
+                     [&value](const std::string& v) {
+                       return value.find(v) != std::string::npos;
+                     });
 }
 
 std::string GetBaseName(const std::string& path) {

@@ -523,7 +523,7 @@ void SetVarDetail(IndexVar* var,
       optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
       if (extent_end && *spell_end < *extent_end)
         def.hover = def.detailed_name +
-            fc.content.substr(*spell_end, *extent_end - *spell_end);
+                    fc.content.substr(*spell_end, *extent_end - *spell_end);
     }
   }
 
@@ -838,10 +838,10 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   // For |A<int> a| where there is a specialization for |A<int>|,
   // the |referenced_usr| below resolves to the primary template and
   // attributes the use to the primary template instead of the specialization.
-  // |toplevel_type| is retrieved |clang_getCursorType| which can be a specialization.
-  // If its name is the same as the primary template's, we assume the use
-  // should be attributed to the specialization.
-  // This heuristic fails when a member class bears the same name with its container.
+  // |toplevel_type| is retrieved |clang_getCursorType| which can be a
+  // specialization. If its name is the same as the primary template's, we
+  // assume the use should be attributed to the specialization. This heuristic
+  // fails when a member class bears the same name with its container.
   //
   // template<class T>
   // struct C { struct C {}; };
@@ -859,7 +859,9 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   }
 
   std::string referenced_usr =
-    cursor.get_referenced().template_specialization_to_template_definition().get_usr();
+      cursor.get_referenced()
+          .template_specialization_to_template_definition()
+          .get_usr();
   // TODO: things in STL cause this to be empty. Figure out why and document it.
   if (referenced_usr == "")
     return;
@@ -1188,7 +1190,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_DeclRefExpr: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
-        IndexVar* ref_index = db->Resolve(db->ToVarId(ref_cursor.get_usr_hash()));
+        IndexVar* ref_index =
+            db->Resolve(db->ToVarId(ref_cursor.get_usr_hash()));
         if (ref_index->def.short_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
@@ -1234,7 +1237,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TemplateRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTemplateParameter) {
-        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+        IndexType* ref_index =
+            db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
         // TODO It seems difficult to get references to template template
         // parameters.
         // CXCursor_TemplateTemplateParameter can be visited by visiting
@@ -1253,7 +1257,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TypeRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
-        IndexType* ref_index = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+        IndexType* ref_index =
+            db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
         // TODO It seems difficult to get a FunctionTemplate's template
         // parameters.
         // CXCursor_TemplateTypeParameter can be visited by visiting
@@ -1451,7 +1456,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && decl->semanticContainer) {
         if (IsFunctionCallContext(decl->semanticContainer->cursor.kind)) {
           IndexFuncId parent_func_id =
-            db->ToFuncId(decl->semanticContainer->cursor);
+              db->ToFuncId(decl->semanticContainer->cursor);
           var->def.parent_kind = SymbolKind::Func;
           var->def.parent_id = size_t(parent_func_id);
         } else if (IsTypeDefinition(decl->semanticContainer)) {
@@ -1689,7 +1694,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           ClangType enum_type = clang_getEnumDeclIntegerType(decl->cursor);
           if (!enum_type.is_fundamental()) {
             IndexType* int_type =
-              db->Resolve(db->ToTypeId(enum_type.get_usr_hash()));
+                db->Resolve(db->ToTypeId(enum_type.get_usr_hash()));
             int_type->uses.push_back(decl_spell);
             // type is invalidated.
             type = db->Resolve(type_id);
@@ -1699,42 +1704,44 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         UniqueAdd(type->uses, decl_spell);
 
       switch (decl->entityInfo->templateKind) {
-      default:
-        break;
-      case CXIdxEntity_TemplateSpecialization:
-      case CXIdxEntity_TemplatePartialSpecialization: {
-        // TODO Use a different dimension
-        ClangCursor origin_cursor =
-            decl_cursor.template_specialization_to_template_definition();
-        IndexTypeId origin_id = db->ToTypeId(origin_cursor.get_usr_hash());
-        IndexType* origin = db->Resolve(origin_id);
-        // |type| may be invalidated.
-        type = db->Resolve(type_id);
-        // template<class T> class function; // not visited by OnIndexDeclaration
-        // template<> class function<int> {}; // current cursor
-        if (origin->def.short_name.empty()) {
-          SetTypeName(origin, origin_cursor, nullptr,
-                      type->def.short_name.c_str(), ns);
-          origin->def.kind = type->def.kind;
+        default:
+          break;
+        case CXIdxEntity_TemplateSpecialization:
+        case CXIdxEntity_TemplatePartialSpecialization: {
+          // TODO Use a different dimension
+          ClangCursor origin_cursor =
+              decl_cursor.template_specialization_to_template_definition();
+          IndexTypeId origin_id = db->ToTypeId(origin_cursor.get_usr_hash());
+          IndexType* origin = db->Resolve(origin_id);
+          // |type| may be invalidated.
+          type = db->Resolve(type_id);
+          // template<class T> class function; // not visited by
+          // OnIndexDeclaration template<> class function<int> {}; // current
+          // cursor
+          if (origin->def.short_name.empty()) {
+            SetTypeName(origin, origin_cursor, nullptr,
+                        type->def.short_name.c_str(), ns);
+            origin->def.kind = type->def.kind;
+          }
+          // TODO The name may be assigned in |ResolveToDeclarationType| but
+          // |definition_spelling| is nullopt.
+          if (!origin->def.definition_spelling) {
+            origin->def.definition_spelling =
+                origin_cursor.get_spelling_range();
+            origin->def.definition_extent = origin_cursor.get_extent();
+          }
+          origin->derived.push_back(type_id);
+          type->def.parents.push_back(origin_id);
         }
-        // TODO The name may be assigned in |ResolveToDeclarationType| but
-        // |definition_spelling| is nullopt.
-        if (!origin->def.definition_spelling) {
-          origin->def.definition_spelling = origin_cursor.get_spelling_range();
-          origin->def.definition_extent = origin_cursor.get_extent();
+          // fallthrough
+        case CXIdxEntity_Template: {
+          TemplateVisitorData data;
+          data.db = db;
+          data.container = decl_cursor;
+          data.param = param;
+          decl_cursor.VisitChildren(&TemplateVisitor, &data);
+          break;
         }
-        origin->derived.push_back(type_id);
-        type->def.parents.push_back(origin_id);
-      }
-        // fallthrough
-      case CXIdxEntity_Template: {
-        TemplateVisitorData data;
-        data.db = db;
-        data.container = decl_cursor;
-        data.param = param;
-        decl_cursor.VisitChildren(&TemplateVisitor, &data);
-        break;
-      }
       }
 
       // type_def->alias_of
@@ -1978,7 +1985,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXClass: {
       ClangCursor ref_cursor = ref->referencedEntity->cursor;
       ref_cursor = ref_cursor.template_specialization_to_template_definition();
-      IndexType* ref_type = db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+      IndexType* ref_type =
+          db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
 
       // The following will generate two TypeRefs to Foo, both located at the
       // same spot (line 3, column 3). One of the parents will be set to
@@ -1994,8 +2002,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //    Foo f;
       //  }
       //
-      UniqueAdd(ref_type->uses,
-                ClangCursor(ref->cursor).get_spelling_range());
+      UniqueAdd(ref_type->uses, ClangCursor(ref->cursor).get_spelling_range());
       break;
     }
 

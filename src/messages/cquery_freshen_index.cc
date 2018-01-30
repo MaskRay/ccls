@@ -12,7 +12,8 @@
 #include <unordered_set>
 
 namespace {
-struct Ipc_CqueryFreshenIndex : public NotificationMessage<Ipc_CqueryFreshenIndex> {
+struct Ipc_CqueryFreshenIndex
+    : public NotificationMessage<Ipc_CqueryFreshenIndex> {
   const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
   struct Params {
     bool dependencies = true;
@@ -21,7 +22,10 @@ struct Ipc_CqueryFreshenIndex : public NotificationMessage<Ipc_CqueryFreshenInde
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex::Params, dependencies, whitelist, blacklist);
+MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex::Params,
+                    dependencies,
+                    whitelist,
+                    blacklist);
 MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
 

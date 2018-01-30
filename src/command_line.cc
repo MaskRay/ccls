@@ -492,15 +492,15 @@ int main(int argc, char** argv) {
 
   if (language_server) {
     if (HasOption(options, "--init")) {
-      // We check syntax error here but override client-side initializationOptions
-      // in messages/initialize.cc
+      // We check syntax error here but override client-side
+      // initializationOptions in messages/initialize.cc
       g_init_options = options["--init"];
       rapidjson::Document reader;
       rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
       if (!ok) {
         std::cerr << "Failed to parse --init as JSON: "
-                  << rapidjson::GetParseError_En(ok.Code()) << " (" << ok.Offset()
-                  << ")\n";
+                  << rapidjson::GetParseError_En(ok.Code()) << " ("
+                  << ok.Offset() << ")\n";
         return 1;
       }
       JsonReader json_reader{&reader};

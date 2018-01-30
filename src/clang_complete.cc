@@ -310,8 +310,8 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
     args.push_back("-fspell-checking");
   }
 
-  WorkingFiles::Snapshot snapshot =
-      session->working_files->AsSnapshot({StripFileType(session->file.filename)});
+  WorkingFiles::Snapshot snapshot = session->working_files->AsSnapshot(
+      {StripFileType(session->file.filename)});
   std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
 
   LOG_S(INFO) << "Creating completion session with arguments "
@@ -407,7 +407,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         completion_manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
     timer.ResetAndPrint("[complete] Creating WorkingFile snapshot");
-
 
     // Emit code completion data.
     if (request->position) {
