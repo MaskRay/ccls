@@ -95,8 +95,8 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
 
   // No associated definition, scan the project for a file in the same
   // directory with the same base-name.
-  std::string original_path = LowerPathIfCaseInsensitive(file->def->path);
-  std::string target_path = original_path;
+  NormalizedPath original_path(file->def->path);
+  std::string target_path = original_path.path;
   size_t last = target_path.find_last_of('.');
   if (last != std::string::npos) {
     target_path = target_path.substr(0, last);
@@ -105,14 +105,14 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
   LOG_S(INFO) << "!! Looking for impl file that starts with " << target_path;
 
   for (auto& entry : db->usr_to_file) {
-    const std::string& path = entry.first;
+    const NormalizedPath& path = entry.first;
 
     // Do not consider header files for implementation files.
     // TODO: make file extensions configurable.
-    if (EndsWith(path, ".h") || EndsWith(path, ".hpp"))
+    if (EndsWith(path.path, ".h") || EndsWith(path.path, ".hpp"))
       continue;
 
-    if (StartsWith(path, target_path) && path != original_path) {
+    if (StartsWith(path.path, target_path) && path != original_path) {
       return entry.second;
     }
   }

@@ -42,7 +42,7 @@ bool FindFileOrFail(QueryDatabase* db,
                     QueryFileId* out_file_id) {
   *out_query_file = nullptr;
 
-  auto it = db->usr_to_file.find(LowerPathIfCaseInsensitive(absolute_path));
+  auto it = db->usr_to_file.find(NormalizedPath(absolute_path));
   if (it != db->usr_to_file.end()) {
     QueryFile& file = db->files[it->second.id];
     if (file.def) {

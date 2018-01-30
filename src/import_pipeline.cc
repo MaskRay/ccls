@@ -634,8 +634,8 @@ bool QueryDb_ImportMain(Config* config,
     // it, load the previous state from disk and rerun IdMap logic later. Do not
     // do this if we have already attempted in the past.
     if (!request->load_previous && !request->previous &&
-        db->usr_to_file.find(LowerPathIfCaseInsensitive(
-            request->current->path)) != db->usr_to_file.end()) {
+        db->usr_to_file.find(NormalizedPath(request->current->path)) !=
+            db->usr_to_file.end()) {
       assert(!request->load_previous);
       request->load_previous = true;
       queue->load_previous_index.Enqueue(std::move(*request));
@@ -719,7 +719,7 @@ bool QueryDb_ImportMain(Config* config,
           working_files->GetFileByFilename(updated_file.path);
       if (working_file) {
         QueryFileId file_id =
-            db->usr_to_file[LowerPathIfCaseInsensitive(working_file->filename)];
+            db->usr_to_file[NormalizedPath(working_file->filename)];
         QueryFile* file = &db->files[file_id.id];
         EmitSemanticHighlighting(db, semantic_cache, working_file, file);
       }

@@ -294,14 +294,15 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
 inline optional<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
                                                     const std::string& path,
                                                     bool create_if_missing) {
-  auto it = query_db->usr_to_file.find(LowerPathIfCaseInsensitive(path));
+  NormalizedPath normalized_path(path);
+  auto it = query_db->usr_to_file.find(normalized_path);
   if (it != query_db->usr_to_file.end())
     return QueryFileId(it->second.id);
   if (!create_if_missing)
     return {};
 
   size_t idx = query_db->files.size();
-  query_db->usr_to_file[LowerPathIfCaseInsensitive(path)] = QueryFileId(idx);
+  query_db->usr_to_file[normalized_path] = QueryFileId(idx);
   query_db->files.push_back(QueryFile(path));
   return QueryFileId(idx);
 }
@@ -752,6 +753,17 @@ std::string IndexUpdate::ToString() {
   return output.GetString();
 }
 
+NormalizedPath::NormalizedPath(const std::string& path)
+    : path(LowerPathIfCaseInsensitive(path)) {}
+
+bool NormalizedPath::operator==(const NormalizedPath& rhs) const {
+  return path == rhs.path;
+}
+
+bool NormalizedPath::operator!=(const NormalizedPath& rhs) const {
+  return path != rhs.path;
+}
+
 // ------------------------
 // QUERYDB THREAD FUNCTIONS
 // ------------------------
@@ -810,7 +822,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   }
 
   for (const std::string& filename : update->files_removed)
-    files[usr_to_file[filename].id].def = nullopt;
+    files[usr_to_file[NormalizedPath(filename)].id].def = nullopt;
   ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
@@ -838,7 +850,7 @@ void QueryDatabase::ImportOrUpdate(
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
-    auto it = usr_to_file.find(LowerPathIfCaseInsensitive(def.path));
+    auto it = usr_to_file.find(NormalizedPath(def.path));
     assert(it != usr_to_file.end());
 
     QueryFile& existing = files[it->second.id];

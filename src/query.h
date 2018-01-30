@@ -334,6 +334,15 @@ MAKE_REFLECT_STRUCT(IndexUpdate,
                     vars_declarations,
                     vars_uses);
 
+struct NormalizedPath {
+  explicit NormalizedPath(const std::string& path);
+  bool operator==(const NormalizedPath& rhs) const;
+  bool operator!=(const NormalizedPath& rhs) const;
+
+  std::string path;
+};
+MAKE_HASHABLE(NormalizedPath, t.path);
+
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
 struct QueryDatabase {
@@ -350,9 +359,7 @@ struct QueryDatabase {
   std::vector<QueryVar> vars;
 
   // Lookup symbol based on a usr.
-  // NOTE: For usr_to_file make sure to call LowerPathIfCaseInsensitive on key.
-  // TODO: add type wrapper to enforce we call it
-  spp::sparse_hash_map<std::string, QueryFileId> usr_to_file;
+  spp::sparse_hash_map<NormalizedPath, QueryFileId> usr_to_file;
   spp::sparse_hash_map<Usr, QueryTypeId> usr_to_type;
   spp::sparse_hash_map<Usr, QueryFuncId> usr_to_func;
   spp::sparse_hash_map<Usr, QueryVarId> usr_to_var;
