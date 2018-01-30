@@ -283,10 +283,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
           &existing_completion);
     }
 
-    bool yes;
-    std::string surrounding, prefix;
-    std::tie(yes, surrounding, prefix) = ShouldRunIncludeCompletion(buffer_line);
-    if (yes) {
+    if (ShouldRunIncludeCompletion(buffer_line)) {
       Out_TextDocumentComplete out;
       out.id = request->id;
 
@@ -299,17 +296,18 @@ struct TextDocumentCompletionHandler : MessageHandler {
                                 include_complete->completion_items.end());
         if (lock)
           lock.unlock();
+
+        // Update textEdit params.
         for (lsCompletionItem& item : out.result.items) {
           item.textEdit->range.start.line = request->params.position.line;
           item.textEdit->range.start.character = 0;
           item.textEdit->range.end.line = request->params.position.line;
           item.textEdit->range.end.character = (int)buffer_line.size();
-          item.textEdit->newText = std::string("#include ") + surrounding[0] +
-                                   item.textEdit->newText + surrounding[1];
         }
       }
 
-      FilterAndSortCompletionResponse(&out, prefix,
+      TrimInPlace(buffer_line);
+      FilterAndSortCompletionResponse(&out, buffer_line,
                                       config->completion.filterAndSort);
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
     } else {
