@@ -34,7 +34,7 @@ using namespace std::experimental;
 // The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
 // front of others.
 enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
-MAKE_REFLECT_TYPE_PROXY(SymbolKind, uint8_t);
+MAKE_REFLECT_TYPE_PROXY(SymbolKind);
 
 template <typename T>
 struct Id {
@@ -480,7 +480,7 @@ struct IndexInclude {
 // a file previously identified as `C`, will be changed to `Cpp` if it
 // encounters a c++ declaration.
 enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3 };
-MAKE_REFLECT_TYPE_PROXY(LanguageId, std::underlying_type<LanguageId>::type);
+MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
 struct IndexFile {
   IdCache id_cache;

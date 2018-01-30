@@ -41,8 +41,7 @@ enum class ClangSymbolKind : uint8_t {
   Parameter = 25,
   Using,
 };
-MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind,
-                        std::underlying_type<ClangSymbolKind>::type);
+MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind);
 
 // clang/Basic/Specifiers.h clang::StorageClass
 enum class StorageClass : uint8_t {
@@ -63,7 +62,7 @@ enum class StorageClass : uint8_t {
   Auto,
   Register
 };
-MAKE_REFLECT_TYPE_PROXY(StorageClass, std::underlying_type<StorageClass>::type);
+MAKE_REFLECT_TYPE_PROXY(StorageClass);
 
 enum class SymbolRole : uint8_t {
   Declaration = 1 << 0,
@@ -75,7 +74,7 @@ enum class SymbolRole : uint8_t {
   BaseOf = 1 << 5,
   CalledBy = 1 << 6,
 };
-MAKE_REFLECT_TYPE_PROXY(SymbolRole, std::underlying_type<SymbolRole>::type);
+MAKE_REFLECT_TYPE_PROXY(SymbolRole);
 
 inline uint8_t operator&(SymbolRole lhs, SymbolRole rhs) {
   return uint8_t(lhs) & uint8_t(rhs);

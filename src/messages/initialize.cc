@@ -98,7 +98,7 @@ enum class lsTextDocumentSyncKind {
   // send.
   Incremental = 2
 };
-MAKE_REFLECT_TYPE_PROXY(lsTextDocumentSyncKind, int)
+MAKE_REFLECT_TYPE_PROXY(lsTextDocumentSyncKind)
 
 struct lsTextDocumentSyncOptions {
   // Open and close notifications are sent to the server.

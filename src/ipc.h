@@ -67,7 +67,7 @@ enum class IpcId : int {
   CqueryWait,
 };
 MAKE_ENUM_HASHABLE(IpcId)
-MAKE_REFLECT_TYPE_PROXY(IpcId, int)
+MAKE_REFLECT_TYPE_PROXY(IpcId)
 const char* IpcIdToString(IpcId id);
 
 struct BaseIpcMessage {

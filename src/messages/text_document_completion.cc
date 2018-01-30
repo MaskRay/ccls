@@ -22,8 +22,7 @@ enum class lsCompletionTriggerKind {
   // the `triggerCharacters` properties of the `CompletionRegistrationOptions`.
   TriggerCharacter = 2
 };
-MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind,
-                        std::underlying_type<lsCompletionTriggerKind>::type);
+MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind);
 
 // Contains additional information about the context in which a completion
 // request is triggered.

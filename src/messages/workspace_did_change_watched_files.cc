@@ -12,8 +12,7 @@ enum class lsFileChangeType {
   Changed = 2,
   Deleted = 3,
 };
-MAKE_REFLECT_TYPE_PROXY(lsFileChangeType,
-                        std::underlying_type<lsFileChangeType>::type);
+MAKE_REFLECT_TYPE_PROXY(lsFileChangeType);
 
 struct lsFileEvent {
   lsDocumentUri uri;

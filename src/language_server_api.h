@@ -199,7 +199,7 @@ enum class lsSymbolKind : int {
   Boolean = 17,
   Array = 18
 };
-MAKE_REFLECT_TYPE_PROXY(lsSymbolKind, int);
+MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
 
 struct lsSymbolInformation {
   std::string name;
@@ -301,7 +301,7 @@ enum class lsInsertTextFormat {
   // https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md
   Snippet = 2
 };
-MAKE_REFLECT_TYPE_PROXY(lsInsertTextFormat, int);
+MAKE_REFLECT_TYPE_PROXY(lsInsertTextFormat);
 
 // The kind of a completion entry.
 enum class lsCompletionItemKind {
@@ -331,7 +331,7 @@ enum class lsCompletionItemKind {
   Operator = 24,
   TypeParameter = 25,
 };
-MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind, int);
+MAKE_REFLECT_TYPE_PROXY(lsCompletionItemKind);
 
 struct lsCompletionItem {
   // A set of function parameters. Used internally for signature help. Not sent
@@ -455,7 +455,7 @@ enum class lsDocumentHighlightKind {
   // Write-access of a symbol, like writing to a variable.
   Write = 3
 };
-MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind, int);
+MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind);
 
 struct lsFormattingOptions {
   // Size of a tab in spaces.
@@ -487,7 +487,7 @@ enum class lsDiagnosticSeverity {
   // Reports a hint.
   Hint = 4
 };
-MAKE_REFLECT_TYPE_PROXY(lsDiagnosticSeverity, int);
+MAKE_REFLECT_TYPE_PROXY(lsDiagnosticSeverity);
 
 struct lsDiagnostic {
   // The range at which the message applies.
@@ -527,7 +527,7 @@ enum class lsErrorCodes {
   // Defined by the protocol.
   RequestCancelled = -32800,
 };
-MAKE_REFLECT_TYPE_PROXY(lsErrorCodes, int);
+MAKE_REFLECT_TYPE_PROXY(lsErrorCodes);
 struct Out_Error : public lsOutMessage<Out_Error> {
   struct lsResponseError {
     // A number indicating the error type that occurred.
@@ -621,7 +621,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentDidChangeParams,
 
 // Show a message to the user.
 enum class lsMessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
-MAKE_REFLECT_TYPE_PROXY(lsMessageType, int)
+MAKE_REFLECT_TYPE_PROXY(lsMessageType)
 struct Out_ShowLogMessageParams {
   lsMessageType type = lsMessageType::Error;
   std::string message;

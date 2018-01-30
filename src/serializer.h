@@ -78,8 +78,9 @@ struct IndexFile;
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
-// TODO Make it inline because this macro can be used in header files.
-#define MAKE_REFLECT_TYPE_PROXY(type, as_type)                         \
+#define MAKE_REFLECT_TYPE_PROXY(type_name) \
+  MAKE_REFLECT_TYPE_PROXY2(type_name, std::underlying_type<type_name>::type)
+#define MAKE_REFLECT_TYPE_PROXY2(type, as_type)                        \
   ATTRIBUTE_UNUSED inline void Reflect(Reader& visitor, type& value) { \
     as_type value0;                                                    \
     ::Reflect(visitor, value0);                                        \

@@ -39,7 +39,7 @@ struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
   lsRequestId id;
   std::vector<CallEntry> result;
 };
-MAKE_REFLECT_TYPE_PROXY(Out_CqueryCallTree::CallType, int);
+MAKE_REFLECT_TYPE_PROXY(Out_CqueryCallTree::CallType);
 MAKE_REFLECT_STRUCT(Out_CqueryCallTree::CallEntry,
                     name,
                     usr,
