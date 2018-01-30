@@ -37,7 +37,7 @@ struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
     GroupMatch matcher(request->params.whitelist, request->params.blacklist);
 
     // Unmark all files whose timestamp has changed.
-    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
+    std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
 
     std::queue<const QueryFile*> q;
     // |need_index| stores every filename ever enqueued.
@@ -98,7 +98,7 @@ struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
           bool is_interactive =
               working_files->GetFileByFilename(entry.filename) != nullptr;
           queue->index_request.Enqueue(Index_Request(entry.filename, entry.args,
-                                                     is_interactive, *content));
+                                                     is_interactive, *content, ICacheManager::Make(config)));
         });
   }
 };

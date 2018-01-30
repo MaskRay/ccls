@@ -281,17 +281,6 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
           << "Failed fetching modification time for " << file_name;
       if (modification_time)
         param->file_modification_times[file_name] = *modification_time;
-
-      // Capture file contents in |param->file_contents| if it was not specified
-      // at the start of indexing.
-      if (db && !param->file_contents.count(file_name)) {
-        optional<std::string> content = ReadContent(file_name);
-        if (content)
-          param->file_contents[file_name] = FileContents(file_name, *content);
-        else
-          LOG_S(ERROR) << "[indexer] Failed to read file content for "
-                       << file_name;
-      }
     }
   }
 
@@ -569,8 +558,8 @@ const int IndexFile::kMajorVersion = 10;
 const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(const std::string& path,
-                     const optional<std::string>& contents)
-    : id_cache(path), path(path), file_contents_(contents) {
+                     const std::string& contents)
+    : id_cache(path), path(path), file_contents(contents) {
   // TODO: Reconsider if we should still be reusing the same id_cache.
   // Preallocate any existing resolved ids.
   for (const auto& entry : id_cache.usr_to_type_id)

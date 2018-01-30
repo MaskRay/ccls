@@ -1,5 +1,6 @@
 #include "queue_manager.h"
 
+#include "cache_manager.h"
 #include "language_server_api.h"
 #include "query.h"
 
@@ -9,18 +10,22 @@ Index_Request::Index_Request(const std::string& path,
                              const std::vector<std::string>& args,
                              bool is_interactive,
                              const std::string& contents,
+                             const std::shared_ptr<ICacheManager>& cache_manager,
                              lsRequestId id)
     : path(path),
       args(args),
       is_interactive(is_interactive),
       contents(contents),
+      cache_manager(cache_manager),
       id(id) {}
 
 Index_DoIdMap::Index_DoIdMap(std::unique_ptr<IndexFile> current,
+                             const std::shared_ptr<ICacheManager>& cache_manager,
                              PerformanceImportFile perf,
                              bool is_interactive,
                              bool write_to_disk)
     : current(std::move(current)),
+      cache_manager(cache_manager),
       perf(perf),
       is_interactive(is_interactive),
       write_to_disk(write_to_disk) {
@@ -31,10 +36,12 @@ Index_OnIdMapped::File::File(std::unique_ptr<IndexFile> file,
                              std::unique_ptr<IdMap> ids)
     : file(std::move(file)), ids(std::move(ids)) {}
 
-Index_OnIdMapped::Index_OnIdMapped(PerformanceImportFile perf,
+Index_OnIdMapped::Index_OnIdMapped(const std::shared_ptr<ICacheManager>& cache_manager,
+                                   PerformanceImportFile perf,
                                    bool is_interactive,
                                    bool write_to_disk)
-    : perf(perf),
+    : cache_manager(cache_manager),
+      perf(perf),
       is_interactive(is_interactive),
       write_to_disk(write_to_disk) {}
 

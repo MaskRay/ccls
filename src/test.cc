@@ -110,7 +110,7 @@ void DiffDocuments(std::string path,
 void VerifySerializeToFrom(IndexFile* file) {
   std::string expected = file->ToString();
   std::unique_ptr<IndexFile> result = Deserialize(
-      SerializeFormat::Json, "--.cc", Serialize(SerializeFormat::Json, *file),
+      SerializeFormat::Json, "--.cc", Serialize(SerializeFormat::Json, *file), "<empty>",
       nullopt /*expected_version*/);
   std::string actual = result->ToString();
   if (expected != actual) {

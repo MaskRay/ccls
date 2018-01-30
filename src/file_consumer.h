@@ -50,12 +50,6 @@ struct FileConsumer {
                             bool* is_first_ownership,
                             FileContentsMap* file_contents);
 
-  // Forcibly create a local file, even if it has already been parsed.
-  //
-  // note: file_contents is passed as a parameter instead of as a member
-  // variable since it is large and we do not want to copy it.
-  IndexFile* ForceLocal(CXFile file, FileContentsMap* file_contents);
-
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
 

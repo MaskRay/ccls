@@ -19,14 +19,7 @@ struct RealCacheManager : ICacheManager {
 
   void WriteToCache(IndexFile& file) override {
     std::string cache_path = GetCachePath(file.path);
-
-    if (!file.file_contents_.has_value()) {
-      LOG_S(ERROR) << "No cached file contents; performing potentially stale "
-                   << "file-copy for " << file.path;
-      CopyFileTo(cache_path, file.path);
-    } else {
-      WriteToFile(cache_path, *file.file_contents_);
-    }
+    WriteToFile(cache_path, file.file_contents);
 
     std::string indexed_content = Serialize(config_->cacheFormat, file);
     WriteToFile(AppendSerializationFormat(cache_path), indexed_content);
@@ -39,12 +32,13 @@ struct RealCacheManager : ICacheManager {
 
   std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     std::string cache_path = GetCachePath(path);
-    optional<std::string> file_content =
+    optional<std::string> file_content = ReadContent(cache_path);
+    optional<std::string> serialized_indexed_content =
         ReadContent(AppendSerializationFormat(cache_path));
-    if (!file_content)
+    if (!file_content || !serialized_indexed_content)
       return nullptr;
 
-    return Deserialize(config_->cacheFormat, path, *file_content,
+    return Deserialize(config_->cacheFormat, path, *serialized_indexed_content,*file_content,
                        IndexFile::kMajorVersion);
   }
 
@@ -96,7 +90,7 @@ struct FakeCacheManager : ICacheManager {
   std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     for (const FakeCacheEntry& entry : entries_) {
       if (entry.path == path) {
-        return Deserialize(SerializeFormat::Json, path, entry.json, nullopt);
+        return Deserialize(SerializeFormat::Json, path, entry.json, "<empty>", nullopt);
       }
     }
 
@@ -109,14 +103,14 @@ struct FakeCacheManager : ICacheManager {
 }  // namespace
 
 // static
-std::unique_ptr<ICacheManager> ICacheManager::Make(Config* config) {
-  return MakeUnique<RealCacheManager>(config);
+std::shared_ptr<ICacheManager> ICacheManager::Make(Config* config) {
+  return std::make_shared<RealCacheManager>(config);
 }
 
 // static
-std::unique_ptr<ICacheManager> ICacheManager::MakeFake(
+std::shared_ptr<ICacheManager> ICacheManager::MakeFake(
     const std::vector<FakeCacheEntry>& entries) {
-  return MakeUnique<FakeCacheManager>(entries);
+  return std::make_shared<FakeCacheManager>(entries);
 }
 
 ICacheManager::~ICacheManager() = default;

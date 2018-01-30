@@ -176,6 +176,21 @@ void Reflect(TVisitor& visitor, WithUsr<T>& value) {
   REFLECT_MEMBER_END();
 }
 
+template <typename T>
+struct WithFileContent {
+  T value;
+  std::string file_content;
+
+  WithFileContent(const T& value, const std::string& file_content) : value(value), file_content(file_content) {}
+};
+template <typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, WithFileContent<T>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(value);
+  REFLECT_MEMBER(file_content);
+  REFLECT_MEMBER_END();
+}
+
 struct QueryFile {
   struct Def {
     std::string path;
@@ -193,13 +208,13 @@ struct QueryFile {
     std::vector<std::string> dependencies;
   };
 
-  using DefUpdate = Def;
+  using DefUpdate = WithFileContent<Def>;
 
-  optional<DefUpdate> def;
+  optional<Def> def;
   size_t detailed_name_idx = (size_t)-1;
 
   explicit QueryFile(const std::string& path) {
-    def = DefUpdate();
+    def = Def();
     def->path = path;
   }
 };

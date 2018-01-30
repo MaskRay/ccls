@@ -300,26 +300,30 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
 
 std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
                                        const std::string& path,
-                                       const std::string& serialized,
+                                       const std::string& serialized_index_content,
+                                       const std::string& file_content,
                                        optional<int> expected_version) {
+  if (serialized_index_content.empty())
+    return nullptr;
+
   std::unique_ptr<IndexFile> file;
   switch (format) {
     case SerializeFormat::Json: {
       rapidjson::Document reader;
       if (gTestOutputMode)
-        reader.Parse(serialized.c_str());
+        reader.Parse(serialized_index_content.c_str());
       else {
-        const char* p = strchr(serialized.c_str(), '\n');
+        const char* p = strchr(serialized_index_content.c_str(), '\n');
         if (!p)
           return nullptr;
-        if (expected_version && atoi(serialized.c_str()) != *expected_version)
+        if (expected_version && atoi(serialized_index_content.c_str()) != *expected_version)
           return nullptr;
         reader.Parse(p + 1);
       }
       if (reader.HasParseError())
         return nullptr;
 
-      file = MakeUnique<IndexFile>(path, nullopt);
+      file = MakeUnique<IndexFile>(path, file_content);
       JsonReader json_reader{&reader};
       try {
         Reflect(json_reader, *file);
@@ -332,17 +336,15 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
     }
 
     case SerializeFormat::MessagePack: {
-      if (serialized.empty())
-        return nullptr;
       try {
         int major, minor;
-        if (serialized.size() < 8)
+        if (serialized_index_content.size() < 8)
           throw std::invalid_argument("Invalid");
         msgpack::unpacker upk;
-        upk.reserve_buffer(serialized.size());
-        memcpy(upk.buffer(), serialized.data(), serialized.size());
-        upk.buffer_consumed(serialized.size());
-        file = MakeUnique<IndexFile>(path, nullopt);
+        upk.reserve_buffer(serialized_index_content.size());
+        memcpy(upk.buffer(), serialized_index_content.data(), serialized_index_content.size());
+        upk.buffer_consumed(serialized_index_content.size());
+        file = MakeUnique<IndexFile>(path, file_content);
         MessagePackReader reader(&upk);
         Reflect(reader, major);
         Reflect(reader, minor);

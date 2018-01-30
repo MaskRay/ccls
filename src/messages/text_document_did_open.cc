@@ -32,15 +32,13 @@ struct TextDocumentDidOpenHandler
     if (ShouldIgnoreFileForIndexing(path))
       return;
 
-    std::unique_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
+    std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
     WorkingFile* working_file =
         working_files->OnOpen(request->params.textDocument);
     optional<std::string> cached_file_contents =
         cache_manager->LoadCachedFileContents(path);
     if (cached_file_contents)
       working_file->SetIndexContent(*cached_file_contents);
-    else
-      working_file->SetIndexContent(working_file->buffer_content);
 
     QueryFile* file = nullptr;
     FindFileOrFail(db, project, nullopt, path, &file);
@@ -60,7 +58,7 @@ struct TextDocumentDidOpenHandler
     const Project::Entry& entry = project->FindCompilationEntryForFile(path);
     QueueManager::instance()->index_request.PriorityEnqueue(
         Index_Request(entry.filename, entry.args, true /*is_interactive*/,
-                      request->params.textDocument.text));
+                      request->params.textDocument.text, cache_manager));
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidOpenHandler);

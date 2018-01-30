@@ -1,3 +1,4 @@
+#include "cache_manager.h"
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "message_handler.h"
@@ -129,7 +130,7 @@ struct lsServerCapabilities {
   lsTextDocumentSyncKind textDocumentSync = lsTextDocumentSyncKind::Incremental;
 
   // The server provides hover support.
-  bool hoverProvider = false;
+  bool hoverProvider = true;
   // The server provides completion support.
   lsCompletionOptions completionProvider;
   // The server provides signature help support.
@@ -621,7 +622,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
         bool is_interactive =
             working_files->GetFileByFilename(entry.filename) != nullptr;
         queue->index_request.Enqueue(Index_Request(
-            entry.filename, entry.args, is_interactive, *content, request->id));
+            entry.filename, entry.args, is_interactive, *content, ICacheManager::Make(config), request->id));
       });
 
       // We need to support multiple concurrent index processes.

@@ -7,6 +7,7 @@
 
 #include <memory>
 
+struct ICacheManager;
 struct lsBaseOutMessage;
 
 struct Stdout_Request {
@@ -19,19 +20,23 @@ struct Index_Request {
   // TODO: make |args| a string that is parsed lazily.
   std::vector<std::string> args;
   bool is_interactive;
-  std::string contents;  // Preloaded contents. Useful for tests.
+  std::string contents;  // Preloaded contents.
+  std::shared_ptr<ICacheManager> cache_manager;
   lsRequestId id;
+
 
   Index_Request(const std::string& path,
                 const std::vector<std::string>& args,
                 bool is_interactive,
                 const std::string& contents,
+                const std::shared_ptr<ICacheManager>& cache_manager,
                 lsRequestId id = {});
 };
 
 struct Index_DoIdMap {
   std::unique_ptr<IndexFile> current;
   std::unique_ptr<IndexFile> previous;
+  std::shared_ptr<ICacheManager> cache_manager;
 
   PerformanceImportFile perf;
   bool is_interactive = false;
@@ -39,6 +44,7 @@ struct Index_DoIdMap {
   bool load_previous = false;
 
   Index_DoIdMap(std::unique_ptr<IndexFile> current,
+                const std::shared_ptr<ICacheManager>& cache_manager,
                 PerformanceImportFile perf,
                 bool is_interactive,
                 bool write_to_disk);
@@ -54,12 +60,14 @@ struct Index_OnIdMapped {
 
   std::unique_ptr<File> previous;
   std::unique_ptr<File> current;
+  std::shared_ptr<ICacheManager> cache_manager;
 
   PerformanceImportFile perf;
   bool is_interactive;
   bool write_to_disk;
 
-  Index_OnIdMapped(PerformanceImportFile perf,
+  Index_OnIdMapped(const std::shared_ptr<ICacheManager>& cache_manager,
+                   PerformanceImportFile perf, 
                    bool is_interactive,
                    bool write_to_disk);
 };

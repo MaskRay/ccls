@@ -1,3 +1,4 @@
+#include "cache_manager.h"
 #include "clang_complete.h"
 #include "message_handler.h"
 #include "project.h"
@@ -52,7 +53,7 @@ struct WorkspaceDidChangeWatchedFilesHandler
             LOG_S(ERROR) << "Unable to read file content after saving " << path;
           else {
             QueueManager::instance()->index_request.Enqueue(
-                Index_Request(path, entry.args, is_interactive, *content));
+                Index_Request(path, entry.args, is_interactive, *content, ICacheManager::Make(config)));
             if (is_interactive)
               clang_complete->NotifySave(path);
           }
@@ -60,7 +61,7 @@ struct WorkspaceDidChangeWatchedFilesHandler
         }
         case lsFileChangeType::Deleted:
           QueueManager::instance()->index_request.Enqueue(
-              Index_Request(path, entry.args, is_interactive, std::string()));
+              Index_Request(path, entry.args, is_interactive, std::string(), ICacheManager::Make(config)));
           break;
       }
     }

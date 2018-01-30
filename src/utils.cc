@@ -302,6 +302,7 @@ bool FileExists(const std::string& filename) {
 }
 
 optional<std::string> ReadContent(const std::string& filename) {
+  LOG_S(INFO) << "Reading " << filename;
   std::ifstream cache;
   cache.open(filename);
 

@@ -516,9 +516,9 @@ struct IndexFile {
   // Diagnostics found when indexing this file. Not serialized.
   std::vector<lsDiagnostic> diagnostics_;
   // File contents at the time of index. Not serialized.
-  optional<std::string> file_contents_;
+  std::string file_contents;
 
-  IndexFile(const std::string& path, const optional<std::string>& contents);
+  IndexFile(const std::string& path, const std::string& contents);
 
   IndexTypeId ToTypeId(Usr usr);
   IndexFuncId ToFuncId(Usr usr);

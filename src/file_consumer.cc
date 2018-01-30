@@ -46,7 +46,7 @@ FileConsumer::FileConsumer(FileConsumerSharedState* shared_state,
 
 IndexFile* FileConsumer::TryConsumeFile(CXFile file,
                                         bool* is_first_ownership,
-                                        FileContentsMap* file_contents) {
+                                        FileContentsMap* file_contents_map) {
   assert(is_first_ownership);
 
   CXFileUniqueID file_id;
@@ -66,39 +66,24 @@ IndexFile* FileConsumer::TryConsumeFile(CXFile file,
 
   // No result in local; we need to query global.
   bool did_insert = shared_->Mark(file_name);
-  *is_first_ownership = did_insert;
-  local_[file_id] =
-      did_insert ? MakeUnique<IndexFile>(
-                       file_name, GetFileContents(file_name, file_contents))
-                 : nullptr;
-  return local_[file_id].get();
-}
-
-IndexFile* FileConsumer::ForceLocal(CXFile file,
-                                    FileContentsMap* file_contents) {
-  // Try to fetch the file using the normal system, which will insert the file
-  // usage into global storage.
-  {
-    bool is_first;
-    IndexFile* cache = TryConsumeFile(file, &is_first, file_contents);
-    if (cache)
-      return cache;
-  }
-
-  // It's already been taken before, just create a local copy.
-  CXFileUniqueID file_id;
-  if (clang_getFileUniqueID(file, &file_id) != 0) {
-    EmitError(file);
+  
+  // We did not take the file from global. Cache that we failed so we don't try
+  // again and return nullptr.
+  if (!did_insert) {
+    local_[file_id] = nullptr;
     return nullptr;
   }
 
-  auto it = local_.find(file_id);
-  if (it == local_.end() || !it->second) {
-    std::string file_name = FileName(file);
-    local_[file_id] = MakeUnique<IndexFile>(
-        file_name, GetFileContents(file_name, file_contents));
+  // Read the file contents, if we fail then we cannot index the file.
+  optional<std::string> contents = GetFileContents(file_name, file_contents_map);
+  if (!contents) {
+    *is_first_ownership = false;
+    return nullptr;
   }
-  assert(local_.find(file_id) != local_.end());
+
+  // Build IndexFile instance.
+  *is_first_ownership = true;
+  local_[file_id] = MakeUnique<IndexFile>(file_name, *contents);
   return local_[file_id].get();
 }
 

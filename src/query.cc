@@ -197,7 +197,7 @@ void CompareGroups(std::vector<T>& previous_data,
   }
 }
 
-QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
+QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& indexed) {
   QueryFile::Def def;
   def.path = indexed.path;
   def.includes = indexed.includes;
@@ -288,7 +288,7 @@ QueryFile::Def BuildFileDef(const IdMap& id_map, const IndexFile& indexed) {
               return a.loc.range.start < b.loc.range.start;
             });
 
-  return def;
+  return QueryFile::DefUpdate(def, indexed.file_contents);
 }
 
 inline optional<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
@@ -502,7 +502,7 @@ IndexUpdate IndexUpdate::CreateDelta(const IdMap* previous_id_map,
 
   if (!previous_id_map) {
     assert(!previous);
-    IndexFile empty(current->path, nullopt);
+    IndexFile empty(current->path, "<empty>");
     return IndexUpdate(*current_id_map, *current_id_map, empty, *current);
   }
   return IndexUpdate(*previous_id_map, *current_id_map, *previous, *current);
@@ -531,7 +531,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
     }                                                                        \
   }
   // File
-  files_def_update.push_back(BuildFileDef(current_id_map, current_file));
+  files_def_update.push_back(BuildFileDefUpdate(current_id_map, current_file));
 
   // **NOTE** We only remove entries if they were defined in the previous index.
   // For example, if a type is included from another file it will be defined
@@ -850,14 +850,14 @@ void QueryDatabase::ImportOrUpdate(
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
-    auto it = usr_to_file.find(NormalizedPath(def.path));
+    auto it = usr_to_file.find(NormalizedPath(def.value.path));
     assert(it != usr_to_file.end());
 
     QueryFile& existing = files[it->second.id];
 
-    existing.def = def;
+    existing.def = def.value;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::File,
-                        it->second.id, def.path, def.path);
+                        it->second.id, def.value.path, def.value.path);
   }
 }
 
@@ -963,8 +963,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("remove defs") {
-    IndexFile previous("foo.cc", nullopt);
-    IndexFile current("foo.cc", nullopt);
+    IndexFile previous("foo.cc", "<empty>");
+    IndexFile current("foo.cc", "<empty>");
 
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->def.definition_spelling = Range(Position(1, 0));
@@ -981,8 +981,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("do not remove ref-only defs") {
-    IndexFile previous("foo.cc", nullopt);
-    IndexFile current("foo.cc", nullopt);
+    IndexFile previous("foo.cc", "<empty>");
+    IndexFile current("foo.cc", "<empty>");
 
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->uses.push_back(Range(Position(1, 0)));
@@ -1000,8 +1000,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("func callers") {
-    IndexFile previous("foo.cc", nullopt);
-    IndexFile current("foo.cc", nullopt);
+    IndexFile previous("foo.cc", "<empty>");
+    IndexFile current("foo.cc", "<empty>");
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
@@ -1025,8 +1025,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("type usages") {
-    IndexFile previous("foo.cc", nullopt);
-    IndexFile current("foo.cc", nullopt);
+    IndexFile previous("foo.cc", "<empty>");
+    IndexFile current("foo.cc", "<empty>");
 
     IndexType* pt = previous.Resolve(previous.ToTypeId(HashUsr("usr")));
     IndexType* ct = current.Resolve(current.ToTypeId(HashUsr("usr")));
@@ -1046,8 +1046,8 @@ TEST_SUITE("query") {
   }
 
   TEST_CASE("apply delta") {
-    IndexFile previous("foo.cc", nullopt);
-    IndexFile current("foo.cc", nullopt);
+    IndexFile previous("foo.cc", "<empty>");
+    IndexFile current("foo.cc", "<empty>");
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));

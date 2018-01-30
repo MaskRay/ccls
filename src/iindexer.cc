@@ -36,10 +36,10 @@ struct TestIndexer : IIndexer {
       std::vector<std::unique_ptr<IndexFile>> indexes;
 
       if (entry.num_indexes > 0)
-        indexes.push_back(MakeUnique<IndexFile>(entry.path, nullopt));
+        indexes.push_back(MakeUnique<IndexFile>(entry.path, "<empty>"));
       for (int i = 1; i < entry.num_indexes; ++i) {
         indexes.push_back(MakeUnique<IndexFile>(
-            entry.path + "_extra_" + std::to_string(i) + ".h", nullopt));
+            entry.path + "_extra_" + std::to_string(i) + ".h", "<empty>"));
       }
 
       result->indexes.insert(std::make_pair(entry.path, std::move(indexes)));

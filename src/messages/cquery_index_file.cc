@@ -1,3 +1,4 @@
+#include "cache_manager.h"
 #include "message_handler.h"
 #include "platform.h"
 #include "queue_manager.h"
@@ -28,7 +29,7 @@ struct CqueryIndexFileHandler : BaseMessageHandler<Ipc_CqueryIndexFile> {
     LOG_S(INFO) << "Indexing file " << request->params.path;
     QueueManager::instance()->index_request.Enqueue(Index_Request(
         NormalizePath(request->params.path), request->params.args,
-        request->params.is_interactive, request->params.contents));
+        request->params.is_interactive, request->params.contents, ICacheManager::Make(config)));
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryIndexFileHandler);
