@@ -286,6 +286,8 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
                                                         QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
+  if (!root.def)
+    return callers;
 
   std::queue<QueryFuncId> queue;
   PushRange(&queue, root.def->base);
