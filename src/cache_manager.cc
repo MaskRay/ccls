@@ -18,9 +18,6 @@ struct RealCacheManager : ICacheManager {
   ~RealCacheManager() override = default;
 
   void WriteToCache(IndexFile& file) override {
-    if (!config_->enableCacheWrite)
-      return;
-
     std::string cache_path = GetCachePath(file.path);
 
     if (!file.file_contents_.has_value()) {
@@ -37,16 +34,10 @@ struct RealCacheManager : ICacheManager {
 
   optional<std::string> LoadCachedFileContents(
       const std::string& path) override {
-    if (!config_->enableCacheRead)
-      return nullopt;
-
     return ReadContent(GetCachePath(path));
   }
 
   std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
-    if (!config_->enableCacheRead)
-      return nullptr;
-
     std::string cache_path = GetCachePath(path);
     optional<std::string> file_content =
         ReadContent(AppendSerializationFormat(cache_path));

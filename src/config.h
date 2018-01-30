@@ -4,21 +4,62 @@
 
 #include <string>
 
+/*
+The language client plugin needs to send some initialization options to the
+cquery language server. The only required option is cacheDirectory, which is
+where index files will be stored.
+
+  {
+    "initializationOptions": {
+      "cacheDirectory": "/tmp/cquery",
+    }
+  }
+
+If necessary, these options can also be passed via the command line option
+--init, for example,
+
+  --init='{"enableComments": 2}'
+*/
 struct Config {
-  // Root directory of the project. **Not serialized**
+  // Root directory of the project. **Not available for configuration**
   std::string projectRoot;
-  // Location of compile_commands.json.
+  // Directory containing compile_commands.json.
   std::string compilationDatabaseDirectory;
   // Cache directory for indexed files.
   std::string cacheDirectory;
-  // Cache serialization format
+  // Cache serialization format.
+  //
+  // "json" generates `cacheDirectory/.../xxx.json` files which can be pretty
+  // printed with jq.
+  //
+  // "msgpack" uses a compact binary serialization format (the underlying wire
+  // format is [MessagePack](https://msgpack.org/index.html)) which typically
+  // takes only 60% of the corresponding JSON size, but is difficult to inspect.
+  // msgpack does not store map keys and you need to re-index whenever a struct
+  // member has changed.
   SerializeFormat cacheFormat = SerializeFormat::Json;
   // Value to use for clang -resource-dir if not present in
   // compile_commands.json.
+  //
+  // cquery includes a resource directory, this should not need to be configured
+  // unless you're using an esoteric configuration. Consider reporting a bug and
+  // fixing upstream instead of configuring this.
+  //
+  // Example value: "/path/to/lib/clang/5.0.1/"
   std::string resourceDirectory;
 
+  // Additional arguments to pass to clang.
   std::vector<std::string> extraClangArguments;
 
+  // If a translation unit's absolute path matches any EMCAScript regex in this
+  // list, it will be indexed. The whitelist takes priority over the blacklist.
+  // To only index files in the whitelist, make indexBlacklist match
+  // everything, ie, set it to ".*".
+  //
+  // You probably want to begin the regex using .* because the passed paths are
+  // absolute.
+  //
+  // Example: .*/ash/*
   std::vector<std::string> indexWhitelist;
   std::vector<std::string> indexBlacklist;
   // If true, project paths that were skipped by the whitelist/blacklist will
@@ -33,14 +74,10 @@ struct Config {
   bool sortWorkspaceSearchResults = true;
 
   // Force a certain number of indexer threads. If less than 1 a default value
-  // should be used.
+  // is be used (80% number of CPU cores).
   int indexerCount = 0;
   // If false, the indexer will be disabled.
   bool enableIndexing = true;
-  // If false, indexed files will not be written to disk.
-  bool enableCacheWrite = true;
-  // If false, the index will not be loaded from a previous run.
-  bool enableCacheRead = true;
 
   // If true, cquery will send progress reports while indexing
   // How often should cquery send progress report messages?
@@ -94,7 +131,11 @@ struct Config {
   ClientCapability client;
 
   struct Completion {
-    // If true, filter and sort completion response.
+    // If true, filter and sort completion response. cquery filters and sorts
+    // completions to try to be nicer to clients that can't handle big numbers
+    // of completion candidates. This behaviour can be disabled by specifying
+    // false for the option. This option is the most useful for LSP clients
+    // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
   };
   Completion completion;
@@ -102,8 +143,11 @@ struct Config {
   struct Index {
     bool builtinTypes = false;
 
-    // 0: no; 1: Doxygen comment markers; 2: -fparse-all-comments, which includes
-    // plain // /*
+    // 0: none, 1: doxygen, 2: all comments
+    // Plugin support for clients:
+    // - https://github.com/emacs-lsp/lsp-ui
+    // - https://github.com/emacs-lsp/lsp-mode/pull/224
+    // - https://github.com/autozimu/LanguageClient-neovim/issues/224
     int comments = 2;
   };
   Index index;
@@ -133,8 +177,6 @@ MAKE_REFLECT_STRUCT(Config,
 
                     indexerCount,
                     enableIndexing,
-                    enableCacheWrite,
-                    enableCacheRead,
                     progressReportFrequencyMs,
 
                     includeCompletionMaximumPathLength,

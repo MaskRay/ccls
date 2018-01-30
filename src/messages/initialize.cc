@@ -503,8 +503,8 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
 
         g_enable_comments = config->index.comments;
         if (config->cacheDirectory.empty()) {
-          config->enableCacheRead = config->enableCacheWrite = false;
-          LOG_S(INFO) << "Disable cache files because cacheDirectory is empty";
+          LOG_S(ERROR) << "cacheDirectory cannot be empty.";
+          exit(1);
         } else {
           config->cacheDirectory = NormalizePath(config->cacheDirectory);
           EnsureEndsInSlash(config->cacheDirectory);
