@@ -5,20 +5,20 @@
 #include <string>
 
 /*
-The language client plugin needs to send some initialization options to the
-cquery language server. The only required option is cacheDirectory, which is
-where index files will be stored.
+The language client plugin needs to send initialization options in the
+`initialize` request to the cquery language server. The only required option is
+`cacheDirectory`, which is where index files will be stored.
 
   {
     "initializationOptions": {
-      "cacheDirectory": "/tmp/cquery",
+      "cacheDirectory": "/tmp/cquery"
     }
   }
 
-If necessary, these options can also be passed via the command line option
---init, for example,
+If necessary, the command line option --init can be used to override
+initialization options specified by the client. For example, in shell syntax:
 
-  --init='{"enableComments": 2}'
+  '--init={"indexWhitelist": ["."], "index": {"comments": 2}}'
 */
 struct Config {
   // Root directory of the project. **Not available for configuration**
@@ -51,15 +51,12 @@ struct Config {
   // Additional arguments to pass to clang.
   std::vector<std::string> extraClangArguments;
 
-  // If a translation unit's absolute path matches any EMCAScript regex in this
-  // list, it will be indexed. The whitelist takes priority over the blacklist.
-  // To only index files in the whitelist, make indexBlacklist match
-  // everything, ie, set it to ".*".
+  // If a translation unit's absolute path matches any EMCAScript regex in the
+  // whitelist, or does not match any regex in the blacklist, it will be indexed.
+  // To only index files in the whitelist, add ".*" to the blacklist.
+  // `std::regex_search(path, regex, std::regex_constants::match_any)`
   //
-  // You probably want to begin the regex using .* because the passed paths are
-  // absolute.
-  //
-  // Example: .*/ash/*
+  // Example: `ash/.*\.cc`
   std::vector<std::string> indexWhitelist;
   std::vector<std::string> indexBlacklist;
   // If true, project paths that were skipped by the whitelist/blacklist will
@@ -141,8 +138,6 @@ struct Config {
   Completion completion;
 
   struct Index {
-    bool builtinTypes = false;
-
     // 0: none, 1: doxygen, 2: all comments
     // Plugin support for clients:
     // - https://github.com/emacs-lsp/lsp-ui
@@ -159,7 +154,7 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort);
-MAKE_REFLECT_STRUCT(Config::Index, builtinTypes, comments);
+MAKE_REFLECT_STRUCT(Config::Index, comments);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,
