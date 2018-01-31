@@ -161,7 +161,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
     if (func.def->declaring_type) {
       QueryType& declaring_type = db->types[func.def->declaring_type->id];
       if (declaring_type.def) {
-        type_name = declaring_type.def->short_name;
+        type_name = std::string(declaring_type.def->ShortName());
         optional<lsRange> ls_type_def_extent = GetLsRange(
             working_file, declaring_type.def->definition_extent->range);
         if (ls_type_def_extent) {
@@ -390,7 +390,7 @@ struct TextDocumentCodeActionHandler
 
           command.arguments.textDocumentUri = *impl_uri;
           command.title = "Auto-Implement " + std::to_string(num_edits) +
-                          " methods on " + type.def->short_name;
+                          " methods on " + std::string(type.def->ShortName());
           command.command = "cquery._autoImplement";
           out.result.push_back(command);
           break;

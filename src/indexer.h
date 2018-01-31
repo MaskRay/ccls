@@ -154,7 +154,6 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
-  std::string short_name;
   std::string detailed_name;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
   optional<std::string> hover;
@@ -184,6 +183,9 @@ struct TypeDefDefinitionData {
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
 
+  int16_t short_name_offset = 0;
+  int16_t short_name_size = 0;
+
   bool operator==(
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return detailed_name == other.detailed_name && hover == other.hover &&
@@ -198,6 +200,11 @@ struct TypeDefDefinitionData {
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return !(*this == other);
   }
+
+  std::string_view ShortName() const {
+    return std::string_view(detailed_name.c_str() + short_name_offset,
+                            short_name_size);
+  }
 };
 template <typename TVisitor,
           typename TypeId,
@@ -207,8 +214,9 @@ template <typename TVisitor,
 void Reflect(TVisitor& visitor,
              TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(short_name_offset);
+  REFLECT_MEMBER(short_name_size);
   REFLECT_MEMBER(kind);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
@@ -273,8 +281,8 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
-  int16_t short_name_offset;
-  int16_t short_name_size;
+  int16_t short_name_offset = 0;
+  int16_t short_name_size = 0;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
   StorageClass storage = StorageClass::Invalid;
 
@@ -392,8 +400,8 @@ struct VarDefDefinitionData {
 
   // Function/type which declares this one.
   size_t parent_id = size_t(-1);
-  int16_t short_name_offset;
-  int16_t short_name_size;
+  int16_t short_name_offset = 0;
+  int16_t short_name_size = 0;
   SymbolKind parent_kind = SymbolKind::Invalid;
 
   ClangSymbolKind kind = ClangSymbolKind::Unknown;

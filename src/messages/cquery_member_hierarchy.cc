@@ -47,7 +47,7 @@ BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   Out_CqueryMemberHierarchy::Entry entry;
-  entry.name = root_type.def->short_name;
+  entry.name = std::string(root_type.def->ShortName());
   entry.type_id = root.id;
   entry.location = *def_loc;
   return {entry};

@@ -155,8 +155,9 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
+  REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("comments", value.def.comments);
@@ -224,7 +225,7 @@ bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
   // FIXME
   auto it = value.id_cache.usr_to_type_id.find(HashUsr(""));
   if (it != value.id_cache.usr_to_type_id.end()) {
-    value.Resolve(it->second)->def.short_name = "<fundamental>";
+    value.Resolve(it->second)->def.detailed_name = "<fundamental>";
     assert(value.Resolve(it->second)->uses.size() == 0);
   }
 

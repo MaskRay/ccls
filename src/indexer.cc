@@ -411,11 +411,16 @@ void SetTypeName(IndexType* type,
   CXIdxContainerInfo parent;
   // |name| can be null in an anonymous struct (see
   // tests/types/anonymous_struct.cc).
-  type->def.short_name = name ? name : "(anon)";
+  if (!name)
+    name = "(anon)";
   if (!container)
     parent.cursor = cursor.get_semantic_parent().cx_cursor;
   type->def.detailed_name =
-      ns->QualifiedName(container ? container : &parent, type->def.short_name);
+      ns->QualifiedName(container ? container : &parent, name);
+  auto idx = type->def.detailed_name.find(name);
+  assert(idx != std::string::npos);
+  type->def.short_name_offset = idx;
+  type->def.short_name_size = strlen(name);
 }
 
 // Finds the cursor associated with the declaration type of |cursor|. This
@@ -452,7 +457,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   clang_disposeString(cx_usr);
   IndexTypeId type_id = db->ToTypeId(usr);
   IndexType* typ = db->Resolve(type_id);
-  if (typ->def.short_name.empty()) {
+  if (typ->def.detailed_name.empty()) {
     std::string name = declaration.get_spelling();
     SetTypeName(typ, declaration, nullptr, name.c_str(), ns);
   }
@@ -846,7 +851,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   if (param->toplevel_type) {
     IndexType* ref_type = db->Resolve(*param->toplevel_type);
     std::string name = cursor.get_referenced().get_spelling();
-    if (name == ref_type->def.short_name) {
+    if (name == ref_type->def.ShortName()) {
       UniqueAdd(ref_type->uses, cursor.get_spelling_range());
       param->toplevel_type = nullopt;
       return;
@@ -1240,11 +1245,12 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // CXCursor_TemplateTemplateParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
-        if (ref_index->def.short_name.empty()) {
+        if (ref_index->def.detailed_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
-          ref_index->def.short_name = ref_cursor.get_spelling();
-          ref_index->def.detailed_name = ref_index->def.short_name;
+          ref_index->def.detailed_name = ref_cursor.get_spelling();
+          ref_index->def.short_name_offset = 0;
+          ref_index->def.short_name_size = ref_index->def.detailed_name.size();
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
@@ -1260,11 +1266,12 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // CXCursor_TemplateTypeParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
-        if (ref_index->def.short_name.empty()) {
+        if (ref_index->def.detailed_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
-          ref_index->def.short_name = ref_cursor.get_spelling();
-          ref_index->def.detailed_name = ref_index->def.short_name;
+          ref_index->def.detailed_name = ref_cursor.get_spelling();
+          ref_index->def.short_name_offset = 0;
+          ref_index->def.short_name_size = ref_index->def.detailed_name.size();
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
@@ -1378,7 +1385,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       IndexTypeId ns_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* ns = db->Resolve(ns_id);
       ns->def.kind = GetSymbolKind(decl->entityInfo->kind);
-      if (ns->def.short_name.empty()) {
+      if (ns->def.detailed_name.empty()) {
         SetTypeName(ns, decl_cursor, decl->semanticContainer,
                     decl->entityInfo->name, &param->ns);
         ns->def.definition_spelling = decl_spell;
@@ -1717,9 +1724,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // template<class T> class function; // not visited by
           // OnIndexDeclaration template<> class function<int> {}; // current
           // cursor
-          if (origin->def.short_name.empty()) {
+          if (origin->def.detailed_name.empty()) {
             SetTypeName(origin, origin_cursor, nullptr,
-                        type->def.short_name.c_str(), ns);
+                        &type->def.ShortName()[0], ns);
             origin->def.kind = type->def.kind;
           }
           // TODO The name may be assigned in |ResolveToDeclarationType| but

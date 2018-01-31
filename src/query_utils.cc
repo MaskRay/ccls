@@ -440,8 +440,8 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
 
       lsSymbolInformation info;
       info.name =
-          use_short_name ? type.def->short_name : type.def->detailed_name;
-      if (type.def->detailed_name != type.def->short_name)
+        use_short_name ? std::string(type.def->ShortName()) : type.def->detailed_name;
+      if (type.def->detailed_name != type.def->ShortName())
         info.containerName = type.def->detailed_name;
       // TODO ClangSymbolKind -> lsSymbolKind
       switch (type.def->kind) {
