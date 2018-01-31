@@ -8,7 +8,7 @@
 // text documents.
 // We use a UTF-8 iterator to approximate UTF-16 in the specification (weird).
 // This is good enough and fails only for UTF-16 surrogate pairs.
-int GetOffsetForPosition(lsPosition position, const std::string& content) {
+int GetOffsetForPosition(lsPosition position, std::string_view content) {
   size_t i = 0;
   for (; position.line > 0 && i < content.size(); i++)
     if (content[i] == '\n')
@@ -23,7 +23,7 @@ int GetOffsetForPosition(lsPosition position, const std::string& content) {
   return int(i);
 }
 
-lsPosition CharPos(const std::string& search,
+lsPosition CharPos(std::string_view search,
                    char character,
                    int character_offset) {
   lsPosition result;
@@ -216,7 +216,7 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
   return content.substr(start, end - start + 1);
 }
 
-bool SubsequenceMatch(const std::string& search, const std::string& content) {
+bool SubsequenceMatch(std::string_view search, std::string_view content) {
   size_t j = 0;
   for (size_t i = 0; i < search.size(); i++) {
     char search_char = tolower(search[i]);

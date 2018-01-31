@@ -26,7 +26,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyExpand);
 struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
   struct Entry {
-    std::string name;
+    std::string_view name;
     size_t type_id;
     lsLocation location;
   };
@@ -47,7 +47,7 @@ BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   Out_CqueryMemberHierarchy::Entry entry;
-  entry.name = std::string(root_type.def->ShortName());
+  entry.name = root_type.def->ShortName();
   entry.type_id = root.id;
   entry.location = *def_loc;
   return {entry};
@@ -63,7 +63,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   for (auto& var_id : root_type.def->vars) {
     QueryVar& var = db->vars[var_id.id];
     Out_CqueryMemberHierarchy::Entry entry;
-    entry.name = std::string(var.def->ShortName());
+    entry.name = var.def->ShortName();
     entry.type_id =
         var.def->variable_type ? var.def->variable_type->id : size_t(-1);
     if (var.def->definition_spelling) {

@@ -2,13 +2,15 @@
 
 #include "language_server_api.h"
 
+#include <string_view.h>
+
 #include <string>
 #include <tuple>
 
 // Utility method to map |position| to an offset inside of |content|.
-int GetOffsetForPosition(lsPosition position, const std::string& content);
+int GetOffsetForPosition(lsPosition position, std::string_view content);
 // Utility method to find a position for the given character.
-lsPosition CharPos(const std::string& search,
+lsPosition CharPos(std::string_view search,
                    char character,
                    int character_offset = 0);
 
@@ -27,4 +29,4 @@ void LexFunctionDeclaration(const std::string& buffer_content,
 std::string LexWordAroundPos(lsPosition position, const std::string& content);
 
 // Case-insensitive subsequence matching.
-bool SubsequenceMatch(const std::string& search, const std::string& content);
+bool SubsequenceMatch(std::string_view search, std::string_view content);
