@@ -178,8 +178,9 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
+  REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER2("hover", value.def.hover);

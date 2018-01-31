@@ -255,10 +255,7 @@ template <typename TypeId,
           typename Range>
 struct FuncDefDefinitionData {
   // General metadata.
-  std::string short_name;
   std::string detailed_name;
-  ClangSymbolKind kind = ClangSymbolKind::Unknown;
-  StorageClass storage = StorageClass::Invalid;
   optional<std::string> hover;
   optional<std::string> comments;
   optional<Range> definition_spelling;
@@ -276,6 +273,11 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
+  int16_t short_name_offset;
+  int16_t short_name_size;
+  ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  StorageClass storage = StorageClass::Invalid;
+
   bool operator==(
       const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
       const {
@@ -291,6 +293,11 @@ struct FuncDefDefinitionData {
       const {
     return !(*this == other);
   }
+
+  std::string_view ShortName() const {
+    return std::string_view(detailed_name.c_str() + short_name_offset,
+                            short_name_size);
+  }
 };
 
 template <typename TVisitor,
@@ -303,8 +310,9 @@ void Reflect(
     TVisitor& visitor,
     FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(short_name_offset);
+  REFLECT_MEMBER(short_name_size);
   REFLECT_MEMBER(kind);
   REFLECT_MEMBER(storage);
   REFLECT_MEMBER(hover);

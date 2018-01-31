@@ -405,7 +405,7 @@ struct TextDocumentCodeActionHandler
 
           // Get implementation file.
           Out_TextDocumentCodeAction::Command command;
-          command.title = "Auto-Implement " + func.def->short_name;
+          command.title = "Auto-Implement " + std::string(func.def->ShortName());
           command.command = "cquery._autoImplement";
           command.arguments.textDocumentUri = *impl_uri;
           optional<lsTextEdit> edit = BuildAutoImplementForFunction(

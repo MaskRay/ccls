@@ -57,8 +57,9 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
     return nullopt;
 
   QueryFunc::Def result;
-  result.short_name = func.short_name;
   result.detailed_name = func.detailed_name;
+  result.short_name_offset = func.short_name_offset;
+  result.short_name_size = func.short_name_size;
   result.kind = func.kind;
   result.storage = func.storage;
   result.hover = func.hover;
@@ -907,7 +908,7 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def.value;
     UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func,
-                        it->second.id, def.value.short_name,
+                        it->second.id, std::string(def.value.ShortName()),
                         def.value.detailed_name);
   }
 }

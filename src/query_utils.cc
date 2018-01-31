@@ -461,7 +461,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
 
       lsSymbolInformation info;
       info.name =
-          use_short_name ? func.def->short_name : func.def->detailed_name;
+        use_short_name ? std::string(func.def->ShortName()) : func.def->detailed_name;
       info.containerName = func.def->detailed_name;
       info.kind = lsSymbolKind::Function;
 

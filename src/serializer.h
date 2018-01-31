@@ -182,8 +182,8 @@ void Reflect(Writer& visitor, bool& value);
 void Reflect(Reader& visitor, std::string& value);
 void Reflect(Writer& visitor, std::string& value);
 
-void Reflect(Reader& visitor, std::string& view, const std::string& data);
-void Reflect(Writer& visitor, std::string& view, const std::string& data);
+void Reflect(Reader& visitor, std::string_view& view);
+void Reflect(Writer& visitor, std::string_view& view);
 
 // std::monostate is used to represent JSON null
 void Reflect(Reader& visitor, std::monostate&);
@@ -345,9 +345,6 @@ void ReflectMember(Writer& visitor, const char* name, T& value) {
 }
 
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
-
-void ReflectMember(Reader& visitor, const char* name, std::string_view& view);
-void ReflectMember(Writer& visitor, const char* name, std::string_view& view);
 
 // API
 

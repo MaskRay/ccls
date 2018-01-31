@@ -317,7 +317,7 @@ bool CanBeCalledImplicitly(CXIdxEntityKind kind) {
 // useful to check for implicit function calls.
 bool CursorSpellingContainsString(CXCursor cursor,
                                   CXTranslationUnit cx_tu,
-                                  std::string scanning_for) {
+                                  std::string_view needle) {
   CXSourceRange range = clang_Cursor_getSpellingNameRange(cursor, 0, 0);
   CXToken* tokens;
   unsigned num_tokens;
@@ -327,7 +327,7 @@ bool CursorSpellingContainsString(CXCursor cursor,
 
   for (unsigned i = 0; i < num_tokens; ++i) {
     CXString name = clang_getTokenSpelling(cx_tu, tokens[i]);
-    if (strcmp(clang_getCString(name), scanning_for.c_str()) == 0) {
+    if (needle == clang_getCString(name)) {
       result = true;
       break;
     }
@@ -1542,11 +1542,15 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // indexing the definition, then there will not be any (ie) outline
       // information.
       if (!is_template_specialization) {
-        func->def.short_name = decl->entityInfo->name;
 
         // Build detailed name. The type desc looks like void (void *). We
         // insert the qualified name before the first '('.
+        // FIXME GetFunctionSignature should set index
         func->def.detailed_name = GetFunctionSignature(db, ns, decl);
+        auto idx = func->def.detailed_name.find(decl->entityInfo->name);
+        assert(idx != std::string::npos);
+        func->def.short_name_offset = idx;
+        func->def.short_name_size = strlen(decl->entityInfo->name);
 
         // CXCursor_OverloadedDeclRef in templates are not processed by
         // OnIndexReference, thus we use TemplateVisitor to collect function
@@ -1896,6 +1900,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       IndexFuncId called_id = db->ToFuncId(HashUsr(ref->referencedEntity->USR));
       IndexFunc* called = db->Resolve(called_id);
 
+      std::string_view short_name = called->def.ShortName();
       // libclang doesn't provide a nice api to check if the given function
       // call is implicit. ref->kind should probably work (it's either direct
       // or implicit), but libclang only supports implicit for objective-c.
@@ -1903,14 +1908,14 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           CanBeCalledImplicitly(ref->referencedEntity->kind) &&
           // Treats empty short_name as an implicit call like implicit move
           // constructor in `vector<int> a = f();`
-          (called->def.short_name.empty() ||
+          (short_name.empty() ||
            // For explicit destructor call, ref->cursor may be "~" while
            // called->def.short_name is "~A"
            // "~A" is not a substring of ref->cursor, but we should take this
            // case as not `is_implicit`.
-           (called->def.short_name[0] != '~' &&
+           (short_name[0] != '~' &&
             !CursorSpellingContainsString(ref->cursor, param->tu->cx_tu,
-                                          called->def.short_name)));
+                                          short_name)));
 
       // Extents have larger ranges and thus less specific, and will be
       // overriden by other functions if exist.

@@ -29,7 +29,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryCallTreeExpand);
 struct Out_CqueryCallTree : public lsOutMessage<Out_CqueryCallTree> {
   enum class CallType { Direct = 0, Base = 1, Derived = 2 };
   struct CallEntry {
-    std::string name;
+    std::string_view name;
     std::string usr;
     lsLocation location;
     bool hasCallers = true;
@@ -61,7 +61,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
     return {};
 
   Out_CqueryCallTree::CallEntry entry;
-  entry.name = root_func.def->short_name;
+  entry.name = root_func.def->ShortName();
   entry.usr = std::to_string(root_func.usr);
   entry.location = *def_loc;
   entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, root_func);
@@ -112,7 +112,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
         return;
 
       Out_CqueryCallTree::CallEntry call_entry;
-      call_entry.name = call_func.def->short_name;
+      call_entry.name = call_func.def->ShortName();
       call_entry.usr = std::to_string(call_func.usr);
       call_entry.location = *call_location;
       call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, call_func);

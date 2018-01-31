@@ -122,12 +122,12 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           continue;  // applies to for loop
         // Don't highlight overloadable operators or implicit lambda ->
         // std::function constructor.
-        if (func->def->short_name.compare(0, 8, "operator") == 0 ||
-            func->def->short_name.compare(0, 27,
-                                          "function<type-parameter-0-0") == 0)
+        std::string_view short_name = func->def->ShortName();
+        if (short_name.compare(0, 8, "operator") == 0 ||
+            short_name.compare(0, 27, "function<type-parameter-0-0") == 0)
           continue;  // applies to for loop
         kind = func->def->kind;
-        detailed_name = func->def->short_name;
+        detailed_name = short_name;
         break;
       }
       case SymbolKind::Var: {
