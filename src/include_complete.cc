@@ -20,7 +20,7 @@ std::string ElideLongPath(Config* config, const std::string& path) {
   if (config->includeCompletionMaximumPathLength <= 0)
     return path;
 
-  if (path.size() <= config->includeCompletionMaximumPathLength)
+  if ((int)path.size() <= config->includeCompletionMaximumPathLength)
     return path;
 
   size_t start = path.size() - config->includeCompletionMaximumPathLength;

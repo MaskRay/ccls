@@ -106,7 +106,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
         if (!isspace(c))
           query_without_space += c;
 
-      for (int i = 0; i < db->symbols.size(); ++i) {
+      for (int i = 0; i < (int)db->symbols.size(); ++i) {
         std::string_view detailed_name = db->GetSymbolDetailedName(i);
         if (SubsequenceMatch(query_without_space, detailed_name)) {
           // Do not show the same entry twice.

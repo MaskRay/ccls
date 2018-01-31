@@ -27,7 +27,7 @@ lsPosition CharPos(std::string_view search,
                    char character,
                    int character_offset) {
   lsPosition result;
-  int index = 0;
+  size_t index = 0;
   while (index < search.size()) {
     char c = search[index];
     if (c == character)
@@ -91,13 +91,13 @@ void DecorateIncludePaths(const std::smatch& match,
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
   // Find starting and ending quote.
   int start = 0;
-  while (start < line.size()) {
+  while (start < (int)line.size()) {
     char c = line[start];
     ++start;
     if (c == '"' || c == '<')
       break;
   }
-  if (start == line.size())
+  if (start == (int)line.size())
     return nullopt;
 
   int end = (int)line.size();

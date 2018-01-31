@@ -95,7 +95,7 @@ std::shared_ptr<TValue> LruCache<TKey, TValue>::TryTake(const TKey& key) {
 template <typename TKey, typename TValue>
 void LruCache<TKey, TValue>::Insert(const TKey& key,
                                     const std::shared_ptr<TValue>& value) {
-  if (entries_.size() >= max_entries_)
+  if ((int)entries_.size() >= max_entries_)
     entries_.erase(std::min_element(entries_.begin(), entries_.end()));
 
   Entry entry;

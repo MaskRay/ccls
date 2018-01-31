@@ -456,7 +456,7 @@ struct TextDocumentCodeActionHandler
         std::unordered_set<std::string> include_absolute_paths;
 
         // Find include candidate strings.
-        for (int i = 0; i < db->symbols.size(); ++i) {
+        for (size_t i = 0; i < db->symbols.size(); ++i) {
           if (include_absolute_paths.size() > kMaxResults)
             break;
           if (db->GetSymbolDetailedName(i).find(include_query) ==

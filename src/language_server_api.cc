@@ -57,7 +57,7 @@ optional<std::string> ReadJsonRpcContentFrom(
   // Read content.
   std::string content;
   content.reserve(content_length);
-  for (size_t i = 0; i < content_length; ++i) {
+  for (int i = 0; i < content_length; ++i) {
     optional<char> c = read();
     if (!c) {
       LOG_S(INFO) << "No more input when reading content body";

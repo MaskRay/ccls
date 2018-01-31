@@ -221,7 +221,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
       bool did_fail_check = false;
 
       std::string character = *request->params.context->triggerCharacter;
-      char preceding_index = request->params.position.character - 2;
+      int preceding_index = request->params.position.character - 2;
 
       // If the character is '"', '<' or '/', make sure that the line starts with '#'.
       if (character == "\"" || character == "<" || character == "/") {
@@ -238,7 +238,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
       // If the character is > but - does not preced it, or if it is : and :
       // does not preced it, do not show completion results.
-      else if (preceding_index < buffer_line.size()) {
+      else if (preceding_index < (int)buffer_line.size()) {
         char preceding = buffer_line[preceding_index];
         did_fail_check = (preceding != '-' && character == ">") ||
                          (preceding != ':' && character == ":");

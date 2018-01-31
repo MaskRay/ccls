@@ -81,7 +81,7 @@ void DiffDocuments(std::string path,
   int max_diff = 5;
 
   size_t len = std::min(actual_output.size(), expected_output.size());
-  for (int i = 0; i < len; ++i) {
+  for (size_t i = 0; i < len; ++i) {
     if (actual_output[i] != expected_output[i]) {
       if (--max_diff < 0) {
         std::cout << "(... more lines may differ ...)" << std::endl;
