@@ -22,7 +22,7 @@ Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
 }
 
 // TODO Place this global variable into config
-int g_enable_comments;
+extern int g_index_comments;
 
 ClangType::ClangType() : cx_type() {}
 
@@ -225,7 +225,7 @@ std::string ClangCursor::get_type_description() const {
 }
 
 std::string ClangCursor::get_comments() const {
-  if (!g_enable_comments)
+  if (!g_index_comments)
     return "";
   CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
   if (clang_Range_isNull(range))

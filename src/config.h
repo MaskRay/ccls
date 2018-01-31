@@ -145,6 +145,10 @@ struct Config {
     // - https://github.com/emacs-lsp/lsp-mode/pull/224
     // - https://github.com/autozimu/LanguageClient-neovim/issues/224
     int comments = 2;
+
+    // A hack to convert calls of make_shared/make_unique and other |Make|
+    // variants to constructor calls.
+    bool make_unique = false;
   };
   Index index;
 
@@ -155,7 +159,7 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort);
-MAKE_REFLECT_STRUCT(Config::Index, comments);
+MAKE_REFLECT_STRUCT(Config::Index, comments, make_unique);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,

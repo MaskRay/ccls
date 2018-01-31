@@ -20,6 +20,7 @@
 
 // Defined in command_line.cc
 extern bool g_debug;
+extern bool g_index_make_unique;
 
 namespace {
 
@@ -1951,7 +1952,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       bool is_template = ref->referencedEntity->templateKind !=
                          CXIdxEntityCXXTemplateKind::CXIdxEntity_NonTemplate;
-      if (is_template && str_begin("make", ref->referencedEntity->name)) {
+      if (g_index_make_unique && is_template &&
+          str_begin("make", ref->referencedEntity->name)) {
         // Try to find the return type of called function. That type will have
         // the constructor function we add a usage to.
         optional<ClangCursor> opt_found_type = FindType(ref->cursor);
