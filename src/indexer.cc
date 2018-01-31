@@ -565,8 +565,8 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-const int IndexFile::kMajorVersion = 10;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMajorVersion = 11;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path,
                      const std::string& contents)

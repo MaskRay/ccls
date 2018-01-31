@@ -150,6 +150,20 @@ void Reflect(Writer& visitor, IndexInclude& value) {
   REFLECT_MEMBER_END();
 }
 
+template <typename Def>
+void ReflectHoverAndComments(Reader& visitor, Def& def) {
+  ReflectMember(visitor, "hover", def.hover);
+  ReflectMember(visitor, "comments", def.comments);
+}
+
+template <typename Def>
+void ReflectHoverAndComments(Writer& visitor, Def& def) {
+  if (!gTestOutputMode || def.hover.size())
+    ReflectMember(visitor, "hover", def.hover);
+  if (!gTestOutputMode || def.comments.size())
+    ReflectMember(visitor, "comments", def.comments);
+}
+
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
@@ -159,8 +173,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
   REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
   REFLECT_MEMBER2("kind", value.def.kind);
-  REFLECT_MEMBER2("hover", value.def.hover);
-  REFLECT_MEMBER2("comments", value.def.comments);
+  ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
   REFLECT_MEMBER2("alias_of", value.def.alias_of);
@@ -184,8 +197,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("storage", value.def.storage);
-  REFLECT_MEMBER2("hover", value.def.hover);
-  REFLECT_MEMBER2("comments", value.def.comments);
+  ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
@@ -206,8 +218,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
   REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
-  REFLECT_MEMBER2("hover", value.def.hover);
-  REFLECT_MEMBER2("comments", value.def.comments);
+  ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
   REFLECT_MEMBER2("definition_extent", value.def.definition_extent);

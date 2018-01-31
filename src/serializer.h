@@ -68,12 +68,7 @@ class Writer {
 
 struct IndexFile;
 
-#define REFLECT_MEMBER_START()             \
-  if (!ReflectMemberStart(visitor, value)) \
-  return
-#define REFLECT_MEMBER_START1(value)       \
-  if (!ReflectMemberStart(visitor, value)) \
-  return
+#define REFLECT_MEMBER_START() ReflectMemberStart(visitor, value)
 #define REFLECT_MEMBER_END() ReflectMemberEnd(visitor, value);
 #define REFLECT_MEMBER_END1(value) ReflectMemberEnd(visitor, value);
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
@@ -319,7 +314,7 @@ inline void DefaultReflectMemberStart(Reader& visitor) {}
 
 template <typename T>
 bool ReflectMemberStart(Reader& visitor, T& value) {
-  return true;
+  return false;
 }
 template <typename T>
 bool ReflectMemberStart(Writer& visitor, T& value) {

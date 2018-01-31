@@ -155,9 +155,8 @@ template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
   std::string detailed_name;
-  ClangSymbolKind kind = ClangSymbolKind::Unknown;
-  optional<std::string> hover;
-  optional<std::string> comments;
+  std::string hover;
+  std::string comments;
 
   // While a class/type can technically have a separate declaration/definition,
   // it doesn't really happen in practice. The declaration never contains
@@ -185,10 +184,11 @@ struct TypeDefDefinitionData {
 
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
+  ClangSymbolKind kind = ClangSymbolKind::Unknown;
 
   bool operator==(
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return detailed_name == other.detailed_name && hover == other.hover &&
+    return detailed_name == other.detailed_name &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            alias_of == other.alias_of && parents == other.parents &&
@@ -264,8 +264,8 @@ template <typename TypeId,
 struct FuncDefDefinitionData {
   // General metadata.
   std::string detailed_name;
-  optional<std::string> hover;
-  optional<std::string> comments;
+  std::string hover;
+  std::string comments;
   optional<Range> definition_spelling;
   optional<Range> definition_extent;
 
@@ -388,8 +388,8 @@ template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct VarDefDefinitionData {
   // General metadata.
   std::string detailed_name;
-  optional<std::string> hover;
-  optional<std::string> comments;
+  std::string hover;
+  std::string comments;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
   optional<Range> definition_spelling;

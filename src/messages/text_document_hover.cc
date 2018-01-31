@@ -4,29 +4,32 @@
 
 namespace {
 
-std::pair<optional<std::string>, std::string> GetCommentsAndHover(
+std::pair<std::string_view, std::string_view> GetCommentsAndHover(
     QueryDatabase* db,
     const SymbolIdx& symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
       if (type.def)
-        return {type.def->comments,
-                type.def->hover.value_or(type.def->detailed_name)};
+        return {type.def->comments, type.def->hover.size()
+                                        ? type.def->hover
+                                        : type.def->detailed_name};
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[symbol.idx];
       if (func.def)
-        return {func.def->comments,
-                func.def->hover.value_or(func.def->detailed_name)};
+        return {func.def->comments, func.def->hover.size()
+                                        ? func.def->hover
+                                        : func.def->detailed_name};
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
       if (var.def)
-        return {var.def->comments,
-                var.def->hover.value_or(var.def->detailed_name)};
+        return {var.def->comments, var.def->hover.size()
+                                       ? var.def->hover
+                                       : var.def->detailed_name};
       break;
     }
     case SymbolKind::File:
@@ -35,7 +38,7 @@ std::pair<optional<std::string>, std::string> GetCommentsAndHover(
       break;
     }
   }
-  return {nullopt, ""};
+  return {"", ""};
 }
 
 struct Ipc_TextDocumentHover : public RequestMessage<Ipc_TextDocumentHover> {
@@ -92,16 +95,16 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       if (!ls_range)
         continue;
 
-      std::pair<optional<std::string>, std::string> comments_hover =
+      std::pair<std::string_view, std::string_view> comments_hover =
           GetCommentsAndHover(db, ref.idx);
-      if (comments_hover.first || comments_hover.second.size()) {
+      if (comments_hover.first.size() || comments_hover.second.size()) {
         out.result = Out_TextDocumentHover::Result();
-        if (comments_hover.first) {
-          out.result->contents.emplace_back(*comments_hover.first);
+        if (comments_hover.first.size()) {
+          out.result->contents.emplace_back(comments_hover.first);
         }
         if (comments_hover.second.size()) {
-          out.result->contents.emplace_back(
-              lsMarkedString1{file->def->language, comments_hover.second});
+          out.result->contents.emplace_back(lsMarkedString1{
+              std::string_view(file->def->language), comments_hover.second});
         }
         out.result->range = *ls_range;
         break;

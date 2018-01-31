@@ -224,12 +224,12 @@ std::string ClangCursor::get_type_description() const {
   return ::ToString(clang_getTypeSpelling(type));
 }
 
-optional<std::string> ClangCursor::get_comments() const {
+std::string ClangCursor::get_comments() const {
   if (!g_enable_comments)
-    return nullopt;
+    return "";
   CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
   if (clang_Range_isNull(range))
-    return nullopt;
+    return "";
 
   unsigned start_column;
   clang_getSpellingLocation(clang_getRangeStart(range), nullptr, nullptr,

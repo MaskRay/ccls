@@ -595,10 +595,10 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params,
 // Note that markdown strings will be sanitized - that means html will be
 // escaped.
 struct lsMarkedString1 {
-  std::string language;
-  std::string value;
+  std::string_view language;
+  std::string_view value;
 };
-using lsMarkedString = std::variant<std::string, lsMarkedString1>;
+using lsMarkedString = std::variant<std::string_view, lsMarkedString1>;
 MAKE_REFLECT_STRUCT(lsMarkedString1, language, value);
 
 struct lsTextDocumentContentChangeEvent {
