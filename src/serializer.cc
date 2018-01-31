@@ -106,7 +106,6 @@ void Reflect(Writer& visitor, bool& value) {
   visitor.Bool(value);
 }
 
-// std::string
 void Reflect(Reader& visitor, std::string& value) {
   if (!visitor.IsString())
     throw std::invalid_argument("std::string");
@@ -115,6 +114,14 @@ void Reflect(Reader& visitor, std::string& value) {
 void Reflect(Writer& visitor, std::string& value) {
   visitor.String(value.c_str(), (rapidjson::SizeType)value.size());
 }
+
+void Reflect(Reader&, std::string_view&) {
+  assert(0);
+}
+void Reflect(Writer& visitor, std::string_view& data) {
+  visitor.String(&data[0], (rapidjson::SizeType)data.size());
+}
+
 
 // ReflectMember
 void ReflectMember(Writer& visitor, const char* name, std::string& value) {
@@ -194,8 +201,9 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
-  REFLECT_MEMBER2("short_name", value.def.short_name);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
+  REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
   REFLECT_MEMBER2("hover", value.def.hover);
   REFLECT_MEMBER2("comments", value.def.comments);
   REFLECT_MEMBER2("declarations", value.declarations);

@@ -460,6 +460,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
 }
 
 void SetVarDetail(IndexVar* var,
+                  std::string_view short_name,
                   const ClangCursor& cursor,
                   const CXIdxContainerInfo* semanticContainer,
                   bool is_first_seen,
@@ -476,7 +477,7 @@ void SetVarDetail(IndexVar* var,
   def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   std::string qualified_name =
-      param->ns.QualifiedName(semanticContainer, def.short_name);
+      param->ns.QualifiedName(semanticContainer, short_name);
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
     CXType enum_type = clang_getCanonicalType(
@@ -515,6 +516,11 @@ void SetVarDetail(IndexVar* var,
                     fc.content.substr(*spell_end, *extent_end - *spell_end);
     }
   }
+  // FIXME QualifiedName should return index
+  auto idx = def.detailed_name.find(short_name.begin(), 0, short_name.size());
+  assert(idx != std::string::npos);
+  def.short_name_offset = idx;
+  def.short_name_size = short_name.size();
 
   if (is_first_seen) {
     optional<IndexTypeId> var_type =
@@ -1139,8 +1145,9 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       IndexVar* var_def = db->Resolve(db->ToVarId(decl_usr));
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
         CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
-        var_def->def.short_name = cursor.get_display_name();
         var_def->def.detailed_name = cursor.get_display_name();
+        var_def->def.short_name_offset = 0;
+        var_def->def.short_name_size = int(var_def->def.detailed_name.size());
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.kind = ClangSymbolKind::Macro;
@@ -1181,11 +1188,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
         IndexVar* ref_index =
             db->Resolve(db->ToVarId(ref_cursor.get_usr_hash()));
-        if (ref_index->def.short_name.empty()) {
+        if (ref_index->def.detailed_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
-          ref_index->def.short_name = ref_cursor.get_spelling();
-          SetVarDetail(ref_index, ref_cursor, nullptr, true, db, data->param);
+          SetVarDetail(ref_index, ref_cursor.get_spelling(), ref_cursor,
+                       nullptr, true, db, data->param);
 
           ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
           // TODO optimize
@@ -1270,9 +1277,9 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
 }  // namespace
 
 std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
-                                           std::string unqualified_name) {
+                                           std::string_view unqualified_name) {
   if (!container)
-    return unqualified_name;
+    return std::string(unqualified_name);
   // Anonymous namespaces are not processed by indexDeclaration. We trace
   // nested namespaces bottom-up through clang_getCursorSemanticParent until
   // one that we know its qualified name. Then do another trace top-down and
@@ -1318,7 +1325,8 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
     qualifier += "::";
     container_cursor_to_qualified_name[namespaces[i]] = qualifier;
   }
-  return qualifier + unqualified_name;
+  // C++17 string::append
+  return qualifier + std::string(unqualified_name);
 }
 
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
@@ -1409,10 +1417,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // this may shadow.
       // TODO: Verify this gets called multiple times
       // if (!decl->isRedeclaration) {
-      var->def.short_name = decl->entityInfo->name;
-
-      SetVarDetail(var, decl->cursor, decl->semanticContainer,
-                   !decl->isRedeclaration, db, param);
+      SetVarDetail(var, std::string(decl->entityInfo->name), decl->cursor,
+                   decl->semanticContainer, !decl->isRedeclaration, db, param);
 
       // FIXME https://github.com/jacobdufault/cquery/issues/239
       var->def.kind = GetSymbolKind(decl->entityInfo->kind);
@@ -1847,7 +1853,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // may not have a short_name yet. Note that we only process the lambda
       // parameter as a definition if it is in the same file as the reference,
       // as lambdas cannot be split across files.
-      if (var->def.short_name.empty()) {
+      if (var->def.detailed_name.empty()) {
         CXFile referenced_file;
         Range spelling = referenced.get_spelling_range(&referenced_file);
         if (file == referenced_file) {
@@ -1857,8 +1863,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // TODO Some of the logic here duplicates CXIdxEntity_Variable branch
           // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
           // and has more information, thus not easy to reuse the code.
-          var->def.short_name = referenced.get_spelling();
-          SetVarDetail(var, referenced, nullptr, true, db, param);
+          SetVarDetail(var, referenced.get_spelling(), referenced, nullptr,
+                       true, db, param);
           var->def.kind = ClangSymbolKind::Parameter;
         }
       }

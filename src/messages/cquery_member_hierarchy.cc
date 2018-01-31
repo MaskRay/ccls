@@ -63,7 +63,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   for (auto& var_id : root_type.def->vars) {
     QueryVar& var = db->vars[var_id.id];
     Out_CqueryMemberHierarchy::Entry entry;
-    entry.name = var.def->short_name;
+    entry.name = std::string(var.def->ShortName());
     entry.type_id =
         var.def->variable_type ? var.def->variable_type->id : size_t(-1);
     if (var.def->definition_spelling) {

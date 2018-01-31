@@ -479,7 +479,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = use_short_name ? var.def->short_name : var.def->detailed_name;
+      info.name = use_short_name ? std::string(var.def->ShortName()) : var.def->detailed_name;
       info.containerName = var.def->detailed_name;
       info.kind = lsSymbolKind::Variable;
       return info;

@@ -18,6 +18,7 @@
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
+#include <string_view.h>
 
 #include <algorithm>
 #include <cassert>
@@ -185,8 +186,7 @@ struct TypeDefDefinitionData {
 
   bool operator==(
       const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return short_name == other.short_name &&
-           detailed_name == other.detailed_name && hover == other.hover &&
+    return detailed_name == other.detailed_name && hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            alias_of == other.alias_of && parents == other.parents &&
@@ -279,8 +279,7 @@ struct FuncDefDefinitionData {
   bool operator==(
       const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
       const {
-    return short_name == other.short_name &&
-           detailed_name == other.detailed_name && hover == other.hover &&
+    return detailed_name == other.detailed_name && hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            declaring_type == other.declaring_type && base == other.base &&
@@ -372,7 +371,6 @@ MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct VarDefDefinitionData {
   // General metadata.
-  std::string short_name;
   std::string detailed_name;
   optional<std::string> hover;
   optional<std::string> comments;
@@ -386,6 +384,8 @@ struct VarDefDefinitionData {
 
   // Function/type which declares this one.
   size_t parent_id = size_t(-1);
+  int16_t short_name_offset;
+  int16_t short_name_size;
   SymbolKind parent_kind = SymbolKind::Invalid;
 
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
@@ -401,8 +401,7 @@ struct VarDefDefinitionData {
 
   bool operator==(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return short_name == other.short_name &&
-           detailed_name == other.detailed_name && hover == other.hover &&
+    return detailed_name == other.detailed_name && hover == other.hover &&
            definition_spelling == other.definition_spelling &&
            definition_extent == other.definition_extent &&
            variable_type == other.variable_type && comments == other.comments;
@@ -410,6 +409,11 @@ struct VarDefDefinitionData {
   bool operator!=(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
     return !(*this == other);
+  }
+
+  std::string_view ShortName() const {
+    return std::string_view(detailed_name.c_str() + short_name_offset,
+                            short_name_size);
   }
 };
 
@@ -421,8 +425,9 @@ template <typename TVisitor,
 void Reflect(TVisitor& visitor,
              VarDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER(short_name);
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(short_name_size);
+  REFLECT_MEMBER(short_name_offset);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
@@ -538,7 +543,7 @@ struct NamespaceHelper {
       container_cursor_to_qualified_name;
 
   std::string QualifiedName(const CXIdxContainerInfo* container,
-                            std::string unqualified_name);
+                            std::string_view unqualified_name);
 };
 
 // |import_file| is the cc file which is what gets passed to clang.

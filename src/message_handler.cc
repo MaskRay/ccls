@@ -110,7 +110,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   std::unordered_map<SymbolIdx, Out_CqueryPublishSemanticHighlighting::Symbol>
       grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
-    std::string detailed_name;
+    std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Invalid;
     ClangSymbolKind kind = ClangSymbolKind::Unknown;
     StorageClass storage = StorageClass::Invalid;
@@ -137,7 +137,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         parent_kind = var->def->parent_kind;
         kind = var->def->kind;
         storage = var->def->storage;
-        detailed_name = var->def->short_name;
+        detailed_name = var->def->ShortName();
         break;
       }
       case SymbolKind::Type: {
@@ -159,8 +159,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         it->second.ranges.push_back(*loc);
       } else {
         Out_CqueryPublishSemanticHighlighting::Symbol symbol;
-        symbol.stableId =
-            semantic_cache_for_file->GetStableId(sym.idx.kind, detailed_name);
+        symbol.stableId = semantic_cache_for_file->GetStableId(
+            sym.idx.kind, std::string(detailed_name));
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;

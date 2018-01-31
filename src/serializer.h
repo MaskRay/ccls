@@ -4,6 +4,7 @@
 
 #include <macro_map.h>
 #include <optional.h>
+#include <string_view.h>
 #include <variant.h>
 
 #include <cassert>
@@ -181,6 +182,9 @@ void Reflect(Writer& visitor, bool& value);
 void Reflect(Reader& visitor, std::string& value);
 void Reflect(Writer& visitor, std::string& value);
 
+void Reflect(Reader& visitor, std::string& view, const std::string& data);
+void Reflect(Writer& visitor, std::string& view, const std::string& data);
+
 // std::monostate is used to represent JSON null
 void Reflect(Reader& visitor, std::monostate&);
 void Reflect(Writer& visitor, std::monostate&);
@@ -306,40 +310,44 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
   visitor.EndArray();
 }
 
-// Writer:
+// ReflectMember
 
 inline void DefaultReflectMemberStart(Writer& visitor) {
   visitor.StartObject();
+}
+inline void DefaultReflectMemberStart(Reader& visitor) {}
+
+template <typename T>
+bool ReflectMemberStart(Reader& visitor, T& value) {
+  return true;
 }
 template <typename T>
 bool ReflectMemberStart(Writer& visitor, T& value) {
   visitor.StartObject();
   return true;
 }
+
+template <typename T>
+void ReflectMemberEnd(Reader& visitor, T& value) {}
 template <typename T>
 void ReflectMemberEnd(Writer& visitor, T& value) {
   visitor.EndObject();
+}
+
+template <typename T>
+void ReflectMember(Reader& visitor, const char* name, T& value) {
+  visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
 }
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, T& value) {
   visitor.Key(name);
   Reflect(visitor, value);
 }
+
 void ReflectMember(Writer& visitor, const char* name, std::string& value);
 
-// Reader:
-
-inline void DefaultReflectMemberStart(Reader& visitor) {}
-template <typename T>
-bool ReflectMemberStart(Reader& visitor, T& value) {
-  return true;
-}
-template <typename T>
-void ReflectMemberEnd(Reader& visitor, T& value) {}
-template <typename T>
-void ReflectMember(Reader& visitor, const char* name, T& value) {
-  visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
-}
+void ReflectMember(Reader& visitor, const char* name, std::string_view& view);
+void ReflectMember(Writer& visitor, const char* name, std::string_view& view);
 
 // API
 

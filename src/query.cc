@@ -77,8 +77,9 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
     return nullopt;
 
   QueryVar::Def result;
-  result.short_name = var.short_name;
   result.detailed_name = var.detailed_name;
+  result.short_name_offset = var.short_name_offset;
+  result.short_name_size = var.short_name_size;
   result.hover = var.hover;
   result.comments = var.comments;
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
@@ -932,7 +933,7 @@ void QueryDatabase::ImportOrUpdate(
     existing.def = def.value;
     if (!def.value.is_local())
       UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var,
-                          it->second.id, def.value.short_name,
+                          it->second.id, std::string(def.value.ShortName()),
                           def.value.detailed_name);
   }
 }
