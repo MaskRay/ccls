@@ -285,7 +285,12 @@ std::vector<FileContents> PreloadFileContents(
   bool loaded_entry = false;
   std::vector<FileContents> file_contents;
   cache_manager->IterateLoadedCaches([&](IndexFile* index) {
-    file_contents.push_back(FileContents(index->path, index->file_contents));
+    optional<std::string> index_content = ReadContent(index->path);
+    if (!index_content) {
+      LOG_S(ERROR) << "Failed to load index content for " << index->path;
+      return;
+    }
+    file_contents.push_back(FileContents(index->path, *index_content));
     loaded_entry = loaded_entry || index->path == entry.filename;
   });
   if (!loaded_entry)
