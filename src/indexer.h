@@ -30,8 +30,6 @@ struct IndexType;
 struct IndexFunc;
 struct IndexVar;
 
-using namespace std::experimental;
-
 // The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
 // front of others.
 enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };

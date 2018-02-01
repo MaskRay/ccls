@@ -10,8 +10,6 @@
 
 #include <vector>
 
-using namespace std::experimental;
-
 optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
                                                  const std::string& path);
 
