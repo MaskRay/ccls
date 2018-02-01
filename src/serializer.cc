@@ -164,14 +164,43 @@ void ReflectHoverAndComments(Writer& visitor, Def& def) {
     ReflectMember(visitor, "comments", def.comments);
 }
 
+template <typename Def>
+void ReflectShortName(Reader& visitor, Def& def) {
+  if (gTestOutputMode) {
+    std::string short_name;
+    ReflectMember(visitor, "short_name", short_name);
+    def.short_name_offset = def.detailed_name.find(short_name);
+    assert(def.short_name_offset != std::string::npos);
+    def.short_name_size = short_name.size();
+  } else {
+    ReflectMember(visitor, "short_name_offset", def.short_name_offset);
+    ReflectMember(visitor, "short_name_size", def.short_name_size);
+  }
+}
+
+template <typename Def>
+void ReflectShortName(Writer& visitor, Def& def) {
+  if (gTestOutputMode) {
+    std::string short_name =
+        def.detailed_name.substr(def.short_name_offset, def.short_name_size);
+    ReflectMember(visitor, "short_name", short_name);
+  } else {
+    ReflectMember(visitor, "short_name_offset", def.short_name_offset);
+    ReflectMember(visitor, "short_name_size", def.short_name_size);
+  }
+}
+
+template <typename Def>
+void ReflectShortName(MessagePackWriter& visitor, Def& def) {
+}
+
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
-  REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
+  ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("kind", value.def.kind);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
@@ -193,8 +222,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
-  REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
+  ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("storage", value.def.storage);
   ReflectHoverAndComments(visitor, value.def);
@@ -216,8 +244,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
-  REFLECT_MEMBER2("short_name_offset", value.def.short_name_offset);
-  REFLECT_MEMBER2("short_name_size", value.def.short_name_size);
+  ReflectShortName(visitor, value.def);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
