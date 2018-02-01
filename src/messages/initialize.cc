@@ -17,7 +17,6 @@
 // TODO Cleanup global variables
 extern std::string g_init_options;
 int g_index_comments;
-bool g_index_make_unique;
 
 namespace {
 
@@ -504,7 +503,6 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
         }
 
         g_index_comments = config->index.comments;
-        g_index_make_unique = config->index.attributeMakeCallsToCtor;
         if (config->cacheDirectory.empty()) {
           LOG_S(ERROR) << "cacheDirectory cannot be empty.";
           exit(1);

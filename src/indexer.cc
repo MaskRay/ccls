@@ -20,7 +20,6 @@
 
 // Defined in command_line.cc
 extern bool g_debug;
-extern bool g_index_make_unique;
 
 namespace {
 
@@ -237,6 +236,8 @@ struct ConstructorCache {
 };
 
 struct IndexParam {
+  Config* config = nullptr;
+
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
   FileContentsMap file_contents;
@@ -256,8 +257,8 @@ struct IndexParam {
   NamespaceHelper ns;
   ConstructorCache ctors;
 
-  IndexParam(ClangTranslationUnit* tu, FileConsumer* file_consumer)
-      : tu(tu), file_consumer(file_consumer) {}
+  IndexParam(Config* config, ClangTranslationUnit* tu, FileConsumer* file_consumer)
+      : config(config), tu(tu), file_consumer(file_consumer) {}
 };
 
 IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
@@ -1967,7 +1968,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       bool is_template = ref->referencedEntity->templateKind !=
                          CXIdxEntityCXXTemplateKind::CXIdxEntity_NonTemplate;
-      if (g_index_make_unique && is_template &&
+      if (param->config->index.attributeMakeCallsToCtor && is_template &&
           str_begin("make", ref->referencedEntity->name)) {
         // Try to find the return type of called function. That type will have
         // the constructor function we add a usage to.
@@ -2099,11 +2100,12 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
   if (dump_ast)
     Dump(clang_getTranslationUnitCursor(tu->cx_tu));
 
-  return ParseWithTu(file_consumer_shared, perf, tu.get(), index, file, args,
-                     unsaved_files);
+  return ParseWithTu(config, file_consumer_shared, perf, tu.get(), index, file,
+                     args, unsaved_files);
 }
 
 optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
+    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
@@ -2126,7 +2128,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
   callback.indexEntityReference = &OnIndexReference;
 
   FileConsumer file_consumer(file_consumer_shared, file);
-  IndexParam param(tu, &file_consumer);
+  IndexParam param(config, tu, &file_consumer);
   for (const CXUnsavedFile& contents : file_contents) {
     param.file_contents[contents.Filename] = FileContents(
         contents.Filename, std::string(contents.Contents, contents.Length));

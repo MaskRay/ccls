@@ -26,6 +26,7 @@ struct ImportPipelineStatus {
 };
 
 void IndexWithTuFromCodeCompletion(
+    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,

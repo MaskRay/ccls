@@ -188,11 +188,14 @@ void RunQueryDbThread(const std::string& bin_name,
 
   ClangCompleteManager clang_complete(
       config, &project, &working_files,
-      std::bind(&EmitDiagnostics, &working_files, std::placeholders::_1,
-                std::placeholders::_2),
-      std::bind(&IndexWithTuFromCodeCompletion, &file_consumer_shared,
-                std::placeholders::_1, std::placeholders::_2,
-                std::placeholders::_3, std::placeholders::_4));
+      [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
+        EmitDiagnostics(&working_files, path, diagnostics);
+      },
+      [&](ClangTranslationUnit* tu, const std::vector<CXUnsavedFile>& unsaved,
+          const std::string& path, const std::vector<std::string>& args) {
+        IndexWithTuFromCodeCompletion(config, &file_consumer_shared, tu,
+                                      unsaved, path, args);
+      });
 
   IncludeComplete include_complete(config, &project);
   auto global_code_complete_cache = MakeUnique<CodeCompleteCache>();

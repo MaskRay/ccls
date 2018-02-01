@@ -521,6 +521,7 @@ ImportPipelineStatus::ImportPipelineStatus()
 // real-time indexing.
 // TODO: add option to disable this.
 void IndexWithTuFromCodeCompletion(
+    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
@@ -530,8 +531,8 @@ void IndexWithTuFromCodeCompletion(
 
   PerformanceImportFile perf;
   ClangIndex index;
-  auto indexes = ParseWithTu(file_consumer_shared, &perf, tu, &index, path,
-                             args, file_contents);
+  auto indexes = ParseWithTu(config, file_consumer_shared, &perf, tu, &index,
+                             path, args, file_contents);
   if (!indexes)
     return;
 
