@@ -39,6 +39,7 @@ struct Range {
   explicit Range(const char* encoded);
 
   bool Contains(int line, int column) const;
+  Range RemovePrefix(Position position) const;
 
   std::string ToString();
 

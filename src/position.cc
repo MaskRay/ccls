@@ -104,6 +104,10 @@ bool Range::Contains(int line, int column) const {
   return false;
 }
 
+Range Range::RemovePrefix(Position position) const {
+  return {std::min(std::max(position, start), end), end};
+}
+
 std::string Range::ToString() {
   // Output looks like this:
   //

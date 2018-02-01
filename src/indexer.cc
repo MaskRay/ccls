@@ -1807,6 +1807,38 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 }
 
+// https://github.com/jacobdufault/cquery/issues/174
+// Type-dependent member access expressions do not have accurate spelling
+// ranges.
+//
+// Not type dependent
+// C<int> f; f.x // .x produces a MemberRefExpr which has a spelling range
+// of `x`.
+//
+// Type dependent
+// C<T> e; e.x // .x produces a MemberRefExpr which has a spelling range
+// of `e` (weird) and an empty spelling name.
+//
+// To attribute the use of `x` in `e.x`, we use cursor extent `e.x`
+// minus cursor spelling `e` minus the period.
+void CheckTypeDependentMemberRefExpr(Range& spell,
+                                     const ClangCursor& cursor,
+                                     IndexParam* param,
+                                     const IndexFile* db) {
+  if (cursor.get_kind() == CXCursor_MemberRefExpr &&
+      cursor.get_spelling().empty()) {
+    spell = cursor.get_extent().RemovePrefix(spell.end);
+    const FileContents& fc = param->file_contents[db->path];
+    optional<int> maybe_period = fc.ToOffset(spell.start);
+    if (maybe_period) {
+      int i = *maybe_period;
+      if (fc.content[i] == '.')
+        spell.start.column++;
+      // -> is likely unexposed.
+    }
+  }
+}
+
 void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   // TODO: Use clang_getFileUniqueID
   CXFile file;
@@ -1835,26 +1867,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_Variable:
     case CXIdxEntity_Field: {
       ClangCursor ref_cursor(ref->cursor);
-      // TODO https://github.com/jacobdufault/cquery/issues/174 Members of
-      // non-concrete template types do not have useful spelling ranges
-      // (likely unexposed).
-      //
-      // C<int> f; f.x // .x produces a MemberRefExpr which has a spelling range
-      // of `x`.
-      //
-      // C<T> e; e.x // .x produces a MemberRefExpr which has a spelling range
-      // of `e` (weird).
-      //
-      // To make `e.x` (MemberRefExpr with empty spelling name) able to find
-      // definition, We use cursor extent (larger than spelling range) `e.x`. It
-      // would be better if we could restrict the ranges to `.x` or just `x`.
-      // Nevertheless, larger ranges are less specific, and should do no harm
-      // because they will be overriden by more specific variable references
-      // `e`.
-      Range loc = ref->cursor.kind == CXCursor_MemberRefExpr &&
-                          ref_cursor.get_spelling().empty()
-                      ? ref_cursor.get_extent()
-                      : ref_cursor.get_spelling_range();
+      Range loc = ref_cursor.get_spelling_range();
+      CheckTypeDependentMemberRefExpr(loc, ref_cursor, param, db);
 
       ClangCursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
@@ -1928,11 +1942,12 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // Extents have larger ranges and thus less specific, and will be
       // overriden by other functions if exist.
       //
-      // Members of non-concrete template types do not have useful spelling
+      // Type-dependent member ref expressions do not have useful spelling
       // ranges. See the comment above for the CXIdxEntity_Field case.
-      if (is_implicit || (ref->cursor.kind == CXCursor_MemberRefExpr &&
-                          ref_cursor.get_spelling().empty()))
+      if (is_implicit)
         loc = ref_cursor.get_extent();
+      else
+        CheckTypeDependentMemberRefExpr(loc, ref_cursor, param, db);
 
       OnIndexReference_Function(db, loc, ref->container->cursor, called_id,
                                 called, is_implicit);
