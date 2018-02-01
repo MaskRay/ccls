@@ -128,6 +128,23 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           continue;  // applies to for loop
         kind = func->def->kind;
         detailed_name = short_name;
+
+        // Check whether the function name is actually there.
+        // If not, do not publish the semantic highlight.
+        // E.g. copy-initialization of constructors should not be highlighted
+        // but we still want to keep the range for jumping to definition.
+        std::string_view concise_name =
+            detailed_name.substr(0, detailed_name.find('<'));
+        int16_t start_line = sym.loc.range.start.line;
+        int16_t start_col = sym.loc.range.start.column;
+        if (start_line >= 0 && start_line < working_file->index_lines.size()) {
+          std::string_view line = working_file->index_lines[start_line];
+          sym.loc.range.end.line = start_line;
+          if (line.compare(start_col, concise_name.size(), concise_name) == 0)
+            sym.loc.range.end.column = start_col + concise_name.size();
+          else
+            continue;  // applies to for loop
+        }
         break;
       }
       case SymbolKind::Var: {
