@@ -202,10 +202,10 @@ enum class lsSymbolKind : int {
 MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
 
 struct lsSymbolInformation {
-  std::string name;
+  std::string_view name;
   lsSymbolKind kind;
   lsLocation location;
-  std::string containerName;
+  std::string_view containerName;
 };
 MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
 

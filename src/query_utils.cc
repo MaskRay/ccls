@@ -439,8 +439,10 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name =
-        use_short_name ? std::string(type.def->ShortName()) : type.def->detailed_name;
+      if (use_short_name)
+        info.name = type.def->ShortName();
+      else
+        info.name = type.def->detailed_name;
       if (type.def->detailed_name != type.def->ShortName())
         info.containerName = type.def->detailed_name;
       // TODO ClangSymbolKind -> lsSymbolKind
@@ -460,8 +462,10 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name =
-        use_short_name ? std::string(func.def->ShortName()) : func.def->detailed_name;
+      if (use_short_name)
+        info.name = func.def->ShortName();
+      else
+        info.name = func.def->detailed_name;
       info.containerName = func.def->detailed_name;
       info.kind = lsSymbolKind::Function;
 
@@ -479,7 +483,10 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         return nullopt;
 
       lsSymbolInformation info;
-      info.name = use_short_name ? std::string(var.def->ShortName()) : var.def->detailed_name;
+      if (use_short_name)
+        info.name = var.def->ShortName();
+      else
+        info.name = var.def->detailed_name;
       info.containerName = var.def->detailed_name;
       info.kind = lsSymbolKind::Variable;
       return info;
