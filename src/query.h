@@ -363,8 +363,8 @@ MAKE_HASHABLE(NormalizedPath, t.path);
 struct QueryDatabase {
   // Indicies between lookup vectors are related to symbols, ie, index 5 in
   // |detailed_names| matches index 5 in |symbols|.
-  std::vector<std::string_view> detailed_names;
-  std::vector<std::string_view> short_names;
+  std::vector<std::string> detailed_names;
+  std::vector<std::string> short_names;
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage. Accessible via SymbolIdx instances.
@@ -390,8 +390,8 @@ struct QueryDatabase {
   void UpdateDetailedNames(size_t* qualified_name_index,
                            SymbolKind kind,
                            size_t symbol_index,
-                           std::string_view short_name,
-                           std::string_view detailed_name);
+                           const std::string& short_name,
+                           const std::string& detailed_name);
 
   // Query the indexing structure to look up symbol id for given Usr.
   optional<QueryFileId> GetQueryFileIdFromPath(const std::string& path);

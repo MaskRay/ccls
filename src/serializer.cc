@@ -119,7 +119,10 @@ void Reflect(Reader&, std::string_view&) {
   assert(0);
 }
 void Reflect(Writer& visitor, std::string_view& data) {
-  visitor.String(&data[0], (rapidjson::SizeType)data.size());
+  if (data.empty())
+    visitor.String("");
+  else
+    visitor.String(&data[0], (rapidjson::SizeType)data.size());
 }
 
 

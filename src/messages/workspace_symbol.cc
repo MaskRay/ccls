@@ -124,8 +124,8 @@ gap_penalty(k+1, j) + score[j] : k < j))
 The first dimension can be suppressed since we do not need a matching scheme,
 which reduces the space complexity from O(N*M) to O(M)
 */
-int FuzzyEvaluate(std::string_view pattern,
-                  std::string_view str,
+int FuzzyEvaluate(const std::string& pattern,
+                  const std::string& str,
                   std::vector<int>& score,
                   std::vector<int>& dp) {
   bool pfirst = true,  // aligning the first character of pattern
@@ -204,7 +204,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     for (int i = 0; i < db->detailed_names.size(); ++i) {
       if (db->detailed_names[i].find(query) != std::string::npos) {
         // Do not show the same entry twice.
-        if (!inserted_results.insert(std::string(db->detailed_names[i])).second)
+        if (!inserted_results.insert(db->detailed_names[i]).second)
           continue;
 
         if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
@@ -227,7 +227,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       for (int i = 0; i < db->short_names.size(); ++i) {
         if (SubsequenceMatch(query_without_space, db->short_names[i])) {
           // Do not show the same entry twice.
-          if (!inserted_results.insert(std::string(db->detailed_names[i])).second)
+          if (!inserted_results.insert(db->detailed_names[i]).second)
             continue;
 
           if (InsertSymbolIntoResult(db, working_files, db->symbols[i],

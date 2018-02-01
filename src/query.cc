@@ -943,8 +943,8 @@ void QueryDatabase::ImportOrUpdate(
 void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index,
                                         SymbolKind kind,
                                         size_t symbol_index,
-                                        std::string_view short_name,
-                                        std::string_view detailed_name) {
+                                        const std::string& short_name,
+                                        const std::string& detailed_name) {
   if (*qualified_name_index == -1) {
     short_names.push_back(short_name);
     detailed_names.push_back(detailed_name);
