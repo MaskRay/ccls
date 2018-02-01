@@ -282,19 +282,36 @@ std::vector<FileContents> PreloadFileContents(
   // TODO: We might be able to optimize perf by only copying for files in
   //       working_files. We can pass that same set of files to the indexer as
   //       well. We then default to a fast file-copy if not in working set.
-  bool loaded_entry = false;
-  std::vector<FileContents> file_contents;
-  cache_manager->IterateLoadedCaches([&](IndexFile* index) {
-    optional<std::string> index_content = ReadContent(index->path);
-    if (!index_content) {
-      LOG_S(ERROR) << "Failed to load index content for " << index->path;
-      return;
+
+  // index->file_contents comes from cache, so we need to check if that cache is
+  // still valid. if so, we can use it, otherwise we need to load from disk.
+  auto get_latest_content = [](const std::string& path, int64_t cached_time,
+                               const std::string& cached) {
+    optional<int64_t> mod_time = GetLastModificationTime(path);
+    if (!mod_time)
+      return std::string("");
+
+    if (*mod_time == cached_time)
+      return cached;
+
+    optional<std::string> fresh_content = ReadContent(path);
+    if (!fresh_content) {
+      LOG_S(ERROR) << "Failed to load content for " << path;
+      return std::string("");
     }
-    file_contents.push_back(FileContents(index->path, *index_content));
-    loaded_entry = loaded_entry || index->path == entry.filename;
+    return *fresh_content;
+  };
+
+  std::vector<FileContents> file_contents;
+  file_contents.push_back(FileContents(entry.filename, entry_contents));
+  cache_manager->IterateLoadedCaches([&](IndexFile* index) {
+    if (index->path == entry.filename)
+      return;
+    file_contents.push_back(FileContents(
+        index->path,
+        get_latest_content(index->path, index->last_modification_time,
+                           index->file_contents)));
   });
-  if (!loaded_entry)
-    file_contents.push_back(FileContents(entry.filename, entry_contents));
 
   return file_contents;
 }
