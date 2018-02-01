@@ -490,13 +490,12 @@ void SetVarDetail(IndexVar* var,
     CXType enum_type = clang_getCanonicalType(
         clang_getEnumDeclIntegerType(semanticContainer->cursor));
     std::string hover = qualified_name + " = ";
-    if (enum_type.kind == CXType_Int || enum_type.kind == CXType_Long ||
-        enum_type.kind == CXType_LongLong)
-      hover += std::to_string(clang_getEnumConstantDeclValue(cursor.cx_cursor));
-    else if (enum_type.kind == CXType_UInt || enum_type.kind == CXType_ULong ||
-             enum_type.kind == CXType_ULongLong)
+    if (enum_type.kind == CXType_UInt || enum_type.kind == CXType_ULong ||
+        enum_type.kind == CXType_ULongLong)
       hover += std::to_string(
           clang_getEnumConstantDeclUnsignedValue(cursor.cx_cursor));
+    else
+      hover += std::to_string(clang_getEnumConstantDeclValue(cursor.cx_cursor));
     def.detailed_name = std::move(qualified_name);
     def.hover = hover;
   } else {

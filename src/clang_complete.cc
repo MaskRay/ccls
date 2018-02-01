@@ -160,6 +160,11 @@ void BuildDetailString(CXCompletionString completion_string,
                        std::vector<std::string>* parameters,
                        bool include_snippets) {
   int num_chunks = clang_getNumCompletionChunks(completion_string);
+  auto append = [&](const char* text) {
+    detail += text;
+    if (do_insert)
+      insert += text;
+  };
   for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind =
         clang_getCompletionChunkKind(completion_string, i);
@@ -224,71 +229,23 @@ void BuildDetailString(CXCompletionString completion_string,
         break;
       }
 
-      case CXCompletionChunk_LeftParen:
-        detail += "(";
-        if (do_insert)
-          insert += "(";
-        break;
-      case CXCompletionChunk_RightParen:
-        detail += ")";
-        if (do_insert)
-          insert += ")";
-        break;
-      case CXCompletionChunk_LeftBracket:
-        detail += "[";
-        if (do_insert)
-          insert += "[";
-        break;
-      case CXCompletionChunk_RightBracket:
-        detail += "]";
-        if (do_insert)
-          insert += "]";
-        break;
-      case CXCompletionChunk_LeftBrace:
-        detail += "{";
-        if (do_insert)
-          insert += "{";
-        break;
-      case CXCompletionChunk_RightBrace:
-        detail += "}";
-        if (do_insert)
-          insert += "}";
-        break;
-      case CXCompletionChunk_LeftAngle:
-        detail += "<";
-        if (do_insert)
-          insert += "<";
-        break;
-      case CXCompletionChunk_RightAngle:
-        detail += ">";
-        if (do_insert)
-          insert += ">";
-        break;
-      case CXCompletionChunk_Comma:
-        detail += ", ";
-        if (do_insert)
-          insert += ", ";
-        break;
-      case CXCompletionChunk_Colon:
-        detail += ":";
-        if (do_insert)
-          insert += ":";
-        break;
-      case CXCompletionChunk_SemiColon:
-        detail += ";";
-        if (do_insert)
-          insert += ";";
-        break;
-      case CXCompletionChunk_Equal:
-        detail += "=";
-        if (do_insert)
-          insert += "=";
-        break;
+      // clang-format off
+      case CXCompletionChunk_LeftParen: append("("); break;
+      case CXCompletionChunk_RightParen: append(")"); break;
+      case CXCompletionChunk_LeftBracket: append("["); break;
+      case CXCompletionChunk_RightBracket: append("]"); break;
+      case CXCompletionChunk_LeftBrace: append("{"); break;
+      case CXCompletionChunk_RightBrace: append("}"); break;
+      case CXCompletionChunk_LeftAngle: append("<"); break;
+      case CXCompletionChunk_RightAngle: append(">"); break;
+      case CXCompletionChunk_Comma: append(", "); break;
+      case CXCompletionChunk_Colon: append(":"); break;
+      case CXCompletionChunk_SemiColon: append(";"); break;
+      case CXCompletionChunk_Equal: append("="); break;
+      // clang-format on
       case CXCompletionChunk_HorizontalSpace:
       case CXCompletionChunk_VerticalSpace:
-        detail += " ";
-        if (do_insert)
-          insert += " ";
+        append(" ");
         break;
     }
   }
