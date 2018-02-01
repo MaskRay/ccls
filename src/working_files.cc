@@ -44,7 +44,7 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
 // If the distance is larger than threshold, returns threshould + 1.
 int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
   assert(threshold <= kMaxDiff);
-  static int v_static[kMaxDiff + 2];
+  static int v_static[2 * kMaxColumnAlignSize + 2];
   const char *ea = a + la, *eb = b + lb;
   // Strip prefix
   for (; a < ea && b < eb && *a == *b; a++, b++) {
@@ -54,6 +54,9 @@ int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
   }
   la = int(ea - a);
   lb = int(eb - b);
+  // If the sum of lengths exceeds what we can handle, return a lower bound.
+  if (la + lb > 2 * kMaxColumnAlignSize)
+    return std::min(abs(la - lb), threshold + 1);
 
   int* v = v_static + lb;
   v[1] = 0;
