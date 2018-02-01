@@ -52,6 +52,10 @@ std::string Trim(std::string s) {
   TrimInPlace(s);
   return s;
 }
+void RemoveLastCR(std::string& s) {
+  if (!s.empty() && *s.rbegin() == '\r')
+    s.pop_back();
+}
 
 uint64_t HashUsr(const std::string& s) {
   return HashUsr(s.c_str(), s.size());
@@ -334,6 +338,8 @@ std::vector<std::string> ToLines(const std::string& content,
   while (getline(lines, line)) {
     if (trim_whitespace)
       TrimInPlace(line);
+    else
+      RemoveLastCR(line);
     result.push_back(line);
   }
 
