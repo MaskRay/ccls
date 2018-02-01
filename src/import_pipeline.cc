@@ -286,10 +286,10 @@ std::vector<FileContents> PreloadFileContents(
   // index->file_contents comes from cache, so we need to check if that cache is
   // still valid. if so, we can use it, otherwise we need to load from disk.
   auto get_latest_content = [](const std::string& path, int64_t cached_time,
-                               const std::string& cached) {
+                               const std::string& cached) -> std::string {
     optional<int64_t> mod_time = GetLastModificationTime(path);
     if (!mod_time)
-      return std::string("");
+      return "";
 
     if (*mod_time == cached_time)
       return cached;
@@ -297,7 +297,7 @@ std::vector<FileContents> PreloadFileContents(
     optional<std::string> fresh_content = ReadContent(path);
     if (!fresh_content) {
       LOG_S(ERROR) << "Failed to load content for " << path;
-      return std::string("");
+      return "";
     }
     return *fresh_content;
   };
