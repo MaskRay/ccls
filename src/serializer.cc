@@ -123,12 +123,6 @@ void Reflect(Writer& visitor, std::string_view& data) {
 }
 
 
-// ReflectMember
-void ReflectMember(Writer& visitor, const char* name, std::string& value) {
-  visitor.Key(name);
-  Reflect(visitor, value);
-}
-
 // TODO: Move this to indexer.cc
 void Reflect(Reader& visitor, IndexInclude& value) {
   REFLECT_MEMBER_START();
@@ -188,10 +182,6 @@ void ReflectShortName(Writer& visitor, Def& def) {
     ReflectMember(visitor, "short_name_offset", def.short_name_offset);
     ReflectMember(visitor, "short_name_size", def.short_name_size);
   }
-}
-
-template <typename Def>
-void ReflectShortName(MessagePackWriter& visitor, Def& def) {
 }
 
 template <typename TVisitor>

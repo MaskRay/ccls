@@ -339,8 +339,6 @@ void ReflectMember(Writer& visitor, const char* name, T& value) {
   Reflect(visitor, value);
 }
 
-void ReflectMember(Writer& visitor, const char* name, std::string& value);
-
 // API
 
 std::string Serialize(SerializeFormat format, IndexFile& file);
