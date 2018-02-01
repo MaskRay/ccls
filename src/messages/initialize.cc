@@ -504,7 +504,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
         }
 
         g_index_comments = config->index.comments;
-        g_index_make_unique = config->index.make_unique;
+        g_index_make_unique = config->index.attributeMakeCallsToCtor;
         if (config->cacheDirectory.empty()) {
           LOG_S(ERROR) << "cacheDirectory cannot be empty.";
           exit(1);

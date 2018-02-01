@@ -146,9 +146,13 @@ struct Config {
     // - https://github.com/autozimu/LanguageClient-neovim/issues/224
     int comments = 2;
 
-    // A hack to convert calls of make_shared/make_unique and other |Make|
-    // variants to constructor calls.
-    bool make_unique = false;
+    // Attempt to convert calls of make* functions to constructors based on
+    // hueristics.
+    //
+    // For example, this will show constructor calls for std::make_unique
+    // invocations. Specifically, cquery will try to attribute a ctor call
+    // whenever the function name starts with make (ignoring case).
+    bool attributeMakeCallsToCtor = true;
   };
   Index index;
 
@@ -159,7 +163,7 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort);
-MAKE_REFLECT_STRUCT(Config::Index, comments, make_unique);
+MAKE_REFLECT_STRUCT(Config::Index, comments, attributeMakeCallsToCtor);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,
