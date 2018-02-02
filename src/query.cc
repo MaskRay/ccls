@@ -790,7 +790,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
     case SymbolKind::Type: {
       for (const Usr& usr : to_remove) {
         QueryType& type = types[usr_to_type[usr].id];
-        RemoveSymbol(type.detailed_name_idx);
+        if (type.symbol_idx != size_t(-1))
+          symbols[type.symbol_idx].kind = SymbolKind::Invalid;
         type.def = nullopt;
       }
       break;
@@ -798,7 +799,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
     case SymbolKind::Func: {
       for (const Usr& usr : to_remove) {
         QueryFunc& func = funcs[usr_to_func[usr].id];
-        RemoveSymbol(func.detailed_name_idx);
+        if (func.symbol_idx != size_t(-1))
+          symbols[func.symbol_idx].kind = SymbolKind::Invalid;
         func.def = nullopt;
       }
       break;
@@ -806,7 +808,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
     case SymbolKind::Var: {
       for (const Usr& usr : to_remove) {
         QueryVar& var = vars[usr_to_var[usr].id];
-        RemoveSymbol(var.detailed_name_idx);
+        if (var.symbol_idx != size_t(-1))
+          symbols[var.symbol_idx].kind = SymbolKind::Invalid;
         var.def = nullopt;
       }
       break;
@@ -868,8 +871,8 @@ void QueryDatabase::ImportOrUpdate(
     QueryFile& existing = files[it->second.id];
 
     existing.def = def.value;
-    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::File,
-                        it->second.id, def.value.path, def.value.path);
+    UpdateSymbols(&existing.symbol_idx, SymbolKind::File,
+                        it->second.id);
   }
 }
 
@@ -892,9 +895,8 @@ void QueryDatabase::ImportOrUpdate(
       continue;
 
     existing.def = def.value;
-    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Type,
-                        it->second.id, std::string(def.value.ShortName()),
-                        def.value.detailed_name);
+    UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
+                        it->second.id);
   }
 }
 
@@ -917,9 +919,8 @@ void QueryDatabase::ImportOrUpdate(
       continue;
 
     existing.def = def.value;
-    UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Func,
-                        it->second.id, std::string(def.value.ShortName()),
-                        def.value.detailed_name);
+    UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
+                        it->second.id);
   }
 }
 
@@ -943,34 +944,68 @@ void QueryDatabase::ImportOrUpdate(
 
     existing.def = def.value;
     if (!def.value.is_local())
-      UpdateDetailedNames(&existing.detailed_name_idx, SymbolKind::Var,
-                          it->second.id, std::string(def.value.ShortName()),
-                          def.value.detailed_name);
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
+                          it->second.id);
   }
 }
 
-void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index,
-                                        SymbolKind kind,
-                                        size_t symbol_index,
-                                        const std::string& short_name,
-                                        const std::string& detailed_name) {
-  if (*qualified_name_index == -1) {
-    short_names.push_back(short_name);
-    detailed_names.push_back(detailed_name);
-    symbols.push_back(SymbolIdx(kind, symbol_index));
-    *qualified_name_index = detailed_names.size() - 1;
-  } else {
-    short_names[*qualified_name_index] = short_name;
-    detailed_names[*qualified_name_index] = detailed_name;
+void QueryDatabase::UpdateSymbols(size_t* symbol_idx,
+                                  SymbolKind kind,
+                                  size_t idx) {
+  if (*symbol_idx == -1) {
+    *symbol_idx = symbols.size();
+    symbols.push_back(SymbolIdx(kind, idx));
   }
 }
 
-void QueryDatabase::RemoveSymbol(size_t idx) {
-  if (idx != size_t(-1)) {
-    symbols[idx].kind = SymbolKind::Invalid;
-    short_names[idx].clear();
-    detailed_names[idx].clear();
+std::string_view QueryDatabase::GetSymbolDetailedName(size_t symbol_idx) const {
+  size_t idx = symbols[symbol_idx].idx;
+  switch (symbols[symbol_idx].kind) {
+    default:
+      break;
+    case SymbolKind::File:
+      if (files[idx].def)
+        return files[idx].def->path;
+      break;
+    case SymbolKind::Func:
+      if (funcs[idx].def)
+        return funcs[idx].def->detailed_name;
+      break;
+    case SymbolKind::Type:
+      if (types[idx].def)
+        return types[idx].def->detailed_name;
+      break;
+    case SymbolKind::Var:
+      if (vars[idx].def)
+        return vars[idx].def->detailed_name;
+      break;
   }
+  return "";
+}
+
+std::string_view QueryDatabase::GetSymbolShortName(size_t symbol_idx) const {
+  size_t idx = symbols[symbol_idx].idx;
+  switch (symbols[symbol_idx].kind) {
+    default:
+      break;
+    case SymbolKind::File:
+      if (files[idx].def)
+        return files[idx].def->path;
+      break;
+    case SymbolKind::Func:
+      if (funcs[idx].def)
+        return funcs[idx].def->ShortName();
+      break;
+    case SymbolKind::Type:
+      if (types[idx].def)
+        return types[idx].def->ShortName();
+      break;
+    case SymbolKind::Var:
+      if (vars[idx].def)
+        return vars[idx].def->ShortName();
+      break;
+  }
+  return "";
 }
 
 TEST_SUITE("query") {

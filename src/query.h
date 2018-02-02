@@ -211,7 +211,7 @@ struct QueryFile {
   using DefUpdate = WithFileContent<Def>;
 
   optional<Def> def;
-  size_t detailed_name_idx = (size_t)-1;
+  size_t symbol_idx = (size_t)-1;
 
   explicit QueryFile(const std::string& path) {
     def = Def();
@@ -241,7 +241,7 @@ struct QueryType {
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
-  size_t detailed_name_idx = (size_t)-1;
+  size_t symbol_idx = (size_t)-1;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
 };
@@ -262,7 +262,7 @@ struct QueryFunc {
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
-  size_t detailed_name_idx = (size_t)-1;
+  size_t symbol_idx = (size_t)-1;
 
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
 };
@@ -278,7 +278,7 @@ struct QueryVar {
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryLocation> uses;
-  size_t detailed_name_idx = (size_t)-1;
+  size_t symbol_idx = (size_t)-1;
 
   explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
@@ -361,10 +361,7 @@ MAKE_HASHABLE(NormalizedPath, t.path);
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
 struct QueryDatabase {
-  // Indicies between lookup vectors are related to symbols, ie, index 5 in
-  // |detailed_names| matches index 5 in |symbols|.
-  std::vector<std::string> detailed_names;
-  std::vector<std::string> short_names;
+  // All File/Func/Type/Var symbols.
   std::vector<SymbolIdx> symbols;
 
   // Raw data storage. Accessible via SymbolIdx instances.
@@ -387,12 +384,9 @@ struct QueryDatabase {
   void ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates);
-  void UpdateDetailedNames(size_t* qualified_name_index,
-                           SymbolKind kind,
-                           size_t symbol_index,
-                           const std::string& short_name,
-                           const std::string& detailed_name);
-  void RemoveSymbol(size_t idx);
+  void UpdateSymbols(size_t* symbol_idx, SymbolKind kind, size_t idx);
+  std::string_view GetSymbolDetailedName(size_t symbol_idx) const;
+  std::string_view GetSymbolShortName(size_t symbol_idx) const;
 
   // Query the indexing structure to look up symbol id for given Usr.
   optional<QueryFileId> GetQueryFileIdFromPath(const std::string& path);

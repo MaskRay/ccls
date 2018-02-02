@@ -124,8 +124,8 @@ gap_penalty(k+1, j) + score[j] : k < j))
 The first dimension can be suppressed since we do not need a matching scheme,
 which reduces the space complexity from O(N*M) to O(M)
 */
-int FuzzyEvaluate(const std::string& pattern,
-                  const std::string& str,
+int FuzzyEvaluate(std::string_view pattern,
+                  std::string_view str,
                   std::vector<int>& score,
                   std::vector<int>& dp) {
   bool pfirst = true,  // aligning the first character of pattern
@@ -181,7 +181,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     Out_WorkspaceSymbol out;
     out.id = request->id;
 
-    LOG_S(INFO) << "[querydb] Considering " << db->detailed_names.size()
+    LOG_S(INFO) << "[querydb] Considering " << db->symbols.size()
                 << " candidates for query " << request->params.query;
 
     std::string query = request->params.query;
@@ -201,10 +201,11 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     // detailed_names.
 
     // Find exact substring matches.
-    for (int i = 0; i < db->detailed_names.size(); ++i) {
-      if (db->detailed_names[i].find(query) != std::string::npos) {
+    for (int i = 0; i < db->symbols.size(); ++i) {
+      std::string_view detailed_name = db->GetSymbolDetailedName(i);
+      if (detailed_name.find(query) != std::string::npos) {
         // Do not show the same entry twice.
-        if (!inserted_results.insert(db->detailed_names[i]).second)
+        if (!inserted_results.insert(std::string(detailed_name)).second)
           continue;
 
         if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
@@ -224,10 +225,10 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
         if (!isspace(c))
           query_without_space += c;
 
-      for (int i = 0; i < db->short_names.size(); ++i) {
-        if (SubsequenceMatch(query_without_space, db->short_names[i])) {
+      for (int i = 0; i < db->symbols.size(); ++i) {
+        if (SubsequenceMatch(query_without_space, db->GetSymbolShortName(i))) {
           // Do not show the same entry twice.
-          if (!inserted_results.insert(db->detailed_names[i]).second)
+          if (!inserted_results.insert(std::string(db->GetSymbolDetailedName(i))).second)
             continue;
 
           if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
@@ -244,7 +245,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
       for (int i : result_indices)
-        longest = std::max(longest, int(db->short_names[i].size()));
+        longest = std::max(longest, int(db->GetSymbolShortName(i).size()));
 
       std::vector<int> score(longest);  // score for each position
       std::vector<int> dp(
@@ -252,7 +253,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
-            FuzzyEvaluate(query, db->short_names[result_indices[i]], score, dp),
+          FuzzyEvaluate(query, db->GetSymbolShortName(result_indices[i]), score, dp),
             i};
       }
       std::sort(permutation.begin(), permutation.end(),
