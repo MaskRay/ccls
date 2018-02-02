@@ -795,8 +795,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
     case SymbolKind::Type: {
       for (const Usr& usr : to_remove) {
         QueryType& type = types[usr_to_type[usr].id];
-        if (type.symbol_idx != size_t(-1))
-          symbols[type.symbol_idx].kind = SymbolKind::Invalid;
+        if (type.symbol_idx)
+          symbols[type.symbol_idx->id].kind = SymbolKind::Invalid;
         type.def = nullopt;
       }
       break;
@@ -804,8 +804,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
     case SymbolKind::Func: {
       for (const Usr& usr : to_remove) {
         QueryFunc& func = funcs[usr_to_func[usr].id];
-        if (func.symbol_idx != size_t(-1))
-          symbols[func.symbol_idx].kind = SymbolKind::Invalid;
+        if (func.symbol_idx)
+          symbols[func.symbol_idx->id].kind = SymbolKind::Invalid;
         func.def = nullopt;
       }
       break;
@@ -813,8 +813,8 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
     case SymbolKind::Var: {
       for (const Usr& usr : to_remove) {
         QueryVar& var = vars[usr_to_var[usr].id];
-        if (var.symbol_idx != size_t(-1))
-          symbols[var.symbol_idx].kind = SymbolKind::Invalid;
+        if (var.symbol_idx)
+          symbols[var.symbol_idx->id].kind = SymbolKind::Invalid;
         var.def = nullopt;
       }
       break;
@@ -954,11 +954,11 @@ void QueryDatabase::ImportOrUpdate(
   }
 }
 
-void QueryDatabase::UpdateSymbols(size_t* symbol_idx,
+void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                                   SymbolKind kind,
                                   size_t idx) {
-  if (*symbol_idx == -1) {
-    *symbol_idx = symbols.size();
+  if (!symbol_idx->has_value()) {
+    *symbol_idx = Id<void>(symbols.size());
     symbols.push_back(SymbolIdx(kind, idx));
   }
 }

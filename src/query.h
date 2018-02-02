@@ -213,7 +213,7 @@ struct QueryFile {
   using DefUpdate = WithFileContent<Def>;
 
   optional<Def> def;
-  size_t symbol_idx = (size_t)-1;
+  Maybe<Id<void>> symbol_idx;
 
   explicit QueryFile(const std::string& path) {
     def = Def();
@@ -243,7 +243,7 @@ struct QueryType {
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
-  size_t symbol_idx = (size_t)-1;
+  Maybe<Id<void>> symbol_idx;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
 };
@@ -264,7 +264,7 @@ struct QueryFunc {
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
-  size_t symbol_idx = (size_t)-1;
+  Maybe<Id<void>> symbol_idx;
 
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
 };
@@ -280,7 +280,7 @@ struct QueryVar {
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryLocation> uses;
-  size_t symbol_idx = (size_t)-1;
+  Maybe<Id<void>> symbol_idx;
 
   explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
@@ -386,7 +386,7 @@ struct QueryDatabase {
   void ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates);
-  void UpdateSymbols(size_t* symbol_idx, SymbolKind kind, size_t idx);
+  void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, size_t idx);
   std::string_view GetSymbolDetailedName(size_t symbol_idx) const;
   std::string_view GetSymbolShortName(size_t symbol_idx) const;
 

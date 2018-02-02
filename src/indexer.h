@@ -42,6 +42,8 @@ struct Id {
 
   Id() : id(-1) {}  // Needed for containers and Maybe<Id>. Do not use directly.
   explicit Id(size_t id) : id(id) {}
+  template <typename U>
+  explicit Id(Id<U> o) : id(o.id) {}
 
   // Needed for google::dense_hash_map.
   explicit operator size_t() const { return id; }
