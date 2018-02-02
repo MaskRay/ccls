@@ -90,7 +90,7 @@ def options(opt):
                  help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 4.0.0 5.0.1')
   grp.add_option('--llvm-config', dest='llvm_config',
                  help='path to llvm-config to use system libclang, e.g. llvm-config llvm-config-6.0')
-  grp.add_option('--clang-prefix', dest='clang_prefix', default='',
+  grp.add_option('--clang-prefix', dest='clang_prefix',
                  help='enable fallback configuration method by specifying a clang installation prefix (e.g. /opt/llvm)')
   grp.add_option('--variant', default='release',
                  help='variant name for saving configuration and build results. Variants other than "debug" turn on -O3')
@@ -196,6 +196,14 @@ def configure(ctx):
     # Ask llvm-config for cflags and ldflags
     ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
 
+    if len(ctx.options.llvm_config):
+      ctx.env.rpath = [str(subprocess.check_output(
+        [ctx.options.llvm_config, '--libdir'],
+        stderr=subprocess.STDOUT).decode()).strip()]
+    else:
+      # If `--llvm-config=` (empty)
+      ctx.env.rpath = []
+
     if ctx.options.clang_prefix:
       ctx.start_msg('Checking for clang prefix')
       prefix = ctx.root.find_node(ctx.options.clang_prefix)
@@ -216,15 +224,6 @@ def configure(ctx):
       # using the provided info so far.
       ctx.check_cxx(lib=libname('clang'), uselib_store='clang', use='clang')
 
-    # If the user passed `--llvm-config=` (setting `llvm-config` to
-    # the empty string) to the configure phase, we should not try to
-    # run it.
-    if len(ctx.options.llvm_config):
-      ctx.env.rpath = [str(subprocess.check_output(
-        [ctx.options.llvm_config, '--libdir'],
-        stderr=subprocess.STDOUT).decode()).strip()]
-    else:
-      ctx.env.rpath = []
 
     # Use CXX set by --check-cxx-compiler if it is "clang".
     # See https://github.com/jacobdufault/cquery/issues/237
@@ -320,7 +319,7 @@ def configure(ctx):
   ctx.msg('Clang library dir', ctx.env.LIBPATH_clang)
 
 def build(bld):
-  cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc'])
+  cc_files = bld.path.ant_glob(['src/*.cc', 'src/messages/*.cc', 'third_party/*.cc'])
   if bld.env['use_clang_cxx']:
     cc_files += bld.path.ant_glob(['src/clang_cxx/*.cc'])
 
@@ -364,13 +363,10 @@ def build(bld):
 
     lib.append('ncurses')
 
-  # FIXME Figure out how to mix C and C++ source files and change it back to .c
-  bld.objects(name='siphash', source='third_party/siphash.cc')
-
   # https://waf.io/apidocs/tools/c_aliases.html#waflib.Tools.c_aliases.program
   bld.program(
       source=cc_files,
-      use=['clang', 'siphash'],
+      use=['clang'],
       includes=[
         'src/',
         'third_party/',
@@ -392,10 +388,9 @@ def build(bld):
       rpath=bld.env.rpath,
       target='bin/cquery')
 
-  #from IPython import embed; embed()
-  if sys.platform != 'win32':
+  if bld.cmd == 'install' and 'clang_tarball_name' in bld.env:
     clang_tarball_name = bld.env.clang_tarball_name
-    if bld.cmd == 'install':
+    if sys.platform != 'win32':
       bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
       # TODO This may be cached and cannot be re-triggered. Use proper shell escape.
       bld(rule='rsync -rtR {}/./lib/{}/lib/clang/*/include {}/'.format(bld.path.get_bld(), clang_tarball_name, bld.env['PREFIX']))
