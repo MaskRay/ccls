@@ -233,18 +233,18 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   for (const IndexType& type : indexed.types) {
     if (type.def.definition_spelling.has_value())
       add_all_symbols(id_map.ToSymbol(type.id), SymbolRole::Definition,
-                      type.def.definition_spelling.value());
+                      *type.def.definition_spelling);
     if (type.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(type.id), type.def.definition_extent.value());
+      add_outline(id_map.ToSymbol(type.id), *type.def.definition_extent);
     for (const Range& use : type.uses)
       add_all_symbols(id_map.ToSymbol(type.id), SymbolRole::Reference, use);
   }
   for (const IndexFunc& func : indexed.funcs) {
     if (func.def.definition_spelling.has_value())
       add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Definition,
-                      func.def.definition_spelling.value());
+                      *func.def.definition_spelling);
     if (func.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(func.id), func.def.definition_extent.value());
+      add_outline(id_map.ToSymbol(func.id), *func.def.definition_extent);
     for (const IndexFunc::Declaration& decl : func.declarations) {
       add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Declaration,
                       decl.spelling);
@@ -271,9 +271,9 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   for (const IndexVar& var : indexed.vars) {
     if (var.def.definition_spelling.has_value())
       add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Definition,
-                      var.def.definition_spelling.value());
+                      *var.def.definition_spelling);
     if (var.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(var.id), var.def.definition_extent.value());
+      add_outline(id_map.ToSymbol(var.id), *var.def.definition_extent);
     for (const Range& decl : var.declarations) {
       add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Declaration, decl);
       add_outline(id_map.ToSymbol(var.id), decl);
@@ -356,6 +356,11 @@ inline optional<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 }
 
 }  // namespace
+
+template <>
+bool Maybe<QueryLocation>::has_value() const {
+  return storage.range.start.line >= 0;
+}
 
 optional<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {

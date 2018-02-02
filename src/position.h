@@ -1,11 +1,11 @@
 #pragma once
 
-#include <cassert>
-#include <cstdint>
-#include <string>
-
+#include "maybe.h"
 #include "serializer.h"
 #include "utils.h"
+
+#include <stdint.h>
+#include <string>
 
 struct Position {
   int16_t line;
@@ -48,6 +48,11 @@ struct Range {
   bool operator<(const Range& that) const;
 };
 MAKE_HASHABLE(Range, t.start, t.end);
+
+template <>
+bool Maybe<Position>::has_value() const;
+template <>
+bool Maybe<Range>::has_value() const;
 
 // Reflection
 void Reflect(Reader& visitor, Position& value);

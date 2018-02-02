@@ -8,6 +8,7 @@
 #include "file_consumer.h"
 #include "file_contents.h"
 #include "language_server_api.h"
+#include "maybe.h"
 #include "performance.h"
 #include "position.h"
 #include "serializer.h"
@@ -165,8 +166,8 @@ struct TypeDefDefinitionData {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  optional<Range> definition_spelling;
-  optional<Range> definition_extent;
+  Maybe<Range> definition_spelling;
+  Maybe<Range> definition_extent;
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
@@ -264,8 +265,8 @@ struct FuncDefDefinitionData {
   std::string detailed_name;
   std::string hover;
   std::string comments;
-  optional<Range> definition_spelling;
-  optional<Range> definition_extent;
+  Maybe<Range> definition_spelling;
+  Maybe<Range> definition_extent;
 
   // Type which declares this one (ie, it is a method)
   optional<TypeId> declaring_type;
@@ -390,8 +391,8 @@ struct VarDefDefinitionData {
   std::string comments;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
-  optional<Range> definition_spelling;
-  optional<Range> definition_extent;
+  Maybe<Range> definition_spelling;
+  Maybe<Range> definition_extent;
 
   // Type of the variable.
   optional<TypeId> variable_type;

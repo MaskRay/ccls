@@ -11,7 +11,7 @@ const char* SkipAfter(const char* input, char skip_after) {
 }
 }  // namespace
 
-Position::Position() : line(0), column(0) {}
+Position::Position() : line(-1), column(-1) {}
 
 Position::Position(int16_t line, int16_t column) : line(line), column(column) {}
 
@@ -144,6 +144,16 @@ bool Range::operator<(const Range& that) const {
   if (start != that.start)
     return start < that.start;
   return end < that.end;
+}
+
+template <>
+bool Maybe<Position>::has_value() const {
+  return storage.line >= 0;
+}
+
+template <>
+bool Maybe<Range>::has_value() const {
+  return storage.start.line >= 0;
 }
 
 // Position

@@ -57,6 +57,9 @@ struct hash<::SymbolKind> {
 };
 }  // namespace std
 
+template <>
+bool Maybe<QueryLocation>::has_value() const;
+
 struct SymbolIdx {
   SymbolKind kind;
   size_t idx;

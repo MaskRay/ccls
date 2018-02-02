@@ -1,5 +1,6 @@
 #pragma once
 
+#include "maybe.h"
 #include "port.h"
 
 #include <macro_map.h>
@@ -211,12 +212,41 @@ void Reflect(Writer& visitor, optional<T>& value) {
   else
     visitor.Null();
 }
+
+// The same as std::optional
+template <typename T>
+void Reflect(Reader& visitor, Maybe<T>& value) {
+  if (visitor.IsNull()) {
+    visitor.GetNull();
+    return;
+  }
+  T real_value;
+  Reflect(visitor, real_value);
+  value = real_value;
+}
+template <typename T>
+void Reflect(Writer& visitor, Maybe<T>& value) {
+  if (value)
+    Reflect(visitor, *value);
+  else
+    visitor.Null();
+}
+
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
   // For TypeScript optional property key?: value in the spec,
   // We omit both key and value if value is std::nullopt (null) for JsonWriter
   // to reduce output. But keep it for other serialization formats.
   if (value || visitor.Format() != SerializeFormat::Json) {
+    visitor.Key(name);
+    Reflect(visitor, value);
+  }
+}
+
+// The same as std::optional
+template <typename T>
+void ReflectMember(Writer& visitor, const char* name, Maybe<T>& value) {
+  if (value.has_value() || visitor.Format() != SerializeFormat::Json) {
     visitor.Key(name);
     Reflect(visitor, value);
   }

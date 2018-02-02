@@ -45,7 +45,7 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
       if (type.def)
-        return type.def->definition_spelling;
+        return *type.def->definition_spelling;
       break;
     }
     case SymbolKind::Func: {
