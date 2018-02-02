@@ -38,6 +38,8 @@ enum class ClangSymbolKind : uint8_t {
   Destructor,
   ConversionFunction,
 
+  // Used for both function and template parameters.
+  // Clients can differentiate based on StorageClass.
   Parameter = 25,
   Using,
 };

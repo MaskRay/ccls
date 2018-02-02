@@ -1197,6 +1197,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         if (ref_index->def.detailed_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
+          ref_index->def.kind = ClangSymbolKind::Parameter;
           SetVarDetail(ref_index, ref_cursor.get_spelling(), ref_cursor,
                        nullptr, true, db, data->param);
 
@@ -1252,6 +1253,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.detailed_name = ref_cursor.get_spelling();
           ref_index->def.short_name_offset = 0;
           ref_index->def.short_name_size = ref_index->def.detailed_name.size();
+          ref_index->def.kind = ClangSymbolKind::Parameter;
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
@@ -1273,6 +1275,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.detailed_name = ref_cursor.get_spelling();
           ref_index->def.short_name_offset = 0;
           ref_index->def.short_name_size = ref_index->def.detailed_name.size();
+          ref_index->def.kind = ClangSymbolKind::Parameter;
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
       }
