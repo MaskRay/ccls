@@ -392,6 +392,7 @@ struct QueryDatabase {
                            size_t symbol_index,
                            const std::string& short_name,
                            const std::string& detailed_name);
+  void RemoveSymbol(size_t idx);
 
   // Query the indexing structure to look up symbol id for given Usr.
   optional<QueryFileId> GetQueryFileIdFromPath(const std::string& path);

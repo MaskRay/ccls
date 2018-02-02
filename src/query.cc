@@ -788,18 +788,27 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
 
   switch (usr_kind) {
     case SymbolKind::Type: {
-      for (const Usr& usr : to_remove)
-        types[usr_to_type[usr].id].def = nullopt;
+      for (const Usr& usr : to_remove) {
+        QueryType& type = types[usr_to_type[usr].id];
+        RemoveSymbol(type.detailed_name_idx);
+        type.def = nullopt;
+      }
       break;
     }
     case SymbolKind::Func: {
-      for (const Usr& usr : to_remove)
-        funcs[usr_to_func[usr].id].def = nullopt;
+      for (const Usr& usr : to_remove) {
+        QueryFunc& func = funcs[usr_to_func[usr].id];
+        RemoveSymbol(func.detailed_name_idx);
+        func.def = nullopt;
+      }
       break;
     }
     case SymbolKind::Var: {
-      for (const Usr& usr : to_remove)
-        vars[usr_to_var[usr].id].def = nullopt;
+      for (const Usr& usr : to_remove) {
+        QueryVar& var = vars[usr_to_var[usr].id];
+        RemoveSymbol(var.detailed_name_idx);
+        var.def = nullopt;
+      }
       break;
     }
     case SymbolKind::File:
@@ -953,6 +962,14 @@ void QueryDatabase::UpdateDetailedNames(size_t* qualified_name_index,
   } else {
     short_names[*qualified_name_index] = short_name;
     detailed_names[*qualified_name_index] = detailed_name;
+  }
+}
+
+void QueryDatabase::RemoveSymbol(size_t idx) {
+  if (idx != size_t(-1)) {
+    symbols[idx].kind = SymbolKind::Invalid;
+    short_names[idx].clear();
+    detailed_names[idx].clear();
   }
 }
 
