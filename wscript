@@ -191,6 +191,7 @@ def configure(ctx):
     print((('!' * 50)+'\n')*3)
     print('--use-system-clang is deprecated. Please specify --llvm-config, e.g. /usr/bin/llvm-config llvm-config-6.0')
 
+  # Do not use bundled clang+llvm
   if ctx.options.llvm_config is not None:
     # Ask llvm-config for cflags and ldflags
     ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
@@ -214,6 +215,38 @@ def configure(ctx):
       # llvm-config does not provide the actual library we want so we check for it
       # using the provided info so far.
       ctx.check_cxx(lib=libname('clang'), uselib_store='clang', use='clang')
+
+    # If the user passed `--llvm-config=` (setting `llvm-config` to
+    # the empty string) to the configure phase, we should not try to
+    # run it.
+    if len(ctx.options.llvm_config):
+      ctx.env.rpath = [str(subprocess.check_output(
+        [ctx.options.llvm_config, '--libdir'],
+        stderr=subprocess.STDOUT).decode()).strip()]
+    else:
+      ctx.env.rpath = []
+
+    # Use CXX set by --check-cxx-compiler if it is "clang".
+    # See https://github.com/jacobdufault/cquery/issues/237
+    clang = ctx.env.get_flat('CXX')
+    if 'clang' not in clang:
+      # Otherwise, infer the clang executable path with llvm-config --bindir
+      output = str(subprocess.check_output(
+          [ctx.options.llvm_config, '--bindir'],
+          stderr=subprocess.STDOUT).decode()).strip()
+      clang = os.path.join(output, 'clang')
+
+    # Use the detected clang executable to infer resource directory
+    # Use `clang -### -xc /dev/null` instead of `clang -print-resource-dir` because the option is unavailable in 4.0.0
+    devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
+    output = subprocess.check_output(
+        [clang, '-###', '-xc', devnull],
+        stderr=subprocess.STDOUT).decode()
+    match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M)
+    if match:
+      ctx.env.default_resource_directory = match.group(1)
+    else:
+      bld.fatal("Failed to found system clang resource directory.")
 
   else:
     global CLANG_TARBALL_NAME, CLANG_TARBALL_EXT
@@ -257,6 +290,31 @@ def configure(ctx):
                   includes=clang_node.find_dir('include').abspath(),
                   libpath=clang_node.find_dir('lib').abspath(),
                   lib=libname('clang'))
+
+    clang_tarball_name = os.path.basename(os.path.dirname(ctx.env['LIBPATH_clang'][0]))
+    ctx.env.clang_tarball_name = clang_tarball_name
+    ctx.env.default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, ctx.env.bundled_clang)
+
+    if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
+      ctx.env.rpath = ['$ORIGIN/../lib/' + clang_tarball_name + '/lib']
+    elif sys.platform == 'darwin':
+      ctx.env.rpath = ['@loader_path/../lib/' + clang_tarball_name + '/lib']
+    elif sys.platform == 'win32':
+      ctx.env.rpath = [] # Unsupported
+      name = os.path.basename(os.path.dirname(ctx.env['LIBPATH_clang'][0]))
+      # Poor Windows users' RPATH
+      out_clang_dll = os.path.join(ctx.path.get_bld().abspath(), 'bin', 'libclang.dll')
+      try:
+        os.makedirs(os.path.dirname(out_clang_dll))
+      except OSError:
+        pass
+      try:
+        dst = os.path.join(ctx.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll')
+        os.symlink(dst, out_clang_dll)
+      except (OSError, NotImplementedError):
+        shutil.copy(dst, out_clang_dll)
+    else:
+      ctx.env.rpath = ctx.env['LIBPATH_clang']
 
   ctx.msg('Clang includes', ctx.env.INCLUDES_clang)
   ctx.msg('Clang library dir', ctx.env.LIBPATH_clang)
@@ -306,64 +364,6 @@ def build(bld):
 
     lib.append('ncurses')
 
-  if bld.env['use_system_clang']:
-    # If the user passed `--llvm-config=` (setting `llvm-config` to
-    # the empty string) to the configure phase, we should not try to
-    # run it.
-    if bld.env['llvm_config']:
-      rpath = str(subprocess.check_output(
-        [bld.env['llvm_config'], '--libdir'],
-        stderr=subprocess.STDOUT).decode()).strip()
-    else:
-      rpath = []
-
-    # Use CXX set by --check-cxx-compiler if it is "clang".
-    # See https://github.com/jacobdufault/cquery/issues/237
-    clang = bld.env.get_flat('CXX')
-    if 'clang' not in clang:
-      # Otherwise, infer the clang executable path with llvm-config --bindir
-      output = str(subprocess.check_output(
-          [bld.env['llvm_config'], '--bindir'],
-          stderr=subprocess.STDOUT).decode()).strip()
-      clang = os.path.join(output, 'clang')
-
-    # Use the detected clang executable to infer resource directory
-    # Use `clang -### -xc /dev/null` instead of `clang -print-resource-dir` because the option is unavailable in 4.0.0
-    devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
-    output = subprocess.check_output(
-        [clang, '-###', '-xc', devnull],
-        stderr=subprocess.STDOUT).decode()
-    match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M)
-    if match:
-      default_resource_directory = match.group(1)
-    else:
-      bld.fatal("Failed to found system clang resource directory.")
-
-  else:
-    clang_tarball_name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
-    default_resource_directory = '../lib/{}/lib/clang/{}'.format(clang_tarball_name, bld.env['bundled_clang'])
-
-    if sys.platform.startswith('freebsd') or sys.platform.startswith('linux'):
-      rpath = '$ORIGIN/../lib/' + clang_tarball_name + '/lib'
-    elif sys.platform == 'darwin':
-      rpath = '@loader_path/../lib/' + clang_tarball_name + '/lib'
-    elif sys.platform == 'win32':
-      rpath = [] # Unsupported
-      name = os.path.basename(os.path.dirname(bld.env['LIBPATH_clang'][0]))
-      # Poor Windows users' RPATH
-      out_clang_dll = os.path.join(bld.path.get_bld().abspath(), 'bin', 'libclang.dll')
-      try:
-        os.makedirs(os.path.dirname(out_clang_dll))
-      except OSError:
-        pass
-      try:
-        dst = os.path.join(bld.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll')
-        os.symlink(dst, out_clang_dll)
-      except (OSError, NotImplementedError):
-        shutil.copy(dst, out_clang_dll)
-    else:
-      rpath = bld.env['LIBPATH_clang']
-
   # FIXME Figure out how to mix C and C++ source files and change it back to .c
   bld.objects(name='siphash', source='third_party/siphash.cc')
 
@@ -384,17 +384,19 @@ def build(bld):
         'LOGURU_WITH_STREAMS=1',
         'LOGURU_FILENAME_WIDTH=18',
         'LOGURU_THREADNAME_WIDTH=13',
-        'DEFAULT_RESOURCE_DIRECTORY="' + default_resource_directory + '"'] +
+        'DEFAULT_RESOURCE_DIRECTORY="' + bld.env.get_flat('default_resource_directory') + '"'] +
         (['USE_CLANG_CXX=1', 'LOGURU_RTTI=0']
             if bld.env['use_clang_cxx']
             else []),
       lib=lib,
-      rpath=rpath,
+      rpath=bld.env.rpath,
       target='bin/cquery')
 
-  if not bld.env['use_system_clang'] and sys.platform != 'win32':
-    bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
+  #from IPython import embed; embed()
+  if sys.platform != 'win32':
+    clang_tarball_name = bld.env.clang_tarball_name
     if bld.cmd == 'install':
+      bld.install_files('${PREFIX}/lib/' + clang_tarball_name + '/lib', bld.path.get_bld().ant_glob('lib/' + clang_tarball_name + '/lib/libclang.(dylib|so.[4-9])', quiet=True))
       # TODO This may be cached and cannot be re-triggered. Use proper shell escape.
       bld(rule='rsync -rtR {}/./lib/{}/lib/clang/*/include {}/'.format(bld.path.get_bld(), clang_tarball_name, bld.env['PREFIX']))
 
