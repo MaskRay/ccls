@@ -83,13 +83,13 @@ def options(opt):
   opt.load('compiler_cxx')
   grp = opt.add_option_group('Configuration options related to use of clang from the system (not recommended)')
   grp.add_option('--use-system-clang', dest='use_system_clang', default=False, action='store_true',
-                 help='enable use of clang from the system')
+                 help='deprecated. Please specify --llvm-config, e.g. /usr/bin/llvm-config llvm-config-6.0')
   grp.add_option('--use-clang-cxx', dest='use_clang_cxx', default=False, action='store_true',
                  help='use clang C++ API')
   grp.add_option('--bundled-clang', dest='bundled_clang', default='5.0.1',
                  help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 4.0.0 5.0.1')
-  grp.add_option('--llvm-config', dest='llvm_config', default='llvm-config',
-                 help='specify path to llvm-config for automatic configuration [default: %default]')
+  grp.add_option('--llvm-config', dest='llvm_config',
+                 help='path to llvm-config to use system libclang, e.g. llvm-config llvm-config-6.0')
   grp.add_option('--clang-prefix', dest='clang_prefix', default='',
                  help='enable fallback configuration method by specifying a clang installation prefix (e.g. /opt/llvm)')
   grp.add_option('--variant', default='release',
@@ -143,11 +143,11 @@ def configure(ctx):
     # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
     # /MD: use multithread c library from DLL
     cxxflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
-    if ctx.options.variant == 'debug':
+    if 'release' in ctx.options.variant:
+      cxxflags.append('/O2') # There is no O3
+    else:
       cxxflags += ['/Zi', '/FS']
       ldflags += ['/DEBUG']
-    else:
-      cxxflags.append('/O2') # There is no O3
   else:
     if ctx.env.CXXFLAGS:
       cxxflags = ctx.env.CXXFLAGS
@@ -163,14 +163,11 @@ def configure(ctx):
       # Without -fno-rtti, some Clang C++ functions may report `undefined references to typeinfo`
       cxxflags.append('-fno-rtti')
 
-    if ctx.options.variant == 'asan':
+    if 'asan' in ctx.options.variant:
       cxxflags.append('-fsanitize=address,undefined')
-      cxxflags.append('-O')
       ldflags.append('-fsanitize=address,undefined')
-    elif ctx.options.variant == 'debug':
-      pass
-    else:
-      cxxflags.append('-O3')
+    if 'release' in ctx.options.variant:
+      cxxflags.append('-O' if 'asan' in ctx.options.variant else '-O3')
 
   ctx.env.CXXFLAGS = cxxflags
   if not ctx.env.LDFLAGS:
@@ -180,7 +177,6 @@ def configure(ctx):
 
   ctx.load('clang_compilation_database', tooldir='.')
 
-  ctx.env['use_system_clang'] = ctx.options.use_system_clang
   ctx.env['use_clang_cxx'] = ctx.options.use_clang_cxx
   ctx.env['llvm_config'] = ctx.options.llvm_config
   ctx.env['bundled_clang'] = ctx.options.bundled_clang
@@ -189,10 +185,27 @@ def configure(ctx):
     if sys.platform == 'win32':
       return 'lib' + lib
     return lib
+
+  # TODO remove
   if ctx.options.use_system_clang:
+    print((('!' * 50)+'\n')*3)
+    print('--use-system-clang is deprecated. Please specify --llvm-config, e.g. /usr/bin/llvm-config llvm-config-6.0')
+
+  if ctx.options.llvm_config is not None:
     # Ask llvm-config for cflags and ldflags
     ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
-    if ctx.env.LLVM_CONFIG:
+
+    if ctx.options.clang_prefix:
+      ctx.start_msg('Checking for clang prefix')
+      prefix = ctx.root.find_node(ctx.options.clang_prefix)
+      if not prefix:
+        raise ctx.errors.ConfigurationError('clang prefix not found: "%s"'%ctx.options.clang_prefix)
+      ctx.end_msg(prefix)
+
+      includes = [ n.abspath() for n in [ prefix.find_node('include') ] if n ]
+      libpath  = [ n.abspath() for n in [ prefix.find_node(l) for l in ('lib', 'lib64')] if n ]
+      ctx.check_cxx(msg='Checking for library clang', lib=libname('clang'), uselib_store='clang', includes=includes, libpath=libpath)
+    else:
       ctx.check_cfg(msg='Checking for clang flags',
                     path=ctx.env.LLVM_CONFIG,
                     package='',
@@ -201,21 +214,6 @@ def configure(ctx):
       # llvm-config does not provide the actual library we want so we check for it
       # using the provided info so far.
       ctx.check_cxx(lib=libname('clang'), uselib_store='clang', use='clang')
-
-    else: # Fallback method using a prefix path
-      ctx.start_msg('Checking for clang prefix')
-      if not ctx.options.clang_prefix:
-        raise ctx.errors.ConfigurationError('not found (--clang-prefix must be specified when llvm-config is not found)')
-
-      prefix = ctx.root.find_node(ctx.options.clang_prefix)
-      if not prefix:
-        raise ctx.errors.ConfigurationError('clang prefix not found: "%s"'%ctx.options.clang_prefix)
-
-      ctx.end_msg(prefix)
-
-      includes = [ n.abspath() for n in [ prefix.find_node('include') ] if n ]
-      libpath  = [ n.abspath() for n in [ prefix.find_node(l) for l in ('lib', 'lib64')] if n ]
-      ctx.check_cxx(msg='Checking for library clang', lib=libname('clang'), uselib_store='clang', includes=includes, libpath=libpath)
 
   else:
     global CLANG_TARBALL_NAME, CLANG_TARBALL_EXT
