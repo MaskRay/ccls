@@ -11,6 +11,7 @@ class Maybe {
 public:
   constexpr Maybe() = default;
   Maybe(const Maybe&) = default;
+  Maybe(std::nullopt_t) {}
   Maybe(const T& x) : storage(x) {}
   Maybe(T&& x) : storage(std::forward<T>(x)) {}
 

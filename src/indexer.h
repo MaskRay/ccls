@@ -40,7 +40,8 @@ template <typename T>
 struct Id {
   size_t id;
 
-  Id() : id(-1) {}  // Needed for containers and Maybe<Id>. Do not use directly.
+  // Invalid id.
+  Id() : id(-1) {}
   explicit Id(size_t id) : id(id) {}
   template <typename U>
   explicit Id(Id<U> o) : id(o.id) {}

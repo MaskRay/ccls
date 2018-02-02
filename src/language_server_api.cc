@@ -124,7 +124,7 @@ optional<std::string> MessageRegistry::ReadMessageFromStdin(
   optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
-    LOG_S(FATAL) << "Failed to read JsonRpc input; exiting";
+    LOG_S(ERROR) << "Failed to read JsonRpc input; exiting";
     exit(1);
   }
 

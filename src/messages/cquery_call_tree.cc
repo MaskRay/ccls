@@ -106,7 +106,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     //  std::endl; return;
     //}
 
-    if (caller.has_id()) {
+    if (caller.HasValue()) {
       QueryFunc& call_func = db->funcs[caller.id_.id];
       if (!call_func.def)
         return;
@@ -189,10 +189,10 @@ struct CqueryCallTreeExpandHandler
     out.id = request->id;
 
     // FIXME
-    optional<QueryFuncId> func_id =
+    Maybe<QueryFuncId> func_id =
         db->GetQueryFuncIdFromUsr(std::stoull(request->params.usr));
     if (func_id)
-      out.result = BuildExpandCallTree(db, working_files, func_id.value());
+      out.result = BuildExpandCallTree(db, working_files, *func_id);
 
     QueueManager::WriteStdout(IpcId::CqueryCallTreeExpand, out);
   }

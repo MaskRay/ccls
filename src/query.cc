@@ -294,9 +294,9 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   return QueryFile::DefUpdate(def, indexed.file_contents);
 }
 
-inline optional<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
-                                                    const std::string& path,
-                                                    bool create_if_missing) {
+Maybe<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
+                                          const std::string& path,
+                                          bool create_if_missing) {
   NormalizedPath normalized_path(path);
   auto it = query_db->usr_to_file.find(normalized_path);
   if (it != query_db->usr_to_file.end())
@@ -310,9 +310,9 @@ inline optional<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
   return QueryFileId(idx);
 }
 
-inline optional<QueryTypeId> GetQueryTypeIdFromUsr(QueryDatabase* query_db,
-                                                   Usr usr,
-                                                   bool create_if_missing) {
+Maybe<QueryTypeId> GetQueryTypeIdFromUsr(QueryDatabase* query_db,
+                                         Usr usr,
+                                         bool create_if_missing) {
   auto it = query_db->usr_to_type.find(usr);
   if (it != query_db->usr_to_type.end())
     return QueryTypeId(it->second.id);
@@ -325,9 +325,9 @@ inline optional<QueryTypeId> GetQueryTypeIdFromUsr(QueryDatabase* query_db,
   return QueryTypeId(idx);
 }
 
-inline optional<QueryFuncId> GetQueryFuncIdFromUsr(QueryDatabase* query_db,
-                                                   Usr usr,
-                                                   bool create_if_missing) {
+Maybe<QueryFuncId> GetQueryFuncIdFromUsr(QueryDatabase* query_db,
+                                         Usr usr,
+                                         bool create_if_missing) {
   auto it = query_db->usr_to_func.find(usr);
   if (it != query_db->usr_to_func.end())
     return QueryFuncId(it->second.id);
@@ -340,9 +340,9 @@ inline optional<QueryFuncId> GetQueryFuncIdFromUsr(QueryDatabase* query_db,
   return QueryFuncId(idx);
 }
 
-inline optional<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
-                                                 Usr usr,
-                                                 bool create_if_missing) {
+Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
+                                       Usr usr,
+                                       bool create_if_missing) {
   auto it = query_db->usr_to_var.find(usr);
   if (it != query_db->usr_to_var.end())
     return QueryVarId(it->second.id);
@@ -362,20 +362,20 @@ bool Maybe<QueryLocation>::has_value() const {
   return storage.range.start.line >= 0;
 }
 
-optional<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
+Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {
   return ::GetQueryFileIdFromPath(this, path, false);
 }
 
-optional<QueryTypeId> QueryDatabase::GetQueryTypeIdFromUsr(Usr usr) {
+Maybe<QueryTypeId> QueryDatabase::GetQueryTypeIdFromUsr(Usr usr) {
   return ::GetQueryTypeIdFromUsr(this, usr, false);
 }
 
-optional<QueryFuncId> QueryDatabase::GetQueryFuncIdFromUsr(Usr usr) {
+Maybe<QueryFuncId> QueryDatabase::GetQueryFuncIdFromUsr(Usr usr) {
   return ::GetQueryFuncIdFromUsr(this, usr, false);
 }
 
-optional<QueryVarId> QueryDatabase::GetQueryVarIdFromUsr(Usr usr) {
+Maybe<QueryVarId> QueryDatabase::GetQueryVarIdFromUsr(Usr usr) {
   return ::GetQueryVarIdFromUsr(this, usr, false);
 }
 
@@ -383,22 +383,22 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
     : local_ids(local_ids) {
   // LOG_S(INFO) << "Creating IdMap for " << local_ids.primary_file;
   primary_file =
-      GetQueryFileIdFromPath(query_db, local_ids.primary_file, true).value();
+      *GetQueryFileIdFromPath(query_db, local_ids.primary_file, true);
 
   cached_type_ids_.resize(local_ids.type_id_to_usr.size());
   for (const auto& entry : local_ids.type_id_to_usr)
     cached_type_ids_[entry.first] =
-        GetQueryTypeIdFromUsr(query_db, entry.second, true).value();
+        *GetQueryTypeIdFromUsr(query_db, entry.second, true);
 
   cached_func_ids_.resize(local_ids.func_id_to_usr.size());
   for (const auto& entry : local_ids.func_id_to_usr)
     cached_func_ids_[entry.first] =
-        GetQueryFuncIdFromUsr(query_db, entry.second, true).value();
+        *GetQueryFuncIdFromUsr(query_db, entry.second, true);
 
   cached_var_ids_.resize(local_ids.var_id_to_usr.size());
   for (const auto& entry : local_ids.var_id_to_usr)
     cached_var_ids_[entry.first] =
-        GetQueryVarIdFromUsr(query_db, entry.second, true).value();
+        *GetQueryVarIdFromUsr(query_db, entry.second, true);
 }
 
 QueryLocation IdMap::ToQuery(Range range) const {
@@ -409,8 +409,8 @@ QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   return QueryTypeId(cached_type_ids_.find(id)->second);
 }
 QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
-  if (id.id == -1)
-    return QueryFuncId((size_t)-1);
+  if (id == IndexFuncId())
+    return QueryFuncId();
   assert(cached_func_ids_.find(id) != cached_func_ids_.end());
   return QueryFuncId(cached_func_ids_.find(id)->second);
 }

@@ -108,7 +108,7 @@ struct QueryFuncRef {
   QueryLocation loc;
   bool is_implicit = false;
 
-  bool has_id() const { return id_.id != static_cast<size_t>(-1); }
+  bool HasValue() const { return id_.HasValue(); }
 
   QueryFuncRef() {}  // Do not use, needed for reflect.
   QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit)
@@ -391,10 +391,10 @@ struct QueryDatabase {
   std::string_view GetSymbolShortName(size_t symbol_idx) const;
 
   // Query the indexing structure to look up symbol id for given Usr.
-  optional<QueryFileId> GetQueryFileIdFromPath(const std::string& path);
-  optional<QueryTypeId> GetQueryTypeIdFromUsr(Usr usr);
-  optional<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
-  optional<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
+  Maybe<QueryFileId> GetQueryFileIdFromPath(const std::string& path);
+  Maybe<QueryTypeId> GetQueryTypeIdFromUsr(Usr usr);
+  Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
+  Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
 };
 
 struct IdMap {
