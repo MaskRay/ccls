@@ -146,16 +146,6 @@ bool Range::operator<(const Range& that) const {
   return end < that.end;
 }
 
-template <>
-bool Maybe<Position>::has_value() const {
-  return storage.line >= 0;
-}
-
-template <>
-bool Maybe<Range>::has_value() const {
-  return storage.start.line >= 0;
-}
-
 // Position
 void Reflect(Reader& visitor, Position& value) {
   if (visitor.Format() == SerializeFormat::Json) {

@@ -33,6 +33,8 @@ struct QueryLocation {
     return result;
   }
 
+  bool HasValue() const { return range.HasValue(); }
+
   bool operator==(const QueryLocation& other) const {
     return path == other.path && range == other.range;
   }
@@ -56,9 +58,6 @@ struct hash<::SymbolKind> {
   }
 };
 }  // namespace std
-
-template <>
-bool Maybe<QueryLocation>::has_value() const;
 
 struct SymbolIdx {
   SymbolKind kind;

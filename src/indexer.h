@@ -40,11 +40,13 @@ template <typename T>
 struct Id {
   size_t id;
 
-  Id() : id(0) {}  // Needed for containers. Do not use directly.
+  Id() : id(-1) {}  // Needed for containers and Maybe<Id>. Do not use directly.
   explicit Id(size_t id) : id(id) {}
 
   // Needed for google::dense_hash_map.
   explicit operator size_t() const { return id; }
+
+  bool HasValue() const { return id != size_t(-1); }
 
   bool operator==(const Id<T>& other) const { return id == other.id; }
 
@@ -171,7 +173,7 @@ struct TypeDefDefinitionData {
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
-  optional<TypeId> alias_of;
+  Maybe<TypeId> alias_of;
 
   // Immediate parent types.
   std::vector<TypeId> parents;
@@ -269,7 +271,7 @@ struct FuncDefDefinitionData {
   Maybe<Range> definition_extent;
 
   // Type which declares this one (ie, it is a method)
-  optional<TypeId> declaring_type;
+  Maybe<TypeId> declaring_type;
 
   // Method this method overrides.
   std::vector<FuncId> base;
@@ -395,7 +397,7 @@ struct VarDefDefinitionData {
   Maybe<Range> definition_extent;
 
   // Type of the variable.
-  optional<TypeId> variable_type;
+  Maybe<TypeId> variable_type;
 
   // Function/type which declares this one.
   size_t parent_id = size_t(-1);

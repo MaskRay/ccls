@@ -25,7 +25,9 @@ public:
   const T& operator*() const { return storage; }
   T& operator*() { return storage; }
 
-  bool has_value() const;
+  bool has_value() const {
+    return storage.HasValue();
+  }
   explicit operator bool() const { return has_value(); }
   operator optional<T>() const {
     if (has_value())
