@@ -68,17 +68,18 @@ struct Out_TextDocumentComplete
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
-bool CompareLsCompletionItem(const lsCompletionItem& item1,
-                             const lsCompletionItem& item2) {
-  if (item1.found_ != item2.found_)
-    return item1.found_ > item2.found_;
-  if (item1.skip_ != item2.skip_)
-    return item1.skip_ < item2.skip_;
-  if (item1.priority_ != item2.priority_)
-    return item1.priority_ < item2.priority_;
-  if (item1.label.length() != item2.label.length())
-    return item1.label.length() < item2.label.length();
-  return item1.label < item2.label;
+bool CompareLsCompletionItem(const lsCompletionItem& lhs,
+                             const lsCompletionItem& rhs) {
+  bool lhsNotFound = !lhs.found_;
+  bool rhsNotFound = !rhs.found_;
+  const auto lhsFilterTextLength = lhs.filterText.length();
+  const auto lhsLabelLength = lhs.label.length();
+  const auto rhsFilterTextLength = rhs.filterText.length();
+  const auto rhsLabelLength = rhs.label.length();
+  return std::tie(lhsNotFound, lhs.skip_, lhs.priority_, lhsFilterTextLength,
+                  lhs.filterText, lhsLabelLength, lhs.label) <
+         std::tie(rhsNotFound, rhs.skip_, rhs.priority_, rhsFilterTextLength,
+                  rhs.filterText, rhsLabelLength, lhs.label);
 }
 
 template <typename T>
@@ -129,11 +130,18 @@ void FilterAndSortCompletionResponse(
     return;
   }
 
+  // Make sure all items have |filterText| set, code that follow needs it.
+  for (auto& item : items) {
+    if (item.filterText.empty()) {
+      item.filterText = item.label;
+    }
+  }
+
   // If the text doesn't start with underscore,
   // remove all candidates that start with underscore.
   if (!complete_text.empty() && complete_text[0] != '_') {
     auto filter = [](const lsCompletionItem& item) {
-      return item.label[0] == '_';
+      return item.filterText[0] == '_';
     };
     items.erase(std::remove_if(items.begin(), items.end(), filter),
                 items.end());
@@ -142,7 +150,7 @@ void FilterAndSortCompletionResponse(
   // Fuzzy match.
   for (auto& item : items)
     std::tie(item.found_, item.skip_) =
-        SubsequenceCountSkip(complete_text, item.label);
+        SubsequenceCountSkip(complete_text, item.filterText);
 
   // Order all items and set |sortText|.
   std::sort(items.begin(), items.end(), CompareLsCompletionItem);

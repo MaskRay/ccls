@@ -135,6 +135,25 @@ struct Config {
     // false for the option. This option is the most useful for LSP clients
     // that implement their own filtering and sorting logic.
     bool filterAndSort = true;
+
+    // Some completion UI, such as Emacs' completion-at-point and company-lsp,
+    // display completion item label and detail side by side.
+    // This does not look right, when you see things like:
+    //     "foo" "int foo()"
+    //     "bar" "void bar(int i = 0)"
+    // When this option is enabled, the completion item label is very detailed,
+    // it shows the full signature of the candidate.
+    // The detail just contains the completion item parent context.
+    // Also, in this mode, functions with default arguments,
+    // generates one more item per default argument
+    // so that the right function call can be selected.
+    // That is, you get something like:
+    //     "int foo()" "Foo"
+    //     "void bar()" "Foo"
+    //     "void bar(int i = 0)" "Foo"
+    // Be wary, this is quickly quite verbose,
+    // items can end up truncated by the UIs.
+    bool detailedLabel = false;
   };
   Completion completion;
 
@@ -162,7 +181,7 @@ struct Config {
   std::vector<std::string> dumpAST;
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
-MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort);
+MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort, detailedLabel);
 MAKE_REFLECT_STRUCT(Config::Index, comments, attributeMakeCallsToCtor);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,

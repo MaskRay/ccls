@@ -29,7 +29,7 @@ unsigned Flags() {
 
 unsigned GetCompletionPriority(const CXCompletionString& str,
                                CXCursorKind result_kind,
-                               const std::string& label) {
+                               const std::string& typedText) {
   unsigned priority = clang_getCompletionPriority(str);
 
   // XXX: What happens if priority overflows?
@@ -37,7 +37,8 @@ unsigned GetCompletionPriority(const CXCompletionString& str,
     priority *= 100;
   }
   if (result_kind == CXCursor_ConversionFunction ||
-      (result_kind == CXCursor_CXXMethod && StartsWith(label, "operator"))) {
+      (result_kind == CXCursor_CXXMethod &&
+       StartsWith(typedText, "operator"))) {
     priority *= 100;
   }
   if (clang_getCompletionAvailability(str) != CXAvailability_Available) {
@@ -146,6 +147,103 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     default:
       LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
       return lsCompletionItemKind::Text;
+  }
+}
+
+void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
+                              CXCompletionString completion_string,
+                              bool include_snippets) {
+  assert(!out.empty());
+  auto out_first = out.size() - 1;
+
+  std::string result_type;
+
+  int num_chunks = clang_getNumCompletionChunks(completion_string);
+  for (int i = 0; i < num_chunks; ++i) {
+    CXCompletionChunkKind kind =
+      clang_getCompletionChunkKind(completion_string, i);
+
+    std::string text;
+    switch (kind) {
+    case CXCompletionChunk_LeftParen:       text = '(';  break;
+    case CXCompletionChunk_RightParen:      text = ')';  break;
+    case CXCompletionChunk_LeftBracket:     text = '[';  break;
+    case CXCompletionChunk_RightBracket:    text = ']';  break;
+    case CXCompletionChunk_LeftBrace:       text = '{';  break;
+    case CXCompletionChunk_RightBrace:      text = '}';  break;
+    case CXCompletionChunk_LeftAngle:       text = '<';  break;
+    case CXCompletionChunk_RightAngle:      text = '>';  break;
+    case CXCompletionChunk_Comma:           text = ", "; break;
+    case CXCompletionChunk_Colon:           text = ':';  break;
+    case CXCompletionChunk_SemiColon:       text = ';';  break;
+    case CXCompletionChunk_Equal:           text = '=';  break;
+    case CXCompletionChunk_HorizontalSpace: text = ' ';  break;
+    case CXCompletionChunk_VerticalSpace:   text = ' ';  break;
+
+    case CXCompletionChunk_ResultType:
+      result_type =
+          ToString(clang_getCompletionChunkText(completion_string, i));
+      continue;
+
+    case CXCompletionChunk_TypedText:
+    case CXCompletionChunk_Placeholder:
+    case CXCompletionChunk_Text:
+    case CXCompletionChunk_Informative:
+      text = ToString(clang_getCompletionChunkText(completion_string, i));
+
+      for (auto i = out_first; i < out.size(); ++i) {
+        // first typed text is used for filtering
+        if (kind == CXCompletionChunk_TypedText && out[i].filterText.empty())
+          out[i].filterText = text;
+
+        if (kind == CXCompletionChunk_Placeholder)
+          out[i].parameters_.push_back(text);
+      }
+      break;
+
+    case CXCompletionChunk_CurrentParameter:
+      // We have our own parsing logic for active parameter. This doesn't seem
+      // to be very reliable.
+      continue;
+
+    case CXCompletionChunk_Optional: {
+      CXCompletionString nested =
+          clang_getCompletionChunkCompletionString(completion_string, i);
+      // duplicate last element, the recursive call will complete it
+      out.push_back(out.back());
+      BuildCompletionItemTexts(out, nested, include_snippets);
+      continue;
+    }
+    }
+
+    for (auto i = out_first; i < out.size(); ++i)
+      out[i].label += text;
+
+    if (kind == CXCompletionChunk_Informative)
+      continue;
+
+    for (auto i = out_first; i < out.size(); ++i) {
+      if (!include_snippets && !out[i].parameters_.empty())
+        continue;
+
+      if (kind == CXCompletionChunk_Placeholder) {
+        out[i].insertText +=
+            "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
+        out[i].insertTextFormat = lsInsertTextFormat::Snippet;
+      } else {
+        out[i].insertText += text;
+      }
+    }
+  }
+
+  if (result_type.empty())
+    return;
+
+  for (auto i = out_first; i < out.size(); ++i) {
+    // ' : ' for variables,
+    // ' -> ' (trailing return type-like) for functions
+    out[i].label += (out[i].label == out[i].filterText ? " : " : " -> ");
+    out[i].label += result_type;
   }
 }
 
@@ -387,6 +485,8 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       {
         if (request->on_complete) {
           std::vector<lsCompletionItem> ls_result;
+          // this is a guess but can be larger in case of optional parameters,
+          // as they may be expanded into multiple items
           ls_result.reserve(cx_results->NumResults);
 
           timer.Reset();
@@ -407,29 +507,52 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             // TODO: fill in more data
             lsCompletionItem ls_completion_item;
 
-            bool do_insert = true;
-            // kind/label/detail/docs/sortText
             ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-            BuildDetailString(
-                result.CompletionString, ls_completion_item.label,
-                ls_completion_item.detail, ls_completion_item.insertText,
-                do_insert, ls_completion_item.insertTextFormat,
-                &ls_completion_item.parameters_,
-                completion_manager->config_->client.snippetSupport);
-            if (completion_manager->config_->client.snippetSupport &&
-                ls_completion_item.insertTextFormat ==
-                    lsInsertTextFormat::Snippet) {
-              ls_completion_item.insertText += "$0";
-            }
-
             ls_completion_item.documentation = ToString(
                 clang_getCompletionBriefComment(result.CompletionString));
 
-            ls_completion_item.priority_ = GetCompletionPriority(
-                result.CompletionString, result.CursorKind,
-                ls_completion_item.label);
+            // label/detail/filterText/insertText/priority
+            if (completion_manager->config_->completion.detailedLabel) {
+              ls_completion_item.detail = ToString(
+                  clang_getCompletionParent(result.CompletionString, nullptr));
 
-            ls_result.push_back(ls_completion_item);
+              auto first_idx = ls_result.size();
+              ls_result.push_back(ls_completion_item);
+
+              // label/filterText/insertText
+              BuildCompletionItemTexts(
+                  ls_result, result.CompletionString,
+                  completion_manager->config_->client.snippetSupport);
+
+              for (auto i = first_idx; i < ls_result.size(); ++i) {
+                if (completion_manager->config_->client.snippetSupport &&
+                    ls_result[i].insertTextFormat ==
+                        lsInsertTextFormat::Snippet) {
+                  ls_result[i].insertText += "$0";
+                }
+
+                ls_result[i].priority_ = GetCompletionPriority(
+                    result.CompletionString, result.CursorKind,
+                    ls_result[i].filterText);
+              }
+            } else {
+              bool do_insert = true;
+              BuildDetailString(
+                  result.CompletionString, ls_completion_item.label,
+                  ls_completion_item.detail, ls_completion_item.insertText,
+                  do_insert, ls_completion_item.insertTextFormat,
+                  &ls_completion_item.parameters_,
+                  completion_manager->config_->client.snippetSupport);
+              if (completion_manager->config_->client.snippetSupport &&
+                  ls_completion_item.insertTextFormat ==
+                      lsInsertTextFormat::Snippet) {
+                ls_completion_item.insertText += "$0";
+              }
+              ls_completion_item.priority_ = GetCompletionPriority(
+                  result.CompletionString, result.CursorKind,
+                  ls_completion_item.label);
+              ls_result.push_back(ls_completion_item);
+            }
           }
 
           timer.ResetAndPrint("[complete] Building " +
