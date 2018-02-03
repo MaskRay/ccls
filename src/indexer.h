@@ -36,20 +36,22 @@ struct IndexVar;
 enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind);
 
+using RawId = uint32_t;
+
 template <typename T>
 struct Id {
-  size_t id;
+  RawId id;
 
   // Invalid id.
   Id() : id(-1) {}
-  explicit Id(size_t id) : id(id) {}
+  explicit Id(RawId id) : id(id) {}
   template <typename U>
   explicit Id(Id<U> o) : id(o.id) {}
 
   // Needed for google::dense_hash_map.
-  explicit operator size_t() const { return id; }
+  explicit operator RawId() const { return id; }
 
-  bool HasValue() const { return id != size_t(-1); }
+  bool HasValue() const { return id != RawId(-1); }
 
   bool operator==(const Id<T>& other) const { return id == other.id; }
 
@@ -99,7 +101,7 @@ struct IndexFuncRef {
   IndexFuncRef(IndexFuncId id, Range loc, bool is_implicit)
       : id(id), loc(loc), is_implicit(is_implicit) {}
   IndexFuncRef(Range loc, bool is_implicit)
-      : id(IndexFuncId((size_t)-1)), loc(loc), is_implicit(is_implicit) {}
+      : loc(loc), is_implicit(is_implicit) {}
 
   inline bool operator==(const IndexFuncRef& other) {
     return id == other.id && loc == other.loc &&
@@ -109,12 +111,11 @@ struct IndexFuncRef {
     return !(*this == other);
   }
   inline bool operator<(const IndexFuncRef& other) const {
-    if (id < other.id)
-      return true;
-    if (id == other.id && loc < other.loc)
-      return true;
-    return id == other.id && loc == other.loc &&
-           is_implicit < other.is_implicit;
+    if (id != other.id)
+      return id < other.id;
+    if (loc != other.loc)
+      return loc < other.loc;
+    return is_implicit < other.is_implicit;
   }
 };
 
@@ -144,12 +145,11 @@ inline void Reflect(Writer& visitor, IndexFuncRef& value) {
   if (value.is_implicit)
     s += "~";
 
-  // id.id is unsigned, special case 0 value
-  if (value.id.id == static_cast<size_t>(-1)) {
-    s += "-1";
-  } else {
+  // id.id is unsigned, special case -1 value
+  if (value.id.HasValue())
     s += std::to_string(value.id.id);
-  }
+  else
+    s += "-1";
 
   s += "@" + value.loc.ToString();
   visitor.String(s.c_str());
@@ -403,7 +403,7 @@ struct VarDefDefinitionData {
   Maybe<TypeId> variable_type;
 
   // Function/type which declares this one.
-  size_t parent_id = size_t(-1);
+  Maybe<Id<void>> parent_id;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   SymbolKind parent_kind = SymbolKind::Invalid;

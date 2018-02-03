@@ -1464,12 +1464,12 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           IndexFuncId parent_func_id =
               db->ToFuncId(decl->semanticContainer->cursor);
           var->def.parent_kind = SymbolKind::Func;
-          var->def.parent_id = size_t(parent_func_id);
+          var->def.parent_id = Id<void>(parent_func_id);
         } else if (IsTypeDefinition(decl->semanticContainer)) {
           IndexTypeId parent_type_id =
               db->ToTypeId(decl->semanticContainer->cursor);
           var->def.parent_kind = SymbolKind::Type;
-          var->def.parent_id = size_t(parent_type_id);
+          var->def.parent_id = Id<void>(parent_type_id);
           db->Resolve(parent_type_id)->def.vars.push_back(var_id);
         }
       }

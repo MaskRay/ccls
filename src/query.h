@@ -61,12 +61,12 @@ struct hash<::SymbolKind> {
 
 struct SymbolIdx {
   SymbolKind kind;
-  size_t idx;
+  RawId idx;
 
   SymbolIdx()
       : kind(SymbolKind::Invalid),
-        idx((size_t)-1) {}  // Default ctor needed by stdlib. Do not use.
-  SymbolIdx(SymbolKind kind, uint64_t idx) : kind(kind), idx(idx) {}
+        idx(RawId(-1)) {}  // Default ctor needed by stdlib. Do not use.
+  SymbolIdx(SymbolKind kind, RawId idx) : kind(kind), idx(idx) {}
 
   bool operator==(const SymbolIdx& that) const {
     return kind == that.kind && idx == that.idx;
@@ -386,9 +386,9 @@ struct QueryDatabase {
   void ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates);
   void ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates);
-  void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, size_t idx);
-  std::string_view GetSymbolDetailedName(size_t symbol_idx) const;
-  std::string_view GetSymbolShortName(size_t symbol_idx) const;
+  void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, RawId idx);
+  std::string_view GetSymbolDetailedName(RawId symbol_idx) const;
+  std::string_view GetSymbolShortName(RawId symbol_idx) const;
 
   // Query the indexing structure to look up symbol id for given Usr.
   Maybe<QueryFileId> GetQueryFileIdFromPath(const std::string& path);

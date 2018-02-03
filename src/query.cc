@@ -304,7 +304,7 @@ Maybe<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
   if (!create_if_missing)
     return {};
 
-  size_t idx = query_db->files.size();
+  RawId idx = query_db->files.size();
   query_db->usr_to_file[normalized_path] = QueryFileId(idx);
   query_db->files.push_back(QueryFile(path));
   return QueryFileId(idx);
@@ -319,7 +319,7 @@ Maybe<QueryTypeId> GetQueryTypeIdFromUsr(QueryDatabase* query_db,
   if (!create_if_missing)
     return {};
 
-  size_t idx = query_db->types.size();
+  RawId idx = query_db->types.size();
   query_db->usr_to_type[usr] = QueryTypeId(idx);
   query_db->types.push_back(QueryType(usr));
   return QueryTypeId(idx);
@@ -334,7 +334,7 @@ Maybe<QueryFuncId> GetQueryFuncIdFromUsr(QueryDatabase* query_db,
   if (!create_if_missing)
     return {};
 
-  size_t idx = query_db->funcs.size();
+  RawId idx = query_db->funcs.size();
   query_db->usr_to_func[usr] = QueryFuncId(idx);
   query_db->funcs.push_back(QueryFunc(usr));
   return QueryFuncId(idx);
@@ -349,7 +349,7 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
   if (!create_if_missing)
     return {};
 
-  size_t idx = query_db->vars.size();
+  RawId idx = query_db->vars.size();
   query_db->usr_to_var[usr] = QueryVarId(idx);
   query_db->vars.push_back(QueryVar(usr));
   return QueryVarId(idx);
@@ -956,15 +956,15 @@ void QueryDatabase::ImportOrUpdate(
 
 void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                                   SymbolKind kind,
-                                  size_t idx) {
+                                  RawId idx) {
   if (!symbol_idx->has_value()) {
     *symbol_idx = Id<void>(symbols.size());
     symbols.push_back(SymbolIdx(kind, idx));
   }
 }
 
-std::string_view QueryDatabase::GetSymbolDetailedName(size_t symbol_idx) const {
-  size_t idx = symbols[symbol_idx].idx;
+std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
+  RawId idx = symbols[symbol_idx].idx;
   switch (symbols[symbol_idx].kind) {
     default:
       break;
@@ -988,8 +988,8 @@ std::string_view QueryDatabase::GetSymbolDetailedName(size_t symbol_idx) const {
   return "";
 }
 
-std::string_view QueryDatabase::GetSymbolShortName(size_t symbol_idx) const {
-  size_t idx = symbols[symbol_idx].idx;
+std::string_view QueryDatabase::GetSymbolShortName(RawId symbol_idx) const {
+  RawId idx = symbols[symbol_idx].idx;
   switch (symbols[symbol_idx].kind) {
     default:
       break;

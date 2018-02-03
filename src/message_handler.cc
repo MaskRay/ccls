@@ -54,7 +54,7 @@ bool FindFileOrFail(QueryDatabase* db,
   }
 
   if (out_file_id)
-    *out_file_id = QueryFileId((size_t)-1);
+    *out_file_id = QueryFileId();
 
   bool indexing = project->absolute_path_to_entry_index_.find(absolute_path) !=
                   project->absolute_path_to_entry_index_.end();
