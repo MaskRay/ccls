@@ -270,38 +270,66 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   return result;
 }
 
-std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
-                                                     ProjectConfig* config) {
-  std::vector<Project::Entry> result;
-
+std::vector<std::string> ReadCompilerArgumentsFromFile(
+    const std::string& path) {
   std::vector<std::string> args;
-  for (std::string line :
-       ReadLinesWithEnding(config->project_dir + "/.cquery")) {
+  for (std::string line : ReadLinesWithEnding(path)) {
     TrimInPlace(line);
     if (line.empty() || StartsWith(line, "#"))
       continue;
     args.push_back(line);
   }
-  LOG_IF_S(INFO, !args.empty())
-      << "Using .cquery arguments " << StringJoin(args);
+  return args;
+}
+
+std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
+                                                     ProjectConfig* config) {
+  std::vector<Project::Entry> result;
   LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.cquery") &&
                         config->extra_flags.empty())
       << "cquery has no clang arguments. Considering adding either a "
          "compile_commands.json or .cquery file. See the cquery README for "
          "more information.";
 
-  std::vector<std::string> files = GetFilesInFolder(
-      config->project_dir, true /*recursive*/, true /*add_folder_to_path*/);
-  for (const std::string& file : files) {
-    if (SourceFileType(file)) {
-      CompileCommandsEntry e;
-      e.directory = config->project_dir;
-      e.file = file;
-      e.args = args;
-      e.args.push_back(e.file);
-      result.push_back(
-          GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
+  std::unordered_map<std::string, std::vector<std::string>> folder_args;
+  std::vector<std::string> files;
+
+  GetFilesInFolder(
+      config->project_dir, true /*recursive*/, true /*add_folder_to_path*/,
+      [&folder_args, &files](const std::string& path) {
+        if (SourceFileType(path)) {
+          files.push_back(path);
+        } else if (GetBaseName(path) == ".cquery") {
+          LOG_S(INFO) << "Using .cquery arguments from " << path;
+          folder_args.emplace(GetDirName(path),
+                              ReadCompilerArgumentsFromFile(path));
+        }
+      });
+
+  const auto& project_dir_args = folder_args[config->project_dir];
+  LOG_IF_S(INFO, !project_dir_args.empty())
+      << "Using .cquery arguments " << StringJoin(project_dir_args);
+
+  auto GetCompilerArgumentForFile = [&config,
+                                     &folder_args](const std::string& path) {
+    for (std::string cur = GetDirName(path);
+         NormalizePath(cur) != config->project_dir; cur = GetDirName(cur)) {
+      auto it = folder_args.find(cur);
+      if (it != folder_args.end()) {
+        return it->second;
+      }
     }
+    return folder_args[config->project_dir];
+  };
+
+  for (const std::string& file : files) {
+    CompileCommandsEntry e;
+    e.directory = config->project_dir;
+    e.file = file;
+    e.args = GetCompilerArgumentForFile(file);
+    e.args.push_back(e.file);
+    result.push_back(
+        GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
   }
 
   return result;

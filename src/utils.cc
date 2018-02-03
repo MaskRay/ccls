@@ -120,6 +120,15 @@ bool FindAnyPartial(const std::string& value,
                      });
 }
 
+std::string GetDirName(std::string path) {
+  if (path.size() && path.back() == '/')
+    path.pop_back();
+  size_t last_slash = path.find_last_of('/');
+  if (last_slash == std::string::npos) return ".";
+  if (last_slash == 0) return "/";
+  return path.substr(0, last_slash);
+}
+
 std::string GetBaseName(const std::string& path) {
   size_t last_slash = path.find_last_of('/');
   if (last_slash != std::string::npos && (last_slash + 1) < path.size())
@@ -205,14 +214,14 @@ static void GetFilesInFolderHelper(
         goto bail;
       }
 
-      // Skip all dot files.
+      // Skip all dot files except .cquery.
       //
       // The nested ifs are intentional, branching order is subtle here.
       //
       // Note that in the future if we do support dot directories/files, we must
       // always ignore the '.' and '..' directories otherwise this will loop
       // infinitely.
-      if (file.name[0] != '.') {
+      if (file.name[0] != '.' || strcmp(file.name, ".cquery") == 0) {
         if (file.is_dir) {
           if (recursive) {
             std::string child_dir = q.front().second + file.name + "/";
