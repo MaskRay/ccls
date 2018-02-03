@@ -45,38 +45,42 @@ lsPosition CharPos(std::string_view search,
   return result;
 }
 
-std::tuple<bool, std::string, std::string> ShouldRunIncludeCompletion(
-    const std::string& line) {
-  size_t start = 0;
-  while (start < line.size() && isspace(line[start]))
-    ++start;
-  // Must start with '#'.
-  if (start >= line.size() || line[start] != '#')
-    return std::make_tuple(false, "", "");
-  ++start;
-  // Ingore "include" and following spaces.
-  if (line.compare(start, 7, "include") == 0) {
-    start += 7;
-    while (start < line.size() && isspace(line[start]))
-      ++start;
-  }
-  // Determine the surrounding characters.
-  std::string surround;
-  if (line[start] == '"') {
-    surround = "\"\"";
-    ++start;
-  } else if (line[start] == '<') {
-    surround = "<>";
-    ++start;
-  } else
-    surround = "<>";
-  // Fix the prefix for completion.
-  size_t end = start;
-  while (end < line.size() && line[end] != '\"' && line[end] != '>')
-    ++end;
-  std::string prefix = line.substr(start, end - start);
+ParseIncludeLineResult ParseIncludeLine(const std::string& line) {
+  static const std::regex pattern(
+      "(\\s*)"        // [1]: spaces before '#'
+      "#"             //
+      "(\\s*)"        // [2]: spaces after '#'
+      "([^\\s\"<]*)"  // [3]: "include"
+      "(\\s*)"        // [4]: spaces before quote
+      "([\"<])?"      // [5]: the first quote char
+      "([^\\s\">]*)"  // [6]: path of file
+      "[\">]?"        //
+      "(.*)");        // [7]: suffix after quote char
+  std::smatch match;
+  bool ok = std::regex_match(line, match, pattern);
+  std::string text = match[3].str() + match[6].str();
+  return {ok, text, match};
+}
 
-  return std::make_tuple(true, surround, prefix);
+void DecorateIncludePaths(const std::smatch& match,
+                          std::vector<lsCompletionItem>* items) {
+  char quote0, quote1;
+  if (match[5].compare("\"") == 0)
+    quote0 = quote1 = '"';
+  else
+    quote0 = '<', quote1 = '>';
+
+  std::string spaces_between_include_and_quote =
+      match[3].compare("include") == 0 ? match[4].str() : " ";
+
+  std::string prefix = match[1].str() + '#' + match[2].str() + "include" +
+                       spaces_between_include_and_quote + quote0;
+  std::string suffix = std::string(1, quote1) + match[7].str();
+
+  for (lsCompletionItem& item : *items) {
+    item.textEdit->newText = prefix + item.textEdit->newText + suffix;
+    item.label = prefix + item.label.substr(7) + suffix;
+  }
 }
 
 // TODO: eliminate |line_number| param.
@@ -229,6 +233,8 @@ bool SubsequenceMatch(std::string_view search, std::string_view content) {
   return true;
 }
 
+// Find discontinous |search| in |content|.
+// Return |found| and the count of skipped chars before found.
 std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
                                            std::string_view content) {
   bool hasUppercaseLetter = std::any_of(search.begin(), search.end(), isupper);

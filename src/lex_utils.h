@@ -4,6 +4,7 @@
 
 #include <string_view.h>
 
+#include <regex>
 #include <string>
 #include <tuple>
 
@@ -14,8 +15,17 @@ lsPosition CharPos(std::string_view search,
                    char character,
                    int character_offset = 0);
 
-std::tuple<bool, std::string, std::string> ShouldRunIncludeCompletion(
-    const std::string& line);
+struct ParseIncludeLineResult
+{
+  bool ok;
+  std::string text; // include the "include" part
+  std::smatch match;
+};
+
+ParseIncludeLineResult ParseIncludeLine(const std::string& line);
+
+void DecorateIncludePaths(const std::smatch& match,
+                          std::vector<lsCompletionItem>* items);
 
 // TODO: eliminate |line_number| param.
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);

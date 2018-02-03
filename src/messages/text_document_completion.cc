@@ -233,11 +233,9 @@ struct TextDocumentCompletionHandler : MessageHandler {
           &existing_completion);
     }
 
-    bool yes;
-    std::string surround, prefix;
-    std::tie(yes, surround, prefix) = ShouldRunIncludeCompletion(buffer_line);
+    ParseIncludeLineResult result = ParseIncludeLine(buffer_line);
 
-    if (yes) {
+    if (result.ok) {
       Out_TextDocumentComplete out;
       out.id = request->id;
 
@@ -252,22 +250,20 @@ struct TextDocumentCompletionHandler : MessageHandler {
           lock.unlock();
       }
 
-      FilterAndSortCompletionResponse(&out, prefix,
-                                      config->completion.filterAndSort);
+      // Needed by |FilterAndSortCompletionResponse|.
+      // Will be removed in |DecorateIncludePaths|.
+      for (lsCompletionItem& item : out.result.items)
+        item.label = "include" + item.label;
 
-      auto decorator = [&](std::string& text) {
-        std::string result = "#include ";
-        result += surround[0] + text + surround[1];
-        text = result;
-      };
-      LOG_S(INFO) << "DEBUG prefix " << prefix;
+      FilterAndSortCompletionResponse(&out, result.text,
+                                      config->completion.filterAndSort);
+      DecorateIncludePaths(result.match, &out.result.items);
+
       for (lsCompletionItem& item : out.result.items) {
         item.textEdit->range.start.line = request->params.position.line;
         item.textEdit->range.start.character = 0;
         item.textEdit->range.end.line = request->params.position.line;
         item.textEdit->range.end.character = (int)buffer_line.size();
-        decorator(item.textEdit->newText);
-        decorator(item.label);
       }
 
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
