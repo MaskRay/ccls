@@ -355,6 +355,24 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
   return QueryVarId(idx);
 }
 
+template <typename T>
+void AddRangeWithGen(std::vector<WithGen<T>>* dest, const std::vector<T>& to_add, Generation gen) {
+  for (auto& x : to_add)
+    dest->push_back(WithGen<T>{gen, x});
+}
+
+template <typename T>
+void RemoveRangeWithGen(std::vector<WithGen<T>>* dest, const std::vector<T>& to_remove) {
+  dest->erase(std::remove_if(dest->begin(), dest->end(),
+                             [&](const WithGen<T>& t) {
+                               // TODO: make to_remove a set?
+                               return std::find(to_remove.begin(),
+                                                to_remove.end(),
+                                                t.value) != to_remove.end();
+                             }),
+              dest->end());
+}
+
 }  // namespace
 
 template <>
@@ -797,6 +815,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryType& type = types[usr_to_type[usr].id];
         if (type.symbol_idx)
           symbols[type.symbol_idx->id].kind = SymbolKind::Invalid;
+        type.gen++;
         type.def = nullopt;
       }
       break;
@@ -806,6 +825,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryFunc& func = funcs[usr_to_func[usr].id];
         if (func.symbol_idx)
           symbols[func.symbol_idx->id].kind = SymbolKind::Invalid;
+        func.gen++;
         func.def = nullopt;
       }
       break;
@@ -815,6 +835,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryVar& var = vars[usr_to_var[usr].id];
         if (var.symbol_idx)
           symbols[var.symbol_idx->id].kind = SymbolKind::Invalid;
+        var.gen++;
         var.def = nullopt;
       }
       break;
@@ -840,6 +861,13 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     RemoveRange(&def.def_var_name, merge_update.to_remove);           \
     VerifyUnique(def.def_var_name);                                   \
   }
+#define HANDLE_MERGEABLE_WITH_GEN(update_var_name, def_var_name, storage_name) \
+  for (auto merge_update : update->update_var_name) {                          \
+    auto& def = storage_name[merge_update.id.id];                              \
+    AddRangeWithGen(&def.def_var_name, merge_update.to_add, def.gen);          \
+    RemoveRangeWithGen(&def.def_var_name, merge_update.to_remove);             \
+    VerifyUnique(def.def_var_name);                                            \
+  }
 
   for (const std::string& filename : update->files_removed)
     files[usr_to_file[NormalizedPath(filename)].id].def = nullopt;
@@ -847,8 +875,8 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
   ImportOrUpdate(update->types_def_update);
-  HANDLE_MERGEABLE(types_derived, derived, types);
-  HANDLE_MERGEABLE(types_instances, instances, types);
+  HANDLE_MERGEABLE_WITH_GEN(types_derived, derived, types);
+  HANDLE_MERGEABLE_WITH_GEN(types_instances, instances, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
   RemoveUsrs(SymbolKind::Func, update->funcs_removed);

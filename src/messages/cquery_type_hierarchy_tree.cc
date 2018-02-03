@@ -85,11 +85,14 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  for (QueryTypeId derived : root_type.derived) {
-    auto derived_entry =
-        BuildInheritanceHierarchyForType(db, working_files, derived);
-    if (derived_entry)
-      entry.children.push_back(*derived_entry);
+  for (WithGen<QueryTypeId> derived : root_type.derived) {
+    QueryType& type = db->types[derived.value.id];
+    if (derived.gen == type.gen) {
+      auto derived_entry =
+        BuildInheritanceHierarchyForType(db, working_files, derived.value);
+      if (derived_entry)
+        entry.children.push_back(*derived_entry);
+    }
   }
 
   return entry;

@@ -22,12 +22,16 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryFuncRef>& refs);
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
+    const std::vector<QueryTypeId>& refs);
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           const std::vector<QueryTypeId>& ids);
+                                           std::vector<WithGen<QueryTypeId>>*);
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
                                            const std::vector<QueryFuncId>& ids);
-std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           const std::vector<QueryVarId>& ids);
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
+    std::vector<WithGen<QueryVarId>>*);
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
                                            const SymbolIdx& symbol,
                                            bool include_decl);

@@ -13,6 +13,29 @@ int ComputeRangeSize(const Range& range) {
   return range.end.column - range.start.column;
 }
 
+template <typename Q>
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
+    std::vector<Q> QueryDatabase::*collection,
+    std::vector<WithGen<Id<Q>>>* ids_) {
+  auto& ids = *ids_;
+  std::vector<QueryLocation> locs;
+  locs.reserve(ids.size());
+  size_t j = 0;
+  for (size_t i = 0; i < ids.size(); i++) {
+    Q& obj = (db->*collection)[ids[i].value.id];
+    if (obj.gen == ids[i].gen) {
+      optional<QueryLocation> loc =
+          GetDefinitionSpellingOfSymbol(db, ids[i].value);
+      if (loc)
+        locs.push_back(*loc);
+      ids[j++] = ids[i];
+    }
+  }
+  ids.resize(j);
+  return locs;
+}
+
 }  // namespace
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
@@ -169,16 +192,16 @@ std::vector<QueryLocation> ToQueryLocation(
   }
   return locs;
 }
-std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           const std::vector<QueryVarId>& ids) {
-  std::vector<QueryLocation> locs;
-  locs.reserve(ids.size());
-  for (const QueryVarId& id : ids) {
-    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(loc.value());
-  }
-  return locs;
+
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
+    std::vector<WithGen<QueryTypeId>>* ids_) {
+  return ToQueryLocation(db, &QueryDatabase::types, ids_);
+}
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
+    std::vector<WithGen<QueryVarId>>* ids_) {
+  return ToQueryLocation(db, &QueryDatabase::vars, ids_);
 }
 
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,

@@ -18,6 +18,14 @@ using QueryTypeId = Id<QueryType>;
 using QueryFuncId = Id<QueryFunc>;
 using QueryVarId = Id<QueryVar>;
 
+using Generation = uint32_t;
+
+template <typename T>
+struct WithGen {
+  Generation gen;
+  T value;
+};
+
 struct IdMap;
 
 struct QueryLocation {
@@ -239,13 +247,14 @@ struct QueryType {
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
   Usr usr;
-  optional<Def> def;
-  std::vector<QueryTypeId> derived;
-  std::vector<QueryVarId> instances;
-  std::vector<QueryLocation> uses;
+  Generation gen;
   Maybe<Id<void>> symbol_idx;
+  optional<Def> def;
+  std::vector<WithGen<QueryTypeId>> derived;
+  std::vector<WithGen<QueryVarId>> instances;
+  std::vector<QueryLocation> uses;
 
-  explicit QueryType(const Usr& usr) : usr(usr) {}
+  explicit QueryType(const Usr& usr) : usr(usr), gen(0) {}
 };
 
 struct QueryFunc {
@@ -260,13 +269,14 @@ struct QueryFunc {
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
   Usr usr;
+  Generation gen;
+  Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
-  Maybe<Id<void>> symbol_idx;
 
-  explicit QueryFunc(const Usr& usr) : usr(usr) {}
+  explicit QueryFunc(const Usr& usr) : usr(usr), gen(0) {}
 };
 
 struct QueryVar {
@@ -277,12 +287,13 @@ struct QueryVar {
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
 
   Usr usr;
+  Generation gen;
+  Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryLocation> uses;
-  Maybe<Id<void>> symbol_idx;
 
-  explicit QueryVar(const Usr& usr) : usr(usr) {}
+  explicit QueryVar(const Usr& usr) : usr(usr), gen(0) {}
 };
 
 struct IndexUpdate {

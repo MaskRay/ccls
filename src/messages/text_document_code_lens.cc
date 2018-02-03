@@ -159,10 +159,10 @@ struct TextDocumentCodeLensHandler
                       true /*force_display*/);
           AddCodeLens("derived", "derived", &common,
                       ref.loc.OffsetStartColumn(1),
-                      ToQueryLocation(db, type.derived), nullopt,
+                      ToQueryLocation(db, &type.derived), nullopt,
                       false /*force_display*/);
           AddCodeLens("var", "vars", &common, ref.loc.OffsetStartColumn(2),
-                      ToQueryLocation(db, type.instances), nullopt,
+                      ToQueryLocation(db, &type.instances), nullopt,
                       false /*force_display*/);
           break;
         }
