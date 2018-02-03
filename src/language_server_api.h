@@ -355,7 +355,8 @@ struct lsCompletionItem {
   std::string documentation;
 
   // Internal information to order candidates.
-  std::string::size_type pos_;
+  bool found_;
+  std::string::size_type skip_;
   unsigned priority_;
 
   // A string that shoud be used when comparing this item

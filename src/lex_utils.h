@@ -30,3 +30,6 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content);
 
 // Case-insensitive subsequence matching.
 bool SubsequenceMatch(std::string_view search, std::string_view content);
+
+std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
+                                           std::string_view content);

@@ -70,8 +70,10 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
 bool CompareLsCompletionItem(const lsCompletionItem& item1,
                              const lsCompletionItem& item2) {
-  if (item1.pos_ != item2.pos_)
-    return item1.pos_ < item2.pos_;
+  if (item1.found_ != item2.found_)
+    return item1.found_ > item2.found_;
+  if (item1.skip_ != item2.skip_)
+    return item1.skip_ < item2.skip_;
   if (item1.priority_ != item2.priority_)
     return item1.priority_ < item2.priority_;
   if (item1.label.length() != item2.label.length())
@@ -127,28 +129,6 @@ void FilterAndSortCompletionResponse(
     return;
   }
 
-  items.erase(std::remove_if(items.begin(), items.end(),
-                             [&](const lsCompletionItem& item) {
-                               return !SubsequenceMatch(complete_text,
-                                                        item.label);
-                             }),
-              items.end());
-
-  // Find the appearance of |complete_text| in all candidates.
-  bool found = false;
-  for (auto& item : items) {
-    item.pos_ = item.label.find(complete_text);
-    if (item.pos_ == 0 && item.label.length() == complete_text.length())
-      found = true;
-  }
-
-  // If found, remove all candidates that do not start with it.
-  if (!complete_text.empty() && found) {
-    auto filter = [](const lsCompletionItem& item) { return item.pos_ != 0; };
-    items.erase(std::remove_if(items.begin(), items.end(), filter),
-                items.end());
-  }
-
   // If the text doesn't start with underscore,
   // remove all candidates that start with underscore.
   if (!complete_text.empty() && complete_text[0] != '_') {
@@ -158,6 +138,11 @@ void FilterAndSortCompletionResponse(
     items.erase(std::remove_if(items.begin(), items.end(), filter),
                 items.end());
   }
+
+  // Fuzzy match.
+  for (auto& item : items)
+    std::tie(item.found_, item.skip_) =
+        SubsequenceCountSkip(complete_text, item.label);
 
   // Order all items and set |sortText|.
   std::sort(items.begin(), items.end(), CompareLsCompletionItem);
@@ -170,49 +155,6 @@ void FilterAndSortCompletionResponse(
   if (items.size() > kMaxResultSize) {
     if (complete_text.empty()) {
       items.resize(kMaxResultSize);
-    } else {
-      std::vector<lsCompletionItem> filtered_result;
-      filtered_result.reserve(kMaxResultSize);
-
-      std::unordered_set<std::string> inserted;
-      inserted.reserve(kMaxResultSize);
-
-      // Find literal matches first.
-      for (const auto& item : items) {
-        if (item.pos_ != std::string::npos) {
-          // Don't insert the same completion entry.
-          if (!inserted.insert(item.InsertedContent()).second)
-            continue;
-
-          filtered_result.push_back(item);
-          if (filtered_result.size() >= kMaxResultSize)
-            break;
-        }
-      }
-
-      // Find fuzzy matches if we haven't found all of the literal matches.
-      if (filtered_result.size() < kMaxResultSize) {
-        for (const auto& item : items) {
-          // Don't insert the same completion entry.
-          if (!inserted.insert(item.InsertedContent()).second)
-            continue;
-
-          filtered_result.push_back(item);
-          if (filtered_result.size() >= kMaxResultSize)
-            break;
-        }
-      }
-
-      items = filtered_result;
-    }
-
-    // Assuming the client does not support out-of-order completion (ie, ao
-    // matches against oa), our filtering is guaranteed to contain any
-    // potential matches, so the completion is only incomplete if we have the
-    // max number of emitted matches.
-    if (items.size() >= kMaxResultSize) {
-      LOG_S(INFO) << "Marking completion results as incomplete";
-      complete_response->result.isIncomplete = true;
     }
   }
 }

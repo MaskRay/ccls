@@ -229,6 +229,23 @@ bool SubsequenceMatch(std::string_view search, std::string_view content) {
   return true;
 }
 
+std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
+                                           std::string_view content) {
+  bool hasUppercaseLetter = std::any_of(search.begin(), search.end(), isupper);
+  int skip = 0;
+  size_t j = 0;
+  for (char c : search) {
+    while (j < content.size() &&
+           (hasUppercaseLetter ? content[j] != c
+                               : tolower(content[j]) != tolower(c)))
+      ++j, ++skip;
+    if (j == content.size())
+      return std::make_tuple(false, skip);
+    ++j;
+  }
+  return std::make_tuple(true, skip);
+}
+
 TEST_SUITE("Offset") {
   TEST_CASE("past end") {
     std::string content = "foo";
@@ -279,6 +296,18 @@ TEST_SUITE("Substring") {
 
     // Ordering.
     REQUIRE(!SubsequenceMatch("ad", "dcba"));
+  }
+
+  TEST_CASE("skip") {
+    REQUIRE(SubsequenceCountSkip("a", "a") == std::make_tuple(true, 0));
+    REQUIRE(SubsequenceCountSkip("b", "a") == std::make_tuple(false, 1));
+    REQUIRE(SubsequenceCountSkip("", "") == std::make_tuple(true, 0));
+    REQUIRE(SubsequenceCountSkip("a", "ba") == std::make_tuple(true, 1));
+    REQUIRE(SubsequenceCountSkip("aa", "aba") == std::make_tuple(true, 1));
+    REQUIRE(SubsequenceCountSkip("aa", "baa") == std::make_tuple(true, 1));
+    REQUIRE(SubsequenceCountSkip("aA", "aA") == std::make_tuple(true, 0));
+    REQUIRE(SubsequenceCountSkip("aA", "aa") == std::make_tuple(false, 1));
+    REQUIRE(SubsequenceCountSkip("incstdioh", "include <stdio.h>") == std::make_tuple(true, 7));
   }
 }
 
