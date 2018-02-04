@@ -1777,7 +1777,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           if (parent_type_id) {
             IndexType* parent_type_def = db->Resolve(parent_type_id.value());
             parent_type_def->derived.push_back(type_id);
-            type->def.parents.push_back(parent_type_id.value());
+            type->def.parents.push_back(*parent_type_id);
           }
         }
       }

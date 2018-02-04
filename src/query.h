@@ -18,15 +18,34 @@ using QueryTypeId = Id<QueryType>;
 using QueryFuncId = Id<QueryFunc>;
 using QueryVarId = Id<QueryVar>;
 
+struct IdMap;
+
 using Generation = uint32_t;
 
+// Example use: |WithGen<Id<QueryType>>|, to mark an |Id| reference with
+// generation, so that by comparising the generation with that stored in the
+// referenced Query object, we can tell if the reference is stale (the
+// referenced object has been deleted or reused).
 template <typename T>
 struct WithGen {
   Generation gen;
   T value;
+  WithGen() : gen(-1) {}
+  WithGen(const T& value) : gen(-1), value(value) {}
+  WithGen(Generation gen, const T& value) : gen(gen), value(value) {}
+
+  bool HasValue() const { return value.HasValue(); }
+  explicit operator bool() const { return HasValue(); }
+
+  bool operator==(const WithGen& o) const {
+    return gen == o.gen && value == o.value;
+  }
 };
 
-struct IdMap;
+template <typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, WithGen<T>& value) {
+  Reflect(visitor, value.value);
+}
 
 struct QueryLocation {
   QueryFileId path;
@@ -157,10 +176,23 @@ struct MergeableUpdate {
 
   MergeableUpdate(TId id, const std::vector<TValue>& to_add)
       : id(id), to_add(to_add) {}
+  MergeableUpdate(TId id, const std::vector<WithGen<TValue>>& to_add) : id(id) {
+    for (auto& x : to_add)
+      this->to_add.push_back(x.value);
+  }
   MergeableUpdate(TId id,
                   const std::vector<TValue>& to_add,
                   const std::vector<TValue>& to_remove)
       : id(id), to_add(to_add), to_remove(to_remove) {}
+  MergeableUpdate(TId id,
+                  const std::vector<WithGen<TValue>>& to_add,
+                  const std::vector<WithGen<TValue>>& to_remove)
+    : id(id) {
+    for (auto& x : to_add)
+      this->to_add.push_back(x.value);
+    for (auto& x : to_remove)
+      this->to_remove.push_back(x.value);
+  }
 };
 template <typename TVisitor, typename TId, typename TValue>
 void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
@@ -237,9 +269,9 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     dependencies);
 
 struct QueryType {
-  using Def = TypeDefDefinitionData<QueryTypeId,
-                                    QueryFuncId,
-                                    QueryVarId,
+  using Def = TypeDefDefinitionData<WithGen<QueryTypeId>,
+                                    WithGen<QueryFuncId>,
+                                    WithGen<QueryVarId>,
                                     QueryLocation>;
   using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
@@ -258,9 +290,9 @@ struct QueryType {
 };
 
 struct QueryFunc {
-  using Def = FuncDefDefinitionData<QueryTypeId,
-                                    QueryFuncId,
-                                    QueryVarId,
+  using Def = FuncDefDefinitionData<WithGen<QueryTypeId>,
+                                    WithGen<QueryFuncId>,
+                                    WithGen<QueryVarId>,
                                     QueryFuncRef,
                                     QueryLocation>;
   using DefUpdate = WithUsr<Def>;
@@ -273,15 +305,17 @@ struct QueryFunc {
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
-  std::vector<QueryFuncId> derived;
+  std::vector<WithGen<QueryFuncId>> derived;
   std::vector<QueryFuncRef> callers;
 
   explicit QueryFunc(const Usr& usr) : usr(usr), gen(0) {}
 };
 
 struct QueryVar {
-  using Def =
-      VarDefDefinitionData<QueryTypeId, QueryFuncId, QueryVarId, QueryLocation>;
+  using Def = VarDefDefinitionData<WithGen<QueryTypeId>,
+                                   WithGen<QueryFuncId>,
+                                   WithGen<QueryVarId>,
+                                   QueryLocation>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
@@ -414,25 +448,37 @@ struct IdMap {
 
   IdMap(QueryDatabase* query_db, const IdCache& local_ids);
 
+  // FIXME Too verbose
+  // clang-format off
   QueryLocation ToQuery(Range range) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
+  WithGen<QueryTypeId> ToQuery(IndexTypeId id, int) const;
+  WithGen<QueryFuncId> ToQuery(IndexFuncId id, int) const;
+  WithGen<QueryVarId> ToQuery(IndexVarId id, int) const;
   QueryFuncRef ToQuery(IndexFuncRef ref) const;
   QueryLocation ToQuery(IndexFunc::Declaration decl) const;
   optional<QueryLocation> ToQuery(optional<Range> range) const;
   optional<QueryTypeId> ToQuery(optional<IndexTypeId> id) const;
   optional<QueryFuncId> ToQuery(optional<IndexFuncId> id) const;
   optional<QueryVarId> ToQuery(optional<IndexVarId> id) const;
+  optional<WithGen<QueryTypeId>> ToQuery(optional<IndexTypeId> id,int) const;
+  optional<WithGen<QueryFuncId>> ToQuery(optional<IndexFuncId> id,int) const;
+  optional<WithGen<QueryVarId>> ToQuery(optional<IndexVarId> id,int) const;
   optional<QueryFuncRef> ToQuery(optional<IndexFuncRef> ref) const;
   optional<QueryLocation> ToQuery(optional<IndexFunc::Declaration> decl) const;
   std::vector<QueryLocation> ToQuery(std::vector<Range> ranges) const;
   std::vector<QueryTypeId> ToQuery(std::vector<IndexTypeId> ids) const;
   std::vector<QueryFuncId> ToQuery(std::vector<IndexFuncId> ids) const;
   std::vector<QueryVarId> ToQuery(std::vector<IndexVarId> ids) const;
+  std::vector<WithGen<QueryTypeId>> ToQuery(std::vector<IndexTypeId> ids,int) const;
+  std::vector<WithGen<QueryFuncId>> ToQuery(std::vector<IndexFuncId> ids,int) const;
+  std::vector<WithGen<QueryVarId>> ToQuery(std::vector<IndexVarId> ids,int) const;
   std::vector<QueryFuncRef> ToQuery(std::vector<IndexFuncRef> refs) const;
   std::vector<QueryLocation> ToQuery(
       std::vector<IndexFunc::Declaration> decls) const;
+  // clang-format on
 
   SymbolIdx ToSymbol(IndexTypeId id) const;
   SymbolIdx ToSymbol(IndexFuncId id) const;

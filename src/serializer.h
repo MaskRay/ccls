@@ -122,27 +122,6 @@ struct IndexFile;
     visitor.EndArray();                                \
   }
 
-// API:
-/*
-template<typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, T& value) {
-  static_assert(false, "Missing implementation");
-}
-template<typename TVisitor>
-void DefaultReflectMemberStart(TVisitor& visitor) {
-  static_assert(false, "Missing implementation");
-}
-template<typename TVisitor, typename T>
-bool ReflectMemberStart(TVisitor& visitor, T& value) {
-  static_assert(false, "Missing implementation");
-  return true;
-}
-template<typename TVisitor, typename T>
-void ReflectMemberEnd(TVisitor& visitor, T& value) {
-  static_assert(false, "Missing implementation");
-}
-*/
-
 //// Elementary types
 
 void Reflect(Reader& visitor, uint8_t& value);

@@ -30,29 +30,22 @@ MAKE_REFLECT_STRUCT(Out_CqueryTypeHierarchyTree, jsonrpc, id, result);
 std::vector<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildParentInheritanceHierarchyForType(QueryDatabase* db,
                                        WorkingFiles* working_files,
-                                       QueryTypeId root) {
-  QueryType& root_type = db->types[root.id];
-  if (!root_type.def)
-    return {};
-
+                                       QueryType& root_type) {
   std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
   parent_entries.reserve(root_type.def->parents.size());
 
-  for (QueryTypeId parent_id : root_type.def->parents) {
-    QueryType& parent_type = db->types[parent_id.id];
-    if (!parent_type.def)
-      continue;
+  EachWithGen<QueryType>(
+      db->types, root_type.def->parents, [&](QueryType& parent_type) {
+        Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
+        parent_entry.name = parent_type.def->detailed_name;
+        if (parent_type.def->definition_spelling)
+          parent_entry.location = GetLsLocation(
+              db, working_files, *parent_type.def->definition_spelling);
+        parent_entry.children = BuildParentInheritanceHierarchyForType(
+            db, working_files, parent_type);
 
-    Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-    parent_entry.name = parent_type.def->detailed_name;
-    if (parent_type.def->definition_spelling)
-      parent_entry.location = GetLsLocation(
-          db, working_files, *parent_type.def->definition_spelling);
-    parent_entry.children =
-        BuildParentInheritanceHierarchyForType(db, working_files, parent_id);
-
-    parent_entries.push_back(parent_entry);
-  }
+        parent_entries.push_back(parent_entry);
+      });
 
   return parent_entries;
 }
@@ -60,11 +53,7 @@ BuildParentInheritanceHierarchyForType(QueryDatabase* db,
 optional<Out_CqueryTypeHierarchyTree::TypeEntry>
 BuildInheritanceHierarchyForType(QueryDatabase* db,
                                  WorkingFiles* working_files,
-                                 QueryTypeId root_id) {
-  QueryType& root_type = db->types[root_id.id];
-  if (!root_type.def)
-    return nullopt;
-
+                                 QueryType& root_type) {
   Out_CqueryTypeHierarchyTree::TypeEntry entry;
 
   // Name and location.
@@ -80,20 +69,17 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
   base.name = "[[Base]]";
   base.location = entry.location;
   base.children =
-      BuildParentInheritanceHierarchyForType(db, working_files, root_id);
+    BuildParentInheritanceHierarchyForType(db, working_files, root_type);
   if (!base.children.empty())
     entry.children.push_back(base);
 
   // Add derived.
-  for (WithGen<QueryTypeId> derived : root_type.derived) {
-    QueryType& type = db->types[derived.value.id];
-    if (derived.gen == type.gen) {
-      auto derived_entry =
-        BuildInheritanceHierarchyForType(db, working_files, derived.value);
-      if (derived_entry)
-        entry.children.push_back(*derived_entry);
-    }
-  }
+  EachWithGen<QueryType>(db->types, root_type.derived, [&](QueryType& type) {
+    auto derived_entry =
+        BuildInheritanceHierarchyForType(db, working_files, type);
+    if (derived_entry)
+      entry.children.push_back(*derived_entry);
+  });
 
   return entry;
 }
@@ -108,8 +94,9 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
   if (!root_func.def || root_func.def->base.empty())
     return {};
 
-  for (QueryFuncId parent_id : root_func.def->base) {
-    QueryFunc& parent_func = db->funcs[parent_id.id];
+  // FIXME WithGen
+  for (auto parent_id : root_func.def->base) {
+    QueryFunc& parent_func = db->funcs[parent_id.value.id];
     if (!parent_func.def)
       continue;
 
@@ -119,7 +106,7 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
       parent_entry.location = GetLsLocation(
           db, working_files, *parent_func.def->definition_spelling);
     parent_entry.children =
-        BuildParentInheritanceHierarchyForFunc(db, working_files, parent_id);
+        BuildParentInheritanceHierarchyForFunc(db, working_files, parent_id.value);
 
     entries.push_back(parent_entry);
   }
@@ -155,9 +142,10 @@ BuildInheritanceHierarchyForFunc(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  for (QueryFuncId derived : root_func.derived) {
+  // FIXME WithGen
+  for (auto derived : root_func.derived) {
     auto derived_entry =
-        BuildInheritanceHierarchyForFunc(db, working_files, derived);
+        BuildInheritanceHierarchyForFunc(db, working_files, derived.value);
     if (derived_entry)
       entry.children.push_back(*derived_entry);
   }
@@ -182,8 +170,10 @@ struct CqueryTypeHierarchyTreeHandler
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (ref.idx.kind == SymbolKind::Type) {
-        out.result = BuildInheritanceHierarchyForType(db, working_files,
-                                                      QueryTypeId(ref.idx.idx));
+        QueryType& type = db->types[ref.idx.idx];
+        if (type.def)
+          out.result =
+              BuildInheritanceHierarchyForType(db, working_files, type);
         break;
       }
       if (ref.idx.kind == SymbolKind::Func) {

@@ -159,7 +159,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
     optional<std::string> type_name;
     optional<lsPosition> same_file_insert_end;
     if (func.def->declaring_type) {
-      QueryType& declaring_type = db->types[func.def->declaring_type->id];
+      QueryType& declaring_type = db->types[func.def->declaring_type->value.id];
       if (declaring_type.def) {
         type_name = std::string(declaring_type.def->ShortName());
         optional<lsRange> ls_type_def_extent = GetLsRange(
@@ -353,17 +353,16 @@ struct TextDocumentCodeActionHandler
           // Get implementation file.
           Out_TextDocumentCodeAction::Command command;
 
-          for (QueryFuncId func_id : type.def->funcs) {
-            QueryFunc& func_def = db->funcs[func_id.id];
-            if (!func_def.def || func_def.def->definition_extent)
-              continue;
-
+          EachWithGen<QueryFunc>(db->funcs, type.def->funcs, [&](QueryFunc&
+                                                                     func_def) {
+            if (func_def.def->definition_extent)
+              return;
             EnsureImplFile(db, file_id, impl_uri /*out*/, impl_file_id /*out*/);
             optional<lsTextEdit> edit = BuildAutoImplementForFunction(
                 db, working_files, working_file, default_line, file_id,
                 *impl_file_id, func_def);
             if (!edit)
-              continue;
+              return;
 
             ++num_edits;
 
@@ -379,7 +378,7 @@ struct TextDocumentCodeActionHandler
             } else {
               command.arguments.edits.push_back(*edit);
             }
-          }
+          });
           if (command.arguments.edits.empty())
             break;
 

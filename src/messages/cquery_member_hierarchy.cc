@@ -27,7 +27,8 @@ struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
   struct Entry {
     std::string_view name;
-    size_t type_id;
+    // FIXME Usr
+    RawId type_id;
     lsLocation location;
   };
   lsRequestId id;
@@ -47,8 +48,8 @@ BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   Out_CqueryMemberHierarchy::Entry entry;
-  entry.name = root_type.def->ShortName();
   entry.type_id = root.id;
+  entry.name = root_type.def->ShortName();
   entry.location = *def_loc;
   return {entry};
 }
@@ -60,12 +61,12 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   std::vector<Out_CqueryMemberHierarchy::Entry> ret;
-  for (auto& var_id : root_type.def->vars) {
-    QueryVar& var = db->vars[var_id.id];
+  EachWithGen<QueryVar>(db->vars, root_type.def->vars, [&](QueryVar& var) {
     Out_CqueryMemberHierarchy::Entry entry;
     entry.name = var.def->ShortName();
+    // FIXME WithGen
     entry.type_id =
-        var.def->variable_type ? var.def->variable_type->id : size_t(-1);
+        var.def->variable_type ? var.def->variable_type->value.id : RawId(-1);
     if (var.def->definition_spelling) {
       optional<lsLocation> loc =
           GetLsLocation(db, working_files, *var.def->definition_spelling);
@@ -74,7 +75,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
         entry.location = *loc;
     }
     ret.push_back(std::move(entry));
-  }
+  });
   return ret;
 }
 
@@ -100,7 +101,7 @@ struct CqueryMemberHierarchyInitialHandler
       if (ref.idx.kind == SymbolKind::Var) {
         QueryVar& var = db->vars[ref.idx.idx];
         if (var.def && var.def->variable_type)
-          out.result = BuildInitial(db, working_files, *var.def->variable_type);
+          out.result = BuildInitial(db, working_files, var.def->variable_type->value);
         break;
       }
     }

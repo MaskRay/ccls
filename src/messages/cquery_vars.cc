@@ -33,7 +33,7 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
           QueryVar& var = db->vars[id];
           if (!var.def || !var.def->variable_type)
             continue;
-          id = var.def->variable_type->id;
+          id = var.def->variable_type->value.id;
         }
         // fallthrough
         case SymbolKind::Type: {

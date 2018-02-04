@@ -26,12 +26,13 @@ std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryTypeId>& refs);
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
+                                           std::vector<WithGen<QueryFuncId>>*);
+std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
                                            std::vector<WithGen<QueryTypeId>>*);
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
+                                           std::vector<WithGen<QueryVarId>>*);
+std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
                                            const std::vector<QueryFuncId>& ids);
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    std::vector<WithGen<QueryVarId>>*);
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
                                            const SymbolIdx& symbol,
                                            bool include_decl);
@@ -71,3 +72,25 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
 void EmitDiagnostics(WorkingFiles* working_files,
                      std::string path,
                      std::vector<lsDiagnostic> diagnostics);
+
+template <typename Q>
+void EachWithGen(std::vector<Q>& collection, WithGen<Id<Q>> x, std::function<void(Q&)> fn) {
+  Q& obj = collection[x.value.id];
+  // FIXME Deprecate optional<Def> def
+  if (obj.gen == x.gen && obj.def)
+    fn(obj);
+}
+
+template <typename Q>
+void EachWithGen(std::vector<Q>& collection, std::vector<WithGen<Id<Q>>>& ids, std::function<void(Q&)> fn) {
+  size_t j = 0;
+  for (WithGen<Id<Q>> x : ids) {
+    Q& obj = collection[x.value.id];
+    if (obj.gen == x.gen) {
+      if (obj.def) // FIXME Deprecate optional<Def> def
+        fn(obj);
+      ids[j++] = x;
+    }
+  }
+  ids.resize(j);
+}

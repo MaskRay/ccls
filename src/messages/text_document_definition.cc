@@ -32,10 +32,11 @@ std::vector<QueryLocation> GetGotoDefinitionTargets(QueryDatabase* db,
       std::vector<QueryLocation> ret =
           GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
       QueryVar& var = db->vars[symbol.idx];
+      // FIXME WithGen
       if (var.def && var.def->variable_type) {
         std::vector<QueryLocation> types =
             GetDeclarationsOfSymbolForGotoDefinition(
-                db, SymbolIdx(SymbolKind::Type, var.def->variable_type->id));
+                db, SymbolIdx(SymbolKind::Type, var.def->variable_type->value.id));
         ret.insert(ret.end(), types.begin(), types.end());
       }
       return ret;

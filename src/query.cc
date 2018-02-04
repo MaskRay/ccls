@@ -44,11 +44,11 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.comments = type.comments;
   result.definition_spelling = id_map.ToQuery(type.definition_spelling);
   result.definition_extent = id_map.ToQuery(type.definition_extent);
-  result.alias_of = id_map.ToQuery(type.alias_of);
-  result.parents = id_map.ToQuery(type.parents);
-  result.types = id_map.ToQuery(type.types);
-  result.funcs = id_map.ToQuery(type.funcs);
-  result.vars = id_map.ToQuery(type.vars);
+  result.alias_of = id_map.ToQuery(type.alias_of,0);
+  result.parents = id_map.ToQuery(type.parents,0);
+  result.types = id_map.ToQuery(type.types,0);
+  result.funcs = id_map.ToQuery(type.funcs,0);
+  result.vars = id_map.ToQuery(type.vars,0);
   return result;
 }
 
@@ -67,9 +67,9 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.comments = func.comments;
   result.definition_spelling = id_map.ToQuery(func.definition_spelling);
   result.definition_extent = id_map.ToQuery(func.definition_extent);
-  result.declaring_type = id_map.ToQuery(func.declaring_type);
-  result.base = id_map.ToQuery(func.base);
-  result.locals = id_map.ToQuery(func.locals);
+  result.declaring_type = id_map.ToQuery(func.declaring_type,0);
+  result.base = id_map.ToQuery(func.base,0);
+  result.locals = id_map.ToQuery(func.locals,0);
   result.callees = id_map.ToQuery(func.callees);
   return result;
 }
@@ -86,7 +86,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.comments = var.comments;
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
-  result.variable_type = id_map.ToQuery(var.variable_type);
+  result.variable_type = id_map.ToQuery(var.variable_type,0);
   result.parent_id = var.parent_id;
   result.parent_kind = var.parent_kind;
   result.kind = var.kind;
@@ -436,6 +436,20 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   assert(cached_var_ids_.find(id) != cached_var_ids_.end());
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
+WithGen<QueryTypeId> IdMap::ToQuery(IndexTypeId id,int) const {
+  assert(cached_type_ids_.find(id) != cached_type_ids_.end());
+  return QueryTypeId(cached_type_ids_.find(id)->second);
+}
+WithGen<QueryFuncId> IdMap::ToQuery(IndexFuncId id,int) const {
+  if (id == IndexFuncId())
+    return QueryFuncId();
+  assert(cached_func_ids_.find(id) != cached_func_ids_.end());
+  return QueryFuncId(cached_func_ids_.find(id)->second);
+}
+WithGen<QueryVarId> IdMap::ToQuery(IndexVarId id,int) const {
+  assert(cached_var_ids_.find(id) != cached_var_ids_.end());
+  return QueryVarId(cached_var_ids_.find(id)->second);
+}
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
   return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc), ref.is_implicit);
 }
@@ -464,6 +478,21 @@ optional<QueryVarId> IdMap::ToQuery(optional<IndexVarId> id) const {
     return nullopt;
   return ToQuery(id.value());
 }
+optional<WithGen<QueryTypeId>> IdMap::ToQuery(optional<IndexTypeId> id, int) const {
+  if (!id)
+    return nullopt;
+  return ToQuery(id.value(), 0);
+}
+optional<WithGen<QueryFuncId>> IdMap::ToQuery(optional<IndexFuncId> id, int) const {
+  if (!id)
+    return nullopt;
+  return ToQuery(id.value(), 0);
+}
+optional<WithGen<QueryVarId>> IdMap::ToQuery(optional<IndexVarId> id, int) const {
+  if (!id)
+    return nullopt;
+  return ToQuery(id.value(), 0);
+}
 optional<QueryFuncRef> IdMap::ToQuery(optional<IndexFuncRef> ref) const {
   if (!ref)
     return nullopt;
@@ -485,6 +514,15 @@ std::vector<Out> ToQueryTransform(const IdMap& id_map,
     result.push_back(id_map.ToQuery(in));
   return result;
 }
+template <typename In, typename Out>
+std::vector<WithGen<Out>> ToQueryTransformG(const IdMap& id_map,
+                                  const std::vector<In>& input) {
+  std::vector<WithGen<Out>> result;
+  result.reserve(input.size());
+  for (const In& in : input)
+    result.push_back(id_map.ToQuery(in, 0));
+  return result;
+}
 std::vector<QueryLocation> IdMap::ToQuery(std::vector<Range> ranges) const {
   return ToQueryTransform<Range, QueryLocation>(*this, ranges);
 }
@@ -496,6 +534,15 @@ std::vector<QueryFuncId> IdMap::ToQuery(std::vector<IndexFuncId> ids) const {
 }
 std::vector<QueryVarId> IdMap::ToQuery(std::vector<IndexVarId> ids) const {
   return ToQueryTransform<IndexVarId, QueryVarId>(*this, ids);
+}
+std::vector<WithGen<QueryTypeId>> IdMap::ToQuery(std::vector<IndexTypeId> ids, int) const {
+  return ToQueryTransformG<IndexTypeId, QueryTypeId>(*this, ids);
+}
+std::vector<WithGen<QueryFuncId>> IdMap::ToQuery(std::vector<IndexFuncId> ids, int) const {
+  return ToQueryTransformG<IndexFuncId, QueryFuncId>(*this, ids);
+}
+std::vector<WithGen<QueryVarId>> IdMap::ToQuery(std::vector<IndexVarId> ids, int) const {
+  return ToQueryTransformG<IndexVarId, QueryVarId>(*this, ids);
 }
 std::vector<QueryFuncRef> IdMap::ToQuery(std::vector<IndexFuncRef> refs) const {
   return ToQueryTransform<IndexFuncRef, QueryFuncRef>(*this, refs);
@@ -882,7 +929,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   RemoveUsrs(SymbolKind::Func, update->funcs_removed);
   ImportOrUpdate(update->funcs_def_update);
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
-  HANDLE_MERGEABLE(funcs_derived, derived, funcs);
+  HANDLE_MERGEABLE_WITH_GEN(funcs_derived, derived, funcs);
   HANDLE_MERGEABLE(funcs_callers, callers, funcs);
 
   RemoveUsrs(SymbolKind::Var, update->vars_removed);

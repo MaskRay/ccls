@@ -195,6 +195,11 @@ std::vector<QueryLocation> ToQueryLocation(
 
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
+    std::vector<WithGen<QueryFuncId>>* ids_) {
+  return ToQueryLocation(db, &QueryDatabase::funcs, ids_);
+}
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
     std::vector<WithGen<QueryTypeId>>* ids_) {
   return ToQueryLocation(db, &QueryDatabase::types, ids_);
 }
@@ -282,25 +287,33 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
     return true;
 
   // Check for base calls.
-  std::queue<QueryFuncId> queue;
-  PushRange(&queue, root.def->base);
+  std::queue<QueryFunc*> queue;
+  EachWithGen<QueryFunc>(db->funcs, root.def->base, [&](QueryFunc& func) {
+    queue.push(&func);
+  });
   while (!queue.empty()) {
-    QueryFunc& func = db->funcs[queue.front().id];
+    QueryFunc& func = *queue.front();
     queue.pop();
     if (!func.callers.empty())
       return true;
     if (func.def)
-      PushRange(&queue, func.def->base);
+      EachWithGen<QueryFunc>(db->funcs, func.def->base, [&](QueryFunc& func1) {
+        queue.push(&func1);
+      });
   }
 
   // Check for derived calls.
-  PushRange(&queue, root.derived);
+  EachWithGen<QueryFunc>(db->funcs, root.derived, [&](QueryFunc& func1) {
+    queue.push(&func1);
+  });
   while (!queue.empty()) {
-    QueryFunc& func = db->funcs[queue.front().id];
+    QueryFunc& func = *queue.front();
     queue.pop();
     if (!func.callers.empty())
       return true;
-    PushRange(&queue, func.derived);
+    EachWithGen<QueryFunc>(db->funcs, func.derived, [&](QueryFunc& func1) {
+      queue.push(&func1);
+    });
   }
 
   return false;
@@ -312,15 +325,19 @@ std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
   if (!root.def)
     return callers;
 
-  std::queue<QueryFuncId> queue;
-  PushRange(&queue, root.def->base);
+  std::queue<QueryFunc*> queue;
+  EachWithGen<QueryFunc>(db->funcs, root.def->base, [&](QueryFunc& func1) {
+    queue.push(&func1);
+  });
   while (!queue.empty()) {
-    QueryFunc& func = db->funcs[queue.front().id];
+    QueryFunc& func = *queue.front();
     queue.pop();
 
     AddRange(&callers, func.callers);
     if (func.def)
-      PushRange(&queue, func.def->base);
+      EachWithGen<QueryFunc>(db->funcs, func.def->base, [&](QueryFunc& func1) {
+        queue.push(&func1);
+      });
   }
 
   return callers;
@@ -330,14 +347,18 @@ std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db,
                                                            QueryFunc& root) {
   std::vector<QueryFuncRef> callers;
 
-  std::queue<QueryFuncId> queue;
-  PushRange(&queue, root.derived);
+  std::queue<QueryFunc*> queue;
+  EachWithGen<QueryFunc>(db->funcs, root.derived, [&](QueryFunc& func) {
+    queue.push(&func);
+  });
 
   while (!queue.empty()) {
-    QueryFunc& func = db->funcs[queue.front().id];
+    QueryFunc& func = *queue.front();
     queue.pop();
 
-    PushRange(&queue, func.derived);
+    EachWithGen<QueryFunc>(db->funcs, func.derived, [&](QueryFunc& func1) {
+      queue.push(&func1);
+    });
     AddRange(&callers, func.callers);
   }
 
@@ -493,7 +514,8 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       info.kind = lsSymbolKind::Function;
 
       if (func.def->declaring_type.has_value()) {
-        QueryType& container = db->types[func.def->declaring_type->id];
+        // FIXME WithGen
+        QueryType& container = db->types[func.def->declaring_type->value.id];
         if (container.def)
           info.kind = lsSymbolKind::Method;
       }
