@@ -70,16 +70,12 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
 bool CompareLsCompletionItem(const lsCompletionItem& lhs,
                              const lsCompletionItem& rhs) {
-  bool lhsNotFound = !lhs.found_;
-  bool rhsNotFound = !rhs.found_;
-  const auto lhsFilterTextLength = lhs.filterText.length();
-  const auto lhsLabelLength = lhs.label.length();
-  const auto rhsFilterTextLength = rhs.filterText.length();
-  const auto rhsLabelLength = rhs.label.length();
-  return std::tie(lhsNotFound, lhs.skip_, lhs.priority_, lhsFilterTextLength,
-                  lhs.filterText, lhsLabelLength, lhs.label) <
-         std::tie(rhsNotFound, rhs.skip_, rhs.priority_, rhsFilterTextLength,
-                  rhs.filterText, rhsLabelLength, lhs.label);
+  return std::make_tuple(!lhs.found_, lhs.skip_, lhs.priority_,
+                         lhs.filterText.length(), std::cref(lhs.filterText),
+                         lhs.label.length(), std::cref(lhs.label)) <
+         std::make_tuple(!rhs.found_, rhs.skip_, rhs.priority_,
+                         rhs.filterText.length(), std::cref(rhs.filterText),
+                         rhs.label.length(), std::cref(rhs.label));
 }
 
 template <typename T>
