@@ -21,6 +21,10 @@
 // Defined in command_line.cc
 extern bool g_debug;
 
+#if CINDEX_VERSION >= 47
+#define CINDEX_HAVE_PRETTY 1
+#endif
+
 namespace {
 
 constexpr bool kIndexStdDeclarations = true;
@@ -259,6 +263,30 @@ struct IndexParam {
 
   IndexParam(Config* config, ClangTranslationUnit* tu, FileConsumer* file_consumer)
       : config(config), tu(tu), file_consumer(file_consumer) {}
+
+#if CINDEX_HAVE_PRETTY
+  CXPrintingPolicy print_policy = nullptr;
+  CXPrintingPolicy print_policy_more = nullptr;
+  ~IndexParam() {
+    clang_PrintingPolicy_dispose(print_policy);
+    clang_PrintingPolicy_dispose(print_policy_more);
+  }
+
+  std::string PrettyPrintCursor(CXCursor cursor, bool initializer = true) {
+    if (!print_policy) {
+      print_policy = clang_getCursorPrintingPolicy(cursor);
+      clang_PrintingPolicy_setProperty(print_policy,
+                                       CXPrintingPolicy_TerseOutput, 1);
+      clang_PrintingPolicy_setProperty(print_policy,
+                                       CXPrintingPolicy_SuppressInitializers, 1);
+      print_policy_more = clang_getCursorPrintingPolicy(cursor);
+      clang_PrintingPolicy_setProperty(print_policy_more,
+                                       CXPrintingPolicy_TerseOutput, 1);
+    }
+    return ToString(clang_getCursorPrettyPrinted(
+        cursor, initializer ? print_policy_more : print_policy));
+  }
+#endif
 };
 
 IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
@@ -409,7 +437,7 @@ void SetTypeName(IndexType* type,
                  const ClangCursor& cursor,
                  const CXIdxContainerInfo* container,
                  const char* name,
-                 NamespaceHelper* ns) {
+                 IndexParam* param) {
   CXIdxContainerInfo parent;
   // |name| can be null in an anonymous struct (see
   // tests/types/anonymous_struct.cc).
@@ -417,8 +445,9 @@ void SetTypeName(IndexType* type,
     name = "(anon)";
   if (!container)
     parent.cursor = cursor.get_semantic_parent().cx_cursor;
+  // Investigate why clang_getCursorPrettyPrinted is not fully qualified.
   type->def.detailed_name =
-      ns->QualifiedName(container ? container : &parent, name);
+    param->ns.QualifiedName(container ? container : &parent, name);
   auto idx = type->def.detailed_name.find(name);
   assert(idx != std::string::npos);
   type->def.short_name_offset = idx;
@@ -431,7 +460,7 @@ void SetTypeName(IndexType* type,
 // (ie, Foo<A,B> => Foo<*,*>).
 optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
                                                ClangCursor cursor,
-                                               NamespaceHelper* ns) {
+                                               IndexParam* param) {
   ClangType type = cursor.get_type();
 
   // auto x = new Foo() will not be deduced to |Foo| if we do not use the
@@ -461,7 +490,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   IndexType* typ = db->Resolve(type_id);
   if (typ->def.detailed_name.empty()) {
     std::string name = declaration.get_spelling();
-    SetTypeName(typ, declaration, nullptr, name.c_str(), ns);
+    SetTypeName(typ, declaration, nullptr, name.c_str(), param);
   }
   return type_id;
 }
@@ -484,7 +513,12 @@ void SetVarDetail(IndexVar* var,
   def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   std::string qualified_name =
-      param->ns.QualifiedName(semanticContainer, short_name);
+#if CINDEX_HAVE_PRETTY
+      cursor.get_kind() != CXCursor_EnumConstantDecl
+          ? param->PrettyPrintCursor(cursor.cx_cursor)
+          :
+#endif
+          param->ns.QualifiedName(semanticContainer, short_name);
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
     CXType enum_type = clang_getCanonicalType(
@@ -499,6 +533,10 @@ void SetVarDetail(IndexVar* var,
     def.detailed_name = std::move(qualified_name);
     def.hover = hover;
   } else {
+#if CINDEX_HAVE_PRETTY
+    def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
+    def.hover = std::move(qualified_name);
+#else
     def.detailed_name = std::move(type_name);
     ConcatTypeAndName(def.detailed_name, qualified_name);
     // Append the textual initializer, bit field, constructor to |hover|.
@@ -521,6 +559,7 @@ void SetVarDetail(IndexVar* var,
         def.hover = def.detailed_name +
                     fc.content.substr(*spell_end, *extent_end - *spell_end);
     }
+#endif
   }
   // FIXME QualifiedName should return index
   auto idx = def.detailed_name.find(short_name.begin(), 0, short_name.size());
@@ -530,7 +569,7 @@ void SetVarDetail(IndexVar* var,
 
   if (is_first_seen) {
     optional<IndexTypeId> var_type =
-        ResolveToDeclarationType(db, cursor, &param->ns);
+        ResolveToDeclarationType(db, cursor, param);
     if (var_type) {
       // Don't treat enum definition variables as instantiations.
       bool is_enum_member = semanticContainer &&
@@ -1186,6 +1225,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                          ClangCursor parent,
                                          TemplateVisitorData* data) {
   IndexFile* db = data->db;
+  IndexParam* param = data->param;
   switch (cursor.get_kind()) {
     default:
       break;
@@ -1199,7 +1239,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.definition_extent = ref_cursor.get_extent();
           ref_index->def.kind = ClangSymbolKind::Parameter;
           SetVarDetail(ref_index, ref_cursor.get_spelling(), ref_cursor,
-                       nullptr, true, db, data->param);
+                       nullptr, true, db, param);
 
           ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
           // TODO optimize
@@ -1250,7 +1290,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         if (ref_index->def.detailed_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
+#if CINDEX_HAVE_PRETTY
+          ref_index->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
+#else
           ref_index->def.detailed_name = ref_cursor.get_spelling();
+#endif
           ref_index->def.short_name_offset = 0;
           ref_index->def.short_name_size = ref_index->def.detailed_name.size();
           ref_index->def.kind = ClangSymbolKind::Parameter;
@@ -1272,7 +1316,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         if (ref_index->def.detailed_name.empty()) {
           ref_index->def.definition_spelling = ref_cursor.get_spelling_range();
           ref_index->def.definition_extent = ref_cursor.get_extent();
+#if CINDEX_HAVE_PRETTY
+          ref_index->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
+#else
           ref_index->def.detailed_name = ref_cursor.get_spelling();
+#endif
           ref_index->def.short_name_offset = 0;
           ref_index->def.short_name_size = ref_index->def.detailed_name.size();
           ref_index->def.kind = ClangSymbolKind::Parameter;
@@ -1391,7 +1439,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       ns->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (ns->def.detailed_name.empty()) {
         SetTypeName(ns, decl_cursor, decl->semanticContainer,
-                    decl->entityInfo->name, &param->ns);
+                    decl->entityInfo->name, param);
         ns->def.definition_spelling = decl_spell;
         ns->def.definition_extent = decl_cursor.get_extent();
         if (decl->semanticContainer) {
@@ -1557,7 +1605,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         // Build detailed name. The type desc looks like void (void *). We
         // insert the qualified name before the first '('.
         // FIXME GetFunctionSignature should set index
+#if CINDEX_HAVE_PRETTY
+        func->def.detailed_name = param->PrettyPrintCursor(decl->cursor);
+#else
         func->def.detailed_name = GetFunctionSignature(db, ns, decl);
+#endif
         auto idx = func->def.detailed_name.find(decl->entityInfo->name);
         assert(idx != std::string::npos);
         func->def.short_name_offset = idx;
@@ -1645,7 +1697,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       type->def.definition_extent = extent;
 
       SetTypeName(type, decl_cursor, decl->semanticContainer,
-                  decl->entityInfo->name, &param->ns);
+                  decl->entityInfo->name, param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
       type->def.comments = decl_cursor.get_comments();
 
@@ -1691,7 +1743,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // if (!decl->isRedeclaration) {
 
       SetTypeName(type, decl_cursor, decl->semanticContainer,
-                  decl->entityInfo->name, &param->ns);
+                  decl->entityInfo->name, param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
       type->def.comments = decl_cursor.get_comments();
       // }
@@ -1730,7 +1782,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // cursor
           if (origin->def.detailed_name.empty()) {
             SetTypeName(origin, origin_cursor, nullptr,
-                        &type->def.ShortName()[0], ns);
+                        &type->def.ShortName()[0], param);
             origin->def.kind = type->def.kind;
           }
           // TODO The name may be assigned in |ResolveToDeclarationType| but
@@ -1770,7 +1822,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           AddDeclTypeUsages(db, base_class->cursor, nullopt,
                             decl->semanticContainer, decl->lexicalContainer);
           optional<IndexTypeId> parent_type_id =
-              ResolveToDeclarationType(db, base_class->cursor, &param->ns);
+              ResolveToDeclarationType(db, base_class->cursor, param);
           // type_def ptr could be invalidated by ResolveToDeclarationType and
           // TemplateVisitor.
           type = db->Resolve(type_id);
