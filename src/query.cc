@@ -373,6 +373,46 @@ void RemoveRangeWithGen(std::vector<WithGen<T>>* dest, const std::vector<T>& to_
               dest->end());
 }
 
+void UpdateGen(QueryDatabase* db, WithGen<QueryFuncId>& ref) {
+  ref.gen = db->funcs[ref.value.id].gen;
+}
+void UpdateGen(QueryDatabase* db, WithGen<QueryTypeId>& ref) {
+  ref.gen = db->types[ref.value.id].gen;
+}
+void UpdateGen(QueryDatabase* db, WithGen<QueryVarId>& ref) {
+  ref.gen = db->vars[ref.value.id].gen;
+}
+
+template <typename T>
+void UpdateGen(QueryDatabase* db, Maybe<T>& ref) {
+  if (ref)
+    UpdateGen(db, *ref);
+}
+
+template <typename T>
+void UpdateGen(QueryDatabase* db, std::vector<T>& ref) {
+  for (T& x : ref)
+    UpdateGen(db, x);
+}
+
+void UpdateGen(QueryDatabase* db, QueryFunc::Def& def) {
+    UpdateGen(db, def.declaring_type);
+    UpdateGen(db, def.base);
+    UpdateGen(db, def.locals);
+}
+
+void UpdateGen(QueryDatabase* db, QueryType::Def& def) {
+  UpdateGen(db, def.alias_of);
+  UpdateGen(db, def.parents);
+  UpdateGen(db, def.funcs);
+  UpdateGen(db, def.types);
+  UpdateGen(db, def.vars);
+}
+
+void UpdateGen(QueryDatabase* db, QueryVar::Def& def) {
+  UpdateGen(db, def.variable_type);
+}
+
 }  // namespace
 
 template <>
@@ -769,6 +809,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         if (type.symbol_idx)
           symbols[type.symbol_idx->id].kind = SymbolKind::Invalid;
         type.gen++;
+        //type.def = QueryType::Def();
         type.def = nullopt;
       }
       break;
@@ -779,6 +820,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         if (func.symbol_idx)
           symbols[func.symbol_idx->id].kind = SymbolKind::Invalid;
         func.gen++;
+        //func.def = QueryFunc::Def();
         func.def = nullopt;
       }
       break;
@@ -789,6 +831,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         if (var.symbol_idx)
           symbols[var.symbol_idx->id].kind = SymbolKind::Invalid;
         var.gen++;
+        //var.def = QueryVar::Def();
         var.def = nullopt;
       }
       break;
@@ -820,6 +863,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     AddRangeWithGen(&def.def_var_name, merge_update.to_add, def.gen);          \
     RemoveRangeWithGen(&def.def_var_name, merge_update.to_remove);             \
     VerifyUnique(def.def_var_name);                                            \
+    UpdateGen(this, def.def_var_name);                                         \
   }
 
   for (const std::string& filename : update->files_removed)
@@ -876,13 +920,13 @@ void QueryDatabase::ImportOrUpdate(
     QueryType& existing = types[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (existing.def && existing.def->definition_spelling &&
-        !def.value.definition_spelling)
-      continue;
-
-    existing.def = def.value;
-    UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
-                        it->second.id);
+    if (!(existing.def && existing.def->definition_spelling &&
+          !def.value.definition_spelling)) {
+      existing.def = def.value;
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
+                    it->second.id);
+    }
+    UpdateGen(this, *existing.def);
   }
 }
 
@@ -900,13 +944,13 @@ void QueryDatabase::ImportOrUpdate(
     QueryFunc& existing = funcs[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (existing.def && existing.def->definition_spelling &&
-        !def.value.definition_spelling)
-      continue;
-
-    existing.def = def.value;
-    UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
-                        it->second.id);
+    if (!(existing.def && existing.def->definition_spelling &&
+          !def.value.definition_spelling)) {
+      existing.def = def.value;
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
+                    it->second.id);
+    }
+    UpdateGen(this, *existing.def);
   }
 }
 
@@ -924,14 +968,14 @@ void QueryDatabase::ImportOrUpdate(
     QueryVar& existing = vars[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (existing.def && existing.def->definition_spelling &&
-        !def.value.definition_spelling)
-      continue;
-
-    existing.def = def.value;
-    if (!def.value.is_local())
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
-                          it->second.id);
+    if (!(existing.def && existing.def->definition_spelling &&
+          !def.value.definition_spelling)) {
+      existing.def = def.value;
+      if (!def.value.is_local())
+        UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
+                      it->second.id);
+    }
+    UpdateGen(this, *existing.def);
   }
 }
 
@@ -993,6 +1037,7 @@ std::string_view QueryDatabase::GetSymbolShortName(RawId symbol_idx) const {
   }
   return "";
 }
+
 
 TEST_SUITE("query") {
   IndexUpdate GetDelta(IndexFile previous, IndexFile current) {

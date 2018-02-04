@@ -478,18 +478,6 @@ struct IdMap {
   QueryFuncRef ToQuery(IndexFuncRef ref) const;
   QueryLocation ToQuery(IndexFunc::Declaration decl) const;
   template <typename I>
-  optional<typename IndexToQuery<I>::type> ToQuery(optional<I> id) const {
-    if (!id)
-      return nullopt;
-    return ToQuery(*id);
-  }
-  template <typename I>
-  optional<WithGen<typename IndexToQuery<I>::type>> ToQuery(optional<I> id, int) const {
-    if (!id)
-      return nullopt;
-    return ToQuery(*id, 0);
-  }
-  template <typename I>
   Maybe<typename IndexToQuery<I>::type> ToQuery(Maybe<I> id) const {
     if (!id)
       return nullopt;
