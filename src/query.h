@@ -442,6 +442,24 @@ struct QueryDatabase {
   Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
 };
 
+template <typename I>
+struct IndexToQuery;
+
+// clang-format off
+template <> struct IndexToQuery<IndexFuncId> { using type = QueryFuncId; };
+template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
+template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
+template <> struct IndexToQuery<IndexFuncRef> { using type = QueryFuncRef; };
+template <> struct IndexToQuery<Range> { using type = QueryLocation; };
+template <> struct IndexToQuery<IndexFunc::Declaration> { using type = QueryLocation; };
+template <typename I> struct IndexToQuery<optional<I>> {
+  using type = optional<typename IndexToQuery<I>::type>;
+};
+template <typename I> struct IndexToQuery<std::vector<I>> {
+  using type = std::vector<typename IndexToQuery<I>::type>;
+};
+// clang-format on
+
 struct IdMap {
   const IdCache& local_ids;
   QueryFileId primary_file;
@@ -459,25 +477,46 @@ struct IdMap {
   WithGen<QueryVarId> ToQuery(IndexVarId id, int) const;
   QueryFuncRef ToQuery(IndexFuncRef ref) const;
   QueryLocation ToQuery(IndexFunc::Declaration decl) const;
-  optional<QueryLocation> ToQuery(optional<Range> range) const;
-  optional<QueryTypeId> ToQuery(optional<IndexTypeId> id) const;
-  optional<QueryFuncId> ToQuery(optional<IndexFuncId> id) const;
-  optional<QueryVarId> ToQuery(optional<IndexVarId> id) const;
-  optional<WithGen<QueryTypeId>> ToQuery(optional<IndexTypeId> id,int) const;
-  optional<WithGen<QueryFuncId>> ToQuery(optional<IndexFuncId> id,int) const;
-  optional<WithGen<QueryVarId>> ToQuery(optional<IndexVarId> id,int) const;
-  optional<QueryFuncRef> ToQuery(optional<IndexFuncRef> ref) const;
-  optional<QueryLocation> ToQuery(optional<IndexFunc::Declaration> decl) const;
-  std::vector<QueryLocation> ToQuery(std::vector<Range> ranges) const;
-  std::vector<QueryTypeId> ToQuery(std::vector<IndexTypeId> ids) const;
-  std::vector<QueryFuncId> ToQuery(std::vector<IndexFuncId> ids) const;
-  std::vector<QueryVarId> ToQuery(std::vector<IndexVarId> ids) const;
-  std::vector<WithGen<QueryTypeId>> ToQuery(std::vector<IndexTypeId> ids,int) const;
-  std::vector<WithGen<QueryFuncId>> ToQuery(std::vector<IndexFuncId> ids,int) const;
-  std::vector<WithGen<QueryVarId>> ToQuery(std::vector<IndexVarId> ids,int) const;
-  std::vector<QueryFuncRef> ToQuery(std::vector<IndexFuncRef> refs) const;
-  std::vector<QueryLocation> ToQuery(
-      std::vector<IndexFunc::Declaration> decls) const;
+  template <typename I>
+  optional<typename IndexToQuery<I>::type> ToQuery(optional<I> id) const {
+    if (!id)
+      return nullopt;
+    return ToQuery(*id);
+  }
+  template <typename I>
+  optional<WithGen<typename IndexToQuery<I>::type>> ToQuery(optional<I> id, int) const {
+    if (!id)
+      return nullopt;
+    return ToQuery(*id, 0);
+  }
+  template <typename I>
+  Maybe<typename IndexToQuery<I>::type> ToQuery(Maybe<I> id) const {
+    if (!id)
+      return nullopt;
+    return ToQuery(*id);
+  }
+  template <typename I>
+  Maybe<WithGen<typename IndexToQuery<I>::type>> ToQuery(Maybe<I> id, int) const {
+    if (!id)
+      return nullopt;
+    return ToQuery(*id, 0);
+  }
+  template <typename I>
+  std::vector<typename IndexToQuery<I>::type> ToQuery(const std::vector<I>& a) const {
+    std::vector<typename IndexToQuery<I>::type> ret;
+    ret.reserve(a.size());
+    for (auto& x : a)
+      ret.push_back(ToQuery(x));
+    return ret;
+  }
+  template <typename I>
+  std::vector<WithGen<typename IndexToQuery<I>::type>> ToQuery(std::vector<I> a, int) const {
+    std::vector<WithGen<typename IndexToQuery<I>::type>> ret;
+    ret.reserve(a.size());
+    for (auto& x : a)
+      ret.push_back(ToQuery(x, 0));
+    return ret;
+  }
   // clang-format on
 
   SymbolIdx ToSymbol(IndexTypeId id) const;
