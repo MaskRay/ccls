@@ -142,7 +142,7 @@ def configure(ctx):
     # /wd4722: ignores warning C4722 (destructor never returns) in loguru
     # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
     # /MD: use multithread c library from DLL
-    cxxflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/WX', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
+    cxxflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
     if 'release' in ctx.options.variant:
       cxxflags.append('/O2') # There is no O3
     else:

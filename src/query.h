@@ -62,12 +62,10 @@ struct QueryLocation {
 
   bool HasValue() const { return range.HasValue(); }
 
-  bool operator==(const QueryLocation& other) const {
-    return path == other.path && range == other.range;
+  bool operator==(const QueryLocation& o) const {
+    return path == o.path && range == o.range;
   }
-  bool operator!=(const QueryLocation& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const QueryLocation& o) const { return !(*this == o); }
   bool operator<(const QueryLocation& o) const {
     if (path != o.path)
       return path < o.path;
@@ -95,14 +93,14 @@ struct SymbolIdx {
         idx(RawId(-1)) {}  // Default ctor needed by stdlib. Do not use.
   SymbolIdx(SymbolKind kind, RawId idx) : kind(kind), idx(idx) {}
 
-  bool operator==(const SymbolIdx& that) const {
-    return kind == that.kind && idx == that.idx;
+  bool operator==(const SymbolIdx& o) const {
+    return kind == o.kind && idx == o.idx;
   }
-  bool operator!=(const SymbolIdx& that) const { return !(*this == that); }
-  bool operator<(const SymbolIdx& that) const {
-    if (kind != that.kind)
-      return kind < that.kind;
-    return idx < that.idx;
+  bool operator!=(const SymbolIdx& o) const { return !(*this == o); }
+  bool operator<(const SymbolIdx& o) const {
+    if (kind != o.kind)
+      return kind < o.kind;
+    return idx < o.idx;
   }
 };
 MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
@@ -117,15 +115,12 @@ struct SymbolRef {
   SymbolRef(SymbolIdx idx, SymbolRole role, QueryLocation loc)
       : idx(idx), role(role), loc(loc) {}
 
-  bool operator==(const SymbolRef& that) const {
-    return idx == that.idx && loc == that.loc;
+  std::tuple<SymbolIdx, SymbolRole, QueryLocation> ToTuple() const {
+    return {idx, role, loc};
   }
-  bool operator!=(const SymbolRef& that) const { return !(*this == that); }
-  bool operator<(const SymbolRef& that) const {
-    if (idx != that.idx)
-      return idx < that.idx;
-    return loc < that.loc;
-  }
+  bool operator==(const SymbolRef& o) const { return ToTuple() == o.ToTuple(); }
+  bool operator!=(const SymbolRef& o) const { return !(*this == o); }
+  bool operator<(const SymbolRef& o) const { return ToTuple() < o.ToTuple(); }
 };
 MAKE_REFLECT_STRUCT(SymbolRef, idx, loc);
 
@@ -141,17 +136,15 @@ struct QueryFuncRef {
   QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit)
       : id_(id), loc(loc), is_implicit(is_implicit) {}
 
-  bool operator==(const QueryFuncRef& that) const {
-    return id_ == that.id_ && loc == that.loc &&
-           is_implicit == that.is_implicit;
+  std::tuple<QueryFuncId, QueryLocation, bool> ToTuple() const {
+    return {id_, loc, is_implicit};
   }
-  bool operator!=(const QueryFuncRef& that) const { return !(*this == that); }
-  bool operator<(const QueryFuncRef& that) const {
-    if (id_ != that.id_)
-      return id_ < that.id_;
-    if (loc != that.loc)
-      return loc < that.loc;
-    return is_implicit < that.is_implicit;
+  bool operator==(const QueryFuncRef& o) const {
+    return ToTuple() == o.ToTuple();
+  }
+  bool operator!=(const QueryFuncRef& o) const { return !(*this == o); }
+  bool operator<(const QueryFuncRef& o) const {
+    return ToTuple() < o.ToTuple();
   }
 };
 MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc, is_implicit);
@@ -176,23 +169,10 @@ struct MergeableUpdate {
 
   MergeableUpdate(TId id, const std::vector<TValue>& to_add)
       : id(id), to_add(to_add) {}
-  MergeableUpdate(TId id, const std::vector<WithGen<TValue>>& to_add) : id(id) {
-    for (auto& x : to_add)
-      this->to_add.push_back(x.value);
-  }
   MergeableUpdate(TId id,
                   const std::vector<TValue>& to_add,
                   const std::vector<TValue>& to_remove)
       : id(id), to_add(to_add), to_remove(to_remove) {}
-  MergeableUpdate(TId id,
-                  const std::vector<WithGen<TValue>>& to_add,
-                  const std::vector<WithGen<TValue>>& to_remove)
-    : id(id) {
-    for (auto& x : to_add)
-      this->to_add.push_back(x.value);
-    for (auto& x : to_remove)
-      this->to_remove.push_back(x.value);
-  }
 };
 template <typename TVisitor, typename TId, typename TValue>
 void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {

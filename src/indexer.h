@@ -53,9 +53,9 @@ struct Id {
 
   bool HasValue() const { return id != RawId(-1); }
 
-  bool operator==(const Id<T>& other) const { return id == other.id; }
-
-  bool operator<(const Id<T>& other) const { return id < other.id; }
+  bool operator==(const Id<T>& o) const { return id == o.id; }
+  bool operator!=(const Id<T>& o) const { return id != o.id; }
+  bool operator<(const Id<T>& o) const { return id < o.id; }
 };
 
 namespace std {
@@ -65,23 +65,9 @@ struct hash<Id<T>> {
 };
 }  // namespace std
 
-template <typename T>
-bool operator==(const Id<T>& a, const Id<T>& b) {
-  assert(a.group == b.group && "Cannot compare Ids from different groups");
-  return a.id == b.id;
-}
-template <typename T>
-bool operator!=(const Id<T>& a, const Id<T>& b) {
-  return !(a == b);
-}
-
-template <typename T>
-void Reflect(Reader& visitor, Id<T>& id) {
-  id.id = visitor.GetUint64();
-}
-template <typename T>
-void Reflect(Writer& visitor, Id<T>& value) {
-  visitor.Uint64(value.id);
+template <typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, Id<T>& id) {
+  Reflect(visitor, id.id);
 }
 
 using IndexTypeId = Id<IndexType>;
@@ -103,28 +89,15 @@ struct IndexFuncRef {
   IndexFuncRef(Range loc, bool is_implicit)
       : loc(loc), is_implicit(is_implicit) {}
 
-  inline bool operator==(const IndexFuncRef& other) {
-    return id == other.id && loc == other.loc &&
-           is_implicit == other.is_implicit;
+  std::tuple<IndexFuncId, Range, bool> ToTuple() const {
+    return {id, loc, is_implicit};
   }
-  inline bool operator!=(const IndexFuncRef& other) {
-    return !(*this == other);
-  }
-  inline bool operator<(const IndexFuncRef& other) const {
-    if (id != other.id)
-      return id < other.id;
-    if (loc != other.loc)
-      return loc < other.loc;
-    return is_implicit < other.is_implicit;
+  bool operator==(const IndexFuncRef& o) { return ToTuple() == o.ToTuple(); }
+  bool operator!=(const IndexFuncRef& o) { return !(*this == o); }
+  bool operator<(const IndexFuncRef& o) const {
+    return ToTuple() < o.ToTuple();
   }
 };
-
-inline bool operator==(const IndexFuncRef& a, const IndexFuncRef& b) {
-  return a.id == b.id && a.loc == b.loc;
-}
-inline bool operator!=(const IndexFuncRef& a, const IndexFuncRef& b) {
-  return !(a == b);
-}
 
 inline void Reflect(Reader& visitor, IndexFuncRef& value) {
   std::string s = visitor.GetString();
@@ -190,19 +163,16 @@ struct TypeDefDefinitionData {
   int16_t short_name_size = 0;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
 
-  bool operator==(
-      const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return detailed_name == other.detailed_name &&
-           definition_spelling == other.definition_spelling &&
-           definition_extent == other.definition_extent &&
-           alias_of == other.alias_of && parents == other.parents &&
-           types == other.types && funcs == other.funcs && vars == other.vars &&
-           hover == other.hover && comments == other.comments;
+  bool operator==(const TypeDefDefinitionData& o) const {
+    return detailed_name == o.detailed_name &&
+           definition_spelling == o.definition_spelling &&
+           definition_extent == o.definition_extent && alias_of == o.alias_of &&
+           parents == o.parents && types == o.types && funcs == o.funcs &&
+           vars == o.vars && kind == o.kind && hover == o.hover &&
+           kind == o.kind && hover == o.hover && comments == o.comments;
   }
-
-  bool operator!=(
-      const TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return !(*this == other);
+  bool operator!=(const TypeDefDefinitionData& o) const {
+    return !(*this == o);
   }
 
   std::string_view ShortName() const {
@@ -290,20 +260,16 @@ struct FuncDefDefinitionData {
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
   StorageClass storage = StorageClass::Invalid;
 
-  bool operator==(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
-      const {
-    return detailed_name == other.detailed_name && hover == other.hover &&
-           definition_spelling == other.definition_spelling &&
-           definition_extent == other.definition_extent &&
-           declaring_type == other.declaring_type && base == other.base &&
-           locals == other.locals && callees == other.callees &&
-           hover == other.hover && comments == other.comments;
+  bool operator==(const FuncDefDefinitionData& o) const {
+    return detailed_name == o.detailed_name &&
+           definition_spelling == o.definition_spelling &&
+           definition_extent == o.definition_extent &&
+           declaring_type == o.declaring_type && base == o.base &&
+           locals == o.locals && callees == o.callees && kind == o.kind &&
+           storage == o.storage && hover == o.hover && comments == o.comments;
   }
-  bool operator!=(
-      const FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& other)
-      const {
-    return !(*this == other);
+  bool operator!=(const FuncDefDefinitionData& o) const {
+    return !(*this == o);
   }
 
   std::string_view ShortName() const {
@@ -419,12 +385,13 @@ struct VarDefDefinitionData {
   }
   bool is_macro() const { return kind == ClangSymbolKind::Macro; }
 
-  bool operator==(
-      const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
-    return detailed_name == other.detailed_name && hover == other.hover &&
-           definition_spelling == other.definition_spelling &&
-           definition_extent == other.definition_extent &&
-           variable_type == other.variable_type && comments == other.comments;
+  bool operator==(const VarDefDefinitionData& o) const {
+    return detailed_name == o.detailed_name &&
+           definition_spelling == o.definition_spelling &&
+           definition_extent == o.definition_extent &&
+           variable_type == o.variable_type && parent_id == o.parent_id &&
+           parent_kind == o.parent_kind && kind == o.kind &&
+           storage == o.storage && hover == o.hover && comments == o.comments;
   }
   bool operator!=(
       const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
