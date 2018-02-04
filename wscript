@@ -238,9 +238,9 @@ def configure(ctx):
     # Use the detected clang executable to infer resource directory
     # Use `clang -### -xc /dev/null` instead of `clang -print-resource-dir` because the option is unavailable in 4.0.0
     devnull = '/dev/null' if sys.platform != 'win32' else 'NUL'
-    output = subprocess.check_output(
+    output = str(subprocess.check_output(
         [clang, '-###', '-xc', devnull],
-        stderr=subprocess.STDOUT).decode()
+        stderr=subprocess.STDOUT).decode())
     match = re.search(r'"-resource-dir" "([^"]*)"', output, re.M)
     if match:
       ctx.env.default_resource_directory = match.group(1)
