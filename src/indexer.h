@@ -133,7 +133,7 @@ inline void Reflect(Reader& visitor, IndexFuncRef& value) {
     value.is_implicit = true;
     ++str_value;
   }
-  uint64_t id = atol(str_value);
+  RawId id = atol(str_value);
   const char* loc_string = strchr(str_value, '@') + 1;
 
   value.id = IndexFuncId(id);
