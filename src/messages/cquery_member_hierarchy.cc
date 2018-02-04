@@ -61,7 +61,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   std::vector<Out_CqueryMemberHierarchy::Entry> ret;
-  EachWithGen<QueryVar>(db->vars, root_type.def->vars, [&](QueryVar& var) {
+  EachWithGen(db->vars, root_type.def->vars, [&](QueryVar& var) {
     Out_CqueryMemberHierarchy::Entry entry;
     entry.name = var.def->ShortName();
     // FIXME WithGen

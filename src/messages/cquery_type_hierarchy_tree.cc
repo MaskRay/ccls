@@ -34,18 +34,17 @@ BuildParentInheritanceHierarchyForType(QueryDatabase* db,
   std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
   parent_entries.reserve(root_type.def->parents.size());
 
-  EachWithGen<QueryType>(
-      db->types, root_type.def->parents, [&](QueryType& parent_type) {
-        Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-        parent_entry.name = parent_type.def->detailed_name;
-        if (parent_type.def->definition_spelling)
-          parent_entry.location = GetLsLocation(
-              db, working_files, *parent_type.def->definition_spelling);
-        parent_entry.children = BuildParentInheritanceHierarchyForType(
-            db, working_files, parent_type);
+  EachWithGen(db->types, root_type.def->parents, [&](QueryType& parent_type) {
+    Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
+    parent_entry.name = parent_type.def->detailed_name;
+    if (parent_type.def->definition_spelling)
+      parent_entry.location = GetLsLocation(
+          db, working_files, *parent_type.def->definition_spelling);
+    parent_entry.children =
+        BuildParentInheritanceHierarchyForType(db, working_files, parent_type);
 
-        parent_entries.push_back(parent_entry);
-      });
+    parent_entries.push_back(parent_entry);
+  });
 
   return parent_entries;
 }
@@ -74,7 +73,7 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  EachWithGen<QueryType>(db->types, root_type.derived, [&](QueryType& type) {
+  EachWithGen(db->types, root_type.derived, [&](QueryType& type) {
     auto derived_entry =
         BuildInheritanceHierarchyForType(db, working_files, type);
     if (derived_entry)

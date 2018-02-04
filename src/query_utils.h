@@ -73,8 +73,8 @@ void EmitDiagnostics(WorkingFiles* working_files,
                      std::string path,
                      std::vector<lsDiagnostic> diagnostics);
 
-template <typename Q>
-void EachWithGen(std::vector<Q>& collection, WithGen<Id<Q>> x, std::function<void(Q&)> fn) {
+template <typename Q, typename Fn>
+void EachWithGen(std::vector<Q>& collection, WithGen<Id<Q>> x, Fn fn) {
   Q& obj = collection[x.value.id];
   // FIXME Deprecate optional<Def> def
   //  if (obj.gen == x.gen && obj.def)
@@ -82,8 +82,8 @@ void EachWithGen(std::vector<Q>& collection, WithGen<Id<Q>> x, std::function<voi
     fn(obj);
 }
 
-template <typename Q>
-void EachWithGen(std::vector<Q>& collection, std::vector<WithGen<Id<Q>>>& ids, std::function<void(Q&)> fn) {
+template <typename Q, typename Fn>
+void EachWithGen(std::vector<Q>& collection, std::vector<WithGen<Id<Q>>>& ids, Fn fn) {
   size_t j = 0;
   for (WithGen<Id<Q>> x : ids) {
     Q& obj = collection[x.value.id];

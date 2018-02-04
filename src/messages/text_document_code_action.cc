@@ -353,8 +353,7 @@ struct TextDocumentCodeActionHandler
           // Get implementation file.
           Out_TextDocumentCodeAction::Command command;
 
-          EachWithGen<QueryFunc>(db->funcs, type.def->funcs, [&](QueryFunc&
-                                                                     func_def) {
+          EachWithGen(db->funcs, type.def->funcs, [&](QueryFunc& func_def) {
             if (func_def.def->definition_extent)
               return;
             EnsureImplFile(db, file_id, impl_uri /*out*/, impl_file_id /*out*/);
