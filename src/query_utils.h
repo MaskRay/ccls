@@ -25,12 +25,9 @@ std::vector<QueryLocation> ToQueryLocation(
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryTypeId>& refs);
-std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           std::vector<WithGen<QueryFuncId>>*);
-std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           std::vector<WithGen<QueryTypeId>>*);
-std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           std::vector<WithGen<QueryVarId>>*);
+std::vector<QueryLocation> ToQueryLocation(
+    QueryDatabase* db,
+    const std::vector<QueryVarId>& refs);
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
                                            const std::vector<QueryFuncId>& ids);
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
@@ -74,8 +71,8 @@ void EmitDiagnostics(WorkingFiles* working_files,
                      std::vector<lsDiagnostic> diagnostics);
 
 template <typename Q, typename Fn>
-void EachWithGen(std::vector<Q>& collection, WithGen<Id<Q>> x, Fn fn) {
-  Q& obj = collection[x.value.id];
+void EachWithGen(std::vector<Q>& collection, Id<Q> x, Fn fn) {
+  Q& obj = collection[x.id];
   // FIXME Deprecate optional<Def> def
   //  if (obj.gen == x.gen && obj.def)
   if (obj.def)
@@ -83,15 +80,10 @@ void EachWithGen(std::vector<Q>& collection, WithGen<Id<Q>> x, Fn fn) {
 }
 
 template <typename Q, typename Fn>
-void EachWithGen(std::vector<Q>& collection, std::vector<WithGen<Id<Q>>>& ids, Fn fn) {
-  size_t j = 0;
-  for (WithGen<Id<Q>> x : ids) {
-    Q& obj = collection[x.value.id];
-    if (1 /*obj.gen == x.gen*/) {
-      if (obj.def) // FIXME Deprecate optional<Def> def
-        fn(obj);
-      ids[j++] = x;
-    }
+void EachWithGen(std::vector<Q>& collection, std::vector<Id<Q>>& ids, Fn fn) {
+  for (Id<Q> x : ids) {
+    Q& obj = collection[x.id];
+    if (obj.def) // FIXME Deprecate optional<Def> def
+      fn(obj);
   }
-  ids.resize(j);
 }

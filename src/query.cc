@@ -44,11 +44,11 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.comments = type.comments;
   result.definition_spelling = id_map.ToQuery(type.definition_spelling);
   result.definition_extent = id_map.ToQuery(type.definition_extent);
-  result.alias_of = id_map.ToQuery(type.alias_of,0);
-  result.parents = id_map.ToQuery(type.parents,0);
-  result.types = id_map.ToQuery(type.types,0);
-  result.funcs = id_map.ToQuery(type.funcs,0);
-  result.vars = id_map.ToQuery(type.vars,0);
+  result.alias_of = id_map.ToQuery(type.alias_of);
+  result.parents = id_map.ToQuery(type.parents);
+  result.types = id_map.ToQuery(type.types);
+  result.funcs = id_map.ToQuery(type.funcs);
+  result.vars = id_map.ToQuery(type.vars);
   return result;
 }
 
@@ -67,9 +67,9 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.comments = func.comments;
   result.definition_spelling = id_map.ToQuery(func.definition_spelling);
   result.definition_extent = id_map.ToQuery(func.definition_extent);
-  result.declaring_type = id_map.ToQuery(func.declaring_type,0);
-  result.base = id_map.ToQuery(func.base,0);
-  result.locals = id_map.ToQuery(func.locals,0);
+  result.declaring_type = id_map.ToQuery(func.declaring_type);
+  result.base = id_map.ToQuery(func.base);
+  result.locals = id_map.ToQuery(func.locals);
   result.callees = id_map.ToQuery(func.callees);
   return result;
 }
@@ -86,7 +86,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.comments = var.comments;
   result.definition_spelling = id_map.ToQuery(var.definition_spelling);
   result.definition_extent = id_map.ToQuery(var.definition_extent);
-  result.variable_type = id_map.ToQuery(var.variable_type,0);
+  result.variable_type = id_map.ToQuery(var.variable_type);
   result.parent_id = var.parent_id;
   result.parent_kind = var.parent_kind;
   result.kind = var.kind;
@@ -355,64 +355,6 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
   return QueryVarId(idx);
 }
 
-template <typename T>
-void AddRangeWithGen(std::vector<WithGen<T>>* dest, const std::vector<T>& to_add, Generation gen) {
-  for (auto& x : to_add)
-    dest->push_back(WithGen<T>{gen, x});
-}
-
-template <typename T>
-void RemoveRangeWithGen(std::vector<WithGen<T>>* dest, const std::vector<T>& to_remove) {
-  dest->erase(std::remove_if(dest->begin(), dest->end(),
-                             [&](const WithGen<T>& t) {
-                               // TODO: make to_remove a set?
-                               return std::find(to_remove.begin(),
-                                                to_remove.end(),
-                                                t.value) != to_remove.end();
-                             }),
-              dest->end());
-}
-
-void UpdateGen(QueryDatabase* db, WithGen<QueryFuncId>& ref) {
-  ref.gen = db->funcs[ref.value.id].gen;
-}
-void UpdateGen(QueryDatabase* db, WithGen<QueryTypeId>& ref) {
-  ref.gen = db->types[ref.value.id].gen;
-}
-void UpdateGen(QueryDatabase* db, WithGen<QueryVarId>& ref) {
-  ref.gen = db->vars[ref.value.id].gen;
-}
-
-template <typename T>
-void UpdateGen(QueryDatabase* db, Maybe<T>& ref) {
-  if (ref)
-    UpdateGen(db, *ref);
-}
-
-template <typename T>
-void UpdateGen(QueryDatabase* db, std::vector<T>& ref) {
-  for (T& x : ref)
-    UpdateGen(db, x);
-}
-
-void UpdateGen(QueryDatabase* db, QueryFunc::Def& def) {
-    UpdateGen(db, def.declaring_type);
-    UpdateGen(db, def.base);
-    UpdateGen(db, def.locals);
-}
-
-void UpdateGen(QueryDatabase* db, QueryType::Def& def) {
-  UpdateGen(db, def.alias_of);
-  UpdateGen(db, def.parents);
-  UpdateGen(db, def.funcs);
-  UpdateGen(db, def.types);
-  UpdateGen(db, def.vars);
-}
-
-void UpdateGen(QueryDatabase* db, QueryVar::Def& def) {
-  UpdateGen(db, def.variable_type);
-}
-
 }  // namespace
 
 template <>
@@ -473,20 +415,6 @@ QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
   return QueryFuncId(cached_func_ids_.find(id)->second);
 }
 QueryVarId IdMap::ToQuery(IndexVarId id) const {
-  assert(cached_var_ids_.find(id) != cached_var_ids_.end());
-  return QueryVarId(cached_var_ids_.find(id)->second);
-}
-WithGen<QueryTypeId> IdMap::ToQuery(IndexTypeId id,int) const {
-  assert(cached_type_ids_.find(id) != cached_type_ids_.end());
-  return QueryTypeId(cached_type_ids_.find(id)->second);
-}
-WithGen<QueryFuncId> IdMap::ToQuery(IndexFuncId id,int) const {
-  if (id == IndexFuncId())
-    return QueryFuncId();
-  assert(cached_func_ids_.find(id) != cached_func_ids_.end());
-  return QueryFuncId(cached_func_ids_.find(id)->second);
-}
-WithGen<QueryVarId> IdMap::ToQuery(IndexVarId id,int) const {
   assert(cached_var_ids_.find(id) != cached_var_ids_.end());
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
@@ -857,13 +785,6 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     RemoveRange(&def.def_var_name, merge_update.to_remove);           \
     VerifyUnique(def.def_var_name);                                   \
   }
-#define HANDLE_MERGEABLE_WITH_GEN(update_var_name, def_var_name, storage_name) \
-  for (auto merge_update : update->update_var_name) {                          \
-    auto& def = storage_name[merge_update.id.id];                              \
-    AddRangeWithGen(&def.def_var_name, merge_update.to_add, def.gen);          \
-    RemoveRangeWithGen(&def.def_var_name, merge_update.to_remove);             \
-    VerifyUnique(def.def_var_name);                                            \
-  }
 
   for (const std::string& filename : update->files_removed)
     files[usr_to_file[NormalizedPath(filename)].id].def = nullopt;
@@ -871,14 +792,14 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
   ImportOrUpdate(update->types_def_update);
-  HANDLE_MERGEABLE_WITH_GEN(types_derived, derived, types);
-  HANDLE_MERGEABLE_WITH_GEN(types_instances, instances, types);
+  HANDLE_MERGEABLE(types_derived, derived, types);
+  HANDLE_MERGEABLE(types_instances, instances, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
   RemoveUsrs(SymbolKind::Func, update->funcs_removed);
   ImportOrUpdate(update->funcs_def_update);
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
-  HANDLE_MERGEABLE_WITH_GEN(funcs_derived, derived, funcs);
+  HANDLE_MERGEABLE(funcs_derived, derived, funcs);
   HANDLE_MERGEABLE(funcs_callers, callers, funcs);
 
   RemoveUsrs(SymbolKind::Var, update->vars_removed);
@@ -925,7 +846,6 @@ void QueryDatabase::ImportOrUpdate(
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
                     it->second.id);
     }
-    UpdateGen(this, *existing.def);
   }
 }
 
@@ -949,7 +869,6 @@ void QueryDatabase::ImportOrUpdate(
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
                     it->second.id);
     }
-    UpdateGen(this, *existing.def);
   }
 }
 
@@ -974,7 +893,6 @@ void QueryDatabase::ImportOrUpdate(
         UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
                       it->second.id);
     }
-    UpdateGen(this, *existing.def);
   }
 }
 

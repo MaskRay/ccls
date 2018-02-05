@@ -66,7 +66,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     entry.name = var.def->ShortName();
     // FIXME WithGen
     entry.type_id =
-        var.def->variable_type ? var.def->variable_type->value.id : RawId(-1);
+        var.def->variable_type ? var.def->variable_type->id : RawId(-1);
     if (var.def->definition_spelling) {
       optional<lsLocation> loc =
           GetLsLocation(db, working_files, *var.def->definition_spelling);
@@ -101,7 +101,7 @@ struct CqueryMemberHierarchyInitialHandler
       if (ref.idx.kind == SymbolKind::Var) {
         QueryVar& var = db->vars[ref.idx.idx];
         if (var.def && var.def->variable_type)
-          out.result = BuildInitial(db, working_files, var.def->variable_type->value);
+          out.result = BuildInitial(db, working_files, *var.def->variable_type);
         break;
       }
     }

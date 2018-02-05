@@ -249,9 +249,9 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     dependencies);
 
 struct QueryType {
-  using Def = TypeDefDefinitionData<WithGen<QueryTypeId>,
-                                    WithGen<QueryFuncId>,
-                                    WithGen<QueryVarId>,
+  using Def = TypeDefDefinitionData<QueryTypeId,
+                                    QueryFuncId,
+                                    QueryVarId,
                                     QueryLocation>;
   using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
@@ -262,17 +262,17 @@ struct QueryType {
   Generation gen;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
-  std::vector<WithGen<QueryTypeId>> derived;
-  std::vector<WithGen<QueryVarId>> instances;
+  std::vector<QueryTypeId> derived;
+  std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
 
   explicit QueryType(const Usr& usr) : usr(usr), gen(0) {}
 };
 
 struct QueryFunc {
-  using Def = FuncDefDefinitionData<WithGen<QueryTypeId>,
-                                    WithGen<QueryFuncId>,
-                                    WithGen<QueryVarId>,
+  using Def = FuncDefDefinitionData<QueryTypeId,
+                                    QueryFuncId,
+                                    QueryVarId,
                                     QueryFuncRef,
                                     QueryLocation>;
   using DefUpdate = WithUsr<Def>;
@@ -285,16 +285,16 @@ struct QueryFunc {
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
-  std::vector<WithGen<QueryFuncId>> derived;
+  std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
 
   explicit QueryFunc(const Usr& usr) : usr(usr), gen(0) {}
 };
 
 struct QueryVar {
-  using Def = VarDefDefinitionData<WithGen<QueryTypeId>,
-                                   WithGen<QueryFuncId>,
-                                   WithGen<QueryVarId>,
+  using Def = VarDefDefinitionData<QueryTypeId,
+                                   QueryFuncId,
+                                   QueryVarId,
                                    QueryLocation>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
@@ -452,9 +452,6 @@ struct IdMap {
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
-  WithGen<QueryTypeId> ToQuery(IndexTypeId id, int) const;
-  WithGen<QueryFuncId> ToQuery(IndexFuncId id, int) const;
-  WithGen<QueryVarId> ToQuery(IndexVarId id, int) const;
   QueryFuncRef ToQuery(IndexFuncRef ref) const;
   QueryLocation ToQuery(IndexFunc::Declaration decl) const;
   template <typename I>

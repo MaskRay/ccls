@@ -95,7 +95,7 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
 
   // FIXME WithGen
   for (auto parent_id : root_func.def->base) {
-    QueryFunc& parent_func = db->funcs[parent_id.value.id];
+    QueryFunc& parent_func = db->funcs[parent_id.id];
     if (!parent_func.def)
       continue;
 
@@ -105,7 +105,7 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
       parent_entry.location = GetLsLocation(
           db, working_files, *parent_func.def->definition_spelling);
     parent_entry.children =
-        BuildParentInheritanceHierarchyForFunc(db, working_files, parent_id.value);
+        BuildParentInheritanceHierarchyForFunc(db, working_files, parent_id);
 
     entries.push_back(parent_entry);
   }
@@ -141,10 +141,9 @@ BuildInheritanceHierarchyForFunc(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  // FIXME WithGen
   for (auto derived : root_func.derived) {
     auto derived_entry =
-        BuildInheritanceHierarchyForFunc(db, working_files, derived.value);
+        BuildInheritanceHierarchyForFunc(db, working_files, derived);
     if (derived_entry)
       entry.children.push_back(*derived_entry);
   }

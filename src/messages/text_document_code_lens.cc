@@ -159,10 +159,10 @@ struct TextDocumentCodeLensHandler
                       true /*force_display*/);
           AddCodeLens("derived", "derived", &common,
                       ref.loc.OffsetStartColumn(1),
-                      ToQueryLocation(db, &type.derived), nullopt,
+                      ToQueryLocation(db, type.derived), nullopt,
                       false /*force_display*/);
           AddCodeLens("var", "vars", &common, ref.loc.OffsetStartColumn(2),
-                      ToQueryLocation(db, &type.instances), nullopt,
+                      ToQueryLocation(db, type.instances), nullopt,
                       false /*force_display*/);
           break;
         }
@@ -216,14 +216,14 @@ struct TextDocumentCodeLensHandler
 
           AddCodeLens("derived", "derived", &common,
                       ref.loc.OffsetStartColumn(offset++),
-                      ToQueryLocation(db, &func.derived), nullopt,
+                      ToQueryLocation(db, func.derived), nullopt,
                       false /*force_display*/);
 
           // "Base"
           if (func.def->base.size() == 1) {
             // FIXME WithGen
             optional<QueryLocation> base_loc =
-                GetDefinitionSpellingOfSymbol(db, func.def->base[0].value);
+                GetDefinitionSpellingOfSymbol(db, func.def->base[0]);
             if (base_loc) {
               optional<lsLocation> ls_base =
                   GetLsLocation(db, working_files, *base_loc);
@@ -245,7 +245,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, ref.loc.OffsetStartColumn(1),
-                        ToQueryLocation(db, &func.def->base), nullopt,
+                        ToQueryLocation(db, func.def->base), nullopt,
                         false /*force_display*/);
           }
 

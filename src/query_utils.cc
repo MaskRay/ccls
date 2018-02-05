@@ -14,25 +14,16 @@ int ComputeRangeSize(const Range& range) {
 }
 
 template <typename Q>
-std::vector<QueryLocation> ToQueryLocation(
+std::vector<QueryLocation> ToQueryLocationHelper(
     QueryDatabase* db,
-    std::vector<Q> QueryDatabase::*collection,
-    std::vector<WithGen<Id<Q>>>* ids_) {
-  auto& ids = *ids_;
+    const std::vector<Id<Q>>& ids) {
   std::vector<QueryLocation> locs;
   locs.reserve(ids.size());
-  size_t j = 0;
-  for (size_t i = 0; i < ids.size(); i++) {
-    Q& obj = (db->*collection)[ids[i].value.id];
-    if (obj.gen == ids[i].gen) {
-      optional<QueryLocation> loc =
-          GetDefinitionSpellingOfSymbol(db, ids[i].value);
-      if (loc)
-        locs.push_back(*loc);
-      ids[j++] = ids[i];
-    }
+  for (auto id : ids) {
+    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      locs.push_back(*loc);
   }
-  ids.resize(j);
   return locs;
 }
 
@@ -171,42 +162,17 @@ std::vector<QueryLocation> ToQueryLocation(
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryTypeId>& ids) {
-  std::vector<QueryLocation> locs;
-  locs.reserve(ids.size());
-  for (const QueryTypeId& id : ids) {
-    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(loc.value());
-  }
-  return locs;
+  return ToQueryLocationHelper(db, ids);
 }
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryFuncId>& ids) {
-  std::vector<QueryLocation> locs;
-  locs.reserve(ids.size());
-  for (const QueryFuncId& id : ids) {
-    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(loc.value());
-  }
-  return locs;
-}
-
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    std::vector<WithGen<QueryFuncId>>* ids_) {
-  return ToQueryLocation(db, &QueryDatabase::funcs, ids_);
+  return ToQueryLocationHelper(db, ids);
 }
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
-    std::vector<WithGen<QueryTypeId>>* ids_) {
-  return ToQueryLocation(db, &QueryDatabase::types, ids_);
-}
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    std::vector<WithGen<QueryVarId>>* ids_) {
-  return ToQueryLocation(db, &QueryDatabase::vars, ids_);
+    const std::vector<QueryVarId>& ids) {
+  return ToQueryLocationHelper(db, ids);
 }
 
 std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
@@ -514,8 +480,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       info.kind = lsSymbolKind::Function;
 
       if (func.def->declaring_type.has_value()) {
-        // FIXME WithGen
-        QueryType& container = db->types[func.def->declaring_type->value.id];
+        QueryType& container = db->types[func.def->declaring_type->id];
         if (container.def)
           info.kind = lsSymbolKind::Method;
       }

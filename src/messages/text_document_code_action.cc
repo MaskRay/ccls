@@ -159,7 +159,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
     optional<std::string> type_name;
     optional<lsPosition> same_file_insert_end;
     if (func.def->declaring_type) {
-      QueryType& declaring_type = db->types[func.def->declaring_type->value.id];
+      QueryType& declaring_type = db->types[func.def->declaring_type->id];
       if (declaring_type.def) {
         type_name = std::string(declaring_type.def->ShortName());
         optional<lsRange> ls_type_def_extent = GetLsRange(
