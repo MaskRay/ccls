@@ -37,32 +37,30 @@ elif sys.platform == 'win32':
 from waflib.Tools.compiler_cxx import cxx_compiler
 cxx_compiler['linux'] = ['clang++', 'g++']
 
-if sys.version_info < (3, 0):
-  if sys.platform == 'win32':
-    kdll = ctypes.windll.kernel32
-    def symlink(source, link_name, target_is_directory=False):
-      # SYMBOLIC_LINK_FLAG_DIRECTORY: 0x1
-      SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2
-      flags = int(target_is_directory)
-      ret = kdll.CreateSymbolicLinkA(link_name, source, flags)
-      if ret == 0:
-        err = ctypes.WinError()
-        ERROR_PRIVILEGE_NOT_HELD = 1314
-        # Creating symbolic link on Windows requires a special priviledge SeCreateSymboliclinkPrivilege,
-        # which an non-elevated process lacks. Starting with Windows 10 build 14972, this got relaxed
-        # when Developer Mode is enabled. Triggering this new behaviour requires a new flag. Try again.
-        if err[0] == ERROR_PRIVILEGE_NOT_HELD:
-          flags |= SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
-          ret = kdll.CreateSymbolicLinkA(link_name, source, flags)
-          if ret != 0:
-            return
-          err = ctypes.WinError()
-        raise err
-  else:
-    # Python 3 compatibility
-    real_symlink = os.symlink
-    def symlink(source, link_name, target_is_directory=False):
-      return real_symlink(source, link_name)
+# Creating symbolic link on Windows requires a special priviledge SeCreateSymboliclinkPrivilege,
+# which an non-elevated process lacks. Starting with Windows 10 build 14972, this got relaxed
+# when Developer Mode is enabled. Triggering this new behaviour requires a new flag.
+SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE = 0x2
+
+# Python 2 has no symlink function and Python 3's symlink function does not allow creation of
+# symlinks without admin rights (even when Developer Mode is enabled) so we define our own
+# symlink function when on Windows.
+if sys.platform == 'win32':
+  kdll = ctypes.windll.kernel32
+  def symlink(source, link_name, target_is_directory=False):
+    # SYMBOLIC_LINK_FLAG_DIRECTORY: 0x1
+    flags = int(target_is_directory) | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
+
+    # Use unicode version (W suffix) of Windows symbolic link function and convert strings to
+    # unicode if Python 2 is used (strings are unicode by default in Python 3). 
+    if sys.version_info < (3, 0):
+      ret = kdll.CreateSymbolicLinkW(unicode(link_name), unicode(source), flags)
+    else:
+      ret = kdll.CreateSymbolicLinkW(link_name, source, flags)
+
+    if ret == 0:
+      err = ctypes.WinError()
+      raise err
   os.symlink = symlink
 
 # There is a null pointer dereference issue in tools/libclang/CXIndexDataConsumer.cpp handleReference.
