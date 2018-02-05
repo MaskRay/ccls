@@ -309,7 +309,7 @@ def configure(ctx):
         dst = os.path.join(ctx.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll')
         os.symlink(dst, out_clang_dll)
       except (OSError, NotImplementedError):
-        shutil.copy(dst, out_clang_dll)
+        shutil.copy(out_clang_dll, dst)
     else:
       ctx.env.rpath = ctx.env['LIBPATH_clang']
 
