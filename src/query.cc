@@ -863,7 +863,6 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     AddRangeWithGen(&def.def_var_name, merge_update.to_add, def.gen);          \
     RemoveRangeWithGen(&def.def_var_name, merge_update.to_remove);             \
     VerifyUnique(def.def_var_name);                                            \
-    UpdateGen(this, def.def_var_name);                                         \
   }
 
   for (const std::string& filename : update->files_removed)

@@ -4,6 +4,7 @@
 #include <clang-c/Index.h>
 
 #include <atomic>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,9 @@ void Indexer_Main(Config* config,
                   Project* project,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter);
+
+struct BaseIpcMessage;
+void QueryDb_Handle(std::unique_ptr<BaseIpcMessage>& message);
 
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,

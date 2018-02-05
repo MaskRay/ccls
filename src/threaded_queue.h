@@ -110,28 +110,26 @@ struct ThreadedQueue : public BaseThreadQueue {
   // Returns the number of elements in the queue. This is lock-free.
   size_t Size() const { return total_count_; }
 
-  // Add an element to the front of the queue.
-  void PriorityEnqueue(T&& t) {
+  // Add an element to the queue.
+  void Enqueue(T&& t, bool priority = false) {
     std::lock_guard<std::mutex> lock(mutex_);
-    priority_.push(std::move(t));
+    if (priority)
+      priority_.push(std::move(t));
+    else
+      queue_.push(std::move(t));
     ++total_count_;
     waiter_->cv.notify_one();
     if (waiter1_)
       waiter1_->cv.notify_one();
   }
 
-  // Add an element to the queue.
-  void Enqueue(T&& t) {
-    std::lock_guard<std::mutex> lock(mutex_);
-    queue_.push(std::move(t));
-    ++total_count_;
-    waiter_->cv.notify_one();
-    if (waiter1_)
-      waiter1_->cv.notify_one();
+  // Add an element to the front of the queue.
+  void PriorityEnqueue(T&& t) {
+    Enqueue(std::move(t), true);
   }
 
   // Add a set of elements to the queue.
-  void EnqueueAll(std::vector<T>&& elements) {
+  void EnqueueAll(std::vector<T>&& elements, bool priority = false) {
     if (elements.empty())
       return;
 
@@ -140,7 +138,10 @@ struct ThreadedQueue : public BaseThreadQueue {
     total_count_ += elements.size();
 
     for (T& element : elements) {
-      queue_.push(std::move(element));
+      if (priority)
+        priority_.push(std::move(element));
+      else
+        queue_.push(std::move(element));
     }
     elements.clear();
 
@@ -202,28 +203,31 @@ struct ThreadedQueue : public BaseThreadQueue {
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
-  template <typename TAction>
-  optional<T> TryDequeuePlusAction(TAction action) {
+  optional<T> TryDequeueHelper(int which) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (priority_.empty() && queue_.empty())
-      return nullopt;
-
     auto execute = [&](std::queue<T>* q) {
       auto val = std::move(q->front());
       q->pop();
       --total_count_;
-
-      action(val);
-
       return std::move(val);
     };
-    if (!priority_.empty())
+    if (which & 2 && priority_.size())
       return execute(&priority_);
-    return execute(&queue_);
+    if (which & 1 && queue_.size())
+      return execute(&queue_);
+    return nullopt;
   }
 
   optional<T> TryDequeue() {
-    return TryDequeuePlusAction([](const T&) {});
+    return TryDequeueHelper(3);
+  }
+
+  optional<T> TryDequeueLow() {
+    return TryDequeueHelper(1);
+  }
+
+  optional<T> TryDequeueHigh() {
+    return TryDequeueHelper(2);
   }
 
   mutable std::mutex mutex_;

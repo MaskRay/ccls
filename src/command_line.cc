@@ -146,19 +146,11 @@ bool QueryDbMainLoop(Config* config,
                      CodeCompleteCache* non_global_code_complete_cache,
                      CodeCompleteCache* signature_cache) {
   auto* queue = QueueManager::instance();
-  bool did_work = false;
-
   std::vector<std::unique_ptr<BaseIpcMessage>> messages =
       queue->for_querydb.DequeueAll();
+  bool did_work = messages.size();
   for (auto& message : messages) {
-    did_work = true;
-
-    for (MessageHandler* handler : *MessageHandler::message_handlers) {
-      if (handler->GetId() == message->method_id) {
-        handler->Run(std::move(message));
-        break;
-      }
-    }
+    QueryDb_Handle(message);
     if (message) {
       LOG_S(FATAL) << "Exiting; unhandled IPC message "
                    << IpcIdToString(message->method_id);

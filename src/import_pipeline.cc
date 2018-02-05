@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include <chrono>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -381,7 +380,8 @@ void ParseFile(Config* config,
                                    true /*write_to_disk*/));
   }
 
-  QueueManager::instance()->do_id_map.EnqueueAll(std::move(result));
+  QueueManager::instance()->do_id_map.EnqueueAll(std::move(result),
+                                                 request.is_interactive);
 }
 
 bool IndexMain_DoParse(
@@ -466,7 +466,7 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
 #endif
 
   Index_OnIndexed reply(update, response->perf);
-  queue->on_indexed.Enqueue(std::move(reply));
+  queue->on_indexed.Enqueue(std::move(reply), response->is_interactive);
 
   return true;
 }
@@ -609,6 +609,105 @@ void Indexer_Main(Config* config,
   }
 }
 
+void QueryDb_Handle(std::unique_ptr<BaseIpcMessage>& message) {
+  for (MessageHandler* handler : *MessageHandler::message_handlers) {
+    if (handler->GetId() == message->method_id) {
+      handler->Run(std::move(message));
+      break;
+    }
+  }
+}
+
+namespace {
+void QueryDb_DoIdMap(QueueManager* queue,
+                     QueryDatabase* db,
+                     ImportManager* import_manager,
+                     Index_DoIdMap* request) {
+  assert(request->current);
+
+  // If the request does not have previous state and we have already imported
+  // it, load the previous state from disk and rerun IdMap logic later. Do not
+  // do this if we have already attempted in the past.
+  if (!request->load_previous && !request->previous &&
+      db->usr_to_file.find(NormalizedPath(request->current->path)) !=
+          db->usr_to_file.end()) {
+    assert(!request->load_previous);
+    request->load_previous = true;
+    queue->load_previous_index.Enqueue(std::move(*request));
+    return;
+  }
+
+  // Check if the file is already being imported into querydb. If it is, drop
+  // the request.
+  //
+  // Note, we must do this *after* we have checked for the previous index,
+  // otherwise we will never actually generate the IdMap.
+  if (!import_manager->StartQueryDbImport(request->current->path)) {
+    LOG_S(INFO) << "Dropping index as it is already being imported for "
+                << request->current->path;
+    return;
+  }
+
+  Index_OnIdMapped response(request->cache_manager, request->perf,
+                            request->is_interactive, request->write_to_disk);
+  Timer time;
+
+  auto make_map = [db](std::unique_ptr<IndexFile> file)
+      -> std::unique_ptr<Index_OnIdMapped::File> {
+    if (!file)
+      return nullptr;
+
+    auto id_map = MakeUnique<IdMap>(db, file->id_cache);
+    return MakeUnique<Index_OnIdMapped::File>(std::move(file),
+                                              std::move(id_map));
+  };
+  response.current = make_map(std::move(request->current));
+  response.previous = make_map(std::move(request->previous));
+  response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
+
+  queue->on_id_mapped.Enqueue(std::move(response));
+}
+
+void QueryDb_OnIndexed(QueueManager* queue,
+                       QueryDatabase* db,
+                       ImportManager* import_manager,
+                       ImportPipelineStatus* status,
+                       SemanticHighlightSymbolCache* semantic_cache,
+                       WorkingFiles* working_files,
+                       Index_OnIndexed* response) {
+  Timer time;
+  db->ApplyIndexUpdate(&response->update);
+  time.ResetAndPrint("Applying index update for " +
+                     StringJoinMap(response->update.files_def_update,
+                                   [](const QueryFile::DefUpdate& value) {
+                                     return value.value.path;
+                                   }));
+
+  // Update indexed content, inactive lines, and semantic highlighting.
+  for (auto& updated_file : response->update.files_def_update) {
+    WorkingFile* working_file =
+        working_files->GetFileByFilename(updated_file.value.path);
+    if (working_file) {
+      // Update indexed content.
+      working_file->SetIndexContent(updated_file.file_content);
+
+      // Inactive lines.
+      EmitInactiveLines(working_file, updated_file.value.inactive_regions);
+
+      // Semantic highlighting.
+      QueryFileId file_id =
+          db->usr_to_file[NormalizedPath(working_file->filename)];
+      QueryFile* file = &db->files[file_id.id];
+      EmitSemanticHighlighting(db, semantic_cache, working_file, file);
+    }
+
+    // Mark the files as being done in querydb stage after we apply the index
+    // update.
+    import_manager->DoneQueryDbImport(updated_file.value.path);
+  }
+}
+}  // namespace
+
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,
                         ImportManager* import_manager,
@@ -626,89 +725,16 @@ bool QueryDb_ImportMain(Config* config,
     if (!request)
       break;
     did_work = true;
-
-    assert(request->current);
-
-    // If the request does not have previous state and we have already imported
-    // it, load the previous state from disk and rerun IdMap logic later. Do not
-    // do this if we have already attempted in the past.
-    if (!request->load_previous && !request->previous &&
-        db->usr_to_file.find(NormalizedPath(request->current->path)) !=
-            db->usr_to_file.end()) {
-      assert(!request->load_previous);
-      request->load_previous = true;
-      queue->load_previous_index.Enqueue(std::move(*request));
-      continue;
-    }
-
-    // Check if the file is already being imported into querydb. If it is, drop
-    // the request.
-    //
-    // Note, we must do this *after* we have checked for the previous index,
-    // otherwise we will never actually generate the IdMap.
-    if (!import_manager->StartQueryDbImport(request->current->path)) {
-      LOG_S(INFO) << "Dropping index as it is already being imported for "
-                  << request->current->path;
-      continue;
-    }
-
-    Index_OnIdMapped response(request->cache_manager, request->perf, request->is_interactive,
-                              request->write_to_disk);
-    Timer time;
-
-    auto make_map = [db](std::unique_ptr<IndexFile> file)
-        -> std::unique_ptr<Index_OnIdMapped::File> {
-      if (!file)
-        return nullptr;
-
-      auto id_map = MakeUnique<IdMap>(db, file->id_cache);
-      return MakeUnique<Index_OnIdMapped::File>(std::move(file),
-                                                std::move(id_map));
-    };
-    response.current = make_map(std::move(request->current));
-    response.previous = make_map(std::move(request->previous));
-    response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
-
-    queue->on_id_mapped.Enqueue(std::move(response));
+    QueryDb_DoIdMap(queue, db, import_manager, &*request);
   }
 
   while (true) {
     optional<Index_OnIndexed> response = queue->on_indexed.TryDequeue();
     if (!response)
       break;
-
     did_work = true;
-
-    Timer time;
-    db->ApplyIndexUpdate(&response->update);
-    time.ResetAndPrint("Applying index update for " +
-                       StringJoinMap(response->update.files_def_update,
-                                     [](const QueryFile::DefUpdate& value) {
-                                       return value.value.path;
-                                     }));
-
-    // Update indexed content, inactive lines, and semantic highlighting.
-    for (auto& updated_file : response->update.files_def_update) {
-      WorkingFile* working_file =
-          working_files->GetFileByFilename(updated_file.value.path);
-      if (working_file) {
-        // Update indexed content.
-        working_file->SetIndexContent(updated_file.file_content);
-
-        // Inactive lines.
-        EmitInactiveLines(working_file, updated_file.value.inactive_regions);
-
-        // Semantic highlighting.
-        QueryFileId file_id =
-            db->usr_to_file[NormalizedPath(working_file->filename)];
-        QueryFile* file = &db->files[file_id.id];
-        EmitSemanticHighlighting(db, semantic_cache, working_file, file);
-      }
-
-      // Mark the files as being done in querydb stage after we apply the index
-      // update.
-      import_manager->DoneQueryDbImport(updated_file.value.path);
-    }
+    QueryDb_OnIndexed(queue, db, import_manager, status, semantic_cache,
+                      working_files, &*response);
   }
 
   return did_work;
