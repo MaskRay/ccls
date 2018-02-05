@@ -606,7 +606,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kMajorVersion = 11;
-const int IndexFile::kMinorVersion = 0;
+const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(const std::string& path,
                      const std::string& contents)
@@ -2324,4 +2324,44 @@ void ClangSanityCheck() {
 
 std::string GetClangVersion() {
   return ToString(clang_getClangVersion());
+}
+
+void Reflect(Reader& visitor, IndexFuncRef& value) {
+  if (visitor.Format() == SerializeFormat::Json) {
+    std::string s = visitor.GetString();
+    const char* str_value = s.c_str();
+    if (str_value[0] == '~') {
+      value.is_implicit = true;
+      ++str_value;
+    }
+    RawId id = atol(str_value);
+    const char* loc_string = strchr(str_value, '@') + 1;
+
+    value.id = IndexFuncId(id);
+    value.loc = Range(loc_string);
+  } else {
+    Reflect(visitor, value.id);
+    Reflect(visitor, value.loc);
+    Reflect(visitor, value.is_implicit);
+  }
+}
+void Reflect(Writer& visitor, IndexFuncRef& value) {
+  if (visitor.Format() == SerializeFormat::Json) {
+    std::string s;
+    if (value.is_implicit)
+      s += "~";
+
+    // id.id is unsigned, special case -1 value
+    if (value.id.HasValue())
+      s += std::to_string(value.id.id);
+    else
+      s += "-1";
+
+    s += "@" + value.loc.ToString();
+    visitor.String(s.c_str());
+  } else {
+    Reflect(visitor, value.id);
+    Reflect(visitor, value.loc);
+    Reflect(visitor, value.is_implicit);
+  }
 }

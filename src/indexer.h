@@ -99,34 +99,8 @@ struct IndexFuncRef {
   }
 };
 
-inline void Reflect(Reader& visitor, IndexFuncRef& value) {
-  std::string s = visitor.GetString();
-  const char* str_value = s.c_str();
-  if (str_value[0] == '~') {
-    value.is_implicit = true;
-    ++str_value;
-  }
-  RawId id = atol(str_value);
-  const char* loc_string = strchr(str_value, '@') + 1;
-
-  value.id = IndexFuncId(id);
-  value.loc = Range(loc_string);
-}
-inline void Reflect(Writer& visitor, IndexFuncRef& value) {
-  std::string s;
-
-  if (value.is_implicit)
-    s += "~";
-
-  // id.id is unsigned, special case -1 value
-  if (value.id.HasValue())
-    s += std::to_string(value.id.id);
-  else
-    s += "-1";
-
-  s += "@" + value.loc.ToString();
-  visitor.String(s.c_str());
-}
+void Reflect(Reader& visitor, IndexFuncRef& value);
+void Reflect(Writer& visitor, IndexFuncRef& value);
 
 template <typename TypeId, typename FuncId, typename VarId, typename Range>
 struct TypeDefDefinitionData {
