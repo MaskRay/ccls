@@ -90,7 +90,7 @@ struct IndexFuncRef {
       : loc(loc), is_implicit(is_implicit) {}
 
   std::tuple<IndexFuncId, Range, bool> ToTuple() const {
-    return {id, loc, is_implicit};
+    return std::make_tuple(id, loc, is_implicit);
   }
   bool operator==(const IndexFuncRef& o) { return ToTuple() == o.ToTuple(); }
   bool operator!=(const IndexFuncRef& o) { return !(*this == o); }

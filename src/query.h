@@ -116,7 +116,7 @@ struct SymbolRef {
       : idx(idx), role(role), loc(loc) {}
 
   std::tuple<SymbolIdx, SymbolRole, QueryLocation> ToTuple() const {
-    return {idx, role, loc};
+    return std::make_tuple(idx, role, loc);
   }
   bool operator==(const SymbolRef& o) const { return ToTuple() == o.ToTuple(); }
   bool operator!=(const SymbolRef& o) const { return !(*this == o); }
@@ -137,7 +137,7 @@ struct QueryFuncRef {
       : id_(id), loc(loc), is_implicit(is_implicit) {}
 
   std::tuple<QueryFuncId, QueryLocation, bool> ToTuple() const {
-    return {id_, loc, is_implicit};
+    return std::make_tuple(id_, loc, is_implicit);
   }
   bool operator==(const QueryFuncRef& o) const {
     return ToTuple() == o.ToTuple();
