@@ -27,7 +27,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryIndexFile);
 struct CqueryIndexFileHandler : BaseMessageHandler<Ipc_CqueryIndexFile> {
   void Run(Ipc_CqueryIndexFile* request) override {
     LOG_S(INFO) << "Indexing file " << request->params.path;
-    QueueManager::instance()->index_request.Enqueue(Index_Request(
+    QueueManager::instance()->index_request.PushBack(Index_Request(
         NormalizePath(request->params.path), request->params.args,
         request->params.is_interactive, request->params.contents, ICacheManager::Make(config)));
   }

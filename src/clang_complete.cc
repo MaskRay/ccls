@@ -689,7 +689,7 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
 
   // Only reparse the file if we create a new CompletionSession.
   if (EnsureCompletionOrCreatePreloadSession(filename))
-    parse_requests_.PriorityEnqueue(ParseRequest(filename));
+    parse_requests_.PushBack(ParseRequest(filename), true);
 }
 
 void ClangCompleteManager::NotifyEdit(const std::string& filename) {
@@ -708,7 +708,7 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   //
 
   EnsureCompletionOrCreatePreloadSession(filename);
-  parse_requests_.PriorityEnqueue(ParseRequest(filename));
+  parse_requests_.PushBack(ParseRequest(filename), true);
 }
 
 void ClangCompleteManager::NotifyClose(const std::string& filename) {

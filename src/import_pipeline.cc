@@ -393,7 +393,7 @@ bool IndexMain_DoParse(
     ImportManager* import_manager,
     IIndexer* indexer) {
   auto* queue = QueueManager::instance();
-  optional<Index_Request> request = queue->index_request.TryDequeue();
+  optional<Index_Request> request = queue->index_request.TryPopFront();
   if (!request)
     return false;
 
@@ -408,7 +408,7 @@ bool IndexMain_DoParse(
 
 bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
   auto* queue = QueueManager::instance();
-  optional<Index_OnIdMapped> response = queue->on_id_mapped.TryDequeue();
+  optional<Index_OnIdMapped> response = queue->on_id_mapped.TryPopFront();
   if (!response)
     return false;
 
@@ -466,14 +466,14 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
 #endif
 
   Index_OnIndexed reply(update, response->perf);
-  queue->on_indexed.Enqueue(std::move(reply), response->is_interactive);
+  queue->on_indexed.PushBack(std::move(reply), response->is_interactive);
 
   return true;
 }
 
 bool IndexMain_LoadPreviousIndex() {
   auto* queue = QueueManager::instance();
-  optional<Index_DoIdMap> response = queue->load_previous_index.TryDequeue();
+  optional<Index_DoIdMap> response = queue->load_previous_index.TryPopFront();
   if (!response)
     return false;
 
@@ -482,21 +482,21 @@ bool IndexMain_LoadPreviousIndex() {
       << "Unable to load previous index for already imported index "
       << response->current->path;
 
-  queue->do_id_map.Enqueue(std::move(*response));
+  queue->do_id_map.PushBack(std::move(*response));
   return true;
 }
 
 bool IndexMergeIndexUpdates() {
   auto* queue = QueueManager::instance();
-  optional<Index_OnIndexed> root = queue->on_indexed.TryDequeue();
+  optional<Index_OnIndexed> root = queue->on_indexed.TryPopBack();
   if (!root)
     return false;
 
   bool did_merge = false;
   while (true) {
-    optional<Index_OnIndexed> to_join = queue->on_indexed.TryDequeue();
+    optional<Index_OnIndexed> to_join = queue->on_indexed.TryPopBack();
     if (!to_join) {
-      queue->on_indexed.Enqueue(std::move(*root));
+      queue->on_indexed.PushFront(std::move(*root));
       return did_merge;
     }
 
@@ -633,7 +633,7 @@ void QueryDb_DoIdMap(QueueManager* queue,
           db->usr_to_file.end()) {
     assert(!request->load_previous);
     request->load_previous = true;
-    queue->load_previous_index.Enqueue(std::move(*request));
+    queue->load_previous_index.PushBack(std::move(*request));
     return;
   }
 
@@ -665,7 +665,7 @@ void QueryDb_DoIdMap(QueueManager* queue,
   response.previous = make_map(std::move(request->previous));
   response.perf.querydb_id_map = time.ElapsedMicrosecondsAndReset();
 
-  queue->on_id_mapped.Enqueue(std::move(response));
+  queue->on_id_mapped.PushBack(std::move(response));
 }
 
 void QueryDb_OnIndexed(QueueManager* queue,
@@ -721,7 +721,7 @@ bool QueryDb_ImportMain(Config* config,
   bool did_work = false;
 
   while (true) {
-    optional<Index_DoIdMap> request = queue->do_id_map.TryDequeue();
+    optional<Index_DoIdMap> request = queue->do_id_map.TryPopFront();
     if (!request)
       break;
     did_work = true;
@@ -729,7 +729,7 @@ bool QueryDb_ImportMain(Config* config,
   }
 
   while (true) {
-    optional<Index_OnIndexed> response = queue->on_indexed.TryDequeue();
+    optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
     if (!response)
       break;
     did_work = true;
@@ -762,7 +762,7 @@ TEST_SUITE("ImportPipeline") {
                      const std::vector<std::string>& args = {},
                      bool is_interactive = false,
                      const std::string& contents = "void foo();") {
-      queue->index_request.Enqueue(
+      queue->index_request.PushBack(
           Index_Request(path, args, is_interactive, contents, cache_manager));
     }
 

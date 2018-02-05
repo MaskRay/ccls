@@ -73,7 +73,7 @@ void QueueManager::WriteStdout(IpcId id, lsBaseOutMessage& response) {
   Stdout_Request out;
   out.content = sstream.str();
   out.id = id;
-  instance()->for_stdout.Enqueue(std::move(out));
+  instance()->for_stdout.PushBack(std::move(out));
 }
 
 QueueManager::QueueManager(MultiQueueWaiter* querydb_waiter,

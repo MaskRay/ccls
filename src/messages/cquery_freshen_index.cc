@@ -97,8 +97,9 @@ struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
           }
           bool is_interactive =
               working_files->GetFileByFilename(entry.filename) != nullptr;
-          queue->index_request.Enqueue(Index_Request(entry.filename, entry.args,
-                                                     is_interactive, *content, ICacheManager::Make(config)));
+          queue->index_request.PushBack(
+              Index_Request(entry.filename, entry.args, is_interactive,
+                            *content, ICacheManager::Make(config)));
         });
   }
 };

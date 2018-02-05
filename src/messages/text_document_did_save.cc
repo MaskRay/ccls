@@ -49,8 +49,10 @@ struct TextDocumentDidSaveHandler
       LOG_S(ERROR) << "Unable to read file content after saving " << path;
     } else {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
-      QueueManager::instance()->index_request.Enqueue(Index_Request(
-          entry.filename, entry.args, true /*is_interactive*/, *content, ICacheManager::Make(config)));
+      QueueManager::instance()->index_request.PushBack(
+          Index_Request(entry.filename, entry.args, true /*is_interactive*/,
+                        *content, ICacheManager::Make(config)),
+          true);
     }
 
     clang_complete->NotifySave(path);

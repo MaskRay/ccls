@@ -344,7 +344,7 @@ void LaunchStdinLoop(Config* config,
         case IpcId::CqueryDerived:
         case IpcId::CqueryIndexFile:
         case IpcId::CqueryWait: {
-          queue->for_querydb.Enqueue(std::move(message));
+          queue->for_querydb.PushBack(std::move(message));
           break;
         }
 
