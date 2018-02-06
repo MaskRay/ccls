@@ -110,15 +110,23 @@ matrix:
 install:
   - |
     if [[ "${TRAVIS_OS_NAME}" == "osx" ]]; then
-      if [[ "${COMPILER}" = "g++-5" ]]; then
-        brew install gcc5
+      if [[ "${COMPILER}" == "g++-5" ]]; then
+        brew install gcc@5
+        brew link --overwrite gcc@5
       fi
-      if [[ "${COMPILER}" = "g++-6" ]]; then
-        brew install gcc6
+      if [[ "${COMPILER}" == "g++-6" ]]; then
+        brew install gcc@6
+        brew link --overwrite gcc@6
       fi
-      if [[ "${COMPILER}" = "g++-7" ]]; then
-        brew install gcc7
+      if [[ "${COMPILER}" == "g++-7" ]]; then
+        brew install gcc@7
+        brew link --overwrite gcc@7
       fi
+    fi
+
+  - |
+    if [[ "${COMPILER}" == g++* ]]; then
+      export J="-j1"
     fi
 
   - export CXX="${COMPILER}"
@@ -128,7 +136,7 @@ before_script:
 
 script:
   - travis_retry ./waf configure
-  - ./waf build
+  - ./waf build ${J}
   - ./build/release/bin/cquery --ci --log-all-to-stderr --test-unit
   - ./build/release/bin/cquery --ci --log-all-to-stderr --test-index
 
