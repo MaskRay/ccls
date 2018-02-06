@@ -62,6 +62,9 @@ if sys.platform == 'win32':
       err = ctypes.WinError()
       raise err
   os.symlink = symlink
+elif sys.version_info.major < 3:
+  os_symlink_bak = os.symlink
+  os.symlink = lambda src, dst, target_is_directory=False: os_symlink_bak(src, dst)
 
 # There is a null pointer dereference issue in tools/libclang/CXIndexDataConsumer.cpp handleReference.
 def patch_byte_in_libclang(filename, offset, old, new):
