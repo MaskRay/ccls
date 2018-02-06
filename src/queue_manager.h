@@ -76,7 +76,7 @@ struct Index_OnIndexed {
   IndexUpdate update;
   PerformanceImportFile perf;
 
-  Index_OnIndexed(IndexUpdate& update, PerformanceImportFile perf);
+  Index_OnIndexed(IndexUpdate&& update, PerformanceImportFile perf);
 };
 
 struct QueueManager {

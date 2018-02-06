@@ -45,9 +45,9 @@ Index_OnIdMapped::Index_OnIdMapped(const std::shared_ptr<ICacheManager>& cache_m
       is_interactive(is_interactive),
       write_to_disk(write_to_disk) {}
 
-Index_OnIndexed::Index_OnIndexed(IndexUpdate& update,
+Index_OnIndexed::Index_OnIndexed(IndexUpdate&& update,
                                  PerformanceImportFile perf)
-    : update(update), perf(perf) {}
+  : update(std::move(update)), perf(perf) {}
 
 QueueManager* QueueManager::instance_ = nullptr;
 

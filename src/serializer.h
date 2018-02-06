@@ -160,6 +160,9 @@ void Reflect(Writer& visitor, std::string& value);
 void Reflect(Reader& visitor, std::string_view& view);
 void Reflect(Writer& visitor, std::string_view& view);
 
+void Reflect(Reader& visitor, std::unique_ptr<char[]>& value);
+void Reflect(Writer& visitor, std::unique_ptr<char[]>& value);
+
 // std::monostate is used to represent JSON null
 void Reflect(Reader& visitor, std::monostate&);
 void Reflect(Writer& visitor, std::monostate&);
@@ -303,7 +306,7 @@ void Reflect(Reader& visitor, std::vector<T>& values) {
   visitor.IterArray([&](Reader& entry) {
     T entry_value;
     Reflect(entry, entry_value);
-    values.push_back(entry_value);
+    values.push_back(std::move(entry_value));
   });
 }
 template <typename T>

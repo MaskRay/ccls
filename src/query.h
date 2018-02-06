@@ -168,7 +168,7 @@ struct MergeableUpdate {
   std::vector<TValue> to_remove;
 
   MergeableUpdate(TId id, const std::vector<TValue>& to_add)
-      : id(id), to_add(to_add) {}
+    : id(id), to_add(to_add) {}
   MergeableUpdate(TId id,
                   const std::vector<TValue>& to_add,
                   const std::vector<TValue>& to_remove)
@@ -189,6 +189,7 @@ struct WithUsr {
   T value;
 
   WithUsr(Usr usr, const T& value) : usr(usr), value(value) {}
+  WithUsr(Usr usr, T&& value) : usr(usr), value(std::move(value)) {}
 };
 template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, WithUsr<T>& value) {
@@ -320,7 +321,7 @@ struct IndexUpdate {
 
   // Merge |update| into this update; this can reduce overhead / index update
   // work can be parallelized.
-  void Merge(const IndexUpdate& update);
+  void Merge(IndexUpdate&& update);
 
   // Dump the update to a string.
   std::string ToString();

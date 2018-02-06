@@ -125,6 +125,19 @@ void Reflect(Writer& visitor, std::string_view& data) {
     visitor.String(&data[0], (rapidjson::SizeType)data.size());
 }
 
+void Reflect(Reader& visitor, std::unique_ptr<char[]>& value) {
+  if (!visitor.IsString())
+    throw std::invalid_argument("std::string");
+  std::string t = visitor.GetString();
+  value = std::unique_ptr<char[]>(new char[t.size() + 1]);
+  strcpy(value.get(), t.c_str());
+}
+void Reflect(Writer& visitor, std::unique_ptr<char[]>& value) {
+  if (!value)
+    visitor.String("");
+  else
+    visitor.String(value.get());
+}
 
 // TODO: Move this to indexer.cc
 void Reflect(Reader& visitor, IndexInclude& value) {
@@ -155,6 +168,7 @@ void ReflectHoverAndComments(Reader& visitor, Def& def) {
 
 template <typename Def>
 void ReflectHoverAndComments(Writer& visitor, Def& def) {
+  // Don't emit empty hover and comments in JSON test mode.
   if (!gTestOutputMode || def.hover.size())
     ReflectMember(visitor, "hover", def.hover);
   if (!gTestOutputMode || def.comments.size())

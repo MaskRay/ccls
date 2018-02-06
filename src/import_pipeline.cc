@@ -465,7 +465,7 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
     LOG_S(INFO) << "Applying IndexUpdate" << std::endl << update.ToString();
 #endif
 
-  Index_OnIndexed reply(update, response->perf);
+  Index_OnIndexed reply(std::move(update), response->perf);
   queue->on_indexed.PushBack(std::move(reply), response->is_interactive);
 
   return true;
@@ -502,7 +502,7 @@ bool IndexMergeIndexUpdates() {
 
     did_merge = true;
     Timer time;
-    root->update.Merge(to_join->update);
+    root->update.Merge(std::move(to_join->update));
     // time.ResetAndPrint("Joined querydb updates for files: " +
     // StringJoinMap(root->update.files_def_update,
     //[](const QueryFile::DefUpdate& update) {

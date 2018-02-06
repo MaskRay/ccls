@@ -136,6 +136,12 @@ void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
 }
 
 template <typename T>
+void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
+  for (T& x : to_add)
+    dest->push_back(std::move(x));
+}
+
+template <typename T>
 void PushRange(std::queue<T>* dest, const std::vector<T>& to_add) {
   for (const T& e : to_add)
     dest->push(e);
