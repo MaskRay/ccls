@@ -161,6 +161,10 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
                                                   bool use_angle_brackets) {
   directory = NormalizePath(directory);
   EnsureEndsInSlash(directory);
+  if (match_ && !match_->IsMatch(directory)) {
+    // Don't even enter the directory if it fails the patterns.
+    return;
+  }
 
   std::vector<CompletionCandidate> results;
   GetFilesInFolder(
