@@ -255,9 +255,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
 
       // Needed by |FilterAndSortCompletionResponse|.
-      // Will be removed in |DecorateIncludePaths|.
       for (lsCompletionItem& item : out.result.items)
-        item.label = "include" + item.label;
+        item.filterText = "include" + item.label;
 
       FilterAndSortCompletionResponse(&out, result.text,
                                       config->completion.filterAndSort);
