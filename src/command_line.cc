@@ -18,6 +18,7 @@
 #include "query.h"
 #include "query_utils.h"
 #include "queue_manager.h"
+#include "recorder.h"
 #include "semantic_highlight_symbol_cache.h"
 #include "serializer.h"
 #include "serializers/json.h"
@@ -56,9 +57,6 @@ namespace {
 
 std::vector<std::string> kEmptyArgs;
 
-// If true stdout will be printed to stderr.
-bool g_log_stdin_stdout_to_stderr = false;
-
 // This function returns true if e2e timing should be displayed for the given
 // IpcId.
 bool ShouldDisplayIpcTiming(IpcId id) {
@@ -96,8 +94,8 @@ Other command line options:
   --init <initializationOptions>
                 Override client provided initialization options
          https://github.com/cquery-project/cquery/wiki/Initialization-options
-  --log-stdin-stdout-to-stderr
-                Print stdin (requests) and stdout (responses) to stderr
+  --record <path>
+                Writes stdin to <path>.in and stdout to <path>.out
   --log-file <path>    Logging file for diagnostics
   --log-all-to-stderr  Write all log messages to STDERR.
   --wait-for-input     Wait for an '[Enter]' before exiting
@@ -273,8 +271,7 @@ void LaunchStdinLoop(Config* config,
     while (true) {
       std::unique_ptr<BaseIpcMessage> message;
       optional<std::string> err =
-          MessageRegistry::instance()->ReadMessageFromStdin(
-              g_log_stdin_stdout_to_stderr, &message);
+          MessageRegistry::instance()->ReadMessageFromStdin(&message);
 
       // Message parsing can fail if we don't recognize the method.
       if (err) {
@@ -381,10 +378,7 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
                              std::string(IpcIdToString(message.id)));
         }
 
-        if (g_log_stdin_stdout_to_stderr) {
-          std::cerr << "[COUT] |" << message.content << "|\n";
-          std::cerr.flush();
-        }
+        RecordOutput(message.content);
 
         std::cout << message.content;
         std::cout.flush();
@@ -460,8 +454,8 @@ int main(int argc, char** argv) {
                      loguru::Verbosity_MAX);
   }
 
-  if (HasOption(options, "--log-stdin-stdout-to-stderr"))
-    g_log_stdin_stdout_to_stderr = true;
+  if (HasOption(options, "--record"))
+    EnableRecording(options["--record"]);
 
   if (HasOption(options, "--clang-sanity-check")) {
     language_server = false;

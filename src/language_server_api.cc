@@ -1,5 +1,6 @@
 #include "language_server_api.h"
 
+#include "recorder.h"
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
@@ -65,6 +66,8 @@ optional<std::string> ReadJsonRpcContentFrom(
     content += *c;
   }
 
+  RecordInput(content);
+
   return content;
 }
 
@@ -119,21 +122,12 @@ optional<char> ReadCharFromStdinBlocking() {
 }
 
 optional<std::string> MessageRegistry::ReadMessageFromStdin(
-    bool log_stdin_to_stderr,
     std::unique_ptr<BaseIpcMessage>* message) {
   optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
     LOG_S(ERROR) << "Failed to read JsonRpc input; exiting";
     exit(1);
-  }
-
-  if (log_stdin_to_stderr) {
-    // TODO: This should go inside of ReadJsonRpcContentFrom since it does not
-    // print the header.
-    std::string printed = "[CIN] |" + *content + "|\n";
-    std::cerr << printed;
-    std::cerr.flush();
   }
 
   rapidjson::Document document;

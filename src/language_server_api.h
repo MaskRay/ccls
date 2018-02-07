@@ -43,7 +43,6 @@ struct MessageRegistry {
   std::unordered_map<std::string, Allocator> allocators;
 
   optional<std::string> ReadMessageFromStdin(
-      bool log_stdin_to_stderr,
       std::unique_ptr<BaseIpcMessage>* message);
   optional<std::string> Parse(Reader& visitor,
                               std::unique_ptr<BaseIpcMessage>* message);
