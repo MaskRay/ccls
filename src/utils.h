@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <functional>
 #include <memory>
-#include <queue>
+#include <iterator>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -137,14 +137,8 @@ void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
 
 template <typename T>
 void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
-  for (T& x : to_add)
-    dest->push_back(std::move(x));
-}
-
-template <typename T>
-void PushRange(std::queue<T>* dest, const std::vector<T>& to_add) {
-  for (const T& e : to_add)
-    dest->push(e);
+  dest->push_back(dest->end(), std::make_move_iterator(to_add.begin()),
+                  std::make_move_iterator(to_add.end()));
 }
 
 template <typename T>

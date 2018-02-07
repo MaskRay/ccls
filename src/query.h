@@ -409,9 +409,9 @@ struct QueryDatabase {
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
   void ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates);
-  void ImportOrUpdate(const std::vector<QueryType::DefUpdate>& updates);
-  void ImportOrUpdate(const std::vector<QueryFunc::DefUpdate>& updates);
-  void ImportOrUpdate(const std::vector<QueryVar::DefUpdate>& updates);
+  void ImportOrUpdate(std::vector<QueryType::DefUpdate>&& updates);
+  void ImportOrUpdate(std::vector<QueryFunc::DefUpdate>&& updates);
+  void ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates);
   void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, RawId idx);
   std::string_view GetSymbolDetailedName(RawId symbol_idx) const;
   std::string_view GetSymbolShortName(RawId symbol_idx) const;

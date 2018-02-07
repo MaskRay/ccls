@@ -3,6 +3,7 @@
 #include "queue_manager.h"
 
 #include <climits>
+#include <queue>
 
 namespace {
 

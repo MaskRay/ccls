@@ -791,19 +791,19 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
-  ImportOrUpdate(update->types_def_update);
+  ImportOrUpdate(std::move(update->types_def_update));
   HANDLE_MERGEABLE(types_derived, derived, types);
   HANDLE_MERGEABLE(types_instances, instances, types);
   HANDLE_MERGEABLE(types_uses, uses, types);
 
   RemoveUsrs(SymbolKind::Func, update->funcs_removed);
-  ImportOrUpdate(update->funcs_def_update);
+  ImportOrUpdate(std::move(update->funcs_def_update));
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
   HANDLE_MERGEABLE(funcs_derived, derived, funcs);
   HANDLE_MERGEABLE(funcs_callers, callers, funcs);
 
   RemoveUsrs(SymbolKind::Var, update->vars_removed);
-  ImportOrUpdate(update->vars_def_update);
+  ImportOrUpdate(std::move(update->vars_def_update));
   HANDLE_MERGEABLE(vars_declarations, declarations, vars);
   HANDLE_MERGEABLE(vars_uses, uses, vars);
 
@@ -827,7 +827,7 @@ void QueryDatabase::ImportOrUpdate(
 }
 
 void QueryDatabase::ImportOrUpdate(
-    const std::vector<QueryType::DefUpdate>& updates) {
+    std::vector<QueryType::DefUpdate>&& updates) {
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
@@ -842,7 +842,7 @@ void QueryDatabase::ImportOrUpdate(
     // Keep the existing definition if it is higher quality.
     if (!(existing.def && existing.def->definition_spelling &&
           !def.value.definition_spelling)) {
-      existing.def = def.value;
+      existing.def = std::move(def.value);
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
                     it->second.id);
     }
@@ -850,7 +850,7 @@ void QueryDatabase::ImportOrUpdate(
 }
 
 void QueryDatabase::ImportOrUpdate(
-    const std::vector<QueryFunc::DefUpdate>& updates) {
+    std::vector<QueryFunc::DefUpdate>&& updates) {
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
@@ -865,15 +865,14 @@ void QueryDatabase::ImportOrUpdate(
     // Keep the existing definition if it is higher quality.
     if (!(existing.def && existing.def->definition_spelling &&
           !def.value.definition_spelling)) {
-      existing.def = def.value;
+      existing.def = std::move(def.value);
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
                     it->second.id);
     }
   }
 }
 
-void QueryDatabase::ImportOrUpdate(
-    const std::vector<QueryVar::DefUpdate>& updates) {
+void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
@@ -888,7 +887,7 @@ void QueryDatabase::ImportOrUpdate(
     // Keep the existing definition if it is higher quality.
     if (!(existing.def && existing.def->definition_spelling &&
           !def.value.definition_spelling)) {
-      existing.def = def.value;
+      existing.def = std::move(def.value);
       if (!def.value.is_local())
         UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
                       it->second.id);
