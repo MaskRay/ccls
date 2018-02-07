@@ -23,10 +23,10 @@ esac
 
 pkg=$(mktemp -d)
 mkdir "$pkg/$name"
-rsync -rtLR bin "./${libclang[0]}" ./lib/clang+llvm-*/lib/clang/*/include "$pkg/$name"
+rsync -rtLR bin "./${libclang[-1]}" ./lib/clang+llvm-*/lib/clang/*/include "$pkg/$name"
 
 cd "$pkg"
-strip "$strip_option" "$name/bin/cquery" "$name/${libclang[0]}"
+strip "$strip_option" "$name/bin/cquery" "$name/${libclang[-1]}"
 case $(uname -s) in
   Darwin)
     tar -cf filelist --format=mtree --options="!all,time,mode,type" "$name"

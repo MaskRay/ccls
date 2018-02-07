@@ -51,7 +51,6 @@
 // items per second completed and scales up/down number of running threads.
 
 std::string g_init_options;
-bool g_debug;
 
 namespace {
 
@@ -88,9 +87,6 @@ Mode:
                 Run as a language server over stdin and stdout
 
 Other command line options:
-  --debug       Disable libclang crash recovery so that in case of libclang or
-                indexer callback issue, the process will crash and we can
-                get a stack trace.
   --init <initializationOptions>
                 Override client provided initialization options
          https://github.com/cquery-project/cquery/wiki/Initialization-options
@@ -444,7 +440,6 @@ int main(int argc, char** argv) {
                                &stdout_waiter);
 
   PlatformInit();
-  g_debug = HasOption(options, "--debug");
   IndexInit();
 
   bool language_server = true;
@@ -463,7 +458,6 @@ int main(int argc, char** argv) {
   }
 
   if (HasOption(options, "--test-unit")) {
-    g_debug = true;
     language_server = false;
     doctest::Context context;
     context.applyCommandLine(argc, argv);
@@ -473,7 +467,6 @@ int main(int argc, char** argv) {
   }
 
   if (HasOption(options, "--test-index")) {
-    g_debug = true;
     language_server = false;
     if (!RunIndexTests(options["--test-index"], !HasOption(options, "--ci")))
       return 1;

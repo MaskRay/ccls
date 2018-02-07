@@ -18,9 +18,6 @@
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
 
-// Defined in command_line.cc
-extern bool g_debug;
-
 #if CINDEX_VERSION >= 47
 #define CINDEX_HAVE_PRETTY 1
 #endif
@@ -698,15 +695,6 @@ void UniqueAdd(std::vector<T>& values, T value) {
 
 IdCache::IdCache(const std::string& primary_file)
     : primary_file(primary_file) {}
-
-template <typename T>
-bool Contains(const std::vector<T>& vec, const T& element) {
-  for (const T& entry : vec) {
-    if (entry == element)
-      return true;
-  }
-  return false;
-}
 
 void OnIndexDiagnostic(CXClientData client_data,
                        CXDiagnosticSet diagnostics,
@@ -2193,10 +2181,6 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
 
   CXIndexAction index_action = clang_IndexAction_create(index->cx_index);
 
-  // NOTE: libclang re-enables crash recovery whenever a new index is created.
-  if (g_debug)
-    clang_toggleCrashRecovery(0);
-
   // |index_result| is a CXErrorCode instance.
   int index_result = clang_indexTranslationUnit(
       index_action, &param, &callback, sizeof(IndexerCallbacks),
@@ -2268,7 +2252,7 @@ void ConcatTypeAndName(std::string& type, const std::string& name) {
 
 void IndexInit() {
   clang_enableStackTraces();
-  if (!g_debug)
+  if (!getenv("LIBCLANG_DISABLE_CRASH_RECOVERY"))
     clang_toggleCrashRecovery(1);
 }
 
