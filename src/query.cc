@@ -357,11 +357,6 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 
 }  // namespace
 
-template <>
-bool Maybe<QueryLocation>::has_value() const {
-  return storage.range.start.line >= 0;
-}
-
 Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {
   return ::GetQueryFileIdFromPath(this, path, false);

@@ -241,6 +241,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       // This is most likely the file path we will be passing to clang.
       if (EndsWith(arg, base_name))
         arg = cleanup_maybe_relative_path(arg);
+      // TODO Exclude .a .o to make link command in compile_commands.json work.
+      // Also, clang_parseTranslationUnit2FullArgv does not seem to accept
+      // multiple source filenames.
+      else if (EndsWith(arg, ".a") || EndsWith(arg, ".o"))
+        continue;
     }
 
     result.args.push_back(arg);
