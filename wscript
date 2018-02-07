@@ -52,7 +52,7 @@ if sys.platform == 'win32':
     flags = int(target_is_directory) | SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
 
     # Use unicode version (W suffix) of Windows symbolic link function and convert strings to
-    # unicode if Python 2 is used (strings are unicode by default in Python 3). 
+    # unicode if Python 2 is used (strings are unicode by default in Python 3).
     if sys.version_info < (3, 0):
       ret = kdll.CreateSymbolicLinkW(unicode(link_name), unicode(source), flags)
     else:
@@ -132,6 +132,18 @@ def download_and_extract(destdir, url, ext):
             0x47aece, b'\x48', b'\x4d')
   else:
     print('Found extracted at {0}'.format(destdir))
+
+def copy_or_symlink(src, dst):
+  print('copy_or_symlink src={0}, dst={1}'.format(src, dst))
+  try:
+    os.makedirs(os.path.dirname(dst))
+  except OSError:
+    pass
+
+  try:
+    os.symlink(src, dst)
+  except (OSError, NotImplementedError):
+    shutil.copy(src, dst)
 
 def configure(ctx):
   ctx.resetenv(ctx.options.variant)
@@ -300,19 +312,12 @@ def configure(ctx):
     elif sys.platform == 'darwin':
       ctx.env.rpath = ['@loader_path/../lib/' + clang_tarball_name + '/lib']
     elif sys.platform == 'win32':
+      # Poor Windows users' RPATH - copy libclang.lib and libclang.dll to the build directory.
       ctx.env.rpath = [] # Unsupported
-      name = os.path.basename(os.path.dirname(ctx.env['LIBPATH_clang'][0]))
-      # Poor Windows users' RPATH
-      out_clang_dll = os.path.join(ctx.path.get_bld().abspath(), 'bin', 'libclang.dll')
-      try:
-        os.makedirs(os.path.dirname(out_clang_dll))
-      except OSError:
-        pass
-      try:
-        dst = os.path.join(ctx.path.get_bld().abspath(), 'lib', name, 'bin', 'libclang.dll')
-        os.symlink(dst, out_clang_dll)
-      except (OSError, NotImplementedError):
-        shutil.copy(out_clang_dll, dst)
+      clang_dir = os.path.dirname(ctx.env['LIBPATH_clang'][0])
+      dest_dir = os.path.join(ctx.path.get_bld().abspath(), ctx.options.variant, 'bin')
+      # copy_or_symlink(os.path.join(clang_dir, 'lib', 'libclang.lib'), os.path.join(dest_dir, 'libclang.lib'))
+      copy_or_symlink(os.path.join(clang_dir, 'bin', 'libclang.dll'), os.path.join(dest_dir, 'libclang.dll'))
     else:
       ctx.env.rpath = ctx.env['LIBPATH_clang']
 
