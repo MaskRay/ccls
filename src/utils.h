@@ -137,8 +137,8 @@ void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
 
 template <typename T>
 void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
-  dest->push_back(dest->end(), std::make_move_iterator(to_add.begin()),
-                  std::make_move_iterator(to_add.end()));
+  dest->insert(dest->end(), std::make_move_iterator(to_add.begin()),
+               std::make_move_iterator(to_add.end()));
 }
 
 template <typename T>

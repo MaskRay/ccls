@@ -100,7 +100,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
 template <typename TId, typename TValue>
 void AddMergeableRange(
     std::vector<MergeableUpdate<TId, TValue>>* dest,
-    const std::vector<MergeableUpdate<TId, TValue>>& source) {
+    std::vector<MergeableUpdate<TId, TValue>>&& source) {
   // TODO: Consider caching the lookup table. It can probably save even more
   // time at the cost of some additional memory.
 
@@ -111,13 +111,13 @@ void AddMergeableRange(
     id_to_index[(*dest)[i].id] = i;
 
   // Add entries. Try to add them to an existing entry.
-  for (const auto& entry : source) {
+  for (auto& entry : source) {
     auto it = id_to_index.find(entry.id);
     if (it != id_to_index.end()) {
-      AddRange(&(*dest)[it->second].to_add, entry.to_add);
-      AddRange(&(*dest)[it->second].to_remove, entry.to_remove);
+      AddRange(&(*dest)[it->second].to_add, std::move(entry.to_add));
+      AddRange(&(*dest)[it->second].to_remove, std::move(entry.to_remove));
     } else {
-      dest->push_back(entry);
+      dest->push_back(std::move(entry));
     }
   }
 }
@@ -664,8 +664,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 
 // This function runs on an indexer thread.
 void IndexUpdate::Merge(IndexUpdate&& update) {
-#define INDEX_UPDATE_APPEND(name) AddRange(&name, update.name);
-#define INDEX_UPDATE_MERGE(name) AddMergeableRange(&name, update.name);
+#define INDEX_UPDATE_APPEND(name) AddRange(&name, std::move(update.name));
+#define INDEX_UPDATE_MERGE(name) AddMergeableRange(&name, std::move(update.name));
 
   INDEX_UPDATE_APPEND(files_removed);
   INDEX_UPDATE_APPEND(files_def_update);

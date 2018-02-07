@@ -185,7 +185,7 @@ void Reflect(Reader& visitor, optional<T>& value) {
   }
   T real_value;
   Reflect(visitor, real_value);
-  value = real_value;
+  value = std::move(real_value);
 }
 template <typename T>
 void Reflect(Writer& visitor, optional<T>& value) {
@@ -204,7 +204,7 @@ void Reflect(Reader& visitor, Maybe<T>& value) {
   }
   T real_value;
   Reflect(visitor, real_value);
-  value = real_value;
+  value = std::move(real_value);
 }
 template <typename T>
 void Reflect(Writer& visitor, Maybe<T>& value) {
@@ -254,7 +254,7 @@ struct ReflectVariant {
   ReflectTag(Reader& visitor, std::variant<Ts...>& value) {
     T a;
     Reflect(visitor, a);
-    value = a;
+    value = std::move(a);
   }
   // This SFINAE overload is used to prevent compile error. value = a; is not
   // allowed if T does not appear in Ts...
