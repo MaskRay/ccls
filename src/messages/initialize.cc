@@ -38,7 +38,7 @@ struct lsCompletionOptions {
   // for
   // '::' and '>' for '->'. See
   // https://github.com/Microsoft/language-server-protocol/issues/138.
-  std::vector<std::string> triggerCharacters = {".", ":", ">", "#", "<", "\""};
+  std::vector<std::string> triggerCharacters = {".", ":", ">", "#", "<", "\"", "/"};
 };
 MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 

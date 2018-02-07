@@ -364,7 +364,7 @@ struct lsCompletionItem {
 
   // A string that should be used when filtering a set of
   // completion items. When `falsy` the label is used.
-  std::string filterText;
+  optional<std::string> filterText;
 
   // A string that should be inserted a document when selecting
   // this completion. When `falsy` the label is used.

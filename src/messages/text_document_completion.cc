@@ -76,9 +76,9 @@ bool CompareLsCompletionItem(const lsCompletionItem& lhs,
     return lhs.skip_ < rhs.skip_;
   if (lhs.priority_ != rhs.priority_)
     return lhs.priority_ < rhs.priority_;
-  if (lhs.filterText.length() != rhs.filterText.length())
-    return lhs.filterText.length() < rhs.filterText.length();
-  return lhs.filterText < rhs.filterText;
+  if (lhs.filterText->length() != rhs.filterText->length())
+    return lhs.filterText->length() < rhs.filterText->length();
+  return *lhs.filterText < *rhs.filterText;
 }
 
 template <typename T>
@@ -121,7 +121,7 @@ void FilterAndSortCompletionResponse(
 
   auto& items = complete_response->result.items;
 
-  if (!enable) {
+  if (!enable || complete_text.empty()) {
     // Just set the |sortText| to be the priority and return.
     char buf[16];
     for (auto& item : items)
@@ -130,17 +130,15 @@ void FilterAndSortCompletionResponse(
   }
 
   // Make sure all items have |filterText| set, code that follow needs it.
-  for (auto& item : items) {
-    if (item.filterText.empty()) {
+  for (auto& item : items)
+    if (!item.filterText)
       item.filterText = item.label;
-    }
-  }
 
   // If the text doesn't start with underscore,
   // remove all candidates that start with underscore.
-  if (!complete_text.empty() && complete_text[0] != '_') {
+  if (complete_text[0] != '_') {
     auto filter = [](const lsCompletionItem& item) {
-      return item.filterText[0] == '_';
+      return (*item.filterText)[0] == '_';
     };
     items.erase(std::remove_if(items.begin(), items.end(), filter),
                 items.end());
@@ -150,7 +148,7 @@ void FilterAndSortCompletionResponse(
   bool found = false;
   for (auto& item : items) {
     std::tie(item.found_, item.skip_) =
-        SubsequenceCountSkip(complete_text, item.filterText);
+        SubsequenceCountSkip(complete_text, *item.filterText);
     found = found || item.found_;
   }
 
@@ -179,10 +177,12 @@ void FilterAndSortCompletionResponse(
   for (size_t i = 0; i < items.size(); ++i)
     items[i].sortText = tofixedbase64(i, buf);
 
-  // If there are too many results...
-  const size_t kMaxResultSize = 100u;
-  if (items.size() > kMaxResultSize)
-    items.resize(kMaxResultSize);
+  // FIXME
+  // The trigger behivour of vscode is puzzling.
+  // So maybe it's not feasible to cut out any results.
+  // const size_t kMaxResultSize = 100u;
+  // if (items.size() > kMaxResultSize)
+  //   items.resize(kMaxResultSize);
 }
 
 struct TextDocumentCompletionHandler : MessageHandler {
@@ -224,8 +224,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
       std::string character = *request->params.context->triggerCharacter;
       char preceding_index = request->params.position.character - 2;
 
-      // If the character is '"' or '<', make sure that the line starts with '#'.
-      if (character == "\"" || character == "<") {
+      // If the character is '"', '<' or '/', make sure that the line starts with '#'.
+      if (character == "\"" || character == "<" || character == "/") {
         size_t i = 0;
         while (i < buffer_line.size() && isspace(buffer_line[i]))
           ++i;

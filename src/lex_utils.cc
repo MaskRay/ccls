@@ -80,7 +80,7 @@ void DecorateIncludePaths(const std::smatch& match,
   for (lsCompletionItem& item : *items) {
     item.textEdit->newText = prefix + item.textEdit->newText + suffix;
     item.label = prefix + item.label + suffix;
-    item.filterText = item.label;
+    item.filterText = nullopt;
   }
 }
 

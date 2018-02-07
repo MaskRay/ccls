@@ -29,7 +29,7 @@ unsigned Flags() {
 
 unsigned GetCompletionPriority(const CXCompletionString& str,
                                CXCursorKind result_kind,
-                               const std::string& typedText) {
+                               const optional<std::string>& typedText) {
   unsigned priority = clang_getCompletionPriority(str);
 
   // XXX: What happens if priority overflows?
@@ -37,8 +37,8 @@ unsigned GetCompletionPriority(const CXCompletionString& str,
     priority *= 100;
   }
   if (result_kind == CXCursor_ConversionFunction ||
-      (result_kind == CXCursor_CXXMethod &&
-       StartsWith(typedText, "operator"))) {
+      (result_kind == CXCursor_CXXMethod && typedText &&
+       StartsWith(*typedText, "operator"))) {
     priority *= 100;
   }
   if (clang_getCompletionAvailability(str) != CXAvailability_Available) {
@@ -193,7 +193,7 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
 
       for (auto i = out_first; i < out.size(); ++i) {
         // first typed text is used for filtering
-        if (kind == CXCompletionChunk_TypedText && out[i].filterText.empty())
+        if (kind == CXCompletionChunk_TypedText && !out[i].filterText)
           out[i].filterText = text;
 
         if (kind == CXCompletionChunk_Placeholder)
