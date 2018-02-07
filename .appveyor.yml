@@ -12,7 +12,10 @@ environment:
   matrix:
 #    - MSYSTEM: MINGW64
     - MSYSTEM: MSVC
-
+  # Ignore all failures for now.
+  allow_failures:
+    - platform: x64
+    
 build_script:
   - ps: |
       If ($Env:MSYSTEM -Eq "MSVC") {
