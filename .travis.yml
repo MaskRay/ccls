@@ -72,40 +72,40 @@ matrix:
 
     # macOS takes too long.
 
-    - env: COMPILER=clang++
-      osx_image: xcode9.1
-      os: osx
+    #- env: COMPILER=clang++
+    #  osx_image: xcode9.1
+    #  os: osx
 
-    - env: COMPILER=g++-7
-      compiler: gcc
-      osx_image: xcode9.1
-      os: osx
+    #- env: COMPILER=g++-7
+    #  compiler: gcc
+    #  osx_image: xcode9.1
+    #  os: osx
 
     # gcc builds that should be fixed at some point
 
-    - env: COMPILER=g++-5
-      compiler: gcc
+    #- env: COMPILER=g++-5
+    #  compiler: gcc
 
-    - env: COMPILER=g++-6
-      compiler: gcc
+    #- env: COMPILER=g++-6
+    #  compiler: gcc
 
-    - env: COMPILER=g++-7
-      compiler: gcc
+    #- env: COMPILER=g++-7
+    #  compiler: gcc
 
-    - env: COMPILER=g++-5
-      compiler: gcc
-      osx_image: xcode9.1
-      os: osx
+    #- env: COMPILER=g++-5
+    #  compiler: gcc
+    #  osx_image: xcode9.1
+    #  os: osx
 
-    - env: COMPILER=g++-6
-      compiler: gcc
-      osx_image: xcode9.1
-      os: osx
+    #- env: COMPILER=g++-6
+    #  compiler: gcc
+    #  osx_image: xcode9.1
+    #  os: osx
 
-    - env: COMPILER=g++-7
-      compiler: gcc
-      osx_image: xcode9.1
-      os: osx
+    #- env: COMPILER=g++-7
+    #  compiler: gcc
+    #  osx_image: xcode9.1
+    #  os: osx
 
 install:
   - |
