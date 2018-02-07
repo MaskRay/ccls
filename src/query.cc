@@ -128,8 +128,8 @@ void AddMergeableRange(
 //
 // Returns true iff |removed| or |added| are non-empty.
 template <typename T>
-bool ComputeDifferenceForUpdate(std::vector<T>& previous,
-                                std::vector<T>& current,
+bool ComputeDifferenceForUpdate(std::vector<T>&& previous,
+                                std::vector<T>&& current,
                                 std::vector<T>* removed,
                                 std::vector<T>* added) {
   // We need to sort to use std::set_difference.
@@ -140,17 +140,17 @@ bool ComputeDifferenceForUpdate(std::vector<T>& previous,
   while (it0 != previous.end() && it1 != current.end()) {
     // Elements in |previous| that are not in |current|.
     if (*it0 < *it1)
-      removed->push_back(*it0++);
+      removed->push_back(std::move(*it0++));
     // Elements in |current| that are not in |previous|.
     else if (*it1 < *it0)
-      added->push_back(*it1++);
+      added->push_back(std::move(*it1++));
     else
       ++it0, ++it1;
   }
   while (it0 != previous.end())
-    removed->push_back(*it0++);
+    removed->push_back(std::move(*it0++));
   while (it1 != current.end())
-    added->push_back(*it1++);
+    added->push_back(std::move(*it1++));
 
   return !removed->empty() || !added->empty();
 }
@@ -464,18 +464,20 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 // |query_name| is the name of the variable on the query type.
 // |index_name| is the name of the variable on the index type.
 // |type| is the type of the variable.
-#define PROCESS_UPDATE_DIFF(type_id, query_name, index_name, type)           \
-  {                                                                          \
-    /* Check for changes. */                                                 \
-    std::vector<type> removed, added;                                        \
-    auto query_previous = previous_id_map.ToQuery(previous->index_name);     \
-    auto query_current = current_id_map.ToQuery(current->index_name);        \
-    bool did_add = ComputeDifferenceForUpdate(query_previous, query_current, \
-                                              &removed, &added);             \
-    if (did_add) {                                                           \
-      query_name.push_back(MergeableUpdate<type_id, type>(                   \
-          current_id_map.ToQuery(current->id), added, removed));             \
-    }                                                                        \
+#define PROCESS_UPDATE_DIFF(type_id, query_name, index_name, type)       \
+  {                                                                      \
+    /* Check for changes. */                                             \
+    std::vector<type> removed, added;                                    \
+    auto query_previous = previous_id_map.ToQuery(previous->index_name); \
+    auto query_current = current_id_map.ToQuery(current->index_name);    \
+    bool did_add = ComputeDifferenceForUpdate(std::move(query_previous), \
+                                              std::move(query_current),  \
+                                              &removed, &added);         \
+    if (did_add) {                                                       \
+      query_name.push_back(MergeableUpdate<type_id, type>(               \
+          current_id_map.ToQuery(current->id), std::move(added),         \
+          std::move(removed)));                                          \
+    }                                                                    \
   }
   // File
   files_def_update.push_back(BuildFileDefUpdate(current_id_map, current_file));
@@ -513,7 +515,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
             ToQuery(current_id_map, type->def);
         if (def_update)
           types_def_update.push_back(
-              QueryType::DefUpdate(type->usr, *def_update));
+              QueryType::DefUpdate(type->usr, std::move(*def_update)));
         if (!type->derived.empty())
           types_derived.push_back(
               QueryType::DerivedUpdate(current_id_map.ToQuery(type->id),
@@ -537,8 +539,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         if (current_remapped_def &&
             previous_remapped_def != current_remapped_def &&
             !current_remapped_def->detailed_name.empty()) {
-          types_def_update.push_back(
-              QueryType::DefUpdate(current->usr, *current_remapped_def));
+          types_def_update.push_back(QueryType::DefUpdate(
+              current->usr, std::move(*current_remapped_def)));
         }
 
         PROCESS_UPDATE_DIFF(QueryTypeId, types_derived, derived, QueryTypeId);
@@ -575,7 +577,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
             ToQuery(current_id_map, func->def);
         if (def_update)
           funcs_def_update.push_back(
-              QueryFunc::DefUpdate(func->usr, *def_update));
+              QueryFunc::DefUpdate(func->usr, std::move(*def_update)));
         if (!func->declarations.empty())
           funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(
               current_id_map.ToQuery(func->id),
@@ -599,8 +601,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         if (current_remapped_def &&
             previous_remapped_def != current_remapped_def &&
             !current_remapped_def->detailed_name.empty()) {
-          funcs_def_update.push_back(
-              QueryFunc::DefUpdate(current->usr, *current_remapped_def));
+          funcs_def_update.push_back(QueryFunc::DefUpdate(
+              current->usr, std::move(*current_remapped_def)));
         }
 
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations,
@@ -631,7 +633,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       [this, &current_id_map](IndexVar* var) {
         optional<QueryVar::Def> def_update = ToQuery(current_id_map, var->def);
         if (def_update)
-          vars_def_update.push_back(QueryVar::DefUpdate(var->usr, *def_update));
+          vars_def_update.push_back(
+              QueryVar::DefUpdate(var->usr, std::move(*def_update)));
         if (!var->declarations.empty())
           vars_declarations.push_back(QueryVar::DeclarationsUpdate(
               current_id_map.ToQuery(var->id),
@@ -651,8 +654,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         if (current_remapped_def &&
             previous_remapped_def != current_remapped_def &&
             !current_remapped_def->detailed_name.empty())
-          vars_def_update.push_back(
-              QueryVar::DefUpdate(current->usr, *current_remapped_def));
+          vars_def_update.push_back(QueryVar::DefUpdate(
+              current->usr, std::move(*current_remapped_def)));
 
         PROCESS_UPDATE_DIFF(QueryVarId, vars_declarations, declarations,
                             QueryLocation);

@@ -167,12 +167,12 @@ struct MergeableUpdate {
   std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
 
-  MergeableUpdate(TId id, const std::vector<TValue>& to_add)
-    : id(id), to_add(to_add) {}
+  MergeableUpdate(TId id, std::vector<TValue>&& to_add)
+      : id(id), to_add(std::move(to_add)) {}
   MergeableUpdate(TId id,
-                  const std::vector<TValue>& to_add,
-                  const std::vector<TValue>& to_remove)
-      : id(id), to_add(to_add), to_remove(to_remove) {}
+                  std::vector<TValue>&& to_add,
+                  std::vector<TValue>&& to_remove)
+      : id(id), to_add(std::move(to_add)), to_remove(std::move(to_remove)) {}
 };
 template <typename TVisitor, typename TId, typename TValue>
 void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
