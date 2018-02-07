@@ -18,7 +18,7 @@ build_script:
       If ($Env:MSYSTEM -Eq "MSVC") {
         $dir = "cquery-${env:appveyor_build_version}-win64"
         cd C:\projects\cquery
-        python waf configure
+        python waf configure --msvc_version="msvc 15.0"
         python waf build
         mkdir "${dir}\build\release\bin" -ea 0
         mkdir "${dir}\build\release\lib\LLVM-5.0.1-win64\lib\clang\5.0.1\"
