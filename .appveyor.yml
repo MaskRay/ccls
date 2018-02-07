@@ -12,9 +12,12 @@ environment:
   matrix:
 #    - MSYSTEM: MINGW64
     - MSYSTEM: MSVC
+
+matrix:
+  fast_finish: true     # set this flag to immediately finish build once one of the jobs fails.
   allow_failures:
     - platform: x64
-    
+
 build_script:
   - ps: |
       If ($Env:MSYSTEM -Eq "MSVC") {
