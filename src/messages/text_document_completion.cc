@@ -70,12 +70,15 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
 bool CompareLsCompletionItem(const lsCompletionItem& lhs,
                              const lsCompletionItem& rhs) {
-  return std::make_tuple(!lhs.found_, lhs.skip_, lhs.priority_,
-                         lhs.filterText.length(), std::cref(lhs.filterText),
-                         lhs.label.length(), std::cref(lhs.label)) <
-         std::make_tuple(!rhs.found_, rhs.skip_, rhs.priority_,
-                         rhs.filterText.length(), std::cref(rhs.filterText),
-                         rhs.label.length(), std::cref(rhs.label));
+  if (lhs.found_ != rhs.found_)
+    return !lhs.found_ < !rhs.found_;
+  if (lhs.skip_ != rhs.skip_)
+    return lhs.skip_ < rhs.skip_;
+  if (lhs.priority_ != rhs.priority_)
+    return lhs.priority_ < rhs.priority_;
+  if (lhs.filterText.length() != rhs.filterText.length())
+    return lhs.filterText.length() < rhs.filterText.length();
+  return lhs.filterText < rhs.filterText;
 }
 
 template <typename T>
@@ -144,23 +147,42 @@ void FilterAndSortCompletionResponse(
   }
 
   // Fuzzy match.
-  for (auto& item : items)
+  bool found = false;
+  for (auto& item : items) {
     std::tie(item.found_, item.skip_) =
         SubsequenceCountSkip(complete_text, item.filterText);
+    found = found || item.found_;
+  }
+
+  if (found) {
+    auto filter = [](const lsCompletionItem& item) { return !item.found_; };
+    items.erase(std::remove_if(items.begin(), items.end(), filter),
+                items.end());
+  }
 
   // Order all items and set |sortText|.
-  std::sort(items.begin(), items.end(), CompareLsCompletionItem);
+  const size_t kMaxSortSize = 200u;
+  if (found) {
+    if (items.size() <= kMaxSortSize)
+      std::sort(items.begin(), items.end(), CompareLsCompletionItem);
+    else {
+      // Just place items that found the text before those not.
+      std::vector<lsCompletionItem> items_found, items_notfound;
+      for (auto& item : items)
+        (item.found_ ? items_found : items_notfound).push_back(item);
+      items = items_found;
+      items.insert(items.end(), items_notfound.begin(), items_notfound.end());
+    }
+  }
+
   char buf[16];
   for (size_t i = 0; i < items.size(); ++i)
     items[i].sortText = tofixedbase64(i, buf);
 
   // If there are too many results...
   const size_t kMaxResultSize = 100u;
-  if (items.size() > kMaxResultSize) {
-    if (complete_text.empty()) {
-      items.resize(kMaxResultSize);
-    }
-  }
+  if (items.size() > kMaxResultSize)
+    items.resize(kMaxResultSize);
 }
 
 struct TextDocumentCompletionHandler : MessageHandler {
@@ -202,7 +224,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
       std::string character = *request->params.context->triggerCharacter;
       char preceding_index = request->params.position.character - 2;
 
-      // If the character is '"' or '<', make sure the line is start with '#'.
+      // If the character is '"' or '<', make sure that the line starts with '#'.
       if (character == "\"" || character == "<") {
         size_t i = 0;
         while (i < buffer_line.size() && isspace(buffer_line[i]))
