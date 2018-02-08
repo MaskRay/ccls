@@ -20,40 +20,10 @@ using QueryVarId = Id<QueryVar>;
 
 struct IdMap;
 
-using Generation = uint32_t;
-
-// Example use: |WithGen<Id<QueryType>>|, to mark an |Id| reference with
-// generation, so that by comparising the generation with that stored in the
-// referenced Query object, we can tell if the reference is stale (the
-// referenced object has been deleted or reused).
-template <typename T>
-struct WithGen {
-  Generation gen;
-  T value;
-  WithGen() : gen(-1) {}
-  WithGen(const T& value) : gen(-1), value(value) {}
-  WithGen(Generation gen, const T& value) : gen(gen), value(value) {}
-
-  bool HasValue() const { return value.HasValue(); }
-  explicit operator bool() const { return HasValue(); }
-
-  bool operator==(const WithGen& o) const {
-    return gen == o.gen && value == o.value;
-  }
-};
-
-template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, WithGen<T>& value) {
-  Reflect(visitor, value.value);
-}
-
 struct QueryLocation {
   Range range;
   QueryFileId path;
-  SymbolRole role = SymbolRole::None;
-
-  QueryLocation() {}  // Do not use, needed for reflect.
-  QueryLocation(QueryFileId path, Range range) : range(range), path(path) {}
+  SymbolRole role;
 
   QueryLocation OffsetStartColumn(int16_t offset) const {
     QueryLocation result = *this;
@@ -62,6 +32,7 @@ struct QueryLocation {
   }
 
   bool HasValue() const { return range.HasValue(); }
+  QueryFileId FileId() const { return path; }
 
   bool operator==(const QueryLocation& o) const {
     return path == o.path && range == o.range;
@@ -129,16 +100,11 @@ struct QueryFuncRef {
   // NOTE: id_ can be -1 if the function call is not coming from a function.
   QueryFuncId id_;
   QueryLocation loc;
-  bool is_implicit = false;
 
   bool HasValue() const { return id_.HasValue(); }
 
-  QueryFuncRef() {}  // Do not use, needed for reflect.
-  QueryFuncRef(QueryFuncId id, QueryLocation loc, bool is_implicit)
-      : id_(id), loc(loc), is_implicit(is_implicit) {}
-
-  std::tuple<QueryFuncId, QueryLocation, bool> ToTuple() const {
-    return std::make_tuple(id_, loc, is_implicit);
+  std::tuple<QueryFuncId, QueryLocation> ToTuple() const {
+    return std::make_tuple(id_, loc);
   }
   bool operator==(const QueryFuncRef& o) const {
     return ToTuple() == o.ToTuple();
@@ -148,7 +114,7 @@ struct QueryFuncRef {
     return ToTuple() < o.ToTuple();
   }
 };
-MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc, is_implicit);
+MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc);
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -251,7 +217,8 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     dependencies);
 
 struct QueryType {
-  using Def = TypeDefDefinitionData<QueryTypeId,
+  using Def = TypeDefDefinitionData<QueryFileId,
+                                    QueryTypeId,
                                     QueryFuncId,
                                     QueryVarId,
                                     QueryLocation>;
@@ -261,18 +228,18 @@ struct QueryType {
   using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
 
   Usr usr;
-  Generation gen;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<QueryLocation> uses;
 
-  explicit QueryType(const Usr& usr) : usr(usr), gen(0) {}
+  explicit QueryType(const Usr& usr) : usr(usr) {}
 };
 
 struct QueryFunc {
-  using Def = FuncDefDefinitionData<QueryTypeId,
+  using Def = FuncDefDefinitionData<QueryFileId,
+                                    QueryTypeId,
                                     QueryFuncId,
                                     QueryVarId,
                                     QueryFuncRef,
@@ -283,18 +250,18 @@ struct QueryFunc {
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
   Usr usr;
-  Generation gen;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
 
-  explicit QueryFunc(const Usr& usr) : usr(usr), gen(0) {}
+  explicit QueryFunc(const Usr& usr) : usr(usr) {}
 };
 
 struct QueryVar {
-  using Def = VarDefDefinitionData<QueryTypeId,
+  using Def = VarDefDefinitionData<QueryFileId,
+                                   QueryTypeId,
                                    QueryFuncId,
                                    QueryVarId,
                                    QueryLocation>;
@@ -303,13 +270,12 @@ struct QueryVar {
   using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
 
   Usr usr;
-  Generation gen;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryLocation> declarations;
   std::vector<QueryLocation> uses;
 
-  explicit QueryVar(const Usr& usr) : usr(usr), gen(0) {}
+  explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
 
 struct IndexUpdate {
@@ -428,6 +394,7 @@ template <typename I>
 struct IndexToQuery;
 
 // clang-format off
+template <> struct IndexToQuery<IndexFileId> { using type = QueryFileId; };
 template <> struct IndexToQuery<IndexFuncId> { using type = QueryFuncId; };
 template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
 template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
@@ -450,7 +417,8 @@ struct IdMap {
 
   // FIXME Too verbose
   // clang-format off
-  QueryLocation ToQuery(Range range) const;
+  QueryLocation ToQuery(Range range, SymbolRole role) const;
+  QueryFileId ToQuery(IndexFileId) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
@@ -463,12 +431,6 @@ struct IdMap {
     return ToQuery(*id);
   }
   template <typename I>
-  Maybe<WithGen<typename IndexToQuery<I>::type>> ToQuery(Maybe<I> id, int) const {
-    if (!id)
-      return nullopt;
-    return ToQuery(*id, 0);
-  }
-  template <typename I>
   std::vector<typename IndexToQuery<I>::type> ToQuery(const std::vector<I>& a) const {
     std::vector<typename IndexToQuery<I>::type> ret;
     ret.reserve(a.size());
@@ -476,14 +438,7 @@ struct IdMap {
       ret.push_back(ToQuery(x));
     return ret;
   }
-  template <typename I>
-  std::vector<WithGen<typename IndexToQuery<I>::type>> ToQuery(std::vector<I> a, int) const {
-    std::vector<WithGen<typename IndexToQuery<I>::type>> ret;
-    ret.reserve(a.size());
-    for (auto& x : a)
-      ret.push_back(ToQuery(x, 0));
-    return ret;
-  }
+  std::vector<QueryLocation> ToQuery(const std::vector<Range>& a) const;
   // clang-format on
 
   SymbolIdx ToSymbol(IndexTypeId id) const;

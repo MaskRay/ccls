@@ -41,7 +41,7 @@ struct TextDocumentDocumentHighlightHandler
       std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx, true);
       out.result.reserve(uses.size());
       for (const QueryLocation& use : uses) {
-        if (use.path != file_id)
+        if (use.FileId() != file_id)
           continue;
 
         optional<lsLocation> ls_location =

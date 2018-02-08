@@ -106,8 +106,8 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::File: {
-      return QueryLocation(QueryFileId(symbol.idx),
-                           Range(Position(1, 1), Position(1, 1)));
+      return QueryLocation{Range(Position(0, 0), Position(0, 0)),
+                           QueryFileId(symbol.idx), SymbolRole::None};
     }
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
@@ -123,21 +123,21 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
       if (type.def && type.def->definition_spelling)
-        return type.def->definition_spelling->path;
+        return type.def->definition_spelling->FileId();
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[symbol.idx];
       if (!func.declarations.empty())
-        return func.declarations[0].path;
+        return func.declarations[0].FileId();
       if (func.def && func.def->definition_spelling)
-        return func.def->definition_spelling->path;
+        return func.def->definition_spelling->FileId();
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
       if (var.def && var.def->definition_spelling)
-        return var.def->definition_spelling->path;
+        return var.def->definition_spelling->FileId();
       break;
     }
     case SymbolKind::File: {
@@ -401,7 +401,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    const QueryLocation& location) {
   std::string path;
-  lsDocumentUri uri = GetLsDocumentUri(db, location.path, &path);
+  lsDocumentUri uri = GetLsDocumentUri(db, location.FileId(), &path);
   optional<lsRange> range =
       GetLsRange(working_files->GetFileByFilename(path), location.range);
   if (!range)

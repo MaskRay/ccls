@@ -73,8 +73,8 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (func.def && func.def->definition_extent &&
-            func.def->definition_extent->path != file_id) {
-          return func.def->definition_extent->path;
+            func.def->definition_extent->FileId() != file_id) {
+          return func.def->definition_extent->FileId();
         }
         break;
       }
@@ -83,8 +83,8 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (var.def && var.def->definition_extent &&
-            var.def->definition_extent->path != file_id) {
-          return db->vars[sym.idx.idx].def->definition_extent->path;
+            var.def->definition_extent->FileId() != file_id) {
+          return db->vars[sym.idx.idx].def->definition_extent->FileId();
         }
         break;
       }
@@ -149,7 +149,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
                                                    QueryFunc& func) {
   assert(func.def);
   for (const QueryLocation& decl : func.declarations) {
-    if (decl.path != decl_file_id)
+    if (decl.FileId() != decl_file_id)
       continue;
 
     optional<lsRange> ls_decl = GetLsRange(working_file, decl.range);
@@ -203,7 +203,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
               break;
 
             for (QueryLocation& func_decl : sym_func.declarations) {
-              if (func_decl.path == decl_file_id) {
+              if (func_decl.FileId() == decl_file_id) {
                 int dist = func_decl.range.start.line - decl.range.start.line;
                 if (abs(dist) < abs(best_dist)) {
                   optional<lsLocation> def_loc = GetLsLocation(

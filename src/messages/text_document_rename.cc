@@ -16,20 +16,21 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
     if (!ls_location)
       continue;
 
-    if (path_to_edit.find(location.path) == path_to_edit.end()) {
-      path_to_edit[location.path] = lsTextDocumentEdit();
+    QueryFileId file_id = location.FileId();
+    if (path_to_edit.find(file_id) == path_to_edit.end()) {
+      path_to_edit[file_id] = lsTextDocumentEdit();
 
-      QueryFile& file = db->files[location.path.id];
+      QueryFile& file = db->files[file_id.id];
       if (!file.def)
         continue;
 
       const std::string& path = file.def->path;
-      path_to_edit[location.path].textDocument.uri =
+      path_to_edit[file_id].textDocument.uri =
           lsDocumentUri::FromPath(path);
 
       WorkingFile* working_file = working_files->GetFileByFilename(path);
       if (working_file)
-        path_to_edit[location.path].textDocument.version =
+        path_to_edit[file_id].textDocument.version =
             working_file->version;
     }
 
@@ -38,7 +39,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
     edit.newText = new_text;
 
     // vscode complains if we submit overlapping text edits.
-    auto& edits = path_to_edit[location.path].edits;
+    auto& edits = path_to_edit[file_id].edits;
     if (std::find(edits.begin(), edits.end(), edit) == edits.end())
       edits.push_back(edit);
   }

@@ -90,7 +90,7 @@ struct TextDocumentDefinitionHandler
       // the declaration if possible. We also want to use declarations if
       // we're pointing to, ie, a pure virtual function which has no
       // definition.
-      if (!def_loc || (def_loc->path == file_id &&
+      if (!def_loc || (def_loc->FileId() == file_id &&
                        def_loc->range.Contains(target_line, target_column))) {
         // Goto declaration.
 

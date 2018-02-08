@@ -42,8 +42,12 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.kind = type.kind;
   result.hover = type.hover;
   result.comments = type.comments;
-  result.definition_spelling = id_map.ToQuery(type.definition_spelling);
-  result.definition_extent = id_map.ToQuery(type.definition_extent);
+  if (type.definition_spelling)
+    result.definition_spelling =
+        id_map.ToQuery(*type.definition_spelling, SymbolRole::Definition);
+  if (type.definition_extent)
+    result.definition_extent =
+        id_map.ToQuery(*type.definition_extent, SymbolRole::None);
   result.alias_of = id_map.ToQuery(type.alias_of);
   result.parents = id_map.ToQuery(type.parents);
   result.types = id_map.ToQuery(type.types);
@@ -65,8 +69,12 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.storage = func.storage;
   result.hover = func.hover;
   result.comments = func.comments;
-  result.definition_spelling = id_map.ToQuery(func.definition_spelling);
-  result.definition_extent = id_map.ToQuery(func.definition_extent);
+  if (func.definition_spelling)
+    result.definition_spelling =
+        id_map.ToQuery(*func.definition_spelling, SymbolRole::Definition);
+  if (func.definition_extent)
+    result.definition_extent =
+        id_map.ToQuery(*func.definition_extent, SymbolRole::None);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
   result.base = id_map.ToQuery(func.base);
   result.locals = id_map.ToQuery(func.locals);
@@ -84,8 +92,12 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.short_name_size = var.short_name_size;
   result.hover = var.hover;
   result.comments = var.comments;
-  result.definition_spelling = id_map.ToQuery(var.definition_spelling);
-  result.definition_extent = id_map.ToQuery(var.definition_extent);
+  if (var.definition_spelling)
+    result.definition_spelling =
+      id_map.ToQuery(*var.definition_spelling, SymbolRole::Definition);
+  if (var.definition_extent)
+    result.definition_extent =
+      id_map.ToQuery(*var.definition_extent, SymbolRole::None);
   result.variable_type = id_map.ToQuery(var.variable_type);
   result.parent_id = var.parent_id;
   result.parent_kind = var.parent_kind;
@@ -223,11 +235,13 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
 
   auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
     def.outline.push_back(
-        SymbolRef(idx, SymbolRole::Declaration, id_map.ToQuery(range)));
+        SymbolRef(idx, SymbolRole::Declaration,
+                  id_map.ToQuery(range, SymbolRole::Declaration)));
   };
   auto add_all_symbols = [&def, &id_map](SymbolIdx idx, SymbolRole role,
                                          Range range) {
-    def.all_symbols.push_back(SymbolRef(idx, role, id_map.ToQuery(range)));
+    def.all_symbols.push_back(
+        SymbolRef(idx, role, id_map.ToQuery(range, role)));
   };
 
   for (const IndexType& type : indexed.types) {
@@ -256,16 +270,13 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       // textDocument/definition on the space/semicolon in `A a;` or `return
       // 42;` will take you to the constructor.
       Range range = caller.loc;
-      if (caller.is_implicit) {
+      if (caller.role & SymbolRole::Implicit) {
         if (range.start.column > 0)
           range.start.column--;
         range.end.column++;
       }
       add_all_symbols(id_map.ToSymbol(func.id),
-                      caller.is_implicit
-                          ? SymbolRole::Implicit | SymbolRole::CalledBy
-                          : SymbolRole::CalledBy,
-                      range);
+                      caller.role | SymbolRole::CalledBy, range);
     }
   }
   for (const IndexVar& var : indexed.vars) {
@@ -396,8 +407,11 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
         *GetQueryVarIdFromUsr(query_db, entry.second, true);
 }
 
-QueryLocation IdMap::ToQuery(Range range) const {
-  return QueryLocation(primary_file, range);
+QueryLocation IdMap::ToQuery(Range range, SymbolRole role) const {
+  return QueryLocation{range, primary_file, role};
+}
+QueryFileId IdMap::ToQuery(IndexFileId) const {
+  return primary_file;
 }
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id) != cached_type_ids_.end());
@@ -414,11 +428,18 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  return QueryFuncRef(ToQuery(ref.id), ToQuery(ref.loc), ref.is_implicit);
+  return QueryFuncRef{ToQuery(ref.id), ToQuery(ref.loc, ref.role)};
 }
 QueryLocation IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
-  return QueryLocation(primary_file, decl.spelling);
+  return QueryLocation{decl.spelling, primary_file, SymbolRole::Declaration};
+}
+std::vector<QueryLocation> IdMap::ToQuery(const std::vector<Range>& a) const {
+  std::vector<QueryLocation> ret;
+  ret.reserve(a.size());
+  for (auto& x : a)
+    ret.push_back(ToQuery(x, SymbolRole::Reference));
+  return ret;
 }
 
 SymbolIdx IdMap::ToSymbol(IndexTypeId id) const {
@@ -734,7 +755,6 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryType& type = types[usr_to_type[usr].id];
         if (type.symbol_idx)
           symbols[type.symbol_idx->id].kind = SymbolKind::Invalid;
-        type.gen++;
         //type.def = QueryType::Def();
         type.def = nullopt;
       }
@@ -745,7 +765,6 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryFunc& func = funcs[usr_to_func[usr].id];
         if (func.symbol_idx)
           symbols[func.symbol_idx->id].kind = SymbolKind::Invalid;
-        func.gen++;
         //func.def = QueryFunc::Def();
         func.def = nullopt;
       }
@@ -756,7 +775,6 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryVar& var = vars[usr_to_var[usr].id];
         if (var.symbol_idx)
           symbols[var.symbol_idx->id].kind = SymbolKind::Invalid;
-        var.gen++;
         //var.def = QueryVar::Def();
         var.def = nullopt;
       }
@@ -987,8 +1005,8 @@ TEST_SUITE("query") {
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->uses.push_back(Range(Position(1, 0)));
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
-        ->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                         false /*is_implicit*/));
+        ->callers.push_back(IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0),
+                                         SymbolRole::None});
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
         ->uses.push_back(Range(Position(3, 0)));
 
@@ -1006,10 +1024,10 @@ TEST_SUITE("query") {
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
 
-    pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
-                                       false /*is_implicit*/));
-    cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                       false /*is_implicit*/));
+    pf->callers.push_back(
+        IndexFuncRef{Range(Position(1, 0)), IndexFuncId(0), SymbolRole::None});
+    cf->callers.push_back(
+        IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0), SymbolRole::None});
 
     IndexUpdate update = GetDelta(previous, current);
 
@@ -1051,14 +1069,14 @@ TEST_SUITE("query") {
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
-    pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(1, 0)),
-                                       false /*is_implicit*/));
-    pf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(2, 0)),
-                                       false /*is_implicit*/));
-    cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(4, 0)),
-                                       false /*is_implicit*/));
-    cf->callers.push_back(IndexFuncRef(IndexFuncId(0), Range(Position(5, 0)),
-                                       false /*is_implicit*/));
+    pf->callers.push_back(
+        IndexFuncRef{Range(Position(1, 0)), IndexFuncId(0), SymbolRole::None});
+    pf->callers.push_back(
+        IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0), SymbolRole::None});
+    cf->callers.push_back(
+        IndexFuncRef{Range(Position(4, 0)), IndexFuncId(0), SymbolRole::None});
+    cf->callers.push_back(
+        IndexFuncRef{Range(Position(5, 0)), IndexFuncId(0), SymbolRole::None});
 
     QueryDatabase db;
     IdMap previous_map(&db, previous.id_cache);

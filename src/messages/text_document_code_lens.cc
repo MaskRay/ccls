@@ -90,7 +90,7 @@ void AddCodeLens(const char* singular,
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "cquery.showReferences";
-  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, loc.path);
+  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, loc.FileId());
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
@@ -179,7 +179,7 @@ struct TextDocumentCodeLensHandler
           auto try_ensure_spelling = [&](SymbolRef sym) {
             optional<QueryLocation> def =
                 GetDefinitionSpellingOfSymbol(db, sym.idx);
-            if (!def || def->path != sym.loc.path ||
+            if (!def || def->FileId() != sym.loc.FileId() ||
                 def->range.start.line != sym.loc.range.start.line) {
               return sym.loc;
             }

@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <vector>
 
+struct IndexFile;
 struct IndexType;
 struct IndexFunc;
 struct IndexVar;
@@ -61,7 +62,7 @@ struct Id {
 namespace std {
 template <typename T>
 struct hash<Id<T>> {
-  size_t operator()(const Id<T>& k) const { return hash<size_t>()(k.id); }
+  size_t operator()(const Id<T>& k) const { return hash<RawId>()(k.id); }
 };
 }  // namespace std
 
@@ -70,6 +71,7 @@ void Reflect(TVisitor& visitor, Id<T>& id) {
   Reflect(visitor, id.id);
 }
 
+using IndexFileId = Id<IndexFile>;
 using IndexTypeId = Id<IndexType>;
 using IndexFuncId = Id<IndexFunc>;
 using IndexVarId = Id<IndexVar>;
@@ -88,18 +90,10 @@ struct IndexFuncRef {
   // NOTE: id can be -1 if the function call is not coming from a function.
   Range loc;
   IndexFuncId id;
-  SymbolRole role = SymbolRole::None;
-  bool is_implicit = false;
+  SymbolRole role;
 
-  IndexFuncRef() {}  // For serialization.
-
-  IndexFuncRef(IndexFuncId id, Range loc, bool is_implicit)
-      : loc(loc), id(id), is_implicit(is_implicit) {}
-  IndexFuncRef(Range loc, bool is_implicit)
-      : loc(loc), is_implicit(is_implicit) {}
-
-  std::tuple<IndexFuncId, Range, bool> ToTuple() const {
-    return std::make_tuple(id, loc, is_implicit);
+  std::tuple<IndexFuncId, Range, SymbolRole> ToTuple() const {
+    return std::make_tuple(id, loc, role);
   }
   bool operator==(const IndexFuncRef& o) { return ToTuple() == o.ToTuple(); }
   bool operator!=(const IndexFuncRef& o) { return !(*this == o); }
@@ -111,7 +105,11 @@ struct IndexFuncRef {
 void Reflect(Reader& visitor, IndexFuncRef& value);
 void Reflect(Writer& visitor, IndexFuncRef& value);
 
-template <typename TypeId, typename FuncId, typename VarId, typename Range>
+template <typename FileId,
+          typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename Range>
 struct TypeDefDefinitionData {
   // General metadata.
   std::string detailed_name;
@@ -130,10 +128,6 @@ struct TypeDefDefinitionData {
   Maybe<Range> definition_spelling;
   Maybe<Range> definition_extent;
 
-  // If set, then this is the same underlying type as the given value (ie, this
-  // type comes from a using or typedef statement).
-  Maybe<TypeId> alias_of;
-
   // Immediate parent types.
   std::vector<TypeId> parents;
 
@@ -141,6 +135,11 @@ struct TypeDefDefinitionData {
   std::vector<TypeId> types;
   std::vector<FuncId> funcs;
   std::vector<VarId> vars;
+
+  FileId file;
+  // If set, then this is the same underlying type as the given value (ie, this
+  // type comes from a using or typedef statement).
+  Maybe<TypeId> alias_of;
 
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
@@ -164,12 +163,14 @@ struct TypeDefDefinitionData {
   }
 };
 template <typename TVisitor,
+          typename FileId,
           typename TypeId,
           typename FuncId,
           typename VarId,
           typename Range>
-void Reflect(TVisitor& visitor,
-             TypeDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
+void Reflect(
+    TVisitor& visitor,
+    TypeDefDefinitionData<FileId, TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(short_name_offset);
@@ -179,6 +180,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
+  REFLECT_MEMBER(file);
   REFLECT_MEMBER(alias_of);
   REFLECT_MEMBER(parents);
   REFLECT_MEMBER(types);
@@ -188,8 +190,11 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexType {
-  using Def =
-      TypeDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
+  using Def = TypeDefDefinitionData<IndexFileId,
+                                    IndexTypeId,
+                                    IndexFuncId,
+                                    IndexVarId,
+                                    Range>;
 
   Usr usr;
   IndexTypeId id;
@@ -213,7 +218,8 @@ struct IndexType {
 };
 MAKE_HASHABLE(IndexType, t.id);
 
-template <typename TypeId,
+template <typename FileId,
+          typename TypeId,
           typename FuncId,
           typename VarId,
           typename FuncRef,
@@ -226,9 +232,6 @@ struct FuncDefDefinitionData {
   Maybe<Range> definition_spelling;
   Maybe<Range> definition_extent;
 
-  // Type which declares this one (ie, it is a method)
-  Maybe<TypeId> declaring_type;
-
   // Method this method overrides.
   std::vector<FuncId> base;
 
@@ -238,6 +241,9 @@ struct FuncDefDefinitionData {
   // Functions that this function calls.
   std::vector<FuncRef> callees;
 
+  FileId file;
+  // Type which declares this one (ie, it is a method)
+  Maybe<TypeId> declaring_type;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
@@ -262,6 +268,7 @@ struct FuncDefDefinitionData {
 };
 
 template <typename TVisitor,
+          typename FileId,
           typename TypeId,
           typename FuncId,
           typename VarId,
@@ -269,7 +276,8 @@ template <typename TVisitor,
           typename Range>
 void Reflect(
     TVisitor& visitor,
-    FuncDefDefinitionData<TypeId, FuncId, VarId, FuncRef, Range>& value) {
+    FuncDefDefinitionData<FileId, TypeId, FuncId, VarId, FuncRef, Range>&
+        value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(short_name_offset);
@@ -280,6 +288,7 @@ void Reflect(
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
+  REFLECT_MEMBER(file);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(base);
   REFLECT_MEMBER(locals);
@@ -288,7 +297,8 @@ void Reflect(
 }
 
 struct IndexFunc {
-  using Def = FuncDefDefinitionData<IndexTypeId,
+  using Def = FuncDefDefinitionData<IndexFileId,
+                                    IndexTypeId,
                                     IndexFuncId,
                                     IndexVarId,
                                     IndexFuncRef,
@@ -337,7 +347,11 @@ MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
                     content,
                     param_spellings);
 
-template <typename TypeId, typename FuncId, typename VarId, typename Range>
+template <typename FileId,
+          typename TypeId,
+          typename FuncId,
+          typename VarId,
+          typename Range>
 struct VarDefDefinitionData {
   // General metadata.
   std::string detailed_name;
@@ -348,6 +362,7 @@ struct VarDefDefinitionData {
   Maybe<Range> definition_spelling;
   Maybe<Range> definition_extent;
 
+  FileId file;
   // Type of the variable.
   Maybe<TypeId> variable_type;
 
@@ -376,8 +391,7 @@ struct VarDefDefinitionData {
            parent_kind == o.parent_kind && kind == o.kind &&
            storage == o.storage && hover == o.hover && comments == o.comments;
   }
-  bool operator!=(
-      const VarDefDefinitionData<TypeId, FuncId, VarId, Range>& other) const {
+  bool operator!=(const VarDefDefinitionData& other) const {
     return !(*this == other);
   }
 
@@ -388,12 +402,14 @@ struct VarDefDefinitionData {
 };
 
 template <typename TVisitor,
+          typename FileId,
           typename TypeId,
           typename FuncId,
           typename VarId,
           typename Range>
-void Reflect(TVisitor& visitor,
-             VarDefDefinitionData<TypeId, FuncId, VarId, Range>& value) {
+void Reflect(
+    TVisitor& visitor,
+    VarDefDefinitionData<FileId, TypeId, FuncId, VarId, Range>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(short_name_size);
@@ -402,6 +418,7 @@ void Reflect(TVisitor& visitor,
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(definition_spelling);
   REFLECT_MEMBER(definition_extent);
+  REFLECT_MEMBER(file);
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(parent_id);
   REFLECT_MEMBER(parent_kind);
@@ -411,7 +428,11 @@ void Reflect(TVisitor& visitor,
 }
 
 struct IndexVar {
-  using Def = VarDefDefinitionData<IndexTypeId, IndexFuncId, IndexVarId, Range>;
+  using Def = VarDefDefinitionData<IndexFileId,
+                                   IndexTypeId,
+                                   IndexFuncId,
+                                   IndexVarId,
+                                   Range>;
 
   Usr usr;
   IndexVarId id;

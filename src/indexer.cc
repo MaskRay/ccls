@@ -584,7 +584,7 @@ void OnIndexReference_Function(IndexFile* db,
                                ClangCursor caller_cursor,
                                IndexFuncId called_id,
                                IndexFunc* called,
-                               bool is_implicit) {
+                               SymbolRole role) {
   if (IsFunctionCallContext(caller_cursor.get_kind())) {
     IndexFuncId caller_id = db->ToFuncId(caller_cursor.cx_cursor);
     IndexFunc* caller = db->Resolve(caller_id);
@@ -592,10 +592,10 @@ void OnIndexReference_Function(IndexFile* db,
     called = db->Resolve(called_id);
 
     AddFuncRef(&caller->def.callees,
-               IndexFuncRef(called->id, loc, is_implicit));
-    AddFuncRef(&called->callers, IndexFuncRef(caller->id, loc, is_implicit));
+               IndexFuncRef{loc, called->id, role});
+    AddFuncRef(&called->callers, IndexFuncRef{loc, caller->id, role});
   } else {
-    AddFuncRef(&called->callers, IndexFuncRef(loc, is_implicit));
+    AddFuncRef(&called->callers, IndexFuncRef{loc, IndexFuncId(), role});
   }
 }
 
@@ -603,7 +603,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kMajorVersion = 11;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMinorVersion = 2;
 
 IndexFile::IndexFile(const std::string& path,
                      const std::string& contents)
@@ -1258,7 +1258,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             IndexFunc* called = db->Resolve(called_id);
             OnIndexReference_Function(db, cursor.get_spelling_range(),
                                       data->container, called_id, called,
-                                      /*implicit=*/false);
+                                      SymbolRole::None);
             break;
           }
         }
@@ -1992,8 +1992,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       else
         CheckTypeDependentMemberRefExpr(&loc, ref_cursor, param, db);
 
-      OnIndexReference_Function(db, loc, ref->container->cursor, called_id,
-                                called, is_implicit);
+      OnIndexReference_Function(
+          db, loc, ref->container->cursor, called_id, called,
+          is_implicit ? SymbolRole::Implicit : SymbolRole::None);
 
       // Checks if |str| starts with |start|. Ignores case.
       auto str_begin = [](const char* start, const char* str) {
@@ -2033,7 +2034,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
-            AddFuncRef(&ctor->callers, IndexFuncRef(loc, true /*is_implicit*/));
+            AddFuncRef(&ctor->callers,
+                       IndexFuncRef{loc, IndexFuncId(), SymbolRole::Implicit});
           }
         }
       }
@@ -2315,7 +2317,7 @@ void Reflect(Reader& visitor, IndexFuncRef& value) {
     std::string s = visitor.GetString();
     const char* str_value = s.c_str();
     if (str_value[0] == '~') {
-      value.is_implicit = true;
+      value.role = SymbolRole::Implicit;
       ++str_value;
     }
     RawId id = atol(str_value);
@@ -2324,15 +2326,15 @@ void Reflect(Reader& visitor, IndexFuncRef& value) {
     value.id = IndexFuncId(id);
     value.loc = Range(loc_string);
   } else {
-    Reflect(visitor, value.id);
     Reflect(visitor, value.loc);
-    Reflect(visitor, value.is_implicit);
+    Reflect(visitor, value.id);
+    Reflect(visitor, value.role);
   }
 }
 void Reflect(Writer& visitor, IndexFuncRef& value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string s;
-    if (value.is_implicit)
+    if (value.role & SymbolRole::Implicit)
       s += "~";
 
     // id.id is unsigned, special case -1 value
@@ -2344,8 +2346,8 @@ void Reflect(Writer& visitor, IndexFuncRef& value) {
     s += "@" + value.loc.ToString();
     visitor.String(s.c_str());
   } else {
-    Reflect(visitor, value.id);
     Reflect(visitor, value.loc);
-    Reflect(visitor, value.is_implicit);
+    Reflect(visitor, value.id);
+    Reflect(visitor, value.role);
   }
 }
