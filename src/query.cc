@@ -42,6 +42,7 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.kind = type.kind;
   result.hover = type.hover;
   result.comments = type.comments;
+  result.file = id_map.primary_file;
   if (type.definition_spelling)
     result.definition_spelling =
         id_map.ToQuery(*type.definition_spelling, SymbolRole::Definition);
@@ -69,6 +70,7 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.storage = func.storage;
   result.hover = func.hover;
   result.comments = func.comments;
+  result.file = id_map.primary_file;
   if (func.definition_spelling)
     result.definition_spelling =
         id_map.ToQuery(*func.definition_spelling, SymbolRole::Definition);
@@ -92,12 +94,14 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.short_name_size = var.short_name_size;
   result.hover = var.hover;
   result.comments = var.comments;
+  result.file = id_map.primary_file;
   if (var.definition_spelling)
     result.definition_spelling =
-      id_map.ToQuery(*var.definition_spelling, SymbolRole::Definition);
+        QueryLocation{*var.definition_spelling, id_map.primary_file,
+                      SymbolRole::Definition};
   if (var.definition_extent)
-    result.definition_extent =
-      id_map.ToQuery(*var.definition_extent, SymbolRole::None);
+    result.definition_extent = QueryLocation{
+        *var.definition_extent, id_map.primary_file, SymbolRole::None};
   result.variable_type = id_map.ToQuery(var.variable_type);
   result.parent_id = var.parent_id;
   result.parent_kind = var.parent_kind;
@@ -368,6 +372,34 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 
 }  // namespace
 
+QueryFileId QueryRef::FileId(QueryDatabase* db) const {
+  switch (lex_parent_kind) {
+  case SymbolKind::Invalid:
+    break;
+  case SymbolKind::File:
+    return QueryFileId(lex_parent_id);
+  case SymbolKind::Func: {
+    QueryFunc& file = db->funcs[lex_parent_id.id];
+    if (file.def)
+      return file.def->file;
+    break;
+  }
+  case SymbolKind::Type: {
+    QueryType& type = db->types[lex_parent_id.id];
+    if (type.def)
+      return type.def->file;
+    break;
+  }
+  case SymbolKind::Var: {
+    QueryVar& var = db->vars[lex_parent_id.id];
+    if (var.def)
+      return var.def->file;
+    break;
+  }
+  }
+  return QueryFileId();
+}
+
 Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {
   return ::GetQueryFileIdFromPath(this, path, false);
@@ -409,9 +441,6 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
 
 QueryLocation IdMap::ToQuery(Range range, SymbolRole role) const {
   return QueryLocation{range, primary_file, role};
-}
-QueryFileId IdMap::ToQuery(IndexFileId) const {
-  return primary_file;
 }
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id) != cached_type_ids_.end());

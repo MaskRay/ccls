@@ -34,18 +34,19 @@ struct QueryLocation {
   bool HasValue() const { return range.HasValue(); }
   QueryFileId FileId() const { return path; }
 
+  std::tuple<Range, QueryFileId, SymbolRole> ToTuple() const {
+    return std::make_tuple(range, path, role);
+  }
   bool operator==(const QueryLocation& o) const {
-    return path == o.path && range == o.range;
+    return ToTuple() == o.ToTuple();
   }
   bool operator!=(const QueryLocation& o) const { return !(*this == o); }
   bool operator<(const QueryLocation& o) const {
-    if (path != o.path)
-      return path < o.path;
-    return range < o.range;
+    return ToTuple() < o.ToTuple();
   }
 };
 MAKE_REFLECT_STRUCT(QueryLocation, range, path, role);
-MAKE_HASHABLE(QueryLocation, t.range, t.path);
+MAKE_HASHABLE(QueryLocation, t.range, t.path, t.role);
 
 namespace std {
 template <>
@@ -55,6 +56,15 @@ struct hash<::SymbolKind> {
   }
 };
 }  // namespace std
+
+struct QueryRef {
+  Range range;
+  Id<void> lex_parent_id;
+  SymbolKind lex_parent_kind;
+  SymbolRole role;
+  QueryFileId FileId(QueryDatabase*) const;
+};
+//MAKE_REFLECT_STRUCT(QueryRef, range, lex_parent_id, lex_parent_kind, role);
 
 struct SymbolIdx {
   SymbolKind kind;
@@ -418,7 +428,6 @@ struct IdMap {
   // FIXME Too verbose
   // clang-format off
   QueryLocation ToQuery(Range range, SymbolRole role) const;
-  QueryFileId ToQuery(IndexFileId) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
