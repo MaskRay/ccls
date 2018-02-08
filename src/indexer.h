@@ -78,13 +78,22 @@ using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
-struct IndexLocation {
-  Range loc;
-  Id<void> parent_id;
-  SymbolKind parent_kind = SymbolKind::Invalid;
-  SymbolRole role = SymbolRole::None;
+struct Reference {
+  Range range;
+  Id<void> lex_parent_id;
+  SymbolKind lex_parent_kind;
+  SymbolRole role;
+
+  std::tuple<Range, Id<void>, SymbolKind, SymbolRole> ToTuple() const {
+    return std::make_tuple(range, lex_parent_id, lex_parent_kind, role);
+  }
+  bool operator==(const Reference& o) const {
+    return ToTuple() == o.ToTuple();
+  }
+  bool operator<(const Reference& o) const {
+    return ToTuple() < o.ToTuple();
+  }
 };
-MAKE_REFLECT_STRUCT(IndexLocation, loc, parent_id, parent_kind, role);
 
 struct IndexFuncRef {
   // NOTE: id can be -1 if the function call is not coming from a function.
@@ -104,6 +113,8 @@ struct IndexFuncRef {
 
 void Reflect(Reader& visitor, IndexFuncRef& value);
 void Reflect(Writer& visitor, IndexFuncRef& value);
+void Reflect(Reader& visitor, Reference& value);
+void Reflect(Writer& visitor, Reference& value);
 
 template <typename FileId,
           typename TypeId,
@@ -209,7 +220,7 @@ struct IndexType {
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
-  std::vector<Range> uses;
+  std::vector<Reference> uses;
 
   IndexType() {}  // For serialization.
   IndexType(IndexTypeId id, Usr usr);

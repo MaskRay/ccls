@@ -44,7 +44,7 @@ void Reflect(Writer& visitor, int& value) {
 }
 
 void Reflect(Reader& visitor, unsigned& value) {
-  if (!visitor.IsInt())
+  if (!visitor.IsUint64())
     throw std::invalid_argument("unsigned");
   value = visitor.GetUint32();
 }

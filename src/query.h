@@ -57,15 +57,6 @@ struct hash<::SymbolKind> {
 };
 }  // namespace std
 
-struct QueryRef {
-  Range range;
-  Id<void> lex_parent_id;
-  SymbolKind lex_parent_kind;
-  SymbolRole role;
-  QueryFileId FileId(QueryDatabase*) const;
-};
-//MAKE_REFLECT_STRUCT(QueryRef, range, lex_parent_id, lex_parent_kind, role);
-
 struct SymbolIdx {
   SymbolKind kind;
   RawId idx;
@@ -235,14 +226,14 @@ struct QueryType {
   using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
-  using UsesUpdate = MergeableUpdate<QueryTypeId, QueryLocation>;
+  using UsesUpdate = MergeableUpdate<QueryTypeId, Reference>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
-  std::vector<QueryLocation> uses;
+  std::vector<Reference> uses;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
 };
@@ -410,6 +401,7 @@ template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
 template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
 template <> struct IndexToQuery<IndexFuncRef> { using type = QueryFuncRef; };
 template <> struct IndexToQuery<Range> { using type = QueryLocation; };
+template <> struct IndexToQuery<Reference> { using type = Reference; };
 template <> struct IndexToQuery<IndexFunc::Declaration> { using type = QueryLocation; };
 template <typename I> struct IndexToQuery<optional<I>> {
   using type = optional<typename IndexToQuery<I>::type>;
@@ -428,6 +420,7 @@ struct IdMap {
   // FIXME Too verbose
   // clang-format off
   QueryLocation ToQuery(Range range, SymbolRole role) const;
+  Reference ToQuery(Reference ref) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
@@ -459,3 +452,5 @@ struct IdMap {
   spp::sparse_hash_map<IndexFuncId, QueryFuncId> cached_func_ids_;
   spp::sparse_hash_map<IndexVarId, QueryVarId> cached_var_ids_;
 };
+
+QueryFileId GetFileId(const Reference& ref, QueryDatabase* db);

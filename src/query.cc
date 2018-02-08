@@ -254,8 +254,8 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
                       *type.def.definition_spelling);
     if (type.def.definition_extent.has_value())
       add_outline(id_map.ToSymbol(type.id), *type.def.definition_extent);
-    for (const Range& use : type.uses)
-      add_all_symbols(id_map.ToSymbol(type.id), SymbolRole::Reference, use);
+    for (const Reference& use : type.uses)
+      add_all_symbols(id_map.ToSymbol(type.id), use.role, use.range);
   }
   for (const IndexFunc& func : indexed.funcs) {
     if (func.def.definition_spelling.has_value())
@@ -372,34 +372,6 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 
 }  // namespace
 
-QueryFileId QueryRef::FileId(QueryDatabase* db) const {
-  switch (lex_parent_kind) {
-  case SymbolKind::Invalid:
-    break;
-  case SymbolKind::File:
-    return QueryFileId(lex_parent_id);
-  case SymbolKind::Func: {
-    QueryFunc& file = db->funcs[lex_parent_id.id];
-    if (file.def)
-      return file.def->file;
-    break;
-  }
-  case SymbolKind::Type: {
-    QueryType& type = db->types[lex_parent_id.id];
-    if (type.def)
-      return type.def->file;
-    break;
-  }
-  case SymbolKind::Var: {
-    QueryVar& var = db->vars[lex_parent_id.id];
-    if (var.def)
-      return var.def->file;
-    break;
-  }
-  }
-  return QueryFileId();
-}
-
 Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {
   return ::GetQueryFileIdFromPath(this, path, false);
@@ -441,6 +413,28 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
 
 QueryLocation IdMap::ToQuery(Range range, SymbolRole role) const {
   return QueryLocation{range, primary_file, role};
+}
+Reference IdMap::ToQuery(Reference ref) const {
+  switch (ref.lex_parent_kind) {
+    case SymbolKind::Invalid:
+    case SymbolKind::File:
+      ref.lex_parent_kind = SymbolKind::File;
+      ref.lex_parent_id = Id<void>(primary_file);
+      break;
+    case SymbolKind::Func:
+      ref.lex_parent_id = Id<void>(
+          cached_func_ids_.find(IndexFuncId(ref.lex_parent_id))->second);
+      break;
+    case SymbolKind::Type:
+      ref.lex_parent_id = Id<void>(
+          cached_type_ids_.find(IndexTypeId(ref.lex_parent_id))->second);
+      break;
+    case SymbolKind::Var:
+      ref.lex_parent_id =
+          Id<void>(cached_var_ids_.find(IndexVarId(ref.lex_parent_id))->second);
+      break;
+  }
+  return ref;
 }
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id) != cached_type_ids_.end());
@@ -591,7 +585,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         PROCESS_UPDATE_DIFF(QueryTypeId, types_derived, derived, QueryTypeId);
         PROCESS_UPDATE_DIFF(QueryTypeId, types_instances, instances,
                             QueryVarId);
-        PROCESS_UPDATE_DIFF(QueryTypeId, types_uses, uses, QueryLocation);
+        PROCESS_UPDATE_DIFF(QueryTypeId, types_uses, uses, Reference);
       });
 
   // Functions
@@ -1032,7 +1026,7 @@ TEST_SUITE("query") {
     IndexFile current("foo.cc", "<empty>");
 
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
-        ->uses.push_back(Range(Position(1, 0)));
+        ->uses.push_back(Reference{Range(Position(1, 0))});
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
         ->callers.push_back(IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0),
                                          SymbolRole::None});
@@ -1078,8 +1072,8 @@ TEST_SUITE("query") {
     IndexType* pt = previous.Resolve(previous.ToTypeId(HashUsr("usr")));
     IndexType* ct = current.Resolve(current.ToTypeId(HashUsr("usr")));
 
-    pt->uses.push_back(Range(Position(1, 0)));
-    ct->uses.push_back(Range(Position(2, 0)));
+    pt->uses.push_back(Reference{Range(Position(1, 0))});
+    ct->uses.push_back(Reference{Range(Position(2, 0))});
 
     IndexUpdate update = GetDelta(previous, current);
 

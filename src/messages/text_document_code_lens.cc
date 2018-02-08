@@ -154,8 +154,13 @@ struct TextDocumentCodeLensHandler
             continue;
           if (type.def->kind == ClangSymbolKind::Namespace)
             continue;
+          // FIXME QueryRef
+          std::vector<QueryLocation> uses;
+          uses.reserve(type.uses.size());
+          for (auto& x : type.uses)
+            uses.push_back(ToQueryLocation(db, x));
           AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
-                      type.uses, type.def->definition_spelling,
+                      uses, type.def->definition_spelling,
                       true /*force_display*/);
           AddCodeLens("derived", "derived", &common,
                       ref.loc.OffsetStartColumn(1),

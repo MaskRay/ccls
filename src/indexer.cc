@@ -603,7 +603,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kMajorVersion = 11;
-const int IndexFile::kMinorVersion = 2;
+const int IndexFile::kMinorVersion = 3;
 
 IndexFile::IndexFile(const std::string& path,
                      const std::string& contents)
@@ -691,6 +691,20 @@ template <typename T>
 void UniqueAdd(std::vector<T>& values, T value) {
   if (std::find(values.begin(), values.end(), value) == values.end())
     values.push_back(value);
+}
+
+// FIXME Reference: set lex_parent_id in call sites and remove this
+void AddUse(std::vector<Reference>& values, Range value) {
+  values.push_back(Reference{value, Id<void>(), SymbolKind::Invalid,
+                             SymbolRole::Reference});
+}
+
+// FIXME Reference: set lex_parent_id in call sites and remove this
+void UniqueAdd(std::vector<Reference>& values, Range value) {
+  if (std::find_if(values.begin(), values.end(), [&](const Reference& ref) {
+        return ref.range == value;
+      }) == values.end())
+    AddUse(values, value);
 }
 
 IdCache::IdCache(const std::string& primary_file)
@@ -1238,7 +1252,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             // seems no way to extract the spelling range of `type` and we do
             // not want to do subtraction here.
             // See https://github.com/jacobdufault/cquery/issues/252
-            ref_type_index->uses.push_back(ref_cursor.get_extent());
+            UniqueAdd(ref_type_index->uses, ref_cursor.get_extent());
           }
         }
         UniqueAdd(ref_index->uses, cursor.get_spelling_range());
@@ -1439,7 +1453,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           ns->def.parents.push_back(parent_id);
         }
       }
-      ns->uses.push_back(decl_spell);
+      AddUse(ns->uses, decl_spell);
       break;
     }
 
@@ -1745,7 +1759,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           if (!enum_type.is_fundamental()) {
             IndexType* int_type =
                 db->Resolve(db->ToTypeId(enum_type.get_usr_hash()));
-            int_type->uses.push_back(decl_spell);
+            AddUse(int_type->uses, decl_spell);
             // type is invalidated.
             type = db->Resolve(type_id);
           }
@@ -1899,7 +1913,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXNamespace: {
       ClangCursor referenced = ref->referencedEntity->cursor;
       IndexType* ns = db->Resolve(db->ToTypeId(referenced.get_usr_hash()));
-      ns->uses.push_back(cursor.get_spelling_range());
+      AddUse(ns->uses, cursor.get_spelling_range());
       break;
     }
 
@@ -2349,6 +2363,45 @@ void Reflect(Writer& visitor, IndexFuncRef& value) {
   } else {
     Reflect(visitor, value.loc);
     Reflect(visitor, value.id);
+    Reflect(visitor, value.role);
+  }
+}
+
+void Reflect(Reader& visitor, Reference& value) {
+  if (visitor.Format() == SerializeFormat::Json) {
+    std::string s = visitor.GetString();
+    value = Reference{};
+    value.range = Range(s.c_str());
+    auto sep = s.find('|');
+    if (sep == std::string::npos)
+      value.role = SymbolRole::Reference;
+    else {
+      char* p = const_cast<char*>(s.c_str()) + sep;
+      value.role = SymbolRole(strtol(p + 1, &p, 10));
+      value.lex_parent_kind = SymbolKind(strtol(p + 1, &p, 10));
+      value.lex_parent_id = Id<void>(strtol(p + 1, &p, 10));
+    }
+  } else {
+    Reflect(visitor, value.range);
+    Reflect(visitor, value.lex_parent_id);
+    Reflect(visitor, value.lex_parent_kind);
+    Reflect(visitor, value.role);
+  }
+}
+void Reflect(Writer& visitor, Reference& value) {
+  if (visitor.Format() == SerializeFormat::Json) {
+    std::string s = value.range.ToString();
+    if (value.role != SymbolRole::Reference ||
+        value.lex_parent_kind != SymbolKind::Invalid) {
+      s += '|' + std::to_string(uint8_t(value.role));
+      s += '|' + std::to_string(uint8_t(value.lex_parent_kind));
+      s += '|' + std::to_string(RawId(value.lex_parent_id));
+    }
+    visitor.String(s.c_str());
+  } else {
+    Reflect(visitor, value.range);
+    Reflect(visitor, value.lex_parent_id);
+    Reflect(visitor, value.lex_parent_kind);
     Reflect(visitor, value.role);
   }
 }

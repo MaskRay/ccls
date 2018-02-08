@@ -28,6 +28,34 @@ std::vector<QueryLocation> ToQueryLocationHelper(
   return locs;
 }
 
+QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
+  switch (ref.lex_parent_kind) {
+    case SymbolKind::Invalid:
+      break;
+    case SymbolKind::File:
+      return QueryFileId(ref.lex_parent_id);
+    case SymbolKind::Func: {
+      QueryFunc& file = db->funcs[ref.lex_parent_id.id];
+      if (file.def)
+        return file.def->file;
+      break;
+    }
+    case SymbolKind::Type: {
+      QueryType& type = db->types[ref.lex_parent_id.id];
+      if (type.def)
+        return type.def->file;
+      break;
+    }
+    case SymbolKind::Var: {
+      QueryVar& var = db->vars[ref.lex_parent_id.id];
+      if (var.def)
+        return var.def->file;
+      break;
+    }
+  }
+  return QueryFileId();
+}
+
 }  // namespace
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
@@ -151,6 +179,10 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
   return nullopt;
 }
 
+QueryLocation ToQueryLocation(QueryDatabase* db, Reference ref) {
+  return QueryLocation{ref.range, GetFileId(db, ref), ref.role};
+}
+
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryFuncRef>& refs) {
@@ -182,7 +214,10 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
-      std::vector<QueryLocation> ret = type.uses;
+      std::vector<QueryLocation> ret;
+      ret.reserve(type.uses.size());
+      for (auto& x : type.uses)
+        ret.push_back(ToQueryLocation(db, x));
       if (include_decl && type.def && type.def->definition_spelling)
         ret.push_back(*type.def->definition_spelling);
       return ret;
