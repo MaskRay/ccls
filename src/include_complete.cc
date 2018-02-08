@@ -118,8 +118,8 @@ void IncludeComplete::Rescan() {
     Timer timer;
 
     InsertStlIncludes();
-    // InsertIncludesFromDirectory(config_->projectRoot,
-    //                             false /*use_angle_brackets*/);
+    InsertIncludesFromDirectory(config_->projectRoot,
+                                false /*use_angle_brackets*/);
     for (const std::string& dir : project_->quote_include_directories)
       InsertIncludesFromDirectory(dir, false /*use_angle_brackets*/);
     for (const std::string& dir : project_->angle_include_directories)
