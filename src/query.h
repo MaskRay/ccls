@@ -48,11 +48,12 @@ void Reflect(TVisitor& visitor, WithGen<T>& value) {
 }
 
 struct QueryLocation {
-  QueryFileId path;
   Range range;
+  QueryFileId path;
+  SymbolRole role = SymbolRole::None;
 
   QueryLocation() {}  // Do not use, needed for reflect.
-  QueryLocation(QueryFileId path, Range range) : path(path), range(range) {}
+  QueryLocation(QueryFileId path, Range range) : range(range), path(path) {}
 
   QueryLocation OffsetStartColumn(int16_t offset) const {
     QueryLocation result = *this;
@@ -72,8 +73,8 @@ struct QueryLocation {
     return range < o.range;
   }
 };
-MAKE_REFLECT_STRUCT(QueryLocation, path, range);
-MAKE_HASHABLE(QueryLocation, t.path, t.range);
+MAKE_REFLECT_STRUCT(QueryLocation, range, path, role);
+MAKE_HASHABLE(QueryLocation, t.range, t.path);
 
 namespace std {
 template <>

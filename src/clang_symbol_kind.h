@@ -67,6 +67,7 @@ enum class StorageClass : uint8_t {
 MAKE_REFLECT_TYPE_PROXY(StorageClass);
 
 enum class SymbolRole : uint8_t {
+  None = 0,
   Declaration = 1 << 0,
   Definition = 1 << 1,
   Reference = 1 << 2,

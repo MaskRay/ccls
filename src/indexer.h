@@ -76,16 +76,25 @@ using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
+struct IndexLocation {
+  Range loc;
+  Id<void> parent_id;
+  SymbolKind parent_kind = SymbolKind::Invalid;
+  SymbolRole role = SymbolRole::None;
+};
+MAKE_REFLECT_STRUCT(IndexLocation, loc, parent_id, parent_kind, role);
+
 struct IndexFuncRef {
   // NOTE: id can be -1 if the function call is not coming from a function.
-  IndexFuncId id;
   Range loc;
+  IndexFuncId id;
+  SymbolRole role = SymbolRole::None;
   bool is_implicit = false;
 
   IndexFuncRef() {}  // For serialization.
 
   IndexFuncRef(IndexFuncId id, Range loc, bool is_implicit)
-      : id(id), loc(loc), is_implicit(is_implicit) {}
+      : loc(loc), id(id), is_implicit(is_implicit) {}
   IndexFuncRef(Range loc, bool is_implicit)
       : loc(loc), is_implicit(is_implicit) {}
 

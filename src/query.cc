@@ -208,7 +208,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   def.dependencies = indexed.dependencies;
 
   // Convert enum to markdown compatible strings
-  def.language = [indexed]() {
+  def.language = [&indexed]() {
     switch (indexed.language) {
       case LanguageId::C:
         return "c";
