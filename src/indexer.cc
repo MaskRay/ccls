@@ -2319,7 +2319,8 @@ void Reflect(Reader& visitor, IndexFuncRef& value) {
     if (str_value[0] == '~') {
       value.role = SymbolRole::Implicit;
       ++str_value;
-    }
+    } else
+      value.role = SymbolRole::None;
     RawId id = atol(str_value);
     const char* loc_string = strchr(str_value, '@') + 1;
 

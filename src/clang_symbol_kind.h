@@ -78,6 +78,7 @@ enum class SymbolRole : uint8_t {
   CalledBy = 1 << 6,
 };
 MAKE_REFLECT_TYPE_PROXY(SymbolRole);
+MAKE_ENUM_HASHABLE(SymbolRole);
 
 inline uint8_t operator&(SymbolRole lhs, SymbolRole rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
