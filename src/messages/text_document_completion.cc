@@ -177,12 +177,11 @@ void FilterAndSortCompletionResponse(
   for (size_t i = 0; i < items.size(); ++i)
     items[i].sortText = tofixedbase64(i, buf);
 
-  // FIXME
-  // The trigger behivour of vscode is puzzling.
-  // So maybe it's not feasible to cut out any results.
-  // const size_t kMaxResultSize = 100u;
-  // if (items.size() > kMaxResultSize)
-  //   items.resize(kMaxResultSize);
+  const size_t kMaxResultSize = 100u;
+  if (items.size() > kMaxResultSize) {
+    items.resize(kMaxResultSize);
+    complete_response->result.isIncomplete = true;
+  }
 }
 
 struct TextDocumentCompletionHandler : MessageHandler {

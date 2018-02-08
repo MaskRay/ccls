@@ -182,6 +182,9 @@ def configure(ctx):
     if 'release' in ctx.options.variant:
       cxxflags.append('-O' if 'asan' in ctx.options.variant else '-O3')
 
+  if ctx.env.CXX_NAME == 'clang' and 'debug' in ctx.options.variant:
+    cxxflags.append('-fno-limit-debug-info')
+
   ctx.env.CXXFLAGS = cxxflags
   if not ctx.env.LDFLAGS:
     ctx.env.LDFLAGS = ldflags
