@@ -351,12 +351,15 @@ struct lsCompletionItem {
   std::string detail;
 
   // A human-readable string that represents a doc-comment.
-  std::string documentation;
+  optional<std::string> documentation;
 
   // Internal information to order candidates.
   bool found_;
   std::string::size_type skip_;
   unsigned priority_;
+
+  // Use <> or "" by default as include path.
+  bool use_angle_brackets_ = false;
 
   // A string that shoud be used when comparing this item
   // with other items. When `falsy` the label is used.

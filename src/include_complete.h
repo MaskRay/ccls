@@ -27,17 +27,22 @@ struct IncludeComplete {
   optional<lsCompletionItem> FindCompletionItemForAbsolutePath(
       const std::string& absolute_path);
 
+  // Insert item to |completion_items|.
+  // Update |absolute_path_to_completion_item| and |inserted_paths|.
+  void InsertCompletionItem(const std::string& absolute_path,
+                            lsCompletionItem&& item);
+
   // Guards |completion_items| when |is_scanning| is true.
   std::mutex completion_items_mutex;
   std::atomic<bool> is_scanning;
   std::vector<lsCompletionItem> completion_items;
 
-  // Absolute file path to the completion item in |completion_items|. Also
-  // verifies that we only have one completion item per absolute path.
-  // We cannot just scan |completion_items| for this information because the
-  // same path can often be epxressed in mutliple ways; a trivial example is
-  // angle vs quote include style (ie, <foo> vs "foo").
+  // Absolute file path to the completion item in |completion_items|.
+  // Keep the one with shortest include path.
   std::unordered_map<std::string, int> absolute_path_to_completion_item;
+
+  // Only one completion item per include path.
+  std::unordered_map<std::string, int> inserted_paths;
 
   // Cached references
   Config* config_;
