@@ -273,7 +273,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       // to the left/right). This is hacky but useful. e.g.
       // textDocument/definition on the space/semicolon in `A a;` or `return
       // 42;` will take you to the constructor.
-      Range range = caller.loc;
+      Range range = caller.range;
       if (caller.role & SymbolRole::Implicit) {
         if (range.start.column > 0)
           range.start.column--;
@@ -451,7 +451,10 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  return QueryFuncRef{ToQuery(ref.id), ToQuery(ref.loc, ref.role)};
+  if (ref.lex_parent_kind == SymbolKind::Func)
+    return QueryFuncRef{ToQuery(IndexFuncId(ref.lex_parent_id)),
+                          ToQuery(ref.range, ref.role)};
+  return QueryFuncRef{QueryFuncId(), ToQuery(ref.range, ref.role)};
 }
 Reference IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
@@ -1028,8 +1031,8 @@ TEST_SUITE("query") {
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->uses.push_back(Reference{Range(Position(1, 0))});
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
-        ->callers.push_back(IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0),
-                                         SymbolRole::None});
+        ->callers.push_back(IndexFuncRef(Range(Position(2, 0)), Id<void>(0),
+                                         SymbolKind::Func, SymbolRole::None));
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
         ->uses.push_back(Reference{Range(Position(3, 0))});
 
@@ -1047,10 +1050,10 @@ TEST_SUITE("query") {
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
 
-    pf->callers.push_back(
-        IndexFuncRef{Range(Position(1, 0)), IndexFuncId(0), SymbolRole::None});
-    cf->callers.push_back(
-        IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0), SymbolRole::None});
+    pf->callers.push_back(IndexFuncRef(Range(Position(1, 0)), Id<void>(0),
+                                       SymbolKind::Func, SymbolRole::None));
+    cf->callers.push_back(IndexFuncRef(Range(Position(2, 0)), Id<void>(0),
+                                       SymbolKind::Func, SymbolRole::None));
 
     IndexUpdate update = GetDelta(previous, current);
 
@@ -1092,14 +1095,14 @@ TEST_SUITE("query") {
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
-    pf->callers.push_back(
-        IndexFuncRef{Range(Position(1, 0)), IndexFuncId(0), SymbolRole::None});
-    pf->callers.push_back(
-        IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0), SymbolRole::None});
-    cf->callers.push_back(
-        IndexFuncRef{Range(Position(4, 0)), IndexFuncId(0), SymbolRole::None});
-    cf->callers.push_back(
-        IndexFuncRef{Range(Position(5, 0)), IndexFuncId(0), SymbolRole::None});
+    pf->callers.push_back(IndexFuncRef(Range(Position(1, 0)), Id<void>(0),
+                                       SymbolKind::Func, SymbolRole::None));
+    pf->callers.push_back(IndexFuncRef(Range(Position(2, 0)), Id<void>(0),
+                                       SymbolKind::Func, SymbolRole::None));
+    cf->callers.push_back(IndexFuncRef(Range(Position(4, 0)), Id<void>(0),
+                                       SymbolKind::Func, SymbolRole::None));
+    cf->callers.push_back(IndexFuncRef(Range(Position(5, 0)), Id<void>(0),
+                                       SymbolKind::Func, SymbolRole::None));
 
     QueryDatabase db;
     IdMap previous_map(&db, previous.id_cache);

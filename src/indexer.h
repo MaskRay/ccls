@@ -95,20 +95,12 @@ struct Reference {
   }
 };
 
-struct IndexFuncRef {
-  // NOTE: id can be -1 if the function call is not coming from a function.
-  Range loc;
-  IndexFuncId id;
-  SymbolRole role;
-
-  std::tuple<IndexFuncId, Range, SymbolRole> ToTuple() const {
-    return std::make_tuple(id, loc, role);
-  }
-  bool operator==(const IndexFuncRef& o) { return ToTuple() == o.ToTuple(); }
-  bool operator!=(const IndexFuncRef& o) { return !(*this == o); }
-  bool operator<(const IndexFuncRef& o) const {
-    return ToTuple() < o.ToTuple();
-  }
+// NOTE: id can be -1 if the function call is not coming from a function.
+struct IndexFuncRef : Reference {
+  // Constructors are unnecessary in C++17 p0017
+  IndexFuncRef() = default;
+  IndexFuncRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
+      : Reference{range, id, kind, role} {}
 };
 
 void Reflect(Reader& visitor, IndexFuncRef& value);

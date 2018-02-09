@@ -592,10 +592,12 @@ void OnIndexReference_Function(IndexFile* db,
     called = db->Resolve(called_id);
 
     AddFuncRef(&caller->def.callees,
-               IndexFuncRef{loc, called->id, role});
-    AddFuncRef(&called->callers, IndexFuncRef{loc, caller->id, role});
+               IndexFuncRef(loc, Id<void>(called->id), SymbolKind::Func, role));
+    AddFuncRef(&called->callers,
+               IndexFuncRef(loc, Id<void>(caller->id), SymbolKind::Func, role));
   } else {
-    AddFuncRef(&called->callers, IndexFuncRef{loc, IndexFuncId(), role});
+    AddFuncRef(&called->callers,
+               IndexFuncRef(loc, Id<void>(), SymbolKind::Invalid, role));
   }
 }
 
@@ -2049,7 +2051,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
             AddFuncRef(&ctor->callers,
-                       IndexFuncRef{loc, IndexFuncId(), SymbolRole::Implicit});
+                       IndexFuncRef(loc, Id<void>(), SymbolKind::Invalid,
+                                    SymbolRole::Implicit));
           }
         }
       }
@@ -2338,12 +2341,10 @@ void Reflect(Reader& visitor, IndexFuncRef& value) {
     RawId id = atol(str_value);
     const char* loc_string = strchr(str_value, '@') + 1;
 
-    value.id = IndexFuncId(id);
-    value.loc = Range(loc_string);
+    value.lex_parent_id = Id<void>(id);
+    value.range = Range(loc_string);
   } else {
-    Reflect(visitor, value.loc);
-    Reflect(visitor, value.id);
-    Reflect(visitor, value.role);
+    Reflect(visitor, static_cast<Reference&>(value));
   }
 }
 void Reflect(Writer& visitor, IndexFuncRef& value) {
@@ -2353,17 +2354,15 @@ void Reflect(Writer& visitor, IndexFuncRef& value) {
       s += "~";
 
     // id.id is unsigned, special case -1 value
-    if (value.id.HasValue())
-      s += std::to_string(value.id.id);
+    if (value.lex_parent_id.HasValue())
+      s += std::to_string(value.lex_parent_id.id);
     else
       s += "-1";
 
-    s += "@" + value.loc.ToString();
+    s += "@" + value.range.ToString();
     visitor.String(s.c_str());
   } else {
-    Reflect(visitor, value.loc);
-    Reflect(visitor, value.id);
-    Reflect(visitor, value.role);
+    Reflect(visitor, static_cast<Reference&>(value));
   }
 }
 
