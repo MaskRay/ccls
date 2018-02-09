@@ -115,18 +115,18 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     ClangSymbolKind kind = ClangSymbolKind::Unknown;
     StorageClass storage = StorageClass::Invalid;
     // This switch statement also filters out symbols that are not highlighted.
-    switch (sym.idx.kind) {
+    switch (sym.kind) {
       case SymbolKind::Func: {
-        QueryFunc* func = &db->funcs[sym.idx.idx];
-        if (!func->def)
+        QueryFunc& func = sym.Func(db);
+        if (!func.def)
           continue;  // applies to for loop
         // Don't highlight overloadable operators or implicit lambda ->
         // std::function constructor.
-        std::string_view short_name = func->def->ShortName();
+        std::string_view short_name = func.def->ShortName();
         if (short_name.compare(0, 8, "operator") == 0 ||
             short_name.compare(0, 27, "function<type-parameter-0-0") == 0)
           continue;  // applies to for loop
-        kind = func->def->kind;
+        kind = func.def->kind;
         detailed_name = short_name;
 
         // Check whether the function name is actually there.
@@ -135,54 +135,55 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         // but we still want to keep the range for jumping to definition.
         std::string_view concise_name =
             detailed_name.substr(0, detailed_name.find('<'));
-        int16_t start_line = sym.loc.range.start.line;
-        int16_t start_col = sym.loc.range.start.column;
+        int16_t start_line = sym.range.start.line;
+        int16_t start_col = sym.range.start.column;
         if (start_line >= 0 && start_line < working_file->index_lines.size()) {
           std::string_view line = working_file->index_lines[start_line];
-          sym.loc.range.end.line = start_line;
+          sym.range.end.line = start_line;
           if (line.compare(start_col, concise_name.size(), concise_name) == 0)
-            sym.loc.range.end.column = start_col + concise_name.size();
+            sym.range.end.column = start_col + concise_name.size();
           else
             continue;  // applies to for loop
         }
         break;
       }
       case SymbolKind::Var: {
-        QueryVar* var = &db->vars[sym.idx.idx];
-        if (!var->def)
+        QueryVar& var = sym.Var(db);
+        if (!var.def)
           continue;  // applies to for loop
-        parent_kind = var->def->parent_kind;
-        kind = var->def->kind;
-        storage = var->def->storage;
-        detailed_name = var->def->ShortName();
+        parent_kind = var.def->parent_kind;
+        kind = var.def->kind;
+        storage = var.def->storage;
+        detailed_name = var.def->ShortName();
         break;
       }
       case SymbolKind::Type: {
-        QueryType* type = &db->types[sym.idx.idx];
-        if (!type->def)
+        QueryType& type = sym.Type(db);
+        if (!type.def)
           continue;  // applies to for loop
-        kind = type->def->kind;
-        detailed_name = type->def->detailed_name;
+        kind = type.def->kind;
+        detailed_name = type.def->detailed_name;
         break;
       }
       default:
         continue;  // applies to for loop
     }
 
-    optional<lsRange> loc = GetLsRange(working_file, sym.loc.range);
+    optional<lsRange> loc = GetLsRange(working_file, sym.range);
     if (loc) {
-      auto it = grouped_symbols.find(sym.idx);
+      auto key = SymbolIdx(sym.kind, RawId(sym.id));
+      auto it = grouped_symbols.find(key);
       if (it != grouped_symbols.end()) {
         it->second.ranges.push_back(*loc);
       } else {
         Out_CqueryPublishSemanticHighlighting::Symbol symbol;
         symbol.stableId = semantic_cache_for_file->GetStableId(
-            sym.idx.kind, std::string(detailed_name));
+            sym.kind, std::string(detailed_name));
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;
         symbol.ranges.push_back(*loc);
-        grouped_symbols[sym.idx] = symbol;
+        grouped_symbols[key] = symbol;
       }
     }
   }

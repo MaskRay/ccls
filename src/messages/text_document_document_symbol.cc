@@ -35,13 +35,13 @@ struct TextDocumentDocumentSymbolHandler
       return;
     }
 
-    for (SymbolRef ref : file->def->outline) {
+    for (SymbolRef sym : file->def->outline) {
       optional<lsSymbolInformation> info =
-          GetSymbolInfo(db, working_files, ref.idx, true /*use_short_name*/);
+          GetSymbolInfo(db, working_files, sym, true /*use_short_name*/);
       if (!info)
         continue;
 
-      optional<lsLocation> location = GetLsLocation(db, working_files, ref.loc);
+      optional<lsLocation> location = GetLsLocation(db, working_files, sym);
       if (!location)
         continue;
       info->location = *location;

@@ -16,34 +16,6 @@ int ComputeRangeSize(const Range& range) {
 
 }  // namespace
 
-QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
-  switch (ref.lex_parent_kind) {
-  case SymbolKind::Invalid:
-    break;
-  case SymbolKind::File:
-    return QueryFileId(ref.lex_parent_id);
-  case SymbolKind::Func: {
-    QueryFunc& file = db->funcs[ref.lex_parent_id.id];
-    if (file.def)
-      return file.def->file;
-    break;
-  }
-  case SymbolKind::Type: {
-    QueryType& type = db->types[ref.lex_parent_id.id];
-    if (type.def)
-      return type.def->file;
-    break;
-  }
-  case SymbolKind::Var: {
-    QueryVar& var = db->vars[ref.lex_parent_id.id];
-    if (var.def)
-      return var.def->file;
-    break;
-  }
-  }
-  return QueryFileId();
-}
-
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const QueryTypeId& id) {
   QueryType& type = db->types[id.id];
@@ -69,22 +41,22 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
 }
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const SymbolIdx& symbol) {
-  switch (symbol.kind) {
+                                                      SymbolRef sym) {
+  switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = sym.Type(db);
       if (type.def)
         return *type.def->definition_spelling;
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
+      QueryFunc& func = sym.Func(db);
       if (func.def)
         return func.def->definition_spelling;
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
+      QueryVar& var = sym.Var(db);
       if (var.def)
         return var.def->definition_spelling;
       break;
@@ -99,29 +71,29 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
 }
 
 optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
-                                                    const SymbolIdx& symbol) {
-  switch (symbol.kind) {
+                                                    SymbolRef sym) {
+  switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = sym.Type(db);
       if (type.def)
         return type.def->definition_extent;
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
+      QueryFunc& func = sym.Func(db);
       if (func.def)
         return func.def->definition_extent;
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
+      QueryVar& var = sym.Var(db);
       if (var.def)
         return var.def->definition_extent;
       break;
     }
     case SymbolKind::File: {
       return QueryLocation{Range(Position(0, 0), Position(0, 0)),
-                           QueryFileId(symbol.idx), SymbolRole::None};
+                           QueryFileId(sym.Idx()), SymbolRole::None};
     }
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
@@ -132,16 +104,16 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
 }
 
 optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                                  const SymbolIdx& symbol) {
-  switch (symbol.kind) {
+                                                  SymbolRef sym) {
+  switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = sym.Type(db);
       if (type.def && type.def->definition_spelling)
         return type.def->definition_spelling->FileId();
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
+      QueryFunc& func = sym.Func(db);
       if (!func.declarations.empty())
         return GetFileId(db, func.declarations[0]);
       if (func.def && func.def->definition_spelling)
@@ -149,13 +121,13 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
+      QueryVar& var = sym.Var(db);
       if (var.def && var.def->definition_spelling)
         return var.def->definition_spelling->FileId();
       break;
     }
     case SymbolKind::File: {
-      return QueryFileId(symbol.idx);
+      return QueryFileId(sym.Idx());
     }
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
@@ -175,11 +147,11 @@ std::vector<Reference> ToReference(QueryDatabase* db,
 }
 
 std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
-                                       const SymbolIdx& symbol,
+                                       SymbolRef sym,
                                        bool include_decl) {
-  switch (symbol.kind) {
+  switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = db->types[sym.Idx()];
       std::vector<Reference> ret = type.uses;
       if (include_decl && type.def && type.def->definition_spelling)
         ret.push_back(*type.def->definition_spelling);
@@ -187,7 +159,7 @@ std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
     }
     case SymbolKind::Func: {
       // TODO: the vector allocation could be avoided.
-      QueryFunc& func = db->funcs[symbol.idx];
+      QueryFunc& func = db->funcs[sym.Idx()];
       std::vector<Reference> ret = ToReference(db, func.callers);
       if (include_decl) {
         AddRange(&ret, func.declarations);
@@ -197,7 +169,7 @@ std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
       return ret;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
+      QueryVar& var = db->vars[sym.Idx()];
       std::vector<Reference> ret = var.uses;
       if (include_decl) {
         if (var.def && var.def->definition_spelling)
@@ -216,14 +188,14 @@ std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
 
 std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
-    SymbolIdx symbol) {
-  switch (symbol.kind) {
+    SymbolRef sym) {
+  switch (sym.kind) {
     case SymbolKind::Type: {
       // Returning the definition spelling of a type is a hack (and is why the
       // function has the postfix `ForGotoDefintion`, but it lets the user
       // jump to the start of a type if clicking goto-definition on the same
       // type from within the type definition.
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = sym.Type(db);
       if (type.def) {
         optional<QueryLocation> declaration = type.def->definition_spelling;
         if (declaration)
@@ -232,9 +204,9 @@ std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
       break;
     }
     case SymbolKind::Func:
-      return db->funcs[symbol.idx].declarations;
+      return sym.Func(db).declarations;
     case SymbolKind::Var:
-      return db->vars[symbol.idx].declarations;
+      return sym.Var(db).declarations;
     default:
       break;
   }
@@ -425,13 +397,13 @@ std::vector<lsLocation> GetLsLocations(
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
-                                            SymbolIdx symbol,
+                                            SymbolRef sym,
                                             bool use_short_name) {
-  switch (symbol.kind) {
+  switch (sym.kind) {
     case SymbolKind::File: {
-      QueryFile& file = db->files[symbol.idx];
+      QueryFile& file = db->files[sym.Idx()];
       if (!file.def)
-        return nullopt;
+        break;
 
       lsSymbolInformation info;
       info.name = file.def->path;
@@ -439,9 +411,9 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = sym.Type(db);
       if (!type.def)
-        return nullopt;
+        break;
 
       lsSymbolInformation info;
       if (use_short_name)
@@ -462,9 +434,9 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
+      QueryFunc& func = sym.Func(db);
       if (!func.def)
-        return nullopt;
+        break;
 
       lsSymbolInformation info;
       if (use_short_name)
@@ -483,9 +455,9 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
+      QueryVar& var = sym.Var(db);
       if (!var.def)
-        return nullopt;
+        break;
 
       lsSymbolInformation info;
       if (use_short_name)
@@ -496,10 +468,9 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       info.kind = lsSymbolKind::Variable;
       return info;
     }
-    case SymbolKind::Invalid: {
-      return nullopt;
-    }
-  };
+    case SymbolKind::Invalid:
+      break;
+  }
 
   return nullopt;
 }
@@ -520,9 +491,9 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
       target_line = *index_line;
   }
 
-  for (const SymbolRef& ref : file->def->all_symbols) {
-    if (ref.loc.range.Contains(target_line, target_column))
-      symbols.push_back(ref);
+  for (const SymbolRef& sym : file->def->all_symbols) {
+    if (sym.range.Contains(target_line, target_column))
+      symbols.push_back(sym);
   }
 
   // Order shorter ranges first, since they are more detailed/precise. This is
@@ -538,17 +509,16 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   // better on constructors.
   std::sort(symbols.begin(), symbols.end(),
             [](const SymbolRef& a, const SymbolRef& b) {
-              int a_size = ComputeRangeSize(a.loc.range);
-              int b_size = ComputeRangeSize(b.loc.range);
+              int a_size = ComputeRangeSize(a.range);
+              int b_size = ComputeRangeSize(b.range);
 
               if (a_size != b_size)
                 return a_size < b_size;
               // operator> orders Var/Func before Type.
-              int t =
-                  static_cast<int>(a.idx.kind) - static_cast<int>(b.idx.kind);
+              int t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
               if (t)
                 return t > 0;
-              return a.idx.idx < b.idx.idx;
+              return a.Idx() < b.Idx();
             });
 
   return symbols;

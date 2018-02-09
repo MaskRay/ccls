@@ -171,11 +171,11 @@ struct CqueryCallTreeInitialHandler
     Out_CqueryCallTree out;
     out.id = request->id;
 
-    for (const SymbolRef& ref :
+    for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      if (ref.idx.kind == SymbolKind::Func) {
+      if (sym.kind == SymbolKind::Func) {
         out.result =
-            BuildInitialCallTree(db, working_files, QueryFuncId(ref.idx.idx));
+            BuildInitialCallTree(db, working_files, QueryFuncId(sym.Idx()));
         break;
       }
     }

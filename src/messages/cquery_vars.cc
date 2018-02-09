@@ -25,19 +25,19 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
     out.id = request->id;
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      size_t id = ref.idx.idx;
-      switch (ref.idx.kind) {
+      RawId idx = ref.Idx();
+      switch (ref.kind) {
         default:
           break;
         case SymbolKind::Var: {
-          QueryVar& var = db->vars[id];
+          QueryVar& var = db->vars[idx];
           if (!var.def || !var.def->variable_type)
             continue;
-          id = var.def->variable_type->id;
+          idx = var.def->variable_type->id;
         }
         // fallthrough
         case SymbolKind::Type: {
-          QueryType& type = db->types[id];
+          QueryType& type = db->types[idx];
           out.result = GetLsLocations(db, working_files,
                                       ToReference(db, type.instances));
           break;

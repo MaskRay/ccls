@@ -695,13 +695,13 @@ void UniqueAdd(std::vector<T>& values, T value) {
     values.push_back(value);
 }
 
-// FIXME Reference: set lex_parent_id in call sites and remove this
+// FIXME Reference: set id in call sites and remove this
 void AddUse(std::vector<Reference>& values, Range value) {
   values.push_back(Reference{value, Id<void>(), SymbolKind::Invalid,
                              SymbolRole::Reference});
 }
 
-// FIXME Reference: set lex_parent_id in call sites and remove this
+// FIXME Reference: set id in call sites and remove this
 void UniqueAdd(std::vector<Reference>& values, Range value) {
   if (std::find_if(values.begin(), values.end(), [&](const Reference& ref) {
         return ref.range == value;
@@ -2341,7 +2341,7 @@ void Reflect(Reader& visitor, IndexFuncRef& value) {
     RawId id = atol(str_value);
     const char* loc_string = strchr(str_value, '@') + 1;
 
-    value.lex_parent_id = Id<void>(id);
+    value.id = Id<void>(id);
     value.range = Range(loc_string);
   } else {
     Reflect(visitor, static_cast<Reference&>(value));
@@ -2354,8 +2354,8 @@ void Reflect(Writer& visitor, IndexFuncRef& value) {
       s += "~";
 
     // id.id is unsigned, special case -1 value
-    if (value.lex_parent_id.HasValue())
-      s += std::to_string(value.lex_parent_id.id);
+    if (value.id.HasValue())
+      s += std::to_string(value.id.id);
     else
       s += "-1";
 
@@ -2377,13 +2377,13 @@ void Reflect(Reader& visitor, Reference& value) {
     else {
       char* p = const_cast<char*>(s.c_str()) + sep;
       value.role = SymbolRole(strtol(p + 1, &p, 10));
-      value.lex_parent_kind = SymbolKind(strtol(p + 1, &p, 10));
-      value.lex_parent_id = Id<void>(strtol(p + 1, &p, 10));
+      value.kind = SymbolKind(strtol(p + 1, &p, 10));
+      value.id = Id<void>(strtol(p + 1, &p, 10));
     }
   } else {
     Reflect(visitor, value.range);
-    Reflect(visitor, value.lex_parent_id);
-    Reflect(visitor, value.lex_parent_kind);
+    Reflect(visitor, value.id);
+    Reflect(visitor, value.kind);
     Reflect(visitor, value.role);
   }
 }
@@ -2391,16 +2391,16 @@ void Reflect(Writer& visitor, Reference& value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string s = value.range.ToString();
     if (value.role != SymbolRole::Reference ||
-        value.lex_parent_kind != SymbolKind::Invalid) {
+        value.kind != SymbolKind::Invalid) {
       s += '|' + std::to_string(uint8_t(value.role));
-      s += '|' + std::to_string(uint8_t(value.lex_parent_kind));
-      s += '|' + std::to_string(RawId(value.lex_parent_id));
+      s += '|' + std::to_string(uint8_t(value.kind));
+      s += '|' + std::to_string(RawId(value.id));
     }
     visitor.String(s.c_str());
   } else {
     Reflect(visitor, value.range);
-    Reflect(visitor, value.lex_parent_id);
-    Reflect(visitor, value.lex_parent_kind);
+    Reflect(visitor, value.id);
+    Reflect(visitor, value.kind);
     Reflect(visitor, value.role);
   }
 }

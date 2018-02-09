@@ -237,36 +237,38 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
     }
   }();
 
-  auto add_outline = [&def, &id_map](SymbolIdx idx, Range range) {
-    def.outline.push_back(
-        SymbolRef(idx, SymbolRole::Declaration,
-                  id_map.ToQuery(range, SymbolRole::Declaration)));
+  auto add_outline = [&](Range range, RawId id, SymbolKind kind,
+                          SymbolRole role) {
+    def.outline.push_back(SymbolRef(range, Id<void>(id), kind, role));
   };
-  auto add_all_symbols = [&def, &id_map](SymbolIdx idx, SymbolRole role,
-                                         Range range) {
-    def.all_symbols.push_back(
-        SymbolRef(idx, role, id_map.ToQuery(range, role)));
+  auto add_all_symbols = [&](Range range, RawId id, SymbolKind kind,
+                             SymbolRole role) {
+    def.all_symbols.push_back(SymbolRef(range, Id<void>(id), kind, role));
   };
 
   for (const IndexType& type : indexed.types) {
+    RawId id = id_map.ToQuery(type.id).id;
     if (type.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(type.id), SymbolRole::Definition,
-                      *type.def.definition_spelling);
-    if (type.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(type.id), *type.def.definition_extent);
+      add_all_symbols(*type.def.definition_spelling, id, SymbolKind::Type,
+                      SymbolRole::Definition);
+    if (type.def.definition_extent)
+      add_outline(*type.def.definition_extent, id, SymbolKind::Type,
+                  SymbolRole::None);
     for (const Reference& use : type.uses)
-      add_all_symbols(id_map.ToSymbol(type.id), use.role, use.range);
+      add_all_symbols(use.range, id, SymbolKind::Type, use.role);
   }
   for (const IndexFunc& func : indexed.funcs) {
+    RawId id = id_map.ToQuery(func.id).id;
     if (func.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Definition,
-                      *func.def.definition_spelling);
+      add_all_symbols(*func.def.definition_spelling, id, SymbolKind::Func,
+                      SymbolRole::Definition);
     if (func.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(func.id), *func.def.definition_extent);
+      add_outline(*func.def.definition_extent, id,
+                   SymbolKind::Func, SymbolRole::None);
     for (const IndexFunc::Declaration& decl : func.declarations) {
-      add_all_symbols(id_map.ToSymbol(func.id), SymbolRole::Declaration,
-                      decl.spelling);
-      add_outline(id_map.ToSymbol(func.id), decl.spelling);
+      add_all_symbols(decl.spelling, id, SymbolKind::Func,
+                      SymbolRole::Declaration);
+      add_outline(decl.spelling, id, SymbolKind::Func, SymbolRole::Declaration);
     }
     for (const IndexFuncRef& caller : func.callers) {
       // Make ranges of implicit function calls larger (spanning one more column
@@ -279,31 +281,35 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
           range.start.column--;
         range.end.column++;
       }
-      add_all_symbols(id_map.ToSymbol(func.id),
-                      caller.role | SymbolRole::CalledBy, range);
+      add_all_symbols(range, id, SymbolKind::Func,
+                      caller.role | SymbolRole::CalledBy);
     }
   }
   for (const IndexVar& var : indexed.vars) {
-    if (var.def.definition_spelling.has_value())
-      add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Definition,
-                      *var.def.definition_spelling);
+    if (var.def.definition_spelling)
+      add_all_symbols(*var.def.definition_spelling, id_map.ToQuery(var.id).id,
+                      SymbolKind::Var, SymbolRole::Definition);
     if (var.def.definition_extent.has_value())
-      add_outline(id_map.ToSymbol(var.id), *var.def.definition_extent);
+      add_outline(*var.def.definition_extent, id_map.ToQuery(var.id).id,
+                  SymbolKind::Var, SymbolRole::None);
     for (const Range& decl : var.declarations) {
-      add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Declaration, decl);
-      add_outline(id_map.ToSymbol(var.id), decl);
+      add_all_symbols(decl, id_map.ToQuery(var.id).id, SymbolKind::Var,
+                      SymbolRole::Definition);
+      add_outline(decl, id_map.ToQuery(var.id).id, SymbolKind::Var,
+                  SymbolRole::Declaration);
     }
     for (auto& use : var.uses)
-      add_all_symbols(id_map.ToSymbol(var.id), use.role, use.range);
+      add_all_symbols(use.range, id_map.ToQuery(var.id).id, SymbolKind::Var,
+                      use.role);
   }
 
   std::sort(def.outline.begin(), def.outline.end(),
             [](const SymbolRef& a, const SymbolRef& b) {
-              return a.loc.range.start < b.loc.range.start;
+              return a.range.start < b.range.start;
             });
   std::sort(def.all_symbols.begin(), def.all_symbols.end(),
             [](const SymbolRef& a, const SymbolRef& b) {
-              return a.loc.range.start < b.loc.range.start;
+              return a.range.start < b.range.start;
             });
 
   return QueryFile::DefUpdate(def, indexed.file_contents);
@@ -372,6 +378,44 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 
 }  // namespace
 
+QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
+  switch (ref.kind) {
+    case SymbolKind::Invalid:
+      break;
+    case SymbolKind::File:
+      return QueryFileId(ref.id);
+    case SymbolKind::Func: {
+      QueryFunc& file = db->funcs[ref.id.id];
+      if (file.def)
+        return file.def->file;
+      break;
+    }
+    case SymbolKind::Type: {
+      QueryType& type = db->types[ref.id.id];
+      if (type.def)
+        return type.def->file;
+      break;
+    }
+    case SymbolKind::Var: {
+      QueryVar& var = db->vars[ref.id.id];
+      if (var.def)
+        return var.def->file;
+      break;
+    }
+  }
+  return QueryFileId();
+}
+
+QueryFunc& SymbolRef::Func(QueryDatabase* db) const {
+  return db->funcs[Idx()];
+}
+QueryType& SymbolRef::Type(QueryDatabase* db) const {
+  return db->types[Idx()];
+}
+QueryVar& SymbolRef::Var(QueryDatabase* db) const {
+  return db->vars[Idx()];
+}
+
 Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {
   return ::GetQueryFileIdFromPath(this, path, false);
@@ -415,23 +459,23 @@ QueryLocation IdMap::ToQuery(Range range, SymbolRole role) const {
   return QueryLocation{range, primary_file, role};
 }
 Reference IdMap::ToQuery(Reference ref) const {
-  switch (ref.lex_parent_kind) {
+  switch (ref.kind) {
     case SymbolKind::Invalid:
     case SymbolKind::File:
-      ref.lex_parent_kind = SymbolKind::File;
-      ref.lex_parent_id = Id<void>(primary_file);
+      ref.kind = SymbolKind::File;
+      ref.id = Id<void>(primary_file);
       break;
     case SymbolKind::Func:
-      ref.lex_parent_id = Id<void>(
-          cached_func_ids_.find(IndexFuncId(ref.lex_parent_id))->second);
+      ref.id = Id<void>(
+          cached_func_ids_.find(IndexFuncId(ref.id))->second);
       break;
     case SymbolKind::Type:
-      ref.lex_parent_id = Id<void>(
-          cached_type_ids_.find(IndexTypeId(ref.lex_parent_id))->second);
+      ref.id = Id<void>(
+          cached_type_ids_.find(IndexTypeId(ref.id))->second);
       break;
     case SymbolKind::Var:
-      ref.lex_parent_id =
-          Id<void>(cached_var_ids_.find(IndexVarId(ref.lex_parent_id))->second);
+      ref.id =
+          Id<void>(cached_var_ids_.find(IndexVarId(ref.id))->second);
       break;
   }
   return ref;
@@ -451,18 +495,18 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  QueryFuncRef ret(ref.range, ref.lex_parent_id, ref.lex_parent_kind, ref.role);
-  switch (ref.lex_parent_kind) {
+  QueryFuncRef ret(ref.range, ref.id, ref.kind, ref.role);
+  switch (ref.kind) {
     default:
       break;
     case SymbolKind::File:
-      ret.lex_parent_id = Id<void>(primary_file);
+      ret.id = Id<void>(primary_file);
       break;
     case SymbolKind::Func:
-      ret.lex_parent_id = Id<void>(ToQuery(IndexFuncId(ref.lex_parent_id)));
+      ret.id = Id<void>(ToQuery(IndexFuncId(ref.id)));
       break;
     case SymbolKind::Type:
-      ret.lex_parent_id = Id<void>(ToQuery(IndexTypeId(ref.lex_parent_id)));
+      ret.id = Id<void>(ToQuery(IndexTypeId(ref.id)));
       break;
   }
   return ret;

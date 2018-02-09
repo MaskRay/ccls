@@ -54,9 +54,9 @@ struct Id {
 
   bool HasValue() const { return id != RawId(-1); }
 
-  bool operator==(const Id<T>& o) const { return id == o.id; }
-  bool operator!=(const Id<T>& o) const { return id != o.id; }
-  bool operator<(const Id<T>& o) const { return id < o.id; }
+  bool operator==(const Id& o) const { return id == o.id; }
+  bool operator!=(const Id& o) const { return id != o.id; }
+  bool operator<(const Id& o) const { return id < o.id; }
 };
 
 namespace std {
@@ -80,13 +80,13 @@ struct IdCache;
 
 struct Reference {
   Range range;
-  Id<void> lex_parent_id;
-  SymbolKind lex_parent_kind;
+  Id<void> id;
+  SymbolKind kind;
   SymbolRole role;
 
-  bool HasValue() const { return lex_parent_id.HasValue(); }
+  bool HasValue() const { return id.HasValue(); }
   std::tuple<Range, Id<void>, SymbolKind, SymbolRole> ToTuple() const {
-    return std::make_tuple(range, lex_parent_id, lex_parent_kind, role);
+    return std::make_tuple(range, id, kind, role);
   }
   bool operator==(const Reference& o) const {
     return ToTuple() == o.ToTuple();

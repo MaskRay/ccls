@@ -24,23 +24,24 @@ struct Out_TextDocumentDefinition
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
 std::vector<Reference> GetGotoDefinitionTargets(QueryDatabase* db,
-                                                const SymbolIdx& symbol) {
-  switch (symbol.kind) {
+                                                SymbolRef sym) {
+  switch (sym.kind) {
     // Returns GetDeclarationsOfSymbolForGotoDefinition and
     // variable type definition.
     case SymbolKind::Var: {
       std::vector<Reference> ret =
-          GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
-      QueryVar& var = db->vars[symbol.idx];
+          GetDeclarationsOfSymbolForGotoDefinition(db, sym);
+      QueryVar& var = sym.Var(db);
       if (var.def && var.def->variable_type) {
         std::vector<Reference> types = GetDeclarationsOfSymbolForGotoDefinition(
-            db, SymbolIdx(SymbolKind::Type, var.def->variable_type->id));
+            db, SymbolRef(Range(), Id<void>(var.def->variable_type->id),
+                          SymbolKind::Type, SymbolRole::None));
         ret.insert(ret.end(), types.begin(), types.end());
       }
       return ret;
     }
     default:
-      return GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
+      return GetDeclarationsOfSymbolForGotoDefinition(db, sym);
   }
 }
 
@@ -64,7 +65,7 @@ struct TextDocumentDefinitionHandler
     int target_line = request->params.position.line;
     int target_column = request->params.position.character;
 
-    for (const SymbolRef& ref :
+    for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return definition.
 
@@ -73,14 +74,12 @@ struct TextDocumentDefinitionHandler
       //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
 
-      optional<QueryLocation> def_loc =
-          GetDefinitionSpellingOfSymbol(db, ref.idx);
+      optional<QueryLocation> def_loc = GetDefinitionSpellingOfSymbol(db, sym);
 
       // We use spelling start and extent end because this causes vscode to
       // highlight the entire definition when previewing / hoving with the
       // mouse.
-      optional<QueryLocation> def_extent =
-          GetDefinitionExtentOfSymbol(db, ref.idx);
+      optional<QueryLocation> def_extent = GetDefinitionExtentOfSymbol(db, sym);
       if (def_loc && def_extent)
         def_loc->range.end = def_extent->range.end;
 
@@ -92,7 +91,7 @@ struct TextDocumentDefinitionHandler
                        def_loc->range.Contains(target_line, target_column))) {
         // Goto declaration.
 
-        std::vector<Reference> targets = GetGotoDefinitionTargets(db, ref.idx);
+        std::vector<Reference> targets = GetGotoDefinitionTargets(db, sym);
         for (Reference target : targets) {
           optional<lsLocation> ls_target =
               GetLsLocation(db, working_files, target);

@@ -6,10 +6,10 @@ namespace {
 
 std::pair<std::string_view, std::string_view> GetCommentsAndHover(
     QueryDatabase* db,
-    const SymbolIdx& symbol) {
-  switch (symbol.kind) {
+    SymbolRef sym) {
+  switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[symbol.idx];
+      QueryType& type = db->types[sym.Idx()];
       if (type.def)
         return {type.def->comments, type.def->hover.size()
                                         ? type.def->hover
@@ -17,7 +17,7 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
+      QueryFunc& func = db->funcs[sym.Idx()];
       if (func.def)
         return {func.def->comments, func.def->hover.size()
                                         ? func.def->hover
@@ -25,7 +25,7 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[symbol.idx];
+      QueryVar& var = db->vars[sym.Idx()];
       if (var.def)
         return {var.def->comments, var.def->hover.size()
                                        ? var.def->hover
@@ -87,16 +87,16 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
     Out_TextDocumentHover out;
     out.id = request->id;
 
-    for (const SymbolRef& ref :
+    for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return hover.
       optional<lsRange> ls_range = GetLsRange(
-          working_files->GetFileByFilename(file->def->path), ref.loc.range);
+          working_files->GetFileByFilename(file->def->path), sym.range);
       if (!ls_range)
         continue;
 
       std::pair<std::string_view, std::string_view> comments_hover =
-          GetCommentsAndHover(db, ref.idx);
+          GetCommentsAndHover(db, sym);
       if (comments_hover.first.size() || comments_hover.second.size()) {
         out.result = Out_TextDocumentHover::Result();
         if (comments_hover.first.size()) {

@@ -67,9 +67,9 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
                                             QueryFileId file_id,
                                             QueryFile* file) {
   for (SymbolRef sym : file->def->outline) {
-    switch (sym.idx.kind) {
+    switch (sym.kind) {
       case SymbolKind::Func: {
-        QueryFunc& func = db->funcs[sym.idx.idx];
+        QueryFunc& func = sym.Func(db);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (func.def && func.def->definition_extent &&
@@ -79,12 +79,12 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         break;
       }
       case SymbolKind::Var: {
-        QueryVar& var = db->vars[sym.idx.idx];
+        QueryVar& var = sym.Var(db);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (var.def && var.def->definition_extent &&
             var.def->definition_extent->FileId() != file_id) {
-          return db->vars[sym.idx.idx].def->definition_extent->FileId();
+          return var.def->definition_extent->FileId();
         }
         break;
       }
@@ -196,9 +196,9 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
       QueryFile& file = db->files[impl_file_id.id];
       assert(file.def);
       for (SymbolRef sym : file.def->outline) {
-        switch (sym.idx.kind) {
+        switch (sym.kind) {
           case SymbolKind::Func: {
-            QueryFunc& sym_func = db->funcs[sym.idx.idx];
+            QueryFunc& sym_func = sym.Func(db);
             if (!sym_func.def || !sym_func.def->definition_extent)
               break;
 
@@ -231,7 +231,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
           case SymbolKind::File:
           case SymbolKind::Type:
             LOG_S(WARNING) << "Unexpected SymbolKind "
-                           << static_cast<int>(sym.idx.kind);
+                           << static_cast<int>(sym.kind);
             break;
         }
       }
@@ -342,9 +342,9 @@ struct TextDocumentCodeActionHandler
     std::vector<SymbolRef> syms =
         FindSymbolsAtLocation(working_file, file, request->params.range.start);
     for (SymbolRef sym : syms) {
-      switch (sym.idx.kind) {
+      switch (sym.kind) {
         case SymbolKind::Type: {
-          QueryType& type = db->types[sym.idx.idx];
+          QueryType& type = sym.Type(db);
           if (!type.def)
             break;
 
@@ -395,7 +395,7 @@ struct TextDocumentCodeActionHandler
         }
 
         case SymbolKind::Func: {
-          QueryFunc& func = db->funcs[sym.idx.idx];
+          QueryFunc& func = sym.Func(db);
           if (!func.def || func.def->definition_extent)
             break;
 

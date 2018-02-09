@@ -23,25 +23,25 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
 
     Out_LocationList out;
     out.id = request->id;
-    std::vector<SymbolRef> refs =
+    std::vector<SymbolRef> syms =
         FindSymbolsAtLocation(working_file, file, request->params.position);
     // A template definition may be a use of its primary template.
     // We want to get the definition instead of the use.
     // Order by |Definition| DESC, range size ASC.
-    std::stable_sort(refs.begin(), refs.end(),
+    std::stable_sort(syms.begin(), syms.end(),
                      [](const SymbolRef& a, const SymbolRef& b) {
                        return (a.role & SymbolRole::Definition) >
                               (b.role & SymbolRole::Definition);
                      });
-    for (const SymbolRef& ref : refs) {
-      if (ref.idx.kind == SymbolKind::Type) {
-        QueryType& type = db->types[ref.idx.idx];
+    for (const SymbolRef& sym : syms) {
+      if (sym.kind == SymbolKind::Type) {
+        QueryType& type = sym.Type(db);
         if (type.def)
           out.result = GetLsLocations(db, working_files,
                                       ToReference(db, type.def->parents));
         break;
-      } else if (ref.idx.kind == SymbolKind::Func) {
-        QueryFunc& func = db->funcs[ref.idx.idx];
+      } else if (sym.kind == SymbolKind::Func) {
+        QueryFunc& func = sym.Func(db);
         if (func.def)
           out.result =
             GetLsLocations(db, working_files, ToReference(db, func.def->base));

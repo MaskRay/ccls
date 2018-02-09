@@ -92,14 +92,14 @@ struct CqueryMemberHierarchyInitialHandler
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
 
-    for (const SymbolRef& ref :
+    for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      if (ref.idx.kind == SymbolKind::Type) {
-        out.result = BuildInitial(db, working_files, QueryTypeId(ref.idx.idx));
+      if (sym.kind == SymbolKind::Type) {
+        out.result = BuildInitial(db, working_files, QueryTypeId(sym.Idx()));
         break;
       }
-      if (ref.idx.kind == SymbolKind::Var) {
-        QueryVar& var = db->vars[ref.idx.idx];
+      if (sym.kind == SymbolKind::Var) {
+        QueryVar& var = sym.Var(db);
         if (var.def && var.def->variable_type)
           out.result = BuildInitial(db, working_files, *var.def->variable_type);
         break;

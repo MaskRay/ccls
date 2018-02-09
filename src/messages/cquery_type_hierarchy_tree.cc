@@ -165,18 +165,18 @@ struct CqueryTypeHierarchyTreeHandler
     Out_CqueryTypeHierarchyTree out;
     out.id = request->id;
 
-    for (const SymbolRef& ref :
+    for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      if (ref.idx.kind == SymbolKind::Type) {
-        QueryType& type = db->types[ref.idx.idx];
+      if (sym.kind == SymbolKind::Type) {
+        QueryType& type = sym.Type(db);
         if (type.def)
           out.result =
               BuildInheritanceHierarchyForType(db, working_files, type);
         break;
       }
-      if (ref.idx.kind == SymbolKind::Func) {
+      if (sym.kind == SymbolKind::Func) {
         out.result = BuildInheritanceHierarchyForFunc(db, working_files,
-                                                      QueryFuncId(ref.idx.idx));
+                                                      QueryFuncId(sym.id));
         break;
       }
     }

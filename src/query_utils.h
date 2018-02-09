@@ -14,13 +14,11 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const QueryVarId& id);
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const SymbolIdx& symbol);
+                                                      SymbolRef sym);
 optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
-                                                    const SymbolIdx& symbol);
+                                                    SymbolRef sym);
 optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                                  const SymbolIdx& symbol);
-
-QueryFileId GetFileId(QueryDatabase* db, Reference ref);
+                                                  SymbolRef sym);
 
 std::vector<Reference> ToReference(QueryDatabase* db,
                                    const std::vector<QueryFuncRef>& refs);
@@ -39,11 +37,11 @@ std::vector<Reference> ToReference(QueryDatabase* db,
 }
 
 std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
-                                       const SymbolIdx& symbol,
+                                       SymbolRef sym,
                                        bool include_decl);
 std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
-    SymbolIdx symbol);
+    SymbolRef sym);
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
@@ -68,7 +66,7 @@ std::vector<lsLocation> GetLsLocations(
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
-                                            SymbolIdx symbol,
+                                            SymbolRef sym,
                                             bool use_short_name);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
