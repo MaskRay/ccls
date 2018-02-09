@@ -84,7 +84,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
   auto handle_caller = [&](QueryFuncRef caller,
                            Out_CqueryCallTree::CallType call_type) {
     optional<lsLocation> call_location =
-        GetLsLocation(db, working_files, caller.loc);
+        GetLsLocation(db, working_files, caller);
     if (!call_location)
       return;
 
@@ -107,7 +107,10 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     //}
 
     if (caller.HasValue()) {
-      QueryFunc& call_func = db->funcs[caller.id_.id];
+      QueryFuncId func_id = caller.FuncId();
+      if (!func_id.HasValue())
+        return;
+      QueryFunc& call_func = db->funcs[func_id.id];
       if (!call_func.def)
         return;
 
@@ -142,7 +145,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     handle_caller(caller, Out_CqueryCallTree::CallType::Direct);
   for (QueryFuncRef caller : base_callers) {
     // Do not show calls to the base function coming from this function.
-    if (caller.id_ == root)
+    if (caller.FuncId() == root)
       continue;
 
     handle_caller(caller, Out_CqueryCallTree::CallType::Base);

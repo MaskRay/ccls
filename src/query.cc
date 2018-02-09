@@ -451,10 +451,21 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  if (ref.lex_parent_kind == SymbolKind::Func)
-    return QueryFuncRef{ToQuery(IndexFuncId(ref.lex_parent_id)),
-                          ToQuery(ref.range, ref.role)};
-  return QueryFuncRef{QueryFuncId(), ToQuery(ref.range, ref.role)};
+  QueryFuncRef ret(ref.range, ref.lex_parent_id, ref.lex_parent_kind, ref.role);
+  switch (ref.lex_parent_kind) {
+    default:
+      break;
+    case SymbolKind::File:
+      ret.lex_parent_id = Id<void>(primary_file);
+      break;
+    case SymbolKind::Func:
+      ret.lex_parent_id = Id<void>(ToQuery(IndexFuncId(ref.lex_parent_id)));
+      break;
+    case SymbolKind::Type:
+      ret.lex_parent_id = Id<void>(ToQuery(IndexTypeId(ref.lex_parent_id)));
+      break;
+  }
+  return ret;
 }
 Reference IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
@@ -1061,10 +1072,10 @@ TEST_SUITE("query") {
     REQUIRE(update.funcs_callers.size() == 1);
     REQUIRE(update.funcs_callers[0].id == QueryFuncId(0));
     REQUIRE(update.funcs_callers[0].to_remove.size() == 1);
-    REQUIRE(update.funcs_callers[0].to_remove[0].loc.range ==
+    REQUIRE(update.funcs_callers[0].to_remove[0].range ==
             Range(Position(1, 0)));
     REQUIRE(update.funcs_callers[0].to_add.size() == 1);
-    REQUIRE(update.funcs_callers[0].to_add[0].loc.range ==
+    REQUIRE(update.funcs_callers[0].to_add[0].range ==
             Range(Position(2, 0)));
   }
 
@@ -1116,12 +1127,12 @@ TEST_SUITE("query") {
 
     db.ApplyIndexUpdate(&import_update);
     REQUIRE(db.funcs[0].callers.size() == 2);
-    REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(1, 0)));
-    REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(2, 0)));
+    REQUIRE(db.funcs[0].callers[0].range == Range(Position(1, 0)));
+    REQUIRE(db.funcs[0].callers[1].range == Range(Position(2, 0)));
 
     db.ApplyIndexUpdate(&delta_update);
     REQUIRE(db.funcs[0].callers.size() == 2);
-    REQUIRE(db.funcs[0].callers[0].loc.range == Range(Position(4, 0)));
-    REQUIRE(db.funcs[0].callers[1].loc.range == Range(Position(5, 0)));
+    REQUIRE(db.funcs[0].callers[0].range == Range(Position(4, 0)));
+    REQUIRE(db.funcs[0].callers[1].range == Range(Position(5, 0)));
   }
 }

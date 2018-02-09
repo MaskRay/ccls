@@ -25,6 +25,20 @@ QueryFileId GetFileId(QueryDatabase* db, Reference ref);
 
 std::vector<Reference> ToReference(QueryDatabase* db,
                                    const std::vector<QueryFuncRef>& refs);
+
+template <typename Q>
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<Id<Q>>& ids) {
+  std::vector<Reference> ret;
+  ret.reserve(ids.size());
+  for (auto id : ids) {
+    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    if (loc)
+      ret.push_back(*loc);
+  }
+  return ret;
+}
+
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryFuncRef>& refs);
@@ -62,7 +76,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
 std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
-    const std::vector<QueryLocation>& locations);
+    const std::vector<Reference>& refs);
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,

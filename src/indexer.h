@@ -84,6 +84,7 @@ struct Reference {
   SymbolKind lex_parent_kind;
   SymbolRole role;
 
+  bool HasValue() const { return lex_parent_id.HasValue(); }
   std::tuple<Range, Id<void>, SymbolKind, SymbolRole> ToTuple() const {
     return std::make_tuple(range, lex_parent_id, lex_parent_kind, role);
   }

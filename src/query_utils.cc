@@ -188,8 +188,7 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   std::vector<Reference> ret;
   ret.reserve(refs.size());
   for (auto& ref : refs)
-    ret.push_back(Reference{ref.loc.range, Id<void>(ref.id_), SymbolKind::Func,
-                            ref.loc.role});
+    ret.push_back(ref);
   return ret;
 }
 
@@ -199,7 +198,7 @@ std::vector<QueryLocation> ToQueryLocation(
   std::vector<QueryLocation> locs;
   locs.reserve(refs.size());
   for (const QueryFuncRef& ref : refs)
-    locs.push_back(ref.loc);
+    locs.push_back(QueryLocation{ref.range, GetFileId(db, ref), ref.role});
   return locs;
 }
 std::vector<QueryLocation> ToQueryLocation(
@@ -450,11 +449,11 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
 std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
-    const std::vector<QueryLocation>& locations) {
+    const std::vector<Reference>& refs) {
   std::unordered_set<lsLocation> unique_locations;
-  for (const QueryLocation& query_location : locations) {
+  for (Reference ref : refs) {
     optional<lsLocation> location =
-        GetLsLocation(db, working_files, query_location);
+        GetLsLocation(db, working_files, ref);
     if (!location)
       continue;
     unique_locations.insert(*location);

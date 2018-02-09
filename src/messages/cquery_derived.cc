@@ -36,15 +36,13 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
     for (const SymbolRef& ref : refs) {
       if (ref.idx.kind == SymbolKind::Type) {
         QueryType& type = db->types[ref.idx.idx];
-        std::vector<QueryLocation> locations =
-            ToQueryLocation(db, type.derived);
-        out.result = GetLsLocations(db, working_files, locations);
+        out.result =
+            GetLsLocations(db, working_files, ToReference(db, type.derived));
         break;
       } else if (ref.idx.kind == SymbolKind::Func) {
         QueryFunc& func = db->funcs[ref.idx.idx];
-        std::vector<QueryLocation> locations =
-            ToQueryLocation(db, func.derived);
-        out.result = GetLsLocations(db, working_files, locations);
+        out.result =
+            GetLsLocations(db, working_files, ToReference(db, func.derived));
         break;
       }
     }

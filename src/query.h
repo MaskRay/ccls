@@ -101,25 +101,17 @@ struct SymbolRef {
 };
 MAKE_REFLECT_STRUCT(SymbolRef, idx, loc);
 
-struct QueryFuncRef {
-  // NOTE: id_ can be -1 if the function call is not coming from a function.
-  QueryFuncId id_;
-  QueryLocation loc;
+struct QueryFuncRef : Reference {
+  QueryFuncRef() = default;
+  QueryFuncRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
+    : Reference{range, id, kind, role} {}
 
-  bool HasValue() const { return id_.HasValue(); }
-
-  std::tuple<QueryFuncId, QueryLocation> ToTuple() const {
-    return std::make_tuple(id_, loc);
-  }
-  bool operator==(const QueryFuncRef& o) const {
-    return ToTuple() == o.ToTuple();
-  }
-  bool operator!=(const QueryFuncRef& o) const { return !(*this == o); }
-  bool operator<(const QueryFuncRef& o) const {
-    return ToTuple() < o.ToTuple();
+  QueryFuncId FuncId() const {
+    if (lex_parent_kind == SymbolKind::Func)
+      return QueryFuncId(lex_parent_id);
+    return QueryFuncId();
   }
 };
-MAKE_REFLECT_STRUCT(QueryFuncRef, id_, loc);
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.

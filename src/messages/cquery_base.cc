@@ -36,17 +36,15 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
     for (const SymbolRef& ref : refs) {
       if (ref.idx.kind == SymbolKind::Type) {
         QueryType& type = db->types[ref.idx.idx];
-        if (!type.def)
-          continue;
-        std::vector<QueryLocation> locations =
-            ToQueryLocation(db, type.def->parents);
-        out.result = GetLsLocations(db, working_files, locations);
+        if (type.def)
+          out.result = GetLsLocations(db, working_files,
+                                      ToReference(db, type.def->parents));
         break;
       } else if (ref.idx.kind == SymbolKind::Func) {
         QueryFunc& func = db->funcs[ref.idx.idx];
-        std::vector<QueryLocation> locations =
-            ToQueryLocation(db, func.def->base);
-        out.result = GetLsLocations(db, working_files, locations);
+        if (func.def)
+          out.result =
+            GetLsLocations(db, working_files, ToReference(db, func.def->base));
         break;
       }
     }

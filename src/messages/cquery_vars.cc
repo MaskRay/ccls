@@ -38,9 +38,8 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
         // fallthrough
         case SymbolKind::Type: {
           QueryType& type = db->types[id];
-          std::vector<QueryLocation> locations =
-              ToQueryLocation(db, type.instances);
-          out.result = GetLsLocations(db, working_files, locations);
+          out.result = GetLsLocations(db, working_files,
+                                      ToReference(db, type.instances));
           break;
         }
       }
