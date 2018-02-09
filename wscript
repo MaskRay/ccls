@@ -166,7 +166,7 @@ def configure(ctx):
       cxxflags = ctx.env.CXXFLAGS
     else:
       cxxflags = ['-g', '-Wall', '-Wno-sign-compare', '-Werror']
-      if 'g++' in ctx.env.CXX_NAME:
+      if ctx.env.CXX_NAME == 'gcc':
         cxxflags.append('-Wno-return-type')
 
     if all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):

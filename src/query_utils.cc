@@ -14,20 +14,6 @@ int ComputeRangeSize(const Range& range) {
   return range.end.column - range.start.column;
 }
 
-template <typename Q>
-std::vector<QueryLocation> ToQueryLocationHelper(
-    QueryDatabase* db,
-    const std::vector<Id<Q>>& ids) {
-  std::vector<QueryLocation> locs;
-  locs.reserve(ids.size());
-  for (auto id : ids) {
-    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      locs.push_back(*loc);
-  }
-  return locs;
-}
-
 }  // namespace
 
 QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
@@ -179,10 +165,6 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-QueryLocation ToQueryLocation(QueryDatabase* db, Reference ref) {
-  return QueryLocation{ref.range, GetFileId(db, ref), ref.role};
-}
-
 std::vector<Reference> ToReference(QueryDatabase* db,
                                    const std::vector<QueryFuncRef>& refs) {
   std::vector<Reference> ret;
@@ -190,31 +172,6 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   for (auto& ref : refs)
     ret.push_back(ref);
   return ret;
-}
-
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryFuncRef>& refs) {
-  std::vector<QueryLocation> locs;
-  locs.reserve(refs.size());
-  for (const QueryFuncRef& ref : refs)
-    locs.push_back(QueryLocation{ref.range, GetFileId(db, ref), ref.role});
-  return locs;
-}
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryTypeId>& ids) {
-  return ToQueryLocationHelper(db, ids);
-}
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryFuncId>& ids) {
-  return ToQueryLocationHelper(db, ids);
-}
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryVarId>& ids) {
-  return ToQueryLocationHelper(db, ids);
 }
 
 std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,

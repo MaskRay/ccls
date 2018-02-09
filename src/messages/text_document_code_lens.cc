@@ -81,7 +81,7 @@ void AddCodeLens(const char* singular,
                  const char* plural,
                  CommonCodeLensParams* common,
                  QueryLocation loc,
-                 const std::vector<QueryLocation>& uses,
+                 const std::vector<Reference>& uses,
                  optional<QueryLocation> excluded,
                  bool force_display) {
   TCodeLens code_lens;
@@ -96,8 +96,8 @@ void AddCodeLens(const char* singular,
 
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
-  for (const QueryLocation& use : uses) {
-    if (excluded == use)
+  for (const Reference& use : uses) {
+    if (excluded && Reference(*excluded) == use)
       continue;
     optional<lsLocation> location =
         GetLsLocation(common->db, common->working_files, use);
@@ -155,20 +155,15 @@ struct TextDocumentCodeLensHandler
             continue;
           if (type.def->kind == ClangSymbolKind::Namespace)
             continue;
-          // FIXME QueryRef
-          std::vector<QueryLocation> uses;
-          uses.reserve(type.uses.size());
-          for (auto& x : type.uses)
-            uses.push_back(ToQueryLocation(db, x));
           AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
-                      uses, type.def->definition_spelling,
+                      type.uses, type.def->definition_spelling,
                       true /*force_display*/);
           AddCodeLens("derived", "derived", &common,
                       ref.loc.OffsetStartColumn(1),
-                      ToQueryLocation(db, type.derived), nullopt,
+                      ToReference(db, type.derived), nullopt,
                       false /*force_display*/);
           AddCodeLens("var", "vars", &common, ref.loc.OffsetStartColumn(2),
-                      ToQueryLocation(db, type.instances), nullopt,
+                      ToReference(db, type.instances), nullopt,
                       false /*force_display*/);
           break;
         }
@@ -200,29 +195,29 @@ struct TextDocumentCodeLensHandler
             QueryLocation loc = try_ensure_spelling(ref);
             AddCodeLens("call", "calls", &common,
                         loc.OffsetStartColumn(offset++),
-                        ToQueryLocation(db, func.callers), nullopt,
+                        ToReference(db, func.callers), nullopt,
                         true /*force_display*/);
           } else {
             QueryLocation loc = try_ensure_spelling(ref);
             AddCodeLens("direct call", "direct calls", &common,
                         loc.OffsetStartColumn(offset++),
-                        ToQueryLocation(db, func.callers), nullopt,
+                        ToReference(db, func.callers), nullopt,
                         false /*force_display*/);
             if (!base_callers.empty())
               AddCodeLens("base call", "base calls", &common,
                           loc.OffsetStartColumn(offset++),
-                          ToQueryLocation(db, base_callers), nullopt,
+                          ToReference(db, base_callers), nullopt,
                           false /*force_display*/);
             if (!derived_callers.empty())
               AddCodeLens("derived call", "derived calls", &common,
                           loc.OffsetStartColumn(offset++),
-                          ToQueryLocation(db, derived_callers), nullopt,
+                          ToReference(db, derived_callers), nullopt,
                           false /*force_display*/);
           }
 
           AddCodeLens("derived", "derived", &common,
                       ref.loc.OffsetStartColumn(offset++),
-                      ToQueryLocation(db, func.derived), nullopt,
+                      ToReference(db, func.derived), nullopt,
                       false /*force_display*/);
 
           // "Base"
@@ -251,7 +246,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, ref.loc.OffsetStartColumn(1),
-                        ToQueryLocation(db, func.def->base), nullopt,
+                        ToReference(db, func.def->base), nullopt,
                         false /*force_display*/);
           }
 
@@ -271,13 +266,8 @@ struct TextDocumentCodeLensHandler
           if (var.def->is_macro())
             force_display = false;
 
-          // FIXME Reference
-          std::vector<QueryLocation> uses;
-          for (auto x: var.uses)
-            uses.push_back(QueryLocation{x.range, GetFileId(db, x), x.role});
-
           AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
-                      uses, var.def->definition_spelling, force_display);
+                      var.uses, var.def->definition_spelling, force_display);
           break;
         }
         case SymbolKind::File:

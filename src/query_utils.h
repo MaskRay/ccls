@@ -20,7 +20,6 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
 optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   const SymbolIdx& symbol);
 
-QueryLocation ToQueryLocation(QueryDatabase* db, Reference ref);
 QueryFileId GetFileId(QueryDatabase* db, Reference ref);
 
 std::vector<Reference> ToReference(QueryDatabase* db,
@@ -39,17 +38,6 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   return ret;
 }
 
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryFuncRef>& refs);
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryTypeId>& refs);
-std::vector<QueryLocation> ToQueryLocation(
-    QueryDatabase* db,
-    const std::vector<QueryVarId>& refs);
-std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
-                                           const std::vector<QueryFuncId>& ids);
 std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
                                        const SymbolIdx& symbol,
                                        bool include_decl);
