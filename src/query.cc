@@ -103,7 +103,23 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
     result.definition_extent = QueryLocation{
         *var.definition_extent, id_map.primary_file, SymbolRole::None};
   result.variable_type = id_map.ToQuery(var.variable_type);
-  result.parent_id = var.parent_id;
+  if (result.parent_id)
+    switch (var.parent_kind) {
+      default:
+        break;
+      case SymbolKind::File:
+        result.parent_id = Id<void>(id_map.primary_file);
+        break;
+      case SymbolKind::Func:
+        result.parent_id = Id<void>(id_map.ToQuery(IndexFuncId(*var.parent_id)));
+        break;
+      case SymbolKind::Type:
+        result.parent_id = Id<void>(id_map.ToQuery(IndexTypeId(*var.parent_id)));
+        break;
+      case SymbolKind::Var:
+        result.parent_id = Id<void>(id_map.ToQuery(IndexVarId(*var.parent_id)));
+        break;
+    }
   result.parent_kind = var.parent_kind;
   result.kind = var.kind;
   result.storage = var.storage;
@@ -521,16 +537,6 @@ std::vector<Reference> IdMap::ToQuery(const std::vector<Range>& a) const {
   for (auto& x : a)
     ret.push_back(ToQuery(x, SymbolRole::Reference));
   return ret;
-}
-
-SymbolIdx IdMap::ToSymbol(IndexTypeId id) const {
-  return SymbolIdx(SymbolKind::Type, ToQuery(id).id);
-}
-SymbolIdx IdMap::ToSymbol(IndexFuncId id) const {
-  return SymbolIdx(SymbolKind::Func, ToQuery(id).id);
-}
-SymbolIdx IdMap::ToSymbol(IndexVarId id) const {
-  return SymbolIdx(SymbolKind::Var, ToQuery(id).id);
 }
 
 // ----------------------

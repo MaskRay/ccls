@@ -428,9 +428,6 @@ struct IdMap {
   std::vector<Reference> ToQuery(const std::vector<Range>& a) const;
   // clang-format on
 
-  SymbolIdx ToSymbol(IndexTypeId id) const;
-  SymbolIdx ToSymbol(IndexFuncId id) const;
-  SymbolIdx ToSymbol(IndexVarId id) const;
 
  private:
   spp::sparse_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;
