@@ -149,19 +149,21 @@ def configure(ctx):
   ctx.resetenv(ctx.options.variant)
 
   ctx.load('compiler_cxx')
-  ldflags = []
   if ctx.env.CXX_NAME == 'msvc':
     # /Zi: -g, /WX: -Werror, /W3: roughly -Wall, there is no -std=c++11 equivalent in MSVC.
     # /wd4722: ignores warning C4722 (destructor never returns) in loguru
     # /wd4267: ignores warning C4267 (conversion from 'size_t' to 'type'), roughly -Wno-sign-compare
     # /MD: use multithread c library from DLL
     cxxflags = ['/nologo', '/FS', '/EHsc', '/Zi', '/W3', '/wd4996', '/wd4722', '/wd4267', '/wd4800', '/MD']
+    ldflags = []
     if 'release' in ctx.options.variant:
       cxxflags.append('/O2') # There is no O3
     else:
       cxxflags += ['/Zi', '/FS']
       ldflags += ['/DEBUG']
   else:
+    # So that dladdr() called in loguru.hpp gives symbol names in main executable
+    ldflags = ['-rdynamic']
     if ctx.env.CXXFLAGS:
       cxxflags = ctx.env.CXXFLAGS
     else:
