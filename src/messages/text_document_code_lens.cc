@@ -76,6 +76,7 @@ struct CommonCodeLensParams {
   WorkingFile* working_file;
 };
 
+// FIXME Reference
 void AddCodeLens(const char* singular,
                  const char* plural,
                  CommonCodeLensParams* common,
@@ -270,8 +271,13 @@ struct TextDocumentCodeLensHandler
           if (var.def->is_macro())
             force_display = false;
 
+          // FIXME Reference
+          std::vector<QueryLocation> uses;
+          for (auto x: var.uses)
+            uses.push_back(QueryLocation{x.range, GetFileId(db, x), x.role});
+
           AddCodeLens("ref", "refs", &common, ref.loc.OffsetStartColumn(0),
-                      var.uses, var.def->definition_spelling, force_display);
+                      uses, var.def->definition_spelling, force_display);
           break;
         }
         case SymbolKind::File:

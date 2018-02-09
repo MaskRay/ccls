@@ -23,20 +23,18 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
-std::vector<QueryLocation> GetGotoDefinitionTargets(QueryDatabase* db,
-                                                    const SymbolIdx& symbol) {
+std::vector<Reference> GetGotoDefinitionTargets(QueryDatabase* db,
+                                                const SymbolIdx& symbol) {
   switch (symbol.kind) {
     // Returns GetDeclarationsOfSymbolForGotoDefinition and
     // variable type definition.
     case SymbolKind::Var: {
-      std::vector<QueryLocation> ret =
+      std::vector<Reference> ret =
           GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
       QueryVar& var = db->vars[symbol.idx];
-      // FIXME WithGen
       if (var.def && var.def->variable_type) {
-        std::vector<QueryLocation> types =
-            GetDeclarationsOfSymbolForGotoDefinition(
-                db, SymbolIdx(SymbolKind::Type, var.def->variable_type->id));
+        std::vector<Reference> types = GetDeclarationsOfSymbolForGotoDefinition(
+            db, SymbolIdx(SymbolKind::Type, var.def->variable_type->id));
         ret.insert(ret.end(), types.begin(), types.end());
       }
       return ret;
@@ -94,9 +92,8 @@ struct TextDocumentDefinitionHandler
                        def_loc->range.Contains(target_line, target_column))) {
         // Goto declaration.
 
-        std::vector<QueryLocation> targets =
-            GetGotoDefinitionTargets(db, ref.idx);
-        for (QueryLocation target : targets) {
+        std::vector<Reference> targets = GetGotoDefinitionTargets(db, ref.idx);
+        for (Reference target : targets) {
           optional<lsLocation> ls_target =
               GetLsLocation(db, working_files, target);
           if (ls_target)

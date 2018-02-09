@@ -6,17 +6,17 @@ namespace {
 
 lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   const std::vector<QueryLocation>& locations,
+                                   const std::vector<Reference>& refs,
                                    const std::string& new_text) {
   std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
 
-  for (auto& location : locations) {
+  for (auto& ref : refs) {
     optional<lsLocation> ls_location =
-        GetLsLocation(db, working_files, location);
+        GetLsLocation(db, working_files, ref);
     if (!ls_location)
       continue;
 
-    QueryFileId file_id = location.FileId();
+    QueryFileId file_id = GetFileId(db, ref);
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
       path_to_edit[file_id] = lsTextDocumentEdit();
 
@@ -98,9 +98,9 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
     for (const SymbolRef& ref :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to rename.
-      std::vector<QueryLocation> uses = GetUsesOfSymbol(db, ref.idx, true);
-      out.result =
-          BuildWorkspaceEdit(db, working_files, uses, request->params.newName);
+      out.result = BuildWorkspaceEdit(db, working_files,
+                                      GetUsesOfSymbol(db, ref.idx, true),
+                                      request->params.newName);
       break;
     }
 

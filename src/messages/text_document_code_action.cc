@@ -148,8 +148,8 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
                                                    QueryFileId impl_file_id,
                                                    QueryFunc& func) {
   assert(func.def);
-  for (const QueryLocation& decl : func.declarations) {
-    if (decl.FileId() != decl_file_id)
+  for (const Reference& decl : func.declarations) {
+    if (GetFileId(db, decl) != decl_file_id)
       continue;
 
     optional<lsRange> ls_decl = GetLsRange(working_file, decl.range);
@@ -202,8 +202,8 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
             if (!sym_func.def || !sym_func.def->definition_extent)
               break;
 
-            for (QueryLocation& func_decl : sym_func.declarations) {
-              if (func_decl.FileId() == decl_file_id) {
+            for (const Reference& func_decl : sym_func.declarations) {
+              if (GetFileId(db, func_decl) == decl_file_id) {
                 int dist = func_decl.range.start.line - decl.range.start.line;
                 if (abs(dist) < abs(best_dist)) {
                   optional<lsLocation> def_loc = GetLsLocation(

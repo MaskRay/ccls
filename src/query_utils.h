@@ -21,6 +21,10 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   const SymbolIdx& symbol);
 
 QueryLocation ToQueryLocation(QueryDatabase* db, Reference ref);
+QueryFileId GetFileId(QueryDatabase* db, Reference ref);
+
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryFuncRef>& refs);
 std::vector<QueryLocation> ToQueryLocation(
     QueryDatabase* db,
     const std::vector<QueryFuncRef>& refs);
@@ -32,12 +36,12 @@ std::vector<QueryLocation> ToQueryLocation(
     const std::vector<QueryVarId>& refs);
 std::vector<QueryLocation> ToQueryLocation(QueryDatabase* db,
                                            const std::vector<QueryFuncId>& ids);
-std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
-                                           const SymbolIdx& symbol,
-                                           bool include_decl);
-std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
+std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
+                                       const SymbolIdx& symbol,
+                                       bool include_decl);
+std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
-    const SymbolIdx& symbol);
+    SymbolIdx symbol);
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
 std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
@@ -51,9 +55,10 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
                                QueryFileId file_id,
                                std::string* path);
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id);
+
 optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   const QueryLocation& location);
+                                   Reference location);
 std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,

@@ -293,8 +293,8 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Declaration, decl);
       add_outline(id_map.ToSymbol(var.id), decl);
     }
-    for (const Range& use : var.uses)
-      add_all_symbols(id_map.ToSymbol(var.id), SymbolRole::Reference, use);
+    for (auto& use : var.uses)
+      add_all_symbols(id_map.ToSymbol(var.id), use.role, use.range);
   }
 
   std::sort(def.outline.begin(), def.outline.end(),
@@ -453,12 +453,12 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
 QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
   return QueryFuncRef{ToQuery(ref.id), ToQuery(ref.loc, ref.role)};
 }
-QueryLocation IdMap::ToQuery(IndexFunc::Declaration decl) const {
+Reference IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
-  return QueryLocation{decl.spelling, primary_file, SymbolRole::Declaration};
+  return Reference{decl.spelling, Id<void>(primary_file), SymbolKind::File, SymbolRole::Declaration};
 }
-std::vector<QueryLocation> IdMap::ToQuery(const std::vector<Range>& a) const {
-  std::vector<QueryLocation> ret;
+std::vector<Reference> IdMap::ToQuery(const std::vector<Range>& a) const {
+  std::vector<Reference> ret;
   ret.reserve(a.size());
   for (auto& x : a)
     ret.push_back(ToQuery(x, SymbolRole::Reference));
@@ -645,7 +645,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         }
 
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations,
-                            QueryLocation);
+                            Reference);
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_derived, derived, QueryFuncId);
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_callers, callers, QueryFuncRef);
       });
@@ -697,8 +697,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
               current->usr, std::move(*current_remapped_def)));
 
         PROCESS_UPDATE_DIFF(QueryVarId, vars_declarations, declarations,
-                            QueryLocation);
-        PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, QueryLocation);
+                            Reference);
+        PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, Reference);
       });
 
 #undef PROCESS_UPDATE_DIFF
@@ -1031,7 +1031,7 @@ TEST_SUITE("query") {
         ->callers.push_back(IndexFuncRef{Range(Position(2, 0)), IndexFuncId(0),
                                          SymbolRole::None});
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
-        ->uses.push_back(Range(Position(3, 0)));
+        ->uses.push_back(Reference{Range(Position(3, 0))});
 
     IndexUpdate update = GetDelta(previous, current);
 

@@ -452,7 +452,7 @@ struct IndexVar {
 
   std::vector<Range> declarations;
   // Usages.
-  std::vector<Range> uses;
+  std::vector<Reference> uses;
 
   IndexVar() {}  // For serialization.
   IndexVar(IndexVarId id, Usr usr) : usr(usr), id(id) {

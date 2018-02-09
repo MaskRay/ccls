@@ -23,15 +23,17 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
     return false;
 
   optional<QueryLocation> location = GetDefinitionExtentOfSymbol(db, symbol);
-  if (!location) {
+  Reference loc;
+  if (location)
+    loc = *location;
+  else {
     auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
     if (decls.empty())
       return false;
-    location = decls[0];
+    loc = decls[0];
   }
 
-  optional<lsLocation> ls_location =
-      GetLsLocation(db, working_files, *location);
+  optional<lsLocation> ls_location = GetLsLocation(db, working_files, loc);
   if (!ls_location)
     return false;
   info->location = *ls_location;

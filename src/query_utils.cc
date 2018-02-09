@@ -28,35 +28,35 @@ std::vector<QueryLocation> ToQueryLocationHelper(
   return locs;
 }
 
+}  // namespace
+
 QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
   switch (ref.lex_parent_kind) {
-    case SymbolKind::Invalid:
-      break;
-    case SymbolKind::File:
-      return QueryFileId(ref.lex_parent_id);
-    case SymbolKind::Func: {
-      QueryFunc& file = db->funcs[ref.lex_parent_id.id];
-      if (file.def)
-        return file.def->file;
-      break;
-    }
-    case SymbolKind::Type: {
-      QueryType& type = db->types[ref.lex_parent_id.id];
-      if (type.def)
-        return type.def->file;
-      break;
-    }
-    case SymbolKind::Var: {
-      QueryVar& var = db->vars[ref.lex_parent_id.id];
-      if (var.def)
-        return var.def->file;
-      break;
-    }
+  case SymbolKind::Invalid:
+    break;
+  case SymbolKind::File:
+    return QueryFileId(ref.lex_parent_id);
+  case SymbolKind::Func: {
+    QueryFunc& file = db->funcs[ref.lex_parent_id.id];
+    if (file.def)
+      return file.def->file;
+    break;
+  }
+  case SymbolKind::Type: {
+    QueryType& type = db->types[ref.lex_parent_id.id];
+    if (type.def)
+      return type.def->file;
+    break;
+  }
+  case SymbolKind::Var: {
+    QueryVar& var = db->vars[ref.lex_parent_id.id];
+    if (var.def)
+      return var.def->file;
+    break;
+  }
   }
   return QueryFileId();
 }
-
-}  // namespace
 
 optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                       const QueryTypeId& id) {
@@ -157,7 +157,7 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[symbol.idx];
       if (!func.declarations.empty())
-        return func.declarations[0].FileId();
+        return GetFileId(db, func.declarations[0]);
       if (func.def && func.def->definition_spelling)
         return func.def->definition_spelling->FileId();
       break;
@@ -181,6 +181,16 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
 
 QueryLocation ToQueryLocation(QueryDatabase* db, Reference ref) {
   return QueryLocation{ref.range, GetFileId(db, ref), ref.role};
+}
+
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryFuncRef>& refs) {
+  std::vector<Reference> ret;
+  ret.reserve(refs.size());
+  for (auto& ref : refs)
+    ret.push_back(Reference{ref.loc.range, Id<void>(ref.id_), SymbolKind::Func,
+                            ref.loc.role});
+  return ret;
 }
 
 std::vector<QueryLocation> ToQueryLocation(
@@ -208,16 +218,13 @@ std::vector<QueryLocation> ToQueryLocation(
   return ToQueryLocationHelper(db, ids);
 }
 
-std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
-                                           const SymbolIdx& symbol,
-                                           bool include_decl) {
+std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
+                                       const SymbolIdx& symbol,
+                                       bool include_decl) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[symbol.idx];
-      std::vector<QueryLocation> ret;
-      ret.reserve(type.uses.size());
-      for (auto& x : type.uses)
-        ret.push_back(ToQueryLocation(db, x));
+      std::vector<Reference> ret = type.uses;
       if (include_decl && type.def && type.def->definition_spelling)
         ret.push_back(*type.def->definition_spelling);
       return ret;
@@ -225,17 +232,17 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::Func: {
       // TODO: the vector allocation could be avoided.
       QueryFunc& func = db->funcs[symbol.idx];
-      std::vector<QueryLocation> result = ToQueryLocation(db, func.callers);
+      std::vector<Reference> ret = ToReference(db, func.callers);
       if (include_decl) {
-        AddRange(&result, func.declarations);
+        AddRange(&ret, func.declarations);
         if (func.def && func.def->definition_spelling)
-          result.push_back(*func.def->definition_spelling);
+          ret.push_back(*func.def->definition_spelling);
       }
-      return result;
+      return ret;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[symbol.idx];
-      std::vector<QueryLocation> ret = var.uses;
+      std::vector<Reference> ret = var.uses;
       if (include_decl) {
         if (var.def && var.def->definition_spelling)
           ret.push_back(*var.def->definition_spelling);
@@ -246,15 +253,14 @@ std::vector<QueryLocation> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::File:
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
-      break;
+      return {};
     }
   }
-  return {};
 }
 
-std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
+std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
-    const SymbolIdx& symbol) {
+    SymbolIdx symbol) {
   switch (symbol.kind) {
     case SymbolKind::Type: {
       // Returning the definition spelling of a type is a hack (and is why the
@@ -265,17 +271,14 @@ std::vector<QueryLocation> GetDeclarationsOfSymbolForGotoDefinition(
       if (type.def) {
         optional<QueryLocation> declaration = type.def->definition_spelling;
         if (declaration)
-          return {*declaration};
+          return {Reference(*declaration)};
       }
       break;
     }
-    case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[symbol.idx];
-      return func.declarations;
-    }
-    case SymbolKind::Var: {
+    case SymbolKind::Func:
+      return db->funcs[symbol.idx].declarations;
+    case SymbolKind::Var:
       return db->vars[symbol.idx].declarations;
-    }
     default:
       break;
   }
@@ -434,11 +437,11 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id) {
 
 optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   const QueryLocation& location) {
+                                   Reference ref) {
   std::string path;
-  lsDocumentUri uri = GetLsDocumentUri(db, location.FileId(), &path);
+  lsDocumentUri uri = GetLsDocumentUri(db, GetFileId(db, ref), &path);
   optional<lsRange> range =
-      GetLsRange(working_files->GetFileByFilename(path), location.range);
+      GetLsRange(working_files->GetFileByFilename(path), ref.range);
   if (!range)
     return nullopt;
   return lsLocation(uri, *range);

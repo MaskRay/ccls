@@ -34,6 +34,10 @@ struct QueryLocation {
   bool HasValue() const { return range.HasValue(); }
   QueryFileId FileId() const { return path; }
 
+  operator Reference() const {
+    return Reference{range, Id<void>(path), SymbolKind::File, role};
+  }
+
   std::tuple<Range, QueryFileId, SymbolRole> ToTuple() const {
     return std::make_tuple(range, path, role);
   }
@@ -246,14 +250,14 @@ struct QueryFunc {
                                     QueryFuncRef,
                                     QueryLocation>;
   using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryFuncId, QueryLocation>;
+  using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Reference>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
   using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
-  std::vector<QueryLocation> declarations;
+  std::vector<Reference> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<QueryFuncRef> callers;
 
@@ -267,14 +271,14 @@ struct QueryVar {
                                    QueryVarId,
                                    QueryLocation>;
   using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
-  using UsesUpdate = MergeableUpdate<QueryVarId, QueryLocation>;
+  using DeclarationsUpdate = MergeableUpdate<QueryVarId, Reference>;
+  using UsesUpdate = MergeableUpdate<QueryVarId, Reference>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
-  std::vector<QueryLocation> declarations;
-  std::vector<QueryLocation> uses;
+  std::vector<Reference> declarations;
+  std::vector<Reference> uses;
 
   explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
@@ -400,9 +404,9 @@ template <> struct IndexToQuery<IndexFuncId> { using type = QueryFuncId; };
 template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
 template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
 template <> struct IndexToQuery<IndexFuncRef> { using type = QueryFuncRef; };
-template <> struct IndexToQuery<Range> { using type = QueryLocation; };
+template <> struct IndexToQuery<Range> { using type = Reference; };
 template <> struct IndexToQuery<Reference> { using type = Reference; };
-template <> struct IndexToQuery<IndexFunc::Declaration> { using type = QueryLocation; };
+template <> struct IndexToQuery<IndexFunc::Declaration> { using type = Reference; };
 template <typename I> struct IndexToQuery<optional<I>> {
   using type = optional<typename IndexToQuery<I>::type>;
 };
@@ -425,7 +429,7 @@ struct IdMap {
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
   QueryFuncRef ToQuery(IndexFuncRef ref) const;
-  QueryLocation ToQuery(IndexFunc::Declaration decl) const;
+  Reference ToQuery(IndexFunc::Declaration decl) const;
   template <typename I>
   Maybe<typename IndexToQuery<I>::type> ToQuery(Maybe<I> id) const {
     if (!id)
@@ -440,7 +444,7 @@ struct IdMap {
       ret.push_back(ToQuery(x));
     return ret;
   }
-  std::vector<QueryLocation> ToQuery(const std::vector<Range>& a) const;
+  std::vector<Reference> ToQuery(const std::vector<Range>& a) const;
   // clang-format on
 
   SymbolIdx ToSymbol(IndexTypeId id) const;
