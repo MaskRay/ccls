@@ -73,6 +73,7 @@ class ClangCursor {
   ClangCursor get_referenced() const;
   ClangCursor get_canonical() const;
   ClangCursor get_definition() const;
+  ClangCursor get_lexical_parent() const;
   ClangCursor get_semantic_parent() const;
   std::vector<ClangCursor> get_arguments() const;
   bool is_valid_kind() const;

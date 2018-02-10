@@ -194,6 +194,10 @@ ClangCursor ClangCursor::get_definition() const {
   return ClangCursor(clang_getCursorDefinition(cx_cursor));
 }
 
+ClangCursor ClangCursor::get_lexical_parent() const {
+  return ClangCursor(clang_getCursorLexicalParent(cx_cursor));
+}
+
 ClangCursor ClangCursor::get_semantic_parent() const {
   return ClangCursor(clang_getCursorSemanticParent(cx_cursor));
 }

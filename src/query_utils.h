@@ -15,27 +15,25 @@ Maybe<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                SymbolRef sym);
 
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryFuncRef>& refs);
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryFuncId>& ids);
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryTypeId>& ids);
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryVarId>& ids);
+std::vector<Use> ToUses(QueryDatabase* db,
+                        const std::vector<QueryFuncId>& ids);
+std::vector<Use> ToUses(QueryDatabase* db,
+                        const std::vector<QueryTypeId>& ids);
+std::vector<Use> ToUses(QueryDatabase* db,
+                        const std::vector<QueryVarId>& ids);
 
-std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
-                                       SymbolRef sym,
-                                       bool include_decl);
-std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
+std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
+                                 SymbolRef sym,
+                                 bool include_decl);
+std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     SymbolRef sym);
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
-std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
-                                                        QueryFunc& root);
-std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db,
-                                                           QueryFunc& root);
+std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
+                                               QueryFunc& root);
+std::vector<Use> GetCallersForAllDerivedFunctions(QueryDatabase* db,
+                                                  QueryFunc& root);
 optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position);
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location);
@@ -50,7 +48,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
 std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
-    const std::vector<Reference>& refs);
+    const std::vector<Use>& refs);
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,

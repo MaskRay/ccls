@@ -27,10 +27,10 @@ struct CqueryCallersHandler : BaseMessageHandler<Ipc_CqueryCallers> {
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
-        std::vector<Reference> uses = ToReference(db, func.callers);
-        for (QueryFuncRef func_ref : GetCallersForAllBaseFunctions(db, func))
+        std::vector<Use> uses = func.uses;
+        for (Use func_ref : GetCallersForAllBaseFunctions(db, func))
           uses.push_back(func_ref);
-        for (QueryFuncRef func_ref : GetCallersForAllDerivedFunctions(db, func))
+        for (Use func_ref : GetCallersForAllDerivedFunctions(db, func))
           uses.push_back(func_ref);
         out.result = GetLsLocations(db, working_files, uses);
       }

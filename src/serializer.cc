@@ -240,7 +240,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("base", value.def.base);
   REFLECT_MEMBER2("derived", value.derived);
   REFLECT_MEMBER2("locals", value.def.locals);
-  REFLECT_MEMBER2("callers", value.callers);
+  REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER2("callees", value.def.callees);
   REFLECT_MEMBER_END();
 }

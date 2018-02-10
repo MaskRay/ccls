@@ -38,13 +38,13 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
         QueryType& type = db->GetType(sym);
         if (type.def)
           out.result = GetLsLocations(db, working_files,
-                                      ToReference(db, type.def->parents));
+                                      ToUses(db, type.def->parents));
         break;
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
         if (func.def)
           out.result = GetLsLocations(db, working_files,
-                                      ToReference(db, func.def->base));
+                                      ToUses(db, func.def->base));
         break;
       }
     }

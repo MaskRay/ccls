@@ -285,7 +285,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
                       SymbolRole::Declaration);
       add_outline(decl.spelling, id, SymbolKind::Func, SymbolRole::Declaration);
     }
-    for (const IndexFuncRef& caller : func.callers) {
+    for (Use caller : func.uses) {
       // Make ranges of implicit function calls larger (spanning one more column
       // to the left/right). This is hacky but useful. e.g.
       // textDocument/definition on the space/semicolon in `A a;` or `return
@@ -432,30 +432,8 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
         *GetQueryVarIdFromUsr(query_db, entry.second, true);
 }
 
-Reference IdMap::ToQuery(Range range, SymbolRole role) const {
-  return Reference{range, Id<void>(primary_file), SymbolKind:: File, role};
-}
-Reference IdMap::ToQuery(Reference ref) const {
-  switch (ref.kind) {
-    case SymbolKind::Invalid:
-    case SymbolKind::File:
-      ref.kind = SymbolKind::File;
-      ref.id = Id<void>(primary_file);
-      break;
-    case SymbolKind::Func:
-      ref.id = Id<void>(
-          cached_func_ids_.find(IndexFuncId(ref.id))->second);
-      break;
-    case SymbolKind::Type:
-      ref.id = Id<void>(
-          cached_type_ids_.find(IndexTypeId(ref.id))->second);
-      break;
-    case SymbolKind::Var:
-      ref.id =
-          Id<void>(cached_var_ids_.find(IndexVarId(ref.id))->second);
-      break;
-  }
-  return ref;
+Use IdMap::ToQuery(Range range, SymbolRole role) const {
+  return Use(range, primary_file, SymbolKind:: File, role);
 }
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id) != cached_type_ids_.end());
@@ -471,29 +449,42 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
   assert(cached_var_ids_.find(id) != cached_var_ids_.end());
   return QueryVarId(cached_var_ids_.find(id)->second);
 }
-QueryFuncRef IdMap::ToQuery(IndexFuncRef ref) const {
-  QueryFuncRef ret(ref.range, ref.id, ref.kind, ref.role);
+
+Use IdMap::ToQuery(Reference ref) const {
   switch (ref.kind) {
-    default:
-      break;
-    case SymbolKind::File:
-      ret.id = Id<void>(primary_file);
-      break;
-    case SymbolKind::Func:
-      ret.id = Id<void>(ToQuery(IndexFuncId(ref.id)));
-      break;
-    case SymbolKind::Type:
-      ret.id = Id<void>(ToQuery(IndexTypeId(ref.id)));
-      break;
+  case SymbolKind::Invalid:
+    break;
+  case SymbolKind::File:
+    ref.id = primary_file;
+    break;
+  case SymbolKind::Func:
+    ref.id = ToQuery(IndexFuncId(ref.id));
+    break;
+  case SymbolKind::Type:
+    ref.id = ToQuery(IndexTypeId(ref.id));
+    break;
+  case SymbolKind::Var:
+    ref.id = ToQuery(IndexVarId(ref.id));
+    break;
   }
-  return ret;
+  return ref;
 }
-Reference IdMap::ToQuery(IndexFunc::Declaration decl) const {
+SymbolRef IdMap::ToQuery(SymbolRef ref) const {
+  ref.Reference::operator=(ToQuery(static_cast<Reference>(ref)));
+  return ref;
+}
+Use IdMap::ToQuery(Use use) const {
+  use.Reference::operator=(ToQuery(static_cast<Reference>(use)));
+  return use;
+}
+
+Use IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
-  return Reference{decl.spelling, Id<void>(primary_file), SymbolKind::File, SymbolRole::Declaration};
+  return Use(decl.spelling, primary_file, SymbolKind::File,
+             SymbolRole::Declaration);
 }
-std::vector<Reference> IdMap::ToQuery(const std::vector<Range>& a) const {
-  std::vector<Reference> ret;
+std::vector<Use> IdMap::ToQuery(const std::vector<Range>& a) const {
+  std::vector<Use> ret;
   ret.reserve(a.size());
   for (auto& x : a)
     ret.push_back(ToQuery(x, SymbolRole::Reference));
@@ -610,7 +601,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         PROCESS_UPDATE_DIFF(QueryTypeId, types_derived, derived, QueryTypeId);
         PROCESS_UPDATE_DIFF(QueryTypeId, types_instances, instances,
                             QueryVarId);
-        PROCESS_UPDATE_DIFF(QueryTypeId, types_uses, uses, Reference);
+        PROCESS_UPDATE_DIFF(QueryTypeId, types_uses, uses, Use);
       });
 
   // Functions
@@ -629,10 +620,10 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
             funcs_derived.push_back(QueryFunc::DerivedUpdate(
                 previous_id_map.ToQuery(func->id), {},
                 previous_id_map.ToQuery(func->derived)));
-          if (!func->callers.empty())
-            funcs_callers.push_back(QueryFunc::CallersUpdate(
+          if (!func->uses.empty())
+            funcs_uses.push_back(QueryFunc::UsesUpdate(
                 previous_id_map.ToQuery(func->id), {},
-                previous_id_map.ToQuery(func->callers)));
+                previous_id_map.ToQuery(func->uses)));
         }
       },
       /*onAdded:*/
@@ -650,10 +641,10 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
           funcs_derived.push_back(
               QueryFunc::DerivedUpdate(current_id_map.ToQuery(func->id),
                                        current_id_map.ToQuery(func->derived)));
-        if (!func->callers.empty())
-          funcs_callers.push_back(
-              QueryFunc::CallersUpdate(current_id_map.ToQuery(func->id),
-                                       current_id_map.ToQuery(func->callers)));
+        if (!func->uses.empty())
+          funcs_uses.push_back(
+              QueryFunc::UsesUpdate(current_id_map.ToQuery(func->id),
+                                    current_id_map.ToQuery(func->uses)));
       },
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexFunc* previous,
@@ -670,9 +661,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         }
 
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations,
-                            Reference);
+                            Use);
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_derived, derived, QueryFuncId);
-        PROCESS_UPDATE_DIFF(QueryFuncId, funcs_callers, callers, QueryFuncRef);
+        PROCESS_UPDATE_DIFF(QueryFuncId, funcs_uses, uses, Use);
       });
 
   // Variables
@@ -721,9 +712,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
           vars_def_update.push_back(QueryVar::DefUpdate(
               current->usr, std::move(*current_remapped_def)));
 
-        PROCESS_UPDATE_DIFF(QueryVarId, vars_declarations, declarations,
-                            Reference);
-        PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, Reference);
+        PROCESS_UPDATE_DIFF(QueryVarId, vars_declarations, declarations, Use);
+        PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, Use);
       });
 
 #undef PROCESS_UPDATE_DIFF
@@ -747,7 +737,7 @@ void IndexUpdate::Merge(IndexUpdate&& update) {
   INDEX_UPDATE_APPEND(funcs_def_update);
   INDEX_UPDATE_MERGE(funcs_declarations);
   INDEX_UPDATE_MERGE(funcs_derived);
-  INDEX_UPDATE_MERGE(funcs_callers);
+  INDEX_UPDATE_MERGE(funcs_uses);
 
   INDEX_UPDATE_APPEND(vars_removed);
   INDEX_UPDATE_APPEND(vars_def_update);
@@ -864,7 +854,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   ImportOrUpdate(std::move(update->funcs_def_update));
   HANDLE_MERGEABLE(funcs_declarations, declarations, funcs);
   HANDLE_MERGEABLE(funcs_derived, derived, funcs);
-  HANDLE_MERGEABLE(funcs_callers, callers, funcs);
+  HANDLE_MERGEABLE(funcs_uses, uses, funcs);
 
   RemoveUsrs(SymbolKind::Var, update->vars_removed);
   ImportOrUpdate(std::move(update->vars_def_update));
@@ -1053,7 +1043,7 @@ TEST_SUITE("query") {
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->uses.push_back(Reference{Range(Position(1, 0))});
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
-        ->callers.push_back(IndexFuncRef(Range(Position(2, 0)), Id<void>(0),
+        ->uses.push_back(Use(Range(Position(2, 0)), Id<void>(0),
                                          SymbolKind::Func, SymbolRole::None));
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
         ->uses.push_back(Reference{Range(Position(3, 0))});
@@ -1072,21 +1062,21 @@ TEST_SUITE("query") {
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
 
-    pf->callers.push_back(IndexFuncRef(Range(Position(1, 0)), Id<void>(0),
+    pf->uses.push_back(Use(Range(Position(1, 0)), Id<void>(0),
                                        SymbolKind::Func, SymbolRole::None));
-    cf->callers.push_back(IndexFuncRef(Range(Position(2, 0)), Id<void>(0),
+    cf->uses.push_back(Use(Range(Position(2, 0)), Id<void>(0),
                                        SymbolKind::Func, SymbolRole::None));
 
     IndexUpdate update = GetDelta(previous, current);
 
     REQUIRE(update.funcs_removed == std::vector<Usr>{});
-    REQUIRE(update.funcs_callers.size() == 1);
-    REQUIRE(update.funcs_callers[0].id == QueryFuncId(0));
-    REQUIRE(update.funcs_callers[0].to_remove.size() == 1);
-    REQUIRE(update.funcs_callers[0].to_remove[0].range ==
+    REQUIRE(update.funcs_uses.size() == 1);
+    REQUIRE(update.funcs_uses[0].id == QueryFuncId(0));
+    REQUIRE(update.funcs_uses[0].to_remove.size() == 1);
+    REQUIRE(update.funcs_uses[0].to_remove[0].range ==
             Range(Position(1, 0)));
-    REQUIRE(update.funcs_callers[0].to_add.size() == 1);
-    REQUIRE(update.funcs_callers[0].to_add[0].range ==
+    REQUIRE(update.funcs_uses[0].to_add.size() == 1);
+    REQUIRE(update.funcs_uses[0].to_add[0].range ==
             Range(Position(2, 0)));
   }
 
@@ -1117,14 +1107,14 @@ TEST_SUITE("query") {
 
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
-    pf->callers.push_back(IndexFuncRef(Range(Position(1, 0)), Id<void>(0),
-                                       SymbolKind::Func, SymbolRole::None));
-    pf->callers.push_back(IndexFuncRef(Range(Position(2, 0)), Id<void>(0),
-                                       SymbolKind::Func, SymbolRole::None));
-    cf->callers.push_back(IndexFuncRef(Range(Position(4, 0)), Id<void>(0),
-                                       SymbolKind::Func, SymbolRole::None));
-    cf->callers.push_back(IndexFuncRef(Range(Position(5, 0)), Id<void>(0),
-                                       SymbolKind::Func, SymbolRole::None));
+    pf->uses.push_back(Use(Range(Position(1, 0)), Id<void>(0),
+                              SymbolKind::Func, SymbolRole::None));
+    pf->uses.push_back(Use(Range(Position(2, 0)), Id<void>(0),
+                              SymbolKind::Func, SymbolRole::None));
+    cf->uses.push_back(Use(Range(Position(4, 0)), Id<void>(0),
+                              SymbolKind::Func, SymbolRole::None));
+    cf->uses.push_back(Use(Range(Position(5, 0)), Id<void>(0),
+                              SymbolKind::Func, SymbolRole::None));
 
     QueryDatabase db;
     IdMap previous_map(&db, previous.id_cache);
@@ -1137,13 +1127,13 @@ TEST_SUITE("query") {
         &previous_map, &current_map, &previous, &current);
 
     db.ApplyIndexUpdate(&import_update);
-    REQUIRE(db.funcs[0].callers.size() == 2);
-    REQUIRE(db.funcs[0].callers[0].range == Range(Position(1, 0)));
-    REQUIRE(db.funcs[0].callers[1].range == Range(Position(2, 0)));
+    REQUIRE(db.funcs[0].uses.size() == 2);
+    REQUIRE(db.funcs[0].uses[0].range == Range(Position(1, 0)));
+    REQUIRE(db.funcs[0].uses[1].range == Range(Position(2, 0)));
 
     db.ApplyIndexUpdate(&delta_update);
-    REQUIRE(db.funcs[0].callers.size() == 2);
-    REQUIRE(db.funcs[0].callers[0].range == Range(Position(4, 0)));
-    REQUIRE(db.funcs[0].callers[1].range == Range(Position(5, 0)));
+    REQUIRE(db.funcs[0].uses.size() == 2);
+    REQUIRE(db.funcs[0].uses[0].range == Range(Position(4, 0)));
+    REQUIRE(db.funcs[0].uses[1].range == Range(Position(5, 0)));
   }
 }

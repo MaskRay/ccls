@@ -37,12 +37,12 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
       if (sym.kind == SymbolKind::Type) {
         QueryType& type = db->GetType(sym);
         out.result =
-            GetLsLocations(db, working_files, ToReference(db, type.derived));
+            GetLsLocations(db, working_files, ToUses(db, type.derived));
         break;
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
         out.result =
-            GetLsLocations(db, working_files, ToReference(db, func.derived));
+            GetLsLocations(db, working_files, ToUses(db, func.derived));
         break;
       }
     }

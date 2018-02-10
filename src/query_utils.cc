@@ -119,18 +119,9 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryFuncRef>& refs) {
-  std::vector<Reference> ret;
-  ret.reserve(refs.size());
-  for (auto& ref : refs)
-    ret.push_back(ref);
-  return ret;
-}
-
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryFuncId>& ids) {
-  std::vector<Reference> ret;
+std::vector<Use> ToUses(QueryDatabase* db,
+                        const std::vector<QueryFuncId>& ids) {
+  std::vector<Use> ret;
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryFunc& func = db->funcs[id.id];
@@ -142,9 +133,9 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   return ret;
 }
 
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryTypeId>& ids) {
-  std::vector<Reference> ret;
+std::vector<Use> ToUses(QueryDatabase* db,
+                        const std::vector<QueryTypeId>& ids) {
+  std::vector<Use> ret;
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryType& type = db->types[id.id];
@@ -154,9 +145,8 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   return ret;
 }
 
-std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<QueryVarId>& ids) {
-  std::vector<Reference> ret;
+std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
+  std::vector<Use> ret;
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryVar& var = db->vars[id.id];
@@ -168,13 +158,13 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   return ret;
 }
 
-std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
-                                       SymbolRef sym,
-                                       bool include_decl) {
+std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
+                                 SymbolRef sym,
+                                 bool include_decl) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->types[sym.Idx()];
-      std::vector<Reference> ret = type.uses;
+      std::vector<Use> ret = type.uses;
       if (include_decl && type.def && type.def->definition_spelling)
         ret.push_back(*type.def->definition_spelling);
       return ret;
@@ -182,7 +172,7 @@ std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::Func: {
       // TODO: the vector allocation could be avoided.
       QueryFunc& func = db->funcs[sym.Idx()];
-      std::vector<Reference> ret = ToReference(db, func.callers);
+      std::vector<Use> ret = func.uses;
       if (include_decl) {
         AddRange(&ret, func.declarations);
         if (func.def && func.def->definition_spelling)
@@ -192,7 +182,7 @@ std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[sym.Idx()];
-      std::vector<Reference> ret = var.uses;
+      std::vector<Use> ret = var.uses;
       if (include_decl) {
         if (var.def && var.def->definition_spelling)
           ret.push_back(*var.def->definition_spelling);
@@ -208,7 +198,7 @@ std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
   }
 }
 
-std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
+std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     SymbolRef sym) {
   switch (sym.kind) {
@@ -238,7 +228,7 @@ std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
   // Check self.
-  if (!root.callers.empty())
+  if (!root.uses.empty())
     return true;
 
   // Check for base calls.
@@ -249,7 +239,7 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
   while (!queue.empty()) {
     QueryFunc& func = *queue.front();
     queue.pop();
-    if (!func.callers.empty())
+    if (!func.uses.empty())
       return true;
     if (func.def)
       EachWithGen<QueryFunc>(db->funcs, func.def->base, [&](QueryFunc& func1) {
@@ -264,7 +254,7 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
   while (!queue.empty()) {
     QueryFunc& func = *queue.front();
     queue.pop();
-    if (!func.callers.empty())
+    if (!func.uses.empty())
       return true;
     EachWithGen<QueryFunc>(db->funcs, func.derived, [&](QueryFunc& func1) {
       queue.push(&func1);
@@ -274,9 +264,9 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
   return false;
 }
 
-std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
-                                                        QueryFunc& root) {
-  std::vector<QueryFuncRef> callers;
+std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
+                                               QueryFunc& root) {
+  std::vector<Use> callers;
   if (!root.def)
     return callers;
 
@@ -288,7 +278,7 @@ std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
     QueryFunc& func = *queue.front();
     queue.pop();
 
-    AddRange(&callers, func.callers);
+    AddRange(&callers, func.uses);
     if (func.def)
       EachWithGen<QueryFunc>(db->funcs, func.def->base, [&](QueryFunc& func1) {
         queue.push(&func1);
@@ -298,9 +288,9 @@ std::vector<QueryFuncRef> GetCallersForAllBaseFunctions(QueryDatabase* db,
   return callers;
 }
 
-std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db,
-                                                           QueryFunc& root) {
-  std::vector<QueryFuncRef> callers;
+std::vector<Use> GetCallersForAllDerivedFunctions(QueryDatabase* db,
+                                                  QueryFunc& root) {
+  std::vector<Use> callers;
 
   std::queue<QueryFunc*> queue;
   EachWithGen<QueryFunc>(db->funcs, root.derived, [&](QueryFunc& func) {
@@ -314,7 +304,7 @@ std::vector<QueryFuncRef> GetCallersForAllDerivedFunctions(QueryDatabase* db,
     EachWithGen<QueryFunc>(db->funcs, func.derived, [&](QueryFunc& func1) {
       queue.push(&func1);
     });
-    AddRange(&callers, func.callers);
+    AddRange(&callers, func.uses);
   }
 
   return callers;
@@ -403,11 +393,11 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
 std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
-    const std::vector<Reference>& refs) {
+    const std::vector<Use>& uses) {
   std::unordered_set<lsLocation> unique_locations;
-  for (Reference ref : refs) {
+  for (Use use : uses) {
     optional<lsLocation> location =
-        GetLsLocation(db, working_files, ref);
+        GetLsLocation(db, working_files, use);
     if (!location)
       continue;
     unique_locations.insert(*location);

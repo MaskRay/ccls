@@ -85,7 +85,7 @@ void AddCodeLens(const char* singular,
                  const char* plural,
                  CommonCodeLensParams* common,
                  SymbolRef loc,
-                 const std::vector<Reference>& uses,
+                 const std::vector<Use>& uses,
                  bool force_display) {
   TCodeLens code_lens;
   optional<lsRange> range = GetLsRange(common->working_file, loc.range);
@@ -100,7 +100,7 @@ void AddCodeLens(const char* singular,
 
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
-  for (const Reference& use : uses) {
+  for (Use use : uses) {
     optional<lsLocation> location =
         GetLsLocation(common->db, common->working_files, use);
     if (!location)
@@ -159,9 +159,9 @@ struct TextDocumentCodeLensHandler
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(sym, 0),
                       type.uses, true /*force_display*/);
           AddCodeLens("derived", "derived", &common, OffsetStartColumn(sym, 1),
-                      ToReference(db, type.derived), false /*force_display*/);
+                      ToUses(db, type.derived), false /*force_display*/);
           AddCodeLens("var", "vars", &common, OffsetStartColumn(sym, 2),
-                      ToReference(db, type.instances), false /*force_display*/);
+                      ToUses(db, type.instances), false /*force_display*/);
           break;
         }
         case SymbolKind::Func: {
@@ -183,35 +183,33 @@ struct TextDocumentCodeLensHandler
             return SymbolRef(*def);
           };
 
-          std::vector<QueryFuncRef> base_callers =
+          std::vector<Use> base_callers =
               GetCallersForAllBaseFunctions(db, func);
-          std::vector<QueryFuncRef> derived_callers =
+          std::vector<Use> derived_callers =
               GetCallersForAllDerivedFunctions(db, func);
           if (base_callers.empty() && derived_callers.empty()) {
             SymbolRef loc = try_ensure_spelling(sym);
             AddCodeLens("call", "calls", &common,
-                        OffsetStartColumn(loc, offset++),
-                        ToReference(db, func.callers), true /*force_display*/);
+                        OffsetStartColumn(loc, offset++), func.uses,
+                        true /*force_display*/);
           } else {
             SymbolRef loc = try_ensure_spelling(sym);
             AddCodeLens("direct call", "direct calls", &common,
-                        OffsetStartColumn(loc, offset++),
-                        ToReference(db, func.callers), false /*force_display*/);
+                        OffsetStartColumn(loc, offset++), func.uses,
+                        false /*force_display*/);
             if (!base_callers.empty())
               AddCodeLens("base call", "base calls", &common,
-                          OffsetStartColumn(loc, offset++),
-                          ToReference(db, base_callers),
+                          OffsetStartColumn(loc, offset++), base_callers,
                           false /*force_display*/);
             if (!derived_callers.empty())
               AddCodeLens("derived call", "derived calls", &common,
-                          OffsetStartColumn(loc, offset++),
-                          ToReference(db, derived_callers),
+                          OffsetStartColumn(loc, offset++), derived_callers,
                           false /*force_display*/);
           }
 
           AddCodeLens("derived", "derived", &common,
                       OffsetStartColumn(sym, offset++),
-                      ToReference(db, func.derived), false /*force_display*/);
+                      ToUses(db, func.derived), false /*force_display*/);
 
           // "Base"
           if (func.def->base.size() == 1) {
@@ -238,7 +236,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(sym, 1),
-                        ToReference(db, func.def->base),
+                        ToUses(db, func.def->base),
                         false /*force_display*/);
           }
 

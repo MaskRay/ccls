@@ -57,7 +57,16 @@ struct Id {
   // Invalid id.
   Id() : id(-1) {}
   explicit Id(RawId id) : id(id) {}
-  template <typename U>
+  // Id<T> -> Id<void> or Id<T> -> Id<T> is allowed implicitly.
+  template <typename U,
+            typename std::enable_if<std::is_void<T>::value ||
+                                        std::is_same<T, U>::value,
+                                    bool>::type = false>
+  Id(Id<U> o) : id(o.id) {}
+  template <typename U,
+            typename std::enable_if<!(std::is_void<T>::value ||
+                                      std::is_same<T, U>::value),
+                                    bool>::type = false>
   explicit Id(Id<U> o) : id(o.id) {}
 
   // Needed for google::dense_hash_map.
@@ -107,16 +116,45 @@ struct Reference {
   }
 };
 
-// NOTE: id can be -1 if the function call is not coming from a function.
-struct IndexFuncRef : Reference {
-  // Constructors are unnecessary in C++17 p0017
-  IndexFuncRef() = default;
-  IndexFuncRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
+struct SymbolIdx {
+  RawId idx;
+  SymbolKind kind;
+
+  bool operator==(const SymbolIdx& o) const {
+    return kind == o.kind && idx == o.idx;
+  }
+  bool operator!=(const SymbolIdx& o) const { return !(*this == o); }
+  bool operator<(const SymbolIdx& o) const {
+    if (kind != o.kind)
+      return kind < o.kind;
+    return idx < o.idx;
+  }
+};
+MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
+MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
+
+// |id,kind| refer to the referenced entity.
+struct SymbolRef : Reference {
+  SymbolRef() = default;
+  SymbolRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
+    : Reference{range, id, kind, role} {}
+  SymbolRef(Reference ref) : Reference(ref) {}
+  SymbolRef(SymbolIdx si)
+    : Reference{Range(), Id<void>(si.idx), si.kind, SymbolRole::None} {}
+
+  RawId Idx() const { return RawId(id); }
+  operator SymbolIdx() const { return SymbolIdx{Idx(), kind}; }
+};
+
+// Represents an occurrence of a variable/type, |id,kind| refer to the lexical
+// parent.
+struct Use : Reference {
+  Use() = default;
+  Use(Reference ref) : Reference(ref) {}
+  Use(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
       : Reference{range, id, kind, role} {}
 };
 
-void Reflect(Reader& visitor, IndexFuncRef& value);
-void Reflect(Writer& visitor, IndexFuncRef& value);
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
 
@@ -126,7 +164,6 @@ struct IndexFamily {
   using TypeId = Id<IndexType>;
   using VarId = Id<IndexVar>;
   using Range = ::Range;
-  using FuncRef = IndexFuncRef;
 };
 
 template <typename F>
@@ -218,7 +255,7 @@ struct IndexType {
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
-  std::vector<Reference> uses;
+  std::vector<Use> uses;
 
   IndexType() {}  // For serialization.
   IndexType(IndexTypeId id, Usr usr);
@@ -243,7 +280,7 @@ struct FuncDefDefinitionData {
   std::vector<typename F::VarId> locals;
 
   // Functions that this function calls.
-  std::vector<typename F::FuncRef> callees;
+  std::vector<SymbolRef> callees;
 
   typename F::FileId file;
   // Type which declares this one (ie, it is a method)
@@ -321,7 +358,7 @@ struct IndexFunc {
   //
   // To get all usages, also include the ranges inside of declarations and
   // def.definition_spelling.
-  std::vector<IndexFuncRef> callers;
+  std::vector<Use> uses;
 
   IndexFunc() {}  // For serialization.
   IndexFunc(IndexFuncId id, Usr usr) : usr(usr), id(id) {
@@ -416,7 +453,7 @@ struct IndexVar {
 
   std::vector<Range> declarations;
   // Usages.
-  std::vector<Reference> uses;
+  std::vector<Use> uses;
 
   IndexVar() {}  // For serialization.
   IndexVar(IndexVarId id, Usr usr) : usr(usr), id(id) {

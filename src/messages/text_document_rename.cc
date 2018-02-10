@@ -6,17 +6,17 @@ namespace {
 
 lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   const std::vector<Reference>& refs,
+                                   const std::vector<Use>& uses,
                                    const std::string& new_text) {
   std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
 
-  for (auto& ref : refs) {
+  for (Use use : uses) {
     optional<lsLocation> ls_location =
-        GetLsLocation(db, working_files, ref);
+        GetLsLocation(db, working_files, use);
     if (!ls_location)
       continue;
 
-    QueryFileId file_id = db->GetFileId(ref);
+    QueryFileId file_id = db->GetFileId(use);
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
       path_to_edit[file_id] = lsTextDocumentEdit();
 

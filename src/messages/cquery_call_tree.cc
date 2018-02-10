@@ -105,11 +105,8 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     //  std::endl; return;
     //}
 
-    if (caller.HasValue()) {
-      QueryFuncId func_id = caller.FuncId();
-      if (!func_id.HasValue())
-        return;
-      QueryFunc& call_func = db->funcs[func_id.id];
+    if (caller.kind == SymbolKind::Func) {
+      QueryFunc& call_func = db->GetFunc(caller);
       if (!call_func.def)
         return;
 
@@ -137,18 +134,16 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
       GetCallersForAllBaseFunctions(db, root_func);
   std::vector<QueryFuncRef> derived_callers =
       GetCallersForAllDerivedFunctions(db, root_func);
-  result.reserve(root_func.callers.size() + base_callers.size() +
+  result.reserve(root_func.uses.size() + base_callers.size() +
                  derived_callers.size());
 
-  for (QueryFuncRef caller : root_func.callers)
+  for (QueryFuncRef caller : root_func.uses)
     handle_caller(caller, Out_CqueryCallTree::CallType::Direct);
-  for (QueryFuncRef caller : base_callers) {
-    // Do not show calls to the base function coming from this function.
-    if (caller.FuncId() == root)
-      continue;
-
-    handle_caller(caller, Out_CqueryCallTree::CallType::Base);
-  }
+  for (QueryFuncRef caller : base_callers)
+    if (caller.kind == SymbolKind::Func && caller.id != Id<void>(root)) {
+      // Do not show calls to the base function coming from this function.
+      handle_caller(caller, Out_CqueryCallTree::CallType::Base);
+    }
   for (QueryFuncRef caller : derived_callers)
     handle_caller(caller, Out_CqueryCallTree::CallType::Derived);
 

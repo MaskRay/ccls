@@ -20,46 +20,7 @@ using QueryVarId = Id<QueryVar>;
 
 struct IdMap;
 
-struct SymbolIdx {
-  RawId idx;
-  SymbolKind kind;
-
-  bool operator==(const SymbolIdx& o) const {
-    return kind == o.kind && idx == o.idx;
-  }
-  bool operator!=(const SymbolIdx& o) const { return !(*this == o); }
-  bool operator<(const SymbolIdx& o) const {
-    if (kind != o.kind)
-      return kind < o.kind;
-    return idx < o.idx;
-  }
-};
-MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
-MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
-
-struct SymbolRef : Reference {
-  SymbolRef() = default;
-  SymbolRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
-      : Reference{range, id, kind, role} {}
-  SymbolRef(Reference ref) : Reference(ref) {}
-  SymbolRef(SymbolIdx si)
-      : Reference{Range(), Id<void>(si.idx), si.kind, SymbolRole::None} {}
-
-  RawId Idx() const { return RawId(id); }
-  operator SymbolIdx() const { return SymbolIdx{Idx(), kind, }; }
-};
-
-struct QueryFuncRef : Reference {
-  QueryFuncRef() = default;
-  QueryFuncRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
-    : Reference{range, id, kind, role} {}
-
-  QueryFuncId FuncId() const {
-    if (kind == SymbolKind::Func)
-      return QueryFuncId(id);
-    return QueryFuncId();
-  }
-};
+using QueryFuncRef = Use;
 
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
@@ -132,7 +93,6 @@ struct QueryFamily {
   using TypeId = Id<QueryType>;
   using VarId = Id<QueryVar>;
   using Range = Reference;
-  using FuncRef = QueryFuncRef;
 };
 
 struct QueryFile {
@@ -175,14 +135,14 @@ struct QueryType {
   using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
-  using UsesUpdate = MergeableUpdate<QueryTypeId, Reference>;
+  using UsesUpdate = MergeableUpdate<QueryTypeId, Use>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
-  std::vector<Reference> uses;
+  std::vector<Use> uses;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
 };
@@ -190,16 +150,16 @@ struct QueryType {
 struct QueryFunc {
   using Def = FuncDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Reference>;
+  using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Use>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
-  using CallersUpdate = MergeableUpdate<QueryFuncId, QueryFuncRef>;
+  using UsesUpdate = MergeableUpdate<QueryFuncId, Use>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
-  std::vector<Reference> declarations;
+  std::vector<Use> declarations;
   std::vector<QueryFuncId> derived;
-  std::vector<QueryFuncRef> callers;
+  std::vector<Use> uses;
 
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
 };
@@ -207,14 +167,14 @@ struct QueryFunc {
 struct QueryVar {
   using Def = VarDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryVarId, Reference>;
-  using UsesUpdate = MergeableUpdate<QueryVarId, Reference>;
+  using DeclarationsUpdate = MergeableUpdate<QueryVarId, Use>;
+  using UsesUpdate = MergeableUpdate<QueryVarId, Use>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   optional<Def> def;
-  std::vector<Reference> declarations;
-  std::vector<Reference> uses;
+  std::vector<Use> declarations;
+  std::vector<Use> uses;
 
   explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
@@ -250,7 +210,7 @@ struct IndexUpdate {
   std::vector<QueryFunc::DefUpdate> funcs_def_update;
   std::vector<QueryFunc::DeclarationsUpdate> funcs_declarations;
   std::vector<QueryFunc::DerivedUpdate> funcs_derived;
-  std::vector<QueryFunc::CallersUpdate> funcs_callers;
+  std::vector<QueryFunc::UsesUpdate> funcs_uses;
 
   // Variable updates.
   std::vector<Usr> vars_removed;
@@ -279,7 +239,7 @@ MAKE_REFLECT_STRUCT(IndexUpdate,
                     funcs_def_update,
                     funcs_declarations,
                     funcs_derived,
-                    funcs_callers,
+                    funcs_uses,
                     vars_removed,
                     vars_def_update,
                     vars_declarations,
@@ -379,10 +339,10 @@ template <> struct IndexToQuery<IndexFileId> { using type = QueryFileId; };
 template <> struct IndexToQuery<IndexFuncId> { using type = QueryFuncId; };
 template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
 template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
-template <> struct IndexToQuery<IndexFuncRef> { using type = QueryFuncRef; };
-template <> struct IndexToQuery<Range> { using type = Reference; };
-template <> struct IndexToQuery<Reference> { using type = Reference; };
-template <> struct IndexToQuery<IndexFunc::Declaration> { using type = Reference; };
+template <> struct IndexToQuery<Use> { using type = Use; };
+template <> struct IndexToQuery<SymbolRef> { using type = SymbolRef; };
+template <> struct IndexToQuery<Range> { using type = Use; };
+template <> struct IndexToQuery<IndexFunc::Declaration> { using type = Use; };
 template <typename I> struct IndexToQuery<optional<I>> {
   using type = optional<typename IndexToQuery<I>::type>;
 };
@@ -399,13 +359,14 @@ struct IdMap {
 
   // FIXME Too verbose
   // clang-format off
-  Reference ToQuery(Range range, SymbolRole role) const;
-  Reference ToQuery(Reference ref) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
-  QueryFuncRef ToQuery(IndexFuncRef ref) const;
-  Reference ToQuery(IndexFunc::Declaration decl) const;
+  SymbolRef ToQuery(SymbolRef ref) const;
+  Use ToQuery(Range range, SymbolRole role) const;
+  Use ToQuery(Reference ref) const;
+  Use ToQuery(Use ref) const;
+  Use ToQuery(IndexFunc::Declaration decl) const;
   template <typename I>
   Maybe<typename IndexToQuery<I>::type> ToQuery(Maybe<I> id) const {
     if (!id)
@@ -420,7 +381,7 @@ struct IdMap {
       ret.push_back(ToQuery(x));
     return ret;
   }
-  std::vector<Reference> ToQuery(const std::vector<Range>& a) const;
+  std::vector<Use> ToQuery(const std::vector<Range>& a) const;
   // clang-format on
 
 
