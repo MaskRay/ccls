@@ -125,7 +125,7 @@ struct IndexFamily {
   using FuncId = Id<IndexFunc>;
   using TypeId = Id<IndexType>;
   using VarId = Id<IndexVar>;
-  using Range = Range;
+  using Range = ::Range;
   using FuncRef = IndexFuncRef;
 };
 
