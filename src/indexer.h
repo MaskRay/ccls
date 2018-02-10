@@ -120,11 +120,16 @@ void Reflect(Writer& visitor, IndexFuncRef& value);
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
 
-template <typename FileId,
-          typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename Range>
+struct IndexFamily {
+  using FileId = Id<IndexFile>;
+  using FuncId = Id<IndexFunc>;
+  using TypeId = Id<IndexType>;
+  using VarId = Id<IndexVar>;
+  using Range = Range;
+  using FuncRef = IndexFuncRef;
+};
+
+template <typename F>
 struct TypeDefDefinitionData {
   // General metadata.
   std::string detailed_name;
@@ -140,21 +145,21 @@ struct TypeDefDefinitionData {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  Maybe<Range> definition_spelling;
-  Maybe<Range> definition_extent;
+  Maybe<typename F::Range> definition_spelling;
+  Maybe<typename F::Range> definition_extent;
 
   // Immediate parent types.
-  std::vector<TypeId> parents;
+  std::vector<typename F::TypeId> parents;
 
   // Types, functions, and variables defined in this type.
-  std::vector<TypeId> types;
-  std::vector<FuncId> funcs;
-  std::vector<VarId> vars;
+  std::vector<typename F::TypeId> types;
+  std::vector<typename F::FuncId> funcs;
+  std::vector<typename F::VarId> vars;
 
-  FileId file;
+  typename F::FileId file;
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
-  Maybe<TypeId> alias_of;
+  Maybe<typename F::TypeId> alias_of;
 
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
@@ -166,7 +171,7 @@ struct TypeDefDefinitionData {
            definition_extent == o.definition_extent && alias_of == o.alias_of &&
            parents == o.parents && types == o.types && funcs == o.funcs &&
            vars == o.vars && kind == o.kind && hover == o.hover &&
-           kind == o.kind && hover == o.hover && comments == o.comments;
+           comments == o.comments;
   }
   bool operator!=(const TypeDefDefinitionData& o) const {
     return !(*this == o);
@@ -177,15 +182,8 @@ struct TypeDefDefinitionData {
                             short_name_size);
   }
 };
-template <typename TVisitor,
-          typename FileId,
-          typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename Range>
-void Reflect(
-    TVisitor& visitor,
-    TypeDefDefinitionData<FileId, TypeId, FuncId, VarId, Range>& value) {
+template <typename TVisitor, typename Family>
+void Reflect(TVisitor& visitor, TypeDefDefinitionData<Family>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(short_name_offset);
@@ -205,11 +203,7 @@ void Reflect(
 }
 
 struct IndexType {
-  using Def = TypeDefDefinitionData<IndexFileId,
-                                    IndexTypeId,
-                                    IndexFuncId,
-                                    IndexVarId,
-                                    Range>;
+  using Def = TypeDefDefinitionData<IndexFamily>;
 
   Usr usr;
   IndexTypeId id;
@@ -233,32 +227,27 @@ struct IndexType {
 };
 MAKE_HASHABLE(IndexType, t.id);
 
-template <typename FileId,
-          typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename FuncRef,
-          typename Range>
+template <typename F>
 struct FuncDefDefinitionData {
   // General metadata.
   std::string detailed_name;
   std::string hover;
   std::string comments;
-  Maybe<Range> definition_spelling;
-  Maybe<Range> definition_extent;
+  Maybe<typename F::Range> definition_spelling;
+  Maybe<typename F::Range> definition_extent;
 
   // Method this method overrides.
-  std::vector<FuncId> base;
+  std::vector<typename F::FuncId> base;
 
   // Local variables defined in this function.
-  std::vector<VarId> locals;
+  std::vector<typename F::VarId> locals;
 
   // Functions that this function calls.
-  std::vector<FuncRef> callees;
+  std::vector<typename F::FuncRef> callees;
 
-  FileId file;
+  typename F::FileId file;
   // Type which declares this one (ie, it is a method)
-  Maybe<TypeId> declaring_type;
+  Maybe<typename F::TypeId> declaring_type;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
@@ -282,17 +271,8 @@ struct FuncDefDefinitionData {
   }
 };
 
-template <typename TVisitor,
-          typename FileId,
-          typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename FuncRef,
-          typename Range>
-void Reflect(
-    TVisitor& visitor,
-    FuncDefDefinitionData<FileId, TypeId, FuncId, VarId, FuncRef, Range>&
-        value) {
+template <typename TVisitor, typename Family>
+void Reflect(TVisitor& visitor, FuncDefDefinitionData<Family>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(short_name_offset);
@@ -312,12 +292,7 @@ void Reflect(
 }
 
 struct IndexFunc {
-  using Def = FuncDefDefinitionData<IndexFileId,
-                                    IndexTypeId,
-                                    IndexFuncId,
-                                    IndexVarId,
-                                    IndexFuncRef,
-                                    Range>;
+  using Def = FuncDefDefinitionData<IndexFamily>;
 
   Usr usr;
   IndexFuncId id;
@@ -362,11 +337,7 @@ MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
                     content,
                     param_spellings);
 
-template <typename FileId,
-          typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename Range>
+template <typename F>
 struct VarDefDefinitionData {
   // General metadata.
   std::string detailed_name;
@@ -374,12 +345,12 @@ struct VarDefDefinitionData {
   std::string comments;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
-  Maybe<Range> definition_spelling;
-  Maybe<Range> definition_extent;
+  Maybe<typename F::Range> definition_spelling;
+  Maybe<typename F::Range> definition_extent;
 
-  FileId file;
+  typename F::FileId file;
   // Type of the variable.
-  Maybe<TypeId> variable_type;
+  Maybe<typename F::TypeId> variable_type;
 
   // Function/type which declares this one.
   Maybe<Id<void>> parent_id;
@@ -416,15 +387,8 @@ struct VarDefDefinitionData {
   }
 };
 
-template <typename TVisitor,
-          typename FileId,
-          typename TypeId,
-          typename FuncId,
-          typename VarId,
-          typename Range>
-void Reflect(
-    TVisitor& visitor,
-    VarDefDefinitionData<FileId, TypeId, FuncId, VarId, Range>& value) {
+template <typename TVisitor, typename Family>
+void Reflect(TVisitor& visitor, VarDefDefinitionData<Family>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
   REFLECT_MEMBER(short_name_size);
@@ -443,11 +407,7 @@ void Reflect(
 }
 
 struct IndexVar {
-  using Def = VarDefDefinitionData<IndexFileId,
-                                   IndexTypeId,
-                                   IndexFuncId,
-                                   IndexVarId,
-                                   Range>;
+  using Def = VarDefDefinitionData<IndexFamily>;
 
   Usr usr;
   IndexVarId id;

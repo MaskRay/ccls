@@ -126,6 +126,15 @@ void Reflect(TVisitor& visitor, WithFileContent<T>& value) {
   REFLECT_MEMBER_END();
 }
 
+struct QueryFamily {
+  using FileId = Id<QueryFile>;
+  using FuncId = Id<QueryFunc>;
+  using TypeId = Id<QueryType>;
+  using VarId = Id<QueryVar>;
+  using Range = Reference;
+  using FuncRef = QueryFuncRef;
+};
+
 struct QueryFile {
   struct Def {
     std::string path;
@@ -162,11 +171,7 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     dependencies);
 
 struct QueryType {
-  using Def = TypeDefDefinitionData<QueryFileId,
-                                    QueryTypeId,
-                                    QueryFuncId,
-                                    QueryVarId,
-                                    Reference>;
+  using Def = TypeDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
@@ -183,12 +188,7 @@ struct QueryType {
 };
 
 struct QueryFunc {
-  using Def = FuncDefDefinitionData<QueryFileId,
-                                    QueryTypeId,
-                                    QueryFuncId,
-                                    QueryVarId,
-                                    QueryFuncRef,
-                                    Reference>;
+  using Def = FuncDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Reference>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
@@ -205,11 +205,7 @@ struct QueryFunc {
 };
 
 struct QueryVar {
-  using Def = VarDefDefinitionData<QueryFileId,
-                                   QueryTypeId,
-                                   QueryFuncId,
-                                   QueryVarId,
-                                   Reference>;
+  using Def = VarDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryVarId, Reference>;
   using UsesUpdate = MergeableUpdate<QueryVarId, Reference>;

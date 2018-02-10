@@ -607,18 +607,8 @@ void OnIndexReference_Function(IndexFile* db,
 const int IndexFile::kMajorVersion = 11;
 const int IndexFile::kMinorVersion = 3;
 
-IndexFile::IndexFile(const std::string& path,
-                     const std::string& contents)
-    : id_cache(path), path(path), file_contents(contents) {
-  // TODO: Reconsider if we should still be reusing the same id_cache.
-  // Preallocate any existing resolved ids.
-  for (const auto& entry : id_cache.usr_to_type_id)
-    types.push_back(IndexType(entry.second, entry.first));
-  for (const auto& entry : id_cache.usr_to_func_id)
-    funcs.push_back(IndexFunc(entry.second, entry.first));
-  for (const auto& entry : id_cache.usr_to_var_id)
-    vars.push_back(IndexVar(entry.second, entry.first));
-}
+IndexFile::IndexFile(const std::string& path, const std::string& contents)
+    : id_cache(path), path(path), file_contents(contents) {}
 
 // TODO: Optimize for const char*?
 IndexTypeId IndexFile::ToTypeId(Usr usr) {
