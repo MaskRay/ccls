@@ -7,14 +7,13 @@
 
 #include <optional.h>
 
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  const QueryFuncId& id);
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  SymbolRef sym);
-optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
-                                                SymbolRef sym);
-optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                                  SymbolRef sym);
+Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                               QueryFuncId id);
+Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                               SymbolRef sym);
+Maybe<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym);
+Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
+                                               SymbolRef sym);
 
 std::vector<Reference> ToReference(QueryDatabase* db,
                                    const std::vector<QueryFuncRef>& refs);

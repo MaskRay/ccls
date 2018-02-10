@@ -457,7 +457,7 @@ struct TextDocumentCodeActionHandler
               std::string::npos)
             continue;
 
-          optional<QueryFileId> decl_file_id =
+          Maybe<QueryFileId> decl_file_id =
               GetDeclarationFileForSymbol(db, db->symbols[i]);
           if (!decl_file_id)
             continue;

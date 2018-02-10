@@ -18,16 +18,16 @@ int ComputeRangeSize(const Range& range) {
 
 }  // namespace
 
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  const QueryFuncId& id) {
+Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                               QueryFuncId id) {
   QueryFunc& func = db->funcs[id.id];
   if (func.def)
     return func.def->definition_spelling;
   return nullopt;
 }
 
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  SymbolRef sym) {
+Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                               SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
@@ -56,8 +56,7 @@ optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
-                                                SymbolRef sym) {
+Maybe<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
@@ -87,8 +86,8 @@ optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                                  SymbolRef sym) {
+Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
+                                               SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
