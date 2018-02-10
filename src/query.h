@@ -41,7 +41,7 @@ struct SymbolRef : Reference {
   SymbolRef() = default;
   SymbolRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
       : Reference{range, id, kind, role} {}
-  SymbolRef(Reference ref) : Reference{ref} {}
+  SymbolRef(Reference ref) : Reference(ref) {}
   SymbolRef(SymbolIdx si)
       : Reference{Range(), Id<void>(si.idx), si.kind, SymbolRole::None} {}
 
