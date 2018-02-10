@@ -393,21 +393,6 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 
 }  // namespace
 
-// FIXME Reference Remove
-QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
-  return db->GetFileId(ref);
-}
-
-QueryFunc& SymbolRef::Func(QueryDatabase* db) const {
-  return db->funcs[Idx()];
-}
-QueryType& SymbolRef::Type(QueryDatabase* db) const {
-  return db->types[Idx()];
-}
-QueryVar& SymbolRef::Var(QueryDatabase* db) const {
-  return db->vars[Idx()];
-}
-
 Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
     const std::string& path) {
   return ::GetQueryFileIdFromPath(this, path, false);

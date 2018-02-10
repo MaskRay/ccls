@@ -41,7 +41,7 @@ struct TextDocumentDocumentHighlightHandler
       std::vector<Reference> uses = GetUsesOfSymbol(db, sym, true);
       out.result.reserve(uses.size());
       for (const Reference& use : uses) {
-        if (GetFileId(db, use) != file_id)
+        if (db->GetFileId(use) != file_id)
           continue;
 
         optional<lsLocation> ls_location =

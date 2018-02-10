@@ -168,7 +168,7 @@ struct CqueryTypeHierarchyTreeHandler
     for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
-        QueryType& type = sym.Type(db);
+        QueryType& type = db->GetType(sym);
         if (type.def)
           out.result =
               BuildInheritanceHierarchyForType(db, working_files, type);

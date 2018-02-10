@@ -117,7 +117,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
       case SymbolKind::Func: {
-        QueryFunc& func = sym.Func(db);
+        QueryFunc& func = db->GetFunc(sym);
         if (!func.def)
           continue;  // applies to for loop
         // Don't highlight overloadable operators or implicit lambda ->
@@ -148,7 +148,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         break;
       }
       case SymbolKind::Var: {
-        QueryVar& var = sym.Var(db);
+        QueryVar& var = db->GetVar(sym);
         if (!var.def)
           continue;  // applies to for loop
         parent_kind = var.def->parent_kind;
@@ -158,7 +158,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         break;
       }
       case SymbolKind::Type: {
-        QueryType& type = sym.Type(db);
+        QueryType& type = db->GetType(sym);
         if (!type.def)
           continue;  // applies to for loop
         kind = type.def->kind;

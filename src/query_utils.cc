@@ -46,19 +46,19 @@ optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                   SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = sym.Type(db);
+      QueryType& type = db->GetType(sym);
       if (type.def)
         return *type.def->definition_spelling;
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = sym.Func(db);
+      QueryFunc& func = db->GetFunc(sym);
       if (func.def)
         return func.def->definition_spelling;
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = sym.Var(db);
+      QueryVar& var = db->GetVar(sym);
       if (var.def)
         return var.def->definition_spelling;
       break;
@@ -76,19 +76,19 @@ optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
                                                 SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = sym.Type(db);
+      QueryType& type = db->GetType(sym);
       if (type.def)
         return type.def->definition_extent;
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = sym.Func(db);
+      QueryFunc& func = db->GetFunc(sym);
       if (func.def)
         return func.def->definition_extent;
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = sym.Var(db);
+      QueryVar& var = db->GetVar(sym);
       if (var.def)
         return var.def->definition_extent;
       break;
@@ -107,13 +107,13 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = sym.Type(db);
+      QueryType& type = db->GetType(sym);
       if (type.def && type.def->definition_spelling)
         return db->GetFileId(*type.def->definition_spelling);
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = sym.Func(db);
+      QueryFunc& func = db->GetFunc(sym);
       if (!func.declarations.empty())
         return db->GetFileId(func.declarations[0]);
       if (func.def && func.def->definition_spelling)
@@ -121,7 +121,7 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = sym.Var(db);
+      QueryVar& var = db->GetVar(sym);
       if (var.def && var.def->definition_spelling)
         return db->GetFileId(*var.def->definition_spelling);
       break;
@@ -366,7 +366,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    Reference ref) {
   std::string path;
-  QueryFileId file_id = GetFileId(db, ref);
+  QueryFileId file_id = db->GetFileId(ref);
   if (!file_id.HasValue())
     return nullopt;
   lsDocumentUri uri = GetLsDocumentUri(db, file_id, &path);
@@ -413,7 +413,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Type: {
-      QueryType& type = sym.Type(db);
+      QueryType& type = db->GetType(sym);
       if (!type.def)
         break;
 
@@ -436,7 +436,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = sym.Func(db);
+      QueryFunc& func = db->GetFunc(sym);
       if (!func.def)
         break;
 
@@ -457,7 +457,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Var: {
-      QueryVar& var = sym.Var(db);
+      QueryVar& var = db->GetVar(sym);
       if (!var.def)
         break;
 

@@ -99,7 +99,7 @@ struct CqueryMemberHierarchyInitialHandler
         break;
       }
       if (sym.kind == SymbolKind::Var) {
-        QueryVar& var = sym.Var(db);
+        QueryVar& var = db->GetVar(sym);
         if (var.def && var.def->variable_type)
           out.result = BuildInitial(db, working_files, *var.def->variable_type);
         break;

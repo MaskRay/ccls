@@ -20,32 +20,6 @@ using QueryVarId = Id<QueryVar>;
 
 struct IdMap;
 
-struct QueryLocation {
-  Range range;
-  QueryFileId path;
-  SymbolRole role;
-
-  bool HasValue() const { return range.HasValue(); }
-  QueryFileId FileId() const { return path; }
-
-  operator Reference() const {
-    return Reference{range, Id<void>(path), SymbolKind::File, role};
-  }
-
-  std::tuple<Range, QueryFileId, SymbolRole> ToTuple() const {
-    return std::make_tuple(range, path, role);
-  }
-  bool operator==(const QueryLocation& o) const {
-    return ToTuple() == o.ToTuple();
-  }
-  bool operator!=(const QueryLocation& o) const { return !(*this == o); }
-  bool operator<(const QueryLocation& o) const {
-    return ToTuple() < o.ToTuple();
-  }
-};
-MAKE_REFLECT_STRUCT(QueryLocation, range, path, role);
-MAKE_HASHABLE(QueryLocation, t.range, t.path, t.role);
-
 struct SymbolIdx {
   RawId idx;
   SymbolKind kind;
@@ -63,8 +37,6 @@ struct SymbolIdx {
 MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
 MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
 
-QueryFileId GetFileId(QueryDatabase* db, Reference ref);
-
 struct SymbolRef : Reference {
   SymbolRef() = default;
   SymbolRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
@@ -75,15 +47,6 @@ struct SymbolRef : Reference {
 
   RawId Idx() const { return RawId(id); }
   operator SymbolIdx() const { return SymbolIdx{Idx(), kind, }; }
-  QueryFunc& Func(QueryDatabase* db) const;
-  QueryType& Type(QueryDatabase* db) const;
-  QueryVar& Var(QueryDatabase* db) const;
-
-  QueryLocation OffsetStartColumn(QueryDatabase* db, int16_t offset) const {
-    QueryLocation ret = {range, GetFileId(db, *this), role};
-    ret.range.start.column += offset;
-    return ret;
-  }
 };
 
 struct QueryFuncRef : Reference {

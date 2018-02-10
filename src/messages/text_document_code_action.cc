@@ -69,22 +69,22 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
   for (SymbolRef sym : file->def->outline) {
     switch (sym.kind) {
       case SymbolKind::Func: {
-        QueryFunc& func = sym.Func(db);
+        QueryFunc& func = db->GetFunc(sym);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (func.def && func.def->definition_extent) {
-          QueryFileId t = GetFileId(db, *func.def->definition_extent);
+          QueryFileId t = db->GetFileId(*func.def->definition_extent);
           if (t != file_id)
             return t;
         }
         break;
       }
       case SymbolKind::Var: {
-        QueryVar& var = sym.Var(db);
+        QueryVar& var = db->GetVar(sym);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (var.def && var.def->definition_extent) {
-          QueryFileId t = GetFileId(db, *var.def->definition_extent);
+          QueryFileId t = db->GetFileId(*var.def->definition_extent);
           if (t != file_id)
             return t;
         }
@@ -151,7 +151,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
                                                    QueryFunc& func) {
   assert(func.def);
   for (const Reference& decl : func.declarations) {
-    if (GetFileId(db, decl) != decl_file_id)
+    if (db->GetFileId(decl) != decl_file_id)
       continue;
 
     optional<lsRange> ls_decl = GetLsRange(working_file, decl.range);
@@ -200,12 +200,12 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
       for (SymbolRef sym : file.def->outline) {
         switch (sym.kind) {
           case SymbolKind::Func: {
-            QueryFunc& sym_func = sym.Func(db);
+            QueryFunc& sym_func = db->GetFunc(sym);
             if (!sym_func.def || !sym_func.def->definition_extent)
               break;
 
             for (const Reference& func_decl : sym_func.declarations) {
-              if (GetFileId(db, func_decl) == decl_file_id) {
+              if (db->GetFileId(func_decl) == decl_file_id) {
                 int dist = func_decl.range.start.line - decl.range.start.line;
                 if (abs(dist) < abs(best_dist)) {
                   optional<lsLocation> def_loc = GetLsLocation(
@@ -346,7 +346,7 @@ struct TextDocumentCodeActionHandler
     for (SymbolRef sym : syms) {
       switch (sym.kind) {
         case SymbolKind::Type: {
-          QueryType& type = sym.Type(db);
+          QueryType& type = db->GetType(sym);
           if (!type.def)
             break;
 
@@ -397,7 +397,7 @@ struct TextDocumentCodeActionHandler
         }
 
         case SymbolKind::Func: {
-          QueryFunc& func = sym.Func(db);
+          QueryFunc& func = db->GetFunc(sym);
           if (!func.def || func.def->definition_extent)
             break;
 

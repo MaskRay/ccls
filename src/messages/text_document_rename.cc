@@ -16,7 +16,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
     if (!ls_location)
       continue;
 
-    QueryFileId file_id = GetFileId(db, ref);
+    QueryFileId file_id = db->GetFileId(ref);
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
       path_to_edit[file_id] = lsTextDocumentEdit();
 

@@ -79,7 +79,6 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     return {};
 
   std::vector<Out_CqueryCallTree::CallEntry> result;
-  std::unordered_set<QueryLocation> seen_locations;
 
   auto handle_caller = [&](QueryFuncRef caller,
                            Out_CqueryCallTree::CallType call_type) {

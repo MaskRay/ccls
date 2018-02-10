@@ -31,7 +31,7 @@ std::vector<Reference> GetGotoDefinitionTargets(QueryDatabase* db,
     case SymbolKind::Var: {
       std::vector<Reference> ret =
           GetDeclarationsOfSymbolForGotoDefinition(db, sym);
-      QueryVar& var = sym.Var(db);
+      QueryVar& var = db->GetVar(sym);
       if (var.def && var.def->variable_type) {
         std::vector<Reference> types = GetDeclarationsOfSymbolForGotoDefinition(
             db, SymbolRef(Range(), Id<void>(var.def->variable_type->id),

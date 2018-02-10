@@ -76,11 +76,15 @@ struct CommonCodeLensParams {
   WorkingFile* working_file;
 };
 
-// FIXME Reference
+SymbolRef OffsetStartColumn(SymbolRef sym, int16_t offset) {
+  sym.range.start.column += offset;
+  return sym;
+}
+
 void AddCodeLens(const char* singular,
                  const char* plural,
                  CommonCodeLensParams* common,
-                 QueryLocation loc,
+                 SymbolRef loc,
                  const std::vector<Reference>& uses,
                  bool force_display) {
   TCodeLens code_lens;
@@ -90,7 +94,8 @@ void AddCodeLens(const char* singular,
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "cquery.showReferences";
-  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, loc.FileId());
+  code_lens.command->arguments.uri =
+      GetLsDocumentUri(common->db, common->db->GetFileId(loc));
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
@@ -146,22 +151,21 @@ struct TextDocumentCodeLensHandler
 
       switch (sym.kind) {
         case SymbolKind::Type: {
-          QueryType& type = sym.Type(db);
+          QueryType& type = db->GetType(sym);
           if (!type.def)
             continue;
           if (type.def->kind == ClangSymbolKind::Namespace)
             continue;
-          AddCodeLens("ref", "refs", &common, sym.OffsetStartColumn(db, 0),
+          AddCodeLens("ref", "refs", &common, OffsetStartColumn(sym, 0),
                       type.uses, true /*force_display*/);
-          AddCodeLens("derived", "derived", &common,
-                      sym.OffsetStartColumn(db, 1),
+          AddCodeLens("derived", "derived", &common, OffsetStartColumn(sym, 1),
                       ToReference(db, type.derived), false /*force_display*/);
-          AddCodeLens("var", "vars", &common, sym.OffsetStartColumn(db, 2),
+          AddCodeLens("var", "vars", &common, OffsetStartColumn(sym, 2),
                       ToReference(db, type.instances), false /*force_display*/);
           break;
         }
         case SymbolKind::Func: {
-          QueryFunc& func = sym.Func(db);
+          QueryFunc& func = db->GetFunc(sym);
           if (!func.def)
             continue;
 
@@ -187,27 +191,27 @@ struct TextDocumentCodeLensHandler
           if (base_callers.empty() && derived_callers.empty()) {
             SymbolRef loc = try_ensure_spelling(sym);
             AddCodeLens("call", "calls", &common,
-                        loc.OffsetStartColumn(db, offset++),
+                        OffsetStartColumn(loc, offset++),
                         ToReference(db, func.callers), true /*force_display*/);
           } else {
             SymbolRef loc = try_ensure_spelling(sym);
             AddCodeLens("direct call", "direct calls", &common,
-                        loc.OffsetStartColumn(db, offset++),
+                        OffsetStartColumn(loc, offset++),
                         ToReference(db, func.callers), false /*force_display*/);
             if (!base_callers.empty())
               AddCodeLens("base call", "base calls", &common,
-                          loc.OffsetStartColumn(db, offset++),
+                          OffsetStartColumn(loc, offset++),
                           ToReference(db, base_callers),
                           false /*force_display*/);
             if (!derived_callers.empty())
               AddCodeLens("derived call", "derived calls", &common,
-                          loc.OffsetStartColumn(db, offset++),
+                          OffsetStartColumn(loc, offset++),
                           ToReference(db, derived_callers),
                           false /*force_display*/);
           }
 
           AddCodeLens("derived", "derived", &common,
-                      sym.OffsetStartColumn(db, offset++),
+                      OffsetStartColumn(sym, offset++),
                       ToReference(db, func.derived), false /*force_display*/);
 
           // "Base"
@@ -234,7 +238,7 @@ struct TextDocumentCodeLensHandler
               }
             }
           } else {
-            AddCodeLens("base", "base", &common, sym.OffsetStartColumn(db, 1),
+            AddCodeLens("base", "base", &common, OffsetStartColumn(sym, 1),
                         ToReference(db, func.def->base),
                         false /*force_display*/);
           }
@@ -242,7 +246,7 @@ struct TextDocumentCodeLensHandler
           break;
         }
         case SymbolKind::Var: {
-          QueryVar& var = sym.Var(db);
+          QueryVar& var = db->GetVar(sym);
           if (!var.def)
             continue;
 
@@ -255,7 +259,7 @@ struct TextDocumentCodeLensHandler
           if (var.def->is_macro())
             force_display = false;
 
-          AddCodeLens("ref", "refs", &common, sym.OffsetStartColumn(db, 0),
+          AddCodeLens("ref", "refs", &common, OffsetStartColumn(sym, 0),
                       var.uses, force_display);
           break;
         }
