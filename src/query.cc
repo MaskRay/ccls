@@ -1003,7 +1003,7 @@ void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                                   RawId idx) {
   if (!symbol_idx->has_value()) {
     *symbol_idx = Id<void>(symbols.size());
-    symbols.push_back(SymbolIdx(kind, idx));
+    symbols.push_back(SymbolIdx{idx, kind});
   }
 }
 

@@ -171,7 +171,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
 
     optional<lsRange> loc = GetLsRange(working_file, sym.range);
     if (loc) {
-      auto key = SymbolIdx(sym.kind, RawId(sym.id));
+      auto key = SymbolIdx{RawId(sym.id), sym.kind};
       auto it = grouped_symbols.find(key);
       if (it != grouped_symbols.end()) {
         it->second.ranges.push_back(*loc);

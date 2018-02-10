@@ -47,13 +47,8 @@ MAKE_REFLECT_STRUCT(QueryLocation, range, path, role);
 MAKE_HASHABLE(QueryLocation, t.range, t.path, t.role);
 
 struct SymbolIdx {
-  SymbolKind kind;
   RawId idx;
-
-  SymbolIdx()
-      : kind(SymbolKind::Invalid),
-        idx(RawId(-1)) {}  // Default ctor needed by stdlib. Do not use.
-  SymbolIdx(SymbolKind kind, RawId idx) : kind(kind), idx(idx) {}
+  SymbolKind kind;
 
   bool operator==(const SymbolIdx& o) const {
     return kind == o.kind && idx == o.idx;
@@ -78,7 +73,7 @@ struct SymbolRef : Reference {
       : Reference{Range(), Id<void>(si.idx), si.kind, SymbolRole::None} {}
 
   RawId Idx() const { return RawId(id); }
-  operator SymbolIdx() const { return SymbolIdx(kind, Idx()); }
+  operator SymbolIdx() const { return SymbolIdx{Idx(), kind, }; }
   QueryFunc& Func(QueryDatabase* db) const;
   QueryType& Type(QueryDatabase* db) const;
   QueryVar& Var(QueryDatabase* db) const;

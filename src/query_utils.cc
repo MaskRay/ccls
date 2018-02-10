@@ -2,6 +2,8 @@
 
 #include "queue_manager.h"
 
+#include <loguru.hpp>
+
 #include <climits>
 #include <queue>
 
@@ -367,7 +369,10 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    Reference ref) {
   std::string path;
-  lsDocumentUri uri = GetLsDocumentUri(db, GetFileId(db, ref), &path);
+  QueryFileId file_id = GetFileId(db, ref);
+  if (!file_id.HasValue())
+    return nullopt;
+  lsDocumentUri uri = GetLsDocumentUri(db, file_id, &path);
   optional<lsRange> range =
       GetLsRange(working_files->GetFileByFilename(path), ref.range);
   if (!range)
