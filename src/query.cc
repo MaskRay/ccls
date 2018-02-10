@@ -97,11 +97,10 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.file = id_map.primary_file;
   if (var.definition_spelling)
     result.definition_spelling =
-        QueryLocation{*var.definition_spelling, id_map.primary_file,
-                      SymbolRole::Definition};
+        id_map.ToQuery(*var.definition_spelling, SymbolRole::Definition);
   if (var.definition_extent)
-    result.definition_extent = QueryLocation{
-        *var.definition_extent, id_map.primary_file, SymbolRole::None};
+    result.definition_extent =
+        id_map.ToQuery(*var.definition_extent, SymbolRole::None);
   result.variable_type = id_map.ToQuery(var.variable_type);
   if (result.parent_id)
     switch (var.parent_kind) {
@@ -394,32 +393,9 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
 
 }  // namespace
 
+// FIXME Reference Remove
 QueryFileId GetFileId(QueryDatabase* db, Reference ref) {
-  switch (ref.kind) {
-    case SymbolKind::Invalid:
-      break;
-    case SymbolKind::File:
-      return QueryFileId(ref.id);
-    case SymbolKind::Func: {
-      QueryFunc& file = db->funcs[ref.id.id];
-      if (file.def)
-        return file.def->file;
-      break;
-    }
-    case SymbolKind::Type: {
-      QueryType& type = db->types[ref.id.id];
-      if (type.def)
-        return type.def->file;
-      break;
-    }
-    case SymbolKind::Var: {
-      QueryVar& var = db->vars[ref.id.id];
-      if (var.def)
-        return var.def->file;
-      break;
-    }
-  }
-  return QueryFileId();
+  return db->GetFileId(ref);
 }
 
 QueryFunc& SymbolRef::Func(QueryDatabase* db) const {
@@ -471,8 +447,8 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
         *GetQueryVarIdFromUsr(query_db, entry.second, true);
 }
 
-QueryLocation IdMap::ToQuery(Range range, SymbolRole role) const {
-  return QueryLocation{range, primary_file, role};
+Reference IdMap::ToQuery(Range range, SymbolRole role) const {
+  return Reference{range, Id<void>(primary_file), SymbolKind:: File, role};
 }
 Reference IdMap::ToQuery(Reference ref) const {
   switch (ref.kind) {

@@ -18,32 +18,32 @@ int ComputeRangeSize(const Range& range) {
 
 }  // namespace
 
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const QueryTypeId& id) {
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  const QueryTypeId& id) {
   QueryType& type = db->types[id.id];
   if (type.def)
     return type.def->definition_spelling;
   return nullopt;
 }
 
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const QueryFuncId& id) {
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  const QueryFuncId& id) {
   QueryFunc& func = db->funcs[id.id];
   if (func.def)
     return func.def->definition_spelling;
   return nullopt;
 }
 
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const QueryVarId& id) {
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  const QueryVarId& id) {
   QueryVar& var = db->vars[id.id];
   if (var.def)
     return var.def->definition_spelling;
   return nullopt;
 }
 
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      SymbolRef sym) {
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = sym.Type(db);
@@ -72,8 +72,8 @@ optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
-                                                    SymbolRef sym) {
+optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
+                                                SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = sym.Type(db);
@@ -93,10 +93,8 @@ optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
         return var.def->definition_extent;
       break;
     }
-    case SymbolKind::File: {
-      return QueryLocation{Range(Position(0, 0), Position(0, 0)),
-                           QueryFileId(sym.Idx()), SymbolRole::None};
-    }
+    case SymbolKind::File:
+      return sym;
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -111,26 +109,25 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = sym.Type(db);
       if (type.def && type.def->definition_spelling)
-        return type.def->definition_spelling->FileId();
+        return db->GetFileId(*type.def->definition_spelling);
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = sym.Func(db);
       if (!func.declarations.empty())
-        return GetFileId(db, func.declarations[0]);
+        return db->GetFileId(func.declarations[0]);
       if (func.def && func.def->definition_spelling)
-        return func.def->definition_spelling->FileId();
+        return db->GetFileId(*func.def->definition_spelling);
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = sym.Var(db);
       if (var.def && var.def->definition_spelling)
-        return var.def->definition_spelling->FileId();
+        return db->GetFileId(*var.def->definition_spelling);
       break;
     }
-    case SymbolKind::File: {
+    case SymbolKind::File:
       return QueryFileId(sym.Idx());
-    }
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -197,18 +194,18 @@ std::vector<Reference> GetDeclarationsOfSymbolForGotoDefinition(
       // function has the postfix `ForGotoDefintion`, but it lets the user
       // jump to the start of a type if clicking goto-definition on the same
       // type from within the type definition.
-      QueryType& type = sym.Type(db);
+      QueryType& type = db->GetType(sym);
       if (type.def) {
-        optional<QueryLocation> declaration = type.def->definition_spelling;
-        if (declaration)
-          return {Reference(*declaration)};
+        Maybe<Reference> def = type.def->definition_spelling;
+        if (def)
+          return {*def};
       }
       break;
     }
     case SymbolKind::Func:
-      return sym.Func(db).declarations;
+      return db->GetFunc(sym).declarations;
     case SymbolKind::Var:
-      return sym.Var(db).declarations;
+      return db->GetVar(sym).declarations;
     default:
       break;
   }

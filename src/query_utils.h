@@ -7,16 +7,16 @@
 
 #include <optional.h>
 
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const QueryTypeId& id);
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const QueryFuncId& id);
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      const QueryVarId& id);
-optional<QueryLocation> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                      SymbolRef sym);
-optional<QueryLocation> GetDefinitionExtentOfSymbol(QueryDatabase* db,
-                                                    SymbolRef sym);
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  const QueryTypeId& id);
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  const QueryFuncId& id);
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  const QueryVarId& id);
+optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                                  SymbolRef sym);
+optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
+                                                SymbolRef sym);
 optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                   SymbolRef sym);
 
@@ -29,7 +29,7 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   std::vector<Reference> ret;
   ret.reserve(ids.size());
   for (auto id : ids) {
-    optional<QueryLocation> loc = GetDefinitionSpellingOfSymbol(db, id);
+    optional<Reference> loc = GetDefinitionSpellingOfSymbol(db, id);
     if (loc)
       ret.push_back(*loc);
   }

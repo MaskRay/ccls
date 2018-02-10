@@ -69,6 +69,7 @@ struct SymbolRef : Reference {
   SymbolRef() = default;
   SymbolRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
       : Reference{range, id, kind, role} {}
+  SymbolRef(Reference ref) : Reference{ref} {}
   SymbolRef(SymbolIdx si)
       : Reference{Range(), Id<void>(si.idx), si.kind, SymbolRole::None} {}
 
@@ -202,7 +203,7 @@ struct QueryType {
                                     QueryTypeId,
                                     QueryFuncId,
                                     QueryVarId,
-                                    QueryLocation>;
+                                    Reference>;
   using DefUpdate = WithUsr<Def>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
@@ -224,7 +225,7 @@ struct QueryFunc {
                                     QueryFuncId,
                                     QueryVarId,
                                     QueryFuncRef,
-                                    QueryLocation>;
+                                    Reference>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Reference>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
@@ -245,7 +246,7 @@ struct QueryVar {
                                    QueryTypeId,
                                    QueryFuncId,
                                    QueryVarId,
-                                   QueryLocation>;
+                                   Reference>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryVarId, Reference>;
   using UsesUpdate = MergeableUpdate<QueryVarId, Reference>;
@@ -369,6 +370,46 @@ struct QueryDatabase {
   Maybe<QueryTypeId> GetQueryTypeIdFromUsr(Usr usr);
   Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
   Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
+
+  QueryFileId GetFileId(Reference ref) {
+    switch (ref.kind) {
+      case SymbolKind::Invalid:
+        break;
+      case SymbolKind::File:
+        return QueryFileId(ref.id);
+      case SymbolKind::Func: {
+        QueryFunc& file = funcs[ref.id.id];
+        if (file.def)
+          return file.def->file;
+        break;
+      }
+      case SymbolKind::Type: {
+        QueryType& type = types[ref.id.id];
+        if (type.def)
+          return type.def->file;
+        break;
+      }
+      case SymbolKind::Var: {
+        QueryVar& var = vars[ref.id.id];
+        if (var.def)
+          return var.def->file;
+        break;
+      }
+    }
+    return QueryFileId();
+  }
+  QueryFile& GetFile(Reference ref) {
+    return files[ref.id.id];
+  }
+  QueryFunc& GetFunc(Reference ref) {
+    return funcs[ref.id.id];
+  }
+  QueryType& GetType(Reference ref) {
+    return types[ref.id.id];
+  }
+  QueryVar& GetVar(Reference ref) {
+    return vars[ref.id.id];
+  }
 };
 
 template <typename I>
@@ -399,7 +440,7 @@ struct IdMap {
 
   // FIXME Too verbose
   // clang-format off
-  QueryLocation ToQuery(Range range, SymbolRole role) const;
+  Reference ToQuery(Range range, SymbolRole role) const;
   Reference ToQuery(Reference ref) const;
   QueryTypeId ToQuery(IndexTypeId id) const;
   QueryFuncId ToQuery(IndexFuncId id) const;

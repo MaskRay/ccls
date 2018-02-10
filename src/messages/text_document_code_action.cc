@@ -72,9 +72,10 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         QueryFunc& func = sym.Func(db);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (func.def && func.def->definition_extent &&
-            func.def->definition_extent->FileId() != file_id) {
-          return func.def->definition_extent->FileId();
+        if (func.def && func.def->definition_extent) {
+          QueryFileId t = GetFileId(db, *func.def->definition_extent);
+          if (t != file_id)
+            return t;
         }
         break;
       }
@@ -82,9 +83,10 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         QueryVar& var = sym.Var(db);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (var.def && var.def->definition_extent &&
-            var.def->definition_extent->FileId() != file_id) {
-          return var.def->definition_extent->FileId();
+        if (var.def && var.def->definition_extent) {
+          QueryFileId t = GetFileId(db, *var.def->definition_extent);
+          if (t != file_id)
+            return t;
         }
         break;
       }

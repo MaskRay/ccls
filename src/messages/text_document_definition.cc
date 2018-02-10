@@ -74,12 +74,12 @@ struct TextDocumentDefinitionHandler
       //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
 
-      optional<QueryLocation> def_loc = GetDefinitionSpellingOfSymbol(db, sym);
+      optional<Reference> def_loc = GetDefinitionSpellingOfSymbol(db, sym);
 
       // We use spelling start and extent end because this causes vscode to
       // highlight the entire definition when previewing / hoving with the
       // mouse.
-      optional<QueryLocation> def_extent = GetDefinitionExtentOfSymbol(db, sym);
+      optional<Reference> def_extent = GetDefinitionExtentOfSymbol(db, sym);
       if (def_loc && def_extent)
         def_loc->range.end = def_extent->range.end;
 
@@ -87,7 +87,7 @@ struct TextDocumentDefinitionHandler
       // the declaration if possible. We also want to use declarations if
       // we're pointing to, ie, a pure virtual function which has no
       // definition.
-      if (!def_loc || (def_loc->FileId() == file_id &&
+      if (!def_loc || (db->GetFileId(*def_loc) == file_id &&
                        def_loc->range.Contains(target_line, target_column))) {
         // Goto declaration.
 
