@@ -33,7 +33,7 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
                        return (a.role & SymbolRole::Definition) >
                               (b.role & SymbolRole::Definition);
                      });
-    for (const SymbolRef& sym : syms) {
+    for (SymbolRef sym : syms) {
       if (sym.kind == SymbolKind::Type) {
         QueryType& type = db->GetType(sym);
         if (type.def)
@@ -43,8 +43,8 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
         if (func.def)
-          out.result =
-            GetLsLocations(db, working_files, ToReference(db, func.def->base));
+          out.result = GetLsLocations(db, working_files,
+                                      ToReference(db, func.def->base));
         break;
       }
     }

@@ -19,26 +19,10 @@ int ComputeRangeSize(const Range& range) {
 }  // namespace
 
 optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  const QueryTypeId& id) {
-  QueryType& type = db->types[id.id];
-  if (type.def)
-    return type.def->definition_spelling;
-  return nullopt;
-}
-
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                   const QueryFuncId& id) {
   QueryFunc& func = db->funcs[id.id];
   if (func.def)
     return func.def->definition_spelling;
-  return nullopt;
-}
-
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  const QueryVarId& id) {
-  QueryVar& var = db->vars[id.id];
-  if (var.def)
-    return var.def->definition_spelling;
   return nullopt;
 }
 
@@ -142,6 +126,46 @@ std::vector<Reference> ToReference(QueryDatabase* db,
   ret.reserve(refs.size());
   for (auto& ref : refs)
     ret.push_back(ref);
+  return ret;
+}
+
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryFuncId>& ids) {
+  std::vector<Reference> ret;
+  ret.reserve(ids.size());
+  for (auto id : ids) {
+    QueryFunc& func = db->funcs[id.id];
+    if (func.def && func.def->definition_spelling)
+      ret.push_back(*func.def->definition_spelling);
+    else if (func.declarations.size())
+      ret.push_back(func.declarations[0]);
+  }
+  return ret;
+}
+
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryTypeId>& ids) {
+  std::vector<Reference> ret;
+  ret.reserve(ids.size());
+  for (auto id : ids) {
+    QueryType& type = db->types[id.id];
+    if (type.def && type.def->definition_spelling)
+      ret.push_back(*type.def->definition_spelling);
+  }
+  return ret;
+}
+
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryVarId>& ids) {
+  std::vector<Reference> ret;
+  ret.reserve(ids.size());
+  for (auto id : ids) {
+    QueryVar& var = db->vars[id.id];
+    if (var.def && var.def->definition_spelling)
+      ret.push_back(*var.def->definition_spelling);
+    else if (var.declarations.size())
+      ret.push_back(var.declarations[0]);
+  }
   return ret;
 }
 

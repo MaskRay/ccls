@@ -87,7 +87,7 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
     Out_TextDocumentHover out;
     out.id = request->id;
 
-    for (const SymbolRef& sym :
+    for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return hover.
       optional<lsRange> ls_range = GetLsRange(

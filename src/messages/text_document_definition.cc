@@ -65,7 +65,7 @@ struct TextDocumentDefinitionHandler
     int target_line = request->params.position.line;
     int target_column = request->params.position.character;
 
-    for (const SymbolRef& sym :
+    for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return definition.
 

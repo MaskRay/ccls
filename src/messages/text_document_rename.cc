@@ -95,7 +95,7 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
     Out_TextDocumentRename out;
     out.id = request->id;
 
-    for (const SymbolRef& sym :
+    for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to rename.
       out.result = BuildWorkspaceEdit(db, working_files,

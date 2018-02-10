@@ -8,11 +8,7 @@
 #include <optional.h>
 
 optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  const QueryTypeId& id);
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                   const QueryFuncId& id);
-optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                                  const QueryVarId& id);
 optional<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                   SymbolRef sym);
 optional<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db,
@@ -22,19 +18,12 @@ optional<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
 
 std::vector<Reference> ToReference(QueryDatabase* db,
                                    const std::vector<QueryFuncRef>& refs);
-
-template <typename Q>
 std::vector<Reference> ToReference(QueryDatabase* db,
-                                   const std::vector<Id<Q>>& ids) {
-  std::vector<Reference> ret;
-  ret.reserve(ids.size());
-  for (auto id : ids) {
-    optional<Reference> loc = GetDefinitionSpellingOfSymbol(db, id);
-    if (loc)
-      ret.push_back(*loc);
-  }
-  return ret;
-}
+                                   const std::vector<QueryFuncId>& ids);
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryTypeId>& ids);
+std::vector<Reference> ToReference(QueryDatabase* db,
+                                   const std::vector<QueryVarId>& ids);
 
 std::vector<Reference> GetUsesOfSymbol(QueryDatabase* db,
                                        SymbolRef sym,
