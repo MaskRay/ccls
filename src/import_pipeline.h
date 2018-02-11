@@ -43,9 +43,6 @@ void Indexer_Main(Config* config,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter);
 
-struct BaseIpcMessage;
-void QueryDb_Handle(std::unique_ptr<BaseIpcMessage>& message);
-
 bool QueryDb_ImportMain(Config* config,
                         QueryDatabase* db,
                         ImportManager* import_manager,

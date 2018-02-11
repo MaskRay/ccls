@@ -144,7 +144,13 @@ bool QueryDbMainLoop(Config* config,
       queue->for_querydb.DequeueAll();
   bool did_work = messages.size();
   for (auto& message : messages) {
-    QueryDb_Handle(message);
+    for (MessageHandler* handler : *MessageHandler::message_handlers) {
+      if (handler->GetId() == message->method_id) {
+        handler->Run(std::move(message));
+        break;
+      }
+    }
+
     if (message) {
       LOG_S(FATAL) << "Exiting; unhandled IPC message "
                    << IpcIdToString(message->method_id);

@@ -609,15 +609,6 @@ void Indexer_Main(Config* config,
   }
 }
 
-void QueryDb_Handle(std::unique_ptr<BaseIpcMessage>& message) {
-  for (MessageHandler* handler : *MessageHandler::message_handlers) {
-    if (handler->GetId() == message->method_id) {
-      handler->Run(std::move(message));
-      break;
-    }
-  }
-}
-
 namespace {
 void QueryDb_DoIdMap(QueueManager* queue,
                      QueryDatabase* db,
