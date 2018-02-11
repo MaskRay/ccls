@@ -14,7 +14,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryTypeHierarchyTree);
 struct Out_CqueryTypeHierarchyTree
     : public lsOutMessage<Out_CqueryTypeHierarchyTree> {
   struct TypeEntry {
-    std::string name;
+    std::string_view name;
     optional<lsLocation> location;
     std::vector<TypeEntry> children;
   };
@@ -36,7 +36,7 @@ BuildParentInheritanceHierarchyForType(QueryDatabase* db,
 
   EachWithGen(db->types, root_type.def->parents, [&](QueryType& parent_type) {
     Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-    parent_entry.name = parent_type.def->detailed_name;
+    parent_entry.name = parent_type.def->detailed_name.c_str();
     if (parent_type.def->spell)
       parent_entry.location = GetLsLocation(
           db, working_files, *parent_type.def->spell);

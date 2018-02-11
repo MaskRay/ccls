@@ -1,6 +1,7 @@
 #pragma once
 
 #include "maybe.h"
+#include "ntstring.h"
 #include "port.h"
 
 #include <macro_map.h>
@@ -160,8 +161,8 @@ void Reflect(Writer& visitor, std::string& value);
 void Reflect(Reader& visitor, std::string_view& view);
 void Reflect(Writer& visitor, std::string_view& view);
 
-void Reflect(Reader& visitor, std::unique_ptr<char[]>& value);
-void Reflect(Writer& visitor, std::unique_ptr<char[]>& value);
+void Reflect(Reader& visitor, NTString& value);
+void Reflect(Writer& visitor, NTString& value);
 
 // std::monostate is used to represent JSON null
 void Reflect(Reader& visitor, std::monostate&);

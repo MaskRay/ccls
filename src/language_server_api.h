@@ -180,7 +180,7 @@ MAKE_REFLECT_STRUCT(lsLocation, uri, range);
 
 // cquery extension
 struct lsLocationEx : lsLocation {
-  optional<std::string> containerName;
+  optional<std::string_view> containerName;
 };
 MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName);
 

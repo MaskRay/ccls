@@ -434,6 +434,25 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
   return result;
 }
 
+void SetUsePreflight(IndexFile* db, ClangCursor lex_parent) {
+  switch (GetSymbolKind(lex_parent.get_kind())) {
+  default:
+    break;
+  case SymbolKind::Func: {
+    (void)db->ToFuncId(lex_parent.cx_cursor);
+    break;
+  }
+  case SymbolKind::Type: {
+    (void)db->ToTypeId(lex_parent.cx_cursor);
+    break;
+  }
+  case SymbolKind::Var: {
+    (void)db->ToVarId(lex_parent.cx_cursor);
+    break;
+  }
+  }
+}
+
 void SetUse(IndexFile* db, Maybe<Use>* def, Range range, ClangCursor lex_parent, Role role) {
   switch (GetSymbolKind(lex_parent.get_kind())) {
   default:
@@ -561,8 +580,8 @@ void SetVarDetail(IndexVar* var,
     def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
     def.hover = std::move(qualified_name);
 #else
-    def.detailed_name = std::move(type_name);
-    ConcatTypeAndName(def.detailed_name, qualified_name);
+    ConcatTypeAndName(type_name, qualified_name);
+    def.detailed_name = type_name;
     // Append the textual initializer, bit field, constructor to |hover|.
     // Omit |hover| for these types:
     // int (*a)(); int (&a)(); int (&&a)(); int a[1]; auto x = ...
@@ -580,7 +599,7 @@ void SetVarDetail(IndexVar* var,
       optional<int> spell_end = fc.ToOffset(cursor.get_spelling_range().end);
       optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
       if (extent_end && *spell_end < *extent_end)
-        def.hover = def.detailed_name +
+        def.hover = std::string(def.detailed_name.c_str()) +
                     fc.content.substr(*spell_end, *extent_end - *spell_end);
     }
 #endif
@@ -1210,21 +1229,22 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       else
         decl_usr = cursor.get_referenced().get_usr_hash();
 
+      SetUsePreflight(db, parent);
       IndexVar* var_def = db->Resolve(db->ToVarId(decl_usr));
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
         CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
         var_def->def.detailed_name = cursor.get_display_name();
         var_def->def.short_name_offset = 0;
-        var_def->def.short_name_size = int(var_def->def.detailed_name.size());
+        var_def->def.short_name_size =
+            int16_t(strlen(var_def->def.detailed_name.c_str()));
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.kind = ClangSymbolKind::Macro;
         var_def->def.comments = cursor.get_comments();
-        ClangCursor lex_parent;
-        SetUse(db, &var_def->def.spell, decl_loc_spelling, lex_parent,
+        SetUse(db, &var_def->def.spell, decl_loc_spelling, parent,
                Role::Definition);
         SetUse(db, &var_def->def.extent,
-               ResolveCXSourceRange(cx_extent, nullptr), lex_parent, Role::None);
+               ResolveCXSourceRange(cx_extent, nullptr), parent, Role::None);
       } else
         UniqueAddUse(db, var_def->uses, decl_loc_spelling, parent);
 
@@ -1257,6 +1277,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_DeclRefExpr: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
+        SetUsePreflight(db, parent);
         IndexVar* ref_var =
             db->Resolve(db->ToVarId(ref_cursor.get_usr_hash()));
         if (ref_var->def.detailed_name.empty()) {
@@ -1305,6 +1326,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TemplateRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTemplateParameter) {
+        SetUsePreflight(db, parent);
         IndexType* ref_index =
             db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
         // TODO It seems difficult to get references to template template
@@ -1321,7 +1343,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.detailed_name = ref_cursor.get_spelling();
 #endif
           ref_index->def.short_name_offset = 0;
-          ref_index->def.short_name_size = ref_index->def.detailed_name.size();
+          ref_index->def.short_name_size =
+              int16_t(strlen(ref_index->def.detailed_name.c_str()));
           ref_index->def.kind = ClangSymbolKind::Parameter;
         }
         UniqueAddUseSpell(db, ref_index->uses, cursor);
@@ -1331,6 +1354,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TypeRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
+        SetUsePreflight(db, parent);
         IndexType* ref_index =
             db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
         // TODO It seems difficult to get a FunctionTemplate's template
@@ -1347,7 +1371,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_index->def.detailed_name = ref_cursor.get_spelling();
 #endif
           ref_index->def.short_name_offset = 0;
-          ref_index->def.short_name_size = ref_index->def.detailed_name.size();
+          ref_index->def.short_name_size =
+              int16_t(strlen(ref_index->def.detailed_name.c_str()));
           ref_index->def.kind = ClangSymbolKind::Parameter;
         }
         UniqueAddUseSpell(db, ref_index->uses, cursor);
@@ -1455,6 +1480,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
   NamespaceHelper* ns = &param->ns;
   ClangCursor lex_parent(fromContainer(decl->lexicalContainer));
+  SetUsePreflight(db, lex_parent);
 
   switch (decl->entityInfo->kind) {
     case CXIdxEntity_CXXNamespace: {
@@ -1745,7 +1771,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         if (extent_start && spell_start && spell_end && extent_end) {
           type->def.hover =
               fc.content.substr(*extent_start, *spell_start - *extent_start) +
-              type->def.detailed_name +
+              type->def.detailed_name.c_str() +
               fc.content.substr(*spell_end, *extent_end - *spell_end);
         }
       }
@@ -1935,6 +1961,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
   ClangCursor cursor(ref->cursor);
   ClangCursor lex_parent(fromContainer(ref->container));
+  SetUsePreflight(db, lex_parent);
 
   switch (ref->referencedEntity->kind) {
     case CXIdxEntity_CXXNamespaceAlias:

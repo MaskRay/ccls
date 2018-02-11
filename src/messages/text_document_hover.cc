@@ -11,25 +11,28 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
     case SymbolKind::Type: {
       QueryType& type = db->types[sym.Idx()];
       if (type.def)
-        return {type.def->comments, type.def->hover.size()
-                                        ? type.def->hover
-                                        : type.def->detailed_name};
+        return {type.def->comments,
+                !type.def->hover.empty()
+                    ? std::string_view(type.def->hover)
+                    : std::string_view(type.def->detailed_name)};
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->funcs[sym.Idx()];
       if (func.def)
-        return {func.def->comments, func.def->hover.size()
-                                        ? func.def->hover
-                                        : func.def->detailed_name};
+        return {func.def->comments,
+                !func.def->hover.empty()
+                    ? std::string_view(func.def->hover)
+                    : std::string_view(func.def->detailed_name)};
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->vars[sym.Idx()];
       if (var.def)
-        return {var.def->comments, var.def->hover.size()
-                                       ? var.def->hover
-                                       : var.def->detailed_name};
+        return {var.def->comments,
+                !var.def->hover.empty()
+                    ? std::string_view(var.def->hover)
+                    : std::string_view(var.def->detailed_name)};
       break;
     }
     case SymbolKind::File:

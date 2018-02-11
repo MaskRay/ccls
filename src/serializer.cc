@@ -125,18 +125,14 @@ void Reflect(Writer& visitor, std::string_view& data) {
     visitor.String(&data[0], (rapidjson::SizeType)data.size());
 }
 
-void Reflect(Reader& visitor, std::unique_ptr<char[]>& value) {
+void Reflect(Reader& visitor, NTString& value) {
   if (!visitor.IsString())
     throw std::invalid_argument("std::string");
-  std::string t = visitor.GetString();
-  value = std::unique_ptr<char[]>(new char[t.size() + 1]);
-  strcpy(value.get(), t.c_str());
+  value = visitor.GetString();
 }
-void Reflect(Writer& visitor, std::unique_ptr<char[]>& value) {
-  if (!value)
-    visitor.String("");
-  else
-    visitor.String(value.get());
+void Reflect(Writer& visitor, NTString& value) {
+  const char* s = value.c_str();
+  visitor.String(s ? s : "");
 }
 
 // TODO: Move this to indexer.cc
@@ -169,9 +165,9 @@ void ReflectHoverAndComments(Reader& visitor, Def& def) {
 template <typename Def>
 void ReflectHoverAndComments(Writer& visitor, Def& def) {
   // Don't emit empty hover and comments in JSON test mode.
-  if (!gTestOutputMode || def.hover.size())
+  if (!gTestOutputMode || !def.hover.empty())
     ReflectMember(visitor, "hover", def.hover);
-  if (!gTestOutputMode || def.comments.size())
+  if (!gTestOutputMode || !def.comments.empty())
     ReflectMember(visitor, "comments", def.comments);
 }
 
@@ -192,8 +188,8 @@ void ReflectShortName(Reader& visitor, Def& def) {
 template <typename Def>
 void ReflectShortName(Writer& visitor, Def& def) {
   if (gTestOutputMode) {
-    std::string short_name =
-        def.detailed_name.substr(def.short_name_offset, def.short_name_size);
+    std::string short_name(
+        def.detailed_name.substr(def.short_name_offset, def.short_name_size));
     ReflectMember(visitor, "short_name", short_name);
   } else {
     ReflectMember(visitor, "short_name_offset", def.short_name_offset);
