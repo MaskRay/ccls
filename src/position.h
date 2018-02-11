@@ -15,7 +15,7 @@ struct Position {
   Position(int16_t line, int16_t column);
   explicit Position(const char* encoded);
 
-  bool HasValue() const { return line >= 0; }
+  bool HasValueForMaybe_() const { return line >= 0; }
   std::string ToString();
   std::string ToPrettyString(const std::string& filename);
 
@@ -39,7 +39,7 @@ struct Range {
   Range(Position start, Position end);
   explicit Range(const char* encoded);
 
-  bool HasValue() const { return start.HasValue(); }
+  bool HasValueForMaybe_() const { return start.HasValueForMaybe_(); }
   bool Contains(int line, int column) const;
   Range RemovePrefix(Position position) const;
 

@@ -63,7 +63,7 @@ struct Id {
   // Needed for google::dense_hash_map.
   explicit operator RawId() const { return id; }
 
-  bool HasValue() const { return id != RawId(-1); }
+  bool HasValueForMaybe_() const { return id != RawId(-1); }
 
   bool operator==(const Id& o) const { return id == o.id; }
   bool operator!=(const Id& o) const { return id != o.id; }
@@ -112,7 +112,7 @@ struct Reference {
   SymbolKind kind;
   Role role;
 
-  bool HasValue() const { return range.HasValue(); }
+  bool HasValueForMaybe_() const { return range.HasValueForMaybe_(); }
   operator SymbolIdx() const { return {id, kind}; }
   std::tuple<Range, Id<void>, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, id, kind, role);

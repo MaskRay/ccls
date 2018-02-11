@@ -4,6 +4,8 @@
 
 #include <utility>
 
+// Like optional, but the stored data is responsible for containing the empty
+// state. T should define a function `bool T::HasValueForMaybe_()`.
 template <typename T>
 class Maybe {
   T storage;
@@ -27,7 +29,7 @@ public:
   T& operator*() { return storage; }
 
   bool has_value() const {
-    return storage.HasValue();
+    return storage.HasValueForMaybe_();
   }
   explicit operator bool() const { return has_value(); }
   operator optional<T>() const {
