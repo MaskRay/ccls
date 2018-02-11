@@ -57,6 +57,7 @@ enum class IpcId : int {
   CqueryCallers,  // Show all callers of a function.
   CqueryBase,     // Show base types/method.
   CqueryDerived,  // Show all derived types/methods.
+  CqueryRandom,   // Show random definition.
 
   // Internal implementation detail.
   Unknown,

@@ -35,13 +35,6 @@ class NTString {
     const char *p = strstr(c_str(), s);
     return p ? std::string::size_type(p - c_str()) : std::string::npos;
   }
-  size_type find(const char* s, size_type pos, size_type cnt) {
-    auto* p = (const char*)memmem(c_str() + pos, strlen(c_str()) - pos, s, cnt);
-    return p ? std::string::size_type(p - c_str()) : std::string::npos;
-  }
-  size_type find(std::string_view sv) {
-    return find(sv.data(), 0, sv.size());
-  }
 
   void operator=(std::string_view sv) {
     str = std::unique_ptr<char[]>(new char[sv.size() + 1]);

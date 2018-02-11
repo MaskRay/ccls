@@ -86,6 +86,8 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/base";
     case IpcId::CqueryDerived:
       return "$cquery/derived";
+    case IpcId::CqueryRandom:
+      return "$cquery/random";
 
     case IpcId::Unknown:
       return "$unknown";
