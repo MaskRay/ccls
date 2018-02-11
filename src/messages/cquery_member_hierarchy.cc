@@ -40,10 +40,10 @@ MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 std::vector<Out_CqueryMemberHierarchy::Entry>
 BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   QueryType& root_type = db->types[root.id];
-  if (!root_type.def || !root_type.def->definition_spelling)
+  if (!root_type.def || !root_type.def->spell)
     return {};
   optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *root_type.def->definition_spelling);
+      GetLsLocation(db, working_files, *root_type.def->spell);
   if (!def_loc)
     return {};
 
@@ -67,9 +67,9 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     // FIXME WithGen
     entry.type_id =
         var.def->variable_type ? var.def->variable_type->id : RawId(-1);
-    if (var.def->definition_spelling) {
+    if (var.def->spell) {
       optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *var.def->definition_spelling);
+          GetLsLocation(db, working_files, *var.def->spell);
       // TODO invalid location
       if (loc)
         entry.location = *loc;

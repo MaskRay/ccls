@@ -30,8 +30,8 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
     // Order by |Definition| DESC, range size ASC.
     std::stable_sort(syms.begin(), syms.end(),
                      [](const SymbolRef& a, const SymbolRef& b) {
-                       return (a.role & SymbolRole::Definition) >
-                              (b.role & SymbolRole::Definition);
+                       return (a.role & Role::Definition) >
+                              (b.role & Role::Definition);
                      });
     for (SymbolRef sym : syms) {
       if (sym.kind == SymbolKind::Type) {

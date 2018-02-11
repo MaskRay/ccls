@@ -53,10 +53,10 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
     WorkingFiles* working_files,
     QueryFuncId root) {
   QueryFunc& root_func = db->funcs[root.id];
-  if (!root_func.def || !root_func.def->definition_spelling)
+  if (!root_func.def || !root_func.def->spell)
     return {};
   optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *root_func.def->definition_spelling);
+      GetLsLocation(db, working_files, *root_func.def->spell);
   if (!def_loc)
     return {};
 

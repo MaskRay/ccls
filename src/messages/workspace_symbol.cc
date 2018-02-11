@@ -22,8 +22,8 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
   if (!info)
     return false;
 
-  Maybe<Reference> location = GetDefinitionExtentOfSymbol(db, symbol);
-  Reference loc;
+  Maybe<Use> location = GetDefinitionExtentOfSymbol(db, symbol);
+  Use loc;
   if (location)
     loc = *location;
   else {

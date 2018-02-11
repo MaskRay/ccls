@@ -72,8 +72,8 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         QueryFunc& func = db->GetFunc(sym);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (func.def && func.def->definition_extent) {
-          QueryFileId t = db->GetFileId(*func.def->definition_extent);
+        if (func.def && func.def->extent) {
+          QueryFileId t = db->GetFileId(*func.def->extent);
           if (t != file_id)
             return t;
         }
@@ -83,8 +83,8 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         QueryVar& var = db->GetVar(sym);
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (var.def && var.def->definition_extent) {
-          QueryFileId t = db->GetFileId(*var.def->definition_extent);
+        if (var.def && var.def->extent) {
+          QueryFileId t = db->GetFileId(*var.def->extent);
           if (t != file_id)
             return t;
         }
@@ -164,10 +164,10 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
       QueryType& declaring_type = db->types[func.def->declaring_type->id];
       if (declaring_type.def) {
         type_name = std::string(declaring_type.def->ShortName());
-        optional<lsRange> ls_type_def_extent = GetLsRange(
-            working_file, declaring_type.def->definition_extent->range);
-        if (ls_type_def_extent) {
-          same_file_insert_end = ls_type_def_extent->end;
+        optional<lsRange> ls_type_extent = GetLsRange(
+            working_file, declaring_type.def->extent->range);
+        if (ls_type_extent) {
+          same_file_insert_end = ls_type_extent->end;
           same_file_insert_end->character += 1;  // move past semicolon.
         }
       }
@@ -201,7 +201,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
         switch (sym.kind) {
           case SymbolKind::Func: {
             QueryFunc& sym_func = db->GetFunc(sym);
-            if (!sym_func.def || !sym_func.def->definition_extent)
+            if (!sym_func.def || !sym_func.def->extent)
               break;
 
             for (const Reference& func_decl : sym_func.declarations) {
@@ -209,7 +209,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
                 int dist = func_decl.range.start.line - decl.range.start.line;
                 if (abs(dist) < abs(best_dist)) {
                   optional<lsLocation> def_loc = GetLsLocation(
-                      db, working_files, *sym_func.def->definition_extent);
+                      db, working_files, *sym_func.def->extent);
                   if (!def_loc)
                     continue;
 
@@ -356,7 +356,7 @@ struct TextDocumentCodeActionHandler
           Out_TextDocumentCodeAction::Command command;
 
           EachWithGen(db->funcs, type.def->funcs, [&](QueryFunc& func_def) {
-            if (func_def.def->definition_extent)
+            if (func_def.def->extent)
               return;
             EnsureImplFile(db, file_id, impl_uri /*out*/, impl_file_id /*out*/);
             optional<lsTextEdit> edit = BuildAutoImplementForFunction(
@@ -398,7 +398,7 @@ struct TextDocumentCodeActionHandler
 
         case SymbolKind::Func: {
           QueryFunc& func = db->GetFunc(sym);
-          if (!func.def || func.def->definition_extent)
+          if (!func.def || func.def->extent)
             break;
 
           EnsureImplFile(db, file_id, impl_uri /*out*/, impl_file_id /*out*/);

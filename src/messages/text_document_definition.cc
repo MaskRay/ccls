@@ -35,7 +35,7 @@ std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db,
       if (var.def && var.def->variable_type) {
         std::vector<Use> types = GetDeclarationsOfSymbolForGotoDefinition(
             db, SymbolRef(Range(), Id<void>(var.def->variable_type->id),
-                          SymbolKind::Type, SymbolRole::None));
+                          SymbolKind::Type, Role::None));
         ret.insert(ret.end(), types.begin(), types.end());
       }
       return ret;
@@ -79,9 +79,9 @@ struct TextDocumentDefinitionHandler
       // We use spelling start and extent end because this causes vscode to
       // highlight the entire definition when previewing / hoving with the
       // mouse.
-      Maybe<Reference> def_extent = GetDefinitionExtentOfSymbol(db, sym);
-      if (def_loc && def_extent)
-        def_loc->range.end = def_extent->range.end;
+      Maybe<Use> extent = GetDefinitionExtentOfSymbol(db, sym);
+      if (def_loc && extent)
+        def_loc->range.end = extent->range.end;
 
       // If the cursor is currently at or in the definition we should goto
       // the declaration if possible. We also want to use declarations if

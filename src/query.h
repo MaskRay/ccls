@@ -363,7 +363,7 @@ struct IdMap {
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
   SymbolRef ToQuery(SymbolRef ref) const;
-  Use ToQuery(Range range, SymbolRole role) const;
+  Use ToQuery(Range range, Role role) const;
   Use ToQuery(Reference ref) const;
   Use ToQuery(Use ref) const;
   Use ToQuery(IndexFunc::Declaration decl) const;

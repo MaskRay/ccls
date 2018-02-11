@@ -43,12 +43,8 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.hover = type.hover;
   result.comments = type.comments;
   result.file = id_map.primary_file;
-  if (type.definition_spelling)
-    result.definition_spelling =
-        id_map.ToQuery(*type.definition_spelling, SymbolRole::Definition);
-  if (type.definition_extent)
-    result.definition_extent =
-        id_map.ToQuery(*type.definition_extent, SymbolRole::None);
+  result.spell = id_map.ToQuery(type.spell);
+  result.extent = id_map.ToQuery(type.extent);
   result.alias_of = id_map.ToQuery(type.alias_of);
   result.parents = id_map.ToQuery(type.parents);
   result.types = id_map.ToQuery(type.types);
@@ -71,12 +67,12 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.hover = func.hover;
   result.comments = func.comments;
   result.file = id_map.primary_file;
-  if (func.definition_spelling)
-    result.definition_spelling =
-        id_map.ToQuery(*func.definition_spelling, SymbolRole::Definition);
-  if (func.definition_extent)
-    result.definition_extent =
-        id_map.ToQuery(*func.definition_extent, SymbolRole::None);
+  if (func.spell)
+    result.spell =
+        id_map.ToQuery(*func.spell, Role::Definition);
+  if (func.extent)
+    result.extent =
+        id_map.ToQuery(*func.extent, Role::None);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
   result.base = id_map.ToQuery(func.base);
   result.locals = id_map.ToQuery(func.locals);
@@ -95,12 +91,10 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.hover = var.hover;
   result.comments = var.comments;
   result.file = id_map.primary_file;
-  if (var.definition_spelling)
-    result.definition_spelling =
-        id_map.ToQuery(*var.definition_spelling, SymbolRole::Definition);
-  if (var.definition_extent)
-    result.definition_extent =
-        id_map.ToQuery(*var.definition_extent, SymbolRole::None);
+  if (var.spell)
+    result.spell = id_map.ToQuery(*var.spell);
+  if (var.extent)
+    result.extent = id_map.ToQuery(*var.extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
   if (result.parent_id)
     switch (var.parent_kind) {
@@ -252,38 +246,43 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
     }
   }();
 
-  auto add_outline = [&](Range range, RawId id, SymbolKind kind,
-                          SymbolRole role) {
-    def.outline.push_back(SymbolRef(range, Id<void>(id), kind, role));
+  auto add_outline = [&](Range range, Id<void> id, SymbolKind kind,
+                          Role role) {
+    def.outline.push_back(SymbolRef(range, id, kind, role));
   };
-  auto add_all_symbols = [&](Range range, RawId id, SymbolKind kind,
-                             SymbolRole role) {
-    def.all_symbols.push_back(SymbolRef(range, Id<void>(id), kind, role));
+  auto add_all_symbols = [&](Range range, Id<void> id, SymbolKind kind,
+                             Role role) {
+    def.all_symbols.push_back(SymbolRef(range, id, kind, role));
+  };
+  auto add_all_symbols_use = [&](Use use, Id<void> id, SymbolKind kind) {
+    def.all_symbols.push_back(
+        SymbolRef(use.range, id, kind, use.role));
+  };
+  auto add_outline_use = [&](Use use, Id<void> id, SymbolKind kind) {
+    def.outline.push_back(SymbolRef(use.range, id, kind, use.role));
   };
 
   for (const IndexType& type : indexed.types) {
-    RawId id = id_map.ToQuery(type.id).id;
-    if (type.def.definition_spelling.has_value())
-      add_all_symbols(*type.def.definition_spelling, id, SymbolKind::Type,
-                      SymbolRole::Definition);
-    if (type.def.definition_extent)
-      add_outline(*type.def.definition_extent, id, SymbolKind::Type,
-                  SymbolRole::None);
-    for (const Reference& use : type.uses)
+    QueryTypeId id = id_map.ToQuery(type.id);
+    if (type.def.spell)
+      add_all_symbols_use(*type.def.spell, id, SymbolKind::Type);
+    if (type.def.extent)
+      add_outline_use(*type.def.extent, id, SymbolKind::Type);
+    for (Use use : type.uses)
       add_all_symbols(use.range, id, SymbolKind::Type, use.role);
   }
   for (const IndexFunc& func : indexed.funcs) {
-    RawId id = id_map.ToQuery(func.id).id;
-    if (func.def.definition_spelling.has_value())
-      add_all_symbols(*func.def.definition_spelling, id, SymbolKind::Func,
-                      SymbolRole::Definition);
-    if (func.def.definition_extent.has_value())
-      add_outline(*func.def.definition_extent, id,
-                   SymbolKind::Func, SymbolRole::None);
+    QueryFuncId id = id_map.ToQuery(func.id);
+    if (func.def.spell.has_value())
+      add_all_symbols(*func.def.spell, id, SymbolKind::Func,
+                      Role::Definition);
+    if (func.def.extent.has_value())
+      add_outline(*func.def.extent, id,
+                   SymbolKind::Func, Role::None);
     for (const IndexFunc::Declaration& decl : func.declarations) {
       add_all_symbols(decl.spelling, id, SymbolKind::Func,
-                      SymbolRole::Declaration);
-      add_outline(decl.spelling, id, SymbolKind::Func, SymbolRole::Declaration);
+                      Role::Declaration);
+      add_outline(decl.spelling, id, SymbolKind::Func, Role::Declaration);
     }
     for (Use caller : func.uses) {
       // Make ranges of implicit function calls larger (spanning one more column
@@ -291,30 +290,29 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       // textDocument/definition on the space/semicolon in `A a;` or `return
       // 42;` will take you to the constructor.
       Range range = caller.range;
-      if (caller.role & SymbolRole::Implicit) {
+      if (caller.role & Role::Implicit) {
         if (range.start.column > 0)
           range.start.column--;
         range.end.column++;
       }
       add_all_symbols(range, id, SymbolKind::Func,
-                      caller.role | SymbolRole::CalledBy);
+                      caller.role | Role::Call);
     }
   }
   for (const IndexVar& var : indexed.vars) {
-    if (var.def.definition_spelling)
-      add_all_symbols(*var.def.definition_spelling, id_map.ToQuery(var.id).id,
-                      SymbolKind::Var, SymbolRole::Definition);
-    if (var.def.definition_extent.has_value())
-      add_outline(*var.def.definition_extent, id_map.ToQuery(var.id).id,
-                  SymbolKind::Var, SymbolRole::None);
+    QueryVarId id = id_map.ToQuery(var.id);
+    if (var.def.spell)
+      add_all_symbols_use(*var.def.spell, id, SymbolKind::Var);
+    if (var.def.extent)
+      add_outline_use(*var.def.extent, id, SymbolKind::Var);
     for (const Range& decl : var.declarations) {
-      add_all_symbols(decl, id_map.ToQuery(var.id).id, SymbolKind::Var,
-                      SymbolRole::Definition);
-      add_outline(decl, id_map.ToQuery(var.id).id, SymbolKind::Var,
-                  SymbolRole::Declaration);
+      add_all_symbols(decl, id_map.ToQuery(var.id), SymbolKind::Var,
+                      Role::Definition);
+      add_outline(decl, id_map.ToQuery(var.id), SymbolKind::Var,
+                  Role::Declaration);
     }
-    for (auto& use : var.uses)
-      add_all_symbols(use.range, id_map.ToQuery(var.id).id, SymbolKind::Var,
+    for (Use use : var.uses)
+      add_all_symbols(use.range, id_map.ToQuery(var.id), SymbolKind::Var,
                       use.role);
   }
 
@@ -432,7 +430,7 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
         *GetQueryVarIdFromUsr(query_db, entry.second, true);
 }
 
-Use IdMap::ToQuery(Range range, SymbolRole role) const {
+Use IdMap::ToQuery(Range range, Role role) const {
   return Use(range, primary_file, SymbolKind:: File, role);
 }
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
@@ -481,13 +479,13 @@ Use IdMap::ToQuery(Use use) const {
 Use IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
   return Use(decl.spelling, primary_file, SymbolKind::File,
-             SymbolRole::Declaration);
+             Role::Declaration);
 }
 std::vector<Use> IdMap::ToQuery(const std::vector<Range>& a) const {
   std::vector<Use> ret;
   ret.reserve(a.size());
   for (auto& x : a)
-    ret.push_back(ToQuery(x, SymbolRole::Reference));
+    ret.push_back(ToQuery(x, Role::Reference));
   return ret;
 }
 
@@ -547,7 +545,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       previous_file.types, current_file.types,
       /*onRemoved:*/
       [this, &previous_id_map](IndexType* type) {
-        if (type->def.definition_spelling)
+        if (type->def.spell)
           types_removed.push_back(type->usr);
         else {
           if (!type->derived.empty())
@@ -609,7 +607,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       previous_file.funcs, current_file.funcs,
       /*onRemoved:*/
       [this, &previous_id_map](IndexFunc* func) {
-        if (func->def.definition_spelling) {
+        if (func->def.spell) {
           funcs_removed.push_back(func->usr);
         } else {
           if (!func->declarations.empty())
@@ -671,7 +669,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       previous_file.vars, current_file.vars,
       /*onRemoved:*/
       [this, &previous_id_map](IndexVar* var) {
-        if (var->def.definition_spelling) {
+        if (var->def.spell) {
           vars_removed.push_back(var->usr);
         } else {
           if (!var->declarations.empty())
@@ -894,8 +892,8 @@ void QueryDatabase::ImportOrUpdate(
     QueryType& existing = types[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (!(existing.def && existing.def->definition_spelling &&
-          !def.value.definition_spelling)) {
+    if (!(existing.def && existing.def->spell &&
+          !def.value.spell)) {
       existing.def = std::move(def.value);
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
                     it->second.id);
@@ -917,8 +915,8 @@ void QueryDatabase::ImportOrUpdate(
     QueryFunc& existing = funcs[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (!(existing.def && existing.def->definition_spelling &&
-          !def.value.definition_spelling)) {
+    if (!(existing.def && existing.def->spell &&
+          !def.value.spell)) {
       existing.def = std::move(def.value);
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
                     it->second.id);
@@ -939,8 +937,8 @@ void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
     QueryVar& existing = vars[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (!(existing.def && existing.def->definition_spelling &&
-          !def.value.definition_spelling)) {
+    if (!(existing.def && existing.def->spell &&
+          !def.value.spell)) {
       existing.def = std::move(def.value);
       if (!def.value.is_local())
         UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
@@ -1023,11 +1021,11 @@ TEST_SUITE("query") {
     IndexFile current("foo.cc", "<empty>");
 
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
-        ->def.definition_spelling = Range(Position(1, 0));
+        ->def.spell = Use(Range(Position(1, 0)), Id<void>(), SymbolKind::File, Role::None);
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
-        ->def.definition_spelling = Range(Position(2, 0));
+        ->def.spell = Range(Position(2, 0));
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
-        ->def.definition_spelling = Range(Position(3, 0));
+        ->def.spell = Use(Range(Position(3, 0)), Id<void>(), SymbolKind::File, Role::None);
 
     IndexUpdate update = GetDelta(previous, current);
 
@@ -1044,7 +1042,7 @@ TEST_SUITE("query") {
         ->uses.push_back(Reference{Range(Position(1, 0))});
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
         ->uses.push_back(Use(Range(Position(2, 0)), Id<void>(0),
-                                         SymbolKind::Func, SymbolRole::None));
+                                         SymbolKind::Func, Role::None));
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
         ->uses.push_back(Reference{Range(Position(3, 0))});
 
@@ -1063,9 +1061,9 @@ TEST_SUITE("query") {
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
 
     pf->uses.push_back(Use(Range(Position(1, 0)), Id<void>(0),
-                                       SymbolKind::Func, SymbolRole::None));
+                                       SymbolKind::Func, Role::None));
     cf->uses.push_back(Use(Range(Position(2, 0)), Id<void>(0),
-                                       SymbolKind::Func, SymbolRole::None));
+                                       SymbolKind::Func, Role::None));
 
     IndexUpdate update = GetDelta(previous, current);
 
@@ -1108,13 +1106,13 @@ TEST_SUITE("query") {
     IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
     IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
     pf->uses.push_back(Use(Range(Position(1, 0)), Id<void>(0),
-                              SymbolKind::Func, SymbolRole::None));
+                              SymbolKind::Func, Role::None));
     pf->uses.push_back(Use(Range(Position(2, 0)), Id<void>(0),
-                              SymbolKind::Func, SymbolRole::None));
+                              SymbolKind::Func, Role::None));
     cf->uses.push_back(Use(Range(Position(4, 0)), Id<void>(0),
-                              SymbolKind::Func, SymbolRole::None));
+                              SymbolKind::Func, Role::None));
     cf->uses.push_back(Use(Range(Position(5, 0)), Id<void>(0),
-                              SymbolKind::Func, SymbolRole::None));
+                              SymbolKind::Func, Role::None));
 
     QueryDatabase db;
     IdMap previous_map(&db, previous.id_cache);

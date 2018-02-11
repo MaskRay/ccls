@@ -92,10 +92,10 @@ struct Reference {
   Range range;
   Id<void> id;
   SymbolKind kind;
-  SymbolRole role;
+  Role role;
 
-  bool HasValue() const { return id.HasValue(); }
-  std::tuple<Range, Id<void>, SymbolKind, SymbolRole> ToTuple() const {
+  bool HasValue() const { return range.HasValue(); }
+  std::tuple<Range, Id<void>, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, id, kind, role);
   }
   bool operator==(const Reference& o) const {
@@ -126,11 +126,11 @@ MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
 // |id,kind| refer to the referenced entity.
 struct SymbolRef : Reference {
   SymbolRef() = default;
-  SymbolRef(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
+  SymbolRef(Range range, Id<void> id, SymbolKind kind, Role role)
     : Reference{range, id, kind, role} {}
   SymbolRef(Reference ref) : Reference(ref) {}
   SymbolRef(SymbolIdx si)
-    : Reference{Range(), Id<void>(si.idx), si.kind, SymbolRole::None} {}
+    : Reference{Range(), Id<void>(si.idx), si.kind, Role::None} {}
 
   RawId Idx() const { return RawId(id); }
   operator SymbolIdx() const { return SymbolIdx{Idx(), kind}; }
@@ -141,7 +141,7 @@ struct SymbolRef : Reference {
 struct Use : Reference {
   Use() = default;
   Use(Reference ref) : Reference(ref) {}
-  Use(Range range, Id<void> id, SymbolKind kind, SymbolRole role)
+  Use(Range range, Id<void> id, SymbolKind kind, Role role)
       : Reference{range, id, kind, role} {}
 };
 
@@ -172,8 +172,8 @@ struct TypeDefDefinitionData {
   // It's also difficult to identify a `class Foo;` statement with the clang
   // indexer API (it's doable using cursor AST traversal), so we don't bother
   // supporting the feature.
-  Maybe<typename F::Range> definition_spelling;
-  Maybe<typename F::Range> definition_extent;
+  Maybe<Use> spell;
+  Maybe<Use> extent;
 
   // Immediate parent types.
   std::vector<typename F::TypeId> parents;
@@ -194,8 +194,8 @@ struct TypeDefDefinitionData {
 
   bool operator==(const TypeDefDefinitionData& o) const {
     return detailed_name == o.detailed_name &&
-           definition_spelling == o.definition_spelling &&
-           definition_extent == o.definition_extent && alias_of == o.alias_of &&
+           spell == o.spell &&
+           extent == o.extent && alias_of == o.alias_of &&
            parents == o.parents && types == o.types && funcs == o.funcs &&
            vars == o.vars && kind == o.kind && hover == o.hover &&
            comments == o.comments;
@@ -218,8 +218,8 @@ void Reflect(TVisitor& visitor, TypeDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(kind);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
-  REFLECT_MEMBER(definition_spelling);
-  REFLECT_MEMBER(definition_extent);
+  REFLECT_MEMBER(spell);
+  REFLECT_MEMBER(extent);
   REFLECT_MEMBER(file);
   REFLECT_MEMBER(alias_of);
   REFLECT_MEMBER(parents);
@@ -260,8 +260,8 @@ struct FuncDefDefinitionData {
   std::string detailed_name;
   std::string hover;
   std::string comments;
-  Maybe<typename F::Range> definition_spelling;
-  Maybe<typename F::Range> definition_extent;
+  Maybe<typename F::Range> spell;
+  Maybe<typename F::Range> extent;
 
   // Method this method overrides.
   std::vector<typename F::FuncId> base;
@@ -282,8 +282,8 @@ struct FuncDefDefinitionData {
 
   bool operator==(const FuncDefDefinitionData& o) const {
     return detailed_name == o.detailed_name &&
-           definition_spelling == o.definition_spelling &&
-           definition_extent == o.definition_extent &&
+           spell == o.spell &&
+           extent == o.extent &&
            declaring_type == o.declaring_type && base == o.base &&
            locals == o.locals && callees == o.callees && kind == o.kind &&
            storage == o.storage && hover == o.hover && comments == o.comments;
@@ -308,8 +308,8 @@ void Reflect(TVisitor& visitor, FuncDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(storage);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
-  REFLECT_MEMBER(definition_spelling);
-  REFLECT_MEMBER(definition_extent);
+  REFLECT_MEMBER(spell);
+  REFLECT_MEMBER(extent);
   REFLECT_MEMBER(file);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(base);
@@ -347,7 +347,7 @@ struct IndexFunc {
   // function context then the FuncRef will not have an associated id.
   //
   // To get all usages, also include the ranges inside of declarations and
-  // def.definition_spelling.
+  // def.spell.
   std::vector<Use> uses;
 
   IndexFunc() {}  // For serialization.
@@ -372,8 +372,8 @@ struct VarDefDefinitionData {
   std::string comments;
   // TODO: definitions should be a list of ranges, since there can be more
   //       than one - when??
-  Maybe<typename F::Range> definition_spelling;
-  Maybe<typename F::Range> definition_extent;
+  Maybe<Use> spell;
+  Maybe<Use> extent;
 
   typename F::FileId file;
   // Type of the variable.
@@ -398,8 +398,8 @@ struct VarDefDefinitionData {
 
   bool operator==(const VarDefDefinitionData& o) const {
     return detailed_name == o.detailed_name &&
-           definition_spelling == o.definition_spelling &&
-           definition_extent == o.definition_extent &&
+           spell == o.spell &&
+           extent == o.extent &&
            variable_type == o.variable_type && parent_id == o.parent_id &&
            parent_kind == o.parent_kind && kind == o.kind &&
            storage == o.storage && hover == o.hover && comments == o.comments;
@@ -422,8 +422,8 @@ void Reflect(TVisitor& visitor, VarDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(short_name_offset);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
-  REFLECT_MEMBER(definition_spelling);
-  REFLECT_MEMBER(definition_extent);
+  REFLECT_MEMBER(spell);
+  REFLECT_MEMBER(extent);
   REFLECT_MEMBER(file);
   REFLECT_MEMBER(variable_type);
   REFLECT_MEMBER(parent_id);

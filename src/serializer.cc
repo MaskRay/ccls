@@ -210,8 +210,8 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("kind", value.def.kind);
   ReflectHoverAndComments(visitor, value.def);
-  REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
-  REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
+  REFLECT_MEMBER2("spell", value.def.spell);
+  REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("alias_of", value.def.alias_of);
   REFLECT_MEMBER2("parents", value.def.parents);
   REFLECT_MEMBER2("derived", value.derived);
@@ -234,8 +234,8 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("storage", value.def.storage);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
-  REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
+  REFLECT_MEMBER2("spell", value.def.spell);
+  REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("base", value.def.base);
   REFLECT_MEMBER2("derived", value.derived);
@@ -254,8 +254,8 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   ReflectShortName(visitor, value.def);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("declarations", value.declarations);
-  REFLECT_MEMBER2("definition_spelling", value.def.definition_spelling);
-  REFLECT_MEMBER2("definition_extent", value.def.definition_extent);
+  REFLECT_MEMBER2("spell", value.def.spell);
+  REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("variable_type", value.def.variable_type);
   REFLECT_MEMBER2("uses", value.uses);
   REFLECT_MEMBER2("parent_id", value.def.parent_id);

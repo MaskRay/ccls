@@ -22,7 +22,7 @@ Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                                QueryFuncId id) {
   QueryFunc& func = db->funcs[id.id];
   if (func.def)
-    return func.def->definition_spelling;
+    return func.def->spell;
   return nullopt;
 }
 
@@ -32,19 +32,19 @@ Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       if (type.def)
-        return *type.def->definition_spelling;
+        return *type.def->spell;
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (func.def)
-        return func.def->definition_spelling;
+        return func.def->spell;
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
       if (var.def)
-        return var.def->definition_spelling;
+        return *var.def->spell;
       break;
     }
     case SymbolKind::File:
@@ -56,28 +56,28 @@ Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-Maybe<Reference> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym) {
+Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       if (type.def)
-        return type.def->definition_extent;
+        return type.def->extent;
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (func.def)
-        return func.def->definition_extent;
+        return Use(*func.def->extent);
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
       if (var.def)
-        return var.def->definition_extent;
+        return var.def->extent;
       break;
     }
     case SymbolKind::File:
-      return sym;
+      return Use(Reference(sym));
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -91,22 +91,22 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
-      if (type.def && type.def->definition_spelling)
-        return db->GetFileId(*type.def->definition_spelling);
+      if (type.def && type.def->spell)
+        return db->GetFileId(*type.def->spell);
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (!func.declarations.empty())
         return db->GetFileId(func.declarations[0]);
-      if (func.def && func.def->definition_spelling)
-        return db->GetFileId(*func.def->definition_spelling);
+      if (func.def && func.def->spell)
+        return db->GetFileId(*func.def->spell);
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
-      if (var.def && var.def->definition_spelling)
-        return db->GetFileId(*var.def->definition_spelling);
+      if (var.def && var.def->spell)
+        return db->GetFileId(*var.def->spell);
       break;
     }
     case SymbolKind::File:
@@ -125,8 +125,8 @@ std::vector<Use> ToUses(QueryDatabase* db,
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryFunc& func = db->funcs[id.id];
-    if (func.def && func.def->definition_spelling)
-      ret.push_back(*func.def->definition_spelling);
+    if (func.def && func.def->spell)
+      ret.push_back(*func.def->spell);
     else if (func.declarations.size())
       ret.push_back(func.declarations[0]);
   }
@@ -139,8 +139,8 @@ std::vector<Use> ToUses(QueryDatabase* db,
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryType& type = db->types[id.id];
-    if (type.def && type.def->definition_spelling)
-      ret.push_back(*type.def->definition_spelling);
+    if (type.def && type.def->spell)
+      ret.push_back(*type.def->spell);
   }
   return ret;
 }
@@ -150,8 +150,8 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryVar& var = db->vars[id.id];
-    if (var.def && var.def->definition_spelling)
-      ret.push_back(*var.def->definition_spelling);
+    if (var.def && var.def->spell)
+      ret.push_back(*var.def->spell);
     else if (var.declarations.size())
       ret.push_back(var.declarations[0]);
   }
@@ -165,8 +165,8 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->types[sym.Idx()];
       std::vector<Use> ret = type.uses;
-      if (include_decl && type.def && type.def->definition_spelling)
-        ret.push_back(*type.def->definition_spelling);
+      if (include_decl && type.def && type.def->spell)
+        ret.push_back(*type.def->spell);
       return ret;
     }
     case SymbolKind::Func: {
@@ -175,8 +175,8 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
       std::vector<Use> ret = func.uses;
       if (include_decl) {
         AddRange(&ret, func.declarations);
-        if (func.def && func.def->definition_spelling)
-          ret.push_back(*func.def->definition_spelling);
+        if (func.def && func.def->spell)
+          ret.push_back(*func.def->spell);
       }
       return ret;
     }
@@ -184,8 +184,8 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
       QueryVar& var = db->vars[sym.Idx()];
       std::vector<Use> ret = var.uses;
       if (include_decl) {
-        if (var.def && var.def->definition_spelling)
-          ret.push_back(*var.def->definition_spelling);
+        if (var.def && var.def->spell)
+          ret.push_back(*var.def->spell);
         ret.insert(ret.end(), var.declarations.begin(), var.declarations.end());
       }
       return ret;
@@ -209,7 +209,7 @@ std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
       // type from within the type definition.
       QueryType& type = db->GetType(sym);
       if (type.def) {
-        Maybe<Reference> def = type.def->definition_spelling;
+        Maybe<Use> def = type.def->spell;
         if (def)
           return {*def};
       }
