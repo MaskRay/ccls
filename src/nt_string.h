@@ -6,9 +6,6 @@
 #include <memory>
 #include <utility>
 
-class Reader;
-class Writer;
-
 // Nullable null-terminated string, which is null if default constructed,
 // but non-null if assigned.
 // This is used in Query{Func,Type,Var}::def to reduce memory footprint.
