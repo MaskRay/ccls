@@ -228,7 +228,7 @@ std::string ClangCursor::get_type_description() const {
   return ::ToString(clang_getTypeSpelling(type));
 }
 
-NTString ClangCursor::get_comments() const {
+NtString ClangCursor::get_comments() const {
   if (!g_index_comments)
     return {};
   CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
