@@ -32,10 +32,9 @@ std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db,
       std::vector<Use> ret =
           GetDeclarationsOfSymbolForGotoDefinition(db, sym);
       QueryVar& var = db->GetVar(sym);
-      if (var.def && var.def->variable_type) {
+      if (var.def && var.def->type) {
         std::vector<Use> types = GetDeclarationsOfSymbolForGotoDefinition(
-            db, SymbolRef(Range(), Id<void>(var.def->variable_type->id),
-                          SymbolKind::Type, Role::None));
+            db, SymbolIdx{*var.def->type, SymbolKind::Type});
         ret.insert(ret.end(), types.begin(), types.end());
       }
       return ret;

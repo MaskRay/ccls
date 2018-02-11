@@ -10,10 +10,10 @@
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          QueryFuncId id);
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                         SymbolRef sym);
-Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym);
+                                         SymbolIdx sym);
+Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                               SymbolRef sym);
+                                               SymbolIdx sym);
 
 std::vector<Use> ToUses(QueryDatabase* db,
                         const std::vector<QueryFuncId>& ids);
@@ -23,11 +23,11 @@ std::vector<Use> ToUses(QueryDatabase* db,
                         const std::vector<QueryVarId>& ids);
 
 std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
-                                 SymbolRef sym,
+                                 SymbolIdx sym,
                                  bool include_decl);
 std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
-    SymbolRef sym);
+    SymbolIdx sym);
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
 std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
@@ -55,7 +55,7 @@ std::vector<lsLocation> GetLsLocations(QueryDatabase* db,
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
-                                            SymbolRef sym,
+                                            SymbolIdx sym,
                                             bool use_short_name);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,

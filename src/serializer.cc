@@ -252,10 +252,8 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
-  REFLECT_MEMBER2("variable_type", value.def.variable_type);
+  REFLECT_MEMBER2("type", value.def.type);
   REFLECT_MEMBER2("uses", value.uses);
-  REFLECT_MEMBER2("parent_id", value.def.parent_id);
-  REFLECT_MEMBER2("parent_kind", value.def.parent_kind);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("storage", value.def.storage);
   REFLECT_MEMBER_END();

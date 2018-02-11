@@ -9,7 +9,7 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
     SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[sym.Idx()];
+      QueryType& type = db->GetType(sym);
       if (type.def)
         return {type.def->comments,
                 !type.def->hover.empty()
@@ -18,7 +18,7 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->funcs[sym.Idx()];
+      QueryFunc& func = db->GetFunc(sym);
       if (func.def)
         return {func.def->comments,
                 !func.def->hover.empty()
@@ -27,7 +27,7 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[sym.Idx()];
+      QueryVar& var = db->GetVar(sym);
       if (var.def)
         return {var.def->comments,
                 !var.def->hover.empty()

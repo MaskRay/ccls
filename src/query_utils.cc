@@ -27,7 +27,7 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
 }
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                         SymbolRef sym) {
+                                         SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
@@ -56,7 +56,7 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym) {
+Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
@@ -77,7 +77,8 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym) {
       break;
     }
     case SymbolKind::File:
-      return Use(Reference(sym));
+      return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
+                 Role::None);
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -87,7 +88,7 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym) {
 }
 
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                               SymbolRef sym) {
+                                               SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
@@ -110,7 +111,7 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::File:
-      return QueryFileId(sym.Idx());
+      return QueryFileId(sym.id);
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -159,29 +160,28 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
 }
 
 std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
-                                 SymbolRef sym,
+                                 SymbolIdx sym,
                                  bool include_decl) {
   switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->types[sym.Idx()];
+      QueryType& type = db->GetType(sym);
       std::vector<Use> ret = type.uses;
       if (include_decl && type.def && type.def->spell)
         ret.push_back(*type.def->spell);
       return ret;
     }
     case SymbolKind::Func: {
-      // TODO: the vector allocation could be avoided.
-      QueryFunc& func = db->funcs[sym.Idx()];
+      QueryFunc& func = db->GetFunc(sym);
       std::vector<Use> ret = func.uses;
       if (include_decl) {
-        AddRange(&ret, func.declarations);
         if (func.def && func.def->spell)
           ret.push_back(*func.def->spell);
+        AddRange(&ret, func.declarations);
       }
       return ret;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->vars[sym.Idx()];
+      QueryVar& var = db->GetVar(sym);
       std::vector<Use> ret = var.uses;
       if (include_decl) {
         if (var.def && var.def->spell)
@@ -200,7 +200,7 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
 
 std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
-    SymbolRef sym) {
+    SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
       // Returning the definition spelling of a type is a hack (and is why the
@@ -447,11 +447,11 @@ std::vector<lsLocation> GetLsLocations(
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
-                                            SymbolRef sym,
+                                            SymbolIdx sym,
                                             bool use_short_name) {
   switch (sym.kind) {
     case SymbolKind::File: {
-      QueryFile& file = db->files[sym.Idx()];
+      QueryFile& file = db->GetFile(sym);
       if (!file.def)
         break;
 
@@ -568,7 +568,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
               int t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
               if (t)
                 return t > 0;
-              return a.Idx() < b.Idx();
+              return a.id < b.id;
             });
 
   return symbols;

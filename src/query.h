@@ -280,7 +280,7 @@ struct QueryDatabase {
   void ImportOrUpdate(std::vector<QueryType::DefUpdate>&& updates);
   void ImportOrUpdate(std::vector<QueryFunc::DefUpdate>&& updates);
   void ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates);
-  void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, RawId idx);
+  void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, Id<void> idx);
   std::string_view GetSymbolDetailedName(RawId symbol_idx) const;
   std::string_view GetSymbolShortName(RawId symbol_idx) const;
 
@@ -290,7 +290,7 @@ struct QueryDatabase {
   Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
   Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
 
-  QueryFileId GetFileId(Reference ref) {
+  QueryFileId GetFileId(SymbolIdx ref) {
     switch (ref.kind) {
       case SymbolKind::Invalid:
         break;
@@ -317,16 +317,16 @@ struct QueryDatabase {
     }
     return QueryFileId();
   }
-  QueryFile& GetFile(Reference ref) {
+  QueryFile& GetFile(SymbolIdx ref) {
     return files[ref.id.id];
   }
-  QueryFunc& GetFunc(Reference ref) {
+  QueryFunc& GetFunc(SymbolIdx ref) {
     return funcs[ref.id.id];
   }
-  QueryType& GetType(Reference ref) {
+  QueryType& GetType(SymbolIdx ref) {
     return types[ref.id.id];
   }
-  QueryVar& GetVar(Reference ref) {
+  QueryVar& GetVar(SymbolIdx ref) {
     return vars[ref.id.id];
   }
 };

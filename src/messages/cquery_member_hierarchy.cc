@@ -15,7 +15,7 @@ struct Ipc_CqueryMemberHierarchyExpand
     : public RequestMessage<Ipc_CqueryMemberHierarchyExpand> {
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
   struct Params {
-    size_t type_id;
+    QueryTypeId type_id;
   };
   Params params;
 };
@@ -27,8 +27,7 @@ struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
   struct Entry {
     std::string_view name;
-    // FIXME Usr
-    RawId type_id;
+    QueryTypeId type_id;
     lsLocation location;
   };
   lsRequestId id;
@@ -48,7 +47,7 @@ BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   Out_CqueryMemberHierarchy::Entry entry;
-  entry.type_id = root.id;
+  entry.type_id = root;
   entry.name = root_type.def->ShortName();
   entry.location = *def_loc;
   return {entry};
@@ -64,9 +63,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   EachWithGen(db->vars, root_type.def->vars, [&](QueryVar& var) {
     Out_CqueryMemberHierarchy::Entry entry;
     entry.name = var.def->ShortName();
-    // FIXME WithGen
-    entry.type_id =
-        var.def->variable_type ? var.def->variable_type->id : RawId(-1);
+    entry.type_id = var.def->type ? *var.def->type : QueryTypeId();
     if (var.def->spell) {
       optional<lsLocation> loc =
           GetLsLocation(db, working_files, *var.def->spell);
@@ -95,13 +92,13 @@ struct CqueryMemberHierarchyInitialHandler
     for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
-        out.result = BuildInitial(db, working_files, QueryTypeId(sym.Idx()));
+        out.result = BuildInitial(db, working_files, QueryTypeId(sym.id));
         break;
       }
       if (sym.kind == SymbolKind::Var) {
         QueryVar& var = db->GetVar(sym);
-        if (var.def && var.def->variable_type)
-          out.result = BuildInitial(db, working_files, *var.def->variable_type);
+        if (var.def && var.def->type)
+          out.result = BuildInitial(db, working_files, *var.def->type);
         break;
       }
     }
@@ -117,9 +114,8 @@ struct CqueryMemberHierarchyExpandHandler
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
     // |ExpandNode| uses -1 to indicate invalid |type_id|.
-    if (request->params.type_id != size_t(-1))
-      out.result =
-          ExpandNode(db, working_files, QueryTypeId(request->params.type_id));
+    if (request->params.type_id.HasValue())
+      out.result = ExpandNode(db, working_files, request->params.type_id);
 
     QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyExpand, out);
   }

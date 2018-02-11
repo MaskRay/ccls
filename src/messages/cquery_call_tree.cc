@@ -169,7 +169,7 @@ struct CqueryCallTreeInitialHandler
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Func) {
         out.result =
-            BuildInitialCallTree(db, working_files, QueryFuncId(sym.Idx()));
+            BuildInitialCallTree(db, working_files, QueryFuncId(sym.id));
         break;
       }
     }

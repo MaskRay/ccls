@@ -95,25 +95,7 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.file = id_map.primary_file;
   result.spell = id_map.ToQuery(var.spell);
   result.extent = id_map.ToQuery(var.extent);
-  result.variable_type = id_map.ToQuery(var.variable_type);
-  if (result.parent_id)
-    switch (var.parent_kind) {
-      default:
-        break;
-      case SymbolKind::File:
-        result.parent_id = Id<void>(id_map.primary_file);
-        break;
-      case SymbolKind::Func:
-        result.parent_id = Id<void>(id_map.ToQuery(IndexFuncId(*var.parent_id)));
-        break;
-      case SymbolKind::Type:
-        result.parent_id = Id<void>(id_map.ToQuery(IndexTypeId(*var.parent_id)));
-        break;
-      case SymbolKind::Var:
-        result.parent_id = Id<void>(id_map.ToQuery(IndexVarId(*var.parent_id)));
-        break;
-    }
-  result.parent_kind = var.parent_kind;
+  result.type = id_map.ToQuery(var.type);
   result.kind = var.kind;
   result.storage = var.storage;
   return result;
@@ -871,8 +853,7 @@ void QueryDatabase::ImportOrUpdate(
     QueryFile& existing = files[it->second.id];
 
     existing.def = def.value;
-    UpdateSymbols(&existing.symbol_idx, SymbolKind::File,
-                        it->second.id);
+    UpdateSymbols(&existing.symbol_idx, SymbolKind::File, it->second);
   }
 }
 
@@ -893,8 +874,7 @@ void QueryDatabase::ImportOrUpdate(
     if (!(existing.def && existing.def->spell &&
           !def.value.spell)) {
       existing.def = std::move(def.value);
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type,
-                    it->second.id);
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, it->second);
     }
   }
 }
@@ -916,8 +896,7 @@ void QueryDatabase::ImportOrUpdate(
     if (!(existing.def && existing.def->spell &&
           !def.value.spell)) {
       existing.def = std::move(def.value);
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Func,
-                    it->second.id);
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Func, it->second);
     }
   }
 }
@@ -939,15 +918,14 @@ void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
           !def.value.spell)) {
       existing.def = std::move(def.value);
       if (!def.value.is_local())
-        UpdateSymbols(&existing.symbol_idx, SymbolKind::Var,
-                      it->second.id);
+        UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, it->second);
     }
   }
 }
 
 void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                                   SymbolKind kind,
-                                  RawId idx) {
+                                  Id<void> idx) {
   if (!symbol_idx->has_value()) {
     *symbol_idx = Id<void>(symbols.size());
     symbols.push_back(SymbolIdx{idx, kind});
@@ -955,7 +933,7 @@ void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
 }
 
 std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
-  RawId idx = symbols[symbol_idx].idx;
+  RawId idx = symbols[symbol_idx].id.id;
   switch (symbols[symbol_idx].kind) {
     default:
       break;
@@ -980,7 +958,7 @@ std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
 }
 
 std::string_view QueryDatabase::GetSymbolShortName(RawId symbol_idx) const {
-  RawId idx = symbols[symbol_idx].idx;
+  RawId idx = symbols[symbol_idx].id.id;
   switch (symbols[symbol_idx].kind) {
     default:
       break;

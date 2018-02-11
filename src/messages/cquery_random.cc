@@ -33,7 +33,7 @@ void Add(const std::unordered_map<SymbolIdx, int>& sym2id,
          int n,
          double w = 1) {
   for (Id<Q> id : ids) {
-    auto it = sym2id.find(SymbolIdx{RawId(id), Kind<Q>::value});
+    auto it = sym2id.find(SymbolIdx{id, Kind<Q>::value});
     if (it != sym2id.end())
       adj[it->second][n] += w;
   }
@@ -47,24 +47,24 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
 
     for (RawId i = 0; i < db->funcs.size(); i++)
       if (db->funcs[i].def) {
-        syms.push_back(SymbolIdx{i, SymbolKind::Func});
+        syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Func});
         sym2id[syms.back()] = n++;
       }
     for (RawId i = 0; i < db->types.size(); i++)
       if (db->types[i].def) {
-        syms.push_back(SymbolIdx{i, SymbolKind::Type});
+        syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Type});
         sym2id[syms.back()] = n++;
       }
     for (RawId i = 0; i < db->vars.size(); i++)
       if (db->vars[i].def) {
-        syms.push_back(SymbolIdx{i, SymbolKind::Var});
+        syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Var});
         sym2id[syms.back()] = n++;
       }
 
     std::vector<std::unordered_map<int, double>> adj(n);
     auto add = [&](const std::vector<Use>& uses, double w) {
       for (Use use : uses) {
-        auto it = sym2id.find(SymbolIdx{RawId(use.id), use.kind});
+        auto it = sym2id.find(use);
         if (it != sym2id.end())
           adj[it->second][n] += w;
       }

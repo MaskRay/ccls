@@ -89,6 +89,23 @@ using IndexVarId = Id<IndexVar>;
 
 struct IdCache;
 
+struct SymbolIdx {
+  Id<void> id;
+  SymbolKind kind;
+
+  bool operator==(const SymbolIdx& o) const {
+    return id == o.id && kind == o.kind;
+  }
+  bool operator!=(const SymbolIdx& o) const { return !(*this == o); }
+  bool operator<(const SymbolIdx& o) const {
+    if (id != o.id)
+      return id < o.id;
+    return kind < o.kind;
+  }
+};
+MAKE_REFLECT_STRUCT(SymbolIdx, kind, id);
+MAKE_HASHABLE(SymbolIdx, t.kind, t.id);
+
 struct Reference {
   Range range;
   Id<void> id;
@@ -96,6 +113,7 @@ struct Reference {
   Role role;
 
   bool HasValue() const { return range.HasValue(); }
+  operator SymbolIdx() const { return {id, kind}; }
   std::tuple<Range, Id<void>, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, id, kind, role);
   }
@@ -107,34 +125,15 @@ struct Reference {
   }
 };
 
-struct SymbolIdx {
-  RawId idx;
-  SymbolKind kind;
-
-  bool operator==(const SymbolIdx& o) const {
-    return kind == o.kind && idx == o.idx;
-  }
-  bool operator!=(const SymbolIdx& o) const { return !(*this == o); }
-  bool operator<(const SymbolIdx& o) const {
-    if (kind != o.kind)
-      return kind < o.kind;
-    return idx < o.idx;
-  }
-};
-MAKE_REFLECT_STRUCT(SymbolIdx, kind, idx);
-MAKE_HASHABLE(SymbolIdx, t.kind, t.idx);
-
 // |id,kind| refer to the referenced entity.
 struct SymbolRef : Reference {
   SymbolRef() = default;
   SymbolRef(Range range, Id<void> id, SymbolKind kind, Role role)
     : Reference{range, id, kind, role} {}
   SymbolRef(Reference ref) : Reference(ref) {}
+  // FIXME Remove
   SymbolRef(SymbolIdx si)
-    : Reference{Range(), Id<void>(si.idx), si.kind, Role::None} {}
-
-  RawId Idx() const { return RawId(id); }
-  operator SymbolIdx() const { return SymbolIdx{Idx(), kind}; }
+    : Reference{Range(), si.id, si.kind, Role::None} {}
 };
 
 // Represents an occurrence of a variable/type, |id,kind| refer to the lexical
@@ -378,13 +377,11 @@ struct VarDefDefinitionData {
 
   typename F::FileId file;
   // Type of the variable.
-  Maybe<typename F::TypeId> variable_type;
+  Maybe<typename F::TypeId> type;
 
   // Function/type which declares this one.
-  Maybe<Id<void>> parent_id;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-  SymbolKind parent_kind = SymbolKind::Invalid;
 
   ClangSymbolKind kind = ClangSymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
@@ -398,16 +395,12 @@ struct VarDefDefinitionData {
   bool is_macro() const { return kind == ClangSymbolKind::Macro; }
 
   bool operator==(const VarDefDefinitionData& o) const {
-    return detailed_name == o.detailed_name &&
-           spell == o.spell &&
-           extent == o.extent &&
-           variable_type == o.variable_type && parent_id == o.parent_id &&
-           parent_kind == o.parent_kind && kind == o.kind &&
-           storage == o.storage && hover == o.hover && comments == o.comments;
+    return detailed_name == o.detailed_name && spell == o.spell &&
+           extent == o.extent && type == o.type &&
+           kind == o.kind && storage == o.storage && hover == o.hover &&
+           comments == o.comments;
   }
-  bool operator!=(const VarDefDefinitionData& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const VarDefDefinitionData& o) const { return !(*this == o); }
 
   std::string_view ShortName() const {
     return std::string_view(detailed_name.c_str() + short_name_offset,
@@ -426,9 +419,7 @@ void Reflect(TVisitor& visitor, VarDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(spell);
   REFLECT_MEMBER(extent);
   REFLECT_MEMBER(file);
-  REFLECT_MEMBER(variable_type);
-  REFLECT_MEMBER(parent_id);
-  REFLECT_MEMBER(parent_kind);
+  REFLECT_MEMBER(type);
   REFLECT_MEMBER(kind);
   REFLECT_MEMBER(storage);
   REFLECT_MEMBER_END();

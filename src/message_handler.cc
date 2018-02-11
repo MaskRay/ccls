@@ -151,7 +151,6 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         QueryVar& var = db->GetVar(sym);
         if (!var.def)
           continue;  // applies to for loop
-        parent_kind = var.def->parent_kind;
         kind = var.def->kind;
         storage = var.def->storage;
         detailed_name = var.def->ShortName();
@@ -171,8 +170,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
 
     optional<lsRange> loc = GetLsRange(working_file, sym.range);
     if (loc) {
-      auto key = SymbolIdx{RawId(sym.id), sym.kind};
-      auto it = grouped_symbols.find(key);
+      auto it = grouped_symbols.find(sym);
       if (it != grouped_symbols.end()) {
         it->second.ranges.push_back(*loc);
       } else {
@@ -183,7 +181,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         symbol.kind = kind;
         symbol.storage = storage;
         symbol.ranges.push_back(*loc);
-        grouped_symbols[key] = symbol;
+        grouped_symbols[sym] = symbol;
       }
     }
   }

@@ -620,7 +620,7 @@ void SetVarDetail(IndexVar* var,
       if (!is_enum_member)
         db->Resolve(var_type.value())->instances.push_back(var->id);
 
-      def.variable_type = *var_type;
+      def.type = *var_type;
     }
   }
 }
@@ -658,7 +658,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kMajorVersion = 12;
-const int IndexFile::kMinorVersion = 0;
+const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
     : id_cache(path), path(path), file_contents(contents) {}
@@ -1553,7 +1553,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // the function declaration is encountered since we won't receive ParmDecl
       // declarations for unnamed parameters.
       // TODO: See if we can remove this function call.
-      AddDeclTypeUsages(db, decl_cursor, var->def.variable_type,
+      AddDeclTypeUsages(db, decl_cursor, var->def.type,
                         decl->semanticContainer, decl->lexicalContainer);
 
       // We don't need to assign declaring type multiple times if this variable
@@ -1563,18 +1563,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         switch (GetSymbolKind(decl->semanticContainer->cursor.kind)) {
           default:
             break;
-          case SymbolKind::Func: {
-            IndexFuncId parent_func_id =
-                db->ToFuncId(decl->semanticContainer->cursor);
-            var->def.parent_kind = SymbolKind::Func;
-            var->def.parent_id = Id<void>(parent_func_id);
-            break;
-          }
           case SymbolKind::Type: {
             IndexTypeId parent_type_id =
                 db->ToTypeId(decl->semanticContainer->cursor);
-            var->def.parent_kind = SymbolKind::Type;
-            var->def.parent_id = Id<void>(parent_type_id);
             db->Resolve(parent_type_id)->def.vars.push_back(var_id);
             break;
           }
