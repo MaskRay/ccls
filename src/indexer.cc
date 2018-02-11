@@ -835,23 +835,6 @@ struct FindChildOfKindParam {
   FindChildOfKindParam(CXCursorKind target_kind) : target_kind(target_kind) {}
 };
 
-ClangCursor::VisitResult FindChildOfKindVisitor(ClangCursor cursor,
-                                                ClangCursor parent,
-                                                FindChildOfKindParam* param) {
-  if (cursor.get_kind() == param->target_kind) {
-    param->result = cursor;
-    return ClangCursor::VisitResult::Break;
-  }
-
-  return ClangCursor::VisitResult::Recurse;
-}
-
-optional<ClangCursor> FindChildOfKind(ClangCursor cursor, CXCursorKind kind) {
-  FindChildOfKindParam param(kind);
-  cursor.VisitChildren(&FindChildOfKindVisitor, &param);
-  return param.result;
-}
-
 ClangCursor::VisitResult FindTypeVisitor(ClangCursor cursor,
                                          ClangCursor parent,
                                          optional<ClangCursor>* result) {
@@ -871,19 +854,6 @@ optional<ClangCursor> FindType(ClangCursor cursor) {
   optional<ClangCursor> result;
   cursor.VisitChildren(&FindTypeVisitor, &result);
   return result;
-}
-
-bool IsGlobalContainer(const CXIdxContainerInfo* container) {
-  if (!container)
-    return false;
-
-  switch (container->cursor.kind) {
-    case CXCursor_Namespace:
-    case CXCursor_TranslationUnit:
-      return true;
-    default:
-      return false;
-  }
 }
 
 bool IsTypeDefinition(const CXIdxContainerInfo* container) {

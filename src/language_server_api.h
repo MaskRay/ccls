@@ -178,6 +178,12 @@ struct lsLocation {
 MAKE_HASHABLE(lsLocation, t.uri, t.range);
 MAKE_REFLECT_STRUCT(lsLocation, uri, range);
 
+// cquery extension
+struct lsLocationEx : lsLocation {
+  optional<std::string> containerName;
+};
+MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName);
+
 enum class lsSymbolKind : int {
   File = 1,
   Module = 2,

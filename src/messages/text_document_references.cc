@@ -32,7 +32,7 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentReferences);
 struct Out_TextDocumentReferences
     : public lsOutMessage<Out_TextDocumentReferences> {
   lsRequestId id;
-  std::vector<lsLocation> result;
+  std::vector<lsLocationEx> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
 
@@ -58,10 +58,11 @@ struct TextDocumentReferencesHandler
           db, sym, request->params.context.includeDeclaration);
       out.result.reserve(uses.size());
       for (Use use : uses) {
-        optional<lsLocation> ls_location =
-            GetLsLocation(db, working_files, use);
-        if (ls_location)
-          out.result.push_back(*ls_location);
+        optional<lsLocationEx> ls_loc = GetLsLocationEx(
+            db, working_files, use, config->extension.referenceContainer);
+        if (ls_loc) {
+          out.result.push_back(*ls_loc);
+        }
       }
       break;
     }
@@ -75,7 +76,7 @@ struct TextDocumentReferencesHandler
               for (const IndexInclude& include1 : file1.def->includes)
                 if (include1.resolved_path == include.resolved_path) {
                   // Another file |file1| has the same include line.
-                  lsLocation result;
+                  lsLocationEx result;
                   result.uri = lsDocumentUri::FromPath(file1.def->path);
                   result.range.start.line = result.range.end.line =
                       include1.line;

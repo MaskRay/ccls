@@ -390,6 +390,41 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
   return lsLocation(uri, *range);
 }
 
+optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
+                                       WorkingFiles* working_files,
+                                       Use use,
+                                       bool extension) {
+  optional<lsLocation> ls_loc = GetLsLocation(db, working_files, use);
+  if (!ls_loc)
+    return nullopt;
+  lsLocationEx ret;
+  ret.lsLocation::operator=(*ls_loc);
+  if (extension)
+    switch (use.kind) {
+    default:
+      break;
+    case SymbolKind::Func: {
+      QueryFunc& func = db->GetFunc(use);
+      if (func.def)
+        ret.containerName = func.def->detailed_name;
+      break;
+    }
+    case SymbolKind::Type: {
+      QueryType& type = db->GetType(use);
+      if (type.def)
+        ret.containerName = type.def->detailed_name;
+      break;
+    }
+    case SymbolKind::Var: {
+      QueryVar& var = db->GetVar(use);
+      if (var.def)
+        ret.containerName = var.def->detailed_name;
+      break;
+    }
+    }
+  return ret;
+}
+
 std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,

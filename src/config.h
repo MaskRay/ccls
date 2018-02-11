@@ -157,6 +157,12 @@ struct Config {
   };
   Completion completion;
 
+  struct Extension {
+    // If true, reference results will include "containerName".
+    bool referenceContainer = false;
+  };
+  Extension extension;
+
   struct Index {
     // 0: none, 1: doxygen, 2: all comments
     // Plugin support for clients:
@@ -182,6 +188,7 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort, detailedLabel);
+MAKE_REFLECT_STRUCT(Config::Extension, referenceContainer);
 MAKE_REFLECT_STRUCT(Config::Index, comments, attributeMakeCallsToCtor);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
@@ -218,6 +225,7 @@ MAKE_REFLECT_STRUCT(Config,
 
                     client,
                     completion,
+                    extension,
                     index,
 
                     dumpAST);
