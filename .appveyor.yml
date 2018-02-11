@@ -10,7 +10,7 @@ install:
 environment:
   CLICOLOR_FORCE: 1
   matrix:
-#    - MSYSTEM: MINGW64
+    - MSYSTEM: MINGW64
     - MSYSTEM: MSVC
 
 matrix:
@@ -34,7 +34,7 @@ build_script:
         C:\msys64\usr\bin\bash -lc @'
         pacman -S --needed --noconfirm mingw-w64-x86_64-clang python
         cd /c/projects/cquery
-        CXXFLAGS=-Wall /usr/bin/python waf configure build --use-system-clang 2>&1
+        CXXFLAGS=-Wall /usr/bin/python waf configure build --llvm-config llvm-config 2>&1
       '@
       }
   - set PATH=%PATH%;C:\msys64\%MSYSTEM%\bin
