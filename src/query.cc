@@ -40,8 +40,10 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.short_name_offset = type.short_name_offset;
   result.short_name_size = type.short_name_size;
   result.kind = type.kind;
-  result.hover = type.hover;
-  result.comments = type.comments;
+  if (!type.hover.empty())
+    result.hover = type.hover;
+  if (!type.comments.empty())
+    result.comments = type.comments;
   result.file = id_map.primary_file;
   result.spell = id_map.ToQuery(type.spell);
   result.extent = id_map.ToQuery(type.extent);
@@ -64,8 +66,10 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.short_name_size = func.short_name_size;
   result.kind = func.kind;
   result.storage = func.storage;
-  result.hover = func.hover;
-  result.comments = func.comments;
+  if (!func.hover.empty())
+    result.hover = func.hover;
+  if (!func.comments.empty())
+    result.comments = func.comments;
   result.file = id_map.primary_file;
   result.spell = id_map.ToQuery(func.spell);
   result.extent = id_map.ToQuery(func.extent);
@@ -84,13 +88,13 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   result.detailed_name = var.detailed_name;
   result.short_name_offset = var.short_name_offset;
   result.short_name_size = var.short_name_size;
-  result.hover = var.hover;
-  result.comments = var.comments;
+  if (!var.hover.empty())
+    result.hover = var.hover;
+  if (!var.comments.empty())
+    result.comments = var.comments;
   result.file = id_map.primary_file;
-  if (var.spell)
-    result.spell = id_map.ToQuery(*var.spell);
-  if (var.extent)
-    result.extent = id_map.ToQuery(*var.extent);
+  result.spell = id_map.ToQuery(var.spell);
+  result.extent = id_map.ToQuery(var.extent);
   result.variable_type = id_map.ToQuery(var.variable_type);
   if (result.parent_id)
     switch (var.parent_kind) {

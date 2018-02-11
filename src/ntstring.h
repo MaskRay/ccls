@@ -9,32 +9,26 @@
 class Reader;
 class Writer;
 
-// Null-terminated string
+// Nullable null-terminated string, which is null if default constructed,
+// but non-null if assigned.
 // This is used in Query{Func,Type,Var}::def to reduce memory footprint.
 class NTString {
   using size_type = std::string::size_type;
   std::unique_ptr<char[]> str;
 
  public:
-  NTString() : str(new char[1]()) {}
-  NTString(const NTString& o) : str(new char[strlen(o.c_str()) + 1]) {
-    strcpy(str.get(), o.c_str());
-  }
+  NTString() = default;
   NTString(NTString&& o) = default;
-  NTString(std::string_view sv) {
-    *this = sv;
-  }
+  NTString(const NTString& o) { *this = o; }
+  NTString(std::string_view sv) { *this = sv; }
 
-  operator std::string_view() const { return str.get(); }
   const char* c_str() const { return str.get(); }
-  std::string_view substr(size_type pos, size_type cnt) const {
-    return std::string_view(c_str() + pos, cnt);
+  operator std::string_view() const {
+    if (c_str())
+      return c_str();
+    return {};
   }
-  bool empty() const { return !str || str.get()[0] == '\0'; }
-  size_type find(const char* s) {
-    const char *p = strstr(c_str(), s);
-    return p ? std::string::size_type(p - c_str()) : std::string::npos;
-  }
+  bool empty() const { return !str || *c_str() == '\0'; }
 
   void operator=(std::string_view sv) {
     str = std::unique_ptr<char[]>(new char[sv.size() + 1]);
@@ -45,6 +39,7 @@ class NTString {
     *this = static_cast<std::string_view>(o);
   }
   bool operator==(const NTString& o) const {
-    return strcmp(c_str(), o.c_str()) == 0;
+    return str && o.str ? strcmp(c_str(), o.c_str()) == 0
+      : c_str() == o.c_str();
   }
 };

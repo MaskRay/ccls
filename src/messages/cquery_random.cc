@@ -15,7 +15,7 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryRandom);
 
 const double kDeclWeight = 3;
 const double kDamping = 0.1;
-const double kAlpha = 0.3;
+const double kAlpha = 2.80777024202851936522;
 
 template <typename Q>
 struct Kind;

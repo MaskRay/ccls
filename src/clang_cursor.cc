@@ -228,12 +228,12 @@ std::string ClangCursor::get_type_description() const {
   return ::ToString(clang_getTypeSpelling(type));
 }
 
-std::string ClangCursor::get_comments() const {
+NTString ClangCursor::get_comments() const {
   if (!g_index_comments)
-    return "";
+    return {};
   CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
   if (clang_Range_isNull(range))
-    return "";
+    return {};
 
   unsigned start_column;
   clang_getSpellingLocation(clang_getRangeStart(range), nullptr, nullptr,
@@ -286,7 +286,9 @@ std::string ClangCursor::get_comments() const {
   }
   while (ret.size() && isspace(ret.back()))
     ret.pop_back();
-  return ret;
+  if (ret.empty())
+    return {};
+  return static_cast<std::string_view>(ret);
 }
 
 std::string ClangCursor::ToString() const {
