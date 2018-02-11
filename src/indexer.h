@@ -36,17 +36,7 @@ struct IndexVar;
 // front of others.
 enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind);
-
-// FIXME: Make old compiler happy.
-namespace std {
-template <>
-struct hash<::SymbolKind> {
-  size_t operator()(const ::SymbolKind& instance) const {
-    using type = std::underlying_type<::SymbolKind>::type;
-    return std::hash<type>()(static_cast<type>(instance));
-  }
-};
-}  // namespace std
+MAKE_ENUM_HASHABLE(SymbolKind);
 
 using RawId = uint32_t;
 
