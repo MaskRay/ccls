@@ -74,7 +74,7 @@ struct TextDocumentDefinitionHandler
       //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
 
-      Maybe<Reference> def_loc = GetDefinitionSpellingOfSymbol(db, sym);
+      Maybe<Use> def_loc = GetDefinitionSpellingOfSymbol(db, sym);
 
       // We use spelling start and extent end because this causes vscode to
       // highlight the entire definition when previewing / hoving with the

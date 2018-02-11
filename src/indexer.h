@@ -260,8 +260,8 @@ struct FuncDefDefinitionData {
   std::string detailed_name;
   std::string hover;
   std::string comments;
-  Maybe<typename F::Range> spell;
-  Maybe<typename F::Range> extent;
+  Maybe<Use> spell;
+  Maybe<Use> extent;
 
   // Method this method overrides.
   std::vector<typename F::FuncId> base;

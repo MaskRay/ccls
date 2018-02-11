@@ -67,12 +67,8 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.hover = func.hover;
   result.comments = func.comments;
   result.file = id_map.primary_file;
-  if (func.spell)
-    result.spell =
-        id_map.ToQuery(*func.spell, Role::Definition);
-  if (func.extent)
-    result.extent =
-        id_map.ToQuery(*func.extent, Role::None);
+  result.spell = id_map.ToQuery(func.spell);
+  result.extent = id_map.ToQuery(func.extent);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
   result.base = id_map.ToQuery(func.base);
   result.locals = id_map.ToQuery(func.locals);
@@ -274,11 +270,9 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   for (const IndexFunc& func : indexed.funcs) {
     QueryFuncId id = id_map.ToQuery(func.id);
     if (func.def.spell.has_value())
-      add_all_symbols(*func.def.spell, id, SymbolKind::Func,
-                      Role::Definition);
+      add_all_symbols_use(*func.def.spell, id, SymbolKind::Func);
     if (func.def.extent.has_value())
-      add_outline(*func.def.extent, id,
-                   SymbolKind::Func, Role::None);
+      add_outline_use(*func.def.extent, id, SymbolKind::Func);
     for (const IndexFunc::Declaration& decl : func.declarations) {
       add_all_symbols(decl.spelling, id, SymbolKind::Func,
                       Role::Declaration);
@@ -1023,7 +1017,7 @@ TEST_SUITE("query") {
     previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
         ->def.spell = Use(Range(Position(1, 0)), Id<void>(), SymbolKind::File, Role::None);
     previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
-        ->def.spell = Range(Position(2, 0));
+        ->def.spell = Use(Range(Position(2, 0)), Id<void>(), SymbolKind::File, Role::None);
     previous.Resolve(previous.ToVarId(HashUsr("usr3")))
         ->def.spell = Use(Range(Position(3, 0)), Id<void>(), SymbolKind::File, Role::None);
 

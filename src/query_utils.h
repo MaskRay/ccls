@@ -7,10 +7,10 @@
 
 #include <optional.h>
 
-Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                               QueryFuncId id);
-Maybe<Reference> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                               SymbolRef sym);
+Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                         QueryFuncId id);
+Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
+                                         SymbolRef sym);
 Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolRef sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                SymbolRef sym);

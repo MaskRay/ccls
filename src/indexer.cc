@@ -1594,8 +1594,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && !is_template_specialization) {
         // assert(!func->def.spell);
         // assert(!func->def.extent);
-        func->def.spell = decl_spelling;
-        func->def.extent = decl_extent;
+        SetUse(db, &func->def.spell, decl_spelling, lex_parent, Role::Definition);
+        SetUse(db, &func->def.extent, decl_extent, lex_parent, Role::None);
       } else {
         IndexFunc::Declaration declaration;
         declaration.spelling = decl_spelling;
