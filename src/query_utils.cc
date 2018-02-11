@@ -380,7 +380,7 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    Reference ref) {
   std::string path;
   Maybe<QueryFileId> file_id = db->GetFileId(ref);
-  if (!file_id.has_value())
+  if (!file_id)
     return nullopt;
   lsDocumentUri uri = GetLsDocumentUri(db, *file_id, &path);
   optional<lsRange> range =
@@ -496,7 +496,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       info.containerName = func.def->detailed_name;
       info.kind = lsSymbolKind::Function;
 
-      if (func.def->declaring_type.has_value()) {
+      if (func.def->declaring_type) {
         QueryType& container = db->types[func.def->declaring_type->id];
         if (container.def)
           info.kind = lsSymbolKind::Method;

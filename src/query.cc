@@ -255,9 +255,9 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   }
   for (const IndexFunc& func : indexed.funcs) {
     QueryFuncId id = id_map.ToQuery(func.id);
-    if (func.def.spell.has_value())
+    if (func.def.spell)
       add_all_symbols_use(*func.def.spell, id, SymbolKind::Func);
-    if (func.def.extent.has_value())
+    if (func.def.extent)
       add_outline_use(*func.def.extent, id, SymbolKind::Func);
     for (const IndexFunc::Declaration& decl : func.declarations) {
       add_all_symbols(decl.spelling, id, SymbolKind::Func,
@@ -926,7 +926,7 @@ void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
 void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                                   SymbolKind kind,
                                   Id<void> idx) {
-  if (!symbol_idx->has_value()) {
+  if (!symbol_idx->HasValue()) {
     *symbol_idx = Id<void>(symbols.size());
     symbols.push_back(SymbolIdx{idx, kind});
   }

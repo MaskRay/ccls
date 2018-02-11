@@ -28,12 +28,12 @@ public:
   const T& operator*() const { return storage; }
   T& operator*() { return storage; }
 
-  bool has_value() const {
+  bool HasValue() const {
     return storage.HasValueForMaybe_();
   }
-  explicit operator bool() const { return has_value(); }
+  explicit operator bool() const { return HasValue(); }
   operator optional<T>() const {
-    if (has_value())
+    if (HasValue())
       return storage;
     return nullopt;
   }

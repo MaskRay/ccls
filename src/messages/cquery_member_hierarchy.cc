@@ -114,7 +114,7 @@ struct CqueryMemberHierarchyExpandHandler
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
     // |ExpandNode| uses -1 to indicate invalid |type_id|.
-    if (request->params.type_id.has_value())
+    if (request->params.type_id)
       out.result = ExpandNode(db, working_files, *request->params.type_id);
 
     QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyExpand, out);
