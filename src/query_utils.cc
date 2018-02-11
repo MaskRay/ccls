@@ -379,10 +379,10 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    Reference ref) {
   std::string path;
-  QueryFileId file_id = db->GetFileId(ref);
-  if (!file_id.HasValue())
+  Maybe<QueryFileId> file_id = db->GetFileId(ref);
+  if (!file_id.has_value())
     return nullopt;
-  lsDocumentUri uri = GetLsDocumentUri(db, file_id, &path);
+  lsDocumentUri uri = GetLsDocumentUri(db, *file_id, &path);
   optional<lsRange> range =
       GetLsRange(working_files->GetFileByFilename(path), ref.range);
   if (!range)

@@ -91,11 +91,13 @@ void AddCodeLens(const char* singular,
   optional<lsRange> range = GetLsRange(common->working_file, loc.range);
   if (!range)
     return;
+  Maybe<QueryFileId> file_id = common->db->GetFileId(loc);
+  if (!file_id)
+    return;
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "cquery.showReferences";
-  code_lens.command->arguments.uri =
-      GetLsDocumentUri(common->db, common->db->GetFileId(loc));
+  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, *file_id);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.

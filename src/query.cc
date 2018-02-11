@@ -129,9 +129,9 @@ void AddMergeableRange(
   }
 }
 
-// Compares |previous| and |current|, adding all elements that are
-// in |previous| but not |current| to |removed|, and all elements
-// that are in |current| but not |previous| to |added|.
+// Compares |previous| and |current|, adding all elements that are in |previous|
+// but not |current| to |removed|, and all elements that are in |current| but
+// not |previous| to |added|.
 //
 // Returns true iff |removed| or |added| are non-empty.
 template <typename T>

@@ -290,7 +290,7 @@ struct QueryDatabase {
   Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
   Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
 
-  QueryFileId GetFileId(SymbolIdx ref) {
+  Maybe<QueryFileId> GetFileId(SymbolIdx ref) {
     switch (ref.kind) {
       case SymbolKind::Invalid:
         break;

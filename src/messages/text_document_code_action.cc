@@ -73,7 +73,7 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (func.def && func.def->extent) {
-          QueryFileId t = db->GetFileId(*func.def->extent);
+          Maybe<QueryFileId> t = db->GetFileId(*func.def->extent);
           if (t != file_id)
             return t;
         }
@@ -84,7 +84,7 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
         if (var.def && var.def->extent) {
-          QueryFileId t = db->GetFileId(*var.def->extent);
+          Maybe<QueryFileId> t = db->GetFileId(*var.def->extent);
           if (t != file_id)
             return t;
         }

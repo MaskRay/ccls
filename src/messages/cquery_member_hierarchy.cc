@@ -15,7 +15,7 @@ struct Ipc_CqueryMemberHierarchyExpand
     : public RequestMessage<Ipc_CqueryMemberHierarchyExpand> {
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
   struct Params {
-    QueryTypeId type_id;
+    Maybe<QueryTypeId> type_id;
   };
   Params params;
 };
@@ -114,8 +114,8 @@ struct CqueryMemberHierarchyExpandHandler
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
     // |ExpandNode| uses -1 to indicate invalid |type_id|.
-    if (request->params.type_id.HasValue())
-      out.result = ExpandNode(db, working_files, request->params.type_id);
+    if (request->params.type_id.has_value())
+      out.result = ExpandNode(db, working_files, *request->params.type_id);
 
     QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyExpand, out);
   }

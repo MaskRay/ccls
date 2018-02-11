@@ -44,4 +44,8 @@ public:
   bool operator==(const Maybe& o) const {
     return storage == o.storage;
   }
+  bool operator!=(const Maybe& o) const {
+    return !(*this == o);
+  }
+
 };
