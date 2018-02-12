@@ -16,13 +16,19 @@ int ComputeRangeSize(const Range& range) {
   return range.end.column - range.start.column;
 }
 
+Maybe<Use> UseWithFileId(Maybe<Use> use, QueryFileId file_id) {
+  if (!use)
+    return nullopt;
+  return Use(use->range, file_id, SymbolKind::File, use->role);
+}
+
 }  // namespace
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          QueryFuncId id) {
   QueryFunc& func = db->funcs[id.id];
   if (func.def)
-    return func.def->spell;
+    return UseWithFileId(func.def->spell, func.def->file);
   return nullopt;
 }
 
@@ -32,19 +38,19 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       if (type.def)
-        return type.def->spell;
+        return UseWithFileId(type.def->spell, type.def->file);
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (func.def)
-        return func.def->spell;
+        return UseWithFileId(func.def->spell, func.def->file);
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
       if (var.def)
-        return var.def->spell;
+        return UseWithFileId(var.def->spell, var.def->file);
       break;
     }
     case SymbolKind::File:
@@ -61,19 +67,19 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       if (type.def)
-        return type.def->extent;
+        return UseWithFileId(type.def->extent, type.def->file);
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (func.def)
-        return Use(*func.def->extent);
+        return UseWithFileId(func.def->extent, func.def->file);
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
       if (var.def)
-        return var.def->extent;
+        return UseWithFileId(var.def->extent, var.def->file);
       break;
     }
     case SymbolKind::File:
@@ -92,22 +98,22 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
   switch (sym.kind) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
-      if (type.def && type.def->spell)
-        return db->GetFileId(*type.def->spell);
+      if (type.def)
+        return type.def->file;
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (!func.declarations.empty())
         return db->GetFileId(func.declarations[0]);
-      if (func.def && func.def->spell)
-        return db->GetFileId(*func.def->spell);
+      if (func.def)
+        return func.def->file;
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
-      if (var.def && var.def->spell)
-        return db->GetFileId(*var.def->spell);
+      if (var.def)
+        return var.def->file;
       break;
     }
     case SymbolKind::File:
