@@ -1,6 +1,7 @@
 #include "query.h"
 
 #include "indexer.h"
+#include "serializer.h"
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
@@ -1109,5 +1110,135 @@ TEST_SUITE("query") {
     REQUIRE(db.funcs[0].uses.size() == 2);
     REQUIRE(db.funcs[0].uses[0].range == Range(Position(4, 0)));
     REQUIRE(db.funcs[0].uses[1].range == Range(Position(5, 0)));
+  }
+
+  TEST_CASE("Remove variable with usage") {
+    auto load_index_from_json = [](const char* json) {
+      return Deserialize(SerializeFormat::Json, "foo.cc", json, "<empty>", nullopt);
+    };
+
+    auto previous = load_index_from_json(R"RAW(
+{
+  "types": [
+    {
+      "id": 0,
+      "usr": 17,
+      "detailed_name": "",
+      "short_name_offset": 0,
+      "short_name_size": 0,
+      "kind": 0,
+      "hover": "",
+      "comments": "",
+      "parents": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [
+        0
+      ],
+      "uses": []
+    }
+  ],
+  "funcs": [
+    {
+      "id": 0,
+      "usr": 4259594751088586730,
+      "detailed_name": "void foo()",
+      "short_name_offset": 5,
+      "short_name_size": 3,
+      "kind": 12,
+      "storage": 1,
+      "hover": "",
+      "comments": "",
+      "declarations": [],
+      "spell": "1:6-1:9|-1|1|2",
+      "extent": "1:1-4:2|-1|1|0",
+      "base": [],
+      "derived": [],
+      "locals": [],
+      "uses": [],
+      "callees": []
+    }
+  ],
+  "vars": [
+    {
+      "id": 0,
+      "usr": 16837348799350457167,
+      "detailed_name": "int a",
+      "short_name_offset": 4,
+      "short_name_size": 1,
+      "hover": "",
+      "comments": "",
+      "declarations": [],
+      "spell": "2:7-2:8|0|3|2",
+      "extent": "2:3-2:8|0|3|2",
+      "type": 0,
+      "uses": [
+        "3:3-3:4|0|3|4"
+      ],
+      "kind": 13,
+      "storage": 1
+    }
+  ]
+}
+    )RAW");
+
+    auto current = load_index_from_json(R"RAW(
+{
+  "types": [],
+  "funcs": [
+    {
+      "id": 0,
+      "usr": 4259594751088586730,
+      "detailed_name": "void foo()",
+      "short_name_offset": 5,
+      "short_name_size": 3,
+      "kind": 12,
+      "storage": 1,
+      "hover": "",
+      "comments": "",
+      "declarations": [],
+      "spell": "1:6-1:9|-1|1|2",
+      "extent": "1:1-5:2|-1|1|0",
+      "base": [],
+      "derived": [],
+      "locals": [],
+      "uses": [],
+      "callees": []
+    }
+  ],
+  "vars": []
+}
+    )RAW");
+
+    // Validate previous/current were parsed.
+    REQUIRE(previous->vars.size() == 1);
+    REQUIRE(current->vars.size() == 0);
+
+    QueryDatabase db;
+
+    // Apply initial file.
+    {
+      IdMap previous_map(&db, previous->id_cache);
+      IndexUpdate import_update =
+          IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, previous.get());
+      db.ApplyIndexUpdate(&import_update);
+    }
+
+    REQUIRE(db.vars.size() == 1);
+    REQUIRE(db.vars[0].uses.size() == 1);
+
+    // Apply change.
+    {
+      IdMap previous_map(&db, previous->id_cache);
+      IdMap current_map(&db, current->id_cache);
+      IndexUpdate delta_update = IndexUpdate::CreateDelta(
+          &previous_map, &current_map, previous.get(), current.get());
+      db.ApplyIndexUpdate(&delta_update);
+    }
+    REQUIRE(db.vars.size() == 1);
+    // FIXME/TODO: See https://github.com/cquery-project/cquery/issues/443.
+    // REQUIRE(db.vars[0].uses.size() == 0);
   }
 }
