@@ -433,7 +433,9 @@ int main(int argc, char** argv) {
 
   if (HasOption(options, "-h") || HasOption(options, "--help")) {
     PrintHelp();
-    return 0;
+    // Also emit doctest help if --test-unit is passed.
+    if (!HasOption(options, "--test-unit"))
+      return 0;
   }
 
   if (!HasOption(options, "--log-all-to-stderr"))
