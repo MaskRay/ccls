@@ -128,8 +128,11 @@ struct IndexFile;
 void Reflect(Reader& visitor, uint8_t& value);
 void Reflect(Writer& visitor, uint8_t& value);
 
-void Reflect(Reader& visitor, int16_t& value);
-void Reflect(Writer& visitor, int16_t& value);
+void Reflect(Reader& visitor, short& value);
+void Reflect(Writer& visitor, short& value);
+
+void Reflect(Reader& visitor, unsigned short& value);
+void Reflect(Writer& visitor, unsigned short& value);
 
 void Reflect(Reader& visitor, int& value);
 void Reflect(Writer& visitor, int& value);

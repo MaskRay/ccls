@@ -25,12 +25,21 @@ void Reflect(Writer& visitor, uint8_t& value) {
   visitor.Int(value);
 }
 
-void Reflect(Reader& visitor, int16_t& value) {
+void Reflect(Reader& visitor, short& value) {
   if (!visitor.IsInt())
-    throw std::invalid_argument("int16_t");
-  value = (int16_t)visitor.GetInt();
+    throw std::invalid_argument("short");
+  value = (short)visitor.GetInt();
 }
-void Reflect(Writer& visitor, int16_t& value) {
+void Reflect(Writer& visitor, short& value) {
+  visitor.Int(value);
+}
+
+void Reflect(Reader& visitor, unsigned short& value) {
+  if (!visitor.IsInt())
+    throw std::invalid_argument("unsigned short");
+  value = (unsigned short)visitor.GetInt();
+}
+void Reflect(Writer& visitor, unsigned short& value) {
   visitor.Int(value);
 }
 

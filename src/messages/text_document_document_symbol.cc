@@ -30,8 +30,10 @@ struct TextDocumentDocumentSymbolHandler
     out.id = request->id;
 
     QueryFile* file;
+    QueryFileId file_id;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file)) {
+                        request->params.textDocument.uri.GetPath(), &file,
+                        &file_id)) {
       return;
     }
 
@@ -41,7 +43,10 @@ struct TextDocumentDocumentSymbolHandler
       if (!info)
         continue;
 
-      optional<lsLocation> location = GetLsLocation(db, working_files, sym);
+      // FIXME
+      Use use(sym);
+      use.file = file_id;
+      optional<lsLocation> location = GetLsLocation(db, working_files, use);
       if (!location)
         continue;
       info->location = *location;

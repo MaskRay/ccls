@@ -66,24 +66,25 @@ enum class StorageClass : uint8_t {
 };
 MAKE_REFLECT_TYPE_PROXY(StorageClass);
 
-enum class Role : uint8_t {
+enum class Role : uint16_t {
   None = 0,
   Declaration = 1 << 0,
   Definition = 1 << 1,
   Reference = 1 << 2,
-  Implicit = 1 << 3,
-
-  ChildOf = 1 << 4,
-  BaseOf = 1 << 5,
-  Call = 1 << 6,
+  Read = 1 << 3,
+  Write = 1 << 4,
+  Call = 1 << 5,
+  Dynamic = 1 << 6,
+  Address = 1 << 7,
+  Implicit = 1 << 8,
 };
 MAKE_REFLECT_TYPE_PROXY(Role);
 MAKE_ENUM_HASHABLE(Role);
 
-inline uint8_t operator&(Role lhs, Role rhs) {
-  return uint8_t(lhs) & uint8_t(rhs);
+inline uint16_t operator&(Role lhs, Role rhs) {
+  return uint16_t(lhs) & uint16_t(rhs);
 }
 
 inline Role operator|(Role lhs, Role rhs) {
-  return Role(uint8_t(lhs) | uint8_t(rhs));
+  return Role(uint16_t(lhs) | uint16_t(rhs));
 }

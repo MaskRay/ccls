@@ -21,6 +21,9 @@
 #if CINDEX_VERSION >= 47
 #define CINDEX_HAVE_PRETTY 1
 #endif
+#if CINDEX_VERSION >= 48
+#define CINDEX_HAVE_ROLE 1
+#endif
 
 namespace {
 
@@ -51,6 +54,14 @@ bool IsScopeSemanticContainer(CXCursorKind kind) {
     default:
       return true;
   }
+}
+
+Role GetRole(const CXIdxEntityRefInfo* ref_info, Role role) {
+#if CINDEX_HAVE_ROLE
+  return static_cast<Role>(static_cast<int>(ref_info->role));
+#else
+  return role;
+#endif
 }
 
 SymbolKind GetSymbolKind(CXCursorKind kind) {
@@ -1999,7 +2010,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           var->def.kind = ClangSymbolKind::Parameter;
         }
       }
-      UniqueAddUse(db, var->uses, loc, fromContainer(ref->container), Role::Reference);
+      UniqueAddUse(db, var->uses, loc, fromContainer(ref->container), GetRole(ref, Role::Reference));
       break;
     }
 
@@ -2056,7 +2067,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       OnIndexReference_Function(
           db, loc, ref->container->cursor, called_id,
-          Role::Call |
+          GetRole(ref, Role::Call) |
               (is_implicit ? Role::Implicit : Role::None));
 
       // Checks if |str| starts with |start|. Ignores case.
