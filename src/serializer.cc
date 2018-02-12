@@ -359,13 +359,13 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
   switch (format) {
     case SerializeFormat::Json: {
       rapidjson::Document reader;
-      if (gTestOutputMode)
+      if (gTestOutputMode || !expected_version) {
         reader.Parse(serialized_index_content.c_str());
-      else {
+      } else {
         const char* p = strchr(serialized_index_content.c_str(), '\n');
         if (!p)
           return nullptr;
-        if (expected_version && atoi(serialized_index_content.c_str()) != *expected_version)
+        if (atoi(serialized_index_content.c_str()) != *expected_version)
           return nullptr;
         reader.Parse(p + 1);
       }
