@@ -20,8 +20,6 @@ using QueryVarId = Id<QueryVar>;
 
 struct IdMap;
 
-using QueryFuncRef = Use;
-
 // There are two sources of reindex updates: the (single) definition of a
 // symbol has changed, or one of many users of the symbol has changed.
 //
@@ -341,7 +339,6 @@ template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
 template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
 template <> struct IndexToQuery<Use> { using type = Use; };
 template <> struct IndexToQuery<SymbolRef> { using type = SymbolRef; };
-template <> struct IndexToQuery<Range> { using type = Use; };
 template <> struct IndexToQuery<IndexFunc::Declaration> { using type = Use; };
 template <typename I> struct IndexToQuery<optional<I>> {
   using type = optional<typename IndexToQuery<I>::type>;
@@ -363,7 +360,6 @@ struct IdMap {
   QueryFuncId ToQuery(IndexFuncId id) const;
   QueryVarId ToQuery(IndexVarId id) const;
   SymbolRef ToQuery(SymbolRef ref) const;
-  Use ToQuery(Range range, Role role) const;
   Use ToQuery(Reference ref) const;
   Use ToQuery(Use ref) const;
   Use ToQuery(IndexFunc::Declaration decl) const;
@@ -381,7 +377,6 @@ struct IdMap {
       ret.push_back(ToQuery(x));
     return ret;
   }
-  std::vector<Use> ToQuery(const std::vector<Range>& a) const;
   // clang-format on
 
 

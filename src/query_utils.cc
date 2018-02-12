@@ -16,19 +16,13 @@ int ComputeRangeSize(const Range& range) {
   return range.end.column - range.start.column;
 }
 
-Maybe<Use> UseWithFileId(Maybe<Use> use, QueryFileId file_id) {
-  if (!use)
-    return nullopt;
-  return Use(use->range, file_id, SymbolKind::File, use->role);
-}
-
 }  // namespace
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          QueryFuncId id) {
   QueryFunc& func = db->funcs[id.id];
   if (func.def)
-    return UseWithFileId(func.def->spell, func.def->file);
+    return func.def->spell;
   return nullopt;
 }
 
@@ -38,19 +32,19 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       if (type.def)
-        return UseWithFileId(type.def->spell, type.def->file);
+        return type.def->spell;
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (func.def)
-        return UseWithFileId(func.def->spell, func.def->file);
+        return func.def->spell;
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
       if (var.def)
-        return UseWithFileId(var.def->spell, var.def->file);
+        return var.def->spell;
       break;
     }
     case SymbolKind::File:
@@ -67,24 +61,24 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       if (type.def)
-        return UseWithFileId(type.def->extent, type.def->file);
+        return type.def->extent;
       break;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (func.def)
-        return UseWithFileId(func.def->extent, func.def->file);
+        return func.def->extent;
       break;
     }
     case SymbolKind::Var: {
       QueryVar& var = db->GetVar(sym);
       if (var.def)
-        return UseWithFileId(var.def->extent, var.def->file);
+        return var.def->extent;
       break;
     }
     case SymbolKind::File:
       return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
-                 Role::None);
+                 Role::None, QueryFileId(sym.id));
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -105,7 +99,7 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (!func.declarations.empty())
-        return db->GetFileId(func.declarations[0]);
+        return func.declarations[0].file;
       if (func.def)
         return func.def->file;
       break;
@@ -383,14 +377,11 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id) {
 
 optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   Reference ref) {
+                                   Use use) {
   std::string path;
-  Maybe<QueryFileId> file_id = db->GetFileId(ref);
-  if (!file_id)
-    return nullopt;
-  lsDocumentUri uri = GetLsDocumentUri(db, *file_id, &path);
+  lsDocumentUri uri = GetLsDocumentUri(db, use.file, &path);
   optional<lsRange> range =
-      GetLsRange(working_files->GetFileByFilename(path), ref.range);
+      GetLsRange(working_files->GetFileByFilename(path), use.range);
   if (!range)
     return nullopt;
   return lsLocation(uri, *range);

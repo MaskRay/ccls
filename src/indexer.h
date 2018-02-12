@@ -136,13 +136,19 @@ struct SymbolRef : Reference {
     : Reference{Range(), si.id, si.kind, Role::None} {}
 };
 
+struct QueryFile;
+
 // Represents an occurrence of a variable/type, |id,kind| refer to the lexical
 // parent.
 struct Use : Reference {
+  // |file| is used in Query* but not in Index*
+  Id<QueryFile> file;
   Use() = default;
   Use(Reference ref) : Reference(ref) {}
   Use(Range range, Id<void> id, SymbolKind kind, Role role)
       : Reference{range, id, kind, role} {}
+  Use(Range range, Id<void> id, SymbolKind kind, Role role, Id<QueryFile> file)
+    : Reference{range, id, kind, role}, file(file) {}
 };
 
 void Reflect(Reader& visitor, Reference& value);
@@ -433,7 +439,7 @@ struct IndexVar {
 
   Def def;
 
-  std::vector<Range> declarations;
+  std::vector<Use> declarations;
   // Usages.
   std::vector<Use> uses;
 

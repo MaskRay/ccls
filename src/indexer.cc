@@ -657,8 +657,8 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-const int IndexFile::kMajorVersion = 12;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMajorVersion = 13;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
     : id_cache(path), path(path), file_contents(contents) {}
@@ -1542,7 +1542,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         SetUse(db, &var->def.spell, decl_spell, lex_parent, Role::Definition);
         SetUse(db, &var->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
       } else {
-        var->declarations.push_back(decl_spell);
+        Maybe<Use> use;
+        SetUse(db, &use, decl_spell, lex_parent, Role::Declaration);
+        var->declarations.push_back(*use);
       }
 
       AddDeclInitializerUsages(db, decl_cursor);
@@ -2374,6 +2376,9 @@ std::string GetClangVersion() {
   return ToString(clang_getClangVersion());
 }
 
+// |SymbolRef| is serialized this way.
+// |Use| also uses this though it has an extra field |file|,
+// which is not used by Index* so it does not need to be serialized.
 void Reflect(Reader& visitor, Reference& value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string t = visitor.GetString();

@@ -233,10 +233,6 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
                           Role role) {
     def.outline.push_back(SymbolRef(range, id, kind, role));
   };
-  auto add_all_symbols = [&](Range range, Id<void> id, SymbolKind kind,
-                             Role role) {
-    def.all_symbols.push_back(SymbolRef(range, id, kind, role));
-  };
   auto add_all_symbols_use = [&](Use use, Id<void> id, SymbolKind kind) {
     def.all_symbols.push_back(
         SymbolRef(use.range, id, kind, use.role));
@@ -252,7 +248,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
     if (type.def.extent)
       add_outline_use(*type.def.extent, id, SymbolKind::Type);
     for (Use use : type.uses)
-      add_all_symbols(use.range, id, SymbolKind::Type, use.role);
+      add_all_symbols_use(use, id, SymbolKind::Type);
   }
   for (const IndexFunc& func : indexed.funcs) {
     QueryFuncId id = id_map.ToQuery(func.id);
@@ -261,23 +257,21 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
     if (func.def.extent)
       add_outline_use(*func.def.extent, id, SymbolKind::Func);
     for (const IndexFunc::Declaration& decl : func.declarations) {
-      add_all_symbols(decl.spelling, id, SymbolKind::Func,
-                      Role::Declaration);
+      def.all_symbols.push_back(
+          SymbolRef(decl.spelling, id, SymbolKind::Func, Role::Declaration));
       add_outline(decl.spelling, id, SymbolKind::Func, Role::Declaration);
     }
-    for (Use caller : func.uses) {
+    for (Use use : func.uses) {
       // Make ranges of implicit function calls larger (spanning one more column
       // to the left/right). This is hacky but useful. e.g.
       // textDocument/definition on the space/semicolon in `A a;` or `return
       // 42;` will take you to the constructor.
-      Range range = caller.range;
-      if (caller.role & Role::Implicit) {
-        if (range.start.column > 0)
-          range.start.column--;
-        range.end.column++;
+      if (use.role & Role::Implicit) {
+        if (use.range.start.column > 0)
+          use.range.start.column--;
+        use.range.end.column++;
       }
-      add_all_symbols(range, id, SymbolKind::Func,
-                      caller.role | Role::Call);
+      add_all_symbols_use(use, id, SymbolKind::Func);
     }
   }
   for (const IndexVar& var : indexed.vars) {
@@ -286,15 +280,12 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       add_all_symbols_use(*var.def.spell, id, SymbolKind::Var);
     if (var.def.extent)
       add_outline_use(*var.def.extent, id, SymbolKind::Var);
-    for (const Range& decl : var.declarations) {
-      add_all_symbols(decl, id_map.ToQuery(var.id), SymbolKind::Var,
-                      Role::Definition);
-      add_outline(decl, id_map.ToQuery(var.id), SymbolKind::Var,
-                  Role::Declaration);
+    for (Use decl : var.declarations) {
+      add_all_symbols_use(decl, id, SymbolKind::Var);
+      add_outline_use(decl, id, SymbolKind::Var);
     }
     for (Use use : var.uses)
-      add_all_symbols(use.range, id_map.ToQuery(var.id), SymbolKind::Var,
-                      use.role);
+      add_all_symbols_use(use, id, SymbolKind::Var);
   }
 
   std::sort(def.outline.begin(), def.outline.end(),
@@ -411,14 +402,12 @@ IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
         *GetQueryVarIdFromUsr(query_db, entry.second, true);
 }
 
-Use IdMap::ToQuery(Range range, Role role) const {
-  return Use(range, primary_file, SymbolKind:: File, role);
-}
 QueryTypeId IdMap::ToQuery(IndexTypeId id) const {
   assert(cached_type_ids_.find(id) != cached_type_ids_.end());
   return QueryTypeId(cached_type_ids_.find(id)->second);
 }
 QueryFuncId IdMap::ToQuery(IndexFuncId id) const {
+  // FIXME id shouldn't be invalid
   if (id == IndexFuncId())
     return QueryFuncId();
   assert(cached_func_ids_.find(id) != cached_func_ids_.end());
@@ -430,44 +419,38 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
 }
 
 Use IdMap::ToQuery(Reference ref) const {
+  Use ret(ref);
+  ret.file = primary_file;
   switch (ref.kind) {
   case SymbolKind::Invalid:
     break;
   case SymbolKind::File:
-    ref.id = primary_file;
+    ret.id = primary_file;
     break;
   case SymbolKind::Func:
-    ref.id = ToQuery(IndexFuncId(ref.id));
+    ret.id = ToQuery(IndexFuncId(ref.id));
     break;
   case SymbolKind::Type:
-    ref.id = ToQuery(IndexTypeId(ref.id));
+    ret.id = ToQuery(IndexTypeId(ref.id));
     break;
   case SymbolKind::Var:
-    ref.id = ToQuery(IndexVarId(ref.id));
+    ret.id = ToQuery(IndexVarId(ref.id));
     break;
   }
-  return ref;
+  return ret;
 }
 SymbolRef IdMap::ToQuery(SymbolRef ref) const {
   ref.Reference::operator=(ToQuery(static_cast<Reference>(ref)));
   return ref;
 }
 Use IdMap::ToQuery(Use use) const {
-  use.Reference::operator=(ToQuery(static_cast<Reference>(use)));
-  return use;
+  return ToQuery(static_cast<Reference>(use));
 }
 
 Use IdMap::ToQuery(IndexFunc::Declaration decl) const {
   // TODO: expose more than just QueryLocation.
-  return Use(decl.spelling, primary_file, SymbolKind::File,
-             Role::Declaration);
-}
-std::vector<Use> IdMap::ToQuery(const std::vector<Range>& a) const {
-  std::vector<Use> ret;
-  ret.reserve(a.size());
-  for (auto& x : a)
-    ret.push_back(ToQuery(x, Role::Reference));
-  return ret;
+  return {decl.spelling, primary_file, SymbolKind::File, Role::Declaration,
+          primary_file};
 }
 
 // ----------------------

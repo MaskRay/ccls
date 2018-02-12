@@ -80,7 +80,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
 
   std::vector<Out_CqueryCallTree::CallEntry> result;
 
-  auto handle_caller = [&](QueryFuncRef caller,
+  auto handle_caller = [&](Use caller,
                            Out_CqueryCallTree::CallType call_type) {
     optional<lsLocation> call_location =
         GetLsLocation(db, working_files, caller);
@@ -130,21 +130,21 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     }
   };
 
-  std::vector<QueryFuncRef> base_callers =
+  std::vector<Use> base_callers =
       GetCallersForAllBaseFunctions(db, root_func);
-  std::vector<QueryFuncRef> derived_callers =
+  std::vector<Use> derived_callers =
       GetCallersForAllDerivedFunctions(db, root_func);
   result.reserve(root_func.uses.size() + base_callers.size() +
                  derived_callers.size());
 
-  for (QueryFuncRef caller : root_func.uses)
+  for (Use caller : root_func.uses)
     handle_caller(caller, Out_CqueryCallTree::CallType::Direct);
-  for (QueryFuncRef caller : base_callers)
+  for (Use caller : base_callers)
     if (caller.kind == SymbolKind::Func && caller.id != Id<void>(root)) {
       // Do not show calls to the base function coming from this function.
       handle_caller(caller, Out_CqueryCallTree::CallType::Base);
     }
-  for (QueryFuncRef caller : derived_callers)
+  for (Use caller : derived_callers)
     handle_caller(caller, Out_CqueryCallTree::CallType::Derived);
 
   return result;

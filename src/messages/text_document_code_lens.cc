@@ -91,6 +91,7 @@ void AddCodeLens(const char* singular,
   optional<lsRange> range = GetLsRange(common->working_file, loc.range);
   if (!range)
     return;
+  // FIXME SymbolRef loc -> Use loc
   Maybe<QueryFileId> file_id = common->db->GetFileId(loc);
   if (!file_id)
     return;
@@ -178,7 +179,7 @@ struct TextDocumentCodeLensHandler
           // extent location to the spelling location.
           auto try_ensure_spelling = [&](SymbolRef sym) {
             Maybe<Use> def = GetDefinitionSpellingOfSymbol(db, sym);
-            if (!def || db->GetFileId(*def) != db->GetFileId(sym) ||
+            if (!def || def->file != *db->GetFileId(sym) ||
                 def->range.start.line != sym.range.start.line) {
               return sym;
             }

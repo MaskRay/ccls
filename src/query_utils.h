@@ -44,7 +44,7 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id);
 
 optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   Reference location);
+                                   Use use);
 optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        Use use,
