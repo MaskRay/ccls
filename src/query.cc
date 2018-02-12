@@ -728,7 +728,7 @@ void IndexUpdate::Merge(IndexUpdate&& update) {
 
 std::string IndexUpdate::ToString() {
   rapidjson::StringBuffer output;
-  rapidjson::Writer<rapidjson::StringBuffer> writer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
   JsonWriter json_writer(&writer);
   IndexUpdate& update = *this;
   Reflect(json_writer, update);
