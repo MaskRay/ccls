@@ -565,7 +565,7 @@ std::string GetDefaultResourceDirectory() {
     resource_directory =
         resource_directory.substr(1, resource_directory.size() - 2);
   }
-  if (resource_directory.find("..") != std::string::npos) {
+  if (resource_directory.compare(0, 2, "..") == 0) {
     std::string executable_path = GetExecutablePath();
     size_t pos = executable_path.find_last_of('/');
     result = executable_path.substr(0, pos + 1);

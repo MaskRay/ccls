@@ -916,6 +916,7 @@ void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
   }
 }
 
+// For Func, the returned name does not include parameters.
 std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
   RawId idx = symbols[symbol_idx].id.id;
   switch (symbols[symbol_idx].kind) {
@@ -926,8 +927,11 @@ std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
         return files[idx].def->path;
       break;
     case SymbolKind::Func:
-      if (funcs[idx].def)
-        return funcs[idx].def->detailed_name;
+      if (funcs[idx].def) {
+        auto& def = funcs[idx].def;
+        return std::string_view(def->detailed_name)
+            .substr(0, def->short_name_offset + def->short_name_size);
+      }
       break;
     case SymbolKind::Type:
       if (types[idx].def)

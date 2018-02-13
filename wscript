@@ -216,13 +216,9 @@ def configure(ctx):
     # Ask llvm-config for cflags and ldflags
     ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
 
-    if len(ctx.options.llvm_config):
-      ctx.env.rpath = [str(subprocess.check_output(
-        [ctx.options.llvm_config, '--libdir'],
-        stderr=subprocess.STDOUT).decode()).strip()]
-    else:
-      # If `--llvm-config=` (empty)
-      ctx.env.rpath = []
+    ctx.env.rpath = [str(subprocess.check_output(
+      [ctx.options.llvm_config, '--libdir'],
+      stderr=subprocess.STDOUT).decode()).strip()]
 
     if ctx.options.clang_prefix:
       ctx.start_msg('Checking for clang prefix')

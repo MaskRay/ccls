@@ -201,19 +201,20 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
   int index = GetOffsetForPosition(position, content);
 
   int start = index;
-  int end = index;
+  int end = index + 1;
 
+  // We search for : before the cursor but not after to get the qualifier.
   while (start > 0) {
     char c = content[start - 1];
-    if (isalnum(c) || c == '_') {
+    if (isalnum(c) || c == '_' || c == ':') {
       --start;
     } else {
       break;
     }
   }
 
-  while ((end + 1) < content.size()) {
-    char c = content[end + 1];
+  while (end < (int)content.size()) {
+    char c = content[end];
     if (isalnum(c) || c == '_') {
       ++end;
     } else {
@@ -221,7 +222,7 @@ std::string LexWordAroundPos(lsPosition position, const std::string& content) {
     }
   }
 
-  return content.substr(start, end - start + 1);
+  return content.substr(start, end - start);
 }
 
 bool SubsequenceMatch(std::string_view search, std::string_view content) {

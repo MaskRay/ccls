@@ -131,24 +131,18 @@ struct TextDocumentDefinitionHandler
       // Find the best match of the identifier at point.
       if (!has_symbol && db->symbols.size()) {
         const std::string& buffer = working_file->buffer_content;
-        int start = GetOffsetForPosition(request->params.position, buffer);
-        int end = start;
-        while (start > 0 && isalnum(buffer[start - 1]))
-          start--;
-        while (isalnum(buffer[end]))
-          end++;
-        auto query = std::string_view(buffer).substr(start, end - start);
+        std::string query = LexWordAroundPos(request->params.position, buffer);
 
         int best_score = kMinScore;
         int best_i = 0;
         std::vector<int> score, dp;
         for (int i = 0; i < (int)db->symbols.size(); ++i) {
-          std::string_view short_name = db->GetSymbolShortName(i);
-          if (short_name.size() > score.size()) {
-            score.resize(short_name.size());
-            dp.resize(short_name.size());
+          std::string_view detailed_name = db->GetSymbolDetailedName(i);
+          if (detailed_name.size() > score.size()) {
+            score.resize(detailed_name.size());
+            dp.resize(detailed_name.size());
           }
-          int t = FuzzyEvaluate(query, short_name, score, dp);
+          int t = FuzzyEvaluate(query, detailed_name, score, dp);
           if (t > best_score) {
             best_score = t;
             best_i = i;

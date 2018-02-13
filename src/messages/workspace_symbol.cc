@@ -79,12 +79,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     inserted_results.reserve(config->maxWorkspaceSearchResults);
     result_indices.reserve(config->maxWorkspaceSearchResults);
 
-    // We use detailed_names for exact matches and short_names for fuzzy matches
-    // because otherwise the fuzzy match is likely to match on parameter names
-    // and the like.
-    // TODO: make detailed_names not include function parameter information (or
-    // introduce additional metadata) so that we can do fuzzy search with
-    // detailed_names.
+    // We use detailed_names without parameters for matching.
 
     // Find exact substring matches.
     for (int i = 0; i < db->symbols.size(); ++i) {
@@ -112,9 +107,10 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
           query_without_space += c;
 
       for (int i = 0; i < db->symbols.size(); ++i) {
-        if (SubsequenceMatch(query_without_space, db->GetSymbolShortName(i))) {
+        std::string_view detailed_name = db->GetSymbolDetailedName(i);
+        if (SubsequenceMatch(query_without_space, detailed_name)) {
           // Do not show the same entry twice.
-          if (!inserted_results.insert(std::string(db->GetSymbolDetailedName(i))).second)
+          if (!inserted_results.insert(std::string(detailed_name)).second)
             continue;
 
           if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
@@ -131,7 +127,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
       for (int i : result_indices)
-        longest = std::max(longest, int(db->GetSymbolShortName(i).size()));
+        longest = std::max(longest, int(db->GetSymbolDetailedName(i).size()));
 
       std::vector<int> score(longest);  // score for each position
       std::vector<int> dp(
@@ -139,7 +135,7 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
-          FuzzyEvaluate(query, db->GetSymbolShortName(result_indices[i]), score, dp),
+          FuzzyEvaluate(query, db->GetSymbolDetailedName(result_indices[i]), score, dp),
             i};
       }
       std::sort(permutation.begin(), permutation.end(),
