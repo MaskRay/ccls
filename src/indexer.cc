@@ -310,8 +310,12 @@ struct IndexParam {
       clang_PrintingPolicy_setProperty(print_policy,
                                        CXPrintingPolicy_TerseOutput, 1);
       clang_PrintingPolicy_setProperty(print_policy,
+                                       CXPrintingPolicy_FullyQualifiedName, 1);
+      clang_PrintingPolicy_setProperty(print_policy,
                                        CXPrintingPolicy_SuppressInitializers, 1);
       print_policy_more = clang_getCursorPrintingPolicy(cursor);
+      clang_PrintingPolicy_setProperty(print_policy_more,
+                                       CXPrintingPolicy_FullyQualifiedName, 1);
       clang_PrintingPolicy_setProperty(print_policy_more,
                                        CXPrintingPolicy_TerseOutput, 1);
     }
@@ -566,8 +570,9 @@ void SetVarDetail(IndexVar* var,
   def.comments = cursor.get_comments();
   def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
+  // TODO how to make PrettyPrint'ed variable name qualified?
   std::string qualified_name =
-#if CINDEX_HAVE_PRETTY
+#if 0 && CINDEX_HAVE_PRETTY
       cursor.get_kind() != CXCursor_EnumConstantDecl
           ? param->PrettyPrintCursor(cursor.cx_cursor)
           :
@@ -587,9 +592,8 @@ void SetVarDetail(IndexVar* var,
     def.detailed_name = std::move(qualified_name);
     def.hover = hover;
   } else {
-#if CINDEX_HAVE_PRETTY
-    def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
-    def.hover = std::move(qualified_name);
+#if 0 && CINDEX_HAVE_PRETTY
+    //def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
 #else
     ConcatTypeAndName(type_name, qualified_name);
     def.detailed_name = type_name;
@@ -1349,7 +1353,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           SetUse(db, &ref_index->def.spell, ref_cursor.get_spelling_range(), parent, Role::Definition);
           SetUse(db, &ref_index->def.extent, ref_cursor.get_extent(), parent, Role::None);
 #if CINDEX_HAVE_PRETTY
-          ref_index->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
+          ref_index->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
           ref_index->def.detailed_name = ref_cursor.get_spelling();
 #endif
@@ -1377,7 +1381,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           SetUse(db, &ref_index->def.spell, ref_cursor.get_spelling_range(), parent, Role::Definition);
           SetUse(db, &ref_index->def.extent, ref_cursor.get_extent(), parent, Role::None);
 #if CINDEX_HAVE_PRETTY
-          ref_index->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
+          ref_index->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
           ref_index->def.detailed_name = ref_cursor.get_spelling();
 #endif
