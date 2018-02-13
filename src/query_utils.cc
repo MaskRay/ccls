@@ -426,19 +426,16 @@ std::vector<lsLocation> GetLsLocations(
     QueryDatabase* db,
     WorkingFiles* working_files,
     const std::vector<Use>& uses) {
-  std::unordered_set<lsLocation> unique_locations;
+  std::vector<lsLocation> ret;
   for (Use use : uses) {
     optional<lsLocation> location =
         GetLsLocation(db, working_files, use);
-    if (!location)
-      continue;
-    unique_locations.insert(*location);
+    if (location)
+      ret.push_back(*location);
   }
-
-  std::vector<lsLocation> result;
-  result.reserve(unique_locations.size());
-  result.assign(unique_locations.begin(), unique_locations.end());
-  return result;
+  std::sort(ret.begin(), ret.end());
+  ret.erase(std::unique(ret.begin(), ret.end()), ret.end());
+  return ret;
 }
 
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
@@ -491,14 +488,15 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       else
         info.name = func.def->detailed_name;
       info.containerName = func.def->detailed_name;
-      info.kind = lsSymbolKind::Function;
-
-      if (func.def->declaring_type) {
-        QueryType& container = db->types[func.def->declaring_type->id];
-        if (container.def)
+      switch (func.def->kind) {
+        default:
+          info.kind = lsSymbolKind::Function;
+          break;
+        case ClangSymbolKind::InstanceMethod:
+        case ClangSymbolKind::StaticMethod:
           info.kind = lsSymbolKind::Method;
+          break;
       }
-
       return info;
     }
     case SymbolKind::Var: {

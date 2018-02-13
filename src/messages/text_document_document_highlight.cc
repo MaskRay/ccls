@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
 #include "queue_manager.h"
+#include "symbol.h"
 
 namespace {
 struct Ipc_TextDocumentDocumentHighlight
@@ -50,8 +51,14 @@ struct TextDocumentDocumentHighlightHandler
           continue;
 
         lsDocumentHighlight highlight;
-        highlight.kind = lsDocumentHighlightKind::Text;
         highlight.range = ls_location->range;
+        if (use.role & Role::Write)
+          highlight.kind = lsDocumentHighlightKind::Write;
+        else if (use.role & Role::Read)
+          highlight.kind = lsDocumentHighlightKind::Read;
+        else
+          highlight.kind = lsDocumentHighlightKind::Text;
+        highlight.role = use.role;
         out.result.push_back(highlight);
       }
       break;

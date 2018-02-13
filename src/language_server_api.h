@@ -159,6 +159,7 @@ struct lsRange {
   lsRange(lsPosition start, lsPosition end);
 
   bool operator==(const lsRange& other) const;
+  bool operator<(const lsRange& other) const;
 
   lsPosition start;
   lsPosition end;
@@ -171,6 +172,7 @@ struct lsLocation {
   lsLocation(lsDocumentUri uri, lsRange range);
 
   bool operator==(const lsLocation& other) const;
+  bool operator<(const lsLocation& o) const;
 
   lsDocumentUri uri;
   lsRange range;
@@ -183,36 +185,6 @@ struct lsLocationEx : lsLocation {
   optional<std::string_view> containerName;
 };
 MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName);
-
-enum class lsSymbolKind : int {
-  File = 1,
-  Module = 2,
-  Namespace = 3,
-  Package = 4,
-  Class = 5,
-  Method = 6,
-  Property = 7,
-  Field = 8,
-  Constructor = 9,
-  Enum = 10,
-  Interface = 11,
-  Function = 12,
-  Variable = 13,
-  Constant = 14,
-  String = 15,
-  Number = 16,
-  Boolean = 17,
-  Array = 18
-};
-MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
-
-struct lsSymbolInformation {
-  std::string_view name;
-  lsSymbolKind kind;
-  lsLocation location;
-  std::string_view containerName;
-};
-MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
 
 template <typename T>
 struct lsCommand {
@@ -456,17 +428,6 @@ struct lsWorkspaceEdit {
 };
 MAKE_REFLECT_STRUCT(lsWorkspaceEdit, documentChanges);
 
-// A document highlight kind.
-enum class lsDocumentHighlightKind {
-  // A textual occurrence.
-  Text = 1,
-  // Read-access of a symbol, like reading a variable.
-  Read = 2,
-  // Write-access of a symbol, like writing to a variable.
-  Write = 3
-};
-MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind);
-
 struct lsFormattingOptions {
   // Size of a tab in spaces.
   int tabSize;
@@ -474,18 +435,6 @@ struct lsFormattingOptions {
   bool insertSpaces;
 };
 MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
-
-// A document highlight is a range inside a text document which deserves
-// special attention. Usually a document highlight is visualized by changing
-// the background color of its range.
-struct lsDocumentHighlight {
-  // The range this highlight applies to.
-  lsRange range;
-
-  // The highlight kind, default is DocumentHighlightKind.Text.
-  lsDocumentHighlightKind kind = lsDocumentHighlightKind::Text;
-};
-MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind);
 
 enum class lsDiagnosticSeverity {
   // Reports an error.

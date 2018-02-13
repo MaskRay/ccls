@@ -2,7 +2,6 @@
 
 #include "clang_cursor.h"
 #include "clang_index.h"
-#include "clang_symbol_kind.h"
 #include "clang_translation_unit.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
@@ -13,6 +12,7 @@
 #include "performance.h"
 #include "position.h"
 #include "serializer.h"
+#include "symbol.h"
 #include "utils.h"
 
 #include <optional.h>
@@ -32,12 +32,6 @@ struct IndexFile;
 struct IndexType;
 struct IndexFunc;
 struct IndexVar;
-
-// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
-// front of others.
-enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
-MAKE_REFLECT_TYPE_PROXY(SymbolKind);
-MAKE_ENUM_HASHABLE(SymbolKind);
 
 using RawId = uint32_t;
 

@@ -2,7 +2,11 @@
 
 #include "serializer.h"
 
-#include <stdint.h>
+// The order matters. In FindSymbolsAtLocation, we want Var/Func ordered in
+// front of others.
+enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
+MAKE_REFLECT_TYPE_PROXY(SymbolKind);
+MAKE_ENUM_HASHABLE(SymbolKind);
 
 // TODO Rename query.h:SymbolKind to another name
 // clang/Index/IndexSymbol.h clang::index::SymbolKind
@@ -88,3 +92,59 @@ inline uint16_t operator&(Role lhs, Role rhs) {
 inline Role operator|(Role lhs, Role rhs) {
   return Role(uint16_t(lhs) | uint16_t(rhs));
 }
+
+// A document highlight kind.
+enum class lsDocumentHighlightKind {
+  // A textual occurrence.
+  Text = 1,
+  // Read-access of a symbol, like reading a variable.
+  Read = 2,
+  // Write-access of a symbol, like writing to a variable.
+  Write = 3
+};
+MAKE_REFLECT_TYPE_PROXY(lsDocumentHighlightKind);
+
+// A document highlight is a range inside a text document which deserves
+// special attention. Usually a document highlight is visualized by changing
+// the background color of its range.
+struct lsDocumentHighlight {
+  // The range this highlight applies to.
+  lsRange range;
+
+  // The highlight kind, default is DocumentHighlightKind.Text.
+  lsDocumentHighlightKind kind = lsDocumentHighlightKind::Text;
+
+  // cquery extension
+  Role role = Role::None;
+};
+MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);
+
+enum class lsSymbolKind : int {
+  File = 1,
+  Module = 2,
+  Namespace = 3,
+  Package = 4,
+  Class = 5,
+  Method = 6,
+  Property = 7,
+  Field = 8,
+  Constructor = 9,
+  Enum = 10,
+  Interface = 11,
+  Function = 12,
+  Variable = 13,
+  Constant = 14,
+  String = 15,
+  Number = 16,
+  Boolean = 17,
+  Array = 18
+};
+MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
+
+struct lsSymbolInformation {
+  std::string_view name;
+  lsSymbolKind kind;
+  lsLocation location;
+  std::string_view containerName;
+};
+MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);

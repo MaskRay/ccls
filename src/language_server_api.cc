@@ -285,16 +285,25 @@ const lsPosition lsPosition::kZeroPosition = lsPosition();
 lsRange::lsRange() {}
 lsRange::lsRange(lsPosition start, lsPosition end) : start(start), end(end) {}
 
-bool lsRange::operator==(const lsRange& other) const {
-  return start == other.start && end == other.end;
+bool lsRange::operator==(const lsRange& o) const {
+  return start == o.start && end == o.end;
+}
+
+bool lsRange::operator<(const lsRange& o) const {
+  return !(start == o.start) ? start < o.start : end < o.end;
 }
 
 lsLocation::lsLocation() {}
 lsLocation::lsLocation(lsDocumentUri uri, lsRange range)
     : uri(uri), range(range) {}
 
-bool lsLocation::operator==(const lsLocation& other) const {
-  return uri == other.uri && range == other.range;
+bool lsLocation::operator==(const lsLocation& o) const {
+  return uri == o.uri && range == o.range;
+}
+
+bool lsLocation::operator<(const lsLocation& o) const {
+  return std::make_tuple(uri.raw_uri, range) <
+         std::make_tuple(o.uri.raw_uri, o.range);
 }
 
 bool lsTextEdit::operator==(const lsTextEdit& that) {
