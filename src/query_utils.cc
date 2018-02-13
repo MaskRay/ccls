@@ -19,14 +19,6 @@ int ComputeRangeSize(const Range& range) {
 }  // namespace
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                         QueryFuncId id) {
-  QueryFunc& func = db->funcs[id.id];
-  if (func.def)
-    return func.def->spell;
-  return nullopt;
-}
-
-Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
@@ -48,10 +40,10 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::File:
-    case SymbolKind::Invalid: {
+      break;
+    case SymbolKind::Invalid:
       assert(false && "unexpected");
       break;
-    }
   }
   return nullopt;
 }

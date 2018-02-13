@@ -8,8 +8,6 @@
 #include <optional.h>
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                         QueryFuncId id);
-Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          SymbolIdx sym);
 Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,

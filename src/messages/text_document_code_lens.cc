@@ -216,8 +216,8 @@ struct TextDocumentCodeLensHandler
 
           // "Base"
           if (func.def->base.size() == 1) {
-            Maybe<Use> base_loc =
-                GetDefinitionSpellingOfSymbol(db, func.def->base[0]);
+            Maybe<Use> base_loc = GetDefinitionSpellingOfSymbol(
+                db, SymbolIdx{func.def->base[0], SymbolKind::Func});
             if (base_loc) {
               optional<lsLocation> ls_base =
                   GetLsLocation(db, working_files, *base_loc);
