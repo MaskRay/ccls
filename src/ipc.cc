@@ -96,11 +96,9 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/indexFile";
     case IpcId::CqueryWait:
       return "$cquery/wait";
-
-    default:
-      assert(false && "missing IpcId string name");
-      exit(1);
   }
+
+  CQUERY_UNREACHABLE("missing IpcId string name");
 }
 
 BaseIpcMessage::BaseIpcMessage(IpcId method_id) : method_id(method_id) {}

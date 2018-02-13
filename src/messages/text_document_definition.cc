@@ -126,6 +126,7 @@ struct TextDocumentDefinitionHandler
           lsLocation result;
           result.uri = lsDocumentUri::FromPath(include.resolved_path);
           out.result.push_back(result);
+          has_symbol = true;
           break;
         }
       }
@@ -135,6 +136,9 @@ struct TextDocumentDefinitionHandler
         const std::string& buffer = working_file->buffer_content;
         std::string query = LexWordAroundPos(position, buffer);
 
+        // For symbols whose detailed names contain |query| as a substring,
+        // we use the tuple <length difference, not in the same file, line
+        // distance> to find the best match.
         std::tuple<int, bool, int> best_score = {INT_MAX, true, 0};
         int best_i = -1;
         for (int i = 0; i < (int)db->symbols.size(); ++i) {

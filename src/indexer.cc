@@ -163,9 +163,6 @@ StorageClass GetStorageClass(CX_StorageClass storage) {
       return StorageClass::Auto;
     case CX_SC_Register:
       return StorageClass::Register;
-    default:
-      assert(0);
-      return StorageClass::Invalid;
   }
 }
 
