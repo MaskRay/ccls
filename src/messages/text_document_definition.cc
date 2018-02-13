@@ -133,26 +133,32 @@ struct TextDocumentDefinitionHandler
         const std::string& buffer = working_file->buffer_content;
         std::string query = LexWordAroundPos(request->params.position, buffer);
 
-        int best_score = kMinScore;
-        int best_i = 0;
-        std::vector<int> score, dp;
+        int best_score = INT_MAX;
+        int best_i = -1;
         for (int i = 0; i < (int)db->symbols.size(); ++i) {
+          if (db->symbols[i].kind == SymbolKind::Invalid)
+            continue;
           std::string_view detailed_name = db->GetSymbolDetailedName(i);
-          if (detailed_name.size() > score.size()) {
-            score.resize(detailed_name.size());
-            dp.resize(detailed_name.size());
-          }
-          int t = FuzzyEvaluate(query, detailed_name, score, dp);
-          if (t > best_score) {
-            best_score = t;
+          size_t idx = detailed_name.find(query);
+          if (idx == std::string::npos)
+            continue;
+
+          int score = detailed_name.size() - query.size();
+          assert(score >= 0);
+          if (score < best_score) {
+            best_score = score;
             best_i = i;
           }
+          if (score == 0)
+            break;
         }
-        Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
-        if (use) {
-          optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *use);
-          if (ls_loc)
-            out.result.push_back(*ls_loc);
+        if (best_i != -1) {
+          Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
+          if (use) {
+            optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *use);
+            if (ls_loc)
+              out.result.push_back(*ls_loc);
+          }
         }
       }
     }
