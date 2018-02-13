@@ -6,6 +6,7 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <cstdlib>
 
 namespace {
 void PushBack(std::vector<lsLocation>* result, optional<lsLocation> location) {
@@ -129,36 +130,38 @@ struct TextDocumentDefinitionHandler
         }
       }
       // Find the best match of the identifier at point.
-      if (!has_symbol && db->symbols.size()) {
+      if (!has_symbol) {
+        lsPosition position = request->params.position;
         const std::string& buffer = working_file->buffer_content;
-        std::string query = LexWordAroundPos(request->params.position, buffer);
+        std::string query = LexWordAroundPos(position, buffer);
 
-        int best_score = INT_MAX;
+        std::tuple<int, bool, int> best_score = {INT_MAX, true, 0};
         int best_i = -1;
         for (int i = 0; i < (int)db->symbols.size(); ++i) {
           if (db->symbols[i].kind == SymbolKind::Invalid)
             continue;
           std::string_view detailed_name = db->GetSymbolDetailedName(i);
-          size_t idx = detailed_name.find(query);
+          auto idx = detailed_name.find(query);
           if (idx == std::string::npos)
             continue;
+          Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[i]);
+          if (!use)
+            continue;
 
-          int score = detailed_name.size() - query.size();
-          assert(score >= 0);
+          std::tuple<int, bool, int> score = {
+              int(detailed_name.size() - query.size()), use->file != file_id,
+              std::abs(use->range.start.line - position.line)};
           if (score < best_score) {
             best_score = score;
             best_i = i;
           }
-          if (score == 0)
-            break;
         }
         if (best_i != -1) {
           Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
-          if (use) {
-            optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *use);
-            if (ls_loc)
-              out.result.push_back(*ls_loc);
-          }
+          assert(use);
+          optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *use);
+          if (ls_loc)
+            out.result.push_back(*ls_loc);
         }
       }
     }

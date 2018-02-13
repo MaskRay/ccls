@@ -510,7 +510,14 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       else
         info.name = var.def->detailed_name;
       info.containerName = var.def->detailed_name;
-      info.kind = lsSymbolKind::Variable;
+      switch (var.def->kind) {
+        default:
+          info.kind = lsSymbolKind::Variable;
+          break;
+        case ClangSymbolKind::EnumConstant:
+          info.kind = lsSymbolKind::EnumMember;
+          break;
+      }
       return info;
     }
     case SymbolKind::Invalid:
