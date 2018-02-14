@@ -212,13 +212,14 @@ def configure(ctx):
     print('--use-system-clang is deprecated. Please specify --llvm-config, e.g. /usr/bin/llvm-config llvm-config-6.0')
 
   # Do not use bundled clang+llvm
-  if ctx.options.llvm_config is not None:
-    # Ask llvm-config for cflags and ldflags
-    ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
+  if ctx.options.llvm_config is not None or ctx.options.clang_prefix is not None:
+    if ctx.options.llvm_config is not None:
+      # Ask llvm-config for cflags and ldflags
+      ctx.find_program(ctx.options.llvm_config, msg='checking for llvm-config', var='LLVM_CONFIG', mandatory=False)
 
-    ctx.env.rpath = [str(subprocess.check_output(
-      [ctx.options.llvm_config, '--libdir'],
-      stderr=subprocess.STDOUT).decode()).strip()]
+      ctx.env.rpath = [str(subprocess.check_output(
+        [ctx.options.llvm_config, '--libdir'],
+        stderr=subprocess.STDOUT).decode()).strip()]
 
     if ctx.options.clang_prefix:
       ctx.start_msg('Checking for clang prefix')
