@@ -93,24 +93,26 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
   if (error_code != CXError_Success && cx_tu)
     EmitDiagnostics(filepath, args, cx_tu);
 
+  auto make_msg = [&]() {
+    return "Please try running the following, identify which flag causes the "
+           "issue, and report a bug. cquery will then filter the flag for you "
+           " automatically:\n$ " + StringJoin(args, " ");
+  };
+
   switch (error_code) {
     case CXError_Success:
       return MakeUnique<ClangTranslationUnit>(cx_tu);
     case CXError_Failure:
-      LOG_S(ERROR) << "libclang generic failure for " << filepath
-                   << " with args " << StringJoin(args);
+      LOG_S(ERROR) << "libclang generic failure for " << filepath << ". " << make_msg();
       return nullptr;
     case CXError_Crashed:
-      LOG_S(ERROR) << "libclang crashed for " << filepath << " with args "
-                   << StringJoin(args);
+      LOG_S(ERROR) << "libclang crashed for " << filepath << ". " << make_msg();
       return nullptr;
     case CXError_InvalidArguments:
-      LOG_S(ERROR) << "libclang had invalid arguments for "
-                   << " with args " << StringJoin(args) << filepath;
+      LOG_S(ERROR) << "libclang had invalid arguments for " << filepath << ". " << make_msg();
       return nullptr;
     case CXError_ASTReadError:
-      LOG_S(ERROR) << "libclang had ast read error for " << filepath
-                   << " with args " << StringJoin(args);
+      LOG_S(ERROR) << "libclang had ast read error for " << filepath << ". " << make_msg();
       return nullptr;
   }
 
