@@ -163,13 +163,21 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   // FIXME: show diagnostics in STL/headers when running tests. At the moment
   // this can be done by constructing ClangIndex index(1, 1);
   ClangIndex index;
-
   for (std::string path : GetFilesInFolder("index_tests", true /*recursive*/,
                                            true /*add_folder_to_path*/)) {
-    if (!RunObjectiveCIndexTests() && EndsWithAny(path, {".m", ".mm"})) {
-      std::cout << "Skipping \"" << path << "\" since this platform does not "
-                << "support running Objective-C tests." << std::endl;
-      continue;
+    bool is_fail_allowed = false;
+
+    if (EndsWithAny(path, { ".m", ".mm" })) {
+      if (!RunObjectiveCIndexTests()) {
+        std::cout << "Skipping \"" << path << "\" since this platform does not "
+            << "support running Objective-C tests." << std::endl;
+        continue;
+      }
+
+      // objective-c tests are often not updated right away. do not bring down
+      // CI if they fail.
+      if (!enable_update)
+        is_fail_allowed = true;
     }
 
     if (path.find(filter_path) == std::string::npos)
@@ -268,7 +276,8 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
       if (actual == expected) {
         // std::cout << "[PASSED] " << path << std::endl;
       } else {
-        success = false;
+        if (!is_fail_allowed)
+          success = false;
         DiffDocuments(path, expected_path, expected, actual);
         std::cout << std::endl;
         std::cout << std::endl;
