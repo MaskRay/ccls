@@ -139,7 +139,7 @@ struct TextDocumentDefinitionHandler
         // For symbols whose detailed names contain |query| as a substring,
         // we use the tuple <length difference, not in the same file, line
         // distance> to find the best match.
-        std::tuple<int, bool, int> best_score = {INT_MAX, true, 0};
+        std::tuple<int, bool, int> best_score{INT_MAX, true, 0};
         int best_i = -1;
         for (int i = 0; i < (int)db->symbols.size(); ++i) {
           if (db->symbols[i].kind == SymbolKind::Invalid)
@@ -152,7 +152,7 @@ struct TextDocumentDefinitionHandler
           if (!use)
             continue;
 
-          std::tuple<int, bool, int> score = {
+          std::tuple<int, bool, int> score{
               int(detailed_name.size() - query.size()), use->file != file_id,
               std::abs(use->range.start.line - position.line)};
           if (score < best_score) {
