@@ -511,20 +511,18 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       [this, &previous_id_map](IndexType* type) {
         if (type->def.spell)
           types_removed.push_back(type->usr);
-        else {
-          if (!type->derived.empty())
-            types_derived.push_back(QueryType::DerivedUpdate(
-                previous_id_map.ToQuery(type->id), {},
-                previous_id_map.ToQuery(type->derived)));
-          if (!type->instances.empty())
-            types_instances.push_back(QueryType::InstancesUpdate(
-                previous_id_map.ToQuery(type->id), {},
-                previous_id_map.ToQuery(type->instances)));
-          if (!type->uses.empty())
-            types_uses.push_back(
-                QueryType::UsesUpdate(previous_id_map.ToQuery(type->id), {},
-                                      previous_id_map.ToQuery(type->uses)));
-        }
+        if (!type->derived.empty())
+          types_derived.push_back(QueryType::DerivedUpdate(
+              previous_id_map.ToQuery(type->id), {},
+              previous_id_map.ToQuery(type->derived)));
+        if (!type->instances.empty())
+          types_instances.push_back(QueryType::InstancesUpdate(
+              previous_id_map.ToQuery(type->id), {},
+              previous_id_map.ToQuery(type->instances)));
+        if (!type->uses.empty())
+          types_uses.push_back(
+              QueryType::UsesUpdate(previous_id_map.ToQuery(type->id), {},
+                                    previous_id_map.ToQuery(type->uses)));
       },
       /*onAdded:*/
       [this, &current_id_map](IndexType* type) {
@@ -571,22 +569,20 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       previous_file.funcs, current_file.funcs,
       /*onRemoved:*/
       [this, &previous_id_map](IndexFunc* func) {
-        if (func->def.spell) {
+        if (func->def.spell)
           funcs_removed.push_back(func->usr);
-        } else {
-          if (!func->declarations.empty())
-            funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(
-                previous_id_map.ToQuery(func->id), {},
-                previous_id_map.ToQuery(func->declarations)));
-          if (!func->derived.empty())
-            funcs_derived.push_back(QueryFunc::DerivedUpdate(
-                previous_id_map.ToQuery(func->id), {},
-                previous_id_map.ToQuery(func->derived)));
-          if (!func->uses.empty())
-            funcs_uses.push_back(QueryFunc::UsesUpdate(
-                previous_id_map.ToQuery(func->id), {},
-                previous_id_map.ToQuery(func->uses)));
-        }
+        if (!func->declarations.empty())
+          funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(
+              previous_id_map.ToQuery(func->id), {},
+              previous_id_map.ToQuery(func->declarations)));
+        if (!func->derived.empty())
+          funcs_derived.push_back(QueryFunc::DerivedUpdate(
+              previous_id_map.ToQuery(func->id), {},
+              previous_id_map.ToQuery(func->derived)));
+        if (!func->uses.empty())
+          funcs_uses.push_back(QueryFunc::UsesUpdate(
+              previous_id_map.ToQuery(func->id), {},
+              previous_id_map.ToQuery(func->uses)));
       },
       /*onAdded:*/
       [this, &current_id_map](IndexFunc* func) {
@@ -633,18 +629,16 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       previous_file.vars, current_file.vars,
       /*onRemoved:*/
       [this, &previous_id_map](IndexVar* var) {
-        if (var->def.spell) {
+        if (var->def.spell)
           vars_removed.push_back(var->usr);
-        } else {
-          if (!var->declarations.empty())
-            vars_declarations.push_back(QueryVar::DeclarationsUpdate(
-                previous_id_map.ToQuery(var->id), {},
-                previous_id_map.ToQuery(var->declarations)));
-          if (!var->uses.empty())
-            vars_uses.push_back(
-                QueryVar::UsesUpdate(previous_id_map.ToQuery(var->id), {},
-                                     previous_id_map.ToQuery(var->uses)));
-        }
+        if (!var->declarations.empty())
+          vars_declarations.push_back(QueryVar::DeclarationsUpdate(
+              previous_id_map.ToQuery(var->id), {},
+              previous_id_map.ToQuery(var->declarations)));
+        if (!var->uses.empty())
+          vars_uses.push_back(
+              QueryVar::UsesUpdate(previous_id_map.ToQuery(var->id), {},
+                                    previous_id_map.ToQuery(var->uses)));
       },
       /*onAdded:*/
       [this, &current_id_map](IndexVar* var) {
@@ -1225,7 +1219,6 @@ TEST_SUITE("query") {
       db.ApplyIndexUpdate(&delta_update);
     }
     REQUIRE(db.vars.size() == 1);
-    // FIXME/TODO: See https://github.com/cquery-project/cquery/issues/443.
-    // REQUIRE(db.vars[0].uses.size() == 0);
+    REQUIRE(db.vars[0].uses.size() == 0);
   }
 }
