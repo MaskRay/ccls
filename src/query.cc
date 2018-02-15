@@ -223,7 +223,9 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       case LanguageId::Cpp:
         return "cpp";
       case LanguageId::ObjC:
-        return "objectivec";
+        return "objective-c";
+      case LanguageId::ObjCpp:
+        return "objective-cpp";
       default:
         return "";
     }

@@ -351,9 +351,7 @@ struct IndexFunc {
   std::vector<Use> uses;
 
   IndexFunc() {}  // For serialization.
-  IndexFunc(IndexFuncId id, Usr usr) : usr(usr), id(id) {
-    // assert(usr.size() > 0);
-  }
+  IndexFunc(IndexFuncId id, Usr usr) : usr(usr), id(id) {}
 
   bool operator<(const IndexFunc& other) const { return id < other.id; }
 };
@@ -438,9 +436,7 @@ struct IndexVar {
   std::vector<Use> uses;
 
   IndexVar() {}  // For serialization.
-  IndexVar(IndexVarId id, Usr usr) : usr(usr), id(id) {
-    // assert(usr.size() > 0);
-  }
+  IndexVar(IndexVarId id, Usr usr) : usr(usr), id(id) {}
 
   bool operator<(const IndexVar& other) const { return id < other.id; }
 };
@@ -469,7 +465,7 @@ struct IndexInclude {
 // Used to identify the language at a file level. The ordering is important, as
 // a file previously identified as `C`, will be changed to `Cpp` if it
 // encounters a c++ declaration.
-enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3 };
+enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3, ObjCpp = 4 };
 MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
 struct IndexFile {

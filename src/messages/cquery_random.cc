@@ -15,7 +15,6 @@ REGISTER_IPC_MESSAGE(Ipc_CqueryRandom);
 
 const double kDeclWeight = 3;
 const double kDamping = 0.1;
-const double kAlpha = 2.80777024202851936522;
 
 template <typename Q>
 struct Kind;
@@ -102,7 +101,7 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
     }
 
     std::vector<double> x(n, 1), y;
-    while (1) {
+    for (int j = 0; j < 30; j++) {
       y.assign(n, kDamping);
       for (int i = 0; i < n; i++)
         for (auto& it : adj[i])
@@ -114,16 +113,7 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
       x.swap(y);
     }
 
-    double sum = std::accumulate(x.begin(), x.end(), 0.), stdev = 0, offset = 0;
-    for (int i = 0; i < n; i++)
-      stdev += (x[i] - sum / n) * (x[i] - sum / n);
-    stdev = sqrt(stdev / n) * kAlpha;
-    for (int i = 0; i < n; i++)
-      offset = std::max(offset, x[i] / stdev);
-    sum = 0;
-    for (int i = 0; i < n; i++)
-      sum += x[i] = exp(x[i] / stdev - offset);
-
+    double sum = std::accumulate(x.begin(), x.end(), 0.);
     Out_LocationList out;
     out.id = request->id;
     double roulette = rand() / (RAND_MAX + 1.0) * sum;

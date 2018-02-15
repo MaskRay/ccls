@@ -446,42 +446,48 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
   return result;
 }
 
-void SetUsePreflight(IndexFile* db, ClangCursor lex_parent) {
-  switch (GetSymbolKind(lex_parent.get_kind())) {
+void SetUsePreflight(IndexFile* db, ClangCursor parent) {
+  switch (GetSymbolKind(parent.get_kind())) {
   default:
     break;
   case SymbolKind::Func: {
-    (void)db->ToFuncId(lex_parent.cx_cursor);
+    (void)db->ToFuncId(parent.cx_cursor);
     break;
   }
   case SymbolKind::Type: {
-    (void)db->ToTypeId(lex_parent.cx_cursor);
+    (void)db->ToTypeId(parent.cx_cursor);
     break;
   }
   case SymbolKind::Var: {
-    (void)db->ToVarId(lex_parent.cx_cursor);
+    (void)db->ToVarId(parent.cx_cursor);
     break;
   }
   }
 }
 
-void SetUse(IndexFile* db, Maybe<Use>* def, Range range, ClangCursor lex_parent, Role role) {
-  switch (GetSymbolKind(lex_parent.get_kind())) {
+// |parent| should be resolved before using |SetUsePreflight| so that |def| will
+// not be invalidated by |To{Func,Type,Var}Id|.
+void SetUse(IndexFile* db,
+            Maybe<Use>* def,
+            Range range,
+            ClangCursor parent,
+            Role role) {
+  switch (GetSymbolKind(parent.get_kind())) {
   default:
     *def = Use(range, Id<void>(), SymbolKind::File, role);
     break;
   case SymbolKind::Func: {
-    IndexFuncId id = db->ToFuncId(lex_parent.cx_cursor);
+    IndexFuncId id = db->ToFuncId(parent.cx_cursor);
     *def = Use(range, id, SymbolKind::Func, Role::Definition);
     break;
   }
   case SymbolKind::Type: {
-    IndexTypeId id = db->ToTypeId(lex_parent.cx_cursor);
+    IndexTypeId id = db->ToTypeId(parent.cx_cursor);
     *def = Use(range, id, SymbolKind::Type, Role::Definition);
     break;
   }
   case SymbolKind::Var: {
-    IndexVarId id = db->ToVarId(lex_parent.cx_cursor);
+    IndexVarId id = db->ToVarId(parent.cx_cursor);
     *def = Use(range, id, SymbolKind::Var, Role::Definition);
     break;
   }
@@ -500,7 +506,9 @@ void SetTypeName(IndexType* type,
     name = "(anon)";
   if (!container)
     parent.cursor = cursor.get_semantic_parent().cx_cursor;
-  // Investigate why clang_getCursorPrettyPrinted is not fully qualified.
+  // Investigate why clang_getCursorPrettyPrinted gives `struct A {}` `namespace ns {}`
+  // which are not qualified.
+  //type->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
   type->def.detailed_name =
     param->ns.QualifiedName(container ? container : &parent, name);
   auto idx = type->def.detailed_name.find(name);
@@ -1289,12 +1297,17 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_DeclRefExpr: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
-        SetUsePreflight(db, parent);
-        IndexVar* ref_var =
-            db->Resolve(db->ToVarId(ref_cursor.get_usr_hash()));
+        IndexVarId ref_var_id = db->ToVarId(ref_cursor.get_usr_hash());
+        IndexVar* ref_var = db->Resolve(ref_var_id);
         if (ref_var->def.detailed_name.empty()) {
-          SetUse(db, &ref_var->def.spell, ref_cursor.get_spelling_range(), parent, Role::Definition);
-          SetUse(db, &ref_var->def.extent, ref_cursor.get_extent(), parent, Role::None);
+          SetUsePreflight(db, ref_cursor.get_semantic_parent());
+          SetUsePreflight(db, ref_cursor.get_lexical_parent());
+          ref_var = db->Resolve(ref_var_id);
+          SetUse(db, &ref_var->def.spell, ref_cursor.get_spelling_range(),
+                 ref_cursor.get_semantic_parent(), Role::Definition);
+          SetUse(db, &ref_var->def.extent, ref_cursor.get_extent(),
+                 ref_cursor.get_lexical_parent(), Role::None);
+          ref_var = db->Resolve(ref_var_id);
           ref_var->def.kind = ClangSymbolKind::Parameter;
           SetVarDetail(ref_var, ref_cursor.get_spelling(), ref_cursor,
                        nullptr, true, db, param);
@@ -1338,56 +1351,64 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
     case CXCursor_TemplateRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTemplateParameter) {
-        SetUsePreflight(db, parent);
-        IndexType* ref_index =
-            db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+        IndexTypeId ref_type_id = db->ToTypeId(ref_cursor.get_usr_hash());
+        IndexType* ref_type = db->Resolve(ref_type_id);
         // TODO It seems difficult to get references to template template
         // parameters.
         // CXCursor_TemplateTemplateParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
-        if (ref_index->def.detailed_name.empty()) {
-          SetUse(db, &ref_index->def.spell, ref_cursor.get_spelling_range(), parent, Role::Definition);
-          SetUse(db, &ref_index->def.extent, ref_cursor.get_extent(), parent, Role::None);
+        if (ref_type->def.detailed_name.empty()) {
+          SetUsePreflight(db, ref_cursor.get_semantic_parent());
+          SetUsePreflight(db, ref_cursor.get_lexical_parent());
+          ref_type = db->Resolve(ref_type_id);
+          SetUse(db, &ref_type->def.spell, ref_cursor.get_spelling_range(),
+                 ref_cursor.get_semantic_parent(), Role::Definition);
+          SetUse(db, &ref_type->def.extent, ref_cursor.get_extent(),
+                 ref_cursor.get_lexical_parent(), Role::None);
 #if CINDEX_HAVE_PRETTY
-          ref_index->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
+          ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
-          ref_index->def.detailed_name = ref_cursor.get_spelling();
+          ref_type->def.detailed_name = ref_cursor.get_spelling();
 #endif
-          ref_index->def.short_name_offset = 0;
-          ref_index->def.short_name_size =
-              int16_t(strlen(ref_index->def.detailed_name.c_str()));
-          ref_index->def.kind = ClangSymbolKind::Parameter;
+          ref_type->def.short_name_offset = 0;
+          ref_type->def.short_name_size =
+              int16_t(strlen(ref_type->def.detailed_name.c_str()));
+          ref_type->def.kind = ClangSymbolKind::Parameter;
         }
-        UniqueAddUseSpell(db, ref_index->uses, cursor);
+        UniqueAddUseSpell(db, ref_type->uses, cursor);
       }
       break;
     }
     case CXCursor_TypeRef: {
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_TemplateTypeParameter) {
-        SetUsePreflight(db, parent);
-        IndexType* ref_index =
-            db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
+        IndexTypeId ref_type_id = db->ToTypeId(ref_cursor.get_usr_hash());
+        IndexType* ref_type = db->Resolve(ref_type_id);
         // TODO It seems difficult to get a FunctionTemplate's template
         // parameters.
         // CXCursor_TemplateTypeParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
-        if (ref_index->def.detailed_name.empty()) {
-          SetUse(db, &ref_index->def.spell, ref_cursor.get_spelling_range(), parent, Role::Definition);
-          SetUse(db, &ref_index->def.extent, ref_cursor.get_extent(), parent, Role::None);
+        if (ref_type->def.detailed_name.empty()) {
+          SetUsePreflight(db, ref_cursor.get_semantic_parent());
+          SetUsePreflight(db, ref_cursor.get_lexical_parent());
+          ref_type = db->Resolve(ref_type_id);
+          SetUse(db, &ref_type->def.spell, ref_cursor.get_spelling_range(),
+                 ref_cursor.get_semantic_parent(), Role::Definition);
+          SetUse(db, &ref_type->def.extent, ref_cursor.get_extent(),
+                 ref_cursor.get_lexical_parent(), Role::None);
 #if CINDEX_HAVE_PRETTY
-          ref_index->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
+          ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
-          ref_index->def.detailed_name = ref_cursor.get_spelling();
+          ref_type->def.detailed_name = ref_cursor.get_spelling();
 #endif
-          ref_index->def.short_name_offset = 0;
-          ref_index->def.short_name_size =
-              int16_t(strlen(ref_index->def.detailed_name.c_str()));
-          ref_index->def.kind = ClangSymbolKind::Parameter;
+          ref_type->def.short_name_offset = 0;
+          ref_type->def.short_name_size =
+              int16_t(strlen(ref_type->def.detailed_name.c_str()));
+          ref_type->def.kind = ClangSymbolKind::Parameter;
         }
-        UniqueAddUseSpell(db, ref_index->uses, cursor);
+        UniqueAddUseSpell(db, ref_type->uses, cursor);
       }
       break;
     }
@@ -1491,7 +1512,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 
   NamespaceHelper* ns = &param->ns;
+  ClangCursor sem_parent(fromContainer(decl->semanticContainer));
   ClangCursor lex_parent(fromContainer(decl->lexicalContainer));
+  SetUsePreflight(db, sem_parent);
   SetUsePreflight(db, lex_parent);
 
   switch (decl->entityInfo->kind) {
@@ -1504,7 +1527,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (ns->def.detailed_name.empty()) {
         SetTypeName(ns, decl_cursor, decl->semanticContainer,
                     decl->entityInfo->name, param);
-        SetUse(db, &ns->def.spell, decl_spell, lex_parent, Role::Definition);
+        SetUse(db, &ns->def.spell, decl_spell, sem_parent, Role::Definition);
         SetUse(db, &ns->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
         if (decl->semanticContainer) {
           IndexTypeId parent_id = db->ToTypeId(
@@ -1551,7 +1574,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       //}
 
       if (decl->isDefinition) {
-        SetUse(db, &var->def.spell, decl_spell, lex_parent, Role::Definition);
+        SetUse(db, &var->def.spell, decl_spell, sem_parent, Role::Definition);
         SetUse(db, &var->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
       } else {
         Maybe<Use> use;
@@ -1625,7 +1648,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && !is_template_specialization) {
         // assert(!func->def.spell);
         // assert(!func->def.extent);
-        SetUse(db, &func->def.spell, decl_spelling, lex_parent, Role::Definition);
+        SetUse(db, &func->def.spell, decl_spelling, sem_parent, Role::Definition);
         SetUse(db, &func->def.extent, decl_extent, lex_parent, Role::None);
       } else {
         IndexFunc::Declaration declaration;
@@ -1754,7 +1777,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       ClangCursor decl_cursor = decl->cursor;
       Range spell = decl_cursor.get_spelling_range();
       Range extent = decl_cursor.get_extent();
-      SetUse(db, &type->def.spell, spell, lex_parent, Role::Definition);
+      SetUse(db, &type->def.spell, spell, sem_parent, Role::Definition);
       SetUse(db, &type->def.extent, extent, lex_parent, Role::None);
 
       SetTypeName(type, decl_cursor, decl->semanticContainer,
@@ -1810,7 +1833,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // }
 
       if (decl->isDefinition) {
-        SetUse(db, &type->def.spell, decl_spell, lex_parent, Role::Definition);
+        SetUse(db, &type->def.spell, decl_spell, sem_parent, Role::Definition);
         SetUse(db, &type->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
 
         if (decl_cursor.get_kind() == CXCursor_EnumDecl) {
@@ -1848,9 +1871,17 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           }
           // TODO The name may be assigned in |ResolveToDeclarationType| but
           // |spell| is nullopt.
-          if (!origin->def.spell) {
-            SetUse(db, &origin->def.spell, origin_cursor.get_spelling_range(), lex_parent, Role::Definition);
-            SetUse(db, &origin->def.extent, origin_cursor.get_extent(), lex_parent, Role::None);
+          CXFile origin_file;
+          Range origin_spell = origin_cursor.get_spelling_range(&origin_file);
+          if (!origin->def.spell && file == origin_file) {
+            SetUsePreflight(db, origin_cursor.get_semantic_parent());
+            SetUsePreflight(db, origin_cursor.get_lexical_parent());
+            origin = db->Resolve(origin_id);
+            type = db->Resolve(type_id);
+            SetUse(db, &origin->def.spell, origin_spell,
+                   origin_cursor.get_semantic_parent(), Role::Definition);
+            SetUse(db, &origin->def.extent, origin_cursor.get_extent(),
+                   origin_cursor.get_lexical_parent(), Role::None);
           }
           origin->derived.push_back(type_id);
           type->def.parents.push_back(origin_id);
