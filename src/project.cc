@@ -265,11 +265,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (!AnyStartsWith(result.args, "-Wno-unknown-warning-option"))
     result.args.push_back("-Wno-unknown-warning-option");
 
-  // We sometimes dump the command to logs and ask the user to run it. Include
-  // -fsyntax-only so they don't do a full compile.
-  if (!AnyStartsWith(result.args, "-fsyntax-only"))
-    result.args.push_back("-fsyntax-only");
-
   // Using -fparse-all-comments enables documentation in the indexer and in
   // code completion.
   if (init_opts->index.comments > 1 &&
@@ -603,28 +598,28 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
          "-lstdc++", "&/dir/myfile.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fsyntax-only", "-fparse-all-comments"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"clang.exe"},
         /* expected */
         {"clang.exe", "-working-directory", "/dir/", "-xc++", "-std=c++14",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-          "-fsyntax-only", "-fparse-all-comments"});
+          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-         "-fsyntax-only", "-fparse-all-comments"});
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
         {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14", "--foo",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-         "-fsyntax-only", "-fparse-all-comments"});
+         "-fparse-all-comments"});
   }
 
   TEST_CASE("Windows path normalization") {
@@ -633,7 +628,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
          "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fsyntax-only", "-fparse-all-comments"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         "E:/workdir", "E:/workdir/bar.cc",
@@ -641,7 +636,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
          "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fsyntax-only", "-fparse-all-comments"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Path in args") {
@@ -651,7 +646,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0",
          "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fsyntax-only", "-fparse-all-comments"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Implied binary") {
@@ -661,7 +656,7 @@ TEST_SUITE("Project") {
         /* expected */
         {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++14",
          "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fsyntax-only", "-fparse-all-comments"});
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what
@@ -1012,7 +1007,6 @@ TEST_SUITE("Project") {
          "lock_screen_sanity_unittest.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
-         "-fsyntax-only",
          "-fparse-all-comments"});
   }
 
@@ -1338,7 +1332,6 @@ TEST_SUITE("Project") {
          "&/w/c/s/out/Release/../../apps/app_lifetime_monitor.cc",
          "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option",
-         "-fsyntax-only",
          "-fparse-all-comments"});
   }
 

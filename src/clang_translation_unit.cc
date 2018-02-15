@@ -93,10 +93,12 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
   if (error_code != CXError_Success && cx_tu)
     EmitDiagnostics(filepath, args, cx_tu);
 
+  // We sometimes dump the command to logs and ask the user to run it. Include
+  // -fsyntax-only so they don't do a full compile.
   auto make_msg = [&]() {
     return "Please try running the following, identify which flag causes the "
            "issue, and report a bug. cquery will then filter the flag for you "
-           " automatically:\n$ " + StringJoin(args, " ");
+           " automatically:\n$ " + StringJoin(args, " ") + " -fsyntax-only";
   };
 
   switch (error_code) {
