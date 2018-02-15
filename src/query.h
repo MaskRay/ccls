@@ -96,6 +96,7 @@ struct QueryFamily {
 struct QueryFile {
   struct Def {
     std::string path;
+    std::vector<std::string> args;
     // Language identifier
     std::string language;
     // Includes in the file.
@@ -122,6 +123,7 @@ struct QueryFile {
 };
 MAKE_REFLECT_STRUCT(QueryFile::Def,
                     path,
+                    args,
                     language,
                     outline,
                     all_symbols,

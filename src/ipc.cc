@@ -66,6 +66,8 @@ const char* IpcIdToString(IpcId id) {
     case IpcId::CqueryPublishSemanticHighlighting:
       return "$cquery/publishSemanticHighlighting";
 
+    case IpcId::CqueryFileInfo:
+      return "$cquery/fileInfo";
     case IpcId::CqueryFreshenIndex:
       return "$cquery/freshenIndex";
     case IpcId::CqueryTypeHierarchyTree:

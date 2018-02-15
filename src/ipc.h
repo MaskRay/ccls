@@ -45,6 +45,7 @@ enum class IpcId : int {
   CqueryPublishSemanticHighlighting,
 
   // Custom messages
+  CqueryFileInfo,
   CqueryFreshenIndex,
   // Messages used in tree views.
   CqueryTypeHierarchyTree,
