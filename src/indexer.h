@@ -138,9 +138,6 @@ struct Use : Reference {
   // |file| is used in Query* but not in Index*
   Id<QueryFile> file;
   Use() = default;
-  Use(Reference ref) : Reference(ref) {}
-  Use(Range range, Id<void> id, SymbolKind kind, Role role)
-      : Reference{range, id, kind, role} {}
   Use(Range range, Id<void> id, SymbolKind kind, Role role, Id<QueryFile> file)
     : Reference{range, id, kind, role}, file(file) {}
 };
@@ -328,11 +325,7 @@ struct IndexFunc {
 
   struct Declaration {
     // Range of only the function name.
-    Range spelling;
-    // Full range of the declaration.
-    Range extent;
-    // Full text of the declaration.
-    std::string content;
+    Use spell;
     // Location of the parameter names.
     std::vector<Range> param_spellings;
   };
@@ -357,9 +350,7 @@ struct IndexFunc {
 };
 MAKE_HASHABLE(IndexFunc, t.id);
 MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
-                    spelling,
-                    extent,
-                    content,
+                    spell,
                     param_spellings);
 
 template <typename F>

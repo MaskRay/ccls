@@ -448,8 +448,6 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
 
 void SetUsePreflight(IndexFile* db, ClangCursor parent) {
   switch (GetSymbolKind(parent.get_kind())) {
-  default:
-    break;
   case SymbolKind::Func: {
     (void)db->ToFuncId(parent.cx_cursor);
     break;
@@ -461,36 +459,30 @@ void SetUsePreflight(IndexFile* db, ClangCursor parent) {
   case SymbolKind::Var: {
     (void)db->ToVarId(parent.cx_cursor);
     break;
+  default:
+    break;
   }
   }
 }
 
 // |parent| should be resolved before using |SetUsePreflight| so that |def| will
 // not be invalidated by |To{Func,Type,Var}Id|.
-void SetUse(IndexFile* db,
-            Maybe<Use>* def,
-            Range range,
-            ClangCursor parent,
-            Role role) {
+Use SetUse(IndexFile* db, Range range, ClangCursor parent, Role role) {
   switch (GetSymbolKind(parent.get_kind())) {
-  default:
-    *def = Use(range, Id<void>(), SymbolKind::File, role);
-    break;
-  case SymbolKind::Func: {
-    IndexFuncId id = db->ToFuncId(parent.cx_cursor);
-    *def = Use(range, id, SymbolKind::Func, Role::Definition);
-    break;
-  }
-  case SymbolKind::Type: {
-    IndexTypeId id = db->ToTypeId(parent.cx_cursor);
-    *def = Use(range, id, SymbolKind::Type, Role::Definition);
-    break;
-  }
-  case SymbolKind::Var: {
-    IndexVarId id = db->ToVarId(parent.cx_cursor);
-    *def = Use(range, id, SymbolKind::Var, Role::Definition);
-    break;
-  }
+    case SymbolKind::Func: {
+      IndexFuncId id = db->ToFuncId(parent.cx_cursor);
+      return Use(range, id, SymbolKind::Func, Role::Definition, {});
+    }
+    case SymbolKind::Type: {
+      IndexTypeId id = db->ToTypeId(parent.cx_cursor);
+      return Use(range, id, SymbolKind::Type, Role::Definition, {});
+    }
+    case SymbolKind::Var: {
+      IndexVarId id = db->ToVarId(parent.cx_cursor);
+      return Use(range, id, SymbolKind::Var, Role::Definition, {});
+    }
+    default:
+      return Use(range, Id<void>(), SymbolKind::File, role, {});
   }
 }
 
@@ -552,7 +544,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   IndexTypeId type_id = db->ToTypeId(usr);
   IndexType* typ = db->Resolve(type_id);
   if (typ->def.detailed_name.empty()) {
-    std::string name = declaration.get_spelling();
+    std::string name = declaration.get_spell_name();
     SetTypeName(typ, declaration, nullptr, name.c_str(), param);
   }
   return type_id;
@@ -616,7 +608,7 @@ void SetVarDetail(IndexVar* var,
         clang_getResultType(deref).kind == CXType_Invalid &&
         clang_getElementType(deref).kind == CXType_Invalid) {
       const FileContents& fc = param->file_contents[db->path];
-      optional<int> spell_end = fc.ToOffset(cursor.get_spelling_range().end);
+      optional<int> spell_end = fc.ToOffset(cursor.get_spell().end);
       optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
       if (extent_end && *spell_end < *extent_end)
         def.hover = std::string(def.detailed_name.c_str()) +
@@ -656,19 +648,19 @@ void OnIndexReference_Function(IndexFile* db,
       IndexFunc* called = db->Resolve(called_id);
       parent->def.callees.push_back(
           SymbolRef(loc, called->id, SymbolKind::Func, role));
-      AddFuncUse(&called->uses, Use(loc, parent->id, SymbolKind::Func, role));
+      AddFuncUse(&called->uses, Use(loc, parent->id, SymbolKind::Func, role, {}));
       break;
     }
     case SymbolKind::Type: {
       IndexType* parent = db->Resolve(db->ToTypeId(parent_cursor.cx_cursor));
       IndexFunc* called = db->Resolve(called_id);
       called = db->Resolve(called_id);
-      AddFuncUse(&called->uses, Use(loc, parent->id, SymbolKind::Type, role));
+      AddFuncUse(&called->uses, Use(loc, parent->id, SymbolKind::Type, role, {}));
       break;
     }
     default: {
       IndexFunc* called = db->Resolve(called_id);
-      AddFuncUse(&called->uses, Use(loc, Id<void>(), SymbolKind::File, role));
+      AddFuncUse(&called->uses, Use(loc, Id<void>(), SymbolKind::File, role, {}));
       break;
     }
   }
@@ -677,7 +669,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-const int IndexFile::kMajorVersion = 13;
+const int IndexFile::kMajorVersion = 14;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
@@ -761,7 +753,7 @@ void UniqueAdd(std::vector<T>& values, T value) {
 // FIXME Reference: set id in call sites and remove this
 void AddUse(std::vector<Use>& values, Range value) {
   values.push_back(
-      Use(value, Id<void>(), SymbolKind::File, Role::Reference));
+      Use(value, Id<void>(), SymbolKind::File, Role::Reference, {}));
 }
 
 void AddUse(IndexFile* db,
@@ -770,16 +762,16 @@ void AddUse(IndexFile* db,
             ClangCursor parent,
             Role role = Role::Reference) {
   switch (GetSymbolKind(parent.get_kind())) {
-    default:
-      uses.push_back(Use(range, Id<void>(), SymbolKind::File, role));
-      break;
     case SymbolKind::Func:
-      uses.push_back(
-          Use(range, db->ToFuncId(parent.cx_cursor), SymbolKind::Func, role));
+      uses.push_back(Use(range, db->ToFuncId(parent.cx_cursor),
+                         SymbolKind::Func, role, {}));
       break;
     case SymbolKind::Type:
-      uses.push_back(
-          Use(range, db->ToTypeId(parent.cx_cursor), SymbolKind::Type, role));
+      uses.push_back(Use(range, db->ToTypeId(parent.cx_cursor),
+                         SymbolKind::Type, role, {}));
+      break;
+    default:
+      uses.push_back(Use(range, Id<void>(), SymbolKind::File, role, {}));
       break;
   }
 }
@@ -791,7 +783,7 @@ CXCursor fromContainer(const CXIdxContainerInfo* parent) {
 void AddUseSpell(IndexFile* db,
                  std::vector<Use>& uses,
                  ClangCursor cursor) {
-  AddUse(db, uses, cursor.get_spelling_range(),
+  AddUse(db, uses, cursor.get_spell(),
          cursor.get_lexical_parent().cx_cursor, Role::Reference);
 }
 
@@ -804,7 +796,7 @@ void UniqueAddUse(IndexFile* db, std::vector<Use>& uses, Range range, Args&&... 
 
 template <typename... Args>
 void UniqueAddUseSpell(IndexFile* db, std::vector<Use>& uses, ClangCursor cursor, Args&&... args) {
-  Range range = cursor.get_spelling_range();
+  Range range = cursor.get_spell();
   if (std::find_if(uses.begin(), uses.end(),
                    [&](Use use) { return use.range == range; }) == uses.end())
     AddUse(db, uses, range, cursor.get_lexical_parent().cx_cursor, std::forward<Args>(args)...);
@@ -875,7 +867,7 @@ ClangCursor::VisitResult DumpVisitor(ClangCursor cursor,
                                      int* level) {
   for (int i = 0; i < *level; ++i)
     std::cerr << "  ";
-  std::cerr << ToString(cursor.get_kind()) << " " << cursor.get_spelling()
+  std::cerr << ToString(cursor.get_kind()) << " " << cursor.get_spell_name()
             << std::endl;
 
   *level += 1;
@@ -955,7 +947,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   // We will attribute |::C| to the parent class.
   if (param->toplevel_type) {
     IndexType* ref_type = db->Resolve(*param->toplevel_type);
-    std::string name = cursor.get_referenced().get_spelling();
+    std::string name = cursor.get_referenced().get_spell_name();
     if (name == ref_type->def.ShortName()) {
       UniqueAddUseSpell(db, ref_type->uses, cursor);
       param->toplevel_type = nullopt;
@@ -1210,20 +1202,6 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
   return ClangCursor::VisitResult::Recurse;
 }
 
-void AddDeclInitializerUsages(IndexFile* db, ClangCursor decl_cursor) {
-  decl_cursor.VisitChildren(&AddDeclInitializerUsagesVisitor, db);
-}
-
-bool AreEqualLocations(CXIdxLoc loc, CXCursor cursor) {
-  // clang_getCursorExtent
-  // clang_Cursor_getSpellingNameRange
-
-  return clang_equalLocations(
-      clang_indexLoc_getCXSourceLocation(loc),
-      // clang_getRangeStart(clang_getCursorExtent(cursor)));
-      clang_getRangeStart(clang_Cursor_getSpellingNameRange(cursor, 0, 0)));
-}
-
 ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
                                                            ClangCursor parent,
                                                            IndexParam* param) {
@@ -1261,10 +1239,10 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.kind = ClangSymbolKind::Macro;
         var_def->def.comments = cursor.get_comments();
-        SetUse(db, &var_def->def.spell, decl_loc_spelling, parent,
-               Role::Definition);
-        SetUse(db, &var_def->def.extent,
-               ResolveCXSourceRange(cx_extent, nullptr), parent, Role::None);
+        var_def->def.spell =
+            SetUse(db, decl_loc_spelling, parent, Role::Definition);
+        var_def->def.extent = SetUse(
+            db, ResolveCXSourceRange(cx_extent, nullptr), parent, Role::None);
       } else
         UniqueAddUse(db, var_def->uses, decl_loc_spelling, parent);
 
@@ -1300,16 +1278,18 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         IndexVarId ref_var_id = db->ToVarId(ref_cursor.get_usr_hash());
         IndexVar* ref_var = db->Resolve(ref_var_id);
         if (ref_var->def.detailed_name.empty()) {
-          SetUsePreflight(db, ref_cursor.get_semantic_parent());
-          SetUsePreflight(db, ref_cursor.get_lexical_parent());
+          ClangCursor sem_parent = ref_cursor.get_semantic_parent();
+          ClangCursor lex_parent = ref_cursor.get_lexical_parent();
+          SetUsePreflight(db, sem_parent);
+          SetUsePreflight(db, lex_parent);
           ref_var = db->Resolve(ref_var_id);
-          SetUse(db, &ref_var->def.spell, ref_cursor.get_spelling_range(),
-                 ref_cursor.get_semantic_parent(), Role::Definition);
-          SetUse(db, &ref_var->def.extent, ref_cursor.get_extent(),
-                 ref_cursor.get_lexical_parent(), Role::None);
+          ref_var->def.spell = SetUse(db, ref_cursor.get_spell(),
+                                      sem_parent, Role::Definition);
+          ref_var->def.extent =
+              SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
           ref_var = db->Resolve(ref_var_id);
           ref_var->def.kind = ClangSymbolKind::Parameter;
-          SetVarDetail(ref_var, ref_cursor.get_spelling(), ref_cursor,
+          SetVarDetail(ref_var, ref_cursor.get_spell_name(), ref_cursor,
                        nullptr, true, db, param);
 
           ClangType ref_type = clang_getCursorType(ref_cursor.cx_cursor);
@@ -1339,7 +1319,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           case CXCursor_FunctionDecl:
           case CXCursor_FunctionTemplate: {
             IndexFuncId called_id = db->ToFuncId(overloaded.get_usr_hash());
-            OnIndexReference_Function(db, cursor.get_spelling_range(),
+            OnIndexReference_Function(db, cursor.get_spell(),
                                       data->container, called_id,
                                       Role::Call);
             break;
@@ -1359,17 +1339,19 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_type->def.detailed_name.empty()) {
-          SetUsePreflight(db, ref_cursor.get_semantic_parent());
-          SetUsePreflight(db, ref_cursor.get_lexical_parent());
+          ClangCursor sem_parent = ref_cursor.get_semantic_parent();
+          ClangCursor lex_parent = ref_cursor.get_lexical_parent();
+          SetUsePreflight(db, sem_parent);
+          SetUsePreflight(db, lex_parent);
           ref_type = db->Resolve(ref_type_id);
-          SetUse(db, &ref_type->def.spell, ref_cursor.get_spelling_range(),
-                 ref_cursor.get_semantic_parent(), Role::Definition);
-          SetUse(db, &ref_type->def.extent, ref_cursor.get_extent(),
-                 ref_cursor.get_lexical_parent(), Role::None);
+          ref_type->def.spell = SetUse(db, ref_cursor.get_spell(),
+                                       sem_parent, Role::Definition);
+          ref_type->def.extent =
+              SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
 #if CINDEX_HAVE_PRETTY
           ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
-          ref_type->def.detailed_name = ref_cursor.get_spelling();
+          ref_type->def.detailed_name = ref_cursor.get_spell_name();
 #endif
           ref_type->def.short_name_offset = 0;
           ref_type->def.short_name_size =
@@ -1391,17 +1373,19 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
         if (ref_type->def.detailed_name.empty()) {
-          SetUsePreflight(db, ref_cursor.get_semantic_parent());
-          SetUsePreflight(db, ref_cursor.get_lexical_parent());
+          ClangCursor sem_parent = ref_cursor.get_semantic_parent();
+          ClangCursor lex_parent = ref_cursor.get_lexical_parent();
+          SetUsePreflight(db, sem_parent);
+          SetUsePreflight(db, lex_parent);
           ref_type = db->Resolve(ref_type_id);
-          SetUse(db, &ref_type->def.spell, ref_cursor.get_spelling_range(),
-                 ref_cursor.get_semantic_parent(), Role::Definition);
-          SetUse(db, &ref_type->def.extent, ref_cursor.get_extent(),
-                 ref_cursor.get_lexical_parent(), Role::None);
+          ref_type->def.spell = SetUse(db, ref_cursor.get_spell(),
+                                       sem_parent, Role::Definition);
+          ref_type->def.extent =
+              SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
 #if CINDEX_HAVE_PRETTY
           ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
-          ref_type->def.detailed_name = ref_cursor.get_spelling();
+          ref_type->def.detailed_name = ref_cursor.get_spell_name();
 #endif
           ref_type->def.short_name_offset = 0;
           ref_type->def.short_name_size =
@@ -1441,7 +1425,7 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
   }
   for (size_t i = namespaces.size(); i > 0;) {
     i--;
-    std::string name = namespaces[i].get_spelling();
+    std::string name = namespaces[i].get_spell_name();
     // Empty name indicates unnamed namespace, anonymous struct, anonymous
     // union, ...
     if (name.size())
@@ -1520,15 +1504,16 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   switch (decl->entityInfo->kind) {
     case CXIdxEntity_CXXNamespace: {
       ClangCursor decl_cursor = decl->cursor;
-      Range decl_spell = decl_cursor.get_spelling_range();
+      Range spell = decl_cursor.get_spell();
       IndexTypeId ns_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* ns = db->Resolve(ns_id);
       ns->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (ns->def.detailed_name.empty()) {
         SetTypeName(ns, decl_cursor, decl->semanticContainer,
                     decl->entityInfo->name, param);
-        SetUse(db, &ns->def.spell, decl_spell, sem_parent, Role::Definition);
-        SetUse(db, &ns->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
+        ns->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
+        ns->def.extent =
+            SetUse(db, decl_cursor.get_extent(), lex_parent, Role::None);
         if (decl->semanticContainer) {
           IndexTypeId parent_id = db->ToTypeId(
               ClangCursor(decl->semanticContainer->cursor).get_usr_hash());
@@ -1538,7 +1523,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           ns->def.parents.push_back(parent_id);
         }
       }
-      AddUse(ns->uses, decl_spell);
+      AddUse(ns->uses, spell);
       break;
     }
 
@@ -1548,12 +1533,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Field:
     case CXIdxEntity_Variable:
     case CXIdxEntity_CXXStaticVariable: {
-      ClangCursor decl_cursor = decl->cursor;
-      Range decl_spell = decl_cursor.get_spelling_range();
+      ClangCursor cursor = decl->cursor;
+      Range spell = cursor.get_spell();
 
       // Do not index implicit template instantiations.
-      if (decl_cursor !=
-          decl_cursor.template_specialization_to_template_definition())
+      if (cursor != cursor.template_specialization_to_template_definition())
         break;
 
       IndexVarId var_id = db->ToVarId(HashUsr(decl->entityInfo->USR));
@@ -1574,15 +1558,15 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       //}
 
       if (decl->isDefinition) {
-        SetUse(db, &var->def.spell, decl_spell, sem_parent, Role::Definition);
-        SetUse(db, &var->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
+        var->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
+        var->def.extent =
+            SetUse(db, cursor.get_extent(), lex_parent, Role::None);
       } else {
-        Maybe<Use> use;
-        SetUse(db, &use, decl_spell, lex_parent, Role::Declaration);
-        var->declarations.push_back(*use);
+        var->declarations.push_back(
+            SetUse(db, spell, lex_parent, Role::Declaration));
       }
 
-      AddDeclInitializerUsages(db, decl_cursor);
+      cursor.VisitChildren(&AddDeclInitializerUsagesVisitor, db);
       var = db->Resolve(var_id);
 
       // Declaring variable type information. Note that we do not insert an
@@ -1590,7 +1574,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // the function declaration is encountered since we won't receive ParmDecl
       // declarations for unnamed parameters.
       // TODO: See if we can remove this function call.
-      AddDeclTypeUsages(db, decl_cursor, var->def.type,
+      AddDeclTypeUsages(db, cursor, var->def.type,
                         decl->semanticContainer, decl->lexicalContainer);
 
       // We don't need to assign declaring type multiple times if this variable
@@ -1621,8 +1605,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXConversionFunction: {
       ClangCursor decl_cursor = decl->cursor;
-      Range decl_spelling = decl_cursor.get_spelling_range();
-      Range decl_extent = decl_cursor.get_extent();
+      Range spell = decl_cursor.get_spell();
+      Range extent = decl_cursor.get_extent();
 
       ClangCursor decl_cursor_resolved =
           decl_cursor.template_specialization_to_template_definition();
@@ -1648,20 +1632,17 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       if (decl->isDefinition && !is_template_specialization) {
         // assert(!func->def.spell);
         // assert(!func->def.extent);
-        SetUse(db, &func->def.spell, decl_spelling, sem_parent, Role::Definition);
-        SetUse(db, &func->def.extent, decl_extent, lex_parent, Role::None);
+        func->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
+        func->def.extent = SetUse(db, extent, lex_parent, Role::None);
       } else {
         IndexFunc::Declaration declaration;
-        declaration.spelling = decl_spelling;
-        declaration.extent = decl_extent;
-        declaration.content = GetDocumentContentInRange(
-            param->tu->cx_tu, clang_getCursorExtent(decl->cursor));
+        declaration.spell = SetUse(db, spell, lex_parent, Role::Declaration);
 
         // Add parameters.
         for (ClangCursor arg : decl_cursor.get_arguments()) {
           switch (arg.get_kind()) {
             case CXCursor_ParmDecl: {
-              Range param_spelling = arg.get_spelling_range();
+              Range param_spelling = arg.get_spell();
 
               // If the name is empty (which is common for parameters), clang
               // will report a range with length 1, which is not correct.
@@ -1727,7 +1708,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // Mark a type reference at the ctor/dtor location.
           if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor
               || decl->entityInfo->kind == CXIdxEntity_CXXDestructor)
-            UniqueAddUse(db, declaring_type_def->uses, decl_spelling,
+            UniqueAddUse(db, declaring_type_def->uses, spell,
                          fromContainer(decl->lexicalContainer));
 
           // Add function to declaring type.
@@ -1775,10 +1756,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         type->def.alias_of = alias_of.value();
 
       ClangCursor decl_cursor = decl->cursor;
-      Range spell = decl_cursor.get_spelling_range();
+      Range spell = decl_cursor.get_spell();
       Range extent = decl_cursor.get_extent();
-      SetUse(db, &type->def.spell, spell, sem_parent, Role::Definition);
-      SetUse(db, &type->def.extent, extent, lex_parent, Role::None);
+      type->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
+      type->def.extent = SetUse(db, extent, lex_parent, Role::None);
 
       SetTypeName(type, decl_cursor, decl->semanticContainer,
                   decl->entityInfo->name, param);
@@ -1816,7 +1797,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
       ClangCursor decl_cursor = decl->cursor;
-      Range decl_spell = decl_cursor.get_spelling_range();
+      Range spell = decl_cursor.get_spell();
 
       IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
@@ -1833,21 +1814,21 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // }
 
       if (decl->isDefinition) {
-        SetUse(db, &type->def.spell, decl_spell, sem_parent, Role::Definition);
-        SetUse(db, &type->def.extent, decl_cursor.get_extent(), lex_parent, Role::None);
+        type->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
+        type->def.extent = SetUse(db, decl_cursor.get_extent(), lex_parent, Role::None);
 
         if (decl_cursor.get_kind() == CXCursor_EnumDecl) {
           ClangType enum_type = clang_getEnumDeclIntegerType(decl->cursor);
           if (!enum_type.is_fundamental()) {
             IndexType* int_type =
                 db->Resolve(db->ToTypeId(enum_type.get_usr_hash()));
-            AddUse(db, int_type->uses, decl_spell, fromContainer(decl->lexicalContainer));
+            AddUse(db, int_type->uses, spell, fromContainer(decl->lexicalContainer));
             // type is invalidated.
             type = db->Resolve(type_id);
           }
         }
       } else
-        UniqueAddUse(db, type->uses, decl_spell, fromContainer(decl->lexicalContainer));
+        UniqueAddUse(db, type->uses, spell, fromContainer(decl->lexicalContainer));
 
       switch (decl->entityInfo->templateKind) {
         default:
@@ -1872,16 +1853,18 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // TODO The name may be assigned in |ResolveToDeclarationType| but
           // |spell| is nullopt.
           CXFile origin_file;
-          Range origin_spell = origin_cursor.get_spelling_range(&origin_file);
+          Range origin_spell = origin_cursor.get_spell(&origin_file);
           if (!origin->def.spell && file == origin_file) {
-            SetUsePreflight(db, origin_cursor.get_semantic_parent());
-            SetUsePreflight(db, origin_cursor.get_lexical_parent());
+            ClangCursor origin_sem = origin_cursor.get_semantic_parent();
+            ClangCursor origin_lex = origin_cursor.get_lexical_parent();
+            SetUsePreflight(db, origin_sem);
+            SetUsePreflight(db, origin_lex);
             origin = db->Resolve(origin_id);
             type = db->Resolve(type_id);
-            SetUse(db, &origin->def.spell, origin_spell,
-                   origin_cursor.get_semantic_parent(), Role::Definition);
-            SetUse(db, &origin->def.extent, origin_cursor.get_extent(),
-                   origin_cursor.get_lexical_parent(), Role::None);
+            origin->def.spell =
+                SetUse(db, origin_spell, origin_sem, Role::Definition);
+            origin->def.extent =
+                SetUse(db, origin_cursor.get_extent(), origin_lex, Role::None);
           }
           origin->derived.push_back(type_id);
           type->def.parents.push_back(origin_id);
@@ -1931,7 +1914,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       std::cerr
           << "!! Unhandled indexDeclaration:     "
           << ClangCursor(decl->cursor).ToString() << " at "
-          << ClangCursor(decl->cursor).get_spelling_range().start.ToString()
+          << ClangCursor(decl->cursor).get_spell().start.ToString()
           << std::endl;
       std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind
                 << std::endl;
@@ -1972,7 +1955,7 @@ void CheckTypeDependentMemberRefExpr(Range* spell,
                                      IndexParam* param,
                                      const IndexFile* db) {
   if (cursor.get_kind() == CXCursor_MemberRefExpr &&
-      cursor.get_spelling().empty()) {
+      cursor.get_spell_name().empty()) {
     *spell = cursor.get_extent().RemovePrefix(spell->end);
     const FileContents& fc = param->file_contents[db->path];
     optional<int> maybe_period = fc.ToOffset(spell->start);
@@ -2004,7 +1987,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXNamespace: {
       ClangCursor referenced = ref->referencedEntity->cursor;
       IndexType* ns = db->Resolve(db->ToTypeId(referenced.get_usr_hash()));
-      AddUse(db, ns->uses, cursor.get_spelling_range(), fromContainer(ref->container));
+      AddUse(db, ns->uses, cursor.get_spell(), fromContainer(ref->container));
       break;
     }
 
@@ -2015,7 +1998,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_Variable:
     case CXIdxEntity_Field: {
       ClangCursor ref_cursor(ref->cursor);
-      Range loc = ref_cursor.get_spelling_range();
+      Range loc = ref_cursor.get_spell();
       CheckTypeDependentMemberRefExpr(&loc, ref_cursor, param, db);
 
       ClangCursor referenced = ref->referencedEntity->cursor;
@@ -2029,15 +2012,15 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // as lambdas cannot be split across files.
       if (var->def.detailed_name.empty()) {
         CXFile referenced_file;
-        Range spelling = referenced.get_spelling_range(&referenced_file);
+        Range spell = referenced.get_spell(&referenced_file);
         if (file == referenced_file) {
-          SetUse(db, &var->def.spell, spelling, lex_parent, Role::Definition);
-          SetUse(db, &var->def.extent, referenced.get_extent(), lex_parent, Role::None);
+          var->def.spell = SetUse(db, spell, lex_parent, Role::Definition);
+          var->def.extent = SetUse(db, referenced.get_extent(), lex_parent, Role::None);
 
           // TODO Some of the logic here duplicates CXIdxEntity_Variable branch
           // of OnIndexDeclaration. But there `decl` is of type CXIdxDeclInfo
           // and has more information, thus not easy to reuse the code.
-          SetVarDetail(var, referenced.get_spelling(), referenced, nullptr,
+          SetVarDetail(var, referenced.get_spell_name(), referenced, nullptr,
                        true, db, param);
           var->def.kind = ClangSymbolKind::Parameter;
         }
@@ -2065,7 +2048,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       // TODO: search full history?
       ClangCursor ref_cursor(ref->cursor);
-      Range loc = ref_cursor.get_spelling_range();
+      Range loc = ref_cursor.get_spell();
 
       IndexFuncId called_id = db->ToFuncId(HashUsr(ref->referencedEntity->USR));
       IndexFunc* called = db->Resolve(called_id);
@@ -2130,7 +2113,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // can try to find a constructor with the same type description.
           std::vector<std::string> call_type_desc;
           for (ClangType type : call_cursor.get_type().get_arguments()) {
-            std::string type_desc = type.get_spelling();
+            std::string type_desc = type.get_spell_name();
             if (!type_desc.empty())
               call_type_desc.push_back(type_desc);
           }
@@ -2140,9 +2123,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
-            AddFuncUse(&ctor->uses,
-                       Use(loc, Id<void>(), SymbolKind::File,
-                           Role::Call | Role::Implicit));
+            AddFuncUse(&ctor->uses, Use(loc, Id<void>(), SymbolKind::File,
+                                        Role::Call | Role::Implicit, {}));
           }
         }
       }
@@ -2186,7 +2168,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       std::cerr
           << "!! Unhandled indexEntityReference: " << cursor.ToString()
           << " at "
-          << ClangCursor(ref->cursor).get_spelling_range().start.ToString()
+          << ClangCursor(ref->cursor).get_spell().start.ToString()
           << std::endl;
       std::cerr << "     ref->referencedEntity->kind = "
                 << ref->referencedEntity->kind << std::endl;
@@ -2195,7 +2177,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
                   << ref->parentEntity->kind << std::endl;
       std::cerr
           << "     ref->loc          = "
-          << ClangCursor(ref->cursor).get_spelling_range().start.ToString()
+          << ClangCursor(ref->cursor).get_spell().start.ToString()
           << std::endl;
       std::cerr << "     ref->kind         = " << ref->kind << std::endl;
       if (ref->parentEntity)

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "query_utils.h"
-
 #include "query.h"
 #include "working_files.h"
 

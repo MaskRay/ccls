@@ -96,6 +96,7 @@ struct QueryFamily {
 
 struct QueryFile {
   struct Def {
+    Id<QueryFile> file;
     std::string path;
     std::vector<std::string> args;
     // Language identifier
@@ -123,6 +124,7 @@ struct QueryFile {
   }
 };
 MAKE_REFLECT_STRUCT(QueryFile::Def,
+                    file,
                     path,
                     args,
                     language,
@@ -316,33 +318,6 @@ struct QueryDatabase {
   Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
   Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
 
-  Maybe<QueryFileId> GetFileId(SymbolIdx ref) {
-    switch (ref.kind) {
-      case SymbolKind::Invalid:
-        break;
-      case SymbolKind::File:
-        return QueryFileId(ref.id);
-      case SymbolKind::Func: {
-        const QueryFunc::Def* def = funcs[ref.id.id].AnyDef();
-        if (def)
-          return def->file;
-        break;
-      }
-      case SymbolKind::Type: {
-        const QueryType::Def* def = types[ref.id.id].AnyDef();
-        if (def)
-          return def->file;
-        break;
-      }
-      case SymbolKind::Var: {
-        const QueryVar::Def* def = vars[ref.id.id].AnyDef();
-        if (def)
-          return def->file;
-        break;
-      }
-    }
-    return QueryFileId();
-  }
   QueryFile& GetFile(SymbolIdx ref) {
     return files[ref.id.id];
   }

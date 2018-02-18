@@ -1,5 +1,4 @@
 #include "position.h"
-#include "serializers/msgpack.h"
 
 namespace {
 // Skips until the character immediately following |skip_after|.

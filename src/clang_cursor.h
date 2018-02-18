@@ -30,7 +30,7 @@ class ClangType {
   ClangCursor get_declaration() const;
   std::string get_usr() const;
   Usr get_usr_hash() const;
-  std::string get_spelling() const;
+  std::string get_spell_name() const;
   ClangType get_canonical() const;
 
   // Try to resolve this type and remove qualifies, ie, Foo* will become Foo
@@ -54,8 +54,8 @@ class ClangCursor {
 
   CXCursorKind get_kind() const;
   ClangType get_type() const;
-  std::string get_spelling() const;
-  Range get_spelling_range(CXFile* cx_file = nullptr) const;
+  std::string get_spell_name() const;
+  Range get_spell(CXFile* cx_file = nullptr) const;
   Range get_extent() const;
   std::string get_display_name() const;
   std::string get_usr() const;

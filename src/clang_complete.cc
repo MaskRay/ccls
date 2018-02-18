@@ -662,16 +662,14 @@ ClangCompleteManager::~ClangCompleteManager() {}
 void ClangCompleteManager::CodeComplete(
     const lsTextDocumentPositionParams& completion_location,
     const OnComplete& on_complete) {
-  completion_request_.PushBack(MakeUnique<CompletionRequest>(completion_location.textDocument,
-                                                              completion_location.position,
-                                                              on_complete,
-                                                              false));
+  completion_request_.PushBack(MakeUnique<CompletionRequest>(
+      completion_location.textDocument, completion_location.position,
+      on_complete, false));
 }
 
 void ClangCompleteManager::DiagnosticsUpdate(
     const lsTextDocumentIdentifier& document) {
-  completion_request_.PushBack(MakeUnique<CompletionRequest>(document,
-                                                              true));
+  completion_request_.PushBack(MakeUnique<CompletionRequest>(document, true));
 }
 
 void ClangCompleteManager::NotifyView(const std::string& filename) {

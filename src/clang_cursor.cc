@@ -84,7 +84,7 @@ ClangType ClangType::strip_qualifiers() const {
   return cx;
 }
 
-std::string ClangType::get_spelling() const {
+std::string ClangType::get_spell_name() const {
   return ToString(clang_getTypeSpelling(cx_type));
 }
 
@@ -141,11 +141,11 @@ ClangType ClangCursor::get_type() const {
   return ClangType(clang_getCursorType(cx_cursor));
 }
 
-std::string ClangCursor::get_spelling() const {
+std::string ClangCursor::get_spell_name() const {
   return ::ToString(clang_getCursorSpelling(cx_cursor));
 }
 
-Range ClangCursor::get_spelling_range(CXFile* cx_file) const {
+Range ClangCursor::get_spell(CXFile* cx_file) const {
   // TODO for Objective-C methods and Objective-C message expressions, there are
   // multiple pieces for each selector identifier.
   CXSourceRange range = clang_Cursor_getSpellingNameRange(cx_cursor, 0, 0);
@@ -294,5 +294,5 @@ NtString ClangCursor::get_comments() const {
 }
 
 std::string ClangCursor::ToString() const {
-  return ::ToString(get_kind()) + " " + get_spelling();
+  return ::ToString(get_kind()) + " " + get_spell_name();
 }

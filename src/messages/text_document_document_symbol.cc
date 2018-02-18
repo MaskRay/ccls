@@ -43,14 +43,12 @@ struct TextDocumentDocumentSymbolHandler
       if (!info)
         continue;
 
-      // FIXME
-      Use use(sym);
-      use.file = file_id;
-      optional<lsLocation> location = GetLsLocation(db, working_files, use);
-      if (!location)
-        continue;
-      info->location = *location;
-      out.result.push_back(*info);
+      if (optional<lsLocation> location = GetLsLocation(
+              db, working_files,
+              Use(sym.range, sym.id, sym.kind, sym.role, file_id))) {
+        info->location = *location;
+        out.result.push_back(*info);
+      }
     }
 
     QueueManager::WriteStdout(IpcId::TextDocumentDocumentSymbol, out);
