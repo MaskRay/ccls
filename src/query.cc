@@ -275,13 +275,17 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   }
   for (const IndexVar& var : indexed.vars) {
     QueryVarId id = id_map.ToQuery(var.id);
-    if (var.def.spell)
+    if (var.def.spell) {
       add_all_symbols(*var.def.spell, id, SymbolKind::Var);
-    if (var.def.extent)
-      add_outline(*var.def.extent, id, SymbolKind::Var);
+      if (var.def.extent && (var.def.spell->kind != SymbolKind::Func ||
+                             var.def.storage == StorageClass::Static))
+        add_outline(*var.def.extent, id, SymbolKind::Var);
+    }
     for (Use decl : var.declarations) {
       add_all_symbols(decl, id, SymbolKind::Var);
-      add_outline(decl, id, SymbolKind::Var);
+      if (decl.kind != SymbolKind::Func ||
+          var.def.storage == StorageClass::Static)
+        add_outline(decl, id, SymbolKind::Var);
     }
     for (Use use : var.uses)
       add_all_symbols(use, id, SymbolKind::Var);
