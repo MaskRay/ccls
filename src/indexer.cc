@@ -89,60 +89,59 @@ SymbolKind GetSymbolKind(CXCursorKind kind) {
 }
 
 // Inverse of libclang/CXIndexDataConsumer.cpp getEntityKindFromSymbolKind
-ClangSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
+lsSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   switch (kind) {
     default:
-      return ClangSymbolKind::Unknown;
+      return lsSymbolKind::Unknown;
 
     case CXIdxEntity_Enum:
-      return ClangSymbolKind::Enum;
+      return lsSymbolKind::Enum;
     case CXIdxEntity_Struct:
-      return ClangSymbolKind::Struct;
     case CXIdxEntity_Union:
-      return ClangSymbolKind::Union;
+      return lsSymbolKind::Struct;
     case CXIdxEntity_CXXTypeAlias:
     case CXIdxEntity_Typedef:
-      return ClangSymbolKind::TypeAlias;
+      return lsSymbolKind::TypeParameter;
 
     case CXIdxEntity_Function:
-      return ClangSymbolKind::Function;
+      return lsSymbolKind::Function;
     case CXIdxEntity_Variable:
       // Can also be Parameter
-      return ClangSymbolKind::Variable;
+      return lsSymbolKind::Variable;
     case CXIdxEntity_Field:
     case CXIdxEntity_ObjCIvar:
-      return ClangSymbolKind::Field;
+      return lsSymbolKind::Field;
     case CXIdxEntity_EnumConstant:
-      return ClangSymbolKind::EnumConstant;
+      return lsSymbolKind::EnumMember;
     case CXIdxEntity_CXXClass:
     case CXIdxEntity_ObjCClass:
-      return ClangSymbolKind::Class;
+      return lsSymbolKind::Class;
     case CXIdxEntity_CXXInterface:
     case CXIdxEntity_ObjCProtocol:
-      return ClangSymbolKind::Protocol;
+      return lsSymbolKind::Interface;
     case CXIdxEntity_ObjCCategory:
-      return ClangSymbolKind::Extension;
+      return lsSymbolKind::Interface;
     case CXIdxEntity_CXXInstanceMethod:
     case CXIdxEntity_ObjCInstanceMethod:
-      return ClangSymbolKind::InstanceMethod;
+      return lsSymbolKind::Method;
     case CXIdxEntity_ObjCClassMethod:
-      return ClangSymbolKind::ClassMethod;
+      return lsSymbolKind::Method;
     case CXIdxEntity_CXXStaticMethod:
-      return ClangSymbolKind::StaticMethod;
+      return lsSymbolKind::Method;
     case CXIdxEntity_ObjCProperty:
-      return ClangSymbolKind::InstanceProperty;
+      return lsSymbolKind::Property;
     case CXIdxEntity_CXXStaticVariable:
-      return ClangSymbolKind::StaticProperty;
+      return lsSymbolKind::Field;
     case CXIdxEntity_CXXNamespace:
-      return ClangSymbolKind::Namespace;
+      return lsSymbolKind::Namespace;
     case CXIdxEntity_CXXNamespaceAlias:
-      return ClangSymbolKind::NamespaceAlias;
+      return lsSymbolKind::Namespace;
     case CXIdxEntity_CXXConstructor:
-      return ClangSymbolKind::Constructor;
+      return lsSymbolKind::Constructor;
     case CXIdxEntity_CXXDestructor:
-      return ClangSymbolKind::Destructor;
+      return lsSymbolKind::Method;
     case CXIdxEntity_CXXConversionFunction:
-      return ClangSymbolKind::ConversionFunction;
+      return lsSymbolKind::Constructor;
   }
 }
 
@@ -448,20 +447,17 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
 
 void SetUsePreflight(IndexFile* db, ClangCursor parent) {
   switch (GetSymbolKind(parent.get_kind())) {
-  case SymbolKind::Func: {
+  case SymbolKind::Func:
     (void)db->ToFuncId(parent.cx_cursor);
     break;
-  }
-  case SymbolKind::Type: {
+  case SymbolKind::Type:
     (void)db->ToTypeId(parent.cx_cursor);
     break;
-  }
-  case SymbolKind::Var: {
+  case SymbolKind::Var:
     (void)db->ToVarId(parent.cx_cursor);
     break;
   default:
     break;
-  }
   }
 }
 
@@ -469,18 +465,15 @@ void SetUsePreflight(IndexFile* db, ClangCursor parent) {
 // not be invalidated by |To{Func,Type,Var}Id|.
 Use SetUse(IndexFile* db, Range range, ClangCursor parent, Role role) {
   switch (GetSymbolKind(parent.get_kind())) {
-    case SymbolKind::Func: {
-      IndexFuncId id = db->ToFuncId(parent.cx_cursor);
-      return Use(range, id, SymbolKind::Func, Role::Definition, {});
-    }
-    case SymbolKind::Type: {
-      IndexTypeId id = db->ToTypeId(parent.cx_cursor);
-      return Use(range, id, SymbolKind::Type, Role::Definition, {});
-    }
-    case SymbolKind::Var: {
-      IndexVarId id = db->ToVarId(parent.cx_cursor);
-      return Use(range, id, SymbolKind::Var, Role::Definition, {});
-    }
+    case SymbolKind::Func:
+      return Use(range, db->ToFuncId(parent.cx_cursor), SymbolKind::Func, role,
+                 {});
+    case SymbolKind::Type:
+      return Use(range, db->ToTypeId(parent.cx_cursor), SymbolKind::Type, role,
+                 {});
+    case SymbolKind::Var:
+      return Use(range, db->ToVarId(parent.cx_cursor), SymbolKind::Var, role,
+                 {});
     default:
       return Use(range, Id<void>(), SymbolKind::File, role, {});
   }
@@ -1237,7 +1230,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
             int16_t(strlen(var_def->def.detailed_name.c_str()));
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
-        var_def->def.kind = ClangSymbolKind::Macro;
+        var_def->def.kind = lsSymbolKind::Macro;
         var_def->def.comments = cursor.get_comments();
         var_def->def.spell =
             SetUse(db, decl_loc_spelling, parent, Role::Definition);
@@ -1288,7 +1281,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_var->def.extent =
               SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
           ref_var = db->Resolve(ref_var_id);
-          ref_var->def.kind = ClangSymbolKind::Parameter;
+          ref_var->def.kind = lsSymbolKind::Parameter;
           SetVarDetail(ref_var, ref_cursor.get_spell_name(), ref_cursor,
                        nullptr, true, db, param);
 
@@ -1356,7 +1349,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_type->def.short_name_offset = 0;
           ref_type->def.short_name_size =
               int16_t(strlen(ref_type->def.detailed_name.c_str()));
-          ref_type->def.kind = ClangSymbolKind::Parameter;
+          ref_type->def.kind = lsSymbolKind::TypeParameter;
         }
         UniqueAddUseSpell(db, ref_type->uses, cursor);
       }
@@ -1390,7 +1383,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_type->def.short_name_offset = 0;
           ref_type->def.short_name_size =
               int16_t(strlen(ref_type->def.detailed_name.c_str()));
-          ref_type->def.kind = ClangSymbolKind::Parameter;
+          ref_type->def.kind = lsSymbolKind::TypeParameter;
         }
         UniqueAddUseSpell(db, ref_type->uses, cursor);
       }
@@ -1552,9 +1545,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // FIXME https://github.com/jacobdufault/cquery/issues/239
       var->def.kind = GetSymbolKind(decl->entityInfo->kind);
-      if (var->def.kind == ClangSymbolKind::Variable &&
+      if (var->def.kind == lsSymbolKind::Variable &&
           decl->cursor.kind == CXCursor_ParmDecl)
-        var->def.kind = ClangSymbolKind::Parameter;
+        var->def.kind = lsSymbolKind::Parameter;
       //}
 
       if (decl->isDefinition) {
@@ -2022,7 +2015,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           // and has more information, thus not easy to reuse the code.
           SetVarDetail(var, referenced.get_spell_name(), referenced, nullptr,
                        true, db, param);
-          var->def.kind = ClangSymbolKind::Parameter;
+          var->def.kind = lsSymbolKind::Parameter;
         }
       }
       UniqueAddUse(db, var->uses, loc, fromContainer(ref->container), GetRole(ref, Role::Reference));

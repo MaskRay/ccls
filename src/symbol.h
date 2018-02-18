@@ -8,47 +8,6 @@ enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind);
 MAKE_ENUM_HASHABLE(SymbolKind);
 
-// TODO Rename query.h:SymbolKind to another name
-// clang/Index/IndexSymbol.h clang::index::SymbolKind
-enum class ClangSymbolKind : uint8_t {
-  Unknown,
-
-  Module = 1,
-  Namespace,
-  NamespaceAlias,
-  Macro,
-
-  Enum = 5,
-  Struct,
-  Class,
-  Protocol,
-  Extension,
-  Union,
-  TypeAlias,
-
-  Function = 12,
-  Variable,
-  Field,
-  EnumConstant,
-
-  InstanceMethod = 16,
-  ClassMethod,
-  StaticMethod,
-  InstanceProperty,
-  ClassProperty,
-  StaticProperty,
-
-  Constructor = 22,
-  Destructor,
-  ConversionFunction,
-
-  // Used for both function and template parameters.
-  // Clients can differentiate based on StorageClass.
-  Parameter = 25,
-  Using,
-};
-MAKE_REFLECT_TYPE_PROXY(ClangSymbolKind);
-
 // clang/Basic/Specifiers.h clang::StorageClass
 enum class StorageClass : uint8_t {
   // In |CX_StorageClass| but not in |clang::StorageClass|
@@ -119,7 +78,9 @@ struct lsDocumentHighlight {
 };
 MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);
 
-enum class lsSymbolKind : int {
+enum class lsSymbolKind : uint8_t {
+  Unknown = 0,
+
   File = 1,
   Module = 2,
   Namespace = 3,
@@ -146,6 +107,12 @@ enum class lsSymbolKind : int {
   Event = 24,
   Operator = 25,
   TypeParameter = 26,
+
+  // cquery extensions
+  // See also https://github.com/Microsoft/language-server-protocol/issues/344 for new SymbolKind
+  // clang/Index/IndexSymbol.h clang::index::SymbolKind
+  Parameter = 13,
+  Macro = 255,
 };
 MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
 

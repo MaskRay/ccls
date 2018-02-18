@@ -187,7 +187,7 @@ struct TypeDefDefinitionData {
 
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-  ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  lsSymbolKind kind = lsSymbolKind::Unknown;
 
   bool operator==(const TypeDefDefinitionData& o) const {
     return detailed_name == o.detailed_name &&
@@ -274,7 +274,7 @@ struct FuncDefDefinitionData {
   Maybe<typename F::TypeId> declaring_type;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
-  ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  lsSymbolKind kind = lsSymbolKind::Unknown;
   StorageClass storage = StorageClass::Invalid;
 
   bool operator==(const FuncDefDefinitionData& o) const {
@@ -372,16 +372,15 @@ struct VarDefDefinitionData {
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
 
-  ClangSymbolKind kind = ClangSymbolKind::Unknown;
+  lsSymbolKind kind = lsSymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
   StorageClass storage = StorageClass::Invalid;
 
   bool is_local() const {
-    return kind == ClangSymbolKind::Parameter ||
-           kind == ClangSymbolKind::Variable;
+    return kind == lsSymbolKind::Variable;
   }
-  bool is_macro() const { return kind == ClangSymbolKind::Macro; }
+  bool is_macro() const { return kind == lsSymbolKind::Macro; }
 
   bool operator==(const VarDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&

@@ -155,7 +155,7 @@ struct TextDocumentCodeLensHandler
         case SymbolKind::Type: {
           QueryType& type = db->GetType(sym);
           const QueryType::Def* def = type.AnyDef();
-          if (!def || def->kind == ClangSymbolKind::Namespace)
+          if (!def || def->kind == lsSymbolKind::Namespace)
             continue;
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0),
                       type.uses, true /*force_display*/);

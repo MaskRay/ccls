@@ -112,7 +112,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   for (SymbolRef sym : file->def->all_symbols) {
     std::string_view detailed_name;
     SymbolKind parent_kind = SymbolKind::Invalid;
-    ClangSymbolKind kind = ClangSymbolKind::Unknown;
+    lsSymbolKind kind = lsSymbolKind::Unknown;
     StorageClass storage = StorageClass::Invalid;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {

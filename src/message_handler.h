@@ -29,7 +29,7 @@ struct Out_CqueryPublishSemanticHighlighting
   struct Symbol {
     int stableId = 0;
     SymbolKind parentKind;
-    ClangSymbolKind kind;
+    lsSymbolKind kind;
     StorageClass storage;
     std::vector<lsRange> ranges;
   };

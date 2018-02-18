@@ -459,17 +459,9 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         info.name = def->ShortName();
       else
         info.name = def->detailed_name;
+      info.kind = def->kind;
       if (def->detailed_name.c_str() != def->ShortName())
         info.containerName = def->detailed_name;
-      // TODO ClangSymbolKind -> lsSymbolKind
-      switch (def->kind) {
-        default:
-          info.kind = lsSymbolKind::Class;
-          break;
-        case ClangSymbolKind::Namespace:
-          info.kind = lsSymbolKind::Namespace;
-          break;
-      }
       return info;
     }
     case SymbolKind::Func: {
@@ -482,16 +474,8 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         info.name = def->ShortName();
       else
         info.name = def->detailed_name;
+      info.kind = def->kind;
       info.containerName = def->detailed_name;
-      switch (def->kind) {
-        default:
-          info.kind = lsSymbolKind::Function;
-          break;
-        case ClangSymbolKind::InstanceMethod:
-        case ClangSymbolKind::StaticMethod:
-          info.kind = lsSymbolKind::Method;
-          break;
-      }
       return info;
     }
     case SymbolKind::Var: {
@@ -504,15 +488,8 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
         info.name = def->ShortName();
       else
         info.name = def->detailed_name;
+      info.kind = def->kind;
       info.containerName = def->detailed_name;
-      switch (def->kind) {
-        default:
-          info.kind = lsSymbolKind::Variable;
-          break;
-        case ClangSymbolKind::EnumConstant:
-          info.kind = lsSymbolKind::EnumMember;
-          break;
-      }
       return info;
     }
     case SymbolKind::Invalid:
