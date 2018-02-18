@@ -439,7 +439,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<ClangCompleteManager::CompletionRequest> request =
-        completion_manager->completion_request_.Take();
+        completion_manager->completion_request_.Dequeue();
     std::string path = request->document.uri.GetPath();
 
     std::shared_ptr<CompletionSession> session =
@@ -625,6 +625,15 @@ CompletionSession::~CompletionSession() {}
 ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
     : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
 
+ClangCompleteManager::CompletionRequest::CompletionRequest(const lsTextDocumentIdentifier& document,
+                                                              const bool& emit_diagnostics)
+    : document(document), emit_diagnostics(emit_diagnostics) {}
+ClangCompleteManager::CompletionRequest::CompletionRequest(const lsTextDocumentIdentifier& document,
+                                                              const lsPosition& position,
+                                                              const OnComplete& on_complete,
+                                                              const bool& emit_diagnostics)
+    : document(document), position(position), on_complete(on_complete), emit_diagnostics(emit_diagnostics) {}
+
 ClangCompleteManager::ClangCompleteManager(Config* config,
                                            Project* project,
                                            WorkingFiles* working_files,
@@ -653,31 +662,16 @@ ClangCompleteManager::~ClangCompleteManager() {}
 void ClangCompleteManager::CodeComplete(
     const lsTextDocumentPositionParams& completion_location,
     const OnComplete& on_complete) {
-  completion_request_.WithLock(
-      [&](std::unique_ptr<CompletionRequest>& request_storage) {
-        // Ensure that we have a request.
-        if (!request_storage)
-          request_storage = MakeUnique<CompletionRequest>();
-
-        // Make the request send out code completion information.
-        request_storage->document = completion_location.textDocument;
-        request_storage->position = completion_location.position;
-        request_storage->on_complete = on_complete;
-      });
+  completion_request_.PushBack(MakeUnique<CompletionRequest>(completion_location.textDocument,
+                                                              completion_location.position,
+                                                              on_complete,
+                                                              false));
 }
 
 void ClangCompleteManager::DiagnosticsUpdate(
     const lsTextDocumentIdentifier& document) {
-  completion_request_.WithLock(
-      [&](std::unique_ptr<CompletionRequest>& request_storage) {
-        // Ensure that we have a request.
-        if (!request_storage)
-          request_storage = MakeUnique<CompletionRequest>();
-
-        // Make the request emit diagnostics.
-        request_storage->document = document;
-        request_storage->emit_diagnostics = true;
-      });
+  completion_request_.PushBack(MakeUnique<CompletionRequest>(document,
+                                                              true));
 }
 
 void ClangCompleteManager::NotifyView(const std::string& filename) {

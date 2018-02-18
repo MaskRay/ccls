@@ -55,6 +55,13 @@ struct ClangCompleteManager {
     std::string path;
   };
   struct CompletionRequest {
+    CompletionRequest(const lsTextDocumentIdentifier& document,
+                      const bool& emit_diagnostics);
+    CompletionRequest(const lsTextDocumentIdentifier& document,
+                      const lsPosition& position,
+                      const OnComplete& on_complete,
+                      const bool& emit_diagnostics);
+
     lsTextDocumentIdentifier document;
     optional<lsPosition> position;
     OnComplete on_complete;  // May be null/empty.
@@ -120,7 +127,7 @@ struct ClangCompleteManager {
   std::mutex sessions_lock_;
 
   // Request a code completion at the given location.
-  AtomicObject<CompletionRequest> completion_request_;
+  ThreadedQueue<std::unique_ptr<CompletionRequest>> completion_request_;
   // Parse requests. The path may already be parsed, in which case it should be
   // reparsed.
   ThreadedQueue<ParseRequest> parse_requests_;
