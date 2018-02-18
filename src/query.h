@@ -231,14 +231,14 @@ struct IndexUpdate {
   std::vector<QueryType::UsesUpdate> types_uses;
 
   // Function updates.
-  std::vector<Usr> funcs_removed;
+  std::vector<WithUsr<QueryFileId>> funcs_removed;
   std::vector<QueryFunc::DefUpdate> funcs_def_update;
   std::vector<QueryFunc::DeclarationsUpdate> funcs_declarations;
   std::vector<QueryFunc::DerivedUpdate> funcs_derived;
   std::vector<QueryFunc::UsesUpdate> funcs_uses;
 
   // Variable updates.
-  std::vector<Usr> vars_removed;
+  std::vector<WithUsr<QueryFileId>> vars_removed;
   std::vector<QueryVar::DefUpdate> vars_def_update;
   std::vector<QueryVar::DeclarationsUpdate> vars_declarations;
   std::vector<QueryVar::UsesUpdate> vars_uses;
@@ -299,6 +299,7 @@ struct QueryDatabase {
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);
+  void RemoveUsrs(SymbolKind usr_kind, const std::vector<WithUsr<QueryFileId>>& to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
   void ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates);

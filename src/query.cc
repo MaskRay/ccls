@@ -364,6 +364,18 @@ Maybe<QueryVarId> GetQueryVarIdFromUsr(QueryDatabase* query_db,
   return QueryVarId(idx);
 }
 
+// Returns true if an element with the same file is found.
+template <typename Q>
+bool TryReplaceDef(std::forward_list<Q>& def_list, Q&& def) {
+  for (auto& def1 : def_list)
+    if (def1.file == def.file) {
+      if (!def1.spell || def.spell)
+        def1 = std::move(def);
+      return true;
+    }
+  return false;
+}
+
 }  // namespace
 
 Maybe<QueryFileId> QueryDatabase::GetQueryFileIdFromPath(
@@ -573,7 +585,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onRemoved:*/
       [this, &previous_id_map](IndexFunc* func) {
         if (func->def.spell)
-          funcs_removed.push_back(func->usr);
+          funcs_removed.emplace_back(func->usr, previous_id_map.primary_file);
         if (!func->declarations.empty())
           funcs_declarations.push_back(QueryFunc::DeclarationsUpdate(
               previous_id_map.ToQuery(func->id), {},
@@ -633,7 +645,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onRemoved:*/
       [this, &previous_id_map](IndexVar* var) {
         if (var->def.spell)
-          vars_removed.push_back(var->usr);
+          vars_removed.emplace_back(var->usr, previous_id_map.primary_file);
         if (!var->declarations.empty())
           vars_declarations.push_back(QueryVar::DeclarationsUpdate(
               previous_id_map.ToQuery(var->id), {},
@@ -756,26 +768,35 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
       }
       break;
     }
+    default:
+      break;
+  }
+}
+
+void QueryDatabase::RemoveUsrs(
+    SymbolKind usr_kind,
+    const std::vector<WithUsr<QueryFileId>>& to_remove) {
+  switch (usr_kind) {
     case SymbolKind::Func: {
-      for (const Usr& usr : to_remove) {
-        QueryFunc& func = funcs[usr_to_func[usr].id];
-        if (func.symbol_idx)
-          symbols[func.symbol_idx->id].kind = SymbolKind::Invalid;
-        func.def.clear();
+      for (const auto& usr_file : to_remove) {
+        QueryFunc& func = funcs[usr_to_func[usr_file.usr].id];
+        func.def.remove_if([&](const QueryFunc::Def& def) {
+          return def.file == usr_file.value;
+        });
       }
       break;
     }
     case SymbolKind::Var: {
-      for (const Usr& usr : to_remove) {
-        QueryVar& var = vars[usr_to_var[usr].id];
-        if (var.symbol_idx)
-          symbols[var.symbol_idx->id].kind = SymbolKind::Invalid;
-        var.def.clear();
+      for (const auto& usr_file : to_remove) {
+        QueryVar& var = vars[usr_to_var[usr_file.usr].id];
+        var.def.remove_if([&](const QueryVar::Def& def) {
+          return def.file == usr_file.value;
+        });
       }
       break;
     }
-    case SymbolKind::File:
-    case SymbolKind::Invalid:
+    default:
+      assert(false);
       break;
   }
 }
@@ -847,10 +868,12 @@ void QueryDatabase::ImportOrUpdate(
 
     assert(it->second.id >= 0 && it->second.id < types.size());
     QueryType& existing = types[it->second.id];
-
+    // TODO Investigate why a list of Def makes finding-definition fail.
+    //if (!TryReplaceDef(existing.def, std::move(def.value))) {
+    //
     // Keep the existing definition if it is higher quality.
-      if (!(existing.AnyDef() && existing.AnyDef()->spell &&
-            !def.value.spell)) {
+    if (!(existing.AnyDef() && existing.AnyDef()->spell &&
+          !def.value.spell)) {
       existing.def.push_front(std::move(def.value));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, it->second);
     }
@@ -869,10 +892,7 @@ void QueryDatabase::ImportOrUpdate(
 
     assert(it->second.id >= 0 && it->second.id < funcs.size());
     QueryFunc& existing = funcs[it->second.id];
-
-    // Keep the existing definition if it is higher quality.
-    if (!(existing.AnyDef() && existing.AnyDef()->spell &&
-          !def.value.spell)) {
+    if (!TryReplaceDef(existing.def, std::move(def.value))) {
       existing.def.push_front(std::move(def.value));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Func, it->second);
     }
@@ -890,10 +910,7 @@ void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
 
     assert(it->second.id >= 0 && it->second.id < vars.size());
     QueryVar& existing = vars[it->second.id];
-
-    // Keep the existing definition if it is higher quality.
-    if (!(existing.AnyDef() && existing.AnyDef()->spell &&
-          !def.value.spell)) {
+    if (!TryReplaceDef(existing.def, std::move(def.value))) {
       existing.def.push_front(std::move(def.value));
       if (!existing.def.front().is_local())
         UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, it->second);
@@ -988,8 +1005,10 @@ TEST_SUITE("query") {
     IndexUpdate update = GetDelta(previous, current);
 
     REQUIRE(update.types_removed == std::vector<Usr>{HashUsr("usr1")});
-    REQUIRE(update.funcs_removed == std::vector<Usr>{HashUsr("usr2")});
-    REQUIRE(update.vars_removed == std::vector<Usr>{HashUsr("usr3")});
+    REQUIRE(update.funcs_removed.size() == 1);
+    REQUIRE(update.funcs_removed[0].usr == HashUsr("usr2"));
+    REQUIRE(update.vars_removed.size() == 1);
+    REQUIRE(update.vars_removed[0].usr == HashUsr("usr3"));
   }
 
   TEST_CASE("do not remove ref-only defs") {
@@ -1007,8 +1026,8 @@ TEST_SUITE("query") {
     IndexUpdate update = GetDelta(previous, current);
 
     REQUIRE(update.types_removed == std::vector<Usr>{});
-    REQUIRE(update.funcs_removed == std::vector<Usr>{});
-    REQUIRE(update.vars_removed == std::vector<Usr>{});
+    REQUIRE(update.funcs_removed.empty());
+    REQUIRE(update.vars_removed.empty());
   }
 
   TEST_CASE("func callers") {
@@ -1025,7 +1044,7 @@ TEST_SUITE("query") {
 
     IndexUpdate update = GetDelta(previous, current);
 
-    REQUIRE(update.funcs_removed == std::vector<Usr>{});
+    REQUIRE(update.funcs_removed.empty());
     REQUIRE(update.funcs_uses.size() == 1);
     REQUIRE(update.funcs_uses[0].id == QueryFuncId(0));
     REQUIRE(update.funcs_uses[0].to_remove.size() == 1);
