@@ -1699,8 +1699,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           func->def.declaring_type = declaring_type_id;
 
           // Mark a type reference at the ctor/dtor location.
-          if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor
-              || decl->entityInfo->kind == CXIdxEntity_CXXDestructor)
+          if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor)
             UniqueAddUse(db, declaring_type_def->uses, spell,
                          fromContainer(decl->lexicalContainer));
 
