@@ -35,16 +35,14 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
                      });
     for (SymbolRef sym : syms) {
       if (sym.kind == SymbolKind::Type) {
-        QueryType& type = db->GetType(sym);
-        if (type.def)
+        if (const auto* def = db->GetType(sym).AnyDef())
           out.result = GetLsLocations(db, working_files,
-                                      ToUses(db, type.def->parents));
+                                      ToUses(db, def->parents));
         break;
       } else if (sym.kind == SymbolKind::Func) {
-        QueryFunc& func = db->GetFunc(sym);
-        if (func.def)
+        if (const auto* def = db->GetFunc(sym).AnyDef())
           out.result = GetLsLocations(db, working_files,
-                                      ToUses(db, func.def->base));
+                                      ToUses(db, def->base));
         break;
       }
     }

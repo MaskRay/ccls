@@ -53,15 +53,16 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
     WorkingFiles* working_files,
     QueryFuncId root) {
   QueryFunc& root_func = db->funcs[root.id];
-  if (!root_func.def || !root_func.def->spell)
+  const QueryFunc::Def* def = root_func.AnyDef();
+  if (!def || !def->spell)
     return {};
   optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *root_func.def->spell);
+      GetLsLocation(db, working_files, *def->spell);
   if (!def_loc)
     return {};
 
   Out_CqueryCallTree::CallEntry entry;
-  entry.name = root_func.def->ShortName();
+  entry.name = def->ShortName();
   entry.usr = std::to_string(root_func.usr);
   entry.location = *def_loc;
   entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, root_func);
@@ -75,7 +76,8 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     WorkingFiles* working_files,
     QueryFuncId root) {
   QueryFunc& root_func = db->funcs[root.id];
-  if (!root_func.def)
+  const QueryFunc::Def* root_func_def = root_func.AnyDef();
+  if (!root_func_def)
     return {};
 
   std::vector<Out_CqueryCallTree::CallEntry> result;
@@ -107,11 +109,12 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
 
     if (caller.kind == SymbolKind::Func) {
       QueryFunc& call_func = db->GetFunc(caller);
-      if (!call_func.def)
+      const QueryFunc::Def* def = call_func.AnyDef();
+      if (!def)
         return;
 
       Out_CqueryCallTree::CallEntry call_entry;
-      call_entry.name = call_func.def->ShortName();
+      call_entry.name = def->ShortName();
       call_entry.usr = std::to_string(call_func.usr);
       call_entry.location = *call_location;
       call_entry.hasCallers = HasCallersOnSelfOrBaseOrDerived(db, call_func);

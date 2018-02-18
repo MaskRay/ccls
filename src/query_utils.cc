@@ -21,16 +21,16 @@ int ComputeRangeSize(const Range& range) {
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          SymbolIdx sym) {
   switch (sym.kind) {
-    case SymbolKind::Type: {
-      QueryType& type = db->GetType(sym);
-      if (type.def)
-        return type.def->spell;
+    case SymbolKind::File:
+      break;
+    case SymbolKind::Func: {
+      if (const auto* def = db->GetFunc(sym).AnyDef())
+        return def->spell;
       break;
     }
-    case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(sym);
-      if (func.def)
-        return func.def->spell;
+    case SymbolKind::Type: {
+      if (const auto* def = db->GetType(sym).AnyDef())
+        return def->spell;
       break;
     }
     case SymbolKind::Var: {
@@ -39,8 +39,6 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
         return def->spell;
       break;
     }
-    case SymbolKind::File:
-      break;
     case SymbolKind::Invalid:
       assert(false && "unexpected");
       break;
@@ -50,16 +48,17 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
 
 Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
   switch (sym.kind) {
-    case SymbolKind::Type: {
-      QueryType& type = db->GetType(sym);
-      if (type.def)
-        return type.def->extent;
+    case SymbolKind::File:
+      return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
+                 Role::None, QueryFileId(sym.id));
+    case SymbolKind::Func: {
+      if (const auto* def = db->GetFunc(sym).AnyDef())
+        return def->extent;
       break;
     }
-    case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(sym);
-      if (func.def)
-        return func.def->extent;
+    case SymbolKind::Type: {
+      if (const auto* def = db->GetType(sym).AnyDef())
+        return def->extent;
       break;
     }
     case SymbolKind::Var: {
@@ -68,9 +67,6 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
         return def->extent;
       break;
     }
-    case SymbolKind::File:
-      return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
-                 Role::None, QueryFileId(sym.id));
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -82,28 +78,26 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                SymbolIdx sym) {
   switch (sym.kind) {
-    case SymbolKind::Type: {
-      QueryType& type = db->GetType(sym);
-      if (type.def)
-        return type.def->file;
-      break;
-    }
+    case SymbolKind::File:
+      return QueryFileId(sym.id);
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       if (!func.declarations.empty())
         return func.declarations[0].file;
-      if (func.def)
-        return func.def->file;
-      break;
-    }
-    case SymbolKind::Var: {
-      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-      if (def)
+      if (const auto* def = func.AnyDef())
         return def->file;
       break;
     }
-    case SymbolKind::File:
-      return QueryFileId(sym.id);
+    case SymbolKind::Type: {
+      if (const auto* def = db->GetType(sym).AnyDef())
+        return def->file;
+      break;
+    }
+    case SymbolKind::Var: {
+      if (const auto* def = db->GetVar(sym).AnyDef())
+        return def->file;
+      break;
+    }
     case SymbolKind::Invalid: {
       assert(false && "unexpected");
       break;
@@ -118,8 +112,9 @@ std::vector<Use> ToUses(QueryDatabase* db,
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryFunc& func = db->funcs[id.id];
-    if (func.def && func.def->spell)
-      ret.push_back(*func.def->spell);
+    const QueryFunc::Def* def = func.AnyDef();
+    if (def && def->spell)
+      ret.push_back(*def->spell);
     else if (func.declarations.size())
       ret.push_back(func.declarations[0]);
   }
@@ -132,8 +127,9 @@ std::vector<Use> ToUses(QueryDatabase* db,
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryType& type = db->types[id.id];
-    if (type.def && type.def->spell)
-      ret.push_back(*type.def->spell);
+    const QueryType::Def* def = type.AnyDef();
+    if (def && def->spell)
+      ret.push_back(*def->spell);
   }
   return ret;
 }
@@ -143,7 +139,7 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryVar& var = db->vars[id.id];
-    QueryVar::Def* def = var.AnyDef();
+    const QueryVar::Def* def = var.AnyDef();
     if (def && def->spell)
       ret.push_back(*def->spell);
     else if (var.declarations.size())
@@ -205,11 +201,10 @@ std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
       // function has the postfix `ForGotoDefintion`, but it lets the user
       // jump to the start of a type if clicking goto-definition on the same
       // type from within the type definition.
-      QueryType& type = db->GetType(sym);
-      if (type.def) {
-        Maybe<Use> def = type.def->spell;
-        if (def)
-          return {*def};
+      if (const auto* def = db->GetType(sym).AnyDef()) {
+        Maybe<Use> spell = def->spell;
+        if (spell)
+          return {*spell};
       }
       break;
     }
@@ -228,10 +223,11 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
   // Check self.
   if (!root.uses.empty())
     return true;
+  const QueryFunc::Def* def = root.AnyDef();
 
   // Check for base calls.
   std::queue<QueryFunc*> queue;
-  EachWithGen<QueryFunc>(db->funcs, root.def->base, [&](QueryFunc& func) {
+  EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func) {
     queue.push(&func);
   });
   while (!queue.empty()) {
@@ -239,8 +235,8 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
     queue.pop();
     if (!func.uses.empty())
       return true;
-    if (func.def)
-      EachWithGen<QueryFunc>(db->funcs, func.def->base, [&](QueryFunc& func1) {
+    if (def)
+      EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func1) {
         queue.push(&func1);
       });
   }
@@ -265,11 +261,12 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
 std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
                                                QueryFunc& root) {
   std::vector<Use> callers;
-  if (!root.def)
+  const QueryFunc::Def* def = root.AnyDef();
+  if (!def)
     return callers;
 
   std::queue<QueryFunc*> queue;
-  EachWithGen<QueryFunc>(db->funcs, root.def->base, [&](QueryFunc& func1) {
+  EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func1) {
     queue.push(&func1);
   });
   while (!queue.empty()) {
@@ -277,8 +274,8 @@ std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
     queue.pop();
 
     AddRange(&callers, func.uses);
-    if (func.def)
-      EachWithGen<QueryFunc>(db->funcs, func.def->base, [&](QueryFunc& func1) {
+    if (def)
+      EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func1) {
         queue.push(&func1);
       });
   }
@@ -453,19 +450,19 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Type: {
-      QueryType& type = db->GetType(sym);
-      if (!type.def)
+      const QueryType::Def* def = db->GetType(sym).AnyDef();
+      if (!def)
         break;
 
       lsSymbolInformation info;
       if (use_short_name)
-        info.name = type.def->ShortName();
+        info.name = def->ShortName();
       else
-        info.name = type.def->detailed_name;
-      if (type.def->detailed_name.c_str() != type.def->ShortName())
-        info.containerName = type.def->detailed_name;
+        info.name = def->detailed_name;
+      if (def->detailed_name.c_str() != def->ShortName())
+        info.containerName = def->detailed_name;
       // TODO ClangSymbolKind -> lsSymbolKind
-      switch (type.def->kind) {
+      switch (def->kind) {
         default:
           info.kind = lsSymbolKind::Class;
           break;
@@ -476,17 +473,17 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(sym);
-      if (!func.def)
+      const QueryFunc::Def* def = db->GetFunc(sym).AnyDef();
+      if (!def)
         break;
 
       lsSymbolInformation info;
       if (use_short_name)
-        info.name = func.def->ShortName();
+        info.name = def->ShortName();
       else
-        info.name = func.def->detailed_name;
-      info.containerName = func.def->detailed_name;
-      switch (func.def->kind) {
+        info.name = def->detailed_name;
+      info.containerName = def->detailed_name;
+      switch (def->kind) {
         default:
           info.kind = lsSymbolKind::Function;
           break;

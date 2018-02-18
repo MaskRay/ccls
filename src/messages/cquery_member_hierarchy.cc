@@ -38,17 +38,17 @@ MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 
 std::vector<Out_CqueryMemberHierarchy::Entry>
 BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
-  QueryType& root_type = db->types[root.id];
-  if (!root_type.def || !root_type.def->spell)
+  const auto* root_type = db->types[root.id].AnyDef();
+  if (!root_type || !root_type->spell)
     return {};
   optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *root_type.def->spell);
+      GetLsLocation(db, working_files, *root_type->spell);
   if (!def_loc)
     return {};
 
   Out_CqueryMemberHierarchy::Entry entry;
   entry.type_id = root;
-  entry.name = root_type.def->ShortName();
+  entry.name = root_type->ShortName();
   entry.location = *def_loc;
   return {entry};
 }

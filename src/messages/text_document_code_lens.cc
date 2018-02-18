@@ -155,9 +155,8 @@ struct TextDocumentCodeLensHandler
       switch (sym.kind) {
         case SymbolKind::Type: {
           QueryType& type = db->GetType(sym);
-          if (!type.def)
-            continue;
-          if (type.def->kind == ClangSymbolKind::Namespace)
+          const QueryType::Def* def = type.AnyDef();
+          if (!def || def->kind == ClangSymbolKind::Namespace)
             continue;
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(sym, 0),
                       type.uses, true /*force_display*/);
@@ -169,7 +168,8 @@ struct TextDocumentCodeLensHandler
         }
         case SymbolKind::Func: {
           QueryFunc& func = db->GetFunc(sym);
-          if (!func.def)
+          const QueryFunc::Def* def = func.AnyDef();
+          if (!def)
             continue;
 
           int16_t offset = 0;
@@ -215,9 +215,9 @@ struct TextDocumentCodeLensHandler
                       ToUses(db, func.derived), false /*force_display*/);
 
           // "Base"
-          if (func.def->base.size() == 1) {
+          if (def->base.size() == 1) {
             Maybe<Use> base_loc = GetDefinitionSpellingOfSymbol(
-                db, SymbolIdx{func.def->base[0], SymbolKind::Func});
+                db, SymbolIdx{def->base[0], SymbolKind::Func});
             if (base_loc) {
               optional<lsLocation> ls_base =
                   GetLsLocation(db, working_files, *base_loc);
@@ -239,7 +239,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(sym, 1),
-                        ToUses(db, func.def->base),
+                        ToUses(db, def->base),
                         false /*force_display*/);
           }
 

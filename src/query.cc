@@ -752,8 +752,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryType& type = types[usr_to_type[usr].id];
         if (type.symbol_idx)
           symbols[type.symbol_idx->id].kind = SymbolKind::Invalid;
-        //type.def = QueryType::Def();
-        type.def = nullopt;
+        type.def.clear();
       }
       break;
     }
@@ -762,8 +761,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryFunc& func = funcs[usr_to_func[usr].id];
         if (func.symbol_idx)
           symbols[func.symbol_idx->id].kind = SymbolKind::Invalid;
-        //func.def = QueryFunc::Def();
-        func.def = nullopt;
+        func.def.clear();
       }
       break;
     }
@@ -851,9 +849,9 @@ void QueryDatabase::ImportOrUpdate(
     QueryType& existing = types[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (!(existing.def && existing.def->spell &&
-          !def.value.spell)) {
-      existing.def = std::move(def.value);
+      if (!(existing.AnyDef() && existing.AnyDef()->spell &&
+            !def.value.spell)) {
+      existing.def.push_front(std::move(def.value));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, it->second);
     }
   }
@@ -873,9 +871,9 @@ void QueryDatabase::ImportOrUpdate(
     QueryFunc& existing = funcs[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (!(existing.def && existing.def->spell &&
+    if (!(existing.AnyDef() && existing.AnyDef()->spell &&
           !def.value.spell)) {
-      existing.def = std::move(def.value);
+      existing.def.push_front(std::move(def.value));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Func, it->second);
     }
   }

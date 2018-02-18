@@ -32,14 +32,15 @@ BuildParentInheritanceHierarchyForType(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        QueryType& root_type) {
   std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> parent_entries;
-  parent_entries.reserve(root_type.def->parents.size());
+  const QueryType::Def* def = root_type.AnyDef();
+  parent_entries.reserve(def->parents.size());
 
-  EachWithGen(db->types, root_type.def->parents, [&](QueryType& parent_type) {
+  EachWithGen(db->types, def->parents, [&](QueryType& parent_type) {
     Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-    parent_entry.name = parent_type.def->detailed_name.c_str();
-    if (parent_type.def->spell)
-      parent_entry.location = GetLsLocation(
-          db, working_files, *parent_type.def->spell);
+    const QueryType::Def* def1 = parent_type.AnyDef();
+    parent_entry.name = def1->detailed_name.c_str();
+    if (def1->spell)
+      parent_entry.location = GetLsLocation(db, working_files, *def1->spell);
     parent_entry.children =
         BuildParentInheritanceHierarchyForType(db, working_files, parent_type);
 
@@ -54,12 +55,12 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
                                  WorkingFiles* working_files,
                                  QueryType& root_type) {
   Out_CqueryTypeHierarchyTree::TypeEntry entry;
+  const QueryType::Def* def = root_type.AnyDef();
 
   // Name and location.
-  entry.name = root_type.def->detailed_name;
-  if (root_type.def->spell)
-    entry.location =
-        GetLsLocation(db, working_files, *root_type.def->spell);
+  entry.name = def->detailed_name;
+  if (def->spell)
+    entry.location = GetLsLocation(db, working_files, *def->spell);
 
   entry.children.reserve(root_type.derived.size());
 
@@ -90,20 +91,20 @@ BuildParentInheritanceHierarchyForFunc(QueryDatabase* db,
   std::vector<Out_CqueryTypeHierarchyTree::TypeEntry> entries;
 
   QueryFunc& root_func = db->funcs[root.id];
-  if (!root_func.def || root_func.def->base.empty())
+  const QueryFunc::Def* def = root_func.AnyDef();
+  if (!def || def->base.empty())
     return {};
 
-  // FIXME WithGen
-  for (auto parent_id : root_func.def->base) {
+  for (auto parent_id : def->base) {
     QueryFunc& parent_func = db->funcs[parent_id.id];
-    if (!parent_func.def)
+    const QueryFunc::Def* def1 = parent_func.AnyDef();
+    if (!def1)
       continue;
 
     Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
-    parent_entry.name = parent_func.def->detailed_name;
-    if (parent_func.def->spell)
-      parent_entry.location = GetLsLocation(
-          db, working_files, *parent_func.def->spell);
+    parent_entry.name = def1->detailed_name;
+    if (def1->spell)
+      parent_entry.location = GetLsLocation(db, working_files, *def1->spell);
     parent_entry.children =
         BuildParentInheritanceHierarchyForFunc(db, working_files, parent_id);
 
@@ -118,16 +119,17 @@ BuildInheritanceHierarchyForFunc(QueryDatabase* db,
                                  WorkingFiles* working_files,
                                  QueryFuncId root_id) {
   QueryFunc& root_func = db->funcs[root_id.id];
-  if (!root_func.def)
+  const QueryFunc::Def* def = root_func.AnyDef();
+  if (!def)
     return nullopt;
 
   Out_CqueryTypeHierarchyTree::TypeEntry entry;
 
   // Name and location.
-  entry.name = root_func.def->detailed_name;
-  if (root_func.def->spell)
+  entry.name = def->detailed_name;
+  if (def->spell)
     entry.location =
-        GetLsLocation(db, working_files, *root_func.def->spell);
+        GetLsLocation(db, working_files, *def->spell);
 
   entry.children.reserve(root_func.derived.size());
 
@@ -169,7 +171,7 @@ struct CqueryTypeHierarchyTreeHandler
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
         QueryType& type = db->GetType(sym);
-        if (type.def)
+        if (type.AnyDef())
           out.result =
               BuildInheritanceHierarchyForType(db, working_files, type);
         break;

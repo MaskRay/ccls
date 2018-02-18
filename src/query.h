@@ -140,14 +140,20 @@ struct QueryType {
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
-  optional<Def> def;
+  std::forward_list<Def> def;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<Use> uses;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
-  const Def* AnyDef() const { return def ? &*def : nullptr; }
-  Def* AnyDef() { return def ? &*def : nullptr; }
+  const Def* AnyDef() const {
+    if (def.empty()) return nullptr;
+    return &def.front();
+  }
+  Def* AnyDef() {
+    if (def.empty()) return nullptr;
+    return &def.front();
+  }
 };
 
 struct QueryFunc {
@@ -159,14 +165,20 @@ struct QueryFunc {
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
-  optional<Def> def;
+  std::forward_list<Def> def;
   std::vector<Use> declarations;
   std::vector<QueryFuncId> derived;
   std::vector<Use> uses;
 
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
-  const Def* AnyDef() const { return def ? &*def : nullptr; }
-  Def* AnyDef() { return def ? &*def : nullptr; }
+  const Def* AnyDef() const {
+    if (def.empty()) return nullptr;
+    return &def.front();
+  }
+  Def* AnyDef() {
+    if (def.empty()) return nullptr;
+    return &def.front();
+  }
 };
 
 struct QueryVar {

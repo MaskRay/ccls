@@ -117,16 +117,16 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
       case SymbolKind::Func: {
-        QueryFunc& func = db->GetFunc(sym);
-        if (!func.def)
+        const QueryFunc::Def* def = db->GetFunc(sym).AnyDef();
+        if (!def)
           continue;  // applies to for loop
         // Don't highlight overloadable operators or implicit lambda ->
         // std::function constructor.
-        std::string_view short_name = func.def->ShortName();
+        std::string_view short_name = def->ShortName();
         if (short_name.compare(0, 8, "operator") == 0 ||
             short_name.compare(0, 27, "function<type-parameter-0-0") == 0)
           continue;  // applies to for loop
-        kind = func.def->kind;
+        kind = def->kind;
         detailed_name = short_name;
 
         // Check whether the function name is actually there.

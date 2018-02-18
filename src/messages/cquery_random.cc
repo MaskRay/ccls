@@ -45,12 +45,12 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
     int n = 0;
 
     for (RawId i = 0; i < db->funcs.size(); i++)
-      if (db->funcs[i].def) {
+      if (db->funcs[i].AnyDef()) {
         syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Func});
         sym2id[syms.back()] = n++;
       }
     for (RawId i = 0; i < db->types.size(); i++)
-      if (db->types[i].def) {
+      if (db->types[i].AnyDef()) {
         syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Type});
         sym2id[syms.back()] = n++;
       }
@@ -77,12 +77,12 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
         n++;
       }
     for (QueryType& type : db->types)
-      if (type.AnyDef()) {
+      if (const auto* def = type.AnyDef()) {
         add(type.uses, 1);
         Add(sym2id, adj, type.instances, n);
-        Add(sym2id, adj, type.def->funcs, n);
-        Add(sym2id, adj, type.def->types, n);
-        Add(sym2id, adj, type.def->vars, n);
+        Add(sym2id, adj, def->funcs, n);
+        Add(sym2id, adj, def->types, n);
+        Add(sym2id, adj, def->vars, n);
         n++;
       }
     for (QueryVar& var : db->vars)
