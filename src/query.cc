@@ -772,8 +772,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
         QueryVar& var = vars[usr_to_var[usr].id];
         if (var.symbol_idx)
           symbols[var.symbol_idx->id].kind = SymbolKind::Invalid;
-        //var.def = QueryVar::Def();
-        var.def = nullopt;
+        var.def.clear();
       }
       break;
     }
@@ -895,10 +894,10 @@ void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
     QueryVar& existing = vars[it->second.id];
 
     // Keep the existing definition if it is higher quality.
-    if (!(existing.def && existing.def->spell &&
+    if (!(existing.AnyDef() && existing.AnyDef()->spell &&
           !def.value.spell)) {
-      existing.def = std::move(def.value);
-      if (!def.value.is_local())
+      existing.def.push_front(std::move(def.value));
+      if (!existing.def.front().is_local())
         UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, it->second);
     }
   }
@@ -924,19 +923,19 @@ std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
         return files[idx].def->path;
       break;
     case SymbolKind::Func:
-      if (funcs[idx].def) {
-        auto& def = funcs[idx].def;
+      if (const auto* def = funcs[idx].AnyDef()) {
+        // Assume the part after short_name is not needed.
         return std::string_view(def->detailed_name)
             .substr(0, def->short_name_offset + def->short_name_size);
       }
       break;
     case SymbolKind::Type:
-      if (types[idx].def)
-        return types[idx].def->detailed_name;
+      if (const auto* def = types[idx].AnyDef())
+        return def->detailed_name;
       break;
     case SymbolKind::Var:
-      if (vars[idx].def)
-        return vars[idx].def->detailed_name;
+      if (const auto* def = vars[idx].AnyDef())
+        return def->detailed_name;
       break;
   }
   return "";
@@ -952,16 +951,16 @@ std::string_view QueryDatabase::GetSymbolShortName(RawId symbol_idx) const {
         return files[idx].def->path;
       break;
     case SymbolKind::Func:
-      if (funcs[idx].def)
-        return funcs[idx].def->ShortName();
+      if (const auto* def = funcs[idx].AnyDef())
+        return def->ShortName();
       break;
     case SymbolKind::Type:
-      if (types[idx].def)
-        return types[idx].def->ShortName();
+      if (const auto* def = types[idx].AnyDef())
+        return def->ShortName();
       break;
     case SymbolKind::Var:
-      if (vars[idx].def)
-        return vars[idx].def->ShortName();
+      if (const auto* def = vars[idx].AnyDef())
+        return def->ShortName();
       break;
   }
   return "";

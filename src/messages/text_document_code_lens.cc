@@ -247,16 +247,14 @@ struct TextDocumentCodeLensHandler
         }
         case SymbolKind::Var: {
           QueryVar& var = db->GetVar(sym);
-          if (!var.def)
-            continue;
-
-          if (var.def->is_local() && !config->codeLensOnLocalVariables)
+          const QueryVar::Def* def = var.AnyDef();
+          if (!def || (def->is_local() && !config->codeLensOnLocalVariables))
             continue;
 
           bool force_display = true;
           // Do not show 0 refs on macro with no uses, as it is most likely
           // a header guard.
-          if (var.def->is_macro())
+          if (def->is_macro())
             force_display = false;
 
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(sym, 0),

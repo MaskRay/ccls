@@ -148,20 +148,18 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         break;
       }
       case SymbolKind::Var: {
-        QueryVar& var = db->GetVar(sym);
-        if (!var.def)
-          continue;  // applies to for loop
-        kind = var.def->kind;
-        storage = var.def->storage;
-        detailed_name = var.def->ShortName();
+        if (const QueryVar::Def* def = db->GetVar(sym).AnyDef()) {
+          kind = def->kind;
+          storage = def->storage;
+          detailed_name = def->ShortName();
+        }
         break;
       }
       case SymbolKind::Type: {
-        QueryType& type = db->GetType(sym);
-        if (!type.def)
-          continue;  // applies to for loop
-        kind = type.def->kind;
-        detailed_name = type.def->detailed_name;
+        if (const QueryType::Def* def = db->GetType(sym).AnyDef()) {
+          kind = def->kind;
+          detailed_name = def->detailed_name;
+        }
         break;
       }
       default:

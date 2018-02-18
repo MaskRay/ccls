@@ -69,15 +69,15 @@ void EachWithGen(std::vector<Q>& collection, Id<Q> x, Fn fn) {
   Q& obj = collection[x.id];
   // FIXME Deprecate optional<Def> def
   //  if (obj.gen == x.gen && obj.def)
-  if (obj.def)
+  if (obj.AnyDef())
     fn(obj);
 }
 
 template <typename Q, typename Fn>
-void EachWithGen(std::vector<Q>& collection, std::vector<Id<Q>>& ids, Fn fn) {
+void EachWithGen(std::vector<Q>& collection, const std::vector<Id<Q>>& ids, Fn fn) {
   for (Id<Q> x : ids) {
     Q& obj = collection[x.id];
-    if (obj.def) // FIXME Deprecate optional<Def> def
+    if (obj.AnyDef())
       fn(obj);
   }
 }

@@ -80,11 +80,11 @@ optional<QueryFileId> GetImplementationFile(QueryDatabase* db,
         break;
       }
       case SymbolKind::Var: {
-        QueryVar& var = db->GetVar(sym);
+        const QueryVar::Def* def = db->GetVar(sym).AnyDef();
         // Note: we ignore the definition if it is in the same file (ie,
         // possibly a header).
-        if (var.def && var.def->extent) {
-          QueryFileId t = var.def->extent->file;
+        if (def && def->extent) {
+          QueryFileId t = def->extent->file;
           if (t != file_id)
             return t;
         }

@@ -9,30 +9,27 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
     SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Type: {
-      QueryType& type = db->GetType(sym);
-      if (type.def)
-        return {type.def->comments,
-                !type.def->hover.empty()
-                    ? std::string_view(type.def->hover)
-                    : std::string_view(type.def->detailed_name)};
+      if (const auto* def = db->GetType(sym).AnyDef()) {
+        return {def->comments, !def->hover.empty()
+                                   ? std::string_view(def->hover)
+                                   : std::string_view(def->detailed_name)};
+      }
       break;
     }
     case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(sym);
-      if (func.def)
-        return {func.def->comments,
-                !func.def->hover.empty()
-                    ? std::string_view(func.def->hover)
-                    : std::string_view(func.def->detailed_name)};
+      if (const auto* def = db->GetFunc(sym).AnyDef()) {
+        return {def->comments, !def->hover.empty()
+                                   ? std::string_view(def->hover)
+                                   : std::string_view(def->detailed_name)};
+      }
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(sym);
-      if (var.def)
-        return {var.def->comments,
-                !var.def->hover.empty()
-                    ? std::string_view(var.def->hover)
-                    : std::string_view(var.def->detailed_name)};
+      if (const auto* def = db->GetVar(sym).AnyDef()) {
+        return {def->comments, !def->hover.empty()
+                                   ? std::string_view(def->hover)
+                                   : std::string_view(def->detailed_name)};
+      }
       break;
     }
     case SymbolKind::File:

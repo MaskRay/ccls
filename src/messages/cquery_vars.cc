@@ -30,10 +30,10 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
         default:
           break;
         case SymbolKind::Var: {
-          QueryVar& var = db->GetVar(sym);
-          if (!var.def || !var.def->type)
+          const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+          if (!def || !def->type)
             continue;
-          id = *var.def->type;
+          id = *def->type;
         }
         // fallthrough
         case SymbolKind::Type: {

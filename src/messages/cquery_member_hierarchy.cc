@@ -56,17 +56,19 @@ BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
 std::vector<Out_CqueryMemberHierarchy::Entry>
 ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
   QueryType& root_type = db->types[root.id];
-  if (!root_type.def)
+  const QueryType::Def* def = root_type.AnyDef();
+  if (!def)
     return {};
 
   std::vector<Out_CqueryMemberHierarchy::Entry> ret;
-  EachWithGen(db->vars, root_type.def->vars, [&](QueryVar& var) {
+  EachWithGen(db->vars, def->vars, [&](QueryVar& var) {
+    const QueryVar::Def* def1 = var.AnyDef();
     Out_CqueryMemberHierarchy::Entry entry;
-    entry.name = var.def->ShortName();
-    entry.type_id = var.def->type ? *var.def->type : QueryTypeId();
-    if (var.def->spell) {
+    entry.name = def1->ShortName();
+    entry.type_id = def1->type ? *def1->type : QueryTypeId();
+    if (def->spell) {
       optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *var.def->spell);
+          GetLsLocation(db, working_files, *def1->spell);
       // TODO invalid location
       if (loc)
         entry.location = *loc;
@@ -96,9 +98,9 @@ struct CqueryMemberHierarchyInitialHandler
         break;
       }
       if (sym.kind == SymbolKind::Var) {
-        QueryVar& var = db->GetVar(sym);
-        if (var.def && var.def->type)
-          out.result = BuildInitial(db, working_files, *var.def->type);
+        const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+        if (def && def->type)
+          out.result = BuildInitial(db, working_files, *def->type);
         break;
       }
     }

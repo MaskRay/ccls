@@ -34,9 +34,9 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(sym);
-      if (var.def)
-        return var.def->spell;
+      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+      if (def)
+        return def->spell;
       break;
     }
     case SymbolKind::File:
@@ -63,9 +63,9 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(sym);
-      if (var.def)
-        return var.def->extent;
+      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+      if (def)
+        return def->extent;
       break;
     }
     case SymbolKind::File:
@@ -97,9 +97,9 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(sym);
-      if (var.def)
-        return var.def->file;
+      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+      if (def)
+        return def->file;
       break;
     }
     case SymbolKind::File:
@@ -143,8 +143,9 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryVar& var = db->vars[id.id];
-    if (var.def && var.def->spell)
-      ret.push_back(*var.def->spell);
+    QueryVar::Def* def = var.AnyDef();
+    if (def && def->spell)
+      ret.push_back(*def->spell);
     else if (var.declarations.size())
       ret.push_back(var.declarations[0]);
   }
@@ -158,16 +159,20 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
     case SymbolKind::Type: {
       QueryType& type = db->GetType(sym);
       std::vector<Use> ret = type.uses;
-      if (include_decl && type.def && type.def->spell)
-        ret.push_back(*type.def->spell);
+      if (include_decl) {
+        const QueryType::Def* def = type.AnyDef();
+        if (def && def->spell)
+          ret.push_back(*def->spell);
+      }
       return ret;
     }
     case SymbolKind::Func: {
       QueryFunc& func = db->GetFunc(sym);
       std::vector<Use> ret = func.uses;
       if (include_decl) {
-        if (func.def && func.def->spell)
-          ret.push_back(*func.def->spell);
+        const QueryFunc::Def* def = func.AnyDef();
+        if (def && def->spell)
+          ret.push_back(*def->spell);
         AddRange(&ret, func.declarations);
       }
       return ret;
@@ -176,8 +181,9 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
       QueryVar& var = db->GetVar(sym);
       std::vector<Use> ret = var.uses;
       if (include_decl) {
-        if (var.def && var.def->spell)
-          ret.push_back(*var.def->spell);
+        const QueryVar::Def* def = var.AnyDef();
+        if (def && def->spell)
+          ret.push_back(*def->spell);
         ret.insert(ret.end(), var.declarations.begin(), var.declarations.end());
       }
       return ret;
@@ -393,21 +399,21 @@ optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
     default:
       break;
     case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(use);
-      if (func.def)
-        ret.containerName = std::string_view(func.def->detailed_name);
+      const QueryFunc::Def* def = db->GetFunc(use).AnyDef();
+      if (def)
+        ret.containerName = std::string_view(def->detailed_name);
       break;
     }
     case SymbolKind::Type: {
-      QueryType& type = db->GetType(use);
-      if (type.def)
-        ret.containerName = std::string_view(type.def->detailed_name);
+      const QueryType::Def* def = db->GetType(use).AnyDef();
+      if (def)
+        ret.containerName = std::string_view(def->detailed_name);
       break;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(use);
-      if (var.def)
-        ret.containerName = std::string_view(var.def->detailed_name);
+      const QueryVar::Def* def = db->GetVar(use).AnyDef();
+      if (def)
+        ret.containerName = std::string_view(def->detailed_name);
       break;
     }
     }
@@ -492,17 +498,17 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       return info;
     }
     case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(sym);
-      if (!var.def)
+      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+      if (!def)
         break;
 
       lsSymbolInformation info;
       if (use_short_name)
-        info.name = var.def->ShortName();
+        info.name = def->ShortName();
       else
-        info.name = var.def->detailed_name;
-      info.containerName = var.def->detailed_name;
-      switch (var.def->kind) {
+        info.name = def->detailed_name;
+      info.containerName = def->detailed_name;
+      switch (def->kind) {
         default:
           info.kind = lsSymbolKind::Variable;
           break;

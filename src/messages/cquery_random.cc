@@ -55,7 +55,7 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
         sym2id[syms.back()] = n++;
       }
     for (RawId i = 0; i < db->vars.size(); i++)
-      if (db->vars[i].def) {
+      if (db->vars[i].AnyDef()) {
         syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Var});
         sym2id[syms.back()] = n++;
       }
@@ -70,14 +70,14 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
     };
     n = 0;
     for (QueryFunc& func : db->funcs)
-      if (func.def) {
+      if (func.AnyDef()) {
         add(func.declarations, kDeclWeight);
         add(func.uses, 1);
         Add(sym2id, adj, func.derived, n);
         n++;
       }
     for (QueryType& type : db->types)
-      if (type.def) {
+      if (type.AnyDef()) {
         add(type.uses, 1);
         Add(sym2id, adj, type.instances, n);
         Add(sym2id, adj, type.def->funcs, n);
@@ -86,7 +86,7 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
         n++;
       }
     for (QueryVar& var : db->vars)
-      if (var.def) {
+      if (var.AnyDef()) {
         add(var.declarations, kDeclWeight);
         add(var.uses, 1);
         n++;

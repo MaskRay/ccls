@@ -5,6 +5,7 @@
 
 #include <sparsepp/spp.h>
 
+#include <forward_list>
 #include <functional>
 
 struct QueryFile;
@@ -145,6 +146,8 @@ struct QueryType {
   std::vector<Use> uses;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
+  const Def* AnyDef() const { return def ? &*def : nullptr; }
+  Def* AnyDef() { return def ? &*def : nullptr; }
 };
 
 struct QueryFunc {
@@ -162,6 +165,8 @@ struct QueryFunc {
   std::vector<Use> uses;
 
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
+  const Def* AnyDef() const { return def ? &*def : nullptr; }
+  Def* AnyDef() { return def ? &*def : nullptr; }
 };
 
 struct QueryVar {
@@ -172,11 +177,19 @@ struct QueryVar {
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
-  optional<Def> def;
+  std::forward_list<Def> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
 
   explicit QueryVar(const Usr& usr) : usr(usr) {}
+  const Def* AnyDef() const {
+    if (def.empty()) return nullptr;
+    return &def.front();
+  }
+  Def* AnyDef() {
+    if (def.empty()) return nullptr;
+    return &def.front();
+  }
 };
 
 struct IndexUpdate {
@@ -297,21 +310,21 @@ struct QueryDatabase {
       case SymbolKind::File:
         return QueryFileId(ref.id);
       case SymbolKind::Func: {
-        QueryFunc& file = funcs[ref.id.id];
-        if (file.def)
-          return file.def->file;
+        const QueryFunc::Def* def = funcs[ref.id.id].AnyDef();
+        if (def)
+          return def->file;
         break;
       }
       case SymbolKind::Type: {
-        QueryType& type = types[ref.id.id];
-        if (type.def)
-          return type.def->file;
+        const QueryType::Def* def = types[ref.id.id].AnyDef();
+        if (def)
+          return def->file;
         break;
       }
       case SymbolKind::Var: {
-        QueryVar& var = vars[ref.id.id];
-        if (var.def)
-          return var.def->file;
+        const QueryVar::Def* def = vars[ref.id.id].AnyDef();
+        if (def)
+          return def->file;
         break;
       }
     }
