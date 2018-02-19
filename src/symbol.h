@@ -112,6 +112,7 @@ enum class lsSymbolKind : uint8_t {
   // See also https://github.com/Microsoft/language-server-protocol/issues/344 for new SymbolKind
   // clang/Index/IndexSymbol.h clang::index::SymbolKind
   Parameter = 13,
+  StaticMethod = 254,
   Macro = 255,
 };
 MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);

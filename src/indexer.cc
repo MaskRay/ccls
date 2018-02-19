@@ -125,9 +125,9 @@ lsSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
     case CXIdxEntity_ObjCInstanceMethod:
       return lsSymbolKind::Method;
     case CXIdxEntity_ObjCClassMethod:
-      return lsSymbolKind::Method;
+      return lsSymbolKind::StaticMethod;
     case CXIdxEntity_CXXStaticMethod:
-      return lsSymbolKind::Method;
+      return lsSymbolKind::StaticMethod;
     case CXIdxEntity_ObjCProperty:
       return lsSymbolKind::Property;
     case CXIdxEntity_CXXStaticVariable:

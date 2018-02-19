@@ -126,6 +126,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (short_name.compare(0, 8, "operator") == 0 ||
             short_name.compare(0, 27, "function<type-parameter-0-0") == 0)
           continue;  // applies to for loop
+        if (def->spell)
+          parent_kind = def->spell->kind;
         kind = def->kind;
         detailed_name = short_name;
 
@@ -149,6 +151,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       }
       case SymbolKind::Var: {
         if (const QueryVar::Def* def = db->GetVar(sym).AnyDef()) {
+          if (def->spell)
+            parent_kind = def->spell->kind;
           kind = def->kind;
           storage = def->storage;
           detailed_name = def->ShortName();
@@ -157,6 +161,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       }
       case SymbolKind::Type: {
         if (const QueryType::Def* def = db->GetType(sym).AnyDef()) {
+          if (def->spell)
+            parent_kind = def->spell->kind;
           kind = def->kind;
           detailed_name = def->detailed_name;
         }
