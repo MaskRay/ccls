@@ -534,13 +534,14 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   // better on constructors.
   std::sort(symbols.begin(), symbols.end(),
             [](const SymbolRef& a, const SymbolRef& b) {
-              int a_size = ComputeRangeSize(a.range);
-              int b_size = ComputeRangeSize(b.range);
-
-              if (a_size != b_size)
-                return a_size < b_size;
+              int t = ComputeRangeSize(a.range) - ComputeRangeSize(b.range);
+              if (t)
+                return t < 0;
+              t = (a.role & Role::Definition) - (b.role & Role::Definition);
+              if (t)
+                return t > 0;
               // operator> orders Var/Func before Type.
-              int t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
+              t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
               if (t)
                 return t > 0;
               return a.id < b.id;
