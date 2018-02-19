@@ -274,10 +274,11 @@ std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
     queue.pop();
 
     AddRange(&callers, func.uses);
-    if (def)
-      EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func1) {
+    if (const QueryFunc::Def* def1 = func.AnyDef()) {
+      EachWithGen<QueryFunc>(db->funcs, def1->base, [&](QueryFunc& func1) {
         queue.push(&func1);
       });
+    }
   }
 
   return callers;
