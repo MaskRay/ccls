@@ -32,7 +32,8 @@ struct CqueryCallersHandler : BaseMessageHandler<Ipc_CqueryCallers> {
           uses.push_back(func_ref);
         for (Use func_ref : GetCallersForAllDerivedFunctions(db, func))
           uses.push_back(func_ref);
-        out.result = GetLsLocations(db, working_files, uses);
+        out.result = GetLsLocations(db, working_files, uses, config->maxXrefResults);
+        break;
       }
     }
     QueueManager::WriteStdout(IpcId::CqueryCallers, out);

@@ -9,10 +9,6 @@
 #include <cstdlib>
 
 namespace {
-void PushBack(std::vector<lsLocation>* result, optional<lsLocation> location) {
-  if (location)
-    result->push_back(*location);
-}
 
 struct Ipc_TextDocumentDefinition
     : public RequestMessage<Ipc_TextDocumentDefinition> {
@@ -84,41 +80,29 @@ struct TextDocumentDefinitionHandler
       //  - symbol has declaration but no definition (ie, pure virtual)
       //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
-
-      Maybe<Use> def_loc = GetDefinitionSpellingOfSymbol(db, sym);
-
-      // We use spelling start and extent end because this causes vscode to
-      // highlight the entire definition when previewing / hoving with the
-      // mouse.
-      Maybe<Use> extent = GetDefinitionExtentOfSymbol(db, sym);
-      if (def_loc && extent)
-        def_loc->range.end = extent->range.end;
-
-      // If the cursor is currently at or in the definition we should goto
-      // the declaration if possible. We also want to use declarations if
-      // we're pointing to, ie, a pure virtual function which has no
-      // definition.
-      if (!def_loc || (def_loc->file == file_id &&
-                       def_loc->range.Contains(target_line, target_column))) {
-        // Goto declaration.
-
-        std::vector<Use> targets = GetGotoDefinitionTargets(db, sym);
-        for (Use target : targets) {
-          optional<lsLocation> ls_target =
-              GetLsLocation(db, working_files, target);
-          if (ls_target)
-            out.result.push_back(*ls_target);
+      std::vector<Use> uses;
+      EachDef(db, sym, [&](const auto& def) {
+        if (def.spell && def.extent) {
+          Use spell = *def.spell;
+          // If on a definition, clear |uses| to find declarations below.
+          if (spell.file == file_id &&
+              spell.range.Contains(target_line, target_column)) {
+            uses.clear();
+            return false;
+          }
+          // We use spelling start and extent end because this causes vscode
+          // to highlight the entire definition when previewing / hoving with
+          // the mouse.
+          spell.range.end = def.extent->range.end;
+          uses.push_back(spell);
         }
-        // We found some declarations. Break so we don't add the definition
-        // location.
-        if (!out.result.empty())
-          break;
-      }
+        return true;
+      });
 
-      if (def_loc) {
-        PushBack(&out.result, GetLsLocation(db, working_files, *def_loc));
-      }
-
+      if (uses.empty())
+        uses = GetGotoDefinitionTargets(db, sym);
+      AddRange(&out.result,
+               GetLsLocations(db, working_files, uses, config->maxXrefResults));
       if (!out.result.empty())
         break;
     }

@@ -28,12 +28,12 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
       if (sym.kind == SymbolKind::Type) {
         if (const auto* def = db->GetType(sym).AnyDef())
           out.result = GetLsLocations(db, working_files,
-                                      ToUses(db, def->parents));
+                                      ToUses(db, def->parents), config->maxXrefResults);
         break;
       } else if (sym.kind == SymbolKind::Func) {
         if (const auto* def = db->GetFunc(sym).AnyDef())
-          out.result = GetLsLocations(db, working_files,
-                                      ToUses(db, def->base));
+          out.result = GetLsLocations(db, working_files, ToUses(db, def->base),
+                                      config->maxXrefResults);
         break;
       }
     }

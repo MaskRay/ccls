@@ -47,7 +47,8 @@ optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
                                        bool extension);
 std::vector<lsLocation> GetLsLocations(QueryDatabase* db,
                                        WorkingFiles* working_files,
-                                       const std::vector<Use>& refs);
+                                       const std::vector<Use>& refs,
+                                       int limit);
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
@@ -61,6 +62,30 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
 void EmitDiagnostics(WorkingFiles* working_files,
                      std::string path,
                      std::vector<lsDiagnostic> diagnostics);
+
+template <typename Fn>
+void EachDef(QueryDatabase* db, SymbolIdx sym, Fn fn) {
+  switch (sym.kind) {
+    case SymbolKind::Invalid:
+    case SymbolKind::File:
+      break;
+    case SymbolKind::Func:
+      for (auto& def : db->GetFunc(sym).def)
+        if (!fn(def))
+          break;
+      break;
+    case SymbolKind::Type:
+      for (auto& def : db->GetType(sym).def)
+        if (!fn(def))
+          break;
+      break;
+    case SymbolKind::Var:
+      for (auto& def : db->GetVar(sym).def)
+        if (!fn(def))
+          break;
+      break;
+  }
+}
 
 template <typename Q, typename Fn>
 void EachWithGen(std::vector<Q>& collection, Id<Q> x, Fn fn) {

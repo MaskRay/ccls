@@ -27,13 +27,13 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
         QueryType& type = db->GetType(sym);
-        out.result =
-            GetLsLocations(db, working_files, ToUses(db, type.derived));
+        out.result = GetLsLocations(db, working_files, ToUses(db, type.derived),
+                                    config->maxXrefResults);
         break;
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
-        out.result =
-            GetLsLocations(db, working_files, ToUses(db, func.derived));
+        out.result = GetLsLocations(db, working_files, ToUses(db, func.derived),
+                                    config->maxXrefResults);
         break;
       }
     }

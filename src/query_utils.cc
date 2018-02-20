@@ -403,10 +403,10 @@ optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
   return ret;
 }
 
-std::vector<lsLocation> GetLsLocations(
-    QueryDatabase* db,
-    WorkingFiles* working_files,
-    const std::vector<Use>& uses) {
+std::vector<lsLocation> GetLsLocations(QueryDatabase* db,
+                                       WorkingFiles* working_files,
+                                       const std::vector<Use>& uses,
+                                       int limit) {
   std::vector<lsLocation> ret;
   for (Use use : uses) {
     optional<lsLocation> location =
@@ -416,6 +416,8 @@ std::vector<lsLocation> GetLsLocations(
   }
   std::sort(ret.begin(), ret.end());
   ret.erase(std::unique(ret.begin(), ret.end()), ret.end());
+  if (ret.size() > limit)
+    ret.resize(limit);
   return ret;
 }
 

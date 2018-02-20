@@ -174,7 +174,7 @@ def configure(ctx):
         cxxflags.append('-Wno-unused-result')
 
     if all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):
-      cxxflags.append('-std=c++11')
+      cxxflags.append('-std=c++14')
 
     if ctx.options.use_clang_cxx:
       # include/clang/Format/Format.h error: multi-line comment

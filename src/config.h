@@ -162,6 +162,8 @@ struct Config {
   };
   Completion completion;
 
+  // Maximum number of definition/reference/... results.
+  int maxXrefResults = 500;
   struct Extension {
     // If true, reference results will include "containerName".
     bool referenceContainer = false;
@@ -231,6 +233,7 @@ MAKE_REFLECT_STRUCT(Config,
 
                     client,
                     completion,
+                    maxXrefResults,
                     extension,
                     index,
 

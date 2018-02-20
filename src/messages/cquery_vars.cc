@@ -39,7 +39,8 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
         case SymbolKind::Type: {
           QueryType& type = db->types[id.id];
           out.result =
-              GetLsLocations(db, working_files, ToUses(db, type.instances));
+              GetLsLocations(db, working_files, ToUses(db, type.instances),
+                             config->maxXrefResults);
           break;
         }
       }
