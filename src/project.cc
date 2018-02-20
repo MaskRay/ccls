@@ -55,12 +55,15 @@ bool IsWindowsAbsolutePath(const std::string& path) {
          is_drive_letter(path[0]);
 }
 
+enum class ProjectMode { CompileCommandsJson, DotCquery, ExternalCommand };
+
 struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
   std::vector<std::string> extra_flags;
   std::string project_dir;
   std::string resource_dir;
+  ProjectMode mode = ProjectMode::CompileCommandsJson;
 };
 
 // TODO: See
@@ -100,7 +103,7 @@ bool ShouldAddToAngleIncludes(const std::string& arg) {
 // FIXME
 enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3, ObjCpp = 4 };
 
-optional<LanguageId> SourceFileType(const std::string& path) {
+LanguageId SourceFileLanguage(const std::string& path) {
   if (EndsWith(path, ".c"))
     return LanguageId::C;
   else if (EndsWith(path, ".cpp") || EndsWith(path, ".cc"))
@@ -109,7 +112,7 @@ optional<LanguageId> SourceFileType(const std::string& path) {
     return LanguageId::ObjCpp;
   else if (EndsWith(path, ".m"))
     return LanguageId::ObjC;
-  return nullopt;
+  return LanguageId::Unknown;
 }
 
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
@@ -133,15 +136,15 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   Project::Entry result;
   result.filename = NormalizePathWithTestOptOut(entry.file);
   std::string base_name = GetBaseName(entry.file);
+  size_t i = 0;
 
   // If |compilationDatabaseCommand| is specified, the external command provides
   // us the JSON compilation database which should be strict. We should do very
-  // little processing on |entry.args|. The
-  bool loose = init_opts->compilationDatabaseCommand.empty();
-
-  size_t i = 0;
-
-  if (loose) {
+  // little processing on |entry.args|.
+  if (config->mode == ProjectMode::ExternalCommand) {
+    if (entry.args.size())
+      i = 1;
+  } else {
     // Strip all arguments consisting the compiler command,
     // as there may be non-compiler related commands beforehand,
     // ie, compiler schedular such as goma. This allows correct parsing for
@@ -160,9 +163,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
             dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
             !entry.args[i].compare(dot + 1, 3, "exe")))
       ++i;
-  } else {
-    if (entry.args.size())
-      i = 1;
   }
   // Compiler driver.
   if (i > 0)
@@ -174,24 +174,18 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     result.args.push_back(entry.directory);
   }
 
-  if (loose) {
-    // FIXME
-    if (auto lang = SourceFileType(entry.file)) {
-      if (!AnyStartsWith(entry.args, "-x")) {
-        switch (*lang) {
-        case LanguageId::Unknown: break;
-        case LanguageId::C: result.args.push_back("-xc"); break;
-        case LanguageId::Cpp: result.args.push_back("-xc++"); break;
-        case LanguageId::ObjC: result.args.push_back("-xobjective-c"); break;
-        case LanguageId::ObjCpp: result.args.push_back("-xobjective-cpp"); break;
-        }
-      }
-      if (!AnyStartsWith(entry.args, "-std=")) {
-        if (*lang == LanguageId::C)
-          result.args.push_back("-std=gnu11");
-        else if (*lang == LanguageId::Cpp)
-          result.args.push_back("-std=c++14");
-      }
+  if (config->mode == ProjectMode::DotCquery &&
+      !AnyStartsWith(entry.args, "-std=") &&
+      !AnyStartsWith(entry.args, "--driver-mode=")) {
+    switch (SourceFileLanguage(entry.file)) {
+      case LanguageId::C:
+        result.args.push_back("-std=gnu11");
+        break;
+      case LanguageId::Cpp:
+        result.args.push_back("-std=gnu++14");
+        break;
+      default:
+        break;
     }
   }
 
@@ -306,6 +300,7 @@ std::vector<std::string> ReadCompilerArgumentsFromFile(
 std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
                                                      ProjectConfig* config) {
   std::vector<Project::Entry> result;
+  config->mode = ProjectMode::DotCquery;
   LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.cquery") &&
                         config->extra_flags.empty())
       << "cquery has no clang arguments. Considering adding either a "
@@ -318,7 +313,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
   GetFilesInFolder(
       config->project_dir, true /*recursive*/, true /*add_folder_to_path*/,
       [&folder_args, &files](const std::string& path) {
-        if (SourceFileType(path)) {
+        if (SourceFileLanguage(path) != LanguageId::Unknown) {
           files.push_back(path);
         } else if (GetBaseName(path) == ".cquery") {
           LOG_S(INFO) << "Using .cquery arguments from " << path;
@@ -349,6 +344,19 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
     e.file = file;
     e.args = GetCompilerArgumentForFile(file);
     e.args.push_back(e.file);
+    switch (SourceFileLanguage(e.file)) {
+    case LanguageId::C:
+      // g++ or clang++
+      if (e.args[0].find("++") != std::string::npos)
+        e.args[0] = "clang";
+      break;
+    case LanguageId::Cpp:
+      if (e.args[0].find("++") == std::string::npos)
+        e.args[0] = "clang++";
+      break;
+    default:
+      break;
+    }
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
   }
@@ -367,10 +375,12 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
   // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
   std::string comp_db_dir;
   if (init_opts->compilationDatabaseCommand.empty()) {
+    config->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
     comp_db_dir = opt_compilation_db_dir.empty() ? config->project_dir
                                                  : opt_compilation_db_dir;
   } else {
+    config->mode = ProjectMode::ExternalCommand;
 #ifdef _WIN32
     // TODO
 #else
@@ -562,18 +572,10 @@ Project::Entry Project::FindCompilationEntryForFile(
   result.filename = filename;
   if (!best_entry) {
     // FIXME
-    if (auto lang = SourceFileType(filename)) {
-      switch (*lang) {
-      case LanguageId::C:
-        result.args.push_back("clang");
-        break;
-      case LanguageId::Cpp:
-        result.args.push_back("clang++");
-        break;
-      default:
-        break;
-      }
-    }
+    if (SourceFileLanguage(filename) == LanguageId::Cpp)
+      result.args.push_back("clang++");
+    else
+      result.args.push_back("clang");
     result.args.push_back(filename);
   } else {
     result.args = best_entry->args;
@@ -653,28 +655,28 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
+        {"clang", "-working-directory", "/dir/",
          "-lstdc++", "&/dir/myfile.cc", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"clang.exe"},
         /* expected */
-        {"clang.exe", "-working-directory", "/dir/", "-xc++", "-std=c++14",
+        {"clang.exe", "-working-directory", "/dir/",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
           "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14",
+        {"clang", "-working-directory", "/dir/",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-xc++", "-std=c++14", "--foo",
+        {"clang", "-working-directory", "/dir/", "--foo",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
   }
@@ -683,7 +685,7 @@ TEST_SUITE("Project") {
     CheckFlags(
         "E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
         /* expected */
-        {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
+        {"clang", "-working-directory", "E:/workdir",
          "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
@@ -691,7 +693,7 @@ TEST_SUITE("Project") {
         "E:/workdir", "E:/workdir/bar.cc",
         /* raw */ {"clang", "E:/workdir/bar.cc"},
         /* expected */
-        {"clang", "-working-directory", "E:/workdir", "-xc++", "-std=c++14",
+        {"clang", "-working-directory", "E:/workdir",
          "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
@@ -701,7 +703,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.c",
         /* raw */ {"cc", "-O0", "foo/bar.c"},
         /* expected */
-        {"cc", "-working-directory", "/home/user", "-xc", "-std=gnu11", "-O0",
+        {"cc", "-working-directory", "/home/user", "-O0",
          "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
@@ -711,7 +713,7 @@ TEST_SUITE("Project") {
         "/home/user", "/home/user/foo/bar.cc",
         /* raw */ {"clang", "-DDONT_IGNORE_ME"},
         /* expected */
-        {"clang", "-working-directory", "/home/user", "-xc++", "-std=c++14",
+        {"clang", "-working-directory", "/home/user",
          "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
@@ -903,7 +905,6 @@ TEST_SUITE("Project") {
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
          "-working-directory",
          "/w/c/s/out/Release",
-         "-xc++",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
          "-DUSE_UDEV",
@@ -1239,7 +1240,6 @@ TEST_SUITE("Project") {
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
          "-working-directory",
          "/w/c/s/out/Release",
-         "-xc++",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
          "-DUSE_UDEV",
