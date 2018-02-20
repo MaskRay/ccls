@@ -24,19 +24,21 @@ Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
     case SymbolKind::File:
       break;
     case SymbolKind::Func: {
-      if (const auto* def = db->GetFunc(sym).AnyDef())
-        return def->spell;
+      for (auto& def : db->GetFunc(sym).def)
+        if (def.spell)
+          return def.spell;
       break;
     }
     case SymbolKind::Type: {
-      if (const auto* def = db->GetType(sym).AnyDef())
-        return def->spell;
+      for (auto& def : db->GetType(sym).def)
+        if (def.spell)
+          return def.spell;
       break;
     }
     case SymbolKind::Var: {
-      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-      if (def)
-        return def->spell;
+      for (auto& def : db->GetVar(sym).def)
+        if (def.spell)
+          return def.spell;
       break;
     }
     case SymbolKind::Invalid:
@@ -52,19 +54,21 @@ Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
       return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
                  Role::None, QueryFileId(sym.id));
     case SymbolKind::Func: {
-      if (const auto* def = db->GetFunc(sym).AnyDef())
-        return def->extent;
+      for (auto& def : db->GetFunc(sym).def)
+        if (def.extent)
+          return def.extent;
       break;
     }
     case SymbolKind::Type: {
-      if (const auto* def = db->GetType(sym).AnyDef())
-        return def->extent;
+      for (auto& def : db->GetType(sym).def)
+        if (def.extent)
+          return def.extent;
       break;
     }
     case SymbolKind::Var: {
-      const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-      if (def)
-        return def->extent;
+      for (auto& def : db->GetVar(sym).def)
+        if (def.extent)
+          return def.extent;
       break;
     }
     case SymbolKind::Invalid: {
@@ -112,10 +116,14 @@ std::vector<Use> ToUses(QueryDatabase* db,
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryFunc& func = db->funcs[id.id];
-    const QueryFunc::Def* def = func.AnyDef();
-    if (def && def->spell)
-      ret.push_back(*def->spell);
-    else if (func.declarations.size())
+    bool has_def = false;
+    for (auto& def : func.def)
+      if (def.spell) {
+        ret.push_back(*def.spell);
+        has_def = true;
+        break;
+      }
+    if (!has_def && func.declarations.size())
       ret.push_back(func.declarations[0]);
   }
   return ret;
@@ -127,9 +135,11 @@ std::vector<Use> ToUses(QueryDatabase* db,
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryType& type = db->types[id.id];
-    const QueryType::Def* def = type.AnyDef();
-    if (def && def->spell)
-      ret.push_back(*def->spell);
+    for (auto& def : type.def)
+      if (def.spell) {
+        ret.push_back(*def.spell);
+        break;
+      }
   }
   return ret;
 }
@@ -139,10 +149,14 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
   ret.reserve(ids.size());
   for (auto id : ids) {
     QueryVar& var = db->vars[id.id];
-    const QueryVar::Def* def = var.AnyDef();
-    if (def && def->spell)
-      ret.push_back(*def->spell);
-    else if (var.declarations.size())
+    bool has_def = false;
+    for (auto& def : var.def)
+      if (def.spell) {
+        ret.push_back(*def.spell);
+        has_def = true;
+        break;
+      }
+    if (!has_def && var.declarations.size())
       ret.push_back(var.declarations[0]);
   }
   return ret;
@@ -156,9 +170,9 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
       QueryType& type = db->GetType(sym);
       std::vector<Use> ret = type.uses;
       if (include_decl) {
-        const QueryType::Def* def = type.AnyDef();
-        if (def && def->spell)
-          ret.push_back(*def->spell);
+        for (auto& def : type.def)
+          if (def.spell)
+            ret.push_back(*def.spell);
       }
       return ret;
     }
@@ -166,9 +180,9 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
       QueryFunc& func = db->GetFunc(sym);
       std::vector<Use> ret = func.uses;
       if (include_decl) {
-        const QueryFunc::Def* def = func.AnyDef();
-        if (def && def->spell)
-          ret.push_back(*def->spell);
+        for (auto& def : func.def)
+          if (def.spell)
+            ret.push_back(*def.spell);
         AddRange(&ret, func.declarations);
       }
       return ret;
@@ -177,9 +191,9 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
       QueryVar& var = db->GetVar(sym);
       std::vector<Use> ret = var.uses;
       if (include_decl) {
-        const QueryVar::Def* def = var.AnyDef();
-        if (def && def->spell)
-          ret.push_back(*def->spell);
+        for (auto& def : var.def)
+          if (def.spell)
+            ret.push_back(*def.spell);
         ret.insert(ret.end(), var.declarations.begin(), var.declarations.end());
       }
       return ret;

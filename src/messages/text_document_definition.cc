@@ -135,25 +135,28 @@ struct TextDocumentDefinitionHandler
         lsPosition position = request->params.position;
         const std::string& buffer = working_file->buffer_content;
         std::string query = LexWordAroundPos(position, buffer);
+        bool has_scope = query.find(':') != std::string::npos;
 
-        // For symbols whose detailed names contain |query| as a substring,
-        // we use the tuple <length difference, not in the same file, line
-        // distance> to find the best match.
-        std::tuple<int, bool, int> best_score{INT_MAX, true, 0};
+        // For symbols whose short/detailed names contain |query| as a
+        // substring, we use the tuple <length difference, matching position,
+        // not in the same file, line distance> to find the best match.
+        std::tuple<int, int, bool, int> best_score{INT_MAX, 0, true, 0};
         int best_i = -1;
         for (int i = 0; i < (int)db->symbols.size(); ++i) {
           if (db->symbols[i].kind == SymbolKind::Invalid)
             continue;
-          std::string_view detailed_name = db->GetSymbolDetailedName(i);
-          auto idx = detailed_name.find(query);
-          if (idx == std::string::npos)
+
+          std::string_view name = has_scope ? db->GetSymbolDetailedName(i)
+                                            : db->GetSymbolShortName(i);
+          auto pos = name.find(query);
+          if (pos == std::string::npos)
             continue;
           Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[i]);
           if (!use)
             continue;
 
-          std::tuple<int, bool, int> score{
-              int(detailed_name.size() - query.size()), use->file != file_id,
+          std::tuple<int, int, bool, int> score{
+              int(name.size() - query.size()), int(pos), use->file != file_id,
               std::abs(use->range.start.line - position.line)};
           if (score < best_score) {
             best_score = score;

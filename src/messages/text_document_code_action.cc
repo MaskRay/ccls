@@ -488,10 +488,11 @@ struct TextDocumentCodeActionHandler
             include_insert_strings.insert(item->textEdit->newText);
           else if (!item->insertText.empty())
             include_insert_strings.insert(item->insertText);
-          else
-            assert(false &&
-                   "unable to determine insert string for include "
-                   "completion item");
+          else {
+            // FIXME https://github.com/cquery-project/cquery/issues/463
+            LOG_S(WARNING) << "unable to determine insert string for include "
+                              "completion item";
+          }
         }
 
         // Build code action.
