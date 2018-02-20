@@ -170,6 +170,8 @@ def configure(ctx):
       cxxflags = ['-g', '-Wall', '-Wno-sign-compare', '-Werror']
       if ctx.env.CXX_NAME == 'gcc':
         cxxflags.append('-Wno-return-type')
+        # Otherwise (void)write(...) => -Werror=unused-result
+        cxxflags.append('-Wno-unused-result')
 
     if all(not x.startswith('-std=') for x in ctx.env.CXXFLAGS):
       cxxflags.append('-std=c++11')
