@@ -313,7 +313,8 @@ std::string GetExternalCommandOutput(const std::vector<std::string>& command,
   }
   close(pin[1]);
   close(pout[0]);
-  write(pout[1], input.data(), input.size());
+  // O_NONBLOCK is disabled, write(2) blocks until all bytes are written.
+  (void)write(pout[1], input.data(), input.size());
   close(pout[1]);
   std::string ret;
   char buf[4096];

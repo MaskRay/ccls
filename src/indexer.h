@@ -6,6 +6,7 @@
 #include "clang_utils.h"
 #include "file_consumer.h"
 #include "file_contents.h"
+#include "language.h"
 #include "language_server_api.h"
 #include "maybe.h"
 #include "nt_string.h"
@@ -32,6 +33,7 @@ struct IndexFile;
 struct IndexType;
 struct IndexFunc;
 struct IndexVar;
+struct QueryFile;
 
 using RawId = uint32_t;
 
@@ -81,8 +83,6 @@ using IndexTypeId = Id<IndexType>;
 using IndexFuncId = Id<IndexFunc>;
 using IndexVarId = Id<IndexVar>;
 
-struct IdCache;
-
 struct SymbolIdx {
   Id<void> id;
   SymbolKind kind;
@@ -129,8 +129,6 @@ struct SymbolRef : Reference {
   SymbolRef(SymbolIdx si)
     : Reference{Range(), si.id, si.kind, Role::None} {}
 };
-
-struct QueryFile;
 
 // Represents an occurrence of a variable/type, |id,kind| refer to the lexical
 // parent.
@@ -380,7 +378,6 @@ struct VarDefDefinitionData {
   bool is_local() const {
     return kind == lsSymbolKind::Variable;
   }
-  bool is_macro() const { return kind == lsSymbolKind::Macro; }
 
   bool operator==(const VarDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
@@ -422,7 +419,6 @@ struct IndexVar {
   Def def;
 
   std::vector<Use> declarations;
-  // Usages.
   std::vector<Use> uses;
 
   IndexVar() {}  // For serialization.
@@ -451,12 +447,6 @@ struct IndexInclude {
   // Absolute path to the index.
   std::string resolved_path;
 };
-
-// Used to identify the language at a file level. The ordering is important, as
-// a file previously identified as `C`, will be changed to `Cpp` if it
-// encounters a c++ declaration.
-enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3, ObjCpp = 4 };
-MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
 struct IndexFile {
   IdCache id_cache;

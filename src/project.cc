@@ -1,6 +1,7 @@
 #include "project.h"
 
 #include "clang_utils.h"
+#include "language.h"
 #include "match.h"
 #include "platform.h"
 #include "serializer.h"
@@ -99,9 +100,6 @@ bool ShouldAddToQuoteIncludes(const std::string& arg) {
 bool ShouldAddToAngleIncludes(const std::string& arg) {
   return StartsWithAny(arg, kAngleIncludeArgs);
 }
-
-// FIXME
-enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3, ObjCpp = 4 };
 
 LanguageId SourceFileLanguage(const std::string& path) {
   if (EndsWith(path, ".c"))

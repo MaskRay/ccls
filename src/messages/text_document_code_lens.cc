@@ -252,7 +252,7 @@ struct TextDocumentCodeLensHandler
           bool force_display = true;
           // Do not show 0 refs on macro with no uses, as it is most likely
           // a header guard.
-          if (def->is_macro())
+          if (def->kind == lsSymbolKind::Macro)
             force_display = false;
 
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0),
