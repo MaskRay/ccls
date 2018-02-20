@@ -11,6 +11,11 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
+#if defined(__unix__) || defined(__APPLE__)
+#include <unistd.h>
+#endif
+
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <sstream>
@@ -348,17 +353,48 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
   if (FileExists(config->project_dir + "/.cquery"))
     return LoadFromDirectoryListing(init_opts, config);
 
-  // Try to load compile_commands.json, but fallback to a project listing.
-  const auto& compilation_db_dir = opt_compilation_db_dir.empty()
-                                       ? config->project_dir
-                                       : opt_compilation_db_dir;
+  // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
+  std::string comp_db_dir;
+  if (init_opts->compilationDatabaseCommand.empty()) {
+    // Try to load compile_commands.json, but fallback to a project listing.
+    comp_db_dir = opt_compilation_db_dir.empty() ? config->project_dir
+                                                 : opt_compilation_db_dir;
+  } else {
+#ifdef _WIN32
+    // TODO
+#else
+    char tmpdir[] = "/tmp/cquery-compdb-XXXXXX";
+    if (!mkdtemp(tmpdir))
+      return {};
+    comp_db_dir = tmpdir;
+    rapidjson::StringBuffer input;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(input);
+    JsonWriter json_writer(&writer);
+    Reflect(json_writer, *init_opts);
+    std::string contents = GetExternalCommandOutput(
+        std::vector<std::string>{init_opts->compilationDatabaseCommand,
+                                 config->project_dir},
+        input.GetString());
+    std::ofstream(comp_db_dir + "/compile_commands.json") << contents;
+#endif
+  }
+
   LOG_S(INFO) << "Trying to load compile_commands.json";
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
-      compilation_db_dir.c_str(), &cx_db_load_error);
+      comp_db_dir.c_str(), &cx_db_load_error);
+  if (!init_opts->compilationDatabaseCommand.empty()) {
+#ifdef _WIN32
+    // TODO
+#else
+    unlink((comp_db_dir + "/compile_commands.json").c_str());
+    rmdir(comp_db_dir.c_str());
+#endif
+  }
+
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
     LOG_S(INFO) << "Unable to load compile_commands.json located at \""
-                << compilation_db_dir << "\"; using directory listing instead.";
+                << comp_db_dir << "\"; using directory listing instead.";
     return LoadFromDirectoryListing(init_opts, config);
   }
 
@@ -416,7 +452,6 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 
   clang_time.ResetAndPrint("compile_commands.json clang time");
   our_time.ResetAndPrint("compile_commands.json our time");
-
   return result;
 }
 

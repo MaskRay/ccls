@@ -23,6 +23,11 @@ initialization options specified by the client. For example, in shell syntax:
 struct Config {
   // Root directory of the project. **Not available for configuration**
   std::string projectRoot;
+  // If specified, this option overrides compile_commands.json and this
+  // external command will be executed with an option |projectRoot|.
+  // The initialization options will be provided as stdin.
+  // The stdout of the command should be the JSON compilation database.
+  std::string compilationDatabaseCommand;
   // Directory containing compile_commands.json.
   std::string compilationDatabaseDirectory;
   // Cache directory for indexed files.
@@ -191,6 +196,7 @@ MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort, detailedLabel);
 MAKE_REFLECT_STRUCT(Config::Extension, referenceContainer);
 MAKE_REFLECT_STRUCT(Config::Index, comments, attributeMakeCallsToCtor);
 MAKE_REFLECT_STRUCT(Config,
+                    compilationDatabaseCommand,
                     compilationDatabaseDirectory,
                     cacheDirectory,
                     cacheFormat,

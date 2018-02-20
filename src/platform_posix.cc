@@ -27,6 +27,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>  // required for stat.h
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -283,6 +284,39 @@ void TraceMe() {
   // after detaching.
   if (getenv("CQUERY_TRACEME"))
     raise(SIGTSTP);
+}
+
+std::string GetExternalCommandOutput(const std::vector<std::string>& command,
+                                     std::string_view input) {
+  int pin[2], pout[2];
+  pipe(pin);
+  pipe(pout);
+  pid_t child = fork();
+  if (child == 0) {
+    dup2(pout[0], 0);
+    dup2(pin[1], 1);
+    close(pin[0]);
+    close(pin[1]);
+    close(pout[0]);
+    close(pout[1]);
+    auto argv = new char*[command.size() + 1];
+    for (size_t i = 0; i < command.size(); i++)
+      argv[i] = const_cast<char*>(command[i].c_str());
+    argv[command.size()] = nullptr;
+    execvp(argv[0], argv);
+    _Exit(127);
+  }
+  close(pin[1]);
+  close(pout[0]);
+  write(pout[1], input.data(), input.size());
+  close(pout[1]);
+  std::string ret;
+  char buf[4096];
+  ssize_t n;
+  while ((n = read(pin[0], buf, sizeof buf)) > 0)
+    ret.append(buf, n);
+  waitpid(child, NULL, 0);
+  return ret;
 }
 
 #endif

@@ -330,8 +330,8 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
   // generating an index for it):
   if (param->seen_cx_files.insert(file).second) {
     std::string file_name = FileName(file);
-    // Sometimes the fill name will be empty. Not sure why. Not much we can do
-    // with it.
+    // file_name may be empty when it contains .. and is outside of WorkingDir.
+    // https://reviews.llvm.org/D42893 https://github.com/cquery-project/cquery/issues/413
     if (!file_name.empty()) {
       // Add to all files we have seen so we can generate proper dependency
       // graph.

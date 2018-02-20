@@ -152,4 +152,9 @@ bool RunObjectiveCIndexTests() {
 // TODO Wait for debugger to attach
 void TraceMe() {}
 
+std::string GetExternalCommandOutput(const std::vector<std::string>& command,
+                                     std::string_view input) {
+  return "";
+}
+
 #endif

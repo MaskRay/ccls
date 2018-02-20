@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional.h>
+#include <string_view.h>
 
 #include <memory>
 #include <string>
@@ -49,4 +50,8 @@ void FreeUnusedMemory();
 // If true objective-c index tests will be run.
 bool RunObjectiveCIndexTests();
 
+// Stop self and wait for SIGCONT.
 void TraceMe();
+
+std::string GetExternalCommandOutput(const std::vector<std::string>& command,
+                                     std::string_view input);
