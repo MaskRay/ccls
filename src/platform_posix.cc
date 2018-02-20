@@ -289,8 +289,13 @@ void TraceMe() {
 std::string GetExternalCommandOutput(const std::vector<std::string>& command,
                                      std::string_view input) {
   int pin[2], pout[2];
-  pipe(pin);
-  pipe(pout);
+  if (pipe(pin) < 0)
+    return "";
+  if (pipe(pout) < 0) {
+    close(pin[0]);
+    close(pin[1]);
+    return "";
+  }
   pid_t child = fork();
   if (child == 0) {
     dup2(pout[0], 0);

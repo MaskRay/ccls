@@ -97,15 +97,18 @@ bool ShouldAddToAngleIncludes(const std::string& arg) {
   return StartsWithAny(arg, kAngleIncludeArgs);
 }
 
-optional<std::string> SourceFileType(const std::string& path) {
+// FIXME
+enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3, ObjCpp = 4 };
+
+optional<LanguageId> SourceFileType(const std::string& path) {
   if (EndsWith(path, ".c"))
-    return std::string("c");
+    return LanguageId::C;
   else if (EndsWith(path, ".cpp") || EndsWith(path, ".cc"))
-    return std::string("c++");
+    return LanguageId::Cpp;
   else if (EndsWith(path, ".mm"))
-    return std::string("objective-c++");
+    return LanguageId::ObjCpp;
   else if (EndsWith(path, ".m"))
-    return std::string("objective-c");
+    return LanguageId::ObjC;
   return nullopt;
 }
 
@@ -131,36 +134,39 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   result.filename = NormalizePathWithTestOptOut(entry.file);
   std::string base_name = GetBaseName(entry.file);
 
+  // If |compilationDatabaseCommand| is specified, the external command provides
+  // us the JSON compilation database which should be strict. We should do very
+  // little processing on |entry.args|. The
+  bool loose = init_opts->compilationDatabaseCommand.empty();
+
   size_t i = 0;
 
-  // Strip all arguments consisting the compiler command,
-  // as there may be non-compiler related commands beforehand,
-  // ie, compiler schedular such as goma. This allows correct parsing for
-  // command lines like "goma clang -c foo".
-  std::string::size_type dot;
-  while (i < entry.args.size() && entry.args[i][0] != '-' &&
-         // Do not skip over main source filename
-         NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
-         // There may be other filenames (e.g. more than one source filenames)
-         // preceding main source filename. We use a heuristic here. `.` may
-         // occur in both command names and source filenames. If `.` occurs in
-         // the last 4 bytes of entry.args[i] and not followed by a digit, e.g.
-         // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
-         // clang-4.0) are seen as commands.
-         ((dot = entry.args[i].rfind('.')) == std::string::npos ||
-          dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
-          !entry.args[i].compare(dot + 1, 3, "exe")))
-    ++i;
-  // Include the compiler in the args.
+  if (loose) {
+    // Strip all arguments consisting the compiler command,
+    // as there may be non-compiler related commands beforehand,
+    // ie, compiler schedular such as goma. This allows correct parsing for
+    // command lines like "goma clang -c foo".
+    std::string::size_type dot;
+    while (i < entry.args.size() && entry.args[i][0] != '-' &&
+           // Do not skip over main source filename
+           NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
+           // There may be other filenames (e.g. more than one source filenames)
+           // preceding main source filename. We use a heuristic here. `.` may
+           // occur in both command names and source filenames. If `.` occurs in
+           // the last 4 bytes of entry.args[i] and not followed by a digit, e.g.
+           // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
+           // clang-4.0) are seen as commands.
+           ((dot = entry.args[i].rfind('.')) == std::string::npos ||
+            dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
+            !entry.args[i].compare(dot + 1, 3, "exe")))
+      ++i;
+  } else {
+    if (entry.args.size())
+      i = 1;
+  }
+  // Compiler driver.
   if (i > 0)
     result.args.push_back(entry.args[i - 1]);
-  else {
-    // TODO Drop this back compatibility
-    // Args probably came from a /.cquery file, which likely has just flags.
-    // clang_parseTranslationUnit2FullArgv() expects the binary path as the
-    // first arg, so the first flag would end up being ignored. Add a dummy.
-    result.args.push_back("clang++");
-  }
 
   // Add -working-directory if not provided.
   if (!AnyStartsWith(entry.args, "-working-directory")) {
@@ -168,17 +174,24 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     result.args.push_back(entry.directory);
   }
 
-  // Clang does not have good hueristics for determining source language, we
-  // should explicitly specify it.
-  if (optional<std::string> file_type = SourceFileType(entry.file)) {
-    if (!AnyStartsWith(entry.args, "-x")) {
-      result.args.push_back("-x" + *file_type);
-    }
-    if (!AnyStartsWith(entry.args, "-std=")) {
-      if (*file_type == "c")
-        result.args.push_back("-std=gnu11");
-      else if (*file_type == "c++")
-        result.args.push_back("-std=c++14");
+  if (loose) {
+    // FIXME
+    if (auto lang = SourceFileType(entry.file)) {
+      if (!AnyStartsWith(entry.args, "-x")) {
+        switch (*lang) {
+        case LanguageId::Unknown: break;
+        case LanguageId::C: result.args.push_back("-xc"); break;
+        case LanguageId::Cpp: result.args.push_back("-xc++"); break;
+        case LanguageId::ObjC: result.args.push_back("-xobjective-c"); break;
+        case LanguageId::ObjCpp: result.args.push_back("-xobjective-cpp"); break;
+        }
+      }
+      if (!AnyStartsWith(entry.args, "-std=")) {
+        if (*lang == LanguageId::C)
+          result.args.push_back("-std=gnu11");
+        else if (*lang == LanguageId::Cpp)
+          result.args.push_back("-std=c++14");
+      }
     }
   }
 
@@ -215,9 +228,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       next_flag_is_path = false;
       add_next_flag_to_quote_dirs = false;
       add_next_flag_to_angle_dirs = false;
-    }
-
-    else {
+    } else {
       // Check to see if arg is a path and needs to be updated.
       for (const std::string& flag_type : kPathArgs) {
         // {"-I", "foo"} style.
@@ -551,7 +562,18 @@ Project::Entry Project::FindCompilationEntryForFile(
   result.filename = filename;
   if (!best_entry) {
     // FIXME
-    result.args.push_back("clang++");
+    if (auto lang = SourceFileType(filename)) {
+      switch (*lang) {
+      case LanguageId::C:
+        result.args.push_back("clang");
+        break;
+      case LanguageId::Cpp:
+        result.args.push_back("clang++");
+        break;
+      default:
+        break;
+      }
+    }
     result.args.push_back(filename);
   } else {
     result.args = best_entry->args;
@@ -687,9 +709,9 @@ TEST_SUITE("Project") {
   TEST_CASE("Implied binary") {
     CheckFlags(
         "/home/user", "/home/user/foo/bar.cc",
-        /* raw */ {"-DDONT_IGNORE_ME"},
+        /* raw */ {"clang", "-DDONT_IGNORE_ME"},
         /* expected */
-        {"clang++", "-working-directory", "/home/user", "-xc++", "-std=c++14",
+        {"clang", "-working-directory", "/home/user", "-xc++", "-std=c++14",
          "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
          "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
