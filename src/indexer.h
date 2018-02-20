@@ -231,6 +231,7 @@ struct IndexType {
   IndexTypeId id;
 
   Def def;
+  std::vector<Use> declarations;
 
   // Immediate derived types.
   std::vector<IndexTypeId> derived;

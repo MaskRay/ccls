@@ -39,6 +39,23 @@ void AddFuncUse(std::vector<Use>* result, Use ref) {
   result->push_back(ref);
 }
 
+// TODO How to check if a reference to type is a declaration?
+// This currently also includes constructors/destructors.
+// It seems declarations in functions are not indexed.
+bool IsDeclContext(CXIdxEntityKind kind) {
+  switch (kind) {
+    case CXIdxEntity_CXXClass:
+    case CXIdxEntity_CXXNamespace:
+    case CXIdxEntity_ObjCCategory:
+    case CXIdxEntity_ObjCClass:
+    case CXIdxEntity_ObjCProtocol:
+    case CXIdxEntity_Struct:
+      return true;
+    default:
+      return false;
+  }
+}
+
 bool IsScopeSemanticContainer(CXCursorKind kind) {
   switch (kind) {
     case CXCursor_Namespace:
@@ -1820,7 +1837,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           }
         }
       } else
-        UniqueAddUse(db, type->uses, spell, fromContainer(decl->lexicalContainer));
+        UniqueAddUse(db, type->declarations, spell,
+                     fromContainer(decl->lexicalContainer));
 
       switch (decl->entityInfo->templateKind) {
         default:
@@ -2152,7 +2170,10 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //    Foo f;
       //  }
       //
-      UniqueAddUseSpell(db, ref_type->uses, ref->cursor);
+      if (!ref->parentEntity || IsDeclContext(ref->parentEntity->kind))
+        UniqueAddUseSpell(db, ref_type->declarations, ref->cursor);
+      else
+        UniqueAddUseSpell(db, ref_type->uses, ref->cursor);
       break;
     }
 

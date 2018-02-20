@@ -215,6 +215,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("kind", value.def.kind);
   ReflectHoverAndComments(visitor, value.def);
+  REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("alias_of", value.def.alias_of);

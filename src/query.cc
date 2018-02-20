@@ -247,6 +247,10 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
       add_all_symbols(*type.def.spell, id, SymbolKind::Type);
     if (type.def.extent)
       add_outline(*type.def.extent, id, SymbolKind::Type);
+    for (Use decl : type.declarations) {
+      add_all_symbols(decl, id, SymbolKind::Type);
+      add_outline(decl, id, SymbolKind::Type);
+    }
     for (Use use : type.uses)
       add_all_symbols(use, id, SymbolKind::Type);
   }
@@ -523,6 +527,10 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       [this, &previous_id_map](IndexType* type) {
         if (type->def.spell)
           types_removed.push_back(type->usr);
+        if (!type->declarations.empty())
+          types_declarations.push_back(QueryType::DeclarationsUpdate(
+              previous_id_map.ToQuery(type->id), {},
+              previous_id_map.ToQuery(type->declarations)));
         if (!type->derived.empty())
           types_derived.push_back(QueryType::DerivedUpdate(
               previous_id_map.ToQuery(type->id), {},
@@ -543,6 +551,10 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         if (def_update)
           types_def_update.push_back(
               QueryType::DefUpdate(type->usr, std::move(*def_update)));
+        if (!type->declarations.empty())
+          types_declarations.push_back(QueryType::DeclarationsUpdate(
+              current_id_map.ToQuery(type->id),
+              current_id_map.ToQuery(type->declarations)));
         if (!type->derived.empty())
           types_derived.push_back(
               QueryType::DerivedUpdate(current_id_map.ToQuery(type->id),
@@ -570,6 +582,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
               current->usr, std::move(*current_remapped_def)));
         }
 
+        PROCESS_UPDATE_DIFF(QueryTypeId, types_declarations, declarations, Use);
         PROCESS_UPDATE_DIFF(QueryTypeId, types_derived, derived, QueryTypeId);
         PROCESS_UPDATE_DIFF(QueryTypeId, types_instances, instances,
                             QueryVarId);
@@ -820,6 +833,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
   ImportOrUpdate(std::move(update->types_def_update));
+  HANDLE_MERGEABLE(types_declarations, declarations, types);
   HANDLE_MERGEABLE(types_derived, derived, types);
   HANDLE_MERGEABLE(types_instances, instances, types);
   HANDLE_MERGEABLE(types_uses, uses, types);

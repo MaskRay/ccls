@@ -37,11 +37,15 @@ std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db,
     case SymbolKind::Var: {
       std::vector<Use> ret =
           GetDeclarationsOfSymbolForGotoDefinition(db, sym);
-      QueryVar::Def* def = db->GetVar(sym).AnyDef();
-      if (def && def->type) {
-        std::vector<Use> types = GetDeclarationsOfSymbolForGotoDefinition(
-            db, SymbolIdx{*def->type, SymbolKind::Type});
-        ret.insert(ret.end(), types.begin(), types.end());
+      if (ret.empty()) {
+        for (auto& def : db->GetVar(sym).def)
+          if (def.type) {
+            if (Maybe<Use> use = GetDefinitionSpellingOfSymbol(
+                    db, SymbolIdx{*def.type, SymbolKind::Type})) {
+              ret.push_back(*use);
+              break;
+            }
+          }
       }
       return ret;
     }

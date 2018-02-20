@@ -136,6 +136,7 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
 struct QueryType {
   using Def = TypeDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
+  using DeclarationsUpdate = MergeableUpdate<QueryTypeId, Use>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
   using UsesUpdate = MergeableUpdate<QueryTypeId, Use>;
@@ -143,6 +144,7 @@ struct QueryType {
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   std::forward_list<Def> def;
+  std::vector<Use> declarations;
   std::vector<QueryTypeId> derived;
   std::vector<QueryVarId> instances;
   std::vector<Use> uses;
@@ -228,6 +230,7 @@ struct IndexUpdate {
   // Type updates.
   std::vector<Usr> types_removed;
   std::vector<QueryType::DefUpdate> types_def_update;
+  std::vector<QueryType::DeclarationsUpdate> types_declarations;
   std::vector<QueryType::DerivedUpdate> types_derived;
   std::vector<QueryType::InstancesUpdate> types_instances;
   std::vector<QueryType::UsesUpdate> types_uses;

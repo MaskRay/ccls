@@ -16,6 +16,26 @@ int ComputeRangeSize(const Range& range) {
   return range.end.column - range.start.column;
 }
 
+template <typename Q>
+std::vector<Use> ToUsesHelper(std::vector<Q>& entities,
+                              const std::vector<Id<Q>>& ids) {
+  std::vector<Use> ret;
+  ret.reserve(ids.size());
+  for (auto id : ids) {
+    Q& entity = entities[id.id];
+    bool has_def = false;
+    for (auto& def : entity.def)
+      if (def.spell) {
+        ret.push_back(*def.spell);
+        has_def = true;
+        break;
+      }
+    if (!has_def && entity.declarations.size())
+      ret.push_back(entity.declarations[0]);
+  }
+  return ret;
+}
+
 }  // namespace
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
@@ -112,54 +132,16 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
 
 std::vector<Use> ToUses(QueryDatabase* db,
                         const std::vector<QueryFuncId>& ids) {
-  std::vector<Use> ret;
-  ret.reserve(ids.size());
-  for (auto id : ids) {
-    QueryFunc& func = db->funcs[id.id];
-    bool has_def = false;
-    for (auto& def : func.def)
-      if (def.spell) {
-        ret.push_back(*def.spell);
-        has_def = true;
-        break;
-      }
-    if (!has_def && func.declarations.size())
-      ret.push_back(func.declarations[0]);
-  }
-  return ret;
+  return ToUsesHelper(db->funcs, ids);
 }
 
 std::vector<Use> ToUses(QueryDatabase* db,
                         const std::vector<QueryTypeId>& ids) {
-  std::vector<Use> ret;
-  ret.reserve(ids.size());
-  for (auto id : ids) {
-    QueryType& type = db->types[id.id];
-    for (auto& def : type.def)
-      if (def.spell) {
-        ret.push_back(*def.spell);
-        break;
-      }
-  }
-  return ret;
+  return ToUsesHelper(db->types, ids);
 }
 
 std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
-  std::vector<Use> ret;
-  ret.reserve(ids.size());
-  for (auto id : ids) {
-    QueryVar& var = db->vars[id.id];
-    bool has_def = false;
-    for (auto& def : var.def)
-      if (def.spell) {
-        ret.push_back(*def.spell);
-        has_def = true;
-        break;
-      }
-    if (!has_def && var.declarations.size())
-      ret.push_back(var.declarations[0]);
-  }
-  return ret;
+  return ToUsesHelper(db->vars, ids);
 }
 
 std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
@@ -173,6 +155,7 @@ std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
         for (auto& def : type.def)
           if (def.spell)
             ret.push_back(*def.spell);
+        AddRange(&ret, type.declarations);
       }
       return ret;
     }
@@ -210,27 +193,15 @@ std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     SymbolIdx sym) {
   switch (sym.kind) {
-    case SymbolKind::Type: {
-      // Returning the definition spelling of a type is a hack (and is why the
-      // function has the postfix `ForGotoDefintion`, but it lets the user
-      // jump to the start of a type if clicking goto-definition on the same
-      // type from within the type definition.
-      if (const auto* def = db->GetType(sym).AnyDef()) {
-        Maybe<Use> spell = def->spell;
-        if (spell)
-          return {*spell};
-      }
-      break;
-    }
     case SymbolKind::Func:
       return db->GetFunc(sym).declarations;
+    case SymbolKind::Type:
+      return db->GetType(sym).declarations;
     case SymbolKind::Var:
       return db->GetVar(sym).declarations;
     default:
-      break;
+      return {};
   }
-
-  return {};
 }
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
