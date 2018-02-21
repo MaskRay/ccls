@@ -638,6 +638,6 @@ MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
 
 struct Out_LocationList : public lsOutMessage<Out_LocationList> {
   lsRequestId id;
-  std::vector<lsLocation> result;
+  std::vector<lsLocationEx> result;
 };
 MAKE_REFLECT_STRUCT(Out_LocationList, jsonrpc, id, result);

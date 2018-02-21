@@ -56,9 +56,8 @@ struct TextDocumentReferencesHandler
       // Found symbol. Return references.
       EachUse(db, sym, request->params.context.includeDeclaration,
               [&](Use use) {
-                if (optional<lsLocationEx> ls_loc =
-                        GetLsLocationEx(db, working_files, use,
-                                        config->extension.referenceContainer))
+                if (optional<lsLocationEx> ls_loc = GetLsLocationEx(
+                        db, working_files, use, config->xref.container))
                   out.result.push_back(*ls_loc);
               });
       break;

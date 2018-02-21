@@ -101,7 +101,7 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
     }
 
     std::vector<double> x(n, 1), y;
-    for (int j = 0; j < 30; j++) {
+    for (int j = 0; j < 8; j++) {
       y.assign(n, kDamping);
       for (int i = 0; i < n; i++)
         for (auto& it : adj[i])
@@ -124,8 +124,8 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
         Maybe<Use> use = GetDefinitionExtentOfSymbol(db, syms[i]);
         if (!use)
           continue;
-        optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *use);
-        if (ls_loc)
+        if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
+                                          config->xref.container))
           out.result.push_back(*ls_loc);
         break;
       }

@@ -41,11 +41,12 @@ optional<lsLocation> GetLsLocation(QueryDatabase* db,
 optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        Use use,
-                                       bool extension);
-std::vector<lsLocation> GetLsLocations(QueryDatabase* db,
-                                       WorkingFiles* working_files,
-                                       const std::vector<Use>& refs,
-                                       int limit);
+                                       bool container);
+std::vector<lsLocationEx> GetLsLocationExs(QueryDatabase* db,
+                                           WorkingFiles* working_files,
+                                           const std::vector<Use>& refs,
+                                           bool container,
+                                           int limit);
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,

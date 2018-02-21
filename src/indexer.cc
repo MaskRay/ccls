@@ -1510,20 +1510,24 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   ClangCursor lex_parent(fromContainer(decl->lexicalContainer));
   SetUsePreflight(db, sem_parent);
   SetUsePreflight(db, lex_parent);
+  ClangCursor cursor = decl->cursor;
 
   switch (decl->entityInfo->kind) {
+    case CXIdxEntity_Unexposed:
+      LOG_S(INFO) << "CXIdxEntity_Unexposed " << cursor.get_spell_name();
+      break;
+
     case CXIdxEntity_CXXNamespace: {
-      ClangCursor decl_cursor = decl->cursor;
-      Range spell = decl_cursor.get_spell();
+      Range spell = cursor.get_spell();
       IndexTypeId ns_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* ns = db->Resolve(ns_id);
       ns->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (ns->def.detailed_name.empty()) {
-        SetTypeName(ns, decl_cursor, decl->semanticContainer,
+        SetTypeName(ns, cursor, decl->semanticContainer,
                     decl->entityInfo->name, param);
         ns->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
         ns->def.extent =
-            SetUse(db, decl_cursor.get_extent(), lex_parent, Role::None);
+            SetUse(db, cursor.get_extent(), lex_parent, Role::None);
         if (decl->semanticContainer) {
           IndexTypeId parent_id = db->ToTypeId(
               ClangCursor(decl->semanticContainer->cursor).get_usr_hash());
@@ -1536,6 +1540,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       AddUse(ns->uses, spell);
       break;
     }
+
+    case CXIdxEntity_CXXNamespaceAlias:
+      assert(false && "CXXNamespaceAlias");
+      break;
 
     case CXIdxEntity_ObjCProperty:
     case CXIdxEntity_ObjCIvar:
@@ -1804,6 +1812,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Enum:
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
+    case CXIdxEntity_CXXInterface:
     case CXIdxEntity_CXXClass: {
       ClangCursor decl_cursor = decl->cursor;
       Range spell = decl_cursor.get_spell();
@@ -1919,30 +1928,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       }
       break;
     }
-
-    default:
-      std::cerr
-          << "!! Unhandled indexDeclaration:     "
-          << ClangCursor(decl->cursor).ToString() << " at "
-          << ClangCursor(decl->cursor).get_spell().start.ToString()
-          << std::endl;
-      std::cerr << "     entityInfo->kind  = " << decl->entityInfo->kind
-                << std::endl;
-      std::cerr << "     entityInfo->USR   = " << decl->entityInfo->USR
-                << std::endl;
-      if (decl->declAsContainer)
-        std::cerr << "     declAsContainer   = "
-                  << ClangCursor(decl->declAsContainer->cursor).ToString()
-                  << std::endl;
-      if (decl->semanticContainer)
-        std::cerr << "     semanticContainer = "
-                  << ClangCursor(decl->semanticContainer->cursor).ToString()
-                  << std::endl;
-      if (decl->lexicalContainer)
-        std::cerr << "     lexicalContainer  = "
-                  << ClangCursor(decl->lexicalContainer->cursor).get_usr_hash()
-                  << std::endl;
-      break;
   }
 }
 
@@ -1990,14 +1975,35 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
   ClangCursor cursor(ref->cursor);
   ClangCursor lex_parent(fromContainer(ref->container));
+  ClangCursor referenced;
+  if (ref->referencedEntity)
+    referenced = ref->referencedEntity->cursor;
   SetUsePreflight(db, lex_parent);
 
   switch (ref->referencedEntity->kind) {
-    case CXIdxEntity_CXXNamespaceAlias:
+    case CXIdxEntity_Unexposed:
+      LOG_S(INFO) << "CXIdxEntity_Unexposed " << cursor.get_spell_name();
+      break;
+
     case CXIdxEntity_CXXNamespace: {
-      ClangCursor referenced = ref->referencedEntity->cursor;
       IndexType* ns = db->Resolve(db->ToTypeId(referenced.get_usr_hash()));
       AddUse(db, ns->uses, cursor.get_spell(), fromContainer(ref->container));
+      break;
+    }
+
+    case CXIdxEntity_CXXNamespaceAlias: {
+      IndexType* ns = db->Resolve(db->ToTypeId(referenced.get_usr_hash()));
+      AddUse(db, ns->uses, cursor.get_spell(), fromContainer(ref->container));
+      if (!ns->def.spell) {
+        ClangCursor sem_parent = referenced.get_semantic_parent();
+        ClangCursor lex_parent = referenced.get_lexical_parent();
+        SetUsePreflight(db, sem_parent);
+        SetUsePreflight(db, lex_parent);
+        ns->def.spell = SetUse(db, referenced.get_spell(), sem_parent, Role::Definition);
+        ns->def.extent = SetUse(db, referenced.get_extent(), lex_parent, Role::None);
+        std::string name = referenced.get_spell_name();
+        SetTypeName(ns, referenced, nullptr, name.c_str(), param);
+      }
       break;
     }
 
@@ -2146,6 +2152,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_ObjCProtocol:
     case CXIdxEntity_ObjCClass:
     case CXIdxEntity_Typedef:
+    case CXIdxEntity_CXXInterface: // MSVC __interface
     case CXIdxEntity_CXXTypeAlias:
     case CXIdxEntity_Enum:
     case CXIdxEntity_Union:
@@ -2176,36 +2183,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
         UniqueAddUseSpell(db, ref_type->uses, ref->cursor);
       break;
     }
-
-    default:
-      std::cerr
-          << "!! Unhandled indexEntityReference: " << cursor.ToString()
-          << " at "
-          << ClangCursor(ref->cursor).get_spell().start.ToString()
-          << std::endl;
-      std::cerr << "     ref->referencedEntity->kind = "
-                << ref->referencedEntity->kind << std::endl;
-      if (ref->parentEntity)
-        std::cerr << "     ref->parentEntity->kind = "
-                  << ref->parentEntity->kind << std::endl;
-      std::cerr
-          << "     ref->loc          = "
-          << ClangCursor(ref->cursor).get_spell().start.ToString()
-          << std::endl;
-      std::cerr << "     ref->kind         = " << ref->kind << std::endl;
-      if (ref->parentEntity)
-        std::cerr << "     parentEntity      = "
-                  << ClangCursor(ref->parentEntity->cursor).ToString()
-                  << std::endl;
-      if (ref->referencedEntity)
-        std::cerr << "     referencedEntity  = "
-                  << ClangCursor(ref->referencedEntity->cursor).ToString()
-                  << std::endl;
-      if (ref->container)
-        std::cerr << "     container         = "
-                  << ClangCursor(ref->container->cursor).ToString()
-                  << std::endl;
-      break;
   }
 }
 

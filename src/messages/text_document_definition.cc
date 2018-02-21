@@ -1,4 +1,3 @@
-#include "fuzzy_match.h"
 #include "lex_utils.h"
 #include "message_handler.h"
 #include "query_utils.h"
@@ -21,18 +20,17 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentDefinition);
 struct Out_TextDocumentDefinition
     : public lsOutMessage<Out_TextDocumentDefinition> {
   lsRequestId id;
-  std::vector<lsLocation> result;
+  std::vector<lsLocationEx> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
 std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db,
                                           SymbolRef sym) {
   switch (sym.kind) {
-    // Returns GetDeclarationsOfSymbolForGotoDefinition and
-    // variable type definition.
     case SymbolKind::Var: {
       std::vector<Use> ret =
           GetDeclarationsOfSymbolForGotoDefinition(db, sym);
+      // If there is no declaration, jump the its type.
       if (ret.empty()) {
         for (auto& def : db->GetVar(sym).def)
           if (def.type) {
@@ -67,6 +65,7 @@ struct TextDocumentDefinitionHandler
     Out_TextDocumentDefinition out;
     out.id = request->id;
 
+    Maybe<Use> on_def;
     bool has_symbol = false;
     int target_line = request->params.position.line;
     int target_column = request->params.position.character;
@@ -87,6 +86,7 @@ struct TextDocumentDefinitionHandler
           // If on a definition, clear |uses| to find declarations below.
           if (spell.file == file_id &&
               spell.range.Contains(target_line, target_column)) {
+            on_def = spell;
             uses.clear();
             return false;
           }
@@ -99,10 +99,16 @@ struct TextDocumentDefinitionHandler
         return true;
       });
 
-      if (uses.empty())
+      if (uses.empty()) {
+        // The symbol has no definition or the cursor is on a definition.
         uses = GetGotoDefinitionTargets(db, sym);
+        // There is no declaration but the cursor is on a definition.
+        if (uses.empty() && on_def)
+          uses.push_back(*on_def);
+      }
       AddRange(&out.result,
-               GetLsLocations(db, working_files, uses, config->maxXrefResults));
+               GetLsLocationExs(db, working_files, uses, config->xref.container,
+                                config->xref.maxNum));
       if (!out.result.empty())
         break;
     }
@@ -111,7 +117,7 @@ struct TextDocumentDefinitionHandler
     if (out.result.empty()) {
       for (const IndexInclude& include : file->def->includes) {
         if (include.line == target_line) {
-          lsLocation result;
+          lsLocationEx result;
           result.uri = lsDocumentUri::FromPath(include.resolved_path);
           out.result.push_back(result);
           has_symbol = true;
@@ -154,8 +160,8 @@ struct TextDocumentDefinitionHandler
         if (best_i != -1) {
           Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
           assert(use);
-          optional<lsLocation> ls_loc = GetLsLocation(db, working_files, *use);
-          if (ls_loc)
+          if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
+                                            config->xref.container))
             out.result.push_back(*ls_loc);
         }
       }

@@ -83,8 +83,7 @@ def patch_byte_in_libclang(filename, offset, old, new):
 def options(opt):
   opt.load('compiler_cxx')
   grp = opt.add_option_group('Configuration options related to use of clang from the system (not recommended)')
-  grp.add_option('--use-system-clang', dest='use_system_clang', default=False, action='store_true',
-                 help='deprecated. Please specify --llvm-config, e.g. /usr/bin/llvm-config llvm-config-6.0')
+  grp.add_option('--enable-assert', action='store_true')
   grp.add_option('--use-clang-cxx', dest='use_clang_cxx', default=False, action='store_true',
                  help='use clang C++ API')
   grp.add_option('--bundled-clang', dest='bundled_clang', default='5.0.1',
@@ -188,6 +187,12 @@ def configure(ctx):
     if 'release' in ctx.options.variant:
       cxxflags.append('-O' if 'asan' in ctx.options.variant else '-O3')
 
+  if ctx.options.enable_assert is None:
+    if 'debug' in ctx.options.variant:
+      ctx.options.enable_assert = True
+  if not ctx.options.enable_assert:
+    ctx.define('NDEBUG', 1)
+
   if ctx.env.CXX_NAME == 'clang' and 'debug' in ctx.options.variant:
     cxxflags.append('-fno-limit-debug-info')
 
@@ -207,11 +212,6 @@ def configure(ctx):
     if sys.platform == 'win32':
       return 'lib' + lib
     return lib
-
-  # TODO remove
-  if ctx.options.use_system_clang:
-    print((('!' * 50)+'\n')*3)
-    print('--use-system-clang is deprecated. Please specify --llvm-config, e.g. /usr/bin/llvm-config llvm-config-6.0')
 
   # Do not use bundled clang+llvm
   if ctx.options.llvm_config is not None or ctx.options.clang_prefix is not None:

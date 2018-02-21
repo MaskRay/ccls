@@ -162,13 +162,13 @@ struct Config {
   };
   Completion completion;
 
-  // Maximum number of definition/reference/... results.
-  int maxXrefResults = 500;
-  struct Extension {
-    // If true, reference results will include "containerName".
-    bool referenceContainer = false;
+  struct Xref {
+    // If true, |Location[]| response will include lexical container.
+    bool container = false;
+    // Maximum number of definition/reference/... results.
+    int maxNum = 300;
   };
-  Extension extension;
+  Xref xref;
 
   struct Index {
     // 0: none, 1: doxygen, 2: all comments
@@ -195,7 +195,7 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort, detailedLabel);
-MAKE_REFLECT_STRUCT(Config::Extension, referenceContainer);
+MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config::Index, comments, attributeMakeCallsToCtor);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseCommand,
@@ -233,8 +233,7 @@ MAKE_REFLECT_STRUCT(Config,
 
                     client,
                     completion,
-                    maxXrefResults,
-                    extension,
+                    xref,
                     index,
 
                     dumpAST);

@@ -23,7 +23,6 @@
 #include "serializer.h"
 #include "serializers/json.h"
 #include "test.h"
-#include "threaded_queue.h"
 #include "timer.h"
 #include "timestamp_manager.h"
 #include "work_thread.h"
