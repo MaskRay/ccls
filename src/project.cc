@@ -133,16 +133,18 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   Project::Entry result;
   result.filename = NormalizePathWithTestOptOut(entry.file);
+  if (entry.args.empty())
+    return result;
   std::string base_name = GetBaseName(entry.file);
-  size_t i = 0;
+  bool clang_cl = strstr(entry.args[0].c_str(), "clang-cl") ||
+                  strstr(entry.args[0].c_str(), "cl.exe") ||
+                  AnyStartsWith(entry.args, "--driver-mode=cl");
+  size_t i = 1;
 
   // If |compilationDatabaseCommand| is specified, the external command provides
   // us the JSON compilation database which should be strict. We should do very
   // little processing on |entry.args|.
-  if (config->mode == ProjectMode::ExternalCommand) {
-    if (entry.args.size())
-      i = 1;
-  } else {
+  if (config->mode != ProjectMode::ExternalCommand && !clang_cl) {
     // Strip all arguments consisting the compiler command,
     // as there may be non-compiler related commands beforehand,
     // ie, compiler schedular such as goma. This allows correct parsing for
@@ -163,27 +165,23 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       ++i;
   }
   // Compiler driver.
-  if (i > 0)
-    result.args.push_back(entry.args[i - 1]);
+  result.args.push_back(entry.args[i - 1]);
 
   // Add -working-directory if not provided.
-  if (!AnyStartsWith(entry.args, "-working-directory")) {
-    result.args.emplace_back("-working-directory");
-    result.args.push_back(entry.directory);
-  }
+  if (!AnyStartsWith(entry.args, "-working-directory"))
+    result.args.emplace_back("-working-directory=" + entry.directory);
 
   if (config->mode == ProjectMode::DotCquery &&
-      !AnyStartsWith(entry.args, "-std=") &&
-      !AnyStartsWith(entry.args, "--driver-mode=")) {
+      !AnyStartsWith(entry.args, "-std=")) {
     switch (SourceFileLanguage(entry.file)) {
-      case LanguageId::C:
-        result.args.push_back("-std=gnu11");
-        break;
-      case LanguageId::Cpp:
-        result.args.push_back("-std=gnu++14");
-        break;
-      default:
-        break;
+    case LanguageId::C:
+      result.args.push_back("-std=gnu11");
+      break;
+    case LanguageId::Cpp:
+      result.args.push_back("-std=gnu++14");
+      break;
+    default:
+      break;
     }
   }
 
@@ -342,18 +340,23 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
     e.file = file;
     e.args = GetCompilerArgumentForFile(file);
     e.args.push_back(e.file);
-    switch (SourceFileLanguage(e.file)) {
-    case LanguageId::C:
-      // g++ or clang++
-      if (e.args[0].find("++") != std::string::npos)
-        e.args[0] = "clang";
-      break;
-    case LanguageId::Cpp:
-      if (e.args[0].find("++") == std::string::npos)
-        e.args[0] = "clang++";
-      break;
-    default:
-      break;
+    auto idx = e.args[0].rfind("clang");
+    if (idx != std::string::npos) {
+      idx += 5;
+      switch (SourceFileLanguage(e.file)) {
+        case LanguageId::C:
+          if (e.args[0].compare(idx, 2, "++") == 0)
+            e.args[0].erase(idx, 2);
+          break;
+        case LanguageId::Cpp:
+          // Neither clang++ nor clang-cl
+          if (e.args[0].compare(idx, 2, "++") &&
+              e.args[0].compare(idx, 3, "-cl"))
+            e.args[0].insert(idx, "++");
+          break;
+        default:
+          break;
+      }
     }
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));

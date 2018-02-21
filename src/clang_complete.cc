@@ -370,7 +370,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
   std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
 
   LOG_S(INFO) << "Creating completion session with arguments "
-              << StringJoin(args);
+              << StringJoin(args, " ");
   *tu = ClangTranslationUnit::Create(index, session->file.filename, args,
                                      unsaved, Flags());
 
