@@ -359,7 +359,7 @@ struct TextDocumentCodeActionHandler
           // Get implementation file.
           Out_TextDocumentCodeAction::Command command;
 
-          EachWithGen(db->funcs, def->funcs, [&](QueryFunc& func_def) {
+          EachDefinedEntity(db->funcs, def->funcs, [&](QueryFunc& func_def) {
             const QueryFunc::Def* def1 = func_def.AnyDef();
             if (def1->extent)
               return;

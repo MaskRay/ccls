@@ -81,7 +81,7 @@ struct TextDocumentDefinitionHandler
       //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
       std::vector<Use> uses;
-      EachDef(db, sym, [&](const auto& def) {
+      EachEntityDef(db, sym, [&](const auto& def) {
         if (def.spell && def.extent) {
           Use spell = *def.spell;
           // If on a definition, clear |uses| to find declarations below.

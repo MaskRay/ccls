@@ -54,16 +54,13 @@ struct TextDocumentReferencesHandler
     for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references.
-      std::vector<Use> uses = GetUsesOfSymbol(
-          db, sym, request->params.context.includeDeclaration);
-      out.result.reserve(uses.size());
-      for (Use use : uses) {
-        optional<lsLocationEx> ls_loc = GetLsLocationEx(
-            db, working_files, use, config->extension.referenceContainer);
-        if (ls_loc) {
-          out.result.push_back(*ls_loc);
-        }
-      }
+      EachUse(db, sym, request->params.context.includeDeclaration,
+              [&](Use use) {
+                if (optional<lsLocationEx> ls_loc =
+                        GetLsLocationEx(db, working_files, use,
+                                        config->extension.referenceContainer))
+                  out.result.push_back(*ls_loc);
+              });
       break;
     }
 

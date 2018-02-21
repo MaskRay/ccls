@@ -6,6 +6,7 @@
 
 #include <climits>
 #include <queue>
+#include <unordered_set>
 
 namespace {
 
@@ -40,63 +41,19 @@ std::vector<Use> ToUsesHelper(std::vector<Q>& entities,
 
 Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
                                          SymbolIdx sym) {
-  switch (sym.kind) {
-    case SymbolKind::File:
-      break;
-    case SymbolKind::Func: {
-      for (auto& def : db->GetFunc(sym).def)
-        if (def.spell)
-          return def.spell;
-      break;
-    }
-    case SymbolKind::Type: {
-      for (auto& def : db->GetType(sym).def)
-        if (def.spell)
-          return def.spell;
-      break;
-    }
-    case SymbolKind::Var: {
-      for (auto& def : db->GetVar(sym).def)
-        if (def.spell)
-          return def.spell;
-      break;
-    }
-    case SymbolKind::Invalid:
-      assert(false && "unexpected");
-      break;
-  }
-  return nullopt;
+  Maybe<Use> ret;
+  EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.spell); });
+  return ret;
 }
 
 Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
-  switch (sym.kind) {
-    case SymbolKind::File:
-      return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
-                 Role::None, QueryFileId(sym.id));
-    case SymbolKind::Func: {
-      for (auto& def : db->GetFunc(sym).def)
-        if (def.extent)
-          return def.extent;
-      break;
-    }
-    case SymbolKind::Type: {
-      for (auto& def : db->GetType(sym).def)
-        if (def.extent)
-          return def.extent;
-      break;
-    }
-    case SymbolKind::Var: {
-      for (auto& def : db->GetVar(sym).def)
-        if (def.extent)
-          return def.extent;
-      break;
-    }
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
-    }
-  }
-  return nullopt;
+  // Used to jump to file.
+  if (sym.kind == SymbolKind::File)
+    return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
+               Role::None, QueryFileId(sym.id));
+  Maybe<Use> ret;
+  EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.extent); });
+  return ret;
 }
 
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
@@ -144,51 +101,6 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
   return ToUsesHelper(db->vars, ids);
 }
 
-std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
-                                 SymbolIdx sym,
-                                 bool include_decl) {
-  switch (sym.kind) {
-    case SymbolKind::Type: {
-      QueryType& type = db->GetType(sym);
-      std::vector<Use> ret = type.uses;
-      if (include_decl) {
-        for (auto& def : type.def)
-          if (def.spell)
-            ret.push_back(*def.spell);
-        AddRange(&ret, type.declarations);
-      }
-      return ret;
-    }
-    case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(sym);
-      std::vector<Use> ret = func.uses;
-      if (include_decl) {
-        for (auto& def : func.def)
-          if (def.spell)
-            ret.push_back(*def.spell);
-        AddRange(&ret, func.declarations);
-      }
-      return ret;
-    }
-    case SymbolKind::Var: {
-      QueryVar& var = db->GetVar(sym);
-      std::vector<Use> ret = var.uses;
-      if (include_decl) {
-        for (auto& def : var.def)
-          if (def.spell)
-            ret.push_back(*def.spell);
-        ret.insert(ret.end(), var.declarations.begin(), var.declarations.end());
-      }
-      return ret;
-    }
-    case SymbolKind::File:
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      return {};
-    }
-  }
-}
-
 std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     SymbolIdx sym) {
@@ -205,41 +117,30 @@ std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
 }
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
-  // Check self.
-  if (!root.uses.empty())
-    return true;
-  const QueryFunc::Def* def = root.AnyDef();
-
-  // Check for base calls.
+  std::unordered_set<Usr> seen;
   std::queue<QueryFunc*> queue;
-  EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func) {
-    queue.push(&func);
-  });
+  seen.insert(root.usr);
+  queue.push(&root);
   while (!queue.empty()) {
     QueryFunc& func = *queue.front();
     queue.pop();
     if (!func.uses.empty())
       return true;
-    if (def)
-      EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func1) {
-        queue.push(&func1);
+    if (auto* def = func.AnyDef()) {
+      EachDefinedEntity(db->funcs, def->base, [&](QueryFunc& func1) {
+        if (!seen.count(func1.usr)) {
+          seen.insert(func1.usr);
+          queue.push(&func1);
+        }
       });
+      EachDefinedEntity(db->funcs, func.derived, [&](QueryFunc& func1) {
+        if (!seen.count(func1.usr)) {
+          seen.insert(func1.usr);
+          queue.push(&func1);
+        }
+      });
+    }
   }
-
-  // Check for derived calls.
-  EachWithGen<QueryFunc>(db->funcs, root.derived, [&](QueryFunc& func1) {
-    queue.push(&func1);
-  });
-  while (!queue.empty()) {
-    QueryFunc& func = *queue.front();
-    queue.pop();
-    if (!func.uses.empty())
-      return true;
-    EachWithGen<QueryFunc>(db->funcs, func.derived, [&](QueryFunc& func1) {
-      queue.push(&func1);
-    });
-  }
-
   return false;
 }
 
@@ -251,7 +152,7 @@ std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
     return callers;
 
   std::queue<QueryFunc*> queue;
-  EachWithGen<QueryFunc>(db->funcs, def->base, [&](QueryFunc& func1) {
+  EachDefinedEntity(db->funcs, def->base, [&](QueryFunc& func1) {
     queue.push(&func1);
   });
   while (!queue.empty()) {
@@ -260,7 +161,7 @@ std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
 
     AddRange(&callers, func.uses);
     if (const QueryFunc::Def* def1 = func.AnyDef()) {
-      EachWithGen<QueryFunc>(db->funcs, def1->base, [&](QueryFunc& func1) {
+      EachDefinedEntity(db->funcs, def1->base, [&](QueryFunc& func1) {
         queue.push(&func1);
       });
     }
@@ -274,7 +175,7 @@ std::vector<Use> GetCallersForAllDerivedFunctions(QueryDatabase* db,
   std::vector<Use> callers;
 
   std::queue<QueryFunc*> queue;
-  EachWithGen<QueryFunc>(db->funcs, root.derived, [&](QueryFunc& func) {
+  EachDefinedEntity(db->funcs, root.derived, [&](QueryFunc& func) {
     queue.push(&func);
   });
 
@@ -282,7 +183,7 @@ std::vector<Use> GetCallersForAllDerivedFunctions(QueryDatabase* db,
     QueryFunc& func = *queue.front();
     queue.pop();
 
-    EachWithGen<QueryFunc>(db->funcs, func.derived, [&](QueryFunc& func1) {
+    EachDefinedEntity(db->funcs, func.derived, [&](QueryFunc& func1) {
       queue.push(&func1);
     });
     AddRange(&callers, func.uses);
@@ -377,29 +278,12 @@ optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
     return nullopt;
   lsLocationEx ret;
   ret.lsLocation::operator=(*ls_loc);
-  if (extension)
-    switch (use.kind) {
-    default:
-      break;
-    case SymbolKind::Func: {
-      const QueryFunc::Def* def = db->GetFunc(use).AnyDef();
-      if (def)
-        ret.containerName = std::string_view(def->detailed_name);
-      break;
-    }
-    case SymbolKind::Type: {
-      const QueryType::Def* def = db->GetType(use).AnyDef();
-      if (def)
-        ret.containerName = std::string_view(def->detailed_name);
-      break;
-    }
-    case SymbolKind::Var: {
-      const QueryVar::Def* def = db->GetVar(use).AnyDef();
-      if (def)
-        ret.containerName = std::string_view(def->detailed_name);
-      break;
-    }
-    }
+  if (extension) {
+    EachEntityDef(db, use, [&](const auto& def) {
+      ret.containerName = std::string_view(def.detailed_name);
+      return false;
+    });
+  }
   return ret;
 }
 

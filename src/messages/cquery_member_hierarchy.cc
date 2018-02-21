@@ -61,7 +61,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     return {};
 
   std::vector<Out_CqueryMemberHierarchy::Entry> ret;
-  EachWithGen(db->vars, def->vars, [&](QueryVar& var) {
+  EachDefinedEntity(db->vars, def->vars, [&](QueryVar& var) {
     const QueryVar::Def* def1 = var.AnyDef();
     Out_CqueryMemberHierarchy::Entry entry;
     entry.name = def1->ShortName();

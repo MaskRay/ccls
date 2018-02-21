@@ -39,28 +39,23 @@ struct TextDocumentDocumentHighlightHandler
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to highlight.
-      std::vector<Use> uses = GetUsesOfSymbol(db, sym, true);
-      out.result.reserve(uses.size());
-      for (Use use : uses) {
+      EachUse(db, sym, true, [&](Use use) {
         if (use.file != file_id)
-          continue;
-
-        optional<lsLocation> ls_location =
-            GetLsLocation(db, working_files, use);
-        if (!ls_location)
-          continue;
-
-        lsDocumentHighlight highlight;
-        highlight.range = ls_location->range;
-        if (use.role & Role::Write)
-          highlight.kind = lsDocumentHighlightKind::Write;
-        else if (use.role & Role::Read)
-          highlight.kind = lsDocumentHighlightKind::Read;
-        else
-          highlight.kind = lsDocumentHighlightKind::Text;
-        highlight.role = use.role;
-        out.result.push_back(highlight);
-      }
+          return;
+        if (optional<lsLocation> ls_loc =
+                GetLsLocation(db, working_files, use)) {
+          lsDocumentHighlight highlight;
+          highlight.range = ls_loc->range;
+          if (use.role & Role::Write)
+            highlight.kind = lsDocumentHighlightKind::Write;
+          else if (use.role & Role::Read)
+            highlight.kind = lsDocumentHighlightKind::Read;
+          else
+            highlight.kind = lsDocumentHighlightKind::Text;
+          highlight.role = use.role;
+          out.result.push_back(highlight);
+        }
+      });
       break;
     }
 

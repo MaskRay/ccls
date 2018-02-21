@@ -6,15 +6,14 @@ namespace {
 
 lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
                                    WorkingFiles* working_files,
-                                   const std::vector<Use>& uses,
+                                   SymbolRef sym,
                                    const std::string& new_text) {
   std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
 
-  for (Use use : uses) {
-    optional<lsLocation> ls_location =
-        GetLsLocation(db, working_files, use);
+  EachUse(db, sym, true, [&](Use use) {
+    optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
     if (!ls_location)
-      continue;
+      return;
 
     QueryFileId file_id = use.file;
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
@@ -22,16 +21,14 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
 
       QueryFile& file = db->files[file_id.id];
       if (!file.def)
-        continue;
+        return;
 
       const std::string& path = file.def->path;
-      path_to_edit[file_id].textDocument.uri =
-          lsDocumentUri::FromPath(path);
+      path_to_edit[file_id].textDocument.uri = lsDocumentUri::FromPath(path);
 
       WorkingFile* working_file = working_files->GetFileByFilename(path);
       if (working_file)
-        path_to_edit[file_id].textDocument.version =
-            working_file->version;
+        path_to_edit[file_id].textDocument.version = working_file->version;
     }
 
     lsTextEdit edit;
@@ -42,7 +39,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
     auto& edits = path_to_edit[file_id].edits;
     if (std::find(edits.begin(), edits.end(), edit) == edits.end())
       edits.push_back(edit);
-  }
+  });
 
   lsWorkspaceEdit edit;
   for (const auto& changes : path_to_edit)
@@ -98,9 +95,8 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to rename.
-      out.result = BuildWorkspaceEdit(db, working_files,
-                                      GetUsesOfSymbol(db, sym, true),
-                                      request->params.newName);
+      out.result =
+          BuildWorkspaceEdit(db, working_files, sym, request->params.newName);
       break;
     }
 

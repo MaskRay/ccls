@@ -18,9 +18,6 @@ std::vector<Use> ToUses(QueryDatabase* db,
 std::vector<Use> ToUses(QueryDatabase* db,
                         const std::vector<QueryVarId>& ids);
 
-std::vector<Use> GetUsesOfSymbol(QueryDatabase* db,
-                                 SymbolIdx sym,
-                                 bool include_decl);
 std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
     QueryDatabase* db,
     SymbolIdx sym);
@@ -64,43 +61,52 @@ void EmitDiagnostics(WorkingFiles* working_files,
                      std::vector<lsDiagnostic> diagnostics);
 
 template <typename Fn>
-void EachDef(QueryDatabase* db, SymbolIdx sym, Fn fn) {
+void WithEntity(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
   switch (sym.kind) {
     case SymbolKind::Invalid:
     case SymbolKind::File:
       break;
     case SymbolKind::Func:
-      for (auto& def : db->GetFunc(sym).def)
-        if (!fn(def))
-          break;
+      fn(db->GetFunc(sym));
       break;
     case SymbolKind::Type:
-      for (auto& def : db->GetType(sym).def)
-        if (!fn(def))
-          break;
+      fn(db->GetType(sym));
       break;
     case SymbolKind::Var:
-      for (auto& def : db->GetVar(sym).def)
-        if (!fn(def))
-          break;
+      fn(db->GetVar(sym));
       break;
   }
 }
 
-template <typename Q, typename Fn>
-void EachWithGen(std::vector<Q>& collection, Id<Q> x, Fn fn) {
-  Q& obj = collection[x.id];
-  // FIXME Deprecate optional<Def> def
-  //  if (obj.gen == x.gen && obj.def)
-  if (obj.AnyDef())
-    fn(obj);
+template <typename Fn>
+void EachEntityDef(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
+  WithEntity(db, sym, [&](const auto& entity) {
+    for (auto& def : entity.def)
+      if (!fn(def))
+        break;
+  });
+}
+
+template <typename Fn>
+void EachUse(QueryDatabase* db, SymbolIdx sym, bool include_decl, Fn&& fn) {
+  WithEntity(db, sym, [&](const auto& entity) {
+    for (Use use : entity.uses)
+      fn(use);
+    if (include_decl) {
+      for (auto& def : entity.def)
+        if (def.spell)
+          fn(*def.spell);
+      for (Use use : entity.declarations)
+        fn(use);
+    }
+  });
 }
 
 template <typename Q, typename Fn>
-void EachWithGen(std::vector<Q>& collection, const std::vector<Id<Q>>& ids, Fn fn) {
+void EachDefinedEntity(std::vector<Q>& collection, const std::vector<Id<Q>>& ids, Fn&& fn) {
   for (Id<Q> x : ids) {
     Q& obj = collection[x.id];
-    if (obj.AnyDef())
+    if (!obj.def.empty())
       fn(obj);
   }
 }

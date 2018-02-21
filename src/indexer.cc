@@ -685,7 +685,6 @@ const int IndexFile::kMinorVersion = 0;
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
     : id_cache(path), path(path), file_contents(contents) {}
 
-// TODO: Optimize for const char*?
 IndexTypeId IndexFile::ToTypeId(Usr usr) {
   auto it = id_cache.usr_to_type_id.find(usr);
   if (it != id_cache.usr_to_type_id.end())
@@ -1358,7 +1357,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                        sem_parent, Role::Definition);
           ref_type->def.extent =
               SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
-#if CINDEX_HAVE_PRETTY
+#if 0&&CINDEX_HAVE_PRETTY
           ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
           ref_type->def.detailed_name = ref_cursor.get_spell_name();
@@ -1392,7 +1391,8 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
                                        sem_parent, Role::Definition);
           ref_type->def.extent =
               SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
-#if CINDEX_HAVE_PRETTY
+#if 0&&CINDEX_HAVE_PRETTY
+          // template<class T> void f(T t){} // weird, the name is empty
           ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
           ref_type->def.detailed_name = ref_cursor.get_spell_name();

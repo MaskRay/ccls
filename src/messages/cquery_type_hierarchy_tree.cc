@@ -35,7 +35,7 @@ BuildParentInheritanceHierarchyForType(QueryDatabase* db,
   const QueryType::Def* def = root_type.AnyDef();
   parent_entries.reserve(def->parents.size());
 
-  EachWithGen(db->types, def->parents, [&](QueryType& parent_type) {
+  EachDefinedEntity(db->types, def->parents, [&](QueryType& parent_type) {
     Out_CqueryTypeHierarchyTree::TypeEntry parent_entry;
     const QueryType::Def* def1 = parent_type.AnyDef();
     parent_entry.name = def1->detailed_name.c_str();
@@ -74,7 +74,7 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
     entry.children.push_back(base);
 
   // Add derived.
-  EachWithGen(db->types, root_type.derived, [&](QueryType& type) {
+  EachDefinedEntity(db->types, root_type.derived, [&](QueryType& type) {
     auto derived_entry =
         BuildInheritanceHierarchyForType(db, working_files, type);
     if (derived_entry)
