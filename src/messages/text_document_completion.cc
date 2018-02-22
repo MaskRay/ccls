@@ -103,6 +103,9 @@ void FilterAndSortCompletionResponse(
     Out_TextDocumentComplete* complete_response,
     const std::string& complete_text,
     bool enable) {
+  if (!enable)
+    return;
+
   ScopedPerfTimer timer("FilterAndSortCompletionResponse");
 
 // Used to inject more completions.
@@ -119,23 +122,38 @@ void FilterAndSortCompletionResponse(
   }
 #endif
 
+
+
   auto& items = complete_response->result.items;
 
-  if (!enable || complete_text.empty()) {
-    // Just set the |sortText| to be the priority and return.
+  auto finalize = [&]() {
+    const size_t kMaxResultSize = 100u;
+    if (items.size() > kMaxResultSize) {
+      items.resize(kMaxResultSize);
+      complete_response->result.isIncomplete = true;
+    }
+
+    // Set sortText. Note that this happens after resizing - we could do it
+    // before, but then we should also sort by priority.
     char buf[16];
-    for (auto& item : items)
-      item.sortText = tofixedbase64(item.priority_, buf);
+    for (size_t i = 0; i < items.size(); ++i)
+      items[i].sortText = tofixedbase64(i, buf);
+  };
+
+  // No complete text; don't run any filtering logic except to trim the items.
+  if (complete_text.empty()) {
+    finalize();
     return;
   }
 
   // Make sure all items have |filterText| set, code that follow needs it.
-  for (auto& item : items)
+  for (auto& item : items) {
     if (!item.filterText)
       item.filterText = item.label;
+  }
 
-  // If the text doesn't start with underscore,
-  // remove all candidates that start with underscore.
+  // If the text doesn't start with underscore, remove all candidates that
+  // start with underscore.
   if (complete_text[0] != '_') {
     auto filter = [](const lsCompletionItem& item) {
       return (*item.filterText)[0] == '_';
@@ -144,26 +162,23 @@ void FilterAndSortCompletionResponse(
                 items.end());
   }
 
-  // Fuzzy match.
+  // Fuzzy match. Remove any candidates that do not match.
   bool found = false;
   for (auto& item : items) {
     std::tie(item.found_, item.skip_) =
         SubsequenceCountSkip(complete_text, *item.filterText);
     found = found || item.found_;
   }
-
   if (found) {
     auto filter = [](const lsCompletionItem& item) { return !item.found_; };
     items.erase(std::remove_if(items.begin(), items.end(), filter),
                 items.end());
-  }
 
-  // Order all items and set |sortText|.
-  const size_t kMaxSortSize = 200u;
-  if (found) {
-    if (items.size() <= kMaxSortSize)
+    // Order all items and set |sortText|.
+    const size_t kMaxSortSize = 200u;
+    if (items.size() <= kMaxSortSize) {
       std::sort(items.begin(), items.end(), CompareLsCompletionItem);
-    else {
+    } else {
       // Just place items that found the text before those not.
       std::vector<lsCompletionItem> items_found, items_notfound;
       for (auto& item : items)
@@ -173,15 +188,8 @@ void FilterAndSortCompletionResponse(
     }
   }
 
-  char buf[16];
-  for (size_t i = 0; i < items.size(); ++i)
-    items[i].sortText = tofixedbase64(i, buf);
-
-  const size_t kMaxResultSize = 100u;
-  if (items.size() > kMaxResultSize) {
-    items.resize(kMaxResultSize);
-    complete_response->result.isIncomplete = true;
-  }
+  // Trim result.
+  finalize();
 }
 
 struct TextDocumentCompletionHandler : MessageHandler {
@@ -239,7 +247,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
       }
       // If the character is > but - does not preced it, or if it is : and :
       // does not preced it, do not show completion results.
-      else if (preceding_index < (int)buffer_line.size()) {
+      else if (preceding_index >= 0 &&
+               preceding_index < (int)buffer_line.size()) {
         char preceding = buffer_line[preceding_index];
         did_fail_check = (preceding != '-' && character == ">") ||
                          (preceding != ':' && character == ":");
