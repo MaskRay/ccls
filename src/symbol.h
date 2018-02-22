@@ -40,6 +40,7 @@ enum class Role : uint16_t {
   Dynamic = 1 << 6,
   Address = 1 << 7,
   Implicit = 1 << 8,
+  All = (1 << 9) - 1,
 };
 MAKE_REFLECT_TYPE_PROXY(Role);
 MAKE_ENUM_HASHABLE(Role);

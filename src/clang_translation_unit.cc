@@ -6,12 +6,6 @@
 
 #include <loguru.hpp>
 
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <mutex>
-#include <sstream>
-
 namespace {
 
 void EmitDiagnostics(std::string path,

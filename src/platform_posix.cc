@@ -42,7 +42,6 @@
 #include <malloc.h>
 #endif
 
-#include <iostream>
 #include <string>
 
 namespace {

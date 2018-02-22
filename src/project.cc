@@ -4,13 +4,14 @@
 #include "language.h"
 #include "match.h"
 #include "platform.h"
-#include "serializer.h"
+#include "serializers/json.h"
 #include "timer.h"
 #include "utils.h"
 
 #include <clang-c/CXCompilationDatabase.h>
 #include <doctest/doctest.h>
 #include <loguru.hpp>
+#include <rapidjson/writer.h>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>

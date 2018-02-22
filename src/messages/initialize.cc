@@ -5,18 +5,17 @@
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
-#include "serializer.h"
 #include "serializers/json.h"
 #include "timer.h"
 #include "working_files.h"
 
 #include <loguru.hpp>
 
+#include <iostream>
 #include <stdexcept>
 
 // TODO Cleanup global variables
 extern std::string g_init_options;
-int g_index_comments;
 
 namespace {
 
@@ -503,7 +502,6 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
           }
         }
 
-        g_index_comments = config->index.comments;
         if (config->cacheDirectory.empty()) {
           LOG_S(ERROR) << "cacheDirectory cannot be empty.";
           exit(1);

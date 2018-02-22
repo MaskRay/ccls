@@ -11,6 +11,8 @@ struct Ipc_TextDocumentReferences
   struct lsReferenceContext {
     // Include the declaration of the current symbol.
     bool includeDeclaration;
+    // Include references with these |Role| bits set.
+    Role role = Role::All;
   };
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -21,7 +23,8 @@ struct Ipc_TextDocumentReferences
   Params params;
 };
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext,
-                    includeDeclaration);
+                    includeDeclaration,
+                    role);
 MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::Params,
                     textDocument,
                     position,
@@ -56,9 +59,10 @@ struct TextDocumentReferencesHandler
       // Found symbol. Return references.
       EachUse(db, sym, request->params.context.includeDeclaration,
               [&](Use use) {
-                if (optional<lsLocationEx> ls_loc = GetLsLocationEx(
-                        db, working_files, use, config->xref.container))
-                  out.result.push_back(*ls_loc);
+                if (use.role & request->params.context.role)
+                  if (optional<lsLocationEx> ls_loc = GetLsLocationEx(
+                          db, working_files, use, config->xref.container))
+                    out.result.push_back(*ls_loc);
               });
       break;
     }

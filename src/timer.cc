@@ -2,8 +2,6 @@
 
 #include <loguru.hpp>
 
-#include <iostream>
-
 Timer::Timer() {
   Reset();
 }

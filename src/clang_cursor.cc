@@ -21,9 +21,6 @@ Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
                Position((int16_t)end_line - 1, (int16_t)end_column - 1));
 }
 
-// TODO Place this global variable into config
-extern int g_index_comments;
-
 ClangType::ClangType() : cx_type() {}
 
 ClangType::ClangType(const CXType& other) : cx_type(other) {}
@@ -231,8 +228,6 @@ std::string ClangCursor::get_type_description() const {
 }
 
 NtString ClangCursor::get_comments() const {
-  if (!g_index_comments)
-    return {};
   CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
   if (clang_Range_isNull(range))
     return {};

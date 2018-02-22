@@ -577,7 +577,8 @@ void SetVarDetail(IndexVar* var,
   // string. Shorten it to just "lambda".
   if (type_name.find("(lambda at") != std::string::npos)
     type_name = "lambda";
-  def.comments = cursor.get_comments();
+  if (param->config->index.comments)
+    def.comments = cursor.get_comments();
   def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   // TODO how to make PrettyPrint'ed variable name qualified?
@@ -1258,7 +1259,8 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.kind = lsSymbolKind::Macro;
-        var_def->def.comments = cursor.get_comments();
+        if (param->config->index.comments)
+          var_def->def.comments = cursor.get_comments();
         var_def->def.spell =
             SetUse(db, decl_loc_spelling, parent, Role::Definition);
         var_def->def.extent = SetUse(
@@ -1642,7 +1644,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       IndexFuncId func_id = db->ToFuncId(decl_cursor_resolved.cx_cursor);
       IndexFunc* func = db->Resolve(func_id);
-      func->def.comments = decl_cursor.get_comments();
+      if (param->config->index.comments)
+        func->def.comments = decl_cursor.get_comments();
       func->def.kind = GetSymbolKind(decl->entityInfo->kind);
       func->def.storage =
           GetStorageClass(clang_Cursor_getStorageClass(decl->cursor));
@@ -1790,7 +1793,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetTypeName(type, decl_cursor, decl->semanticContainer,
                   decl->entityInfo->name, param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
-      type->def.comments = decl_cursor.get_comments();
+      if (param->config->index.comments)
+        type->def.comments = decl_cursor.get_comments();
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
       // line, with spelling name replaced with qualified name.
@@ -1838,7 +1842,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetTypeName(type, decl_cursor, decl->semanticContainer,
                   decl->entityInfo->name, param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
-      type->def.comments = decl_cursor.get_comments();
+      if (param->config->index.comments)
+        type->def.comments = decl_cursor.get_comments();
       // }
 
       if (decl->isDefinition) {

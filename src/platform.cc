@@ -3,7 +3,6 @@
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
-#include <iostream>
 #include <iterator>
 #include <sstream>
 #include <string>

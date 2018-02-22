@@ -4,7 +4,6 @@
 #include "queue_manager.h"
 
 #include <doctest/doctest.h>
-#include <iostream>
 
 // static
 optional<Matcher> Matcher::Create(const std::string& search) {

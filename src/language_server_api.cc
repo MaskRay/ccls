@@ -5,6 +5,7 @@
 
 #include <doctest/doctest.h>
 #include <loguru.hpp>
+#include <rapidjson/writer.h>
 
 #include <stdio.h>
 #include <iostream>
@@ -175,6 +176,17 @@ MessageRegistry* MessageRegistry::instance() {
 }
 
 lsBaseOutMessage::~lsBaseOutMessage() = default;
+
+void lsBaseOutMessage::Write(std::ostream& out) {
+  rapidjson::StringBuffer output;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+  JsonWriter json_writer{&writer};
+  ReflectWriter(json_writer);
+
+  out << "Content-Length: " << output.GetSize() << "\r\n\r\n"
+      << output.GetString();
+  out.flush();
+}
 
 void lsResponseError::Write(Writer& visitor) {
   auto& value = *this;

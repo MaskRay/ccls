@@ -3,17 +3,10 @@
 #include "config.h"
 #include "ipc.h"
 #include "serializer.h"
-#include "serializers/json.h"
 #include "utils.h"
 
-#include <optional.h>
-#include <rapidjson/writer.h>
-#include <variant.h>
-
-#include <algorithm>
-#include <iostream>
+#include <iosfwd>
 #include <unordered_map>
-#include <unordered_set>
 
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
@@ -63,7 +56,10 @@ struct MessageRegistryRegister {
 
 struct lsBaseOutMessage {
   virtual ~lsBaseOutMessage();
-  virtual void Write(std::ostream& out) = 0;
+  virtual void ReflectWriter(Writer&) = 0;
+
+  // Send the message to the language client by writing it to stdout.
+  void Write(std::ostream& out);
 };
 
 template <typename TDerived>
@@ -71,18 +67,8 @@ struct lsOutMessage : lsBaseOutMessage {
   // All derived types need to reflect on the |jsonrpc| member.
   std::string jsonrpc = "2.0";
 
-  // Send the message to the language client by writing it to stdout.
-  void Write(std::ostream& out) override {
-    rapidjson::StringBuffer output;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-    JsonWriter json_writer(&writer);
-    auto that = static_cast<TDerived*>(this);
-    Reflect(json_writer, *that);
-
-    out << "Content-Length: " << output.GetSize();
-    out << (char)13 << char(10) << char(13) << char(10);  // CRLFCRLF
-    out << output.GetString();
-    out.flush();
+  void ReflectWriter(Writer& writer) override {
+    Reflect(writer, static_cast<TDerived&>(*this));
   }
 };
 
