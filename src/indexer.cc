@@ -2195,7 +2195,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     PerformanceImportFile* perf,
     ClangIndex* index,
     bool dump_ast) {
-  if (!config->enableIndexing)
+  if (!config->index.enabled)
     return nullopt;
 
   file = NormalizePath(file);

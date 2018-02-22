@@ -598,14 +598,14 @@ Project::Entry Project::FindCompilationEntryForFile(
 void Project::ForAllFilteredFiles(
     Config* config,
     std::function<void(int i, const Entry& entry)> action) {
-  GroupMatch matcher(config->indexWhitelist, config->indexBlacklist);
+  GroupMatch matcher(config->index.whitelist, config->index.blacklist);
   for (int i = 0; i < entries.size(); ++i) {
     const Project::Entry& entry = entries[i];
     std::string failure_reason;
     if (matcher.IsMatch(entry.filename, &failure_reason))
       action(i, entries[i]);
     else {
-      if (config->logSkippedPathsForIndex) {
+      if (config->index.logSkippedPaths) {
         LOG_S(INFO) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
                     << failure_reason << "; skipping " << entry.filename;
       }

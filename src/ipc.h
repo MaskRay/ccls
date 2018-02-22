@@ -48,7 +48,7 @@ enum class IpcId : int {
   CqueryFileInfo,
   CqueryFreshenIndex,
   // Messages used in tree views.
-  CqueryTypeHierarchyTree,
+  CqueryInheritanceHierarchy,
   CqueryCallTreeInitial,
   CqueryCallTreeExpand,
   CqueryMemberHierarchyInitial,

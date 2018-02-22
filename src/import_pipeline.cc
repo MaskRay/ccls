@@ -352,7 +352,7 @@ void ParseFile(Config* config,
                                 entry.args, file_contents, &perf);
 
   if (!indexes) {
-    if (config->enableIndexing &&
+    if (config->index.enabled &&
         !std::holds_alternative<std::monostate>(request.id)) {
       Out_Error out;
       out.id = request.id;

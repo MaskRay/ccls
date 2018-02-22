@@ -332,7 +332,7 @@ void LaunchStdinLoop(Config* config,
         case IpcId::WorkspaceSymbol:
         case IpcId::CqueryFileInfo:
         case IpcId::CqueryFreshenIndex:
-        case IpcId::CqueryTypeHierarchyTree:
+        case IpcId::CqueryInheritanceHierarchy:
         case IpcId::CqueryCallTreeInitial:
         case IpcId::CqueryCallTreeExpand:
         case IpcId::CqueryMemberHierarchyInitial:

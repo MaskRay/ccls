@@ -18,7 +18,7 @@ The language client plugin needs to send initialization options in the
 If necessary, the command line option --init can be used to override
 initialization options specified by the client. For example, in shell syntax:
 
-  '--init={"indexWhitelist": ["."], "index": {"comments": 2}}'
+  '--init={"index": {"comments": 2, "whitelist": ["."]}}'
 */
 struct Config {
   // Root directory of the project. **Not available for configuration**
@@ -56,31 +56,6 @@ struct Config {
   // Additional arguments to pass to clang.
   std::vector<std::string> extraClangArguments;
 
-  // If a translation unit's absolute path matches any EMCAScript regex in the
-  // whitelist, or does not match any regex in the blacklist, it will be indexed.
-  // To only index files in the whitelist, add ".*" to the blacklist.
-  // `std::regex_search(path, regex, std::regex_constants::match_any)`
-  //
-  // Example: `ash/.*\.cc`
-  std::vector<std::string> indexWhitelist;
-  std::vector<std::string> indexBlacklist;
-  // If true, project paths that were skipped by the whitelist/blacklist will
-  // be logged.
-  bool logSkippedPathsForIndex = false;
-
-  // Maximum workspace search results.
-  int maxWorkspaceSearchResults = 500;
-  // If true, workspace search results will be dynamically rescored/reordered
-  // as the search progresses. Some clients do their own ordering and assume
-  // that the results stay sorted in the same order as the search progresses.
-  bool sortWorkspaceSearchResults = true;
-
-  // Force a certain number of indexer threads. If less than 1 a default value
-  // is be used (80% number of CPU cores).
-  int indexerCount = 0;
-  // If false, the indexer will be disabled.
-  bool enableIndexing = true;
-
   // If true, cquery will send progress reports while indexing
   // How often should cquery send progress report messages?
   //  -1: never
@@ -97,31 +72,8 @@ struct Config {
   // If true, document links are reported for #include directives.
   bool showDocumentLinksOnIncludes = true;
 
-  // Maximum path length to show in completion results. Paths longer than this
-  // will be elided with ".." put at the front. Set to 0 or a negative number
-  // to disable eliding.
-  int includeCompletionMaximumPathLength = 30;
-  // Whitelist that file paths will be tested against. If a file path does not
-  // end in one of these values, it will not be considered for auto-completion.
-  // An example value is { ".h", ".hpp" }
-  //
-  // This is significantly faster than using a regex.
-  std::vector<std::string> includeCompletionWhitelistLiteralEnding = {
-      ".h", ".hpp", ".hh"};
-  // Regex patterns to match include completion candidates against. They
-  // receive the absolute file path.
-  //
-  // For example, to hide all files in a /CACHE/ folder, use ".*/CACHE/.*"
-  std::vector<std::string> includeCompletionWhitelist;
-  std::vector<std::string> includeCompletionBlacklist;
-
   // If true, diagnostics from a full document parse will be reported.
   bool diagnosticsOnParse = true;
-  // If true, diagnostics from code completion will be reported.
-  bool diagnosticsOnCodeCompletion = true;
-
-  // Enables code lens on parameter and function variables.
-  bool codeLensOnLocalVariables = true;
 
   // Version of the client. If undefined the version check is skipped. Used to
   // inform users their vscode client is too old and needs to be updated.
@@ -133,14 +85,12 @@ struct Config {
   };
   ClientCapability client;
 
-  struct Completion {
-    // If true, filter and sort completion response. cquery filters and sorts
-    // completions to try to be nicer to clients that can't handle big numbers
-    // of completion candidates. This behaviour can be disabled by specifying
-    // false for the option. This option is the most useful for LSP clients
-    // that implement their own filtering and sorting logic.
-    bool filterAndSort = true;
+  struct CodeLens {
+    // Enables code lens on parameter and function variables.
+    bool localVariables = true;
+  } codeLens;
 
+  struct Completion {
     // Some completion UI, such as Emacs' completion-at-point and company-lsp,
     // display completion item label and detail side by side.
     // This does not look right, when you see things like:
@@ -159,25 +109,36 @@ struct Config {
     // Be wary, this is quickly quite verbose,
     // items can end up truncated by the UIs.
     bool detailedLabel = false;
-  };
-  Completion completion;
 
-  struct Xref {
-    // If true, |Location[]| response will include lexical container.
-    bool container = false;
-    // Maximum number of definition/reference/... results.
-    int maxNum = 300;
-  };
-  Xref xref;
+    // If true, filter and sort completion response. cquery filters and sorts
+    // completions to try to be nicer to clients that can't handle big numbers
+    // of completion candidates. This behaviour can be disabled by specifying
+    // false for the option. This option is the most useful for LSP clients
+    // that implement their own filtering and sorting logic.
+    bool filterAndSort = true;
+
+    // Regex patterns to match include completion candidates against. They
+    // receive the absolute file path.
+    //
+    // For example, to hide all files in a /CACHE/ folder, use ".*/CACHE/.*"
+    std::vector<std::string> includeBlacklist;
+
+    // Maximum path length to show in completion results. Paths longer than this
+    // will be elided with ".." put at the front. Set to 0 or a negative number
+    // to disable eliding.
+    int includeMaxPathSize = 30;
+
+    // Whitelist that file paths will be tested against. If a file path does not
+    // end in one of these values, it will not be considered for auto-completion.
+    // An example value is { ".h", ".hpp" }
+    //
+    // This is significantly faster than using a regex.
+    std::vector<std::string> includeSuffixWhitelist = {".h", ".hpp", ".hh"};
+
+    std::vector<std::string> includeWhitelist;
+  } completion;
 
   struct Index {
-    // 0: none, 1: doxygen, 2: all comments
-    // Plugin support for clients:
-    // - https://github.com/emacs-lsp/lsp-ui
-    // - https://github.com/emacs-lsp/lsp-mode/pull/224
-    // - https://github.com/autozimu/LanguageClient-neovim/issues/224
-    int comments = 2;
-
     // Attempt to convert calls of make* functions to constructors based on
     // hueristics.
     //
@@ -185,8 +146,49 @@ struct Config {
     // invocations. Specifically, cquery will try to attribute a ctor call
     // whenever the function name starts with make (ignoring case).
     bool attributeMakeCallsToCtor = true;
-  };
-  Index index;
+
+    // If a translation unit's absolute path matches any EMCAScript regex in the
+    // whitelist, or does not match any regex in the blacklist, it will be indexed.
+    // To only index files in the whitelist, add ".*" to the blacklist.
+    // `std::regex_search(path, regex, std::regex_constants::match_any)`
+    //
+    // Example: `ash/.*\.cc`
+    std::vector<std::string> blacklist;
+
+    // 0: none, 1: Doxygen, 2: all comments
+    // Plugin support for clients:
+    // - https://github.com/emacs-lsp/lsp-ui
+    // - https://github.com/autozimu/LanguageClient-neovim/issues/224
+    int comments = 2;
+
+    // If false, the indexer will be disabled.
+    bool enabled = true;
+
+    // If true, project paths that were skipped by the whitelist/blacklist will
+    // be logged.
+    bool logSkippedPaths = false;
+
+    // Number of indexer threads. If 0, 80% of cores are used.
+    int threads = 0;
+
+    std::vector<std::string> whitelist;
+  } index;
+
+  struct WorkspaceSymbol {
+    // Maximum workspace search results.
+    int maxNum = 1000;
+    // If true, workspace search results will be dynamically rescored/reordered
+    // as the search progresses. Some clients do their own ordering and assume
+    // that the results stay sorted in the same order as the search progresses.
+    bool sort = true;
+  } workspaceSymbol;
+
+  struct Xref {
+    // If true, |Location[]| response will include lexical container.
+    bool container = false;
+    // Maximum number of definition/reference/... results.
+    int maxNum = 2000;
+  } xref;
 
   //// For debugging
 
@@ -194,9 +196,24 @@ struct Config {
   std::vector<std::string> dumpAST;
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
-MAKE_REFLECT_STRUCT(Config::Completion, filterAndSort, detailedLabel);
+MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
+MAKE_REFLECT_STRUCT(Config::Completion,
+                    detailedLabel,
+                    filterAndSort,
+                    includeBlacklist,
+                    includeMaxPathSize,
+                    includeSuffixWhitelist,
+                    includeWhitelist);
+MAKE_REFLECT_STRUCT(Config::Index,
+                    attributeMakeCallsToCtor,
+                    blacklist,
+                    comments,
+                    enabled,
+                    logSkippedPaths,
+                    threads,
+                    whitelist);
+MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
-MAKE_REFLECT_STRUCT(Config::Index, comments, attributeMakeCallsToCtor);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseCommand,
                     compilationDatabaseDirectory,
@@ -206,35 +223,20 @@ MAKE_REFLECT_STRUCT(Config,
 
                     extraClangArguments,
 
-                    indexWhitelist,
-                    indexBlacklist,
-                    logSkippedPathsForIndex,
-
-                    maxWorkspaceSearchResults,
-                    sortWorkspaceSearchResults,
-
-                    indexerCount,
-                    enableIndexing,
                     progressReportFrequencyMs,
-
-                    includeCompletionMaximumPathLength,
-                    includeCompletionWhitelistLiteralEnding,
-                    includeCompletionWhitelist,
-                    includeCompletionBlacklist,
 
                     showDocumentLinksOnIncludes,
 
                     diagnosticsOnParse,
-                    diagnosticsOnCodeCompletion,
-
-                    codeLensOnLocalVariables,
 
                     clientVersion,
 
                     client,
+                    codeLens,
                     completion,
-                    xref,
                     index,
+                    workspaceSymbol,
+                    xref,
 
                     dumpAST);
 

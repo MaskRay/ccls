@@ -17,13 +17,13 @@ struct CompletionCandidate {
 };
 
 std::string ElideLongPath(Config* config, const std::string& path) {
-  if (config->includeCompletionMaximumPathLength <= 0)
+  if (config->completion.includeMaxPathSize <= 0)
     return path;
 
-  if ((int)path.size() <= config->includeCompletionMaximumPathLength)
+  if ((int)path.size() <= config->completion.includeMaxPathSize)
     return path;
 
-  size_t start = path.size() - config->includeCompletionMaximumPathLength;
+  size_t start = path.size() - config->completion.includeMaxPathSize;
   return ".." + path.substr(start + 2);
 }
 
@@ -110,10 +110,10 @@ void IncludeComplete::Rescan() {
   absolute_path_to_completion_item.clear();
   inserted_paths.clear();
 
-  if (!match_ && (!config_->includeCompletionWhitelist.empty() ||
-                  !config_->includeCompletionBlacklist.empty()))
-    match_ = MakeUnique<GroupMatch>(config_->includeCompletionWhitelist,
-                                    config_->includeCompletionBlacklist);
+  if (!match_ && (!config_->completion.includeWhitelist.empty() ||
+                  !config_->completion.includeBlacklist.empty()))
+    match_ = MakeUnique<GroupMatch>(config_->completion.includeWhitelist,
+                                    config_->completion.includeBlacklist);
 
   is_scanning = true;
   WorkThread::StartThread("scan_includes", [this]() {
@@ -151,7 +151,7 @@ void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,
 
 void IncludeComplete::AddFile(const std::string& absolute_path) {
   if (!EndsWithAny(absolute_path,
-                   config_->includeCompletionWhitelistLiteralEnding))
+                   config_->completion.includeSuffixWhitelist))
     return;
   if (match_ && !match_->IsMatch(absolute_path))
     return;
@@ -184,7 +184,7 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
       directory, true /*recursive*/, false /*add_folder_to_path*/,
       [&](const std::string& path) {
         if (!EndsWithAny(path,
-                         config_->includeCompletionWhitelistLiteralEnding))
+                         config_->completion.includeSuffixWhitelist))
           return;
         if (match_ && !match_->IsMatch(directory + path))
           return;

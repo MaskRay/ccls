@@ -76,8 +76,8 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
     // db->detailed_names indices of each lsSymbolInformation in out.result
     std::vector<int> result_indices;
     std::vector<lsSymbolInformation> unsorted_results;
-    inserted_results.reserve(config->maxWorkspaceSearchResults);
-    result_indices.reserve(config->maxWorkspaceSearchResults);
+    inserted_results.reserve(config->workspaceSymbol.maxNum);
+    result_indices.reserve(config->workspaceSymbol.maxNum);
 
     // We use detailed_names without parameters for matching.
 
@@ -92,14 +92,14 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
         if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
                                    &unsorted_results)) {
           result_indices.push_back(i);
-          if (unsorted_results.size() >= config->maxWorkspaceSearchResults)
+          if (unsorted_results.size() >= config->workspaceSymbol.maxNum)
             break;
         }
       }
     }
 
     // Find subsequence matches.
-    if (unsorted_results.size() < config->maxWorkspaceSearchResults) {
+    if (unsorted_results.size() < config->workspaceSymbol.maxNum) {
       std::string query_without_space;
       query_without_space.reserve(query.size());
       for (char c : query)
@@ -116,14 +116,14 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
           if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
                                      &unsorted_results)) {
             result_indices.push_back(i);
-            if (unsorted_results.size() >= config->maxWorkspaceSearchResults)
+            if (unsorted_results.size() >= config->workspaceSymbol.maxNum)
               break;
           }
         }
       }
     }
 
-    if (config->sortWorkspaceSearchResults) {
+    if (config->workspaceSymbol.sort) {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
       for (int i : result_indices)

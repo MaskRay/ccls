@@ -590,17 +590,17 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       // Start indexer threads. Start this after loading the project, as that
       // may take a long time. Indexer threads will emit status/progress
       // reports.
-      if (config->indexerCount == 0) {
+      if (config->index.threads == 0) {
         // If the user has not specified how many indexers to run, try to
         // guess an appropriate value. Default to 80% utilization.
         const float kDefaultTargetUtilization = 0.8f;
-        config->indexerCount = (int)(std::thread::hardware_concurrency() *
+        config->index.threads = (int)(std::thread::hardware_concurrency() *
                                      kDefaultTargetUtilization);
-        if (config->indexerCount <= 0)
-          config->indexerCount = 1;
+        if (config->index.threads <= 0)
+          config->index.threads = 1;
       }
-      LOG_S(INFO) << "Starting " << config->indexerCount << " indexers";
-      for (int i = 0; i < config->indexerCount; ++i) {
+      LOG_S(INFO) << "Starting " << config->index.threads << " indexers";
+      for (int i = 0; i < config->index.threads; ++i) {
         WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
           Indexer_Main(config, file_consumer_shared, timestamp_manager,
                        import_manager, import_pipeline_status, project,
