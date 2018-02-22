@@ -169,10 +169,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   result.args.push_back(entry.args[i - 1]);
 
   // Add -working-directory if not provided.
-  if (!AnyStartsWith(entry.args, "-working-directory")) {
-    result.args.emplace_back("-working-directory");
-    result.args.emplace_back(entry.directory);
-  }
+  if (!AnyStartsWith(entry.args, "-working-directory"))
+    result.args.emplace_back("-working-directory=" + entry.directory);
 
   if (config->mode == ProjectMode::DotCquery &&
       !AnyStartsWith(entry.args, "-std=")) {
@@ -659,28 +657,28 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "-lstdc++", "&/dir/myfile.cc",
+        {"clang", "-working-directory=/dir/", "-lstdc++", "&/dir/myfile.cc",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"clang.exe"},
         /* expected */
-        {"clang.exe", "-working-directory", "/dir/",
+        {"clang.exe", "-working-directory=/dir/",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
-        {"clang", "-working-directory", "/dir/",
+        {"clang", "-working-directory=/dir/",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
         /* expected */
-        {"clang", "-working-directory", "/dir/", "--foo",
+        {"clang", "-working-directory=/dir/", "--foo",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
   }
@@ -688,14 +686,14 @@ TEST_SUITE("Project") {
   TEST_CASE("Windows path normalization") {
     CheckFlags("E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
                /* expected */
-               {"clang", "-working-directory", "E:/workdir",
+               {"clang", "-working-directory=E:/workdir",
                 "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags("E:/workdir", "E:/workdir/bar.cc",
                /* raw */ {"clang", "E:/workdir/bar.cc"},
                /* expected */
-               {"clang", "-working-directory", "E:/workdir",
+               {"clang", "-working-directory=E:/workdir",
                 "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
@@ -704,7 +702,7 @@ TEST_SUITE("Project") {
     CheckFlags("/home/user", "/home/user/foo/bar.c",
                /* raw */ {"cc", "-O0", "foo/bar.c"},
                /* expected */
-               {"cc", "-working-directory", "/home/user", "-O0",
+               {"cc", "-working-directory=/home/user", "-O0",
                 "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
@@ -713,7 +711,7 @@ TEST_SUITE("Project") {
     CheckFlags("/home/user", "/home/user/foo/bar.cc",
                /* raw */ {"clang", "-DDONT_IGNORE_ME"},
                /* expected */
-               {"clang", "-working-directory", "/home/user", "-DDONT_IGNORE_ME",
+               {"clang", "-working-directory=/home/user", "-DDONT_IGNORE_ME",
                 "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
                 "-fparse-all-comments"});
   }
