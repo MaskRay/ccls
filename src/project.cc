@@ -901,8 +901,7 @@ TEST_SUITE("Project") {
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
-         "-working-directory",
-         "/w/c/s/out/Release",
+         "-working-directory=/w/c/s/out/Release",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
          "-DUSE_UDEV",
@@ -1236,8 +1235,7 @@ TEST_SUITE("Project") {
 
         /* expected */
         {"../../third_party/llvm-build/Release+Asserts/bin/clang++",
-         "-working-directory",
-         "/w/c/s/out/Release",
+         "-working-directory=/w/c/s/out/Release",
          "-DV8_DEPRECATION_WARNINGS",
          "-DDCHECK_ALWAYS_ON=1",
          "-DUSE_UDEV",
