@@ -42,6 +42,16 @@ struct TextDocumentDocumentSymbolHandler
           GetSymbolInfo(db, working_files, sym, true /*use_short_name*/);
       if (!info)
         continue;
+      if (sym.kind == SymbolKind::Var) {
+        QueryVar& var = db->GetVar(sym);
+        auto* def = var.AnyDef();
+        if (!def || !def->spell) continue;
+        // Ignore local variables.
+        if (def->spell->kind == SymbolKind::Func &&
+            def->storage != StorageClass::Static &&
+            def->storage != StorageClass::Extern)
+          continue;
+      }
 
       if (optional<lsLocation> location = GetLsLocation(
               db, working_files,

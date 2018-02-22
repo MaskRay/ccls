@@ -134,8 +134,12 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     inactive_regions,
                     dependencies);
 
-template <typename Q, typename Def>
+template <typename Q, typename QDef>
 struct QueryEntity {
+  using Def = QDef;
+  using DefUpdate = WithUsr<Def>;
+  using DeclarationsUpdate = MergeableUpdate<Id<Q>, Use>;
+  using UsesUpdate = MergeableUpdate<Id<Q>, Use>;
   Def* AnyDef() {
     Def* ret = nullptr;
     for (auto& i : static_cast<Q*>(this)->def) {
@@ -149,12 +153,8 @@ struct QueryEntity {
 };
 
 struct QueryType : QueryEntity<QueryType, TypeDefDefinitionData<QueryFamily>> {
-  using Def = TypeDefDefinitionData<QueryFamily>;
-  using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryTypeId, Use>;
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
-  using UsesUpdate = MergeableUpdate<QueryTypeId, Use>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
@@ -168,11 +168,7 @@ struct QueryType : QueryEntity<QueryType, TypeDefDefinitionData<QueryFamily>> {
 };
 
 struct QueryFunc : QueryEntity<QueryFunc, FuncDefDefinitionData<QueryFamily>> {
-  using Def = FuncDefDefinitionData<QueryFamily>;
-  using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Use>;
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
-  using UsesUpdate = MergeableUpdate<QueryFuncId, Use>;
 
   Usr usr;
   Maybe<Id<void>> symbol_idx;
@@ -185,11 +181,6 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDefDefinitionData<QueryFamily>> {
 };
 
 struct QueryVar : QueryEntity<QueryVar, VarDefDefinitionData<QueryFamily>> {
-  using Def = VarDefDefinitionData<QueryFamily>;
-  using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<QueryVarId, Use>;
-  using UsesUpdate = MergeableUpdate<QueryVarId, Use>;
-
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   std::forward_list<Def> def;
