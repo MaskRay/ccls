@@ -440,6 +440,14 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<ClangCompleteManager::CompletionRequest> request =
         completion_manager->completion_request_.Dequeue();
+
+    // Drop older requests if we're not buffering.
+    while (completion_manager->config_->completion.dropOldRequests &&
+           !completion_manager->completion_request_.IsEmpty()) {
+      completion_manager->on_dropped_(request->id);
+      request = completion_manager->completion_request_.Dequeue();
+    }
+
     std::string path = request->document.uri.GetPath();
 
     std::shared_ptr<CompletionSession> session =
@@ -625,25 +633,35 @@ CompletionSession::~CompletionSession() {}
 ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
     : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
 
-ClangCompleteManager::CompletionRequest::CompletionRequest(const lsTextDocumentIdentifier& document,
-                                                              const bool& emit_diagnostics)
-    : document(document), emit_diagnostics(emit_diagnostics) {}
-ClangCompleteManager::CompletionRequest::CompletionRequest(const lsTextDocumentIdentifier& document,
-                                                              const lsPosition& position,
-                                                              const OnComplete& on_complete,
-                                                              const bool& emit_diagnostics)
-    : document(document), position(position), on_complete(on_complete), emit_diagnostics(emit_diagnostics) {}
+ClangCompleteManager::CompletionRequest::CompletionRequest(
+    const lsRequestId& id,
+    const lsTextDocumentIdentifier& document,
+    bool emit_diagnostics)
+    : id(id), document(document), emit_diagnostics(emit_diagnostics) {}
+ClangCompleteManager::CompletionRequest::CompletionRequest(
+    const lsRequestId& id,
+    const lsTextDocumentIdentifier& document,
+    const lsPosition& position,
+    const OnComplete& on_complete,
+    bool emit_diagnostics)
+    : id(id),
+      document(document),
+      position(position),
+      on_complete(on_complete),
+      emit_diagnostics(emit_diagnostics) {}
 
 ClangCompleteManager::ClangCompleteManager(Config* config,
                                            Project* project,
                                            WorkingFiles* working_files,
                                            OnDiagnostic on_diagnostic,
-                                           OnIndex on_index)
+                                           OnIndex on_index,
+                                           OnDropped on_dropped)
     : config_(config),
       project_(project),
       working_files_(working_files),
       on_diagnostic_(on_diagnostic),
       on_index_(on_index),
+      on_dropped_(on_dropped),
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {
   new std::thread([&]() {
@@ -660,16 +678,19 @@ ClangCompleteManager::ClangCompleteManager(Config* config,
 ClangCompleteManager::~ClangCompleteManager() {}
 
 void ClangCompleteManager::CodeComplete(
+    const lsRequestId& id,
     const lsTextDocumentPositionParams& completion_location,
     const OnComplete& on_complete) {
   completion_request_.PushBack(MakeUnique<CompletionRequest>(
-      completion_location.textDocument, completion_location.position,
+      id, completion_location.textDocument, completion_location.position,
       on_complete, false));
 }
 
 void ClangCompleteManager::DiagnosticsUpdate(
+    const lsRequestId& id,
     const lsTextDocumentIdentifier& document) {
-  completion_request_.PushBack(MakeUnique<CompletionRequest>(document, true));
+  completion_request_.PushBack(
+      MakeUnique<CompletionRequest>(id, document, true));
 }
 
 void ClangCompleteManager::NotifyView(const std::string& filename) {

@@ -47,6 +47,7 @@ struct ClangCompleteManager {
   using OnComplete =
       std::function<void(const std::vector<lsCompletionItem>& results,
                          bool is_cached_result)>;
+  using OnDropped = std::function<void(lsRequestId request_id)>;
 
   struct ParseRequest {
     ParseRequest(const std::string& path);
@@ -55,13 +56,16 @@ struct ClangCompleteManager {
     std::string path;
   };
   struct CompletionRequest {
-    CompletionRequest(const lsTextDocumentIdentifier& document,
-                      const bool& emit_diagnostics);
-    CompletionRequest(const lsTextDocumentIdentifier& document,
+    CompletionRequest(const lsRequestId& id,
+                      const lsTextDocumentIdentifier& document,
+                      bool emit_diagnostics);
+    CompletionRequest(const lsRequestId& id,
+                      const lsTextDocumentIdentifier& document,
                       const lsPosition& position,
                       const OnComplete& on_complete,
-                      const bool& emit_diagnostics);
+                      bool emit_diagnostics);
 
+    lsRequestId id;
     lsTextDocumentIdentifier document;
     optional<lsPosition> position;
     OnComplete on_complete;  // May be null/empty.
@@ -72,15 +76,18 @@ struct ClangCompleteManager {
                        Project* project,
                        WorkingFiles* working_files,
                        OnDiagnostic on_diagnostic,
-                       OnIndex on_index);
+                       OnIndex on_index,
+                       OnDropped on_dropped);
   ~ClangCompleteManager();
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.
-  void CodeComplete(const lsTextDocumentPositionParams& completion_location,
+  void CodeComplete(const lsRequestId& request_id,
+                    const lsTextDocumentPositionParams& completion_location,
                     const OnComplete& on_complete);
   // Request a diagnostics update.
-  void DiagnosticsUpdate(const lsTextDocumentIdentifier& document);
+  void DiagnosticsUpdate(const lsRequestId& request_id,
+                         const lsTextDocumentIdentifier& document);
 
   // Notify the completion manager that |filename| has been viewed and we
   // should begin preloading completion data.
@@ -113,6 +120,7 @@ struct ClangCompleteManager {
   WorkingFiles* working_files_;
   OnDiagnostic on_diagnostic_;
   OnIndex on_index_;
+  OnDropped on_dropped_;
 
   using LruSessionCache = LruCache<std::string, CompletionSession>;
 

@@ -110,6 +110,12 @@ struct Config {
     // items can end up truncated by the UIs.
     bool detailedLabel = false;
 
+    // On large projects, completion can take a long time. By default if cquery
+    // receives multiple completion requests while completion is still running
+    // it will only service the newest request. If this is set to false then all
+    // completion requests will be serviced.
+    bool dropOldRequests = true;
+
     // If true, filter and sort completion response. cquery filters and sorts
     // completions to try to be nicer to clients that can't handle big numbers
     // of completion candidates. This behaviour can be disabled by specifying

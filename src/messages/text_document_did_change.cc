@@ -19,6 +19,7 @@ struct TextDocumentDidChangeHandler
     working_files->OnChange(request->params);
     clang_complete->NotifyEdit(path);
     clang_complete->DiagnosticsUpdate(
+        std::monostate(),
         request->params.textDocument.AsTextDocumentIdentifier());
   }
 };

@@ -71,7 +71,8 @@ bool ShouldDisplayIpcTiming(IpcId id) {
 REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
 
 void PrintHelp() {
-  std::cout << R"help(cquery is a low-latency C/C++/Objective-C language server.
+  std::cout
+      << R"help(cquery is a low-latency C/C++/Objective-C language server.
 
 Mode:
   --clang-sanity-check
@@ -186,6 +187,15 @@ void RunQueryDbThread(const std::string& bin_name,
           const std::string& path, const std::vector<std::string>& args) {
         IndexWithTuFromCodeCompletion(config, &file_consumer_shared, tu,
                                       unsaved, path, args);
+      },
+      [](lsRequestId id) {
+        if (!std::holds_alternative<std::monostate>(id)) {
+          Out_Error out;
+          out.id = id;
+          out.error.code = lsErrorCodes::InternalError;
+          out.error.message = "Dropped completion request";
+          QueueManager::WriteStdout(IpcId::Unknown, out);
+        }
       });
 
   IncludeComplete include_complete(config, &project);

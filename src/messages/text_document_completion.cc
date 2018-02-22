@@ -223,7 +223,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
       std::string character = *request->params.context->triggerCharacter;
       int preceding_index = request->params.position.character - 2;
 
-      // If the character is '"', '<' or '/', make sure that the line starts with '#'.
+      // If the character is '"', '<' or '/', make sure that the line starts
+      // with '#'.
       if (character == "\"" || character == "<" || character == "/") {
         size_t i = 0;
         while (i < buffer_line.size() && isspace(buffer_line[i]))
@@ -361,7 +362,8 @@ struct TextDocumentCompletionHandler : MessageHandler {
           callback(global_code_complete_cache->cached_results_,
                    true /*is_cached_result*/);
         });
-        clang_complete->CodeComplete(request->params, freshen_global);
+        clang_complete->CodeComplete(request->id, request->params,
+                                     freshen_global);
       } else if (non_global_code_complete_cache->IsCacheValid(
                      request->params)) {
         non_global_code_complete_cache->WithLock([&]() {
@@ -369,7 +371,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
                    true /*is_cached_result*/);
         });
       } else {
-        clang_complete->CodeComplete(request->params, callback);
+        clang_complete->CodeComplete(request->id, request->params, callback);
       }
     }
   }
