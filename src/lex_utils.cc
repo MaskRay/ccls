@@ -3,6 +3,7 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
+#include <iostream>
 
 // VSCode (UTF-16) disagrees with Emacs lsp-mode (UTF-8) on how to represent
 // text documents.
@@ -197,35 +198,31 @@ void LexFunctionDeclaration(const std::string& buffer_content,
   *insert_text = result;
 }
 
-std::string LexWordAroundPos(lsPosition position, const std::string& content) {
-  int index = GetOffsetForPosition(position, content);
+std::string_view LexIdentifierAroundPos(lsPosition position,
+                                        std::string_view content) {
+  int start = GetOffsetForPosition(position, content);
+  int end = start + 1;
+  char c;
 
-  int start = index;
-  int end = index + 1;
-
-  // We search for : before the cursor but not after to get the qualifier.
-  while (start > 0) {
-    char c = content[start - 1];
-    if (isalnum(c) || c == '_' || c == ':') {
-      --start;
-    } else {
+  // We search for :: before the cursor but not after to get the qualifier.
+  for (; start > 0; start--) {
+    c = content[start - 1];
+    if (isalnum(c) || c == '_')
+      ;
+    else if (c == ':' && start > 1 && content[start - 2] == ':')
+      start--;
+    else
       break;
-    }
   }
 
-  while (end < (int)content.size()) {
-    char c = content[end];
-    if (isalnum(c) || c == '_') {
-      ++end;
-    } else {
+  for (; end < (int)content.size(); end++)
+    if (c = content[end], !(isalnum(c) || c == '_'))
       break;
-    }
-  }
 
   return content.substr(start, end - start);
 }
 
-bool SubsequenceMatch(std::string_view search, std::string_view content) {
+bool SubsequenceMatchIgnoreCase(std::string_view search, std::string_view content) {
   size_t j = 0;
   for (size_t i = 0; i < search.size(); i++) {
     char search_char = tolower(search[i]);
@@ -280,33 +277,29 @@ TEST_SUITE("Offset") {
 
 TEST_SUITE("Substring") {
   TEST_CASE("match") {
-    // Sanity.
-    REQUIRE(SubsequenceMatch("a", "aa"));
-    REQUIRE(SubsequenceMatch("aa", "aa"));
-
     // Empty string matches anything.
-    REQUIRE(SubsequenceMatch("", ""));
-    REQUIRE(SubsequenceMatch("", "aa"));
+    REQUIRE(SubsequenceMatchIgnoreCase("", ""));
+    REQUIRE(SubsequenceMatchIgnoreCase("", "aa"));
 
     // Match in start/middle/end.
-    REQUIRE(SubsequenceMatch("a", "abbbb"));
-    REQUIRE(SubsequenceMatch("a", "bbabb"));
-    REQUIRE(SubsequenceMatch("a", "bbbba"));
-    REQUIRE(SubsequenceMatch("aa", "aabbb"));
-    REQUIRE(SubsequenceMatch("aa", "bbaab"));
-    REQUIRE(SubsequenceMatch("aa", "bbbaa"));
+    REQUIRE(SubsequenceMatchIgnoreCase("a", "abbbb"));
+    REQUIRE(SubsequenceMatchIgnoreCase("a", "bbabb"));
+    REQUIRE(SubsequenceMatchIgnoreCase("a", "bbbba"));
+    REQUIRE(SubsequenceMatchIgnoreCase("aa", "aabbb"));
+    REQUIRE(SubsequenceMatchIgnoreCase("aa", "bbaab"));
+    REQUIRE(SubsequenceMatchIgnoreCase("aa", "bbbaa"));
 
     // Capitalization.
-    REQUIRE(SubsequenceMatch("aa", "aA"));
-    REQUIRE(SubsequenceMatch("aa", "Aa"));
-    REQUIRE(SubsequenceMatch("aa", "AA"));
+    REQUIRE(SubsequenceMatchIgnoreCase("aa", "aA"));
+    REQUIRE(SubsequenceMatchIgnoreCase("aa", "Aa"));
+    REQUIRE(SubsequenceMatchIgnoreCase("aa", "AA"));
 
     // Token skipping.
-    REQUIRE(SubsequenceMatch("ad", "abcd"));
-    REQUIRE(SubsequenceMatch("ad", "ABCD"));
+    REQUIRE(SubsequenceMatchIgnoreCase("ad", "abcd"));
+    REQUIRE(SubsequenceMatchIgnoreCase("ad", "ABCD"));
 
     // Ordering.
-    REQUIRE(!SubsequenceMatch("ad", "dcba"));
+    REQUIRE(!SubsequenceMatchIgnoreCase("ad", "dcba"));
   }
 
   TEST_CASE("skip") {
@@ -420,34 +413,33 @@ TEST_SUITE("LexFunctionDeclaration") {
 TEST_SUITE("LexWordAroundPos") {
   TEST_CASE("edges") {
     std::string content = "Foobar";
-    REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'F'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'o'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'b'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'a'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'r'), content) == "Foobar");
   }
 
   TEST_CASE("simple") {
     std::string content = "  Foobar  ";
-    REQUIRE(LexWordAroundPos(CharPos(content, 'F'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'o'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'b'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'a'), content) == "Foobar");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'r'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'F'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'o'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'b'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'a'), content) == "Foobar");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'r'), content) == "Foobar");
   }
 
-  TEST_CASE("underscores and numbers") {
-    std::string content = "  _my_t5ype7  ";
-    REQUIRE(LexWordAroundPos(CharPos(content, '_'), content) == "_my_t5ype7");
-    REQUIRE(LexWordAroundPos(CharPos(content, '5'), content) == "_my_t5ype7");
-    REQUIRE(LexWordAroundPos(CharPos(content, 'e'), content) == "_my_t5ype7");
-    REQUIRE(LexWordAroundPos(CharPos(content, '7'), content) == "_my_t5ype7");
+  TEST_CASE("underscores, numbers and ::") {
+    std::string content = "  file:ns::_my_t5ype7 ";
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'f'), content) == "file");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 's'), content) == "ns");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'y'), content) == "ns::_my_t5ype7");
   }
 
   TEST_CASE("dot, dash, colon are skipped") {
     std::string content = "1. 2- 3:";
-    REQUIRE(LexWordAroundPos(CharPos(content, '1'), content) == "1");
-    REQUIRE(LexWordAroundPos(CharPos(content, '2'), content) == "2");
-    REQUIRE(LexWordAroundPos(CharPos(content, '3'), content) == "3");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, '1'), content) == "1");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, '2'), content) == "2");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, '3'), content) == "3");
   }
 }

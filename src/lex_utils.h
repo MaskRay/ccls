@@ -35,10 +35,11 @@ void LexFunctionDeclaration(const std::string& buffer_content,
                             std::string* insert_text,
                             int* newlines_after_name);
 
-std::string LexWordAroundPos(lsPosition position, const std::string& content);
+std::string_view LexIdentifierAroundPos(lsPosition position,
+                                        std::string_view content);
 
 // Case-insensitive subsequence matching.
-bool SubsequenceMatch(std::string_view search, std::string_view content);
+bool SubsequenceMatchIgnoreCase(std::string_view search, std::string_view content);
 
 std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
                                            std::string_view content);

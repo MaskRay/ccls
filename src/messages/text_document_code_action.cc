@@ -447,8 +447,8 @@ struct TextDocumentCodeActionHandler
       // For error diagnostics, provide an action to resolve an include.
       // TODO: find a way to index diagnostic contents so line numbers
       // don't get mismatched when actively editing a file.
-      std::string include_query =
-          LexWordAroundPos(diag.range.start, working_file->buffer_content);
+      std::string_view include_query =
+          LexIdentifierAroundPos(diag.range.start, working_file->buffer_content);
       if (diag.severity == lsDiagnosticSeverity::Error &&
           !include_query.empty()) {
         const size_t kMaxResults = 20;

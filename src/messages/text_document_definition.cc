@@ -126,7 +126,7 @@ struct TextDocumentDefinitionHandler
       if (!has_symbol) {
         lsPosition position = request->params.position;
         const std::string& buffer = working_file->buffer_content;
-        std::string query = LexWordAroundPos(position, buffer);
+        std::string_view query = LexIdentifierAroundPos(position, buffer);
         bool has_scope = query.find(':') != std::string::npos;
 
         // For symbols whose short/detailed names contain |query| as a
