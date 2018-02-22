@@ -167,10 +167,10 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
                                            true /*add_folder_to_path*/)) {
     bool is_fail_allowed = false;
 
-    if (EndsWithAny(path, { ".m", ".mm" })) {
+    if (EndsWithAny(path, {".m", ".mm"})) {
       if (!RunObjectiveCIndexTests()) {
         std::cout << "Skipping \"" << path << "\" since this platform does not "
-            << "support running Objective-C tests." << std::endl;
+                  << "support running Objective-C tests." << std::endl;
         continue;
       }
 

@@ -358,10 +358,11 @@ void ReflectMember(Writer& visitor, const char* name, T& value) {
 // API
 
 std::string Serialize(SerializeFormat format, IndexFile& file);
-std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
-                                       const std::string& path,
-                                       const std::string& serialized_index_content,
-                                       const std::string& file_content,
-                                       optional<int> expected_version);
+std::unique_ptr<IndexFile> Deserialize(
+    SerializeFormat format,
+    const std::string& path,
+    const std::string& serialized_index_content,
+    const std::string& file_content,
+    optional<int> expected_version);
 
 void SetTestOutputMode();

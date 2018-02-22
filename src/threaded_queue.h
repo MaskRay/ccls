@@ -209,9 +209,7 @@ struct ThreadedQueue : public BaseThreadQueue {
     return nullopt;
   }
 
-  optional<T> TryPopFront() {
-    return TryPopFrontHelper(3);
-  }
+  optional<T> TryPopFront() { return TryPopFrontHelper(3); }
 
   optional<T> TryPopBack() {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -229,13 +227,9 @@ struct ThreadedQueue : public BaseThreadQueue {
     return nullopt;
   }
 
-  optional<T> TryPopFrontLow() {
-    return TryPopFrontHelper(1);
-  }
+  optional<T> TryPopFrontLow() { return TryPopFrontHelper(1); }
 
-  optional<T> TryPopFrontHigh() {
-    return TryPopFrontHelper(2);
-  }
+  optional<T> TryPopFrontHigh() { return TryPopFrontHelper(2); }
 
   mutable std::mutex mutex_;
 

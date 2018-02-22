@@ -24,12 +24,10 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
-std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db,
-                                          SymbolRef sym) {
+std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db, SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Var: {
-      std::vector<Use> ret =
-          GetDeclarationsOfSymbolForGotoDefinition(db, sym);
+      std::vector<Use> ret = GetDeclarationsOfSymbolForGotoDefinition(db, sym);
       // If there is no declaration, jump the its type.
       if (ret.empty()) {
         for (auto& def : db->GetVar(sym).def)
@@ -158,7 +156,8 @@ struct TextDocumentDefinitionHandler
           }
         }
         if (best_i != -1) {
-          Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
+          Maybe<Use> use =
+              GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
           assert(use);
           if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
                                             config->xref.container))

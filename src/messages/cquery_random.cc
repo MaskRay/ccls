@@ -19,11 +19,17 @@ const double kDamping = 0.1;
 template <typename Q>
 struct Kind;
 template <>
-struct Kind<QueryFunc> { static constexpr SymbolKind value = SymbolKind::Func; };
+struct Kind<QueryFunc> {
+  static constexpr SymbolKind value = SymbolKind::Func;
+};
 template <>
-struct Kind<QueryType> { static constexpr SymbolKind value = SymbolKind::Type; };
+struct Kind<QueryType> {
+  static constexpr SymbolKind value = SymbolKind::Type;
+};
 template <>
-struct Kind<QueryVar> { static constexpr SymbolKind value = SymbolKind::Var; };
+struct Kind<QueryVar> {
+  static constexpr SymbolKind value = SymbolKind::Var;
+};
 
 template <typename Q>
 void Add(const std::unordered_map<SymbolIdx, int>& sym2id,
@@ -109,7 +115,8 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
       double d = 0;
       for (int i = 0; i < n; i++)
         d = std::max(d, fabs(x[i] - y[i]));
-      if (d < 1e-5) break;
+      if (d < 1e-5)
+        break;
       x.swap(y);
     }
 

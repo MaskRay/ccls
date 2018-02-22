@@ -61,7 +61,6 @@ MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 
 ///// Fuzzy matching
 
-
 struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
   void Run(Ipc_WorkspaceSymbol* request) override {
     Out_WorkspaceSymbol out;
@@ -135,7 +134,8 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
-          FuzzyEvaluate(query, db->GetSymbolDetailedName(result_indices[i]), score, dp),
+            FuzzyEvaluate(query, db->GetSymbolDetailedName(result_indices[i]),
+                          score, dp),
             i};
       }
       std::sort(permutation.begin(), permutation.end(),

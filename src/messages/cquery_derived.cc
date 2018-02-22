@@ -33,8 +33,9 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
         break;
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
-        out.result = GetLsLocationExs(db, working_files, ToUses(db, func.derived),
-                                      config->xref.container, config->xref.maxNum);
+        out.result =
+            GetLsLocationExs(db, working_files, ToUses(db, func.derived),
+                             config->xref.container, config->xref.maxNum);
         break;
       }
     }

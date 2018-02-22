@@ -18,10 +18,10 @@ void EnableRecording(std::string path) {
   assert(!g_file_in && !g_file_out);
 
   // Open the files.
-  g_file_in = new std::ofstream(path + ".in",
-      std::ios::out | std::ios::trunc | std::ios::binary);
-  g_file_out = new std::ofstream(path + ".out",
-    std::ios::out | std::ios::trunc | std::ios::binary);
+  g_file_in = new std::ofstream(
+      path + ".in", std::ios::out | std::ios::trunc | std::ios::binary);
+  g_file_out = new std::ofstream(
+      path + ".out", std::ios::out | std::ios::trunc | std::ios::binary);
 
   // Make sure we can write to the files.
   bool bad = false;

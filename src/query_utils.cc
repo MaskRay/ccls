@@ -40,8 +40,7 @@ std::vector<Use> ToUsesHelper(std::vector<Q>& entities,
 
 }  // namespace
 
-Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                         SymbolIdx sym) {
+Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db, SymbolIdx sym) {
   Maybe<Use> ret;
   EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.spell); });
   return ret;
@@ -102,9 +101,8 @@ std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
   return ToUsesHelper(db->vars, ids);
 }
 
-std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
-    QueryDatabase* db,
-    SymbolIdx sym) {
+std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(QueryDatabase* db,
+                                                          SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Func:
       return db->GetFunc(sym).declarations;

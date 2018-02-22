@@ -122,8 +122,6 @@ void FilterAndSortCompletionResponse(
   }
 #endif
 
-
-
   auto& items = complete_response->result.items;
 
   auto finalize = [&]() {

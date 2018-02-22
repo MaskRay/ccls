@@ -1,7 +1,7 @@
 #pragma once
 
-#include "position.h"
 #include "nt_string.h"
+#include "position.h"
 
 #include <clang-c/Index.h>
 #include <optional.h>

@@ -109,8 +109,8 @@ enum class lsSymbolKind : uint8_t {
   TypeParameter = 26,
 
   // cquery extensions
-  // See also https://github.com/Microsoft/language-server-protocol/issues/344 for new SymbolKind
-  // clang/Index/IndexSymbol.h clang::index::SymbolKind
+  // See also https://github.com/Microsoft/language-server-protocol/issues/344
+  // for new SymbolKind clang/Index/IndexSymbol.h clang::index::SymbolKind
   Parameter = 13,
   StaticMethod = 254,
   Macro = 255,

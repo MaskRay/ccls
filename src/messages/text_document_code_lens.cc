@@ -237,8 +237,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(use, 1),
-                        ToUses(db, def->base),
-                        false /*force_display*/);
+                        ToUses(db, def->base), false /*force_display*/);
           }
 
           break;

@@ -76,7 +76,8 @@ struct WithFileContent {
   T value;
   std::string file_content;
 
-  WithFileContent(const T& value, const std::string& file_content) : value(value), file_content(file_content) {}
+  WithFileContent(const T& value, const std::string& file_content)
+      : value(value), file_content(file_content) {}
 };
 template <typename TVisitor, typename T>
 void Reflect(TVisitor& visitor, WithFileContent<T>& value) {
@@ -144,9 +145,7 @@ struct QueryEntity {
     }
     return ret;
   }
-  const Def* AnyDef() const {
-    return const_cast<QueryEntity*>(this)->AnyDef();
-  }
+  const Def* AnyDef() const { return const_cast<QueryEntity*>(this)->AnyDef(); }
 };
 
 struct QueryType : QueryEntity<QueryType, TypeDefDefinitionData<QueryFamily>> {
@@ -296,14 +295,17 @@ struct QueryDatabase {
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);
-  void RemoveUsrs(SymbolKind usr_kind, const std::vector<WithUsr<QueryFileId>>& to_remove);
+  void RemoveUsrs(SymbolKind usr_kind,
+                  const std::vector<WithUsr<QueryFileId>>& to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
   void ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates);
   void ImportOrUpdate(std::vector<QueryType::DefUpdate>&& updates);
   void ImportOrUpdate(std::vector<QueryFunc::DefUpdate>&& updates);
   void ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates);
-  void UpdateSymbols(Maybe<Id<void>>* symbol_idx, SymbolKind kind, Id<void> idx);
+  void UpdateSymbols(Maybe<Id<void>>* symbol_idx,
+                     SymbolKind kind,
+                     Id<void> idx);
   std::string_view GetSymbolDetailedName(RawId symbol_idx) const;
   std::string_view GetSymbolShortName(RawId symbol_idx) const;
 
@@ -313,18 +315,10 @@ struct QueryDatabase {
   Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
   Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
 
-  QueryFile& GetFile(SymbolIdx ref) {
-    return files[ref.id.id];
-  }
-  QueryFunc& GetFunc(SymbolIdx ref) {
-    return funcs[ref.id.id];
-  }
-  QueryType& GetType(SymbolIdx ref) {
-    return types[ref.id.id];
-  }
-  QueryVar& GetVar(SymbolIdx ref) {
-    return vars[ref.id.id];
-  }
+  QueryFile& GetFile(SymbolIdx ref) { return files[ref.id.id]; }
+  QueryFunc& GetFunc(SymbolIdx ref) { return funcs[ref.id.id]; }
+  QueryType& GetType(SymbolIdx ref) { return types[ref.id.id]; }
+  QueryVar& GetVar(SymbolIdx ref) { return vars[ref.id.id]; }
 };
 
 template <typename I>
@@ -376,7 +370,6 @@ struct IdMap {
     return ret;
   }
   // clang-format on
-
 
  private:
   spp::sparse_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;

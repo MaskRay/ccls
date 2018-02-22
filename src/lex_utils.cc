@@ -318,7 +318,8 @@ TEST_SUITE("Substring") {
     REQUIRE(SubsequenceCountSkip("aa", "baa") == std::make_tuple(true, 1));
     REQUIRE(SubsequenceCountSkip("aA", "aA") == std::make_tuple(true, 0));
     REQUIRE(SubsequenceCountSkip("aA", "aa") == std::make_tuple(false, 1));
-    REQUIRE(SubsequenceCountSkip("incstdioh", "include <stdio.h>") == std::make_tuple(true, 7));
+    REQUIRE(SubsequenceCountSkip("incstdioh", "include <stdio.h>") ==
+            std::make_tuple(true, 7));
   }
 }
 

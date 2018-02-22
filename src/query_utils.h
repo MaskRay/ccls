@@ -5,22 +5,17 @@
 
 #include <optional.h>
 
-Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db,
-                                         SymbolIdx sym);
+Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db, SymbolIdx sym);
 Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                SymbolIdx sym);
 
-std::vector<Use> ToUses(QueryDatabase* db,
-                        const std::vector<QueryFuncId>& ids);
-std::vector<Use> ToUses(QueryDatabase* db,
-                        const std::vector<QueryTypeId>& ids);
-std::vector<Use> ToUses(QueryDatabase* db,
-                        const std::vector<QueryVarId>& ids);
+std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryFuncId>& ids);
+std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryTypeId>& ids);
+std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids);
 
-std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(
-    QueryDatabase* db,
-    SymbolIdx sym);
+std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(QueryDatabase* db,
+                                                          SymbolIdx sym);
 
 bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
 std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
@@ -104,7 +99,9 @@ void EachUse(QueryDatabase* db, SymbolIdx sym, bool include_decl, Fn&& fn) {
 }
 
 template <typename Q, typename Fn>
-void EachDefinedEntity(std::vector<Q>& collection, const std::vector<Id<Q>>& ids, Fn&& fn) {
+void EachDefinedEntity(std::vector<Q>& collection,
+                       const std::vector<Id<Q>>& ids,
+                       Fn&& fn) {
   for (Id<Q> x : ids) {
     Q& obj = collection[x.id];
     if (!obj.def.empty())

@@ -135,8 +135,8 @@ struct Config {
     int includeMaxPathSize = 30;
 
     // Whitelist that file paths will be tested against. If a file path does not
-    // end in one of these values, it will not be considered for auto-completion.
-    // An example value is { ".h", ".hpp" }
+    // end in one of these values, it will not be considered for
+    // auto-completion. An example value is { ".h", ".hpp" }
     //
     // This is significantly faster than using a regex.
     std::vector<std::string> includeSuffixWhitelist = {".h", ".hpp", ".hh"};
@@ -154,8 +154,8 @@ struct Config {
     bool attributeMakeCallsToCtor = true;
 
     // If a translation unit's absolute path matches any EMCAScript regex in the
-    // whitelist, or does not match any regex in the blacklist, it will be indexed.
-    // To only index files in the whitelist, add ".*" to the blacklist.
+    // whitelist, or does not match any regex in the blacklist, it will be
+    // indexed. To only index files in the whitelist, add ".*" to the blacklist.
     // `std::regex_search(path, regex, std::regex_constants::match_any)`
     //
     // Example: `ash/.*\.cc`

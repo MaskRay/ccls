@@ -111,19 +111,15 @@ struct Reference {
   std::tuple<Range, Id<void>, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, id, kind, role);
   }
-  bool operator==(const Reference& o) const {
-    return ToTuple() == o.ToTuple();
-  }
-  bool operator<(const Reference& o) const {
-    return ToTuple() < o.ToTuple();
-  }
+  bool operator==(const Reference& o) const { return ToTuple() == o.ToTuple(); }
+  bool operator<(const Reference& o) const { return ToTuple() < o.ToTuple(); }
 };
 
 // |id,kind| refer to the referenced entity.
 struct SymbolRef : Reference {
   SymbolRef() = default;
   SymbolRef(Range range, Id<void> id, SymbolKind kind, Role role)
-    : Reference{range, id, kind, role} {}
+      : Reference{range, id, kind, role} {}
 };
 
 // Represents an occurrence of a variable/type, |id,kind| refer to the lexical
@@ -133,7 +129,7 @@ struct Use : Reference {
   Id<QueryFile> file;
   Use() = default;
   Use(Range range, Id<void> id, SymbolKind kind, Role role, Id<QueryFile> file)
-    : Reference{range, id, kind, role}, file(file) {}
+      : Reference{range, id, kind, role}, file(file) {}
 };
 
 void Reflect(Reader& visitor, Reference& value);
@@ -184,8 +180,7 @@ struct TypeDefDefinitionData {
   lsSymbolKind kind = lsSymbolKind::Unknown;
 
   bool operator==(const TypeDefDefinitionData& o) const {
-    return detailed_name == o.detailed_name &&
-           spell == o.spell &&
+    return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && alias_of == o.alias_of &&
            parents == o.parents && types == o.types && funcs == o.funcs &&
            vars == o.vars && kind == o.kind && hover == o.hover &&
@@ -273,12 +268,11 @@ struct FuncDefDefinitionData {
   StorageClass storage = StorageClass::Invalid;
 
   bool operator==(const FuncDefDefinitionData& o) const {
-    return detailed_name == o.detailed_name &&
-           spell == o.spell &&
-           extent == o.extent &&
-           declaring_type == o.declaring_type && base == o.base &&
-           locals == o.locals && callees == o.callees && kind == o.kind &&
-           storage == o.storage && hover == o.hover && comments == o.comments;
+    return detailed_name == o.detailed_name && spell == o.spell &&
+           extent == o.extent && declaring_type == o.declaring_type &&
+           base == o.base && locals == o.locals && callees == o.callees &&
+           kind == o.kind && storage == o.storage && hover == o.hover &&
+           comments == o.comments;
   }
   bool operator!=(const FuncDefDefinitionData& o) const {
     return !(*this == o);
@@ -344,9 +338,7 @@ struct IndexFunc {
   bool operator<(const IndexFunc& other) const { return id < other.id; }
 };
 MAKE_HASHABLE(IndexFunc, t.id);
-MAKE_REFLECT_STRUCT(IndexFunc::Declaration,
-                    spell,
-                    param_spellings);
+MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spell, param_spellings);
 
 template <typename F>
 struct VarDefDefinitionData {
@@ -372,15 +364,12 @@ struct VarDefDefinitionData {
   // (declaration).
   StorageClass storage = StorageClass::Invalid;
 
-  bool is_local() const {
-    return kind == lsSymbolKind::Variable;
-  }
+  bool is_local() const { return kind == lsSymbolKind::Variable; }
 
   bool operator==(const VarDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
-           extent == o.extent && type == o.type &&
-           kind == o.kind && storage == o.storage && hover == o.hover &&
-           comments == o.comments;
+           extent == o.extent && type == o.type && kind == o.kind &&
+           storage == o.storage && hover == o.hover && comments == o.comments;
   }
   bool operator!=(const VarDefDefinitionData& o) const { return !(*this == o); }
 

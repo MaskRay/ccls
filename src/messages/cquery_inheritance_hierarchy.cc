@@ -69,7 +69,7 @@ BuildInheritanceHierarchyForType(QueryDatabase* db,
   base.name = "[[Base]]";
   base.location = entry.location;
   base.children =
-    BuildParentInheritanceHierarchyForType(db, working_files, root_type);
+      BuildParentInheritanceHierarchyForType(db, working_files, root_type);
   if (!base.children.empty())
     entry.children.push_back(base);
 
@@ -128,8 +128,7 @@ BuildInheritanceHierarchyForFunc(QueryDatabase* db,
   // Name and location.
   entry.name = def->detailed_name;
   if (def->spell)
-    entry.location =
-        GetLsLocation(db, working_files, *def->spell);
+    entry.location = GetLsLocation(db, working_files, *def->spell);
 
   entry.children.reserve(root_func.derived.size());
 

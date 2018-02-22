@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef __has_builtin
-# define __has_builtin(x) 0
+#define __has_builtin(x) 0
 #endif
 
 #if defined(__GNUC__)
@@ -21,7 +21,8 @@
 
 void cquery_unreachable_internal(const char* msg, const char* file, int line);
 #ifndef NDEBUG
-#define CQUERY_UNREACHABLE(msg) cquery_unreachable_internal(msg, __FILE__, __LINE__)
+#define CQUERY_UNREACHABLE(msg) \
+  cquery_unreachable_internal(msg, __FILE__, __LINE__)
 #else
 #define CQUERY_UNREACHABLE(msg)
 #endif

@@ -15,10 +15,9 @@ lsPosition CharPos(std::string_view search,
                    char character,
                    int character_offset = 0);
 
-struct ParseIncludeLineResult
-{
+struct ParseIncludeLineResult {
   bool ok;
-  std::string text; // include the "include" part
+  std::string text;  // include the "include" part
   std::smatch match;
 };
 

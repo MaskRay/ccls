@@ -53,7 +53,8 @@ struct WorkspaceDidChangeWatchedFilesHandler
             LOG_S(ERROR) << "Unable to read file content after saving " << path;
           else {
             QueueManager::instance()->index_request.PushBack(
-                Index_Request(path, entry.args, is_interactive, *content, ICacheManager::Make(config)));
+                Index_Request(path, entry.args, is_interactive, *content,
+                              ICacheManager::Make(config)));
             if (is_interactive)
               clang_complete->NotifySave(path);
           }
@@ -61,7 +62,8 @@ struct WorkspaceDidChangeWatchedFilesHandler
         }
         case lsFileChangeType::Deleted:
           QueueManager::instance()->index_request.PushBack(
-              Index_Request(path, entry.args, is_interactive, std::string(), ICacheManager::Make(config)));
+              Index_Request(path, entry.args, is_interactive, std::string(),
+                            ICacheManager::Make(config)));
           break;
       }
     }

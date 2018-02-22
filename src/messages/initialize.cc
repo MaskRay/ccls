@@ -38,7 +38,8 @@ struct lsCompletionOptions {
   // for
   // '::' and '>' for '->'. See
   // https://github.com/Microsoft/language-server-protocol/issues/138.
-  std::vector<std::string> triggerCharacters = {".", ":", ">", "#", "<", "\"", "/"};
+  std::vector<std::string> triggerCharacters = {".", ":",  ">", "#",
+                                                "<", "\"", "/"};
 };
 MAKE_REFLECT_STRUCT(lsCompletionOptions, resolveProvider, triggerCharacters);
 
@@ -572,11 +573,12 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       // Set project root.
       config->projectRoot = NormalizePath(request->params.rootUri->GetPath());
       EnsureEndsInSlash(config->projectRoot);
-      // Create two cache directories for files inside and outside of the project.
+      // Create two cache directories for files inside and outside of the
+      // project.
       MakeDirectoryRecursive(config->cacheDirectory +
                              EscapeFileName(config->projectRoot));
-      MakeDirectoryRecursive(config->cacheDirectory +
-                             '@' + EscapeFileName(config->projectRoot));
+      MakeDirectoryRecursive(config->cacheDirectory + '@' +
+                             EscapeFileName(config->projectRoot));
 
       Timer time;
 
@@ -595,7 +597,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
         // guess an appropriate value. Default to 80% utilization.
         const float kDefaultTargetUtilization = 0.8f;
         config->index.threads = (int)(std::thread::hardware_concurrency() *
-                                     kDefaultTargetUtilization);
+                                      kDefaultTargetUtilization);
         if (config->index.threads <= 0)
           config->index.threads = 1;
       }
@@ -614,19 +616,20 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
 
       auto* queue = QueueManager::instance();
       time.Reset();
-      project->ForAllFilteredFiles(config, [&](int i,
-                                               const Project::Entry& entry) {
-        optional<std::string> content = ReadContent(entry.filename);
-        if (!content) {
-          LOG_S(ERROR) << "When loading project, canont read file "
-                       << entry.filename;
-          return;
-        }
-        bool is_interactive =
-            working_files->GetFileByFilename(entry.filename) != nullptr;
-        queue->index_request.PushBack(Index_Request(
-            entry.filename, entry.args, is_interactive, *content, ICacheManager::Make(config), request->id));
-      });
+      project->ForAllFilteredFiles(
+          config, [&](int i, const Project::Entry& entry) {
+            optional<std::string> content = ReadContent(entry.filename);
+            if (!content) {
+              LOG_S(ERROR) << "When loading project, canont read file "
+                           << entry.filename;
+              return;
+            }
+            bool is_interactive =
+                working_files->GetFileByFilename(entry.filename) != nullptr;
+            queue->index_request.PushBack(Index_Request(
+                entry.filename, entry.args, is_interactive, *content,
+                ICacheManager::Make(config), request->id));
+          });
 
       // We need to support multiple concurrent index processes.
       time.ResetAndPrint("[perf] Dispatched initial index requests");

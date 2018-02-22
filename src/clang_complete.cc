@@ -161,59 +161,87 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
   int num_chunks = clang_getNumCompletionChunks(completion_string);
   for (int i = 0; i < num_chunks; ++i) {
     CXCompletionChunkKind kind =
-      clang_getCompletionChunkKind(completion_string, i);
+        clang_getCompletionChunkKind(completion_string, i);
 
     std::string text;
     switch (kind) {
-    case CXCompletionChunk_LeftParen:       text = '(';  break;
-    case CXCompletionChunk_RightParen:      text = ')';  break;
-    case CXCompletionChunk_LeftBracket:     text = '[';  break;
-    case CXCompletionChunk_RightBracket:    text = ']';  break;
-    case CXCompletionChunk_LeftBrace:       text = '{';  break;
-    case CXCompletionChunk_RightBrace:      text = '}';  break;
-    case CXCompletionChunk_LeftAngle:       text = '<';  break;
-    case CXCompletionChunk_RightAngle:      text = '>';  break;
-    case CXCompletionChunk_Comma:           text = ", "; break;
-    case CXCompletionChunk_Colon:           text = ':';  break;
-    case CXCompletionChunk_SemiColon:       text = ';';  break;
-    case CXCompletionChunk_Equal:           text = '=';  break;
-    case CXCompletionChunk_HorizontalSpace: text = ' ';  break;
-    case CXCompletionChunk_VerticalSpace:   text = ' ';  break;
+      case CXCompletionChunk_LeftParen:
+        text = '(';
+        break;
+      case CXCompletionChunk_RightParen:
+        text = ')';
+        break;
+      case CXCompletionChunk_LeftBracket:
+        text = '[';
+        break;
+      case CXCompletionChunk_RightBracket:
+        text = ']';
+        break;
+      case CXCompletionChunk_LeftBrace:
+        text = '{';
+        break;
+      case CXCompletionChunk_RightBrace:
+        text = '}';
+        break;
+      case CXCompletionChunk_LeftAngle:
+        text = '<';
+        break;
+      case CXCompletionChunk_RightAngle:
+        text = '>';
+        break;
+      case CXCompletionChunk_Comma:
+        text = ", ";
+        break;
+      case CXCompletionChunk_Colon:
+        text = ':';
+        break;
+      case CXCompletionChunk_SemiColon:
+        text = ';';
+        break;
+      case CXCompletionChunk_Equal:
+        text = '=';
+        break;
+      case CXCompletionChunk_HorizontalSpace:
+        text = ' ';
+        break;
+      case CXCompletionChunk_VerticalSpace:
+        text = ' ';
+        break;
 
-    case CXCompletionChunk_ResultType:
-      result_type =
-          ToString(clang_getCompletionChunkText(completion_string, i));
-      continue;
+      case CXCompletionChunk_ResultType:
+        result_type =
+            ToString(clang_getCompletionChunkText(completion_string, i));
+        continue;
 
-    case CXCompletionChunk_TypedText:
-    case CXCompletionChunk_Placeholder:
-    case CXCompletionChunk_Text:
-    case CXCompletionChunk_Informative:
-      text = ToString(clang_getCompletionChunkText(completion_string, i));
+      case CXCompletionChunk_TypedText:
+      case CXCompletionChunk_Placeholder:
+      case CXCompletionChunk_Text:
+      case CXCompletionChunk_Informative:
+        text = ToString(clang_getCompletionChunkText(completion_string, i));
 
-      for (auto i = out_first; i < out.size(); ++i) {
-        // first typed text is used for filtering
-        if (kind == CXCompletionChunk_TypedText && !out[i].filterText)
-          out[i].filterText = text;
+        for (auto i = out_first; i < out.size(); ++i) {
+          // first typed text is used for filtering
+          if (kind == CXCompletionChunk_TypedText && !out[i].filterText)
+            out[i].filterText = text;
 
-        if (kind == CXCompletionChunk_Placeholder)
-          out[i].parameters_.push_back(text);
+          if (kind == CXCompletionChunk_Placeholder)
+            out[i].parameters_.push_back(text);
+        }
+        break;
+
+      case CXCompletionChunk_CurrentParameter:
+        // We have our own parsing logic for active parameter. This doesn't seem
+        // to be very reliable.
+        continue;
+
+      case CXCompletionChunk_Optional: {
+        CXCompletionString nested =
+            clang_getCompletionChunkCompletionString(completion_string, i);
+        // duplicate last element, the recursive call will complete it
+        out.push_back(out.back());
+        BuildCompletionItemTexts(out, nested, include_snippets);
+        continue;
       }
-      break;
-
-    case CXCompletionChunk_CurrentParameter:
-      // We have our own parsing logic for active parameter. This doesn't seem
-      // to be very reliable.
-      continue;
-
-    case CXCompletionChunk_Optional: {
-      CXCompletionString nested =
-          clang_getCompletionChunkCompletionString(completion_string, i);
-      // duplicate last element, the recursive call will complete it
-      out.push_back(out.back());
-      BuildCompletionItemTexts(out, nested, include_snippets);
-      continue;
-    }
     }
 
     for (auto i = out_first; i < out.size(); ++i)

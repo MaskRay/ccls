@@ -357,11 +357,12 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
   return "";
 }
 
-std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
-                                       const std::string& path,
-                                       const std::string& serialized_index_content,
-                                       const std::string& file_content,
-                                       optional<int> expected_version) {
+std::unique_ptr<IndexFile> Deserialize(
+    SerializeFormat format,
+    const std::string& path,
+    const std::string& serialized_index_content,
+    const std::string& file_content,
+    optional<int> expected_version) {
   if (serialized_index_content.empty())
     return nullptr;
 
@@ -401,7 +402,8 @@ std::unique_ptr<IndexFile> Deserialize(SerializeFormat format,
           throw std::invalid_argument("Invalid");
         msgpack::unpacker upk;
         upk.reserve_buffer(serialized_index_content.size());
-        memcpy(upk.buffer(), serialized_index_content.data(), serialized_index_content.size());
+        memcpy(upk.buffer(), serialized_index_content.data(),
+               serialized_index_content.size());
         upk.buffer_consumed(serialized_index_content.size());
         file = MakeUnique<IndexFile>(path, file_content);
         MessagePackReader reader(&upk);

@@ -82,7 +82,7 @@ lsCompletionItem BuildCompletionItem(Config* config,
                                      bool is_stl) {
   lsCompletionItem item;
   item.label = ElideLongPath(config, path);
-  item.detail = path; // the include path, used in de-duplicating
+  item.detail = path;  // the include path, used in de-duplicating
   item.textEdit = lsTextEdit();
   item.textEdit->newText = path;
   item.insertTextFormat = lsInsertTextFormat::PlainText;
@@ -142,7 +142,8 @@ void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,
         completion_items[it->second].detail.length() > item.detail.length())
       absolute_path_to_completion_item[absolute_path] = completion_items.size();
   } else {
-    lsCompletionItem& inserted_item = completion_items[inserted_paths[item.detail]];
+    lsCompletionItem& inserted_item =
+        completion_items[inserted_paths[item.detail]];
     // Update |use_angle_brackets_|, prefer quotes.
     if (!item.use_angle_brackets_)
       inserted_item.use_angle_brackets_ = false;
@@ -150,8 +151,7 @@ void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,
 }
 
 void IncludeComplete::AddFile(const std::string& absolute_path) {
-  if (!EndsWithAny(absolute_path,
-                   config_->completion.includeSuffixWhitelist))
+  if (!EndsWithAny(absolute_path, config_->completion.includeSuffixWhitelist))
     return;
   if (match_ && !match_->IsMatch(absolute_path))
     return;
@@ -183,8 +183,7 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
   GetFilesInFolder(
       directory, true /*recursive*/, false /*add_folder_to_path*/,
       [&](const std::string& path) {
-        if (!EndsWithAny(path,
-                         config_->completion.includeSuffixWhitelist))
+        if (!EndsWithAny(path, config_->completion.includeSuffixWhitelist))
           return;
         if (match_ && !match_->IsMatch(directory + path))
           return;

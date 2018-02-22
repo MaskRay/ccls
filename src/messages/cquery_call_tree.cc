@@ -56,8 +56,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildInitialCallTree(
   const QueryFunc::Def* def = root_func.AnyDef();
   if (!def || !def->spell)
     return {};
-  optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *def->spell);
+  optional<lsLocation> def_loc = GetLsLocation(db, working_files, *def->spell);
   if (!def_loc)
     return {};
 
@@ -82,8 +81,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
 
   std::vector<Out_CqueryCallTree::CallEntry> result;
 
-  auto handle_caller = [&](Use caller,
-                           Out_CqueryCallTree::CallType call_type) {
+  auto handle_caller = [&](Use caller, Out_CqueryCallTree::CallType call_type) {
     optional<lsLocation> call_location =
         GetLsLocation(db, working_files, caller);
     if (!call_location)
@@ -133,8 +131,7 @@ std::vector<Out_CqueryCallTree::CallEntry> BuildExpandCallTree(
     }
   };
 
-  std::vector<Use> base_callers =
-      GetCallersForAllBaseFunctions(db, root_func);
+  std::vector<Use> base_callers = GetCallersForAllBaseFunctions(db, root_func);
   std::vector<Use> derived_callers =
       GetCallersForAllDerivedFunctions(db, root_func);
   result.reserve(root_func.uses.size() + base_callers.size() +

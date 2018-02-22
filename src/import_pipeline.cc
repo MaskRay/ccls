@@ -143,7 +143,8 @@ ShouldParse FileNeedsParse(
     return ShouldParse::NoSuchFile;
 
   optional<int64_t> last_cached_modification =
-      timestamp_manager->GetLastCachedModificationTime(cache_manager.get(), path);
+      timestamp_manager->GetLastCachedModificationTime(cache_manager.get(),
+                                                       path);
 
   // File has been changed.
   if (!last_cached_modification ||
@@ -236,8 +237,9 @@ CacheLoadResult TryLoadFromCache(
   PerformanceImportFile perf;
 
   std::vector<Index_DoIdMap> result;
-  result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path_to_index), cache_manager, perf,
-                                 is_interactive, false /*write_to_disk*/));
+  result.push_back(Index_DoIdMap(cache_manager->TakeOrLoad(path_to_index),
+                                 cache_manager, perf, is_interactive,
+                                 false /*write_to_disk*/));
   for (const std::string& dependency : previous_index->dependencies) {
     // Only load a dependency if it is not already loaded.
     //
@@ -257,8 +259,9 @@ CacheLoadResult TryLoadFromCache(
     if (!dependency_index)
       continue;
 
-    result.push_back(Index_DoIdMap(std::move(dependency_index), cache_manager, perf,
-                                   is_interactive, false /*write_to_disk*/));
+    result.push_back(Index_DoIdMap(std::move(dependency_index), cache_manager,
+                                   perf, is_interactive,
+                                   false /*write_to_disk*/));
   }
 
   QueueManager::instance()->do_id_map.EnqueueAll(std::move(result));
@@ -344,7 +347,7 @@ void ParseFile(Config* config,
 
   LOG_S(INFO) << "Parsing " << path_to_index;
   std::vector<FileContents> file_contents = PreloadFileContents(
-    request.cache_manager, entry, request.contents, path_to_index);
+      request.cache_manager, entry, request.contents, path_to_index);
 
   std::vector<Index_DoIdMap> result;
   PerformanceImportFile perf;
@@ -375,8 +378,8 @@ void ParseFile(Config* config,
     // When main thread does IdMap request it will request the previous index if
     // needed.
     LOG_S(INFO) << "Emitting index result for " << new_index->path;
-    result.push_back(Index_DoIdMap(std::move(new_index), request.cache_manager, perf,
-                                   request.is_interactive,
+    result.push_back(Index_DoIdMap(std::move(new_index), request.cache_manager,
+                                   perf, request.is_interactive,
                                    true /*write_to_disk*/));
   }
 
@@ -401,8 +404,8 @@ bool IndexMain_DoParse(
   entry.filename = request->path;
   entry.args = request->args;
   ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
-            modification_timestamp_fetcher, import_manager,
-            indexer, request.value(), entry);
+            modification_timestamp_fetcher, import_manager, indexer,
+            request.value(), entry);
   return true;
 }
 
@@ -477,7 +480,8 @@ bool IndexMain_LoadPreviousIndex() {
   if (!response)
     return false;
 
-  response->previous = response->cache_manager->TryTakeOrLoad(response->current->path);
+  response->previous =
+      response->cache_manager->TryTakeOrLoad(response->current->path);
   LOG_IF_S(ERROR, !response->previous)
       << "Unable to load previous index for already imported index "
       << response->current->path;
@@ -584,14 +588,13 @@ void Indexer_Main(Config* config,
       // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
       // work. Running both also lets the user query the partially constructed
       // index.
-      did_work = IndexMain_DoParse(
-                      config, working_files, file_consumer_shared,
-                      timestamp_manager, &modification_timestamp_fetcher,
-                      import_manager, indexer.get()) ||
-                  did_work;
+      did_work =
+          IndexMain_DoParse(config, working_files, file_consumer_shared,
+                            timestamp_manager, &modification_timestamp_fetcher,
+                            import_manager, indexer.get()) ||
+          did_work;
 
-      did_work = IndexMain_DoCreateIndexUpdate(timestamp_manager) ||
-                 did_work;
+      did_work = IndexMain_DoCreateIndexUpdate(timestamp_manager) || did_work;
 
       did_work = IndexMain_LoadPreviousIndex() || did_work;
 
@@ -743,10 +746,9 @@ TEST_SUITE("ImportPipeline") {
     }
 
     bool PumpOnce() {
-      return IndexMain_DoParse(&config, &working_files, &file_consumer_shared,
-                               &timestamp_manager,
-                               &modification_timestamp_fetcher, &import_manager,
-                               indexer.get());
+      return IndexMain_DoParse(
+          &config, &working_files, &file_consumer_shared, &timestamp_manager,
+          &modification_timestamp_fetcher, &import_manager, indexer.get());
     }
 
     void MakeRequest(const std::string& path,

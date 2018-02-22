@@ -123,8 +123,10 @@ std::string GetDirName(std::string path) {
   if (path.size() && path.back() == '/')
     path.pop_back();
   size_t last_slash = path.find_last_of('/');
-  if (last_slash == std::string::npos) return ".";
-  if (last_slash == 0) return "/";
+  if (last_slash == std::string::npos)
+    return ".";
+  if (last_slash == 0)
+    return "/";
   return path.substr(0, last_slash);
 }
 

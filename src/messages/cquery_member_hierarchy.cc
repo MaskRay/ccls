@@ -67,8 +67,7 @@ ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
     entry.name = def1->ShortName();
     entry.type_id = def1->type ? *def1->type : QueryTypeId();
     if (def->spell) {
-      optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def1->spell);
+      optional<lsLocation> loc = GetLsLocation(db, working_files, *def1->spell);
       // TODO invalid location
       if (loc)
         entry.location = *loc;

@@ -211,8 +211,8 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
               if (func_decl.file == decl_file_id) {
                 int dist = func_decl.range.start.line - decl.range.start.line;
                 if (abs(dist) < abs(best_dist)) {
-                  optional<lsLocation> def_loc = GetLsLocation(
-                      db, working_files, *def1->extent);
+                  optional<lsLocation> def_loc =
+                      GetLsLocation(db, working_files, *def1->extent);
                   if (!def_loc)
                     continue;
 

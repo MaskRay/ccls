@@ -24,7 +24,6 @@ struct Index_Request {
   std::shared_ptr<ICacheManager> cache_manager;
   lsRequestId id;
 
-
   Index_Request(const std::string& path,
                 const std::vector<std::string>& args,
                 bool is_interactive,
@@ -67,7 +66,7 @@ struct Index_OnIdMapped {
   bool write_to_disk;
 
   Index_OnIdMapped(const std::shared_ptr<ICacheManager>& cache_manager,
-                   PerformanceImportFile perf, 
+                   PerformanceImportFile perf,
                    bool is_interactive,
                    bool write_to_disk);
 };

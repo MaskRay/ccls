@@ -106,9 +106,8 @@ optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
 // the destination type already exists, it will be combined. This makes merging
 // updates take longer but reduces import time on the querydb thread.
 template <typename TId, typename TValue>
-void AddMergeableRange(
-    std::vector<MergeableUpdate<TId, TValue>>* dest,
-    std::vector<MergeableUpdate<TId, TValue>>&& source) {
+void AddMergeableRange(std::vector<MergeableUpdate<TId, TValue>>* dest,
+                       std::vector<MergeableUpdate<TId, TValue>>&& source) {
   // TODO: Consider caching the lookup table. It can probably save even more
   // time at the cost of some additional memory.
 
@@ -208,7 +207,8 @@ void CompareGroups(std::vector<T>& previous_data,
   }
 }
 
-QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& indexed) {
+QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map,
+                                        const IndexFile& indexed) {
   QueryFile::Def def;
   def.file = id_map.primary_file;
   def.path = indexed.path;
@@ -234,8 +234,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map, const IndexFile& in
   }();
 
   auto add_all_symbols = [&](Use use, Id<void> id, SymbolKind kind) {
-    def.all_symbols.push_back(
-        SymbolRef(use.range, id, kind, use.role));
+    def.all_symbols.push_back(SymbolRef(use.range, id, kind, use.role));
   };
   auto add_outline = [&](Use use, Id<void> id, SymbolKind kind) {
     def.outline.push_back(SymbolRef(use.range, id, kind, use.role));
@@ -440,20 +439,20 @@ QueryVarId IdMap::ToQuery(IndexVarId id) const {
 Use IdMap::ToQuery(Reference ref) const {
   Use ret(ref.range, ref.id, ref.kind, ref.role, primary_file);
   switch (ref.kind) {
-  case SymbolKind::Invalid:
-    break;
-  case SymbolKind::File:
-    ret.id = primary_file;
-    break;
-  case SymbolKind::Func:
-    ret.id = ToQuery(IndexFuncId(ref.id));
-    break;
-  case SymbolKind::Type:
-    ret.id = ToQuery(IndexTypeId(ref.id));
-    break;
-  case SymbolKind::Var:
-    ret.id = ToQuery(IndexVarId(ref.id));
-    break;
+    case SymbolKind::Invalid:
+      break;
+    case SymbolKind::File:
+      ret.id = primary_file;
+      break;
+    case SymbolKind::Func:
+      ret.id = ToQuery(IndexFuncId(ref.id));
+      break;
+    case SymbolKind::Type:
+      ret.id = ToQuery(IndexTypeId(ref.id));
+      break;
+    case SymbolKind::Var:
+      ret.id = ToQuery(IndexVarId(ref.id));
+      break;
   }
   return ret;
 }
@@ -532,9 +531,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
               previous_id_map.ToQuery(type->id), {},
               previous_id_map.ToQuery(type->declarations)));
         if (!type->derived.empty())
-          types_derived.push_back(QueryType::DerivedUpdate(
-              previous_id_map.ToQuery(type->id), {},
-              previous_id_map.ToQuery(type->derived)));
+          types_derived.push_back(
+              QueryType::DerivedUpdate(previous_id_map.ToQuery(type->id), {},
+                                       previous_id_map.ToQuery(type->derived)));
         if (!type->instances.empty())
           types_instances.push_back(QueryType::InstancesUpdate(
               previous_id_map.ToQuery(type->id), {},
@@ -601,13 +600,13 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
               previous_id_map.ToQuery(func->id), {},
               previous_id_map.ToQuery(func->declarations)));
         if (!func->derived.empty())
-          funcs_derived.push_back(QueryFunc::DerivedUpdate(
-              previous_id_map.ToQuery(func->id), {},
-              previous_id_map.ToQuery(func->derived)));
+          funcs_derived.push_back(
+              QueryFunc::DerivedUpdate(previous_id_map.ToQuery(func->id), {},
+                                       previous_id_map.ToQuery(func->derived)));
         if (!func->uses.empty())
-          funcs_uses.push_back(QueryFunc::UsesUpdate(
-              previous_id_map.ToQuery(func->id), {},
-              previous_id_map.ToQuery(func->uses)));
+          funcs_uses.push_back(
+              QueryFunc::UsesUpdate(previous_id_map.ToQuery(func->id), {},
+                                    previous_id_map.ToQuery(func->uses)));
       },
       /*onAdded:*/
       [this, &current_id_map](IndexFunc* func) {
@@ -643,8 +642,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
               current->usr, std::move(*current_remapped_def)));
         }
 
-        PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations,
-                            Use);
+        PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations, Use);
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_derived, derived, QueryFuncId);
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_uses, uses, Use);
       });
@@ -663,7 +661,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
         if (!var->uses.empty())
           vars_uses.push_back(
               QueryVar::UsesUpdate(previous_id_map.ToQuery(var->id), {},
-                                    previous_id_map.ToQuery(var->uses)));
+                                   previous_id_map.ToQuery(var->uses)));
       },
       /*onAdded:*/
       [this, &current_id_map](IndexVar* var) {
@@ -703,7 +701,8 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
 // This function runs on an indexer thread.
 void IndexUpdate::Merge(IndexUpdate&& update) {
 #define INDEX_UPDATE_APPEND(name) AddRange(&name, std::move(update.name));
-#define INDEX_UPDATE_MERGE(name) AddMergeableRange(&name, std::move(update.name));
+#define INDEX_UPDATE_MERGE(name) \
+  AddMergeableRange(&name, std::move(update.name));
 
   INDEX_UPDATE_APPEND(files_removed);
   INDEX_UPDATE_APPEND(files_def_update);
@@ -987,7 +986,6 @@ std::string_view QueryDatabase::GetSymbolShortName(RawId symbol_idx) const {
   return "";
 }
 
-
 TEST_SUITE("query") {
   IndexUpdate GetDelta(IndexFile previous, IndexFile current) {
     QueryDatabase db;
@@ -1051,11 +1049,9 @@ TEST_SUITE("query") {
     REQUIRE(update.funcs_uses.size() == 1);
     REQUIRE(update.funcs_uses[0].id == QueryFuncId(0));
     REQUIRE(update.funcs_uses[0].to_remove.size() == 1);
-    REQUIRE(update.funcs_uses[0].to_remove[0].range ==
-            Range(Position(1, 0)));
+    REQUIRE(update.funcs_uses[0].to_remove[0].range == Range(Position(1, 0)));
     REQUIRE(update.funcs_uses[0].to_add.size() == 1);
-    REQUIRE(update.funcs_uses[0].to_add[0].range ==
-            Range(Position(2, 0)));
+    REQUIRE(update.funcs_uses[0].to_add[0].range == Range(Position(2, 0)));
   }
 
   TEST_CASE("type usages") {
@@ -1113,7 +1109,8 @@ TEST_SUITE("query") {
 
   TEST_CASE("Remove variable with usage") {
     auto load_index_from_json = [](const char* json) {
-      return Deserialize(SerializeFormat::Json, "foo.cc", json, "<empty>", nullopt);
+      return Deserialize(SerializeFormat::Json, "foo.cc", json, "<empty>",
+                         nullopt);
     };
 
     auto previous = load_index_from_json(R"RAW(
@@ -1220,8 +1217,8 @@ TEST_SUITE("query") {
     // Apply initial file.
     {
       IdMap previous_map(&db, previous->id_cache);
-      IndexUpdate import_update =
-          IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, previous.get());
+      IndexUpdate import_update = IndexUpdate::CreateDelta(
+          nullptr, &previous_map, nullptr, previous.get());
       db.ApplyIndexUpdate(&import_update);
     }
 

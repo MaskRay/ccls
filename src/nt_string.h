@@ -37,6 +37,6 @@ class NtString {
   }
   bool operator==(const NtString& o) const {
     return str && o.str ? strcmp(c_str(), o.c_str()) == 0
-      : c_str() == o.c_str();
+                        : c_str() == o.c_str();
   }
 };

@@ -150,18 +150,19 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     // ie, compiler schedular such as goma. This allows correct parsing for
     // command lines like "goma clang -c foo".
     std::string::size_type dot;
-    while (i < entry.args.size() && entry.args[i][0] != '-' &&
-           // Do not skip over main source filename
-           NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
-           // There may be other filenames (e.g. more than one source filenames)
-           // preceding main source filename. We use a heuristic here. `.` may
-           // occur in both command names and source filenames. If `.` occurs in
-           // the last 4 bytes of entry.args[i] and not followed by a digit, e.g.
-           // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
-           // clang-4.0) are seen as commands.
-           ((dot = entry.args[i].rfind('.')) == std::string::npos ||
-            dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
-            !entry.args[i].compare(dot + 1, 3, "exe")))
+    while (
+        i < entry.args.size() && entry.args[i][0] != '-' &&
+        // Do not skip over main source filename
+        NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
+        // There may be other filenames (e.g. more than one source filenames)
+        // preceding main source filename. We use a heuristic here. `.` may
+        // occur in both command names and source filenames. If `.` occurs in
+        // the last 4 bytes of entry.args[i] and not followed by a digit, e.g.
+        // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
+        // clang-4.0) are seen as commands.
+        ((dot = entry.args[i].rfind('.')) == std::string::npos ||
+         dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
+         !entry.args[i].compare(dot + 1, 3, "exe")))
       ++i;
   }
   // Compiler driver.
@@ -174,14 +175,14 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (config->mode == ProjectMode::DotCquery &&
       !AnyStartsWith(entry.args, "-std=")) {
     switch (SourceFileLanguage(entry.file)) {
-    case LanguageId::C:
-      result.args.push_back("-std=gnu11");
-      break;
-    case LanguageId::Cpp:
-      result.args.push_back("-std=gnu++14");
-      break;
-    default:
-      break;
+      case LanguageId::C:
+        result.args.push_back("-std=gnu11");
+        break;
+      case LanguageId::Cpp:
+        result.args.push_back("-std=gnu++14");
+        break;
+      default:
+        break;
     }
   }
 
@@ -306,17 +307,17 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
   std::unordered_map<std::string, std::vector<std::string>> folder_args;
   std::vector<std::string> files;
 
-  GetFilesInFolder(
-      config->project_dir, true /*recursive*/, true /*add_folder_to_path*/,
-      [&folder_args, &files](const std::string& path) {
-        if (SourceFileLanguage(path) != LanguageId::Unknown) {
-          files.push_back(path);
-        } else if (GetBaseName(path) == ".cquery") {
-          LOG_S(INFO) << "Using .cquery arguments from " << path;
-          folder_args.emplace(GetDirName(path),
-                              ReadCompilerArgumentsFromFile(path));
-        }
-      });
+  GetFilesInFolder(config->project_dir, true /*recursive*/,
+                   true /*add_folder_to_path*/,
+                   [&folder_args, &files](const std::string& path) {
+                     if (SourceFileLanguage(path) != LanguageId::Unknown) {
+                       files.push_back(path);
+                     } else if (GetBaseName(path) == ".cquery") {
+                       LOG_S(INFO) << "Using .cquery arguments from " << path;
+                       folder_args.emplace(GetDirName(path),
+                                           ReadCompilerArgumentsFromFile(path));
+                     }
+                   });
 
   const auto& project_dir_args = folder_args[config->project_dir];
   LOG_IF_S(INFO, !project_dir_args.empty())
@@ -407,7 +408,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
       comp_db_dir.c_str(), &cx_db_load_error);
   if (!init_opts->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
-    // TODO
+  // TODO
 #else
     unlink((comp_db_dir + "/compile_commands.json").c_str());
     rmdir(comp_db_dir.c_str());
@@ -656,16 +657,16 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-working-directory", "/dir/",
-         "-lstdc++", "&/dir/myfile.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+        {"clang", "-working-directory", "/dir/", "-lstdc++", "&/dir/myfile.cc",
+         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"clang.exe"},
         /* expected */
         {"clang.exe", "-working-directory", "/dir/",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-          "-fparse-all-comments"});
+         "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang"},
@@ -683,40 +684,36 @@ TEST_SUITE("Project") {
   }
 
   TEST_CASE("Windows path normalization") {
-    CheckFlags(
-        "E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
-        /* expected */
-        {"clang", "-working-directory", "E:/workdir",
-         "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+    CheckFlags("E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
+               /* expected */
+               {"clang", "-working-directory", "E:/workdir",
+                "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
+                "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
-    CheckFlags(
-        "E:/workdir", "E:/workdir/bar.cc",
-        /* raw */ {"clang", "E:/workdir/bar.cc"},
-        /* expected */
-        {"clang", "-working-directory", "E:/workdir",
-         "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+    CheckFlags("E:/workdir", "E:/workdir/bar.cc",
+               /* raw */ {"clang", "E:/workdir/bar.cc"},
+               /* expected */
+               {"clang", "-working-directory", "E:/workdir",
+                "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
+                "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Path in args") {
-    CheckFlags(
-        "/home/user", "/home/user/foo/bar.c",
-        /* raw */ {"cc", "-O0", "foo/bar.c"},
-        /* expected */
-        {"cc", "-working-directory", "/home/user", "-O0",
-         "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+    CheckFlags("/home/user", "/home/user/foo/bar.c",
+               /* raw */ {"cc", "-O0", "foo/bar.c"},
+               /* expected */
+               {"cc", "-working-directory", "/home/user", "-O0",
+                "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
+                "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
 
   TEST_CASE("Implied binary") {
-    CheckFlags(
-        "/home/user", "/home/user/foo/bar.cc",
-        /* raw */ {"clang", "-DDONT_IGNORE_ME"},
-        /* expected */
-        {"clang", "-working-directory", "/home/user",
-         "-DDONT_IGNORE_ME", "-resource-dir=/w/resource_dir/",
-         "-Wno-unknown-warning-option", "-fparse-all-comments"});
+    CheckFlags("/home/user", "/home/user/foo/bar.cc",
+               /* raw */ {"clang", "-DDONT_IGNORE_ME"},
+               /* expected */
+               {"clang", "-working-directory", "/home/user", "-DDONT_IGNORE_ME",
+                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+                "-fparse-all-comments"});
   }
 
   // Checks flag parsing for a random chromium file in comparison to what

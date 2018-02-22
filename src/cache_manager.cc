@@ -38,8 +38,8 @@ struct RealCacheManager : ICacheManager {
     if (!file_content || !serialized_indexed_content)
       return nullptr;
 
-    return Deserialize(config_->cacheFormat, path, *serialized_indexed_content,*file_content,
-                       IndexFile::kMajorVersion);
+    return Deserialize(config_->cacheFormat, path, *serialized_indexed_content,
+                       *file_content, IndexFile::kMajorVersion);
   }
 
   std::string GetCachePath(const std::string& source_file) {
@@ -91,7 +91,8 @@ struct FakeCacheManager : ICacheManager {
   std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     for (const FakeCacheEntry& entry : entries_) {
       if (entry.path == path) {
-        return Deserialize(SerializeFormat::Json, path, entry.json, "<empty>", nullopt);
+        return Deserialize(SerializeFormat::Json, path, entry.json, "<empty>",
+                           nullopt);
       }
     }
 
