@@ -4,6 +4,7 @@
 
 #include <string.h>
 #include <memory>
+#include <string>
 #include <utility>
 
 // Nullable null-terminated string, which is null if default constructed,

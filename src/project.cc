@@ -169,8 +169,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   result.args.push_back(entry.args[i - 1]);
 
   // Add -working-directory if not provided.
-  if (!AnyStartsWith(entry.args, "-working-directory"))
-    result.args.emplace_back("-working-directory=" + entry.directory);
+  if (!AnyStartsWith(entry.args, "-working-directory")) {
+    result.args.emplace_back("-working-directory");
+    result.args.emplace_back(entry.directory);
+  }
 
   if (config->mode == ProjectMode::DotCquery &&
       !AnyStartsWith(entry.args, "-std=")) {
