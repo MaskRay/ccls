@@ -133,7 +133,23 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     inactive_regions,
                     dependencies);
 
-struct QueryType {
+template <typename Q, typename Def>
+struct QueryEntity {
+  Def* AnyDef() {
+    Def* ret = nullptr;
+    for (auto& i : static_cast<Q*>(this)->def) {
+      ret = &i;
+      if (i.spell)
+        break;
+    }
+    return ret;
+  }
+  const Def* AnyDef() const {
+    return const_cast<QueryEntity*>(this)->AnyDef();
+  }
+};
+
+struct QueryType : QueryEntity<QueryType, TypeDefDefinitionData<QueryFamily>> {
   using Def = TypeDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryTypeId, Use>;
@@ -150,17 +166,9 @@ struct QueryType {
   std::vector<Use> uses;
 
   explicit QueryType(const Usr& usr) : usr(usr) {}
-  const Def* AnyDef() const {
-    if (def.empty()) return nullptr;
-    return &def.front();
-  }
-  Def* AnyDef() {
-    if (def.empty()) return nullptr;
-    return &def.front();
-  }
 };
 
-struct QueryFunc {
+struct QueryFunc : QueryEntity<QueryFunc, FuncDefDefinitionData<QueryFamily>> {
   using Def = FuncDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryFuncId, Use>;
@@ -175,17 +183,9 @@ struct QueryFunc {
   std::vector<Use> uses;
 
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
-  const Def* AnyDef() const {
-    if (def.empty()) return nullptr;
-    return &def.front();
-  }
-  Def* AnyDef() {
-    if (def.empty()) return nullptr;
-    return &def.front();
-  }
 };
 
-struct QueryVar {
+struct QueryVar : QueryEntity<QueryVar, VarDefDefinitionData<QueryFamily>> {
   using Def = VarDefDefinitionData<QueryFamily>;
   using DefUpdate = WithUsr<Def>;
   using DeclarationsUpdate = MergeableUpdate<QueryVarId, Use>;
@@ -198,14 +198,6 @@ struct QueryVar {
   std::vector<Use> uses;
 
   explicit QueryVar(const Usr& usr) : usr(usr) {}
-  const Def* AnyDef() const {
-    if (def.empty()) return nullptr;
-    return &def.front();
-  }
-  Def* AnyDef() {
-    if (def.empty()) return nullptr;
-    return &def.front();
-  }
 };
 
 struct IndexUpdate {

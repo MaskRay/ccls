@@ -82,6 +82,8 @@ struct TextDocumentReferencesHandler
           break;
         }
 
+    if ((int)out.result.size() >= config->xref.maxNum)
+      out.result.resize(config->xref.maxNum);
     QueueManager::WriteStdout(IpcId::TextDocumentReferences, out);
   }
 };

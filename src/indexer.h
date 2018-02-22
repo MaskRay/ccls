@@ -124,10 +124,6 @@ struct SymbolRef : Reference {
   SymbolRef() = default;
   SymbolRef(Range range, Id<void> id, SymbolKind kind, Role role)
     : Reference{range, id, kind, role} {}
-  SymbolRef(Reference ref) : Reference(ref) {}
-  // FIXME Remove
-  SymbolRef(SymbolIdx si)
-    : Reference{Range(), si.id, si.kind, Role::None} {}
 };
 
 // Represents an occurrence of a variable/type, |id,kind| refer to the lexical

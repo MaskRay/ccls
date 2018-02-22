@@ -879,12 +879,7 @@ void QueryDatabase::ImportOrUpdate(
 
     assert(it->second.id >= 0 && it->second.id < types.size());
     QueryType& existing = types[it->second.id];
-    // TODO Investigate why a list of Def makes finding-definition fail.
-    //if (!TryReplaceDef(existing.def, std::move(def.value))) {
-    //
-    // Keep the existing definition if it is higher quality.
-    if (!(existing.AnyDef() && existing.AnyDef()->spell &&
-          !def.value.spell)) {
+    if (!TryReplaceDef(existing.def, std::move(def.value))) {
       existing.def.push_front(std::move(def.value));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, it->second);
     }

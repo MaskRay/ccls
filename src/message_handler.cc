@@ -117,7 +117,12 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
       case SymbolKind::Func: {
-        const QueryFunc::Def* def = db->GetFunc(sym).AnyDef();
+        const QueryFunc::Def* def = nullptr;
+        for (auto& i : db->GetFunc(sym).def) {
+          def = &i;
+          if (i.spell)
+            break;
+        }
         if (!def)
           continue;  // applies to for loop
         // Don't highlight overloadable operators or implicit lambda ->
@@ -129,6 +134,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (def->spell)
           parent_kind = def->spell->kind;
         kind = def->kind;
+        storage = def->storage;
         detailed_name = short_name;
 
         // Check whether the function name is actually there.
@@ -149,25 +155,27 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         }
         break;
       }
-      case SymbolKind::Var: {
-        if (const QueryVar::Def* def = db->GetVar(sym).AnyDef()) {
-          if (def->spell)
-            parent_kind = def->spell->kind;
-          kind = def->kind;
-          storage = def->storage;
-          detailed_name = def->ShortName();
+      case SymbolKind::Type:
+        for (auto& def : db->GetType(sym).def) {
+          kind = def.kind;
+          detailed_name = def.detailed_name;
+          if (def.spell) {
+            parent_kind = def.spell->kind;
+            break;
+          }
         }
         break;
-      }
-      case SymbolKind::Type: {
-        if (const QueryType::Def* def = db->GetType(sym).AnyDef()) {
-          if (def->spell)
-            parent_kind = def->spell->kind;
-          kind = def->kind;
-          detailed_name = def->detailed_name;
+      case SymbolKind::Var:
+        for (auto& def : db->GetVar(sym).def) {
+          kind = def.kind;
+          storage = def.storage;
+          detailed_name = def.detailed_name;
+          if (def.spell) {
+            parent_kind = def.spell->kind;
+            break;
+          }
         }
         break;
-      }
       default:
         continue;  // applies to for loop
     }
