@@ -118,7 +118,7 @@ lsSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
       return lsSymbolKind::Struct;
     case CXIdxEntity_CXXTypeAlias:
     case CXIdxEntity_Typedef:
-      return lsSymbolKind::TypeParameter;
+      return lsSymbolKind::TypeAlias;
 
     case CXIdxEntity_Function:
       return lsSymbolKind::Function;
@@ -1310,7 +1310,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           ref_var->def.extent =
               SetUse(db, ref_cursor.get_extent(), lex_parent, Role::None);
           ref_var = db->Resolve(ref_var_id);
-          ref_var->def.kind = lsSymbolKind::Parameter;
+          ref_var->def.kind = lsSymbolKind::TypeParameter;
           SetVarDetail(ref_var, ref_cursor.get_spell_name(), ref_cursor,
                        nullptr, true, db, param);
 

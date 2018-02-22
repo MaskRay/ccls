@@ -107,12 +107,16 @@ enum class lsSymbolKind : uint8_t {
   Struct = 23,
   Event = 24,
   Operator = 25,
-  TypeParameter = 26,
+
+  // For C++, this is interpreted as "template parameter" (including
+  // non-type template parameters).
+  TypeParameter = 26,  
 
   // cquery extensions
   // See also https://github.com/Microsoft/language-server-protocol/issues/344
   // for new SymbolKind clang/Index/IndexSymbol.h clang::index::SymbolKind
-  Parameter = 13,
+  TypeAlias = 252,
+  Parameter = 253,
   StaticMethod = 254,
   Macro = 255,
 };
