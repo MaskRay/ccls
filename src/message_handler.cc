@@ -18,7 +18,13 @@ struct ScanLineEvent {
   Out_CqueryPublishSemanticHighlighting::Symbol* symbol;
   bool operator<(const ScanLineEvent& other) const {
     // See the comments below when insertion/deletion events are inserted.
-    return !(pos == other.pos) ? pos < other.pos : other.end_pos < end_pos;
+    if (!(pos == other.pos))
+      return pos < other.pos;
+    if (!(other.end_pos == end_pos))
+      return other.end_pos < end_pos;
+    // This comparison essentially order Macro after non-Macro,
+    // So that macros will not be rendered as Var/Type/...
+    return symbol->kind < other.symbol->kind;
   }
 };
 }  // namespace
