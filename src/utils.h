@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // Trim from start (in place)
@@ -144,14 +145,11 @@ void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
 
 template <typename T>
 void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
-  dest->erase(std::remove_if(dest->begin(), dest->end(),
-                             [&](const T& t) {
-                               // TODO: make to_remove a set?
-                               return std::find(to_remove.begin(),
-                                                to_remove.end(),
-                                                t) != to_remove.end();
-                             }),
-              dest->end());
+  std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
+  dest->erase(
+      std::remove_if(dest->begin(), dest->end(),
+                     [&](const T& t) { return to_remove_set.count(t) > 0; }),
+      dest->end());
 }
 
 // http://stackoverflow.com/a/38140932

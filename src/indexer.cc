@@ -754,23 +754,30 @@ std::string IndexFile::ToString() {
 
 IndexType::IndexType(IndexTypeId id, Usr usr) : usr(usr), id(id) {}
 
-void RemoveItem(std::vector<Range>& ranges, Range to_remove) {
-  auto it = std::find(ranges.begin(), ranges.end(), to_remove);
-  if (it != ranges.end())
-    ranges.erase(it);
+template <typename T>
+void Uniquify(std::vector<Id<T>>& ids) {
+  std::unordered_set<Id<T>> seen;
+  size_t n = 0;
+  for (size_t i = 0; i < ids.size(); i++)
+    if (seen.insert(ids[i]).second)
+      ids[n++] = ids[i];
+  ids.resize(n);
 }
 
-template <typename T>
-void UniqueAdd(std::vector<T>& values, T value) {
-  if (std::find(values.begin(), values.end(), value) == values.end())
-    values.push_back(value);
+void Uniquify(std::vector<Use>& uses) {
+  std::unordered_set<Range> seen;
+  size_t n = 0;
+  for (size_t i = 0; i < uses.size(); i++)
+    if (seen.insert(uses[i].range).second)
+      uses[n++] = uses[i];
+  uses.resize(n);
 }
 
 // FIXME Reference: set id in call sites and remove this
-void AddUse(std::vector<Use>& values, Range value) {
-  values.push_back(
-      Use(value, Id<void>(), SymbolKind::File, Role::Reference, {}));
-}
+//void AddUse(std::vector<Use>& values, Range value) {
+//  values.push_back(
+//      Use(value, Id<void>(), SymbolKind::File, Role::Reference, {}));
+//}
 
 void AddUse(IndexFile* db,
             std::vector<Use>& uses,
@@ -797,30 +804,7 @@ CXCursor fromContainer(const CXIdxContainerInfo* parent) {
 }
 
 void AddUseSpell(IndexFile* db, std::vector<Use>& uses, ClangCursor cursor) {
-  AddUse(db, uses, cursor.get_spell(), cursor.get_lexical_parent().cx_cursor,
-         Role::Reference);
-}
-
-template <typename... Args>
-void UniqueAddUse(IndexFile* db,
-                  std::vector<Use>& uses,
-                  Range range,
-                  Args&&... args) {
-  if (std::find_if(uses.begin(), uses.end(),
-                   [&](Use use) { return use.range == range; }) == uses.end())
-    AddUse(db, uses, range, std::forward<Args>(args)...);
-}
-
-template <typename... Args>
-void UniqueAddUseSpell(IndexFile* db,
-                       std::vector<Use>& uses,
-                       ClangCursor cursor,
-                       Args&&... args) {
-  Range range = cursor.get_spell();
-  if (std::find_if(uses.begin(), uses.end(),
-                   [&](Use use) { return use.range == range; }) == uses.end())
-    AddUse(db, uses, range, cursor.get_lexical_parent().cx_cursor,
-           std::forward<Args>(args)...);
+  AddUse(db, uses, cursor.get_spell(), cursor.get_lexical_parent().cx_cursor);
 }
 
 IdCache::IdCache(const std::string& primary_file)
@@ -970,7 +954,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
     IndexType* ref_type = db->Resolve(*param->toplevel_type);
     std::string name = cursor.get_referenced().get_spell_name();
     if (name == ref_type->def.ShortName()) {
-      UniqueAddUseSpell(db, ref_type->uses, cursor);
+      AddUseSpell(db, ref_type->uses, cursor);
       param->toplevel_type = nullopt;
       return;
     }
@@ -992,7 +976,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   IndexType* ref_type_def = db->Resolve(ref_type_id);
   // TODO: Should we even be visiting this if the file is not from the main
   // def? Try adding assert on |loc| later.
-  UniqueAddUseSpell(db, ref_type_def->uses, cursor);
+  AddUseSpell(db, ref_type_def->uses, cursor);
 }
 
 ClangCursor::VisitResult VisitDeclForTypeUsageVisitor(
@@ -1212,7 +1196,7 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
         break;
 
       IndexVar* ref_var = db->Resolve(db->ToVarId(HashUsr(ref_usr)));
-      UniqueAddUseSpell(db, ref_var->uses, cursor);
+      AddUseSpell(db, ref_var->uses, cursor);
       break;
     }
 
@@ -1266,7 +1250,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.extent = SetUse(
             db, ResolveCXSourceRange(cx_extent, nullptr), parent, Role::None);
       } else
-        UniqueAddUse(db, var_def->uses, decl_loc_spelling, parent);
+        AddUse(db, var_def->uses, decl_loc_spelling, parent);
 
       break;
     }
@@ -1323,11 +1307,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             // seems no way to extract the spelling range of `type` and we do
             // not want to do subtraction here.
             // See https://github.com/jacobdufault/cquery/issues/252
-            UniqueAddUse(db, ref_type_index->uses, ref_cursor.get_extent(),
-                         ref_cursor.get_lexical_parent());
+            AddUse(db, ref_type_index->uses, ref_cursor.get_extent(),
+                   ref_cursor.get_lexical_parent());
           }
         }
-        UniqueAddUseSpell(db, ref_var->uses, cursor);
+        AddUseSpell(db, ref_var->uses, cursor);
       }
       break;
     }
@@ -1379,7 +1363,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
               int16_t(strlen(ref_type->def.detailed_name.c_str()));
           ref_type->def.kind = lsSymbolKind::TypeParameter;
         }
-        UniqueAddUseSpell(db, ref_type->uses, cursor);
+        AddUseSpell(db, ref_type->uses, cursor);
       }
       break;
     }
@@ -1414,7 +1398,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
               int16_t(strlen(ref_type->def.detailed_name.c_str()));
           ref_type->def.kind = lsSymbolKind::TypeParameter;
         }
-        UniqueAddUseSpell(db, ref_type->uses, cursor);
+        AddUseSpell(db, ref_type->uses, cursor);
       }
       break;
     }
@@ -1549,7 +1533,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           ns->def.parents.push_back(parent_id);
         }
       }
-      AddUse(ns->uses, spell);
+      AddUse(db, ns->uses, spell, lex_parent);
       break;
     }
 
@@ -1737,11 +1721,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
           // Mark a type reference at the ctor/dtor location.
           if (decl->entityInfo->kind == CXIdxEntity_CXXConstructor)
-            UniqueAddUse(db, declaring_type_def->uses, spell,
-                         fromContainer(decl->lexicalContainer));
+            AddUse(db, declaring_type_def->uses, spell,
+                   fromContainer(decl->lexicalContainer));
 
           // Add function to declaring type.
-          UniqueAdd(declaring_type_def->def.funcs, func_id);
+          declaring_type_def->def.funcs.push_back(func_id);
         }
 
         // Process inheritance.
@@ -1815,8 +1799,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         }
       }
 
-      UniqueAddUse(db, type->uses, spell,
-                   fromContainer(decl->lexicalContainer));
+      AddUse(db, type->uses, spell, fromContainer(decl->lexicalContainer));
       break;
     }
 
@@ -1863,8 +1846,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           }
         }
       } else
-        UniqueAddUse(db, type->declarations, spell,
-                     fromContainer(decl->lexicalContainer));
+        AddUse(db, type->declarations, spell,
+               fromContainer(decl->lexicalContainer), Role::Declaration);
 
       switch (decl->entityInfo->templateKind) {
         default:
@@ -2061,8 +2044,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           var->def.kind = lsSymbolKind::Parameter;
         }
       }
-      UniqueAddUse(db, var->uses, loc, fromContainer(ref->container),
-                   GetRole(ref, Role::Reference));
+      AddUse(db, var->uses, loc, fromContainer(ref->container),
+             GetRole(ref, Role::Reference));
       break;
     }
 
@@ -2199,9 +2182,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //  }
       //
       if (!ref->parentEntity || IsDeclContext(ref->parentEntity->kind))
-        UniqueAddUseSpell(db, ref_type->declarations, ref->cursor);
+        AddUseSpell(db, ref_type->declarations, ref->cursor);
       else
-        UniqueAddUseSpell(db, ref_type->uses, ref->cursor);
+        AddUseSpell(db, ref_type->uses, ref->cursor);
       break;
     }
   }
@@ -2313,6 +2296,15 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
   for (std::unique_ptr<IndexFile>& entry : result) {
     entry->import_file = file;
     entry->args = args;
+    for (IndexFunc& func : entry->funcs)
+      Uniquify(func.uses);
+    for (IndexType& type : entry->types) {
+      Uniquify(type.uses);
+      // e.g. declaration + out-of-line definition
+      Uniquify(type.def.funcs);
+    }
+    for (IndexVar& var : entry->vars)
+      Uniquify(var.uses);
 
     if (param.primary_file) {
       // If there are errors, show at least one at the include position.

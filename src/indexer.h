@@ -131,6 +131,8 @@ struct Use : Reference {
   Use(Range range, Id<void> id, SymbolKind kind, Role role, Id<QueryFile> file)
       : Reference{range, id, kind, role}, file(file) {}
 };
+// Used by |HANDLE_MERGEABLE| so only |range| is needed.
+MAKE_HASHABLE(Use, t.range);
 
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
