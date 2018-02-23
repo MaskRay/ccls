@@ -23,9 +23,6 @@ struct ParseIncludeLineResult {
 
 ParseIncludeLineResult ParseIncludeLine(const std::string& line);
 
-void DecorateIncludePaths(const std::smatch& match,
-                          std::vector<lsCompletionItem>* items);
-
 // TODO: eliminate |line_number| param.
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);
 

@@ -160,9 +160,9 @@ struct TextDocumentCodeLensHandler
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0),
                       type.uses, true /*force_display*/);
           AddCodeLens("derived", "derived", &common, OffsetStartColumn(use, 1),
-                      ToUses(db, type.derived), false /*force_display*/);
+                      GetDeclarations(db, type.derived), false /*force_display*/);
           AddCodeLens("var", "vars", &common, OffsetStartColumn(use, 2),
-                      ToUses(db, type.instances), false /*force_display*/);
+                      GetDeclarations(db, type.instances), false /*force_display*/);
           break;
         }
         case SymbolKind::Func: {
@@ -210,7 +210,7 @@ struct TextDocumentCodeLensHandler
 
           AddCodeLens("derived", "derived", &common,
                       OffsetStartColumn(use, offset++),
-                      ToUses(db, func.derived), false /*force_display*/);
+                      GetDeclarations(db, func.derived), false /*force_display*/);
 
           // "Base"
           if (def->base.size() == 1) {
@@ -237,7 +237,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(use, 1),
-                        ToUses(db, def->base), false /*force_display*/);
+                        GetDeclarations(db, def->base), false /*force_display*/);
           }
 
           break;

@@ -11,6 +11,19 @@
 #include <algorithm>
 
 namespace {
+
+struct Out_CquerySetInactiveRegion
+    : public lsOutMessage<Out_CquerySetInactiveRegion> {
+  struct Params {
+    lsDocumentUri uri;
+    std::vector<lsRange> inactiveRegions;
+  };
+  std::string method = "$cquery/setInactiveRegions";
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion::Params, uri, inactiveRegions);
+MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
+
 struct ScanLineEvent {
   lsPosition pos;
   lsPosition end_pos;  // Second key when there is a tie for insertion events.

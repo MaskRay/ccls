@@ -57,13 +57,13 @@ struct TextDocumentReferencesHandler
     for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references.
-      EachUse(db, sym, request->params.context.includeDeclaration,
-              [&](Use use) {
-                if (use.role & request->params.context.role)
-                  if (optional<lsLocationEx> ls_loc = GetLsLocationEx(
-                          db, working_files, use, config->xref.container))
-                    out.result.push_back(*ls_loc);
-              });
+      EachOccurrence(
+          db, sym, request->params.context.includeDeclaration, [&](Use use) {
+            if (use.role & request->params.context.role)
+              if (optional<lsLocationEx> ls_loc = GetLsLocationEx(
+                      db, working_files, use, config->xref.container))
+                out.result.push_back(*ls_loc);
+          });
       break;
     }
 

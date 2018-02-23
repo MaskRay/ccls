@@ -38,9 +38,9 @@ struct CqueryVarsHandler : BaseMessageHandler<Ipc_CqueryVars> {
         // fallthrough
         case SymbolKind::Type: {
           QueryType& type = db->types[id.id];
-          out.result =
-              GetLsLocationExs(db, working_files, ToUses(db, type.instances),
-                               config->xref.container, config->xref.maxNum);
+          out.result = GetLsLocationExs(
+              db, working_files, GetDeclarations(db, type.instances),
+              config->xref.container, config->xref.maxNum);
           break;
         }
       }

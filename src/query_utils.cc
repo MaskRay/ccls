@@ -19,8 +19,8 @@ int ComputeRangeSize(const Range& range) {
 }
 
 template <typename Q>
-std::vector<Use> ToUsesHelper(std::vector<Q>& entities,
-                              const std::vector<Id<Q>>& ids) {
+std::vector<Use> GetDeclarations(std::vector<Q>& entities,
+                                 const std::vector<Id<Q>>& ids) {
   std::vector<Use> ret;
   ret.reserve(ids.size());
   for (auto id : ids) {
@@ -87,22 +87,23 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
   return nullopt;
 }
 
-std::vector<Use> ToUses(QueryDatabase* db,
-                        const std::vector<QueryFuncId>& ids) {
-  return ToUsesHelper(db->funcs, ids);
+std::vector<Use> GetDeclarations(QueryDatabase* db,
+                                 const std::vector<QueryFuncId>& ids) {
+  return GetDeclarations(db->funcs, ids);
 }
 
-std::vector<Use> ToUses(QueryDatabase* db,
-                        const std::vector<QueryTypeId>& ids) {
-  return ToUsesHelper(db->types, ids);
+std::vector<Use> GetDeclarations(QueryDatabase* db,
+                                 const std::vector<QueryTypeId>& ids) {
+  return GetDeclarations(db->types, ids);
 }
 
-std::vector<Use> ToUses(QueryDatabase* db, const std::vector<QueryVarId>& ids) {
-  return ToUsesHelper(db->vars, ids);
+std::vector<Use> GetDeclarations(QueryDatabase* db,
+                                 const std::vector<QueryVarId>& ids) {
+  return GetDeclarations(db->vars, ids);
 }
 
-std::vector<Use> GetDeclarationsOfSymbolForGotoDefinition(QueryDatabase* db,
-                                                          SymbolIdx sym) {
+std::vector<Use> GetNonDefDeclarations(QueryDatabase* db,
+                                       SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Func:
       return db->GetFunc(sym).declarations;
@@ -334,7 +335,6 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
   return nullopt;
 }
 
-// TODO Sort only by range length, not |kind| or |idx|
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position) {

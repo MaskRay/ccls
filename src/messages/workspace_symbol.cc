@@ -28,7 +28,7 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
   if (location)
     loc = *location;
   else {
-    auto decls = GetDeclarationsOfSymbolForGotoDefinition(db, symbol);
+    auto decls = GetNonDefDeclarations(db, symbol);
     if (decls.empty())
       return false;
     loc = decls[0];

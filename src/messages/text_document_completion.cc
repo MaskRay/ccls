@@ -81,6 +81,31 @@ bool CompareLsCompletionItem(const lsCompletionItem& lhs,
   return *lhs.filterText < *rhs.filterText;
 }
 
+void DecorateIncludePaths(const std::smatch& match,
+                          std::vector<lsCompletionItem>* items) {
+  std::string spaces_after_include = " ";
+  if (match[3].compare("include") == 0 && match[5].length())
+    spaces_after_include = match[4].str();
+
+  std::string prefix =
+      match[1].str() + '#' + match[2].str() + "include" + spaces_after_include;
+  std::string suffix = match[7].str();
+
+  for (lsCompletionItem& item : *items) {
+    char quote0, quote1;
+    if (match[5].compare("<") == 0 ||
+        (match[5].length() == 0 && item.use_angle_brackets_))
+      quote0 = '<', quote1 = '>';
+    else
+      quote0 = quote1 = '"';
+
+    item.textEdit->newText =
+        prefix + quote0 + item.textEdit->newText + quote1 + suffix;
+    item.label = prefix + quote0 + item.label + quote1 + suffix;
+    item.filterText = nullopt;
+  }
+}
+
 template <typename T>
 char* tofixedbase64(T input, char* out) {
   const char* digits =

@@ -27,7 +27,7 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db, SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Var: {
-      std::vector<Use> ret = GetDeclarationsOfSymbolForGotoDefinition(db, sym);
+      std::vector<Use> ret = GetNonDefDeclarations(db, sym);
       // If there is no declaration, jump the its type.
       if (ret.empty()) {
         for (auto& def : db->GetVar(sym).def)
@@ -42,7 +42,7 @@ std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db, SymbolRef sym) {
       return ret;
     }
     default:
-      return GetDeclarationsOfSymbolForGotoDefinition(db, sym);
+      return GetNonDefDeclarations(db, sym);
   }
 }
 

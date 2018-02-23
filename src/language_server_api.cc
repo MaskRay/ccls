@@ -322,14 +322,6 @@ bool lsTextEdit::operator==(const lsTextEdit& that) {
   return range == that.range && newText == that.newText;
 }
 
-const std::string& lsCompletionItem::InsertedContent() const {
-  if (textEdit)
-    return textEdit->newText;
-  if (!insertText.empty())
-    return insertText;
-  return label;
-}
-
 std::string Out_ShowLogMessage::method() {
   if (display_type == DisplayType::Log)
     return "window/logMessage";

@@ -23,6 +23,27 @@
 
 namespace {
 
+struct Out_Progress : public lsOutMessage<Out_Progress> {
+  struct Params {
+    int indexRequestCount = 0;
+    int doIdMapCount = 0;
+    int loadPreviousIndexCount = 0;
+    int onIdMappedCount = 0;
+    int onIndexedCount = 0;
+    int activeThreads = 0;
+  };
+  std::string method = "$cquery/progress";
+  Params params;
+};
+MAKE_REFLECT_STRUCT(Out_Progress::Params,
+                    indexRequestCount,
+                    doIdMapCount,
+                    loadPreviousIndexCount,
+                    onIdMappedCount,
+                    onIndexedCount,
+                    activeThreads);
+MAKE_REFLECT_STRUCT(Out_Progress, jsonrpc, method, params);
+
 struct IModificationTimestampFetcher {
   virtual ~IModificationTimestampFetcher() = default;
   virtual optional<int64_t> GetModificationTime(const std::string& path) = 0;

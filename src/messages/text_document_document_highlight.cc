@@ -39,7 +39,7 @@ struct TextDocumentDocumentHighlightHandler
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to highlight.
-      EachUse(db, sym, true, [&](Use use) {
+      EachOccurrence(db, sym, true, [&](Use use) {
         if (use.file != file_id)
           return;
         if (optional<lsLocation> ls_loc =
