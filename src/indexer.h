@@ -17,10 +17,6 @@
 #include "utils.h"
 
 #include <optional.h>
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stringbuffer.h>
-#include <rapidjson/writer.h>
 #include <string_view.h>
 
 #include <algorithm>

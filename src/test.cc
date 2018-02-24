@@ -7,6 +7,10 @@
 
 #include <doctest/doctest.h>
 #include <loguru/loguru.hpp>
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 #include <stdio.h>
 #include <stdlib.h>
