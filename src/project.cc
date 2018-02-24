@@ -134,17 +134,35 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   Project::Entry result;
   result.filename = NormalizePathWithTestOptOut(entry.file);
-  if (entry.args.empty())
+  const std::string base_name = GetBaseName(entry.file);
+
+  // Expand %c %cpp %clang
+  std::vector<std::string> args;
+  const LanguageId lang = SourceFileLanguage(entry.file);
+  for (const std::string& arg : entry.args) {
+    if (arg.compare(0, 3, "%c ") == 0) {
+      if (lang == LanguageId::C)
+        args.push_back(arg.substr(3));
+    } else if (arg.compare(0, 5, "%cpp ") == 0) {
+      if (lang == LanguageId::Cpp)
+        args.push_back(arg.substr(5));
+    } else if (arg == "%clang") {
+      args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
+    } else {
+      args.push_back(arg);
+    }
+  }
+  if (args.empty())
     return result;
-  std::string base_name = GetBaseName(entry.file);
-  bool clang_cl = strstr(entry.args[0].c_str(), "clang-cl") ||
-                  strstr(entry.args[0].c_str(), "cl.exe") ||
-                  AnyStartsWith(entry.args, "--driver-mode=cl");
+
+  bool clang_cl = strstr(args[0].c_str(), "clang-cl") ||
+                  strstr(args[0].c_str(), "cl.exe") ||
+                  AnyStartsWith(args, "--driver-mode=cl");
   size_t i = 1;
 
   // If |compilationDatabaseCommand| is specified, the external command provides
   // us the JSON compilation database which should be strict. We should do very
-  // little processing on |entry.args|.
+  // little processing on |args|.
   if (config->mode != ProjectMode::ExternalCommand && !clang_cl) {
     // Strip all arguments consisting the compiler command,
     // as there may be non-compiler related commands beforehand,
@@ -152,40 +170,26 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     // command lines like "goma clang -c foo".
     std::string::size_type dot;
     while (
-        i < entry.args.size() && entry.args[i][0] != '-' &&
+        i < args.size() && args[i][0] != '-' &&
         // Do not skip over main source filename
-        NormalizePathWithTestOptOut(entry.args[i]) != result.filename &&
+        NormalizePathWithTestOptOut(args[i]) != result.filename &&
         // There may be other filenames (e.g. more than one source filenames)
         // preceding main source filename. We use a heuristic here. `.` may
         // occur in both command names and source filenames. If `.` occurs in
-        // the last 4 bytes of entry.args[i] and not followed by a digit, e.g.
+        // the last 4 bytes of args[i] and not followed by a digit, e.g.
         // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
         // clang-4.0) are seen as commands.
-        ((dot = entry.args[i].rfind('.')) == std::string::npos ||
-         dot + 4 < entry.args[i].size() || isdigit(entry.args[i][dot + 1]) ||
-         !entry.args[i].compare(dot + 1, 3, "exe")))
+        ((dot = args[i].rfind('.')) == std::string::npos ||
+         dot + 4 < args[i].size() || isdigit(args[i][dot + 1]) ||
+         !args[i].compare(dot + 1, 3, "exe")))
       ++i;
   }
   // Compiler driver.
-  result.args.push_back(entry.args[i - 1]);
+  result.args.push_back(args[i - 1]);
 
   // Add -working-directory if not provided.
-  if (!AnyStartsWith(entry.args, "-working-directory"))
+  if (!AnyStartsWith(args, "-working-directory"))
     result.args.emplace_back("-working-directory=" + entry.directory);
-
-  if (config->mode == ProjectMode::DotCquery &&
-      !AnyStartsWith(entry.args, "-std=")) {
-    switch (SourceFileLanguage(entry.file)) {
-      case LanguageId::C:
-        result.args.push_back("-std=gnu11");
-        break;
-      case LanguageId::Cpp:
-        result.args.push_back("-std=gnu++14");
-        break;
-      default:
-        break;
-    }
-  }
 
   bool next_flag_is_path = false;
   bool add_next_flag_to_quote_dirs = false;
@@ -194,9 +198,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // Note that when processing paths, some arguments support multiple forms, ie,
   // {"-Ifoo"} or {"-I", "foo"}.  Support both styles.
 
-  result.args.reserve(entry.args.size() + config->extra_flags.size());
-  for (; i < entry.args.size(); ++i) {
-    std::string arg = entry.args[i];
+  result.args.reserve(args.size() + config->extra_flags.size());
+  for (; i < args.size(); ++i) {
+    std::string arg = args[i];
 
     // If blacklist skip.
     if (!next_flag_is_path) {
@@ -342,24 +346,6 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
     e.file = file;
     e.args = GetCompilerArgumentForFile(file);
     e.args.push_back(e.file);
-    auto idx = e.args[0].rfind("clang");
-    if (idx != std::string::npos) {
-      idx += 5;
-      switch (SourceFileLanguage(e.file)) {
-        case LanguageId::C:
-          if (e.args[0].compare(idx, 2, "++") == 0)
-            e.args[0].erase(idx, 2);
-          break;
-        case LanguageId::Cpp:
-          // Neither clang++ nor clang-cl
-          if (e.args[0].compare(idx, 2, "++") &&
-              e.args[0].compare(idx, 3, "-cl"))
-            e.args[0].insert(idx, "++");
-          break;
-        default:
-          break;
-      }
-    }
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
   }
@@ -574,11 +560,7 @@ Project::Entry Project::FindCompilationEntryForFile(
   result.is_inferred = true;
   result.filename = filename;
   if (!best_entry) {
-    // FIXME
-    if (SourceFileLanguage(filename) == LanguageId::Cpp)
-      result.args.push_back("clang++");
-    else
-      result.args.push_back("clang");
+    result.args.push_back("%clang");
     result.args.push_back(filename);
   } else {
     result.args = best_entry->args;
