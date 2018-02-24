@@ -5,6 +5,7 @@
 #include "optional.h"
 
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 struct FileContents {

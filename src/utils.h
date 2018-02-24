@@ -7,8 +7,6 @@
 #include <iterator>
 #include <memory>
 #include <string>
-#include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 // Trim from start (in place)
@@ -111,17 +109,6 @@ struct TextReplacer {
   std::string Apply(const std::string& content);
 };
 
-void ParseTestExpectation(
-    const std::string& filename,
-    const std::vector<std::string>& lines_with_endings,
-    TextReplacer* text_replacer,
-    std::vector<std::string>* flags,
-    std::unordered_map<std::string, std::string>* output_sections);
-
-void UpdateTestExpectation(const std::string& filename,
-                           const std::string& expectation,
-                           const std::string& actual);
-
 void WriteToFile(const std::string& filename, const std::string& content);
 
 // note: this implementation does not disable this overload for array types
@@ -141,15 +128,6 @@ template <typename T>
 void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
   dest->insert(dest->end(), std::make_move_iterator(to_add.begin()),
                std::make_move_iterator(to_add.end()));
-}
-
-template <typename T>
-void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
-  std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
-  dest->erase(
-      std::remove_if(dest->begin(), dest->end(),
-                     [&](const T& t) { return to_remove_set.count(t) > 0; }),
-      dest->end());
 }
 
 // http://stackoverflow.com/a/38140932

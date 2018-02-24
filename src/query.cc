@@ -30,6 +30,15 @@ void VerifyUnique(const std::vector<T>& values0) {
 #endif
 }
 
+template <typename T>
+void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
+  std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
+  dest->erase(
+      std::remove_if(dest->begin(), dest->end(),
+                     [&](const T& t) { return to_remove_set.count(t) > 0; }),
+      dest->end());
+}
+
 optional<QueryType::Def> ToQuery(const IdMap& id_map,
                                  const IndexType::Def& type) {
   if (type.detailed_name.empty())
