@@ -1,10 +1,9 @@
 #pragma once
 
-#include "language_server_api.h"
+#include "lsp.h"
 
 #include <string_view.h>
 
-#include <regex>
 #include <string>
 #include <tuple>
 
@@ -14,14 +13,6 @@ int GetOffsetForPosition(lsPosition position, std::string_view content);
 lsPosition CharPos(std::string_view search,
                    char character,
                    int character_offset = 0);
-
-struct ParseIncludeLineResult {
-  bool ok;
-  std::string text;  // include the "include" part
-  std::smatch match;
-};
-
-ParseIncludeLineResult ParseIncludeLine(const std::string& line);
 
 // TODO: eliminate |line_number| param.
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);

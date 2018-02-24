@@ -5,8 +5,8 @@
 
 #include <optional.h>
 
-Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db, SymbolIdx sym);
-Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym);
+Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym);
+Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                SymbolIdx sym);
 
@@ -52,10 +52,6 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition position);
-
-void EmitDiagnostics(WorkingFiles* working_files,
-                     std::string path,
-                     std::vector<lsDiagnostic> diagnostics);
 
 template <typename Fn>
 void WithEntity(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {

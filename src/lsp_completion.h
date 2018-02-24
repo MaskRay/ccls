@@ -1,5 +1,5 @@
 #pragma once
-#include "language_server_api.h"
+#include "lsp.h"
 
 // The kind of a completion entry.
 enum class lsCompletionItemKind {

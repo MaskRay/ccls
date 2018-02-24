@@ -1,6 +1,6 @@
 #include "match.h"
 
-#include "language_server_api.h"
+#include "lsp.h"
 #include "queue_manager.h"
 
 #include <doctest/doctest.h>

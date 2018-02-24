@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "indexer.h"
-#include "language_server_api.h"
+#include "lsp.h"
 #include "platform.h"
 
 #include <loguru/loguru.hpp>

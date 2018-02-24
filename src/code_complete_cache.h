@@ -1,6 +1,6 @@
 #pragma once
 
-#include "language_server_api_completion.h"
+#include "lsp_completion.h"
 
 #include <optional.h>
 

@@ -177,7 +177,7 @@ struct TextDocumentCodeLensHandler
           // extent since that is better for outline. This tries to convert the
           // extent location to the spelling location.
           auto try_ensure_spelling = [&](Use use) {
-            Maybe<Use> def = GetDefinitionSpellingOfSymbol(db, use);
+            Maybe<Use> def = GetDefinitionSpell(db, use);
             if (!def || def->range.start.line != use.range.start.line) {
               return use;
             }
@@ -214,7 +214,7 @@ struct TextDocumentCodeLensHandler
 
           // "Base"
           if (def->base.size() == 1) {
-            Maybe<Use> base_loc = GetDefinitionSpellingOfSymbol(
+            Maybe<Use> base_loc = GetDefinitionSpell(
                 db, SymbolIdx{def->base[0], SymbolKind::Func});
             if (base_loc) {
               optional<lsLocation> ls_base =

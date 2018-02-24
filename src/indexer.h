@@ -7,7 +7,7 @@
 #include "file_consumer.h"
 #include "file_contents.h"
 #include "language.h"
-#include "language_server_api.h"
+#include "lsp.h"
 #include "maybe.h"
 #include "nt_string.h"
 #include "performance.h"

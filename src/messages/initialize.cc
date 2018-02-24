@@ -498,7 +498,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
             Reflect(json_reader, *config);
           } catch (std::invalid_argument&) {
             // This will not trigger because parse error is handled in
-            // MessageRegistry::Parse in language_server_api.cc
+            // MessageRegistry::Parse in lsp.cc
           }
         }
 

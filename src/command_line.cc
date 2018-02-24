@@ -7,7 +7,7 @@
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "indexer.h"
-#include "language_server_api.h"
+#include "lsp_diagnostic.h"
 #include "lex_utils.h"
 #include "lru_cache.h"
 #include "match.h"

@@ -1,4 +1,4 @@
-#include "language_server_api.h"
+#include "lsp.h"
 
 #include "recorder.h"
 #include "serializers/json.h"

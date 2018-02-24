@@ -24,7 +24,7 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
-std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db, SymbolRef sym) {
+std::vector<Use> GetNonDefDeclarationTargets(QueryDatabase* db, SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Var: {
       std::vector<Use> ret = GetNonDefDeclarations(db, sym);
@@ -32,7 +32,7 @@ std::vector<Use> GetGotoDefinitionTargets(QueryDatabase* db, SymbolRef sym) {
       if (ret.empty()) {
         for (auto& def : db->GetVar(sym).def)
           if (def.type) {
-            if (Maybe<Use> use = GetDefinitionSpellingOfSymbol(
+            if (Maybe<Use> use = GetDefinitionSpell(
                     db, SymbolIdx{*def.type, SymbolKind::Type})) {
               ret.push_back(*use);
               break;
@@ -99,7 +99,7 @@ struct TextDocumentDefinitionHandler
 
       if (uses.empty()) {
         // The symbol has no definition or the cursor is on a definition.
-        uses = GetGotoDefinitionTargets(db, sym);
+        uses = GetNonDefDeclarationTargets(db, sym);
         // There is no declaration but the cursor is on a definition.
         if (uses.empty() && on_def)
           uses.push_back(*on_def);
@@ -143,7 +143,7 @@ struct TextDocumentDefinitionHandler
           auto pos = name.find(query);
           if (pos == std::string::npos)
             continue;
-          Maybe<Use> use = GetDefinitionSpellingOfSymbol(db, db->symbols[i]);
+          Maybe<Use> use = GetDefinitionSpell(db, db->symbols[i]);
           if (!use)
             continue;
 
@@ -157,7 +157,7 @@ struct TextDocumentDefinitionHandler
         }
         if (best_i != -1) {
           Maybe<Use> use =
-              GetDefinitionSpellingOfSymbol(db, db->symbols[best_i]);
+              GetDefinitionSpell(db, db->symbols[best_i]);
           assert(use);
           if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
                                             config->xref.container))

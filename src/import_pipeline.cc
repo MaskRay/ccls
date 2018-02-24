@@ -4,7 +4,7 @@
 #include "config.h"
 #include "iindexer.h"
 #include "import_manager.h"
-#include "language_server_api.h"
+#include "lsp.h"
 #include "message_handler.h"
 #include "platform.h"
 #include "project.h"

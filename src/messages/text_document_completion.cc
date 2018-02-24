@@ -10,6 +10,8 @@
 
 #include <loguru.hpp>
 
+#include <regex>
+
 namespace {
 
 // How a completion was triggered
@@ -104,6 +106,29 @@ void DecorateIncludePaths(const std::smatch& match,
     item.label = prefix + quote0 + item.label + quote1 + suffix;
     item.filterText = nullopt;
   }
+}
+
+struct ParseIncludeLineResult {
+  bool ok;
+  std::string text;  // include the "include" part
+  std::smatch match;
+};
+
+ParseIncludeLineResult ParseIncludeLine(const std::string& line) {
+  static const std::regex pattern(
+      "(\\s*)"        // [1]: spaces before '#'
+      "#"             //
+      "(\\s*)"        // [2]: spaces after '#'
+      "([^\\s\"<]*)"  // [3]: "include"
+      "(\\s*)"        // [4]: spaces before quote
+      "([\"<])?"      // [5]: the first quote char
+      "([^\\s\">]*)"  // [6]: path of file
+      "[\">]?"        //
+      "(.*)");        // [7]: suffix after quote char
+  std::smatch match;
+  bool ok = std::regex_match(line, match, pattern);
+  std::string text = match[3].str() + match[6].str();
+  return {ok, text, match};
 }
 
 template <typename T>

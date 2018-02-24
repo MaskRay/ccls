@@ -1,7 +1,7 @@
 #include "queue_manager.h"
 
 #include "cache_manager.h"
-#include "language_server_api.h"
+#include "lsp.h"
 #include "query.h"
 
 #include <sstream>

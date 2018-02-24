@@ -46,23 +46,6 @@ lsPosition CharPos(std::string_view search,
   return result;
 }
 
-ParseIncludeLineResult ParseIncludeLine(const std::string& line) {
-  static const std::regex pattern(
-      "(\\s*)"        // [1]: spaces before '#'
-      "#"             //
-      "(\\s*)"        // [2]: spaces after '#'
-      "([^\\s\"<]*)"  // [3]: "include"
-      "(\\s*)"        // [4]: spaces before quote
-      "([\"<])?"      // [5]: the first quote char
-      "([^\\s\">]*)"  // [6]: path of file
-      "[\">]?"        //
-      "(.*)");        // [7]: suffix after quote char
-  std::smatch match;
-  bool ok = std::regex_match(line, match, pattern);
-  std::string text = match[3].str() + match[6].str();
-  return {ok, text, match};
-}
-
 // TODO: eliminate |line_number| param.
 optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
   // Find starting and ending quote.

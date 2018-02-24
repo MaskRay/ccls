@@ -40,13 +40,13 @@ std::vector<Use> GetDeclarations(std::vector<Q>& entities,
 
 }  // namespace
 
-Maybe<Use> GetDefinitionSpellingOfSymbol(QueryDatabase* db, SymbolIdx sym) {
+Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym) {
   Maybe<Use> ret;
   EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.spell); });
   return ret;
 }
 
-Maybe<Use> GetDefinitionExtentOfSymbol(QueryDatabase* db, SymbolIdx sym) {
+Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym) {
   // Used to jump to file.
   if (sym.kind == SymbolKind::File)
     return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
@@ -382,20 +382,4 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
             });
 
   return symbols;
-}
-
-void EmitDiagnostics(WorkingFiles* working_files,
-                     std::string path,
-                     std::vector<lsDiagnostic> diagnostics) {
-  // Emit diagnostics.
-  Out_TextDocumentPublishDiagnostics out;
-  out.params.uri = lsDocumentUri::FromPath(path);
-  out.params.diagnostics = diagnostics;
-  QueueManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
-
-  // Cache diagnostics so we can show fixits.
-  working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
-    if (working_file)
-      working_file->diagnostics_ = diagnostics;
-  });
 }

@@ -128,7 +128,7 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
     for (int i = 0; i < n; i++) {
       sum += x[i];
       if (sum >= roulette) {
-        Maybe<Use> use = GetDefinitionExtentOfSymbol(db, syms[i]);
+        Maybe<Use> use = GetDefinitionExtent(db, syms[i]);
         if (!use)
           continue;
         if (auto ls_loc = GetLsLocationEx(db, working_files, *use,

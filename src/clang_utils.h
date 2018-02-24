@@ -1,6 +1,6 @@
 #pragma once
 
-#include "language_server_api.h"
+#include "lsp_diagnostic.h"
 
 #include <clang-c/Index.h>
 #if USE_CLANG_CXX

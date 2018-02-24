@@ -2,7 +2,7 @@
 
 #if USE_CLANG_CXX
 
-#include "language_server_api.h"
+#include "lsp.h"
 #include "working_files.h"
 
 #include <clang/Format/Format.h>
