@@ -275,6 +275,7 @@ optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
   lsLocationEx ret;
   ret.lsLocation::operator=(*ls_loc);
   if (container) {
+    ret.role = uint16_t(use.role);
     EachEntityDef(db, use, [&](const auto& def) {
       ret.containerName = std::string_view(def.detailed_name);
       return false;

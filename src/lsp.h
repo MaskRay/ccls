@@ -169,8 +169,10 @@ MAKE_REFLECT_STRUCT(lsLocation, uri, range);
 // cquery extension
 struct lsLocationEx : lsLocation {
   optional<std::string_view> containerName;
+  // Avoid circular dependency on symbol.h
+  optional<uint16_t> role;
 };
-MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName);
+MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, role);
 
 template <typename T>
 struct lsCommand {
