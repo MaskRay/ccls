@@ -12,6 +12,7 @@ struct Ipc_CqueryCallHierarchyInitial
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
     bool callee = false;
+    bool detailedName = false;
     int levels = 1;
   };
   Params params;
@@ -20,6 +21,7 @@ MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchyInitial::Params,
                     textDocument,
                     position,
                     callee,
+                    detailedName,
                     levels);
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchyInitial, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryCallHierarchyInitial);
@@ -34,11 +36,16 @@ struct Ipc_CqueryCallHierarchyExpand
     Maybe<QueryFuncId> id;
     // true: callee tree; false: caller tree
     bool callee = false;
+    bool detailedName = false;
     int levels = 1;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchyExpand::Params, id, callee, levels);
+MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchyExpand::Params,
+                    id,
+                    callee,
+                    detailedName,
+                    levels);
 MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchyExpand, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryCallHierarchyExpand);
 
@@ -68,6 +75,7 @@ MAKE_REFLECT_STRUCT(Out_CqueryCallHierarchy, jsonrpc, id, result);
 void Expand(MessageHandler* m,
             Out_CqueryCallHierarchy::Entry* entry,
             bool callee,
+            bool detailed_name,
             int levels) {
   const QueryFunc& func = m->db->funcs[entry->id.id];
   const QueryFunc::Def* def = func.AnyDef();
@@ -90,10 +98,13 @@ void Expand(MessageHandler* m,
       if (levels > 0) {
         Out_CqueryCallHierarchy::Entry entry1;
         entry1.id = QueryFuncId(use.id);
-        entry1.name = rel_def->ShortName();
+        if (detailed_name)
+          entry1.name = rel_def->detailed_name;
+        else
+          entry1.name = rel_def->ShortName();
         entry1.location = *loc;
         entry1.callType = call_type;
-        Expand(m, &entry1, callee, levels - 1);
+        Expand(m, &entry1, callee, detailed_name, levels - 1);
         entry->children.push_back(std::move(entry1));
       }
     }
@@ -150,6 +161,7 @@ struct CqueryCallHierarchyInitialHandler
     : BaseMessageHandler<Ipc_CqueryCallHierarchyInitial> {
   optional<Out_CqueryCallHierarchy::Entry> BuildInitial(QueryFuncId root_id,
                                                         bool callee,
+                                                        bool detailed_name,
                                                         int levels) {
     const auto* def = db->funcs[root_id.id].AnyDef();
     if (!def)
@@ -158,7 +170,7 @@ struct CqueryCallHierarchyInitialHandler
     Out_CqueryCallHierarchy::Entry entry;
     entry.id = root_id;
     entry.name = def->ShortName();
-    Expand(this, &entry, callee, levels);
+    Expand(this, &entry, callee, detailed_name, levels);
     return entry;
   }
 
@@ -177,8 +189,8 @@ struct CqueryCallHierarchyInitialHandler
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, params.position)) {
       if (sym.kind == SymbolKind::Func) {
-        out.result =
-            BuildInitial(QueryFuncId(sym.id), params.callee, params.levels);
+        out.result = BuildInitial(QueryFuncId(sym.id), params.callee,
+                                  params.detailedName, params.levels);
         break;
       }
     }
@@ -199,7 +211,8 @@ struct CqueryCallHierarchyExpandHandler
       entry.id = *params.id;
       // entry.name is empty and it is known by the client.
       if (entry.id.id < db->funcs.size())
-        Expand(this, &entry, params.callee, params.levels);
+        Expand(this, &entry, params.callee, params.detailedName,
+               params.levels);
       out.result = std::move(entry);
     }
 

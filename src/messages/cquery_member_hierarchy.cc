@@ -9,6 +9,7 @@ struct Ipc_CqueryMemberHierarchyInitial
   struct Params {
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
+    bool detailedName = false;
     int levels = 1;
   };
   Params params;
@@ -17,6 +18,7 @@ struct Ipc_CqueryMemberHierarchyInitial
 MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial::Params,
                     textDocument,
                     position,
+                    detailedName,
                     levels);
 MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyInitial);
@@ -26,11 +28,12 @@ struct Ipc_CqueryMemberHierarchyExpand
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
   struct Params {
     Maybe<QueryTypeId> id;
+    bool detailedName = false;
     int levels = 1;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand::Params, id, levels);
+MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand::Params, id, detailedName, levels);
 MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyExpand);
 
@@ -59,13 +62,41 @@ MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry,
                     children);
 MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 
-void Expand(MessageHandler* m, Out_CqueryMemberHierarchy::Entry* entry, int levels) {
-  const QueryType::Def* def = m->db->types[entry->id.id].AnyDef();
+void Expand(MessageHandler* m,
+            Out_CqueryMemberHierarchy::Entry* entry,
+            bool detailed_name,
+            int levels) {
+  const QueryType& type = m->db->types[entry->id.id];
+  const QueryType::Def* def = type.AnyDef();
   if (!def) {
     entry->numChildren = 0;
     return;
   }
-  entry->name = def->ShortName();
+  if (CXType_FirstBuiltin <= type.usr && type.usr <= CXType_LastBuiltin) {
+    switch (type.usr) {
+      // clang-format off
+      case CXType_Bool: entry->name = "bool"; break;
+      case CXType_Char_U: entry->name = "char"; break;
+      case CXType_UChar: entry->name = "unsigned char"; break;
+      case CXType_Int: entry->name = "int"; break;
+      case CXType_UInt: entry->name = "unsigned int"; break;
+      case CXType_ULong: entry->name = "unsigned long"; break;
+      case CXType_ULongLong: entry->name = "unsigned long long"; break;
+      case CXType_Char_S: entry->name = "char"; break;
+      case CXType_SChar: entry->name = "signed char"; break;
+      case CXType_Long: entry->name = "long"; break;
+      case CXType_LongLong: entry->name = "long long"; break;
+      case CXType_Float: entry->name = "float"; break;
+      case CXType_Double: entry->name = "double"; break;
+      case CXType_LongDouble: entry->name = "long double"; break;
+      // clang-format on
+    }
+  } else {
+    if (detailed_name)
+      entry->name = def->detailed_name;
+    else
+      entry->name = def->ShortName();
+  }
   if (def->spell) {
     if (optional<lsLocation> loc =
         GetLsLocation(m->db, m->working_files, *def->spell))
@@ -78,7 +109,7 @@ void Expand(MessageHandler* m, Out_CqueryMemberHierarchy::Entry* entry, int leve
         Out_CqueryMemberHierarchy::Entry entry1;
         entry1.id = def1->type ? *def1->type : QueryTypeId();
         entry1.field_name = def1->ShortName();
-        Expand(m, &entry1, levels - 1);
+        Expand(m, &entry1, detailed_name, levels - 1);
         entry->children.push_back(std::move(entry1));
       });
     entry->numChildren = int(entry->children.size());
@@ -88,6 +119,7 @@ void Expand(MessageHandler* m, Out_CqueryMemberHierarchy::Entry* entry, int leve
 struct CqueryMemberHierarchyInitialHandler
     : BaseMessageHandler<Ipc_CqueryMemberHierarchyInitial> {
   optional<Out_CqueryMemberHierarchy::Entry> BuildInitial(QueryTypeId root_id,
+                                                          bool detailed_name,
                                                           int levels) {
     const auto* def = db->types[root_id.id].AnyDef();
     if (!def)
@@ -95,14 +127,15 @@ struct CqueryMemberHierarchyInitialHandler
 
     Out_CqueryMemberHierarchy::Entry entry;
     entry.id = root_id;
-    Expand(this, &entry, levels);
+    Expand(this, &entry, detailed_name, levels);
     return entry;
   }
 
   void Run(Ipc_CqueryMemberHierarchyInitial* request) override {
     QueryFile* file;
+    const auto& params = request->params;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file))
+                        params.textDocument.uri.GetPath(), &file))
       return;
 
     WorkingFile* working_file =
@@ -110,16 +143,18 @@ struct CqueryMemberHierarchyInitialHandler
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
 
-    for (const SymbolRef& sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
+    for (SymbolRef sym :
+         FindSymbolsAtLocation(working_file, file, params.position)) {
       if (sym.kind == SymbolKind::Type) {
-        out.result = BuildInitial(QueryTypeId(sym.id), request->params.levels);
+        out.result = BuildInitial(QueryTypeId(sym.id), params.detailedName,
+                                  params.levels);
         break;
       }
       if (sym.kind == SymbolKind::Var) {
         const QueryVar::Def* def = db->GetVar(sym).AnyDef();
         if (def && def->type)
-          out.result = BuildInitial(QueryTypeId(*def->type), request->params.levels);
+          out.result = BuildInitial(QueryTypeId(*def->type),
+                                    params.detailedName, params.levels);
         break;
       }
     }
@@ -132,14 +167,15 @@ REGISTER_MESSAGE_HANDLER(CqueryMemberHierarchyInitialHandler);
 struct CqueryMemberHierarchyExpandHandler
     : BaseMessageHandler<Ipc_CqueryMemberHierarchyExpand> {
   void Run(Ipc_CqueryMemberHierarchyExpand* request) override {
+    const auto& params = request->params;
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
-    if (request->params.id) {
+    if (params.id) {
       Out_CqueryMemberHierarchy::Entry entry;
       entry.id = *request->params.id;
       // entry.name is empty and it is known by the client.
       if (entry.id.id < db->types.size())
-        Expand(this, &entry, request->params.levels);
+        Expand(this, &entry, params.detailedName, params.levels);
       out.result = std::move(entry);
     }
 
