@@ -256,7 +256,10 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map,
       add_outline(*type.def.extent, id, SymbolKind::Type);
     for (Use decl : type.declarations) {
       add_all_symbols(decl, id, SymbolKind::Type);
-      add_outline(decl, id, SymbolKind::Type);
+      // Constructor positions have references to the class,
+      // which we do not want to show in textDocument/documentSymbol
+      if (!(decl.role & Role::Reference))
+        add_outline(decl, id, SymbolKind::Type);
     }
     for (Use use : type.uses)
       add_all_symbols(use, id, SymbolKind::Type);
