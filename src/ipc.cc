@@ -72,6 +72,10 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/freshenIndex";
     case IpcId::CqueryInheritanceHierarchy:
       return "$cquery/inheritanceHierarchy";
+    case IpcId::CqueryCallHierarchyInitial:
+      return "$cquery/callHierarchyInitial";
+    case IpcId::CqueryCallHierarchyExpand:
+      return "$cquery/callHierarchyExpand";
     case IpcId::CqueryCallTreeInitial:
       return "$cquery/callTreeInitial";
     case IpcId::CqueryCallTreeExpand:

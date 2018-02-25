@@ -39,7 +39,10 @@ struct Out_CqueryMemberHierarchy
   struct Entry {
     QueryTypeId id;
     std::string_view name;
+    std::string_view field_name;
     lsLocation location;
+    // For unexpanded nodes, this is an upper bound because some entities may be
+    // undefined. If it is 0, there are no members.
     int numChildren;
     // Empty if the |levels| limit is reached.
     std::vector<Entry> children;
@@ -50,6 +53,7 @@ struct Out_CqueryMemberHierarchy
 MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry,
                     id,
                     name,
+                    field_name,
                     location,
                     numChildren,
                     children);
@@ -61,6 +65,7 @@ void Expand(MessageHandler* m, Out_CqueryMemberHierarchy::Entry* entry, int leve
     entry->numChildren = 0;
     return;
   }
+  entry->name = def->ShortName();
   if (def->spell) {
     if (optional<lsLocation> loc =
         GetLsLocation(m->db, m->working_files, *def->spell))
@@ -71,11 +76,12 @@ void Expand(MessageHandler* m, Out_CqueryMemberHierarchy::Entry* entry, int leve
     EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
         const QueryVar::Def* def1 = var.AnyDef();
         Out_CqueryMemberHierarchy::Entry entry1;
-        entry1.name = def1->ShortName();
         entry1.id = def1->type ? *def1->type : QueryTypeId();
+        entry1.field_name = def1->ShortName();
         Expand(m, &entry1, levels - 1);
         entry->children.push_back(std::move(entry1));
       });
+    entry->numChildren = int(entry->children.size());
   }
 }
 
@@ -89,7 +95,6 @@ struct CqueryMemberHierarchyInitialHandler
 
     Out_CqueryMemberHierarchy::Entry entry;
     entry.id = root_id;
-    entry.name = def->ShortName();
     Expand(this, &entry, levels);
     return entry;
   }
