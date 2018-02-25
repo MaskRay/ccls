@@ -6,8 +6,18 @@ namespace {
 struct Ipc_CqueryMemberHierarchyInitial
     : public RequestMessage<Ipc_CqueryMemberHierarchyInitial> {
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyInitial;
-  lsTextDocumentPositionParams params;
+  struct Params {
+    lsTextDocumentIdentifier textDocument;
+    lsPosition position;
+    int levels = 1;
+  };
+  Params params;
 };
+
+MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial::Params,
+                    textDocument,
+                    position,
+                    levels);
 MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyInitial);
 
@@ -15,70 +25,75 @@ struct Ipc_CqueryMemberHierarchyExpand
     : public RequestMessage<Ipc_CqueryMemberHierarchyExpand> {
   const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
   struct Params {
-    Maybe<QueryTypeId> type_id;
+    Maybe<QueryTypeId> id;
+    int levels = 1;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand::Params, type_id);
+MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand::Params, id, levels);
 MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand, id, params);
 REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyExpand);
 
 struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
   struct Entry {
+    QueryTypeId id;
     std::string_view name;
-    QueryTypeId type_id;
     lsLocation location;
+    int numChildren;
+    // Empty if the |levels| limit is reached.
+    std::vector<Entry> children;
   };
   lsRequestId id;
-  std::vector<Entry> result;
+  optional<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry, name, type_id, location);
+MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry,
+                    id,
+                    name,
+                    location,
+                    numChildren,
+                    children);
 MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 
-std::vector<Out_CqueryMemberHierarchy::Entry>
-BuildInitial(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
-  const auto* root_type = db->types[root.id].AnyDef();
-  if (!root_type || !root_type->spell)
-    return {};
-  optional<lsLocation> def_loc =
-      GetLsLocation(db, working_files, *root_type->spell);
-  if (!def_loc)
-    return {};
-
-  Out_CqueryMemberHierarchy::Entry entry;
-  entry.type_id = root;
-  entry.name = root_type->ShortName();
-  entry.location = *def_loc;
-  return {entry};
-}
-
-std::vector<Out_CqueryMemberHierarchy::Entry>
-ExpandNode(QueryDatabase* db, WorkingFiles* working_files, QueryTypeId root) {
-  QueryType& root_type = db->types[root.id];
-  const QueryType::Def* def = root_type.AnyDef();
-  if (!def)
-    return {};
-
-  std::vector<Out_CqueryMemberHierarchy::Entry> ret;
-  EachDefinedEntity(db->vars, def->vars, [&](QueryVar& var) {
-    const QueryVar::Def* def1 = var.AnyDef();
-    Out_CqueryMemberHierarchy::Entry entry;
-    entry.name = def1->ShortName();
-    entry.type_id = def1->type ? *def1->type : QueryTypeId();
-    if (def->spell) {
-      optional<lsLocation> loc = GetLsLocation(db, working_files, *def1->spell);
-      // TODO invalid location
-      if (loc)
-        entry.location = *loc;
-    }
-    ret.push_back(std::move(entry));
-  });
-  return ret;
+void Expand(MessageHandler* m, Out_CqueryMemberHierarchy::Entry* entry, int levels) {
+  const QueryType::Def* def = m->db->types[entry->id.id].AnyDef();
+  if (!def) {
+    entry->numChildren = 0;
+    return;
+  }
+  if (def->spell) {
+    if (optional<lsLocation> loc =
+        GetLsLocation(m->db, m->working_files, *def->spell))
+      entry->location = *loc;
+  }
+  entry->numChildren = int(def->vars.size());
+  if (levels > 0) {
+    EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
+        const QueryVar::Def* def1 = var.AnyDef();
+        Out_CqueryMemberHierarchy::Entry entry1;
+        entry1.name = def1->ShortName();
+        entry1.id = def1->type ? *def1->type : QueryTypeId();
+        Expand(m, &entry1, levels - 1);
+        entry->children.push_back(std::move(entry1));
+      });
+  }
 }
 
 struct CqueryMemberHierarchyInitialHandler
     : BaseMessageHandler<Ipc_CqueryMemberHierarchyInitial> {
+  optional<Out_CqueryMemberHierarchy::Entry> BuildInitial(QueryTypeId root_id,
+                                                          int levels) {
+    const auto* def = db->types[root_id.id].AnyDef();
+    if (!def)
+      return {};
+
+    Out_CqueryMemberHierarchy::Entry entry;
+    entry.id = root_id;
+    entry.name = def->ShortName();
+    Expand(this, &entry, levels);
+    return entry;
+  }
+
   void Run(Ipc_CqueryMemberHierarchyInitial* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
@@ -93,13 +108,13 @@ struct CqueryMemberHierarchyInitialHandler
     for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
-        out.result = BuildInitial(db, working_files, QueryTypeId(sym.id));
+        out.result = BuildInitial(QueryTypeId(sym.id), request->params.levels);
         break;
       }
       if (sym.kind == SymbolKind::Var) {
         const QueryVar::Def* def = db->GetVar(sym).AnyDef();
         if (def && def->type)
-          out.result = BuildInitial(db, working_files, *def->type);
+          out.result = BuildInitial(QueryTypeId(*def->type), request->params.levels);
         break;
       }
     }
@@ -114,9 +129,14 @@ struct CqueryMemberHierarchyExpandHandler
   void Run(Ipc_CqueryMemberHierarchyExpand* request) override {
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
-    // |ExpandNode| uses -1 to indicate invalid |type_id|.
-    if (request->params.type_id)
-      out.result = ExpandNode(db, working_files, *request->params.type_id);
+    if (request->params.id) {
+      Out_CqueryMemberHierarchy::Entry entry;
+      entry.id = *request->params.id;
+      // entry.name is empty and it is known by the client.
+      if (entry.id.id < db->types.size())
+        Expand(this, &entry, request->params.levels);
+      out.result = std::move(entry);
+    }
 
     QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyExpand, out);
   }
