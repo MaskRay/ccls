@@ -100,7 +100,6 @@ bool ExpandHelper(MessageHandler* m,
       entry->location = *loc;
   }
   if (derived) {
-    entry->numChildren = int(entity.derived.size());
     if (levels > 0) {
       for (auto id : entity.derived) {
         Out_CqueryInheritanceHierarchy::Entry entry1;
@@ -110,9 +109,9 @@ bool ExpandHelper(MessageHandler* m,
           entry->children.push_back(std::move(entry1));
       }
       entry->numChildren = int(entry->children.size());
-    }
+    } else
+      entry->numChildren = int(entity.derived.size());
   } else {
-    entry->numChildren = int(def->bases.size());
     if (levels > 0) {
       for (auto id : def->bases) {
         Out_CqueryInheritanceHierarchy::Entry entry1;
@@ -122,7 +121,8 @@ bool ExpandHelper(MessageHandler* m,
           entry->children.push_back(std::move(entry1));
       }
       entry->numChildren = int(entry->children.size());
-    }
+    } else
+      entry->numChildren = int(def->bases.size());
   }
   return true;
 }

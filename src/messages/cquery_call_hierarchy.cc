@@ -83,7 +83,7 @@ MAKE_REFLECT_STRUCT(Out_CqueryCallHierarchy::Entry,
                     children);
 MAKE_REFLECT_STRUCT(Out_CqueryCallHierarchy, jsonrpc, id, result);
 
-void Expand(MessageHandler* m,
+bool Expand(MessageHandler* m,
             Out_CqueryCallHierarchy::Entry* entry,
             bool callee,
             CallType call_type,
@@ -93,27 +93,15 @@ void Expand(MessageHandler* m,
   const QueryFunc::Def* def = func.AnyDef();
   entry->numChildren = 0;
   if (!def)
-    return;
+    return false;
   auto handle = [&](Use use, CallType call_type) {
     entry->numChildren++;
     if (levels > 0) {
-      QueryFunc& rel_func = m->db->GetFunc(use);
-      const QueryFunc::Def* rel_def = rel_func.AnyDef();
-      if (!rel_def)
-        return;
-      if (optional<lsLocation> loc =
-              GetLsLocation(m->db, m->working_files, use)) {
-          Out_CqueryCallHierarchy::Entry entry1;
-          entry1.id = QueryFuncId(use.id);
-          if (detailed_name)
-            entry1.name = rel_def->detailed_name;
-          else
-            entry1.name = rel_def->ShortName();
-          entry1.location = *loc;
-          entry1.callType = call_type;
-          Expand(m, &entry1, callee, call_type, detailed_name, levels - 1);
-          entry->children.push_back(std::move(entry1));
-      }
+      Out_CqueryCallHierarchy::Entry entry1;
+      entry1.id = QueryFuncId(use.id);
+      entry1.callType = call_type;
+      if (Expand(m, &entry1, callee, call_type, detailed_name, levels - 1))
+        entry->children.push_back(std::move(entry1));
     }
   };
   auto handle_uses = [&](const QueryFunc& func, CallType call_type) {
@@ -131,6 +119,15 @@ void Expand(MessageHandler* m,
 
   std::unordered_set<Usr> seen;
   std::vector<const QueryFunc*> stack;
+  if (detailed_name)
+    entry->name = def->detailed_name;
+  else
+    entry->name = def->ShortName();
+  if (def->spell) {
+    if (optional<lsLocation> loc =
+        GetLsLocation(m->db, m->working_files, *def->spell))
+      entry->location = *loc;
+  }
   handle_uses(func, CallType::Direct);
 
   // Callers/callees of base functions.
@@ -167,6 +164,7 @@ void Expand(MessageHandler* m,
       });
     }
   }
+  return true;
 }
 
 struct CqueryCallHierarchyInitialHandler
@@ -182,15 +180,7 @@ struct CqueryCallHierarchyInitialHandler
 
     Out_CqueryCallHierarchy::Entry entry;
     entry.id = root_id;
-    if (detailed_name)
-      entry.name = def->detailed_name;
-    else
-      entry.name = def->ShortName();
-    if (def->spell) {
-      if (optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def->spell))
-        entry.location = *loc;
-    }
+    entry.callType = CallType::Direct;
     Expand(this, &entry, callee, call_type, detailed_name, levels);
     return entry;
   }
@@ -231,7 +221,7 @@ struct CqueryCallHierarchyExpandHandler
     if (params.id) {
       Out_CqueryCallHierarchy::Entry entry;
       entry.id = *params.id;
-      // entry.name is empty as it is known by the client.
+      entry.callType = CallType::Direct;
       if (entry.id.id < db->funcs.size())
         Expand(this, &entry, params.callee, params.callType,
                params.detailedName, params.levels);

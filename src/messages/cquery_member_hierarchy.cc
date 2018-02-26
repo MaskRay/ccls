@@ -62,7 +62,7 @@ MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry,
                     children);
 MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 
-void Expand(MessageHandler* m,
+bool Expand(MessageHandler* m,
             Out_CqueryMemberHierarchy::Entry* entry,
             bool detailed_name,
             int levels) {
@@ -100,13 +100,12 @@ void Expand(MessageHandler* m,
   }
   if (!def) {
     entry->numChildren = 0;
-    return;
+    return false;
   }
   if (detailed_name)
     entry->name = def->detailed_name;
   else
     entry->name = def->ShortName();
-  entry->numChildren = int(def->vars.size());
   if (levels > 0) {
     EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
       const QueryVar::Def* def1 = var.AnyDef();
@@ -123,11 +122,13 @@ void Expand(MessageHandler* m,
             GetLsLocation(m->db, m->working_files, *def1->spell))
           entry1.location = *loc;
       }
-      Expand(m, &entry1, detailed_name, levels - 1);
-      entry->children.push_back(std::move(entry1));
+      if (Expand(m, &entry1, detailed_name, levels - 1))
+        entry->children.push_back(std::move(entry1));
     });
     entry->numChildren = int(entry->children.size());
-  }
+  } else
+    entry->numChildren = int(def->vars.size());
+  return true;
 }
 
 struct CqueryMemberHierarchyInitialHandler
@@ -193,9 +194,9 @@ struct CqueryMemberHierarchyExpandHandler
       Out_CqueryMemberHierarchy::Entry entry;
       entry.id = *request->params.id;
       // entry.name is empty as it is known by the client.
-      if (entry.id.id < db->types.size())
-        Expand(this, &entry, params.detailedName, params.levels);
-      out.result = std::move(entry);
+      if (entry.id.id < db->types.size() &&
+          Expand(this, &entry, params.detailedName, params.levels))
+        out.result = std::move(entry);
     }
 
     QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyExpand, out);
