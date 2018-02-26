@@ -1149,7 +1149,12 @@ optional<IndexTypeId> AddDeclTypeUsages(
             param.previous_cursor.value().get_kind() == CXCursor_TemplateRef));
   }
 
-  return param.initial_type;
+  if (param.initial_type)
+    return param.initial_type;
+  CXType cx_under = clang_getTypedefDeclUnderlyingType(decl_cursor.cx_cursor);
+  if (cx_under.kind == CXType_Invalid)
+    return nullopt;
+  return db->ToTypeId(ClangType(cx_under).strip_qualifiers().get_usr_hash());
 }
 
 // Various versions of LLVM (ie, 4.0) will not visit inline variable references
