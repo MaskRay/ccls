@@ -42,7 +42,7 @@ struct Out_CqueryMemberHierarchy
   struct Entry {
     QueryTypeId id;
     std::string_view name;
-    std::string_view field_name;
+    std::string_view fieldName;
     lsLocation location;
     // For unexpanded nodes, this is an upper bound because some entities may be
     // undefined. If it is 0, there are no members.
@@ -56,7 +56,7 @@ struct Out_CqueryMemberHierarchy
 MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy::Entry,
                     id,
                     name,
-                    field_name,
+                    fieldName,
                     location,
                     numChildren,
                     children);
@@ -115,7 +115,7 @@ void Expand(MessageHandler* m,
         const QueryVar::Def* def1 = var.AnyDef();
         Out_CqueryMemberHierarchy::Entry entry1;
         entry1.id = def1->type ? *def1->type : QueryTypeId();
-        entry1.field_name = def1->ShortName();
+        entry1.fieldName = def1->ShortName();
         Expand(m, &entry1, detailed_name, levels - 1);
         entry->children.push_back(std::move(entry1));
       });
@@ -180,7 +180,7 @@ struct CqueryMemberHierarchyExpandHandler
     if (params.id) {
       Out_CqueryMemberHierarchy::Entry entry;
       entry.id = *request->params.id;
-      // entry.name is empty and it is known by the client.
+      // entry.name is empty as it is known by the client.
       if (entry.id.id < db->types.size())
         Expand(this, &entry, params.detailedName, params.levels);
       out.result = std::move(entry);
