@@ -97,6 +97,8 @@ bool Expand(MessageHandler* m,
       case CXType_NullPtr: entry->name = "nullptr"; break;
       // clang-format on
     }
+    entry->numChildren = 0;
+    return true;
   }
   if (!def) {
     entry->numChildren = 0;
