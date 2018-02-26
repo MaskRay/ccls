@@ -516,7 +516,7 @@ void SetTypeName(IndexType* type,
   // type->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
   type->def.detailed_name =
       param->ns.QualifiedName(container ? container : &parent, name);
-  auto idx = type->def.detailed_name.find(name);
+  auto idx = type->def.detailed_name.rfind(name);
   assert(idx != std::string::npos);
   type->def.short_name_offset = idx;
   type->def.short_name_size = strlen(name);
@@ -631,7 +631,8 @@ void SetVarDetail(IndexVar* var,
 #endif
   }
   // FIXME QualifiedName should return index
-  auto idx = def.detailed_name.find(short_name.begin(), 0, short_name.size());
+  auto idx = def.detailed_name.rfind(short_name.begin(), std::string::npos,
+                                     short_name.size());
   assert(idx != std::string::npos);
   def.short_name_offset = idx;
   def.short_name_size = short_name.size();

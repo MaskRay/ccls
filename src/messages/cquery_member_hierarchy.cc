@@ -42,7 +42,7 @@ struct Out_CqueryMemberHierarchy
   struct Entry {
     QueryTypeId id;
     std::string_view name;
-    std::string_view fieldName;
+    std::string fieldName;
     lsLocation location;
     // For unexpanded nodes, this is an upper bound because some entities may be
     // undefined. If it is 0, there are no members.
@@ -116,9 +116,9 @@ void Expand(MessageHandler* m,
         Out_CqueryMemberHierarchy::Entry entry1;
         entry1.id = def1->type ? *def1->type : QueryTypeId();
         if (detailed_name)
-          entry1.fieldName = def1->detailed_name;
+          entry1.fieldName = def1->DetailedName(false);
         else
-          entry1.fieldName = def1->ShortName();
+          entry1.fieldName = std::string(def1->ShortName());
         Expand(m, &entry1, detailed_name, levels - 1);
         entry->children.push_back(std::move(entry1));
       });

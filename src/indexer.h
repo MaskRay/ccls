@@ -19,6 +19,7 @@
 #include <optional.h>
 #include <string_view.h>
 
+#include <ctype.h>
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -374,6 +375,15 @@ struct VarDefDefinitionData {
   std::string_view ShortName() const {
     return std::string_view(detailed_name.c_str() + short_name_offset,
                             short_name_size);
+  }
+  std::string DetailedName(bool qualified) const {
+    if (qualified)
+      return detailed_name;
+    int i = short_name_offset;
+    while (i && (isalnum(detailed_name[i - 1]) || detailed_name[i - 1] == '_' ||
+                 detailed_name[i - 1] == ':'))
+      i--;
+    return detailed_name.substr(0, i) + detailed_name.substr(short_name_offset);
   }
 };
 
