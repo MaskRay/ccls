@@ -141,7 +141,7 @@ void Expand(MessageHandler* m,
       const QueryFunc& func1 = *stack.back();
       stack.pop_back();
       if (auto* def1 = func1.AnyDef()) {
-        EachDefinedEntity(m->db->funcs, def1->base, [&](QueryFunc& func2) {
+        EachDefinedEntity(m->db->funcs, def1->bases, [&](QueryFunc& func2) {
           if (!seen.count(func2.usr)) {
             seen.insert(func2.usr);
             stack.push_back(&func2);

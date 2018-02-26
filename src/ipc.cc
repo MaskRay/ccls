@@ -70,8 +70,6 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/fileInfo";
     case IpcId::CqueryFreshenIndex:
       return "$cquery/freshenIndex";
-    case IpcId::CqueryInheritanceHierarchy:
-      return "$cquery/inheritanceHierarchy";
     case IpcId::CqueryCallHierarchyInitial:
       return "$cquery/callHierarchyInitial";
     case IpcId::CqueryCallHierarchyExpand:
@@ -80,6 +78,10 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/callTreeInitial";
     case IpcId::CqueryCallTreeExpand:
       return "$cquery/callTreeExpand";
+    case IpcId::CqueryInheritanceHierarchyInitial:
+      return "$cquery/inheritanceHierarchyInitial";
+    case IpcId::CqueryInheritanceHierarchyExpand:
+      return "$cquery/inheritanceHierarchyExpand";
     case IpcId::CqueryMemberHierarchyInitial:
       return "$cquery/memberHierarchyInitial";
     case IpcId::CqueryMemberHierarchyExpand:

@@ -127,7 +127,7 @@ bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
     if (!func.uses.empty())
       return true;
     if (auto* def = func.AnyDef()) {
-      EachDefinedEntity(db->funcs, def->base, [&](QueryFunc& func1) {
+      EachDefinedEntity(db->funcs, def->bases, [&](QueryFunc& func1) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
           stack.push(&func1);
@@ -156,7 +156,7 @@ std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
     stack.pop();
     AddRange(&callers, func.uses);
     if (auto* def = func.AnyDef()) {
-      EachDefinedEntity(db->funcs, def->base, [&](QueryFunc& func1) {
+      EachDefinedEntity(db->funcs, def->bases, [&](QueryFunc& func1) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
           stack.push(&func1);

@@ -162,7 +162,7 @@ struct TypeDefDefinitionData {
   Maybe<Use> extent;
 
   // Immediate parent types.
-  std::vector<typename F::TypeId> parents;
+  std::vector<typename F::TypeId> bases;
 
   // Types, functions, and variables defined in this type.
   std::vector<typename F::TypeId> types;
@@ -181,7 +181,7 @@ struct TypeDefDefinitionData {
   bool operator==(const TypeDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && alias_of == o.alias_of &&
-           parents == o.parents && types == o.types && funcs == o.funcs &&
+           bases == o.bases && types == o.types && funcs == o.funcs &&
            vars == o.vars && kind == o.kind && hover == o.hover &&
            comments == o.comments;
   }
@@ -192,6 +192,10 @@ struct TypeDefDefinitionData {
   std::string_view ShortName() const {
     return std::string_view(detailed_name.c_str() + short_name_offset,
                             short_name_size);
+  }
+  // Used by cquery_inheritance_hierarchy.cc:Expand generic lambda
+  std::string_view DetailedName(bool) const {
+    return detailed_name;
   }
 };
 template <typename TVisitor, typename Family>
@@ -207,7 +211,7 @@ void Reflect(TVisitor& visitor, TypeDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(extent);
   REFLECT_MEMBER(file);
   REFLECT_MEMBER(alias_of);
-  REFLECT_MEMBER(parents);
+  REFLECT_MEMBER(bases);
   REFLECT_MEMBER(types);
   REFLECT_MEMBER(funcs);
   REFLECT_MEMBER(vars);
@@ -250,7 +254,7 @@ struct FuncDefDefinitionData {
   Maybe<Use> extent;
 
   // Method this method overrides.
-  std::vector<typename F::FuncId> base;
+  std::vector<typename F::FuncId> bases;
 
   // Local variables defined in this function.
   std::vector<typename F::VarId> locals;
@@ -269,7 +273,7 @@ struct FuncDefDefinitionData {
   bool operator==(const FuncDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && declaring_type == o.declaring_type &&
-           base == o.base && locals == o.locals && callees == o.callees &&
+           bases == o.bases && locals == o.locals && callees == o.callees &&
            kind == o.kind && storage == o.storage && hover == o.hover &&
            comments == o.comments;
   }
@@ -280,6 +284,12 @@ struct FuncDefDefinitionData {
   std::string_view ShortName() const {
     return std::string_view(detailed_name.c_str() + short_name_offset,
                             short_name_size);
+  }
+  std::string_view DetailedName(bool params) const {
+    if (params)
+      return detailed_name;
+    return std::string_view(detailed_name)
+        .substr(0, short_name_offset + short_name_size);
   }
 };
 
@@ -297,7 +307,7 @@ void Reflect(TVisitor& visitor, FuncDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(extent);
   REFLECT_MEMBER(file);
   REFLECT_MEMBER(declaring_type);
-  REFLECT_MEMBER(base);
+  REFLECT_MEMBER(bases);
   REFLECT_MEMBER(locals);
   REFLECT_MEMBER(callees);
   REFLECT_MEMBER_END();

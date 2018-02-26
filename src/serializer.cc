@@ -219,7 +219,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("alias_of", value.def.alias_of);
-  REFLECT_MEMBER2("parents", value.def.parents);
+  REFLECT_MEMBER2("bases", value.def.bases);
   REFLECT_MEMBER2("derived", value.derived);
   REFLECT_MEMBER2("types", value.def.types);
   REFLECT_MEMBER2("funcs", value.def.funcs);
@@ -243,7 +243,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
   REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
-  REFLECT_MEMBER2("base", value.def.base);
+  REFLECT_MEMBER2("bases", value.def.bases);
   REFLECT_MEMBER2("derived", value.derived);
   REFLECT_MEMBER2("locals", value.def.locals);
   REFLECT_MEMBER2("uses", value.uses);

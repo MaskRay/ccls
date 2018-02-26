@@ -57,7 +57,7 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   result.spell = id_map.ToQuery(type.spell);
   result.extent = id_map.ToQuery(type.extent);
   result.alias_of = id_map.ToQuery(type.alias_of);
-  result.parents = id_map.ToQuery(type.parents);
+  result.bases = id_map.ToQuery(type.bases);
   result.types = id_map.ToQuery(type.types);
   result.funcs = id_map.ToQuery(type.funcs);
   result.vars = id_map.ToQuery(type.vars);
@@ -83,7 +83,7 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.spell = id_map.ToQuery(func.spell);
   result.extent = id_map.ToQuery(func.extent);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
-  result.base = id_map.ToQuery(func.base);
+  result.bases = id_map.ToQuery(func.bases);
   result.locals = id_map.ToQuery(func.locals);
   result.callees = id_map.ToQuery(func.callees);
   return result;
@@ -947,11 +947,8 @@ std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
         return files[idx].def->path;
       break;
     case SymbolKind::Func:
-      if (const auto* def = funcs[idx].AnyDef()) {
-        // Assume the part after short_name is not needed.
-        return std::string_view(def->detailed_name)
-            .substr(0, def->short_name_offset + def->short_name_size);
-      }
+      if (const auto* def = funcs[idx].AnyDef())
+        return def->DetailedName(false);
       break;
     case SymbolKind::Type:
       if (const auto* def = types[idx].AnyDef())

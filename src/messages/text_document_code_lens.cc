@@ -213,9 +213,9 @@ struct TextDocumentCodeLensHandler
                       GetDeclarations(db, func.derived), false /*force_display*/);
 
           // "Base"
-          if (def->base.size() == 1) {
+          if (def->bases.size() == 1) {
             Maybe<Use> base_loc = GetDefinitionSpell(
-                db, SymbolIdx{def->base[0], SymbolKind::Func});
+                db, SymbolIdx{def->bases[0], SymbolKind::Func});
             if (base_loc) {
               optional<lsLocation> ls_base =
                   GetLsLocation(db, working_files, *base_loc);
@@ -237,7 +237,7 @@ struct TextDocumentCodeLensHandler
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(use, 1),
-                        GetDeclarations(db, def->base), false /*force_display*/);
+                        GetDeclarations(db, def->bases), false /*force_display*/);
           }
 
           break;

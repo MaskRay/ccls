@@ -91,7 +91,9 @@ void Expand(MessageHandler* m,
       case CXType_Double: entry->name = "double"; break;
       case CXType_LongDouble: entry->name = "long double"; break;
       case CXType_Float128: entry->name = "__float128"; break;
+#if CINDEX_VERSION_MINOR >= 43
       case CXType_Half: entry->name = "_Float16"; break;
+#endif
       case CXType_NullPtr: entry->name = "nullptr"; break;
       // clang-format on
     }
@@ -104,24 +106,26 @@ void Expand(MessageHandler* m,
     entry->name = def->detailed_name;
   else
     entry->name = def->ShortName();
-  if (def->spell) {
-    if (optional<lsLocation> loc =
-        GetLsLocation(m->db, m->working_files, *def->spell))
-      entry->location = *loc;
-  }
   entry->numChildren = int(def->vars.size());
   if (levels > 0) {
     EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
-        const QueryVar::Def* def1 = var.AnyDef();
-        Out_CqueryMemberHierarchy::Entry entry1;
-        entry1.id = def1->type ? *def1->type : QueryTypeId();
-        if (detailed_name)
-          entry1.fieldName = def1->DetailedName(false);
-        else
-          entry1.fieldName = std::string(def1->ShortName());
-        Expand(m, &entry1, detailed_name, levels - 1);
-        entry->children.push_back(std::move(entry1));
-      });
+      const QueryVar::Def* def1 = var.AnyDef();
+      if (!def1)
+        return;
+      Out_CqueryMemberHierarchy::Entry entry1;
+      entry1.id = def1->type ? *def1->type : QueryTypeId();
+      if (detailed_name)
+        entry1.fieldName = def1->DetailedName(false);
+      else
+        entry1.fieldName = std::string(def1->ShortName());
+      if (def1->spell) {
+        if (optional<lsLocation> loc =
+            GetLsLocation(m->db, m->working_files, *def1->spell))
+          entry1.location = *loc;
+      }
+      Expand(m, &entry1, detailed_name, levels - 1);
+      entry->children.push_back(std::move(entry1));
+    });
     entry->numChildren = int(entry->children.size());
   }
 }
@@ -137,6 +141,11 @@ struct CqueryMemberHierarchyInitialHandler
 
     Out_CqueryMemberHierarchy::Entry entry;
     entry.id = root_id;
+    if (def->spell) {
+      if (optional<lsLocation> loc =
+          GetLsLocation(db, working_files, *def->spell))
+        entry.location = *loc;
+    }
     Expand(this, &entry, detailed_name, levels);
     return entry;
   }

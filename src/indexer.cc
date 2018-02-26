@@ -687,7 +687,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-const int IndexFile::kMajorVersion = 14;
+const int IndexFile::kMajorVersion = 15;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
@@ -1531,7 +1531,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           db->Resolve(parent_id)->derived.push_back(ns_id);
           // |ns| may be invalidated.
           ns = db->Resolve(ns_id);
-          ns->def.parents.push_back(parent_id);
+          ns->def.bases.push_back(parent_id);
         }
       }
       AddUse(db, ns->uses, spell, lex_parent);
@@ -1744,7 +1744,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             IndexFunc* parent_def = db->Resolve(parent_id);
             func = db->Resolve(func_id);  // ToFuncId invalidated func_def
 
-            func->def.base.push_back(parent_id);
+            func->def.bases.push_back(parent_id);
             parent_def->derived.push_back(func_id);
           }
 
@@ -1887,7 +1887,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                 SetUse(db, origin_cursor.get_extent(), origin_lex, Role::None);
           }
           origin->derived.push_back(type_id);
-          type->def.parents.push_back(origin_id);
+          type->def.bases.push_back(origin_id);
         }
           // fallthrough
         case CXIdxEntity_Template: {
@@ -1923,7 +1923,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           if (parent_type_id) {
             IndexType* parent_type_def = db->Resolve(parent_type_id.value());
             parent_type_def->derived.push_back(type_id);
-            type->def.parents.push_back(*parent_type_id);
+            type->def.bases.push_back(*parent_type_id);
           }
         }
       }
