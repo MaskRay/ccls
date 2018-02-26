@@ -107,24 +107,40 @@ bool Expand(MessageHandler* m,
   else
     entry->name = def->ShortName();
   if (levels > 0) {
-    EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
-      const QueryVar::Def* def1 = var.AnyDef();
-      if (!def1)
-        return;
-      Out_CqueryMemberHierarchy::Entry entry1;
-      entry1.id = def1->type ? *def1->type : QueryTypeId();
-      if (detailed_name)
-        entry1.fieldName = def1->DetailedName(false);
-      else
-        entry1.fieldName = std::string(def1->ShortName());
-      if (def1->spell) {
-        if (optional<lsLocation> loc =
-            GetLsLocation(m->db, m->working_files, *def1->spell))
-          entry1.location = *loc;
+    std::unordered_set<Usr> seen;
+    std::vector<const QueryType*> stack;
+    seen.insert(type.usr);
+    stack.push_back(&type);
+    while (stack.size()) {
+      const QueryType& type = *stack.back();
+      stack.pop_back();
+      if (const auto* def = type.AnyDef()) {
+        EachDefinedEntity(m->db->types, def->bases, [&](QueryType& type1) {
+          if (!seen.count(type1.usr)) {
+            seen.insert(type1.usr);
+            stack.push_back(&type1);
+          }
+        });
+        EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
+          const QueryVar::Def* def1 = var.AnyDef();
+          if (!def1)
+            return;
+          Out_CqueryMemberHierarchy::Entry entry1;
+          entry1.id = def1->type ? *def1->type : QueryTypeId();
+          if (detailed_name)
+            entry1.fieldName = def1->DetailedName(false);
+          else
+            entry1.fieldName = std::string(def1->ShortName());
+          if (def1->spell) {
+            if (optional<lsLocation> loc =
+                GetLsLocation(m->db, m->working_files, *def1->spell))
+              entry1.location = *loc;
+          }
+          if (def1->type && Expand(m, &entry1, detailed_name, levels - 1))
+            entry->children.push_back(std::move(entry1));
+        });
       }
-      if (Expand(m, &entry1, detailed_name, levels - 1))
-        entry->children.push_back(std::move(entry1));
-    });
+    }
     entry->numChildren = int(entry->children.size());
   } else
     entry->numChildren = int(def->vars.size());
