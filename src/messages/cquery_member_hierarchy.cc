@@ -115,7 +115,10 @@ void Expand(MessageHandler* m,
         const QueryVar::Def* def1 = var.AnyDef();
         Out_CqueryMemberHierarchy::Entry entry1;
         entry1.id = def1->type ? *def1->type : QueryTypeId();
-        entry1.fieldName = def1->ShortName();
+        if (detailed_name)
+          entry1.fieldName = def1->detailed_name;
+        else
+          entry1.fieldName = def1->ShortName();
         Expand(m, &entry1, detailed_name, levels - 1);
         entry->children.push_back(std::move(entry1));
       });
