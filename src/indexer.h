@@ -390,9 +390,16 @@ struct VarDefDefinitionData {
     if (qualified)
       return detailed_name;
     int i = short_name_offset;
-    while (i && (isalnum(detailed_name[i - 1]) || detailed_name[i - 1] == '_' ||
-                 detailed_name[i - 1] == ':'))
-      i--;
+    for (int paren = 0; i; i--) {
+      // Skip parentheses in "(anon struct)::name"
+      if (detailed_name[i - 1] == ')')
+        paren++;
+      else if (detailed_name[i - 1] == '(')
+        paren--;
+      else if (!(paren > 0 || isalnum(detailed_name[i - 1]) ||
+                 detailed_name[i - 1] == '_' || detailed_name[i - 1] == ':'))
+        break;
+    }
     return detailed_name.substr(0, i) + detailed_name.substr(short_name_offset);
   }
 };

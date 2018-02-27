@@ -46,7 +46,7 @@ struct Out_CqueryMemberHierarchy
     lsLocation location;
     // For unexpanded nodes, this is an upper bound because some entities may be
     // undefined. If it is 0, there are no members.
-    int numChildren;
+    int numChildren = 0;
     // Empty if the |levels| limit is reached.
     std::vector<Entry> children;
   };
@@ -71,13 +71,10 @@ bool Expand(MessageHandler* m,
   // builtin types have no declaration and empty |detailed_name|.
   if (CXType_FirstBuiltin <= type.usr && type.usr <= CXType_LastBuiltin) {
     entry->name = ClangBuiltinTypeName(CXTypeKind(type.usr));
-    entry->numChildren = 0;
     return true;
   }
-  if (!def) {
-    entry->numChildren = 0;
+  if (!def)
     return false;
-  }
   if (detailed_name)
     entry->name = def->detailed_name;
   else
@@ -99,26 +96,29 @@ bool Expand(MessageHandler* m,
         });
         if (def->alias_of) {
           const QueryType::Def* def1 = m->db->types[def->alias_of->id].AnyDef();
-          if (!def1)
-            continue;
           Out_CqueryMemberHierarchy::Entry entry1;
           entry1.id = *def->alias_of;
-          if (def1->spell) {
-            if (optional<lsLocation> loc =
-                GetLsLocation(m->db, m->working_files, *def1->spell))
-              entry1.location = *loc;
+          if (def1) {
+            if (def1->spell) {
+              if (optional<lsLocation> loc =
+                  GetLsLocation(m->db, m->working_files, *def1->spell))
+                entry1.location = *loc;
+            }
+            if (detailed_name)
+              entry1.fieldName = def1->detailed_name;
           }
-          if (detailed_name)
-            entry1.fieldName = def1->detailed_name;
-          if (Expand(m, &entry1, detailed_name, levels - 1))
+          if (Expand(m, &entry1, detailed_name, levels - 1)) {
+            // For builtin types |name| is set.
+            if (detailed_name && entry1.fieldName.empty())
+              entry1.fieldName = std::string(entry1.name);
             entry->children.push_back(std::move(entry1));
+          }
         } else {
           EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
             const QueryVar::Def* def1 = var.AnyDef();
             if (!def1)
               return;
             Out_CqueryMemberHierarchy::Entry entry1;
-            entry1.id = def1->type ? *def1->type : QueryTypeId();
             if (detailed_name)
               entry1.fieldName = def1->DetailedName(false);
             else
@@ -128,8 +128,14 @@ bool Expand(MessageHandler* m,
                   GetLsLocation(m->db, m->working_files, *def1->spell))
                 entry1.location = *loc;
             }
-            if (def1->type && Expand(m, &entry1, detailed_name, levels - 1))
+            if (def1->type) {
+              entry1.id = *def1->type;
+              if (Expand(m, &entry1, detailed_name, levels - 1))
+                entry->children.push_back(std::move(entry1));
+            } else {
+              entry1.id = QueryTypeId();
               entry->children.push_back(std::move(entry1));
+            }
           });
         }
       }
