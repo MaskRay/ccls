@@ -25,7 +25,12 @@ class ClangType {
   bool operator==(const ClangType& rhs) const;
 
   // Returns true if this is a fundamental type like int.
-  bool is_fundamental() const;
+  bool is_builtin() const {
+    // NOTE: This will return false for pointed types. Should we call
+    //       strip_qualifiers for the user?
+    return cx_type.kind >= CXType_FirstBuiltin &&
+        cx_type.kind <= CXType_LastBuiltin;
+  }
 
   ClangCursor get_declaration() const;
   std::string get_usr() const;

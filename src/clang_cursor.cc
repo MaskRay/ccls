@@ -29,13 +29,6 @@ bool ClangType::operator==(const ClangType& rhs) const {
   return clang_equalTypes(cx_type, rhs.cx_type);
 }
 
-bool ClangType::is_fundamental() const {
-  // NOTE: This will return false for pointed types. Should we call
-  //       strip_qualifiers for the user?
-  return cx_type.kind >= CXType_FirstBuiltin &&
-         cx_type.kind <= CXType_LastBuiltin;
-}
-
 ClangCursor ClangType::get_declaration() const {
   return clang_getTypeDeclaration(cx_type);
 }
@@ -45,7 +38,7 @@ std::string ClangType::get_usr() const {
 }
 
 Usr ClangType::get_usr_hash() const {
-  if (is_fundamental())
+  if (is_builtin())
     return static_cast<Usr>(cx_type.kind);
   return ClangCursor(clang_getTypeDeclaration(cx_type)).get_usr_hash();
 }

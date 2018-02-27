@@ -84,7 +84,7 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   result.extent = id_map.ToQuery(func.extent);
   result.declaring_type = id_map.ToQuery(func.declaring_type);
   result.bases = id_map.ToQuery(func.bases);
-  result.locals = id_map.ToQuery(func.locals);
+  result.vars = id_map.ToQuery(func.vars);
   result.callees = id_map.ToQuery(func.callees);
   return result;
 }

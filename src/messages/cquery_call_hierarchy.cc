@@ -118,6 +118,7 @@ bool Expand(MessageHandler* m,
   };
 
   std::unordered_set<Usr> seen;
+  seen.insert(func.usr);
   std::vector<const QueryFunc*> stack;
   if (detailed_name)
     entry->name = def->detailed_name;
@@ -132,7 +133,6 @@ bool Expand(MessageHandler* m,
 
   // Callers/callees of base functions.
   if (call_type & CallType::Base) {
-    seen.insert(func.usr);
     stack.push_back(&func);
     while (stack.size()) {
       const QueryFunc& func1 = *stack.back();

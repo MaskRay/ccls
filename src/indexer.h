@@ -256,8 +256,8 @@ struct FuncDefDefinitionData {
   // Method this method overrides.
   std::vector<typename F::FuncId> bases;
 
-  // Local variables defined in this function.
-  std::vector<typename F::VarId> locals;
+  // Local variables or parameters.
+  std::vector<typename F::VarId> vars;
 
   // Functions that this function calls.
   std::vector<SymbolRef> callees;
@@ -273,7 +273,7 @@ struct FuncDefDefinitionData {
   bool operator==(const FuncDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && declaring_type == o.declaring_type &&
-           bases == o.bases && locals == o.locals && callees == o.callees &&
+           bases == o.bases && vars == o.vars && callees == o.callees &&
            kind == o.kind && storage == o.storage && hover == o.hover &&
            comments == o.comments;
   }
@@ -308,7 +308,7 @@ void Reflect(TVisitor& visitor, FuncDefDefinitionData<Family>& value) {
   REFLECT_MEMBER(file);
   REFLECT_MEMBER(declaring_type);
   REFLECT_MEMBER(bases);
-  REFLECT_MEMBER(locals);
+  REFLECT_MEMBER(vars);
   REFLECT_MEMBER(callees);
   REFLECT_MEMBER_END();
 }

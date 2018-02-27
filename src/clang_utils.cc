@@ -150,6 +150,37 @@ std::string ToString(CXCursorKind kind) {
   return ToString(clang_getCursorKindSpelling(kind));
 }
 
+const char* ClangBuiltinTypeName(CXTypeKind kind) {
+  switch (kind) {
+    // clang-format off
+    case CXType_Bool: return "bool";
+    case CXType_Char_U: return "char";
+    case CXType_UChar: return "unsigned char";
+    case CXType_UShort: return "unsigned short";
+    case CXType_UInt: return "unsigned int";
+    case CXType_ULong: return "unsigned long";
+    case CXType_ULongLong: return "unsigned long long";
+    case CXType_UInt128: return "unsigned __int128";
+    case CXType_Char_S: return "char";
+    case CXType_SChar: return "signed char";
+    case CXType_WChar: return "wchar_t";
+    case CXType_Int: return "int";
+    case CXType_Long: return "long";
+    case CXType_LongLong: return "long long";
+    case CXType_Int128: return "__int128";
+    case CXType_Float: return "float";
+    case CXType_Double: return "double";
+    case CXType_LongDouble: return "long double";
+    case CXType_Float128: return "__float128";
+#if CINDEX_VERSION_MINOR >= 43
+    case CXType_Half: return "_Float16";
+#endif
+    case CXType_NullPtr: return "nullptr";
+    default: return "";
+    // clang-format on
+  }
+}
+
 #if USE_CLANG_CXX
 TEST_SUITE("ClangUtils") {
   TEST_CASE("replacements") {

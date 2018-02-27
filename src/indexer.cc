@@ -539,7 +539,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
 
   type = type.strip_qualifiers();
 
-  if (type.is_fundamental()) {
+  if (type.is_builtin()) {
     // For builtin types, use type kinds as USR hash.
     return db->ToTypeId(type.cx_type.kind);
   }
@@ -1602,14 +1602,19 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       if (decl->isDefinition && decl->semanticContainer) {
         switch (GetSymbolKind(decl->semanticContainer->cursor.kind)) {
-          default:
-            break;
-          case SymbolKind::Type: {
-            IndexTypeId parent_type_id =
-                db->ToTypeId(decl->semanticContainer->cursor);
-            db->Resolve(parent_type_id)->def.vars.push_back(var_id);
+          case SymbolKind::Func: {
+            db->Resolve(db->ToFuncId(decl->semanticContainer->cursor))
+                ->def.vars.push_back(var_id);
             break;
           }
+          case SymbolKind::Type:
+            if (decl->semanticContainer->cursor.kind != CXCursor_EnumDecl) {
+              db->Resolve(db->ToTypeId(decl->semanticContainer->cursor))
+                  ->def.vars.push_back(var_id);
+            }
+            break;
+          default:
+            break;
         }
       }
 
@@ -1842,7 +1847,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
         if (decl_cursor.get_kind() == CXCursor_EnumDecl) {
           ClangType enum_type = clang_getEnumDeclIntegerType(decl->cursor);
-          if (!enum_type.is_fundamental()) {
+          if (!enum_type.is_builtin()) {
             IndexType* int_type =
                 db->Resolve(db->ToTypeId(enum_type.get_usr_hash()));
             AddUse(db, int_type->uses, spell,

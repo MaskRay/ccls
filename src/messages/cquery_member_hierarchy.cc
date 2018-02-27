@@ -70,33 +70,7 @@ bool Expand(MessageHandler* m,
   const QueryType::Def* def = type.AnyDef();
   // builtin types have no declaration and empty |detailed_name|.
   if (CXType_FirstBuiltin <= type.usr && type.usr <= CXType_LastBuiltin) {
-    switch (type.usr) {
-      // clang-format off
-      case CXType_Bool: entry->name = "bool"; break;
-      case CXType_Char_U: entry->name = "char"; break;
-      case CXType_UChar: entry->name = "unsigned char"; break;
-      case CXType_UShort: entry->name = "unsigned short"; break;
-      case CXType_UInt: entry->name = "unsigned int"; break;
-      case CXType_ULong: entry->name = "unsigned long"; break;
-      case CXType_ULongLong: entry->name = "unsigned long long"; break;
-      case CXType_UInt128: entry->name = "unsigned __int128"; break;
-      case CXType_Char_S: entry->name = "char"; break;
-      case CXType_SChar: entry->name = "signed char"; break;
-      case CXType_WChar: entry->name = "wchar_t"; break;
-      case CXType_Int: entry->name = "int"; break;
-      case CXType_Long: entry->name = "long"; break;
-      case CXType_LongLong: entry->name = "long long"; break;
-      case CXType_Int128: entry->name = "__int128"; break;
-      case CXType_Float: entry->name = "float"; break;
-      case CXType_Double: entry->name = "double"; break;
-      case CXType_LongDouble: entry->name = "long double"; break;
-      case CXType_Float128: entry->name = "__float128"; break;
-#if CINDEX_VERSION_MINOR >= 43
-      case CXType_Half: entry->name = "_Float16"; break;
-#endif
-      case CXType_NullPtr: entry->name = "nullptr"; break;
-      // clang-format on
-    }
+    entry->name = ClangBuiltinTypeName(CXTypeKind(type.usr));
     entry->numChildren = 0;
     return true;
   }
