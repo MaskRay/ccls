@@ -28,9 +28,9 @@ struct CqueryCallersHandler : BaseMessageHandler<Ipc_CqueryCallers> {
       if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
         std::vector<Use> uses = func.uses;
-        for (Use func_ref : GetCallersForAllBaseFunctions(db, func))
+        for (Use func_ref : GetUsesForAllBases(db, func))
           uses.push_back(func_ref);
-        for (Use func_ref : GetCallersForAllDerivedFunctions(db, func))
+        for (Use func_ref : GetUsesForAllDerived(db, func))
           uses.push_back(func_ref);
         out.result =
             GetLsLocationExs(db, working_files, uses, config->xref.container,

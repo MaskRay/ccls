@@ -65,6 +65,41 @@ MAKE_REFLECT_STRUCT(Out_CqueryMemberHierarchy, jsonrpc, id, result);
 bool Expand(MessageHandler* m,
             Out_CqueryMemberHierarchy::Entry* entry,
             bool detailed_name,
+            int levels);
+
+// Add a field to |entry| which is a Func/Type.
+void DoField(MessageHandler* m,
+             Out_CqueryMemberHierarchy::Entry* entry,
+             const QueryVar& var,
+             bool detailed_name,
+             int levels) {
+  const QueryVar::Def* def1 = var.AnyDef();
+  if (!def1)
+    return;
+  Out_CqueryMemberHierarchy::Entry entry1;
+  if (detailed_name)
+    entry1.fieldName = def1->DetailedName(false);
+  else
+    entry1.fieldName = std::string(def1->ShortName());
+  if (def1->spell) {
+    if (optional<lsLocation> loc =
+        GetLsLocation(m->db, m->working_files, *def1->spell))
+      entry1.location = *loc;
+  }
+  if (def1->type) {
+    entry1.id = *def1->type;
+    if (Expand(m, &entry1, detailed_name, levels))
+      entry->children.push_back(std::move(entry1));
+  } else {
+    entry1.id = QueryTypeId();
+    entry->children.push_back(std::move(entry1));
+  }
+}
+
+// Expand a type node by adding members recursively to it.
+bool Expand(MessageHandler* m,
+            Out_CqueryMemberHierarchy::Entry* entry,
+            bool detailed_name,
             int levels) {
   const QueryType& type = m->db->types[entry->id.id];
   const QueryType::Def* def = type.AnyDef();
@@ -98,15 +133,20 @@ bool Expand(MessageHandler* m,
           const QueryType::Def* def1 = m->db->types[def->alias_of->id].AnyDef();
           Out_CqueryMemberHierarchy::Entry entry1;
           entry1.id = *def->alias_of;
-          if (def1) {
-            if (def1->spell) {
-              if (optional<lsLocation> loc =
-                  GetLsLocation(m->db, m->working_files, *def1->spell))
-                entry1.location = *loc;
-            }
-            if (detailed_name)
-              entry1.fieldName = def1->detailed_name;
+          if (def1 && def1->spell) {
+            // The declaration of target type.
+            if (optional<lsLocation> loc =
+                GetLsLocation(m->db, m->working_files, *def1->spell))
+              entry1.location = *loc;
+          } else if (def->spell) {
+            // Builtin types have no declaration but the typedef declaration
+            // itself is useful.
+            if (optional<lsLocation> loc =
+                    GetLsLocation(m->db, m->working_files, *def->spell))
+              entry1.location = *loc;
           }
+          if (def1 && detailed_name)
+            entry1.fieldName = def1->detailed_name;
           if (Expand(m, &entry1, detailed_name, levels - 1)) {
             // For builtin types |name| is set.
             if (detailed_name && entry1.fieldName.empty())
@@ -115,27 +155,7 @@ bool Expand(MessageHandler* m,
           }
         } else {
           EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
-            const QueryVar::Def* def1 = var.AnyDef();
-            if (!def1)
-              return;
-            Out_CqueryMemberHierarchy::Entry entry1;
-            if (detailed_name)
-              entry1.fieldName = def1->DetailedName(false);
-            else
-              entry1.fieldName = std::string(def1->ShortName());
-            if (def1->spell) {
-              if (optional<lsLocation> loc =
-                  GetLsLocation(m->db, m->working_files, *def1->spell))
-                entry1.location = *loc;
-            }
-            if (def1->type) {
-              entry1.id = *def1->type;
-              if (Expand(m, &entry1, detailed_name, levels - 1))
-                entry->children.push_back(std::move(entry1));
-            } else {
-              entry1.id = QueryTypeId();
-              entry->children.push_back(std::move(entry1));
-            }
+            DoField(m, entry, var, detailed_name, levels - 1);
           });
         }
       }
@@ -148,6 +168,30 @@ bool Expand(MessageHandler* m,
 
 struct CqueryMemberHierarchyInitialHandler
     : BaseMessageHandler<Ipc_CqueryMemberHierarchyInitial> {
+  optional<Out_CqueryMemberHierarchy::Entry> BuildInitial(QueryFuncId root_id,
+                                                          bool detailed_name,
+                                                          int levels) {
+    const auto* def = db->funcs[root_id.id].AnyDef();
+    if (!def)
+      return {};
+
+    Out_CqueryMemberHierarchy::Entry entry;
+    // Not type, |id| is invalid.
+    if (detailed_name)
+      entry.name = def->DetailedName(false);
+    else
+      entry.name = std::string(def->ShortName());
+    if (def->spell) {
+      if (optional<lsLocation> loc =
+          GetLsLocation(db, working_files, *def->spell))
+        entry.location = *loc;
+    }
+    EachDefinedEntity(db->vars, def->vars, [&](QueryVar& var) {
+      DoField(this, &entry, var, detailed_name, levels - 1);
+    });
+    return entry;
+  }
+
   optional<Out_CqueryMemberHierarchy::Entry> BuildInitial(QueryTypeId root_id,
                                                           bool detailed_name,
                                                           int levels) {
@@ -180,18 +224,26 @@ struct CqueryMemberHierarchyInitialHandler
 
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, params.position)) {
-      if (sym.kind == SymbolKind::Type) {
+      switch (sym.kind) {
+      case SymbolKind::Func:
+        out.result = BuildInitial(QueryFuncId(sym.id), params.detailedName,
+                                  params.levels);
+        break;
+      case SymbolKind::Type:
         out.result = BuildInitial(QueryTypeId(sym.id), params.detailedName,
                                   params.levels);
         break;
-      }
-      if (sym.kind == SymbolKind::Var) {
+      case SymbolKind::Var: {
         const QueryVar::Def* def = db->GetVar(sym).AnyDef();
         if (def && def->type)
           out.result = BuildInitial(QueryTypeId(*def->type),
                                     params.detailedName, params.levels);
         break;
       }
+      default:
+        continue;
+      }
+      break;
     }
 
     QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyInitial, out);

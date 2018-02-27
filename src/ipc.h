@@ -50,8 +50,6 @@ enum class IpcId : int {
   // Messages used in tree views.
   CqueryCallHierarchyInitial,
   CqueryCallHierarchyExpand,
-  CqueryCallTreeInitial,
-  CqueryCallTreeExpand,
   CqueryInheritanceHierarchyInitial,
   CqueryInheritanceHierarchyExpand,
   CqueryMemberHierarchyInitial,

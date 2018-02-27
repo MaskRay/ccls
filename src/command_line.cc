@@ -344,8 +344,6 @@ void LaunchStdinLoop(Config* config,
         case IpcId::CqueryFreshenIndex:
         case IpcId::CqueryCallHierarchyInitial:
         case IpcId::CqueryCallHierarchyExpand:
-        case IpcId::CqueryCallTreeInitial:
-        case IpcId::CqueryCallTreeExpand:
         case IpcId::CqueryInheritanceHierarchyInitial:
         case IpcId::CqueryInheritanceHierarchyExpand:
         case IpcId::CqueryMemberHierarchyInitial:

@@ -18,11 +18,8 @@ std::vector<Use> GetDeclarations(QueryDatabase* db, const std::vector<QueryVarId
 // Get non-defining declarations.
 std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym);
 
-bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root);
-std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
-                                               QueryFunc& root);
-std::vector<Use> GetCallersForAllDerivedFunctions(QueryDatabase* db,
-                                                  QueryFunc& root);
+std::vector<Use> GetUsesForAllBases(QueryDatabase* db, QueryFunc& root);
+std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root);
 optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position);
 optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location);

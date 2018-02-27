@@ -5,8 +5,6 @@
 #include <loguru.hpp>
 
 #include <climits>
-#include <queue>
-#include <stack>
 #include <unordered_set>
 
 namespace {
@@ -116,78 +114,46 @@ std::vector<Use> GetNonDefDeclarations(QueryDatabase* db,
   }
 }
 
-bool HasCallersOnSelfOrBaseOrDerived(QueryDatabase* db, QueryFunc& root) {
+std::vector<Use> GetUsesForAllBases(QueryDatabase* db, QueryFunc& root) {
+  std::vector<Use> ret;
+  std::vector<QueryFunc*> stack{&root};
   std::unordered_set<Usr> seen;
-  std::stack<QueryFunc*> stack;
   seen.insert(root.usr);
-  stack.push(&root);
   while (!stack.empty()) {
-    QueryFunc& func = *stack.top();
-    stack.pop();
-    if (!func.uses.empty())
-      return true;
+    QueryFunc& func = *stack.back();
+    stack.pop_back();
     if (auto* def = func.AnyDef()) {
       EachDefinedEntity(db->funcs, def->bases, [&](QueryFunc& func1) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
-          stack.push(&func1);
-        }
-      });
-      EachDefinedEntity(db->funcs, func.derived, [&](QueryFunc& func1) {
-        if (!seen.count(func1.usr)) {
-          seen.insert(func1.usr);
-          stack.push(&func1);
-        }
-      });
-    }
-  }
-  return false;
-}
-
-std::vector<Use> GetCallersForAllBaseFunctions(QueryDatabase* db,
-                                               QueryFunc& root) {
-  std::vector<Use> callers;
-  std::unordered_set<Usr> seen;
-  std::stack<QueryFunc*> stack;
-  seen.insert(root.usr);
-  stack.push(&root);
-  while (!stack.empty()) {
-    QueryFunc& func = *stack.top();
-    stack.pop();
-    AddRange(&callers, func.uses);
-    if (auto* def = func.AnyDef()) {
-      EachDefinedEntity(db->funcs, def->bases, [&](QueryFunc& func1) {
-        if (!seen.count(func1.usr)) {
-          seen.insert(func1.usr);
-          stack.push(&func1);
+          stack.push_back(&func1);
+          AddRange(&ret, func1.uses);
         }
       });
     }
   }
 
-  return callers;
+  return ret;
 }
 
-std::vector<Use> GetCallersForAllDerivedFunctions(QueryDatabase* db,
-                                                  QueryFunc& root) {
-  std::vector<Use> callers;
+std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root) {
+  std::vector<Use> ret;
+  std::vector<QueryFunc*> stack{&root};
   std::unordered_set<Usr> seen;
-  std::stack<QueryFunc*> stack;
   seen.insert(root.usr);
-  stack.push(&root);
   while (!stack.empty()) {
-    QueryFunc& func = *stack.top();
-    stack.pop();
-    AddRange(&callers, func.uses);
+    QueryFunc& func = *stack.back();
+    stack.pop_back();
     EachDefinedEntity(db->funcs, func.derived, [&](QueryFunc& func1) {
       if (!seen.count(func1.usr)) {
         seen.insert(func1.usr);
-        stack.push(&func1);
+        stack.push_back(&func1);
+        AddRange(&ret, func1.uses);
       }
     });
   }
 
-  return callers;
+  return ret;
 }
 
 optional<lsPosition> GetLsPosition(WorkingFile* working_file,

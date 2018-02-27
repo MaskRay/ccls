@@ -74,10 +74,6 @@ const char* IpcIdToString(IpcId id) {
       return "$cquery/callHierarchyInitial";
     case IpcId::CqueryCallHierarchyExpand:
       return "$cquery/callHierarchyExpand";
-    case IpcId::CqueryCallTreeInitial:
-      return "$cquery/callTreeInitial";
-    case IpcId::CqueryCallTreeExpand:
-      return "$cquery/callTreeExpand";
     case IpcId::CqueryInheritanceHierarchyInitial:
       return "$cquery/inheritanceHierarchyInitial";
     case IpcId::CqueryInheritanceHierarchyExpand:

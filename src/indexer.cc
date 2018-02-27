@@ -499,6 +499,21 @@ Use SetUse(IndexFile* db, Range range, ClangCursor parent, Role role) {
   }
 }
 
+const char* GetAnonName(CXCursorKind kind) {
+  switch (kind) {
+  case CXCursor_ClassDecl:
+    return "(anon class)";
+  case CXCursor_EnumDecl:
+    return "(anon enum)";
+  case CXCursor_StructDecl:
+    return "(anon struct)";
+  case CXCursor_UnionDecl:
+    return "(anon union)";
+  default:
+    return "(anon)";
+  }
+}
+
 void SetTypeName(IndexType* type,
                  const ClangCursor& cursor,
                  const CXIdxContainerInfo* container,
@@ -508,7 +523,7 @@ void SetTypeName(IndexType* type,
   // |name| can be null in an anonymous struct (see
   // tests/types/anonymous_struct.cc).
   if (!name)
-    name = "(anon)";
+    name = GetAnonName(cursor.get_kind());
   if (!container)
     parent.cursor = cursor.get_semantic_parent().cx_cursor;
   // Investigate why clang_getCursorPrettyPrinted gives `struct A {}` `namespace
@@ -1443,23 +1458,7 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
     if (name.size())
       qualifier += name;
     else
-      switch (namespaces[i].get_kind()) {
-        case CXCursor_ClassDecl:
-          qualifier += "(anon class)";
-          break;
-        case CXCursor_EnumDecl:
-          qualifier += "(anon enum)";
-          break;
-        case CXCursor_StructDecl:
-          qualifier += "(anon struct)";
-          break;
-        case CXCursor_UnionDecl:
-          qualifier += "(anon union)";
-          break;
-        default:
-          qualifier += "(anon)";
-          break;
-      }
+      qualifier += GetAnonName(namespaces[i].get_kind());
     qualifier += "::";
     container_cursor_to_qualified_name[namespaces[i]] = qualifier;
   }

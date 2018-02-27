@@ -184,10 +184,8 @@ struct TextDocumentCodeLensHandler
             return *def;
           };
 
-          std::vector<Use> base_callers =
-              GetCallersForAllBaseFunctions(db, func);
-          std::vector<Use> derived_callers =
-              GetCallersForAllDerivedFunctions(db, func);
+          std::vector<Use> base_callers = GetUsesForAllBases(db, func);
+          std::vector<Use> derived_callers = GetUsesForAllDerived(db, func);
           if (base_callers.empty() && derived_callers.empty()) {
             Use loc = try_ensure_spelling(use);
             AddCodeLens("call", "calls", &common,
