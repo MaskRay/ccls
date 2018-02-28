@@ -193,7 +193,8 @@ void RunQueryDbThread(const std::string& bin_name,
           Out_Error out;
           out.id = id;
           out.error.code = lsErrorCodes::InternalError;
-          out.error.message = "Dropped completion request";
+          out.error.message = "Dropping completion request; a newer request "
+              "has come in that will be serviced instead.";
           QueueManager::WriteStdout(IpcId::Unknown, out);
         }
       });
