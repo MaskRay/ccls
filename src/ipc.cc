@@ -87,13 +87,13 @@ const char* IpcIdToString(IpcId id) {
     case IpcId::CqueryRandom:
       return "$cquery/random";
 
-    case IpcId::Unknown:
-      return "$unknown";
-
     case IpcId::CqueryIndexFile:
       return "$cquery/indexFile";
     case IpcId::CqueryWait:
       return "$cquery/wait";
+
+    case IpcId::Unknown:
+      return "$unknown";
   }
 
   CQUERY_UNREACHABLE("missing IpcId string name");

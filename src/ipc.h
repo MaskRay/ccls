@@ -58,13 +58,12 @@ enum class IpcId : int {
   CqueryDerived,  // Show all derived types/methods.
   CqueryRandom,   // Show random definition.
 
+  // Messages for testing.
+  CqueryIndexFile, // Index the given file contents.
+  CqueryWait,      // Wait until all cquery threads are idle.
+
   // Internal implementation detail.
   Unknown,
-
-  // Index the given file contents. Used in tests.
-  CqueryIndexFile,
-  // Wait until all cquery threads are idle. Used in tests.
-  CqueryWait,
 };
 MAKE_ENUM_HASHABLE(IpcId)
 MAKE_REFLECT_TYPE_PROXY(IpcId)
