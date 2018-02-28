@@ -28,7 +28,7 @@ struct Ipc_CqueryCallHierarchy
     bool callee = false;
     // Base: include base functions; All: include both base and derived
     // functions.
-    CallType callType = CallType::Direct;
+    CallType callType = CallType::All;
     bool detailedName = false;
     int levels = 1;
   };
