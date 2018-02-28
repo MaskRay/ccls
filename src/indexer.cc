@@ -1506,7 +1506,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     db->language = decl_lang;
   }
 
-  NamespaceHelper* ns = &param->ns;
   ClangCursor sem_parent(fromContainer(decl->semanticContainer));
   ClangCursor lex_parent(fromContainer(decl->lexicalContainer));
   SetUsePreflight(db, sem_parent);
@@ -1552,7 +1551,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Field:
     case CXIdxEntity_Variable:
     case CXIdxEntity_CXXStaticVariable: {
-      ClangCursor cursor = decl->cursor;
       Range spell = cursor.get_spell();
 
       // Do not index implicit template instantiations.
@@ -1628,25 +1626,24 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_CXXInstanceMethod:
     case CXIdxEntity_CXXStaticMethod:
     case CXIdxEntity_CXXConversionFunction: {
-      ClangCursor decl_cursor = decl->cursor;
-      Range spell = decl_cursor.get_spell();
-      Range extent = decl_cursor.get_extent();
+      Range spell = cursor.get_spell();
+      Range extent = cursor.get_extent();
 
       ClangCursor decl_cursor_resolved =
-          decl_cursor.template_specialization_to_template_definition();
-      bool is_template_specialization = decl_cursor != decl_cursor_resolved;
+          cursor.template_specialization_to_template_definition();
+      bool is_template_specialization = cursor != decl_cursor_resolved;
 
       IndexFuncId func_id = db->ToFuncId(decl_cursor_resolved.cx_cursor);
       IndexFunc* func = db->Resolve(func_id);
       if (param->config->index.comments)
-        func->def.comments = decl_cursor.get_comments();
+        func->def.comments = cursor.get_comments();
       func->def.kind = GetSymbolKind(decl->entityInfo->kind);
       func->def.storage =
           GetStorageClass(clang_Cursor_getStorageClass(decl->cursor));
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
-      AddDeclTypeUsages(db, decl_cursor, nullopt, decl->semanticContainer,
+      AddDeclTypeUsages(db, cursor, nullopt, decl->semanticContainer,
                         decl->lexicalContainer);
 
       // Add definition or declaration. This is a bit tricky because we treat
@@ -1664,7 +1661,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         declaration.spell = SetUse(db, spell, lex_parent, Role::Declaration);
 
         // Add parameters.
-        for (ClangCursor arg : decl_cursor.get_arguments()) {
+        for (ClangCursor arg : cursor.get_arguments()) {
           switch (arg.get_kind()) {
             case CXCursor_ParmDecl: {
               Range param_spelling = arg.get_spell();
@@ -1700,7 +1697,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 #if CINDEX_HAVE_PRETTY
         func->def.detailed_name = param->PrettyPrintCursor(decl->cursor);
 #else
-        func->def.detailed_name = GetFunctionSignature(db, ns, decl);
+        func->def.detailed_name = GetFunctionSignature(db, &param->ns, decl);
 #endif
         auto idx = func->def.detailed_name.find(decl->entityInfo->name);
         assert(idx != std::string::npos);
@@ -1714,8 +1711,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           TemplateVisitorData data;
           data.db = db;
           data.param = param;
-          data.container = decl_cursor;
-          decl_cursor.VisitChildren(&TemplateVisitor, &data);
+          data.container = cursor;
+          cursor.VisitChildren(&TemplateVisitor, &data);
           // TemplateVisitor calls ToFuncId which invalidates func
           func = db->Resolve(func_id);
         }
@@ -1768,9 +1765,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // Note we want to fetch the first TypeRef. Running
       // ResolveCursorType(decl->cursor) would return
       // the type of the typedef/using, not the type of the referenced type.
-      optional<IndexTypeId> alias_of =
-          AddDeclTypeUsages(db, decl->cursor, nullopt, decl->semanticContainer,
-                            decl->lexicalContainer);
+      optional<IndexTypeId> alias_of = AddDeclTypeUsages(
+          db, cursor, nullopt, decl->semanticContainer, decl->lexicalContainer);
 
       IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
