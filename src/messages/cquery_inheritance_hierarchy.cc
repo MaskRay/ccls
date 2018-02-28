@@ -3,12 +3,18 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryInheritanceHierarchyInitial
-    : public RequestMessage<Ipc_CqueryInheritanceHierarchyInitial> {
-  const static IpcId kIpcId = IpcId::CqueryInheritanceHierarchyInitial;
+struct Ipc_CqueryInheritanceHierarchy
+    : public RequestMessage<Ipc_CqueryInheritanceHierarchy> {
+  const static IpcId kIpcId = IpcId::CqueryInheritanceHierarchy;
   struct Params {
+    // If id+kind are specified, expand a node; otherwise textDocument+position should
+    // be specified for building the root and |levels| of nodes below.
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
+
+    Maybe<Id<void>> id;
+    SymbolKind kind = SymbolKind::Invalid;
+
     // true: derived classes/functions; false: base classes/functions
     bool derived = false;
     bool detailedName = false;
@@ -17,35 +23,16 @@ struct Ipc_CqueryInheritanceHierarchyInitial
   Params params;
 };
 
-MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchyInitial::Params,
+MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchy::Params,
                     textDocument,
                     position,
-                    derived,
-                    detailedName,
-                    levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchyInitial, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryInheritanceHierarchyInitial);
-
-struct Ipc_CqueryInheritanceHierarchyExpand
-    : public RequestMessage<Ipc_CqueryInheritanceHierarchyExpand> {
-  const static IpcId kIpcId = IpcId::CqueryInheritanceHierarchyExpand;
-  struct Params {
-    Maybe<Id<void>> id;
-    SymbolKind kind = SymbolKind::Invalid;
-    bool derived = false;
-    bool detailedName = false;
-    int levels = 1;
-  };
-  Params params;
-};
-MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchyExpand::Params,
                     id,
                     kind,
                     derived,
                     detailedName,
                     levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchyExpand, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryInheritanceHierarchyExpand);
+MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchy, id, params);
+REGISTER_IPC_MESSAGE(Ipc_CqueryInheritanceHierarchy);
 
 struct Out_CqueryInheritanceHierarchy
     : public lsOutMessage<Out_CqueryInheritanceHierarchy> {
@@ -140,8 +127,8 @@ bool Expand(MessageHandler* m,
                         m->db->types[entry->id.id]);
 }
 
-struct CqueryInheritanceHierarchyInitialHandler
-    : BaseMessageHandler<Ipc_CqueryInheritanceHierarchyInitial> {
+struct CqueryInheritanceHierarchyHandler
+    : BaseMessageHandler<Ipc_CqueryInheritanceHierarchy> {
   optional<Out_CqueryInheritanceHierarchy::Entry>
   BuildInitial(SymbolRef sym, bool derived, bool detailed_name, int levels) {
     Out_CqueryInheritanceHierarchy::Entry entry;
@@ -151,38 +138,11 @@ struct CqueryInheritanceHierarchyInitialHandler
     return entry;
   }
 
-  void Run(Ipc_CqueryInheritanceHierarchyInitial* request) override {
-    const auto& params = request->params;
-    QueryFile* file;
-    if (!FindFileOrFail(db, project, request->id,
-                        params.textDocument.uri.GetPath(), &file))
-      return;
-
-    WorkingFile* working_file =
-        working_files->GetFileByFilename(file->def->path);
-    Out_CqueryInheritanceHierarchy out;
-    out.id = request->id;
-
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
-        out.result = BuildInitial(sym, params.derived, params.detailedName,
-                                  params.levels);
-        break;
-      }
-    }
-
-    QueueManager::WriteStdout(IpcId::CqueryInheritanceHierarchyInitial, out);
-  }
-};
-REGISTER_MESSAGE_HANDLER(CqueryInheritanceHierarchyInitialHandler);
-
-struct CqueryInheritanceHierarchyExpandHandler
-  : BaseMessageHandler<Ipc_CqueryInheritanceHierarchyExpand> {
-  void Run(Ipc_CqueryInheritanceHierarchyExpand* request) override {
+  void Run(Ipc_CqueryInheritanceHierarchy* request) override {
     const auto& params = request->params;
     Out_CqueryInheritanceHierarchy out;
     out.id = request->id;
+
     if (params.id) {
       Out_CqueryInheritanceHierarchy::Entry entry;
       entry.id = *params.id;
@@ -193,10 +153,27 @@ struct CqueryInheritanceHierarchyExpandHandler
           Expand(this, &entry, params.derived, params.detailedName,
                  params.levels))
         out.result = std::move(entry);
+    } else {
+      QueryFile* file;
+      if (!FindFileOrFail(db, project, request->id,
+                          params.textDocument.uri.GetPath(), &file))
+        return;
+      WorkingFile* working_file =
+          working_files->GetFileByFilename(file->def->path);
+
+      for (SymbolRef sym :
+          FindSymbolsAtLocation(working_file, file, request->params.position)) {
+        if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
+          out.result = BuildInitial(sym, params.derived, params.detailedName,
+                                    params.levels);
+          break;
+        }
+      }
     }
 
-    QueueManager::WriteStdout(IpcId::CqueryInheritanceHierarchyExpand, out);
+    QueueManager::WriteStdout(IpcId::CqueryInheritanceHierarchy, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryInheritanceHierarchyExpandHandler);
+REGISTER_MESSAGE_HANDLER(CqueryInheritanceHierarchyHandler);
+
 }  // namespace

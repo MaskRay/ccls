@@ -48,12 +48,9 @@ enum class IpcId : int {
   CqueryFileInfo,
   CqueryFreshenIndex,
   // Messages used in tree views.
-  CqueryCallHierarchyInitial,
-  CqueryCallHierarchyExpand,
-  CqueryInheritanceHierarchyInitial,
-  CqueryInheritanceHierarchyExpand,
-  CqueryMemberHierarchyInitial,
-  CqueryMemberHierarchyExpand,
+  CqueryCallHierarchy,
+  CqueryInheritanceHierarchy,
+  CqueryMemberHierarchy,
   // These are like DocumentReferences but show different types of data.
   CqueryVars,     // Show all variables of a type.
   CqueryCallers,  // Show all callers of a function.

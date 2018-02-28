@@ -3,39 +3,31 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryMemberHierarchyInitial
-    : public RequestMessage<Ipc_CqueryMemberHierarchyInitial> {
-  const static IpcId kIpcId = IpcId::CqueryMemberHierarchyInitial;
+struct Ipc_CqueryMemberHierarchy
+    : public RequestMessage<Ipc_CqueryMemberHierarchy> {
+  const static IpcId kIpcId = IpcId::CqueryMemberHierarchy;
   struct Params {
+    // If id is specified, expand a node; otherwise textDocument+position should
+    // be specified for building the root and |levels| of nodes below.
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
+
+    Maybe<QueryTypeId> id;
+
     bool detailedName = false;
     int levels = 1;
   };
   Params params;
 };
 
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial::Params,
+MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchy::Params,
                     textDocument,
                     position,
+                    id,
                     detailedName,
                     levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyInitial, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyInitial);
-
-struct Ipc_CqueryMemberHierarchyExpand
-    : public RequestMessage<Ipc_CqueryMemberHierarchyExpand> {
-  const static IpcId kIpcId = IpcId::CqueryMemberHierarchyExpand;
-  struct Params {
-    Maybe<QueryTypeId> id;
-    bool detailedName = false;
-    int levels = 1;
-  };
-  Params params;
-};
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand::Params, id, detailedName, levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchyExpand, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchyExpand);
+MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchy, id, params);
+REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchy);
 
 struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
@@ -166,8 +158,8 @@ bool Expand(MessageHandler* m,
   return true;
 }
 
-struct CqueryMemberHierarchyInitialHandler
-    : BaseMessageHandler<Ipc_CqueryMemberHierarchyInitial> {
+struct CqueryMemberHierarchyHandler
+    : BaseMessageHandler<Ipc_CqueryMemberHierarchy> {
   optional<Out_CqueryMemberHierarchy::Entry> BuildInitial(QueryFuncId root_id,
                                                           bool detailed_name,
                                                           int levels) {
@@ -210,53 +202,11 @@ struct CqueryMemberHierarchyInitialHandler
     return entry;
   }
 
-  void Run(Ipc_CqueryMemberHierarchyInitial* request) override {
-    QueryFile* file;
-    const auto& params = request->params;
-    if (!FindFileOrFail(db, project, request->id,
-                        params.textDocument.uri.GetPath(), &file))
-      return;
-
-    WorkingFile* working_file =
-        working_files->GetFileByFilename(file->def->path);
-    Out_CqueryMemberHierarchy out;
-    out.id = request->id;
-
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, params.position)) {
-      switch (sym.kind) {
-      case SymbolKind::Func:
-        out.result = BuildInitial(QueryFuncId(sym.id), params.detailedName,
-                                  params.levels);
-        break;
-      case SymbolKind::Type:
-        out.result = BuildInitial(QueryTypeId(sym.id), params.detailedName,
-                                  params.levels);
-        break;
-      case SymbolKind::Var: {
-        const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-        if (def && def->type)
-          out.result = BuildInitial(QueryTypeId(*def->type),
-                                    params.detailedName, params.levels);
-        break;
-      }
-      default:
-        continue;
-      }
-      break;
-    }
-
-    QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyInitial, out);
-  }
-};
-REGISTER_MESSAGE_HANDLER(CqueryMemberHierarchyInitialHandler);
-
-struct CqueryMemberHierarchyExpandHandler
-    : BaseMessageHandler<Ipc_CqueryMemberHierarchyExpand> {
-  void Run(Ipc_CqueryMemberHierarchyExpand* request) override {
+  void Run(Ipc_CqueryMemberHierarchy* request) override {
     const auto& params = request->params;
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
+
     if (params.id) {
       Out_CqueryMemberHierarchy::Entry entry;
       entry.id = *request->params.id;
@@ -264,10 +214,41 @@ struct CqueryMemberHierarchyExpandHandler
       if (entry.id.id < db->types.size() &&
           Expand(this, &entry, params.detailedName, params.levels))
         out.result = std::move(entry);
+    } else {
+      QueryFile* file;
+      if (!FindFileOrFail(db, project, request->id,
+                          params.textDocument.uri.GetPath(), &file))
+        return;
+      WorkingFile* working_file =
+        working_files->GetFileByFilename(file->def->path);
+      for (SymbolRef sym :
+             FindSymbolsAtLocation(working_file, file, params.position)) {
+        switch (sym.kind) {
+        case SymbolKind::Func:
+          out.result = BuildInitial(QueryFuncId(sym.id), params.detailedName,
+                                    params.levels);
+          break;
+        case SymbolKind::Type:
+          out.result = BuildInitial(QueryTypeId(sym.id), params.detailedName,
+                                    params.levels);
+          break;
+        case SymbolKind::Var: {
+          const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+          if (def && def->type)
+            out.result = BuildInitial(QueryTypeId(*def->type), params.detailedName,
+                                      params.levels);
+          break;
+        }
+        default:
+          continue;
+        }
+        break;
+      }
     }
 
-    QueueManager::WriteStdout(IpcId::CqueryMemberHierarchyExpand, out);
+    QueueManager::WriteStdout(IpcId::CqueryMemberHierarchy, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryMemberHierarchyExpandHandler);
+REGISTER_MESSAGE_HANDLER(CqueryMemberHierarchyHandler);
+
 }  // namespace
