@@ -250,7 +250,10 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         }
       }
 
-      // This is most likely the file path we will be passing to clang.
+      // This is most likely the file path we will be passing to clang. The
+      // path needs to be absolute, otherwise clang_codeCompleteAt is extremely
+      // slow. See
+      // https://github.com/cquery-project/cquery/commit/af63df09d57d765ce12d40007bf56302a0446678.
       if (EndsWith(arg, base_name))
         arg = cleanup_maybe_relative_path(arg);
       // TODO Exclude .a .o to make link command in compile_commands.json work.
