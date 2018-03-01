@@ -69,49 +69,58 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_UnexposedDecl:
       return lsCompletionItemKind::Text;
 
+    case CXCursor_StructDecl:
+    case CXCursor_UnionDecl:
+      return lsCompletionItemKind::Struct;
+    case CXCursor_ClassDecl:
+      return lsCompletionItemKind::Class;
+    case CXCursor_EnumDecl:
+      return lsCompletionItemKind::Enum;
+    case CXCursor_FieldDecl:
+      return lsCompletionItemKind::Field;
+    case CXCursor_EnumConstantDecl:
+      return lsCompletionItemKind::EnumMember;
+    case CXCursor_FunctionDecl:
+      return lsCompletionItemKind::Function;
+    case CXCursor_VarDecl:
+    case CXCursor_ParmDecl:
+      return lsCompletionItemKind::Variable;
+    case CXCursor_ObjCInterfaceDecl:
+      return lsCompletionItemKind::Interface;
+
     case CXCursor_ObjCInstanceMethodDecl:
     case CXCursor_CXXMethod:
     case CXCursor_ObjCClassMethodDecl:
       return lsCompletionItemKind::Method;
 
     case CXCursor_FunctionTemplate:
-    case CXCursor_FunctionDecl:
-      return lsCompletionItemKind::Function;
+        return lsCompletionItemKind::Function;
 
     case CXCursor_Constructor:
     case CXCursor_Destructor:
     case CXCursor_ConversionFunction:
       return lsCompletionItemKind::Constructor;
 
-    case CXCursor_FieldDecl:
-      return lsCompletionItemKind::Field;
-
-    case CXCursor_VarDecl:
-    case CXCursor_ParmDecl:
     case CXCursor_ObjCIvarDecl:
       return lsCompletionItemKind::Variable;
 
-    case CXCursor_UnionDecl:
     case CXCursor_ClassTemplate:
     case CXCursor_ClassTemplatePartialSpecialization:
-    case CXCursor_ClassDecl:
     case CXCursor_UsingDeclaration:
     case CXCursor_TypedefDecl:
     case CXCursor_TypeAliasDecl:
     case CXCursor_TypeAliasTemplateDecl:
     case CXCursor_ObjCCategoryDecl:
     case CXCursor_ObjCProtocolDecl:
-    case CXCursor_ObjCPropertyDecl:
     case CXCursor_ObjCImplementationDecl:
     case CXCursor_ObjCCategoryImplDecl:
       return lsCompletionItemKind::Class;
 
-    case CXCursor_EnumDecl:
-      return lsCompletionItemKind::Enum;
+    case CXCursor_ObjCPropertyDecl:
+      return lsCompletionItemKind::Property;
 
     case CXCursor_MacroInstantiation:
     case CXCursor_MacroDefinition:
-    case CXCursor_ObjCInterfaceDecl:
       return lsCompletionItemKind::Interface;
 
     case CXCursor_Namespace:
@@ -126,7 +135,6 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_ObjCClassRef:
       return lsCompletionItemKind::Reference;
 
-      // return lsCompletionItemKind::Property;
       // return lsCompletionItemKind::Unit;
       // return lsCompletionItemKind::Value;
       // return lsCompletionItemKind::Keyword;
@@ -138,11 +146,9 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
     case CXCursor_OverloadCandidate:
       return lsCompletionItemKind::Text;
 
-    case CXCursor_EnumConstantDecl:
-      return lsCompletionItemKind::EnumMember;
-
-    case CXCursor_StructDecl:
-      return lsCompletionItemKind::Struct;
+    case CXCursor_TemplateTypeParameter:
+    case CXCursor_TemplateTemplateParameter:
+      return lsCompletionItemKind::TypeParameter;
 
     default:
       LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
@@ -165,48 +171,22 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
 
     std::string text;
     switch (kind) {
-      case CXCompletionChunk_LeftParen:
-        text = '(';
-        break;
-      case CXCompletionChunk_RightParen:
-        text = ')';
-        break;
-      case CXCompletionChunk_LeftBracket:
-        text = '[';
-        break;
-      case CXCompletionChunk_RightBracket:
-        text = ']';
-        break;
-      case CXCompletionChunk_LeftBrace:
-        text = '{';
-        break;
-      case CXCompletionChunk_RightBrace:
-        text = '}';
-        break;
-      case CXCompletionChunk_LeftAngle:
-        text = '<';
-        break;
-      case CXCompletionChunk_RightAngle:
-        text = '>';
-        break;
-      case CXCompletionChunk_Comma:
-        text = ", ";
-        break;
-      case CXCompletionChunk_Colon:
-        text = ':';
-        break;
-      case CXCompletionChunk_SemiColon:
-        text = ';';
-        break;
-      case CXCompletionChunk_Equal:
-        text = '=';
-        break;
-      case CXCompletionChunk_HorizontalSpace:
-        text = ' ';
-        break;
-      case CXCompletionChunk_VerticalSpace:
-        text = ' ';
-        break;
+      // clang-format off
+      case CXCompletionChunk_LeftParen: text = '('; break;
+      case CXCompletionChunk_RightParen: text = ')'; break;
+      case CXCompletionChunk_LeftBracket: text = '['; break;
+      case CXCompletionChunk_RightBracket: text = ']'; break;
+      case CXCompletionChunk_LeftBrace: text = '{'; break;
+      case CXCompletionChunk_RightBrace: text = '}'; break;
+      case CXCompletionChunk_LeftAngle: text = '<'; break;
+      case CXCompletionChunk_RightAngle: text = '>'; break;
+      case CXCompletionChunk_Comma: text = ", "; break;
+      case CXCompletionChunk_Colon: text = ':'; break;
+      case CXCompletionChunk_SemiColon: text = ';'; break;
+      case CXCompletionChunk_Equal: text = '='; break;
+      case CXCompletionChunk_HorizontalSpace: text = ' '; break;
+      case CXCompletionChunk_VerticalSpace: text = ' '; break;
+      // clang-format on
 
       case CXCompletionChunk_ResultType:
         result_type =
