@@ -167,7 +167,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         if (start_line >= 0 && start_line < working_file->index_lines.size()) {
           std::string_view line = working_file->index_lines[start_line];
           sym.range.end.line = start_line;
-          if (line.compare(start_col, concise_name.size(), concise_name) == 0)
+          if (start_col + concise_name.size() <= line.size() &&
+              line.compare(start_col, concise_name.size(), concise_name) == 0)
             sym.range.end.column = start_col + concise_name.size();
           else
             continue;  // applies to for loop

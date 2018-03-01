@@ -84,6 +84,8 @@ bool Expand(MessageHandler* m,
     if (levels > 0) {
       Out_CqueryCallHierarchy::Entry entry1;
       entry1.id = QueryFuncId(use.id);
+      if (auto loc = GetLsLocation(m->db, m->working_files, use))
+        entry1.location = *loc;
       entry1.callType = call_type;
       if (Expand(m, &entry1, callee, call_type, detailed_name, levels - 1))
         entry->children.push_back(std::move(entry1));
@@ -109,11 +111,6 @@ bool Expand(MessageHandler* m,
     entry->name = def->detailed_name;
   else
     entry->name = def->ShortName();
-  if (def->spell) {
-    if (optional<lsLocation> loc =
-        GetLsLocation(m->db, m->working_files, *def->spell))
-      entry->location = *loc;
-  }
   handle_uses(func, CallType::Direct);
 
   // Callers/callees of base functions.
@@ -166,6 +163,11 @@ struct CqueryCallHierarchyHandler
     Out_CqueryCallHierarchy::Entry entry;
     entry.id = root_id;
     entry.callType = CallType::Direct;
+    if (def->spell) {
+      if (optional<lsLocation> loc =
+          GetLsLocation(db, working_files, *def->spell))
+        entry.location = *loc;
+    }
     Expand(this, &entry, callee, call_type, detailed_name, levels);
     return entry;
   }
