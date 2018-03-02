@@ -195,10 +195,6 @@ void lsResponseError::Write(Writer& visitor) {
   visitor.StartObject();
   REFLECT_MEMBER2("code", code2);
   REFLECT_MEMBER(message);
-  if (data) {
-    visitor.Key("data");
-    data->Write(visitor);
-  }
   visitor.EndObject();
 }
 

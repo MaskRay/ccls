@@ -73,10 +73,6 @@ struct lsOutMessage : lsBaseOutMessage {
 };
 
 struct lsResponseError {
-  struct Data {
-    virtual void Write(Writer& writer) = 0;
-  };
-
   enum class lsErrorCodes : int {
     ParseError = -32700,
     InvalidRequest = -32600,
@@ -86,13 +82,13 @@ struct lsResponseError {
     serverErrorStart = -32099,
     serverErrorEnd = -32000,
     ServerNotInitialized = -32002,
-    UnknownErrorCode = -32001
+    UnknownErrorCode = -32001,
+    RequestCancelled = -32800,
   };
 
   lsErrorCodes code;
   // Short description.
   std::string message;
-  std::unique_ptr<Data> data;
 
   void Write(Writer& visitor);
 };

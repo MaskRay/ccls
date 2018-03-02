@@ -12,8 +12,10 @@ enum class IpcId : int {
   CancelRequest = 0,
   Initialize,
   Initialized,
-  Shutdown,
   Exit,
+  Shutdown,
+
+  CodeLensResolve,
   TextDocumentDidOpen,
   TextDocumentDidChange,
   TextDocumentDidClose,
@@ -33,7 +35,7 @@ enum class IpcId : int {
   TextDocumentDocumentLink,
   TextDocumentCodeAction,
   TextDocumentCodeLens,
-  CodeLensResolve,
+  WorkspaceDidChangeConfiguration,
   WorkspaceDidChangeWatchedFiles,
   WorkspaceSymbol,
 
@@ -51,7 +53,7 @@ enum class IpcId : int {
   CqueryCallHierarchy,
   CqueryInheritanceHierarchy,
   CqueryMemberHierarchy,
-  // These are like DocumentReferences but show different types of data.
+  // cquery cross reference extension.
   CqueryVars,     // Show all variables of a type.
   CqueryCallers,  // Show all callers of a function.
   CqueryBase,     // Show base types/method.

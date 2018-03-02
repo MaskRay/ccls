@@ -14,6 +14,8 @@ const char* IpcIdToString(IpcId id) {
       return "shutdown";
     case IpcId::Exit:
       return "exit";
+    case IpcId::CodeLensResolve:
+      return "codeLens/resolve";
     case IpcId::TextDocumentDidOpen:
       return "textDocument/didOpen";
     case IpcId::TextDocumentDidChange:
@@ -52,8 +54,8 @@ const char* IpcIdToString(IpcId id) {
       return "textDocument/codeAction";
     case IpcId::TextDocumentCodeLens:
       return "textDocument/codeLens";
-    case IpcId::CodeLensResolve:
-      return "codeLens/resolve";
+    case IpcId::WorkspaceDidChangeConfiguration:
+      return "workspace/didChangeConfiguration";
     case IpcId::WorkspaceDidChangeWatchedFiles:
       return "workspace/didChangeWatchedFiles";
     case IpcId::WorkspaceSymbol:
