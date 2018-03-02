@@ -10,59 +10,12 @@ using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
 enum class IpcId : int {
   // Language server specific requests.
   CancelRequest = 0,
-  Initialize,
   Initialized,
   Exit,
-  Shutdown,
 
-  CodeLensResolve,
-  TextDocumentDidOpen,
-  TextDocumentDidChange,
-  TextDocumentDidClose,
-  TextDocumentDidSave,
-  TextDocumentPublishDiagnostics,
-  TextDocumentRename,
-  TextDocumentCompletion,
-  TextDocumentSignatureHelp,
-  TextDocumentDefinition,
-  TextDocumentDocumentHighlight,
-  TextDocumentHover,
-  TextDocumentFormatting,
-  TextDocumentRangeFormatting,
-  TextDocumentOnTypeFormatting,
-  TextDocumentReferences,
-  TextDocumentDocumentSymbol,
-  TextDocumentDocumentLink,
-  TextDocumentCodeAction,
-  TextDocumentCodeLens,
-  WorkspaceDidChangeConfiguration,
-  WorkspaceDidChangeWatchedFiles,
-  WorkspaceSymbol,
-
-  // Custom notifications
-  // Comes from the client. Does various things, like update semantic
-  // highlighting.
-  CqueryTextDocumentDidView,
-  CqueryPublishInactiveRegions,
-  CqueryPublishSemanticHighlighting,
-
-  // Custom messages
-  CqueryFileInfo,
-  CqueryFreshenIndex,
-  // Messages used in tree views.
-  CqueryCallHierarchy,
-  CqueryInheritanceHierarchy,
-  CqueryMemberHierarchy,
-  // cquery cross reference extension.
-  CqueryVars,     // Show all variables of a type.
-  CqueryCallers,  // Show all callers of a function.
-  CqueryBase,     // Show base types/method.
-  CqueryDerived,  // Show all derived types/methods.
-  CqueryRandom,   // Show random definition.
-
-  // Messages for testing.
-  CqueryIndexFile, // Index the given file contents.
-  CqueryWait,      // Wait until all cquery threads are idle.
+#define CASE(x, _) x,
+  #include "methods.inc"
+#undef CASE
 
   // Internal implementation detail.
   Unknown,

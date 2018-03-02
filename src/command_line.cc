@@ -317,46 +317,12 @@ void LaunchStdinLoop(Config* config,
           break;
         }
 
-        case IpcId::Shutdown:
         case IpcId::Exit:
-        case IpcId::Initialize:
-        case IpcId::TextDocumentDidOpen:
-        case IpcId::CqueryTextDocumentDidView:
-        case IpcId::TextDocumentDidChange:
-        case IpcId::TextDocumentDidClose:
-        case IpcId::TextDocumentDidSave:
-        case IpcId::TextDocumentFormatting:
-        case IpcId::TextDocumentRangeFormatting:
-        case IpcId::TextDocumentOnTypeFormatting:
-        case IpcId::TextDocumentRename:
-        case IpcId::TextDocumentCompletion:
-        case IpcId::TextDocumentSignatureHelp:
-        case IpcId::TextDocumentDefinition:
-        case IpcId::TextDocumentDocumentHighlight:
-        case IpcId::TextDocumentHover:
-        case IpcId::TextDocumentReferences:
-        case IpcId::TextDocumentDocumentSymbol:
-        case IpcId::TextDocumentDocumentLink:
-        case IpcId::TextDocumentCodeAction:
-        case IpcId::TextDocumentCodeLens:
-        case IpcId::WorkspaceDidChangeConfiguration:
-        case IpcId::WorkspaceDidChangeWatchedFiles:
-        case IpcId::WorkspaceSymbol:
-        case IpcId::CqueryFileInfo:
-        case IpcId::CqueryFreshenIndex:
-        case IpcId::CqueryCallHierarchy:
-        case IpcId::CqueryInheritanceHierarchy:
-        case IpcId::CqueryMemberHierarchy:
-        case IpcId::CqueryVars:
-        case IpcId::CqueryCallers:
-        case IpcId::CqueryBase:
-        case IpcId::CqueryDerived:
-        case IpcId::CqueryIndexFile:
-        case IpcId::CqueryRandom:
-        case IpcId::CqueryWait: {
+#define CASE(name, method) case IpcId::name:
+#include "methods.inc"
+#undef CASE
           queue->for_querydb.PushBack(std::move(message));
           break;
-        }
 
         default: {
           LOG_S(ERROR) << "Unhandled IPC message " << IpcIdToString(method_id);
