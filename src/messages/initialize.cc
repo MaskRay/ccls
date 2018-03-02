@@ -137,6 +137,8 @@ struct lsServerCapabilities {
   lsSignatureHelpOptions signatureHelpProvider;
   // The server provides goto definition support.
   bool definitionProvider = true;
+  // The server provides Goto Type Definition support.
+  bool typeDefinitionProvider = true;
   // The server provides find references support.
   bool referencesProvider = true;
   // The server provides document highlight support.
