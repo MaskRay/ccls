@@ -83,9 +83,6 @@ Role GetRole(const CXIdxEntityRefInfo* ref_info, Role role) {
 
 SymbolKind GetSymbolKind(CXCursorKind kind) {
   switch (kind) {
-    default:
-      return SymbolKind::Invalid;
-
     case CXCursor_FunctionDecl:
     case CXCursor_CXXMethod:
     case CXCursor_Constructor:
@@ -94,71 +91,86 @@ SymbolKind GetSymbolKind(CXCursorKind kind) {
     case CXCursor_FunctionTemplate:
     case CXCursor_OverloadedDeclRef:
     case CXCursor_LambdaExpr:
+    case CXCursor_ObjCInstanceMethodDecl:
+    case CXCursor_ObjCClassMethodDecl:
       return SymbolKind::Func;
 
-    case CXCursor_Namespace:
-    case CXCursor_EnumDecl:
-    case CXCursor_UnionDecl:
     case CXCursor_StructDecl:
+    case CXCursor_UnionDecl:
     case CXCursor_ClassDecl:
+    case CXCursor_EnumDecl:
+    case CXCursor_ObjCInterfaceDecl:
+    case CXCursor_ObjCCategoryDecl:
+    case CXCursor_ObjCImplementationDecl:
+    case CXCursor_Namespace:
       return SymbolKind::Type;
+
+    default:
+      return SymbolKind::Invalid;
   }
 }
 
 // Inverse of libclang/CXIndexDataConsumer.cpp getEntityKindFromSymbolKind
 lsSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   switch (kind) {
-    default:
+    case CXIdxEntity_Unexposed:
       return lsSymbolKind::Unknown;
-
-    case CXIdxEntity_Enum:
-      return lsSymbolKind::Enum;
-    case CXIdxEntity_Struct:
-    case CXIdxEntity_Union:
-      return lsSymbolKind::Struct;
-    case CXIdxEntity_CXXTypeAlias:
     case CXIdxEntity_Typedef:
       return lsSymbolKind::TypeAlias;
-
     case CXIdxEntity_Function:
       return lsSymbolKind::Function;
     case CXIdxEntity_Variable:
       // Can also be Parameter
       return lsSymbolKind::Variable;
     case CXIdxEntity_Field:
-    case CXIdxEntity_ObjCIvar:
       return lsSymbolKind::Field;
     case CXIdxEntity_EnumConstant:
       return lsSymbolKind::EnumMember;
-    case CXIdxEntity_CXXClass:
+
     case CXIdxEntity_ObjCClass:
       return lsSymbolKind::Class;
-    case CXIdxEntity_CXXInterface:
     case CXIdxEntity_ObjCProtocol:
       return lsSymbolKind::Interface;
     case CXIdxEntity_ObjCCategory:
       return lsSymbolKind::Interface;
-    case CXIdxEntity_CXXInstanceMethod:
+
     case CXIdxEntity_ObjCInstanceMethod:
       return lsSymbolKind::Method;
     case CXIdxEntity_ObjCClassMethod:
       return lsSymbolKind::StaticMethod;
-    case CXIdxEntity_CXXStaticMethod:
-      return lsSymbolKind::StaticMethod;
     case CXIdxEntity_ObjCProperty:
       return lsSymbolKind::Property;
-    case CXIdxEntity_CXXStaticVariable:
+    case CXIdxEntity_ObjCIvar:
       return lsSymbolKind::Field;
+
+    case CXIdxEntity_Enum:
+      return lsSymbolKind::Enum;
+    case CXIdxEntity_Struct:
+    case CXIdxEntity_Union:
+      return lsSymbolKind::Struct;
+
+    case CXIdxEntity_CXXClass:
+      return lsSymbolKind::Class;
     case CXIdxEntity_CXXNamespace:
       return lsSymbolKind::Namespace;
     case CXIdxEntity_CXXNamespaceAlias:
       return lsSymbolKind::Namespace;
+    case CXIdxEntity_CXXStaticVariable:
+      return lsSymbolKind::Field;
+    case CXIdxEntity_CXXStaticMethod:
+      return lsSymbolKind::StaticMethod;
+    case CXIdxEntity_CXXInstanceMethod:
+      return lsSymbolKind::Method;
     case CXIdxEntity_CXXConstructor:
       return lsSymbolKind::Constructor;
     case CXIdxEntity_CXXDestructor:
       return lsSymbolKind::Method;
     case CXIdxEntity_CXXConversionFunction:
       return lsSymbolKind::Constructor;
+    case CXIdxEntity_CXXTypeAlias:
+      return lsSymbolKind::TypeAlias;
+    case CXIdxEntity_CXXInterface:
+      return lsSymbolKind::Struct;
   }
 }
 

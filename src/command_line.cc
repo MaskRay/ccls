@@ -324,10 +324,8 @@ void LaunchStdinLoop(Config* config,
           queue->for_querydb.PushBack(std::move(message));
           break;
 
-        default: {
-          LOG_S(ERROR) << "Unhandled IPC message " << IpcIdToString(method_id);
-          exit(1);
-        }
+        case IpcId::Unknown:
+          break;
       }
 
       // If the message was to exit then querydb will take care of the actual

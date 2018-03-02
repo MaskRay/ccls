@@ -166,7 +166,7 @@ def configure(ctx):
     if ctx.env.CXXFLAGS:
       cxxflags = ctx.env.CXXFLAGS
     else:
-      cxxflags = ['-g', '-Wall', '-Wno-sign-compare', '-Werror']
+      cxxflags = ['-g', '-Wall', '-Wno-sign-compare']
       if ctx.env.CXX_NAME == 'gcc':
         cxxflags.append('-Wno-return-type')
         # Otherwise (void)write(...) => -Werror=unused-result
