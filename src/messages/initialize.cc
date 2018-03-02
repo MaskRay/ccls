@@ -162,7 +162,7 @@ struct lsServerCapabilities {
   // The server provides document link support.
   lsDocumentLinkOptions documentLinkProvider;
   // The server provides execute command support.
-  optional<lsExecuteCommandOptions> executeCommandProvider;
+  lsExecuteCommandOptions executeCommandProvider;
 };
 MAKE_REFLECT_STRUCT(lsServerCapabilities,
                     textDocumentSync,

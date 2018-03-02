@@ -1,5 +1,6 @@
 #include "include_complete.h"
 #include "lex_utils.h"
+#include "lsp_code_action.h"
 #include "message_handler.h"
 #include "query_utils.h"
 #include "queue_manager.h"
@@ -286,18 +287,11 @@ REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeAction);
 
 struct Out_TextDocumentCodeAction
     : public lsOutMessage<Out_TextDocumentCodeAction> {
-  struct CommandArgs {
-    lsDocumentUri textDocumentUri;
-    std::vector<lsTextEdit> edits;
-  };
   using Command = lsCommand<CommandArgs>;
 
   lsRequestId id;
   std::vector<Command> result;
 };
-MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(Out_TextDocumentCodeAction::CommandArgs,
-                                    textDocumentUri,
-                                    edits);
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
 
 struct TextDocumentCodeActionHandler

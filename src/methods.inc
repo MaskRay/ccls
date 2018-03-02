@@ -25,6 +25,7 @@ CASE(TextDocumentSignatureHelp, "textDocument/signatureHelp")
 CASE(TextDocumentTypeDefinition, "textDocument/typeDefinition")
 CASE(WorkspaceDidChangeConfiguration, "workspace/didChangeConfiguration")
 CASE(WorkspaceDidChangeWatchedFiles, "workspace/didChangeWatchedFiles")
+CASE(WorkspaceExecuteCommand, "workspace/executeCommand")
 CASE(WorkspaceSymbol, "workspace/symbol")
 
 // Notification extensions

@@ -1,4 +1,5 @@
 #include "clang_complete.h"
+#include "lsp_code_action.h"
 #include "message_handler.h"
 #include "query_utils.h"
 #include "queue_manager.h"
@@ -8,32 +9,6 @@ struct lsDocumentCodeLensParams {
   lsTextDocumentIdentifier textDocument;
 };
 MAKE_REFLECT_STRUCT(lsDocumentCodeLensParams, textDocument);
-
-struct lsCodeLensUserData {};
-MAKE_REFLECT_EMPTY_STRUCT(lsCodeLensUserData);
-
-struct lsCodeLensCommandArguments {
-  lsDocumentUri uri;
-  lsPosition position;
-  std::vector<lsLocation> locations;
-};
-void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
-  visitor.StartArray(3);
-  Reflect(visitor, value.uri);
-  Reflect(visitor, value.position);
-  Reflect(visitor, value.locations);
-  visitor.EndArray();
-}
-#if false
-void Reflect(Reader& visitor, lsCodeLensCommandArguments& value) {
-  auto it = visitor.Begin();
-  Reflect(*it, value.uri);
-  ++it;
-  Reflect(*it, value.position);
-  ++it;
-  Reflect(*it, value.locations);
-}
-#endif
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
 struct Ipc_TextDocumentCodeLens
@@ -51,23 +26,6 @@ struct Out_TextDocumentCodeLens
       result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
-
-#if false
-struct Ipc_CodeLensResolve : public IpcMessage<Ipc_CodeLensResolve> {
-  const static IpcId kIpcId = IpcId::CodeLensResolve;
-
-  lsRequestId id;
-  TCodeLens params;
-};
-MAKE_REFLECT_STRUCT(Ipc_CodeLensResolve, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CodeLensResolve);
-
-struct Out_CodeLensResolve : public lsOutMessage<Out_CodeLensResolve> {
-  lsRequestId id;
-  TCodeLens result;
-};
-MAKE_REFLECT_STRUCT(Out_CodeLensResolve, jsonrpc, id, result);
-#endif
 
 struct CommonCodeLensParams {
   std::vector<TCodeLens>* result;
