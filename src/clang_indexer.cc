@@ -27,17 +27,9 @@
 
 namespace {
 
-constexpr bool kIndexStdDeclarations = true;
-
 // For typedef/using spanning less than or equal to (this number) of lines,
 // display their declarations on hover.
 constexpr int kMaxLinesDisplayTypeAliasDeclarations = 3;
-
-void AddFuncUse(std::vector<Use>* result, Use ref) {
-  if (!result->empty() && (*result)[result->size() - 1] == ref)
-    return;
-  result->push_back(ref);
-}
 
 // TODO How to check if a reference to type is a declaration?
 // This currently also includes constructors/destructors.
@@ -56,23 +48,6 @@ bool IsDeclContext(CXIdxEntityKind kind) {
   }
 }
 
-bool IsScopeSemanticContainer(CXCursorKind kind) {
-  switch (kind) {
-    case CXCursor_Namespace:
-    case CXCursor_TranslationUnit:
-    case CXCursor_StructDecl:
-    case CXCursor_UnionDecl:
-    case CXCursor_ClassDecl:
-    case CXCursor_EnumDecl:
-    // TODO Add more Objective-C containers
-    case CXCursor_ObjCInterfaceDecl:
-    case CXCursor_ObjCImplementationDecl:
-      return false;
-    default:
-      return true;
-  }
-}
-
 Role GetRole(const CXIdxEntityRefInfo* ref_info, Role role) {
 #if CINDEX_HAVE_ROLE
   return static_cast<Role>(static_cast<int>(ref_info->role));
@@ -83,6 +58,9 @@ Role GetRole(const CXIdxEntityRefInfo* ref_info, Role role) {
 
 SymbolKind GetSymbolKind(CXCursorKind kind) {
   switch (kind) {
+    case CXCursor_TranslationUnit:
+      return SymbolKind::File;
+
     case CXCursor_FunctionDecl:
     case CXCursor_CXXMethod:
     case CXCursor_Constructor:
@@ -690,22 +668,19 @@ void OnIndexReference_Function(IndexFile* db,
       IndexFunc* called = db->Resolve(called_id);
       parent->def.callees.push_back(
           SymbolRef(loc, called->id, SymbolKind::Func, role));
-      AddFuncUse(&called->uses,
-                 Use(loc, parent->id, SymbolKind::Func, role, {}));
+      called->uses.push_back(Use(loc, parent->id, SymbolKind::Func, role, {}));
       break;
     }
     case SymbolKind::Type: {
       IndexType* parent = db->Resolve(db->ToTypeId(parent_cursor.cx_cursor));
       IndexFunc* called = db->Resolve(called_id);
       called = db->Resolve(called_id);
-      AddFuncUse(&called->uses,
-                 Use(loc, parent->id, SymbolKind::Type, role, {}));
+      called->uses.push_back(Use(loc, parent->id, SymbolKind::Type, role, {}));
       break;
     }
     default: {
       IndexFunc* called = db->Resolve(called_id);
-      AddFuncUse(&called->uses,
-                 Use(loc, Id<void>(), SymbolKind::File, role, {}));
+      called->uses.push_back(Use(loc, Id<void>(), SymbolKind::File, role, {}));
       break;
     }
   }
@@ -1453,7 +1428,7 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
   std::vector<ClangCursor> namespaces;
   std::string qualifier;
   while (cursor.get_kind() != CXCursor_TranslationUnit &&
-         !IsScopeSemanticContainer(cursor.get_kind())) {
+         GetSymbolKind(cursor.get_kind()) == SymbolKind::Type) {
     auto it = container_cursor_to_qualified_name.find(cursor);
     if (it != container_cursor_to_qualified_name.end()) {
       qualifier = it->second;
@@ -1479,11 +1454,6 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
 }
 
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
-  if (!kIndexStdDeclarations &&
-      clang_Location_isInSystemHeader(
-          clang_indexLoc_getCXSourceLocation(decl->loc)))
-    return;
-
   IndexParam* param = static_cast<IndexParam*>(client_data);
 
   // Track all constructor declarations, as we may need to use it to manually
@@ -1829,8 +1799,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXInterface:
     case CXIdxEntity_CXXClass: {
-      ClangCursor decl_cursor = decl->cursor;
-      Range spell = decl_cursor.get_spell();
+      Range spell = cursor.get_spell();
 
       IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
@@ -1840,19 +1809,19 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: For type section, verify if this ever runs for non definitions?
       // if (!decl->isRedeclaration) {
 
-      SetTypeName(type, decl_cursor, decl->semanticContainer,
+      SetTypeName(type, cursor, decl->semanticContainer,
                   decl->entityInfo->name, param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (param->config->index.comments)
-        type->def.comments = decl_cursor.get_comments();
+        type->def.comments = cursor.get_comments();
       // }
 
       if (decl->isDefinition) {
         type->def.spell = SetUse(db, spell, sem_parent, Role::Definition);
         type->def.extent =
-            SetUse(db, decl_cursor.get_extent(), lex_parent, Role::None);
+            SetUse(db, cursor.get_extent(), lex_parent, Role::None);
 
-        if (decl_cursor.get_kind() == CXCursor_EnumDecl) {
+        if (cursor.get_kind() == CXCursor_EnumDecl) {
           ClangType enum_type = clang_getEnumDeclIntegerType(decl->cursor);
           if (!enum_type.is_builtin()) {
             IndexType* int_type =
@@ -1874,7 +1843,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         case CXIdxEntity_TemplatePartialSpecialization: {
           // TODO Use a different dimension
           ClangCursor origin_cursor =
-              decl_cursor.template_specialization_to_template_definition();
+              cursor.template_specialization_to_template_definition();
           IndexTypeId origin_id = db->ToTypeId(origin_cursor.get_usr_hash());
           IndexType* origin = db->Resolve(origin_id);
           // |type| may be invalidated.
@@ -1910,9 +1879,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         case CXIdxEntity_Template: {
           TemplateVisitorData data;
           data.db = db;
-          data.container = decl_cursor;
+          data.container = cursor;
           data.param = param;
-          decl_cursor.VisitChildren(&TemplateVisitor, &data);
+          cursor.VisitChildren(&TemplateVisitor, &data);
           break;
         }
       }
@@ -2161,8 +2130,8 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
-            AddFuncUse(&ctor->uses, Use(loc, Id<void>(), SymbolKind::File,
-                                        Role::Call | Role::Implicit, {}));
+            ctor->uses.push_back(Use(loc, Id<void>(), SymbolKind::File,
+                                     Role::Call | Role::Implicit, {}));
           }
         }
       }
