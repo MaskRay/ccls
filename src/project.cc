@@ -333,8 +333,12 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
 
   auto GetCompilerArgumentForFile = [&config,
                                      &folder_args](const std::string& path) {
-    for (std::string cur = GetDirName(path);
-         NormalizePath(cur) != config->project_dir; cur = GetDirName(cur)) {
+    for (std::string cur = GetDirName(path); ; cur = GetDirName(cur)) {
+      std::string normalized = NormalizePath(cur);
+      if (normalized.size() <= config->project_dir.size() ||
+          normalized.compare(0, config->project_dir.size(),
+                             config->project_dir) != 0)
+        break;
       auto it = folder_args.find(cur);
       if (it != folder_args.end()) {
         return it->second;
