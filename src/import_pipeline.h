@@ -10,6 +10,7 @@
 
 struct ClangTranslationUnit;
 struct Config;
+class DiagnosticsEngine;
 struct FileConsumerSharedState;
 struct ImportManager;
 struct MultiQueueWaiter;
@@ -35,6 +36,7 @@ void IndexWithTuFromCodeCompletion(
     const std::vector<std::string>& args);
 
 void Indexer_Main(Config* config,
+                  DiagnosticsEngine* diag_engine,
                   FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
                   ImportManager* import_manager,

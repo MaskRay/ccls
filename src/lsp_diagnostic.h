@@ -99,8 +99,3 @@ void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
 MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params,
                     uri,
                     diagnostics);
-
-struct WorkingFiles;
-void EmitDiagnostics(WorkingFiles* working_files,
-                     std::string path,
-                     std::vector<lsDiagnostic> diagnostics);

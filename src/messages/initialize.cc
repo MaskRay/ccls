@@ -1,4 +1,5 @@
 #include "cache_manager.h"
+#include "diagnostics_engine.h"
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "message_handler.h"
@@ -581,6 +582,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
                              EscapeFileName(config->projectRoot));
 
       Timer time;
+      diag_engine->SetFrequencyMs(config->diagnostics.frequencyMs);
 
       // Open up / load the project.
       project->Load(config, config->extraClangArguments,
@@ -604,9 +606,9 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       LOG_S(INFO) << "Starting " << config->index.threads << " indexers";
       for (int i = 0; i < config->index.threads; ++i) {
         WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
-          Indexer_Main(config, file_consumer_shared, timestamp_manager,
-                       import_manager, import_pipeline_status, project,
-                       working_files, waiter);
+          Indexer_Main(config, diag_engine, file_consumer_shared,
+                       timestamp_manager, import_manager,
+                       import_pipeline_status, project, working_files, waiter);
         });
       }
 

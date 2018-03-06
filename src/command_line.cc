@@ -2,6 +2,7 @@
 #include "cache_manager.h"
 #include "clang_complete.h"
 #include "code_complete_cache.h"
+#include "diagnostics_engine.h"
 #include "file_consumer.h"
 #include "import_manager.h"
 #include "import_pipeline.h"
@@ -177,11 +178,12 @@ void RunQueryDbThread(const std::string& bin_name,
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
   FileConsumerSharedState file_consumer_shared;
+  DiagnosticsEngine diag_engine(config);
 
   ClangCompleteManager clang_complete(
       config, &project, &working_files,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
-        EmitDiagnostics(&working_files, path, diagnostics);
+        diag_engine.Publish(&working_files, path, diagnostics);
       },
       [&](ClangTranslationUnit* tu, const std::vector<CXUnsavedFile>& unsaved,
           const std::string& path, const std::vector<std::string>& args) {
@@ -214,6 +216,7 @@ void RunQueryDbThread(const std::string& bin_name,
     handler->db = &db;
     handler->waiter = indexer_waiter;
     handler->project = &project;
+    handler->diag_engine = &diag_engine;
     handler->file_consumer_shared = &file_consumer_shared;
     handler->import_manager = &import_manager;
     handler->import_pipeline_status = &import_pipeline_status;

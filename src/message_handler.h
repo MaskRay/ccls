@@ -12,6 +12,7 @@
 struct ClangCompleteManager;
 struct CodeCompleteCache;
 struct Config;
+class DiagnosticsEngine;
 struct FileConsumerSharedState;
 struct ImportManager;
 struct ImportPipelineStatus;
@@ -72,6 +73,7 @@ struct MessageHandler {
   QueryDatabase* db = nullptr;
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;
+  DiagnosticsEngine* diag_engine = nullptr;
   FileConsumerSharedState* file_consumer_shared = nullptr;
   ImportManager* import_manager = nullptr;
   ImportPipelineStatus* import_pipeline_status = nullptr;

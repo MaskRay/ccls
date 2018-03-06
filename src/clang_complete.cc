@@ -383,7 +383,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
                                      unsaved, Flags());
 
   // Build diagnostics.
-  if (manager->config_->diagnosticsOnParse && *tu) {
+  if (manager->config_->diagnostics.onParse && *tu) {
     // If we're emitting diagnostics, do an immediate reparse, otherwise we will
     // emit stale/bad diagnostics.
     *tu = ClangTranslationUnit::Reparse(std::move(*tu), unsaved);

@@ -2,6 +2,7 @@
 
 #include "cache_manager.h"
 #include "config.h"
+#include "diagnostics_engine.h"
 #include "iindexer.h"
 #include "import_manager.h"
 #include "lsp.h"
@@ -340,6 +341,7 @@ std::vector<FileContents> PreloadFileContents(
 }
 
 void ParseFile(Config* config,
+               DiagnosticsEngine* diag_engine,
                WorkingFiles* working_files,
                FileConsumerSharedState* file_consumer_shared,
                TimestampManager* timestamp_manager,
@@ -394,7 +396,8 @@ void ParseFile(Config* config,
     // to identify indexing problems. For interactive sessions, diagnostics are
     // handled by code completion.
     if (!request.is_interactive)
-      EmitDiagnostics(working_files, new_index->path, new_index->diagnostics_);
+      diag_engine->Publish(working_files, new_index->path,
+                           new_index->diagnostics_);
 
     // When main thread does IdMap request it will request the previous index if
     // needed.
@@ -410,6 +413,7 @@ void ParseFile(Config* config,
 
 bool IndexMain_DoParse(
     Config* config,
+    DiagnosticsEngine* diag_engine,
     WorkingFiles* working_files,
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
@@ -424,9 +428,9 @@ bool IndexMain_DoParse(
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  ParseFile(config, working_files, file_consumer_shared, timestamp_manager,
-            modification_timestamp_fetcher, import_manager, indexer,
-            request.value(), entry);
+  ParseFile(config, diag_engine, working_files, file_consumer_shared,
+            timestamp_manager, modification_timestamp_fetcher, import_manager,
+            indexer, request.value(), entry);
   return true;
 }
 
@@ -582,6 +586,7 @@ void IndexWithTuFromCodeCompletion(
 }
 
 void Indexer_Main(Config* config,
+                  DiagnosticsEngine* diag_engine,
                   FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
                   ImportManager* import_manager,
@@ -609,11 +614,11 @@ void Indexer_Main(Config* config,
       // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
       // work. Running both also lets the user query the partially constructed
       // index.
-      did_work =
-          IndexMain_DoParse(config, working_files, file_consumer_shared,
-                            timestamp_manager, &modification_timestamp_fetcher,
-                            import_manager, indexer.get()) ||
-          did_work;
+      did_work = IndexMain_DoParse(config, diag_engine, working_files,
+                                   file_consumer_shared, timestamp_manager,
+                                   &modification_timestamp_fetcher,
+                                   import_manager, indexer.get()) ||
+                 did_work;
 
       did_work = IndexMain_DoCreateIndexUpdate(timestamp_manager) || did_work;
 
@@ -767,9 +772,10 @@ TEST_SUITE("ImportPipeline") {
     }
 
     bool PumpOnce() {
-      return IndexMain_DoParse(
-          &config, &working_files, &file_consumer_shared, &timestamp_manager,
-          &modification_timestamp_fetcher, &import_manager, indexer.get());
+      return IndexMain_DoParse(&config, &diag_engine, &working_files,
+                               &file_consumer_shared, &timestamp_manager,
+                               &modification_timestamp_fetcher, &import_manager,
+                               indexer.get());
     }
 
     void MakeRequest(const std::string& path,
@@ -786,6 +792,7 @@ TEST_SUITE("ImportPipeline") {
 
     QueueManager* queue = nullptr;
     Config config;
+    DiagnosticsEngine diag_engine{&config};
     WorkingFiles working_files;
     FileConsumerSharedState file_consumer_shared;
     TimestampManager timestamp_manager;

@@ -72,9 +72,6 @@ struct Config {
   // If true, document links are reported for #include directives.
   bool showDocumentLinksOnIncludes = true;
 
-  // If true, diagnostics from a full document parse will be reported.
-  bool diagnosticsOnParse = true;
-
   // Version of the client. If undefined the version check is skipped. Used to
   // inform users their vscode client is too old and needs to be updated.
   optional<int> clientVersion;
@@ -144,6 +141,23 @@ struct Config {
     std::vector<std::string> includeWhitelist;
   } completion;
 
+  struct Diagnostics {
+    // Like index.{whitelist,blacklist}, don't publish diagnostics to
+    // blacklisted files.
+    std::vector<std::string> blacklist;
+
+    // How often should cquery publish diagnostics in completion?
+    //  -1: never
+    //   0: as often as possible
+    //   xxx: at most every xxx milliseconds
+    int frequencyMs = 0;
+
+    // If true, diagnostics from a full document parse will be reported.
+    bool onParse = true;
+
+    std::vector<std::string> whitelist;
+  } diagnostics;
+
   struct Index {
     // Attempt to convert calls of make* functions to constructors based on
     // hueristics.
@@ -210,6 +224,11 @@ MAKE_REFLECT_STRUCT(Config::Completion,
                     includeMaxPathSize,
                     includeSuffixWhitelist,
                     includeWhitelist);
+MAKE_REFLECT_STRUCT(Config::Diagnostics,
+                    blacklist,
+                    frequencyMs,
+                    onParse,
+                    whitelist)
 MAKE_REFLECT_STRUCT(Config::Index,
                     attributeMakeCallsToCtor,
                     blacklist,
@@ -233,13 +252,12 @@ MAKE_REFLECT_STRUCT(Config,
 
                     showDocumentLinksOnIncludes,
 
-                    diagnosticsOnParse,
-
                     clientVersion,
 
                     client,
                     codeLens,
                     completion,
+                    diagnostics,
                     index,
                     workspaceSymbol,
                     xref,
