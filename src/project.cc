@@ -1482,19 +1482,20 @@ TEST_SUITE("Project") {
   }
 
   TEST_CASE("IsWindowsAbsolutePath works correctly") {
-    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects/") == true);
-    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects") == true);
-    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects") == true);
-    REQUIRE(IsWindowsAbsolutePath("C:\\Users\\projects") == true);
-    REQUIRE(IsWindowsAbsolutePath("C:\\\\Users\\\\projects") == true);
-    REQUIRE(IsWindowsAbsolutePath("c:\\\\Users\\\\projects") == true);
-    REQUIRE(IsWindowsAbsolutePath("A:\\\\Users\\\\projects") == true);
+    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects/"));
+    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects"));
+    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects"));
+    REQUIRE(IsWindowsAbsolutePath("C:\\Users\\projects"));
+    REQUIRE(IsWindowsAbsolutePath("C:\\\\Users\\\\projects"));
+    REQUIRE(IsWindowsAbsolutePath("c:\\\\Users\\\\projects"));
+    REQUIRE(IsWindowsAbsolutePath("A:\\\\Users\\\\projects"));
 
-    REQUIRE(IsWindowsAbsolutePath("C:/") == false);
-    REQUIRE(IsWindowsAbsolutePath("../abc/test") == false);
-    REQUIRE(IsWindowsAbsolutePath("5:/test") == false);
-    REQUIRE(IsWindowsAbsolutePath("cquery/project/file.cc") == false);
-    REQUIRE(IsWindowsAbsolutePath("") == false);
+    REQUIRE(!IsWindowsAbsolutePath("C:/"));
+    REQUIRE(!IsWindowsAbsolutePath("../abc/test"));
+    REQUIRE(!IsWindowsAbsolutePath("5:/test"));
+    REQUIRE(!IsWindowsAbsolutePath("cquery/project/file.cc"));
+    REQUIRE(!IsWindowsAbsolutePath(""));
+    REQUIRE(!IsWindowsAbsolutePath("/etc/linux/path"));
   }
 
   TEST_CASE("Entry inference prefers same file endings") {
