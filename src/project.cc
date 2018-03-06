@@ -53,7 +53,8 @@ bool IsWindowsAbsolutePath(const std::string& path) {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
   };
 
-  return path.size() > 3 && path[1] == ':' && path[2] == '/' &&
+  return path.size() > 3 && path[1] == ':' && 
+         (path[2] == '/' || path[2] == '\\') &&
          is_drive_letter(path[0]);
 }
 
