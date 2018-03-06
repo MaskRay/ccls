@@ -2002,11 +2002,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_CXXStaticVariable:
     case CXIdxEntity_Variable:
     case CXIdxEntity_Field: {
-      ClangCursor ref_cursor(ref->cursor);
-      Range loc = ref_cursor.get_spell();
-      CheckTypeDependentMemberRefExpr(&loc, ref_cursor, param, db);
+      Range loc = cursor.get_spell();
+      CheckTypeDependentMemberRefExpr(&loc, cursor, param, db);
 
-      ClangCursor referenced = ref->referencedEntity->cursor;
       referenced = referenced.template_specialization_to_template_definition();
 
       IndexVarId var_id = db->ToVarId(referenced.get_usr_hash());
@@ -2054,8 +2052,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       //  }
 
       // TODO: search full history?
-      ClangCursor ref_cursor(ref->cursor);
-      Range loc = ref_cursor.get_spell();
+      Range loc = cursor.get_spell();
 
       IndexFuncId called_id = db->ToFuncId(HashUsr(ref->referencedEntity->USR));
       IndexFunc* called = db->Resolve(called_id);
@@ -2083,9 +2080,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // Type-dependent member access expressions do not have useful spelling
       // ranges. See the comment above for the CXIdxEntity_Field case.
       if (is_implicit)
-        loc = ref_cursor.get_extent();
+        loc = cursor.get_extent();
       else
-        CheckTypeDependentMemberRefExpr(&loc, ref_cursor, param, db);
+        CheckTypeDependentMemberRefExpr(&loc, cursor, param, db);
 
       OnIndexReference_Function(
           db, loc, ref->container->cursor, called_id,
@@ -2149,25 +2146,9 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
     case CXIdxEntity_Union:
     case CXIdxEntity_Struct:
     case CXIdxEntity_CXXClass: {
-      ClangCursor ref_cursor = ref->referencedEntity->cursor;
-      ref_cursor = ref_cursor.template_specialization_to_template_definition();
+      referenced = referenced.template_specialization_to_template_definition();
       IndexType* ref_type =
-          db->Resolve(db->ToTypeId(ref_cursor.get_usr_hash()));
-
-      // The following will generate two TypeRefs to Foo, both located at the
-      // same spot (line 3, column 3). One of the parents will be set to
-      // CXIdxEntity_Variable, the other will be CXIdxEntity_Function. There
-      // does not appear to be a good way to disambiguate these references, as
-      // using parent type alone breaks other indexing tasks.
-      //
-      // To work around this, we check to see if the usage location has been
-      // inserted into all_uses previously.
-      //
-      //  struct Foo {};
-      //  void Make() {
-      //    Foo f;
-      //  }
-      //
+          db->Resolve(db->ToTypeId(referenced.get_usr_hash()));
       if (!ref->parentEntity || IsDeclContext(ref->parentEntity->kind))
         AddUseSpell(db, ref_type->declarations, ref->cursor);
       else

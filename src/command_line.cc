@@ -94,6 +94,7 @@ Other command line options:
   --record <path>
                 Writes stdin to <path>.in and stdout to <path>.out
   --log-file <path>    Logging file for diagnostics
+  --log-file-append <path>    Like --log-file, but appending
   --log-all-to-stderr  Write all log messages to STDERR.
   --wait-for-input     Wait for an '[Enter]' before exiting
   --help        Print this help information.
@@ -360,8 +361,8 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
 
         RecordOutput(message.content);
 
-        std::cout << message.content;
-        std::cout.flush();
+        fwrite(message.content.c_str(), message.content.size(), 1, stdout);
+        fflush(stdout);
       }
     }
   });
@@ -432,6 +433,10 @@ int main(int argc, char** argv) {
 
   if (HasOption(options, "--log-file")) {
     loguru::add_file(options["--log-file"].c_str(), loguru::Truncate,
+                     loguru::Verbosity_MAX);
+  }
+  if (HasOption(options, "--log-file-append")) {
+    loguru::add_file(options["--log-file-append"].c_str(), loguru::Append,
                      loguru::Verbosity_MAX);
   }
 
