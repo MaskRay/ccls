@@ -23,6 +23,7 @@
 #include <sstream>
 #include <unordered_set>
 #include <vector>
+#include <iostream>
 
 struct CompileCommandsEntry {
   std::string directory;
@@ -1478,6 +1479,22 @@ TEST_SUITE("Project") {
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"a", "b", "ee.cc", "d"});
     }
+  }
+
+  TEST_CASE("IsWindowsAbsolutePath works correctly") {
+    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects/") == true);
+    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects") == true);
+    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects") == true);
+    REQUIRE(IsWindowsAbsolutePath("C:\\Users\\projects") == true);
+    REQUIRE(IsWindowsAbsolutePath("C:\\\\Users\\\\projects") == true);
+    REQUIRE(IsWindowsAbsolutePath("c:\\\\Users\\\\projects") == true);
+    REQUIRE(IsWindowsAbsolutePath("A:\\\\Users\\\\projects") == true);
+
+    REQUIRE(IsWindowsAbsolutePath("C:/") == false);
+    REQUIRE(IsWindowsAbsolutePath("../abc/test") == false);
+    REQUIRE(IsWindowsAbsolutePath("5:/test") == false);
+    REQUIRE(IsWindowsAbsolutePath("cquery/project/file.cc") == false);
+    REQUIRE(IsWindowsAbsolutePath("") == false);
   }
 
   TEST_CASE("Entry inference prefers same file endings") {
