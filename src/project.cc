@@ -23,7 +23,6 @@
 #include <sstream>
 #include <unordered_set>
 #include <vector>
-#include <iostream>
 
 struct CompileCommandsEntry {
   std::string directory;
