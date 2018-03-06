@@ -769,6 +769,7 @@ TEST_SUITE("ImportPipeline") {
       queue = QueueManager::instance();
       cache_manager = ICacheManager::MakeFake({});
       indexer = IIndexer::MakeTestIndexer({});
+      diag_engine.Init(&config);
     }
 
     bool PumpOnce() {
