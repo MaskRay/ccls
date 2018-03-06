@@ -582,7 +582,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
                              EscapeFileName(config->projectRoot));
 
       Timer time;
-      diag_engine->SetFrequencyMs(config->diagnostics.frequencyMs);
+      diag_engine->Init(config);
 
       // Open up / load the project.
       project->Load(config, config->extraClangArguments,

@@ -178,7 +178,7 @@ void RunQueryDbThread(const std::string& bin_name,
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
   FileConsumerSharedState file_consumer_shared;
-  DiagnosticsEngine diag_engine(config);
+  DiagnosticsEngine diag_engine;
 
   ClangCompleteManager clang_complete(
       config, &project, &working_files,

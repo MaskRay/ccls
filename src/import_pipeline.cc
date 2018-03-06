@@ -792,7 +792,7 @@ TEST_SUITE("ImportPipeline") {
 
     QueueManager* queue = nullptr;
     Config config;
-    DiagnosticsEngine diag_engine{&config};
+    DiagnosticsEngine diag_engine;
     WorkingFiles working_files;
     FileConsumerSharedState file_consumer_shared;
     TimestampManager timestamp_manager;

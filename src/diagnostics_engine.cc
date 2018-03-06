@@ -4,8 +4,11 @@
 
 #include <chrono>
 
-DiagnosticsEngine::DiagnosticsEngine(Config* config)
-    : match_(config->diagnostics.whitelist, config->diagnostics.blacklist) {}
+void DiagnosticsEngine::Init(Config* config) {
+  frequencyMs_ = config->diagnostics.frequencyMs;
+  match_ = MakeUnique<GroupMatch>(config->diagnostics.whitelist, config->diagnostics.blacklist);
+}
+
 
 void DiagnosticsEngine::Publish(WorkingFiles* working_files,
                                 std::string path,
@@ -19,7 +22,7 @@ void DiagnosticsEngine::Publish(WorkingFiles* working_files,
   int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::high_resolution_clock::now().time_since_epoch()).count();
   if (frequencyMs_ >= 0 && (nextPublish_ <= now || diagnostics.empty()) &&
-      match_.IsMatch(path)) {
+      match_->IsMatch(path)) {
     nextPublish_ = now + frequencyMs_;
 
     Out_TextDocumentPublishDiagnostics out;

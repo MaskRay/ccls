@@ -4,13 +4,12 @@
 #include "working_files.h"
 
 class DiagnosticsEngine {
-  int frequencyMs_ = 0;
-  GroupMatch match_;
+  std::unique_ptr<GroupMatch> match_;
   int64_t nextPublish_ = 0;
+  int frequencyMs_;
 
  public:
-  DiagnosticsEngine(Config* config);
-  void SetFrequencyMs(int ms) { frequencyMs_ = ms; }
+  void Init(Config*);
   void Publish(WorkingFiles* working_files,
                std::string path,
                std::vector<lsDiagnostic> diagnostics);
