@@ -162,7 +162,48 @@ struct lsLocation {
 MAKE_HASHABLE(lsLocation, t.uri, t.range);
 MAKE_REFLECT_STRUCT(lsLocation, uri, range);
 
-enum class lsSymbolKind : uint8_t;
+enum class lsSymbolKind : uint8_t {
+  Unknown = 0,
+
+  File = 1,
+  Module = 2,
+  Namespace = 3,
+  Package = 4,
+  Class = 5,
+  Method = 6,
+  Property = 7,
+  Field = 8,
+  Constructor = 9,
+  Enum = 10,
+  Interface = 11,
+  Function = 12,
+  Variable = 13,
+  Constant = 14,
+  String = 15,
+  Number = 16,
+  Boolean = 17,
+  Array = 18,
+  Object = 19,
+  Key = 20,
+  Null = 21,
+  EnumMember = 22,
+  Struct = 23,
+  Event = 24,
+  Operator = 25,
+
+  // For C++, this is interpreted as "template parameter" (including
+  // non-type template parameters).
+  TypeParameter = 26,
+
+  // cquery extensions
+  // See also https://github.com/Microsoft/language-server-protocol/issues/344
+  // for new SymbolKind clang/Index/IndexSymbol.h clang::index::SymbolKind
+  TypeAlias = 252,
+  Parameter = 253,
+  StaticMethod = 254,
+  Macro = 255,
+};
+MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
 
 // cquery extension
 struct lsLocationEx : lsLocation {
