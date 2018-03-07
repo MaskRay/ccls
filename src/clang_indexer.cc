@@ -2264,9 +2264,13 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
   for (std::unique_ptr<IndexFile>& entry : result) {
     entry->import_file = file;
     entry->args = args;
-    for (IndexFunc& func : entry->funcs)
+    for (IndexFunc& func : entry->funcs) {
+      // e.g. declaration + out-of-line definition
+      Uniquify(func.derived);
       Uniquify(func.uses);
+    }
     for (IndexType& type : entry->types) {
+      Uniquify(type.derived);
       Uniquify(type.uses);
       // e.g. declaration + out-of-line definition
       Uniquify(type.def.funcs);
