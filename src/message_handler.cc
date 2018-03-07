@@ -136,14 +136,18 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
       case SymbolKind::Func: {
-        const QueryFunc::Def* def = nullptr;
-        for (auto& i : db->GetFunc(sym).def) {
-          def = &i;
-          if (i.spell)
-            break;
-        }
+        const QueryFunc& func = db->GetFunc(sym);
+        const QueryFunc::Def* def = func.AnyDef();
         if (!def)
           continue;  // applies to for loop
+        if (def->spell)
+          parent_kind = GetSymbolKind(db, *def->spell);
+        if (parent_kind == lsSymbolKind::Unknown) {
+          for (Use use: func.declarations) {
+            parent_kind = GetSymbolKind(db, use);
+            break;
+          }
+        }
         // Don't highlight overloadable operators or implicit lambda ->
         // std::function constructor.
         std::string_view short_name = def->ShortName();
@@ -185,8 +189,9 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           }
         }
         break;
-      case SymbolKind::Var:
-        for (auto& def : db->GetVar(sym).def) {
+      case SymbolKind::Var: {
+        const QueryVar& var = db->GetVar(sym);
+        for (auto& def : var.def) {
           kind = def.kind;
           storage = def.storage;
           detailed_name = def.detailed_name;
@@ -195,7 +200,14 @@ void EmitSemanticHighlighting(QueryDatabase* db,
             break;
           }
         }
+        if (parent_kind == lsSymbolKind::Unknown) {
+          for (Use use : var.declarations) {
+            parent_kind = GetSymbolKind(db, use);
+            break;
+          }
+        }
         break;
+      }
       default:
         continue;  // applies to for loop
     }
