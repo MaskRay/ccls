@@ -92,6 +92,35 @@ void EachOccurrence(QueryDatabase* db, SymbolIdx sym, bool include_decl, Fn&& fn
   });
 }
 
+template <typename Fn>
+void EachOccurrenceWithParent(QueryDatabase* db,
+                              SymbolIdx sym,
+                              bool include_decl,
+                              Fn&& fn) {
+  WithEntity(db, sym, [&](const auto& entity) {
+    lsSymbolKind parent_kind = lsSymbolKind::Unknown;
+    for (auto& def : entity.def)
+      if (def.spell) {
+        WithEntity(db, *def.spell, [&](const auto& entity) {
+          for (auto& def : entity.def) {
+            parent_kind = def.kind;
+            break;
+          }
+        });
+        break;
+      }
+    for (Use use : entity.uses)
+      fn(use, parent_kind);
+    if (include_decl) {
+      for (auto& def : entity.def)
+        if (def.spell)
+          fn(*def.spell, parent_kind);
+      for (Use use : entity.declarations)
+        fn(use, parent_kind);
+    }
+  });
+}
+
 template <typename Q, typename Fn>
 void EachDefinedEntity(std::vector<Q>& collection,
                        const std::vector<Id<Q>>& ids,

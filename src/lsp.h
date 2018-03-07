@@ -162,13 +162,16 @@ struct lsLocation {
 MAKE_HASHABLE(lsLocation, t.uri, t.range);
 MAKE_REFLECT_STRUCT(lsLocation, uri, range);
 
+enum class lsSymbolKind : uint8_t;
+
 // cquery extension
 struct lsLocationEx : lsLocation {
   optional<std::string_view> containerName;
+  optional<lsSymbolKind> parentKind;
   // Avoid circular dependency on symbol.h
   optional<uint16_t> role;
 };
-MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, role);
+MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, parentKind, role);
 
 template <typename T>
 struct lsCommand {
