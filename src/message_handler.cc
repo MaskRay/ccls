@@ -130,7 +130,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
     std::string_view detailed_name;
-    SymbolKind parent_kind = SymbolKind::Invalid;
+    lsSymbolKind parent_kind = lsSymbolKind::Unknown;
     lsSymbolKind kind = lsSymbolKind::Unknown;
     StorageClass storage = StorageClass::Invalid;
     // This switch statement also filters out symbols that are not highlighted.
@@ -151,7 +151,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
             short_name.compare(0, 27, "function<type-parameter-0-0") == 0)
           continue;  // applies to for loop
         if (def->spell)
-          parent_kind = def->spell->kind;
+          parent_kind = GetSymbolKind(db, *def->spell);
         kind = def->kind;
         storage = def->storage;
         detailed_name = short_name;
@@ -180,7 +180,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           kind = def.kind;
           detailed_name = def.detailed_name;
           if (def.spell) {
-            parent_kind = def.spell->kind;
+            parent_kind = GetSymbolKind(db, *def.spell);
             break;
           }
         }
@@ -191,7 +191,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
           storage = def.storage;
           detailed_name = def.detailed_name;
           if (def.spell) {
-            parent_kind = def.spell->kind;
+            parent_kind = GetSymbolKind(db, *def.spell);
             break;
           }
         }

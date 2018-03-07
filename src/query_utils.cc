@@ -266,6 +266,22 @@ std::vector<lsLocationEx> GetLsLocationExs(QueryDatabase* db,
   return ret;
 }
 
+lsSymbolKind GetSymbolKind(QueryDatabase* db, SymbolIdx sym) {
+  lsSymbolKind ret;
+  if (sym.kind == SymbolKind::File)
+    ret = lsSymbolKind::File;
+  else {
+    ret = lsSymbolKind::Unknown;
+    WithEntity(db, sym, [&](const auto& entity) {
+      for (auto& def : entity.def) {
+        ret = def.kind;
+        break;
+      }
+    });
+  }
+  return ret;
+}
+
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
 optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,

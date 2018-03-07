@@ -92,6 +92,8 @@ void EachOccurrence(QueryDatabase* db, SymbolIdx sym, bool include_decl, Fn&& fn
   });
 }
 
+lsSymbolKind GetSymbolKind(QueryDatabase* db, SymbolIdx sym);
+
 template <typename Fn>
 void EachOccurrenceWithParent(QueryDatabase* db,
                               SymbolIdx sym,
@@ -101,12 +103,7 @@ void EachOccurrenceWithParent(QueryDatabase* db,
     lsSymbolKind parent_kind = lsSymbolKind::Unknown;
     for (auto& def : entity.def)
       if (def.spell) {
-        WithEntity(db, *def.spell, [&](const auto& entity) {
-          for (auto& def : entity.def) {
-            parent_kind = def.kind;
-            break;
-          }
-        });
+        parent_kind = GetSymbolKind(db, sym);
         break;
       }
     for (Use use : entity.uses)
