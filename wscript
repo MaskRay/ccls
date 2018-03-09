@@ -86,8 +86,8 @@ def options(opt):
   grp.add_option('--enable-assert', action='store_true')
   grp.add_option('--use-clang-cxx', dest='use_clang_cxx', default=False, action='store_true',
                  help='use clang C++ API')
-  grp.add_option('--bundled-clang', dest='bundled_clang', default='5.0.1',
-                 help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 4.0.0 5.0.1')
+  grp.add_option('--bundled-clang', dest='bundled_clang', default='6.0.0',
+                 help='bundled clang version, downloaded from https://releases.llvm.org/ , e.g. 5.0.1 6.0.0')
   grp.add_option('--llvm-config', dest='llvm_config',
                  help='path to llvm-config to use system libclang, e.g. llvm-config llvm-config-6.0')
   grp.add_option('--clang-prefix', dest='clang_prefix',

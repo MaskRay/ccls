@@ -306,7 +306,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
 
   // Index tests change based on the version of clang used.
   static constexpr const char* kRequiredClangVersion =
-      "clang version 5.0.1 (tags/RELEASE_501/final)";
+      "clang version 6.0.0 (tags/RELEASE_600/final)";
   if (GetClangVersion() != kRequiredClangVersion &&
       GetClangVersion().find("trunk") == std::string::npos) {
     std::cerr << "Index tests must be run using clang version \""
