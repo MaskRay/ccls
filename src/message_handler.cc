@@ -122,6 +122,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
                               WorkingFile* working_file,
                               QueryFile* file) {
   assert(file->def);
+  if (!semantic_cache->match_->IsMatch(file->def->path))
+    return;
   auto semantic_cache_for_file =
       semantic_cache->GetCacheForFile(file->def->path);
 

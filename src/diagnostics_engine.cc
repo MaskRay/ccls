@@ -6,9 +6,9 @@
 
 void DiagnosticsEngine::Init(Config* config) {
   frequencyMs_ = config->diagnostics.frequencyMs;
-  match_ = MakeUnique<GroupMatch>(config->diagnostics.whitelist, config->diagnostics.blacklist);
+  match_ = MakeUnique<GroupMatch>(config->diagnostics.whitelist,
+                                  config->diagnostics.blacklist);
 }
-
 
 void DiagnosticsEngine::Publish(WorkingFiles* working_files,
                                 std::string path,

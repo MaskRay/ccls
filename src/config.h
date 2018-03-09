@@ -158,6 +158,15 @@ struct Config {
     std::vector<std::string> whitelist;
   } diagnostics;
 
+  // Semantic highlighting
+  struct Highlight {
+    // Like index.{whitelist,blacklist}, don't publish semantic highlighting to
+    // blacklisted files.
+    std::vector<std::string> blacklist;
+
+    std::vector<std::string> whitelist;
+  } highlight;
+
   struct Index {
     // Attempt to convert calls of make* functions to constructors based on
     // hueristics.
@@ -229,6 +238,9 @@ MAKE_REFLECT_STRUCT(Config::Diagnostics,
                     frequencyMs,
                     onParse,
                     whitelist)
+MAKE_REFLECT_STRUCT(Config::Highlight,
+                    blacklist,
+                    whitelist)
 MAKE_REFLECT_STRUCT(Config::Index,
                     attributeMakeCallsToCtor,
                     blacklist,
@@ -258,6 +270,7 @@ MAKE_REFLECT_STRUCT(Config,
                     codeLens,
                     completion,
                     diagnostics,
+                    highlight,
                     index,
                     workspaceSymbol,
                     xref,

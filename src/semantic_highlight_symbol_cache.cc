@@ -60,6 +60,11 @@ SemanticHighlightSymbolCache::Entry::GetMapForSymbol_(SymbolKind kind) {
 SemanticHighlightSymbolCache::SemanticHighlightSymbolCache()
     : cache_(kCacheSize) {}
 
+void SemanticHighlightSymbolCache::Init(Config* config) {
+  match_ = MakeUnique<GroupMatch>(config->highlight.whitelist,
+                                  config->highlight.blacklist);
+}
+
 std::shared_ptr<SemanticHighlightSymbolCache::Entry>
 SemanticHighlightSymbolCache::GetCacheForFile(const std::string& path) {
   return cache_.Get(

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lru_cache.h"
+#include "match.h"
 #include "query.h"
 
 #include <optional.h>
@@ -34,8 +35,9 @@ struct SemanticHighlightSymbolCache {
   constexpr static int kCacheSize = 10;
   LruCache<std::string, Entry> cache_;
   uint32_t next_stable_id_ = 0;
+  std::unique_ptr<GroupMatch> match_;
 
   SemanticHighlightSymbolCache();
-
+  void Init(Config*);
   std::shared_ptr<Entry> GetCacheForFile(const std::string& path);
 };

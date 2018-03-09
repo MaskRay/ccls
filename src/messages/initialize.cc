@@ -6,6 +6,7 @@
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
+#include "semantic_highlight_symbol_cache.h"
 #include "serializers/json.h"
 #include "timer.h"
 #include "working_files.h"
@@ -583,6 +584,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
 
       Timer time;
       diag_engine->Init(config);
+      semantic_cache->Init(config);
 
       // Open up / load the project.
       project->Load(config, config->extraClangArguments,
