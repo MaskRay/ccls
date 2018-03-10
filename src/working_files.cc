@@ -478,7 +478,7 @@ WorkingFile* WorkingFiles::OnOpen(const lsTextDocumentItem& open) {
     return file;
   }
 
-  files.push_back(MakeUnique<WorkingFile>(filename, content));
+  files.push_back(std::make_unique<WorkingFile>(filename, content));
   return files[files.size() - 1].get();
 }
 

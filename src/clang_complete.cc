@@ -689,7 +689,7 @@ void ClangCompleteManager::CodeComplete(
     const lsRequestId& id,
     const lsTextDocumentPositionParams& completion_location,
     const OnComplete& on_complete) {
-  completion_request_.PushBack(MakeUnique<CompletionRequest>(
+  completion_request_.PushBack(std::make_unique<CompletionRequest>(
       id, completion_location.textDocument, completion_location.position,
       on_complete, false));
 }
@@ -698,7 +698,7 @@ void ClangCompleteManager::DiagnosticsUpdate(
     const lsRequestId& id,
     const lsTextDocumentIdentifier& document) {
   completion_request_.PushBack(
-      MakeUnique<CompletionRequest>(id, document, true));
+      std::make_unique<CompletionRequest>(id, document, true));
 }
 
 void ClangCompleteManager::NotifyView(const std::string& filename) {

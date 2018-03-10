@@ -1,7 +1,6 @@
 #pragma once
 
 #include "utils.h"
-#include "work_thread.h"
 
 #include <optional.h>
 
@@ -11,6 +10,7 @@
 #include <deque>
 #include <mutex>
 #include <tuple>
+#include <utility>
 
 // TODO: cleanup includes.
 
@@ -18,24 +18,6 @@ struct BaseThreadQueue {
   virtual bool IsEmpty() = 0;
   virtual ~BaseThreadQueue() = default;
 };
-
-// TODO Remove after migration to C++14
-namespace {
-
-template <size_t... Is>
-struct index_sequence {};
-
-template <size_t I, size_t... Is>
-struct make_index_sequence {
-  using type = typename make_index_sequence<I - 1, I - 1, Is...>::type;
-};
-
-template <size_t... Is>
-struct make_index_sequence<0, Is...> {
-  using type = index_sequence<Is...>;
-};
-
-}  // namespace
 
 // std::lock accepts two or more arguments. We define an overload for one
 // argument.
@@ -51,20 +33,20 @@ struct MultiQueueLock {
   MultiQueueLock(Queue... lockable) : tuple_{lockable...} { lock(); }
   ~MultiQueueLock() { unlock(); }
   void lock() {
-    lock_impl(typename make_index_sequence<sizeof...(Queue)>::type{});
+    lock_impl(typename std::make_index_sequence<sizeof...(Queue)>{});
   }
   void unlock() {
-    unlock_impl(typename make_index_sequence<sizeof...(Queue)>::type{});
+    unlock_impl(typename std::make_index_sequence<sizeof...(Queue)>{});
   }
 
  private:
   template <size_t... Is>
-  void lock_impl(index_sequence<Is...>) {
+  void lock_impl(std::index_sequence<Is...>) {
     std::lock(std::get<Is>(tuple_)->mutex_...);
   }
 
   template <size_t... Is>
-  void unlock_impl(index_sequence<Is...>) {
+  void unlock_impl(std::index_sequence<Is...>) {
     (void)std::initializer_list<int>{
         (std::get<Is>(tuple_)->mutex_.unlock(), 0)...};
   }
@@ -96,9 +78,9 @@ template <class T>
 struct ThreadedQueue : public BaseThreadQueue {
  public:
   ThreadedQueue() : total_count_(0) {
-    owned_waiter_ = MakeUnique<MultiQueueWaiter>();
+    owned_waiter_ = std::make_unique<MultiQueueWaiter>();
     waiter_ = owned_waiter_.get();
-    owned_waiter1_ = MakeUnique<MultiQueueWaiter>();
+    owned_waiter1_ = std::make_unique<MultiQueueWaiter>();
     waiter1_ = owned_waiter1_.get();
   }
 

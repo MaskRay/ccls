@@ -6,7 +6,7 @@
 
 void DiagnosticsEngine::Init(Config* config) {
   frequencyMs_ = config->diagnostics.frequencyMs;
-  match_ = MakeUnique<GroupMatch>(config->diagnostics.whitelist,
+  match_ = std::make_unique<GroupMatch>(config->diagnostics.whitelist,
                                   config->diagnostics.blacklist);
 }
 

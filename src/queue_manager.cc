@@ -52,20 +52,14 @@ Index_OnIndexed::Index_OnIndexed(IndexUpdate&& update,
                                  PerformanceImportFile perf)
     : update(std::move(update)), perf(perf) {}
 
-QueueManager* QueueManager::instance_ = nullptr;
+std::unique_ptr<QueueManager> QueueManager::instance_;
 
 // static
-QueueManager* QueueManager::instance() {
-  return instance_;
-}
-
-// static
-void QueueManager::CreateInstance(MultiQueueWaiter* querydb_waiter,
-                                  MultiQueueWaiter* indexer_waiter,
-                                  MultiQueueWaiter* stdout_waiter) {
-  if (instance_)
-    delete instance_;
-  instance_ = new QueueManager(querydb_waiter, indexer_waiter, stdout_waiter);
+void QueueManager::Init(MultiQueueWaiter* querydb_waiter,
+                        MultiQueueWaiter* indexer_waiter,
+                        MultiQueueWaiter* stdout_waiter) {
+  instance_ = std::unique_ptr<QueueManager>(
+      new QueueManager(querydb_waiter, indexer_waiter, stdout_waiter));
 }
 
 // static

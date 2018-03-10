@@ -78,16 +78,19 @@ struct Index_OnIndexed {
   Index_OnIndexed(IndexUpdate&& update, PerformanceImportFile perf);
 };
 
-struct QueueManager {
-  static QueueManager* instance();
-  static void CreateInstance(MultiQueueWaiter* querydb_waiter,
-                             MultiQueueWaiter* indexer_waiter,
-                             MultiQueueWaiter* stdout_waiter);
+class QueueManager {
+  static std::unique_ptr<QueueManager> instance_;
+
+public:
+  static QueueManager* instance() { return instance_.get(); }
+  static void Init(MultiQueueWaiter* querydb_waiter,
+                   MultiQueueWaiter* indexer_waiter,
+                   MultiQueueWaiter* stdout_waiter);
   static void WriteStdout(IpcId id, lsBaseOutMessage& response);
 
   bool HasWork();
 
-  // Runs on stdout thread.
+  // Messages received by "stdout" thread.
   ThreadedQueue<Stdout_Request> for_stdout;
 
   // Runs on querydb thread.
@@ -107,6 +110,4 @@ struct QueueManager {
   explicit QueueManager(MultiQueueWaiter* querydb_waiter,
                         MultiQueueWaiter* indexer_waiter,
                         MultiQueueWaiter* stdout_waiter);
-
-  static QueueManager* instance_;
 };

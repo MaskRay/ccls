@@ -203,9 +203,9 @@ void RunQueryDbThread(const std::string& bin_name,
       });
 
   IncludeComplete include_complete(config, &project);
-  auto global_code_complete_cache = MakeUnique<CodeCompleteCache>();
-  auto non_global_code_complete_cache = MakeUnique<CodeCompleteCache>();
-  auto signature_cache = MakeUnique<CodeCompleteCache>();
+  auto global_code_complete_cache = std::make_unique<CodeCompleteCache>();
+  auto non_global_code_complete_cache = std::make_unique<CodeCompleteCache>();
+  auto signature_cache = std::make_unique<CodeCompleteCache>();
   ImportManager import_manager;
   ImportPipelineStatus import_pipeline_status;
   TimestampManager timestamp_manager;
@@ -423,8 +423,7 @@ int main(int argc, char** argv) {
   loguru::init(argc, argv);
 
   MultiQueueWaiter querydb_waiter, indexer_waiter, stdout_waiter;
-  QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
-                               &stdout_waiter);
+  QueueManager::Init(&querydb_waiter, &indexer_waiter, &stdout_waiter);
 
   PlatformInit();
   IndexInit();
@@ -489,7 +488,7 @@ int main(int argc, char** argv) {
     }
 
     // std::cerr << "Running language server" << std::endl;
-    auto config = MakeUnique<Config>();
+    auto config = std::make_unique<Config>();
     LanguageServerMain(argv[0], config.get(), &querydb_waiter, &indexer_waiter,
                        &stdout_waiter);
   }

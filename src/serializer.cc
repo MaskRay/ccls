@@ -383,7 +383,7 @@ std::unique_ptr<IndexFile> Deserialize(
       if (reader.HasParseError())
         return nullptr;
 
-      file = MakeUnique<IndexFile>(path, file_content);
+      file = std::make_unique<IndexFile>(path, file_content);
       JsonReader json_reader{&reader};
       try {
         Reflect(json_reader, *file);
@@ -405,7 +405,7 @@ std::unique_ptr<IndexFile> Deserialize(
         memcpy(upk.buffer(), serialized_index_content.data(),
                serialized_index_content.size());
         upk.buffer_consumed(serialized_index_content.size());
-        file = MakeUnique<IndexFile>(path, file_content);
+        file = std::make_unique<IndexFile>(path, file_content);
         MessagePackReader reader(&upk);
         Reflect(reader, major);
         Reflect(reader, minor);

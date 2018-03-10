@@ -61,7 +61,7 @@ SemanticHighlightSymbolCache::SemanticHighlightSymbolCache()
     : cache_(kCacheSize) {}
 
 void SemanticHighlightSymbolCache::Init(Config* config) {
-  match_ = MakeUnique<GroupMatch>(config->highlight.whitelist,
+  match_ = std::make_unique<GroupMatch>(config->highlight.whitelist,
                                   config->highlight.blacklist);
 }
 

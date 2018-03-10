@@ -84,7 +84,7 @@ IndexFile* FileConsumer::TryConsumeFile(CXFile file,
 
   // Build IndexFile instance.
   *is_first_ownership = true;
-  local_[file_id] = MakeUnique<IndexFile>(file_name, *contents);
+  local_[file_id] = std::make_unique<IndexFile>(file_name, *contents);
   return local_[file_id].get();
 }
 

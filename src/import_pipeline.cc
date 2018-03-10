@@ -677,8 +677,8 @@ void QueryDb_DoIdMap(QueueManager* queue,
     if (!file)
       return nullptr;
 
-    auto id_map = MakeUnique<IdMap>(db, file->id_cache);
-    return MakeUnique<Index_OnIdMapped::File>(std::move(file),
+    auto id_map = std::make_unique<IdMap>(db, file->id_cache);
+    return std::make_unique<Index_OnIdMapped::File>(std::move(file),
                                               std::move(id_map));
   };
   response.current = make_map(std::move(request->current));
@@ -763,8 +763,7 @@ bool QueryDb_ImportMain(Config* config,
 TEST_SUITE("ImportPipeline") {
   struct Fixture {
     Fixture() {
-      QueueManager::CreateInstance(&querydb_waiter, &indexer_waiter,
-                                   &stdout_waiter);
+      QueueManager::Init(&querydb_waiter, &indexer_waiter, &stdout_waiter);
 
       queue = QueueManager::instance();
       cache_manager = ICacheManager::MakeFake({});
@@ -810,7 +809,7 @@ TEST_SUITE("ImportPipeline") {
                      const std::vector<std::string>& new_args = {}) {
       std::unique_ptr<IndexFile> opt_previous_index;
       if (!old_args.empty()) {
-        opt_previous_index = MakeUnique<IndexFile>("---.cc", "<empty>");
+        opt_previous_index = std::make_unique<IndexFile>("---.cc", "<empty>");
         opt_previous_index->args = old_args;
       }
       optional<std::string> from;

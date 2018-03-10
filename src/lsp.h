@@ -47,7 +47,7 @@ struct MessageRegistryRegister {
     std::string method_name = IpcIdToString(T::kIpcId);
     MessageRegistry::instance()->allocators[method_name] =
         [](Reader& visitor, std::unique_ptr<BaseIpcMessage>* message) {
-          *message = MakeUnique<T>();
+          *message = std::make_unique<T>();
           // Reflect may throw and *message will be partially deserialized.
           Reflect(visitor, static_cast<T&>(**message));
         };

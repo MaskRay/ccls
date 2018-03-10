@@ -9,12 +9,14 @@
 #include "semantic_highlight_symbol_cache.h"
 #include "serializers/json.h"
 #include "timer.h"
+#include "work_thread.h"
 #include "working_files.h"
 
 #include <loguru.hpp>
 
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 
 // TODO Cleanup global variables
 extern std::string g_init_options;

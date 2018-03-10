@@ -111,14 +111,6 @@ struct TextReplacer {
 
 void WriteToFile(const std::string& filename, const std::string& content);
 
-// note: this implementation does not disable this overload for array types
-// See
-// http://en.cppreference.com/w/cpp/memory/unique_ptr/make_unique#Possible_Implementatiog
-template <typename T, typename... Args>
-std::unique_ptr<T> MakeUnique(Args&&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
 template <typename T>
 void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
   dest->insert(dest->end(), to_add.begin(), to_add.end());

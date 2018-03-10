@@ -112,7 +112,7 @@ void IncludeComplete::Rescan() {
 
   if (!match_ && (!config_->completion.includeWhitelist.empty() ||
                   !config_->completion.includeBlacklist.empty()))
-    match_ = MakeUnique<GroupMatch>(config_->completion.includeWhitelist,
+    match_ = std::make_unique<GroupMatch>(config_->completion.includeWhitelist,
                                     config_->completion.includeBlacklist);
 
   is_scanning = true;

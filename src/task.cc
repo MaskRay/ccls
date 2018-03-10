@@ -6,8 +6,8 @@
 #include <doctest/doctest.h>
 
 TaskManager::TaskManager() {
-  pending_tasks_[TaskThread::Indexer] = MakeUnique<TaskQueue>();
-  pending_tasks_[TaskThread::QueryDb] = MakeUnique<TaskQueue>();
+  pending_tasks_[TaskThread::Indexer] = std::make_unique<TaskQueue>();
+  pending_tasks_[TaskThread::QueryDb] = std::make_unique<TaskQueue>();
 }
 
 void TaskManager::Post(TaskThread thread, const TTask& task) {

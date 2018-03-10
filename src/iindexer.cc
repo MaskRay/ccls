@@ -30,15 +30,15 @@ struct ClangIndexer : IIndexer {
 struct TestIndexer : IIndexer {
   static std::unique_ptr<TestIndexer> FromEntries(
       const std::vector<TestEntry>& entries) {
-    auto result = MakeUnique<TestIndexer>();
+    auto result = std::make_unique<TestIndexer>();
 
     for (const TestEntry& entry : entries) {
       std::vector<std::unique_ptr<IndexFile>> indexes;
 
       if (entry.num_indexes > 0)
-        indexes.push_back(MakeUnique<IndexFile>(entry.path, "<empty>"));
+        indexes.push_back(std::make_unique<IndexFile>(entry.path, "<empty>"));
       for (int i = 1; i < entry.num_indexes; ++i) {
-        indexes.push_back(MakeUnique<IndexFile>(
+        indexes.push_back(std::make_unique<IndexFile>(
             entry.path + "_extra_" + std::to_string(i) + ".h", "<empty>"));
       }
 
@@ -82,7 +82,7 @@ IIndexer::TestEntry::TestEntry(const std::string& path, int num_indexes)
 
 // static
 std::unique_ptr<IIndexer> IIndexer::MakeClangIndexer() {
-  return MakeUnique<ClangIndexer>();
+  return std::make_unique<ClangIndexer>();
 }
 
 // static

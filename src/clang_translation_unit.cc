@@ -98,7 +98,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
 
   switch (error_code) {
     case CXError_Success:
-      return MakeUnique<ClangTranslationUnit>(cx_tu);
+      return std::make_unique<ClangTranslationUnit>(cx_tu);
     case CXError_Failure:
       LOG_S(ERROR) << "libclang generic failure for " << filepath << ". "
                    << make_msg();
