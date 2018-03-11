@@ -33,10 +33,10 @@ struct MultiQueueLock {
   MultiQueueLock(Queue... lockable) : tuple_{lockable...} { lock(); }
   ~MultiQueueLock() { unlock(); }
   void lock() {
-    lock_impl(typename std::make_index_sequence<sizeof...(Queue)>{});
+    lock_impl(typename std::index_sequence_for<Queue...>{});
   }
   void unlock() {
-    unlock_impl(typename std::make_index_sequence<sizeof...(Queue)>{});
+    unlock_impl(typename std::index_sequence_for<Queue...>{});
   }
 
  private:
