@@ -487,7 +487,8 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
     LOG_S(INFO) << "Init parameters: " << output.GetString();
 
     if (request->params.rootUri) {
-      std::string project_path = request->params.rootUri->GetPath();
+      std::string project_path =
+          NormalizePath(request->params.rootUri->GetPath());
       LOG_S(INFO) << "[querydb] Initialize in directory " << project_path
                   << " with uri " << request->params.rootUri->raw_uri;
 
@@ -575,8 +576,8 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       QueueManager::WriteStdout(IpcId::Initialize, out);
 
       // Set project root.
-      config->projectRoot = NormalizePath(request->params.rootUri->GetPath());
-      EnsureEndsInSlash(config->projectRoot);
+      EnsureEndsInSlash(project_path);
+      config->projectRoot = project_path;
       // Create two cache directories for files inside and outside of the
       // project.
       MakeDirectoryRecursive(config->cacheDirectory +
@@ -589,9 +590,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       semantic_cache->Init(config);
 
       // Open up / load the project.
-      project->Load(config, config->extraClangArguments,
-                    config->compilationDatabaseDirectory, project_path,
-                    config->resourceDirectory);
+      project->Load(config, project_path);
       time.ResetAndPrint("[perf] Loaded compilation entries (" +
                          std::to_string(project->entries.size()) + " files)");
 
@@ -620,23 +619,9 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       // files, because that takes a long time.
       include_complete->Rescan();
 
-      auto* queue = QueueManager::instance();
       time.Reset();
-      project->ForAllFilteredFiles(
-          config, [&](int i, const Project::Entry& entry) {
-            optional<std::string> content = ReadContent(entry.filename);
-            if (!content) {
-              LOG_S(ERROR) << "When loading project, canont read file "
-                           << entry.filename;
-              return;
-            }
-            bool is_interactive =
-                working_files->GetFileByFilename(entry.filename) != nullptr;
-            queue->index_request.PushBack(Index_Request(
-                entry.filename, entry.args, is_interactive, *content,
-                ICacheManager::Make(config), request->id));
-          });
-
+      project->Index(config, QueueManager::instance(), working_files,
+                     request->id);
       // We need to support multiple concurrent index processes.
       time.ResetAndPrint("[perf] Dispatched initial index requests");
     }

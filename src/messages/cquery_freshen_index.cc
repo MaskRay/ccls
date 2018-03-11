@@ -4,6 +4,7 @@
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
+#include "timer.h"
 #include "timestamp_manager.h"
 #include "working_files.h"
 
@@ -82,25 +83,11 @@ struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
         }
     }
 
-    auto* queue = QueueManager::instance();
-
+    Timer time;
     // Send index requests for every file.
-    project->ForAllFilteredFiles(
-        config, [&](int i, const Project::Entry& entry) {
-          if (!need_index.count(entry.filename))
-            return;
-          optional<std::string> content = ReadContent(entry.filename);
-          if (!content) {
-            LOG_S(ERROR) << "When freshening index, cannot read file "
-                         << entry.filename;
-            return;
-          }
-          bool is_interactive =
-              working_files->GetFileByFilename(entry.filename) != nullptr;
-          queue->index_request.PushBack(
-              Index_Request(entry.filename, entry.args, is_interactive,
-                            *content, ICacheManager::Make(config)));
-        });
+    project->Index(config, QueueManager::instance(), working_files,
+                   std::monostate());
+    time.ResetAndPrint("[perf] Dispatched $cquery/freshenIndex index requests");
   }
 };
 REGISTER_MESSAGE_HANDLER(CqueryFreshenIndexHandler);
