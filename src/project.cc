@@ -10,8 +10,8 @@
 
 #include <clang-c/CXCompilationDatabase.h>
 #include <doctest/doctest.h>
-#include <loguru.hpp>
 #include <rapidjson/writer.h>
+#include <loguru.hpp>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>
@@ -53,9 +53,8 @@ bool IsWindowsAbsolutePath(const std::string& path) {
     return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
   };
 
-  return path.size() > 3 && path[1] == ':' && 
-         (path[2] == '/' || path[2] == '\\') &&
-         is_drive_letter(path[0]);
+  return path.size() > 3 && path[1] == ':' &&
+         (path[2] == '/' || path[2] == '\\') && is_drive_letter(path[0]);
 }
 
 enum class ProjectMode { CompileCommandsJson, DotCquery, ExternalCommand };
@@ -84,7 +83,7 @@ std::vector<std::string> kBlacklist = {
 std::vector<std::string> kPathArgs = {
     "-I",        "-iquote",        "-isystem",     "--sysroot=",
     "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
-    "-F",        "-imacros",       "-include"};
+    "-F",        "-imacros",       "-include",     "/I"};
 
 // Arguments which always require an absolute path, ie, clang -working-directory
 // does not work as expected. Argument processing assumes that this is a subset
@@ -94,7 +93,7 @@ std::vector<std::string> kNormalizePathArgs = {"--sysroot="};
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
 std::vector<std::string> kQuoteIncludeArgs = {"-iquote"};
-std::vector<std::string> kAngleIncludeArgs = {"-I", "-isystem"};
+std::vector<std::string> kAngleIncludeArgs = {"-I", "/I", "-isystem"};
 
 bool ShouldAddToQuoteIncludes(const std::string& arg) {
   return StartsWithAny(arg, kQuoteIncludeArgs);
@@ -170,19 +169,18 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     // ie, compiler schedular such as goma. This allows correct parsing for
     // command lines like "goma clang -c foo".
     std::string::size_type dot;
-    while (
-        i < args.size() && args[i][0] != '-' &&
-        // Do not skip over main source filename
-        NormalizePathWithTestOptOut(args[i]) != result.filename &&
-        // There may be other filenames (e.g. more than one source filenames)
-        // preceding main source filename. We use a heuristic here. `.` may
-        // occur in both command names and source filenames. If `.` occurs in
-        // the last 4 bytes of args[i] and not followed by a digit, e.g.
-        // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
-        // clang-4.0) are seen as commands.
-        ((dot = args[i].rfind('.')) == std::string::npos ||
-         dot + 4 < args[i].size() || isdigit(args[i][dot + 1]) ||
-         !args[i].compare(dot + 1, 3, "exe")))
+    while (i < args.size() && args[i][0] != '-' &&
+           // Do not skip over main source filename
+           NormalizePathWithTestOptOut(args[i]) != result.filename &&
+           // There may be other filenames (e.g. more than one source filenames)
+           // preceding main source filename. We use a heuristic here. `.` may
+           // occur in both command names and source filenames. If `.` occurs in
+           // the last 4 bytes of args[i] and not followed by a digit, e.g.
+           // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
+           // clang-4.0) are seen as commands.
+           ((dot = args[i].rfind('.')) == std::string::npos ||
+            dot + 4 < args[i].size() || isdigit(args[i][dot + 1]) ||
+            !args[i].compare(dot + 1, 3, "exe")))
       ++i;
   }
   // Compiler driver.
@@ -221,6 +219,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         config->quote_dirs.insert(normalized_arg);
       if (add_next_flag_to_angle_dirs)
         config->angle_dirs.insert(normalized_arg);
+      if (clang_cl)
+        arg = normalized_arg;
 
       next_flag_is_path = false;
       add_next_flag_to_quote_dirs = false;
@@ -241,7 +241,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
           std::string path = arg.substr(flag_type.size());
           assert(!path.empty());
           path = cleanup_maybe_relative_path(path);
-          if (StartsWithAny(arg, kNormalizePathArgs))
+          if (clang_cl || StartsWithAny(arg, kNormalizePathArgs))
             arg = flag_type + path;
           if (ShouldAddToQuoteIncludes(flag_type))
             config->quote_dirs.insert(path);
@@ -354,7 +354,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
     e.file = file;
     e.args = GetCompilerArgumentForFile(file);
     if (e.args.empty())
-      e.args.push_back("%clang"); // Add a Dummy.
+      e.args.push_back("%clang");  // Add a Dummy.
     e.args.push_back(e.file);
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
@@ -405,7 +405,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
       comp_db_dir.c_str(), &cx_db_load_error);
   if (!init_opts->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
-  // TODO
+    // TODO
 #else
     unlink((comp_db_dir + "/compile_commands.json").c_str());
     rmdir(comp_db_dir.c_str());
@@ -664,9 +664,8 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"goma", "clang"},
         /* expected */
-        {"clang", "-working-directory=/dir/",
-         "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-         "-fparse-all-comments"});
+        {"clang", "-working-directory=/dir/", "-resource-dir=/w/resource_dir/",
+         "-Wno-unknown-warning-option", "-fparse-all-comments"});
 
     CheckFlags(
         /* raw */ {"goma", "clang", "--foo"},
@@ -679,14 +678,31 @@ TEST_SUITE("Project") {
   TEST_CASE("Windows path normalization") {
     CheckFlags("E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
                /* expected */
-               {"clang", "-working-directory=E:/workdir",
-                "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
-                "-Wno-unknown-warning-option", "-fparse-all-comments"});
+               {"clang", "-working-directory=E:/workdir", "&E:/workdir/bar.cc",
+                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+                "-fparse-all-comments"});
 
     CheckFlags("E:/workdir", "E:/workdir/bar.cc",
                /* raw */ {"clang", "E:/workdir/bar.cc"},
                /* expected */
-               {"clang", "-working-directory=E:/workdir",
+               {"clang", "-working-directory=E:/workdir", "&E:/workdir/bar.cc",
+                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+                "-fparse-all-comments"});
+
+    CheckFlags("E:/workdir", "E:/workdir/bar.cc",
+               /* raw */ {"clang-cl.exe", "/I./test", "E:/workdir/bar.cc"},
+               /* expected */
+               {"clang-cl.exe", "-working-directory=E:/workdir",
+                "/I&E:/workdir/./test", "&E:/workdir/bar.cc",
+                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
+                "-fparse-all-comments"});
+
+    CheckFlags("E:/workdir", "E:/workdir/bar.cc",
+               /* raw */
+               {"cl.exe", "/I../third_party/test/include", "E:/workdir/bar.cc"},
+               /* expected */
+               {"cl.exe", "-working-directory=E:/workdir",
+                "/I&E:/workdir/../third_party/test/include",
                 "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
