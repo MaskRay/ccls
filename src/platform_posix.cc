@@ -259,7 +259,7 @@ bool IsSymLink(const std::string& path) {
   return lstat(path.c_str(), &buf) == 0 && S_ISLNK(buf.st_mode);
 }
 
-std::vector<std::string> GetPlatformClangArguments() {
+std::vector<const char*> GetPlatformClangArguments() {
   return {};
 }
 

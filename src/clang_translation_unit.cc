@@ -69,11 +69,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
     std::vector<CXUnsavedFile>& unsaved_files,
     unsigned flags) {
   std::vector<const char*> args;
-  for (const std::string& a : arguments)
-    args.push_back(a.c_str());
-
-  std::vector<std::string> platform_args = GetPlatformClangArguments();
-  for (const auto& arg : platform_args)
+  for (auto& arg : arguments)
     args.push_back(arg.c_str());
 
   CXTranslationUnit cx_tu;

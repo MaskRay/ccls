@@ -10,9 +10,7 @@
 
 #include <stdexcept>
 
-namespace {
 bool gTestOutputMode = false;
-}  // namespace
 
 //// Elementary types
 
