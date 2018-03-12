@@ -26,9 +26,9 @@ build_script:
         python waf configure --msvc_version="msvc 15.0"
         python waf build
         mkdir "${dir}\build\release\bin" -ea 0
-        mkdir "${dir}\build\release\lib\LLVM-5.0.1-win64\lib\clang\5.0.1\"
+        mkdir "${dir}\build\release\lib\LLVM-6.0.0-win64\lib\clang\6.0.0\"
         copy "build\release\bin\*" "${dir}\build\release\bin"
-        copy -recurse "build\LLVM-5.0.1-win64\lib\clang\5.0.1\include" "${dir}\build\release\lib\LLVM-5.0.1-win64\lib\clang\5.0.1\"
+        copy -recurse "build\LLVM-6.0.0-win64\lib\clang\6.0.0\include" "${dir}\build\release\lib\LLVM-6.0.0-win64\lib\clang\6.0.0\"
         7z a -tzip "C:\projects\cquery\${dir}.zip" "${dir}"
       } Else {
         C:\msys64\usr\bin\bash -lc @'
@@ -45,5 +45,5 @@ artifacts:
   - path: 'cquery-*.zip'
 
 cache:
-  - C:\projects\cquery\build\LLVM-5.0.1-win64.exe
-  - C:\projects\cquery\build\LLVM-5.0.1-win64\
+  - C:\projects\cquery\build\LLVM-6.0.0-win64.exe
+  - C:\projects\cquery\build\LLVM-6.0.0-win64\

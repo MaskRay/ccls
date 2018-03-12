@@ -26,8 +26,8 @@ os: linux
 
 cache:
   directories:
-    - build/clang+llvm-5.0.1-x86_64-linux-gnu-ubuntu-14.04/
-    - build/clang+llvm-5.0.1-x86_64-apple-darwin/
+    - build/clang+llvm-6.0.0-x86_64-linux-gnu-ubuntu-14.04/
+    - build/clang+llvm-6.0.0-x86_64-apple-darwin/
 
 matrix:
   fast_finish: true

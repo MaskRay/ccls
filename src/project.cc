@@ -27,8 +27,6 @@
 #include <unordered_set>
 #include <vector>
 
-extern bool gTestOutputMode;
-
 struct CompileCommandsEntry {
   std::string directory;
   std::string file;
@@ -194,12 +192,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // Add -working-directory if not provided.
   if (!AnyStartsWith(args, "-working-directory"))
     result.args.emplace_back("-working-directory=" + entry.directory);
-
-  if (!gTestOutputMode) {
-    std::vector<const char*> platform = GetPlatformClangArguments();
-    for (auto arg: platform)
-      result.args.push_back(arg);
-  }
 
   bool next_flag_is_path = false;
   bool add_next_flag_to_quote_dirs = false;

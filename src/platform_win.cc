@@ -129,21 +129,6 @@ bool IsSymLink(const std::string& path) {
   return false;
 }
 
-std::vector<const char*> GetPlatformClangArguments() {
-  //
-  // Found by executing
-  //
-  //   $ clang++ -E -x c++ - -v
-  //
-  // https://clang.llvm.org/docs/MSVCCompatibility.html
-
-  // clang-format off
-  return {
-    "-fms-extensions", "-fms-compatibility", "-fdelayed-template-parsing"
-  };
-  // clang-format on
-}
-
 void FreeUnusedMemory() {}
 
 bool RunObjectiveCIndexTests() {
