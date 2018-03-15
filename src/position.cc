@@ -1,26 +1,17 @@
 #include "position.h"
 
-namespace {
-// Skips until the character immediately following |skip_after|.
-const char* SkipAfter(const char* input, char skip_after) {
-  while (*input && *input != skip_after)
-    ++input;
-  ++input;
-  return input;
-}
-}  // namespace
+#include <stdlib.h>
 
 Position::Position() : line(-1), column(-1) {}
 
 Position::Position(int16_t line, int16_t column) : line(line), column(column) {}
 
 Position::Position(const char* encoded) {
-  assert(encoded);
-  line = (int16_t)atoi(encoded) - 1;
-
-  encoded = SkipAfter(encoded, ':');
-  assert(encoded);
-  column = (int16_t)atoi(encoded) - 1;
+  char* p = const_cast<char*>(encoded);
+  line = int16_t(strtol(p, &p, 10)) - 1;
+  assert(*p == ':');
+  p++;
+  column = int16_t(strtol(p, &p, 10)) - 1;
 }
 
 std::string Position::ToString() {
@@ -110,9 +101,8 @@ Range Range::RemovePrefix(Position position) const {
 std::string Range::ToString() {
   // Output looks like this:
   //
-  //  *1:2-3:4
+  //  1:2-3:4
   //
-  // * => if present, range is interesting
   // 1 => start line
   // 2 => start column
   // 3 => end line
