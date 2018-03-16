@@ -3,11 +3,11 @@
 #include <ctype.h>
 #include <algorithm>
 
-enum FuzzyMatcher::CharClass : int { Other, Lower, Upper };
-enum FuzzyMatcher::CharRole : int { None, Tail, Head };
+enum CharClass { Other, Lower, Upper };
+enum CharRole { None, Tail, Head };
 
 namespace {
-FuzzyMatcher::CharClass GetCharClass(int c) {
+CharClass GetCharClass(int c) {
   if (islower(c))
     return Lower;
   if (isupper(c))
@@ -15,14 +15,12 @@ FuzzyMatcher::CharClass GetCharClass(int c) {
   return Other;
 }
 
-void CalculateRoles(std::string_view s,
-                    FuzzyMatcher::CharRole roles[],
-                    int* class_set) {
+void CalculateRoles(std::string_view s, int roles[], int* class_set) {
   if (s.empty()) {
     *class_set = 0;
     return;
   }
-  FuzzyMatcher::CharClass pre = Other, cur = GetCharClass(s[0]), suc;
+  CharClass pre = Other, cur = GetCharClass(s[0]), suc;
   *class_set = 1 << cur;
   auto fn = [&]() {
     if (cur == Other)
@@ -52,8 +50,11 @@ int FuzzyMatcher::MissScore(int j, bool last) {
 
 int FuzzyMatcher::MatchScore(int i, int j, bool last) {
   int s = 40;
-  if ((pat[i] == text[j] && ((pat_set & 1 << Upper) || i == j)))
-    s += 20;
+  if (pat[i] == text[j]) {
+    s++;
+    if ((pat_set & 1 << Upper) || i == j)
+      s += 20;
+  }
   if (pat_role[i] == Head && text_role[j] == Head)
     s += 50;
   if (text_role[j] == Tail && i && !last)
@@ -93,7 +94,7 @@ int FuzzyMatcher::Match(std::string_view text) {
   }
   for (int i = 0; i < int(pat.size()); i++) {
     int(*pre)[2] = dp[i & 1];
-    int(*cur)[2] = dp[i + 1 & 1];
+    int(*cur)[2] = dp[(i + 1) & 1];
     cur[0][0] = cur[0][1] = kMinScore;
     for (int j = 0; j < n; j++) {
       cur[j + 1][0] = std::max(cur[j][0] + MissScore(j, false),
