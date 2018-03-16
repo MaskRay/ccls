@@ -122,21 +122,16 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       }
     }
 
-    if (config->workspaceSymbol.sort) {
+    if (config->workspaceSymbol.sort && query.size() <= FuzzyMatcher::kMaxPat) {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
       for (int i : result_indices)
         longest = std::max(longest, int(db->GetSymbolDetailedName(i).size()));
-
-      std::vector<int> score(longest);  // score for each position
-      std::vector<int> dp(
-          longest);  // dp[i]: maximum value by aligning pattern to str[0..i]
+      FuzzyMatcher fuzzy(query);
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
-            FuzzyEvaluate(query, db->GetSymbolDetailedName(result_indices[i]),
-                          score, dp),
-            i};
+            fuzzy.Match(db->GetSymbolDetailedName(result_indices[i])), i};
       }
       std::sort(permutation.begin(), permutation.end(),
                 std::greater<std::pair<int, int>>());
