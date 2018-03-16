@@ -1,120 +1,116 @@
 #include "fuzzy_match.h"
 
 #include <ctype.h>
-#include <limits.h>
 #include <algorithm>
 
-// Penalty of dropping a leading character in str
-constexpr int kLeadingGapScore = -4;
-// Penalty of dropping a non-leading character in str
-constexpr int kGapScore = -5;
-// Bonus of aligning with an initial character of a word in pattern. Must be
-// greater than 1
-constexpr int kPatternStartMultiplier = 2;
+enum FuzzyMatcher::CharClass : int { Other, Lower, Upper };
+enum FuzzyMatcher::CharRole : int { None, Tail, Head };
 
-constexpr int kWordStartScore = 50;
-constexpr int kNonWordScore = 40;
-constexpr int kCaseMatchScore = 2;
-
-// Less than kWordStartScore
-constexpr int kConsecutiveScore = kWordStartScore + kGapScore;
-// Slightly less than kConsecutiveScore
-constexpr int kCamelScore = kWordStartScore + kGapScore - 1;
-
-enum class CharClass { Lower, Upper, Digit, NonWord };
-
-static CharClass GetCharClass(int c) {
+namespace {
+FuzzyMatcher::CharClass GetCharClass(int c) {
   if (islower(c))
-    return CharClass::Lower;
+    return Lower;
   if (isupper(c))
-    return CharClass::Upper;
-  if (isdigit(c))
-    return CharClass::Digit;
-  return CharClass::NonWord;
+    return Upper;
+  return Other;
 }
 
-static int GetScoreFor(CharClass prev, CharClass curr) {
-  if (prev == CharClass::NonWord && curr != CharClass::NonWord)
-    return kWordStartScore;
-  if ((prev == CharClass::Lower && curr == CharClass::Upper) ||
-      (prev != CharClass::Digit && curr == CharClass::Digit))
-    return kCamelScore;
-  if (curr == CharClass::NonWord)
-    return kNonWordScore;
-  return 0;
-}
-
-/*
-fuzzyEvaluate implements a global sequence alignment algorithm to find the
-maximum accumulated score by aligning `pattern` to `str`. It applies when
-`pattern` is a subsequence of `str`.
-
-Scoring criteria
-- Prefer matches at the start of a word, or the start of subwords in
-CamelCase/camelCase/camel123 words. See kWordStartScore/kCamelScore
-- Non-word characters matter. See kNonWordScore
-- The first characters of words of `pattern` receive bonus because they usually
-have more significance than the rest. See kPatternStartMultiplier
-- Superfluous characters in `str` will reduce the score (gap penalty). See
-kGapScore
-- Prefer early occurrence of the first character. See kLeadingGapScore/kGapScore
-
-The recurrence of the dynamic programming:
-dp[i][j]: maximum accumulated score by aligning pattern[0..i] to str[0..j]
-dp[0][j] = leading_gap_penalty(0, j) + score[j]
-dp[i][j] = max(dp[i-1][j-1] + CONSECUTIVE_SCORE, max(dp[i-1][k] +
-gap_penalty(k+1, j) + score[j] : k < j))
-The first dimension can be suppressed since we do not need a matching scheme,
-which reduces the space complexity from O(N*M) to O(M)
-*/
-int FuzzyEvaluate(std::string_view pattern,
-                  std::string_view str,
-                  std::vector<int>& score,
-                  std::vector<int>& dp) {
-  bool pfirst = true,  // aligning the first character of pattern
-      pstart = true;   // whether we are aligning the start of a word in pattern
-  int uleft = 0,       // value of the upper left cell
-      ulefts = 0,      // maximum value of uleft and cells on the left
-      left, lefts;     // similar to uleft/ulefts, but for the next row
-
-  // Calculate position score for each character in str.
-  CharClass prev = CharClass::NonWord;
-  for (int i = 0; i < int(str.size()); i++) {
-    CharClass cur = GetCharClass(str[i]);
-    score[i] = GetScoreFor(prev, cur);
-    prev = cur;
+void CalculateRoles(std::string_view s,
+                    FuzzyMatcher::CharRole roles[],
+                    int* class_set) {
+  if (s.empty()) {
+    *class_set = 0;
+    return;
   }
-  std::fill_n(dp.begin(), str.size(), kMinScore);
+  FuzzyMatcher::CharClass pre = Other, cur = GetCharClass(s[0]), suc;
+  *class_set = 1 << cur;
+  auto fn = [&]() {
+    if (cur == Other)
+      return None;
+    // U(U)L is Head while U(U)U is Tail
+    return pre == Other || (cur == Upper && (pre == Lower || suc != Upper))
+               ? Head
+               : Tail;
+  };
+  for (size_t i = 0; i < s.size() - 1; i++) {
+    suc = GetCharClass(s[i + 1]);
+    *class_set |= 1 << suc;
+    roles[i] = fn();
+    pre = cur;
+    cur = suc;
+  }
+  roles[s.size() - 1] = fn();
+}
+}
 
-  // Align each character of pattern.
-  for (unsigned char pc : pattern) {
-    if (isspace(pc)) {
-      pstart = true;
-      continue;
+int FuzzyMatcher::MissScore(int j, bool last) {
+  int s = last ? -20 : 0;
+  if (text_role[j] == Head)
+    s -= 10;
+  return s;
+}
+
+int FuzzyMatcher::MatchScore(int i, int j, bool last) {
+  int s = 40;
+  if ((pat[i] == text[j] && ((pat_set & 1 << Upper) || i == j)))
+    s += 20;
+  if (pat_role[i] == Head && text_role[j] == Head)
+    s += 50;
+  if (text_role[j] == Tail && i && !last)
+    s -= 50;
+  if (pat_role[i] == Head && text_role[j] == Tail)
+    s -= 30;
+  if (i == 0 && text_role[j] == Tail)
+    s -= 70;
+  return s;
+}
+
+FuzzyMatcher::FuzzyMatcher(std::string_view pattern) {
+  CalculateRoles(pattern, pat_role, &pat_set);
+  size_t n = 0;
+  for (size_t i = 0; i < pattern.size(); i++)
+    if (pattern[i] != ' ') {
+      pat += pattern[i];
+      low_pat[n] = ::tolower(pattern[i]);
+      pat_role[n] = pat_role[i];
+      n++;
     }
-    lefts = kMinScore;
-    // Enumerate the character in str to be aligned with pc.
-    for (int i = 0; i < int(str.size()); i++) {
-      left = dp[i];
-      lefts = std::max(lefts + kGapScore, left);
-      // Use lower() if case-insensitive
-      if (tolower(pc) == tolower(str[i])) {
-        int t = score[i] * (pstart ? kPatternStartMultiplier : 1);
-        dp[i] = (pfirst ? kLeadingGapScore * i + t
-                        : std::max(uleft + kConsecutiveScore, ulefts + t)) +
-                (pc == str[i] ? kCaseMatchScore : 0);
-      } else
-        dp[i] = kMinScore;
-      uleft = left;
-      ulefts = lefts;
+}
+
+int FuzzyMatcher::Match(std::string_view text) {
+  int n = int(text.size());
+  if (n > kMaxText)
+    return kMinScore + 1;
+  this->text = text;
+  for (int i = 0; i < n; i++)
+    low_text[i] = ::tolower(text[i]);
+  CalculateRoles(text, text_role, &text_set);
+  dp[0][0][0] = 0;
+  dp[0][0][1] = kMinScore;
+  for (int j = 0; j < n; j++) {
+    dp[0][j + 1][0] = dp[0][j][0] + MissScore(j, false);
+    dp[0][j + 1][1] = kMinScore;
+  }
+  for (int i = 0; i < int(pat.size()); i++) {
+    int(*pre)[2] = dp[i & 1];
+    int(*cur)[2] = dp[i + 1 & 1];
+    cur[0][0] = cur[0][1] = kMinScore;
+    for (int j = 0; j < n; j++) {
+      cur[j + 1][0] = std::max(cur[j][0] + MissScore(j, false),
+                               cur[j][1] + MissScore(j, true));
+      if (low_pat[i] != low_text[j])
+        cur[j + 1][1] = kMinScore;
+      else {
+        cur[j + 1][1] = std::max(pre[j][0] + MatchScore(i, j, false),
+                                 pre[j][1] + MatchScore(i, j, true));
+      }
     }
-    pfirst = pstart = false;
   }
 
   // Enumerate the end position of the match in str. Each removed trailing
-  // character has a penulty of kGapScore.
-  lefts = kMinScore;
-  for (int i = 0; i < int(str.size()); i++)
-    lefts = std::max(lefts + kGapScore, dp[i]);
-  return lefts;
+  // character has a penulty.
+  int ret = kMinScore;
+  for (int j = 1; j <= n; j++)
+    ret = std::max(ret, dp[pat.size() & 1][j][1] - 3 * (n - j));
+  return ret;
 }
