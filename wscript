@@ -339,7 +339,6 @@ def build(bld):
   if sys.platform.startswith('linux'):
     # For __atomic_* when lock free instructions are unavailable
     # (either through hardware or OS support)
-    lib.append('atomic')
     lib.append('pthread')
     # loguru calls dladdr
     lib.append('dl')

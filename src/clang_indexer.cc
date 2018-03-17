@@ -361,9 +361,11 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
     CXSourceRangeList* skipped = clang_getSkippedRanges(param->tu->cx_tu, file);
     for (unsigned i = 0; i < skipped->count; ++i) {
       Range range = ResolveCXSourceRange(skipped->ranges[i]);
+#if CINDEX_VERSION < 45  // Before clang 6.0.0
       // clang_getSkippedRanges reports start one token after the '#', move it
       // back so it starts at the '#'
       range.start.column -= 1;
+#endif
       db->skipped_by_preprocessor.push_back(range);
     }
     clang_disposeSourceRangeList(skipped);
