@@ -11,7 +11,7 @@ public:
   constexpr static int kMaxText = 200;
   // Negative but far from INT_MIN so that intermediate results are hard to
   // overflow.
-  constexpr static int kMinScore = INT_MIN / 2;
+  constexpr static int kMinScore = INT_MIN / 4;
 
   FuzzyMatcher(std::string_view pattern);
   int Match(std::string_view text);

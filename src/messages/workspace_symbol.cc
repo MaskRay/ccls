@@ -136,7 +136,10 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
       std::sort(permutation.begin(), permutation.end(),
                 std::greater<std::pair<int, int>>());
       out.result.reserve(result_indices.size());
-      for (int i = 0; i < int(result_indices.size()); i++)
+      // Discard awful candidates.
+      for (int i = 0; i < int(result_indices.size()) &&
+                      permutation[i].first > FuzzyMatcher::kMinScore;
+           i++)
         out.result.push_back(
             std::move(unsorted_results[permutation[i].second]));
     } else {
