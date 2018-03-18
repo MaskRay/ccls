@@ -26,7 +26,8 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
 
-  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd10)
+  # 6.0.0 uses freebsd-10 while 5.0.1 uses freebsd10
+  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd-10)
 
 endif()
 
@@ -99,9 +100,5 @@ endif()
 # CMake functions have no return values so we just lift our return variable to
 # the parent scope
 set(DOWNLOADED_CLANG_DIR ${CLANG_ARCHIVE_EXTRACT_DIR} PARENT_SCOPE)
-    
+
 endfunction()
-
-
-    
-

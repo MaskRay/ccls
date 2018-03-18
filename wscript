@@ -25,7 +25,7 @@ CLANG_TARBALL_EXT = '.tar.xz'
 if sys.platform == 'darwin':
   CLANG_TARBALL_NAME = 'clang+llvm-$version-x86_64-apple-darwin'
 elif sys.platform.startswith('freebsd'):
-  CLANG_TARBALL_NAME = 'clang+llvm-$version-amd64-unknown-freebsd10'
+  CLANG_TARBALL_NAME = 'clang+llvm-$version-amd64-unknown-freebsd-10'
 # It is either 'linux2' or 'linux3' before Python 3.3
 elif sys.platform.startswith('linux'):
   # These executable depend on libtinfo.so.5
