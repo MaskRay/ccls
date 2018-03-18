@@ -12,8 +12,13 @@ set(CLANG_ARCHIVE_EXT .tar.xz)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
 
-  set(CLANG_ARCHIVE_NAME 
-      clang+llvm-${CLANG_VERSION}-x86_64-linux-gnu-ubuntu-14.04)
+  if(${CLANG_VERSION} STREQUAL 5.0.0)
+    set(CLANG_ARCHIVE_NAME 
+        clang+llvm-${CLANG_VERSION}-linux-x86_64-ubuntu14.04)
+  else()
+    set(CLANG_ARCHIVE_NAME 
+        clang+llvm-${CLANG_VERSION}-x86_64-linux-gnu-ubuntu-14.04)
+  endif()
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 
@@ -26,9 +31,16 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
 
-  # 6.0.0 uses freebsd-10 while 5.0.1 uses freebsd10
-  set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd-10)
+  if(${CLANG_VERSION} STREQUAL 6.0.0)
+    set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd-10)
+  else()
+    set(CLANG_ARCHIVE_NAME clang+llvm-${CLANG_VERSION}-amd64-unknown-freebsd10)
+  endif()
+endif()
 
+if(NOT CLANG_ARCHIVE_NAME)
+  message(FATAL_ERROR "No download available for ${CMAKE_SYSTEM_NAME} + \ 
+${CLANG_VERSION}")
 endif()
 
 set(CLANG_ARCHIVE_FULL_NAME ${CLANG_ARCHIVE_NAME}${CLANG_ARCHIVE_EXT})
@@ -67,33 +79,6 @@ if(NOT EXISTS ${CLANG_ARCHIVE_EXTRACT_DIR})
     # CMake has builtin support for tar via the -E flag
     execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${CLANG_ARCHIVE_FILE}
                     OUTPUT_QUIET)
-  endif()
-
-  # There is a null pointer dereference issue in 
-  # tools/libclang/CXIndexDataConsumer.cpp handleReference.
-  # https://github.com/cquery-project/cquery/issues/219
-  if(${CMAKE_SYSTEM_NAME} STREQUAL Linux AND 
-     ${CLANG_VERSION} MATCHES 4.0.0|5.0.1)
-    message(STATUS "Patching downloaded LLVM (see \
-https://github.com/cquery-project/cquery/issues/219)")
-    
-    if(${CLANG_VERSION} STREQUAL 4.0.0)
-      # 4289205 = $[0x4172b5] (we use decimals for seek since execute_process 
-      # does not evaluate $[] bash syntax)
-      execute_process(COMMAND printf \\x4d
-                      COMMAND dd 
-                        of=${CLANG_ARCHIVE_EXTRACT_DIR}/lib/libclang.so.4.0
-                        obs=1 seek=4289205 conv=notrunc
-                      OUTPUT_QUIET)
-
-    elseif(${CLANG_VERSION} STREQUAL 5.0.1)
-      # 4697806 = $[0x47aece] 
-      execute_process(COMMAND printf \\x4d
-                      COMMAND dd 
-                        of=${CLANG_ARCHIVE_EXTRACT_DIR}/lib/libclang.so.5.0
-                        obs=1 seek=4697806 conv=notrunc
-                      OUTPUT_QUIET)
-    endif()
   endif()
 endif()
 
