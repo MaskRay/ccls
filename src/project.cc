@@ -86,7 +86,9 @@ std::vector<std::string> kBlacklist = {
 std::vector<std::string> kPathArgs = {
     "-I",        "-iquote",        "-isystem",     "--sysroot=",
     "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
-    "-F",        "-imacros",       "-include",     "/I"};
+    "-F",        "-imacros",       "-include",     "/I",
+    "-idirafter"
+};
 
 // Arguments which always require an absolute path, ie, clang -working-directory
 // does not work as expected. Argument processing assumes that this is a subset
