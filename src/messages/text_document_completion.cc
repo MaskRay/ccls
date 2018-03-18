@@ -98,7 +98,7 @@ void DecorateIncludePaths(const std::smatch& match,
 
 struct ParseIncludeLineResult {
   bool ok;
-  std::string text;  // include the "include" part
+  std::string pattern;
   std::smatch match;
 };
 
@@ -115,7 +115,7 @@ ParseIncludeLineResult ParseIncludeLine(const std::string& line) {
       "(.*)");        // [7]: suffix after quote char
   std::smatch match;
   bool ok = std::regex_match(line, match, pattern);
-  std::string text = match[3].str() + match[6].str();
+  std::string text = match[6].str();
   return {ok, text, match};
 }
 
@@ -298,30 +298,33 @@ struct TextDocumentCompletionHandler : MessageHandler {
       Out_TextDocumentComplete out;
       out.id = request->id;
 
-      {
-        std::unique_lock<std::mutex> lock(
+      std::string text = result.match[3];
+      if (std::string_view("include").compare(0, text.size(), text) == 0) {
+        {
+          std::unique_lock<std::mutex> lock(
             include_complete->completion_items_mutex, std::defer_lock);
-        if (include_complete->is_scanning)
-          lock.lock();
-        out.result.items.assign(include_complete->completion_items.begin(),
-                                include_complete->completion_items.end());
-        if (lock)
-          lock.unlock();
-      }
+          if (include_complete->is_scanning)
+            lock.lock();
+          std::string quote = result.match[5];
+          for (auto& item : include_complete->completion_items)
+            if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
+              out.result.items.push_back(item);
+        }
 
-      // Needed by |FilterAndSortCompletionResponse|.
-      for (lsCompletionItem& item : out.result.items)
-        item.filterText = "include" + item.label;
+        // Needed by |FilterAndSortCompletionResponse|.
+        for (lsCompletionItem& item : out.result.items)
+          item.filterText = item.label;
 
-      FilterAndSortCompletionResponse(&out, result.text,
-                                      config->completion.filterAndSort);
-      DecorateIncludePaths(result.match, &out.result.items);
+        FilterAndSortCompletionResponse(&out, result.pattern,
+          config->completion.filterAndSort);
+        DecorateIncludePaths(result.match, &out.result.items);
 
-      for (lsCompletionItem& item : out.result.items) {
-        item.textEdit->range.start.line = request->params.position.line;
-        item.textEdit->range.start.character = 0;
-        item.textEdit->range.end.line = request->params.position.line;
-        item.textEdit->range.end.character = (int)buffer_line.size();
+        for (lsCompletionItem& item : out.result.items) {
+          item.textEdit->range.start.line = request->params.position.line;
+          item.textEdit->range.start.character = 0;
+          item.textEdit->range.end.line = request->params.position.line;
+          item.textEdit->range.end.character = (int)buffer_line.size();
+        }
       }
 
       QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
