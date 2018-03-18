@@ -72,8 +72,7 @@ struct lsCompletionItem {
   optional<std::string> documentation;
 
   // Internal information to order candidates.
-  bool found_;
-  std::string::size_type skip_;
+  int score_;
   unsigned priority_;
 
   // Use <> or "" by default as include path.

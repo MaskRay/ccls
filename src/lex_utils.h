@@ -26,8 +26,5 @@ void LexFunctionDeclaration(const std::string& buffer_content,
 std::string_view LexIdentifierAroundPos(lsPosition position,
                                         std::string_view content);
 
-// Case-insensitive subsequence matching.
-bool SubsequenceMatchIgnoreCase(std::string_view search, std::string_view content);
-
-std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
-                                           std::string_view content);
+std::pair<bool, int> CaseFoldingSubsequenceMatch(std::string_view search,
+                                                 std::string_view content);

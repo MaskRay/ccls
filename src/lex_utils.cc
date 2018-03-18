@@ -180,23 +180,10 @@ std::string_view LexIdentifierAroundPos(lsPosition position,
   return content.substr(start, end - start);
 }
 
-bool SubsequenceMatchIgnoreCase(std::string_view search, std::string_view content) {
-  size_t j = 0;
-  for (size_t i = 0; i < search.size(); i++) {
-    char search_char = tolower(search[i]);
-    while (j < content.size() && tolower(content[j]) != search_char)
-      j++;
-    if (j == content.size())
-      return false;
-    j++;
-  }
-  return true;
-}
-
 // Find discontinous |search| in |content|.
 // Return |found| and the count of skipped chars before found.
-std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
-                                           std::string_view content) {
+std::pair<bool, int> CaseFoldingSubsequenceMatch(std::string_view search,
+                                                 std::string_view content) {
   bool hasUppercaseLetter = std::any_of(search.begin(), search.end(), isupper);
   int skip = 0;
   size_t j = 0;
@@ -206,10 +193,10 @@ std::tuple<bool, int> SubsequenceCountSkip(std::string_view search,
                                : tolower(content[j]) != tolower(c)))
       ++j, ++skip;
     if (j == content.size())
-      return std::make_tuple(false, skip);
+      return {false, skip};
     ++j;
   }
-  return std::make_tuple(true, skip);
+  return {true, skip};
 }
 
 TEST_SUITE("Offset") {
@@ -234,43 +221,20 @@ TEST_SUITE("Offset") {
 }
 
 TEST_SUITE("Substring") {
-  TEST_CASE("match") {
-    // Empty string matches anything.
-    REQUIRE(SubsequenceMatchIgnoreCase("", ""));
-    REQUIRE(SubsequenceMatchIgnoreCase("", "aa"));
-
-    // Match in start/middle/end.
-    REQUIRE(SubsequenceMatchIgnoreCase("a", "abbbb"));
-    REQUIRE(SubsequenceMatchIgnoreCase("a", "bbabb"));
-    REQUIRE(SubsequenceMatchIgnoreCase("a", "bbbba"));
-    REQUIRE(SubsequenceMatchIgnoreCase("aa", "aabbb"));
-    REQUIRE(SubsequenceMatchIgnoreCase("aa", "bbaab"));
-    REQUIRE(SubsequenceMatchIgnoreCase("aa", "bbbaa"));
-
-    // Capitalization.
-    REQUIRE(SubsequenceMatchIgnoreCase("aa", "aA"));
-    REQUIRE(SubsequenceMatchIgnoreCase("aa", "Aa"));
-    REQUIRE(SubsequenceMatchIgnoreCase("aa", "AA"));
-
-    // Token skipping.
-    REQUIRE(SubsequenceMatchIgnoreCase("ad", "abcd"));
-    REQUIRE(SubsequenceMatchIgnoreCase("ad", "ABCD"));
-
-    // Ordering.
-    REQUIRE(!SubsequenceMatchIgnoreCase("ad", "dcba"));
-  }
-
   TEST_CASE("skip") {
-    REQUIRE(SubsequenceCountSkip("a", "a") == std::make_tuple(true, 0));
-    REQUIRE(SubsequenceCountSkip("b", "a") == std::make_tuple(false, 1));
-    REQUIRE(SubsequenceCountSkip("", "") == std::make_tuple(true, 0));
-    REQUIRE(SubsequenceCountSkip("a", "ba") == std::make_tuple(true, 1));
-    REQUIRE(SubsequenceCountSkip("aa", "aba") == std::make_tuple(true, 1));
-    REQUIRE(SubsequenceCountSkip("aa", "baa") == std::make_tuple(true, 1));
-    REQUIRE(SubsequenceCountSkip("aA", "aA") == std::make_tuple(true, 0));
-    REQUIRE(SubsequenceCountSkip("aA", "aa") == std::make_tuple(false, 1));
-    REQUIRE(SubsequenceCountSkip("incstdioh", "include <stdio.h>") ==
-            std::make_tuple(true, 7));
+    REQUIRE(CaseFoldingSubsequenceMatch("a", "a") == std::make_pair(true, 0));
+    REQUIRE(CaseFoldingSubsequenceMatch("b", "a") == std::make_pair(false, 1));
+    REQUIRE(CaseFoldingSubsequenceMatch("", "") == std::make_pair(true, 0));
+    REQUIRE(CaseFoldingSubsequenceMatch("a", "ba") == std::make_pair(true, 1));
+    REQUIRE(CaseFoldingSubsequenceMatch("aa", "aba") ==
+            std::make_pair(true, 1));
+    REQUIRE(CaseFoldingSubsequenceMatch("aa", "baa") ==
+            std::make_pair(true, 1));
+    REQUIRE(CaseFoldingSubsequenceMatch("aA", "aA") == std::make_pair(true, 0));
+    REQUIRE(CaseFoldingSubsequenceMatch("aA", "aa") ==
+            std::make_pair(false, 1));
+    REQUIRE(CaseFoldingSubsequenceMatch("incstdioh", "include <stdio.h>") ==
+            std::make_pair(true, 7));
   }
 }
 
