@@ -156,7 +156,7 @@ TEST_SUITE("fuzzy_match") {
     Ranks("ma", {"map", "many", "maximum"});
     Ranks("print", {"printf", "sprintf"});
     // score(PRINT) = kMinScore
-    Ranks("int", {"int", "INT", "PRINT"});
+    Ranks("ast", {"ast", "AST", "INT_FAST16_MAX"});
     // score(PRINT) > kMinScore
     Ranks("Int", {"int", "INT", "PRINT"});
   }

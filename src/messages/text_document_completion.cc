@@ -1,5 +1,6 @@
 #include "clang_complete.h"
 #include "code_complete_cache.h"
+#include "fuzzy_match.h"
 #include "include_complete.h"
 #include "message_handler.h"
 #include "queue_manager.h"
@@ -69,19 +70,6 @@ struct Out_TextDocumentComplete
   lsTextDocumentCompleteResult result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
-
-bool CompareLsCompletionItem(const lsCompletionItem& lhs,
-                             const lsCompletionItem& rhs) {
-  if (lhs.found_ != rhs.found_)
-    return !lhs.found_ < !rhs.found_;
-  if (lhs.skip_ != rhs.skip_)
-    return lhs.skip_ < rhs.skip_;
-  if (lhs.priority_ != rhs.priority_)
-    return lhs.priority_ < rhs.priority_;
-  if (lhs.filterText->length() != rhs.filterText->length())
-    return lhs.filterText->length() < rhs.filterText->length();
-  return *lhs.filterText < *rhs.filterText;
-}
 
 void DecorateIncludePaths(const std::smatch& match,
                           std::vector<lsCompletionItem>* items) {
@@ -200,41 +188,29 @@ void FilterAndSortCompletionResponse(
       item.filterText = item.label;
   }
 
-  // If the text doesn't start with underscore, remove all candidates that
-  // start with underscore.
-  if (complete_text[0] != '_') {
-    auto filter = [](const lsCompletionItem& item) {
-      return (*item.filterText)[0] == '_';
-    };
-    items.erase(std::remove_if(items.begin(), items.end(), filter),
-                items.end());
-  }
-
-  // Fuzzy match. Remove any candidates that do not match.
-  bool found = false;
+  // Fuzzy match and remove awful candidates.
+  FuzzyMatcher fuzzy(complete_text);
   for (auto& item : items) {
-    std::tie(item.found_, item.skip_) =
-        SubsequenceCountSkip(complete_text, *item.filterText);
-    found = found || item.found_;
+    item.score_ =
+        CaseFoldingSubsequenceMatch(complete_text, *item.filterText).first
+            ? fuzzy.Match(*item.filterText)
+            : FuzzyMatcher::kMinScore;
   }
-  if (found) {
-    auto filter = [](const lsCompletionItem& item) { return !item.found_; };
-    items.erase(std::remove_if(items.begin(), items.end(), filter),
-                items.end());
-
-    // Order all items and set |sortText|.
-    const size_t kMaxSortSize = 200u;
-    if (items.size() <= kMaxSortSize) {
-      std::sort(items.begin(), items.end(), CompareLsCompletionItem);
-    } else {
-      // Just place items that found the text before those not.
-      std::vector<lsCompletionItem> items_found, items_notfound;
-      for (auto& item : items)
-        (item.found_ ? items_found : items_notfound).push_back(item);
-      items = items_found;
-      items.insert(items.end(), items_notfound.begin(), items_notfound.end());
-    }
-  }
+  items.erase(std::remove_if(items.begin(), items.end(),
+      [](const lsCompletionItem& item) {
+        return item.score_ <= FuzzyMatcher::kMinScore;
+      }),
+    items.end());
+  std::sort(items.begin(), items.end(),
+            [](const lsCompletionItem& lhs, const lsCompletionItem& rhs) {
+              if (lhs.score_ != rhs.score_)
+                return lhs.score_ > rhs.score_;
+              if (lhs.priority_ != rhs.priority_)
+                return lhs.priority_ < rhs.priority_;
+              if (lhs.filterText->size() != rhs.filterText->size())
+                return lhs.filterText->size() < rhs.filterText->size();
+              return *lhs.filterText < *rhs.filterText;
+            });
 
   // Trim result.
   finalize();
