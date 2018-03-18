@@ -90,8 +90,7 @@ int FuzzyMatcher::Match(std::string_view text) {
   for (int i = 0; i < n; i++)
     low_text[i] = (char)::tolower(text[i]);
   CalculateRoles(text, text_role, &text_set);
-  dp[0][0][0] = 0;
-  dp[0][0][1] = kMinScore * 2;
+  dp[0][0][0] = dp[0][0][1] = 0;
   for (int j = 0; j < n; j++) {
     dp[0][j + 1][0] = dp[0][j][0] + MissScore(j, false);
     dp[0][j + 1][1] = kMinScore * 2;
@@ -143,6 +142,10 @@ TEST_SUITE("fuzzy_match") {
   }
 
   TEST_CASE("test") {
+    FuzzyMatcher fuzzy("");
+    CHECK(fuzzy.Match("") == 0);
+    CHECK(fuzzy.Match("aaa") < 0);
+
     // case
     Ranks("monad", {"monad", "Monad", "mONAD"});
     // initials
