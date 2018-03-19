@@ -95,7 +95,6 @@ find_package(Threads REQUIRED)
 target_link_libraries(cquery PRIVATE Threads::Threads)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-  # (either through hardware or OS support)
   # loguru calls dladdr
   target_link_libraries(cquery PRIVATE ${CMAKE_DL_LIBS})
 
