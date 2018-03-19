@@ -34,7 +34,8 @@ struct TextDocumentDidSaveHandler
     // Send out an index request, and copy the current buffer state so we
     // can update the cached index contents when the index is done.
     //
-    // We also do not index if there is already an index request.
+    // We also do not index if there is already an index request or if
+    // the client requested indexing on didChange instead.
     //
     // TODO: Cancel outgoing index request. Might be tricky to make
     //       efficient since we have to cancel.
@@ -44,15 +45,17 @@ struct TextDocumentDidSaveHandler
     //      mutex and check to see if we should skip the current request.
     //      if so, ignore that index response.
     // TODO: send as priority request
-    optional<std::string> content = ReadContent(path);
-    if (!content) {
-      LOG_S(ERROR) << "Unable to read file content after saving " << path;
-    } else {
-      Project::Entry entry = project->FindCompilationEntryForFile(path);
-      QueueManager::instance()->index_request.PushBack(
-          Index_Request(entry.filename, entry.args, true /*is_interactive*/,
-                        *content, ICacheManager::Make(config)),
-          true);
+    if (!config->enableIndexOnDidChange) {
+      optional<std::string> content = ReadContent(path);
+      if (!content) {
+        LOG_S(ERROR) << "Unable to read file content after saving " << path;
+      } else {
+        Project::Entry entry = project->FindCompilationEntryForFile(path);
+        QueueManager::instance()->index_request.PushBack(
+            Index_Request(entry.filename, entry.args, true /*is_interactive*/,
+                          *content, ICacheManager::Make(config)),
+            true);
+      }
     }
 
     clang_complete->NotifySave(path);
