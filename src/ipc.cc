@@ -11,8 +11,10 @@ const char* IpcIdToString(IpcId id) {
     case IpcId::Exit:
       return "exit";
 
-#define CASE(name, method) case IpcId::name: return method;
-    #include "methods.inc"
+#define CASE(name, method) \
+  case IpcId::name:        \
+    return method;
+#include "methods.inc"
 #undef CASE
 
     case IpcId::Unknown:

@@ -2,9 +2,9 @@
 
 #include "clang_index.h"
 #include "clang_translation_unit.h"
+#include "lru_cache.h"
 #include "lsp_completion.h"
 #include "lsp_diagnostic.h"
-#include "lru_cache.h"
 #include "project.h"
 #include "threaded_queue.h"
 #include "working_files.h"

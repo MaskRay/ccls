@@ -29,7 +29,7 @@ class ClangType {
     // NOTE: This will return false for pointed types. Should we call
     //       strip_qualifiers for the user?
     return cx_type.kind >= CXType_FirstBuiltin &&
-        cx_type.kind <= CXType_LastBuiltin;
+           cx_type.kind <= CXType_LastBuiltin;
   }
 
   ClangCursor get_declaration() const;

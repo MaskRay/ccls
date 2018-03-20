@@ -355,7 +355,8 @@ TEST_SUITE("LexWordAroundPos") {
     std::string content = "  file:ns::_my_t5ype7 ";
     REQUIRE(LexIdentifierAroundPos(CharPos(content, 'f'), content) == "file");
     REQUIRE(LexIdentifierAroundPos(CharPos(content, 's'), content) == "ns");
-    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'y'), content) == "ns::_my_t5ype7");
+    REQUIRE(LexIdentifierAroundPos(CharPos(content, 'y'), content) ==
+            "ns::_my_t5ype7");
   }
 
   TEST_CASE("dot, dash, colon are skipped") {

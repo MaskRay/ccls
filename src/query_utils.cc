@@ -100,8 +100,7 @@ std::vector<Use> GetDeclarations(QueryDatabase* db,
   return GetDeclarations(db->vars, ids);
 }
 
-std::vector<Use> GetNonDefDeclarations(QueryDatabase* db,
-                                       SymbolIdx sym) {
+std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym) {
   switch (sym.kind) {
     case SymbolKind::Func:
       return db->GetFunc(sym).declarations;

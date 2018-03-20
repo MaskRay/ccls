@@ -75,7 +75,7 @@ void DoField(MessageHandler* m,
     entry1.fieldName = std::string(def1->ShortName());
   if (def1->spell) {
     if (optional<lsLocation> loc =
-        GetLsLocation(m->db, m->working_files, *def1->spell))
+            GetLsLocation(m->db, m->working_files, *def1->spell))
       entry1.location = *loc;
   }
   if (def1->type) {
@@ -128,7 +128,7 @@ bool Expand(MessageHandler* m,
           if (def1 && def1->spell) {
             // The declaration of target type.
             if (optional<lsLocation> loc =
-                GetLsLocation(m->db, m->working_files, *def1->spell))
+                    GetLsLocation(m->db, m->working_files, *def1->spell))
               entry1.location = *loc;
           } else if (def->spell) {
             // Builtin types have no declaration but the typedef declaration
@@ -175,7 +175,7 @@ struct CqueryMemberHierarchyHandler
       entry.name = std::string(def->ShortName());
     if (def->spell) {
       if (optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def->spell))
+              GetLsLocation(db, working_files, *def->spell))
         entry.location = *loc;
     }
     EachDefinedEntity(db->vars, def->vars, [&](QueryVar& var) {
@@ -195,7 +195,7 @@ struct CqueryMemberHierarchyHandler
     entry.id = root_id;
     if (def->spell) {
       if (optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def->spell))
+              GetLsLocation(db, working_files, *def->spell))
         entry.location = *loc;
     }
     Expand(this, &entry, detailed_name, levels);
@@ -220,27 +220,27 @@ struct CqueryMemberHierarchyHandler
                           params.textDocument.uri.GetPath(), &file))
         return;
       WorkingFile* working_file =
-        working_files->GetFileByFilename(file->def->path);
+          working_files->GetFileByFilename(file->def->path);
       for (SymbolRef sym :
-             FindSymbolsAtLocation(working_file, file, params.position)) {
+           FindSymbolsAtLocation(working_file, file, params.position)) {
         switch (sym.kind) {
-        case SymbolKind::Func:
-          out.result = BuildInitial(QueryFuncId(sym.id), params.detailedName,
-                                    params.levels);
-          break;
-        case SymbolKind::Type:
-          out.result = BuildInitial(QueryTypeId(sym.id), params.detailedName,
-                                    params.levels);
-          break;
-        case SymbolKind::Var: {
-          const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-          if (def && def->type)
-            out.result = BuildInitial(QueryTypeId(*def->type), params.detailedName,
+          case SymbolKind::Func:
+            out.result = BuildInitial(QueryFuncId(sym.id), params.detailedName,
                                       params.levels);
-          break;
-        }
-        default:
-          continue;
+            break;
+          case SymbolKind::Type:
+            out.result = BuildInitial(QueryTypeId(sym.id), params.detailedName,
+                                      params.levels);
+            break;
+          case SymbolKind::Var: {
+            const QueryVar::Def* def = db->GetVar(sym).AnyDef();
+            if (def && def->type)
+              out.result = BuildInitial(QueryTypeId(*def->type),
+                                        params.detailedName, params.levels);
+            break;
+          }
+          default:
+            continue;
         }
         break;
       }

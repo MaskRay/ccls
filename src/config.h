@@ -238,9 +238,7 @@ MAKE_REFLECT_STRUCT(Config::Diagnostics,
                     frequencyMs,
                     onParse,
                     whitelist)
-MAKE_REFLECT_STRUCT(Config::Highlight,
-                    blacklist,
-                    whitelist)
+MAKE_REFLECT_STRUCT(Config::Highlight, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index,
                     attributeMakeCallsToCtor,
                     blacklist,

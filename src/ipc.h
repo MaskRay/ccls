@@ -14,7 +14,7 @@ enum class IpcId : int {
   Exit,
 
 #define CASE(x, _) x,
-  #include "methods.inc"
+#include "methods.inc"
 #undef CASE
 
   // Internal implementation detail.

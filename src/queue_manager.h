@@ -81,7 +81,7 @@ struct Index_OnIndexed {
 class QueueManager {
   static std::unique_ptr<QueueManager> instance_;
 
-public:
+ public:
   static QueueManager* instance() { return instance_.get(); }
   static void Init(MultiQueueWaiter* querydb_waiter,
                    MultiQueueWaiter* indexer_waiter,

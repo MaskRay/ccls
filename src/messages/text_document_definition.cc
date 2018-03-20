@@ -156,8 +156,7 @@ struct TextDocumentDefinitionHandler
           }
         }
         if (best_i != -1) {
-          Maybe<Use> use =
-              GetDefinitionSpell(db, db->symbols[best_i]);
+          Maybe<Use> use = GetDefinitionSpell(db, db->symbols[best_i]);
           assert(use);
           if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
                                             config->xref.container))

@@ -62,7 +62,7 @@ SemanticHighlightSymbolCache::SemanticHighlightSymbolCache()
 
 void SemanticHighlightSymbolCache::Init(Config* config) {
   match_ = std::make_unique<GroupMatch>(config->highlight.whitelist,
-                                  config->highlight.blacklist);
+                                        config->highlight.blacklist);
 }
 
 std::shared_ptr<SemanticHighlightSymbolCache::Entry>

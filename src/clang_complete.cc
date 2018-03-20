@@ -94,7 +94,7 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
       return lsCompletionItemKind::Method;
 
     case CXCursor_FunctionTemplate:
-        return lsCompletionItemKind::Function;
+      return lsCompletionItemKind::Function;
 
     case CXCursor_Constructor:
     case CXCursor_Destructor:
@@ -186,7 +186,7 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
       case CXCompletionChunk_Equal: text = '='; break;
       case CXCompletionChunk_HorizontalSpace: text = ' '; break;
       case CXCompletionChunk_VerticalSpace: text = ' '; break;
-      // clang-format on
+        // clang-format on
 
       case CXCompletionChunk_ResultType:
         result_type =

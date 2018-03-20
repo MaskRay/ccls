@@ -180,10 +180,9 @@ struct TypeDefDefinitionData {
 
   bool operator==(const TypeDefDefinitionData& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
-           extent == o.extent && alias_of == o.alias_of &&
-           bases == o.bases && types == o.types && funcs == o.funcs &&
-           vars == o.vars && kind == o.kind && hover == o.hover &&
-           comments == o.comments;
+           extent == o.extent && alias_of == o.alias_of && bases == o.bases &&
+           types == o.types && funcs == o.funcs && vars == o.vars &&
+           kind == o.kind && hover == o.hover && comments == o.comments;
   }
   bool operator!=(const TypeDefDefinitionData& o) const {
     return !(*this == o);
@@ -194,9 +193,7 @@ struct TypeDefDefinitionData {
                             short_name_size);
   }
   // Used by cquery_inheritance_hierarchy.cc:Expand generic lambda
-  std::string_view DetailedName(bool) const {
-    return detailed_name;
-  }
+  std::string_view DetailedName(bool) const { return detailed_name; }
 };
 template <typename TVisitor, typename Family>
 void Reflect(TVisitor& visitor, TypeDefDefinitionData<Family>& value) {

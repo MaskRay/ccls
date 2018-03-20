@@ -493,16 +493,16 @@ Use SetUse(IndexFile* db, Range range, ClangCursor parent, Role role) {
 
 const char* GetAnonName(CXCursorKind kind) {
   switch (kind) {
-  case CXCursor_ClassDecl:
-    return "(anon class)";
-  case CXCursor_EnumDecl:
-    return "(anon enum)";
-  case CXCursor_StructDecl:
-    return "(anon struct)";
-  case CXCursor_UnionDecl:
-    return "(anon union)";
-  default:
-    return "(anon)";
+    case CXCursor_ClassDecl:
+      return "(anon class)";
+    case CXCursor_EnumDecl:
+      return "(anon enum)";
+    case CXCursor_StructDecl:
+      return "(anon struct)";
+    case CXCursor_UnionDecl:
+      return "(anon union)";
+    default:
+      return "(anon)";
   }
 }
 
@@ -779,7 +779,7 @@ void Uniquify(std::vector<Use>& uses) {
 }
 
 // FIXME Reference: set id in call sites and remove this
-//void AddUse(std::vector<Use>& values, Range value) {
+// void AddUse(std::vector<Use>& values, Range value) {
 //  values.push_back(
 //      Use(value, Id<void>(), SymbolKind::File, Role::Reference, {}));
 //}
@@ -1811,8 +1811,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // TODO: For type section, verify if this ever runs for non definitions?
       // if (!decl->isRedeclaration) {
 
-      SetTypeName(type, cursor, decl->semanticContainer,
-                  decl->entityInfo->name, param);
+      SetTypeName(type, cursor, decl->semanticContainer, decl->entityInfo->name,
+                  param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (param->config->index.comments)
         type->def.comments = cursor.get_comments();

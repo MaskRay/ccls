@@ -5,7 +5,12 @@
 #include <loguru.hpp>
 
 namespace {
-enum class CallType : uint8_t { Direct = 0, Base = 1, Derived = 2, All = 1 | 2 };
+enum class CallType : uint8_t {
+  Direct = 0,
+  Base = 1,
+  Derived = 2,
+  All = 1 | 2
+};
 MAKE_REFLECT_TYPE_PROXY(CallType);
 
 bool operator&(CallType lhs, CallType rhs) {
@@ -96,7 +101,8 @@ bool Expand(MessageHandler* m,
       if (const auto* def = func.AnyDef())
         for (SymbolRef ref : def->callees)
           if (ref.kind == SymbolKind::Func)
-            handle(Use(ref.range, ref.id, ref.kind, ref.role, def->file), call_type);
+            handle(Use(ref.range, ref.id, ref.kind, ref.role, def->file),
+                   call_type);
     } else {
       for (Use use : func.uses)
         if (use.kind == SymbolKind::Func)
@@ -165,7 +171,7 @@ struct CqueryCallHierarchyHandler
     entry.callType = CallType::Direct;
     if (def->spell) {
       if (optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def->spell))
+              GetLsLocation(db, working_files, *def->spell))
         entry.location = *loc;
     }
     Expand(this, &entry, callee, call_type, detailed_name, levels);
@@ -193,11 +199,11 @@ struct CqueryCallHierarchyHandler
       WorkingFile* working_file =
           working_files->GetFileByFilename(file->def->path);
       for (SymbolRef sym :
-          FindSymbolsAtLocation(working_file, file, params.position)) {
+           FindSymbolsAtLocation(working_file, file, params.position)) {
         if (sym.kind == SymbolKind::Func) {
           out.result =
               BuildInitial(QueryFuncId(sym.id), params.callee, params.callType,
-                          params.detailedName, params.levels);
+                           params.detailedName, params.levels);
           break;
         }
       }
