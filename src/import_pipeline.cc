@@ -555,6 +555,8 @@ bool IndexMergeIndexUpdates() {
     // return update.path;
     //}));
   }
+
+  return did_merge;
 }
 
 }  // namespace
