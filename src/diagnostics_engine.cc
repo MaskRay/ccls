@@ -13,11 +13,6 @@ void DiagnosticsEngine::Init(Config* config) {
 void DiagnosticsEngine::Publish(WorkingFiles* working_files,
                                 std::string path,
                                 std::vector<lsDiagnostic> diagnostics) {
-  // Cache diagnostics so we can show fixits.
-  working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
-    if (working_file)
-      working_file->diagnostics_ = diagnostics;
-  });
 
   int64_t now =
       std::chrono::duration_cast<std::chrono::milliseconds>(

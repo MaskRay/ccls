@@ -110,6 +110,11 @@ struct ClangCompleteManager {
                                                    bool mark_as_completion,
                                                    bool create_if_needed);
 
+  // Flushes all saved sessions with the supplied filename
+  void FlushSession(const std::string& filename);
+  // Flushes all saved sessions
+  void FlushAllSessions(void);
+
   // TODO: make these configurable.
   const int kMaxPreloadedSessions = 10;
   const int kMaxCompletionSessions = 5;
