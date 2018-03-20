@@ -504,15 +504,37 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 // Computes a score based on how well |a| and |b| match. This is used for
 // argument guessing.
 int ComputeGuessScore(const std::string& a, const std::string& b) {
-  // Increase score based on common prefix and suffix. Prefixes are prioritized.
-  size_t i = std::mismatch(a.begin(), a.end(), b.begin()).first - a.begin();
-  size_t j = std::mismatch(a.rbegin(), a.rend(), b.rbegin()).first - a.rbegin();
-  int score = 10 * i + j;
+  const int kMatchPrefixWeight = 100;
+  const int kMismatchDirectoryWeight = 100;
+  const int kMatchPostfixWeight = 1;
+
+  int score = 0;
+  size_t i = 0;
+
+  // Increase score based on matching prefix.
+  for (i = 0; i < a.size() && i < b.size(); ++i) {
+    if (a[i] != b[i])
+      break;
+    score += kMatchPrefixWeight;
+  }
 
   // Reduce score based on mismatched directory distance.
-  if (i + j < std::min(a.size(), b.size()))
-    score -= 100 * (std::count(a.begin() + i, a.end() - j, '/') +
-                    std::count(b.begin() + i, b.end() - j, '/'));
+  for (size_t j = i; j < a.size(); ++j) {
+    if (a[j] == '/')
+      score -= kMismatchDirectoryWeight;
+  }
+  for (size_t j = i; j < b.size(); ++j) {
+    if (b[j] == '/')
+      score -= kMismatchDirectoryWeight;
+  }
+
+  // Increase score based on common ending. Don't increase as much as matching
+  // prefix or directory distance.
+  for (size_t offset = 1; offset <= a.size() && offset <= b.size(); ++offset) {
+    if (a[a.size() - offset] != b[b.size() - offset])
+      break;
+    score += kMatchPostfixWeight;
+  }
 
   return score;
 }
