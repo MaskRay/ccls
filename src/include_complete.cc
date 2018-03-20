@@ -139,8 +139,9 @@ void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,
     // insert if not found or with shorter include path
     auto it = absolute_path_to_completion_item.find(absolute_path);
     if (it == absolute_path_to_completion_item.end() ||
-        completion_items[it->second].detail.length() > item.detail.length())
-      absolute_path_to_completion_item[absolute_path] = completion_items.size();
+        completion_items[it->second].detail.length() > item.detail.length()) {
+      absolute_path_to_completion_item[absolute_path] = completion_items.size() - 1;
+    }
   } else {
     lsCompletionItem& inserted_item =
         completion_items[inserted_paths[item.detail]];
