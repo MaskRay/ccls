@@ -7,6 +7,8 @@
 #include "timer.h"
 #include "working_files.h"
 
+#include <loguru.hpp>
+
 namespace {
 // Open, view, change, close file
 struct Ipc_TextDocumentDidOpen
@@ -65,6 +67,9 @@ struct TextDocumentDidOpenHandler
             entry.filename, params.args.size() ? params.args : entry.args,
             true /*is_interactive*/, params.textDocument.text, cache_manager),
         true /* priority */);
+
+    clang_complete->FlushSession(entry.filename);
+    LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidOpenHandler);
