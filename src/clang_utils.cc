@@ -177,7 +177,7 @@ const char* ClangBuiltinTypeName(CXTypeKind kind) {
 #endif
     case CXType_NullPtr: return "nullptr";
     default: return "";
-    // clang-format on
+      // clang-format on
   }
 }
 

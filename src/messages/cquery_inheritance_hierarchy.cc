@@ -7,8 +7,8 @@ struct Ipc_CqueryInheritanceHierarchy
     : public RequestMessage<Ipc_CqueryInheritanceHierarchy> {
   const static IpcId kIpcId = IpcId::CqueryInheritanceHierarchy;
   struct Params {
-    // If id+kind are specified, expand a node; otherwise textDocument+position should
-    // be specified for building the root and |levels| of nodes below.
+    // If id+kind are specified, expand a node; otherwise textDocument+position
+    // should be specified for building the root and |levels| of nodes below.
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
 
@@ -161,8 +161,8 @@ struct CqueryInheritanceHierarchyHandler
       WorkingFile* working_file =
           working_files->GetFileByFilename(file->def->path);
 
-      for (SymbolRef sym :
-          FindSymbolsAtLocation(working_file, file, request->params.position)) {
+      for (SymbolRef sym : FindSymbolsAtLocation(working_file, file,
+                                                 request->params.position)) {
         if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
           out.result = BuildInitial(sym, params.derived, params.detailedName,
                                     params.levels);

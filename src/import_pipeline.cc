@@ -679,7 +679,7 @@ void QueryDb_DoIdMap(QueueManager* queue,
 
     auto id_map = std::make_unique<IdMap>(db, file->id_cache);
     return std::make_unique<Index_OnIdMapped::File>(std::move(file),
-                                              std::move(id_map));
+                                                    std::move(id_map));
   };
   response.current = make_map(std::move(request->current));
   response.previous = make_map(std::move(request->previous));

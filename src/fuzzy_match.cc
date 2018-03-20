@@ -43,7 +43,7 @@ void CalculateRoles(std::string_view s, int roles[], int* class_set) {
   }
   roles[s.size() - 1] = fn();
 }
-}
+}  // namespace
 
 int FuzzyMatcher::MissScore(int j, bool last) {
   int s = last ? -20 : 0;
@@ -152,7 +152,8 @@ TEST_SUITE("fuzzy_match") {
     Ranks("ab", {"ab", "aoo_boo", "acb"});
     Ranks("CC", {"CamelCase", "camelCase", "camelcase"});
     Ranks("cC", {"camelCase", "CamelCase", "camelcase"});
-    Ranks("c c", {"camel case", "camelCase", "CamelCase", "camelcase", "camel ace"});
+    Ranks("c c",
+          {"camel case", "camelCase", "CamelCase", "camelcase", "camel ace"});
     Ranks("Da.Te", {"Data.Text", "Data.Text.Lazy", "Data.Aeson.Encoding.text"});
     // prefix
     Ranks("is", {"isIEEE", "inSuf"});

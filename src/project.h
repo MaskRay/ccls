@@ -38,10 +38,10 @@ struct Project {
   // compile_commands.json in it, otherwise they are retrieved in
   // |root_directory|.
   // For .cquery, recursive directory listing is used and files with known
-  // suffixes are indexed. .cquery files can exist in subdirectories and they will affect
-  // flags in their subtrees (relative paths are relative to the project root,
-  // not subdirectories).
-  // For compile_commands.json, its entries are indexed.
+  // suffixes are indexed. .cquery files can exist in subdirectories and they
+  // will affect flags in their subtrees (relative paths are relative to the
+  // project root, not subdirectories). For compile_commands.json, its entries
+  // are indexed.
   void Load(Config* config, const std::string& root_directory);
 
   // Lookup the CompilationEntry for |filename|. If no entry was found this

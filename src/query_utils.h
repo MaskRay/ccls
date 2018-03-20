@@ -10,10 +10,14 @@ Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym);
 Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
                                                SymbolIdx sym);
 
-// Get defining declaration (if exists) or an arbitrary declaration (otherwise) for each id.
-std::vector<Use> GetDeclarations(QueryDatabase* db, const std::vector<QueryFuncId>& ids);
-std::vector<Use> GetDeclarations(QueryDatabase* db, const std::vector<QueryTypeId>& ids);
-std::vector<Use> GetDeclarations(QueryDatabase* db, const std::vector<QueryVarId>& ids);
+// Get defining declaration (if exists) or an arbitrary declaration (otherwise)
+// for each id.
+std::vector<Use> GetDeclarations(QueryDatabase* db,
+                                 const std::vector<QueryFuncId>& ids);
+std::vector<Use> GetDeclarations(QueryDatabase* db,
+                                 const std::vector<QueryTypeId>& ids);
+std::vector<Use> GetDeclarations(QueryDatabase* db,
+                                 const std::vector<QueryVarId>& ids);
 
 // Get non-defining declarations.
 std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym);
@@ -78,7 +82,10 @@ void EachEntityDef(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
 }
 
 template <typename Fn>
-void EachOccurrence(QueryDatabase* db, SymbolIdx sym, bool include_decl, Fn&& fn) {
+void EachOccurrence(QueryDatabase* db,
+                    SymbolIdx sym,
+                    bool include_decl,
+                    Fn&& fn) {
   WithEntity(db, sym, [&](const auto& entity) {
     for (Use use : entity.uses)
       fn(use);

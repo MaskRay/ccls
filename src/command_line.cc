@@ -8,9 +8,9 @@
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "indexer.h"
-#include "lsp_diagnostic.h"
 #include "lex_utils.h"
 #include "lru_cache.h"
+#include "lsp_diagnostic.h"
 #include "match.h"
 #include "message_handler.h"
 #include "options.h"
@@ -196,7 +196,8 @@ void RunQueryDbThread(const std::string& bin_name,
           Out_Error out;
           out.id = id;
           out.error.code = lsErrorCodes::InternalError;
-          out.error.message = "Dropping completion request; a newer request "
+          out.error.message =
+              "Dropping completion request; a newer request "
               "has come in that will be serviced instead.";
           QueueManager::WriteStdout(IpcId::Unknown, out);
         }

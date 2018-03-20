@@ -25,11 +25,11 @@ struct WorkspaceDidChangeConfigurationHandler
     Timer time;
     project->Load(config, config->projectRoot);
     time.ResetAndPrint("[perf] Loaded compilation entries (" +
-      std::to_string(project->entries.size()) + " files)");
+                       std::to_string(project->entries.size()) + " files)");
 
     time.Reset();
     project->Index(config, QueueManager::instance(), working_files,
-      std::monostate());
+                   std::monostate());
     time.ResetAndPrint(
         "[perf] Dispatched workspace/didChangeConfiguration index requests");
   }

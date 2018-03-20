@@ -113,7 +113,7 @@ void IncludeComplete::Rescan() {
   if (!match_ && (!config_->completion.includeWhitelist.empty() ||
                   !config_->completion.includeBlacklist.empty()))
     match_ = std::make_unique<GroupMatch>(config_->completion.includeWhitelist,
-                                    config_->completion.includeBlacklist);
+                                          config_->completion.includeBlacklist);
 
   is_scanning = true;
   WorkThread::StartThread("scan_includes", [this]() {
@@ -140,7 +140,8 @@ void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,
     auto it = absolute_path_to_completion_item.find(absolute_path);
     if (it == absolute_path_to_completion_item.end() ||
         completion_items[it->second].detail.length() > item.detail.length()) {
-      absolute_path_to_completion_item[absolute_path] = completion_items.size() - 1;
+      absolute_path_to_completion_item[absolute_path] =
+          completion_items.size() - 1;
     }
   } else {
     lsCompletionItem& inserted_item =

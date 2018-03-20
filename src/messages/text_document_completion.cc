@@ -197,10 +197,10 @@ void FilterAndSortCompletionResponse(
             : FuzzyMatcher::kMinScore;
   }
   items.erase(std::remove_if(items.begin(), items.end(),
-      [](const lsCompletionItem& item) {
-        return item.score_ <= FuzzyMatcher::kMinScore;
-      }),
-    items.end());
+                             [](const lsCompletionItem& item) {
+                               return item.score_ <= FuzzyMatcher::kMinScore;
+                             }),
+              items.end());
   std::sort(items.begin(), items.end(),
             [](const lsCompletionItem& lhs, const lsCompletionItem& rhs) {
               if (lhs.score_ != rhs.score_)
@@ -300,7 +300,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
 
       {
         std::unique_lock<std::mutex> lock(
-          include_complete->completion_items_mutex, std::defer_lock);
+            include_complete->completion_items_mutex, std::defer_lock);
         if (include_complete->is_scanning)
           lock.lock();
         std::string quote = result.match[5];
@@ -314,7 +314,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
         item.filterText = item.label;
 
       FilterAndSortCompletionResponse(&out, result.pattern,
-        config->completion.filterAndSort);
+                                      config->completion.filterAndSort);
       DecorateIncludePaths(result.match, &out.result.items);
 
       for (lsCompletionItem& item : out.result.items) {

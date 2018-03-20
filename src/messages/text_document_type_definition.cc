@@ -22,21 +22,21 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentTypeDefinition, jsonrpc, id, result);
 struct TextDocumentTypeDefinitionHandler
     : BaseMessageHandler<Ipc_TextDocumentTypeDefinition> {
   void Run(Ipc_TextDocumentTypeDefinition* request) override {
-      QueryFile* file;
-      if (!FindFileOrFail(db, project, request->id,
-                          request->params.textDocument.uri.GetPath(), &file,
-                          nullptr)) {
-        return;
-      }
-      WorkingFile* working_file =
-          working_files->GetFileByFilename(file->def->path);
+    QueryFile* file;
+    if (!FindFileOrFail(db, project, request->id,
+                        request->params.textDocument.uri.GetPath(), &file,
+                        nullptr)) {
+      return;
+    }
+    WorkingFile* working_file =
+        working_files->GetFileByFilename(file->def->path);
 
-      Out_TextDocumentTypeDefinition out;
-      out.id = request->id;
-      for (SymbolRef sym :
-             FindSymbolsAtLocation(working_file, file, request->params.position)) {
-        Id<void> id = sym.id;
-        switch (sym.kind) {
+    Out_TextDocumentTypeDefinition out;
+    out.id = request->id;
+    for (SymbolRef sym :
+         FindSymbolsAtLocation(working_file, file, request->params.position)) {
+      Id<void> id = sym.id;
+      switch (sym.kind) {
         case SymbolKind::Var: {
           const QueryVar::Def* def = db->GetVar(sym).AnyDef();
           if (!def || !def->type)
@@ -56,10 +56,10 @@ struct TextDocumentTypeDefinitionHandler
         }
         default:
           break;
-        }
       }
+    }
 
-      QueueManager::WriteStdout(IpcId::TextDocumentTypeDefinition, out);
+    QueueManager::WriteStdout(IpcId::TextDocumentTypeDefinition, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentTypeDefinitionHandler);

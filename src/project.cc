@@ -89,8 +89,7 @@ std::vector<std::string> kPathArgs = {
     "-I",        "-iquote",        "-isystem",     "--sysroot=",
     "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
     "-F",        "-imacros",       "-include",     "/I",
-    "-idirafter"
-};
+    "-idirafter"};
 
 // Arguments which always require an absolute path, ie, clang -working-directory
 // does not work as expected. Argument processing assumes that this is a subset
@@ -431,7 +430,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
       comp_db_dir.c_str(), &cx_db_load_error);
   if (!config->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
-    // TODO
+  // TODO
 #else
     unlink((comp_db_dir + "/compile_commands.json").c_str());
     rmdir(comp_db_dir.c_str());

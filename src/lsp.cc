@@ -4,8 +4,8 @@
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
-#include <loguru.hpp>
 #include <rapidjson/writer.h>
+#include <loguru.hpp>
 
 #include <stdio.h>
 #include <iostream>
