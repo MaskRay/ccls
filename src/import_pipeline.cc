@@ -408,12 +408,6 @@ void ParseFile(Config* config,
   for (std::unique_ptr<IndexFile>& new_index : *indexes) {
     Timer time;
 
-    // Cache diagnostics so we can show fixits.
-    working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
-      if (working_file)
-        working_file->diagnostics_ = diagnostics;
-    });
-
     // Only emit diagnostics for non-interactive sessions, which makes it easier
     // to identify indexing problems. For interactive sessions, diagnostics are
     // handled by code completion.
