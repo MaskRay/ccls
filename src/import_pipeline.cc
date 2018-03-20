@@ -45,6 +45,22 @@ MAKE_REFLECT_STRUCT(Out_Progress::Params,
                     activeThreads);
 MAKE_REFLECT_STRUCT(Out_Progress, jsonrpc, method, params);
 
+// Instead of processing messages forever, we only process upto
+// |kIterationSize| messages of a type at one time. While the import time
+// likely stays the same, this should reduce overall queue lengths which means
+// the user gets a usable index faster.
+struct IterationLoop {
+  const int kIterationSize = 100;
+  int count = 0;
+
+  bool Next() {
+    return count++ < kIterationSize;
+  }
+  void Reset() {
+    count = 0;
+  }
+};
+
 struct IModificationTimestampFetcher {
   virtual ~IModificationTimestampFetcher() = default;
   virtual optional<int64_t> GetModificationTime(const std::string& path) = 0;
@@ -522,7 +538,8 @@ bool IndexMergeIndexUpdates() {
     return false;
 
   bool did_merge = false;
-  while (true) {
+  IterationLoop loop;
+  while (loop.Next()) {
     optional<Index_OnIndexed> to_join = queue->on_indexed.TryPopBack();
     if (!to_join) {
       queue->on_indexed.PushFront(std::move(*root));
@@ -599,7 +616,8 @@ void Indexer_Main(Config* config,
   // Build one index per-indexer, as building the index acquires a global lock.
   auto indexer = IIndexer::MakeClangIndexer();
 
-  while (true) {
+  IterationLoop loop;
+  while (loop.Next()) {
     bool did_work = false;
 
     {
@@ -726,6 +744,7 @@ void QueryDb_OnIndexed(QueueManager* queue,
     import_manager->DoneQueryDbImport(updated_file.value.path);
   }
 }
+
 }  // namespace
 
 bool QueryDb_ImportMain(Config* config,
@@ -740,7 +759,8 @@ bool QueryDb_ImportMain(Config* config,
 
   bool did_work = false;
 
-  while (true) {
+  IterationLoop loop;
+  while (loop.Next()) {
     optional<Index_DoIdMap> request = queue->do_id_map.TryPopFront();
     if (!request)
       break;
@@ -748,7 +768,8 @@ bool QueryDb_ImportMain(Config* config,
     QueryDb_DoIdMap(queue, db, import_manager, &*request);
   }
 
-  while (true) {
+  loop.Reset();
+  while (loop.Next()) {
     optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
     if (!response)
       break;
