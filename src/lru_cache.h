@@ -29,6 +29,9 @@ struct LruCache {
   template <typename TFunc>
   void IterateValues(TFunc func);
 
+  // Empties the cache
+  void Clear(void);
+
  private:
   // There is a global score counter, when we access an element we increase
   // its score to the current global value, so it has the highest overall
@@ -123,4 +126,10 @@ void LruCache<TKey, TValue>::IncrementScore() {
     for (Entry& entry : entries_)
       entry.score = next_score_++;
   }
+}
+
+template <typename TKey, typename TValue>
+void LruCache<TKey, TValue>::Clear(void) {
+	entries_.clear();
+	next_score_ = 0;
 }

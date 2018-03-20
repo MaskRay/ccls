@@ -1,9 +1,12 @@
 #include "cache_manager.h"
+#include "clang_complete.h"
 #include "message_handler.h"
 #include "project.h"
 #include "queue_manager.h"
 #include "timer.h"
 #include "working_files.h"
+
+#include <loguru.hpp>
 
 namespace {
 struct lsDidChangeConfigurationParams {
@@ -32,6 +35,9 @@ struct WorkspaceDidChangeConfigurationHandler
                    std::monostate());
     time.ResetAndPrint(
         "[perf] Dispatched workspace/didChangeConfiguration index requests");
+
+    clang_complete->FlushAllSessions();
+    LOG_S(INFO) << "Flushed all clang complete sessions";
   }
 };
 REGISTER_MESSAGE_HANDLER(WorkspaceDidChangeConfigurationHandler);
