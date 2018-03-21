@@ -61,7 +61,7 @@ struct TextDocumentDidOpenHandler
     clang_complete->NotifyView(path);
 
     // Submit new index request.
-    const Project::Entry& entry = project->FindCompilationEntryForFile(path);
+    Project::Entry entry = project->FindCompilationEntryForFile(path);
     QueueManager::instance()->index_request.PushBack(
         Index_Request(
             entry.filename, params.args.size() ? params.args : entry.args,
@@ -70,6 +70,9 @@ struct TextDocumentDidOpenHandler
 
     clang_complete->FlushSession(entry.filename);
     LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;
+    if (params.args.size()) {
+      project->SetFlagsForFile(params.args, path);
+    }
   }
 };
 REGISTER_MESSAGE_HANDLER(TextDocumentDidOpenHandler);
