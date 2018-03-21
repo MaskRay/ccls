@@ -569,6 +569,23 @@ void Project::Load(Config* config, const std::string& root_directory) {
     absolute_path_to_entry_index_[entries[i].filename] = i;
 }
 
+void Project::SetFlagsForFile(
+    const std::vector<std::string>& flags,
+    const std::string& path) {
+  auto it = absolute_path_to_entry_index_.find(path);
+  if (it != absolute_path_to_entry_index_.end()) {
+    // The entry already exists in the project, just set the flags.
+    this->entries[it->second].args = flags;
+  } else {
+    // Entry wasn't found, so we create a new one.
+    Entry entry;
+    entry.is_inferred = false;
+    entry.filename = path;
+    entry.args = flags;
+    this->entries.emplace_back(entry);
+  }
+}
+
 Project::Entry Project::FindCompilationEntryForFile(
     const std::string& filename) {
   auto it = absolute_path_to_entry_index_.find(filename);
