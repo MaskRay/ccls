@@ -625,8 +625,7 @@ void Indexer_Main(Config* config,
   // Build one index per-indexer, as building the index acquires a global lock.
   auto indexer = IIndexer::MakeClangIndexer();
 
-  IterationLoop loop;
-  while (loop.Next()) {
+  while (true) {
     bool did_work = false;
 
     {
