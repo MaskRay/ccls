@@ -136,7 +136,7 @@ struct ActiveThread {
           GetCurrentTimeInMilliseconds() + config_->progressReportFrequencyMs;
     }
 
-    QueueManager::WriteStdout(IpcId::Unknown, out);
+    QueueManager::WriteStdout(kMethodType_Unknown, out);
   }
 
   Config* config_;
@@ -400,7 +400,7 @@ void ParseFile(Config* config,
       out.id = request.id;
       out.error.code = lsErrorCodes::InternalError;
       out.error.message = "Failed to index " + path_to_index;
-      QueueManager::WriteStdout(IpcId::Unknown, out);
+      QueueManager::WriteStdout(kMethodType_Unknown, out);
     }
     return;
   }

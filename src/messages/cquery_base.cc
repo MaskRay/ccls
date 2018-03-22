@@ -3,15 +3,21 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryBase : public RequestMessage<Ipc_CqueryBase> {
-  const static IpcId kIpcId = IpcId::CqueryBase;
+
+MethodType kMethodType = "$cquery/base";
+
+struct In_CqueryBase : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryBase, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryBase);
+MAKE_REFLECT_STRUCT(In_CqueryBase, id, params);
+REGISTER_IN_MESSAGE(In_CqueryBase);
 
-struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
-  void Run(Ipc_CqueryBase* request) override {
+struct Handler_CqueryBase : BaseMessageHandler<In_CqueryBase> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_CqueryBase* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -39,8 +45,8 @@ struct CqueryBaseHandler : BaseMessageHandler<Ipc_CqueryBase> {
         break;
       }
     }
-    QueueManager::WriteStdout(IpcId::CqueryBase, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryBaseHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryBase);
 }  // namespace

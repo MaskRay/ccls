@@ -23,6 +23,8 @@ extern std::string g_init_options;
 
 namespace {
 
+MethodType kMethodType = "initialize";
+
 // Code Lens options.
 struct lsCodeLensOptions {
   // Code lens has a resolve provider as well.
@@ -460,12 +462,13 @@ struct lsInitializeError {
 };
 MAKE_REFLECT_STRUCT(lsInitializeError, retry);
 
-struct Ipc_InitializeRequest : public RequestMessage<Ipc_InitializeRequest> {
-  const static IpcId kIpcId = IpcId::Initialize;
+struct In_InitializeRequest : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   lsInitializeParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_InitializeRequest, id, params);
-REGISTER_IPC_MESSAGE(Ipc_InitializeRequest);
+MAKE_REFLECT_STRUCT(In_InitializeRequest, id, params);
+REGISTER_IN_MESSAGE(In_InitializeRequest);
 
 struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
   struct InitializeResult {
@@ -477,8 +480,10 @@ struct Out_InitializeResponse : public lsOutMessage<Out_InitializeResponse> {
 MAKE_REFLECT_STRUCT(Out_InitializeResponse::InitializeResult, capabilities);
 MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
 
-struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
-  void Run(Ipc_InitializeRequest* request) override {
+struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_InitializeRequest* request) override {
     // Log initialization parameters.
     rapidjson::StringBuffer output;
     rapidjson::Writer<rapidjson::StringBuffer> writer(output);
@@ -573,7 +578,7 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
       out.result.capabilities.documentRangeFormattingProvider = true;
 #endif
 
-      QueueManager::WriteStdout(IpcId::Initialize, out);
+      QueueManager::WriteStdout(kMethodType, out);
 
       // Set project root.
       EnsureEndsInSlash(project_path);
@@ -627,5 +632,5 @@ struct InitializeHandler : BaseMessageHandler<Ipc_InitializeRequest> {
     }
   }
 };
-REGISTER_MESSAGE_HANDLER(InitializeHandler);
+REGISTER_MESSAGE_HANDLER(Handler_Initialize);
 }  // namespace

@@ -13,9 +13,10 @@
 #include <unordered_set>
 
 namespace {
-struct Ipc_CqueryFreshenIndex
-    : public NotificationMessage<Ipc_CqueryFreshenIndex> {
-  const static IpcId kIpcId = IpcId::CqueryFreshenIndex;
+MethodType kMethodType = "$cquery/freshenIndex";
+
+struct In_CqueryFreshenIndex : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     bool dependencies = true;
     std::vector<std::string> whitelist;
@@ -23,15 +24,16 @@ struct Ipc_CqueryFreshenIndex
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex::Params,
+MAKE_REFLECT_STRUCT(In_CqueryFreshenIndex::Params,
                     dependencies,
                     whitelist,
                     blacklist);
-MAKE_REFLECT_STRUCT(Ipc_CqueryFreshenIndex, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryFreshenIndex);
+MAKE_REFLECT_STRUCT(In_CqueryFreshenIndex, params);
+REGISTER_IN_MESSAGE(In_CqueryFreshenIndex);
 
-struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
-  void Run(Ipc_CqueryFreshenIndex* request) override {
+struct Handler_CqueryFreshenIndex : BaseMessageHandler<In_CqueryFreshenIndex> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_CqueryFreshenIndex* request) override {
     LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
 
     // TODO: think about this flow and test it more.
@@ -90,5 +92,5 @@ struct CqueryFreshenIndexHandler : BaseMessageHandler<Ipc_CqueryFreshenIndex> {
     time.ResetAndPrint("[perf] Dispatched $cquery/freshenIndex index requests");
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryFreshenIndexHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryFreshenIndex);
 }  // namespace

@@ -4,14 +4,14 @@
 #include "queue_manager.h"
 
 namespace {
+MethodType kMethodType = "workspace/executeCommand";
 
-struct Ipc_WorkspaceExecuteCommand
-    : public RequestMessage<Ipc_WorkspaceExecuteCommand> {
-  const static IpcId kIpcId = IpcId::WorkspaceExecuteCommand;
+struct In_WorkspaceExecuteCommand : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsCommand<lsCodeLensCommandArguments> params;
 };
-MAKE_REFLECT_STRUCT(Ipc_WorkspaceExecuteCommand, id, params);
-REGISTER_IPC_MESSAGE(Ipc_WorkspaceExecuteCommand);
+MAKE_REFLECT_STRUCT(In_WorkspaceExecuteCommand, id, params);
+REGISTER_IN_MESSAGE(In_WorkspaceExecuteCommand);
 
 struct Out_WorkspaceExecuteCommand
     : public lsOutMessage<Out_WorkspaceExecuteCommand> {
@@ -28,9 +28,10 @@ void Reflect(Writer& visitor, Out_WorkspaceExecuteCommand& value) {
   REFLECT_MEMBER_END();
 }
 
-struct WorkspaceExecuteCommandHandler
-    : BaseMessageHandler<Ipc_WorkspaceExecuteCommand> {
-  void Run(Ipc_WorkspaceExecuteCommand* request) override {
+struct Handler_WorkspaceExecuteCommand
+    : BaseMessageHandler<In_WorkspaceExecuteCommand> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_WorkspaceExecuteCommand* request) override {
     const auto& params = request->params;
     Out_WorkspaceExecuteCommand out;
     out.id = request->id;
@@ -41,9 +42,9 @@ struct WorkspaceExecuteCommandHandler
       out.result = params.arguments.locations;
     }
 
-    QueueManager::WriteStdout(IpcId::WorkspaceExecuteCommand, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(WorkspaceExecuteCommandHandler);
+REGISTER_MESSAGE_HANDLER(Handler_WorkspaceExecuteCommand);
 
 }  // namespace

@@ -14,6 +14,7 @@
 #include <regex>
 
 namespace {
+MethodType kMethodType = "textDocument/completion";
 
 // How a completion was triggered
 enum class lsCompletionTriggerKind {
@@ -47,13 +48,12 @@ struct lsCompletionParams : lsTextDocumentPositionParams {
 };
 MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
 
-struct Ipc_TextDocumentComplete
-    : public RequestMessage<Ipc_TextDocumentComplete> {
-  const static IpcId kIpcId = IpcId::TextDocumentCompletion;
+struct In_TextDocumentComplete : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsCompletionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentComplete, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentComplete);
+MAKE_REFLECT_STRUCT(In_TextDocumentComplete, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentComplete);
 
 struct lsTextDocumentCompleteResult {
   // This list it not complete. Further typing should result in recomputing
@@ -216,17 +216,17 @@ void FilterAndSortCompletionResponse(
   finalize();
 }
 
-struct TextDocumentCompletionHandler : MessageHandler {
-  IpcId GetId() const override { return IpcId::TextDocumentCompletion; }
+struct Handler_TextDocumentCompletion : MessageHandler {
+  MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(std::unique_ptr<BaseIpcMessage> message) override {
-    auto request = std::shared_ptr<Ipc_TextDocumentComplete>(
-        static_cast<Ipc_TextDocumentComplete*>(message.release()));
+    auto request = std::shared_ptr<In_TextDocumentComplete>(
+        static_cast<In_TextDocumentComplete*>(message.release()));
 
     auto write_empty_result = [request]() {
       Out_TextDocumentComplete out;
       out.id = request->id;
-      QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+      QueueManager::WriteStdout(kMethodType, out);
     };
 
     std::string path = request->params.textDocument.uri.GetPath();
@@ -324,7 +324,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
         item.textEdit->range.end.character = (int)buffer_line.size();
       }
 
-      QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+      QueueManager::WriteStdout(kMethodType, out);
     } else {
       ClangCompleteManager::OnComplete callback = std::bind(
           [this, is_global_completion, existing_completion, request](
@@ -337,7 +337,7 @@ struct TextDocumentCompletionHandler : MessageHandler {
             // Emit completion results.
             FilterAndSortCompletionResponse(&out, existing_completion,
                                             config->completion.filterAndSort);
-            QueueManager::WriteStdout(IpcId::TextDocumentCompletion, out);
+            QueueManager::WriteStdout(kMethodType, out);
 
             // Cache completion results.
             if (!is_cached_result) {
@@ -395,6 +395,6 @@ struct TextDocumentCompletionHandler : MessageHandler {
     }
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentCompletionHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCompletion);
 
 }  // namespace

@@ -4,32 +4,35 @@
 #include "working_files.h"
 
 namespace {
-struct Ipc_TextDocumentDidClose
-    : public NotificationMessage<Ipc_TextDocumentDidClose> {
-  const static IpcId kIpcId = IpcId::TextDocumentDidClose;
+MethodType kMethodType = "textDocument/didClose";
+
+struct In_TextDocumentDidClose : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose::Params, textDocument);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidClose, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidClose);
+MAKE_REFLECT_STRUCT(In_TextDocumentDidClose::Params, textDocument);
+MAKE_REFLECT_STRUCT(In_TextDocumentDidClose, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDidClose);
 
-struct TextDocumentDidCloseHandler
-    : BaseMessageHandler<Ipc_TextDocumentDidClose> {
-  void Run(Ipc_TextDocumentDidClose* request) override {
+struct Handler_TextDocumentDidClose
+    : BaseMessageHandler<In_TextDocumentDidClose> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_TextDocumentDidClose* request) override {
     std::string path = request->params.textDocument.uri.GetPath();
 
     // Clear any diagnostics for the file.
     Out_TextDocumentPublishDiagnostics out;
     out.params.uri = request->params.textDocument.uri;
-    QueueManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
+    QueueManager::WriteStdout(kMethodType, out);
 
     // Remove internal state.
     working_files->OnClose(request->params.textDocument);
     clang_complete->NotifyClose(path);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentDidCloseHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidClose);
 }  // namespace

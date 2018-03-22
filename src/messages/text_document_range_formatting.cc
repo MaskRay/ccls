@@ -7,6 +7,7 @@
 #include <loguru.hpp>
 
 namespace {
+MethodType kMethodType = "textDocument/rangeFormatting";
 
 struct lsTextDocumentRangeFormattingParams {
   lsTextDocumentIdentifier textDocument;
@@ -18,13 +19,12 @@ MAKE_REFLECT_STRUCT(lsTextDocumentRangeFormattingParams,
                     range,
                     options);
 
-struct Ipc_TextDocumentRangeFormatting
-    : public RequestMessage<Ipc_TextDocumentRangeFormatting> {
-  const static IpcId kIpcId = IpcId::TextDocumentRangeFormatting;
+struct In_TextDocumentRangeFormatting : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentRangeFormattingParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentRangeFormatting, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentRangeFormatting);
+MAKE_REFLECT_STRUCT(In_TextDocumentRangeFormatting, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentRangeFormatting);
 
 struct Out_TextDocumentRangeFormatting
     : public lsOutMessage<Out_TextDocumentRangeFormatting> {
@@ -33,9 +33,11 @@ struct Out_TextDocumentRangeFormatting
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentRangeFormatting, jsonrpc, id, result);
 
-struct TextDocumentRangeFormattingHandler
-    : BaseMessageHandler<Ipc_TextDocumentRangeFormatting> {
-  void Run(Ipc_TextDocumentRangeFormatting* request) override {
+struct Handler_TextDocumentRangeFormatting
+    : BaseMessageHandler<In_TextDocumentRangeFormatting> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_TextDocumentRangeFormatting* request) override {
     Out_TextDocumentRangeFormatting response;
     response.id = request->id;
 #if USE_CLANG_CXX
@@ -62,8 +64,8 @@ struct TextDocumentRangeFormattingHandler
     response.result = {};
 #endif
 
-    QueueManager::WriteStdout(IpcId::TextDocumentRangeFormatting, response);
+    QueueManager::WriteStdout(kMethodType, response);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentRangeFormattingHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentRangeFormatting);
 }  // namespace

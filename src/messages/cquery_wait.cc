@@ -6,14 +6,17 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_CqueryWait : public NotificationMessage<Ipc_CqueryWait> {
-  static constexpr IpcId kIpcId = IpcId::CqueryWait;
-};
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_CqueryWait);
-REGISTER_IPC_MESSAGE(Ipc_CqueryWait);
+MethodType kMethodType = "$cquery/wait";
 
-struct CqueryWaitHandler : MessageHandler {
-  IpcId GetId() const override { return IpcId::CqueryWait; }
+struct In_CqueryWait : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+};
+MAKE_REFLECT_EMPTY_STRUCT(In_CqueryWait);
+REGISTER_IN_MESSAGE(In_CqueryWait);
+
+struct Handler_CqueryWait : MessageHandler {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   void Run(std::unique_ptr<BaseIpcMessage> request) override {
     // TODO: use status message system here, then run querydb as normal? Maybe
     // this cannot be a normal message, ie, it needs to be re-entrant.
@@ -40,5 +43,5 @@ struct CqueryWaitHandler : MessageHandler {
     LOG_S(INFO) << "Done waiting for idle";
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryWaitHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryWait);
 }  // namespace

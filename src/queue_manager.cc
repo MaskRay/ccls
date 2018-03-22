@@ -63,13 +63,13 @@ void QueueManager::Init(MultiQueueWaiter* querydb_waiter,
 }
 
 // static
-void QueueManager::WriteStdout(IpcId id, lsBaseOutMessage& response) {
+void QueueManager::WriteStdout(MethodType method, lsBaseOutMessage& response) {
   std::ostringstream sstream;
   response.Write(sstream);
 
   Stdout_Request out;
   out.content = sstream.str();
-  out.id = id;
+  out.method = method;
   instance()->for_stdout.PushBack(std::move(out));
 }
 

@@ -7,11 +7,13 @@
 #include <numeric>
 
 namespace {
-struct Ipc_CqueryRandom : public RequestMessage<Ipc_CqueryRandom> {
-  const static IpcId kIpcId = IpcId::CqueryRandom;
+MethodType kMethodType = "$cquery/random";
+
+struct In_CqueryRandom : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryRandom, id);
-REGISTER_IPC_MESSAGE(Ipc_CqueryRandom);
+MAKE_REFLECT_STRUCT(In_CqueryRandom, id);
+REGISTER_IN_MESSAGE(In_CqueryRandom);
 
 const double kDeclWeight = 3;
 const double kDamping = 0.1;
@@ -44,8 +46,10 @@ void Add(const std::unordered_map<SymbolIdx, int>& sym2id,
   }
 }
 
-struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
-  void Run(Ipc_CqueryRandom* request) override {
+struct Handler_CqueryRandom : BaseMessageHandler<In_CqueryRandom> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_CqueryRandom* request) override {
     std::unordered_map<SymbolIdx, int> sym2id;
     std::vector<SymbolIdx> syms;
     int n = 0;
@@ -137,8 +141,8 @@ struct CqueryRandomHandler : BaseMessageHandler<Ipc_CqueryRandom> {
         break;
       }
     }
-    QueueManager::WriteStdout(IpcId::CqueryRandom, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryRandomHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryRandom);
 }  // namespace

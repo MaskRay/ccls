@@ -8,18 +8,21 @@
 #include <loguru/loguru.hpp>
 
 namespace {
-struct Ipc_TextDocumentDidChange
-    : public NotificationMessage<Ipc_TextDocumentDidChange> {
-  const static IpcId kIpcId = IpcId::TextDocumentDidChange;
+MethodType kMethodType = "textDocument/didChange";
+
+struct In_TextDocumentDidChange : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentDidChangeParams params;
 };
 
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidChange, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidChange);
+MAKE_REFLECT_STRUCT(In_TextDocumentDidChange, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDidChange);
 
-struct TextDocumentDidChangeHandler
-    : BaseMessageHandler<Ipc_TextDocumentDidChange> {
-  void Run(Ipc_TextDocumentDidChange* request) override {
+struct Handler_TextDocumentDidChange
+    : BaseMessageHandler<In_TextDocumentDidChange> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_TextDocumentDidChange* request) override {
     std::string path = request->params.textDocument.uri.GetPath();
     working_files->OnChange(request->params);
     if (config->enableIndexOnDidChange) {
@@ -40,5 +43,5 @@ struct TextDocumentDidChangeHandler
         request->params.textDocument.AsTextDocumentIdentifier());
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentDidChangeHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidChange);
 }  // namespace

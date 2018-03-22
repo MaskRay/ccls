@@ -2,11 +2,13 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_Shutdown : public RequestMessage<Ipc_Shutdown> {
-  static const IpcId kIpcId = IpcId::Shutdown;
+MethodType kMethodType = "shutdown";
+
+struct In_Shutdown : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
 };
-MAKE_REFLECT_STRUCT(Ipc_Shutdown, id);
-REGISTER_IPC_MESSAGE(Ipc_Shutdown);
+MAKE_REFLECT_STRUCT(In_Shutdown, id);
+REGISTER_IN_MESSAGE(In_Shutdown);
 
 struct Out_Shutdown : public lsOutMessage<Out_Shutdown> {
   lsRequestId id;         // defaults to std::monostate (null)
@@ -14,12 +16,13 @@ struct Out_Shutdown : public lsOutMessage<Out_Shutdown> {
 };
 MAKE_REFLECT_STRUCT(Out_Shutdown, jsonrpc, id, result);
 
-struct ShutdownHandler : BaseMessageHandler<Ipc_Shutdown> {
-  void Run(Ipc_Shutdown* request) override {
+struct Handler_Shutdown : BaseMessageHandler<In_Shutdown> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_Shutdown* request) override {
     Out_Shutdown out;
     out.id = request->id;
-    QueueManager::WriteStdout(IpcId::TextDocumentDefinition, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(ShutdownHandler);
+REGISTER_MESSAGE_HANDLER(Handler_Shutdown);
 }  // namespace

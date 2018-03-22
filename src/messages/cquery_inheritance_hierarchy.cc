@@ -3,9 +3,10 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryInheritanceHierarchy
-    : public RequestMessage<Ipc_CqueryInheritanceHierarchy> {
-  const static IpcId kIpcId = IpcId::CqueryInheritanceHierarchy;
+MethodType kMethodType = "$cquery/inheritanceHierarchy";
+
+struct In_CqueryInheritanceHierarchy : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // If id+kind are specified, expand a node; otherwise textDocument+position
     // should be specified for building the root and |levels| of nodes below.
@@ -23,7 +24,7 @@ struct Ipc_CqueryInheritanceHierarchy
   Params params;
 };
 
-MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchy::Params,
+MAKE_REFLECT_STRUCT(In_CqueryInheritanceHierarchy::Params,
                     textDocument,
                     position,
                     id,
@@ -31,8 +32,8 @@ MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchy::Params,
                     derived,
                     detailedName,
                     levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryInheritanceHierarchy, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryInheritanceHierarchy);
+MAKE_REFLECT_STRUCT(In_CqueryInheritanceHierarchy, id, params);
+REGISTER_IN_MESSAGE(In_CqueryInheritanceHierarchy);
 
 struct Out_CqueryInheritanceHierarchy
     : public lsOutMessage<Out_CqueryInheritanceHierarchy> {
@@ -127,8 +128,10 @@ bool Expand(MessageHandler* m,
                         m->db->types[entry->id.id]);
 }
 
-struct CqueryInheritanceHierarchyHandler
-    : BaseMessageHandler<Ipc_CqueryInheritanceHierarchy> {
+struct Handler_CqueryInheritanceHierarchy
+    : BaseMessageHandler<In_CqueryInheritanceHierarchy> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   optional<Out_CqueryInheritanceHierarchy::Entry>
   BuildInitial(SymbolRef sym, bool derived, bool detailed_name, int levels) {
     Out_CqueryInheritanceHierarchy::Entry entry;
@@ -138,7 +141,7 @@ struct CqueryInheritanceHierarchyHandler
     return entry;
   }
 
-  void Run(Ipc_CqueryInheritanceHierarchy* request) override {
+  void Run(In_CqueryInheritanceHierarchy* request) override {
     const auto& params = request->params;
     Out_CqueryInheritanceHierarchy out;
     out.id = request->id;
@@ -171,9 +174,9 @@ struct CqueryInheritanceHierarchyHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::CqueryInheritanceHierarchy, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryInheritanceHierarchyHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryInheritanceHierarchy);
 
 }  // namespace

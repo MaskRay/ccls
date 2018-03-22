@@ -10,10 +10,12 @@
 #include <loguru.hpp>
 
 namespace {
+MethodType kMethodType = "textDocument/didOpen";
+
 // Open, view, change, close file
-struct Ipc_TextDocumentDidOpen
-    : public NotificationMessage<Ipc_TextDocumentDidOpen> {
-  const static IpcId kIpcId = IpcId::TextDocumentDidOpen;
+struct In_TextDocumentDidOpen : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+  
   struct Params {
     lsTextDocumentItem textDocument;
 
@@ -24,13 +26,15 @@ struct Ipc_TextDocumentDidOpen
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen::Params, textDocument, args);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDidOpen, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDidOpen);
+MAKE_REFLECT_STRUCT(In_TextDocumentDidOpen::Params, textDocument, args);
+MAKE_REFLECT_STRUCT(In_TextDocumentDidOpen, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDidOpen);
 
-struct TextDocumentDidOpenHandler
-    : BaseMessageHandler<Ipc_TextDocumentDidOpen> {
-  void Run(Ipc_TextDocumentDidOpen* request) override {
+struct Handler_TextDocumentDidOpen
+    : BaseMessageHandler<In_TextDocumentDidOpen> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_TextDocumentDidOpen* request) override {
     // NOTE: This function blocks code lens. If it starts taking a long time
     // we will need to find a way to unblock the code lens request.
     const auto& params = request->params;
@@ -75,5 +79,5 @@ struct TextDocumentDidOpenHandler
     }
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentDidOpenHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);
 }  // namespace

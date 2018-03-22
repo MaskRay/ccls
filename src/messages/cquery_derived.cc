@@ -3,15 +3,18 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryDerived : public RequestMessage<Ipc_CqueryDerived> {
-  const static IpcId kIpcId = IpcId::CqueryDerived;
+MethodType kMethodType = "$cquery/derived";
+
+struct In_CqueryDerived : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryDerived, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryDerived);
+MAKE_REFLECT_STRUCT(In_CqueryDerived, id, params);
+REGISTER_IN_MESSAGE(In_CqueryDerived);
 
-struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
-  void Run(Ipc_CqueryDerived* request) override {
+struct Handler_CqueryDerived : BaseMessageHandler<In_CqueryDerived> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_CqueryDerived* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -39,8 +42,8 @@ struct CqueryDerivedHandler : BaseMessageHandler<Ipc_CqueryDerived> {
         break;
       }
     }
-    QueueManager::WriteStdout(IpcId::CqueryDerived, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryDerivedHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryDerived);
 }  // namespace

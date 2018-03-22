@@ -6,19 +6,19 @@
 #include <loguru.hpp>
 
 namespace {
+MethodType kMethodType = "textDocument/formatting";
 
-struct Ipc_TextDocumentFormatting
-    : public RequestMessage<Ipc_TextDocumentFormatting> {
-  const static IpcId kIpcId = IpcId::TextDocumentFormatting;
+struct In_TextDocumentFormatting : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;
     lsFormattingOptions options;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentFormatting::Params, textDocument, options);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentFormatting, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentFormatting);
+MAKE_REFLECT_STRUCT(In_TextDocumentFormatting::Params, textDocument, options);
+MAKE_REFLECT_STRUCT(In_TextDocumentFormatting, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentFormatting);
 
 struct Out_TextDocumentFormatting
     : public lsOutMessage<Out_TextDocumentFormatting> {
@@ -27,9 +27,10 @@ struct Out_TextDocumentFormatting
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentFormatting, jsonrpc, id, result);
 
-struct TextDocumentFormattingHandler
-    : BaseMessageHandler<Ipc_TextDocumentFormatting> {
-  void Run(Ipc_TextDocumentFormatting* request) override {
+struct Handler_TextDocumentFormatting
+    : BaseMessageHandler<In_TextDocumentFormatting> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentFormatting* request) override {
     Out_TextDocumentFormatting response;
     response.id = request->id;
 #if USE_CLANG_CXX
@@ -54,8 +55,8 @@ struct TextDocumentFormattingHandler
     response.result = {};
 #endif
 
-    QueueManager::WriteStdout(IpcId::TextDocumentFormatting, response);
+    QueueManager::WriteStdout(kMethodType, response);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentFormattingHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentFormatting);
 }  // namespace

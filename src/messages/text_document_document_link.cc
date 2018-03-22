@@ -6,18 +6,19 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_TextDocumentDocumentLink
-    : public RequestMessage<Ipc_TextDocumentDocumentLink> {
-  const static IpcId kIpcId = IpcId::TextDocumentDocumentLink;
+MethodType kMethodType = "textDocument/documentLink";
+
+struct In_TextDocumentDocumentLink : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // The document to provide document links for.
     lsTextDocumentIdentifier textDocument;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink::Params, textDocument);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentLink, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentLink);
+MAKE_REFLECT_STRUCT(In_TextDocumentDocumentLink::Params, textDocument);
+MAKE_REFLECT_STRUCT(In_TextDocumentDocumentLink, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDocumentLink);
 
 // A document link is a range in a text document that links to an internal or
 // external resource, like another text document or a web site.
@@ -36,9 +37,10 @@ struct Out_TextDocumentDocumentLink
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentLink, jsonrpc, id, result);
 
-struct TextDocumentDocumentLinkHandler
-    : BaseMessageHandler<Ipc_TextDocumentDocumentLink> {
-  void Run(Ipc_TextDocumentDocumentLink* request) override {
+struct Handler_TextDocumentDocumentLink
+    : BaseMessageHandler<In_TextDocumentDocumentLink> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentDocumentLink* request) override {
     Out_TextDocumentDocumentLink out;
     out.id = request->id;
 
@@ -76,8 +78,8 @@ struct TextDocumentDocumentLinkHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentDocumentLink, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentDocumentLinkHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentLink);
 }  // namespace

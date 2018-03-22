@@ -86,7 +86,7 @@ struct MessageHandler {
   CodeCompleteCache* non_global_code_complete_cache = nullptr;
   CodeCompleteCache* signature_cache = nullptr;
 
-  virtual IpcId GetId() const = 0;
+  virtual MethodType GetMethodType() const = 0;
   virtual void Run(std::unique_ptr<BaseIpcMessage> message) = 0;
 
   static std::vector<MessageHandler*>* message_handlers;
@@ -100,9 +100,8 @@ struct BaseMessageHandler : MessageHandler {
   virtual void Run(TMessage* message) = 0;
 
   // MessageHandler:
-  IpcId GetId() const override { return TMessage::kIpcId; }
   void Run(std::unique_ptr<BaseIpcMessage> message) override {
-    Run(message->As<TMessage>());
+    Run(static_cast<TMessage*>(message.get()));
   }
 };
 

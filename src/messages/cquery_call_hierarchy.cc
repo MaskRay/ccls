@@ -5,6 +5,9 @@
 #include <loguru.hpp>
 
 namespace {
+
+MethodType kMethodType = "$cquery/callHierarchy";
+
 enum class CallType : uint8_t {
   Direct = 0,
   Base = 1,
@@ -17,9 +20,9 @@ bool operator&(CallType lhs, CallType rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
 }
 
-struct Ipc_CqueryCallHierarchy
-    : public RequestMessage<Ipc_CqueryCallHierarchy> {
-  const static IpcId kIpcId = IpcId::CqueryCallHierarchy;
+struct In_CqueryCallHierarchy : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   struct Params {
     // If id is specified, expand a node; otherwise textDocument+position should
     // be specified for building the root and |levels| of nodes below.
@@ -38,8 +41,9 @@ struct Ipc_CqueryCallHierarchy
     int levels = 1;
   };
   Params params;
+
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchy::Params,
+MAKE_REFLECT_STRUCT(In_CqueryCallHierarchy::Params,
                     textDocument,
                     position,
                     id,
@@ -47,8 +51,8 @@ MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchy::Params,
                     callType,
                     detailedName,
                     levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryCallHierarchy, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryCallHierarchy);
+MAKE_REFLECT_STRUCT(In_CqueryCallHierarchy, id, params);
+REGISTER_IN_MESSAGE(In_CqueryCallHierarchy);
 
 struct Out_CqueryCallHierarchy : public lsOutMessage<Out_CqueryCallHierarchy> {
   struct Entry {
@@ -155,8 +159,10 @@ bool Expand(MessageHandler* m,
   return true;
 }
 
-struct CqueryCallHierarchyHandler
-    : BaseMessageHandler<Ipc_CqueryCallHierarchy> {
+struct Handler_CqueryCallHierarchy
+    : BaseMessageHandler<In_CqueryCallHierarchy> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   optional<Out_CqueryCallHierarchy::Entry> BuildInitial(QueryFuncId root_id,
                                                         bool callee,
                                                         CallType call_type,
@@ -178,7 +184,7 @@ struct CqueryCallHierarchyHandler
     return entry;
   }
 
-  void Run(Ipc_CqueryCallHierarchy* request) override {
+  void Run(In_CqueryCallHierarchy* request) override {
     const auto& params = request->params;
     Out_CqueryCallHierarchy out;
     out.id = request->id;
@@ -209,9 +215,9 @@ struct CqueryCallHierarchyHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::CqueryCallHierarchy, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryCallHierarchyHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryCallHierarchy);
 
 }  // namespace

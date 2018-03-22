@@ -4,13 +4,14 @@
 #include "symbol.h"
 
 namespace {
-struct Ipc_TextDocumentDocumentHighlight
-    : public RequestMessage<Ipc_TextDocumentDocumentHighlight> {
-  const static IpcId kIpcId = IpcId::TextDocumentDocumentHighlight;
+MethodType kMethodType = "textDocument/documentHighlight";
+
+struct In_TextDocumentDocumentHighlight : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDocumentHighlight, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDocumentHighlight);
+MAKE_REFLECT_STRUCT(In_TextDocumentDocumentHighlight, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDocumentHighlight);
 
 struct Out_TextDocumentDocumentHighlight
     : public lsOutMessage<Out_TextDocumentDocumentHighlight> {
@@ -19,9 +20,10 @@ struct Out_TextDocumentDocumentHighlight
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentHighlight, jsonrpc, id, result);
 
-struct TextDocumentDocumentHighlightHandler
-    : BaseMessageHandler<Ipc_TextDocumentDocumentHighlight> {
-  void Run(Ipc_TextDocumentDocumentHighlight* request) override {
+struct Handler_TextDocumentDocumentHighlight
+    : BaseMessageHandler<In_TextDocumentDocumentHighlight> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentDocumentHighlight* request) override {
     QueryFileId file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
@@ -59,8 +61,8 @@ struct TextDocumentDocumentHighlightHandler
       break;
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentDocumentHighlight, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentDocumentHighlightHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentHighlight);
 }  // namespace
