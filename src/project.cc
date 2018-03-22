@@ -80,7 +80,7 @@ std::vector<std::string> kBlacklistMulti = {
 
 // Blacklisted flags which are always removed from the command line.
 std::vector<std::string> kBlacklist = {
-    "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics",
+    "-c", "-MP", "-MD", "-MMD", "--fcolor-diagnostics", "-showIncludes"
 };
 
 // Arguments which are followed by a potentially relative path. We need to make
