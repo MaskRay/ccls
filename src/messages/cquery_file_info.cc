@@ -10,7 +10,7 @@ struct lsDocumentSymbolParams {
 };
 MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument);
 
-struct In_CqueryFileInfo : public RequestMessage {
+struct In_CqueryFileInfo : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsDocumentSymbolParams params;
 };

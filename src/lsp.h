@@ -1,7 +1,7 @@
 #pragma once
 
 #include "config.h"
-#include "ipc.h"
+#include "method.h"
 #include "serializer.h"
 #include "utils.h"
 
@@ -32,13 +32,13 @@ struct MessageRegistry {
   static MessageRegistry* instance();
 
   using Allocator =
-      std::function<void(Reader& visitor, std::unique_ptr<BaseIpcMessage>*)>;
+      std::function<void(Reader& visitor, std::unique_ptr<InMessage>*)>;
   std::unordered_map<std::string, Allocator> allocators;
 
   optional<std::string> ReadMessageFromStdin(
-      std::unique_ptr<BaseIpcMessage>* message);
+      std::unique_ptr<InMessage>* message);
   optional<std::string> Parse(Reader& visitor,
-                              std::unique_ptr<BaseIpcMessage>* message);
+                              std::unique_ptr<InMessage>* message);
 };
 
 template <typename T>
@@ -47,7 +47,7 @@ struct MessageRegistryRegister {
     T dummy;
     std::string method_name = dummy.GetMethodType();
     MessageRegistry::instance()->allocators[method_name] =
-        [](Reader& visitor, std::unique_ptr<BaseIpcMessage>* message) {
+        [](Reader& visitor, std::unique_ptr<InMessage>* message) {
           *message = std::make_unique<T>();
           // Reflect may throw and *message will be partially deserialized.
           Reflect(visitor, static_cast<T&>(**message));

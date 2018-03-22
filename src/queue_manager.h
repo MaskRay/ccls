@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ipc.h"
+#include "method.h"
 #include "performance.h"
 #include "query.h"
 #include "threaded_queue.h"
@@ -94,7 +94,7 @@ class QueueManager {
   ThreadedQueue<Stdout_Request> for_stdout;
 
   // Runs on querydb thread.
-  ThreadedQueue<std::unique_ptr<BaseIpcMessage>> for_querydb;
+  ThreadedQueue<std::unique_ptr<InMessage>> for_querydb;
   ThreadedQueue<Index_DoIdMap> do_id_map;
 
   // Runs on indexer threads.

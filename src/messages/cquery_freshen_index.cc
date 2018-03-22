@@ -15,7 +15,7 @@
 namespace {
 MethodType kMethodType = "$cquery/freshenIndex";
 
-struct In_CqueryFreshenIndex : public NotificationMessage {
+struct In_CqueryFreshenIndex : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     bool dependencies = true;

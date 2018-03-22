@@ -10,7 +10,7 @@
 namespace {
 MethodType kMethodType = "textDocument/didChange";
 
-struct In_TextDocumentDidChange : public NotificationMessage {
+struct In_TextDocumentDidChange : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentDidChangeParams params;
 };

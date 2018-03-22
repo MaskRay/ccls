@@ -4,7 +4,7 @@
 namespace {
 MethodType kMethodType = "shutdown";
 
-struct In_Shutdown : public RequestMessage {
+struct In_Shutdown : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 };
 MAKE_REFLECT_STRUCT(In_Shutdown, id);

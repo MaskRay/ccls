@@ -6,7 +6,7 @@
 namespace {
 MethodType kMethodType = "workspace/executeCommand";
 
-struct In_WorkspaceExecuteCommand : public RequestMessage {
+struct In_WorkspaceExecuteCommand : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsCommand<lsCodeLensCommandArguments> params;
 };

@@ -462,7 +462,7 @@ struct lsInitializeError {
 };
 MAKE_REFLECT_STRUCT(lsInitializeError, retry);
 
-struct In_InitializeRequest : public RequestMessage {
+struct In_InitializeRequest : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   lsInitializeParams params;

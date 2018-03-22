@@ -5,28 +5,29 @@
 
 #include <string>
 
-using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
-
 using MethodType = std::string;
-
 extern const char* kMethodType_Unknown;
 extern const char* kMethodType_Exit;
 extern const char* kMethodType_TextDocumentPublishDiagnostics;
 extern const char* kMethodType_CqueryPublishInactiveRegions;
 extern const char* kMethodType_CqueryPublishSemanticHighlighting;
 
-struct BaseIpcMessage {
-  virtual ~BaseIpcMessage();
+using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
+
+struct InMessage {
+  virtual ~InMessage();
 
   virtual MethodType GetMethodType() const = 0;
-  virtual lsRequestId GetRequestId();
+  virtual lsRequestId GetRequestId() const = 0;
 };
 
-struct RequestMessage : public BaseIpcMessage {
+struct RequestInMessage : public InMessage {
   // number or string, actually no null
   lsRequestId id;
-  lsRequestId GetRequestId() override { return id; }
+  lsRequestId GetRequestId() const override;
 };
 
-// NotificationMessage does not have |id|.
-struct NotificationMessage : public BaseIpcMessage {};
+// NotificationInMessage does not have |id|.
+struct NotificationInMessage : public InMessage {
+  lsRequestId GetRequestId() const override;
+};

@@ -1,4 +1,4 @@
-#include "ipc.h"
+#include "method.h"
 
 const char* kMethodType_Unknown = "$unknown";
 const char* kMethodType_Exit = "exit";
@@ -6,8 +6,12 @@ const char* kMethodType_TextDocumentPublishDiagnostics = "textDocument/publishDi
 const char* kMethodType_CqueryPublishInactiveRegions = "$cquery/publishInactiveRegions";
 const char* kMethodType_CqueryPublishSemanticHighlighting = "$cquery/publishSemanticHighlighting";
 
-BaseIpcMessage::~BaseIpcMessage() = default;
+InMessage::~InMessage() = default;
 
-lsRequestId BaseIpcMessage::GetRequestId() {
+lsRequestId RequestInMessage::GetRequestId() const {
+  return id;
+}
+
+lsRequestId NotificationInMessage::GetRequestId() const {
   return std::monostate();
 }

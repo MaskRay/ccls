@@ -48,7 +48,7 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
   return edit;
 }
 
-struct In_TextDocumentRename : public RequestMessage {
+struct In_TextDocumentRename : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // The document to format.

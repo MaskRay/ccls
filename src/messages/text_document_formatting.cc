@@ -8,7 +8,7 @@
 namespace {
 MethodType kMethodType = "textDocument/formatting";
 
-struct In_TextDocumentFormatting : public RequestMessage {
+struct In_TextDocumentFormatting : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;

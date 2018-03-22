@@ -5,7 +5,7 @@
 namespace {
 MethodType kMethodType = "$cquery/vars";
 
-struct In_CqueryVars : public RequestMessage {
+struct In_CqueryVars : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   lsTextDocumentPositionParams params;

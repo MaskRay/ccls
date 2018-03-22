@@ -43,7 +43,7 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
   return true;
 }
 
-struct In_WorkspaceSymbol : public RequestMessage {
+struct In_WorkspaceSymbol : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     std::string query;

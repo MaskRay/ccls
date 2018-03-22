@@ -13,7 +13,7 @@ struct lsDocumentCodeLensParams {
 MAKE_REFLECT_STRUCT(lsDocumentCodeLensParams, textDocument);
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
-struct In_TextDocumentCodeLens : public RequestMessage {
+struct In_TextDocumentCodeLens : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsDocumentCodeLensParams params;
 };

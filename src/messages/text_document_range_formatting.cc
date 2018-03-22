@@ -19,7 +19,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentRangeFormattingParams,
                     range,
                     options);
 
-struct In_TextDocumentRangeFormatting : public RequestMessage {
+struct In_TextDocumentRangeFormatting : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentRangeFormattingParams params;
 };

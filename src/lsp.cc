@@ -123,7 +123,7 @@ optional<char> ReadCharFromStdinBlocking() {
 }
 
 optional<std::string> MessageRegistry::ReadMessageFromStdin(
-    std::unique_ptr<BaseIpcMessage>* message) {
+    std::unique_ptr<InMessage>* message) {
   optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
@@ -141,7 +141,7 @@ optional<std::string> MessageRegistry::ReadMessageFromStdin(
 
 optional<std::string> MessageRegistry::Parse(
     Reader& visitor,
-    std::unique_ptr<BaseIpcMessage>* message) {
+    std::unique_ptr<InMessage>* message) {
   if (!visitor.HasMember("jsonrpc") ||
       std::string(visitor["jsonrpc"]->GetString()) != "2.0") {
     LOG_S(FATAL) << "Bad or missing jsonrpc version";

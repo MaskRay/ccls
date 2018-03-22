@@ -5,7 +5,7 @@
 namespace {
 MethodType kMethodType = "$cquery/textDocumentDidView";
 
-struct In_CqueryTextDocumentDidView : public NotificationMessage {
+struct In_CqueryTextDocumentDidView : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsDocumentUri textDocumentUri;

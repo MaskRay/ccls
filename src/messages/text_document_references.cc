@@ -7,7 +7,7 @@
 namespace {
 MethodType kMethodType = "textDocument/references";
 
-struct In_TextDocumentReferences : public RequestMessage {
+struct In_TextDocumentReferences : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct lsReferenceContext {
     // Include the declaration of the current symbol.

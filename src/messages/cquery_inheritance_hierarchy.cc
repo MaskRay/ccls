@@ -5,7 +5,7 @@
 namespace {
 MethodType kMethodType = "$cquery/inheritanceHierarchy";
 
-struct In_CqueryInheritanceHierarchy : public RequestMessage {
+struct In_CqueryInheritanceHierarchy : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // If id+kind are specified, expand a node; otherwise textDocument+position

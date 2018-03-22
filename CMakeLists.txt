@@ -17,7 +17,7 @@ add_executable(cquery "")
 ### Compile options
 
 # CMake default compile flags:
-# MSVC + Clang(Windows):  
+# MSVC + Clang(Windows):
 #   debug: /MDd /Zi /Ob0 /Od /RTC1
 #   release: /MD /O2 /Ob2 /DNDEBUG
 # GCC + Clang(Linux):
@@ -32,15 +32,15 @@ set_property(TARGET cquery PROPERTY CXX_EXTENSIONS OFF)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   # Common MSVC/Clang(Windows) options
-  target_compile_options(cquery PRIVATE 
-                         /nologo 
-                         /EHsc 
+  target_compile_options(cquery PRIVATE
+                         /nologo
+                         /EHsc
                          /W3 # roughly -Wall
                          /wd4996 # disable loguru unsafe warnings
-                         /wd4722 # ignores warning C4722 
+                         /wd4722 # ignores warning C4722
                                  # (destructor never returns) in loguru
-                         /wd4267 # ignores warning C4267 
-                                 # (conversion from 'size_t' to 'type'), 
+                         /wd4267 # ignores warning C4267
+                                 # (conversion from 'size_t' to 'type'),
                                  # roughly -Wno-sign-compare
                          /wd4800
                          $<$<CONFIG:Debug>:/FS>
@@ -48,8 +48,8 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 else()
   # Common GCC/Clang(Linux) options
   target_compile_options(cquery PRIVATE
-                         -Wall 
-                         -Wno-sign-compare 
+                         -Wall
+                         -Wno-sign-compare
                          )
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
@@ -57,14 +57,14 @@ else()
   endif()
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
-    target_compile_options(cquery PRIVATE 
+    target_compile_options(cquery PRIVATE
                            $<$<CONFIG:Debug>:-fno-limit-debug-info>)
   endif()
 
   if(CLANG_CXX)
     # -Wno-comment: include/clang/Format/Format.h error: multi-line comment
     # -fno-rtti: # Without -fno-rtti, some Clang C++ functions may report
-    # `undefined references to typeinfo` 
+    # `undefined references to typeinfo`
     target_compile_options(cquery PRIVATE -Wno-comment -fno-rtti)
   endif()
 
@@ -148,21 +148,21 @@ install(TARGETS cquery RUNTIME DESTINATION bin)
 if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
   if(${CMAKE_SYSTEM_NAME} MATCHES Linux|FreeBSD)
-    set_property(TARGET cquery APPEND PROPERTY 
+    set_property(TARGET cquery APPEND PROPERTY
                  INSTALL_RPATH $ORIGIN/../lib)
   elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-    set_property(TARGET cquery APPEND PROPERTY 
-                 INSTALL_RPATH @loader_path/../lib)  
+    set_property(TARGET cquery APPEND PROPERTY
+                 INSTALL_RPATH @loader_path/../lib)
   endif()
 
-  file(GLOB LIBCLANG_PLUS_SYMLINKS 
+  file(GLOB LIBCLANG_PLUS_SYMLINKS
        ${DOWNLOADED_CLANG_DIR}/lib/libclang.[so,dylib]*)
   install(FILES ${LIBCLANG_PLUS_SYMLINKS} DESTINATION lib)
 endif()
 
 ### Sources
 
-target_sources(cquery PRIVATE third_party/siphash.cc)           
+target_sources(cquery PRIVATE third_party/siphash.cc)
 
 target_sources(cquery PRIVATE
                src/cache_manager.cc
@@ -183,7 +183,7 @@ target_sources(cquery PRIVATE
                src/import_manager.cc
                src/import_pipeline.cc
                src/include_complete.cc
-               src/ipc.cc
+               src/method.cc
                src/lex_utils.cc
                src/lsp_diagnostic.cc
                src/lsp.cc

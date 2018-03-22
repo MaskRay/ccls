@@ -42,7 +42,7 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
   return {"", ""};
 }
 
-struct In_TextDocumentHover : public RequestMessage {
+struct In_TextDocumentHover : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
