@@ -6,7 +6,7 @@
 namespace {
 MethodType kMethodType = "textDocument/documentHighlight";
 
-struct In_TextDocumentDocumentHighlight : public RequestMessage {
+struct In_TextDocumentDocumentHighlight : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };

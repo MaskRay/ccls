@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.h"
+#include "method.h"
 
 #include <optional.h>
 #include <sparsepp/spp.h>
@@ -11,8 +12,6 @@
 #include <string>
 #include <vector>
 
-// FIXME ipc.h
-using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
 class QueueManager;
 struct WorkingFiles;
 

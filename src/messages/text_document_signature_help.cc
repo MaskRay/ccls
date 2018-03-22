@@ -9,7 +9,7 @@
 namespace {
 MethodType kMethodType = "textDocument/signatureHelp";
 
-struct In_TextDocumentSignatureHelp : public RequestMessage {
+struct In_TextDocumentSignatureHelp : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
@@ -86,7 +86,7 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentSignatureHelp, jsonrpc, id, result);
 struct Handler_TextDocumentSignatureHelp : MessageHandler {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(std::unique_ptr<BaseIpcMessage> message) override {
+  void Run(std::unique_ptr<InMessage> message) override {
     auto request = static_cast<In_TextDocumentSignatureHelp*>(message.get());
     lsTextDocumentPositionParams& params = request->params;
     WorkingFile* file =
@@ -103,7 +103,7 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
       return;
 
     ClangCompleteManager::OnComplete callback = std::bind(
-        [this](BaseIpcMessage* message, std::string search, int active_param,
+        [this](InMessage* message, std::string search, int active_param,
                const std::vector<lsCompletionItem>& results,
                bool is_cached_result) {
           auto msg = static_cast<In_TextDocumentSignatureHelp*>(message);

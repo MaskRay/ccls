@@ -137,7 +137,7 @@ bool QueryDbMainLoop(Config* config,
                      CodeCompleteCache* non_global_code_complete_cache,
                      CodeCompleteCache* signature_cache) {
   auto* queue = QueueManager::instance();
-  std::vector<std::unique_ptr<BaseIpcMessage>> messages =
+  std::vector<std::unique_ptr<InMessage>> messages =
       queue->for_querydb.DequeueAll();
   bool did_work = messages.size();
   for (auto& message : messages) {
@@ -281,7 +281,7 @@ void LaunchStdinLoop(Config* config,
   WorkThread::StartThread("stdin", [request_times]() {
     auto* queue = QueueManager::instance();
     while (true) {
-      std::unique_ptr<BaseIpcMessage> message;
+      std::unique_ptr<InMessage> message;
       optional<std::string> err =
           MessageRegistry::instance()->ReadMessageFromStdin(&message);
 

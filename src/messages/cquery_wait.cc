@@ -8,7 +8,7 @@
 namespace {
 MethodType kMethodType = "$cquery/wait";
 
-struct In_CqueryWait : public NotificationMessage {
+struct In_CqueryWait : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 };
 MAKE_REFLECT_EMPTY_STRUCT(In_CqueryWait);
@@ -17,7 +17,7 @@ REGISTER_IN_MESSAGE(In_CqueryWait);
 struct Handler_CqueryWait : MessageHandler {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(std::unique_ptr<BaseIpcMessage> request) override {
+  void Run(std::unique_ptr<InMessage> request) override {
     // TODO: use status message system here, then run querydb as normal? Maybe
     // this cannot be a normal message, ie, it needs to be re-entrant.
 

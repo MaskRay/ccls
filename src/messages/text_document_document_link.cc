@@ -8,7 +8,7 @@
 namespace {
 MethodType kMethodType = "textDocument/documentLink";
 
-struct In_TextDocumentDocumentLink : public RequestMessage {
+struct In_TextDocumentDocumentLink : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // The document to provide document links for.

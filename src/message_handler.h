@@ -1,7 +1,7 @@
 #pragma once
 
-#include "ipc.h"
 #include "lsp.h"
+#include "method.h"
 #include "query.h"
 
 #include <optional.h>
@@ -87,7 +87,7 @@ struct MessageHandler {
   CodeCompleteCache* signature_cache = nullptr;
 
   virtual MethodType GetMethodType() const = 0;
-  virtual void Run(std::unique_ptr<BaseIpcMessage> message) = 0;
+  virtual void Run(std::unique_ptr<InMessage> message) = 0;
 
   static std::vector<MessageHandler*>* message_handlers;
 
@@ -100,7 +100,7 @@ struct BaseMessageHandler : MessageHandler {
   virtual void Run(TMessage* message) = 0;
 
   // MessageHandler:
-  void Run(std::unique_ptr<BaseIpcMessage> message) override {
+  void Run(std::unique_ptr<InMessage> message) override {
     Run(static_cast<TMessage*>(message.get()));
   }
 };

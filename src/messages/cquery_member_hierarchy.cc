@@ -5,7 +5,7 @@
 namespace {
 MethodType kMethodType = "$cquery/memberHierarchy";
 
-struct In_CqueryMemberHierarchy : public RequestMessage {
+struct In_CqueryMemberHierarchy : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   struct Params {

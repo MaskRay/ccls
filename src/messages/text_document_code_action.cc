@@ -257,7 +257,7 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
   return nullopt;
 }
 
-struct In_TextDocumentCodeAction : public RequestMessage {
+struct In_TextDocumentCodeAction : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   // Contains additional diagnostic information about the context in which

@@ -48,7 +48,7 @@ struct lsCompletionParams : lsTextDocumentPositionParams {
 };
 MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
 
-struct In_TextDocumentComplete : public RequestMessage {
+struct In_TextDocumentComplete : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsCompletionParams params;
 };
@@ -219,7 +219,7 @@ void FilterAndSortCompletionResponse(
 struct Handler_TextDocumentCompletion : MessageHandler {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(std::unique_ptr<BaseIpcMessage> message) override {
+  void Run(std::unique_ptr<InMessage> message) override {
     auto request = std::shared_ptr<In_TextDocumentComplete>(
         static_cast<In_TextDocumentComplete*>(message.release()));
 

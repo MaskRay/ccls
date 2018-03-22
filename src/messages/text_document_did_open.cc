@@ -13,7 +13,7 @@ namespace {
 MethodType kMethodType = "textDocument/didOpen";
 
 // Open, view, change, close file
-struct In_TextDocumentDidOpen : public NotificationMessage {
+struct In_TextDocumentDidOpen : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   
   struct Params {

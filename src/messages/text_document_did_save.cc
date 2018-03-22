@@ -9,7 +9,7 @@
 namespace {
 MethodType kMethodType = "textDocument/didSave";
 
-struct In_TextDocumentDidSave : public NotificationMessage {
+struct In_TextDocumentDidSave : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   struct Params {

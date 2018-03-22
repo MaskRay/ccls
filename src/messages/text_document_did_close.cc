@@ -6,7 +6,7 @@
 namespace {
 MethodType kMethodType = "textDocument/didClose";
 
-struct In_TextDocumentDidClose : public NotificationMessage {
+struct In_TextDocumentDidClose : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsTextDocumentIdentifier textDocument;

@@ -5,7 +5,7 @@
 namespace {
 MethodType kMethodType = "textDocument/typeDefinition";
 
-struct In_TextDocumentTypeDefinition : public RequestMessage {
+struct In_TextDocumentTypeDefinition : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };

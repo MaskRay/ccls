@@ -9,7 +9,7 @@
 namespace {
 MethodType kMethodType = "$cquery/random";
 
-struct In_CqueryRandom : public RequestMessage {
+struct In_CqueryRandom : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 };
 MAKE_REFLECT_STRUCT(In_CqueryRandom, id);

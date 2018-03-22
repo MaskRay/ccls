@@ -8,7 +8,7 @@
 namespace {
 MethodType kMethodType = "$cquery/indexFile";
 
-struct In_CqueryIndexFile : public NotificationMessage {
+struct In_CqueryIndexFile : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     std::string path;

@@ -28,7 +28,7 @@ struct lsDidChangeWatchedFilesParams {
 };
 MAKE_REFLECT_STRUCT(lsDidChangeWatchedFilesParams, changes);
 
-struct In_WorkspaceDidChangeWatchedFiles : public NotificationMessage {
+struct In_WorkspaceDidChangeWatchedFiles : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsDidChangeWatchedFilesParams params;
 };

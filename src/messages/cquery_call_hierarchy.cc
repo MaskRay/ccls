@@ -20,7 +20,7 @@ bool operator&(CallType lhs, CallType rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
 }
 
-struct In_CqueryCallHierarchy : public RequestMessage {
+struct In_CqueryCallHierarchy : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   struct Params {

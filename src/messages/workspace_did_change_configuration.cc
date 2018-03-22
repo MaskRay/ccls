@@ -16,7 +16,7 @@ struct lsDidChangeConfigurationParams {
 };
 MAKE_REFLECT_STRUCT(lsDidChangeConfigurationParams, placeholder);
 
-struct In_WorkspaceDidChangeConfiguration : public NotificationMessage {
+struct In_WorkspaceDidChangeConfiguration : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsDidChangeConfigurationParams params;
 };
