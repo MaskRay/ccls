@@ -3,6 +3,7 @@
 #include "queue_manager.h"
 
 namespace {
+MethodType kMethodType = "textDocument/hover";
 
 std::pair<std::string_view, std::string_view> GetCommentsAndHover(
     QueryDatabase* db,
@@ -41,12 +42,12 @@ std::pair<std::string_view, std::string_view> GetCommentsAndHover(
   return {"", ""};
 }
 
-struct Ipc_TextDocumentHover : public RequestMessage<Ipc_TextDocumentHover> {
-  const static IpcId kIpcId = IpcId::TextDocumentHover;
+struct In_TextDocumentHover : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentHover, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentHover);
+MAKE_REFLECT_STRUCT(In_TextDocumentHover, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentHover);
 
 struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   struct Result {
@@ -73,8 +74,9 @@ void Reflect(Writer& visitor, Out_TextDocumentHover& value) {
   REFLECT_MEMBER_END();
 }
 
-struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
-  void Run(Ipc_TextDocumentHover* request) override {
+struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentHover* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -111,8 +113,8 @@ struct TextDocumentHoverHandler : BaseMessageHandler<Ipc_TextDocumentHover> {
       }
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentHover, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentHoverHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentHover);
 }  // namespace

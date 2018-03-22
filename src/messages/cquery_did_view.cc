@@ -3,21 +3,23 @@
 #include "working_files.h"
 
 namespace {
-struct Ipc_CqueryTextDocumentDidView
-    : public NotificationMessage<Ipc_CqueryTextDocumentDidView> {
-  const static IpcId kIpcId = IpcId::CqueryTextDocumentDidView;
+MethodType kMethodType = "$cquery/textDocumentDidView";
+
+struct In_CqueryTextDocumentDidView : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     lsDocumentUri textDocumentUri;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView::Params, textDocumentUri);
-MAKE_REFLECT_STRUCT(Ipc_CqueryTextDocumentDidView, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryTextDocumentDidView);
+MAKE_REFLECT_STRUCT(In_CqueryTextDocumentDidView::Params, textDocumentUri);
+MAKE_REFLECT_STRUCT(In_CqueryTextDocumentDidView, params);
+REGISTER_IN_MESSAGE(In_CqueryTextDocumentDidView);
 
-struct CqueryDidViewHandler
-    : BaseMessageHandler<Ipc_CqueryTextDocumentDidView> {
-  void Run(Ipc_CqueryTextDocumentDidView* request) override {
+struct Handler_CqueryDidView
+    : BaseMessageHandler<In_CqueryTextDocumentDidView> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_CqueryTextDocumentDidView* request) override {
     std::string path = request->params.textDocumentUri.GetPath();
 
     WorkingFile* working_file = working_files->GetFileByFilename(path);
@@ -34,5 +36,5 @@ struct CqueryDidViewHandler
     }
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryDidViewHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryDidView);
 }  // namespace

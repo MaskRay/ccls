@@ -99,7 +99,7 @@ bool FindFileOrFail(QueryDatabase* db,
       out.error.code = lsErrorCodes::InternalError;
       out.error.message = "Unable to find file " + absolute_path;
     }
-    QueueManager::WriteStdout(IpcId::Unknown, out);
+    QueueManager::WriteStdout(kMethodType_Unknown, out);
   }
 
   return false;
@@ -114,7 +114,7 @@ void EmitInactiveLines(WorkingFile* working_file,
     if (ls_skipped)
       out.params.inactiveRegions.push_back(*ls_skipped);
   }
-  QueueManager::WriteStdout(IpcId::CqueryPublishInactiveRegions, out);
+  QueueManager::WriteStdout(kMethodType_CqueryPublishInactiveRegions, out);
 }
 
 void EmitSemanticHighlighting(QueryDatabase* db,
@@ -277,7 +277,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   for (auto& entry : grouped_symbols)
     if (entry.second.ranges.size())
       out.params.symbols.push_back(entry.second);
-  QueueManager::WriteStdout(IpcId::CqueryPublishSemanticHighlighting, out);
+  QueueManager::WriteStdout(kMethodType_CqueryPublishSemanticHighlighting, out);
 }
 
 bool ShouldIgnoreFileForIndexing(const std::string& path) {

@@ -5,9 +5,10 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_TextDocumentReferences
-    : public RequestMessage<Ipc_TextDocumentReferences> {
-  const static IpcId kIpcId = IpcId::TextDocumentReferences;
+MethodType kMethodType = "textDocument/references";
+
+struct In_TextDocumentReferences : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct lsReferenceContext {
     // Include the declaration of the current symbol.
     bool includeDeclaration;
@@ -22,15 +23,15 @@ struct Ipc_TextDocumentReferences
 
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::lsReferenceContext,
+MAKE_REFLECT_STRUCT(In_TextDocumentReferences::lsReferenceContext,
                     includeDeclaration,
                     role);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences::Params,
+MAKE_REFLECT_STRUCT(In_TextDocumentReferences::Params,
                     textDocument,
                     position,
                     context);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentReferences, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentReferences);
+MAKE_REFLECT_STRUCT(In_TextDocumentReferences, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentReferences);
 
 struct Out_TextDocumentReferences
     : public lsOutMessage<Out_TextDocumentReferences> {
@@ -39,9 +40,11 @@ struct Out_TextDocumentReferences
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentReferences, jsonrpc, id, result);
 
-struct TextDocumentReferencesHandler
-    : BaseMessageHandler<Ipc_TextDocumentReferences> {
-  void Run(Ipc_TextDocumentReferences* request) override {
+struct Handler_TextDocumentReferences
+    : BaseMessageHandler<In_TextDocumentReferences> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_TextDocumentReferences* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -93,8 +96,8 @@ struct TextDocumentReferencesHandler
 
     if ((int)out.result.size() >= config->xref.maxNum)
       out.result.resize(config->xref.maxNum);
-    QueueManager::WriteStdout(IpcId::TextDocumentReferences, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentReferencesHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentReferences);
 }  // namespace

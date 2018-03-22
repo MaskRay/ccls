@@ -3,14 +3,14 @@
 #include "queue_manager.h"
 
 namespace {
+MethodType kMethodType = "textDocument/typeDefinition";
 
-struct Ipc_TextDocumentTypeDefinition
-    : public RequestMessage<Ipc_TextDocumentTypeDefinition> {
-  const static IpcId kIpcId = IpcId::TextDocumentTypeDefinition;
+struct In_TextDocumentTypeDefinition : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentTypeDefinition, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentTypeDefinition);
+MAKE_REFLECT_STRUCT(In_TextDocumentTypeDefinition, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentTypeDefinition);
 
 struct Out_TextDocumentTypeDefinition
     : public lsOutMessage<Out_TextDocumentTypeDefinition> {
@@ -19,9 +19,10 @@ struct Out_TextDocumentTypeDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentTypeDefinition, jsonrpc, id, result);
 
-struct TextDocumentTypeDefinitionHandler
-    : BaseMessageHandler<Ipc_TextDocumentTypeDefinition> {
-  void Run(Ipc_TextDocumentTypeDefinition* request) override {
+struct Handler_TextDocumentTypeDefinition
+    : BaseMessageHandler<In_TextDocumentTypeDefinition> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentTypeDefinition* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
@@ -59,9 +60,9 @@ struct TextDocumentTypeDefinitionHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentTypeDefinition, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentTypeDefinitionHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentTypeDefinition);
 
 }  // namespace

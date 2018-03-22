@@ -3,9 +3,11 @@
 #include "queue_manager.h"
 
 namespace {
-struct Ipc_CqueryMemberHierarchy
-    : public RequestMessage<Ipc_CqueryMemberHierarchy> {
-  const static IpcId kIpcId = IpcId::CqueryMemberHierarchy;
+MethodType kMethodType = "$cquery/memberHierarchy";
+
+struct In_CqueryMemberHierarchy : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   struct Params {
     // If id is specified, expand a node; otherwise textDocument+position should
     // be specified for building the root and |levels| of nodes below.
@@ -20,14 +22,14 @@ struct Ipc_CqueryMemberHierarchy
   Params params;
 };
 
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchy::Params,
+MAKE_REFLECT_STRUCT(In_CqueryMemberHierarchy::Params,
                     textDocument,
                     position,
                     id,
                     detailedName,
                     levels);
-MAKE_REFLECT_STRUCT(Ipc_CqueryMemberHierarchy, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryMemberHierarchy);
+MAKE_REFLECT_STRUCT(In_CqueryMemberHierarchy, id, params);
+REGISTER_IN_MESSAGE(In_CqueryMemberHierarchy);
 
 struct Out_CqueryMemberHierarchy
     : public lsOutMessage<Out_CqueryMemberHierarchy> {
@@ -158,8 +160,10 @@ bool Expand(MessageHandler* m,
   return true;
 }
 
-struct CqueryMemberHierarchyHandler
-    : BaseMessageHandler<Ipc_CqueryMemberHierarchy> {
+struct Handler_CqueryMemberHierarchy
+    : BaseMessageHandler<In_CqueryMemberHierarchy> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   optional<Out_CqueryMemberHierarchy::Entry> BuildInitial(QueryFuncId root_id,
                                                           bool detailed_name,
                                                           int levels) {
@@ -202,7 +206,7 @@ struct CqueryMemberHierarchyHandler
     return entry;
   }
 
-  void Run(Ipc_CqueryMemberHierarchy* request) override {
+  void Run(In_CqueryMemberHierarchy* request) override {
     const auto& params = request->params;
     Out_CqueryMemberHierarchy out;
     out.id = request->id;
@@ -246,9 +250,9 @@ struct CqueryMemberHierarchyHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::CqueryMemberHierarchy, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryMemberHierarchyHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryMemberHierarchy);
 
 }  // namespace

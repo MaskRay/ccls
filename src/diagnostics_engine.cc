@@ -30,6 +30,6 @@ void DiagnosticsEngine::Publish(WorkingFiles* working_files,
     Out_TextDocumentPublishDiagnostics out;
     out.params.uri = lsDocumentUri::FromPath(path);
     out.params.diagnostics = diagnostics;
-    QueueManager::WriteStdout(IpcId::TextDocumentPublishDiagnostics, out);
+    QueueManager::WriteStdout(kMethodType_TextDocumentPublishDiagnostics, out);
   }
 }

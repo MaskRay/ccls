@@ -8,14 +8,14 @@
 #include <cstdlib>
 
 namespace {
+MethodType kMethodType = "textDocument/definition";
 
-struct Ipc_TextDocumentDefinition
-    : public RequestMessage<Ipc_TextDocumentDefinition> {
-  const static IpcId kIpcId = IpcId::TextDocumentDefinition;
+struct In_TextDocumentDefinition : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentDefinition, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentDefinition);
+MAKE_REFLECT_STRUCT(In_TextDocumentDefinition, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentDefinition);
 
 struct Out_TextDocumentDefinition
     : public lsOutMessage<Out_TextDocumentDefinition> {
@@ -46,9 +46,10 @@ std::vector<Use> GetNonDefDeclarationTargets(QueryDatabase* db, SymbolRef sym) {
   }
 }
 
-struct TextDocumentDefinitionHandler
-    : BaseMessageHandler<Ipc_TextDocumentDefinition> {
-  void Run(Ipc_TextDocumentDefinition* request) override {
+struct Handler_TextDocumentDefinition
+    : BaseMessageHandler<In_TextDocumentDefinition> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentDefinition* request) override {
     QueryFileId file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
@@ -165,8 +166,8 @@ struct TextDocumentDefinitionHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentDefinition, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentDefinitionHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDefinition);
 }  // namespace

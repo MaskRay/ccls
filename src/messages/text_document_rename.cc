@@ -3,6 +3,7 @@
 #include "queue_manager.h"
 
 namespace {
+MethodType kMethodType = "textDocument/rename";
 
 lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
                                    WorkingFiles* working_files,
@@ -47,8 +48,8 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
   return edit;
 }
 
-struct Ipc_TextDocumentRename : public RequestMessage<Ipc_TextDocumentRename> {
-  const static IpcId kIpcId = IpcId::TextDocumentRename;
+struct In_TextDocumentRename : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     // The document to format.
     lsTextDocumentIdentifier textDocument;
@@ -63,12 +64,12 @@ struct Ipc_TextDocumentRename : public RequestMessage<Ipc_TextDocumentRename> {
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename::Params,
+MAKE_REFLECT_STRUCT(In_TextDocumentRename::Params,
                     textDocument,
                     position,
                     newName);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentRename, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentRename);
+MAKE_REFLECT_STRUCT(In_TextDocumentRename, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentRename);
 
 struct Out_TextDocumentRename : public lsOutMessage<Out_TextDocumentRename> {
   lsRequestId id;
@@ -76,8 +77,9 @@ struct Out_TextDocumentRename : public lsOutMessage<Out_TextDocumentRename> {
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
 
-struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
-  void Run(Ipc_TextDocumentRename* request) override {
+struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentRename* request) override {
     QueryFileId file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
@@ -100,8 +102,8 @@ struct TextDocumentRenameHandler : BaseMessageHandler<Ipc_TextDocumentRename> {
       break;
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentRename, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentRenameHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentRename);
 }  // namespace

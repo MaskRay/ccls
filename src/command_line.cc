@@ -57,19 +57,14 @@ namespace {
 std::vector<std::string> kEmptyArgs;
 
 // This function returns true if e2e timing should be displayed for the given
-// IpcId.
-bool ShouldDisplayIpcTiming(IpcId id) {
-  switch (id) {
-    case IpcId::TextDocumentPublishDiagnostics:
-    case IpcId::CqueryPublishInactiveRegions:
-    case IpcId::Unknown:
-      return false;
-    default:
-      return true;
-  }
+// MethodId.
+bool ShouldDisplayMethodTiming(MethodType type) {
+  return
+    type != kMethodType_TextDocumentPublishDiagnostics &&
+    type != kMethodType_CqueryPublishInactiveRegions &&
+    type != kMethodType_Unknown;
+  return true;
 }
-
-REGISTER_IPC_MESSAGE(Ipc_CancelRequest);
 
 void PrintHelp() {
   std::cout
@@ -146,16 +141,16 @@ bool QueryDbMainLoop(Config* config,
       queue->for_querydb.DequeueAll();
   bool did_work = messages.size();
   for (auto& message : messages) {
+    // TODO: Consider using std::unordered_map to lookup the handler
     for (MessageHandler* handler : *MessageHandler::message_handlers) {
-      if (handler->GetId() == message->method_id) {
+      if (handler->GetMethodType() == message->GetMethodType()) {
         handler->Run(std::move(message));
         break;
       }
     }
 
     if (message) {
-      LOG_S(FATAL) << "Exiting; unhandled IPC message "
-                   << IpcIdToString(message->method_id);
+      LOG_S(FATAL) << "Exiting; no handler for " << message->GetMethodType();
       exit(1);
     }
   }
@@ -199,7 +194,7 @@ void RunQueryDbThread(const std::string& bin_name,
           out.error.message =
               "Dropping completion request; a newer request "
               "has come in that will be serviced instead.";
-          QueueManager::WriteStdout(IpcId::Unknown, out);
+          QueueManager::WriteStdout(kMethodType_Unknown, out);
         }
       });
 
@@ -278,7 +273,7 @@ void RunQueryDbThread(const std::string& bin_name,
 //
 // |ipc| is connected to a server.
 void LaunchStdinLoop(Config* config,
-                     std::unordered_map<IpcId, Timer>* request_times) {
+                     std::unordered_map<MethodType, Timer>* request_times) {
   // If flushing cin requires flushing cout there could be deadlocks in some
   // clients.
   std::cin.tie(nullptr);
@@ -301,47 +296,28 @@ void LaunchStdinLoop(Config* config,
             out.id = id;
             out.error.code = lsErrorCodes::InvalidParams;
             out.error.message = std::move(*err);
-            queue->WriteStdout(IpcId::Unknown, out);
+            queue->WriteStdout(kMethodType_Unknown, out);
           }
         }
         continue;
       }
 
       // Cache |method_id| so we can access it after moving |message|.
-      IpcId method_id = message->method_id;
-      (*request_times)[method_id] = Timer();
+      MethodType method_type = message->GetMethodType();
+      (*request_times)[method_type] = Timer();
 
-      switch (method_id) {
-        case IpcId::Initialized: {
-          // TODO: don't send output until we get this notification
-          break;
-        }
-
-        case IpcId::CancelRequest: {
-          // TODO: support cancellation
-          break;
-        }
-
-        case IpcId::Exit:
-#define CASE(name, method) case IpcId::name:
-#include "methods.inc"
-#undef CASE
-          queue->for_querydb.PushBack(std::move(message));
-          break;
-
-        case IpcId::Unknown:
-          break;
-      }
+      LOG_S(ERROR) << "!! Got message of type " << method_type;
+      queue->for_querydb.PushBack(std::move(message));
 
       // If the message was to exit then querydb will take care of the actual
       // exit. Stop reading from stdin since it might be detached.
-      if (method_id == IpcId::Exit)
+      if (method_type == kMethodType_Exit)
         break;
     }
   });
 }
 
-void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
+void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
                         MultiQueueWaiter* waiter) {
   WorkThread::StartThread("stdout", [=]() {
     auto* queue = QueueManager::instance();
@@ -354,10 +330,9 @@ void LaunchStdoutThread(std::unordered_map<IpcId, Timer>* request_times,
       }
 
       for (auto& message : messages) {
-        if (ShouldDisplayIpcTiming(message.id)) {
-          Timer time = (*request_times)[message.id];
-          time.ResetAndPrint("[e2e] Running " +
-                             std::string(IpcIdToString(message.id)));
+        if (ShouldDisplayMethodTiming(message.method)) {
+          Timer time = (*request_times)[message.method];
+          time.ResetAndPrint("[e2e] Running " + std::string(message.method));
         }
 
         RecordOutput(message.content);
@@ -374,7 +349,7 @@ void LanguageServerMain(const std::string& bin_name,
                         MultiQueueWaiter* querydb_waiter,
                         MultiQueueWaiter* indexer_waiter,
                         MultiQueueWaiter* stdout_waiter) {
-  std::unordered_map<IpcId, Timer> request_times;
+  std::unordered_map<MethodType, Timer> request_times;
 
   LaunchStdinLoop(config, &request_times);
 

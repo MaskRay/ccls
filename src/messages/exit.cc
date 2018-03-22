@@ -3,19 +3,19 @@
 #include <loguru.hpp>
 
 namespace {
-struct Ipc_Exit : public NotificationMessage<Ipc_Exit> {
-  static const IpcId kIpcId = IpcId::Exit;
+struct In_Exit : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType_Exit; }
 };
-MAKE_REFLECT_EMPTY_STRUCT(Ipc_Exit);
-REGISTER_IPC_MESSAGE(Ipc_Exit);
+MAKE_REFLECT_EMPTY_STRUCT(In_Exit);
+REGISTER_IN_MESSAGE(In_Exit);
 
-struct ExitHandler : MessageHandler {
-  IpcId GetId() const override { return IpcId::Exit; }
+struct Handler_Exit : MessageHandler {
+  MethodType GetMethodType() const override { return kMethodType_Exit; }
 
   void Run(std::unique_ptr<BaseIpcMessage> request) override {
-    LOG_S(INFO) << "Exiting; got IpcId::Exit";
+    LOG_S(INFO) << "Exiting; got exit message";
     exit(0);
   }
 };
-REGISTER_MESSAGE_HANDLER(ExitHandler);
+REGISTER_MESSAGE_HANDLER(Handler_Exit);
 }  // namespace

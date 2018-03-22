@@ -11,7 +11,7 @@ struct ICacheManager;
 struct lsBaseOutMessage;
 
 struct Stdout_Request {
-  IpcId id;
+  MethodType method;
   std::string content;
 };
 
@@ -86,7 +86,7 @@ class QueueManager {
   static void Init(MultiQueueWaiter* querydb_waiter,
                    MultiQueueWaiter* indexer_waiter,
                    MultiQueueWaiter* stdout_waiter);
-  static void WriteStdout(IpcId id, lsBaseOutMessage& response);
+  static void WriteStdout(MethodType method, lsBaseOutMessage& response);
 
   bool HasWork();
 

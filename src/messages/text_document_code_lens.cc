@@ -5,19 +5,20 @@
 #include "queue_manager.h"
 
 namespace {
+MethodType kMethodType = "textDocument/codeLens";
+
 struct lsDocumentCodeLensParams {
   lsTextDocumentIdentifier textDocument;
 };
 MAKE_REFLECT_STRUCT(lsDocumentCodeLensParams, textDocument);
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
-struct Ipc_TextDocumentCodeLens
-    : public RequestMessage<Ipc_TextDocumentCodeLens> {
-  const static IpcId kIpcId = IpcId::TextDocumentCodeLens;
+struct In_TextDocumentCodeLens : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsDocumentCodeLensParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeLens, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeLens);
+MAKE_REFLECT_STRUCT(In_TextDocumentCodeLens, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentCodeLens);
 
 struct Out_TextDocumentCodeLens
     : public lsOutMessage<Out_TextDocumentCodeLens> {
@@ -81,9 +82,10 @@ void AddCodeLens(const char* singular,
     common->result->push_back(code_lens);
 }
 
-struct TextDocumentCodeLensHandler
-    : BaseMessageHandler<Ipc_TextDocumentCodeLens> {
-  void Run(Ipc_TextDocumentCodeLens* request) override {
+struct Handler_TextDocumentCodeLens
+    : BaseMessageHandler<In_TextDocumentCodeLens> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_TextDocumentCodeLens* request) override {
     Out_TextDocumentCodeLens out;
     out.id = request->id;
 
@@ -225,8 +227,8 @@ struct TextDocumentCodeLensHandler
       };
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentCodeLens, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentCodeLensHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeLens);
 }  // namespace

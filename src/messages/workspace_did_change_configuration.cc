@@ -9,22 +9,24 @@
 #include <loguru.hpp>
 
 namespace {
+MethodType kMethodType = "workspace/didChangeConfiguration";
+
 struct lsDidChangeConfigurationParams {
   bool placeholder;
 };
 MAKE_REFLECT_STRUCT(lsDidChangeConfigurationParams, placeholder);
 
-struct Ipc_WorkspaceDidChangeConfiguration
-    : public NotificationMessage<Ipc_WorkspaceDidChangeConfiguration> {
-  const static IpcId kIpcId = IpcId::WorkspaceDidChangeConfiguration;
+struct In_WorkspaceDidChangeConfiguration : public NotificationMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsDidChangeConfigurationParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_WorkspaceDidChangeConfiguration, params);
-REGISTER_IPC_MESSAGE(Ipc_WorkspaceDidChangeConfiguration);
+MAKE_REFLECT_STRUCT(In_WorkspaceDidChangeConfiguration, params);
+REGISTER_IN_MESSAGE(In_WorkspaceDidChangeConfiguration);
 
-struct WorkspaceDidChangeConfigurationHandler
-    : BaseMessageHandler<Ipc_WorkspaceDidChangeConfiguration> {
-  void Run(Ipc_WorkspaceDidChangeConfiguration* request) override {
+struct Handler_WorkspaceDidChangeConfiguration
+    : BaseMessageHandler<In_WorkspaceDidChangeConfiguration> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_WorkspaceDidChangeConfiguration* request) override {
     Timer time;
     project->Load(config, config->projectRoot);
     time.ResetAndPrint("[perf] Loaded compilation entries (" +
@@ -40,5 +42,5 @@ struct WorkspaceDidChangeConfigurationHandler
     LOG_S(INFO) << "Flushed all clang complete sessions";
   }
 };
-REGISTER_MESSAGE_HANDLER(WorkspaceDidChangeConfigurationHandler);
+REGISTER_MESSAGE_HANDLER(Handler_WorkspaceDidChangeConfiguration);
 }  // namespace

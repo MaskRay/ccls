@@ -7,48 +7,26 @@
 
 using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
 
-enum class IpcId : int {
-  // Language server specific requests.
-  CancelRequest = 0,
-  Initialized,
-  Exit,
+using MethodType = std::string;
 
-#define CASE(x, _) x,
-#include "methods.inc"
-#undef CASE
-
-  // Internal implementation detail.
-  Unknown,
-};
-MAKE_ENUM_HASHABLE(IpcId)
-MAKE_REFLECT_TYPE_PROXY(IpcId)
-const char* IpcIdToString(IpcId id);
+extern const char* kMethodType_Unknown;
+extern const char* kMethodType_Exit;
+extern const char* kMethodType_TextDocumentPublishDiagnostics;
+extern const char* kMethodType_CqueryPublishInactiveRegions;
+extern const char* kMethodType_CqueryPublishSemanticHighlighting;
 
 struct BaseIpcMessage {
-  const IpcId method_id;
-  BaseIpcMessage(IpcId method_id);
   virtual ~BaseIpcMessage();
 
+  virtual MethodType GetMethodType() const = 0;
   virtual lsRequestId GetRequestId();
-
-  template <typename T>
-  T* As() {
-    assert(method_id == T::kIpcId);
-    return static_cast<T*>(this);
-  }
 };
 
-template <typename T>
 struct RequestMessage : public BaseIpcMessage {
-  // number | string, actually no null
+  // number or string, actually no null
   lsRequestId id;
-  RequestMessage() : BaseIpcMessage(T::kIpcId) {}
-
   lsRequestId GetRequestId() override { return id; }
 };
 
 // NotificationMessage does not have |id|.
-template <typename T>
-struct NotificationMessage : public BaseIpcMessage {
-  NotificationMessage() : BaseIpcMessage(T::kIpcId) {}
-};
+struct NotificationMessage : public BaseIpcMessage {};

@@ -24,7 +24,7 @@
 /////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-#define REGISTER_IPC_MESSAGE(type) \
+#define REGISTER_IN_MESSAGE(type) \
   static MessageRegistryRegister<type> type##message_handler_instance_;
 
 struct MessageRegistry {
@@ -44,7 +44,8 @@ struct MessageRegistry {
 template <typename T>
 struct MessageRegistryRegister {
   MessageRegistryRegister() {
-    std::string method_name = IpcIdToString(T::kIpcId);
+    T dummy;
+    std::string method_name = dummy.GetMethodType();
     MessageRegistry::instance()->allocators[method_name] =
         [](Reader& visitor, std::unique_ptr<BaseIpcMessage>* message) {
           *message = std::make_unique<T>();
@@ -333,12 +334,6 @@ struct lsFormattingOptions {
   bool insertSpaces;
 };
 MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
-
-// Cancel an existing request.
-struct Ipc_CancelRequest : public RequestMessage<Ipc_CancelRequest> {
-  static const IpcId kIpcId = IpcId::CancelRequest;
-};
-MAKE_REFLECT_STRUCT(Ipc_CancelRequest, id);
 
 // MarkedString can be used to render human readable text. It is either a
 // markdown string or a code-block that provides a language and a code snippet.

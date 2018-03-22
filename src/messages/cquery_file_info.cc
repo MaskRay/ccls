@@ -3,17 +3,19 @@
 #include "queue_manager.h"
 
 namespace {
+MethodType kMethodType = "$cquery/fileInfo";
+
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
 };
 MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument);
 
-struct Ipc_CqueryFileInfo : public RequestMessage<Ipc_CqueryFileInfo> {
-  const static IpcId kIpcId = IpcId::CqueryFileInfo;
+struct In_CqueryFileInfo : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   lsDocumentSymbolParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_CqueryFileInfo, id, params);
-REGISTER_IPC_MESSAGE(Ipc_CqueryFileInfo);
+MAKE_REFLECT_STRUCT(In_CqueryFileInfo, id, params);
+REGISTER_IN_MESSAGE(In_CqueryFileInfo);
 
 struct Out_CqueryFileInfo : public lsOutMessage<Out_CqueryFileInfo> {
   lsRequestId id;
@@ -21,8 +23,9 @@ struct Out_CqueryFileInfo : public lsOutMessage<Out_CqueryFileInfo> {
 };
 MAKE_REFLECT_STRUCT(Out_CqueryFileInfo, jsonrpc, id, result);
 
-struct CqueryFileInfoHandler : BaseMessageHandler<Ipc_CqueryFileInfo> {
-  void Run(Ipc_CqueryFileInfo* request) override {
+struct Handler_CqueryFileInfo : BaseMessageHandler<In_CqueryFileInfo> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_CqueryFileInfo* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -37,8 +40,8 @@ struct CqueryFileInfoHandler : BaseMessageHandler<Ipc_CqueryFileInfo> {
     out.result.language = file->def->language;
     out.result.includes = file->def->includes;
     out.result.inactive_regions = file->def->inactive_regions;
-    QueueManager::WriteStdout(IpcId::CqueryFileInfo, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(CqueryFileInfoHandler);
+REGISTER_MESSAGE_HANDLER(Handler_CqueryFileInfo);
 }  // namespace

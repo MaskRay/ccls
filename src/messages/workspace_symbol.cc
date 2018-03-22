@@ -12,6 +12,7 @@
 #include <functional>
 
 namespace {
+MethodType kMethodType = "workspace/symbol";
 
 // Lookup |symbol| in |db| and insert the value into |result|.
 bool InsertSymbolIntoResult(QueryDatabase* db,
@@ -42,16 +43,16 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
   return true;
 }
 
-struct Ipc_WorkspaceSymbol : public RequestMessage<Ipc_WorkspaceSymbol> {
-  const static IpcId kIpcId = IpcId::WorkspaceSymbol;
+struct In_WorkspaceSymbol : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     std::string query;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(Ipc_WorkspaceSymbol::Params, query);
-MAKE_REFLECT_STRUCT(Ipc_WorkspaceSymbol, id, params);
-REGISTER_IPC_MESSAGE(Ipc_WorkspaceSymbol);
+MAKE_REFLECT_STRUCT(In_WorkspaceSymbol::Params, query);
+MAKE_REFLECT_STRUCT(In_WorkspaceSymbol, id, params);
+REGISTER_IN_MESSAGE(In_WorkspaceSymbol);
 
 struct Out_WorkspaceSymbol : public lsOutMessage<Out_WorkspaceSymbol> {
   lsRequestId id;
@@ -61,8 +62,9 @@ MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 
 ///// Fuzzy matching
 
-struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
-  void Run(Ipc_WorkspaceSymbol* request) override {
+struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
+  MethodType GetMethodType() const override { return kMethodType; }
+  void Run(In_WorkspaceSymbol* request) override {
     Out_WorkspaceSymbol out;
     out.id = request->id;
 
@@ -151,8 +153,8 @@ struct WorkspaceSymbolHandler : BaseMessageHandler<Ipc_WorkspaceSymbol> {
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
                 << " results for query " << query;
-    QueueManager::WriteStdout(IpcId::WorkspaceSymbol, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(WorkspaceSymbolHandler);
+REGISTER_MESSAGE_HANDLER(Handler_WorkspaceSymbol);
 }  // namespace

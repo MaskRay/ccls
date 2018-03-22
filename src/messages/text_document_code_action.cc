@@ -11,6 +11,7 @@
 #include <loguru.hpp>
 
 namespace {
+MethodType kMethodType = "textDocument/codeAction";
 
 optional<int> FindIncludeLine(const std::vector<std::string>& lines,
                               const std::string& full_include_line) {
@@ -256,9 +257,9 @@ optional<lsTextEdit> BuildAutoImplementForFunction(QueryDatabase* db,
   return nullopt;
 }
 
-struct Ipc_TextDocumentCodeAction
-    : public RequestMessage<Ipc_TextDocumentCodeAction> {
-  const static IpcId kIpcId = IpcId::TextDocumentCodeAction;
+struct In_TextDocumentCodeAction : public RequestMessage {
+  MethodType GetMethodType() const override { return kMethodType; }
+
   // Contains additional diagnostic information about the context in which
   // a code action is run.
   struct lsCodeActionContext {
@@ -276,14 +277,14 @@ struct Ipc_TextDocumentCodeAction
   };
   lsCodeActionParams params;
 };
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionContext,
+MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction::lsCodeActionContext,
                     diagnostics);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction::lsCodeActionParams,
+MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction::lsCodeActionParams,
                     textDocument,
                     range,
                     context);
-MAKE_REFLECT_STRUCT(Ipc_TextDocumentCodeAction, id, params);
-REGISTER_IPC_MESSAGE(Ipc_TextDocumentCodeAction);
+MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentCodeAction);
 
 struct Out_TextDocumentCodeAction
     : public lsOutMessage<Out_TextDocumentCodeAction> {
@@ -294,9 +295,11 @@ struct Out_TextDocumentCodeAction
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentCodeAction, jsonrpc, id, result);
 
-struct TextDocumentCodeActionHandler
-    : BaseMessageHandler<Ipc_TextDocumentCodeAction> {
-  void Run(Ipc_TextDocumentCodeAction* request) override {
+struct Handler_TextDocumentCodeAction
+    : BaseMessageHandler<In_TextDocumentCodeAction> {
+  MethodType GetMethodType() const override { return kMethodType; }
+
+  void Run(In_TextDocumentCodeAction* request) override {
     // NOTE: This code snippet will generate some FixIts for testing:
     //
     //    struct origin { int x, int y };
@@ -534,10 +537,10 @@ struct TextDocumentCodeActionHandler
       }
     }
 
-    QueueManager::WriteStdout(IpcId::TextDocumentCodeAction, out);
+    QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(TextDocumentCodeActionHandler);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeAction);
 
 TEST_SUITE("FindIncludeLine") {
   TEST_CASE("in document") {
