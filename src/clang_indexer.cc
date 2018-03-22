@@ -150,6 +150,8 @@ lsSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
     case CXIdxEntity_CXXInterface:
       return lsSymbolKind::Struct;
   }
+
+  return lsSymbolKind::Unknown;
 }
 
 StorageClass GetStorageClass(CX_StorageClass storage) {
@@ -170,6 +172,8 @@ StorageClass GetStorageClass(CX_StorageClass storage) {
     case CX_SC_Register:
       return StorageClass::Register;
   }
+
+  return StorageClass::None;
 }
 
 // Caches all instances of constructors, regardless if they are indexed or not.
