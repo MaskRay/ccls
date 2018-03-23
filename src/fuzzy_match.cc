@@ -46,7 +46,7 @@ void CalculateRoles(std::string_view s, int roles[], int* class_set) {
 }  // namespace
 
 int FuzzyMatcher::MissScore(int j, bool last) {
-  int s = last ? -20 : 0;
+  int s = last ? -10 : 0;
   if (text_role[j] == Head)
     s -= 10;
   return s;
@@ -57,14 +57,16 @@ int FuzzyMatcher::MatchScore(int i, int j, bool last) {
   if (pat[i] == text[j]) {
     s++;
     if ((pat_set & 1 << Upper) || i == j)
-      s += 10;
+      s++;
   }
-  if (pat_role[i] == Head && text_role[j] == Head)
-    s += 30;
+  if (pat_role[i] == Head) {
+    if (text_role[j] == Head)
+      s += 30;
+    else if (text_role[j] == Tail)
+      s -= 10;
+  }
   if (text_role[j] == Tail && i && !last)
     s -= 30;
-  if (pat_role[i] == Head && text_role[j] == Tail)
-    s -= 10;
   if (i == 0 && text_role[j] == Tail)
     s -= 40;
   return s;
@@ -133,7 +135,7 @@ TEST_SUITE("fuzzy_match") {
         ret = false;
         break;
       }
-    if (1 || !ret) {
+    if (!ret) {
       for (size_t i = 0; i < texts.size(); i++)
         printf("%s %d ", texts[i], scores[i]);
       puts("");
@@ -147,22 +149,24 @@ TEST_SUITE("fuzzy_match") {
     CHECK(fuzzy.Match("aaa") < 0);
 
     // case
-    Ranks("monad", {"monad", "Monad", "mONAD"});
+    CHECK(Ranks("monad", {"monad", "Monad", "mONAD"}));
     // initials
-    Ranks("ab", {"ab", "aoo_boo", "acb"});
-    Ranks("CC", {"CamelCase", "camelCase", "camelcase"});
-    Ranks("cC", {"camelCase", "CamelCase", "camelcase"});
-    Ranks("c c",
-          {"camel case", "camelCase", "CamelCase", "camelcase", "camel ace"});
-    Ranks("Da.Te", {"Data.Text", "Data.Text.Lazy", "Data.Aeson.Encoding.text"});
+    CHECK(Ranks("ab", {"ab", "aoo_boo", "acb"}));
+    CHECK(Ranks("CC", {"CamelCase", "camelCase", "camelcase"}));
+    CHECK(Ranks("cC", {"camelCase", "CamelCase", "camelcase"}));
+    CHECK(Ranks("c c", {"camel case", "camelCase", "CamelCase", "camelcase",
+                        "camel ace"}));
+    CHECK(Ranks("Da.Te",
+                {"Data.Text", "Data.Text.Lazy", "Data.Aeson.Encoding.text"}));
+    CHECK(Ranks("foo bar.h", {"foo/bar.h", "foobar.h"}));
     // prefix
-    Ranks("is", {"isIEEE", "inSuf"});
+    CHECK(Ranks("is", {"isIEEE", "inSuf"}));
     // shorter
-    Ranks("ma", {"map", "many", "maximum"});
-    Ranks("print", {"printf", "sprintf"});
+    CHECK(Ranks("ma", {"map", "many", "maximum"}));
+    CHECK(Ranks("print", {"printf", "sprintf"}));
     // score(PRINT) = kMinScore
-    Ranks("ast", {"ast", "AST", "INT_FAST16_MAX"});
+    CHECK(Ranks("ast", {"ast", "AST", "INT_FAST16_MAX"}));
     // score(PRINT) > kMinScore
-    Ranks("Int", {"int", "INT", "PRINT"});
+    CHECK(Ranks("Int", {"int", "INT", "PRINT"}));
   }
 }
