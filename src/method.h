@@ -6,11 +6,11 @@
 #include <string>
 
 using MethodType = std::string;
-extern const char* kMethodType_Unknown;
-extern const char* kMethodType_Exit;
-extern const char* kMethodType_TextDocumentPublishDiagnostics;
-extern const char* kMethodType_CqueryPublishInactiveRegions;
-extern const char* kMethodType_CqueryPublishSemanticHighlighting;
+extern MethodType kMethodType_Unknown;
+extern MethodType kMethodType_Exit;
+extern MethodType kMethodType_TextDocumentPublishDiagnostics;
+extern MethodType kMethodType_CqueryPublishInactiveRegions;
+extern MethodType kMethodType_CqueryPublishSemanticHighlighting;
 
 using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
 

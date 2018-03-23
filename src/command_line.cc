@@ -306,7 +306,6 @@ void LaunchStdinLoop(Config* config,
       MethodType method_type = message->GetMethodType();
       (*request_times)[method_type] = Timer();
 
-      LOG_S(ERROR) << "!! Got message of type " << method_type;
       queue->for_querydb.PushBack(std::move(message));
 
       // If the message was to exit then querydb will take care of the actual
