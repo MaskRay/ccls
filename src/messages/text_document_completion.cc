@@ -303,15 +303,12 @@ struct Handler_TextDocumentCompletion : MessageHandler {
             include_complete->completion_items_mutex, std::defer_lock);
         if (include_complete->is_scanning)
           lock.lock();
-        std::string quote = result.match[5];
-        for (auto& item : include_complete->completion_items)
-          if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
-            out.result.items.push_back(item);
+        out.result.items = include_complete->completion_items;
       }
 
       // Needed by |FilterAndSortCompletionResponse|.
       for (lsCompletionItem& item : out.result.items)
-        item.filterText = item.label;
+        item.filterText = "include" + item.label;
 
       FilterAndSortCompletionResponse(&out, result.pattern,
                                       config->completion.filterAndSort);
