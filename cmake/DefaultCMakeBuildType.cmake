@@ -1,8 +1,4 @@
-# Set a default build type if none was specified
 set(DEFAULT_CMAKE_BUILD_TYPE Release)
-if(EXISTS ${CMAKE_SOURCE_DIR}/.git)
-  set(DEFAULT_CMAKE_BUILD_TYPE Debug)
-endif()
 
 # CMAKE_BUILD_TYPE is not available if a multi-configuration generator is used
 # (eg Visual Studio generators)
