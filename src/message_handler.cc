@@ -84,8 +84,8 @@ bool FindFileOrFail(QueryDatabase* db,
   /*
   LOG_S(INFO) << "Files (size=" << db->usr_to_file.size() << "): "
               << StringJoinMap(db->usr_to_file,
-                               [](const std::pair<Usr, QueryFileId>& entry) {
-                                 return entry.first;
+                               [](const std::pair<NormalizedPath, QueryFileId>& entry) {
+                                 return entry.first.path;
                                });
   */
 
