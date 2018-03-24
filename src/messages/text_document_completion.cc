@@ -98,6 +98,8 @@ void DecorateIncludePaths(const std::smatch& match,
 
 struct ParseIncludeLineResult {
   bool ok;
+  std::string keyword;
+  std::string quote;
   std::string pattern;
   std::smatch match;
 };
@@ -115,8 +117,28 @@ ParseIncludeLineResult ParseIncludeLine(const std::string& line) {
       "(.*)");        // [7]: suffix after quote char
   std::smatch match;
   bool ok = std::regex_match(line, match, pattern);
-  std::string text = match[3].str() + match[6].str();
-  return {ok, text, match};
+  return {ok, match[3], match[5], match[6], match};
+}
+
+static const std::vector<std::string> preprocessorKeywords = {
+    "define", "undef", "include", "if",   "ifdef", "ifndef",
+    "else",   "elif",  "endif",   "line", "error", "pragma"};
+
+std::vector<lsCompletionItem> preprocessorKeywordCompletionItems(
+    const std::smatch& match) {
+  std::vector<lsCompletionItem> items;
+  for (auto& keyword : preprocessorKeywords) {
+    lsCompletionItem item;
+    item.label = keyword;
+    item.priority_ = (keyword == "include" ? 2 : 1);
+    item.textEdit = lsTextEdit();
+    std::string space = (keyword == "else" || keyword == "endif") ? "" : " ";
+    item.textEdit->newText = match[1].str() + "#" + match[2].str() + keyword +
+                             space + match[6].str();
+    item.insertTextFormat = lsInsertTextFormat::PlainText;
+    items.push_back(item);
+  }
+  return items;
 }
 
 template <typename T>
@@ -298,21 +320,30 @@ struct Handler_TextDocumentCompletion : MessageHandler {
       Out_TextDocumentComplete out;
       out.id = request->id;
 
-      {
-        std::unique_lock<std::mutex> lock(
-            include_complete->completion_items_mutex, std::defer_lock);
-        if (include_complete->is_scanning)
-          lock.lock();
-        out.result.items = include_complete->completion_items;
+      if (result.quote.empty() && result.pattern.empty()) {
+        // no quote or path of file, do preprocessor keyword completion
+        if (!std::any_of(preprocessorKeywords.begin(),
+                         preprocessorKeywords.end(),
+                         [&result](std::string_view k) {
+                           return k == result.keyword;
+                         })) {
+          out.result.items = preprocessorKeywordCompletionItems(result.match);
+          FilterAndSortCompletionResponse(&out, result.keyword,
+                                          config->completion.filterAndSort);
+        }
+      } else if (result.keyword.compare("include") == 0) {
+        {
+          // do include completion
+          std::unique_lock<std::mutex> lock(
+              include_complete->completion_items_mutex, std::defer_lock);
+          if (include_complete->is_scanning)
+            lock.lock();
+          out.result.items = include_complete->completion_items;
+        }
+        FilterAndSortCompletionResponse(&out, result.pattern,
+                                        config->completion.filterAndSort);
+        DecorateIncludePaths(result.match, &out.result.items);
       }
-
-      // Needed by |FilterAndSortCompletionResponse|.
-      for (lsCompletionItem& item : out.result.items)
-        item.filterText = "include" + item.label;
-
-      FilterAndSortCompletionResponse(&out, result.pattern,
-                                      config->completion.filterAndSort);
-      DecorateIncludePaths(result.match, &out.result.items);
 
       for (lsCompletionItem& item : out.result.items) {
         item.textEdit->range.start.line = request->params.position.line;
