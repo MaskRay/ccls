@@ -63,7 +63,6 @@ bool ShouldDisplayMethodTiming(MethodType type) {
     type != kMethodType_TextDocumentPublishDiagnostics &&
     type != kMethodType_CqueryPublishInactiveRegions &&
     type != kMethodType_Unknown;
-  return true;
 }
 
 void PrintHelp() {
