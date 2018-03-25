@@ -5,7 +5,7 @@
 
 #include <string>
 
-using MethodType = std::string;
+using MethodType = const char*;
 extern MethodType kMethodType_Unknown;
 extern MethodType kMethodType_Exit;
 extern MethodType kMethodType_TextDocumentPublishDiagnostics;
