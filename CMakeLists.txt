@@ -27,6 +27,10 @@ add_executable(cquery "")
 # Enable C++14 (Required)
 set_property(TARGET cquery PROPERTY CXX_STANDARD 14)
 set_property(TARGET cquery PROPERTY CXX_STANDARD_REQUIRED ON)
+# Disable gnu extensions except for Cygwin which needs them to build properly
+if(NOT CYGWIN)
+  set_property(TARGET cquery PROPERTY CXX_EXTENSIONS OFF)
+endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   # Common MSVC/Clang(Windows) options
