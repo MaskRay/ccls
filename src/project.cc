@@ -76,7 +76,7 @@ struct ProjectConfig {
 // TODO: See
 // https://github.com/Valloric/ycmd/blob/master/ycmd/completers/cpp/flags.py.
 std::vector<std::string> kBlacklistMulti = {
-    "-MF", "-MT", "-MQ", "-o", "--serialize-diagnostics", "-Xclang"};
+    "-MF", "-MT", "-MQ", "-o", "--serialize-diagnostics", "-Xclang", "-include", "-include-pch"};
 
 // Blacklisted flags which are always removed from the command line.
 std::vector<std::string> kBlacklist = {
