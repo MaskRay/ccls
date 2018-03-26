@@ -99,23 +99,9 @@ endif()
 _Clang_find_program(Clang_EXECUTABLE clang)
 if(Clang_EXECUTABLE)
   # Find Clang resource directory with Clang executable
-  # TODO: simplify by using -print-resource-dir once Clang 4 support is dropped
-  if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-    set(_DEV_NULL NUL)
-  else()
-    set(_DEV_NULL /dev/null)
-  endif()
-
-  # clang "-###" -xc /dev/null
-  execute_process(COMMAND ${Clang_EXECUTABLE} "-###" -xc ${_DEV_NULL} 
-                  ERROR_VARIABLE Clang_RESOURCE_DIR OUTPUT_QUIET)
-  # Strip everything except '"-resource-dir" "<resource-dir-path>"'
-  string(REGEX MATCH "\"-resource-dir\" \"([^\"]*)\"" 
-         Clang_RESOURCE_DIR ${Clang_RESOURCE_DIR})
-  # Strip quotes
-  string(REPLACE "\"" "" Clang_RESOURCE_DIR ${Clang_RESOURCE_DIR})
-  # Strip '-resource-dir '
-  string(REPLACE "-resource-dir " "" Clang_RESOURCE_DIR ${Clang_RESOURCE_DIR})
+  execute_process(COMMAND ${Clang_EXECUTABLE} -print-resource-dir 
+                  OUTPUT_VARIABLE Clang_RESOURCE_DIR
+                  OUTPUT_STRIP_TRAILING_WHITESPACE)
 
   # Find Clang version
   set(_Clang_VERSION_REGEX "([0-9]+)\\.([0-9]+)\\.([0-9]+)")
