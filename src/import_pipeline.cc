@@ -548,13 +548,10 @@ bool IndexMergeIndexUpdates() {
   IterationLoop loop;
   while (loop.Next()) {
     optional<Index_OnIndexed> to_join = queue->on_indexed.TryPopBack();
-    if (!to_join) {
-      queue->on_indexed.PushFront(std::move(*root));
-      return did_merge;
-    }
-
+    if (!to_join)
+      break;
     did_merge = true;
-    Timer time;
+    // Timer time;
     root->update.Merge(std::move(to_join->update));
     // time.ResetAndPrint("Joined querydb updates for files: " +
     // StringJoinMap(root->update.files_def_update,
@@ -563,6 +560,7 @@ bool IndexMergeIndexUpdates() {
     //}));
   }
 
+  queue->on_indexed.PushFront(std::move(*root));
   return did_merge;
 }
 
