@@ -99,6 +99,8 @@ if(NOT EXISTS ${CLANG_ARCHIVE_EXTRACT_DIR})
     message(STATUS "Extracting downloaded LLVM with CMake built-in tar ...")
     # CMake has builtin support for tar via the -E flag
     execute_process(COMMAND ${CMAKE_COMMAND} -E tar -xf ${CLANG_ARCHIVE_FILE}
+                    # Extract to here to allow running cmake from everywhere
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                     OUTPUT_QUIET)
   endif()
 endif()
