@@ -128,10 +128,15 @@ struct Handler_TextDocumentDefinition
         lsPosition position = request->params.position;
         const std::string& buffer = working_file->buffer_content;
         std::string_view query = LexIdentifierAroundPos(position, buffer);
-        bool has_scope = query.find(':') != std::string::npos;
+        std::string_view short_query = query;
+        {
+          auto pos = query.rfind(':');
+          if (pos != std::string::npos)
+            short_query = query.substr(pos + 1);
+        }
 
         // For symbols whose short/detailed names contain |query| as a
-        // substring, we use the tuple <length difference, matching position,
+        // substring, we use the tuple <length difference, negative position,
         // not in the same file, line distance> to find the best match.
         std::tuple<int, int, bool, int> best_score{INT_MAX, 0, true, 0};
         int best_i = -1;
@@ -139,21 +144,28 @@ struct Handler_TextDocumentDefinition
           if (db->symbols[i].kind == SymbolKind::Invalid)
             continue;
 
-          std::string_view name = has_scope ? db->GetSymbolDetailedName(i)
-                                            : db->GetSymbolShortName(i);
-          auto pos = name.find(query);
+          std::string_view name = short_query.size() < query.size()
+                                      ? db->GetSymbolDetailedName(i)
+                                      : db->GetSymbolShortName(i);
+          auto pos = name.rfind(short_query);
           if (pos == std::string::npos)
             continue;
-          Maybe<Use> use = GetDefinitionSpell(db, db->symbols[i]);
-          if (!use)
-            continue;
-
-          std::tuple<int, int, bool, int> score{
-              int(name.size() - query.size()), int(pos), use->file != file_id,
-              std::abs(use->range.start.line - position.line)};
-          if (score < best_score) {
-            best_score = score;
-            best_i = i;
+          if (Maybe<Use> use = GetDefinitionSpell(db, db->symbols[i])) {
+            std::tuple<int, int, bool, int> score{
+                int(name.size() - short_query.size()), -pos,
+                use->file != file_id,
+                std::abs(use->range.start.line - position.line)};
+            // Update the score with qualified name if the qualified name
+            // occurs in |name|.
+            pos = name.rfind(query);
+            if (pos != std::string::npos) {
+              std::get<0>(score) = int(name.size() - query.size());
+              std::get<1>(score) = -pos;
+            }
+            if (score < best_score) {
+              best_score = score;
+              best_i = i;
+            }
           }
         }
         if (best_i != -1) {

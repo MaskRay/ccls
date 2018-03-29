@@ -77,13 +77,13 @@ uint64_t HashUsr(const char* s, size_t n) {
 }
 
 // See http://stackoverflow.com/a/2072890
-bool EndsWith(const std::string& value, const std::string& ending) {
+bool EndsWith(std::string_view value, std::string_view ending) {
   if (ending.size() > value.size())
     return false;
   return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
 }
 
-bool StartsWith(const std::string& value, const std::string& start) {
+bool StartsWith(std::string_view value, std::string_view start) {
   if (start.size() > value.size())
     return false;
   return std::equal(start.begin(), start.end(), value.begin());
