@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional.h>
+#include <string_view.h>
 
 #include <algorithm>
 #include <functional>
@@ -22,8 +23,8 @@ uint64_t HashUsr(const char* s);
 uint64_t HashUsr(const char* s, size_t n);
 
 // Returns true if |value| starts/ends with |start| or |ending|.
-bool StartsWith(const std::string& value, const std::string& start);
-bool EndsWith(const std::string& value, const std::string& ending);
+bool StartsWith(std::string_view value, std::string_view start);
+bool EndsWith(std::string_view value, std::string_view ending);
 bool AnyStartsWith(const std::vector<std::string>& values,
                    const std::string& start);
 bool StartsWithAny(const std::string& value,
