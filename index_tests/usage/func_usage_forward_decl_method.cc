@@ -63,7 +63,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 12410753116854389823,
+      "usr": 16229832321010999607,
       "detailed_name": "Foo *f",
       "short_name": "f",
       "hover": "Foo *f = nullptr",

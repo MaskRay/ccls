@@ -127,7 +127,7 @@ OUTPUT:
       "storage": 0
     }, {
       "id": 2,
-      "usr": 16303259148898744165,
+      "usr": 14669930844300034456,
       "detailed_name": "Foo f",
       "short_name": "f",
       "declarations": [],

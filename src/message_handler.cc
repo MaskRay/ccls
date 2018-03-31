@@ -349,7 +349,3 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       out.params.symbols.push_back(entry.second);
   QueueManager::WriteStdout(kMethodType_CclsPublishSemanticHighlighting, out);
 }
-
-bool ShouldIgnoreFileForIndexing(const std::string& path) {
-  return StartsWith(path, "git:");
-}

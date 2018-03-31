@@ -45,7 +45,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 17941402366659878910,
+      "usr": 13311055950748663970,
       "detailed_name": "int a",
       "short_name": "a",
       "declarations": [],
@@ -57,7 +57,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 11094102496276744608,
+      "usr": 14036425367303419504,
       "detailed_name": "int a",
       "short_name": "a",
       "declarations": [],

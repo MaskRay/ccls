@@ -125,7 +125,7 @@ OUTPUT:
       "storage": 0
     }, {
       "id": 2,
-      "usr": 13284113377394221067,
+      "usr": 8039186520399841081,
       "detailed_name": "int a",
       "short_name": "a",
       "hover": "int a = 5",

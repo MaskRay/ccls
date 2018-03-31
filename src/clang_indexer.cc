@@ -525,11 +525,8 @@ void SetTypeName(IndexType* type,
   // Investigate why clang_getCursorPrettyPrinted gives `struct A {}` `namespace
   // ns {}` which are not qualified.
   // type->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
-  type->def.detailed_name =
+  std::tie(type->def.detailed_name, type->def.short_name_offset) =
       param->ns.QualifiedName(container ? container : &parent, name);
-  auto idx = type->def.detailed_name.rfind(name);
-  assert(idx != std::string::npos);
-  type->def.short_name_offset = idx;
   type->def.short_name_size = strlen(name);
 }
 
@@ -599,7 +596,7 @@ void SetVarDetail(IndexVar* var,
           ? param->PrettyPrintCursor(cursor.cx_cursor)
           :
 #endif
-      param->ns.QualifiedName(semanticContainer, short_name);
+      param->ns.QualifiedName(semanticContainer, short_name).first;
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
     CXType enum_type = clang_getCanonicalType(
@@ -781,12 +778,6 @@ void Uniquify(std::vector<Use>& uses) {
       uses[n++] = uses[i];
   uses.resize(n);
 }
-
-// FIXME Reference: set id in call sites and remove this
-// void AddUse(std::vector<Use>& values, Range value) {
-//  values.push_back(
-//      Use(value, Id<void>(), SymbolKind::File, Role::Reference, {}));
-//}
 
 void AddUse(IndexFile* db,
             std::vector<Use>& uses,
@@ -1422,10 +1413,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
 
 }  // namespace
 
-std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
-                                           std::string_view unqualified_name) {
+std::pair<std::string, int> NamespaceHelper::QualifiedName(
+    const CXIdxContainerInfo* container,
+    std::string_view unqualified_name) {
   if (!container)
-    return std::string(unqualified_name);
+    return {std::string(unqualified_name), 0};
   // Anonymous namespaces are not processed by indexDeclaration. We trace
   // nested namespaces bottom-up through clang_getCursorSemanticParent until
   // one that we know its qualified name. Then do another trace top-down and
@@ -1455,8 +1447,9 @@ std::string NamespaceHelper::QualifiedName(const CXIdxContainerInfo* container,
     qualifier += "::";
     container_cursor_to_qualified_name[namespaces[i]] = qualifier;
   }
-  // C++17 string::append
-  return qualifier + std::string(unqualified_name);
+  int pos = qualifier.size();
+  qualifier.append(unqualified_name);
+  return {qualifier, pos};
 }
 
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {

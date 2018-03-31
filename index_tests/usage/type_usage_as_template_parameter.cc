@@ -90,7 +90,7 @@ OUTPUT:
       "storage": 3
     }, {
       "id": 2,
-      "usr": 2462000803278878465,
+      "usr": 3364438781074774169,
       "detailed_name": "unique_ptr<S> *local",
       "short_name": "local",
       "declarations": [],

@@ -97,7 +97,7 @@ OUTPUT:
       "uses": ["13:56-13:64|-1|1|4"]
     }, {
       "id": 5,
-      "usr": 780719166805015998,
+      "usr": 7916588271848318236,
       "detailed_name": "T",
       "short_name": "T",
       "kind": 26,
@@ -131,7 +131,7 @@ OUTPUT:
   "funcs": [],
   "vars": [{
       "id": 0,
-      "usr": 3880651725784125791,
+      "usr": 12990052348105569112,
       "detailed_name": "unsigned int T",
       "short_name": "T",
       "declarations": [],

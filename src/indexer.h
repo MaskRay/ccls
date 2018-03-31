@@ -509,8 +509,8 @@ struct NamespaceHelper {
   std::unordered_map<ClangCursor, std::string>
       container_cursor_to_qualified_name;
 
-  std::string QualifiedName(const CXIdxContainerInfo* container,
-                            std::string_view unqualified_name);
+  std::pair<std::string, int> QualifiedName(const CXIdxContainerInfo* container,
+                                            std::string_view unqualified_name);
 };
 
 // |import_file| is the cc file which is what gets passed to clang.
