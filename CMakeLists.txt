@@ -173,7 +173,6 @@ target_sources(ccls PRIVATE
                src/clang_indexer.cc
                src/clang_translation_unit.cc
                src/clang_utils.cc
-               src/code_complete_cache.cc
                src/command_line.cc
                src/diagnostics_engine.cc
                src/file_consumer.cc
@@ -189,7 +188,6 @@ target_sources(ccls PRIVATE
                src/lsp.cc
                src/match.cc
                src/message_handler.cc
-               src/options.cc
                src/platform_posix.cc
                src/platform_win.cc
                src/platform.cc

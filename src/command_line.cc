@@ -1,7 +1,6 @@
 // TODO: cleanup includes
 #include "cache_manager.h"
 #include "clang_complete.h"
-#include "code_complete_cache.h"
 #include "diagnostics_engine.h"
 #include "file_consumer.h"
 #include "import_manager.h"
@@ -13,7 +12,6 @@
 #include "lsp_diagnostic.h"
 #include "match.h"
 #include "message_handler.h"
-#include "options.h"
 #include "platform.h"
 #include "project.h"
 #include "query.h"
@@ -44,6 +42,31 @@
 std::string g_init_options;
 
 namespace {
+
+std::unordered_map<std::string, std::string> ParseOptions(int argc,
+                                                          char** argv) {
+  std::unordered_map<std::string, std::string> output;
+
+  for (int i = 1; i < argc; ++i) {
+    std::string arg = argv[i];
+    if (arg[0] == '-') {
+      auto equal = arg.find('=');
+      if (equal != std::string::npos) {
+        output[arg.substr(0, equal)] = arg.substr(equal + 1);
+      } else if (i + 1 < argc && argv[i + 1][0] != '-')
+        output[arg] = argv[++i];
+      else
+        output[arg] = "";
+    }
+  }
+
+  return output;
+}
+
+bool HasOption(const std::unordered_map<std::string, std::string>& options,
+               const std::string& option) {
+  return options.find(option) != options.end();
+}
 
 // This function returns true if e2e timing should be displayed for the given
 // MethodId.

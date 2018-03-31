@@ -129,25 +129,6 @@ bool IsSymLink(const std::string& path) {
   return false;
 }
 
-std::vector<const char*> GetPlatformClangArguments() {
-  //
-  // Found by executing
-  //
-  //   $ clang++ -E -x c++ - -v
-  //
-  // https://clang.llvm.org/docs/MSVCCompatibility.html
-  //
-  //
-  // These options are only needed if clang is targeting the msvc triple,
-  // which depends on how clang was build for windows. clang downloaded from
-  // releases.llvm.org defaults to msvc, so ccls does as well.
-  //
-  // https://github.com/cquery-project/cquery/issues/509 has more context.
-  //
-  return {"-fms-extensions", "-fms-compatibility",
-          "-fdelayed-template-parsing"};
-}
-
 void FreeUnusedMemory() {}
 
 bool RunObjectiveCIndexTests() {

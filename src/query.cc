@@ -20,17 +20,6 @@
 namespace {
 
 template <typename T>
-void VerifyUnique(const std::vector<T>& values0) {
-// FIXME: Run on a big code-base for a while and verify no assertions are
-// triggered.
-#if false
-  auto values = values0;
-  std::sort(values.begin(), values.end());
-  assert(std::unique(values.begin(), values.end()) == values.end());
-#endif
-}
-
-template <typename T>
 void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
   std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
   dest->erase(
@@ -767,9 +756,6 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
   // There means that there is some memory growth that will never be reclaimed,
   // but it should be pretty minimal and is solved by simply restarting the
   // indexer and loading from cache, which is a fast operation.
-  //
-  // TODO: Add "ccls: Reload Index" command which unloads all querydb state
-  // and fully reloads from cache. This will address the memory leak above.
 
   switch (usr_kind) {
     case SymbolKind::Type: {
@@ -827,7 +813,6 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
     auto& def = storage_name[merge_update.id.id];                     \
     AddRange(&def.def_var_name, merge_update.to_add);                 \
     RemoveRange(&def.def_var_name, merge_update.to_remove);           \
-    VerifyUnique(def.def_var_name);                                   \
   }
 
   for (const std::string& filename : update->files_removed)
