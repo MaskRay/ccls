@@ -1,5 +1,6 @@
 #include "clang_utils.h"
 
+#include "filesystem.hh"
 #include "platform.h"
 
 namespace {
@@ -106,8 +107,11 @@ std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
 
 std::string FileName(CXFile file) {
   CXString cx_name = clang_getFileName(file);
-  std::string name = ToString(cx_name);
-  return NormalizePath(name);
+  std::string ret = NormalizePath(ToString(cx_name));
+  // Resolve /usr/include/c++/7.3.0 symlink.
+  if (!StartsWith(ret, g_config.projectRoot))
+    ret = fs::canonical(ret);
+  return ret;
 }
 
 std::string ToString(CXString cx_string) {

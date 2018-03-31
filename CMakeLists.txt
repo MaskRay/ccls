@@ -179,6 +179,7 @@ target_sources(ccls PRIVATE
                src/clang_translation_unit.cc
                src/clang_utils.cc
                src/command_line.cc
+               src/config.cc
                src/diagnostics_engine.cc
                src/file_consumer.cc
                src/file_contents.cc
@@ -209,7 +210,6 @@ target_sources(ccls PRIVATE
                src/timestamp_manager.cc
                src/type_printer.cc
                src/utils.cc
-               src/work_thread.cc
                src/working_files.cc)
 
 target_sources(ccls PRIVATE
@@ -217,7 +217,6 @@ target_sources(ccls PRIVATE
                src/messages/ccls_call_hierarchy.cc
                src/messages/ccls_callers.cc
                src/messages/ccls_derived.cc
-               src/messages/ccls_did_view.cc
                src/messages/ccls_file_info.cc
                src/messages/ccls_freshen_index.cc
                src/messages/ccls_index_file.cc
@@ -225,7 +224,6 @@ target_sources(ccls PRIVATE
                src/messages/ccls_member_hierarchy.cc
                src/messages/ccls_random.cc
                src/messages/ccls_vars.cc
-               src/messages/ccls_wait.cc
                src/messages/exit.cc
                src/messages/initialize.cc
                src/messages/shutdown.cc

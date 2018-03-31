@@ -277,7 +277,7 @@ void TraceMe() {
   // If the environment variable is defined, wait for a debugger.
   // In gdb, you need to invoke `signal SIGCONT` if you want ccls to continue
   // after detaching.
-  if (getenv("CQUERY_TRACEME"))
+  if (getenv("CCLS_TRACEME"))
     raise(SIGTSTP);
 }
 

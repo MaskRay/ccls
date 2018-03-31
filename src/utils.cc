@@ -16,6 +16,7 @@
 #include <queue>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <unordered_map>
 using namespace std::placeholders;
 
@@ -275,6 +276,13 @@ std::string GetDefaultResourceDirectory() {
   }
 
   return NormalizePath(result);
+}
+
+void StartThread(const std::string& thread_name, std::function<void()> entry) {
+  new std::thread([thread_name, entry]() {
+    SetCurrentThreadName(thread_name);
+    entry();
+  });
 }
 
 TEST_SUITE("StripFileType") {

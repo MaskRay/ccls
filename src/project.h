@@ -3,13 +3,12 @@
 #include "config.h"
 #include "method.h"
 
-#include <optional>
-#include <sparsepp/spp.h>
-#include <variant>
-
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
+#include <unordered_map>
+#include <variant>
 #include <vector>
 
 class QueueManager;
@@ -29,7 +28,7 @@ struct Project {
   std::vector<std::string> angle_include_directories;
 
   std::vector<Entry> entries;
-  spp::sparse_hash_map<std::string, int> absolute_path_to_entry_index_;
+  std::unordered_map<std::string, int> absolute_path_to_entry_index_;
 
   // Loads a project for the given |directory|.
   //

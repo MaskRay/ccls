@@ -72,9 +72,8 @@ struct Handler_TextDocumentDidOpen
 
     clang_complete->FlushSession(entry.filename);
     LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;
-    if (params.args.size()) {
-      project->SetFlagsForFile(params.args, path);
-    }
+    if (params.args.size())
+        project->SetFlagsForFile(params.args, path);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);

@@ -281,5 +281,4 @@ MAKE_REFLECT_STRUCT(Config,
 
                     dumpAST);
 
-// Expected client version. We show an error if this doesn't match.
-constexpr const int kExpectedClientVersion = 3;
+extern Config g_config;
