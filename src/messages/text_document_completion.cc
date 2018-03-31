@@ -1,5 +1,4 @@
 #include "clang_complete.h"
-#include "code_complete_cache.h"
 #include "fuzzy_match.h"
 #include "include_complete.h"
 #include "message_handler.h"

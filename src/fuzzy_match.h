@@ -1,9 +1,8 @@
 #pragma once
 
-#include <string_view>
-
 #include <limits.h>
 #include <string>
+#include <string_view>
 
 class FuzzyMatcher {
  public:
