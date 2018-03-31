@@ -1,7 +1,6 @@
 #pragma once
 
 #include "clang_cursor.h"
-#include "clang_index.h"
 
 #include <clang-c/Index.h>
 

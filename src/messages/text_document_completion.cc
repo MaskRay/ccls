@@ -338,7 +338,10 @@ struct Handler_TextDocumentCompletion : MessageHandler {
               include_complete->completion_items_mutex, std::defer_lock);
           if (include_complete->is_scanning)
             lock.lock();
-          out.result.items = include_complete->completion_items;
+          std::string quote = result.match[5];
+          for (auto& item : include_complete->completion_items)
+            if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
+               out.result.items.push_back(item);
         }
         FilterAndSortCompletionResponse(&out, result.pattern,
                                         config->completion.filterAndSort);

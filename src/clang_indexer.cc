@@ -1555,7 +1555,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetVarDetail(var, std::string(decl->entityInfo->name), decl->cursor,
                    decl->semanticContainer, !decl->isRedeclaration, db, param);
 
-      // FIXME https://github.com/jacobdufault/ccls/issues/239
       var->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (var->def.kind == lsSymbolKind::Variable &&
           decl->cursor.kind == CXCursor_ParmDecl)
@@ -1776,8 +1775,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
       // line, with spelling name replaced with qualified name.
-      // TODO Think how to display multi-line declaration like `typedef struct {
-      // ... } foo;` https://github.com/jacobdufault/ccls/issues/29
       if (extent.end.line - extent.start.line <
           kMaxLinesDisplayTypeAliasDeclarations) {
         FileContents& fc = param->file_contents[db->path];
@@ -1924,7 +1921,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 }
 
-// https://github.com/jacobdufault/ccls/issues/174
 // Type-dependent member access expressions do not have accurate spelling
 // ranges.
 //
@@ -2326,56 +2322,6 @@ void IndexInit() {
   clang_enableStackTraces();
   if (!getenv("LIBCLANG_DISABLE_CRASH_RECOVERY"))
     clang_toggleCrashRecovery(1);
-}
-
-void ClangSanityCheck() {
-  std::vector<const char*> args = {"clang", "index_tests/vars/class_member.cc"};
-  unsigned opts = 0;
-  CXIndex index = clang_createIndex(0, 1);
-  CXTranslationUnit tu;
-  clang_parseTranslationUnit2FullArgv(index, nullptr, args.data(), args.size(),
-                                      nullptr, 0, opts, &tu);
-  assert(tu);
-
-  IndexerCallbacks callback = {0};
-  callback.abortQuery = [](CXClientData client_data, void* reserved) {
-    return 0;
-  };
-  callback.diagnostic = [](CXClientData client_data,
-                           CXDiagnosticSet diagnostics, void* reserved) {};
-  callback.enteredMainFile = [](CXClientData client_data, CXFile mainFile,
-                                void* reserved) -> CXIdxClientFile {
-    return nullptr;
-  };
-  callback.ppIncludedFile =
-      [](CXClientData client_data,
-         const CXIdxIncludedFileInfo* file) -> CXIdxClientFile {
-    return nullptr;
-  };
-  callback.importedASTFile =
-      [](CXClientData client_data,
-         const CXIdxImportedASTFileInfo*) -> CXIdxClientASTFile {
-    return nullptr;
-  };
-  callback.startedTranslationUnit = [](CXClientData client_data,
-                                       void* reserved) -> CXIdxClientContainer {
-    return nullptr;
-  };
-  callback.indexDeclaration = [](CXClientData client_data,
-                                 const CXIdxDeclInfo* decl) {};
-  callback.indexEntityReference = [](CXClientData client_data,
-                                     const CXIdxEntityRefInfo* ref) {};
-
-  const unsigned kIndexOpts = 0;
-  CXIndexAction index_action = clang_IndexAction_create(index);
-  int index_param = 0;
-  clang_toggleCrashRecovery(0);
-  clang_indexTranslationUnit(index_action, &index_param, &callback,
-                             sizeof(IndexerCallbacks), kIndexOpts, tu);
-  clang_IndexAction_dispose(index_action);
-
-  clang_disposeTranslationUnit(tu);
-  clang_disposeIndex(index);
 }
 
 std::string GetClangVersion() {

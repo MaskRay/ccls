@@ -1,6 +1,6 @@
 #pragma once
 
-#include "clang_index.h"
+#include "clang_cursor.h"
 #include "clang_translation_unit.h"
 #include "lru_cache.h"
 #include "lsp_completion.h"

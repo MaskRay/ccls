@@ -1,7 +1,6 @@
 #pragma once
 
 #include "clang_cursor.h"
-#include "clang_index.h"
 #include "clang_translation_unit.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
@@ -16,14 +15,13 @@
 #include "symbol.h"
 #include "utils.h"
 
+#include <assert.h>
+#include <ctype.h>
+#include <stdint.h>
+#include <algorithm>
+#include <unordered_map>
 #include <optional>
 #include <string_view>
-
-#include <ctype.h>
-#include <algorithm>
-#include <cassert>
-#include <cstdint>
-#include <unordered_map>
 #include <vector>
 
 struct IndexFile;
