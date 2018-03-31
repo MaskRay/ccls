@@ -87,7 +87,7 @@ OUTPUT:
       "storage": 0
     }, {
       "id": 2,
-      "usr": 14946041066794678724,
+      "usr": 2056319845419860263,
       "detailed_name": "DISALLOW",
       "short_name": "DISALLOW",
       "hover": "#define DISALLOW(type) type(type&&) = delete;",

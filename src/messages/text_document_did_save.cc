@@ -32,8 +32,6 @@ struct Handler_TextDocumentDidSave
 
   void Run(In_TextDocumentDidSave* request) override {
     std::string path = request->params.textDocument.uri.GetPath();
-    if (ShouldIgnoreFileForIndexing(path))
-      return;
 
     // Send out an index request, and copy the current buffer state so we
     // can update the cached index contents when the index is done.

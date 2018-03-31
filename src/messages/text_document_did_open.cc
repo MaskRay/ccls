@@ -40,8 +40,6 @@ struct Handler_TextDocumentDidOpen
     const auto& params = request->params;
     Timer time;
     std::string path = params.textDocument.uri.GetPath();
-    if (ShouldIgnoreFileForIndexing(path))
-      return;
 
     std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
     WorkingFile* working_file = working_files->OnOpen(params.textDocument);

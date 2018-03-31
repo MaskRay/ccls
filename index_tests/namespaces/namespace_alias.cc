@@ -142,7 +142,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 107714981785063096,
+      "usr": 6030927277961448585,
       "detailed_name": "int a",
       "short_name": "a",
       "hover": "int a = foo::bar::baz::qux",
@@ -155,7 +155,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 2,
-      "usr": 1200087780658383286,
+      "usr": 7657277353101371136,
       "detailed_name": "int b",
       "short_name": "b",
       "hover": "int b = fbz::qux",

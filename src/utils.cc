@@ -430,40 +430,6 @@ std::string GetDefaultResourceDirectory() {
   return NormalizePath(result);
 }
 
-std::string UpdateToRnNewlines(std::string output) {
-  size_t idx = 0;
-  while (true) {
-    idx = output.find('\n', idx);
-
-    // No more matches.
-    if (idx == std::string::npos)
-      break;
-
-    // Skip an existing "\r\n" match.
-    if (idx > 0 && output[idx - 1] == '\r') {
-      ++idx;
-      continue;
-    }
-
-    // Replace "\n" with "\r|n".
-    output.replace(output.begin() + idx, output.begin() + idx + 1, "\r\n");
-  }
-
-  return output;
-};
-
-TEST_SUITE("Update \\n to \\r\\n") {
-  TEST_CASE("all") {
-    REQUIRE(UpdateToRnNewlines("\n") == "\r\n");
-    REQUIRE(UpdateToRnNewlines("\n\n") == "\r\n\r\n");
-    REQUIRE(UpdateToRnNewlines("\r\n\n") == "\r\n\r\n");
-    REQUIRE(UpdateToRnNewlines("\n\r\n") == "\r\n\r\n");
-    REQUIRE(UpdateToRnNewlines("\r\n\r\n") == "\r\n\r\n");
-    REQUIRE(UpdateToRnNewlines("f1\nfo2\nfoo3") == "f1\r\nfo2\r\nfoo3");
-    REQUIRE(UpdateToRnNewlines("f1\r\nfo2\r\nfoo3") == "f1\r\nfo2\r\nfoo3");
-  }
-}
-
 TEST_SUITE("StripFileType") {
   TEST_CASE("all") {
     REQUIRE(StripFileType("") == "");

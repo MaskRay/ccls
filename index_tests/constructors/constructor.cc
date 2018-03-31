@@ -64,7 +64,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 18410644574635149442,
+      "usr": 10983126130596230582,
       "detailed_name": "Foo f",
       "short_name": "f",
       "declarations": [],
@@ -76,7 +76,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 11468802633764653592,
+      "usr": 17165811951126099095,
       "detailed_name": "Foo *f2",
       "short_name": "f2",
       "hover": "Foo *f2 = new Foo()",

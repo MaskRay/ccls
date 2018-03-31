@@ -1,6 +1,6 @@
 #include "type_printer.h"
-#include <string>
-#include "loguru.hpp"
+
+#include <loguru.hpp>
 
 namespace {
 
@@ -38,7 +38,7 @@ std::string GetFunctionSignature(IndexFile* db,
                                  NamespaceHelper* ns,
                                  const CXIdxDeclInfo* decl) {
   int num_args = clang_Cursor_getNumArguments(decl->cursor);
-  std::string function_name =
+  std::pair<std::string, int> function_name =
       ns->QualifiedName(decl->semanticContainer, decl->entityInfo->name);
 
   std::vector<std::pair<int, std::string>> args;
@@ -76,7 +76,7 @@ std::string GetFunctionSignature(IndexFile* db,
     // Second pass: insert argument names before each comma and closing paren.
     int i = function_name_offset;
     std::string type_desc_with_names(type_desc.begin(), type_desc.begin() + i);
-    type_desc_with_names.append(function_name);
+    type_desc_with_names.append(function_name.first);
     for (auto& arg : args) {
       if (arg.first < 0) {
         LOG_S(ERROR)
@@ -99,7 +99,7 @@ std::string GetFunctionSignature(IndexFile* db,
   } else {
     // type_desc is either a typedef, or some complicated type we cannot handle.
     // Append the function_name in this case.
-    ConcatTypeAndName(type_desc, function_name);
+    ConcatTypeAndName(type_desc, function_name.first);
   }
 
   return type_desc;

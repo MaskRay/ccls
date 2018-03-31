@@ -37,8 +37,7 @@ std::string ToString(const rapidjson::Document& document) {
 
   buffer.Clear();
   document.Accept(writer);
-  std::string output = buffer.GetString();
-  return UpdateToRnNewlines(output);
+  return buffer.GetString();
 }
 
 void ParseTestExpectation(
