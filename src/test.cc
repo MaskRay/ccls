@@ -23,11 +23,6 @@
 #include <unistd.h>
 #endif
 
-void Write(const std::vector<std::string>& strs) {
-  for (const std::string& str : strs)
-    std::cout << str << std::endl;
-}
-
 std::string ToString(const rapidjson::Document& document) {
   rapidjson::StringBuffer buffer;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
@@ -46,41 +41,6 @@ void ParseTestExpectation(
     TextReplacer* replacer,
     std::vector<std::string>* flags,
     std::unordered_map<std::string, std::string>* output_sections) {
-#if false
-#include "bar.h"
-
-  void foo();
-
-  /*
-  // DOCS for TEXT_REPLACE:
-  //  Each line under TEXT_REPLACE is a replacement, ie, the two entries will be
-  //  considered equivalent. This is useful for USRs which vary across files.
-
-  // DOCS for EXTRA_FLAGS:
-  //  Additional flags to pass to clang.
-
-  // DOCS for OUTPUT:
-  //  If no name is given assume to be this file name. If there is not an output
-  //  section for a file it is not checked.
-
-  TEXT_REPLACE:
-  foo <===> bar
-  one <===> two
-
-  EXTRA_FLAGS:
-  -std=c++14
-
-  OUTPUT:
-  {}
-
-  OUTPUT: bar.cc
-  {}
-
-  OUTPUT: bar.h
-  {}
-  */
-#endif
-
   // Scan for EXTRA_FLAGS:
   {
     bool in_output = false;
@@ -201,34 +161,6 @@ void DiffDocuments(std::string path,
             << "):" << std::endl;
   std::cout << joined_actual_output << std::endl;
   std::cout << std::endl;
-
-  int max_diff = 5;
-
-  size_t len = std::min(actual_output.size(), expected_output.size());
-  for (size_t i = 0; i < len; ++i) {
-    if (actual_output[i] != expected_output[i]) {
-      if (--max_diff < 0) {
-        std::cout << "(... more lines may differ ...)" << std::endl;
-        break;
-      }
-
-      std::cout << "Line " << i << " differs:" << std::endl;
-      std::cout << "  expected: " << expected_output[i] << std::endl;
-      std::cout << "  actual:   " << actual_output[i] << std::endl;
-    }
-  }
-
-  if (actual_output.size() > len) {
-    std::cout << "Additional output in actual:" << std::endl;
-    for (size_t i = len; i < actual_output.size(); ++i)
-      std::cout << "  " << actual_output[i] << std::endl;
-  }
-
-  if (expected_output.size() > len) {
-    std::cout << "Additional output in expected:" << std::endl;
-    for (size_t i = len; i < expected_output.size(); ++i)
-      std::cout << "  " << expected_output[i] << std::endl;
-  }
 }
 
 void VerifySerializeToFrom(IndexFile* file) {
@@ -322,9 +254,6 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
     bool had_extra_flags = !flags.empty();
     if (!AnyStartsWith(flags, "-x"))
       flags.push_back("-xc++");
-    // Use c++14 by default, because MSVC STL is written assuming that.
-    if (!AnyStartsWith(flags, "-std"))
-      flags.push_back("-std=c++14");
     flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
     if (had_extra_flags) {
       std::cout << "For " << path << std::endl;

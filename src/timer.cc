@@ -8,13 +8,9 @@ Timer::Timer() {
 
 long long Timer::ElapsedMicroseconds() const {
   std::chrono::time_point<Clock> end = Clock::now();
-  long long elapsed = elapsed_;
-  if (start_.has_value()) {
-    elapsed +=
-        std::chrono::duration_cast<std::chrono::microseconds>(end - *start_)
-            .count();
-  }
-  return elapsed;
+  return elapsed_ +
+         std::chrono::duration_cast<std::chrono::microseconds>(end - start_)
+             .count();
 }
 
 long long Timer::ElapsedMicrosecondsAndReset() {
@@ -38,24 +34,17 @@ void Timer::ResetAndPrint(const std::string& message) {
 }
 
 void Timer::Pause() {
-  assert(start_.has_value());
-
   std::chrono::time_point<Clock> end = Clock::now();
   long long elapsed =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - *start_)
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start_)
           .count();
 
   elapsed_ += elapsed;
-  start_ = std::nullopt;
 }
 
 void Timer::Resume() {
-  assert(!start_.has_value());
   start_ = Clock::now();
 }
-
-ScopedPerfTimer::ScopedPerfTimer(const std::string& message)
-    : message_(message) {}
 
 ScopedPerfTimer::~ScopedPerfTimer() {
   timer_.ResetAndPrint(message_);

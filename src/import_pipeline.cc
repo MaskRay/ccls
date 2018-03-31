@@ -491,30 +491,6 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
           response->current->file->last_modification_time);
     }
 
-  #if false
-  #define PRINT_SECTION(name)                                                    \
-    if (response->perf.name) {                                                   \
-      total += response->perf.name;                                              \
-      output << " " << #name << ": " << FormatMicroseconds(response->perf.name); \
-    }
-    std::stringstream output;
-    long long total = 0;
-    output << "[perf]";
-    PRINT_SECTION(index_parse);
-    PRINT_SECTION(index_build);
-    PRINT_SECTION(index_save_to_disk);
-    PRINT_SECTION(index_load_cached);
-    PRINT_SECTION(querydb_id_map);
-    PRINT_SECTION(index_make_delta);
-    output << "\n       total: " << FormatMicroseconds(total);
-    output << " path: " << response->current_index->path;
-    LOG_S(INFO) << output.rdbuf();
-  #undef PRINT_SECTION
-
-    if (response->is_interactive)
-      LOG_S(INFO) << "Applying IndexUpdate" << std::endl << update.ToString();
-  #endif
-
     Index_OnIndexed reply(std::move(update), response->perf);
     queue->on_indexed.PushBack(std::move(reply), response->is_interactive);
   }
@@ -551,13 +527,7 @@ bool IndexMergeIndexUpdates() {
     if (!to_join)
       break;
     did_merge = true;
-    // Timer time;
     root->update.Merge(std::move(to_join->update));
-    // time.ResetAndPrint("Joined querydb updates for files: " +
-    // StringJoinMap(root->update.files_def_update,
-    //[](const QueryFile::DefUpdate& update) {
-    // return update.path;
-    //}));
   }
 
   queue->on_indexed.PushFront(std::move(*root));

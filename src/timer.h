@@ -1,7 +1,5 @@
 #pragma once
 
-#include <optional>
-
 #include <chrono>
 #include <string>
 
@@ -25,15 +23,14 @@ struct Timer {
   void Resume();
 
   // Raw start time.
-  std::optional<std::chrono::time_point<Clock>> start_;
+  std::chrono::time_point<Clock> start_;
   // Elapsed time.
-  long long elapsed_ = 0;
+  long long elapsed_;
 };
 
 struct ScopedPerfTimer {
-  ScopedPerfTimer(const std::string& message);
   ~ScopedPerfTimer();
 
-  Timer timer_;
   std::string message_;
+  Timer timer_;
 };
