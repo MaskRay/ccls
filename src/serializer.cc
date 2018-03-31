@@ -449,8 +449,6 @@ TEST_SUITE("Serializer utils") {
     REQUIRE(GetBaseName("foo/foo.cc") == "foo.cc");
     REQUIRE(GetBaseName("/foo.cc") == "foo.cc");
     REQUIRE(GetBaseName("///foo.cc") == "foo.cc");
-    REQUIRE(GetBaseName("bar/") == "bar/");
-    REQUIRE(GetBaseName("foobar/bar/") ==
-            "foobar/bar/");  // TODO: Should be bar, but good enough.
+    REQUIRE(GetBaseName("bar/") == ".");
   }
 }

@@ -7,16 +7,17 @@
 #include <siphash.h>
 #include <loguru/loguru.hpp>
 
+#include <assert.h>
+#include <ctype.h>
+#include <string.h>
 #include <algorithm>
-#include <cassert>
-#include <cctype>
-#include <cstring>
 #include <fstream>
 #include <functional>
 #include <queue>
 #include <sstream>
 #include <string>
 #include <unordered_map>
+using namespace std::placeholders;
 
 // DEFAULT_RESOURCE_DIRECTORY is passed with quotes for non-MSVC compilers, ie,
 // foo vs "foo".
@@ -28,32 +29,16 @@
 #endif
 
 void TrimInPlace(std::string& s) {
-  s.erase(s.begin(),
-          std::find_if(s.begin(), s.end(),
-                       std::not1(std::ptr_fun<int, int>(std::isspace))));
-  s.erase(std::find_if(s.rbegin(), s.rend(),
-                       std::not1(std::ptr_fun<int, int>(std::isspace)))
-              .base(),
-          s.end());
+  auto f = [](char c) { return !isspace(c); };
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
+  s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
 }
 std::string Trim(std::string s) {
   TrimInPlace(s);
   return s;
 }
-void RemoveLastCR(std::string& s) {
-  if (!s.empty() && *s.rbegin() == '\r')
-    s.pop_back();
-}
 
-uint64_t HashUsr(const std::string& s) {
-  return HashUsr(s.c_str(), s.size());
-}
-
-uint64_t HashUsr(const char* s) {
-  return HashUsr(s, strlen(s));
-}
-
-uint64_t HashUsr(const char* s, size_t n) {
+uint64_t HashUsr(std::string_view s) {
   union {
     uint64_t ret;
     uint8_t out[8];
@@ -61,43 +46,31 @@ uint64_t HashUsr(const char* s, size_t n) {
   // k is an arbitrary key. Don't change it.
   const uint8_t k[16] = {0xd0, 0xe5, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52,
                          0x61, 0x79, 0xea, 0x70, 0xca, 0x70, 0xf0, 0x0d};
-  (void)siphash(reinterpret_cast<const uint8_t*>(s), n, k, out, 8);
+  (void)siphash(reinterpret_cast<const uint8_t*>(s.data()), s.size(), k, out, 8);
   return ret;
 }
 
-// See http://stackoverflow.com/a/2072890
-bool EndsWith(std::string_view value, std::string_view ending) {
-  if (ending.size() > value.size())
-    return false;
-  return std::equal(ending.rbegin(), ending.rend(), value.rbegin());
+bool EndsWith(std::string_view s, std::string_view suffix) {
+  return s.size() >= suffix.size() &&
+         std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());
 }
 
-bool StartsWith(std::string_view value, std::string_view start) {
-  if (start.size() > value.size())
-    return false;
-  return std::equal(start.begin(), start.end(), value.begin());
+bool StartsWith(std::string_view s, std::string_view prefix) {
+  return s.size() >= prefix.size() &&
+         std::equal(prefix.begin(), prefix.end(), s.begin());
 }
 
-bool AnyStartsWith(const std::vector<std::string>& values,
-                   const std::string& start) {
-  return std::any_of(
-      std::begin(values), std::end(values),
-      [&start](const std::string& value) { return StartsWith(value, start); });
+bool AnyStartsWith(const std::vector<std::string>& xs,
+                   std::string_view prefix) {
+  return std::any_of(xs.begin(), xs.end(), std::bind(StartsWith, _1, prefix));
 }
 
-bool StartsWithAny(const std::string& value,
-                   const std::vector<std::string>& startings) {
-  return std::any_of(std::begin(startings), std::end(startings),
-                     [&value](const std::string& starting) {
-                       return StartsWith(value, starting);
-                     });
+bool StartsWithAny(std::string_view s, const std::vector<std::string>& ps) {
+  return std::any_of(ps.begin(), ps.end(), std::bind(StartsWith, s, _1));
 }
 
-bool EndsWithAny(const std::string& value,
-                 const std::vector<std::string>& endings) {
-  return std::any_of(
-      std::begin(endings), std::end(endings),
-      [&value](const std::string& ending) { return EndsWith(value, ending); });
+bool EndsWithAny(std::string_view s, const std::vector<std::string>& ss) {
+  return std::any_of(ss.begin(), ss.end(), std::bind(EndsWith, s, _1));
 }
 
 bool FindAnyPartial(const std::string& value,
@@ -120,10 +93,7 @@ std::string GetDirName(std::string path) {
 }
 
 std::string GetBaseName(const std::string& path) {
-  size_t last_slash = path.find_last_of('/');
-  if (last_slash != std::string::npos && (last_slash + 1) < path.size())
-    return path.substr(last_slash + 1);
-  return path;
+  return fs::path(path).filename();
 }
 
 std::string StripFileType(const std::string& path) {
@@ -149,13 +119,15 @@ std::vector<std::string> SplitString(const std::string& str,
   return strings;
 }
 
-std::string LowerPathIfCaseInsensitive(const std::string& path) {
-  std::string result = path;
+std::string LowerPathIfInsensitive(const std::string& path) {
 #if defined(_WIN32)
-  for (size_t i = 0; i < result.size(); ++i)
-    result[i] = (char)tolower(result[i]);
+  std::string ret = path;
+  for (char& c : ret)
+    c = tolower(c);
+  return ret;
+#else
+  return path;
 #endif
-  return result;
 }
 
 static void GetFilesInFolderHelper(
@@ -164,7 +136,7 @@ static void GetFilesInFolderHelper(
     std::string output_prefix,
     const std::function<void(const std::string&)>& handler) {
   std::queue<std::pair<fs::path, fs::path>> q;
-  q.push(std::make_pair(fs::path(folder), fs::path(output_prefix)));
+  q.emplace(fs::path(folder), fs::path(output_prefix));
   while (!q.empty()) {
     for (auto it = fs::directory_iterator(q.front().first); it != fs::directory_iterator(); ++it) {
       auto path = it->path();
@@ -212,41 +184,13 @@ void EnsureEndsInSlash(std::string& path) {
 }
 
 std::string EscapeFileName(std::string path) {
-  if (path.size() && path.back() == '/')
-    path.pop_back();
-  std::replace(path.begin(), path.end(), '\\', '@');
-  std::replace(path.begin(), path.end(), '/', '@');
-  std::replace(path.begin(), path.end(), ':', '@');
+  bool slash = path.size() && path.back() == '/';
+  for (char& c : path)
+    if (c == '\\' || c == '/' || c == ':')
+      c = '@';
+  if (slash)
+    path += '/';
   return path;
-}
-
-// http://stackoverflow.com/a/6089413
-std::istream& SafeGetline(std::istream& is, std::string& t) {
-  t.clear();
-
-  // The characters in the stream are read one-by-one using a std::streambuf.
-  // That is faster than reading them one-by-one using the std::istream. Code
-  // that uses streambuf this way must be guarded by a sentry object. The sentry
-  // object performs various tasks, such as thread synchronization and updating
-  // the stream state.
-
-  std::istream::sentry se(is, true);
-  std::streambuf* sb = is.rdbuf();
-
-  for (;;) {
-    int c = sb->sbumpc();
-    if (c == EOF) {
-      // Also handle the case when the last line has no line ending
-      if (t.empty())
-        is.setstate(std::ios::eofbit);
-      return is;
-    }
-
-    t += (char)c;
-
-    if (c == '\n')
-      return is;
-  }
 }
 
 bool FileExists(const std::string& filename) {
@@ -255,15 +199,14 @@ bool FileExists(const std::string& filename) {
 
 std::optional<std::string> ReadContent(const std::string& filename) {
   LOG_S(INFO) << "Reading " << filename;
-  std::ifstream cache;
-  cache.open(filename);
-
-  try {
-    return std::string(std::istreambuf_iterator<char>(cache),
-                       std::istreambuf_iterator<char>());
-  } catch (std::ios_base::failure&) {
-    return std::nullopt;
-  }
+  char buf[4096];
+  std::string ret;
+  FILE* f = fopen(filename.c_str(), "rb");
+  if (!f) return {};
+  size_t n;
+  while ((n = fread(buf, 1, sizeof buf, f)) > 0)
+    ret.append(buf, n);
+  return ret;
 }
 
 std::vector<std::string> ReadFileLines(std::string filename) {
@@ -302,14 +245,12 @@ std::string TextReplacer::Apply(const std::string& content) {
 }
 
 void WriteToFile(const std::string& filename, const std::string& content) {
-  std::ofstream file(filename,
-                     std::ios::out | std::ios::trunc | std::ios::binary);
-  if (!file.good()) {
+  FILE* f = fopen(filename.c_str(), "wb");
+  if (!f || fwrite(content.c_str(), content.size(), 1, f) != 1) {
     LOG_S(ERROR) << "Cannot write to " << filename;
     return;
   }
-
-  file << content;
+  fclose(f);
 }
 
 std::string GetDefaultResourceDirectory() {

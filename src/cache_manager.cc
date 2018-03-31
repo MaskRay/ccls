@@ -47,10 +47,10 @@ struct RealCacheManager : ICacheManager {
     std::string cache_file;
     size_t len = config_->projectRoot.size();
     if (StartsWith(source_file, config_->projectRoot)) {
-      cache_file = EscapeFileName(config_->projectRoot) + '/' +
+      cache_file = EscapeFileName(config_->projectRoot) +
                    EscapeFileName(source_file.substr(len));
     } else {
-      cache_file = '@' + EscapeFileName(config_->projectRoot) + '/' +
+      cache_file = '@' + EscapeFileName(config_->projectRoot) +
                    EscapeFileName(source_file);
     }
 

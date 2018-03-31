@@ -13,19 +13,14 @@
 void TrimInPlace(std::string& s);
 std::string Trim(std::string s);
 
-uint64_t HashUsr(const std::string& s);
-uint64_t HashUsr(const char* s);
-uint64_t HashUsr(const char* s, size_t n);
+uint64_t HashUsr(std::string_view s);
 
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(std::string_view value, std::string_view start);
 bool EndsWith(std::string_view value, std::string_view ending);
-bool AnyStartsWith(const std::vector<std::string>& values,
-                   const std::string& start);
-bool StartsWithAny(const std::string& value,
-                   const std::vector<std::string>& startings);
-bool EndsWithAny(const std::string& value,
-                 const std::vector<std::string>& endings);
+bool AnyStartsWith(const std::vector<std::string>& xs, std::string_view prefix);
+bool StartsWithAny(std::string_view s, const std::vector<std::string>& ps);
+bool EndsWithAny(std::string_view s, const std::vector<std::string>& ss);
 bool FindAnyPartial(const std::string& value,
                     const std::vector<std::string>& values);
 // Returns the dirname of |path|, i.e. "foo/bar.cc" => "foo", "foo" => ".",
@@ -39,7 +34,7 @@ std::string StripFileType(const std::string& path);
 std::vector<std::string> SplitString(const std::string& str,
                                      const std::string& delimiter);
 
-std::string LowerPathIfCaseInsensitive(const std::string& path);
+std::string LowerPathIfInsensitive(const std::string& path);
 
 template <typename TValues, typename TMap>
 std::string StringJoinMap(const TValues& values,

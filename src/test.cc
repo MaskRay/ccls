@@ -81,38 +81,6 @@ void ParseTestExpectation(
   */
 #endif
 
-  // Scan for TEXT_REPLACE:
-  {
-    bool in_output = false;
-    for (std::string line : lines_with_endings) {
-      TrimInPlace(line);
-
-      if (StartsWith(line, "TEXT_REPLACE:")) {
-        assert(!in_output && "multiple TEXT_REPLACE sections");
-        in_output = true;
-        continue;
-      }
-
-      if (in_output && line.empty())
-        break;
-
-      if (in_output) {
-        static const std::string kKey = " <===> ";
-        size_t index = line.find(kKey);
-        LOG_IF_S(FATAL, index == std::string::npos)
-            << " No '" << kKey << "' in replacement string '" << line << "'"
-            << ", index=" << index;
-
-        TextReplacer::Replacement replacement;
-        replacement.from = line.substr(0, index);
-        replacement.to = line.substr(index + kKey.size());
-        TrimInPlace(replacement.from);
-        TrimInPlace(replacement.to);
-        replacer->replacements.push_back(replacement);
-      }
-    }
-  }
-
   // Scan for EXTRA_FLAGS:
   {
     bool in_output = false;
@@ -460,59 +428,4 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   }
 
   return success;
-}
-
-// TODO: ctor/dtor, copy ctor
-// TODO: Always pass IndexFile by pointer, ie, search and remove all IndexFile&
-// refs.
-
-TEST_SUITE("ParseTestExpectation") {
-  TEST_CASE("Parse TEXT_REPLACE") {
-    // clang-format off
-    std::vector<std::string> lines_with_endings = {
-        "/*\n",
-        "TEXT_REPLACE:\n",
-        "  foo   <===> \tbar  \n",
-        "01 <===> 2\n",
-        "\n",
-        "*/\n"};
-    // clang-format on
-
-    TextReplacer text_replacer;
-    std::vector<std::string> flags;
-    std::unordered_map<std::string, std::string> all_expected_output;
-    ParseTestExpectation("foo.cc", lines_with_endings, &text_replacer, &flags,
-                         &all_expected_output);
-
-    REQUIRE(text_replacer.replacements.size() == 2);
-    REQUIRE(text_replacer.replacements[0].from == "foo");
-    REQUIRE(text_replacer.replacements[0].to == "bar");
-    REQUIRE(text_replacer.replacements[1].from == "01");
-    REQUIRE(text_replacer.replacements[1].to == "2");
-  }
-
-  TEST_CASE("Apply TEXT_REPLACE") {
-    TextReplacer replacer;
-    replacer.replacements.push_back(TextReplacer::Replacement{"foo", "bar"});
-    replacer.replacements.push_back(TextReplacer::Replacement{"01", "2"});
-    replacer.replacements.push_back(TextReplacer::Replacement{"3", "456"});
-
-    // Equal-length.
-    REQUIRE(replacer.Apply("foo") == "bar");
-    REQUIRE(replacer.Apply("bar") == "bar");
-
-    // Shorter replacement.
-    REQUIRE(replacer.Apply("01") == "2");
-    REQUIRE(replacer.Apply("2") == "2");
-
-    // Longer replacement.
-    REQUIRE(replacer.Apply("3") == "456");
-    REQUIRE(replacer.Apply("456") == "456");
-
-    // Content before-after replacement.
-    REQUIRE(replacer.Apply("aaaa01bbbb") == "aaaa2bbbb");
-
-    // Multiple replacements.
-    REQUIRE(replacer.Apply("foofoobar0123") == "barbarbar22456");
-  }
 }

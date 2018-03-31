@@ -305,7 +305,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IdMap& id_map,
 Maybe<QueryFileId> GetQueryFileIdFromPath(QueryDatabase* query_db,
                                           const std::string& path,
                                           bool create_if_missing) {
-  NormalizedPath normalized_path(path);
+  std::string normalized_path = LowerPathIfInsensitive(path);
   auto it = query_db->usr_to_file.find(normalized_path);
   if (it != query_db->usr_to_file.end())
     return QueryFileId(it->second.id);
@@ -730,33 +730,12 @@ std::string IndexUpdate::ToString() {
   return output.GetString();
 }
 
-NormalizedPath::NormalizedPath(const std::string& path)
-    : path(LowerPathIfCaseInsensitive(path)) {}
-
-bool NormalizedPath::operator==(const NormalizedPath& rhs) const {
-  return path == rhs.path;
-}
-
-bool NormalizedPath::operator!=(const NormalizedPath& rhs) const {
-  return path != rhs.path;
-}
-
 // ------------------------
 // QUERYDB THREAD FUNCTIONS
 // ------------------------
 
 void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
                                const std::vector<Usr>& to_remove) {
-  // This function runs on the querydb thread.
-
-  // When we remove an element, we just erase the state from the storage. We do
-  // not update array indices because that would take a huge amount of time for
-  // a very large index.
-  //
-  // There means that there is some memory growth that will never be reclaimed,
-  // but it should be pretty minimal and is solved by simply restarting the
-  // indexer and loading from cache, which is a fast operation.
-
   switch (usr_kind) {
     case SymbolKind::Type: {
       for (const Usr& usr : to_remove) {
@@ -816,7 +795,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   }
 
   for (const std::string& filename : update->files_removed)
-    files[usr_to_file[NormalizedPath(filename)].id].def = std::nullopt;
+    files[usr_to_file[LowerPathIfInsensitive(filename)].id].def = std::nullopt;
   ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
@@ -845,7 +824,7 @@ void QueryDatabase::ImportOrUpdate(
   // This function runs on the querydb thread.
 
   for (auto& def : updates) {
-    auto it = usr_to_file.find(NormalizedPath(def.value.path));
+    auto it = usr_to_file.find(LowerPathIfInsensitive(def.value.path));
     assert(it != usr_to_file.end());
 
     QueryFile& existing = files[it->second.id];
