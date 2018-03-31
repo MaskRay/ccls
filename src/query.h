@@ -270,7 +270,7 @@ struct QueryDatabase {
   std::vector<QueryVar> vars;
 
   // Lookup symbol based on a usr.
-  spp::sparse_hash_map<std::string, QueryFileId> usr_to_file;
+  std::unordered_map<std::string, QueryFileId> usr_to_file;
   spp::sparse_hash_map<Usr, QueryTypeId> usr_to_type;
   spp::sparse_hash_map<Usr, QueryFuncId> usr_to_func;
   spp::sparse_hash_map<Usr, QueryVarId> usr_to_var;

@@ -22,7 +22,6 @@
 #include "test.h"
 #include "timer.h"
 #include "timestamp_manager.h"
-#include "work_thread.h"
 #include "working_files.h"
 
 #include <doctest/doctest.h>
@@ -35,7 +34,6 @@
 #include <iostream>
 #include <iterator>
 #include <string>
-#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -255,7 +253,7 @@ void LaunchStdinLoop(Config* config,
   // clients.
   std::cin.tie(nullptr);
 
-  WorkThread::StartThread("stdin", [request_times]() {
+  StartThread("stdin", [request_times]() {
     auto* queue = QueueManager::instance();
     while (true) {
       std::unique_ptr<InMessage> message;
@@ -295,7 +293,7 @@ void LaunchStdinLoop(Config* config,
 
 void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
                         MultiQueueWaiter* waiter) {
-  WorkThread::StartThread("stdout", [=]() {
+  StartThread("stdout", [=]() {
     auto* queue = QueueManager::instance();
 
     while (true) {

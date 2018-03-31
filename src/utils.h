@@ -149,3 +149,5 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest) {
   }
 
 std::string GetDefaultResourceDirectory();
+
+void StartThread(const std::string& thread_name, std::function<void()> entry);

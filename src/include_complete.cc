@@ -5,9 +5,6 @@
 #include "project.h"
 #include "standard_includes.h"
 #include "timer.h"
-#include "work_thread.h"
-
-#include <thread>
 
 namespace {
 
@@ -116,7 +113,7 @@ void IncludeComplete::Rescan() {
                                           config_->completion.includeBlacklist);
 
   is_scanning = true;
-  WorkThread::StartThread("scan_includes", [this]() {
+  StartThread("scan_includes", [this]() {
     Timer timer;
 
     InsertStlIncludes();

@@ -5,6 +5,6 @@
 
 void ccls_unreachable_internal(const char* msg, const char* file, int line) {
   fprintf(stderr, "unreachable %s:%d %s\n", file, line, msg);
-  CQUERY_BUILTIN_UNREACHABLE;
+  CCLS_BUILTIN_UNREACHABLE;
   abort();
 }

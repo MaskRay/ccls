@@ -9,10 +9,10 @@
 
 #include <loguru.hpp>
 
+#include <limits.h>
 #include <algorithm>
 #include <cassert>
 #include <chrono>
-#include <climits>
 #include <iostream>
 
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
@@ -861,7 +861,7 @@ CXIdxClientFile OnIndexIncludedFile(CXClientData client_data,
   IndexInclude include;
   include.line = line;
   include.resolved_path = FileName(file->file);
-  if (!include.resolved_path.empty())
+  if (include.resolved_path.size())
     db->includes.push_back(include);
 
   return nullptr;

@@ -2,6 +2,7 @@
 
 #include "cache_manager.h"
 #include "clang_utils.h"
+#include "filesystem.hh"
 #include "language.h"
 #include "match.h"
 #include "platform.h"
@@ -27,40 +28,21 @@
 #include <unordered_set>
 #include <vector>
 
-extern bool gTestOutputMode;
-
 struct CompileCommandsEntry {
-  std::string directory;
+  fs::path directory;
   std::string file;
   std::string command;
   std::vector<std::string> args;
+
+  fs::path ResolveIfRelative(fs::path path) const {
+    if (path.is_absolute())
+      return path;
+    return directory / path;
+  }
 };
 MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
 
 namespace {
-
-bool g_disable_normalize_path_for_test = false;
-
-std::string NormalizePathWithTestOptOut(const std::string& path) {
-  if (g_disable_normalize_path_for_test) {
-    // Add a & so we can test to verify a path is normalized.
-    return "&" + path;
-  }
-  return NormalizePath(path);
-}
-
-bool IsUnixAbsolutePath(const std::string& path) {
-  return !path.empty() && path[0] == '/';
-}
-
-bool IsWindowsAbsolutePath(const std::string& path) {
-  auto is_drive_letter = [](char c) {
-    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
-  };
-
-  return path.size() > 3 && path[1] == ':' &&
-         (path[2] == '/' || path[2] == '\\') && is_drive_letter(path[0]);
-}
 
 enum class ProjectMode { CompileCommandsJson, DotCcls, ExternalCommand };
 
@@ -127,22 +109,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     Config* init_opts,
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {
-  auto cleanup_maybe_relative_path = [&](const std::string& path) {
-    // TODO/FIXME: Normalization will fail for paths that do not exist. Should
-    // it return an std::optional<std::string>?
-    assert(!path.empty());
-    if (entry.directory.empty() || IsUnixAbsolutePath(path) ||
-        IsWindowsAbsolutePath(path)) {
-      // We still want to normalize, as the path may contain .. characters.
-      return NormalizePathWithTestOptOut(path);
-    }
-    if (EndsWith(entry.directory, "/"))
-      return NormalizePathWithTestOptOut(entry.directory + path);
-    return NormalizePathWithTestOptOut(entry.directory + "/" + path);
-  };
-
   Project::Entry result;
-  result.filename = NormalizePathWithTestOptOut(entry.file);
+  result.filename = entry.file;
   const std::string base_name = GetBaseName(entry.file);
 
   // Expand %c %cpp %clang
@@ -185,7 +153,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Add -working-directory if not provided.
   if (!AnyStartsWith(args, "-working-directory"))
-    result.args.emplace_back("-working-directory=" + entry.directory);
+    result.args.emplace_back("-working-directory=" + entry.directory.string());
 
   bool next_flag_is_path = false;
   bool add_next_flag_to_quote_dirs = false;
@@ -212,7 +180,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     // Finish processing path for the previous argument, which was a switch.
     // {"-I", "foo"} style.
     if (next_flag_is_path) {
-      std::string normalized_arg = cleanup_maybe_relative_path(arg);
+      std::string normalized_arg = entry.ResolveIfRelative(arg);
       if (add_next_flag_to_quote_dirs)
         config->quote_dirs.insert(normalized_arg);
       if (add_next_flag_to_angle_dirs)
@@ -238,7 +206,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         if (StartsWith(arg, flag_type)) {
           std::string path = arg.substr(flag_type.size());
           assert(!path.empty());
-          path = cleanup_maybe_relative_path(path);
+          path = entry.ResolveIfRelative(path);
           if (clang_cl || StartsWithAny(arg, kNormalizePathArgs))
             arg = flag_type + path;
           if (ShouldAddToQuoteIncludes(flag_type))
@@ -254,7 +222,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       // slow. See
       // https://github.com/cquery-project/cquery/commit/af63df09d57d765ce12d40007bf56302a0446678.
       if (EndsWith(arg, base_name))
-        arg = cleanup_maybe_relative_path(arg);
+        arg = entry.ResolveIfRelative(arg);
       // TODO Exclude .a .o to make link command in compile_commands.json work.
       // Also, clang_parseTranslationUnit2FullArgv does not seem to accept
       // multiple source filenames.
@@ -450,13 +418,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 
     our_time.Resume();
     entry.directory = directory;
-    std::string absolute_filename;
-    if (IsUnixAbsolutePath(relative_filename) ||
-        IsWindowsAbsolutePath(relative_filename))
-      absolute_filename = relative_filename;
-    else
-      absolute_filename = directory + "/" + relative_filename;
-    entry.file = NormalizePathWithTestOptOut(absolute_filename);
+    entry.file = entry.ResolveIfRelative(relative_filename);
 
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(config, project, entry));
@@ -513,8 +475,8 @@ void Project::Load(Config* config, const std::string& root_directory) {
   }
 
   // Setup project entries.
-  absolute_path_to_entry_index_.resize(entries.size());
-  for (int i = 0; i < entries.size(); ++i)
+  absolute_path_to_entry_index_.reserve(entries.size());
+  for (size_t i = 0; i < entries.size(); ++i)
     absolute_path_to_entry_index_[entries[i].filename] = i;
 }
 
@@ -616,9 +578,6 @@ TEST_SUITE("Project") {
   void CheckFlags(const std::string& directory, const std::string& file,
                   std::vector<std::string> raw,
                   std::vector<std::string> expected) {
-    g_disable_normalize_path_for_test = true;
-    gTestOutputMode = true;
-
     Config config;
     ProjectConfig project;
     project.project_dir = "/w/c/s/";
@@ -656,7 +615,7 @@ TEST_SUITE("Project") {
     CheckFlags(
         /* raw */ {"clang", "-lstdc++", "myfile.cc"},
         /* expected */
-        {"clang", "-working-directory=/dir/", "-lstdc++", "&/dir/myfile.cc",
+        {"clang", "-working-directory=/dir/", "-lstdc++", "/dir/myfile.cc",
          "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
          "-fparse-all-comments"});
 
@@ -668,17 +627,18 @@ TEST_SUITE("Project") {
          "-fparse-all-comments"});
   }
 
+#ifdef _WIN32
   TEST_CASE("Windows path normalization") {
     CheckFlags("E:/workdir", "E:/workdir/bar.cc", /* raw */ {"clang", "bar.cc"},
                /* expected */
-               {"clang", "-working-directory=E:/workdir", "&E:/workdir/bar.cc",
+               {"clang", "-working-directory=E:/workdir", "E:/workdir/bar.cc",
                 "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
                 "-fparse-all-comments"});
 
     CheckFlags("E:/workdir", "E:/workdir/bar.cc",
                /* raw */ {"clang", "E:/workdir/bar.cc"},
                /* expected */
-               {"clang", "-working-directory=E:/workdir", "&E:/workdir/bar.cc",
+               {"clang", "-working-directory=E:/workdir", "E:/workdir/bar.cc",
                 "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
                 "-fparse-all-comments"});
 
@@ -686,7 +646,7 @@ TEST_SUITE("Project") {
                /* raw */ {"clang-cl.exe", "/I./test", "E:/workdir/bar.cc"},
                /* expected */
                {"clang-cl.exe", "-working-directory=E:/workdir",
-                "/I&E:/workdir/./test", "&E:/workdir/bar.cc",
+                "/I&E:/workdir/./test", "E:/workdir/bar.cc",
                 "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
                 "-fparse-all-comments"});
 
@@ -696,26 +656,18 @@ TEST_SUITE("Project") {
                /* expected */
                {"cl.exe", "-working-directory=E:/workdir",
                 "/I&E:/workdir/../third_party/test/include",
-                "&E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
+                "E:/workdir/bar.cc", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option", "-fparse-all-comments"});
   }
+#endif
 
   TEST_CASE("Path in args") {
     CheckFlags("/home/user", "/home/user/foo/bar.c",
                /* raw */ {"cc", "-O0", "foo/bar.c"},
                /* expected */
                {"cc", "-working-directory=/home/user", "-O0",
-                "&/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
+                "/home/user/foo/bar.c", "-resource-dir=/w/resource_dir/",
                 "-Wno-unknown-warning-option", "-fparse-all-comments"});
-  }
-
-  TEST_CASE("Implied binary") {
-    CheckFlags("/home/user", "/home/user/foo/bar.cc",
-               /* raw */ {"clang", "-DDONT_IGNORE_ME"},
-               /* expected */
-               {"clang", "-working-directory=/home/user", "-DDONT_IGNORE_ME",
-                "-resource-dir=/w/resource_dir/", "-Wno-unknown-warning-option",
-                "-fparse-all-comments"});
   }
 
   TEST_CASE("Directory extraction") {
@@ -752,11 +704,11 @@ TEST_SUITE("Project") {
         GetCompilationEntryFromCompileCommandEntry(&init_opts, &config, entry);
 
     std::unordered_set<std::string> angle_expected{
-        "&/a_absolute1", "&/a_absolute2", "&/base/a_relative1",
-        "&/base/a_relative2"};
+        "/a_absolute1", "/a_absolute2", "/base/a_relative1",
+        "/base/a_relative2"};
     std::unordered_set<std::string> quote_expected{
-        "&/q_absolute1", "&/q_absolute2", "&/base/q_relative1",
-        "&/base/q_relative2"};
+        "/q_absolute1", "/q_absolute2", "/base/q_relative1",
+        "/base/q_relative2"};
     REQUIRE(config.angle_dirs == angle_expected);
     REQUIRE(config.quote_dirs == quote_expected);
   }
@@ -815,23 +767,6 @@ TEST_SUITE("Project") {
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"a", "b", "ee.cc", "d"});
     }
-  }
-
-  TEST_CASE("IsWindowsAbsolutePath works correctly") {
-    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects/"));
-    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects"));
-    REQUIRE(IsWindowsAbsolutePath("C:/Users/projects"));
-    REQUIRE(IsWindowsAbsolutePath("C:\\Users\\projects"));
-    REQUIRE(IsWindowsAbsolutePath("C:\\\\Users\\\\projects"));
-    REQUIRE(IsWindowsAbsolutePath("c:\\\\Users\\\\projects"));
-    REQUIRE(IsWindowsAbsolutePath("A:\\\\Users\\\\projects"));
-
-    REQUIRE(!IsWindowsAbsolutePath("C:/"));
-    REQUIRE(!IsWindowsAbsolutePath("../abc/test"));
-    REQUIRE(!IsWindowsAbsolutePath("5:/test"));
-    REQUIRE(!IsWindowsAbsolutePath("ccls/project/file.cc"));
-    REQUIRE(!IsWindowsAbsolutePath(""));
-    REQUIRE(!IsWindowsAbsolutePath("/etc/linux/path"));
   }
 
   TEST_CASE("Entry inference prefers same file endings") {

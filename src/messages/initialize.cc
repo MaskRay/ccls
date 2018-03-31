@@ -8,7 +8,6 @@
 #include "queue_manager.h"
 #include "serializers/json.h"
 #include "timer.h"
-#include "work_thread.h"
 #include "working_files.h"
 
 #include <loguru.hpp>
@@ -270,44 +269,12 @@ struct lsTextDocumentClientCapabilities {
     // The client supports the following `CompletionItem` specific
     // capabilities.
     std::optional<lsCompletionItem> completionItem;
-  };
-  // Capabilities specific to the `textDocument/completion`
-  std::optional<lsCompletion> completion;
+  } completion;
 
   struct lsGenericDynamicReg {
     // Whether foo supports dynamic registration.
     std::optional<bool> dynamicRegistration;
   };
-
-  // Capabilities specific to the `textDocument/hover`
-  std::optional<lsGenericDynamicReg> hover;
-
-  // Capabilities specific to the `textDocument/signatureHelp`
-  std::optional<lsGenericDynamicReg> signatureHelp;
-
-  // Capabilities specific to the `textDocument/references`
-  std::optional<lsGenericDynamicReg> references;
-
-  // Capabilities specific to the `textDocument/documentHighlight`
-  std::optional<lsGenericDynamicReg> documentHighlight;
-
-  // Capabilities specific to the `textDocument/documentSymbol`
-  std::optional<lsGenericDynamicReg> documentSymbol;
-
-  // Capabilities specific to the `textDocument/formatting`
-  std::optional<lsGenericDynamicReg> formatting;
-
-  // Capabilities specific to the `textDocument/rangeFormatting`
-  std::optional<lsGenericDynamicReg> rangeFormatting;
-
-  // Capabilities specific to the `textDocument/onTypeFormatting`
-  std::optional<lsGenericDynamicReg> onTypeFormatting;
-
-  // Capabilities specific to the `textDocument/definition`
-  std::optional<lsGenericDynamicReg> definition;
-
-  // Capabilities specific to the `textDocument/codeAction`
-  std::optional<lsGenericDynamicReg> codeAction;
 
   struct CodeLensRegistrationOptions : public lsGenericDynamicReg {
     // Code lens has a resolve provider as well.
@@ -316,9 +283,6 @@ struct lsTextDocumentClientCapabilities {
 
   // Capabilities specific to the `textDocument/codeLens`
   std::optional<CodeLensRegistrationOptions> codeLens;
-
-  // Capabilities specific to the `textDocument/documentLink`
-  std::optional<lsGenericDynamicReg> documentLink;
 
   // Capabilities specific to the `textDocument/rename`
   std::optional<lsGenericDynamicReg> rename;
@@ -344,18 +308,6 @@ MAKE_REFLECT_STRUCT(
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities,
                     synchronization,
                     completion,
-                    hover,
-                    signatureHelp,
-                    references,
-                    documentHighlight,
-                    documentSymbol,
-                    formatting,
-                    rangeFormatting,
-                    onTypeFormatting,
-                    definition,
-                    codeAction,
-                    codeLens,
-                    documentLink,
                     rename);
 
 struct lsClientCapabilities {
@@ -512,29 +464,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       // Client capabilities
       {
         const auto& cap = request->params.capabilities.textDocument;
-        if (cap.completion && cap.completion->completionItem)
+        if (cap.completion.completionItem)
           config->client.snippetSupport =
-              cap.completion->completionItem->snippetSupport.value_or(false);
-      }
-
-      // Check client version.
-      if (config->clientVersion.has_value() &&
-          *config->clientVersion != kExpectedClientVersion) {
-        Out_ShowLogMessage out;
-        out.display_type = Out_ShowLogMessage::DisplayType::Show;
-        out.params.type = lsMessageType::Error;
-        out.params.message =
-            "ccls client (v" + std::to_string(*config->clientVersion) +
-            ") and server (v" + std::to_string(kExpectedClientVersion) +
-            ") version mismatch. Please update ";
-        if (config->clientVersion > kExpectedClientVersion)
-          out.params.message += "the ccls binary.";
-        else
-          out.params.message +=
-              "your extension client (VSIX file). Make sure to uninstall "
-              "the ccls extension and restart vscode before "
-              "reinstalling.";
-        out.Write(std::cout);
+              cap.completion.completionItem->snippetSupport.value_or(false);
       }
 
       // Ensure there is a resource directory.
@@ -576,6 +508,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       MakeDirectoryRecursive(config->cacheDirectory + '@' +
                              EscapeFileName(config->projectRoot));
 
+      g_config = *config;
       Timer time;
       diag_engine->Init(config);
       semantic_cache->Init(config);
@@ -599,7 +532,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       }
       LOG_S(INFO) << "Starting " << config->index.threads << " indexers";
       for (int i = 0; i < config->index.threads; ++i) {
-        WorkThread::StartThread("indexer" + std::to_string(i), [=]() {
+        StartThread("indexer" + std::to_string(i), [=]() {
           Indexer_Main(config, diag_engine, file_consumer_shared,
                        timestamp_manager, import_manager,
                        import_pipeline_status, project, working_files, waiter);

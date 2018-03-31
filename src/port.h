@@ -12,17 +12,17 @@
 
 // TODO GCC
 #if __has_builtin(__builtin_unreachable)
-#define CQUERY_BUILTIN_UNREACHABLE __builtin_unreachable()
+#define CCLS_BUILTIN_UNREACHABLE __builtin_unreachable()
 #elif defined(_MSC_VER)
-#define CQUERY_BUILTIN_UNREACHABLE __assume(false)
+#define CCLS_BUILTIN_UNREACHABLE __assume(false)
 #else
-#define CQUERY_BUILTIN_UNREACHABLE
+#define CCLS_BUILTIN_UNREACHABLE
 #endif
 
 void ccls_unreachable_internal(const char* msg, const char* file, int line);
 #ifndef NDEBUG
-#define CQUERY_UNREACHABLE(msg) \
+#define CCLS_UNREACHABLE(msg) \
   ccls_unreachable_internal(msg, __FILE__, __LINE__)
 #else
-#define CQUERY_UNREACHABLE(msg)
+#define CCLS_UNREACHABLE(msg)
 #endif
