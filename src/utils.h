@@ -10,11 +10,6 @@
 #include <string>
 #include <vector>
 
-// Trim from start (in place)
-void TrimStartInPlace(std::string& s);
-// Trim from end (in place)
-void TrimEndInPlace(std::string& s);
-// Trim from both ends (in place)
 void TrimInPlace(std::string& s);
 std::string Trim(std::string s);
 
@@ -40,10 +35,6 @@ std::string GetDirName(std::string path);
 std::string GetBaseName(const std::string& path);
 // Returns |path| without the filetype, ie, "foo/bar.cc" => "foo/bar".
 std::string StripFileType(const std::string& path);
-
-std::string ReplaceAll(const std::string& source,
-                       const std::string& from,
-                       const std::string& to);
 
 std::vector<std::string> SplitString(const std::string& str,
                                      const std::string& delimiter);
@@ -95,9 +86,8 @@ std::string EscapeFileName(std::string path);
 // FIXME: Move ReadContent into ICacheManager?
 bool FileExists(const std::string& filename);
 std::optional<std::string> ReadContent(const std::string& filename);
-std::vector<std::string> ReadLinesWithEnding(std::string filename);
-std::vector<std::string> ToLines(const std::string& content,
-                                 bool trim_whitespace);
+std::vector<std::string> ReadFileLines(std::string filename);
+std::vector<std::string> ToLines(const std::string& content);
 
 struct TextReplacer {
   struct Replacement {
@@ -163,11 +153,4 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest) {
   };                                              \
   }
 
-float GetProcessMemoryUsedInMb();
-
-std::string FormatMicroseconds(long long microseconds);
-
 std::string GetDefaultResourceDirectory();
-
-// Makes sure all newlines in |output| are in \r\n format.
-std::string UpdateToRnNewlines(std::string output);

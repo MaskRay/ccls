@@ -215,14 +215,14 @@ WorkingFile::WorkingFile(const std::string& filename,
 }
 
 void WorkingFile::SetIndexContent(const std::string& index_content) {
-  index_lines = ToLines(index_content, false /*trim_whitespace*/);
+  index_lines = ToLines(index_content);
 
   index_to_buffer.clear();
   buffer_to_index.clear();
 }
 
 void WorkingFile::OnBufferContentUpdated() {
-  buffer_lines = ToLines(buffer_content, false /*trim_whitespace*/);
+  buffer_lines = ToLines(buffer_content);
 
   index_to_buffer.clear();
   buffer_to_index.clear();
