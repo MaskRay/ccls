@@ -3,7 +3,7 @@
 #include "query.h"
 #include "working_files.h"
 
-#include <optional.h>
+#include <optional>
 
 Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym);
 Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym);
@@ -24,18 +24,18 @@ std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym);
 
 std::vector<Use> GetUsesForAllBases(QueryDatabase* db, QueryFunc& root);
 std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root);
-optional<lsPosition> GetLsPosition(WorkingFile* working_file,
+std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position);
-optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location);
+std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location);
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
                                QueryFileId file_id,
                                std::string* path);
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id);
 
-optional<lsLocation> GetLsLocation(QueryDatabase* db,
+std::optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    Use use);
-optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
+std::optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        Use use,
                                        bool container);
@@ -45,7 +45,7 @@ std::vector<lsLocationEx> GetLsLocationExs(QueryDatabase* db,
                                            bool container,
                                            int limit);
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
-optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
+std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
                                             SymbolIdx sym,
                                             bool use_short_name);

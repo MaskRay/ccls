@@ -2,7 +2,7 @@
 
 #include "lsp.h"
 
-#include <string_view.h>
+#include <string_view>
 
 #include <string>
 #include <tuple>
@@ -15,11 +15,11 @@ lsPosition CharPos(std::string_view search,
                    int character_offset = 0);
 
 // TODO: eliminate |line_number| param.
-optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);
+std::optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);
 
 void LexFunctionDeclaration(const std::string& buffer_content,
                             lsPosition declaration_spelling,
-                            optional<std::string> type_name,
+                            std::optional<std::string> type_name,
                             std::string* insert_text,
                             int* newlines_after_name);
 

@@ -19,9 +19,9 @@ struct In_TextDocumentDidOpen : public NotificationInMessage {
   struct Params {
     lsTextDocumentItem textDocument;
 
-    // cquery extension
+    // ccls extension
     // If specified (e.g. ["clang++", "-DM", "a.cc"]), it overrides the project
-    // entry (e.g. loaded from compile_commands.json or .cquery).
+    // entry (e.g. loaded from compile_commands.json or .ccls).
     std::vector<std::string> args;
   };
   Params params;
@@ -45,13 +45,13 @@ struct Handler_TextDocumentDidOpen
 
     std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
     WorkingFile* working_file = working_files->OnOpen(params.textDocument);
-    optional<std::string> cached_file_contents =
+    std::optional<std::string> cached_file_contents =
         cache_manager->LoadCachedFileContents(path);
     if (cached_file_contents)
       working_file->SetIndexContent(*cached_file_contents);
 
     QueryFile* file = nullptr;
-    FindFileOrFail(db, project, nullopt, path, &file);
+    FindFileOrFail(db, project, std::nullopt, path, &file);
     if (file && file->def) {
       EmitInactiveLines(working_file, file->def->inactive_regions);
       EmitSemanticHighlighting(db, semantic_cache, working_file, file);

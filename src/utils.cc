@@ -215,14 +215,14 @@ static void GetFilesInFolderHelper(
         goto bail;
       }
 
-      // Skip all dot files except .cquery.
+      // Skip all dot files except .ccls.
       //
       // The nested ifs are intentional, branching order is subtle here.
       //
       // Note that in the future if we do support dot directories/files, we must
       // always ignore the '.' and '..' directories otherwise this will loop
       // infinitely.
-      if (file.name[0] != '.' || strcmp(file.name, ".cquery") == 0) {
+      if (file.name[0] != '.' || strcmp(file.name, ".ccls") == 0) {
         if (file.is_dir) {
           if (recursive) {
             std::string child_dir = q.front().second + file.name + "/";
@@ -315,7 +315,7 @@ bool FileExists(const std::string& filename) {
   return cache.is_open();
 }
 
-optional<std::string> ReadContent(const std::string& filename) {
+std::optional<std::string> ReadContent(const std::string& filename) {
   LOG_S(INFO) << "Reading " << filename;
   std::ifstream cache;
   cache.open(filename);
@@ -324,7 +324,7 @@ optional<std::string> ReadContent(const std::string& filename) {
     return std::string(std::istreambuf_iterator<char>(cache),
                        std::istreambuf_iterator<char>());
   } catch (std::ios_base::failure&) {
-    return nullopt;
+    return std::nullopt;
   }
 }
 

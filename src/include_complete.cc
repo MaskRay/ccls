@@ -211,12 +211,12 @@ void IncludeComplete::InsertStlIncludes() {
   }
 }
 
-optional<lsCompletionItem> IncludeComplete::FindCompletionItemForAbsolutePath(
+std::optional<lsCompletionItem> IncludeComplete::FindCompletionItemForAbsolutePath(
     const std::string& absolute_path) {
   std::lock_guard<std::mutex> lock(completion_items_mutex);
 
   auto it = absolute_path_to_completion_item.find(absolute_path);
   if (it == absolute_path_to_completion_item.end())
-    return nullopt;
+    return std::nullopt;
   return completion_items[it->second];
 }

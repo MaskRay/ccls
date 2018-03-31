@@ -44,7 +44,7 @@ struct Handler_TextDocumentDocumentHighlight
       EachOccurrence(db, sym, true, [&](Use use) {
         if (use.file != file_id)
           return;
-        if (optional<lsLocation> ls_loc =
+        if (std::optional<lsLocation> ls_loc =
                 GetLsLocation(db, working_files, use)) {
           lsDocumentHighlight highlight;
           highlight.range = ls_loc->range;

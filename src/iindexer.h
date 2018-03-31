@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional.h>
+#include <optional>
 
 #include <initializer_list>
 #include <memory>
@@ -34,7 +34,7 @@ struct IIndexer {
       std::initializer_list<TestEntry> entries);
 
   virtual ~IIndexer() = default;
-  virtual optional<std::vector<std::unique_ptr<IndexFile>>> Index(
+  virtual std::optional<std::vector<std::unique_ptr<IndexFile>>> Index(
       Config* config,
       FileConsumerSharedState* file_consumer_shared,
       std::string file,

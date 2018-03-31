@@ -360,7 +360,7 @@ std::unique_ptr<IndexFile> Deserialize(
     const std::string& path,
     const std::string& serialized_index_content,
     const std::string& file_content,
-    optional<int> expected_version) {
+    std::optional<int> expected_version) {
   if (serialized_index_content.empty())
     return nullptr;
 

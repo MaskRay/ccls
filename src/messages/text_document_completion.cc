@@ -36,7 +36,7 @@ struct lsCompletionContext {
 
   // The trigger character (a single character) that has trigger code complete.
   // Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
-  optional<std::string> triggerCharacter;
+  std::optional<std::string> triggerCharacter;
 };
 MAKE_REFLECT_STRUCT(lsCompletionContext, triggerKind, triggerCharacter);
 
@@ -44,7 +44,7 @@ struct lsCompletionParams : lsTextDocumentPositionParams {
   // The completion context. This is only available it the client specifies to
   // send this using
   // `ClientCapabilities.textDocument.completion.contextSupport === true`
-  optional<lsCompletionContext> context;
+  std::optional<lsCompletionContext> context;
 };
 MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
 
@@ -92,7 +92,7 @@ void DecorateIncludePaths(const std::smatch& match,
     item.textEdit->newText =
         prefix + quote0 + item.textEdit->newText + quote1 + suffix;
     item.label = prefix + quote0 + item.label + quote1 + suffix;
-    item.filterText = nullopt;
+    item.filterText = std::nullopt;
   }
 }
 

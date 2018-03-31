@@ -12,23 +12,23 @@
 
 namespace {
 
-struct Out_CquerySetInactiveRegion
-    : public lsOutMessage<Out_CquerySetInactiveRegion> {
+struct Out_CclsSetInactiveRegion
+    : public lsOutMessage<Out_CclsSetInactiveRegion> {
   struct Params {
     lsDocumentUri uri;
     std::vector<lsRange> inactiveRegions;
   };
-  std::string method = "$cquery/setInactiveRegions";
+  std::string method = "$ccls/setInactiveRegions";
   Params params;
 };
-MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion::Params, uri, inactiveRegions);
-MAKE_REFLECT_STRUCT(Out_CquerySetInactiveRegion, jsonrpc, method, params);
+MAKE_REFLECT_STRUCT(Out_CclsSetInactiveRegion::Params, uri, inactiveRegions);
+MAKE_REFLECT_STRUCT(Out_CclsSetInactiveRegion, jsonrpc, method, params);
 
 struct ScanLineEvent {
   lsPosition pos;
   lsPosition end_pos;  // Second key when there is a tie for insertion events.
   int id;
-  Out_CqueryPublishSemanticHighlighting::Symbol* symbol;
+  Out_CclsPublishSemanticHighlighting::Symbol* symbol;
   bool operator<(const ScanLineEvent& other) const {
     // See the comments below when insertion/deletion events are inserted.
     if (!(pos == other.pos))
@@ -55,7 +55,7 @@ std::vector<MessageHandler*>* MessageHandler::message_handlers = nullptr;
 
 bool FindFileOrFail(QueryDatabase* db,
                     const Project* project,
-                    optional<lsRequestId> id,
+                    std::optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
                     QueryFileId* out_file_id) {
@@ -107,14 +107,14 @@ bool FindFileOrFail(QueryDatabase* db,
 
 void EmitInactiveLines(WorkingFile* working_file,
                        const std::vector<Range>& inactive_regions) {
-  Out_CquerySetInactiveRegion out;
+  Out_CclsSetInactiveRegion out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
   for (Range skipped : inactive_regions) {
-    optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
+    std::optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
     if (ls_skipped)
       out.params.inactiveRegions.push_back(*ls_skipped);
   }
-  QueueManager::WriteStdout(kMethodType_CqueryPublishInactiveRegions, out);
+  QueueManager::WriteStdout(kMethodType_CclsPublishInactiveRegions, out);
 }
 
 void EmitSemanticHighlighting(QueryDatabase* db,
@@ -128,7 +128,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
       semantic_cache->GetCacheForFile(file->def->path);
 
   // Group symbols together.
-  std::unordered_map<SymbolIdx, Out_CqueryPublishSemanticHighlighting::Symbol>
+  std::unordered_map<SymbolIdx, Out_CclsPublishSemanticHighlighting::Symbol>
       grouped_symbols;
   for (SymbolRef sym : file->def->all_symbols) {
     std::string_view detailed_name;
@@ -214,13 +214,13 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         continue;  // applies to for loop
     }
 
-    optional<lsRange> loc = GetLsRange(working_file, sym.range);
+    std::optional<lsRange> loc = GetLsRange(working_file, sym.range);
     if (loc) {
       auto it = grouped_symbols.find(sym);
       if (it != grouped_symbols.end()) {
         it->second.ranges.push_back(*loc);
       } else {
-        Out_CqueryPublishSemanticHighlighting::Symbol symbol;
+        Out_CclsPublishSemanticHighlighting::Symbol symbol;
         symbol.stableId = semantic_cache_for_file->GetStableId(
             sym.kind, std::string(detailed_name));
         symbol.parentKind = parent_kind;
@@ -236,7 +236,7 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   std::vector<ScanLineEvent> events;
   int id = 0;
   for (auto& entry : grouped_symbols) {
-    Out_CqueryPublishSemanticHighlighting::Symbol& symbol = entry.second;
+    Out_CclsPublishSemanticHighlighting::Symbol& symbol = entry.second;
     for (auto& loc : symbol.ranges) {
       // For ranges sharing the same start point, the one with leftmost end
       // point comes first.
@@ -272,12 +272,12 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   }
 
   // Publish.
-  Out_CqueryPublishSemanticHighlighting out;
+  Out_CclsPublishSemanticHighlighting out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
   for (auto& entry : grouped_symbols)
     if (entry.second.ranges.size())
       out.params.symbols.push_back(entry.second);
-  QueueManager::WriteStdout(kMethodType_CqueryPublishSemanticHighlighting, out);
+  QueueManager::WriteStdout(kMethodType_CclsPublishSemanticHighlighting, out);
 }
 
 bool ShouldIgnoreFileForIndexing(const std::string& path) {

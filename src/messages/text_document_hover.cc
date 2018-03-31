@@ -52,11 +52,11 @@ REGISTER_IN_MESSAGE(In_TextDocumentHover);
 struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   struct Result {
     std::vector<lsMarkedString> contents;
-    optional<lsRange> range;
+    std::optional<lsRange> range;
   };
 
   lsRequestId id;
-  optional<Result> result;
+  std::optional<Result> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
 void Reflect(Writer& visitor, Out_TextDocumentHover& value) {
@@ -66,7 +66,7 @@ void Reflect(Writer& visitor, Out_TextDocumentHover& value) {
   if (value.result)
     REFLECT_MEMBER(result);
   else {
-    // Empty optional<> is elided by the default serializer, we need to write
+    // Empty std::optional<> is elided by the default serializer, we need to write
     // |null| to be compliant with the LSP.
     visitor.Key("result");
     visitor.Null();
@@ -92,7 +92,7 @@ struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return hover.
-      optional<lsRange> ls_range = GetLsRange(
+      std::optional<lsRange> ls_range = GetLsRange(
           working_files->GetFileByFilename(file->def->path), sym.range);
       if (!ls_range)
         continue;

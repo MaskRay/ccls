@@ -4,7 +4,7 @@
 #include "utils.h"
 
 #include <clang-c/Index.h>
-#include <optional.h>
+#include <optional>
 
 #include <mutex>
 #include <string>
@@ -42,10 +42,10 @@ struct WorkingFile {
   // Also resolves |column| if not NULL.
   // When resolving a range, use is_end = false for begin() and is_end =
   // true for end() to get a better alignment of |column|.
-  optional<int> GetBufferPosFromIndexPos(int line, int* column, bool is_end);
+  std::optional<int> GetBufferPosFromIndexPos(int line, int* column, bool is_end);
   // Finds the index line number which maps to buffer line number |line|.
   // Also resolves |column| if not NULL.
-  optional<int> GetIndexPosFromBufferPos(int line, int* column, bool is_end);
+  std::optional<int> GetIndexPosFromBufferPos(int line, int* column, bool is_end);
 
   // TODO: Move FindClosestCallNameInBuffer and FindStableCompletionSource into
   // lex_utils.h/cc

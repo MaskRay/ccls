@@ -1,10 +1,10 @@
 #pragma once
 
-#include <optional.h>
+#include <optional>
 
 #include <utility>
 
-// Like optional, but the stored data is responsible for containing the empty
+// Like std::optional, but the stored data is responsible for containing the empty
 // state. T should define a function `bool T::HasValueForMaybe_()`.
 template <typename T>
 class Maybe {
@@ -30,13 +30,13 @@ class Maybe {
 
   bool HasValue() const { return storage.HasValueForMaybe_(); }
   explicit operator bool() const { return HasValue(); }
-  operator optional<T>() const {
+  operator std::optional<T>() const {
     if (HasValue())
       return storage;
-    return nullopt;
+    return std::nullopt;
   }
 
-  void operator=(optional<T>&& o) { storage = o ? *o : T(); }
+  void operator=(std::optional<T>&& o) { storage = o ? *o : T(); }
 
   // Does not test if has_value()
   bool operator==(const Maybe& o) const { return storage == o.storage; }

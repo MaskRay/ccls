@@ -75,7 +75,7 @@ struct lsDocumentHighlight {
   // The highlight kind, default is DocumentHighlightKind.Text.
   lsDocumentHighlightKind kind = lsDocumentHighlightKind::Text;
 
-  // cquery extension
+  // ccls extension
   Role role = Role::None;
 };
 MAKE_REFLECT_STRUCT(lsDocumentHighlight, range, kind, role);

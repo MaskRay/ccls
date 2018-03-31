@@ -65,7 +65,7 @@ struct Handler_TextDocumentReferences
           db, sym, request->params.context.includeDeclaration,
           [&](Use use, lsSymbolKind parent_kind) {
             if (use.role & request->params.context.role)
-              if (optional<lsLocationEx> ls_loc =
+              if (std::optional<lsLocationEx> ls_loc =
                       GetLsLocationEx(db, working_files, use, container)) {
                 if (container)
                   ls_loc->parentKind = parent_kind;

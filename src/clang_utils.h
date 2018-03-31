@@ -6,11 +6,11 @@
 #if USE_CLANG_CXX
 #include <clang/Format/Format.h>
 #endif
-#include <optional.h>
+#include <optional>
 
 #include <vector>
 
-optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
+std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
                                                  const std::string& path);
 
 // Returns the absolute path to |file|.

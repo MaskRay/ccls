@@ -50,7 +50,7 @@ struct Handler_WorkspaceDidChangeWatchedFiles
       switch (event.type) {
         case lsFileChangeType::Created:
         case lsFileChangeType::Changed: {
-          optional<std::string> content = ReadContent(path);
+          std::optional<std::string> content = ReadContent(path);
           if (!content)
             LOG_S(ERROR) << "Unable to read file content after saving " << path;
           else {

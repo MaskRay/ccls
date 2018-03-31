@@ -50,7 +50,7 @@ struct Handler_TextDocumentDidSave
     //      if so, ignore that index response.
     // TODO: send as priority request
     if (!config->enableIndexOnDidChange) {
-      optional<std::string> content = ReadContent(path);
+      std::optional<std::string> content = ReadContent(path);
       if (!content) {
         LOG_S(ERROR) << "Unable to read file content after saving " << path;
       } else {

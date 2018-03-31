@@ -95,22 +95,22 @@ void SetCurrentThreadName(const std::string& thread_name) {
   }
 }
 
-optional<int64_t> GetLastModificationTime(const std::string& absolute_path) {
+std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path) {
   struct _stat buf;
   if (_stat(absolute_path.c_str(), &buf) != 0) {
     switch (errno) {
       case ENOENT:
         // std::cerr << "GetLastModificationTime: unable to find file " <<
         // absolute_path << std::endl;
-        return nullopt;
+        return std::nullopt;
       case EINVAL:
         // std::cerr << "GetLastModificationTime: invalid param to _stat for
         // file file " << absolute_path << std::endl;
-        return nullopt;
+        return std::nullopt;
       default:
         // std::cerr << "GetLastModificationTime: unhandled for " <<
         // absolute_path << std::endl;  exit(1);
-        return nullopt;
+        return std::nullopt;
     }
   }
 
@@ -140,7 +140,7 @@ std::vector<const char*> GetPlatformClangArguments() {
   //
   // These options are only needed if clang is targeting the msvc triple,
   // which depends on how clang was build for windows. clang downloaded from
-  // releases.llvm.org defaults to msvc, so cquery does as well.
+  // releases.llvm.org defaults to msvc, so ccls does as well.
   //
   // https://github.com/cquery-project/cquery/issues/509 has more context.
   //

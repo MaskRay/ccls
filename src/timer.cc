@@ -46,7 +46,7 @@ void Timer::Pause() {
           .count();
 
   elapsed_ += elapsed;
-  start_ = nullopt;
+  start_ = std::nullopt;
 }
 
 void Timer::Resume() {

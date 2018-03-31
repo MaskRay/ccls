@@ -1,10 +1,9 @@
 #pragma once
 
-#include <string_view.h>
-
 #include <string.h>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 
 // Nullable null-terminated string, which is null if default constructed,

@@ -3,9 +3,9 @@
 #include "config.h"
 #include "method.h"
 
-#include <optional.h>
+#include <optional>
 #include <sparsepp/spp.h>
-#include <variant.h>
+#include <variant>
 
 #include <functional>
 #include <mutex>
@@ -33,11 +33,11 @@ struct Project {
 
   // Loads a project for the given |directory|.
   //
-  // If |config->compilationDatabaseDirectory| is not empty, look for .cquery or
+  // If |config->compilationDatabaseDirectory| is not empty, look for .ccls or
   // compile_commands.json in it, otherwise they are retrieved in
   // |root_directory|.
-  // For .cquery, recursive directory listing is used and files with known
-  // suffixes are indexed. .cquery files can exist in subdirectories and they
+  // For .ccls, recursive directory listing is used and files with known
+  // suffixes are indexed. .ccls files can exist in subdirectories and they
   // will affect flags in their subtrees (relative paths are relative to the
   // project root, not subdirectories). For compile_commands.json, its entries
   // are indexed.

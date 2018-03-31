@@ -1,7 +1,7 @@
 #pragma once
 
-#include <optional.h>
-#include <string_view.h>
+#include <optional>
+#include <string_view>
 
 #include <memory>
 #include <string>
@@ -34,7 +34,7 @@ bool TryMakeDirectory(const std::string& absolute_path);
 
 void SetCurrentThreadName(const std::string& thread_name);
 
-optional<int64_t> GetLastModificationTime(const std::string& absolute_path);
+std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path);
 
 void MoveFileTo(const std::string& destination, const std::string& source);
 void CopyFileTo(const std::string& destination, const std::string& source);

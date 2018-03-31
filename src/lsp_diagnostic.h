@@ -20,14 +20,14 @@ struct lsDiagnostic {
 
   // The diagnostic's severity. Can be omitted. If omitted it is up to the
   // client to interpret diagnostics as error, warning, info or hint.
-  optional<lsDiagnosticSeverity> severity;
+  std::optional<lsDiagnosticSeverity> severity;
 
   // The diagnostic's code. Can be omitted.
   int code = 0;
 
   // A human-readable string describing the source of this
   // diagnostic, e.g. 'typescript' or 'super lint'.
-  std::string source = "cquery";
+  std::string source = "ccls";
 
   // The diagnostic's message.
   std::string message;
@@ -63,7 +63,7 @@ struct Out_Error : public lsOutMessage<Out_Error> {
 
     // A Primitive or Structured value that contains additional
     // information about the error. Can be omitted.
-    // optional<D> data;
+    // std::optional<D> data;
   };
 
   lsRequestId id;

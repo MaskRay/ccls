@@ -25,15 +25,15 @@ struct RealCacheManager : ICacheManager {
     WriteToFile(AppendSerializationFormat(cache_path), indexed_content);
   }
 
-  optional<std::string> LoadCachedFileContents(
+  std::optional<std::string> LoadCachedFileContents(
       const std::string& path) override {
     return ReadContent(GetCachePath(path));
   }
 
   std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     std::string cache_path = GetCachePath(path);
-    optional<std::string> file_content = ReadContent(cache_path);
-    optional<std::string> serialized_indexed_content =
+    std::optional<std::string> file_content = ReadContent(cache_path);
+    std::optional<std::string> serialized_indexed_content =
         ReadContent(AppendSerializationFormat(cache_path));
     if (!file_content || !serialized_indexed_content)
       return nullptr;
@@ -77,7 +77,7 @@ struct FakeCacheManager : ICacheManager {
 
   void WriteToCache(IndexFile& file) override { assert(false); }
 
-  optional<std::string> LoadCachedFileContents(
+  std::optional<std::string> LoadCachedFileContents(
       const std::string& path) override {
     for (const FakeCacheEntry& entry : entries_) {
       if (entry.path == path) {
@@ -85,14 +85,14 @@ struct FakeCacheManager : ICacheManager {
       }
     }
 
-    return nullopt;
+    return std::nullopt;
   }
 
   std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) override {
     for (const FakeCacheEntry& entry : entries_) {
       if (entry.path == path) {
         return Deserialize(SerializeFormat::Json, path, entry.json, "<empty>",
-                           nullopt);
+                           std::nullopt);
       }
     }
 

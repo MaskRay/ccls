@@ -4,7 +4,7 @@
 #include "method.h"
 #include "query.h"
 
-#include <optional.h>
+#include <optional>
 
 #include <memory>
 #include <vector>
@@ -25,8 +25,8 @@ struct TimestampManager;
 struct WorkingFile;
 struct WorkingFiles;
 
-struct Out_CqueryPublishSemanticHighlighting
-    : public lsOutMessage<Out_CqueryPublishSemanticHighlighting> {
+struct Out_CclsPublishSemanticHighlighting
+    : public lsOutMessage<Out_CclsPublishSemanticHighlighting> {
   struct Symbol {
     int stableId = 0;
     lsSymbolKind parentKind;
@@ -38,19 +38,19 @@ struct Out_CqueryPublishSemanticHighlighting
     lsDocumentUri uri;
     std::vector<Symbol> symbols;
   };
-  std::string method = "$cquery/publishSemanticHighlighting";
+  std::string method = "$ccls/publishSemanticHighlighting";
   Params params;
 };
-MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Symbol,
+MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Symbol,
                     stableId,
                     parentKind,
                     kind,
                     storage,
                     ranges);
-MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting::Params,
+MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Params,
                     uri,
                     symbols);
-MAKE_REFLECT_STRUCT(Out_CqueryPublishSemanticHighlighting,
+MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting,
                     jsonrpc,
                     method,
                     params);
@@ -107,7 +107,7 @@ struct BaseMessageHandler : MessageHandler {
 
 bool FindFileOrFail(QueryDatabase* db,
                     const Project* project,
-                    optional<lsRequestId> id,
+                    std::optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
                     QueryFileId* out_file_id = nullptr);

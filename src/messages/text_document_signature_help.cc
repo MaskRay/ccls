@@ -25,7 +25,7 @@ struct lsParameterInformation {
 
   // The human-readable doc-comment of this parameter. Will be shown
   // in the UI but can be omitted.
-  optional<std::string> documentation;
+  std::optional<std::string> documentation;
 };
 MAKE_REFLECT_STRUCT(lsParameterInformation, label, documentation);
 
@@ -39,7 +39,7 @@ struct lsSignatureInformation {
 
   // The human-readable doc-comment of this signature. Will be shown
   // in the UI but can be omitted.
-  optional<std::string> documentation;
+  std::optional<std::string> documentation;
 
   // The parameters of this signature.
   std::vector<lsParameterInformation> parameters;
@@ -60,7 +60,7 @@ struct lsSignatureHelp {
   // rely on a default value.
   // In future version of the protocol this property might become
   // mandantory to better express this.
-  optional<int> activeSignature;
+  std::optional<int> activeSignature;
 
   // The active parameter of the active signature. If omitted or the value
   // lies outside the range of `signatures[activeSignature].parameters`
@@ -69,7 +69,7 @@ struct lsSignatureHelp {
   // In future version of the protocol this property might become
   // mandantory to better express the active parameter if the
   // active signature does have any.
-  optional<int> activeParameter;
+  std::optional<int> activeParameter;
 };
 MAKE_REFLECT_STRUCT(lsSignatureHelp,
                     signatures,

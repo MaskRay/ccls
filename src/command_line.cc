@@ -61,18 +61,18 @@ std::vector<std::string> kEmptyArgs;
 bool ShouldDisplayMethodTiming(MethodType type) {
   return
     type != kMethodType_TextDocumentPublishDiagnostics &&
-    type != kMethodType_CqueryPublishInactiveRegions &&
+    type != kMethodType_CclsPublishInactiveRegions &&
     type != kMethodType_Unknown;
 }
 
 void PrintHelp() {
   std::cout
-      << R"help(cquery is a low-latency C/C++/Objective-C language server.
+      << R"help(ccls is a low-latency C/C++/Objective-C language server.
 
 Mode:
   --clang-sanity-check
                 Run a simple index test. Verifies basic clang functionality.
-                Needs to be executed from the cquery root checkout directory.
+                Needs to be executed from the ccls root checkout directory.
   --test-unit   Run unit tests.
   --test-index <opt_filter_path>
                 Run index tests. opt_filter_path can be used to specify which
@@ -281,7 +281,7 @@ void LaunchStdinLoop(Config* config,
     auto* queue = QueueManager::instance();
     while (true) {
       std::unique_ptr<InMessage> message;
-      optional<std::string> err =
+      std::optional<std::string> err =
           MessageRegistry::instance()->ReadMessageFromStdin(&message);
 
       // Message parsing can fail if we don't recognize the method.

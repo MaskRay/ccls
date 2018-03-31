@@ -29,7 +29,7 @@ unsigned Flags() {
 
 unsigned GetCompletionPriority(const CXCompletionString& str,
                                CXCursorKind result_kind,
-                               const optional<std::string>& typedText) {
+                               const std::optional<std::string>& typedText) {
   unsigned priority = clang_getCompletionPriority(str);
 
   // XXX: What happens if priority overflows?
@@ -396,7 +396,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
     std::vector<lsDiagnostic> ls_diagnostics;
     unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
     for (unsigned i = 0; i < num_diagnostics; ++i) {
-      optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(
+      std::optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(
           clang_getDiagnostic((*tu)->cx_tu, i), session->file.filename);
       // Filter messages like "too many errors emitted, stopping now
       // [-ferror-limit=]" which has line = 0 and got subtracted by 1 after
@@ -501,7 +501,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       {
         if (request->on_complete) {
           std::vector<lsCompletionItem> ls_result;
-          // this is a guess but can be larger in case of optional parameters,
+          // this is a guess but can be larger in case of std::optional parameters,
           // as they may be expanded into multiple items
           ls_result.reserve(cx_results->NumResults);
 
@@ -605,7 +605,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       ls_diagnostics.reserve(num_diagnostics);
       for (unsigned i = 0; i < num_diagnostics; ++i) {
         CXDiagnostic cx_diag = clang_getDiagnostic(session->tu->cx_tu, i);
-        optional<lsDiagnostic> diagnostic =
+        std::optional<lsDiagnostic> diagnostic =
             BuildAndDisposeDiagnostic(cx_diag, path);
         // Filter messages like "too many errors emitted, stopping now
         // [-ferror-limit=]" which has line = 0 and got subtracted by 1 after

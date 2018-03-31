@@ -23,7 +23,7 @@ struct CompletionSession
   ClangIndex index;
 
   // When |tu| was last parsed.
-  optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
+  std::optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
       tu_last_parsed_at;
 
   // Acquired when |tu| is being used.
@@ -67,7 +67,7 @@ struct ClangCompleteManager {
 
     lsRequestId id;
     lsTextDocumentIdentifier document;
-    optional<lsPosition> position;
+    std::optional<lsPosition> position;
     OnComplete on_complete;  // May be null/empty.
     bool emit_diagnostics = false;
   };

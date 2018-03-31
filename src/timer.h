@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional.h>
+#include <optional>
 
 #include <chrono>
 #include <string>
@@ -25,7 +25,7 @@ struct Timer {
   void Resume();
 
   // Raw start time.
-  optional<std::chrono::time_point<Clock>> start_;
+  std::optional<std::chrono::time_point<Clock>> start_;
   // Elapsed time.
   long long elapsed_ = 0;
 };

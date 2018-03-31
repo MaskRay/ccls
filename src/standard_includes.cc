@@ -95,7 +95,7 @@ const char* kStandardLibraryIncludes[177] = {
     "new",
     "nl_types.h",
     "numeric",
-    "optional",
+    "std::optional",
     "ostream",
     "poll.h",
     "pthread.h",

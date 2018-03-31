@@ -1,7 +1,7 @@
 #if false
 #pragma once
 
-#include <optional.h>
+#include <optional>
 
 #include <chrono>
 #include <functional>
@@ -28,10 +28,10 @@ struct TaskManager {
 
   // Run pending tasks for |thread|. Stop running tasks after |max_time| has
   // elapsed. Returns true if tasks were run.
-  bool RunTasks(TaskThread thread, optional<std::chrono::duration<long long, std::nano>> max_time);
+  bool RunTasks(TaskThread thread, std::optional<std::chrono::duration<long long, std::nano>> max_time);
 
   struct TaskQueue {
-    optional<TIdleTask> idle_task;
+    std::optional<TIdleTask> idle_task;
     std::vector<TTask> tasks;
     std::mutex tasks_mutex;
   };

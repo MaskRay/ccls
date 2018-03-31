@@ -40,7 +40,7 @@ struct Handler_TextDocumentDocumentSymbol
     }
 
     for (SymbolRef sym : file->def->outline) {
-      optional<lsSymbolInformation> info =
+      std::optional<lsSymbolInformation> info =
           GetSymbolInfo(db, working_files, sym, true /*use_short_name*/);
       if (!info)
         continue;
@@ -56,7 +56,7 @@ struct Handler_TextDocumentDocumentSymbol
           continue;
       }
 
-      if (optional<lsLocation> location = GetLsLocation(
+      if (std::optional<lsLocation> location = GetLsLocation(
               db, working_files,
               Use(sym.range, sym.id, sym.kind, sym.role, file_id))) {
         info->location = *location;

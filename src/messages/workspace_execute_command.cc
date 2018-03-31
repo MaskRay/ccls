@@ -35,10 +35,10 @@ struct Handler_WorkspaceExecuteCommand
     const auto& params = request->params;
     Out_WorkspaceExecuteCommand out;
     out.id = request->id;
-    if (params.command == "cquery._applyFixIt") {
-    } else if (params.command == "cquery._autoImplement") {
-    } else if (params.command == "cquery._insertInclude") {
-    } else if (params.command == "cquery.showReferences") {
+    if (params.command == "ccls._applyFixIt") {
+    } else if (params.command == "ccls._autoImplement") {
+    } else if (params.command == "ccls._insertInclude") {
+    } else if (params.command == "ccls.showReferences") {
       out.result = params.arguments.locations;
     }
 

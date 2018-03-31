@@ -2,7 +2,7 @@
 
 #include "lsp_completion.h"
 
-#include <optional.h>
+#include <optional>
 
 #include <mutex>
 
@@ -11,8 +11,8 @@
 // that happens.
 struct CodeCompleteCache {
   // NOTE: Make sure to access these variables under |WithLock|.
-  optional<std::string> cached_path_;
-  optional<lsPosition> cached_completion_position_;
+  std::optional<std::string> cached_path_;
+  std::optional<lsPosition> cached_completion_position_;
   std::vector<lsCompletionItem> cached_results_;
 
   std::mutex mutex_;

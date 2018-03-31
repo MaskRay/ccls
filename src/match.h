@@ -1,13 +1,13 @@
 #pragma once
 
-#include <optional.h>
+#include <optional>
 
 #include <regex>
 #include <string>
 #include <vector>
 
 struct Matcher {
-  static optional<Matcher> Create(const std::string& search);
+  static std::optional<Matcher> Create(const std::string& search);
 
   bool IsMatch(const std::string& value) const;
 
