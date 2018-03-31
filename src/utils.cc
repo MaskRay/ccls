@@ -1,10 +1,10 @@
 #include "utils.h"
 
+#include "filesystem.hh"
 #include "platform.h"
 
 #include <doctest/doctest.h>
 #include <siphash.h>
-#include <tinydir.h>
 #include <loguru/loguru.hpp>
 
 #include <algorithm>
@@ -18,10 +18,6 @@
 #include <string>
 #include <unordered_map>
 
-#if !defined(__APPLE__)
-#include <sparsepp/spp_memory.h>
-#endif
-
 // DEFAULT_RESOURCE_DIRECTORY is passed with quotes for non-MSVC compilers, ie,
 // foo vs "foo".
 #if defined(_MSC_VER)
@@ -31,21 +27,14 @@
 #define ENSURE_STRING_MACRO_ARGUMENT(x) x
 #endif
 
-// See http://stackoverflow.com/a/217605
-void TrimStartInPlace(std::string& s) {
+void TrimInPlace(std::string& s) {
   s.erase(s.begin(),
           std::find_if(s.begin(), s.end(),
                        std::not1(std::ptr_fun<int, int>(std::isspace))));
-}
-void TrimEndInPlace(std::string& s) {
   s.erase(std::find_if(s.rbegin(), s.rend(),
                        std::not1(std::ptr_fun<int, int>(std::isspace)))
               .base(),
           s.end());
-}
-void TrimInPlace(std::string& s) {
-  TrimStartInPlace(s);
-  TrimEndInPlace(s);
 }
 std::string Trim(std::string s) {
   TrimInPlace(s);
@@ -138,32 +127,8 @@ std::string GetBaseName(const std::string& path) {
 }
 
 std::string StripFileType(const std::string& path) {
-  size_t last_period = path.find_last_of('.');
-  if (last_period != std::string::npos)
-    return path.substr(0, last_period);
-  return path;
-}
-
-// See http://stackoverflow.com/a/29752943
-std::string ReplaceAll(const std::string& source,
-                       const std::string& from,
-                       const std::string& to) {
-  std::string result;
-  result.reserve(source.length());  // avoids a few memory allocations
-
-  std::string::size_type last_pos = 0;
-  std::string::size_type find_pos;
-
-  while (std::string::npos != (find_pos = source.find(from, last_pos))) {
-    result.append(source, last_pos, find_pos - last_pos);
-    result += to;
-    last_pos = find_pos + from.length();
-  }
-
-  // Care for the rest after last occurrence
-  result += source.substr(last_pos);
-
-  return result;
+  fs::path p(path);
+  return p.parent_path() / p.stem();
 }
 
 std::vector<std::string> SplitString(const std::string& str,
@@ -198,51 +163,25 @@ static void GetFilesInFolderHelper(
     bool recursive,
     std::string output_prefix,
     const std::function<void(const std::string&)>& handler) {
-  std::queue<std::pair<std::string, std::string>> q;
-  q.push(make_pair(folder, output_prefix));
+  std::queue<std::pair<fs::path, fs::path>> q;
+  q.push(std::make_pair(fs::path(folder), fs::path(output_prefix)));
   while (!q.empty()) {
-    tinydir_dir dir;
-    if (tinydir_open(&dir, q.front().first.c_str()) == -1) {
-      LOG_S(WARNING) << "Unable to open directory " << folder;
-      goto bail;
-    }
-
-    while (dir.has_next) {
-      tinydir_file file;
-      if (tinydir_readfile(&dir, &file) == -1) {
-        LOG_S(WARNING) << "Unable to read file " << file.name
-                       << " when reading directory " << folder;
-        goto bail;
-      }
-
-      // Skip all dot files except .ccls.
-      //
-      // The nested ifs are intentional, branching order is subtle here.
-      //
-      // Note that in the future if we do support dot directories/files, we must
-      // always ignore the '.' and '..' directories otherwise this will loop
-      // infinitely.
-      if (file.name[0] != '.' || strcmp(file.name, ".ccls") == 0) {
-        if (file.is_dir) {
+    for (auto it = fs::directory_iterator(q.front().first); it != fs::directory_iterator(); ++it) {
+      auto path = it->path();
+      std::string filename = path.filename();
+      if (filename[0] != '.' || filename == ".ccls") {
+        fs::file_status status = it->symlink_status();
+        if (fs::is_regular_file(status))
+          handler(q.front().second / filename);
+        else if (fs::is_directory(status) || fs::is_symlink(status)) {
           if (recursive) {
-            std::string child_dir = q.front().second + file.name + "/";
-            if (!IsSymLink(file.path))
-              q.push(make_pair(file.path, child_dir));
+            std::string child_dir = q.front().second / filename;
+            if (fs::is_directory(status))
+              q.push(make_pair(path, child_dir));
           }
-        } else {
-          handler(q.front().second + file.name);
         }
       }
-
-      if (tinydir_next(&dir) == -1) {
-        LOG_S(WARNING) << "Unable to fetch next file when reading directory "
-                       << folder;
-        goto bail;
-      }
     }
-
-  bail:
-    tinydir_close(&dir);
     q.pop();
   }
 }
@@ -311,8 +250,7 @@ std::istream& SafeGetline(std::istream& is, std::string& t) {
 }
 
 bool FileExists(const std::string& filename) {
-  std::ifstream cache(filename);
-  return cache.is_open();
+  return fs::exists(filename);
 }
 
 std::optional<std::string> ReadContent(const std::string& filename) {
@@ -328,31 +266,20 @@ std::optional<std::string> ReadContent(const std::string& filename) {
   }
 }
 
-std::vector<std::string> ReadLinesWithEnding(std::string filename) {
+std::vector<std::string> ReadFileLines(std::string filename) {
   std::vector<std::string> result;
-
-  std::ifstream input(filename);
-  for (std::string line; SafeGetline(input, line);)
+  std::ifstream fin(filename);
+  for (std::string line; std::getline(fin, line);)
     result.push_back(line);
-
   return result;
 }
 
-std::vector<std::string> ToLines(const std::string& content,
-                                 bool trim_whitespace) {
+std::vector<std::string> ToLines(const std::string& content) {
   std::vector<std::string> result;
-
   std::istringstream lines(content);
-
   std::string line;
-  while (getline(lines, line)) {
-    if (trim_whitespace)
-      TrimInPlace(line);
-    else
-      RemoveLastCR(line);
+  while (getline(lines, line))
     result.push_back(line);
-  }
-
   return result;
 }
 
@@ -383,27 +310,6 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   }
 
   file << content;
-}
-
-float GetProcessMemoryUsedInMb() {
-#if defined(__APPLE__)
-  return 0.f;
-#else
-  const float kBytesToMb = 1000000;
-  uint64_t memory_after = spp::GetProcessMemoryUsed();
-  return memory_after / kBytesToMb;
-#endif
-}
-
-std::string FormatMicroseconds(long long microseconds) {
-  long long milliseconds = microseconds / 1000;
-  long long remaining = microseconds - milliseconds;
-
-  // Only show two digits after the dot.
-  while (remaining >= 100)
-    remaining /= 10;
-
-  return std::to_string(milliseconds) + "." + std::to_string(remaining) + "ms";
 }
 
 std::string GetDefaultResourceDirectory() {

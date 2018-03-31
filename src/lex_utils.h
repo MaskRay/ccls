@@ -3,21 +3,10 @@
 #include "lsp.h"
 
 #include <string_view>
-
-#include <string>
 #include <tuple>
 
 // Utility method to map |position| to an offset inside of |content|.
 int GetOffsetForPosition(lsPosition position, std::string_view content);
-
-// TODO: eliminate |line_number| param.
-std::optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line);
-
-void LexFunctionDeclaration(const std::string& buffer_content,
-                            lsPosition declaration_spelling,
-                            std::optional<std::string> type_name,
-                            std::string* insert_text,
-                            int* newlines_after_name);
 
 std::string_view LexIdentifierAroundPos(lsPosition position,
                                         std::string_view content);

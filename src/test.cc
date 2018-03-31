@@ -343,7 +343,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
       std::cout << "Running " << path << std::endl;
 
     // Parse expected output from the test, parse it into JSON document.
-    std::vector<std::string> lines_with_endings = ReadLinesWithEnding(path);
+    std::vector<std::string> lines_with_endings = ReadFileLines(path);
     TextReplacer text_replacer;
     std::vector<std::string> flags;
     std::unordered_map<std::string, std::string> all_expected_output;

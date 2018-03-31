@@ -292,7 +292,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 std::vector<std::string> ReadCompilerArgumentsFromFile(
     const std::string& path) {
   std::vector<std::string> args;
-  for (std::string line : ReadLinesWithEnding(path)) {
+  for (std::string line : ReadFileLines(path)) {
     TrimInPlace(line);
     if (line.empty() || StartsWith(line, "#"))
       continue;

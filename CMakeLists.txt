@@ -96,6 +96,11 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+else()
+  target_link_libraries(ccls PRIVATE -lstdc++fs)
+endif()
+
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
   # loguru calls dladdr
   target_link_libraries(ccls PRIVATE ${CMAKE_DL_LIBS})
@@ -233,7 +238,6 @@ target_sources(ccls PRIVATE
                src/messages/text_document_did_open.cc
                src/messages/text_document_did_save.cc
                src/messages/text_document_document_highlight.cc
-               src/messages/text_document_document_link.cc
                src/messages/text_document_document_symbol.cc
                src/messages/text_document_hover.cc
                src/messages/text_document_references.cc
