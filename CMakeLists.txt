@@ -189,7 +189,6 @@ target_sources(ccls PRIVATE
                src/include_complete.cc
                src/method.cc
                src/lex_utils.cc
-               src/lsp_diagnostic.cc
                src/lsp.cc
                src/match.cc
                src/message_handler.cc

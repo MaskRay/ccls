@@ -165,7 +165,7 @@ void FilterAndSortCompletionResponse(
   if (!enable)
     return;
 
-  ScopedPerfTimer timer("FilterAndSortCompletionResponse");
+  ScopedPerfTimer timer{"FilterAndSortCompletionResponse"};
 
 // Used to inject more completions.
 #if false
