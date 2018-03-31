@@ -19,7 +19,7 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
                             WorkingFiles* working_files,
                             SymbolIdx symbol,
                             std::vector<lsSymbolInformation>* result) {
-  optional<lsSymbolInformation> info =
+  std::optional<lsSymbolInformation> info =
       GetSymbolInfo(db, working_files, symbol, false /*use_short_name*/);
   if (!info)
     return false;
@@ -35,7 +35,7 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
     loc = decls[0];
   }
 
-  optional<lsLocation> ls_location = GetLsLocation(db, working_files, loc);
+  std::optional<lsLocation> ls_location = GetLsLocation(db, working_files, loc);
   if (!ls_location)
     return false;
   info->location = *ls_location;

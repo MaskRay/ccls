@@ -62,7 +62,7 @@ bool IsWindowsAbsolutePath(const std::string& path) {
          (path[2] == '/' || path[2] == '\\') && is_drive_letter(path[0]);
 }
 
-enum class ProjectMode { CompileCommandsJson, DotCquery, ExternalCommand };
+enum class ProjectMode { CompileCommandsJson, DotCcls, ExternalCommand };
 
 struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
@@ -130,7 +130,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     const CompileCommandsEntry& entry) {
   auto cleanup_maybe_relative_path = [&](const std::string& path) {
     // TODO/FIXME: Normalization will fail for paths that do not exist. Should
-    // it return an optional<std::string>?
+    // it return an std::optional<std::string>?
     assert(!path.empty());
     if (entry.directory.empty() || IsUnixAbsolutePath(path) ||
         IsWindowsAbsolutePath(path)) {
@@ -181,33 +181,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       break;
     }
   }
-  size_t i = 1;
-
-  // If |compilationDatabaseCommand| is specified, the external command provides
-  // us the JSON compilation database which should be strict. We should do very
-  // little processing on |args|.
-  if (config->mode != ProjectMode::ExternalCommand && !clang_cl) {
-    // Strip all arguments consisting the compiler command,
-    // as there may be non-compiler related commands beforehand,
-    // ie, compiler schedular such as goma. This allows correct parsing for
-    // command lines like "goma clang -c foo".
-    std::string::size_type dot;
-    while (i < args.size() && args[i][0] != '-' &&
-           // Do not skip over main source filename
-           NormalizePathWithTestOptOut(args[i]) != result.filename &&
-           // There may be other filenames (e.g. more than one source filenames)
-           // preceding main source filename. We use a heuristic here. `.` may
-           // occur in both command names and source filenames. If `.` occurs in
-           // the last 4 bytes of args[i] and not followed by a digit, e.g.
-           // .c .cpp, We take it as a source filename. Others (like ./a/b/goma
-           // clang-4.0) are seen as commands.
-           ((dot = args[i].rfind('.')) == std::string::npos ||
-            dot + 4 < args[i].size() || isdigit(args[i][dot + 1]) ||
-            !args[i].compare(dot + 1, 3, "exe")))
-      ++i;
-  }
   // Compiler driver.
-  result.args.push_back(args[i - 1]);
+  result.args.push_back(args[0]);
 
   // Add -working-directory if not provided.
   if (!AnyStartsWith(args, "-working-directory"))
@@ -226,6 +201,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // Note that when processing paths, some arguments support multiple forms, ie,
   // {"-Ifoo"} or {"-I", "foo"}.  Support both styles.
 
+  size_t i = 1;
   result.args.reserve(args.size() + config->extra_flags.size());
   for (; i < args.size(); ++i) {
     std::string arg = args[i];
@@ -306,7 +282,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     result.args.push_back("-resource-dir=" + config->resource_dir);
 
   // There could be a clang version mismatch between what the project uses and
-  // what cquery uses. Make sure we do not emit warnings for mismatched options.
+  // what ccls uses. Make sure we do not emit warnings for mismatched options.
   if (!AnyStartsWith(result.args, "-Wno-unknown-warning-option"))
     result.args.push_back("-Wno-unknown-warning-option");
 
@@ -335,11 +311,11 @@ std::vector<std::string> ReadCompilerArgumentsFromFile(
 std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
                                                      ProjectConfig* config) {
   std::vector<Project::Entry> result;
-  config->mode = ProjectMode::DotCquery;
-  LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.cquery") &&
+  config->mode = ProjectMode::DotCcls;
+  LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.ccls") &&
                         config->extra_flags.empty())
-      << "cquery has no clang arguments. Considering adding either a "
-         "compile_commands.json or .cquery file. See the cquery README for "
+      << "ccls has no clang arguments. Considering adding either a "
+         "compile_commands.json or .ccls file. See the ccls README for "
          "more information.";
 
   std::unordered_map<std::string, std::vector<std::string>> folder_args;
@@ -350,8 +326,8 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
                    [&folder_args, &files](const std::string& path) {
                      if (SourceFileLanguage(path) != LanguageId::Unknown) {
                        files.push_back(path);
-                     } else if (GetBaseName(path) == ".cquery") {
-                       LOG_S(INFO) << "Using .cquery arguments from " << path;
+                     } else if (GetBaseName(path) == ".ccls") {
+                       LOG_S(INFO) << "Using .ccls arguments from " << path;
                        folder_args.emplace(GetDirName(path),
                                            ReadCompilerArgumentsFromFile(path));
                      }
@@ -359,7 +335,7 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
 
   const auto& project_dir_args = folder_args[config->project_dir];
   LOG_IF_S(INFO, !project_dir_args.empty())
-      << "Using .cquery arguments " << StringJoin(project_dir_args);
+      << "Using .ccls arguments " << StringJoin(project_dir_args);
 
   auto GetCompilerArgumentForFile = [&config,
                                      &folder_args](const std::string& path) {
@@ -396,8 +372,8 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     Config* config,
     ProjectConfig* project,
     const std::string& opt_compilation_db_dir) {
-  // If there is a .cquery file always load using directory listing.
-  if (FileExists(project->project_dir + ".cquery"))
+  // If there is a .ccls file always load using directory listing.
+  if (FileExists(project->project_dir + ".ccls"))
     return LoadFromDirectoryListing(config, project);
 
   // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
@@ -412,7 +388,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 #ifdef _WIN32
     // TODO
 #else
-    char tmpdir[] = "/tmp/cquery-compdb-XXXXXX";
+    char tmpdir[] = "/tmp/ccls-compdb-XXXXXX";
     if (!mkdtemp(tmpdir))
       return {};
     comp_db_dir = tmpdir;
@@ -654,7 +630,7 @@ void Project::Index(Config* config,
                     WorkingFiles* wfiles,
                     lsRequestId id) {
   ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
-    optional<std::string> content = ReadContent(entry.filename);
+    std::optional<std::string> content = ReadContent(entry.filename);
     if (!content) {
       LOG_S(ERROR) << "When loading project, canont read file "
                    << entry.filename;
@@ -1518,7 +1494,7 @@ TEST_SUITE("Project") {
 
     // Guess at same directory level, when there are parent directories.
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("/a/b/c/d/new.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg1"});
@@ -1526,7 +1502,7 @@ TEST_SUITE("Project") {
 
     // Guess at same directory level, when there are child directories.
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("/a/b/c/new.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg2"});
@@ -1534,7 +1510,7 @@ TEST_SUITE("Project") {
 
     // Guess at new directory (use the closest parent directory).
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("/a/b/c/new/new.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg2"});
@@ -1551,7 +1527,7 @@ TEST_SUITE("Project") {
     }
 
     {
-      optional<Project::Entry> entry = p.FindCompilationEntryForFile("ee.cc");
+      std::optional<Project::Entry> entry = p.FindCompilationEntryForFile("ee.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"a", "b", "ee.cc", "d"});
     }
@@ -1569,7 +1545,7 @@ TEST_SUITE("Project") {
     REQUIRE(!IsWindowsAbsolutePath("C:/"));
     REQUIRE(!IsWindowsAbsolutePath("../abc/test"));
     REQUIRE(!IsWindowsAbsolutePath("5:/test"));
-    REQUIRE(!IsWindowsAbsolutePath("cquery/project/file.cc"));
+    REQUIRE(!IsWindowsAbsolutePath("ccls/project/file.cc"));
     REQUIRE(!IsWindowsAbsolutePath(""));
     REQUIRE(!IsWindowsAbsolutePath("/etc/linux/path"));
   }
@@ -1597,25 +1573,25 @@ TEST_SUITE("Project") {
 
     // Prefer files with the same ending.
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("my_browsertest.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg1"});
     }
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("my_unittest.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg2"});
     }
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("common/my_browsertest.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg1"});
     }
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("common/my_unittest.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg2"});
@@ -1623,7 +1599,7 @@ TEST_SUITE("Project") {
 
     // Prefer the same directory over matching file-ending.
     {
-      optional<Project::Entry> entry =
+      std::optional<Project::Entry> entry =
           p.FindCompilationEntryForFile("common/a/foo.cc");
       REQUIRE(entry.has_value());
       REQUIRE(entry->args == std::vector<std::string>{"arg3"});

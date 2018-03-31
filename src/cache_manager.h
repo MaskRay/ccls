@@ -1,6 +1,6 @@
 #pragma once
 
-#include <optional.h>
+#include <optional>
 
 #include <functional>
 #include <memory>
@@ -38,7 +38,7 @@ struct ICacheManager {
 
   virtual void WriteToCache(IndexFile& file) = 0;
 
-  virtual optional<std::string> LoadCachedFileContents(
+  virtual std::optional<std::string> LoadCachedFileContents(
       const std::string& path) = 0;
 
   // Iterate over all loaded caches.

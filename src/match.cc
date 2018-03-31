@@ -6,7 +6,7 @@
 #include <doctest/doctest.h>
 
 // static
-optional<Matcher> Matcher::Create(const std::string& search) {
+std::optional<Matcher> Matcher::Create(const std::string& search) {
   /*
   std::string real_search;
   real_search.reserve(search.size() * 3 + 2);
@@ -30,10 +30,10 @@ optional<Matcher> Matcher::Create(const std::string& search) {
     Out_ShowLogMessage out;
     out.display_type = Out_ShowLogMessage::DisplayType::Show;
     out.params.type = lsMessageType::Error;
-    out.params.message = "cquery: Parsing EMCAScript regex \"" + search +
+    out.params.message = "ccls: Parsing EMCAScript regex \"" + search +
                          "\" failed; " + e.what();
     QueueManager::WriteStdout(kMethodType_Unknown, out);
-    return nullopt;
+    return std::nullopt;
   }
 }
 
@@ -46,12 +46,12 @@ bool Matcher::IsMatch(const std::string& value) const {
 GroupMatch::GroupMatch(const std::vector<std::string>& whitelist,
                        const std::vector<std::string>& blacklist) {
   for (const std::string& entry : whitelist) {
-    optional<Matcher> m = Matcher::Create(entry);
+    std::optional<Matcher> m = Matcher::Create(entry);
     if (m)
       this->whitelist.push_back(*m);
   }
   for (const std::string& entry : blacklist) {
-    optional<Matcher> m = Matcher::Create(entry);
+    std::optional<Matcher> m = Matcher::Create(entry);
     if (m)
       this->blacklist.push_back(*m);
   }

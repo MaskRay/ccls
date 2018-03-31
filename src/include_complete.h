@@ -24,7 +24,7 @@ struct IncludeComplete {
                                    bool use_angle_brackets);
   void InsertStlIncludes();
 
-  optional<lsCompletionItem> FindCompletionItemForAbsolutePath(
+  std::optional<lsCompletionItem> FindCompletionItemForAbsolutePath(
       const std::string& absolute_path);
 
   // Insert item to |completion_items|.

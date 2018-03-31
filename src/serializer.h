@@ -5,14 +5,15 @@
 #include "port.h"
 
 #include <macro_map.h>
-#include <optional.h>
-#include <string_view.h>
-#include <variant.h>
 
 #include <cassert>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 enum class SerializeFormat { Json, MessagePack };
@@ -176,13 +177,13 @@ void Reflect(Writer& visitor, SerializeFormat& value);
 
 //// Type constructors
 
-// ReflectMember optional<T> is used to represent TypeScript optional properties
+// ReflectMember std::optional<T> is used to represent TypeScript std::optional properties
 // (in `key: value` context).
-// Reflect optional<T> is used for a different purpose, whether an object is
+// Reflect std::optional<T> is used for a different purpose, whether an object is
 // nullable (possibly in `value` context). For the nullable semantics,
 // std::variant<std::monostate, T> is recommended.
 template <typename T>
-void Reflect(Reader& visitor, optional<T>& value) {
+void Reflect(Reader& visitor, std::optional<T>& value) {
   if (visitor.IsNull()) {
     visitor.GetNull();
     return;
@@ -192,7 +193,7 @@ void Reflect(Reader& visitor, optional<T>& value) {
   value = std::move(real_value);
 }
 template <typename T>
-void Reflect(Writer& visitor, optional<T>& value) {
+void Reflect(Writer& visitor, std::optional<T>& value) {
   if (value)
     Reflect(visitor, *value);
   else
@@ -219,8 +220,8 @@ void Reflect(Writer& visitor, Maybe<T>& value) {
 }
 
 template <typename T>
-void ReflectMember(Writer& visitor, const char* name, optional<T>& value) {
-  // For TypeScript optional property key?: value in the spec,
+void ReflectMember(Writer& visitor, const char* name, std::optional<T>& value) {
+  // For TypeScript std::optional property key?: value in the spec,
   // We omit both key and value if value is std::nullopt (null) for JsonWriter
   // to reduce output. But keep it for other serialization formats.
   if (value || visitor.Format() != SerializeFormat::Json) {
@@ -238,22 +239,13 @@ void ReflectMember(Writer& visitor, const char* name, Maybe<T>& value) {
   }
 }
 
-// Backport C++17 std::disjunction
-namespace {
-template <typename B0, typename... Bs>
-struct disjunction
-    : std::conditional<bool(B0::value), B0, disjunction<Bs...>>::type {};
-template <typename B0>
-struct disjunction<B0> : B0 {};
-}  // namespace
-
 // Helper struct to reflect std::variant
 template <size_t N, typename... Ts>
 struct ReflectVariant {
   // If T appears in Ts..., we should set the value of std::variant<Ts...> to
   // what we get from Reader.
   template <typename T>
-  typename std::enable_if<disjunction<std::is_same<T, Ts>...>::value,
+  typename std::enable_if<std::disjunction<std::is_same<T, Ts>...>::value,
                           void>::type
   ReflectTag(Reader& visitor, std::variant<Ts...>& value) {
     T a;
@@ -263,7 +255,7 @@ struct ReflectVariant {
   // This SFINAE overload is used to prevent compile error. value = a; is not
   // allowed if T does not appear in Ts...
   template <typename T>
-  typename std::enable_if<!disjunction<std::is_same<T, Ts>...>::value,
+  typename std::enable_if<!std::disjunction<std::is_same<T, Ts>...>::value,
                           void>::type
   ReflectTag(Reader&, std::variant<Ts...>&) {}
 
@@ -273,7 +265,7 @@ struct ReflectVariant {
       ReflectTag<std::monostate>(visitor, value);
     // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int>
     // if int is not in Ts...
-    else if (disjunction<std::is_same<int, Ts>...>::value && visitor.IsInt())
+    else if (std::disjunction<std::is_same<int, Ts>...>::value && visitor.IsInt())
       ReflectTag<int>(visitor, value);
     else if (visitor.IsInt64())
       ReflectTag<int64_t>(visitor, value);
@@ -363,6 +355,6 @@ std::unique_ptr<IndexFile> Deserialize(
     const std::string& path,
     const std::string& serialized_index_content,
     const std::string& file_content,
-    optional<int> expected_version);
+    std::optional<int> expected_version);
 
 void SetTestOutputMode();

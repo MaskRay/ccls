@@ -3,7 +3,7 @@
 #include "cache_manager.h"
 #include "indexer.h"
 
-optional<int64_t> TimestampManager::GetLastCachedModificationTime(
+std::optional<int64_t> TimestampManager::GetLastCachedModificationTime(
     ICacheManager* cache_manager,
     const std::string& path) {
   {
@@ -14,7 +14,7 @@ optional<int64_t> TimestampManager::GetLastCachedModificationTime(
   }
   IndexFile* file = cache_manager->TryLoad(path);
   if (!file)
-    return nullopt;
+    return std::nullopt;
 
   UpdateCachedModificationTime(path, file->last_modification_time);
   return file->last_modification_time;

@@ -47,21 +47,21 @@ void AddCodeLens(const char* singular,
                  const std::vector<Use>& uses,
                  bool force_display) {
   TCodeLens code_lens;
-  optional<lsRange> range = GetLsRange(common->working_file, use.range);
+  std::optional<lsRange> range = GetLsRange(common->working_file, use.range);
   if (!range)
     return;
   if (use.file == QueryFileId())
     return;
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
-  code_lens.command->command = "cquery.showReferences";
+  code_lens.command->command = "ccls.showReferences";
   code_lens.command->arguments.uri = GetLsDocumentUri(common->db, use.file);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
   std::unordered_set<lsLocation> unique_uses;
   for (Use use1 : uses) {
-    optional<lsLocation> location =
+    std::optional<lsLocation> location =
         GetLsLocation(common->db, common->working_files, use1);
     if (!location)
       continue;
@@ -177,10 +177,10 @@ struct Handler_TextDocumentCodeLens
             Maybe<Use> base_loc = GetDefinitionSpell(
                 db, SymbolIdx{def->bases[0], SymbolKind::Func});
             if (base_loc) {
-              optional<lsLocation> ls_base =
+              std::optional<lsLocation> ls_base =
                   GetLsLocation(db, working_files, *base_loc);
               if (ls_base) {
-                optional<lsRange> range =
+                std::optional<lsRange> range =
                     GetLsRange(common.working_file, sym.range);
                 if (range) {
                   TCodeLens code_lens;
@@ -188,7 +188,7 @@ struct Handler_TextDocumentCodeLens
                   code_lens.range.start.character += offset++;
                   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
                   code_lens.command->title = "Base";
-                  code_lens.command->command = "cquery.goto";
+                  code_lens.command->command = "ccls.goto";
                   code_lens.command->arguments.uri = ls_base->uri;
                   code_lens.command->arguments.position = ls_base->range.start;
                   out.result.push_back(code_lens);

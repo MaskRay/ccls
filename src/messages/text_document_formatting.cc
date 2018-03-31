@@ -49,7 +49,7 @@ struct Handler_TextDocumentFormatting
                             working_file->buffer_content.size(),
                             request->params.options));
 #else
-    LOG_S(WARNING) << "You must compile cquery with --use-clang-cxx to use "
+    LOG_S(WARNING) << "You must compile ccls with --use-clang-cxx to use "
                       "textDocument/formatting.";
     // TODO: Fallback to execute the clang-format binary?
     response.result = {};

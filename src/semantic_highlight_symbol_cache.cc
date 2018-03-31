@@ -5,7 +5,7 @@ SemanticHighlightSymbolCache::Entry::Entry(
     const std::string& path)
     : all_caches_(all_caches), path(path) {}
 
-optional<int> SemanticHighlightSymbolCache::Entry::TryGetStableId(
+std::optional<int> SemanticHighlightSymbolCache::Entry::TryGetStableId(
     SymbolKind kind,
     const std::string& detailed_name) {
   TNameToId* map = GetMapForSymbol_(kind);
@@ -13,19 +13,19 @@ optional<int> SemanticHighlightSymbolCache::Entry::TryGetStableId(
   if (it != map->end())
     return it->second;
 
-  return nullopt;
+  return std::nullopt;
 }
 
 int SemanticHighlightSymbolCache::Entry::GetStableId(
     SymbolKind kind,
     const std::string& detailed_name) {
-  optional<int> id = TryGetStableId(kind, detailed_name);
+  std::optional<int> id = TryGetStableId(kind, detailed_name);
   if (id)
     return *id;
 
   // Create a new id. First try to find a key in another map.
   all_caches_->cache_.IterateValues([&](const std::shared_ptr<Entry>& entry) {
-    optional<int> other_id = entry->TryGetStableId(kind, detailed_name);
+    std::optional<int> other_id = entry->TryGetStableId(kind, detailed_name);
     if (other_id) {
       id = other_id;
       return false;

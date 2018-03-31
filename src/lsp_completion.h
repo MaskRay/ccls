@@ -69,7 +69,7 @@ struct lsCompletionItem {
   std::string detail;
 
   // A human-readable string that represents a doc-comment.
-  optional<std::string> documentation;
+  std::optional<std::string> documentation;
 
   // Internal information to order candidates.
   int score_;
@@ -84,7 +84,7 @@ struct lsCompletionItem {
 
   // A string that should be used when filtering a set of
   // completion items. When `falsy` the label is used.
-  optional<std::string> filterText;
+  std::optional<std::string> filterText;
 
   // A string that should be inserted a document when selecting
   // this completion. When `falsy` the label is used.
@@ -99,14 +99,14 @@ struct lsCompletionItem {
   //
   // *Note:* The range of the edit must be a single line range and it must
   // contain the position at which completion has been requested.
-  optional<lsTextEdit> textEdit;
+  std::optional<lsTextEdit> textEdit;
 
-  // An optional array of additional text edits that are applied when
+  // An std::optional array of additional text edits that are applied when
   // selecting this completion. Edits must not overlap with the main edit
   // nor with themselves.
   // std::vector<TextEdit> additionalTextEdits;
 
-  // An optional command that is executed *after* inserting this completion.
+  // An std::optional command that is executed *after* inserting this completion.
   // *Note* that additional modifications to the current document should be
   // described with the additionalTextEdits-property. Command command;
 

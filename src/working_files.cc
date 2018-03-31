@@ -146,7 +146,7 @@ int AlignColumn(const std::string& a, int column, std::string b, bool is_end) {
 // Find matching buffer line of index_lines[line].
 // By symmetry, this can also be used to find matching index line of a buffer
 // line.
-optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
+std::optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
                                const std::vector<int>& index_to_buffer,
                                int line,
                                int* column,
@@ -171,7 +171,7 @@ optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
   down = down >= int(index_to_buffer.size()) ? int(buffer_lines.size()) - 1
                                              : index_to_buffer[down];
   if (up > down)
-    return nullopt;
+    return std::nullopt;
 
   // Search for lines [up,down] and use Myers's diff algorithm to find the best
   // match (least edit distance).
@@ -313,7 +313,7 @@ void WorkingFile::ComputeLineMapping() {
       buffer_to_index[index_to_buffer[i]] = i;
 }
 
-optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
+std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
                                                     int* column,
                                                     bool is_end) {
   // The implementation is simple but works pretty well for most cases. We
@@ -333,7 +333,7 @@ optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
     LOG_S(WARNING) << "Bad index_line (got " << line << ", expected [0, "
                    << index_lines.size() << ")) in " << filename
                    << stack.c_str();
-    return nullopt;
+    return std::nullopt;
   }
 
   if (index_to_buffer.empty())
@@ -342,12 +342,12 @@ optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
                           buffer_lines, is_end);
 }
 
-optional<int> WorkingFile::GetIndexPosFromBufferPos(int line,
+std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line,
                                                     int* column,
                                                     bool is_end) {
   // See GetBufferLineFromIndexLine for additional comments.
   if (line < 0 || line >= (int)buffer_lines.size())
-    return nullopt;
+    return std::nullopt;
 
   if (buffer_to_index.empty())
     ComputeLineMapping();

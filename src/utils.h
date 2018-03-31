@@ -1,7 +1,7 @@
 #pragma once
 
-#include <optional.h>
-#include <string_view.h>
+#include <optional>
+#include <string_view>
 
 #include <algorithm>
 #include <functional>
@@ -94,7 +94,7 @@ std::string EscapeFileName(std::string path);
 
 // FIXME: Move ReadContent into ICacheManager?
 bool FileExists(const std::string& filename);
-optional<std::string> ReadContent(const std::string& filename);
+std::optional<std::string> ReadContent(const std::string& filename);
 std::vector<std::string> ReadLinesWithEnding(std::string filename);
 std::vector<std::string> ToLines(const std::string& content,
                                  bool trim_whitespace);

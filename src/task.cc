@@ -23,14 +23,14 @@ void TaskManager::SetIdle(TaskThread thread, const TIdleTask& task) {
   queue->idle_task = task;
 }
 
-bool TaskManager::RunTasks(TaskThread thread, optional<std::chrono::duration<long long, std::nano>> max_time) {
+bool TaskManager::RunTasks(TaskThread thread, std::optional<std::chrono::duration<long long, std::nano>> max_time) {
   auto start = std::chrono::high_resolution_clock::now();
   TaskQueue* queue = pending_tasks_[thread].get();
 
   bool ran_task = false;
 
   while (true) {
-    optional<TTask> task;
+    std::optional<TTask> task;
 
     // Get a task.
     {
@@ -79,7 +79,7 @@ TEST_CASE("tasks are run as soon as they are posted") {
   });
 
   // Execute all tasks.
-  tm.RunTasks(TaskThread::QueryDb, nullopt);
+  tm.RunTasks(TaskThread::QueryDb, std::nullopt);
 
   // Tasks are executed in reverse order.
   REQUIRE(a == 3);
@@ -106,7 +106,7 @@ TEST_CASE("post from inside task manager") {
   });
 
   // Execute all tasks.
-  tm.RunTasks(TaskThread::QueryDb, nullopt);
+  tm.RunTasks(TaskThread::QueryDb, std::nullopt);
 
   // Tasks are executed in normal order because the next task is not posted
   // until the previous one is executed.
@@ -125,7 +125,7 @@ TEST_CASE("idle task is run after nested tasks") {
   });
 
   // No tasks posted - idle runs once.
-  REQUIRE(tm.RunTasks(TaskThread::QueryDb, nullopt));
+  REQUIRE(tm.RunTasks(TaskThread::QueryDb, std::nullopt));
   REQUIRE(count == 1);
   count = 0;
 
@@ -134,7 +134,7 @@ TEST_CASE("idle task is run after nested tasks") {
   tm.Post(TaskThread::QueryDb, [&]() {
     did_run = true;
   });
-  REQUIRE(tm.RunTasks(TaskThread::QueryDb, nullopt));
+  REQUIRE(tm.RunTasks(TaskThread::QueryDb, std::nullopt));
   REQUIRE(did_run);
   REQUIRE(count == 1);
 }
@@ -142,10 +142,10 @@ TEST_CASE("idle task is run after nested tasks") {
 TEST_CASE("RunTasks returns false when idle task returns false and no other tasks were run") {
   TaskManager tm;
 
-  REQUIRE(tm.RunTasks(TaskThread::QueryDb, nullopt) == false);
+  REQUIRE(tm.RunTasks(TaskThread::QueryDb, std::nullopt) == false);
   
   tm.SetIdle(TaskThread::QueryDb, []() { return false; });
-  REQUIRE(tm.RunTasks(TaskThread::QueryDb, nullopt) == false);
+  REQUIRE(tm.RunTasks(TaskThread::QueryDb, std::nullopt) == false);
 }
 
 TEST_SUITE_END();

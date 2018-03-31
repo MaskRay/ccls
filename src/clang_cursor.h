@@ -4,7 +4,7 @@
 #include "position.h"
 
 #include <clang-c/Index.h>
-#include <optional.h>
+#include <optional>
 
 #include <array>
 #include <string>

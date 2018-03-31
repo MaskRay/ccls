@@ -4,7 +4,7 @@
 #include "match.h"
 #include "query.h"
 
-#include <optional.h>
+#include <optional>
 
 #include <string>
 #include <unordered_map>
@@ -25,7 +25,7 @@ struct SemanticHighlightSymbolCache {
 
     Entry(SemanticHighlightSymbolCache* all_caches, const std::string& path);
 
-    optional<int> TryGetStableId(SymbolKind kind,
+    std::optional<int> TryGetStableId(SymbolKind kind,
                                  const std::string& detailed_name);
     int GetStableId(SymbolKind kind, const std::string& detailed_name);
 

@@ -9,8 +9,8 @@ using MethodType = const char*;
 extern MethodType kMethodType_Unknown;
 extern MethodType kMethodType_Exit;
 extern MethodType kMethodType_TextDocumentPublishDiagnostics;
-extern MethodType kMethodType_CqueryPublishInactiveRegions;
-extern MethodType kMethodType_CqueryPublishSemanticHighlighting;
+extern MethodType kMethodType_CclsPublishInactiveRegions;
+extern MethodType kMethodType_CclsPublishSemanticHighlighting;
 
 using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
 

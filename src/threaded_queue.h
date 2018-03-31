@@ -2,7 +2,7 @@
 
 #include "utils.h"
 
-#include <optional.h>
+#include <optional>
 
 #include <algorithm>
 #include <atomic>
@@ -172,7 +172,7 @@ struct ThreadedQueue : public BaseThreadQueue {
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
-  optional<T> TryPopFrontHelper(int which) {
+  std::optional<T> TryPopFrontHelper(int which) {
     std::lock_guard<std::mutex> lock(mutex_);
     auto execute = [&](std::deque<T>* q) {
       auto val = std::move(q->front());
@@ -184,12 +184,12 @@ struct ThreadedQueue : public BaseThreadQueue {
       return execute(&priority_);
     if (which & 1 && queue_.size())
       return execute(&queue_);
-    return nullopt;
+    return std::nullopt;
   }
 
-  optional<T> TryPopFront() { return TryPopFrontHelper(3); }
+  std::optional<T> TryPopFront() { return TryPopFrontHelper(3); }
 
-  optional<T> TryPopBack() {
+  std::optional<T> TryPopBack() {
     std::lock_guard<std::mutex> lock(mutex_);
     auto execute = [&](std::deque<T>* q) {
       auto val = std::move(q->back());
@@ -202,12 +202,12 @@ struct ThreadedQueue : public BaseThreadQueue {
       return execute(&queue_);
     if (priority_.size())
       return execute(&priority_);
-    return nullopt;
+    return std::nullopt;
   }
 
-  optional<T> TryPopFrontLow() { return TryPopFrontHelper(1); }
+  std::optional<T> TryPopFrontLow() { return TryPopFrontHelper(1); }
 
-  optional<T> TryPopFrontHigh() { return TryPopFrontHelper(2); }
+  std::optional<T> TryPopFrontHigh() { return TryPopFrontHelper(2); }
 
   mutable std::mutex mutex_;
 

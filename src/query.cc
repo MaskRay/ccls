@@ -5,7 +5,7 @@
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
-#include <optional.h>
+#include <optional>
 #include <loguru.hpp>
 
 #include <cassert>
@@ -39,10 +39,10 @@ void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
       dest->end());
 }
 
-optional<QueryType::Def> ToQuery(const IdMap& id_map,
+std::optional<QueryType::Def> ToQuery(const IdMap& id_map,
                                  const IndexType::Def& type) {
   if (type.detailed_name.empty())
-    return nullopt;
+    return std::nullopt;
 
   QueryType::Def result;
   result.detailed_name = type.detailed_name;
@@ -64,10 +64,10 @@ optional<QueryType::Def> ToQuery(const IdMap& id_map,
   return result;
 }
 
-optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
+std::optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
                                  const IndexFunc::Def& func) {
   if (func.detailed_name.empty())
-    return nullopt;
+    return std::nullopt;
 
   QueryFunc::Def result;
   result.detailed_name = func.detailed_name;
@@ -89,9 +89,9 @@ optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
   return result;
 }
 
-optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
+std::optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& var) {
   if (var.detailed_name.empty())
-    return nullopt;
+    return std::nullopt;
 
   QueryVar::Def result;
   result.detailed_name = var.detailed_name;
@@ -549,7 +549,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       },
       /*onAdded:*/
       [this, &current_id_map](IndexType* type) {
-        optional<QueryType::Def> def_update =
+        std::optional<QueryType::Def> def_update =
             ToQuery(current_id_map, type->def);
         if (def_update)
           types_def_update.push_back(
@@ -574,9 +574,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexType* previous,
                                                 IndexType* current) {
-        optional<QueryType::Def> previous_remapped_def =
+        std::optional<QueryType::Def> previous_remapped_def =
             ToQuery(previous_id_map, previous->def);
-        optional<QueryType::Def> current_remapped_def =
+        std::optional<QueryType::Def> current_remapped_def =
             ToQuery(current_id_map, current->def);
         if (current_remapped_def &&
             previous_remapped_def != current_remapped_def &&
@@ -614,7 +614,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       },
       /*onAdded:*/
       [this, &current_id_map](IndexFunc* func) {
-        optional<QueryFunc::Def> def_update =
+        std::optional<QueryFunc::Def> def_update =
             ToQuery(current_id_map, func->def);
         if (def_update)
           funcs_def_update.push_back(
@@ -635,9 +635,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexFunc* previous,
                                                 IndexFunc* current) {
-        optional<QueryFunc::Def> previous_remapped_def =
+        std::optional<QueryFunc::Def> previous_remapped_def =
             ToQuery(previous_id_map, previous->def);
-        optional<QueryFunc::Def> current_remapped_def =
+        std::optional<QueryFunc::Def> current_remapped_def =
             ToQuery(current_id_map, current->def);
         if (current_remapped_def &&
             previous_remapped_def != current_remapped_def &&
@@ -669,7 +669,7 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       },
       /*onAdded:*/
       [this, &current_id_map](IndexVar* var) {
-        optional<QueryVar::Def> def_update = ToQuery(current_id_map, var->def);
+        std::optional<QueryVar::Def> def_update = ToQuery(current_id_map, var->def);
         if (def_update)
           vars_def_update.push_back(
               QueryVar::DefUpdate(var->usr, std::move(*def_update)));
@@ -685,9 +685,9 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexVar* previous,
                                                 IndexVar* current) {
-        optional<QueryVar::Def> previous_remapped_def =
+        std::optional<QueryVar::Def> previous_remapped_def =
             ToQuery(previous_id_map, previous->def);
-        optional<QueryVar::Def> current_remapped_def =
+        std::optional<QueryVar::Def> current_remapped_def =
             ToQuery(current_id_map, current->def);
         if (current_remapped_def &&
             previous_remapped_def != current_remapped_def &&
@@ -768,7 +768,7 @@ void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
   // but it should be pretty minimal and is solved by simply restarting the
   // indexer and loading from cache, which is a fast operation.
   //
-  // TODO: Add "cquery: Reload Index" command which unloads all querydb state
+  // TODO: Add "ccls: Reload Index" command which unloads all querydb state
   // and fully reloads from cache. This will address the memory leak above.
 
   switch (usr_kind) {
@@ -818,7 +818,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
 // This function runs on the querydb thread.
 
 // Example types:
-//  storage_name       =>  std::vector<optional<QueryType>>
+//  storage_name       =>  std::vector<std::optional<QueryType>>
 //  merge_update       =>  QueryType::DerivedUpdate =>
 //  MergeableUpdate<QueryTypeId, QueryTypeId> def                =>  QueryType
 //  def->def_var_name  =>  std::vector<QueryTypeId>
@@ -831,7 +831,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* update) {
   }
 
   for (const std::string& filename : update->files_removed)
-    files[usr_to_file[NormalizedPath(filename)].id].def = nullopt;
+    files[usr_to_file[NormalizedPath(filename)].id].def = std::nullopt;
   ImportOrUpdate(update->files_def_update);
 
   RemoveUsrs(SymbolKind::Type, update->types_removed);
@@ -1111,7 +1111,7 @@ TEST_SUITE("query") {
   TEST_CASE("Remove variable with usage") {
     auto load_index_from_json = [](const char* json) {
       return Deserialize(SerializeFormat::Json, "foo.cc", json, "<empty>",
-                         nullopt);
+                         std::nullopt);
     };
 
     auto previous = load_index_from_json(R"RAW(

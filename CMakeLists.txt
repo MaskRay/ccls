@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(cquery LANGUAGES CXX)
+project(ccls LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 include(DefaultCMakeBuildType)
@@ -8,11 +8,11 @@ include(DownloadAndExtractLLVM)
 set(CLANG_VERSION 6.0.0 CACHE STRING "Downloaded Clang version (6.0.0)")
 option(SYSTEM_CLANG "Use system Clang instead of downloading Clang" OFF)
 option(ASAN "Compile with address sanitizers" OFF)
-option(CLANG_CXX "Build with Clang C++ api required by some cquery \
+option(CLANG_CXX "Build with Clang C++ api required by some ccls \
 features (warning: not available in LLVM Windows downloads)" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
-add_executable(cquery "")
+add_executable(ccls "")
 
 ### Compile options
 
@@ -25,16 +25,16 @@ add_executable(cquery "")
 #   release: -O3 -DNDEBUG
 
 # Enable C++14 (Required)
-set_property(TARGET cquery PROPERTY CXX_STANDARD 14)
-set_property(TARGET cquery PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET ccls PROPERTY CXX_STANDARD 17)
+set_property(TARGET ccls PROPERTY CXX_STANDARD_REQUIRED ON)
 # Disable gnu extensions except for Cygwin which needs them to build properly
 if(NOT CYGWIN)
-  set_property(TARGET cquery PROPERTY CXX_EXTENSIONS OFF)
+  set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   # Common MSVC/Clang(Windows) options
-  target_compile_options(cquery PRIVATE
+  target_compile_options(ccls PRIVATE
                          /nologo
                          /EHsc
                          /W3 # roughly -Wall
@@ -49,17 +49,17 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
                          )
 else()
   # Common GCC/Clang(Linux) options
-  target_compile_options(cquery PRIVATE
+  target_compile_options(ccls PRIVATE
                          -Wall
                          -Wno-sign-compare
                          )
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-    target_compile_options(cquery PRIVATE -Wno-return-type -Wno-unused-result)
+    target_compile_options(ccls PRIVATE -Wno-return-type -Wno-unused-result)
   endif()
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang)
-    target_compile_options(cquery PRIVATE
+    target_compile_options(ccls PRIVATE
                            $<$<CONFIG:Debug>:-fno-limit-debug-info>)
   endif()
 
@@ -67,13 +67,13 @@ else()
     # -Wno-comment: include/clang/Format/Format.h error: multi-line comment
     # -fno-rtti: # Without -fno-rtti, some Clang C++ functions may report
     # `undefined references to typeinfo`
-    target_compile_options(cquery PRIVATE -Wno-comment -fno-rtti)
+    target_compile_options(ccls PRIVATE -Wno-comment -fno-rtti)
   endif()
 
   if(ASAN)
-    target_compile_options(cquery PRIVATE -fsanitize=address,undefined)
+    target_compile_options(ccls PRIVATE -fsanitize=address,undefined)
     # target_link_libraries also takes linker flags
-    target_link_libraries(cquery PRIVATE -fsanitize=address,undefined)
+    target_link_libraries(ccls PRIVATE -fsanitize=address,undefined)
   endif()
 endif()
 
@@ -89,50 +89,50 @@ endif()
 
 # See cmake/FindClang.cmake
 find_package(Clang REQUIRED)
-target_link_libraries(cquery PRIVATE Clang::Clang)
+target_link_libraries(ccls PRIVATE Clang::Clang)
 
 # Enable threading support
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-target_link_libraries(cquery PRIVATE Threads::Threads)
+target_link_libraries(ccls PRIVATE Threads::Threads)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
   # loguru calls dladdr
-  target_link_libraries(cquery PRIVATE ${CMAKE_DL_LIBS})
+  target_link_libraries(ccls PRIVATE ${CMAKE_DL_LIBS})
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
   # loguru::stacktrace_as_stdstring calls backtrace_symbols
   # sparsepp/spp_memory.h uses libkvm
   # src/platform_posix.cc uses libthr
   find_package(Backtrace REQUIRED)
-  target_link_libraries(cquery PRIVATE ${Backtrace_LIBRARIES} kvm thr)
+  target_link_libraries(ccls PRIVATE ${Backtrace_LIBRARIES} kvm thr)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   # sparsepp/spp_memory.h uses LibPsapi
-  target_link_libraries(cquery PRIVATE Psapi)
+  target_link_libraries(ccls PRIVATE Psapi)
 endif()
 
 if(CLANG_CXX)
   # Clang C++ api uses ncurses
   find_package(Curses REQUIRED)
-  target_link_libraries(cquery PRIVATE ${CURSES_LIBRARIES})
+  target_link_libraries(ccls PRIVATE ${CURSES_LIBRARIES})
 endif()
 
 ### Definitions
 
-target_compile_definitions(cquery PRIVATE
+target_compile_definitions(ccls PRIVATE
                            LOGURU_WITH_STREAMS=1
                            LOGURU_FILENAME_WIDTH=18
                            LOGURU_THREADNAME_WIDTH=13
                            DEFAULT_RESOURCE_DIRECTORY="${Clang_RESOURCE_DIR}")
 
 if(CLANG_CXX)
-  target_compile_definitions(cquery PRIVATE USE_CLANG_CXX=1 LOGURU_RTTI=0)
+  target_compile_definitions(ccls PRIVATE USE_CLANG_CXX=1 LOGURU_RTTI=0)
 endif()
 
 ### Includes
 
-target_include_directories(cquery PRIVATE
+target_include_directories(ccls PRIVATE
                            src
                            third_party
                            third_party/rapidjson/include
@@ -143,17 +143,17 @@ target_include_directories(cquery PRIVATE
 
 ### Install
 
-install(TARGETS cquery RUNTIME DESTINATION bin)
+install(TARGETS ccls RUNTIME DESTINATION bin)
 
 # We don't need to install libclang on Windows if we are using downloaded LLVM
 # since libclang is distributed as a static library on Windows
 if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
   if(${CMAKE_SYSTEM_NAME} MATCHES Linux|FreeBSD)
-    set_property(TARGET cquery APPEND PROPERTY
+    set_property(TARGET ccls APPEND PROPERTY
                  INSTALL_RPATH $ORIGIN/../lib)
   elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-    set_property(TARGET cquery APPEND PROPERTY
+    set_property(TARGET ccls APPEND PROPERTY
                  INSTALL_RPATH @loader_path/../lib)
   endif()
 
@@ -164,9 +164,9 @@ endif()
 
 ### Sources
 
-target_sources(cquery PRIVATE third_party/siphash.cc)
+target_sources(ccls PRIVATE third_party/siphash.cc)
 
-target_sources(cquery PRIVATE
+target_sources(ccls PRIVATE
                src/cache_manager.cc
                src/clang_complete.cc
                src/clang_cursor.cc
@@ -215,24 +215,23 @@ target_sources(cquery PRIVATE
                src/work_thread.cc
                src/working_files.cc)
 
-target_sources(cquery PRIVATE
-               src/messages/cquery_base.cc
-               src/messages/cquery_call_hierarchy.cc
-               src/messages/cquery_callers.cc
-               src/messages/cquery_derived.cc
-               src/messages/cquery_did_view.cc
-               src/messages/cquery_file_info.cc
-               src/messages/cquery_freshen_index.cc
-               src/messages/cquery_index_file.cc
-               src/messages/cquery_inheritance_hierarchy.cc
-               src/messages/cquery_member_hierarchy.cc
-               src/messages/cquery_random.cc
-               src/messages/cquery_vars.cc
-               src/messages/cquery_wait.cc
+target_sources(ccls PRIVATE
+               src/messages/ccls_base.cc
+               src/messages/ccls_call_hierarchy.cc
+               src/messages/ccls_callers.cc
+               src/messages/ccls_derived.cc
+               src/messages/ccls_did_view.cc
+               src/messages/ccls_file_info.cc
+               src/messages/ccls_freshen_index.cc
+               src/messages/ccls_index_file.cc
+               src/messages/ccls_inheritance_hierarchy.cc
+               src/messages/ccls_member_hierarchy.cc
+               src/messages/ccls_random.cc
+               src/messages/ccls_vars.cc
+               src/messages/ccls_wait.cc
                src/messages/exit.cc
                src/messages/initialize.cc
                src/messages/shutdown.cc
-               src/messages/text_document_code_action.cc
                src/messages/text_document_code_lens.cc
                src/messages/text_document_completion.cc
                src/messages/text_document_definition.cc
@@ -252,4 +251,5 @@ target_sources(cquery PRIVATE
                src/messages/text_document_type_definition.cc
                src/messages/workspace_did_change_configuration.cc
                src/messages/workspace_did_change_watched_files.cc
-               src/messages/workspace_symbol.cc)
+               src/messages/workspace_symbol.cc
+               )

@@ -9,11 +9,11 @@
 
 namespace {
 
-optional<std::string> GetFileContents(const std::string& path,
+std::optional<std::string> GetFileContents(const std::string& path,
                                       FileContentsMap* file_contents) {
   auto it = file_contents->find(path);
   if (it == file_contents->end()) {
-    optional<std::string> content = ReadContent(path);
+    std::optional<std::string> content = ReadContent(path);
     if (content)
       (*file_contents)[path] = FileContents(path, *content);
     return content;
@@ -75,7 +75,7 @@ IndexFile* FileConsumer::TryConsumeFile(CXFile file,
   }
 
   // Read the file contents, if we fail then we cannot index the file.
-  optional<std::string> contents =
+  std::optional<std::string> contents =
       GetFileContents(file_name, file_contents_map);
   if (!contents) {
     *is_first_ownership = false;

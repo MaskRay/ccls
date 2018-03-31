@@ -200,8 +200,8 @@ void DiffDocuments(std::string path,
             << std::endl;
 
 #if _POSIX_C_SOURCE >= 200809L
-  char expected_file[] = "/tmp/cquery.expected.XXXXXX";
-  char actual_file[] = "/tmp/cquery.actual.XXXXXX";
+  char expected_file[] = "/tmp/ccls.expected.XXXXXX";
+  char actual_file[] = "/tmp/ccls.actual.XXXXXX";
   int expected_fd = mkstemp(expected_file);
   int actual_fd = mkstemp(actual_file);
   dprintf(expected_fd, "%s", joined_expected_output.c_str());
@@ -269,7 +269,7 @@ void VerifySerializeToFrom(IndexFile* file) {
   std::string serialized = Serialize(SerializeFormat::Json, *file);
   std::unique_ptr<IndexFile> result =
       Deserialize(SerializeFormat::Json, "--.cc", serialized, "<empty>",
-                  nullopt /*expected_version*/);
+                  std::nullopt /*expected_version*/);
   std::string actual = result->ToString();
   if (expected != actual) {
     std::cerr << "Serialization failure" << std::endl;
@@ -310,7 +310,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   if (GetClangVersion() != kRequiredClangVersion &&
       GetClangVersion().find("trunk") == std::string::npos) {
     std::cerr << "Index tests must be run using clang version \""
-              << kRequiredClangVersion << "\" (cquery is running with \""
+              << kRequiredClangVersion << "\" (ccls is running with \""
               << GetClangVersion() << "\")" << std::endl;
     return false;
   }
@@ -378,7 +378,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
       std::string expected_output = text_replacer.Apply(entry.second);
 
       // FIXME: promote to utils, find and remove duplicates (ie,
-      // cquery_call_tree.cc, maybe something in project.cc).
+      // ccls_call_tree.cc, maybe something in project.cc).
       auto basename = [](const std::string& path) -> std::string {
         size_t last_index = path.find_last_of('/');
         if (last_index == std::string::npos)

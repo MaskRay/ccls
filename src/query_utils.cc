@@ -82,7 +82,7 @@ Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
       break;
     }
   }
-  return nullopt;
+  return std::nullopt;
 }
 
 std::vector<Use> GetDeclarations(QueryDatabase* db,
@@ -155,31 +155,31 @@ std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root) {
   return ret;
 }
 
-optional<lsPosition> GetLsPosition(WorkingFile* working_file,
+std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position) {
   if (!working_file)
     return lsPosition(position.line, position.column);
 
   int column = position.column;
-  if (optional<int> start =
+  if (std::optional<int> start =
           working_file->GetBufferPosFromIndexPos(position.line, &column, false))
     return lsPosition(*start, column);
-  return nullopt;
+  return std::nullopt;
 }
 
-optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
+std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
     return lsRange(lsPosition(location.start.line, location.start.column),
                    lsPosition(location.end.line, location.end.column));
   }
 
   int start_column = location.start.column, end_column = location.end.column;
-  optional<int> start = working_file->GetBufferPosFromIndexPos(
+  std::optional<int> start = working_file->GetBufferPosFromIndexPos(
       location.start.line, &start_column, false);
-  optional<int> end = working_file->GetBufferPosFromIndexPos(location.end.line,
+  std::optional<int> end = working_file->GetBufferPosFromIndexPos(location.end.line,
                                                              &end_column, true);
   if (!start || !end)
-    return nullopt;
+    return std::nullopt;
 
   // If remapping end fails (end can never be < start), just guess that the
   // final location didn't move. This only screws up the highlighted code
@@ -218,25 +218,25 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id) {
   }
 }
 
-optional<lsLocation> GetLsLocation(QueryDatabase* db,
+std::optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    Use use) {
   std::string path;
   lsDocumentUri uri = GetLsDocumentUri(db, use.file, &path);
-  optional<lsRange> range =
+  std::optional<lsRange> range =
       GetLsRange(working_files->GetFileByFilename(path), use.range);
   if (!range)
-    return nullopt;
+    return std::nullopt;
   return lsLocation(uri, *range);
 }
 
-optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
+std::optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
                                        WorkingFiles* working_files,
                                        Use use,
                                        bool container) {
-  optional<lsLocation> ls_loc = GetLsLocation(db, working_files, use);
+  std::optional<lsLocation> ls_loc = GetLsLocation(db, working_files, use);
   if (!ls_loc)
-    return nullopt;
+    return std::nullopt;
   lsLocationEx ret;
   ret.lsLocation::operator=(*ls_loc);
   if (container) {
@@ -282,7 +282,7 @@ lsSymbolKind GetSymbolKind(QueryDatabase* db, SymbolIdx sym) {
 }
 
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
-optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
+std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
                                             SymbolIdx sym,
                                             bool use_short_name) {
@@ -314,7 +314,7 @@ optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
     }
   }
 
-  return nullopt;
+  return std::nullopt;
 }
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
@@ -326,7 +326,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   int target_line = position.line;
   int target_column = position.character;
   if (working_file) {
-    optional<int> index_line = working_file->GetIndexPosFromBufferPos(
+    std::optional<int> index_line = working_file->GetIndexPosFromBufferPos(
         target_line, &target_column, false);
     if (index_line)
       target_line = *index_line;

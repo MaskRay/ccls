@@ -16,8 +16,8 @@
 #include "symbol.h"
 #include "utils.h"
 
-#include <optional.h>
-#include <string_view.h>
+#include <optional>
+#include <string_view>
 
 #include <ctype.h>
 #include <algorithm>
@@ -192,7 +192,7 @@ struct TypeDefDefinitionData {
     return std::string_view(detailed_name.c_str() + short_name_offset,
                             short_name_size);
   }
-  // Used by cquery_inheritance_hierarchy.cc:Expand generic lambda
+  // Used by ccls_inheritance_hierarchy.cc:Expand generic lambda
   std::string_view DetailedName(bool) const { return detailed_name; }
 };
 template <typename TVisitor, typename Family>
@@ -464,7 +464,7 @@ struct IndexFile {
   // For MessagePack cache files.
   // JSON has good forward compatibility because field addition/deletion do not
   // harm but currently no efforts have been made to make old MessagePack cache
-  // files accepted by newer cquery.
+  // files accepted by newer ccls.
   static const int kMinorVersion;
 
   std::string path;
@@ -519,7 +519,7 @@ struct NamespaceHelper {
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a
 // reparse.
-optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
+std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
@@ -528,7 +528,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     PerformanceImportFile* perf,
     ClangIndex* index,
     bool dump_ast = false);
-optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
+std::optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,

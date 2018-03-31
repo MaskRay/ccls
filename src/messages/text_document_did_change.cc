@@ -26,7 +26,7 @@ struct Handler_TextDocumentDidChange
     std::string path = request->params.textDocument.uri.GetPath();
     working_files->OnChange(request->params);
     if (config->enableIndexOnDidChange) {
-      optional<std::string> content = ReadContent(path);
+      std::optional<std::string> content = ReadContent(path);
       if (!content) {
         LOG_S(ERROR) << "Unable to read file content after saving " << path;
       } else {

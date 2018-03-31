@@ -35,9 +35,9 @@ struct MessageRegistry {
       std::function<void(Reader& visitor, std::unique_ptr<InMessage>*)>;
   std::unordered_map<std::string, Allocator> allocators;
 
-  optional<std::string> ReadMessageFromStdin(
+  std::optional<std::string> ReadMessageFromStdin(
       std::unique_ptr<InMessage>* message);
-  optional<std::string> Parse(Reader& visitor,
+  std::optional<std::string> Parse(Reader& visitor,
                               std::unique_ptr<InMessage>* message);
 };
 
@@ -196,7 +196,7 @@ enum class lsSymbolKind : uint8_t {
   // non-type template parameters).
   TypeParameter = 26,
 
-  // cquery extensions
+  // ccls extensions
   // See also https://github.com/Microsoft/language-server-protocol/issues/344
   // for new SymbolKind clang/Index/IndexSymbol.h clang::index::SymbolKind
   TypeAlias = 252,
@@ -206,12 +206,12 @@ enum class lsSymbolKind : uint8_t {
 };
 MAKE_REFLECT_TYPE_PROXY(lsSymbolKind);
 
-// cquery extension
+// ccls extension
 struct lsLocationEx : lsLocation {
-  optional<std::string_view> containerName;
-  optional<lsSymbolKind> parentKind;
+  std::optional<std::string_view> containerName;
+  std::optional<lsSymbolKind> parentKind;
   // Avoid circular dependency on symbol.h
-  optional<uint16_t> role;
+  std::optional<uint16_t> role;
 };
 MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, parentKind, role);
 
@@ -240,7 +240,7 @@ struct lsCodeLens {
   // The range in which this code lens is valid. Should only span a single line.
   lsRange range;
   // The command this code lens represents.
-  optional<lsCommand<TCommandArguments>> command;
+  std::optional<lsCommand<TCommandArguments>> command;
   // A data entry field that is preserved on a code lens item between
   // a code lens and a code lens resolve request.
   TData data;
@@ -337,7 +337,7 @@ MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
 
 // MarkedString can be used to render human readable text. It is either a
 // markdown string or a code-block that provides a language and a code snippet.
-// The language identifier is sematically equal to the optional language
+// The language identifier is sematically equal to the std::optional language
 // identifier in fenced code blocks in GitHub issues. See
 // https://help.github.com/articles/creating-and-highlighting-code-blocks/#syntax-highlighting
 //
@@ -357,9 +357,9 @@ MAKE_REFLECT_STRUCT(lsMarkedString1, language, value);
 
 struct lsTextDocumentContentChangeEvent {
   // The range of the document that changed.
-  optional<lsRange> range;
+  std::optional<lsRange> range;
   // The length of the range that got replaced.
-  optional<int> rangeLength;
+  std::optional<int> rangeLength;
   // The new text of the range/document.
   std::string text;
 };

@@ -49,14 +49,14 @@ namespace {
 // Returns the canonicalized absolute pathname, without expanding symbolic
 // links. This is a variant of realpath(2), C++ rewrite of
 // https://github.com/freebsd/freebsd/blob/master/lib/libc/stdlib/realpath.c
-optional<std::string> RealPathNotExpandSymlink(std::string path) {
+std::optional<std::string> RealPathNotExpandSymlink(std::string path) {
   if (path.empty()) {
     errno = EINVAL;
-    return nullopt;
+    return std::nullopt;
   }
   if (path[0] == '\0') {
     errno = ENOENT;
-    return nullopt;
+    return std::nullopt;
   }
 
   // Do not use PATH_MAX because it is tricky on Linux.
@@ -70,7 +70,7 @@ optional<std::string> RealPathNotExpandSymlink(std::string path) {
     i = 1;
   } else {
     if (!getcwd(tmp, sizeof tmp))
-      return nullopt;
+      return std::nullopt;
     resolved = tmp;
   }
 
@@ -96,10 +96,10 @@ optional<std::string> RealPathNotExpandSymlink(std::string path) {
     // lstat(2) because we do not want to resolve symlinks.
     resolved += next_token;
     if (stat(resolved.c_str(), &sb) != 0)
-      return nullopt;
+      return std::nullopt;
     if (!S_ISDIR(sb.st_mode) && j < path.size()) {
       errno = ENOTDIR;
-      return nullopt;
+      return std::nullopt;
     }
   }
 
@@ -160,7 +160,7 @@ std::string GetWorkingDirectory() {
 }
 
 std::string NormalizePath(const std::string& path) {
-  optional<std::string> resolved = RealPathNotExpandSymlink(path);
+  std::optional<std::string> resolved = RealPathNotExpandSymlink(path);
   return resolved ? *resolved : path;
 }
 
@@ -184,22 +184,22 @@ void SetCurrentThreadName(const std::string& thread_name) {
 #endif
 }
 
-optional<int64_t> GetLastModificationTime(const std::string& absolute_path) {
+std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path) {
   struct stat buf;
   if (stat(absolute_path.c_str(), &buf) != 0) {
     switch (errno) {
       case ENOENT:
         // std::cerr << "GetLastModificationTime: unable to find file " <<
         // absolute_path << std::endl;
-        return nullopt;
+        return std::nullopt;
       case EINVAL:
         // std::cerr << "GetLastModificationTime: invalid param to _stat for
         // file file " << absolute_path << std::endl;
-        return nullopt;
+        return std::nullopt;
       default:
         // std::cerr << "GetLastModificationTime: unhandled for " <<
         // absolute_path << std::endl;  exit(1);
-        return nullopt;
+        return std::nullopt;
     }
   }
 
@@ -279,7 +279,7 @@ bool RunObjectiveCIndexTests() {
 
 void TraceMe() {
   // If the environment variable is defined, wait for a debugger.
-  // In gdb, you need to invoke `signal SIGCONT` if you want cquery to continue
+  // In gdb, you need to invoke `signal SIGCONT` if you want ccls to continue
   // after detaching.
   if (getenv("CQUERY_TRACEME"))
     raise(SIGTSTP);

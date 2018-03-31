@@ -33,7 +33,7 @@ struct Out_Progress : public lsOutMessage<Out_Progress> {
     int onIndexedCount = 0;
     int activeThreads = 0;
   };
-  std::string method = "$cquery/progress";
+  std::string method = "$ccls/progress";
   Params params;
 };
 MAKE_REFLECT_STRUCT(Out_Progress::Params,
@@ -63,23 +63,23 @@ struct IterationLoop {
 
 struct IModificationTimestampFetcher {
   virtual ~IModificationTimestampFetcher() = default;
-  virtual optional<int64_t> GetModificationTime(const std::string& path) = 0;
+  virtual std::optional<int64_t> GetModificationTime(const std::string& path) = 0;
 };
 struct RealModificationTimestampFetcher : IModificationTimestampFetcher {
   ~RealModificationTimestampFetcher() override = default;
 
   // IModificationTimestamp:
-  optional<int64_t> GetModificationTime(const std::string& path) override {
+  std::optional<int64_t> GetModificationTime(const std::string& path) override {
     return GetLastModificationTime(path);
   }
 };
 struct FakeModificationTimestampFetcher : IModificationTimestampFetcher {
-  std::unordered_map<std::string, optional<int64_t>> entries;
+  std::unordered_map<std::string, std::optional<int64_t>> entries;
 
   ~FakeModificationTimestampFetcher() override = default;
 
   // IModificationTimestamp:
-  optional<int64_t> GetModificationTime(const std::string& path) override {
+  std::optional<int64_t> GetModificationTime(const std::string& path) override {
     auto it = entries.find(path);
     assert(it != entries.end());
     return it->second;
@@ -159,8 +159,8 @@ ShouldParse FileNeedsParse(
     IndexFile* opt_previous_index,
     const std::string& path,
     const std::vector<std::string>& args,
-    const optional<std::string>& from) {
-  auto unwrap_opt = [](const optional<std::string>& opt) -> std::string {
+    const std::optional<std::string>& from) {
+  auto unwrap_opt = [](const std::optional<std::string>& opt) -> std::string {
     if (opt)
       return " (via " + *opt + ")";
     return "";
@@ -173,14 +173,14 @@ ShouldParse FileNeedsParse(
     return ShouldParse::No;
   }
 
-  optional<int64_t> modification_timestamp =
+  std::optional<int64_t> modification_timestamp =
       modification_timestamp_fetcher->GetModificationTime(path);
 
   // Cannot find file.
   if (!modification_timestamp)
     return ShouldParse::NoSuchFile;
 
-  optional<int64_t> last_cached_modification =
+  std::optional<int64_t> last_cached_modification =
       timestamp_manager->GetLastCachedModificationTime(cache_manager.get(),
                                                        path);
 
@@ -236,7 +236,7 @@ CacheLoadResult TryLoadFromCache(
   ShouldParse path_state = FileNeedsParse(
       is_interactive, timestamp_manager, modification_timestamp_fetcher,
       import_manager, cache_manager, previous_index, path_to_index, entry.args,
-      nullopt);
+      std::nullopt);
   if (path_state == ShouldParse::Yes)
     file_consumer_shared->Reset(path_to_index);
 
@@ -327,14 +327,14 @@ std::vector<FileContents> PreloadFileContents(
   // still valid. if so, we can use it, otherwise we need to load from disk.
   auto get_latest_content = [](const std::string& path, int64_t cached_time,
                                const std::string& cached) -> std::string {
-    optional<int64_t> mod_time = GetLastModificationTime(path);
+    std::optional<int64_t> mod_time = GetLastModificationTime(path);
     if (!mod_time)
       return "";
 
     if (*mod_time == cached_time)
       return cached;
 
-    optional<std::string> fresh_content = ReadContent(path);
+    std::optional<std::string> fresh_content = ReadContent(path);
     if (!fresh_content) {
       LOG_S(ERROR) << "Failed to load content for " << path;
       return "";
@@ -437,7 +437,7 @@ bool IndexMain_DoParse(
     ImportManager* import_manager,
     IIndexer* indexer) {
   auto* queue = QueueManager::instance();
-  optional<Index_Request> request = queue->index_request.TryPopFront();
+  std::optional<Index_Request> request = queue->index_request.TryPopFront();
   if (!request)
     return false;
 
@@ -456,7 +456,7 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
   bool did_work = false;
   IterationLoop loop;
   while (loop.Next()) {
-    optional<Index_OnIdMapped> response = queue->on_id_mapped.TryPopFront();
+    std::optional<Index_OnIdMapped> response = queue->on_id_mapped.TryPopFront();
     if (!response)
       return did_work;
 
@@ -524,7 +524,7 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
 
 bool IndexMain_LoadPreviousIndex() {
   auto* queue = QueueManager::instance();
-  optional<Index_DoIdMap> response = queue->load_previous_index.TryPopFront();
+  std::optional<Index_DoIdMap> response = queue->load_previous_index.TryPopFront();
   if (!response)
     return false;
 
@@ -540,14 +540,14 @@ bool IndexMain_LoadPreviousIndex() {
 
 bool IndexMergeIndexUpdates() {
   auto* queue = QueueManager::instance();
-  optional<Index_OnIndexed> root = queue->on_indexed.TryPopBack();
+  std::optional<Index_OnIndexed> root = queue->on_indexed.TryPopBack();
   if (!root)
     return false;
 
   bool did_merge = false;
   IterationLoop loop;
   while (loop.Next()) {
-    optional<Index_OnIndexed> to_join = queue->on_indexed.TryPopBack();
+    std::optional<Index_OnIndexed> to_join = queue->on_indexed.TryPopBack();
     if (!to_join)
       break;
     did_merge = true;
@@ -767,7 +767,7 @@ bool QueryDb_ImportMain(Config* config,
 
   IterationLoop loop;
   while (loop.Next()) {
-    optional<Index_DoIdMap> request = queue->do_id_map.TryPopFront();
+    std::optional<Index_DoIdMap> request = queue->do_id_map.TryPopFront();
     if (!request)
       break;
     did_work = true;
@@ -776,7 +776,7 @@ bool QueryDb_ImportMain(Config* config,
 
   loop.Reset();
   while (loop.Next()) {
-    optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
+    std::optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
     if (!response)
       break;
     did_work = true;
@@ -839,7 +839,7 @@ TEST_SUITE("ImportPipeline") {
         opt_previous_index = std::make_unique<IndexFile>("---.cc", "<empty>");
         opt_previous_index->args = old_args;
       }
-      optional<std::string> from;
+      std::optional<std::string> from;
       if (is_dependency)
         from = std::string("---.cc");
       return FileNeedsParse(is_interactive /*is_interactive*/,
@@ -850,7 +850,7 @@ TEST_SUITE("ImportPipeline") {
 
     // A file with no timestamp is not imported, since this implies the file no
     // longer exists on disk.
-    modification_timestamp_fetcher.entries["bar.h"] = nullopt;
+    modification_timestamp_fetcher.entries["bar.h"] = std::nullopt;
     REQUIRE(check("bar.h", false /*is_dependency*/) == ShouldParse::NoSuchFile);
 
     // A dependency is only imported once.

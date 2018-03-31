@@ -3,8 +3,8 @@
 MethodType kMethodType_Unknown = "$unknown";
 MethodType kMethodType_Exit = "exit";
 MethodType kMethodType_TextDocumentPublishDiagnostics = "textDocument/publishDiagnostics";
-MethodType kMethodType_CqueryPublishInactiveRegions = "$cquery/publishInactiveRegions";
-MethodType kMethodType_CqueryPublishSemanticHighlighting = "$cquery/publishSemanticHighlighting";
+MethodType kMethodType_CclsPublishInactiveRegions = "$ccls/publishInactiveRegions";
+MethodType kMethodType_CclsPublishSemanticHighlighting = "$ccls/publishSemanticHighlighting";
 
 InMessage::~InMessage() = default;
 

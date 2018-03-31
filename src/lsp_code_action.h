@@ -19,7 +19,7 @@ struct lsCodeLensCommandArguments {
   std::vector<lsLocation> locations;
 };
 
-// FIXME Don't use array in vscode-cquery
+// FIXME Don't use array in vscode-ccls
 inline void Reflect(Writer& visitor, lsCodeLensCommandArguments& value) {
   visitor.StartArray(3);
   Reflect(visitor, value.uri);

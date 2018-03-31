@@ -47,7 +47,7 @@ lsPosition CharPos(std::string_view search,
 }
 
 // TODO: eliminate |line_number| param.
-optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
+std::optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
   // Find starting and ending quote.
   int start = 0;
   while (start < (int)line.size()) {
@@ -57,7 +57,7 @@ optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
       break;
   }
   if (start == (int)line.size())
-    return nullopt;
+    return std::nullopt;
 
   int end = (int)line.size();
   while (end > 0) {
@@ -68,14 +68,14 @@ optional<lsRange> ExtractQuotedRange(int line_number, const std::string& line) {
   }
 
   if (start >= end)
-    return nullopt;
+    return std::nullopt;
 
   return lsRange(lsPosition(line_number, start), lsPosition(line_number, end));
 }
 
 void LexFunctionDeclaration(const std::string& buffer_content,
                             lsPosition declaration_spelling,
-                            optional<std::string> type_name,
+                            std::optional<std::string> type_name,
                             std::string* insert_text,
                             int* newlines_after_name) {
   int name_start = GetOffsetForPosition(declaration_spelling, buffer_content);
@@ -245,7 +245,7 @@ TEST_SUITE("LexFunctionDeclaration") {
     std::string insert_text;
     int newlines_after_name = 0;
 
-    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+    LexFunctionDeclaration(buffer_content, declaration, std::nullopt, &insert_text,
                            &newlines_after_name);
     REQUIRE(insert_text == "void Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
@@ -286,7 +286,7 @@ TEST_SUITE("LexFunctionDeclaration") {
     std::string insert_text;
     int newlines_after_name = 0;
 
-    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+    LexFunctionDeclaration(buffer_content, declaration, std::nullopt, &insert_text,
                            &newlines_after_name);
     REQUIRE(insert_text == "std::vector<int> Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
@@ -303,7 +303,7 @@ TEST_SUITE("LexFunctionDeclaration") {
     std::string insert_text;
     int newlines_after_name = 0;
 
-    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+    LexFunctionDeclaration(buffer_content, declaration, std::nullopt, &insert_text,
                            &newlines_after_name);
     REQUIRE(insert_text == "std::function < int() > \n Foo() {\n}");
     REQUIRE(newlines_after_name == 0);
@@ -320,7 +320,7 @@ TEST_SUITE("LexFunctionDeclaration") {
     std::string insert_text;
     int newlines_after_name = 0;
 
-    LexFunctionDeclaration(buffer_content, declaration, nullopt, &insert_text,
+    LexFunctionDeclaration(buffer_content, declaration, std::nullopt, &insert_text,
                            &newlines_after_name);
     REQUIRE(insert_text == "void Foo(int a,\n\n    int b) {\n}");
     REQUIRE(newlines_after_name == 2);

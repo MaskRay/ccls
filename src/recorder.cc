@@ -12,7 +12,7 @@ std::ofstream* g_file_out = nullptr;
 
 void EnableRecording(std::string path) {
   if (path.empty())
-    path = "cquery";
+    path = "ccls";
 
   // We can only call |EnableRecording| once.
   assert(!g_file_in && !g_file_out);

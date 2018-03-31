@@ -114,11 +114,11 @@ struct lsTextDocumentSyncOptions {
   // TextDocumentSyncKind.Full and TextDocumentSyncKindIncremental.
   lsTextDocumentSyncKind change = lsTextDocumentSyncKind::Incremental;
   // Will save notifications are sent to the server.
-  optional<bool> willSave;
+  std::optional<bool> willSave;
   // Will save wait until requests are sent to the server.
-  optional<bool> willSaveWaitUntil;
+  std::optional<bool> willSaveWaitUntil;
   // Save notifications are sent to the server.
-  optional<lsSaveOptions> save;
+  std::optional<lsSaveOptions> save;
 };
 MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions,
                     openClose,
@@ -132,7 +132,7 @@ struct lsServerCapabilities {
   // defining each notification or for backwards compatibility the
   // TextDocumentSyncKind number.
   // TODO: It seems like the new API is broken and doesn't work.
-  // optional<lsTextDocumentSyncOptions> textDocumentSync;
+  // std::optional<lsTextDocumentSyncOptions> textDocumentSync;
   lsTextDocumentSyncKind textDocumentSync = lsTextDocumentSyncKind::Incremental;
 
   // The server provides hover support.
@@ -162,7 +162,7 @@ struct lsServerCapabilities {
   // The server provides document range formatting.
   bool documentRangeFormattingProvider = false;
   // The server provides document formatting on typing.
-  optional<lsDocumentOnTypeFormattingOptions> documentOnTypeFormattingProvider;
+  std::optional<lsDocumentOnTypeFormattingOptions> documentOnTypeFormattingProvider;
   // The server provides rename support.
   bool renameProvider = true;
   // The server provides document link support.
@@ -192,34 +192,34 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities,
 // Workspace specific client capabilities.
 struct lsWorkspaceClientCapabilites {
   // The client supports applying batch edits to the workspace.
-  optional<bool> applyEdit;
+  std::optional<bool> applyEdit;
 
   struct lsWorkspaceEdit {
     // The client supports versioned document changes in `WorkspaceEdit`s
-    optional<bool> documentChanges;
+    std::optional<bool> documentChanges;
   };
 
   // Capabilities specific to `WorkspaceEdit`s
-  optional<lsWorkspaceEdit> workspaceEdit;
+  std::optional<lsWorkspaceEdit> workspaceEdit;
 
   struct lsGenericDynamicReg {
     // Did foo notification supports dynamic registration.
-    optional<bool> dynamicRegistration;
+    std::optional<bool> dynamicRegistration;
   };
 
   // Capabilities specific to the `workspace/didChangeConfiguration`
   // notification.
-  optional<lsGenericDynamicReg> didChangeConfiguration;
+  std::optional<lsGenericDynamicReg> didChangeConfiguration;
 
   // Capabilities specific to the `workspace/didChangeWatchedFiles`
   // notification.
-  optional<lsGenericDynamicReg> didChangeWatchedFiles;
+  std::optional<lsGenericDynamicReg> didChangeWatchedFiles;
 
   // Capabilities specific to the `workspace/symbol` request.
-  optional<lsGenericDynamicReg> symbol;
+  std::optional<lsGenericDynamicReg> symbol;
 
   // Capabilities specific to the `workspace/executeCommand` request.
-  optional<lsGenericDynamicReg> executeCommand;
+  std::optional<lsGenericDynamicReg> executeCommand;
 };
 
 MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsWorkspaceEdit,
@@ -238,25 +238,25 @@ MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites,
 struct lsTextDocumentClientCapabilities {
   struct lsSynchronization {
     // Whether text document synchronization supports dynamic registration.
-    optional<bool> dynamicRegistration;
+    std::optional<bool> dynamicRegistration;
 
     // The client supports sending will save notifications.
-    optional<bool> willSave;
+    std::optional<bool> willSave;
 
     // The client supports sending a will save request and
     // waits for a response providing text edits which will
     // be applied to the document before it is saved.
-    optional<bool> willSaveWaitUntil;
+    std::optional<bool> willSaveWaitUntil;
 
     // The client supports did save notifications.
-    optional<bool> didSave;
+    std::optional<bool> didSave;
   };
 
   lsSynchronization synchronization;
 
   struct lsCompletion {
     // Whether completion supports dynamic registration.
-    optional<bool> dynamicRegistration;
+    std::optional<bool> dynamicRegistration;
 
     struct lsCompletionItem {
       // Client supports snippets as insert text.
@@ -265,50 +265,50 @@ struct lsTextDocumentClientCapabilities {
       // and `${3:foo}`. `$0` defines the final tab stop, it defaults to
       // the end of the snippet. Placeholders with equal identifiers are linked,
       // that is typing in one will update others too.
-      optional<bool> snippetSupport;
+      std::optional<bool> snippetSupport;
     };
 
     // The client supports the following `CompletionItem` specific
     // capabilities.
-    optional<lsCompletionItem> completionItem;
+    std::optional<lsCompletionItem> completionItem;
   };
   // Capabilities specific to the `textDocument/completion`
-  optional<lsCompletion> completion;
+  std::optional<lsCompletion> completion;
 
   struct lsGenericDynamicReg {
     // Whether foo supports dynamic registration.
-    optional<bool> dynamicRegistration;
+    std::optional<bool> dynamicRegistration;
   };
 
   // Capabilities specific to the `textDocument/hover`
-  optional<lsGenericDynamicReg> hover;
+  std::optional<lsGenericDynamicReg> hover;
 
   // Capabilities specific to the `textDocument/signatureHelp`
-  optional<lsGenericDynamicReg> signatureHelp;
+  std::optional<lsGenericDynamicReg> signatureHelp;
 
   // Capabilities specific to the `textDocument/references`
-  optional<lsGenericDynamicReg> references;
+  std::optional<lsGenericDynamicReg> references;
 
   // Capabilities specific to the `textDocument/documentHighlight`
-  optional<lsGenericDynamicReg> documentHighlight;
+  std::optional<lsGenericDynamicReg> documentHighlight;
 
   // Capabilities specific to the `textDocument/documentSymbol`
-  optional<lsGenericDynamicReg> documentSymbol;
+  std::optional<lsGenericDynamicReg> documentSymbol;
 
   // Capabilities specific to the `textDocument/formatting`
-  optional<lsGenericDynamicReg> formatting;
+  std::optional<lsGenericDynamicReg> formatting;
 
   // Capabilities specific to the `textDocument/rangeFormatting`
-  optional<lsGenericDynamicReg> rangeFormatting;
+  std::optional<lsGenericDynamicReg> rangeFormatting;
 
   // Capabilities specific to the `textDocument/onTypeFormatting`
-  optional<lsGenericDynamicReg> onTypeFormatting;
+  std::optional<lsGenericDynamicReg> onTypeFormatting;
 
   // Capabilities specific to the `textDocument/definition`
-  optional<lsGenericDynamicReg> definition;
+  std::optional<lsGenericDynamicReg> definition;
 
   // Capabilities specific to the `textDocument/codeAction`
-  optional<lsGenericDynamicReg> codeAction;
+  std::optional<lsGenericDynamicReg> codeAction;
 
   struct CodeLensRegistrationOptions : public lsGenericDynamicReg {
     // Code lens has a resolve provider as well.
@@ -316,13 +316,13 @@ struct lsTextDocumentClientCapabilities {
   };
 
   // Capabilities specific to the `textDocument/codeLens`
-  optional<CodeLensRegistrationOptions> codeLens;
+  std::optional<CodeLensRegistrationOptions> codeLens;
 
   // Capabilities specific to the `textDocument/documentLink`
-  optional<lsGenericDynamicReg> documentLink;
+  std::optional<lsGenericDynamicReg> documentLink;
 
   // Capabilities specific to the `textDocument/rename`
-  optional<lsGenericDynamicReg> rename;
+  std::optional<lsGenericDynamicReg> rename;
 };
 
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization,
@@ -361,10 +361,10 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities,
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
-  optional<lsWorkspaceClientCapabilites> workspace;
+  std::optional<lsWorkspaceClientCapabilites> workspace;
 
   // Text document specific client capabilities.
-  optional<lsTextDocumentClientCapabilities> textDocument;
+  std::optional<lsTextDocumentClientCapabilities> textDocument;
 
   /**
    * Experimental client capabilities.
@@ -386,21 +386,21 @@ struct lsInitializeParams {
   // the server. Is null if the process has not been started by another process.
   // If the parent process is not alive then the server should exit (see exit
   // notification) its process.
-  optional<int> processId;
+  std::optional<int> processId;
 
   // The rootPath of the workspace. Is null
   // if no folder is open.
   //
   // @deprecated in favour of rootUri.
-  optional<std::string> rootPath;
+  std::optional<std::string> rootPath;
 
   // The rootUri of the workspace. Is null if no
   // folder is open. If both `rootPath` and `rootUri` are set
   // `rootUri` wins.
-  optional<lsDocumentUri> rootUri;
+  std::optional<lsDocumentUri> rootUri;
 
   // User provided initialization options.
-  optional<Config> initializationOptions;
+  std::optional<Config> initializationOptions;
 
   // The capabilities provided by the client (editor or tool)
   lsClientCapabilities capabilities;
@@ -538,15 +538,15 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         out.display_type = Out_ShowLogMessage::DisplayType::Show;
         out.params.type = lsMessageType::Error;
         out.params.message =
-            "cquery client (v" + std::to_string(*config->clientVersion) +
+            "ccls client (v" + std::to_string(*config->clientVersion) +
             ") and server (v" + std::to_string(kExpectedClientVersion) +
             ") version mismatch. Please update ";
         if (config->clientVersion > kExpectedClientVersion)
-          out.params.message += "the cquery binary.";
+          out.params.message += "the ccls binary.";
         else
           out.params.message +=
               "your extension client (VSIX file). Make sure to uninstall "
-              "the cquery extension and restart vscode before "
+              "the ccls extension and restart vscode before "
               "reinstalling.";
         out.Write(std::cout);
       }

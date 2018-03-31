@@ -6,7 +6,7 @@ namespace {
 struct ClangIndexer : IIndexer {
   ~ClangIndexer() override = default;
 
-  optional<std::vector<std::unique_ptr<IndexFile>>> Index(
+  std::optional<std::vector<std::unique_ptr<IndexFile>>> Index(
       Config* config,
       FileConsumerSharedState* file_consumer_shared,
       std::string file,
@@ -50,7 +50,7 @@ struct TestIndexer : IIndexer {
 
   ~TestIndexer() override = default;
 
-  optional<std::vector<std::unique_ptr<IndexFile>>> Index(
+  std::optional<std::vector<std::unique_ptr<IndexFile>>> Index(
       Config* config,
       FileConsumerSharedState* file_consumer_shared,
       std::string file,
@@ -61,7 +61,7 @@ struct TestIndexer : IIndexer {
     if (it == indexes.end()) {
       // Don't return any indexes for unexpected data.
       assert(false && "no indexes");
-      return nullopt;
+      return std::nullopt;
     }
 
     // FIXME: allow user to control how many times we return the index for a

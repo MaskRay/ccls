@@ -2,9 +2,8 @@
 
 #include "position.h"
 
-#include "optional.h"
-
 #include <string>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -12,8 +11,8 @@ struct FileContents {
   FileContents();
   FileContents(const std::string& path, const std::string& content);
 
-  optional<int> ToOffset(Position p) const;
-  optional<std::string> ContentsInRange(Range range) const;
+  std::optional<int> ToOffset(Position p) const;
+  std::optional<std::string> ContentsInRange(Range range) const;
 
   std::string path;
   std::string content;

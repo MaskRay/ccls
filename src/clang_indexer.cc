@@ -212,7 +212,7 @@ struct ConstructorCache {
 
   // Tries to lookup a constructor in |type_usr| that takes arguments most
   // closely aligned to |param_type_desc|.
-  optional<Usr> TryFindConstructorUsr(
+  std::optional<Usr> TryFindConstructorUsr(
       Usr type_usr,
       const std::vector<std::string>& param_type_desc) {
     auto count_matching_prefix_length = [](const char* a, const char* b) {
@@ -235,10 +235,10 @@ struct ConstructorCache {
     // available, return an empty result.
     auto ctors_it = constructors_.find(type_usr);
     if (ctors_it == constructors_.end())
-      return nullopt;
+      return std::nullopt;
     const std::vector<Constructor>& ctors = ctors_it->second;
     if (ctors.empty())
-      return nullopt;
+      return std::nullopt;
 
     Usr best_usr = ctors[0].usr;
     int best_score = INT_MIN;
@@ -352,7 +352,7 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
       param->seen_files.push_back(file_name);
 
       // Set modification time.
-      optional<int64_t> modification_time = GetLastModificationTime(file_name);
+      std::optional<int64_t> modification_time = GetLastModificationTime(file_name);
       LOG_IF_S(ERROR, !modification_time)
           << "Failed fetching modification time for " << file_name;
       if (modification_time)
@@ -426,7 +426,7 @@ std::string GetDocumentContentInRange(CXTranslationUnit cx_tu,
   unsigned num_tokens;
   clang_tokenize(cx_tu, range, &tokens, &num_tokens);
 
-  optional<Range> previous_token_range;
+  std::optional<Range> previous_token_range;
 
   for (unsigned i = 0; i < num_tokens; ++i) {
     // Add whitespace between the previous token and this one.
@@ -537,7 +537,7 @@ void SetTypeName(IndexType* type,
 // strips
 // qualifies from |cursor| (ie, Foo* => Foo) and removes template arguments
 // (ie, Foo<A,B> => Foo<*,*>).
-optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
+std::optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
                                                ClangCursor cursor,
                                                IndexParam* param) {
   ClangType type = cursor.get_type();
@@ -561,7 +561,7 @@ optional<IndexTypeId> ResolveToDeclarationType(IndexFile* db,
   const char* str_usr = clang_getCString(cx_usr);
   if (!str_usr || str_usr[0] == '\0') {
     clang_disposeString(cx_usr);
-    return nullopt;
+    return std::nullopt;
   }
   Usr usr = HashUsr(str_usr);
   clang_disposeString(cx_usr);
@@ -633,8 +633,8 @@ void SetVarDetail(IndexVar* var,
         clang_getResultType(deref).kind == CXType_Invalid &&
         clang_getElementType(deref).kind == CXType_Invalid) {
       const FileContents& fc = param->file_contents[db->path];
-      optional<int> spell_end = fc.ToOffset(cursor.get_spell().end);
-      optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
+      std::optional<int> spell_end = fc.ToOffset(cursor.get_spell().end);
+      std::optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
       if (extent_end && *spell_end < *extent_end)
         def.hover = std::string(def.detailed_name.c_str()) +
                     fc.content.substr(*spell_end, *extent_end - *spell_end);
@@ -649,7 +649,7 @@ void SetVarDetail(IndexVar* var,
   def.short_name_size = short_name.size();
 
   if (is_first_seen) {
-    optional<IndexTypeId> var_type =
+    std::optional<IndexTypeId> var_type =
         ResolveToDeclarationType(db, cursor, param);
     if (var_type) {
       // Don't treat enum definition variables as instantiations.
@@ -844,7 +844,7 @@ void OnIndexDiagnostic(CXClientData client_data,
       continue;
 
     // Build diagnostic.
-    optional<lsDiagnostic> ls_diagnostic =
+    std::optional<lsDiagnostic> ls_diagnostic =
         BuildAndDisposeDiagnostic(diagnostic, db->path);
     if (ls_diagnostic)
       db->diagnostics_.push_back(*ls_diagnostic);
@@ -898,14 +898,14 @@ void Dump(ClangCursor cursor) {
 
 struct FindChildOfKindParam {
   CXCursorKind target_kind;
-  optional<ClangCursor> result;
+  std::optional<ClangCursor> result;
 
   FindChildOfKindParam(CXCursorKind target_kind) : target_kind(target_kind) {}
 };
 
 ClangCursor::VisitResult FindTypeVisitor(ClangCursor cursor,
                                          ClangCursor parent,
-                                         optional<ClangCursor>* result) {
+                                         std::optional<ClangCursor>* result) {
   switch (cursor.get_kind()) {
     case CXCursor_TypeRef:
     case CXCursor_TemplateRef:
@@ -918,8 +918,8 @@ ClangCursor::VisitResult FindTypeVisitor(ClangCursor cursor,
   return ClangCursor::VisitResult::Recurse;
 }
 
-optional<ClangCursor> FindType(ClangCursor cursor) {
-  optional<ClangCursor> result;
+std::optional<ClangCursor> FindType(ClangCursor cursor) {
+  std::optional<ClangCursor> result;
   cursor.VisitChildren(&FindTypeVisitor, &result);
   return result;
 }
@@ -932,12 +932,12 @@ bool IsTypeDefinition(const CXIdxContainerInfo* container) {
 
 struct VisitDeclForTypeUsageParam {
   IndexFile* db;
-  optional<IndexTypeId> toplevel_type;
+  std::optional<IndexTypeId> toplevel_type;
   int has_processed_any = false;
-  optional<ClangCursor> previous_cursor;
-  optional<IndexTypeId> initial_type;
+  std::optional<ClangCursor> previous_cursor;
+  std::optional<IndexTypeId> initial_type;
 
-  VisitDeclForTypeUsageParam(IndexFile* db, optional<IndexTypeId> toplevel_type)
+  VisitDeclForTypeUsageParam(IndexFile* db, std::optional<IndexTypeId> toplevel_type)
       : db(db), toplevel_type(toplevel_type) {}
 };
 
@@ -964,7 +964,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
     std::string name = cursor.get_referenced().get_spell_name();
     if (name == ref_type->def.ShortName()) {
       AddUseSpell(db, ref_type->uses, cursor);
-      param->toplevel_type = nullopt;
+      param->toplevel_type = std::nullopt;
       return;
     }
   }
@@ -1035,10 +1035,10 @@ ClangCursor::VisitResult VisitDeclForTypeUsageVisitor(
 // template.
 // We use |toplevel_type| to attribute the use to the specialized template
 // instead of the primary template.
-optional<IndexTypeId> AddDeclTypeUsages(
+std::optional<IndexTypeId> AddDeclTypeUsages(
     IndexFile* db,
     ClangCursor decl_cursor,
-    optional<IndexTypeId> toplevel_type,
+    std::optional<IndexTypeId> toplevel_type,
     const CXIdxContainerInfo* semantic_container,
     const CXIdxContainerInfo* lexical_container) {
   //
@@ -1161,7 +1161,7 @@ optional<IndexTypeId> AddDeclTypeUsages(
     return param.initial_type;
   CXType cx_under = clang_getTypedefDeclUnderlyingType(decl_cursor.cx_cursor);
   if (cx_under.kind == CXType_Invalid)
-    return nullopt;
+    return std::nullopt;
   return db->ToTypeId(ClangType(cx_under).strip_qualifiers().get_usr_hash());
 }
 
@@ -1320,7 +1320,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
             // The cursor extent includes `type name`, not just `name`. There
             // seems no way to extract the spelling range of `type` and we do
             // not want to do subtraction here.
-            // See https://github.com/jacobdufault/cquery/issues/252
+            // See https://github.com/cquery-project/cquery/issues/252
             AddUse(db, ref_type_index->uses, ref_cursor.get_extent(),
                    ref_cursor.get_lexical_parent());
           }
@@ -1555,7 +1555,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetVarDetail(var, std::string(decl->entityInfo->name), decl->cursor,
                    decl->semanticContainer, !decl->isRedeclaration, db, param);
 
-      // FIXME https://github.com/jacobdufault/cquery/issues/239
+      // FIXME https://github.com/jacobdufault/ccls/issues/239
       var->def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (var->def.kind == lsSymbolKind::Variable &&
           decl->cursor.kind == CXCursor_ParmDecl)
@@ -1631,7 +1631,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
-      AddDeclTypeUsages(db, cursor, nullopt, decl->semanticContainer,
+      AddDeclTypeUsages(db, cursor, std::nullopt, decl->semanticContainer,
                         decl->lexicalContainer);
 
       // Add definition or declaration. This is a bit tricky because we treat
@@ -1753,8 +1753,8 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // Note we want to fetch the first TypeRef. Running
       // ResolveCursorType(decl->cursor) would return
       // the type of the typedef/using, not the type of the referenced type.
-      optional<IndexTypeId> alias_of = AddDeclTypeUsages(
-          db, cursor, nullopt, decl->semanticContainer, decl->lexicalContainer);
+      std::optional<IndexTypeId> alias_of = AddDeclTypeUsages(
+          db, cursor, std::nullopt, decl->semanticContainer, decl->lexicalContainer);
 
       IndexTypeId type_id = db->ToTypeId(HashUsr(decl->entityInfo->USR));
       IndexType* type = db->Resolve(type_id);
@@ -1777,11 +1777,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
       // line, with spelling name replaced with qualified name.
       // TODO Think how to display multi-line declaration like `typedef struct {
-      // ... } foo;` https://github.com/jacobdufault/cquery/issues/29
+      // ... } foo;` https://github.com/jacobdufault/ccls/issues/29
       if (extent.end.line - extent.start.line <
           kMaxLinesDisplayTypeAliasDeclarations) {
         FileContents& fc = param->file_contents[db->path];
-        optional<int> extent_start = fc.ToOffset(extent.start),
+        std::optional<int> extent_start = fc.ToOffset(extent.start),
                       spell_start = fc.ToOffset(spell.start),
                       spell_end = fc.ToOffset(spell.end),
                       extent_end = fc.ToOffset(extent.end);
@@ -1863,7 +1863,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
             origin->def.kind = type->def.kind;
           }
           // TODO The name may be assigned in |ResolveToDeclarationType| but
-          // |spell| is nullopt.
+          // |spell| is std::nullopt.
           CXFile origin_file;
           Range origin_spell = origin_cursor.get_spell(&origin_file);
           if (!origin->def.spell && file == origin_file) {
@@ -1905,9 +1905,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         for (unsigned int i = 0; i < class_info->numBases; ++i) {
           const CXIdxBaseClassInfo* base_class = class_info->bases[i];
 
-          AddDeclTypeUsages(db, base_class->cursor, nullopt,
+          AddDeclTypeUsages(db, base_class->cursor, std::nullopt,
                             decl->semanticContainer, decl->lexicalContainer);
-          optional<IndexTypeId> parent_type_id =
+          std::optional<IndexTypeId> parent_type_id =
               ResolveToDeclarationType(db, base_class->cursor, param);
           // type_def ptr could be invalidated by ResolveToDeclarationType and
           // TemplateVisitor.
@@ -1924,7 +1924,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
   }
 }
 
-// https://github.com/jacobdufault/cquery/issues/174
+// https://github.com/jacobdufault/ccls/issues/174
 // Type-dependent member access expressions do not have accurate spelling
 // ranges.
 //
@@ -1946,7 +1946,7 @@ void CheckTypeDependentMemberRefExpr(Range* spell,
       cursor.get_spell_name().empty()) {
     *spell = cursor.get_extent().RemovePrefix(spell->end);
     const FileContents& fc = param->file_contents[db->path];
-    optional<int> maybe_period = fc.ToOffset(spell->start);
+    std::optional<int> maybe_period = fc.ToOffset(spell->start);
     if (maybe_period) {
       int i = *maybe_period;
       if (fc.content[i] == '.')
@@ -2114,7 +2114,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           str_begin("make", ref->referencedEntity->name)) {
         // Try to find the return type of called function. That type will have
         // the constructor function we add a usage to.
-        optional<ClangCursor> opt_found_type = FindType(ref->cursor);
+        std::optional<ClangCursor> opt_found_type = FindType(ref->cursor);
         if (opt_found_type) {
           Usr ctor_type_usr = opt_found_type->get_referenced().get_usr_hash();
           ClangCursor call_cursor = ref->cursor;
@@ -2129,7 +2129,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
           }
 
           // Try to find the constructor and add a reference.
-          optional<Usr> ctor_usr =
+          std::optional<Usr> ctor_usr =
               param->ctors.TryFindConstructorUsr(ctor_type_usr, call_type_desc);
           if (ctor_usr) {
             IndexFunc* ctor = db->Resolve(db->ToFuncId(*ctor_usr));
@@ -2164,7 +2164,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   }
 }
 
-optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
+std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
@@ -2174,7 +2174,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     ClangIndex* index,
     bool dump_ast) {
   if (!config->index.enabled)
-    return nullopt;
+    return std::nullopt;
 
   file = NormalizePath(file);
 
@@ -2194,7 +2194,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
       CXTranslationUnit_KeepGoing |
           CXTranslationUnit_DetailedPreprocessingRecord);
   if (!tu)
-    return nullopt;
+    return std::nullopt;
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
@@ -2205,7 +2205,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
                      args, unsaved_files);
 }
 
-optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
+std::optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
@@ -2250,7 +2250,7 @@ optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
   if (index_result != CXError_Success) {
     LOG_S(ERROR) << "Indexing " << file
                  << " failed with errno=" << index_result;
-    return nullopt;
+    return std::nullopt;
   }
 
   clang_IndexAction_dispose(index_action);

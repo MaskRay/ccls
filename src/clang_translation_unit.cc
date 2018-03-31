@@ -87,7 +87,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
   // -fsyntax-only so they don't do a full compile.
   auto make_msg = [&]() {
     return "Please try running the following, identify which flag causes the "
-           "issue, and report a bug. cquery will then filter the flag for you "
+           "issue, and report a bug. ccls will then filter the flag for you "
            " automatically:\n$ " +
            StringJoin(args, " ") + " -fsyntax-only";
   };

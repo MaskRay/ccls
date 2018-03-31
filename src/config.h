@@ -6,12 +6,12 @@
 
 /*
 The language client plugin needs to send initialization options in the
-`initialize` request to the cquery language server. The only required option is
+`initialize` request to the ccls language server. The only required option is
 `cacheDirectory`, which is where index files will be stored.
 
   {
     "initializationOptions": {
-      "cacheDirectory": "/tmp/cquery"
+      "cacheDirectory": "/tmp/ccls"
     }
   }
 
@@ -42,11 +42,11 @@ struct Config {
   // takes only 60% of the corresponding JSON size, but is difficult to inspect.
   // msgpack does not store map keys and you need to re-index whenever a struct
   // member has changed.
-  SerializeFormat cacheFormat = SerializeFormat::Json;
+  SerializeFormat cacheFormat = SerializeFormat::MessagePack;
   // Value to use for clang -resource-dir if not present in
   // compile_commands.json.
   //
-  // cquery includes a resource directory, this should not need to be configured
+  // ccls includes a resource directory, this should not need to be configured
   // unless you're using an esoteric configuration. Consider reporting a bug and
   // fixing upstream instead of configuring this.
   //
@@ -56,8 +56,8 @@ struct Config {
   // Additional arguments to pass to clang.
   std::vector<std::string> extraClangArguments;
 
-  // If true, cquery will send progress reports while indexing
-  // How often should cquery send progress report messages?
+  // If true, ccls will send progress reports while indexing
+  // How often should ccls send progress report messages?
   //  -1: never
   //   0: as often as possible
   //   xxx: at most every xxx milliseconds
@@ -66,7 +66,7 @@ struct Config {
   // available and may exceed this value.
   //
   // This does not guarantee a progress report will be delivered every
-  // interval; it could take significantly longer if cquery is completely idle.
+  // interval; it could take significantly longer if ccls is completely idle.
   int progressReportFrequencyMs = 500;
 
   // If true, document links are reported for #include directives.
@@ -74,7 +74,7 @@ struct Config {
 
   // Version of the client. If undefined the version check is skipped. Used to
   // inform users their vscode client is too old and needs to be updated.
-  optional<int> clientVersion;
+  std::optional<int> clientVersion;
 
   struct ClientCapability {
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
@@ -107,13 +107,13 @@ struct Config {
     // items can end up truncated by the UIs.
     bool detailedLabel = false;
 
-    // On large projects, completion can take a long time. By default if cquery
+    // On large projects, completion can take a long time. By default if ccls
     // receives multiple completion requests while completion is still running
     // it will only service the newest request. If this is set to false then all
     // completion requests will be serviced.
     bool dropOldRequests = true;
 
-    // If true, filter and sort completion response. cquery filters and sorts
+    // If true, filter and sort completion response. ccls filters and sorts
     // completions to try to be nicer to clients that can't handle big numbers
     // of completion candidates. This behaviour can be disabled by specifying
     // false for the option. This option is the most useful for LSP clients
@@ -146,7 +146,7 @@ struct Config {
     // blacklisted files.
     std::vector<std::string> blacklist;
 
-    // How often should cquery publish diagnostics in completion?
+    // How often should ccls publish diagnostics in completion?
     //  -1: never
     //   0: as often as possible
     //   xxx: at most every xxx milliseconds
@@ -172,7 +172,7 @@ struct Config {
     // hueristics.
     //
     // For example, this will show constructor calls for std::make_unique
-    // invocations. Specifically, cquery will try to attribute a ctor call
+    // invocations. Specifically, ccls will try to attribute a ctor call
     // whenever the function name starts with make (ignoring case).
     bool attributeMakeCallsToCtor = true;
 

@@ -110,13 +110,13 @@ struct QueryFile {
     std::vector<SymbolRef> all_symbols;
     // Parts of the file which are disabled.
     std::vector<Range> inactive_regions;
-    // Used by |$cquery/freshenIndex|.
+    // Used by |$ccls/freshenIndex|.
     std::vector<std::string> dependencies;
   };
 
   using DefUpdate = WithFileContent<Def>;
 
-  optional<Def> def;
+  std::optional<Def> def;
   Maybe<Id<void>> symbol_idx;
 
   explicit QueryFile(const std::string& path) {
@@ -323,8 +323,8 @@ template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
 template <> struct IndexToQuery<Use> { using type = Use; };
 template <> struct IndexToQuery<SymbolRef> { using type = SymbolRef; };
 template <> struct IndexToQuery<IndexFunc::Declaration> { using type = Use; };
-template <typename I> struct IndexToQuery<optional<I>> {
-  using type = optional<typename IndexToQuery<I>::type>;
+template <typename I> struct IndexToQuery<std::optional<I>> {
+  using type = std::optional<typename IndexToQuery<I>::type>;
 };
 template <typename I> struct IndexToQuery<std::vector<I>> {
   using type = std::vector<typename IndexToQuery<I>::type>;
@@ -349,7 +349,7 @@ struct IdMap {
   template <typename I>
   Maybe<typename IndexToQuery<I>::type> ToQuery(Maybe<I> id) const {
     if (!id)
-      return nullopt;
+      return std::nullopt;
     return ToQuery(*id);
   }
   template <typename I>

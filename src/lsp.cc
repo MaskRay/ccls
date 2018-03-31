@@ -20,16 +20,16 @@ lsVersionedTextDocumentIdentifier::AsTextDocumentIdentifier() const {
 }
 
 // Reads a JsonRpc message. |read| returns the next input character.
-optional<std::string> ReadJsonRpcContentFrom(
-    std::function<optional<char>()> read) {
+std::optional<std::string> ReadJsonRpcContentFrom(
+    std::function<std::optional<char>()> read) {
   // Read the content length. It is terminated by the "\r\n" sequence.
   int exit_seq = 0;
   std::string stringified_content_length;
   while (true) {
-    optional<char> opt_c = read();
+    std::optional<char> opt_c = read();
     if (!opt_c) {
       LOG_S(INFO) << "No more input when reading content length header";
-      return nullopt;
+      return std::nullopt;
     }
     char c = *opt_c;
 
@@ -47,22 +47,22 @@ optional<std::string> ReadJsonRpcContentFrom(
 
   // There is always a "\r\n" sequence before the actual content.
   auto expect_char = [&](char expected) {
-    optional<char> opt_c = read();
+    std::optional<char> opt_c = read();
     return opt_c && *opt_c == expected;
   };
   if (!expect_char('\r') || !expect_char('\n')) {
     LOG_S(INFO) << "Unexpected token (expected \r\n sequence)";
-    return nullopt;
+    return std::nullopt;
   }
 
   // Read content.
   std::string content;
   content.reserve(content_length);
   for (int i = 0; i < content_length; ++i) {
-    optional<char> c = read();
+    std::optional<char> c = read();
     if (!c) {
       LOG_S(INFO) << "No more input when reading content body";
-      return nullopt;
+      return std::nullopt;
     }
     content += *c;
   }
@@ -72,13 +72,13 @@ optional<std::string> ReadJsonRpcContentFrom(
   return content;
 }
 
-std::function<optional<char>()> MakeContentReader(std::string* content,
+std::function<std::optional<char>()> MakeContentReader(std::string* content,
                                                   bool can_be_empty) {
-  return [content, can_be_empty]() -> optional<char> {
+  return [content, can_be_empty]() -> std::optional<char> {
     if (!can_be_empty)
       REQUIRE(!content->empty());
     if (content->empty())
-      return nullopt;
+      return std::nullopt;
     char c = (*content)[0];
     content->erase(content->begin());
     return c;
@@ -94,7 +94,7 @@ TEST_SUITE("FindIncludeLine") {
       return got.value();
     };
 
-    auto parse_incorrect = [](std::string content) -> optional<std::string> {
+    auto parse_incorrect = [](std::string content) -> std::optional<std::string> {
       auto reader = MakeContentReader(&content, true /*can_be_empty*/);
       return ReadJsonRpcContentFrom(reader);
     };
@@ -103,15 +103,15 @@ TEST_SUITE("FindIncludeLine") {
     REQUIRE(parse_correct("Content-Length: 1\r\n\r\na") == "a");
     REQUIRE(parse_correct("Content-Length: 4\r\n\r\nabcd") == "abcd");
 
-    REQUIRE(parse_incorrect("ggg") == optional<std::string>());
+    REQUIRE(parse_incorrect("ggg") == std::optional<std::string>());
     REQUIRE(parse_incorrect("Content-Length: 0\r\n") ==
-            optional<std::string>());
+            std::optional<std::string>());
     REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") ==
-            optional<std::string>());
+            std::optional<std::string>());
   }
 }
 
-optional<char> ReadCharFromStdinBlocking() {
+std::optional<char> ReadCharFromStdinBlocking() {
   // We do not use std::cin because it does not read bytes once stuck in
   // cin.bad(). We can call cin.clear() but C++ iostream has other annoyance
   // like std::{cin,cout} is tied by default, which causes undesired cout flush
@@ -119,12 +119,12 @@ optional<char> ReadCharFromStdinBlocking() {
   int c = getchar();
   if (c >= 0)
     return c;
-  return nullopt;
+  return std::nullopt;
 }
 
-optional<std::string> MessageRegistry::ReadMessageFromStdin(
+std::optional<std::string> MessageRegistry::ReadMessageFromStdin(
     std::unique_ptr<InMessage>* message) {
-  optional<std::string> content =
+  std::optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
     LOG_S(ERROR) << "Failed to read JsonRpc input; exiting";
@@ -139,7 +139,7 @@ optional<std::string> MessageRegistry::ReadMessageFromStdin(
   return Parse(json_reader, message);
 }
 
-optional<std::string> MessageRegistry::Parse(
+std::optional<std::string> MessageRegistry::Parse(
     Reader& visitor,
     std::unique_ptr<InMessage>* message) {
   if (!visitor.HasMember("jsonrpc") ||
@@ -158,7 +158,7 @@ optional<std::string> MessageRegistry::Parse(
   Allocator& allocator = allocators[method];
   try {
     allocator(visitor, message);
-    return nullopt;
+    return std::nullopt;
   } catch (std::invalid_argument& e) {
     // *message is partially deserialized but some field (e.g. |id|) are likely
     // available.

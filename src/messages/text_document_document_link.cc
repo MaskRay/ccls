@@ -26,7 +26,7 @@ struct lsDocumentLink {
   // The range this link applies to.
   lsRange range;
   // The uri this link points to. If missing a resolve request is sent later.
-  optional<lsDocumentUri> target;
+  std::optional<lsDocumentUri> target;
 };
 MAKE_REFLECT_STRUCT(lsDocumentLink, range, target);
 
@@ -59,14 +59,14 @@ struct Handler_TextDocumentDocumentLink
         return;
       }
       for (const IndexInclude& include : file->def->includes) {
-        optional<int> buffer_line = working_file->GetBufferPosFromIndexPos(
+        std::optional<int> buffer_line = working_file->GetBufferPosFromIndexPos(
             include.line, nullptr, false);
         if (!buffer_line)
           continue;
 
         // Subtract 1 from line because querydb stores 1-based lines but
         // vscode expects 0-based lines.
-        optional<lsRange> between_quotes = ExtractQuotedRange(
+        std::optional<lsRange> between_quotes = ExtractQuotedRange(
             *buffer_line, working_file->buffer_lines[*buffer_line]);
         if (!between_quotes)
           continue;
