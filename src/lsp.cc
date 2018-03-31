@@ -1,6 +1,5 @@
 #include "lsp.h"
 
-#include "recorder.h"
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
@@ -66,8 +65,6 @@ std::optional<std::string> ReadJsonRpcContentFrom(
     }
     content += *c;
   }
-
-  RecordInput(content);
 
   return content;
 }

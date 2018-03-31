@@ -6,7 +6,6 @@
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
-#include "semantic_highlight_symbol_cache.h"
 #include "serializers/json.h"
 #include "timer.h"
 #include "work_thread.h"
@@ -361,25 +360,12 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities,
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
-  std::optional<lsWorkspaceClientCapabilites> workspace;
+  lsWorkspaceClientCapabilites workspace;
 
   // Text document specific client capabilities.
-  std::optional<lsTextDocumentClientCapabilities> textDocument;
-
-  /**
-   * Experimental client capabilities.
-   */
-  // experimental?: any; // TODO
+  lsTextDocumentClientCapabilities textDocument;
 };
 MAKE_REFLECT_STRUCT(lsClientCapabilities, workspace, textDocument);
-
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-////////////////////////////// INITIALIZATION ///////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
 
 struct lsInitializeParams {
   // The process Id of the parent process that started
@@ -524,8 +510,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       }
 
       // Client capabilities
-      if (request->params.capabilities.textDocument) {
-        const auto& cap = *request->params.capabilities.textDocument;
+      {
+        const auto& cap = request->params.capabilities.textDocument;
         if (cap.completion && cap.completion->completionItem)
           config->client.snippetSupport =
               cap.completion->completionItem->snippetSupport.value_or(false);

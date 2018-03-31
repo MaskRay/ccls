@@ -170,8 +170,6 @@ target_sources(ccls PRIVATE
                src/cache_manager.cc
                src/clang_complete.cc
                src/clang_cursor.cc
-               src/clang_format.cc
-               src/clang_index.cc
                src/clang_indexer.cc
                src/clang_translation_unit.cc
                src/clang_utils.cc
@@ -201,11 +199,8 @@ target_sources(ccls PRIVATE
                src/query_utils.cc
                src/query.cc
                src/queue_manager.cc
-               src/recorder.cc
-               src/semantic_highlight_symbol_cache.cc
                src/serializer.cc
                src/standard_includes.cc
-               src/task.cc
                src/test.cc
                src/third_party_impl.cc
                src/timer.cc
@@ -242,9 +237,7 @@ target_sources(ccls PRIVATE
                src/messages/text_document_document_highlight.cc
                src/messages/text_document_document_link.cc
                src/messages/text_document_document_symbol.cc
-               src/messages/text_document_formatting.cc
                src/messages/text_document_hover.cc
-               src/messages/text_document_range_formatting.cc
                src/messages/text_document_references.cc
                src/messages/text_document_rename.cc
                src/messages/text_document_signature_help.cc

@@ -168,8 +168,6 @@ void IncludeComplete::AddFile(const std::string& absolute_path) {
   if (is_scanning)
     lock.lock();
   InsertCompletionItem(absolute_path, std::move(item));
-  if (lock)
-    lock.unlock();
 }
 
 void IncludeComplete::InsertIncludesFromDirectory(std::string directory,

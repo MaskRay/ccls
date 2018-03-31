@@ -2,8 +2,6 @@
 
 #include "platform.h"
 
-#include <doctest/doctest.h>
-
 namespace {
 
 lsRange GetLsRangeForFixIt(const CXSourceRange& range) {
@@ -106,31 +104,6 @@ std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
   return ls_diagnostic;
 }
 
-#if USE_CLANG_CXX
-static lsPosition OffsetToRange(llvm::StringRef document, size_t offset) {
-  // TODO: Support Windows line endings, etc.
-  llvm::StringRef text_before = document.substr(0, offset);
-  int num_line = text_before.count('\n');
-  int num_column = text_before.size() - text_before.rfind('\n') - 1;
-  return {num_line, num_column};
-}
-
-std::vector<lsTextEdit> ConvertClangReplacementsIntoTextEdits(
-    llvm::StringRef document,
-    const std::vector<clang::tooling::Replacement>& clang_replacements) {
-  std::vector<lsTextEdit> text_edits_result;
-  for (const auto& replacement : clang_replacements) {
-    const auto startPosition = OffsetToRange(document, replacement.getOffset());
-    const auto endPosition = OffsetToRange(
-        document, replacement.getOffset() + replacement.getLength());
-    text_edits_result.push_back(
-        {{startPosition, endPosition}, replacement.getReplacementText()});
-  }
-  return text_edits_result;
-}
-
-#endif
-
 std::string FileName(CXFile file) {
   CXString cx_name = clang_getFileName(file);
   std::string name = ToString(cx_name);
@@ -172,60 +145,9 @@ const char* ClangBuiltinTypeName(CXTypeKind kind) {
     case CXType_Double: return "double";
     case CXType_LongDouble: return "long double";
     case CXType_Float128: return "__float128";
-#if CINDEX_VERSION_MINOR >= 43
     case CXType_Half: return "_Float16";
-#endif
     case CXType_NullPtr: return "nullptr";
     default: return "";
-      // clang-format on
+    // clang-format on
   }
 }
-
-#if USE_CLANG_CXX
-TEST_SUITE("ClangUtils") {
-  TEST_CASE("replacements") {
-    const std::string sample_document =
-        "int \n"
-        "main() { int *i = 0; return 0; \n"
-        "}";
-    const std::vector<clang::tooling::Replacement> clang_replacements = {
-        {"foo.cc", 3, 2, " "},     {"foo.cc", 13, 1, "\n  "},
-        {"foo.cc", 17, 1, ""},     {"foo.cc", 19, 0, " "},
-        {"foo.cc", 25, 1, "\n  "}, {"foo.cc", 35, 2, "\n"}};
-
-    // Expected format:
-    //
-    // int main() {
-    //   int *i = 0;
-    //   return 0;
-    // }
-
-    const auto text_edits = ConvertClangReplacementsIntoTextEdits(
-        sample_document, clang_replacements);
-    REQUIRE(text_edits.size() == 6);
-    REQUIRE(text_edits[0].range.start.line == 0);
-    REQUIRE(text_edits[0].range.start.character == 3);
-    REQUIRE(text_edits[0].newText == " ");
-
-    REQUIRE(text_edits[1].range.start.line == 1);
-    REQUIRE(text_edits[1].range.start.character == 8);
-    REQUIRE(text_edits[1].newText == "\n  ");
-
-    REQUIRE(text_edits[2].range.start.line == 1);
-    REQUIRE(text_edits[2].range.start.character == 12);
-    REQUIRE(text_edits[2].newText == "");
-
-    REQUIRE(text_edits[3].range.start.line == 1);
-    REQUIRE(text_edits[3].range.start.character == 14);
-    REQUIRE(text_edits[3].newText == " ");
-
-    REQUIRE(text_edits[4].range.start.line == 1);
-    REQUIRE(text_edits[4].range.start.character == 20);
-    REQUIRE(text_edits[4].newText == "\n  ");
-
-    REQUIRE(text_edits[5].range.start.line == 1);
-    REQUIRE(text_edits[5].range.start.character == 30);
-    REQUIRE(text_edits[5].newText == "\n");
-  }
-}
-#endif

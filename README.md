@@ -1,6 +1,7 @@
 # ccls
 
-ccls is a fork of cquery, a C/C++/Objective-C language server.
+ccls is a fork of cquery (originally written by Jacob Dufault),
+a C/C++/Objective-C language server.
 
   * code completion (with both signature help and snippets)
   * finding [definition](src/messages/text_document_definition.cc)/[references](src/messages/text_document_references.cc)
