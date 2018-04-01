@@ -41,7 +41,7 @@ struct Handler_TextDocumentDidOpen
     Timer time;
     std::string path = params.textDocument.uri.GetPath();
 
-    std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make(config);
+    std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make();
     WorkingFile* working_file = working_files->OnOpen(params.textDocument);
     std::optional<std::string> cached_file_contents =
         cache_manager->LoadCachedFileContents(path);

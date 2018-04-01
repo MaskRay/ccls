@@ -568,9 +568,9 @@ void Project::Index(Config* config,
       return;
     }
     bool is_interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-    queue->index_request.PushBack(
-        Index_Request(entry.filename, entry.args, is_interactive, *content,
-                      ICacheManager::Make(config), id));
+    queue->index_request.PushBack(Index_Request(entry.filename, entry.args,
+                                                is_interactive, *content,
+                                                ICacheManager::Make(), id));
   });
 }
 

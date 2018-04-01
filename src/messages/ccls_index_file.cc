@@ -33,7 +33,7 @@ struct Handler_CclsIndexFile : BaseMessageHandler<In_CclsIndexFile> {
     QueueManager::instance()->index_request.PushBack(
         Index_Request(NormalizePath(request->params.path), request->params.args,
                       request->params.is_interactive, request->params.contents,
-                      ICacheManager::Make(config)));
+                      ICacheManager::Make()));
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsIndexFile);

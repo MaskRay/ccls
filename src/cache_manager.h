@@ -18,7 +18,7 @@ struct ICacheManager {
     std::string json;
   };
 
-  static std::shared_ptr<ICacheManager> Make(Config* config);
+  static std::shared_ptr<ICacheManager> Make();
   static std::shared_ptr<ICacheManager> MakeFake(
       const std::vector<FakeCacheEntry>& entries);
 

@@ -14,14 +14,14 @@ namespace {
 
 // Manages loading caches from file paths for the indexer process.
 struct RealCacheManager : ICacheManager {
-  explicit RealCacheManager(Config* config) : config_(config) {}
+  explicit RealCacheManager() {}
   ~RealCacheManager() override = default;
 
   void WriteToCache(IndexFile& file) override {
     std::string cache_path = GetCachePath(file.path);
     WriteToFile(cache_path, file.file_contents);
 
-    std::string indexed_content = Serialize(config_->cacheFormat, file);
+    std::string indexed_content = Serialize(g_config.cacheFormat, file);
     WriteToFile(AppendSerializationFormat(cache_path), indexed_content);
   }
 
@@ -38,27 +38,27 @@ struct RealCacheManager : ICacheManager {
     if (!file_content || !serialized_indexed_content)
       return nullptr;
 
-    return Deserialize(config_->cacheFormat, path, *serialized_indexed_content,
+    return Deserialize(g_config.cacheFormat, path, *serialized_indexed_content,
                        *file_content, IndexFile::kMajorVersion);
   }
 
   std::string GetCachePath(const std::string& source_file) {
-    assert(!config_->cacheDirectory.empty());
+    assert(!g_config.cacheDirectory.empty());
     std::string cache_file;
-    size_t len = config_->projectRoot.size();
-    if (StartsWith(source_file, config_->projectRoot)) {
-      cache_file = EscapeFileName(config_->projectRoot) +
+    size_t len = g_config.projectRoot.size();
+    if (StartsWith(source_file, g_config.projectRoot)) {
+      cache_file = EscapeFileName(g_config.projectRoot) +
                    EscapeFileName(source_file.substr(len));
     } else {
-      cache_file = '@' + EscapeFileName(config_->projectRoot) +
+      cache_file = '@' + EscapeFileName(g_config.projectRoot) +
                    EscapeFileName(source_file);
     }
 
-    return config_->cacheDirectory + cache_file;
+    return g_config.cacheDirectory + cache_file;
   }
 
   std::string AppendSerializationFormat(const std::string& base) {
-    switch (config_->cacheFormat) {
+    switch (g_config.cacheFormat) {
       case SerializeFormat::Json:
         return base + ".json";
       case SerializeFormat::MessagePack:
@@ -67,8 +67,6 @@ struct RealCacheManager : ICacheManager {
     assert(false);
     return ".json";
   }
-
-  Config* config_;
 };
 
 struct FakeCacheManager : ICacheManager {
@@ -105,8 +103,8 @@ struct FakeCacheManager : ICacheManager {
 }  // namespace
 
 // static
-std::shared_ptr<ICacheManager> ICacheManager::Make(Config* config) {
-  return std::make_shared<RealCacheManager>(config);
+std::shared_ptr<ICacheManager> ICacheManager::Make() {
+  return std::make_shared<RealCacheManager>();
 }
 
 // static
