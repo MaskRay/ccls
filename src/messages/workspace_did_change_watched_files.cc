@@ -56,7 +56,7 @@ struct Handler_WorkspaceDidChangeWatchedFiles
           else {
             QueueManager::instance()->index_request.PushBack(
                 Index_Request(path, entry.args, is_interactive, *content,
-                              ICacheManager::Make(config)));
+                              ICacheManager::Make()));
             if (is_interactive)
               clang_complete->NotifySave(path);
           }
@@ -65,7 +65,7 @@ struct Handler_WorkspaceDidChangeWatchedFiles
         case lsFileChangeType::Deleted:
           QueueManager::instance()->index_request.PushBack(
               Index_Request(path, entry.args, is_interactive, std::string(),
-                            ICacheManager::Make(config)));
+                            ICacheManager::Make()));
           break;
       }
     }

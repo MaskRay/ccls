@@ -33,7 +33,7 @@ struct Handler_TextDocumentDidChange
         Project::Entry entry = project->FindCompilationEntryForFile(path);
         QueueManager::instance()->index_request.PushBack(
             Index_Request(entry.filename, entry.args, true /*is_interactive*/,
-                          *content, ICacheManager::Make(config)),
+                          *content, ICacheManager::Make()),
             true);
       }
     }
