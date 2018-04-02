@@ -284,9 +284,12 @@ void TraceMe() {
 std::string GetExternalCommandOutput(const std::vector<std::string>& command,
                                      std::string_view input) {
   int pin[2], pout[2];
-  if (pipe(pin) < 0)
+  if (pipe(pin) < 0) {
+    perror("pipe(stdin)");
     return "";
+  }
   if (pipe(pout) < 0) {
+    perror("pipe(stdout)");
     close(pin[0]);
     close(pin[1]);
     return "";
@@ -316,6 +319,7 @@ std::string GetExternalCommandOutput(const std::vector<std::string>& command,
   ssize_t n;
   while ((n = read(pin[0], buf, sizeof buf)) > 0)
     ret.append(buf, n);
+  close(pin[0]);
   waitpid(child, NULL, 0);
   return ret;
 }

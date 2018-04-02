@@ -46,7 +46,9 @@ void CalculateRoles(std::string_view s, int roles[], int* class_set) {
 }  // namespace
 
 int FuzzyMatcher::MissScore(int j, bool last) {
-  int s = last ? -10 : 0;
+  int s = -3;
+  if (last)
+    s -= 10;
   if (text_role[j] == Head)
     s -= 10;
   return s;
@@ -54,8 +56,10 @@ int FuzzyMatcher::MissScore(int j, bool last) {
 
 int FuzzyMatcher::MatchScore(int i, int j, bool last) {
   int s = 0;
+  // Case matching.
   if (pat[i] == text[j]) {
     s++;
+    // pat contains uppercase letters or prefix matching.
     if ((pat_set & 1 << Upper) || i == j)
       s++;
   }
@@ -65,8 +69,10 @@ int FuzzyMatcher::MatchScore(int i, int j, bool last) {
     else if (text_role[j] == Tail)
       s -= 10;
   }
+  // Matching a tail while previous char wasn't matched.
   if (text_role[j] == Tail && i && !last)
     s -= 30;
+  // First char of pat matches a tail.
   if (i == 0 && text_role[j] == Tail)
     s -= 40;
   return s;
@@ -119,7 +125,7 @@ int FuzzyMatcher::Match(std::string_view text) {
   // character has a penulty.
   int ret = kMinScore;
   for (int j = pat.size(); j <= n; j++)
-    ret = std::max(ret, dp[pat.size() & 1][j][1] - 3 * (n - j));
+    ret = std::max(ret, dp[pat.size() & 1][j][1] - 2 * (n - j));
   return ret;
 }
 

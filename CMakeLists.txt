@@ -24,7 +24,7 @@ add_executable(ccls "")
 #   debug: -g
 #   release: -O3 -DNDEBUG
 
-# Enable C++14 (Required)
+# Enable C++17 (Required)
 set_property(TARGET ccls PROPERTY CXX_STANDARD 17)
 set_property(TARGET ccls PROPERTY CXX_STANDARD_REQUIRED ON)
 # Disable gnu extensions except for Cygwin which needs them to build properly
