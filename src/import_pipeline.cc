@@ -393,7 +393,7 @@ void ParseFile(Config* config,
   auto indexes = indexer->Index(config, file_consumer_shared, path_to_index,
                                 entry.args, file_contents, &perf);
 
-  if (!indexes) {
+  if (indexes.empty()) {
     if (config->index.enabled &&
         !std::holds_alternative<std::monostate>(request.id)) {
       Out_Error out;
@@ -405,7 +405,7 @@ void ParseFile(Config* config,
     return;
   }
 
-  for (std::unique_ptr<IndexFile>& new_index : *indexes) {
+  for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
     // Only emit diagnostics for non-interactive sessions, which makes it easier
@@ -556,11 +556,11 @@ void IndexWithTuFromCodeCompletion(
   ClangIndex index;
   auto indexes = ParseWithTu(config, file_consumer_shared, &perf, tu, &index,
                              path, args, file_contents);
-  if (!indexes)
-    return;
+  if (indexes.empty())
+      return;
 
   std::vector<Index_DoIdMap> result;
-  for (std::unique_ptr<IndexFile>& new_index : *indexes) {
+  for (std::unique_ptr<IndexFile>& new_index : indexes) {
     Timer time;
 
     std::shared_ptr<ICacheManager> cache_manager;

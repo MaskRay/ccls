@@ -2153,7 +2153,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   }
 }
 
-std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
+std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
@@ -2163,7 +2163,7 @@ std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     ClangIndex* index,
     bool dump_ast) {
   if (!config->index.enabled)
-    return std::nullopt;
+    return {};
 
   file = NormalizePath(file);
 
@@ -2183,7 +2183,7 @@ std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
       CXTranslationUnit_KeepGoing |
           CXTranslationUnit_DetailedPreprocessingRecord);
   if (!tu)
-    return std::nullopt;
+    return {};
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
@@ -2194,7 +2194,7 @@ std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
                      args, unsaved_files);
 }
 
-std::optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
+std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
@@ -2239,7 +2239,7 @@ std::optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
   if (index_result != CXError_Success) {
     LOG_S(ERROR) << "Indexing " << file
                  << " failed with errno=" << index_result;
-    return std::nullopt;
+    return {};
   }
 
   clang_IndexAction_dispose(index_action);
@@ -2301,7 +2301,7 @@ std::optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
         entry->dependencies.end());
   }
 
-  return std::move(result);
+  return result;
 }
 
 void ConcatTypeAndName(std::string& type, const std::string& name) {
