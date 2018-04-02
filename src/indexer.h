@@ -517,7 +517,7 @@ struct NamespaceHelper {
 // |desired_index_file| is the (h or cc) file which has actually changed.
 // |dependencies| are the existing dependencies of |import_file| if this is a
 // reparse.
-std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
+std::vector<std::unique_ptr<IndexFile>> Parse(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
@@ -526,7 +526,7 @@ std::optional<std::vector<std::unique_ptr<IndexFile>>> Parse(
     PerformanceImportFile* perf,
     ClangIndex* index,
     bool dump_ast = false);
-std::optional<std::vector<std::unique_ptr<IndexFile>>> ParseWithTu(
+std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
