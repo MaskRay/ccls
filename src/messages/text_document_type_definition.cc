@@ -50,7 +50,7 @@ struct Handler_TextDocumentTypeDefinition
           for (const auto& def : type.def)
             if (def.spell) {
               if (auto ls_loc = GetLsLocationEx(db, working_files, *def.spell,
-                                                config->xref.container))
+                                                g_config->xref.container))
                 out.result.push_back(*ls_loc);
             }
           break;

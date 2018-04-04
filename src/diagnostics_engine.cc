@@ -4,10 +4,10 @@
 
 #include <chrono>
 
-void DiagnosticsEngine::Init(Config* config) {
-  frequencyMs_ = config->diagnostics.frequencyMs;
-  match_ = std::make_unique<GroupMatch>(config->diagnostics.whitelist,
-                                        config->diagnostics.blacklist);
+void DiagnosticsEngine::Init() {
+  frequencyMs_ = g_config->diagnostics.frequencyMs;
+  match_ = std::make_unique<GroupMatch>(g_config->diagnostics.whitelist,
+                                        g_config->diagnostics.blacklist);
 }
 
 void DiagnosticsEngine::Publish(WorkingFiles* working_files,

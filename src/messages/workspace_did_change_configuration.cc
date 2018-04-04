@@ -28,13 +28,12 @@ struct Handler_WorkspaceDidChangeConfiguration
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_WorkspaceDidChangeConfiguration* request) override {
     Timer time;
-    project->Load(config, config->projectRoot);
+    project->Load(g_config->projectRoot);
     time.ResetAndPrint("[perf] Loaded compilation entries (" +
                        std::to_string(project->entries.size()) + " files)");
 
     time.Reset();
-    project->Index(config, QueueManager::instance(), working_files,
-                   std::monostate());
+    project->Index(QueueManager::instance(), working_files, std::monostate());
     time.ResetAndPrint(
         "[perf] Dispatched workspace/didChangeConfiguration index requests");
 

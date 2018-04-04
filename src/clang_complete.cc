@@ -383,7 +383,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
                                      unsaved, Flags());
 
   // Build diagnostics.
-  if (manager->config_->diagnostics.onParse && *tu) {
+  if (g_config->diagnostics.onParse && *tu) {
     // If we're emitting diagnostics, do an immediate reparse, otherwise we will
     // emit stale/bad diagnostics.
     *tu = ClangTranslationUnit::Reparse(std::move(*tu), unsaved);
@@ -450,7 +450,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         completion_manager->completion_request_.Dequeue();
 
     // Drop older requests if we're not buffering.
-    while (completion_manager->config_->completion.dropOldRequests &&
+    while (g_config->completion.dropOldRequests &&
            !completion_manager->completion_request_.IsEmpty()) {
       completion_manager->on_dropped_(request->id);
       request = completion_manager->completion_request_.Dequeue();
@@ -528,7 +528,7 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                 clang_getCompletionBriefComment(result.CompletionString));
 
             // label/detail/filterText/insertText/priority
-            if (completion_manager->config_->completion.detailedLabel) {
+            if (g_config->completion.detailedLabel) {
               ls_completion_item.detail = ToString(
                   clang_getCompletionParent(result.CompletionString, nullptr));
 
@@ -538,10 +538,10 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
               // label/filterText/insertText
               BuildCompletionItemTexts(
                   ls_result, result.CompletionString,
-                  completion_manager->config_->client.snippetSupport);
+                  g_config->client.snippetSupport);
 
               for (auto i = first_idx; i < ls_result.size(); ++i) {
-                if (completion_manager->config_->client.snippetSupport &&
+                if (g_config->client.snippetSupport &&
                     ls_result[i].insertTextFormat ==
                         lsInsertTextFormat::Snippet) {
                   ls_result[i].insertText += "$0";
@@ -558,8 +558,8 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                   ls_completion_item.detail, ls_completion_item.insertText,
                   do_insert, ls_completion_item.insertTextFormat,
                   &ls_completion_item.parameters_,
-                  completion_manager->config_->client.snippetSupport);
-              if (completion_manager->config_->client.snippetSupport &&
+                  g_config->client.snippetSupport);
+              if (g_config->client.snippetSupport &&
                   ls_completion_item.insertTextFormat ==
                       lsInsertTextFormat::Snippet) {
                 ls_completion_item.insertText += "$0";
@@ -658,14 +658,12 @@ ClangCompleteManager::CompletionRequest::CompletionRequest(
       on_complete(on_complete),
       emit_diagnostics(emit_diagnostics) {}
 
-ClangCompleteManager::ClangCompleteManager(Config* config,
-                                           Project* project,
+ClangCompleteManager::ClangCompleteManager(Project* project,
                                            WorkingFiles* working_files,
                                            OnDiagnostic on_diagnostic,
                                            OnIndex on_index,
                                            OnDropped on_dropped)
-    : config_(config),
-      project_(project),
+    : project_(project),
       working_files_(working_files),
       on_diagnostic_(on_diagnostic),
       on_index_(on_index),
@@ -682,8 +680,6 @@ ClangCompleteManager::ClangCompleteManager(Config* config,
     CompletionParseMain(this);
   });
 }
-
-ClangCompleteManager::~ClangCompleteManager() {}
 
 void ClangCompleteManager::CodeComplete(
     const lsRequestId& id,

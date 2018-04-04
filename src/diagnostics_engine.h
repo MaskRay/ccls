@@ -9,7 +9,7 @@ class DiagnosticsEngine {
   int frequencyMs_;
 
  public:
-  void Init(Config*);
+  void Init();
   void Publish(WorkingFiles* working_files,
                std::string path,
                std::vector<lsDiagnostic> diagnostics);

@@ -55,7 +55,7 @@ struct SemanticHighlightSymbolCache {
   std::unique_ptr<GroupMatch> match_;
 
   SemanticHighlightSymbolCache();
-  void Init(Config*);
+  void Init();
   std::shared_ptr<Entry> GetCacheForFile(const std::string& path);
 };
 
@@ -103,7 +103,6 @@ MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting,
   static type type##message_handler_instance_;
 
 struct MessageHandler {
-  Config* config = nullptr;
   QueryDatabase* db = nullptr;
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;

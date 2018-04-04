@@ -7,7 +7,6 @@
 #include <loguru.hpp>
 
 #include <stdio.h>
-#include <iostream>
 
 MessageRegistry* MessageRegistry::instance_ = nullptr;
 

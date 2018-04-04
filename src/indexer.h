@@ -518,7 +518,6 @@ struct NamespaceHelper {
 // |dependencies| are the existing dependencies of |import_file| if this is a
 // reparse.
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
     const std::vector<std::string>& args,
@@ -527,7 +526,6 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     ClangIndex* index,
     bool dump_ast = false);
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
-    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,

@@ -13,14 +13,14 @@ struct CompletionCandidate {
   lsCompletionItem completion_item;
 };
 
-std::string ElideLongPath(Config* config, const std::string& path) {
-  if (config->completion.includeMaxPathSize <= 0)
+std::string ElideLongPath(const std::string& path) {
+  if (g_config->completion.includeMaxPathSize <= 0)
     return path;
 
-  if ((int)path.size() <= config->completion.includeMaxPathSize)
+  if ((int)path.size() <= g_config->completion.includeMaxPathSize)
     return path;
 
-  size_t start = path.size() - config->completion.includeMaxPathSize;
+  size_t start = path.size() - g_config->completion.includeMaxPathSize;
   return ".." + path.substr(start + 2);
 }
 
@@ -73,12 +73,11 @@ bool TrimPath(Project* project,
   return angle;
 }
 
-lsCompletionItem BuildCompletionItem(Config* config,
-                                     const std::string& path,
+lsCompletionItem BuildCompletionItem(const std::string& path,
                                      bool use_angle_brackets,
                                      bool is_stl) {
   lsCompletionItem item;
-  item.label = ElideLongPath(config, path);
+  item.label = ElideLongPath(path);
   item.detail = path;  // the include path, used in de-duplicating
   item.textEdit = lsTextEdit();
   item.textEdit->newText = path;
@@ -96,8 +95,8 @@ lsCompletionItem BuildCompletionItem(Config* config,
 
 }  // namespace
 
-IncludeComplete::IncludeComplete(Config* config, Project* project)
-    : is_scanning(false), config_(config), project_(project) {}
+IncludeComplete::IncludeComplete(Project* project)
+    : is_scanning(false), project_(project) {}
 
 void IncludeComplete::Rescan() {
   if (is_scanning)
@@ -107,17 +106,17 @@ void IncludeComplete::Rescan() {
   absolute_path_to_completion_item.clear();
   inserted_paths.clear();
 
-  if (!match_ && (!config_->completion.includeWhitelist.empty() ||
-                  !config_->completion.includeBlacklist.empty()))
-    match_ = std::make_unique<GroupMatch>(config_->completion.includeWhitelist,
-                                          config_->completion.includeBlacklist);
+  if (!match_ && (g_config->completion.includeWhitelist.size() ||
+                  g_config->completion.includeBlacklist.size()))
+    match_ = std::make_unique<GroupMatch>(g_config->completion.includeWhitelist,
+                                          g_config->completion.includeBlacklist);
 
   is_scanning = true;
   StartThread("scan_includes", [this]() {
     Timer timer;
 
     InsertStlIncludes();
-    InsertIncludesFromDirectory(config_->projectRoot,
+    InsertIncludesFromDirectory(g_config->projectRoot,
                                 false /*use_angle_brackets*/);
     for (const std::string& dir : project_->quote_include_directories)
       InsertIncludesFromDirectory(dir, false /*use_angle_brackets*/);
@@ -150,16 +149,16 @@ void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,
 }
 
 void IncludeComplete::AddFile(const std::string& absolute_path) {
-  if (!EndsWithAny(absolute_path, config_->completion.includeSuffixWhitelist))
+  if (!EndsWithAny(absolute_path, g_config->completion.includeSuffixWhitelist))
     return;
   if (match_ && !match_->IsMatch(absolute_path))
     return;
 
   std::string trimmed_path = absolute_path;
   bool use_angle_brackets =
-      TrimPath(project_, config_->projectRoot, &trimmed_path);
-  lsCompletionItem item = BuildCompletionItem(
-      config_, trimmed_path, use_angle_brackets, false /*is_stl*/);
+      TrimPath(project_, g_config->projectRoot, &trimmed_path);
+  lsCompletionItem item =
+      BuildCompletionItem(trimmed_path, use_angle_brackets, false /*is_stl*/);
 
   std::unique_lock<std::mutex> lock(completion_items_mutex, std::defer_lock);
   if (is_scanning)
@@ -180,15 +179,15 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
   GetFilesInFolder(
       directory, true /*recursive*/, false /*add_folder_to_path*/,
       [&](const std::string& path) {
-        if (!EndsWithAny(path, config_->completion.includeSuffixWhitelist))
+        if (!EndsWithAny(path, g_config->completion.includeSuffixWhitelist))
           return;
         if (match_ && !match_->IsMatch(directory + path))
           return;
 
         CompletionCandidate candidate;
         candidate.absolute_path = directory + path;
-        candidate.completion_item = BuildCompletionItem(
-            config_, path, use_angle_brackets, false /*is_stl*/);
+        candidate.completion_item =
+            BuildCompletionItem(path, use_angle_brackets, false /*is_stl*/);
         results.push_back(candidate);
       });
 
@@ -202,7 +201,7 @@ void IncludeComplete::InsertStlIncludes() {
   std::lock_guard<std::mutex> lock(completion_items_mutex);
   for (const char* stl_header : kStandardLibraryIncludes) {
     completion_items.push_back(BuildCompletionItem(
-        config_, stl_header, true /*use_angle_brackets*/, true /*is_stl*/));
+        stl_header, true /*use_angle_brackets*/, true /*is_stl*/));
   }
 }
 
