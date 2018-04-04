@@ -150,27 +150,9 @@ std::string GetExecutablePath() {
 #endif
 }
 
-std::string GetWorkingDirectory() {
-  char result[FILENAME_MAX];
-  if (!getcwd(result, sizeof(result)))
-    return "";
-  std::string working_dir = std::string(result, strlen(result));
-  EnsureEndsInSlash(working_dir);
-  return working_dir;
-}
-
 std::string NormalizePath(const std::string& path) {
   std::optional<std::string> resolved = RealPathNotExpandSymlink(path);
   return resolved ? *resolved : path;
-}
-
-bool TryMakeDirectory(const std::string& absolute_path) {
-  const mode_t kMode = 0777;  // UNIX style permissions
-  if (mkdir(absolute_path.c_str(), kMode) == -1) {
-    // Success if the directory exists.
-    return errno == EEXIST;
-  }
-  return true;
 }
 
 void SetCurrentThreadName(const std::string& thread_name) {
@@ -206,70 +188,9 @@ std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path)
   return buf.st_mtime;
 }
 
-void MoveFileTo(const std::string& dest, const std::string& source) {
-  // TODO/FIXME - do a real move.
-  CopyFileTo(dest, source);
-}
-
-// See http://stackoverflow.com/q/13198627
-void CopyFileTo(const std::string& dest, const std::string& source) {
-  int fd_from = open(source.c_str(), O_RDONLY);
-  if (fd_from < 0)
-    return;
-
-  int fd_to = open(dest.c_str(), O_WRONLY | O_CREAT, 0666);
-  if (fd_to < 0)
-    goto out_error;
-
-  char buf[4096];
-  ssize_t nread;
-  while (nread = read(fd_from, buf, sizeof buf), nread > 0) {
-    char* out_ptr = buf;
-    ssize_t nwritten;
-
-    do {
-      nwritten = write(fd_to, out_ptr, nread);
-
-      if (nwritten >= 0) {
-        nread -= nwritten;
-        out_ptr += nwritten;
-      } else if (errno != EINTR)
-        goto out_error;
-    } while (nread > 0);
-  }
-
-  if (nread == 0) {
-    if (close(fd_to) < 0) {
-      fd_to = -1;
-      goto out_error;
-    }
-    close(fd_from);
-
-    return;
-  }
-
-out_error:
-  close(fd_from);
-  if (fd_to >= 0)
-    close(fd_to);
-}
-
-bool IsSymLink(const std::string& path) {
-  struct stat buf;
-  return lstat(path.c_str(), &buf) == 0 && S_ISLNK(buf.st_mode);
-}
-
 void FreeUnusedMemory() {
 #if defined(__GLIBC__)
   malloc_trim(0);
-#endif
-}
-
-bool RunObjectiveCIndexTests() {
-#if defined(__APPLE__)
-  return true;
-#else
-  return false;
 #endif
 }
 

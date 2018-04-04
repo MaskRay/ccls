@@ -195,7 +195,6 @@ target_sources(ccls PRIVATE
                src/message_handler.cc
                src/platform_posix.cc
                src/platform_win.cc
-               src/platform.cc
                src/port.cc
                src/position.cc
                src/project.cc

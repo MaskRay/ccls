@@ -224,11 +224,11 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
     bool is_fail_allowed = false;
 
     if (EndsWithAny(path, {".m", ".mm"})) {
-      if (!RunObjectiveCIndexTests()) {
-        std::cout << "Skipping \"" << path << "\" since this platform does not "
+#ifndef __APPLE__
+      std::cout << "Skipping \"" << path << "\" since this platform does not "
                   << "support running Objective-C tests." << std::endl;
-        continue;
-      }
+      continue;
+#endif
 
       // objective-c tests are often not updated right away. do not bring down
       // CI if they fail.
