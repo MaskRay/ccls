@@ -97,13 +97,13 @@ long long GetCurrentTimeInMilliseconds() {
 struct ActiveThread {
   ActiveThread(ImportPipelineStatus* status)
       : status_(status) {
-    if (g_config->progressReportFrequencyMs < 0)
+    if (g_config && g_config->progressReportFrequencyMs < 0)
       return;
 
     ++status_->num_active_threads;
   }
   ~ActiveThread() {
-    if (g_config->progressReportFrequencyMs < 0)
+    if (g_config && g_config->progressReportFrequencyMs < 0)
       return;
 
     --status_->num_active_threads;
@@ -122,7 +122,7 @@ struct ActiveThread {
     out.params.activeThreads = status_->num_active_threads;
 
     // Ignore this progress update if the last update was too recent.
-    if (g_config->progressReportFrequencyMs != 0) {
+    if (g_config && g_config->progressReportFrequencyMs != 0) {
       // Make sure we output a status update if queue lengths are zero.
       bool all_zero =
           out.params.indexRequestCount == 0 && out.params.doIdMapCount == 0 &&

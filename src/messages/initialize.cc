@@ -1,5 +1,6 @@
 #include "cache_manager.h"
 #include "diagnostics_engine.h"
+#include "filesystem.hh"
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "message_handler.h"
@@ -504,9 +505,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       config->projectRoot = project_path;
       // Create two cache directories for files inside and outside of the
       // project.
-      MakeDirectoryRecursive(config->cacheDirectory +
+      fs::create_directories(config->cacheDirectory +
                              EscapeFileName(config->projectRoot));
-      MakeDirectoryRecursive(config->cacheDirectory + '@' +
+      fs::create_directories(config->cacheDirectory + '@' +
                              EscapeFileName(config->projectRoot));
 
       g_config = std::move(config);

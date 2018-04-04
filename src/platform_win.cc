@@ -34,13 +34,6 @@ std::string GetExecutablePath() {
   return NormalizePath(result);
 }
 
-// See http://stackoverflow.com/a/19535628
-std::string GetWorkingDirectory() {
-  char result[MAX_PATH];
-  std::string binary_path(result, GetModuleFileName(NULL, result, MAX_PATH));
-  return binary_path.substr(0, binary_path.find_last_of("\\/") + 1);
-}
-
 std::string NormalizePath(const std::string& path) {
   DWORD retval = 0;
   TCHAR buffer[MAX_PATH] = TEXT("");
@@ -55,14 +48,6 @@ std::string NormalizePath(const std::string& path) {
   std::replace(result.begin(), result.end(), '\\', '/');
   // std::transform(result.begin(), result.end(), result.begin(), ::tolower);
   return result;
-}
-
-bool TryMakeDirectory(const std::string& absolute_path) {
-  if (_mkdir(absolute_path.c_str()) == -1) {
-    // Success if the directory exists.
-    return errno == EEXIST;
-  }
-  return true;
 }
 
 // See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
@@ -117,23 +102,7 @@ std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path)
   return buf.st_mtime;
 }
 
-void MoveFileTo(const std::string& destination, const std::string& source) {
-  MoveFile(source.c_str(), destination.c_str());
-}
-
-void CopyFileTo(const std::string& destination, const std::string& source) {
-  CopyFile(source.c_str(), destination.c_str(), false /*failIfExists*/);
-}
-
-bool IsSymLink(const std::string& path) {
-  return false;
-}
-
 void FreeUnusedMemory() {}
-
-bool RunObjectiveCIndexTests() {
-  return false;
-}
 
 // TODO Wait for debugger to attach
 void TraceMe() {}
