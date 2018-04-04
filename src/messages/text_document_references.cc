@@ -56,7 +56,7 @@ struct Handler_TextDocumentReferences
 
     Out_TextDocumentReferences out;
     out.id = request->id;
-    bool container = config->xref.container;
+    bool container = g_config->xref.container;
 
     for (const SymbolRef& sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
@@ -94,8 +94,8 @@ struct Handler_TextDocumentReferences
           break;
         }
 
-    if ((int)out.result.size() >= config->xref.maxNum)
-      out.result.resize(config->xref.maxNum);
+    if ((int)out.result.size() >= g_config->xref.maxNum)
+      out.result.resize(g_config->xref.maxNum);
     QueueManager::WriteStdout(kMethodType, out);
   }
 };

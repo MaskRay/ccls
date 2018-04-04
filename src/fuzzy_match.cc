@@ -160,7 +160,7 @@ TEST_SUITE("fuzzy_match") {
     CHECK(Ranks("ab", {"ab", "aoo_boo", "acb"}));
     CHECK(Ranks("CC", {"CamelCase", "camelCase", "camelcase"}));
     CHECK(Ranks("cC", {"camelCase", "CamelCase", "camelcase"}));
-    CHECK(Ranks("c c", {"camel case", "camelCase", "CamelCase", "camelcase",
+    CHECK(Ranks("c c", {"camelCase", "camel case", "CamelCase", "camelcase",
                         "camel ace"}));
     CHECK(Ranks("Da.Te",
                 {"Data.Text", "Data.Text.Lazy", "Data.Aeson.Encoding.text"}));

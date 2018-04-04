@@ -3,7 +3,6 @@
 #include <doctest/doctest.h>
 
 #include <algorithm>
-#include <iostream>
 
 // VSCode (UTF-16) disagrees with Emacs lsp-mode (UTF-8) on how to represent
 // text documents.

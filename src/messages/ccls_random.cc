@@ -132,12 +132,10 @@ struct Handler_CclsRandom : BaseMessageHandler<In_CclsRandom> {
     for (int i = 0; i < n; i++) {
       sum += x[i];
       if (sum >= roulette) {
-        Maybe<Use> use = GetDefinitionExtent(db, syms[i]);
-        if (!use)
-          continue;
-        if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
-                                          config->xref.container))
-          out.result.push_back(*ls_loc);
+        if (Maybe<Use> use = GetDefinitionExtent(db, syms[i]))
+          if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
+                                            g_config->xref.container))
+            out.result.push_back(*ls_loc);
         break;
       }
     }

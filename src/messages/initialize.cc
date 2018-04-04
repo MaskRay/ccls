@@ -428,6 +428,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     JsonWriter json_writer(&writer);
     Reflect(json_writer, request->params.initializationOptions);
     LOG_S(INFO) << "Init parameters: " << output.GetString();
+    std::unique_ptr<Config> config;
 
     if (request->params.rootUri) {
       std::string project_path =
@@ -437,9 +438,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
       {
         if (request->params.initializationOptions)
-          *config = *request->params.initializationOptions;
+          config = std::make_unique<Config>(*request->params.initializationOptions);
         else
-          *config = Config();
+          config = std::make_unique<Config>();
         rapidjson::Document reader;
         reader.Parse(g_init_options.c_str());
         if (!reader.HasParseError()) {
@@ -508,32 +509,29 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       MakeDirectoryRecursive(config->cacheDirectory + '@' +
                              EscapeFileName(config->projectRoot));
 
-      g_config = *config;
+      g_config = std::move(config);
       Timer time;
-      diag_engine->Init(config);
-      semantic_cache->Init(config);
+      diag_engine->Init();
+      semantic_cache->Init();
 
       // Open up / load the project.
-      project->Load(config, project_path);
+      project->Load(project_path);
       time.ResetAndPrint("[perf] Loaded compilation entries (" +
                          std::to_string(project->entries.size()) + " files)");
 
       // Start indexer threads. Start this after loading the project, as that
       // may take a long time. Indexer threads will emit status/progress
       // reports.
-      if (config->index.threads == 0) {
+      if (g_config->index.threads == 0) {
         // If the user has not specified how many indexers to run, try to
         // guess an appropriate value. Default to 80% utilization.
-        const float kDefaultTargetUtilization = 0.8f;
-        config->index.threads = (int)(std::thread::hardware_concurrency() *
-                                      kDefaultTargetUtilization);
-        if (config->index.threads <= 0)
-          config->index.threads = 1;
+        g_config->index.threads =
+            std::max(int(std::thread::hardware_concurrency() * 0.8), 1);
       }
-      LOG_S(INFO) << "Starting " << config->index.threads << " indexers";
-      for (int i = 0; i < config->index.threads; ++i) {
+      LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
+      for (int i = 0; i < g_config->index.threads; ++i) {
         StartThread("indexer" + std::to_string(i), [=]() {
-          Indexer_Main(config, diag_engine, file_consumer_shared,
+          Indexer_Main(diag_engine, file_consumer_shared,
                        timestamp_manager, import_manager,
                        import_pipeline_status, project, working_files, waiter);
         });
@@ -544,8 +542,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       include_complete->Rescan();
 
       time.Reset();
-      project->Index(config, QueueManager::instance(), working_files,
-                     request->id);
+      project->Index(QueueManager::instance(), working_files, request->id);
       // We need to support multiple concurrent index processes.
       time.ResetAndPrint("[perf] Dispatched initial index requests");
     }

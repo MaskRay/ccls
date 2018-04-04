@@ -2,6 +2,7 @@
 
 #include "serializer.h"
 
+#include <memory>
 #include <string>
 
 /*
@@ -197,6 +198,10 @@ struct Config {
     // be logged.
     bool logSkippedPaths = false;
 
+    // Allow indexing on textDocument/didChange.
+    // May be too slow for big projects, so it is off by default.
+    bool onDidChange = false;
+
     // Number of indexer threads. If 0, 80% of cores are used.
     int threads = 0;
 
@@ -211,10 +216,6 @@ struct Config {
     // that the results stay sorted in the same order as the search progresses.
     bool sort = true;
   } workspaceSymbol;
-
-  // Allow indexing on textDocument/didChange.
-  // May be too slow for big projects, so it is off by default.
-  bool enableIndexOnDidChange = false;
 
   struct Xref {
     // If true, |Location[]| response will include lexical container.
@@ -249,6 +250,7 @@ MAKE_REFLECT_STRUCT(Config::Index,
                     comments,
                     enabled,
                     logSkippedPaths,
+                    onDidChange,
                     threads,
                     whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, maxNum, sort);
@@ -276,9 +278,7 @@ MAKE_REFLECT_STRUCT(Config,
                     index,
                     workspaceSymbol,
                     xref,
-                    
-                    enableIndexOnDidChange,
 
                     dumpAST);
 
-extern Config g_config;
+extern std::unique_ptr<Config> g_config;

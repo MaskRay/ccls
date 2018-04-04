@@ -47,7 +47,7 @@ struct Handler_TextDocumentDidSave
     //      mutex and check to see if we should skip the current request.
     //      if so, ignore that index response.
     // TODO: send as priority request
-    if (!config->enableIndexOnDidChange) {
+    if (!g_config->index.onDidChange) {
       std::optional<std::string> content = ReadContent(path);
       if (!content) {
         LOG_S(ERROR) << "Unable to read file content after saving " << path;

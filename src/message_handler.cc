@@ -101,9 +101,9 @@ SemanticHighlightSymbolCache::Entry::GetMapForSymbol_(SymbolKind kind) {
 SemanticHighlightSymbolCache::SemanticHighlightSymbolCache()
     : cache_(kCacheSize) {}
 
-void SemanticHighlightSymbolCache::Init(Config* config) {
-  match_ = std::make_unique<GroupMatch>(config->highlight.whitelist,
-                                        config->highlight.blacklist);
+void SemanticHighlightSymbolCache::Init() {
+  match_ = std::make_unique<GroupMatch>(g_config->highlight.whitelist,
+                                        g_config->highlight.blacklist);
 }
 
 std::shared_ptr<SemanticHighlightSymbolCache::Entry>

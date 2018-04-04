@@ -109,7 +109,7 @@ std::string FileName(CXFile file) {
   CXString cx_name = clang_getFileName(file);
   std::string ret = NormalizePath(ToString(cx_name));
   // Resolve /usr/include/c++/7.3.0 symlink.
-  if (!StartsWith(ret, g_config.projectRoot))
+  if (!StartsWith(ret, g_config->projectRoot))
     ret = fs::canonical(ret);
   return ret;
 }

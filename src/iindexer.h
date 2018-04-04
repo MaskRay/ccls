@@ -12,7 +12,6 @@
 //    like IndexFile
 //  - rename this file to indexer.h
 
-struct Config;
 struct IndexFile;
 struct FileContents;
 struct FileConsumerSharedState;
@@ -35,7 +34,6 @@ struct IIndexer {
 
   virtual ~IIndexer() = default;
   virtual std::vector<std::unique_ptr<IndexFile>> Index(
-      Config* config,
       FileConsumerSharedState* file_consumer_shared,
       std::string file,
       const std::vector<std::string>& args,

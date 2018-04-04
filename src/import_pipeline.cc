@@ -95,15 +95,15 @@ long long GetCurrentTimeInMilliseconds() {
 }
 
 struct ActiveThread {
-  ActiveThread(Config* config, ImportPipelineStatus* status)
-      : config_(config), status_(status) {
-    if (config_->progressReportFrequencyMs < 0)
+  ActiveThread(ImportPipelineStatus* status)
+      : status_(status) {
+    if (g_config->progressReportFrequencyMs < 0)
       return;
 
     ++status_->num_active_threads;
   }
   ~ActiveThread() {
-    if (config_->progressReportFrequencyMs < 0)
+    if (g_config->progressReportFrequencyMs < 0)
       return;
 
     --status_->num_active_threads;
@@ -122,7 +122,7 @@ struct ActiveThread {
     out.params.activeThreads = status_->num_active_threads;
 
     // Ignore this progress update if the last update was too recent.
-    if (config_->progressReportFrequencyMs != 0) {
+    if (g_config->progressReportFrequencyMs != 0) {
       // Make sure we output a status update if queue lengths are zero.
       bool all_zero =
           out.params.indexRequestCount == 0 && out.params.doIdMapCount == 0 &&
@@ -133,13 +133,12 @@ struct ActiveThread {
           GetCurrentTimeInMilliseconds() < status_->next_progress_output)
         return;
       status_->next_progress_output =
-          GetCurrentTimeInMilliseconds() + config_->progressReportFrequencyMs;
+          GetCurrentTimeInMilliseconds() + g_config->progressReportFrequencyMs;
     }
 
     QueueManager::WriteStdout(kMethodType_Unknown, out);
   }
 
-  Config* config_;
   ImportPipelineStatus* status_;
 };
 
@@ -356,8 +355,7 @@ std::vector<FileContents> PreloadFileContents(
   return file_contents;
 }
 
-void ParseFile(Config* config,
-               DiagnosticsEngine* diag_engine,
+void ParseFile(DiagnosticsEngine* diag_engine,
                WorkingFiles* working_files,
                FileConsumerSharedState* file_consumer_shared,
                TimestampManager* timestamp_manager,
@@ -390,11 +388,11 @@ void ParseFile(Config* config,
 
   std::vector<Index_DoIdMap> result;
   PerformanceImportFile perf;
-  auto indexes = indexer->Index(config, file_consumer_shared, path_to_index,
-                                entry.args, file_contents, &perf);
+  auto indexes = indexer->Index(file_consumer_shared, path_to_index, entry.args,
+                                file_contents, &perf);
 
   if (indexes.empty()) {
-    if (config->index.enabled &&
+    if (g_config->index.enabled &&
         !std::holds_alternative<std::monostate>(request.id)) {
       Out_Error out;
       out.id = request.id;
@@ -428,7 +426,6 @@ void ParseFile(Config* config,
 }
 
 bool IndexMain_DoParse(
-    Config* config,
     DiagnosticsEngine* diag_engine,
     WorkingFiles* working_files,
     FileConsumerSharedState* file_consumer_shared,
@@ -444,7 +441,7 @@ bool IndexMain_DoParse(
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  ParseFile(config, diag_engine, working_files, file_consumer_shared,
+  ParseFile(diag_engine, working_files, file_consumer_shared,
             timestamp_manager, modification_timestamp_fetcher, import_manager,
             indexer, request.value(), entry);
   return true;
@@ -544,7 +541,6 @@ ImportPipelineStatus::ImportPipelineStatus()
 // real-time indexing.
 // TODO: add option to disable this.
 void IndexWithTuFromCodeCompletion(
-    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
@@ -554,10 +550,10 @@ void IndexWithTuFromCodeCompletion(
 
   PerformanceImportFile perf;
   ClangIndex index;
-  auto indexes = ParseWithTu(config, file_consumer_shared, &perf, tu, &index,
-                             path, args, file_contents);
+  auto indexes = ParseWithTu(file_consumer_shared, &perf, tu, &index, path,
+                             args, file_contents);
   if (indexes.empty())
-      return;
+    return;
 
   std::vector<Index_DoIdMap> result;
   for (std::unique_ptr<IndexFile>& new_index : indexes) {
@@ -579,8 +575,7 @@ void IndexWithTuFromCodeCompletion(
   QueueManager::instance()->do_id_map.EnqueueAll(std::move(result));
 }
 
-void Indexer_Main(Config* config,
-                  DiagnosticsEngine* diag_engine,
+void Indexer_Main(DiagnosticsEngine* diag_engine,
                   FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
                   ImportManager* import_manager,
@@ -597,7 +592,7 @@ void Indexer_Main(Config* config,
     bool did_work = false;
 
     {
-      ActiveThread active_thread(config, status);
+      ActiveThread active_thread(status);
 
       // TODO: process all off IndexMain_DoIndex before calling
       // IndexMain_DoCreateIndexUpdate for better icache behavior. We need to
@@ -608,7 +603,7 @@ void Indexer_Main(Config* config,
       // IndexMain_DoCreateIndexUpdate so we don't starve querydb from doing any
       // work. Running both also lets the user query the partially constructed
       // index.
-      did_work = IndexMain_DoParse(config, diag_engine, working_files,
+      did_work = IndexMain_DoParse(diag_engine, working_files,
                                    file_consumer_shared, timestamp_manager,
                                    &modification_timestamp_fetcher,
                                    import_manager, indexer.get()) ||
@@ -723,15 +718,14 @@ void QueryDb_OnIndexed(QueueManager* queue,
 
 }  // namespace
 
-bool QueryDb_ImportMain(Config* config,
-                        QueryDatabase* db,
+bool QueryDb_ImportMain(QueryDatabase* db,
                         ImportManager* import_manager,
                         ImportPipelineStatus* status,
                         SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files) {
   auto* queue = QueueManager::instance();
 
-  ActiveThread active_thread(config, status);
+  ActiveThread active_thread(status);
 
   bool did_work = false;
 
@@ -760,16 +754,17 @@ bool QueryDb_ImportMain(Config* config,
 TEST_SUITE("ImportPipeline") {
   struct Fixture {
     Fixture() {
+      g_config = std::make_unique<Config>();
       QueueManager::Init(&querydb_waiter, &indexer_waiter, &stdout_waiter);
 
       queue = QueueManager::instance();
       cache_manager = ICacheManager::MakeFake({});
       indexer = IIndexer::MakeTestIndexer({});
-      diag_engine.Init(&config);
+      diag_engine.Init();
     }
 
     bool PumpOnce() {
-      return IndexMain_DoParse(&config, &diag_engine, &working_files,
+      return IndexMain_DoParse(&diag_engine, &working_files,
                                &file_consumer_shared, &timestamp_manager,
                                &modification_timestamp_fetcher, &import_manager,
                                indexer.get());
@@ -788,7 +783,6 @@ TEST_SUITE("ImportPipeline") {
     MultiQueueWaiter stdout_waiter;
 
     QueueManager* queue = nullptr;
-    Config config;
     DiagnosticsEngine diag_engine;
     WorkingFiles working_files;
     FileConsumerSharedState file_consumer_shared;

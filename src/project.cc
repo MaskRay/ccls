@@ -21,10 +21,7 @@
 #include <unistd.h>
 #endif
 
-#include <fstream>
-#include <iostream>
 #include <limits>
-#include <sstream>
 #include <unordered_set>
 #include <vector>
 
@@ -61,7 +58,7 @@ struct ProjectConfig {
 // of clang for the same platform are incompatible). Note that libclang always generate it's own pch
 // internally. For details, see https://github.com/Valloric/ycmd/issues/892 .
 std::vector<std::string> kBlacklistMulti = {
-    "-MF", "-MT", "-MQ", "-o", "--serialize-diagnostics", "-Xclang", "-include", "-include-pch"};
+    "-MF", "-MT", "-MQ", "-o", "--serialize-diagnostics", "-Xclang"};
 
 // Blacklisted flags which are always removed from the command line.
 std::vector<std::string> kBlacklist = {
@@ -106,7 +103,6 @@ LanguageId SourceFileLanguage(const std::string& path) {
 }
 
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
-    Config* init_opts,
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {
   Project::Entry result;
@@ -240,7 +236,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // Add -resource-dir so clang can correctly resolve system includes like
   // <cstddef>
   if (!AnyStartsWith(result.args, "-resource-dir"))
-    result.args.push_back("-resource-dir=" + init_opts->resourceDirectory);
+    result.args.push_back("-resource-dir=" + g_config->resourceDirectory);
 
   // There could be a clang version mismatch between what the project uses and
   // what ccls uses. Make sure we do not emit warnings for mismatched options.
@@ -249,7 +245,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // Using -fparse-all-comments enables documentation in the indexer and in
   // code completion.
-  if (init_opts->index.comments > 1 &&
+  if (g_config->index.comments > 1 &&
       !AnyStartsWith(result.args, "-fparse-all-comments")) {
     result.args.push_back("-fparse-all-comments");
   }
@@ -269,8 +265,7 @@ std::vector<std::string> ReadCompilerArgumentsFromFile(
   return args;
 }
 
-std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
-                                                     ProjectConfig* config) {
+std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::vector<Project::Entry> result;
   config->mode = ProjectMode::DotCcls;
   LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.ccls") &&
@@ -322,24 +317,22 @@ std::vector<Project::Entry> LoadFromDirectoryListing(Config* init_opts,
     if (e.args.empty())
       e.args.push_back("%clang");  // Add a Dummy.
     e.args.push_back(e.file);
-    result.push_back(
-        GetCompilationEntryFromCompileCommandEntry(init_opts, config, e));
+    result.push_back(GetCompilationEntryFromCompileCommandEntry(config, e));
   }
 
   return result;
 }
 
 std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
-    Config* config,
     ProjectConfig* project,
     const std::string& opt_compilation_db_dir) {
   // If there is a .ccls file always load using directory listing.
   if (FileExists(project->project_dir + ".ccls"))
-    return LoadFromDirectoryListing(config, project);
+    return LoadFromDirectoryListing(project);
 
   // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
-  std::string comp_db_dir;
-  if (config->compilationDatabaseCommand.empty()) {
+  fs::path comp_db_dir;
+  if (g_config->compilationDatabaseCommand.empty()) {
     project->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
     comp_db_dir = opt_compilation_db_dir.empty() ? project->project_dir
@@ -356,32 +349,35 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     rapidjson::StringBuffer input;
     rapidjson::Writer<rapidjson::StringBuffer> writer(input);
     JsonWriter json_writer(&writer);
-    Reflect(json_writer, *config);
+    Reflect(json_writer, *g_config);
     std::string contents = GetExternalCommandOutput(
-        std::vector<std::string>{config->compilationDatabaseCommand,
+        std::vector<std::string>{g_config->compilationDatabaseCommand,
                                  project->project_dir},
         input.GetString());
-    std::ofstream(comp_db_dir + "/compile_commands.json") << contents;
+    FILE* fout = fopen((comp_db_dir / "compile_commands.json").c_str(), "wb");
+    fwrite(contents.c_str(), contents.size(), 1, fout);
+    fclose(fout);
 #endif
   }
 
-  LOG_S(INFO) << "Trying to load compile_commands.json";
+  fs::path comp_db_path = comp_db_dir / "compile_commands.json";
+  LOG_S(INFO) << "Trying to load " << comp_db_path.string();
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
       comp_db_dir.c_str(), &cx_db_load_error);
-  if (!config->compilationDatabaseCommand.empty()) {
+  if (!g_config->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
   // TODO
 #else
-    unlink((comp_db_dir + "/compile_commands.json").c_str());
+    unlink(comp_db_path.c_str());
     rmdir(comp_db_dir.c_str());
 #endif
   }
 
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
-    LOG_S(INFO) << "Unable to load compile_commands.json located at \""
-                << comp_db_dir << "\"; using directory listing instead.";
-    return LoadFromDirectoryListing(config, project);
+    LOG_S(INFO) << "Unable to load " << comp_db_path.string()
+                << "; using directory listing instead.";
+    return LoadFromDirectoryListing(project);
   }
 
   Timer clang_time;
@@ -421,7 +417,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     entry.file = entry.ResolveIfRelative(relative_filename);
 
     result.push_back(
-        GetCompilationEntryFromCompileCommandEntry(config, project, entry));
+        GetCompilationEntryFromCompileCommandEntry(project, entry));
     our_time.Pause();
   }
 
@@ -452,13 +448,13 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 }  // namespace
 
-void Project::Load(Config* config, const std::string& root_directory) {
+void Project::Load(const std::string& root_directory) {
   // Load data.
   ProjectConfig project;
-  project.extra_flags = config->extraClangArguments;
+  project.extra_flags = g_config->extraClangArguments;
   project.project_dir = root_directory;
   entries = LoadCompilationEntriesFromDirectory(
-      config, &project, config->compilationDatabaseDirectory);
+      &project, g_config->compilationDatabaseDirectory);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(project.quote_dirs.begin(),
@@ -539,28 +535,24 @@ Project::Entry Project::FindCompilationEntryForFile(
 }
 
 void Project::ForAllFilteredFiles(
-    Config* config,
     std::function<void(int i, const Entry& entry)> action) {
-  GroupMatch matcher(config->index.whitelist, config->index.blacklist);
+  GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
   for (int i = 0; i < entries.size(); ++i) {
     const Project::Entry& entry = entries[i];
     std::string failure_reason;
     if (matcher.IsMatch(entry.filename, &failure_reason))
       action(i, entries[i]);
-    else {
-      if (config->index.logSkippedPaths) {
-        LOG_S(INFO) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
-                    << failure_reason << "; skipping " << entry.filename;
-      }
+    else if (g_config->index.logSkippedPaths) {
+      LOG_S(INFO) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
+                  << failure_reason << "; skipping " << entry.filename;
     }
   }
 }
 
-void Project::Index(Config* config,
-                    QueueManager* queue,
+void Project::Index(QueueManager* queue,
                     WorkingFiles* wfiles,
                     lsRequestId id) {
-  ForAllFilteredFiles(config, [&](int i, const Project::Entry& entry) {
+  ForAllFilteredFiles([&](int i, const Project::Entry& entry) {
     std::optional<std::string> content = ReadContent(entry.filename);
     if (!content) {
       LOG_S(ERROR) << "When loading project, canont read file "
@@ -578,30 +570,22 @@ TEST_SUITE("Project") {
   void CheckFlags(const std::string& directory, const std::string& file,
                   std::vector<std::string> raw,
                   std::vector<std::string> expected) {
-    Config config;
+    g_config = std::make_unique<Config>();
+    g_config->resourceDirectory = "/w/resource_dir/";
     ProjectConfig project;
     project.project_dir = "/w/c/s/";
-    config.resourceDirectory = "/w/resource_dir/";
 
     CompileCommandsEntry entry;
     entry.directory = directory;
     entry.args = raw;
     entry.file = file;
     Project::Entry result =
-        GetCompilationEntryFromCompileCommandEntry(&config, &project, entry);
+        GetCompilationEntryFromCompileCommandEntry(&project, entry);
 
     if (result.args != expected) {
-      std::cout << "Raw:      " << StringJoin(raw) << std::endl;
-      std::cout << "Expected: " << StringJoin(expected) << std::endl;
-      std::cout << "Actual:   " << StringJoin(result.args) << std::endl;
-    }
-    for (int i = 0; i < std::min(result.args.size(), expected.size()); ++i) {
-      if (result.args[i] != expected[i]) {
-        std::cout << std::endl;
-        std::cout << "mismatch at " << i << std::endl;
-        std::cout << "  expected: " << expected[i] << std::endl;
-        std::cout << "  actual:   " << result.args[i] << std::endl;
-      }
+      fprintf(stderr, "Raw:      %s\n", StringJoin(raw).c_str());
+      fprintf(stderr, "Expected: %s\n", StringJoin(expected).c_str());
+      fprintf(stderr, "Actual:   %s\n", StringJoin(result.args).c_str());
     }
     REQUIRE(result.args == expected);
   }
@@ -671,7 +655,7 @@ TEST_SUITE("Project") {
   }
 
   TEST_CASE("Directory extraction") {
-    Config init_opts;
+    g_config = std::make_unique<Config>();
     ProjectConfig config;
     config.project_dir = "/w/c/s/";
 
@@ -701,7 +685,7 @@ TEST_SUITE("Project") {
                   "foo.cc"};
     entry.file = "foo.cc";
     Project::Entry result =
-        GetCompilationEntryFromCompileCommandEntry(&init_opts, &config, entry);
+        GetCompilationEntryFromCompileCommandEntry(&config, entry);
 
     std::unordered_set<std::string> angle_expected{
         "/a_absolute1", "/a_absolute2", "/base/a_relative1",

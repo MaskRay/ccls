@@ -9,7 +9,6 @@
 #include <vector>
 
 struct ClangTranslationUnit;
-struct Config;
 class DiagnosticsEngine;
 struct FileConsumerSharedState;
 struct ImportManager;
@@ -28,15 +27,13 @@ struct ImportPipelineStatus {
 };
 
 void IndexWithTuFromCodeCompletion(
-    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     ClangTranslationUnit* tu,
     const std::vector<CXUnsavedFile>& file_contents,
     const std::string& path,
     const std::vector<std::string>& args);
 
-void Indexer_Main(Config* config,
-                  DiagnosticsEngine* diag_engine,
+void Indexer_Main(DiagnosticsEngine* diag_engine,
                   FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
                   ImportManager* import_manager,
@@ -45,8 +42,7 @@ void Indexer_Main(Config* config,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter);
 
-bool QueryDb_ImportMain(Config* config,
-                        QueryDatabase* db,
+bool QueryDb_ImportMain(QueryDatabase* db,
                         ImportManager* import_manager,
                         ImportPipelineStatus* status,
                         SemanticHighlightSymbolCache* semantic_cache,

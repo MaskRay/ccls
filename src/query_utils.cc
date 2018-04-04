@@ -251,17 +251,16 @@ std::optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
 
 std::vector<lsLocationEx> GetLsLocationExs(QueryDatabase* db,
                                            WorkingFiles* working_files,
-                                           const std::vector<Use>& uses,
-                                           bool container,
-                                           int limit) {
+                                           const std::vector<Use>& uses) {
   std::vector<lsLocationEx> ret;
   for (Use use : uses)
-    if (auto loc = GetLsLocationEx(db, working_files, use, container))
+    if (auto loc =
+            GetLsLocationEx(db, working_files, use, g_config->xref.container))
       ret.push_back(*loc);
   std::sort(ret.begin(), ret.end());
   ret.erase(std::unique(ret.begin(), ret.end()), ret.end());
-  if (ret.size() > limit)
-    ret.resize(limit);
+  if (ret.size() > g_config->xref.maxNum)
+    ret.resize(g_config->xref.maxNum);
   return ret;
 }
 

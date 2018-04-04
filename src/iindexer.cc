@@ -7,19 +7,18 @@ struct ClangIndexer : IIndexer {
   ~ClangIndexer() override = default;
 
   std::vector<std::unique_ptr<IndexFile>> Index(
-      Config* config,
       FileConsumerSharedState* file_consumer_shared,
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents,
       PerformanceImportFile* perf) override {
     bool dump_ast = false;
-    for (const std::string& pattern : config->dumpAST)
+    for (const std::string& pattern : g_config->dumpAST)
       if (file.find(pattern) != std::string::npos) {
         dump_ast = true;
         break;
       }
-    return Parse(config, file_consumer_shared, file, args, file_contents, perf,
+    return Parse(file_consumer_shared, file, args, file_contents, perf,
                  &index, dump_ast);
   }
 
@@ -51,7 +50,6 @@ struct TestIndexer : IIndexer {
   ~TestIndexer() override = default;
 
   std::vector<std::unique_ptr<IndexFile>> Index(
-      Config* config,
       FileConsumerSharedState* file_consumer_shared,
       std::string file,
       const std::vector<std::string>& args,

@@ -206,7 +206,7 @@ struct Handler_TextDocumentCodeLens
         case SymbolKind::Var: {
           QueryVar& var = db->GetVar(sym);
           const QueryVar::Def* def = var.AnyDef();
-          if (!def || (def->is_local() && !config->codeLens.localVariables))
+          if (!def || (def->is_local() && !g_config->codeLens.localVariables))
             continue;
 
           bool force_display = true;

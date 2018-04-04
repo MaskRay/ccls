@@ -87,8 +87,7 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
 
     Timer time;
     // Send index requests for every file.
-    project->Index(config, QueueManager::instance(), working_files,
-                   std::monostate());
+    project->Index(QueueManager::instance(), working_files, std::monostate());
     time.ResetAndPrint("[perf] Dispatched $ccls/freshenIndex index requests");
   }
 };

@@ -35,9 +35,7 @@ struct Handler_CclsCallers : BaseMessageHandler<In_CclsCallers> {
           uses.push_back(func_ref);
         for (Use func_ref : GetUsesForAllDerived(db, func))
           uses.push_back(func_ref);
-        out.result =
-            GetLsLocationExs(db, working_files, uses, config->xref.container,
-                             config->xref.maxNum);
+        out.result = GetLsLocationExs(db, working_files, uses);
         break;
       }
     }

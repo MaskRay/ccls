@@ -262,11 +262,11 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
     flags.push_back(path);
 
     // Run test.
-    Config config;
+    g_config = std::make_unique<Config>();
     FileConsumerSharedState file_consumer_shared;
     PerformanceImportFile perf;
-    auto dbs = Parse(&config, &file_consumer_shared, path, flags, {}, &perf,
-                     &index, false /*dump_ast*/);
+    auto dbs = Parse(&file_consumer_shared, path, flags, {}, &perf, &index,
+                     false /*dump_ast*/);
 
     for (const auto& entry : all_expected_output) {
       const std::string& expected_path = entry.first;

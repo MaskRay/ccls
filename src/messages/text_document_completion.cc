@@ -160,9 +160,8 @@ char* tofixedbase64(T input, char* out) {
 // when given 1000+ completion items.
 void FilterAndSortCompletionResponse(
     Out_TextDocumentComplete* complete_response,
-    const std::string& complete_text,
-    bool enable) {
-  if (!enable)
+    const std::string& complete_text) {
+  if (!g_config->completion.filterAndSort)
     return;
 
   ScopedPerfTimer timer{"FilterAndSortCompletionResponse"};
@@ -327,8 +326,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
                            return k == result.keyword;
                          })) {
           out.result.items = preprocessorKeywordCompletionItems(result.match);
-          FilterAndSortCompletionResponse(&out, result.keyword,
-                                          config->completion.filterAndSort);
+          FilterAndSortCompletionResponse(&out, result.keyword);
         }
       } else if (result.keyword.compare("include") == 0) {
         {
@@ -342,8 +340,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
             if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
                out.result.items.push_back(item);
         }
-        FilterAndSortCompletionResponse(&out, result.pattern,
-                                        config->completion.filterAndSort);
+        FilterAndSortCompletionResponse(&out, result.pattern);
         DecorateIncludePaths(result.match, &out.result.items);
       }
 
@@ -365,8 +362,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
             out.result.items = results;
 
             // Emit completion results.
-            FilterAndSortCompletionResponse(&out, existing_completion,
-                                            config->completion.filterAndSort);
+            FilterAndSortCompletionResponse(&out, existing_completion);
             QueueManager::WriteStdout(kMethodType, out);
 
             // Cache completion results.

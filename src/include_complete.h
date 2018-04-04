@@ -10,7 +10,7 @@ struct GroupMatch;
 struct Project;
 
 struct IncludeComplete {
-  IncludeComplete(Config* config, Project* project);
+  IncludeComplete(Project* project);
 
   // Starts scanning directories. Clears existing cache.
   void Rescan();
@@ -45,7 +45,6 @@ struct IncludeComplete {
   std::unordered_map<std::string, int> inserted_paths;
 
   // Cached references
-  Config* config_;
   Project* project_;
   std::unique_ptr<GroupMatch> match_;
 };

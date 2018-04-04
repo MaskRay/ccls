@@ -25,7 +25,7 @@ struct Handler_TextDocumentDidChange
   void Run(In_TextDocumentDidChange* request) override {
     std::string path = request->params.textDocument.uri.GetPath();
     working_files->OnChange(request->params);
-    if (config->enableIndexOnDidChange) {
+    if (g_config->index.onDidChange) {
       std::optional<std::string> content = ReadContent(path);
       if (!content) {
         LOG_S(ERROR) << "Unable to read file content after saving " << path;

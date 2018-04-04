@@ -13,7 +13,6 @@
 #include <algorithm>
 #include <cassert>
 #include <chrono>
-#include <iostream>
 
 // TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
 // |Foobar| in DISALLOW_COPY(Foobar)
@@ -279,8 +278,6 @@ struct ConstructorCache {
 };
 
 struct IndexParam {
-  Config* config = nullptr;
-
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
   FileContentsMap file_contents;
@@ -300,10 +297,9 @@ struct IndexParam {
   NamespaceHelper ns;
   ConstructorCache ctors;
 
-  IndexParam(Config* config,
-             ClangTranslationUnit* tu,
+  IndexParam(ClangTranslationUnit* tu,
              FileConsumer* file_consumer)
-      : config(config), tu(tu), file_consumer(file_consumer) {}
+      : tu(tu), file_consumer(file_consumer) {}
 
 #if CINDEX_HAVE_PRETTY
   CXPrintingPolicy print_policy = nullptr;
@@ -585,7 +581,7 @@ void SetVarDetail(IndexVar* var,
   // string. Shorten it to just "lambda".
   if (type_name.find("(lambda at") != std::string::npos)
     type_name = "lambda";
-  if (param->config->index.comments)
+  if (g_config->index.comments)
     def.comments = cursor.get_comments();
   def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
@@ -870,10 +866,8 @@ CXIdxClientFile OnIndexIncludedFile(CXClientData client_data,
 ClangCursor::VisitResult DumpVisitor(ClangCursor cursor,
                                      ClangCursor parent,
                                      int* level) {
-  for (int i = 0; i < *level; ++i)
-    std::cerr << "  ";
-  std::cerr << ToString(cursor.get_kind()) << " " << cursor.get_spell_name()
-            << std::endl;
+  fprintf(stderr, "%*s%s %s\n", *level * 2, "",
+          ToString(cursor.get_kind()).c_str(), cursor.get_spell_name().c_str());
 
   *level += 1;
   cursor.VisitChildren(&DumpVisitor, level);
@@ -1248,7 +1242,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
         var_def->def.hover =
             "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
         var_def->def.kind = lsSymbolKind::Macro;
-        if (param->config->index.comments)
+        if (g_config->index.comments)
           var_def->def.comments = cursor.get_comments();
         var_def->def.spell =
             SetUse(db, decl_loc_spelling, parent, Role::Definition);
@@ -1615,7 +1609,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       IndexFuncId func_id = db->ToFuncId(decl_cursor_resolved.cx_cursor);
       IndexFunc* func = db->Resolve(func_id);
-      if (param->config->index.comments)
+      if (g_config->index.comments)
         func->def.comments = cursor.get_comments();
       func->def.kind = GetSymbolKind(decl->entityInfo->kind);
       func->def.storage =
@@ -1763,7 +1757,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetTypeName(type, decl_cursor, decl->semanticContainer,
                   decl->entityInfo->name, param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
-      if (param->config->index.comments)
+      if (g_config->index.comments)
         type->def.comments = decl_cursor.get_comments();
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
@@ -1808,7 +1802,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       SetTypeName(type, cursor, decl->semanticContainer, decl->entityInfo->name,
                   param);
       type->def.kind = GetSymbolKind(decl->entityInfo->kind);
-      if (param->config->index.comments)
+      if (g_config->index.comments)
         type->def.comments = cursor.get_comments();
       // }
 
@@ -2099,7 +2093,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 
       bool is_template = ref->referencedEntity->templateKind !=
                          CXIdxEntityCXXTemplateKind::CXIdxEntity_NonTemplate;
-      if (param->config->index.attributeMakeCallsToCtor && is_template &&
+      if (g_config->index.attributeMakeCallsToCtor && is_template &&
           str_begin("make", ref->referencedEntity->name)) {
         // Try to find the return type of called function. That type will have
         // the constructor function we add a usage to.
@@ -2154,7 +2148,6 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 }
 
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     std::string file,
     const std::vector<std::string>& args,
@@ -2162,7 +2155,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     PerformanceImportFile* perf,
     ClangIndex* index,
     bool dump_ast) {
-  if (!config->index.enabled)
+  if (!g_config->index.enabled)
     return {};
 
   file = NormalizePath(file);
@@ -2190,12 +2183,11 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   if (dump_ast)
     Dump(clang_getTranslationUnitCursor(tu->cx_tu));
 
-  return ParseWithTu(config, file_consumer_shared, perf, tu.get(), index, file,
+  return ParseWithTu(file_consumer_shared, perf, tu.get(), index, file,
                      args, unsaved_files);
 }
 
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
-    Config* config,
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
@@ -2218,7 +2210,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   callback.indexEntityReference = &OnIndexReference;
 
   FileConsumer file_consumer(file_consumer_shared, file);
-  IndexParam param(config, tu, &file_consumer);
+  IndexParam param(tu, &file_consumer);
   for (const CXUnsavedFile& contents : file_contents) {
     param.file_contents[contents.Filename] = FileContents(
         contents.Filename, std::string(contents.Contents, contents.Length));

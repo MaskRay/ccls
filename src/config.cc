@@ -1,3 +1,3 @@
 #include "config.h"
 
-Config g_config;
+std::unique_ptr<Config> g_config;
