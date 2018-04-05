@@ -138,8 +138,7 @@ bool QueryDbMainLoop(QueryDatabase* db,
     }
 
     if (message) {
-      LOG_S(FATAL) << "Exiting; no handler for " << message->GetMethodType();
-      exit(1);
+      LOG_S(ERROR) << "No handler for " << message->GetMethodType();
     }
   }
 
