@@ -175,6 +175,7 @@ MAKE_REFLECT_STRUCT(lsServerCapabilities,
                     completionProvider,
                     signatureHelpProvider,
                     definitionProvider,
+                    typeDefinitionProvider,
                     referencesProvider,
                     documentHighlightProvider,
                     documentSymbolProvider,
@@ -483,20 +484,6 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
       Out_InitializeResponse out;
       out.id = request->id;
-
-      // out.result.capabilities.textDocumentSync =
-      // lsTextDocumentSyncOptions();
-      // out.result.capabilities.textDocumentSync->openClose = true;
-      // out.result.capabilities.textDocumentSync->change =
-      // lsTextDocumentSyncKind::Full;
-      // out.result.capabilities.textDocumentSync->willSave = true;
-      // out.result.capabilities.textDocumentSync->willSaveWaitUntil =
-      // true;
-
-#if USE_CLANG_CXX
-      out.result.capabilities.documentFormattingProvider = true;
-      out.result.capabilities.documentRangeFormattingProvider = true;
-#endif
 
       QueueManager::WriteStdout(kMethodType, out);
 

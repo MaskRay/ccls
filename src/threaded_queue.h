@@ -2,17 +2,13 @@
 
 #include "utils.h"
 
-#include <optional>
-
-#include <algorithm>
 #include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <optional>
 #include <tuple>
 #include <utility>
-
-// TODO: cleanup includes.
 
 struct BaseThreadQueue {
   virtual bool IsEmpty() = 0;
