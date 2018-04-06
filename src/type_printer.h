@@ -2,6 +2,7 @@
 
 #include "indexer.h"
 
-std::string GetFunctionSignature(IndexFile* db,
-                                 NamespaceHelper* ns,
-                                 const CXIdxDeclInfo* decl);
+std::tuple<std::string, int16_t, int16_t, int16_t> GetFunctionSignature(
+    IndexFile* db,
+    NamespaceHelper* ns,
+    const CXIdxDeclInfo* decl);

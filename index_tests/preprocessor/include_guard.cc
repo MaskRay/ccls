@@ -14,6 +14,7 @@ OUTPUT:
       "id": 0,
       "usr": 11674328179498211370,
       "detailed_name": "FOO",
+      "qual_name_offset": 0,
       "short_name": "FOO",
       "hover": "#define FOO",
       "declarations": [],

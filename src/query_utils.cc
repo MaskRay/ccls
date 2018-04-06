@@ -302,7 +302,7 @@ std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
       lsSymbolInformation info;
       EachEntityDef(db, sym, [&](const auto& def) {
         if (use_short_name)
-          info.name = def.ShortName();
+          info.name = def.Name(true);
         else
           info.name = def.detailed_name;
         info.kind = def.kind;

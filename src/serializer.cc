@@ -210,6 +210,7 @@ void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
   ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("kind", value.def.kind);
   ReflectHoverAndComments(visitor, value.def);
@@ -233,6 +234,7 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
   ReflectShortName(visitor, value.def);
   REFLECT_MEMBER2("kind", value.def.kind);
   REFLECT_MEMBER2("storage", value.def.storage);
@@ -255,6 +257,7 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
+  REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
   ReflectShortName(visitor, value.def);
   ReflectHoverAndComments(visitor, value.def);
   REFLECT_MEMBER2("declarations", value.declarations);

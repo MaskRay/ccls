@@ -89,8 +89,10 @@ void ParseTestExpectation(
         active_output_contents = "";
 
         in_output = true;
-      } else if (in_output)
+      } else if (in_output) {
         active_output_contents += line_with_ending;
+        active_output_contents.push_back('\n');
+      }
     }
 
     if (in_output)

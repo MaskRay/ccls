@@ -152,7 +152,7 @@ struct QueryEntity {
   const Def* AnyDef() const { return const_cast<QueryEntity*>(this)->AnyDef(); }
 };
 
-struct QueryType : QueryEntity<QueryType, TypeDefDefinitionData<QueryFamily>> {
+struct QueryType : QueryEntity<QueryType, TypeDef<QueryFamily>> {
   using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
   using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
 
@@ -167,7 +167,7 @@ struct QueryType : QueryEntity<QueryType, TypeDefDefinitionData<QueryFamily>> {
   explicit QueryType(const Usr& usr) : usr(usr) {}
 };
 
-struct QueryFunc : QueryEntity<QueryFunc, FuncDefDefinitionData<QueryFamily>> {
+struct QueryFunc : QueryEntity<QueryFunc, FuncDef<QueryFamily>> {
   using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
 
   Usr usr;
@@ -180,7 +180,7 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDefDefinitionData<QueryFamily>> {
   explicit QueryFunc(const Usr& usr) : usr(usr) {}
 };
 
-struct QueryVar : QueryEntity<QueryVar, VarDefDefinitionData<QueryFamily>> {
+struct QueryVar : QueryEntity<QueryVar, VarDef<QueryFamily>> {
   Usr usr;
   Maybe<Id<void>> symbol_idx;
   std::forward_list<Def> def;
@@ -288,8 +288,7 @@ struct QueryDatabase {
   void UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                      SymbolKind kind,
                      Id<void> idx);
-  std::string_view GetSymbolDetailedName(RawId symbol_idx) const;
-  std::string_view GetSymbolShortName(RawId symbol_idx) const;
+  std::string_view GetSymbolName(RawId symbol_idx, bool qualified) const;
 
   // Query the indexing structure to look up symbol id for given Usr.
   Maybe<QueryFileId> GetQueryFileIdFromPath(const std::string& path);

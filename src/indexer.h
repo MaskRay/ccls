@@ -140,8 +140,22 @@ struct IndexFamily {
   using Range = ::Range;
 };
 
+template <typename D>
+struct NameMixin {
+  std::string_view Name(bool qualified) const {
+    auto self = static_cast<const D*>(this);
+    return qualified ? std::string_view(
+                           self->detailed_name.c_str() + self->qual_name_offset,
+                           self->short_name_offset - self->qual_name_offset +
+                               self->short_name_size)
+                     : std::string_view(self->detailed_name.c_str() +
+                                            self->short_name_offset,
+                                        self->short_name_size);
+  }
+};
+
 template <typename F>
-struct TypeDefDefinitionData {
+struct TypeDef : NameMixin<TypeDef<F>> {
   // General metadata.
   std::string detailed_name;
   NtString hover;
@@ -172,31 +186,26 @@ struct TypeDefDefinitionData {
   // type comes from a using or typedef statement).
   Maybe<typename F::TypeId> alias_of;
 
+  int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
 
-  bool operator==(const TypeDefDefinitionData& o) const {
+  bool operator==(const TypeDef& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && alias_of == o.alias_of && bases == o.bases &&
            types == o.types && funcs == o.funcs && vars == o.vars &&
            kind == o.kind && hover == o.hover && comments == o.comments;
   }
-  bool operator!=(const TypeDefDefinitionData& o) const {
+  bool operator!=(const TypeDef& o) const {
     return !(*this == o);
   }
-
-  std::string_view ShortName() const {
-    return std::string_view(detailed_name.c_str() + short_name_offset,
-                            short_name_size);
-  }
-  // Used by ccls_inheritance_hierarchy.cc:Expand generic lambda
-  std::string_view DetailedName(bool) const { return detailed_name; }
 };
 template <typename TVisitor, typename Family>
-void Reflect(TVisitor& visitor, TypeDefDefinitionData<Family>& value) {
+void Reflect(TVisitor& visitor, TypeDef<Family>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(qual_name_offset);
   REFLECT_MEMBER(short_name_offset);
   REFLECT_MEMBER(short_name_size);
   REFLECT_MEMBER(kind);
@@ -214,7 +223,7 @@ void Reflect(TVisitor& visitor, TypeDefDefinitionData<Family>& value) {
 }
 
 struct IndexType {
-  using Def = TypeDefDefinitionData<IndexFamily>;
+  using Def = TypeDef<IndexFamily>;
 
   Usr usr;
   IndexTypeId id;
@@ -240,7 +249,7 @@ struct IndexType {
 MAKE_HASHABLE(IndexType, t.id);
 
 template <typename F>
-struct FuncDefDefinitionData {
+struct FuncDef : NameMixin<FuncDef<F>> {
   // General metadata.
   std::string detailed_name;
   NtString hover;
@@ -260,38 +269,29 @@ struct FuncDefDefinitionData {
   typename F::FileId file;
   // Type which declares this one (ie, it is a method)
   Maybe<typename F::TypeId> declaring_type;
+  int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
   StorageClass storage = StorageClass::Invalid;
 
-  bool operator==(const FuncDefDefinitionData& o) const {
+  bool operator==(const FuncDef& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && declaring_type == o.declaring_type &&
            bases == o.bases && vars == o.vars && callees == o.callees &&
            kind == o.kind && storage == o.storage && hover == o.hover &&
            comments == o.comments;
   }
-  bool operator!=(const FuncDefDefinitionData& o) const {
+  bool operator!=(const FuncDef& o) const {
     return !(*this == o);
-  }
-
-  std::string_view ShortName() const {
-    return std::string_view(detailed_name.c_str() + short_name_offset,
-                            short_name_size);
-  }
-  std::string_view DetailedName(bool params) const {
-    if (params)
-      return detailed_name;
-    return std::string_view(detailed_name)
-        .substr(0, short_name_offset + short_name_size);
   }
 };
 
 template <typename TVisitor, typename Family>
-void Reflect(TVisitor& visitor, FuncDefDefinitionData<Family>& value) {
+void Reflect(TVisitor& visitor, FuncDef<Family>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
+  REFLECT_MEMBER(qual_name_offset);
   REFLECT_MEMBER(short_name_offset);
   REFLECT_MEMBER(short_name_size);
   REFLECT_MEMBER(kind);
@@ -308,8 +308,8 @@ void Reflect(TVisitor& visitor, FuncDefDefinitionData<Family>& value) {
   REFLECT_MEMBER_END();
 }
 
-struct IndexFunc {
-  using Def = FuncDefDefinitionData<IndexFamily>;
+struct IndexFunc : NameMixin<IndexFunc> {
+  using Def = FuncDef<IndexFamily>;
 
   Usr usr;
   IndexFuncId id;
@@ -345,7 +345,7 @@ MAKE_HASHABLE(IndexFunc, t.id);
 MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spell, param_spellings);
 
 template <typename F>
-struct VarDefDefinitionData {
+struct VarDef : NameMixin<VarDef<F>> {
   // General metadata.
   std::string detailed_name;
   NtString hover;
@@ -360,6 +360,7 @@ struct VarDefDefinitionData {
   Maybe<typename F::TypeId> type;
 
   // Function/type which declares this one.
+  int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
 
@@ -370,41 +371,21 @@ struct VarDefDefinitionData {
 
   bool is_local() const { return kind == lsSymbolKind::Variable; }
 
-  bool operator==(const VarDefDefinitionData& o) const {
+  bool operator==(const VarDef& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && type == o.type && kind == o.kind &&
            storage == o.storage && hover == o.hover && comments == o.comments;
   }
-  bool operator!=(const VarDefDefinitionData& o) const { return !(*this == o); }
-
-  std::string_view ShortName() const {
-    return std::string_view(detailed_name.c_str() + short_name_offset,
-                            short_name_size);
-  }
-  std::string DetailedName(bool qualified) const {
-    if (qualified)
-      return detailed_name;
-    int i = short_name_offset;
-    for (int paren = 0; i; i--) {
-      // Skip parentheses in "(anon struct)::name"
-      if (detailed_name[i - 1] == ')')
-        paren++;
-      else if (detailed_name[i - 1] == '(')
-        paren--;
-      else if (!(paren > 0 || isalnum(detailed_name[i - 1]) ||
-                 detailed_name[i - 1] == '_' || detailed_name[i - 1] == ':'))
-        break;
-    }
-    return detailed_name.substr(0, i) + detailed_name.substr(short_name_offset);
-  }
+  bool operator!=(const VarDef& o) const { return !(*this == o); }
 };
 
 template <typename TVisitor, typename Family>
-void Reflect(TVisitor& visitor, VarDefDefinitionData<Family>& value) {
+void Reflect(TVisitor& visitor, VarDef<Family>& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(short_name_size);
+  REFLECT_MEMBER(qual_name_offset);
   REFLECT_MEMBER(short_name_offset);
+  REFLECT_MEMBER(short_name_size);
   REFLECT_MEMBER(hover);
   REFLECT_MEMBER(comments);
   REFLECT_MEMBER(spell);
@@ -417,7 +398,7 @@ void Reflect(TVisitor& visitor, VarDefDefinitionData<Family>& value) {
 }
 
 struct IndexVar {
-  using Def = VarDefDefinitionData<IndexFamily>;
+  using Def = VarDef<IndexFamily>;
 
   Usr usr;
   IndexVarId id;
@@ -509,8 +490,9 @@ struct NamespaceHelper {
   std::unordered_map<ClangCursor, std::string>
       container_cursor_to_qualified_name;
 
-  std::pair<std::string, int> QualifiedName(const CXIdxContainerInfo* container,
-                                            std::string_view unqualified_name);
+  std::tuple<std::string, int16_t, int16_t> QualifiedName(
+      const CXIdxContainerInfo* container,
+      std::string_view unqualified_name);
 };
 
 // |import_file| is the cc file which is what gets passed to clang.
@@ -534,7 +516,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     const std::vector<std::string>& args,
     const std::vector<CXUnsavedFile>& file_contents);
 
-void ConcatTypeAndName(std::string& type, const std::string& name);
+bool ConcatTypeAndName(std::string& type, const std::string& name);
 
 void IndexInit();
 

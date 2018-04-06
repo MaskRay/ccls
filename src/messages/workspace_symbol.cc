@@ -84,7 +84,7 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
 
     // Find exact substring matches.
     for (int i = 0; i < db->symbols.size(); ++i) {
-      std::string_view detailed_name = db->GetSymbolDetailedName(i);
+      std::string_view detailed_name = db->GetSymbolName(i, true);
       if (detailed_name.find(query) != std::string::npos) {
         // Do not show the same entry twice.
         if (!inserted_results.insert(std::string(detailed_name)).second)
@@ -108,7 +108,7 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
           query_without_space += c;
 
       for (int i = 0; i < (int)db->symbols.size(); ++i) {
-        std::string_view detailed_name = db->GetSymbolDetailedName(i);
+        std::string_view detailed_name = db->GetSymbolName(i, true);
         if (CaseFoldingSubsequenceMatch(query_without_space, detailed_name)
                 .first) {
           // Do not show the same entry twice.
@@ -129,12 +129,12 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
       for (int i : result_indices)
-        longest = std::max(longest, int(db->GetSymbolDetailedName(i).size()));
+        longest = std::max(longest, int(db->GetSymbolName(i, true).size()));
       FuzzyMatcher fuzzy(query);
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {
-            fuzzy.Match(db->GetSymbolDetailedName(result_indices[i])), i};
+            fuzzy.Match(db->GetSymbolName(result_indices[i], true)), i};
       }
       std::sort(permutation.begin(), permutation.end(),
                 std::greater<std::pair<int, int>>());
