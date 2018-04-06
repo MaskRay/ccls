@@ -34,11 +34,14 @@ int GetNameInsertingPosition(const std::string& type_desc,
 }  // namespace
 
 // Build a detailed function signature, including argument names.
-std::string GetFunctionSignature(IndexFile* db,
-                                 NamespaceHelper* ns,
-                                 const CXIdxDeclInfo* decl) {
+std::tuple<std::string, int16_t, int16_t, int16_t> GetFunctionSignature(
+    IndexFile* db,
+    NamespaceHelper* ns,
+    const CXIdxDeclInfo* decl) {
   int num_args = clang_Cursor_getNumArguments(decl->cursor);
-  std::pair<std::string, int> function_name =
+  int16_t qual_name_offset, short_name_offset, short_name_size;
+  std::string func_name;
+  std::tie(func_name, short_name_offset, short_name_size) =
       ns->QualifiedName(decl->semanticContainer, decl->entityInfo->name);
 
   std::vector<std::pair<int, std::string>> args;
@@ -52,15 +55,15 @@ std::string GetFunctionSignature(IndexFile* db,
   }
 
   std::string type_desc = ClangCursor(decl->cursor).get_type_description();
-  int function_name_offset = GetNameInsertingPosition(
+  qual_name_offset = GetNameInsertingPosition(
       type_desc, ::ToString(clang_getTypeSpelling(
                      clang_getCursorResultType(decl->cursor))));
 
-  if (type_desc[function_name_offset] == '(') {
+  if (type_desc[qual_name_offset] == '(') {
     // Find positions to insert argument names.
     // Argument name are before ',' or closing ')'.
     num_args = 0;
-    for (int balance = 0, i = function_name_offset;
+    for (int balance = 0, i = qual_name_offset;
          i < int(type_desc.size()) && num_args < int(args.size()); i++) {
       if (type_desc[i] == '(' || type_desc[i] == '[')
         balance++;
@@ -74,9 +77,10 @@ std::string GetFunctionSignature(IndexFile* db,
     }
 
     // Second pass: insert argument names before each comma and closing paren.
-    int i = function_name_offset;
+    int i = qual_name_offset;
+    short_name_offset += qual_name_offset;
     std::string type_desc_with_names(type_desc.begin(), type_desc.begin() + i);
-    type_desc_with_names.append(function_name.first);
+    type_desc_with_names.append(func_name);
     for (auto& arg : args) {
       if (arg.first < 0) {
         LOG_S(ERROR)
@@ -98,9 +102,12 @@ std::string GetFunctionSignature(IndexFile* db,
     type_desc = std::move(type_desc_with_names);
   } else {
     // type_desc is either a typedef, or some complicated type we cannot handle.
-    // Append the function_name in this case.
-    ConcatTypeAndName(type_desc, function_name.first);
+    // Append the func_name in this case.
+    int offset = type_desc.size();
+    offset += ConcatTypeAndName(type_desc, func_name);
+    qual_name_offset = offset;
+    short_name_offset += offset;
   }
 
-  return type_desc;
+  return {type_desc, qual_name_offset, short_name_offset, short_name_size};
 }

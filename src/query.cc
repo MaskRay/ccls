@@ -35,6 +35,7 @@ std::optional<QueryType::Def> ToQuery(const IdMap& id_map,
 
   QueryType::Def result;
   result.detailed_name = type.detailed_name;
+  result.qual_name_offset = type.qual_name_offset;
   result.short_name_offset = type.short_name_offset;
   result.short_name_size = type.short_name_size;
   result.kind = type.kind;
@@ -60,6 +61,7 @@ std::optional<QueryFunc::Def> ToQuery(const IdMap& id_map,
 
   QueryFunc::Def result;
   result.detailed_name = func.detailed_name;
+  result.qual_name_offset = func.qual_name_offset;
   result.short_name_offset = func.short_name_offset;
   result.short_name_size = func.short_name_size;
   result.kind = func.kind;
@@ -84,6 +86,7 @@ std::optional<QueryVar::Def> ToQuery(const IdMap& id_map, const IndexVar::Def& v
 
   QueryVar::Def result;
   result.detailed_name = var.detailed_name;
+  result.qual_name_offset = var.qual_name_offset;
   result.short_name_offset = var.short_name_offset;
   result.short_name_size = var.short_name_size;
   if (!var.hover.empty())
@@ -900,8 +903,8 @@ void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
   }
 }
 
-// For Func, the returned name does not include parameters.
-std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
+std::string_view QueryDatabase::GetSymbolName(RawId symbol_idx,
+                                              bool qualified) const {
   RawId idx = symbols[symbol_idx].id.id;
   switch (symbols[symbol_idx].kind) {
     default:
@@ -912,40 +915,15 @@ std::string_view QueryDatabase::GetSymbolDetailedName(RawId symbol_idx) const {
       break;
     case SymbolKind::Func:
       if (const auto* def = funcs[idx].AnyDef())
-        return def->DetailedName(false);
+        return def->Name(qualified);
       break;
     case SymbolKind::Type:
       if (const auto* def = types[idx].AnyDef())
-        return def->detailed_name;
+        return def->Name(qualified);
       break;
     case SymbolKind::Var:
       if (const auto* def = vars[idx].AnyDef())
-        return def->detailed_name;
-      break;
-  }
-  return "";
-}
-
-std::string_view QueryDatabase::GetSymbolShortName(RawId symbol_idx) const {
-  RawId idx = symbols[symbol_idx].id.id;
-  switch (symbols[symbol_idx].kind) {
-    default:
-      break;
-    case SymbolKind::File:
-      if (files[idx].def)
-        return files[idx].def->path;
-      break;
-    case SymbolKind::Func:
-      if (const auto* def = funcs[idx].AnyDef())
-        return def->ShortName();
-      break;
-    case SymbolKind::Type:
-      if (const auto* def = types[idx].AnyDef())
-        return def->ShortName();
-      break;
-    case SymbolKind::Var:
-      if (const auto* def = vars[idx].AnyDef())
-        return def->ShortName();
+        return def->Name(qualified);
       break;
   }
   return "";

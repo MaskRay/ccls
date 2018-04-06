@@ -37,7 +37,7 @@ struct In_CclsCallHierarchy : public RequestInMessage {
     // Base: include base functions; All: include both base and derived
     // functions.
     CallType callType = CallType::All;
-    bool detailedName = false;
+    bool qualified = true;
     int levels = 1;
   };
   Params params;
@@ -49,7 +49,7 @@ MAKE_REFLECT_STRUCT(In_CclsCallHierarchy::Params,
                     id,
                     callee,
                     callType,
-                    detailedName,
+                    qualified,
                     levels);
 MAKE_REFLECT_STRUCT(In_CclsCallHierarchy, id, params);
 REGISTER_IN_MESSAGE(In_CclsCallHierarchy);
@@ -81,7 +81,7 @@ bool Expand(MessageHandler* m,
             Out_CclsCallHierarchy::Entry* entry,
             bool callee,
             CallType call_type,
-            bool detailed_name,
+            bool qualified,
             int levels) {
   const QueryFunc& func = m->db->funcs[entry->id.id];
   const QueryFunc::Def* def = func.AnyDef();
@@ -96,7 +96,7 @@ bool Expand(MessageHandler* m,
       if (auto loc = GetLsLocation(m->db, m->working_files, use))
         entry1.location = *loc;
       entry1.callType = call_type;
-      if (Expand(m, &entry1, callee, call_type, detailed_name, levels - 1))
+      if (Expand(m, &entry1, callee, call_type, qualified, levels - 1))
         entry->children.push_back(std::move(entry1));
     }
   };
@@ -117,10 +117,7 @@ bool Expand(MessageHandler* m,
   std::unordered_set<Usr> seen;
   seen.insert(func.usr);
   std::vector<const QueryFunc*> stack;
-  if (detailed_name)
-    entry->name = def->detailed_name;
-  else
-    entry->name = def->ShortName();
+  entry->name = def->Name(qualified);
   handle_uses(func, CallType::Direct);
 
   // Callers/callees of base functions.
@@ -166,7 +163,7 @@ struct Handler_CclsCallHierarchy
   std::optional<Out_CclsCallHierarchy::Entry> BuildInitial(QueryFuncId root_id,
                                                         bool callee,
                                                         CallType call_type,
-                                                        bool detailed_name,
+                                                        bool qualified,
                                                         int levels) {
     const auto* def = db->funcs[root_id.id].AnyDef();
     if (!def)
@@ -180,7 +177,7 @@ struct Handler_CclsCallHierarchy
               GetLsLocation(db, working_files, *def->spell))
         entry.location = *loc;
     }
-    Expand(this, &entry, callee, call_type, detailed_name, levels);
+    Expand(this, &entry, callee, call_type, qualified, levels);
     return entry;
   }
 
@@ -194,8 +191,8 @@ struct Handler_CclsCallHierarchy
       entry.id = *params.id;
       entry.callType = CallType::Direct;
       if (entry.id.id < db->funcs.size())
-        Expand(this, &entry, params.callee, params.callType,
-               params.detailedName, params.levels);
+        Expand(this, &entry, params.callee, params.callType, params.qualified,
+               params.levels);
       out.result = std::move(entry);
     } else {
       QueryFile* file;
@@ -209,7 +206,7 @@ struct Handler_CclsCallHierarchy
         if (sym.kind == SymbolKind::Func) {
           out.result =
               BuildInitial(QueryFuncId(sym.id), params.callee, params.callType,
-                           params.detailedName, params.levels);
+                           params.qualified, params.levels);
           break;
         }
       }

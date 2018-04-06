@@ -18,7 +18,7 @@ struct In_CclsInheritanceHierarchy : public RequestInMessage {
 
     // true: derived classes/functions; false: base classes/functions
     bool derived = false;
-    bool detailedName = false;
+    bool qualified = true;
     int levels = 1;
   };
   Params params;
@@ -30,7 +30,7 @@ MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy::Params,
                     id,
                     kind,
                     derived,
-                    detailedName,
+                    qualified,
                     levels);
 MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy, id, params);
 REGISTER_IN_MESSAGE(In_CclsInheritanceHierarchy);
@@ -63,14 +63,14 @@ MAKE_REFLECT_STRUCT(Out_CclsInheritanceHierarchy, jsonrpc, id, result);
 bool Expand(MessageHandler* m,
             Out_CclsInheritanceHierarchy::Entry* entry,
             bool derived,
-            bool detailed_name,
+            bool qualified,
             int levels);
 
 template <typename Q>
 bool ExpandHelper(MessageHandler* m,
                   Out_CclsInheritanceHierarchy::Entry* entry,
                   bool derived,
-                  bool detailed_name,
+                  bool qualified,
                   int levels,
                   Q& entity) {
   const auto* def = entity.AnyDef();
@@ -78,10 +78,7 @@ bool ExpandHelper(MessageHandler* m,
     entry->numChildren = 0;
     return false;
   }
-  if (detailed_name)
-    entry->name = def->DetailedName(false);
-  else
-    entry->name = def->ShortName();
+  entry->name = def->Name(qualified);
   if (def->spell) {
     if (std::optional<lsLocation> loc =
             GetLsLocation(m->db, m->working_files, *def->spell))
@@ -93,7 +90,7 @@ bool ExpandHelper(MessageHandler* m,
         Out_CclsInheritanceHierarchy::Entry entry1;
         entry1.id = id;
         entry1.kind = entry->kind;
-        if (Expand(m, &entry1, derived, detailed_name, levels - 1))
+        if (Expand(m, &entry1, derived, qualified, levels - 1))
           entry->children.push_back(std::move(entry1));
       }
       entry->numChildren = int(entry->children.size());
@@ -105,7 +102,7 @@ bool ExpandHelper(MessageHandler* m,
         Out_CclsInheritanceHierarchy::Entry entry1;
         entry1.id = id;
         entry1.kind = entry->kind;
-        if (Expand(m, &entry1, derived, detailed_name, levels - 1))
+        if (Expand(m, &entry1, derived, qualified, levels - 1))
           entry->children.push_back(std::move(entry1));
       }
       entry->numChildren = int(entry->children.size());
@@ -118,13 +115,13 @@ bool ExpandHelper(MessageHandler* m,
 bool Expand(MessageHandler* m,
             Out_CclsInheritanceHierarchy::Entry* entry,
             bool derived,
-            bool detailed_name,
+            bool qualified,
             int levels) {
   if (entry->kind == SymbolKind::Func)
-    return ExpandHelper(m, entry, derived, detailed_name, levels,
+    return ExpandHelper(m, entry, derived, qualified, levels,
                         m->db->funcs[entry->id.id]);
   else
-    return ExpandHelper(m, entry, derived, detailed_name, levels,
+    return ExpandHelper(m, entry, derived, qualified, levels,
                         m->db->types[entry->id.id]);
 }
 
@@ -133,11 +130,11 @@ struct Handler_CclsInheritanceHierarchy
   MethodType GetMethodType() const override { return kMethodType; }
 
   std::optional<Out_CclsInheritanceHierarchy::Entry>
-  BuildInitial(SymbolRef sym, bool derived, bool detailed_name, int levels) {
+  BuildInitial(SymbolRef sym, bool derived, bool qualified, int levels) {
     Out_CclsInheritanceHierarchy::Entry entry;
     entry.id = sym.id;
     entry.kind = sym.kind;
-    Expand(this, &entry, derived, detailed_name, levels);
+    Expand(this, &entry, derived, qualified, levels);
     return entry;
   }
 
@@ -153,7 +150,7 @@ struct Handler_CclsInheritanceHierarchy
       if (((entry.kind == SymbolKind::Func && entry.id.id < db->funcs.size()) ||
            (entry.kind == SymbolKind::Type &&
             entry.id.id < db->types.size())) &&
-          Expand(this, &entry, params.derived, params.detailedName,
+          Expand(this, &entry, params.derived, params.qualified,
                  params.levels))
         out.result = std::move(entry);
     } else {
@@ -167,7 +164,7 @@ struct Handler_CclsInheritanceHierarchy
       for (SymbolRef sym : FindSymbolsAtLocation(working_file, file,
                                                  request->params.position)) {
         if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
-          out.result = BuildInitial(sym, params.derived, params.detailedName,
+          out.result = BuildInitial(sym, params.derived, params.qualified,
                                     params.levels);
           break;
         }

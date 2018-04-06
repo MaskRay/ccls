@@ -14,6 +14,7 @@ OUTPUT:
       "id": 0,
       "usr": 15041163540773201510,
       "detailed_name": "Foo",
+      "qual_name_offset": 0,
       "short_name": "Foo",
       "kind": 5,
       "declarations": ["1:7-1:10|-1|1|1", "2:7-2:10|-1|1|1", "4:7-4:10|-1|1|1"],

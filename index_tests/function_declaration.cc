@@ -10,6 +10,7 @@ OUTPUT:
       "id": 0,
       "usr": 2747674671862363334,
       "detailed_name": "void foo(int a, int b)",
+      "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
       "storage": 1,

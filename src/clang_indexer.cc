@@ -309,7 +309,9 @@ struct IndexParam {
     clang_PrintingPolicy_dispose(print_policy_more);
   }
 
-  std::string PrettyPrintCursor(CXCursor cursor, bool initializer = true) {
+  std::tuple<std::string, int16_t, int16_t, int16_t> PrettyPrintCursor(
+      CXCursor cursor,
+      std::string_view short_name) {
     if (!print_policy) {
       print_policy = clang_getCursorPrintingPolicy(cursor);
       clang_PrintingPolicy_setProperty(print_policy,
@@ -324,8 +326,31 @@ struct IndexParam {
       clang_PrintingPolicy_setProperty(print_policy_more,
                                        CXPrintingPolicy_TerseOutput, 1);
     }
-    return ToString(clang_getCursorPrettyPrinted(
-        cursor, initializer ? print_policy_more : print_policy));
+    std::string name =
+        ToString(clang_getCursorPrettyPrinted(cursor, print_policy_more));
+    for (std::string::size_type i = 0;;) {
+      if ((i = name.find("(anonymous ", i)) == std::string::npos)
+        break;
+      i++;
+      if (name.size() > 10 + 9 && name.compare(10, 9, "namespace"))
+        name.replace(i, 10 + 9, "anon ns");
+      else
+        name.replace(i, 10, "anon");
+    }
+    auto i = name.find(short_name);
+    assert(i != std::string::npos);
+    int16_t short_name_offset = i, short_name_size = short_name.size();
+    for (int paren = 0; i; i--) {
+      // Skip parentheses in "(anon struct)::name"
+      if (name[i - 1] == ')')
+        paren++;
+      else if (name[i - 1] == '(')
+        paren--;
+      else if (!(paren > 0 || isalnum(name[i - 1]) ||
+                 name[i - 1] == '_' || name[i - 1] == ':'))
+        break;
+    }
+    return {name, i, short_name_offset, short_name_size};
   }
 #endif
 };
@@ -360,13 +385,8 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
     // Report skipped source range list.
     CXSourceRangeList* skipped = clang_getSkippedRanges(param->tu->cx_tu, file);
     for (unsigned i = 0; i < skipped->count; ++i) {
-      Range range = ResolveCXSourceRange(skipped->ranges[i]);
-#if CINDEX_VERSION < 45  // Before clang 6.0.0
-      // clang_getSkippedRanges reports start one token after the '#', move it
-      // back so it starts at the '#'
-      range.start.column -= 1;
-#endif
-      db->skipped_by_preprocessor.push_back(range);
+      db->skipped_by_preprocessor.push_back(
+          ResolveCXSourceRange(skipped->ranges[i]));
     }
     clang_disposeSourceRangeList(skipped);
   }
@@ -497,6 +517,8 @@ const char* GetAnonName(CXCursorKind kind) {
       return "(anon class)";
     case CXCursor_EnumDecl:
       return "(anon enum)";
+    case CXCursor_Namespace:
+      return "(anon ns)";
     case CXCursor_StructDecl:
       return "(anon struct)";
     case CXCursor_UnionDecl:
@@ -521,9 +543,12 @@ void SetTypeName(IndexType* type,
   // Investigate why clang_getCursorPrettyPrinted gives `struct A {}` `namespace
   // ns {}` which are not qualified.
   // type->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
-  std::tie(type->def.detailed_name, type->def.short_name_offset) =
+  int short_name_offset, short_name_size;
+  std::tie(type->def.detailed_name, short_name_offset, short_name_size) =
       param->ns.QualifiedName(container ? container : &parent, name);
-  type->def.short_name_size = strlen(name);
+  type->def.qual_name_offset = 0;
+  type->def.short_name_offset = short_name_offset;
+  type->def.short_name_size = short_name_size;
 }
 
 // Finds the cursor associated with the declaration type of |cursor|. This
@@ -586,13 +611,14 @@ void SetVarDetail(IndexVar* var,
   def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   // TODO how to make PrettyPrint'ed variable name qualified?
-  std::string qualified_name =
 #if 0 && CINDEX_HAVE_PRETTY
       cursor.get_kind() != CXCursor_EnumConstantDecl
           ? param->PrettyPrintCursor(cursor.cx_cursor)
           :
 #endif
-      param->ns.QualifiedName(semanticContainer, short_name).first;
+  std::string qualified_name;
+  std::tie(qualified_name, def.short_name_offset, def.short_name_size) =
+      param->ns.QualifiedName(semanticContainer, short_name);
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
     CXType enum_type = clang_getCanonicalType(
@@ -610,7 +636,10 @@ void SetVarDetail(IndexVar* var,
 #if 0 && CINDEX_HAVE_PRETTY
     //def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
 #else
-    ConcatTypeAndName(type_name, qualified_name);
+    int offset = type_name.size();
+    offset += ConcatTypeAndName(type_name, qualified_name);
+    def.qual_name_offset = offset;
+    def.short_name_offset += offset;
     def.detailed_name = type_name;
     // Append the textual initializer, bit field, constructor to |hover|.
     // Omit |hover| for these types:
@@ -947,7 +976,7 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
   if (param->toplevel_type) {
     IndexType* ref_type = db->Resolve(*param->toplevel_type);
     std::string name = cursor.get_referenced().get_spell_name();
-    if (name == ref_type->def.ShortName()) {
+    if (name == ref_type->def.Name(false)) {
       AddUseSpell(db, ref_type->uses, cursor);
       param->toplevel_type = std::nullopt;
       return;
@@ -1236,6 +1265,7 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
         CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
         var_def->def.detailed_name = cursor.get_display_name();
+        var_def->def.qual_name_offset = 0;
         var_def->def.short_name_offset = 0;
         var_def->def.short_name_size =
             int16_t(strlen(var_def->def.detailed_name.c_str()));
@@ -1407,11 +1437,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
 
 }  // namespace
 
-std::pair<std::string, int> NamespaceHelper::QualifiedName(
+std::tuple<std::string, int16_t, int16_t> NamespaceHelper::QualifiedName(
     const CXIdxContainerInfo* container,
     std::string_view unqualified_name) {
   if (!container)
-    return {std::string(unqualified_name), 0};
+    return {std::string(unqualified_name), 0, 0};
   // Anonymous namespaces are not processed by indexDeclaration. We trace
   // nested namespaces bottom-up through clang_getCursorSemanticParent until
   // one that we know its qualified name. Then do another trace top-down and
@@ -1441,9 +1471,9 @@ std::pair<std::string, int> NamespaceHelper::QualifiedName(
     qualifier += "::";
     container_cursor_to_qualified_name[namespaces[i]] = qualifier;
   }
-  int pos = qualifier.size();
+  int16_t pos = qualifier.size();
   qualifier.append(unqualified_name);
-  return {qualifier, pos};
+  return {qualifier, pos, int16_t(unqualified_name.size())};
 }
 
 void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
@@ -1669,14 +1699,14 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // insert the qualified name before the first '('.
       // FIXME GetFunctionSignature should set index
 #if CINDEX_HAVE_PRETTY
-        func->def.detailed_name = param->PrettyPrintCursor(decl->cursor);
+        std::tie(func->def.detailed_name, func->def.qual_name_offset,
+                 func->def.short_name_offset, func->def.short_name_size) =
+            param->PrettyPrintCursor(decl->cursor, decl->entityInfo->name);
 #else
-        func->def.detailed_name = GetFunctionSignature(db, &param->ns, decl);
+      std::tie(func->def.detailed_name, func->def.qual_name_offset,
+               func->def.short_name_offset, func->def.short_name_size) =
+          GetFunctionSignature(db, &param->ns, decl);
 #endif
-        auto idx = func->def.detailed_name.find(decl->entityInfo->name);
-        assert(idx != std::string::npos);
-        func->def.short_name_offset = idx;
-        func->def.short_name_size = strlen(decl->entityInfo->name);
 
         // CXCursor_OverloadedDeclRef in templates are not processed by
         // OnIndexReference, thus we use TemplateVisitor to collect function
@@ -1843,7 +1873,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // cursor
           if (origin->def.detailed_name.empty()) {
             SetTypeName(origin, origin_cursor, nullptr,
-                        &type->def.ShortName()[0], param);
+                        &type->def.Name(false)[0], param);
             origin->def.kind = type->def.kind;
           }
           // TODO The name may be assigned in |ResolveToDeclarationType| but
@@ -2046,7 +2076,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       IndexFuncId called_id = db->ToFuncId(HashUsr(ref->referencedEntity->USR));
       IndexFunc* called = db->Resolve(called_id);
 
-      std::string_view short_name = called->def.ShortName();
+      std::string_view short_name = called->def.Name(false);
       // libclang doesn't provide a nice api to check if the given function
       // call is implicit. ref->kind should probably work (it's either direct
       // or implicit), but libclang only supports implicit for objective-c.
@@ -2296,11 +2326,15 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   return result;
 }
 
-void ConcatTypeAndName(std::string& type, const std::string& name) {
+bool ConcatTypeAndName(std::string& type, const std::string& name) {
+  bool ret = false;
   if (type.size() &&
-      (type.back() != ' ' && type.back() != '*' && type.back() != '&'))
+      (type.back() != ' ' && type.back() != '*' && type.back() != '&')) {
     type.push_back(' ');
+    ret = true;
+  }
   type.append(name);
+  return ret;
 }
 
 void IndexInit() {

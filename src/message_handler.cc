@@ -222,9 +222,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
         }
         // Don't highlight overloadable operators or implicit lambda ->
         // std::function constructor.
-        std::string_view short_name = def->ShortName();
-        if (short_name.compare(0, 8, "operator") == 0 ||
-            short_name.compare(0, 27, "function<type-parameter-0-0") == 0)
+        std::string_view short_name = def->Name(false);
+        if (short_name.compare(0, 8, "operator") == 0)
           continue;  // applies to for loop
         if (def->spell)
           parent_kind = GetSymbolKind(db, *def->spell);

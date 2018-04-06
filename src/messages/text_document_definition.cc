@@ -142,20 +142,20 @@ struct Handler_TextDocumentDefinition
           if (db->symbols[i].kind == SymbolKind::Invalid)
             continue;
 
-          std::string_view name = short_query.size() < query.size()
-                                      ? db->GetSymbolDetailedName(i)
-                                      : db->GetSymbolShortName(i);
-          auto pos = name.rfind(short_query);
-          if (pos == std::string::npos)
+          std::string_view short_name = db->GetSymbolName(i, false),
+                           name = short_query.size() < query.size()
+                                      ? db->GetSymbolName(i, true)
+                                      : short_name;
+          if (short_name != short_query)
             continue;
           if (Maybe<Use> use = GetDefinitionSpell(db, db->symbols[i])) {
             std::tuple<int, int, bool, int> score{
-                int(name.size() - short_query.size()), -pos,
+                int(name.size() - short_query.size()), 0,
                 use->file != file_id,
                 std::abs(use->range.start.line - position.line)};
             // Update the score with qualified name if the qualified name
             // occurs in |name|.
-            pos = name.rfind(query);
+            auto pos = name.rfind(query);
             if (pos != std::string::npos) {
               std::get<0>(score) = int(name.size() - query.size());
               std::get<1>(score) = -pos;
