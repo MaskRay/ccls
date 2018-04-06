@@ -3,13 +3,14 @@ project(ccls LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 include(DefaultCMakeBuildType)
-include(DownloadAndExtractLLVM)
 
-set(CLANG_VERSION 6.0.0 CACHE STRING "Downloaded Clang version (6.0.0)")
-option(SYSTEM_CLANG "Use system Clang instead of downloading Clang" OFF)
+# Required libclang version
+set(LIBCLANG_VERSION 6.0.0 CACHE STRING "libclang version")
+set(LIBCLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR} 
+    CACHE STRING "Downloaded libclang location")
+option(SYSTEM_LIBCLANG "Use system installation of libclang instead of \
+       downloading libclang" OFF)
 option(ASAN "Compile with address sanitizers" OFF)
-option(CLANG_CXX "Build with Clang C++ api required by some ccls \
-features (warning: not available in LLVM Windows downloads)" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
 add_executable(ccls "")
@@ -63,13 +64,6 @@ else()
                            $<$<CONFIG:Debug>:-fno-limit-debug-info>)
   endif()
 
-  if(CLANG_CXX)
-    # -Wno-comment: include/clang/Format/Format.h error: multi-line comment
-    # -fno-rtti: # Without -fno-rtti, some Clang C++ functions may report
-    # `undefined references to typeinfo`
-    target_compile_options(ccls PRIVATE -Wno-comment -fno-rtti)
-  endif()
-
   if(ASAN)
     target_compile_options(ccls PRIVATE -fsanitize=address,undefined)
     # target_link_libraries also takes linker flags
@@ -77,18 +71,23 @@ else()
   endif()
 endif()
 
-### Download Clang if required
+### Download libclang if required
 
-if(NOT SYSTEM_CLANG)
-  download_and_extract_llvm(${CLANG_VERSION})
+if(NOT SYSTEM_LIBCLANG)
+  message(STATUS "Using downloaded libclang")
+  
+  include(DownloadAndExtractClang)
+  download_and_extract_clang(${LIBCLANG_VERSION} ${LIBCLANG_DOWNLOAD_LOCATION})
   # Used by FindClang
   set(CLANG_ROOT ${DOWNLOADED_CLANG_DIR})
+else()
+  message(STATUS "Using system libclang")
 endif()
 
 ### Libraries
 
 # See cmake/FindClang.cmake
-find_package(Clang REQUIRED)
+find_package(Clang ${CLANG_VERSION} REQUIRED)
 target_link_libraries(ccls PRIVATE Clang::Clang)
 
 # Enable threading support
@@ -96,7 +95,9 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
+  target_link_libraries(ccls PRIVATE -lc++experimental)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 else()
   target_link_libraries(ccls PRIVATE -lstdc++fs)
 endif()
@@ -117,12 +118,6 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   target_link_libraries(ccls PRIVATE Psapi)
 endif()
 
-if(CLANG_CXX)
-  # Clang C++ api uses ncurses
-  find_package(Curses REQUIRED)
-  target_link_libraries(ccls PRIVATE ${CURSES_LIBRARIES})
-endif()
-
 ### Definitions
 
 target_compile_definitions(ccls PRIVATE
@@ -130,10 +125,6 @@ target_compile_definitions(ccls PRIVATE
                            LOGURU_FILENAME_WIDTH=18
                            LOGURU_THREADNAME_WIDTH=13
                            DEFAULT_RESOURCE_DIRECTORY="${Clang_RESOURCE_DIR}")
-
-if(CLANG_CXX)
-  target_compile_definitions(ccls PRIVATE USE_CLANG_CXX=1 LOGURU_RTTI=0)
-endif()
 
 ### Includes
 
@@ -150,9 +141,8 @@ target_include_directories(ccls PRIVATE
 
 install(TARGETS ccls RUNTIME DESTINATION bin)
 
-# We don't need to install libclang on Windows if we are using downloaded LLVM
-# since libclang is distributed as a static library on Windows
-if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+# TODO: install libclang.dll on Windows as well
+if(NOT SYSTEM_LIBCLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
   if(${CMAKE_SYSTEM_NAME} MATCHES Linux|FreeBSD)
     set_property(TARGET ccls APPEND PROPERTY
@@ -165,6 +155,44 @@ if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   file(GLOB LIBCLANG_PLUS_SYMLINKS
        ${DOWNLOADED_CLANG_DIR}/lib/libclang.[so,dylib]*)
   install(FILES ${LIBCLANG_PLUS_SYMLINKS} DESTINATION lib)
+endif()
+
+# Allow running from build Windows by copying libclang.dll to build directory
+if(NOT SYSTEM_LIBCLANG AND ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+  add_custom_command(TARGET ccls
+                     POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -E copy 
+                     ${DOWNLOADED_CLANG_DIR}/bin/libclang.dll 
+                     $<TARGET_FILE_DIR:ccls>
+                     COMMENT "Copying libclang.dll to build directory ...")
+endif()
+
+### Tools
+
+# We use glob here since source files are already manually added with
+# target_sources further down
+file(GLOB SOURCES src/*.cc src/*.h src/serializers/*.cc src/serializers/*.h
+                  src/messages/*.h src/messages/*.cc)
+
+if(Clang_FORMAT AND ${Clang_VERSION} STREQUAL 6.0.0)
+  add_custom_target(format
+                    COMMAND ${Clang_FORMAT} -i ${SOURCES}
+                    # .clang-format is located in the ccls root project dir
+                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+                    COMMENT "Running clang-format ...")
+else()
+  # Set error message depending on which condition was false
+  if (NOT Clang_FORMAT)
+    set(Clang_FORMAT_ERROR "Error: clang-format executable not found")
+  elseif(NOT ${Clang_VERSION} STREQUAL 6.0.0)
+    set(Clang_FORMAT_ERROR "Error: clang-format version does not match \
+6.0.0. Due to differences in clang-format output between versions we only \
+support clang-format 6.0.0")
+  endif()
+
+  add_custom_target(format 
+                    COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --red --bold
+                    ${Clang_FORMAT_ERROR})
 endif()
 
 ### Sources

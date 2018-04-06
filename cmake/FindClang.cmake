@@ -2,12 +2,13 @@
 # FindClang
 # ---------
 #
-# Find Clang and LLVM libraries required by cquery
+# Find Clang and LLVM libraries required by ccls
 #
 # Results are reported in the following variables::
 #
 #   Clang_FOUND         - True if headers and requested libraries were found
 #   Clang_EXECUTABLE    - Clang executable
+#   Clang_FORMAT        - Clang-format executable
 #   Clang_RESOURCE_DIR  - Clang resource directory
 #   Clang_VERSION       - Clang version as reported by Clang executable
 #
@@ -32,8 +33,8 @@
 
 macro(_Clang_find_library VAR NAME)
   # Windows needs lib prefix
-  if (CLANG_ROOT)    
-    find_library(${VAR} NAMES ${NAME} lib${NAME} 
+  if (CLANG_ROOT)
+    find_library(${VAR} NAMES ${NAME} lib${NAME}
                  NO_DEFAULT_PATH PATHS ${CLANG_ROOT} PATH_SUFFIXES lib)
   else()
     find_library(${VAR} NAMES ${NAME} lib${NAME})
@@ -42,7 +43,7 @@ endmacro()
 
 macro(_Clang_find_path VAR INCLUDE_FILE)
   if (CLANG_ROOT)
-    find_path(${VAR} ${INCLUDE_FILE} 
+    find_path(${VAR} ${INCLUDE_FILE}
               NO_DEFAULT_PATH PATHS ${CLANG_ROOT} PATH_SUFFIXES include)
   else()
     find_path(${VAR} ${INCLUDE_FILE})
@@ -51,7 +52,7 @@ endmacro()
 
 macro(_Clang_find_program VAR NAME)
   if (CLANG_ROOT)
-    find_program(${VAR} ${NAME} 
+    find_program(${VAR} ${NAME}
                  NO_DEFAULT_PATH PATHS ${CLANG_ROOT} PATH_SUFFIXES bin)
   else()
     find_program(${VAR} ${NAME})
@@ -73,14 +74,14 @@ endmacro()
 
 ### Start
 
-set(_Clang_REQUIRED_VARS Clang_LIBRARY Clang_INCLUDE_DIR Clang_EXECUTABLE 
+set(_Clang_REQUIRED_VARS Clang_LIBRARY Clang_INCLUDE_DIR Clang_EXECUTABLE
                          Clang_RESOURCE_DIR Clang_VERSION)
 
 _Clang_find_library(Clang_LIBRARY clang)
 _Clang_find_path(Clang_INCLUDE_DIR clang-c/Index.h)
 
 if(CLANG_CXX)
-  # The order is derived by topological sorting LINK_LIBS in 
+  # The order is derived by topological sorting LINK_LIBS in
   # clang/lib/*/CMakeLists.txt
   _Clang_find_and_add_cxx_lib(clangFormat clang/Format/Format.h)
   _Clang_find_and_add_cxx_lib(clangToolingCore clang/Tooling/Core/Diagnostic.h)
@@ -96,16 +97,24 @@ if(CLANG_CXX)
   _Clang_find_and_add_cxx_lib(LLVMDemangle llvm/Demangle/Demangle.h)
 endif()
 
+_Clang_find_program(Clang_FORMAT clang-format)
 _Clang_find_program(Clang_EXECUTABLE clang)
 if(Clang_EXECUTABLE)
   # Find Clang resource directory with Clang executable
-  execute_process(COMMAND ${Clang_EXECUTABLE} -print-resource-dir 
+  execute_process(COMMAND ${Clang_EXECUTABLE} -print-resource-dir
+                  RESULT_VARIABLE _Clang_FIND_RESOURCE_DIR_RESULT
                   OUTPUT_VARIABLE Clang_RESOURCE_DIR
+                  ERROR_VARIABLE _Clang_FIND_RESOURCE_DIR_ERROR
                   OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+  if(_Clang_FIND_RESOURCE_DIR_RESULT)
+    message(FATAL_ERROR "Error retrieving Clang resource directory with Clang \
+executable. Output:\n ${_Clang_FIND_RESOURCE_DIR_ERROR}")
+  endif()
 
   # Find Clang version
   set(_Clang_VERSION_REGEX "([0-9]+)\\.([0-9]+)\\.([0-9]+)")
-  execute_process(COMMAND ${Clang_EXECUTABLE} --version 
+  execute_process(COMMAND ${Clang_EXECUTABLE} --version
                   OUTPUT_VARIABLE Clang_VERSION)
   string(REGEX MATCH ${_Clang_VERSION_REGEX} Clang_VERSION ${Clang_VERSION})
 endif()
@@ -122,8 +131,8 @@ if(Clang_FOUND AND NOT TARGET Clang::Clang)
   set(_Clang_INCLUDE_DIRS ${Clang_INCLUDE_DIR} ${_Clang_CXX_INCLUDE_DIRS})
 
   add_library(Clang::Clang INTERFACE IMPORTED)
-  set_property(TARGET Clang::Clang PROPERTY 
+  set_property(TARGET Clang::Clang PROPERTY
                INTERFACE_LINK_LIBRARIES ${_Clang_LIBRARIES})
-  set_property(TARGET Clang::Clang PROPERTY 
-               INTERFACE_INCLUDE_DIRECTORIES ${_Clang_INCLUDE_DIRS})  
+  set_property(TARGET Clang::Clang PROPERTY
+               INTERFACE_INCLUDE_DIRECTORIES ${_Clang_INCLUDE_DIRS})
 endif()
