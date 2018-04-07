@@ -106,8 +106,13 @@ std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
 }
 
 std::string FileName(CXFile file) {
-  CXString cx_name = clang_getFileName(file);
-  std::string ret = NormalizePath(ToString(cx_name));
+  std::string ret;
+  // clang > 6
+#if CINDEX_VERSION >= 48
+  ret = ToString(clang_File_tryGetRealPathName(file));
+#endif
+  if (ret.empty())
+    ret = ToString(clang_getFileName(file));
   // Resolve /usr/include/c++/7.3.0 symlink.
   if (!StartsWith(ret, g_config->projectRoot))
     ret = fs::canonical(ret);

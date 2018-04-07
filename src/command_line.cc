@@ -77,7 +77,7 @@ bool ShouldDisplayMethodTiming(MethodType type) {
 
 void PrintHelp() {
   std::cout
-      << R"help(ccls is a low-latency C/C++/Objective-C language server.
+      << R"help(ccls is a C/C++/Objective-C language server.
 
 Mode:
   --test-unit   Run unit tests.
@@ -91,7 +91,7 @@ Mode:
 Other command line options:
   --init <initializationOptions>
                 Override client provided initialization options
-         https://github.com/cquery-project/cquery/wiki/Initialization-options
+                https://github.com/MaskRay/ccls/wiki/Initialization-options
   --log-file <path>    Logging file for diagnostics
   --log-file-append <path>    Like --log-file, but appending
   --log-all-to-stderr  Write all log messages to STDERR.
