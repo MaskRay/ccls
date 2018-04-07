@@ -80,8 +80,8 @@ std::vector<std::string> kNormalizePathArgs = {"--sysroot="};
 
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
-std::vector<std::string> kQuoteIncludeArgs = {"-iquote"};
-std::vector<std::string> kAngleIncludeArgs = {"-I", "/I", "-isystem"};
+std::vector<std::string> kQuoteIncludeArgs = {"-iquote", "-I", "/I"};
+std::vector<std::string> kAngleIncludeArgs = {"-isystem", "-I", "/I"};
 
 bool ShouldAddToQuoteIncludes(const std::string& arg) {
   return StartsWithAny(arg, kQuoteIncludeArgs);

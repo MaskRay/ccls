@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <ctype.h>
+#include <errno.h>
 #include <string.h>
 #include <algorithm>
 #include <fstream>
@@ -248,7 +249,7 @@ std::string TextReplacer::Apply(const std::string& content) {
 void WriteToFile(const std::string& filename, const std::string& content) {
   FILE* f = fopen(filename.c_str(), "wb");
   if (!f || fwrite(content.c_str(), content.size(), 1, f) != 1) {
-    LOG_S(ERROR) << "Cannot write to " << filename;
+    LOG_S(ERROR) << "Failed to write to " << filename << ' ' << strerror(errno);
     return;
   }
   fclose(f);

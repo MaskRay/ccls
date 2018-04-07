@@ -7,15 +7,15 @@ case $(uname -s) in
   Darwin)
     libclang=(lib/clang+llvm-*/lib/libclang.dylib)
     strip_option="-x"
-    name=cquery-$version-x86_64-apple-darwin ;;
+    name=ccls-$version-x86_64-apple-darwin ;;
   FreeBSD)
     libclang=(lib/clang+llvm-*/lib/libclang.so.?)
     strip_option="-s"
-    name=cquery-$version-x86_64-unknown-freebsd10 ;;
+    name=ccls-$version-x86_64-unknown-freebsd10 ;;
   Linux)
     libclang=(lib/clang+llvm-*/lib/libclang.so.?)
     strip_option="-s"
-    name=cquery-$version-x86_64-unknown-linux-gnu ;;
+    name=ccls-$version-x86_64-unknown-linux-gnu ;;
   *)
     echo Unsupported >&2
     exit 1 ;;
@@ -26,7 +26,7 @@ mkdir "$pkg/$name"
 rsync -rtLR bin "./${libclang[-1]}" ./lib/clang+llvm-*/lib/clang/*/include "$pkg/$name"
 
 cd "$pkg"
-strip "$strip_option" "$name/bin/cquery" "$name/${libclang[-1]}"
+strip "$strip_option" "$name/bin/ccls" "$name/${libclang[-1]}"
 case $(uname -s) in
   Darwin)
     # https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man1/tar.1.html
