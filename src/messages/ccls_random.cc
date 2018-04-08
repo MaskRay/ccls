@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <numeric>
 
+MAKE_HASHABLE(SymbolIdx, t.kind, t.id);
+
 namespace {
 MethodType kMethodType = "$ccls/random";
 

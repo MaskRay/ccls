@@ -632,6 +632,7 @@ void SetVarDetail(IndexVar* var,
     else
       hover += std::to_string(clang_getEnumConstantDeclValue(cursor.cx_cursor));
     def.detailed_name = std::move(qualified_name);
+    def.qual_name_offset = 0;
     def.hover = hover;
   } else {
 #if 0 && CINDEX_HAVE_PRETTY
@@ -639,9 +640,9 @@ void SetVarDetail(IndexVar* var,
 #else
     int offset = type_name.size();
     offset += ConcatTypeAndName(type_name, qualified_name);
+    def.detailed_name = type_name;
     def.qual_name_offset = offset;
     def.short_name_offset += offset;
-    def.detailed_name = type_name;
     // Append the textual initializer, bit field, constructor to |hover|.
     // Omit |hover| for these types:
     // int (*a)(); int (&a)(); int (&&a)(); int a[1]; auto x = ...
@@ -664,12 +665,6 @@ void SetVarDetail(IndexVar* var,
     }
 #endif
   }
-  // FIXME QualifiedName should return index
-  auto idx = def.detailed_name.rfind(short_name.begin(), std::string::npos,
-                                     short_name.size());
-  assert(idx != std::string::npos);
-  def.short_name_offset = idx;
-  def.short_name_size = short_name.size();
 
   if (is_first_seen) {
     std::optional<IndexTypeId> var_type =
@@ -1711,9 +1706,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // indexing the definition, then there will not be any (ie) outline
       // information.
       if (!is_template_specialization) {
-      // Build detailed name. The type desc looks like void (void *). We
-      // insert the qualified name before the first '('.
-      // FIXME GetFunctionSignature should set index
 #if CINDEX_HAVE_PRETTY
         std::tie(func->def.detailed_name, func->def.qual_name_offset,
                  func->def.short_name_offset, func->def.short_name_size) =
@@ -2384,7 +2376,7 @@ void Reflect(Writer& visitor, Reference& value) {
     char buf[99];
     snprintf(buf, sizeof buf, "%s|%" PRId32 "|%d|%d",
              value.range.ToString().c_str(),
-             static_cast<std::make_signed<RawId>::type>(value.id.id),
+             static_cast<std::make_signed_t<RawId>>(value.id.id),
              int(value.kind), int(value.role));
     std::string s(buf);
     Reflect(visitor, s);

@@ -76,7 +76,7 @@ struct IndexFile;
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
 #define MAKE_REFLECT_TYPE_PROXY(type_name) \
-  MAKE_REFLECT_TYPE_PROXY2(type_name, std::underlying_type<type_name>::type)
+  MAKE_REFLECT_TYPE_PROXY2(type_name, std::underlying_type_t<type_name>)
 #define MAKE_REFLECT_TYPE_PROXY2(type, as_type)                        \
   ATTRIBUTE_UNUSED inline void Reflect(Reader& visitor, type& value) { \
     as_type value0;                                                    \
@@ -243,19 +243,13 @@ struct ReflectVariant {
   // If T appears in Ts..., we should set the value of std::variant<Ts...> to
   // what we get from Reader.
   template <typename T>
-  typename std::enable_if<std::disjunction<std::is_same<T, Ts>...>::value,
-                          void>::type
-  ReflectTag(Reader& visitor, std::variant<Ts...>& value) {
-    T a;
-    Reflect(visitor, a);
-    value = std::move(a);
+  void ReflectTag(Reader& visitor, std::variant<Ts...>& value) {
+    if constexpr (std::disjunction_v<std::is_same<T, Ts>...>) {
+      T a;
+      Reflect(visitor, a);
+      value = std::move(a);
+    }
   }
-  // This SFINAE overload is used to prevent compile error. value = a; is not
-  // allowed if T does not appear in Ts...
-  template <typename T>
-  typename std::enable_if<!std::disjunction<std::is_same<T, Ts>...>::value,
-                          void>::type
-  ReflectTag(Reader&, std::variant<Ts...>&) {}
 
   void operator()(Reader& visitor, std::variant<Ts...>& value) {
     // Based on tag dispatch, call different ReflectTag helper.
@@ -263,7 +257,7 @@ struct ReflectVariant {
       ReflectTag<std::monostate>(visitor, value);
     // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int>
     // if int is not in Ts...
-    else if (std::disjunction<std::is_same<int, Ts>...>::value && visitor.IsInt())
+    else if (std::disjunction_v<std::is_same<int, Ts>...> && visitor.IsInt())
       ReflectTag<int>(visitor, value);
     else if (visitor.IsInt64())
       ReflectTag<int64_t>(visitor, value);

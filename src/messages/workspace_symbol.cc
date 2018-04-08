@@ -20,13 +20,12 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
                             SymbolIdx symbol,
                             std::vector<lsSymbolInformation>* result) {
   std::optional<lsSymbolInformation> info =
-      GetSymbolInfo(db, working_files, symbol, false /*use_short_name*/);
+      GetSymbolInfo(db, working_files, symbol, true);
   if (!info)
     return false;
 
-  Maybe<Use> location = GetDefinitionExtent(db, symbol);
   Use loc;
-  if (location)
+  if (Maybe<Use> location = GetDefinitionExtent(db, symbol))
     loc = *location;
   else {
     auto decls = GetNonDefDeclarations(db, symbol);

@@ -15,7 +15,6 @@
 #include "utils.h"
 
 #include <assert.h>
-#include <ctype.h>
 #include <stdint.h>
 #include <algorithm>
 #include <unordered_map>
@@ -40,14 +39,13 @@ struct Id {
   explicit Id(RawId id) : id(id) {}
   // Id<T> -> Id<void> or Id<T> -> Id<T> is allowed implicitly.
   template <typename U,
-            typename std::enable_if<std::is_void<T>::value ||
-                                        std::is_same<T, U>::value,
-                                    bool>::type = false>
+            typename std::enable_if_t<std::is_void_v<T> || std::is_same_v<T, U>,
+                                      bool> = false>
   Id(Id<U> o) : id(o.id) {}
-  template <typename U,
-            typename std::enable_if<!(std::is_void<T>::value ||
-                                      std::is_same<T, U>::value),
-                                    bool>::type = false>
+  template <
+      typename U,
+      typename std::enable_if_t<!(std::is_void_v<T> || std::is_same_v<T, U>),
+                                bool> = false>
   explicit Id(Id<U> o) : id(o.id) {}
 
   // Needed for google::dense_hash_map.
@@ -84,15 +82,11 @@ struct SymbolIdx {
   bool operator==(const SymbolIdx& o) const {
     return id == o.id && kind == o.kind;
   }
-  bool operator!=(const SymbolIdx& o) const { return !(*this == o); }
   bool operator<(const SymbolIdx& o) const {
-    if (id != o.id)
-      return id < o.id;
-    return kind < o.kind;
+    return !(id == o.id) ? id < o.id : kind < o.kind;
   }
 };
 MAKE_REFLECT_STRUCT(SymbolIdx, kind, id);
-MAKE_HASHABLE(SymbolIdx, t.kind, t.id);
 
 struct Reference {
   Range range;
@@ -240,7 +234,6 @@ struct IndexType {
 
   bool operator<(const IndexType& other) const { return id < other.id; }
 };
-MAKE_HASHABLE(IndexType, t.id);
 
 template <typename F>
 struct FuncDef : NameMixin<FuncDef<F>> {
@@ -332,7 +325,6 @@ struct IndexFunc : NameMixin<IndexFunc> {
 
   bool operator<(const IndexFunc& other) const { return id < other.id; }
 };
-MAKE_HASHABLE(IndexFunc, t.id);
 MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spell, param_spellings);
 
 template <typename F>
@@ -401,7 +393,6 @@ struct IndexVar {
 
   bool operator<(const IndexVar& other) const { return id < other.id; }
 };
-MAKE_HASHABLE(IndexVar, t.id);
 
 struct IdCache {
   std::string primary_file;
