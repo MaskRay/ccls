@@ -1,74 +1,29 @@
 #include "position.h"
 
+#include "serializer.h"
+
+#include <limits.h>
+#include <stdio.h>
 #include <stdlib.h>
 
-Position::Position() : line(-1), column(-1) {}
-
-Position::Position(int16_t line, int16_t column) : line(line), column(column) {}
-
-Position::Position(const char* encoded) {
-  char* p = const_cast<char*>(encoded);
-  line = int16_t(strtol(p, &p, 10)) - 1;
+Position Position::FromString(const std::string& encoded) {
+  char* p = const_cast<char*>(encoded.c_str());
+  int16_t line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
   p++;
-  column = int16_t(strtol(p, &p, 10)) - 1;
+  int16_t column = int16_t(strtol(p, &p, 10)) - 1;
+  return {line, column};
 }
 
 std::string Position::ToString() {
-  // Output looks like this:
-  //
-  //  1:2
-  //
-  // 1 => line
-  // 2 => column
-
-  std::string result;
-  result += std::to_string(line + 1);
-  result += ':';
-  result += std::to_string(column + 1);
-  return result;
+  char buf[99];
+  snprintf(buf, sizeof buf, "%d:%d", line + 1, column + 1);
+  return buf;
 }
 
-std::string Position::ToPrettyString(const std::string& filename) {
-  // Output looks like this:
-  //
-  //  1:2:3
-  //
-  // 1 => filename
-  // 2 => line
-  // 3 => column
-
-  std::string result;
-  result += filename;
-  result += ':';
-  result += std::to_string(line + 1);
-  result += ':';
-  result += std::to_string(column + 1);
-  return result;
-}
-
-bool Position::operator==(const Position& that) const {
-  return line == that.line && column == that.column;
-}
-
-bool Position::operator!=(const Position& that) const {
-  return !(*this == that);
-}
-
-bool Position::operator<(const Position& that) const {
-  if (line != that.line)
-    return line < that.line;
-  return column < that.column;
-}
-
-Range::Range() {}
-
-Range::Range(Position position) : Range(position, position) {}
-
-Range::Range(Position start, Position end) : start(start), end(end) {}
-
-Range::Range(const char* encoded) {
-  char* p = const_cast<char*>(encoded);
+Range Range::FromString(const std::string& encoded) {
+  Position start, end;
+  char* p = const_cast<char*>(encoded.c_str());
   start.line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
   p++;
@@ -80,18 +35,14 @@ Range::Range(const char* encoded) {
   assert(*p == ':');
   p++;
   end.column = int16_t(strtol(p, nullptr, 10)) - 1;
+  return {start, end};
 }
 
 bool Range::Contains(int line, int column) const {
-  if (line == start.line && line == end.line)
-    return column >= start.column && column < end.column;
-  if (line == start.line)
-    return column >= start.column;
-  if (line == end.line)
-    return column < end.column;
-  if (line > start.line && line < end.line)
-    return true;
-  return false;
+  if (line > INT16_MAX)
+    return false;
+  Position p{int16_t(line), int16_t(std::min(column, INT16_MAX))};
+  return !(p < start) && p < end;
 }
 
 Range Range::RemovePrefix(Position position) const {
@@ -99,47 +50,16 @@ Range Range::RemovePrefix(Position position) const {
 }
 
 std::string Range::ToString() {
-  // Output looks like this:
-  //
-  //  1:2-3:4
-  //
-  // 1 => start line
-  // 2 => start column
-  // 3 => end line
-  // 4 => end column
-
-  std::string output;
-
-  output += std::to_string(start.line + 1);
-  output += ':';
-  output += std::to_string(start.column + 1);
-  output += '-';
-  output += std::to_string(end.line + 1);
-  output += ':';
-  output += std::to_string(end.column + 1);
-
-  return output;
-}
-
-bool Range::operator==(const Range& that) const {
-  return start == that.start && end == that.end;
-}
-
-bool Range::operator!=(const Range& that) const {
-  return !(*this == that);
-}
-
-bool Range::operator<(const Range& that) const {
-  if (start != that.start)
-    return start < that.start;
-  return end < that.end;
+  char buf[99];
+  snprintf(buf, sizeof buf, "%d:%d-%d:%d", start.line + 1, start.column + 1,
+           end.line + 1, end.column + 1);
+  return buf;
 }
 
 // Position
 void Reflect(Reader& visitor, Position& value) {
   if (visitor.Format() == SerializeFormat::Json) {
-    std::string s = visitor.GetString();
-    value = Position(s.c_str());
+    value = Position::FromString(visitor.GetString());
   } else {
     Reflect(visitor, value.line);
     Reflect(visitor, value.column);
@@ -158,8 +78,7 @@ void Reflect(Writer& visitor, Position& value) {
 // Range
 void Reflect(Reader& visitor, Range& value) {
   if (visitor.Format() == SerializeFormat::Json) {
-    std::string s = visitor.GetString();
-    value = Range(s.c_str());
+    value = Range::FromString(visitor.GetString());
   } else {
     Reflect(visitor, value.start.line);
     Reflect(visitor, value.start.column);

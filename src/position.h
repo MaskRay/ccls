@@ -1,57 +1,56 @@
 #pragma once
 
 #include "maybe.h"
-#include "serializer.h"
 #include "utils.h"
 
 #include <stdint.h>
 #include <string>
 
 struct Position {
-  int16_t line;
-  int16_t column;
+  int16_t line = -1;
+  int16_t column = -1;
 
-  Position();
-  Position(int16_t line, int16_t column);
-  explicit Position(const char* encoded);
+  static Position FromString(const std::string& encoded);
 
-  bool HasValueForMaybe_() const { return line >= 0; }
+  bool Valid() const { return line >= 0; }
   std::string ToString();
-  std::string ToPrettyString(const std::string& filename);
 
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
-  bool operator==(const Position& that) const;
-  bool operator!=(const Position& that) const;
-  bool operator<(const Position& that) const;
+  bool operator==(const Position& o) const {
+    return line == o.line && column == o.column;
+  }
+  bool operator<(const Position& o) const {
+    if (line != o.line)
+      return line < o.line;
+    return column < o.column;
+  }
 };
-static_assert(
-    sizeof(Position) == 4,
-    "Investigate, Position should be 32-bits for indexer size reasons");
 MAKE_HASHABLE(Position, t.line, t.column);
 
 struct Range {
   Position start;
   Position end;
 
-  Range();
-  explicit Range(Position position);
-  Range(Position start, Position end);
-  explicit Range(const char* encoded);
+  static Range FromString(const std::string& encoded);
 
-  bool HasValueForMaybe_() const { return start.HasValueForMaybe_(); }
+  bool Valid() const { return start.Valid(); }
   bool Contains(int line, int column) const;
   Range RemovePrefix(Position position) const;
 
   std::string ToString();
 
-  bool operator==(const Range& that) const;
-  bool operator!=(const Range& that) const;
-  bool operator<(const Range& that) const;
+  bool operator==(const Range& o) const {
+    return start == o.start && end == o.end;
+  }
+  bool operator<(const Range& o) const {
+    return !(start == o.start) ? start < o.start : end < o.end;
+  }
 };
-MAKE_HASHABLE(Range, t.start, t.end);
 
 // Reflection
+class Reader;
+class Writer;
 void Reflect(Reader& visitor, Position& value);
 void Reflect(Writer& visitor, Position& value);
 void Reflect(Reader& visitor, Range& value);

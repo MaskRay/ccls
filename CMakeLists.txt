@@ -210,7 +210,6 @@ target_sources(ccls PRIVATE
                src/config.cc
                src/diagnostics_engine.cc
                src/file_consumer.cc
-               src/file_contents.cc
                src/filesystem.cc
                src/fuzzy_match.cc
                src/iindexer.cc

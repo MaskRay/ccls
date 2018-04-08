@@ -5,7 +5,7 @@
 #include <utility>
 
 // Like std::optional, but the stored data is responsible for containing the empty
-// state. T should define a function `bool T::HasValueForMaybe_()`.
+// state. T should define a function `bool T::Valid()`.
 template <typename T>
 class Maybe {
   T storage;
@@ -28,10 +28,10 @@ class Maybe {
   const T& operator*() const { return storage; }
   T& operator*() { return storage; }
 
-  bool HasValue() const { return storage.HasValueForMaybe_(); }
-  explicit operator bool() const { return HasValue(); }
+  bool Valid() const { return storage.Valid(); }
+  explicit operator bool() const { return Valid(); }
   operator std::optional<T>() const {
-    if (HasValue())
+    if (Valid())
       return storage;
     return std::nullopt;
   }

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "file_contents.h"
+#include "position.h"
 #include "utils.h"
 
 #include <clang-c/Index.h>
@@ -9,12 +9,26 @@
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 struct IndexFile;
 
 // Needed for unordered_map usage below.
 MAKE_HASHABLE(CXFileUniqueID, t.data[0], t.data[1], t.data[2]);
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b);
+
+struct FileContents {
+  FileContents();
+  FileContents(const std::string& path, const std::string& content);
+
+  std::optional<int> ToOffset(Position p) const;
+  std::optional<std::string> ContentsInRange(Range range) const;
+
+  std::string path;
+  std::string content;
+  // {0, 1 + position of first newline, 1 + position of second newline, ...}
+  std::vector<int> line_offsets_;
+};
 
 struct FileConsumerSharedState {
   mutable std::unordered_set<std::string> used_files;
@@ -48,7 +62,7 @@ struct FileConsumer {
   // variable since it is large and we do not want to copy it.
   IndexFile* TryConsumeFile(CXFile file,
                             bool* is_first_ownership,
-                            FileContentsMap* file_contents);
+                            std::unordered_map<std::string, FileContents>* file_contents);
 
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();

@@ -4,7 +4,6 @@
 #include "clang_translation_unit.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
-#include "file_contents.h"
 #include "language.h"
 #include "lsp.h"
 #include "maybe.h"
@@ -54,7 +53,7 @@ struct Id {
   // Needed for google::dense_hash_map.
   explicit operator RawId() const { return id; }
 
-  bool HasValueForMaybe_() const { return id != RawId(-1); }
+  bool Valid() const { return id != RawId(-1); }
 
   bool operator==(const Id& o) const { return id == o.id; }
   bool operator!=(const Id& o) const { return id != o.id; }
@@ -101,7 +100,7 @@ struct Reference {
   SymbolKind kind;
   Role role;
 
-  bool HasValueForMaybe_() const { return range.HasValueForMaybe_(); }
+  bool Valid() const { return range.Valid(); }
   operator SymbolIdx() const { return {id, kind}; }
   std::tuple<Range, Id<void>, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, id, kind, role);
@@ -126,8 +125,6 @@ struct Use : Reference {
   Use(Range range, Id<void> id, SymbolKind kind, Role role, Id<QueryFile> file)
       : Reference{range, id, kind, role}, file(file) {}
 };
-// Used by |HANDLE_MERGEABLE| so only |range| is needed.
-MAKE_HASHABLE(Use, t.range);
 
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
@@ -241,9 +238,6 @@ struct IndexType {
   // NOTE: Do not insert directly! Use AddUsage instead.
   std::vector<Use> uses;
 
-  IndexType() {}  // For serialization.
-  IndexType(IndexTypeId id, Usr usr);
-
   bool operator<(const IndexType& other) const { return id < other.id; }
 };
 MAKE_HASHABLE(IndexType, t.id);
@@ -336,9 +330,6 @@ struct IndexFunc : NameMixin<IndexFunc> {
   // def.spell.
   std::vector<Use> uses;
 
-  IndexFunc() {}  // For serialization.
-  IndexFunc(IndexFuncId id, Usr usr) : usr(usr), id(id) {}
-
   bool operator<(const IndexFunc& other) const { return id < other.id; }
 };
 MAKE_HASHABLE(IndexFunc, t.id);
@@ -407,9 +398,6 @@ struct IndexVar {
 
   std::vector<Use> declarations;
   std::vector<Use> uses;
-
-  IndexVar() {}  // For serialization.
-  IndexVar(IndexVarId id, Usr usr) : usr(usr), id(id) {}
 
   bool operator<(const IndexVar& other) const { return id < other.id; }
 };
@@ -519,7 +507,3 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
 bool ConcatTypeAndName(std::string& type, const std::string& name);
 
 void IndexInit();
-
-void ClangSanityCheck();
-
-std::string GetClangVersion();

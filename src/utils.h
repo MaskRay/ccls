@@ -65,17 +65,6 @@ std::optional<std::string> ReadContent(const std::string& filename);
 
 void WriteToFile(const std::string& filename, const std::string& content);
 
-template <typename T>
-void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
-  dest->insert(dest->end(), to_add.begin(), to_add.end());
-}
-
-template <typename T>
-void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
-  dest->insert(dest->end(), std::make_move_iterator(to_add.begin()),
-               std::make_move_iterator(to_add.end()));
-}
-
 // http://stackoverflow.com/a/38140932
 //
 //  struct SomeHashKey {
