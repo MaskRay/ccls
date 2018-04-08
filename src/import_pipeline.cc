@@ -167,9 +167,10 @@ ShouldParse FileNeedsParse(
 
   // If the file is a dependency but another file as already imported it,
   // don't bother.
-  if (!is_interactive && from &&
-      !import_manager->TryMarkDependencyImported(path)) {
-    return ShouldParse::No;
+  if (!is_interactive && from) {
+    std::lock_guard<std::mutex> lock(import_manager->dependency_mutex_);
+    if (!import_manager->dependency_imported_.insert(path).second)
+      return ShouldParse::No;
   }
 
   std::optional<int64_t> modification_timestamp =
@@ -651,7 +652,8 @@ void QueryDb_DoIdMap(QueueManager* queue,
   //
   // Note, we must do this *after* we have checked for the previous index,
   // otherwise we will never actually generate the IdMap.
-  if (!import_manager->StartQueryDbImport(request->current->path)) {
+  if (!import_manager->querydb_processing_.insert(request->current->path)
+           .second) {
     LOG_S(INFO) << "Dropping index as it is already being imported for "
                 << request->current->path;
     return;
@@ -712,7 +714,7 @@ void QueryDb_OnIndexed(QueueManager* queue,
 
     // Mark the files as being done in querydb stage after we apply the index
     // update.
-    import_manager->DoneQueryDbImport(updated_file.value.path);
+    import_manager->querydb_processing_.erase(updated_file.value.path);
   }
 }
 

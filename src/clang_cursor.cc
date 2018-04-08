@@ -21,26 +21,18 @@ Range ResolveCXSourceRange(const CXSourceRange& range, CXFile* cx_file) {
                Position((int16_t)end_line - 1, (int16_t)end_column - 1));
 }
 
-ClangType::ClangType() : cx_type() {}
-
-ClangType::ClangType(const CXType& other) : cx_type(other) {}
-
-bool ClangType::operator==(const ClangType& rhs) const {
-  return clang_equalTypes(cx_type, rhs.cx_type);
-}
-
 ClangCursor ClangType::get_declaration() const {
   return clang_getTypeDeclaration(cx_type);
 }
 
 std::string ClangType::get_usr() const {
-  return ClangCursor(clang_getTypeDeclaration(cx_type)).get_usr();
+  return ClangCursor{clang_getTypeDeclaration(cx_type)}.get_usr();
 }
 
 Usr ClangType::get_usr_hash() const {
   if (is_builtin())
     return static_cast<Usr>(cx_type.kind);
-  return ClangCursor(clang_getTypeDeclaration(cx_type)).get_usr_hash();
+  return ClangCursor{clang_getTypeDeclaration(cx_type)}.get_usr_hash();
 }
 
 ClangType ClangType::get_canonical() const {
@@ -79,7 +71,7 @@ std::string ClangType::get_spell_name() const {
 }
 
 ClangType ClangType::get_return_type() const {
-  return ClangType(clang_getResultType(cx_type));
+  return clang_getResultType(cx_type);
 }
 
 std::vector<ClangType> ClangType::get_arguments() const {
@@ -104,31 +96,8 @@ std::vector<ClangType> ClangType::get_template_arguments() const {
   return types;
 }
 
-static_assert(sizeof(ClangCursor) == sizeof(CXCursor),
-              "Cursor must be the same size as CXCursor");
-
-ClangCursor::ClangCursor() : cx_cursor(clang_getNullCursor()) {}
-
-ClangCursor::ClangCursor(const CXCursor& other) : cx_cursor(other) {}
-
-ClangCursor::operator bool() const {
-  return !clang_Cursor_isNull(cx_cursor);
-}
-
-bool ClangCursor::operator==(const ClangCursor& rhs) const {
-  return clang_equalCursors(cx_cursor, rhs.cx_cursor);
-}
-
-bool ClangCursor::operator!=(const ClangCursor& rhs) const {
-  return !(*this == rhs);
-}
-
-CXCursorKind ClangCursor::get_kind() const {
-  return cx_cursor.kind;
-}
-
 ClangType ClangCursor::get_type() const {
-  return ClangType(clang_getCursorType(cx_cursor));
+  return {clang_getCursorType(cx_cursor)};
 }
 
 std::string ClangCursor::get_spell_name() const {
@@ -175,23 +144,23 @@ ClangCursor ClangCursor::template_specialization_to_template_definition()
 }
 
 ClangCursor ClangCursor::get_referenced() const {
-  return ClangCursor(clang_getCursorReferenced(cx_cursor));
+  return {clang_getCursorReferenced(cx_cursor)};
 }
 
 ClangCursor ClangCursor::get_canonical() const {
-  return ClangCursor(clang_getCanonicalCursor(cx_cursor));
+  return {clang_getCanonicalCursor(cx_cursor)};
 }
 
 ClangCursor ClangCursor::get_definition() const {
-  return ClangCursor(clang_getCursorDefinition(cx_cursor));
+  return {clang_getCursorDefinition(cx_cursor)};
 }
 
 ClangCursor ClangCursor::get_lexical_parent() const {
-  return ClangCursor(clang_getCursorLexicalParent(cx_cursor));
+  return {clang_getCursorLexicalParent(cx_cursor)};
 }
 
 ClangCursor ClangCursor::get_semantic_parent() const {
-  return ClangCursor(clang_getCursorSemanticParent(cx_cursor));
+  return {clang_getCursorSemanticParent(cx_cursor)};
 }
 
 std::vector<ClangCursor> ClangCursor::get_arguments() const {

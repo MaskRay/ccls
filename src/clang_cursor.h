@@ -19,10 +19,8 @@ class ClangCursor;
 
 class ClangType {
  public:
-  ClangType();
-  ClangType(const CXType& other);
-
-  bool operator==(const ClangType& rhs) const;
+  ClangType() = default;
+  ClangType(const CXType& cx) : cx_type(cx) {}
 
   // Returns true if this is a fundamental type like int.
   bool is_builtin() const {
@@ -50,14 +48,18 @@ class ClangType {
 
 class ClangCursor {
  public:
-  ClangCursor();
-  ClangCursor(const CXCursor& other);
+  ClangCursor() = default;
+  ClangCursor(CXCursor cx) : cx_cursor(cx) {}
+  bool operator==(const ClangCursor& o) const {
+    return clang_equalCursors(cx_cursor, o.cx_cursor);
+  }
+  bool operator!=(const ClangCursor& o) const {
+    return !(*this == o);
+  }
 
-  explicit operator bool() const;
-  bool operator==(const ClangCursor& rhs) const;
-  bool operator!=(const ClangCursor& rhs) const;
-
-  CXCursorKind get_kind() const;
+  CXCursorKind get_kind() const {
+    return cx_cursor.kind;
+  }
   ClangType get_type() const;
   std::string get_spell_name() const;
   Range get_spell(CXFile* cx_file = nullptr) const;

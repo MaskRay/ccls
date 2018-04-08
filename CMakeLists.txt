@@ -214,7 +214,6 @@ target_sources(ccls PRIVATE
                src/filesystem.cc
                src/fuzzy_match.cc
                src/iindexer.cc
-               src/import_manager.cc
                src/import_pipeline.cc
                src/include_complete.cc
                src/method.cc
