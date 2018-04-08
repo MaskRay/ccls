@@ -50,27 +50,23 @@ struct Handler_TextDocumentDefinition
     : BaseMessageHandler<In_TextDocumentDefinition> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentDefinition* request) override {
+    auto& params = request->params;
     QueryFileId file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file,
-                        &file_id)) {
+                        params.textDocument.uri.GetPath(), &file, &file_id))
       return;
-    }
-
-    WorkingFile* working_file =
-        working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentDefinition out;
     out.id = request->id;
 
     Maybe<Use> on_def;
     bool has_symbol = false;
-    int target_line = request->params.position.line;
-    int target_column = request->params.position.character;
+    WorkingFile* wfile =
+        working_files->GetFileByFilename(file->def->path);
+    lsPosition& ls_pos = params.position;
 
-    for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
+    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos)) {
       // Found symbol. Return definition.
       has_symbol = true;
 
@@ -84,7 +80,7 @@ struct Handler_TextDocumentDefinition
           Use spell = *def.spell;
           // If on a definition, clear |uses| to find declarations below.
           if (spell.file == file_id &&
-              spell.range.Contains(target_line, target_column)) {
+              spell.range.Contains(ls_pos.line, ls_pos.character)) {
             on_def = spell;
             uses.clear();
             return false;
@@ -114,7 +110,7 @@ struct Handler_TextDocumentDefinition
     // No symbols - check for includes.
     if (out.result.empty()) {
       for (const IndexInclude& include : file->def->includes) {
-        if (include.line == target_line) {
+        if (include.line == ls_pos.line) {
           lsLocationEx result;
           result.uri = lsDocumentUri::FromPath(include.resolved_path);
           out.result.push_back(result);
@@ -125,7 +121,7 @@ struct Handler_TextDocumentDefinition
       // Find the best match of the identifier at point.
       if (!has_symbol) {
         lsPosition position = request->params.position;
-        const std::string& buffer = working_file->buffer_content;
+        const std::string& buffer = wfile->buffer_content;
         std::string_view query = LexIdentifierAroundPos(position, buffer);
         std::string_view short_query = query;
         {

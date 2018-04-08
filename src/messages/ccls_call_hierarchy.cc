@@ -182,7 +182,7 @@ struct Handler_CclsCallHierarchy
   }
 
   void Run(In_CclsCallHierarchy* request) override {
-    const auto& params = request->params;
+    auto& params = request->params;
     Out_CclsCallHierarchy out;
     out.id = request->id;
 

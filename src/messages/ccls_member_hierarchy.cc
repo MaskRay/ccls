@@ -202,7 +202,7 @@ struct Handler_CclsMemberHierarchy
   }
 
   void Run(In_CclsMemberHierarchy* request) override {
-    const auto& params = request->params;
+    auto& params = request->params;
     Out_CclsMemberHierarchy out;
     out.id = request->id;
 
@@ -218,10 +218,10 @@ struct Handler_CclsMemberHierarchy
       if (!FindFileOrFail(db, project, request->id,
                           params.textDocument.uri.GetPath(), &file))
         return;
-      WorkingFile* working_file =
+      WorkingFile* wfile =
           working_files->GetFileByFilename(file->def->path);
       for (SymbolRef sym :
-           FindSymbolsAtLocation(working_file, file, params.position)) {
+           FindSymbolsAtLocation(wfile, file, params.position)) {
         switch (sym.kind) {
           case SymbolKind::Func:
             out.result = BuildInitial(QueryFuncId(sym.id), params.qualified,

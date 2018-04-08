@@ -139,7 +139,7 @@ struct Handler_CclsInheritanceHierarchy
   }
 
   void Run(In_CclsInheritanceHierarchy* request) override {
-    const auto& params = request->params;
+    auto& params = request->params;
     Out_CclsInheritanceHierarchy out;
     out.id = request->id;
 
@@ -158,11 +158,11 @@ struct Handler_CclsInheritanceHierarchy
       if (!FindFileOrFail(db, project, request->id,
                           params.textDocument.uri.GetPath(), &file))
         return;
-      WorkingFile* working_file =
+      WorkingFile* wfile =
           working_files->GetFileByFilename(file->def->path);
 
-      for (SymbolRef sym : FindSymbolsAtLocation(working_file, file,
-                                                 request->params.position)) {
+      for (SymbolRef sym :
+           FindSymbolsAtLocation(wfile, file, params.position)) {
         if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
           out.result = BuildInitial(sym, params.derived, params.qualified,
                                     params.levels);
