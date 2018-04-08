@@ -143,7 +143,7 @@ OUTPUT: make_functions.cc
   "skipped_by_preprocessor": [],
   "types": [{
       "id": 0,
-      "usr": 9281343527065946499,
+      "usr": 7902098450755788854,
       "detailed_name": "T",
       "qual_name_offset": 0,
       "short_name": "T",
@@ -160,7 +160,7 @@ OUTPUT: make_functions.cc
       "uses": ["4:1-4:2|-1|1|4"]
     }, {
       "id": 1,
-      "usr": 10771590811355716928,
+      "usr": 12533159752419999454,
       "detailed_name": "Args",
       "qual_name_offset": 0,
       "short_name": "Args",
@@ -177,7 +177,7 @@ OUTPUT: make_functions.cc
       "uses": ["4:15-4:19|-1|1|4"]
     }, {
       "id": 2,
-      "usr": 11897454629873246477,
+      "usr": 18441628706991062891,
       "detailed_name": "T",
       "qual_name_offset": 0,
       "short_name": "T",
@@ -194,7 +194,7 @@ OUTPUT: make_functions.cc
       "uses": ["9:1-9:2|-1|1|4"]
     }, {
       "id": 3,
-      "usr": 3337128087216004141,
+      "usr": 9441341235704820385,
       "detailed_name": "Args",
       "qual_name_offset": 0,
       "short_name": "Args",
@@ -347,7 +347,7 @@ OUTPUT: make_functions.cc
     }],
   "vars": [{
       "id": 0,
-      "usr": 8463700030555379526,
+      "usr": 15288691366352169805,
       "detailed_name": "Args &&... args",
       "qual_name_offset": 11,
       "short_name": "args",
@@ -359,7 +359,7 @@ OUTPUT: make_functions.cc
       "storage": 1
     }, {
       "id": 1,
-      "usr": 3908732770590594660,
+      "usr": 12338908251430965107,
       "detailed_name": "Args... args",
       "qual_name_offset": 8,
       "short_name": "args",

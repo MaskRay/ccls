@@ -54,7 +54,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 11404600766177939811,
+      "usr": 2147918703972955240,
       "detailed_name": "int p",
       "qual_name_offset": 4,
       "short_name": "p",

@@ -1,11 +1,11 @@
 #include "serializer.h"
 
+#include "filesystem.hh"
 #include "serializers/json.h"
 #include "serializers/msgpack.h"
 
 #include "indexer.h"
 
-#include <doctest/doctest.h>
 #include <loguru.hpp>
 
 #include <stdexcept>
@@ -153,7 +153,7 @@ void Reflect(Writer& visitor, IndexInclude& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
-    std::string basename = GetBaseName(value.resolved_path);
+    std::string basename = fs::path(value.resolved_path).filename();
     if (!StartsWith(value.resolved_path, "&"))
       basename = "&" + basename;
     REFLECT_MEMBER2("resolved_path", basename);
@@ -279,7 +279,7 @@ bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
     assert(value.Resolve(it->second)->uses.size() == 0);
   }
 
-  DefaultReflectMemberStart(visitor);
+  visitor.StartObject();
   return true;
 }
 template <typename TVisitor>
@@ -440,18 +440,4 @@ std::unique_ptr<IndexFile> Deserialize(
   }
 
   return file;
-}
-
-void SetTestOutputMode() {
-  gTestOutputMode = true;
-}
-
-TEST_SUITE("Serializer utils") {
-  TEST_CASE("GetBaseName") {
-    REQUIRE(GetBaseName("foo.cc") == "foo.cc");
-    REQUIRE(GetBaseName("foo/foo.cc") == "foo.cc");
-    REQUIRE(GetBaseName("/foo.cc") == "foo.cc");
-    REQUIRE(GetBaseName("///foo.cc") == "foo.cc");
-    REQUIRE(GetBaseName("bar/") == ".");
-  }
 }

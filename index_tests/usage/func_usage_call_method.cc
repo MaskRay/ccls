@@ -67,7 +67,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 14045150712868309451,
+      "usr": 3014406561587537195,
       "detailed_name": "Foo *f",
       "qual_name_offset": 5,
       "short_name": "f",

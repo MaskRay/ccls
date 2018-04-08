@@ -31,9 +31,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <functional>
-#include <iostream>
 #include <iterator>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -76,8 +76,7 @@ bool ShouldDisplayMethodTiming(MethodType type) {
 }
 
 void PrintHelp() {
-  std::cout
-      << R"help(ccls is a C/C++/Objective-C language server.
+  printf("%s", R"help(ccls is a C/C++/Objective-C language server.
 
 Mode:
   --test-unit   Run unit tests.
@@ -101,7 +100,7 @@ Other command line options:
                 out.
 
 See more on https://github.com/MaskRay/ccls/wiki
-)help";
+)help");
 }
 
 }  // namespace
@@ -214,7 +213,7 @@ void RunQueryDbThread(const std::string& bin_name,
   }
 
   // Run query db main loop.
-  SetCurrentThreadName("querydb");
+  SetThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
         &db, querydb_waiter, &project, &file_consumer_shared,
@@ -244,11 +243,8 @@ void RunQueryDbThread(const std::string& bin_name,
 //
 // |ipc| is connected to a server.
 void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
-  // If flushing cin requires flushing cout there could be deadlocks in some
-  // clients.
-  std::cin.tie(nullptr);
-
-  StartThread("stdin", [request_times]() {
+  new std::thread([request_times]() {
+    SetThreadName("stdin");
     auto* queue = QueueManager::instance();
     while (true) {
       std::unique_ptr<InMessage> message;
@@ -288,7 +284,8 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
 
 void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
                         MultiQueueWaiter* waiter) {
-  StartThread("stdout", [=]() {
+  new std::thread([=]() {
+    SetThreadName("stdout");
     auto* queue = QueueManager::instance();
 
     while (true) {
@@ -387,9 +384,8 @@ int main(int argc, char** argv) {
       rapidjson::Document reader;
       rapidjson::ParseResult ok = reader.Parse(g_init_options.c_str());
       if (!ok) {
-        std::cerr << "Failed to parse --init as JSON: "
-                  << rapidjson::GetParseError_En(ok.Code()) << " ("
-                  << ok.Offset() << ")\n";
+        fprintf(stderr, "Failed to parse --init as JSON: %s (%zd)\n",
+                rapidjson::GetParseError_En(ok.Code()), ok.Offset());
         return 1;
       }
       JsonReader json_reader{&reader};
@@ -397,9 +393,9 @@ int main(int argc, char** argv) {
         Config config;
         Reflect(json_reader, config);
       } catch (std::invalid_argument& e) {
-        std::cerr << "Fail to parse --init "
-                  << static_cast<JsonReader&>(json_reader).GetPath()
-                  << ", expected " << e.what() << "\n";
+        fprintf(stderr, "Failed to parse --init %s, expected %s\n",
+                static_cast<JsonReader&>(json_reader).GetPath().c_str(),
+                e.what());
         return 1;
       }
     }

@@ -269,45 +269,8 @@ std::string lsDocumentUri::GetPath() const {
   return ret;
 }
 
-lsPosition::lsPosition() {}
-lsPosition::lsPosition(int line, int character)
-    : line(line), character(character) {}
-
-bool lsPosition::operator==(const lsPosition& other) const {
-  return line == other.line && character == other.character;
-}
-
-bool lsPosition::operator<(const lsPosition& other) const {
-  return line != other.line ? line < other.line : character < other.character;
-}
-
 std::string lsPosition::ToString() const {
   return std::to_string(line) + ":" + std::to_string(character);
-}
-const lsPosition lsPosition::kZeroPosition = lsPosition();
-
-lsRange::lsRange() {}
-lsRange::lsRange(lsPosition start, lsPosition end) : start(start), end(end) {}
-
-bool lsRange::operator==(const lsRange& o) const {
-  return start == o.start && end == o.end;
-}
-
-bool lsRange::operator<(const lsRange& o) const {
-  return !(start == o.start) ? start < o.start : end < o.end;
-}
-
-lsLocation::lsLocation() {}
-lsLocation::lsLocation(lsDocumentUri uri, lsRange range)
-    : uri(uri), range(range) {}
-
-bool lsLocation::operator==(const lsLocation& o) const {
-  return uri == o.uri && range == o.range;
-}
-
-bool lsLocation::operator<(const lsLocation& o) const {
-  return std::make_tuple(uri.raw_uri, range) <
-         std::make_tuple(o.uri.raw_uri, o.range);
 }
 
 bool lsTextEdit::operator==(const lsTextEdit& that) {

@@ -60,7 +60,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 13058491096576226774,
+      "usr": 2584795197111552890,
       "detailed_name": "ForwardType *f",
       "qual_name_offset": 13,
       "short_name": "f",
@@ -73,7 +73,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 11055777568039014776,
+      "usr": 5136230284979460117,
       "detailed_name": "ImplementedType a",
       "qual_name_offset": 16,
       "short_name": "a",

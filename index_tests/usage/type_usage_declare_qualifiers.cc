@@ -48,7 +48,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 7997456978847868736,
+      "usr": 16414210592877294238,
       "detailed_name": "Type &a0",
       "qual_name_offset": 6,
       "short_name": "a0",
@@ -61,7 +61,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 17228576662112939520,
+      "usr": 11558141642862804306,
       "detailed_name": "const Type &a1",
       "qual_name_offset": 12,
       "short_name": "a1",
@@ -74,7 +74,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 2,
-      "usr": 15429032129697337561,
+      "usr": 1536316608590232194,
       "detailed_name": "Type a2",
       "qual_name_offset": 5,
       "short_name": "a2",
@@ -87,7 +87,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 3,
-      "usr": 6081981442495435784,
+      "usr": 316760354845869406,
       "detailed_name": "Type *a3",
       "qual_name_offset": 6,
       "short_name": "a3",
@@ -100,7 +100,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 4,
-      "usr": 5004072032239834773,
+      "usr": 12321730890779907974,
       "detailed_name": "const Type *a4",
       "qual_name_offset": 12,
       "short_name": "a4",
@@ -113,7 +113,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 5,
-      "usr": 14939253431683105646,
+      "usr": 4771437488905761633,
       "detailed_name": "const Type *const a5",
       "qual_name_offset": 18,
       "short_name": "a5",

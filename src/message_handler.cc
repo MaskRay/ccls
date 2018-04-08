@@ -332,8 +332,8 @@ void EmitSemanticHighlighting(QueryDatabase* db,
     // Attribute range [events[i-1].pos, events[i].pos) to events[top-1].symbol
     // .
     if (top && !(events[i - 1].pos == events[i].pos))
-      events[top - 1].symbol->ranges.emplace_back(events[i - 1].pos,
-                                                  events[i].pos);
+      events[top - 1].symbol->ranges.push_back(
+          lsRange{events[i - 1].pos, events[i].pos});
     if (events[i].id >= 0)
       events[top++] = events[i];
     else

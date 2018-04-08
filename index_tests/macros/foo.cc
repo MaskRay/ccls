@@ -92,7 +92,7 @@ OUTPUT:
       "storage": 0
     }, {
       "id": 2,
-      "usr": 2056319845419860263,
+      "usr": 14946041066794678724,
       "detailed_name": "DISALLOW",
       "qual_name_offset": 0,
       "short_name": "DISALLOW",

@@ -1,6 +1,7 @@
 #include "clang_complete.h"
 
 #include "clang_utils.h"
+#include "filesystem.hh"
 #include "platform.h"
 #include "timer.h"
 
@@ -25,6 +26,11 @@ unsigned Flags() {
          | CXTranslationUnit_CreatePreambleOnFirstParse
 #endif
       ;
+}
+
+std::string StripFileType(const std::string& path) {
+  fs::path p(path);
+  return p.parent_path() / p.stem();
 }
 
 unsigned GetCompletionPriority(const CXCompletionString& str,
@@ -671,12 +677,12 @@ ClangCompleteManager::ClangCompleteManager(Project* project,
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {
   new std::thread([&]() {
-    SetCurrentThreadName("completequery");
+    SetThreadName("completequery");
     CompletionQueryMain(this);
   });
 
   new std::thread([&]() {
-    SetCurrentThreadName("completeparse");
+    SetThreadName("completeparse");
     CompletionParseMain(this);
   });
 }

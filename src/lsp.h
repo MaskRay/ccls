@@ -121,44 +121,42 @@ void Reflect(TVisitor& visitor, lsDocumentUri& value) {
 }
 
 struct lsPosition {
-  lsPosition();
-  lsPosition(int line, int character);
-
-  bool operator==(const lsPosition& other) const;
-  bool operator<(const lsPosition& other) const;
-
-  std::string ToString() const;
-
-  // Note: these are 0-based.
   int line = 0;
   int character = 0;
-  static const lsPosition kZeroPosition;
+  bool operator==(const lsPosition& o) const {
+    return line == o.line && character == o.character;
+  }
+  bool operator<(const lsPosition& o) const {
+    return line != o.line ? line < o.line : character < o.character;
+  }
+  std::string ToString() const;
 };
 MAKE_HASHABLE(lsPosition, t.line, t.character);
 MAKE_REFLECT_STRUCT(lsPosition, line, character);
 
 struct lsRange {
-  lsRange();
-  lsRange(lsPosition start, lsPosition end);
-
-  bool operator==(const lsRange& other) const;
-  bool operator<(const lsRange& other) const;
-
   lsPosition start;
   lsPosition end;
+  bool operator==(const lsRange& o) const {
+    return start == o.start && end == o.end;
+  }
+  bool operator<(const lsRange& o) const {
+    return !(start == o.start) ? start < o.start : end < o.end;
+  }
 };
 MAKE_HASHABLE(lsRange, t.start, t.end);
 MAKE_REFLECT_STRUCT(lsRange, start, end);
 
 struct lsLocation {
-  lsLocation();
-  lsLocation(lsDocumentUri uri, lsRange range);
-
-  bool operator==(const lsLocation& other) const;
-  bool operator<(const lsLocation& o) const;
-
   lsDocumentUri uri;
   lsRange range;
+  bool operator==(const lsLocation& o) const {
+    return uri == o.uri && range == o.range;
+  }
+  bool operator<(const lsLocation& o) const {
+    return !(uri.raw_uri == o.uri.raw_uri) ? uri.raw_uri < o.uri.raw_uri
+                                           : range < o.range;
+  }
 };
 MAKE_HASHABLE(lsLocation, t.uri, t.range);
 MAKE_REFLECT_STRUCT(lsLocation, uri, range);

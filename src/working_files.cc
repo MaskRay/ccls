@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <climits>
 #include <numeric>
+#include <sstream>
 
 namespace {
 
@@ -35,6 +36,15 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
     ++i;
   }
 
+  return result;
+}
+
+std::vector<std::string> ToLines(const std::string& content) {
+  std::vector<std::string> result;
+  std::istringstream lines(content);
+  std::string line;
+  while (getline(lines, line))
+    result.push_back(line);
   return result;
 }
 

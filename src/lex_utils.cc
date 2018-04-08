@@ -69,21 +69,21 @@ std::pair<bool, int> CaseFoldingSubsequenceMatch(std::string_view search,
 TEST_SUITE("Offset") {
   TEST_CASE("past end") {
     std::string content = "foo";
-    int offset = GetOffsetForPosition(lsPosition(10, 10), content);
+    int offset = GetOffsetForPosition(lsPosition{10, 10}, content);
     REQUIRE(offset <= content.size());
   }
 
   TEST_CASE("in middle of content") {
     std::string content = "abcdefghijk";
     for (int i = 0; i < content.size(); ++i) {
-      int offset = GetOffsetForPosition(lsPosition(0, i), content);
+      int offset = GetOffsetForPosition(lsPosition{0, i}, content);
       REQUIRE(i == offset);
     }
   }
 
   TEST_CASE("at end of content") {
-    REQUIRE(GetOffsetForPosition(lsPosition(0, 0), "") == 0);
-    REQUIRE(GetOffsetForPosition(lsPosition(0, 1), "a") == 1);
+    REQUIRE(GetOffsetForPosition(lsPosition{0, 0}, "") == 0);
+    REQUIRE(GetOffsetForPosition(lsPosition{0, 1}, "a") == 1);
   }
 }
 

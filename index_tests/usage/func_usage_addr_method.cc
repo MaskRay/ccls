@@ -67,7 +67,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 4636142131003982569,
+      "usr": 8436636043513449412,
       "detailed_name": "void (Foo::*)() x",
       "qual_name_offset": 16,
       "short_name": "x",

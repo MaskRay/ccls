@@ -155,7 +155,7 @@ std::string NormalizePath(const std::string& path) {
   return resolved ? *resolved : path;
 }
 
-void SetCurrentThreadName(const std::string& thread_name) {
+void SetThreadName(const std::string& thread_name) {
   loguru::set_thread_name(thread_name.c_str());
 #if defined(__APPLE__)
   pthread_setname_np(thread_name.c_str());

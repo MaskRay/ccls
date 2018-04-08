@@ -53,7 +53,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 14555488990109936920,
+      "usr": 10480417713467708012,
       "detailed_name": "int a",
       "qual_name_offset": 4,
       "short_name": "a",
@@ -66,7 +66,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 10963664335057337329,
+      "usr": 18099600680625658464,
       "detailed_name": "int b",
       "qual_name_offset": 4,
       "short_name": "b",
