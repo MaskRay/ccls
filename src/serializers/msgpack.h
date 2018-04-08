@@ -23,7 +23,6 @@ class MessagePackReader : public Reader {
 
   bool IsBool() override { return oh_.get().type == msgpack::type::BOOLEAN; }
   bool IsNull() override { return oh_.get().is_nil(); }
-  bool IsArray() override { return oh_.get().type == msgpack::type::ARRAY; }
   bool IsInt() override {
     return oh_.get().type == msgpack::type::POSITIVE_INTEGER ||
            oh_.get().type == msgpack::type::NEGATIVE_INTEGER;

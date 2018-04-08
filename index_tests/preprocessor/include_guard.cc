@@ -12,7 +12,7 @@ OUTPUT:
   "funcs": [],
   "vars": [{
       "id": 0,
-      "usr": 11674328179498211370,
+      "usr": 13076155634261037336,
       "detailed_name": "FOO",
       "qual_name_offset": 0,
       "short_name": "FOO",

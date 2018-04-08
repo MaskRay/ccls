@@ -187,7 +187,7 @@ OUTPUT: static_function_in_type.cc
     }],
   "vars": [{
       "id": 0,
-      "usr": 13569879755236306838,
+      "usr": 9285345059965948351,
       "detailed_name": "ns::Manager *m",
       "qual_name_offset": 13,
       "short_name": "m",

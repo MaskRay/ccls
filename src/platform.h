@@ -12,7 +12,7 @@ void PlatformInit();
 std::string GetExecutablePath();
 std::string NormalizePath(const std::string& path);
 
-void SetCurrentThreadName(const std::string& thread_name);
+void SetThreadName(const std::string& thread_name);
 
 std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path);
 

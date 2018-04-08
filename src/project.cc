@@ -21,6 +21,7 @@
 #include <unistd.h>
 #endif
 
+#include <fstream>
 #include <limits>
 #include <unordered_set>
 #include <vector>
@@ -47,7 +48,7 @@ struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
   std::vector<std::string> extra_flags;
-  std::string project_dir;
+  fs::path project_dir;
   ProjectMode mode = ProjectMode::CompileCommandsJson;
 };
 
@@ -107,7 +108,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     const CompileCommandsEntry& entry) {
   Project::Entry result;
   result.filename = entry.file;
-  const std::string base_name = GetBaseName(entry.file);
+  const std::string base_name = fs::path(entry.file).filename();
 
   // Expand %c %cpp %clang
   std::vector<std::string> args;
@@ -256,7 +257,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 std::vector<std::string> ReadCompilerArgumentsFromFile(
     const std::string& path) {
   std::vector<std::string> args;
-  for (std::string line : ReadFileLines(path)) {
+  std::ifstream fin(path);
+  for (std::string line; std::getline(fin, line);) {
     TrimInPlace(line);
     if (line.empty() || StartsWith(line, "#"))
       continue;
@@ -268,7 +270,7 @@ std::vector<std::string> ReadCompilerArgumentsFromFile(
 std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::vector<Project::Entry> result;
   config->mode = ProjectMode::DotCcls;
-  LOG_IF_S(WARNING, !FileExists(config->project_dir + "/.ccls") &&
+  LOG_IF_S(WARNING, !fs::exists(config->project_dir / ".ccls") &&
                         config->extra_flags.empty())
       << "ccls has no clang arguments. Considering adding either a "
          "compile_commands.json or .ccls file. See the ccls README for "
@@ -282,31 +284,31 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
                    [&folder_args, &files](const std::string& path) {
                      if (SourceFileLanguage(path) != LanguageId::Unknown) {
                        files.push_back(path);
-                     } else if (GetBaseName(path) == ".ccls") {
+                     } else if (fs::path(path).filename() == ".ccls") {
                        LOG_S(INFO) << "Using .ccls arguments from " << path;
-                       folder_args.emplace(GetDirName(path),
-                                           ReadCompilerArgumentsFromFile(path));
+                       folder_args.emplace(
+                           fs::path(path).parent_path().string(),
+                           ReadCompilerArgumentsFromFile(path));
                      }
                    });
 
-  const auto& project_dir_args = folder_args[config->project_dir];
+  const std::string project_dir = config->project_dir.string();
+  const auto& project_dir_args = folder_args[project_dir];
   LOG_IF_S(INFO, !project_dir_args.empty())
       << "Using .ccls arguments " << StringJoin(project_dir_args);
 
-  auto GetCompilerArgumentForFile = [&config,
-                                     &folder_args](const std::string& path) {
-    for (std::string cur = GetDirName(path);; cur = GetDirName(cur)) {
+  auto GetCompilerArgumentForFile = [&project_dir, &folder_args](fs::path cur) {
+    while (!(cur = cur.parent_path()).empty()) {
       auto it = folder_args.find(cur);
       if (it != folder_args.end())
         return it->second;
       std::string normalized = NormalizePath(cur);
       // Break if outside of the project root.
-      if (normalized.size() <= config->project_dir.size() ||
-          normalized.compare(0, config->project_dir.size(),
-                             config->project_dir) != 0)
+      if (normalized.size() <= project_dir.size() ||
+          normalized.compare(0, project_dir.size(), project_dir) != 0)
         break;
     }
-    return folder_args[config->project_dir];
+    return folder_args[project_dir];
   };
 
   for (const std::string& file : files) {
@@ -327,7 +329,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     ProjectConfig* project,
     const std::string& opt_compilation_db_dir) {
   // If there is a .ccls file always load using directory listing.
-  if (FileExists(project->project_dir + ".ccls"))
+  if (fs::exists(project->project_dir / ".ccls"))
     return LoadFromDirectoryListing(project);
 
   // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
@@ -335,7 +337,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
   if (g_config->compilationDatabaseCommand.empty()) {
     project->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
-    comp_db_dir = opt_compilation_db_dir.empty() ? project->project_dir
+    comp_db_dir = opt_compilation_db_dir.empty() ? project->project_dir.string()
                                                  : opt_compilation_db_dir;
   } else {
     project->mode = ProjectMode::ExternalCommand;
@@ -522,11 +524,14 @@ Project::Entry Project::FindCompilationEntryForFile(
 
     // |best_entry| probably has its own path in the arguments. We need to remap
     // that path to the new filename.
-    std::string best_entry_base_name = GetBaseName(best_entry->filename);
+    fs::path best_entry_base_name = fs::path(best_entry->filename).filename();
     for (std::string& arg : result.args) {
-      if (arg == best_entry->filename ||
-          GetBaseName(arg) == best_entry_base_name) {
-        arg = filename;
+      try {
+        if (arg == best_entry->filename ||
+            fs::path(arg).filename() == best_entry_base_name) {
+          arg = filename;
+        }
+      } catch (...) {
       }
     }
   }
@@ -669,7 +674,7 @@ TEST_SUITE("Project") {
                   "--foobar",
                   "-Ia_relative1",
                   "--foobar",
-                  "-I",
+                  "-isystem",
                   "a_relative2",
                   "--foobar",
                   "-iquote/q_absolute1",
@@ -691,7 +696,8 @@ TEST_SUITE("Project") {
         "/a_absolute1", "/a_absolute2", "/base/a_relative1",
         "/base/a_relative2"};
     std::unordered_set<std::string> quote_expected{
-        "/q_absolute1", "/q_absolute2", "/base/q_relative1",
+        "/a_absolute1",     "/a_absolute2", "/base/a_relative1",
+        "/q_absolute1",     "/q_absolute2", "/base/q_relative1",
         "/base/q_relative2"};
     REQUIRE(config.angle_dirs == angle_expected);
     REQUIRE(config.quote_dirs == quote_expected);

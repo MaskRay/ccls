@@ -33,7 +33,7 @@ OUTPUT:
       "uses": []
     }, {
       "id": 1,
-      "usr": 14635009347499519042,
+      "usr": 1287417953265234030,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -65,7 +65,7 @@ OUTPUT:
       "callees": ["9:14-9:15|1|3|32", "10:14-10:15|1|3|32", "11:14-11:15|1|3|32"]
     }, {
       "id": 1,
-      "usr": 17926497908620168464,
+      "usr": 1328781044864682611,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -80,7 +80,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 12666114896600231317,
+      "usr": 17270098654620601683,
       "detailed_name": "int x",
       "qual_name_offset": 4,
       "short_name": "x",
@@ -93,7 +93,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 2981279427664991319,
+      "usr": 16806544259835773270,
       "detailed_name": "lambda dosomething",
       "qual_name_offset": 7,
       "short_name": "dosomething",
@@ -106,7 +106,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 2,
-      "usr": 12879188959314906706,
+      "usr": 2034725908368218782,
       "detailed_name": "int y",
       "qual_name_offset": 4,
       "short_name": "y",

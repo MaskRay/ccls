@@ -102,7 +102,7 @@ OUTPUT:
       "uses": ["13:56-13:64|-1|1|4"]
     }, {
       "id": 5,
-      "usr": 7916588271848318236,
+      "usr": 780719166805015998,
       "detailed_name": "T",
       "qual_name_offset": 0,
       "short_name": "T",
@@ -138,7 +138,7 @@ OUTPUT:
   "funcs": [],
   "vars": [{
       "id": 0,
-      "usr": 12990052348105569112,
+      "usr": 3880651725784125791,
       "detailed_name": "unsigned int T",
       "qual_name_offset": 13,
       "short_name": "T",

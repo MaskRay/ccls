@@ -228,7 +228,7 @@ OUTPUT:
       "storage": 2
     }, {
       "id": 1,
-      "usr": 500112618220246,
+      "usr": 11547294959889394856,
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> *local",
       "qual_name_offset": 36,
       "short_name": "local",

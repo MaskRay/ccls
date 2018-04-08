@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <cassert>
-#include <iostream>
 #include <string>
 
 void PlatformInit() {
@@ -60,7 +59,7 @@ typedef struct tagTHREADNAME_INFO {
   DWORD dwFlags;     // Reserved for future use, must be zero.
 } THREADNAME_INFO;
 #pragma pack(pop)
-void SetCurrentThreadName(const std::string& thread_name) {
+void SetThreadName(const std::string& thread_name) {
   loguru::set_thread_name(thread_name.c_str());
 
   THREADNAME_INFO info;

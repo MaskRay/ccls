@@ -1,5 +1,6 @@
 #include "test.h"
 
+#include "filesystem.hh"
 #include "indexer.h"
 #include "platform.h"
 #include "serializer.h"
@@ -15,13 +16,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fstream>
-#include <iostream>
 
 // The 'diff' utility is available and we can use dprintf(3).
 #if _POSIX_C_SOURCE >= 200809L
 #include <sys/wait.h>
 #include <unistd.h>
 #endif
+
+extern bool gTestOutputMode;
 
 std::string ToString(const rapidjson::Document& document) {
   rapidjson::StringBuffer buffer;
@@ -34,6 +36,33 @@ std::string ToString(const rapidjson::Document& document) {
   document.Accept(writer);
   return buffer.GetString();
 }
+
+struct TextReplacer {
+  struct Replacement {
+    std::string from;
+    std::string to;
+  };
+
+  std::vector<Replacement> replacements;
+
+  std::string Apply(const std::string& content) {
+    std::string result = content;
+
+    for (const Replacement& replacement : replacements) {
+      while (true) {
+        size_t idx = result.find(replacement.from);
+        if (idx == std::string::npos)
+          break;
+
+        result.replace(result.begin() + idx,
+          result.begin() + idx + replacement.from.size(),
+          replacement.to);
+      }
+    }
+
+    return result;
+  }
+};
 
 void ParseTestExpectation(
     const std::string& filename,
@@ -125,8 +154,7 @@ void DiffDocuments(std::string path,
                    rapidjson::Document& actual) {
   std::string joined_actual_output = ToString(actual);
   std::string joined_expected_output = ToString(expected);
-  std::cout << "[FAILED] " << path << " (section " << path_section << ")"
-            << std::endl;
+  printf("[FAILED] %s (section %s)\n", path.c_str(), path_section.c_str());
 
 #if _POSIX_C_SOURCE >= 200809L
   char expected_file[] = "/tmp/ccls.expected.XXXXXX";
@@ -156,13 +184,10 @@ void DiffDocuments(std::string path,
   std::vector<std::string> expected_output =
       SplitString(joined_expected_output, "\n");
 
-  std::cout << "Expected output for " << path << " (section " << path_section
-            << "):" << std::endl;
-  std::cout << joined_expected_output << std::endl;
-  std::cout << "Actual output for " << path << " (section " << path_section
-            << "):" << std::endl;
-  std::cout << joined_actual_output << std::endl;
-  std::cout << std::endl;
+  printf("Expected output for %s (section %s)\n:%s\n", path.c_str(),
+         path_section.c_str(), joined_expected_output.c_str());
+  printf("Actual output for %s (section %s)\n:%s\n", path.c_str(),
+         path_section.c_str(), joined_actual_output.c_str());
 }
 
 void VerifySerializeToFrom(IndexFile* file) {
@@ -173,7 +198,7 @@ void VerifySerializeToFrom(IndexFile* file) {
                   std::nullopt /*expected_version*/);
   std::string actual = result->ToString();
   if (expected != actual) {
-    std::cerr << "Serialization failure" << std::endl;
+    fprintf(stderr, "Serialization failure\n");
     assert(false);
   }
 }
@@ -186,7 +211,7 @@ std::string FindExpectedOutputForFilename(
       return entry.second;
   }
 
-  std::cerr << "Couldn't find expected output for " << filename << std::endl;
+  fprintf(stderr, "Couldn't find expected output for %s\n", filename.c_str());
   getchar();
   getchar();
   return "{}";
@@ -203,16 +228,17 @@ IndexFile* FindDbForPathEnding(
 }
 
 bool RunIndexTests(const std::string& filter_path, bool enable_update) {
-  SetTestOutputMode();
+  gTestOutputMode = true;
 
   // Index tests change based on the version of clang used.
-  static constexpr const char* kRequiredClangVersion =
+  static const char kRequiredClangVersion[] =
       "clang version 6.0.0 (tags/RELEASE_600/final)";
   if (GetClangVersion() != kRequiredClangVersion &&
       GetClangVersion().find("trunk") == std::string::npos) {
-    std::cerr << "Index tests must be run using clang version \""
-              << kRequiredClangVersion << "\" (ccls is running with \""
-              << GetClangVersion() << "\")" << std::endl;
+    fprintf(stderr,
+            "Index tests must be run using clang version %s, ccls is running "
+            "with %s\n",
+            kRequiredClangVersion, GetClangVersion().c_str());
     return false;
   }
 
@@ -221,141 +247,141 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   // FIXME: show diagnostics in STL/headers when running tests. At the moment
   // this can be done by constructing ClangIndex index(1, 1);
   ClangIndex index;
-  for (std::string path : GetFilesInFolder("index_tests", true /*recursive*/,
-                                           true /*add_folder_to_path*/)) {
-    bool is_fail_allowed = false;
+  GetFilesInFolder(
+      "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
+      [&](const std::string& path) {
+        bool is_fail_allowed = false;
 
-    if (EndsWithAny(path, {".m", ".mm"})) {
+        if (EndsWithAny(path, {".m", ".mm"})) {
 #ifndef __APPLE__
-      std::cout << "Skipping \"" << path << "\" since this platform does not "
-                  << "support running Objective-C tests." << std::endl;
-      continue;
+          return;
 #endif
 
-      // objective-c tests are often not updated right away. do not bring down
-      // CI if they fail.
-      if (!enable_update)
-        is_fail_allowed = true;
-    }
-
-    if (path.find(filter_path) == std::string::npos)
-      continue;
-
-    if (!filter_path.empty())
-      std::cout << "Running " << path << std::endl;
-
-    // Parse expected output from the test, parse it into JSON document.
-    std::vector<std::string> lines_with_endings = ReadFileLines(path);
-    TextReplacer text_replacer;
-    std::vector<std::string> flags;
-    std::unordered_map<std::string, std::string> all_expected_output;
-    ParseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
-                         &all_expected_output);
-
-    // Build flags.
-    bool had_extra_flags = !flags.empty();
-    if (!AnyStartsWith(flags, "-x"))
-      flags.push_back("-xc++");
-    flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
-    if (had_extra_flags) {
-      std::cout << "For " << path << std::endl;
-      std::cout << "  flags: " << StringJoin(flags) << std::endl;
-    }
-    flags.push_back(path);
-
-    // Run test.
-    g_config = std::make_unique<Config>();
-    FileConsumerSharedState file_consumer_shared;
-    PerformanceImportFile perf;
-    auto dbs = Parse(&file_consumer_shared, path, flags, {}, &perf, &index,
-                     false /*dump_ast*/);
-
-    for (const auto& entry : all_expected_output) {
-      const std::string& expected_path = entry.first;
-      std::string expected_output = text_replacer.Apply(entry.second);
-
-      // FIXME: promote to utils, find and remove duplicates (ie,
-      // ccls_call_tree.cc, maybe something in project.cc).
-      auto basename = [](const std::string& path) -> std::string {
-        size_t last_index = path.find_last_of('/');
-        if (last_index == std::string::npos)
-          return path;
-        return path.substr(last_index + 1);
-      };
-
-      auto severity_to_string = [](const lsDiagnosticSeverity& severity) {
-        switch (severity) {
-          case lsDiagnosticSeverity::Error:
-            return "error ";
-          case lsDiagnosticSeverity::Warning:
-            return "warning ";
-          case lsDiagnosticSeverity::Information:
-            return "information ";
-          case lsDiagnosticSeverity::Hint:
-            return "hint ";
+          // objective-c tests are often not updated right away. do not bring
+          // down
+          // CI if they fail.
+          if (!enable_update)
+            is_fail_allowed = true;
         }
-        assert(false && "not reached");
-        return "";
-      };
 
-      // Get output from index operation.
-      IndexFile* db = FindDbForPathEnding(expected_path, dbs);
-      assert(db);
-      if (!db->diagnostics_.empty()) {
-        std::cout << "For " << path << std::endl;
-        for (const lsDiagnostic& diagnostic : db->diagnostics_) {
-          std::cout << "  ";
-          if (diagnostic.severity)
-            std::cout << severity_to_string(*diagnostic.severity);
-          std::cout << basename(db->path) << ":"
-                    << diagnostic.range.start.ToString() << "-"
-                    << diagnostic.range.end.ToString() << ": "
-                    << diagnostic.message << std::endl;
+        if (path.find(filter_path) == std::string::npos)
+          return;
+
+        if (!filter_path.empty())
+          printf("Running %s\n", path.c_str());
+
+        // Parse expected output from the test, parse it into JSON document.
+        std::vector<std::string> lines_with_endings;
+        {
+          std::ifstream fin(path);
+          for (std::string line; std::getline(fin, line);)
+            lines_with_endings.push_back(line);
         }
-      }
-      std::string actual_output = "{}";
-      if (db) {
-        VerifySerializeToFrom(db);
-        actual_output = db->ToString();
-      }
-      actual_output = text_replacer.Apply(actual_output);
+        TextReplacer text_replacer;
+        std::vector<std::string> flags;
+        std::unordered_map<std::string, std::string> all_expected_output;
+        ParseTestExpectation(path, lines_with_endings, &text_replacer, &flags,
+                             &all_expected_output);
 
-      // Compare output via rapidjson::Document to ignore any formatting
-      // differences.
-      rapidjson::Document actual;
-      actual.Parse(actual_output.c_str());
-      rapidjson::Document expected;
-      expected.Parse(expected_output.c_str());
+        // Build flags.
+        if (!AnyStartsWith(flags, "-x"))
+          flags.push_back("-xc++");
+        flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
+        flags.push_back(path);
 
-      if (actual == expected) {
-        // std::cout << "[PASSED] " << path << std::endl;
-      } else {
-        if (!is_fail_allowed)
-          success = false;
-        DiffDocuments(path, expected_path, expected, actual);
-        std::cout << std::endl;
-        std::cout << std::endl;
-        if (enable_update) {
-          std::cout
-              << "[Enter to continue - type u to update test, a to update all]";
-          char c = 'u';
-          if (!update_all) {
-            c = getchar();
-            getchar();
+        // Run test.
+        g_config = std::make_unique<Config>();
+        FileConsumerSharedState file_consumer_shared;
+        PerformanceImportFile perf;
+        auto dbs = Parse(&file_consumer_shared, path, flags, {}, &perf, &index,
+                         false /*dump_ast*/);
+
+        for (const auto& entry : all_expected_output) {
+          const std::string& expected_path = entry.first;
+          std::string expected_output = text_replacer.Apply(entry.second);
+
+          // FIXME: promote to utils, find and remove duplicates (ie,
+          // ccls_call_tree.cc, maybe something in project.cc).
+          auto basename = [](const std::string& path) -> std::string {
+            size_t last_index = path.find_last_of('/');
+            if (last_index == std::string::npos)
+              return path;
+            return path.substr(last_index + 1);
+          };
+
+          // Get output from index operation.
+          IndexFile* db = FindDbForPathEnding(expected_path, dbs);
+          assert(db);
+          if (!db->diagnostics_.empty()) {
+            printf("For %s\n", path.c_str());
+            for (const lsDiagnostic& diagnostic : db->diagnostics_) {
+              printf("  ");
+              if (diagnostic.severity)
+                switch (*diagnostic.severity) {
+                case lsDiagnosticSeverity::Error:
+                  printf("error ");
+                  break;
+                case lsDiagnosticSeverity::Warning:
+                  printf("warning ");
+                  break;
+                case lsDiagnosticSeverity::Information:
+                  printf("information ");
+                  break;
+                case lsDiagnosticSeverity::Hint:
+                  printf("hint ");
+                  break;
+                }
+              printf("%s:%s-%s:%s\n", basename(db->path).c_str(),
+                     diagnostic.range.start.ToString().c_str(),
+                     diagnostic.range.end.ToString().c_str(),
+                     diagnostic.message.c_str());
+            }
           }
+          std::string actual_output = "{}";
+          if (db) {
+            VerifySerializeToFrom(db);
+            actual_output = db->ToString();
+          }
+          actual_output = text_replacer.Apply(actual_output);
 
-          if (c == 'a')
-            update_all = true;
+          // Compare output via rapidjson::Document to ignore any formatting
+          // differences.
+          rapidjson::Document actual;
+          actual.Parse(actual_output.c_str());
+          rapidjson::Document expected;
+          expected.Parse(expected_output.c_str());
 
-          if (update_all || c == 'u') {
-            // Note: we use |entry.second| instead of |expected_output| because
-            // |expected_output| has had text replacements applied.
-            UpdateTestExpectation(path, entry.second, ToString(actual) + "\n");
+          if (actual == expected) {
+            // std::cout << "[PASSED] " << path << std::endl;
+          } else {
+            if (!is_fail_allowed)
+              success = false;
+            DiffDocuments(path, expected_path, expected, actual);
+            puts("\n");
+            if (enable_update) {
+              printf(
+                  "[Enter to continue - type u to update test, a to update "
+                  "all]");
+              char c = 'u';
+              if (!update_all) {
+                c = getchar();
+                getchar();
+              }
+
+              if (c == 'a')
+                update_all = true;
+
+              if (update_all || c == 'u') {
+                // Note: we use |entry.second| instead of |expected_output|
+                // because
+                // |expected_output| has had text replacements applied.
+                UpdateTestExpectation(path, entry.second,
+                                      ToString(actual) + "\n");
+              }
+            }
           }
         }
-      }
-    }
-  }
+      });
 
   return success;
 }

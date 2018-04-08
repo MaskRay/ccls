@@ -42,7 +42,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 14014650769929566957,
+      "usr": 8534460107894911680,
       "detailed_name": "int x",
       "qual_name_offset": 4,
       "short_name": "x",

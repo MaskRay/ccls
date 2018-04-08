@@ -15,8 +15,8 @@ lsRange GetLsRangeForFixIt(const CXSourceRange& range) {
   unsigned int end_line, end_column;
   clang_getSpellingLocation(end, nullptr, &end_line, &end_column, nullptr);
 
-  return lsRange(lsPosition(start_line - 1, start_column - 1) /*start*/,
-                 lsPosition(end_line - 1, end_column) /*end*/);
+  return lsRange{lsPosition{int(start_line) - 1, int(start_column) - 1},
+                 lsPosition{int(end_line) - 1, int(end_column)}};
 }
 
 }  // namespace
@@ -59,8 +59,8 @@ std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
 
   // Build diagnostic.
   lsDiagnostic ls_diagnostic;
-  ls_diagnostic.range = lsRange(lsPosition(start_line - 1, start_column - 1),
-                                lsPosition(end_line - 1, end_column - 1));
+  ls_diagnostic.range = lsRange{{int(start_line) - 1, int(start_column) - 1},
+                                {int(end_line) - 1, int(end_column) - 1}};
 
   ls_diagnostic.message = ToString(clang_getDiagnosticSpelling(diagnostic));
 

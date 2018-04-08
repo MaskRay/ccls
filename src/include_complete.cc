@@ -1,10 +1,13 @@
 #include "include_complete.h"
 
+#include "filesystem.hh"
 #include "match.h"
 #include "platform.h"
 #include "project.h"
 #include "standard_includes.h"
 #include "timer.h"
+
+#include <thread>
 
 namespace {
 
@@ -112,7 +115,8 @@ void IncludeComplete::Rescan() {
                                           g_config->completion.includeBlacklist);
 
   is_scanning = true;
-  StartThread("scan_includes", [this]() {
+  new std::thread([this]() {
+                    SetThreadName("scan_includes");
     Timer timer;
 
     InsertStlIncludes();

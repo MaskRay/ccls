@@ -42,7 +42,7 @@ OUTPUT:
     }],
   "vars": [{
       "id": 0,
-      "usr": 8730439006497971620,
+      "usr": 4580260577538694711,
       "detailed_name": "Foo *p0",
       "qual_name_offset": 5,
       "short_name": "p0",
@@ -55,7 +55,7 @@ OUTPUT:
       "storage": 1
     }, {
       "id": 1,
-      "usr": 2525014371090380500,
+      "usr": 12071725611268840435,
       "detailed_name": "Foo *p1",
       "qual_name_offset": 5,
       "short_name": "p1",

@@ -2304,7 +2304,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
           if (ls_diagnostic.severity != lsDiagnosticSeverity::Error)
             continue;
           ls_diagnostic.range =
-              lsRange(lsPosition(line, 10), lsPosition(line, 10));
+              lsRange{lsPosition{line, 10}, lsPosition{line, 10}};
           param.primary_file->diagnostics_.push_back(ls_diagnostic);
           break;
         }

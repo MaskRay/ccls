@@ -25,7 +25,6 @@ class Reader {
 
   virtual bool IsBool() = 0;
   virtual bool IsNull() = 0;
-  virtual bool IsArray() = 0;
   virtual bool IsInt() = 0;
   virtual bool IsInt64() = 0;
   virtual bool IsUint64() = 0;
@@ -73,7 +72,6 @@ struct IndexFile;
 
 #define REFLECT_MEMBER_START() ReflectMemberStart(visitor, value)
 #define REFLECT_MEMBER_END() ReflectMemberEnd(visitor, value);
-#define REFLECT_MEMBER_END1(value) ReflectMemberEnd(visitor, value);
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
@@ -315,11 +313,6 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
 
 // ReflectMember
 
-inline void DefaultReflectMemberStart(Writer& visitor) {
-  visitor.StartObject();
-}
-inline void DefaultReflectMemberStart(Reader& visitor) {}
-
 template <typename T>
 bool ReflectMemberStart(Reader& visitor, T& value) {
   return false;
@@ -356,5 +349,3 @@ std::unique_ptr<IndexFile> Deserialize(
     const std::string& serialized_index_content,
     const std::string& file_content,
     std::optional<int> expected_version);
-
-void SetTestOutputMode();

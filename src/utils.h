@@ -4,7 +4,6 @@
 #include <string_view>
 
 #include <algorithm>
-#include <functional>
 #include <iterator>
 #include <memory>
 #include <string>
@@ -23,13 +22,6 @@ bool StartsWithAny(std::string_view s, const std::vector<std::string>& ps);
 bool EndsWithAny(std::string_view s, const std::vector<std::string>& ss);
 bool FindAnyPartial(const std::string& value,
                     const std::vector<std::string>& values);
-// Returns the dirname of |path|, i.e. "foo/bar.cc" => "foo", "foo" => ".",
-// "/foo" => "/".
-std::string GetDirName(std::string path);
-// Returns the basename of |path|, ie, "foo/bar.cc" => "bar.cc".
-std::string GetBaseName(const std::string& path);
-// Returns |path| without the filetype, ie, "foo/bar.cc" => "foo/bar".
-std::string StripFileType(const std::string& path);
 
 std::vector<std::string> SplitString(const std::string& str,
                                      const std::string& delimiter);
@@ -62,15 +54,6 @@ bool ContainsValue(const TCollection& collection, const TValue& value) {
   return collection.find(value) != collection.end();
 }
 
-// Finds all files in the given folder. This is recursive.
-std::vector<std::string> GetFilesInFolder(std::string folder,
-                                          bool recursive,
-                                          bool add_folder_to_path);
-void GetFilesInFolder(std::string folder,
-                      bool recursive,
-                      bool add_folder_to_path,
-                      const std::function<void(const std::string&)>& handler);
-
 // Ensures that |path| ends in a slash.
 void EnsureEndsInSlash(std::string& path);
 
@@ -78,22 +61,7 @@ void EnsureEndsInSlash(std::string& path);
 // e.g. foo/bar.c => foo_bar.c
 std::string EscapeFileName(std::string path);
 
-// FIXME: Move ReadContent into ICacheManager?
-bool FileExists(const std::string& filename);
 std::optional<std::string> ReadContent(const std::string& filename);
-std::vector<std::string> ReadFileLines(std::string filename);
-std::vector<std::string> ToLines(const std::string& content);
-
-struct TextReplacer {
-  struct Replacement {
-    std::string from;
-    std::string to;
-  };
-
-  std::vector<Replacement> replacements;
-
-  std::string Apply(const std::string& content);
-};
 
 void WriteToFile(const std::string& filename, const std::string& content);
 
@@ -149,5 +117,3 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest) {
   }
 
 std::string GetDefaultResourceDirectory();
-
-void StartThread(const std::string& thread_name, std::function<void()> entry);

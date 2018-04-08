@@ -158,19 +158,19 @@ std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root) {
 std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position) {
   if (!working_file)
-    return lsPosition(position.line, position.column);
+    return lsPosition{position.line, position.column};
 
   int column = position.column;
   if (std::optional<int> start =
           working_file->GetBufferPosFromIndexPos(position.line, &column, false))
-    return lsPosition(*start, column);
+    return lsPosition{*start, column};
   return std::nullopt;
 }
 
 std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location) {
   if (!working_file) {
-    return lsRange(lsPosition(location.start.line, location.start.column),
-                   lsPosition(location.end.line, location.end.column));
+    return lsRange{lsPosition{location.start.line, location.start.column},
+                   lsPosition{location.end.line, location.end.column}};
   }
 
   int start_column = location.start.column, end_column = location.end.column;
@@ -192,8 +192,8 @@ std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& locati
   if (*start == *end && start_column > end_column)
     end_column = start_column;
 
-  return lsRange(lsPosition(*start, start_column),
-                 lsPosition(*end, end_column));
+  return lsRange{lsPosition{*start, start_column},
+                 lsPosition{*end, end_column}};
 }
 
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
@@ -227,7 +227,7 @@ std::optional<lsLocation> GetLsLocation(QueryDatabase* db,
       GetLsRange(working_files->GetFileByFilename(path), use.range);
   if (!range)
     return std::nullopt;
-  return lsLocation(uri, *range);
+  return lsLocation{uri, *range};
 }
 
 std::optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,

@@ -1,6 +1,5 @@
 #include "utils.h"
 
-#include "filesystem.hh"
 #include "platform.h"
 
 #include <doctest/doctest.h>
@@ -12,12 +11,7 @@
 #include <errno.h>
 #include <string.h>
 #include <algorithm>
-#include <fstream>
 #include <functional>
-#include <queue>
-#include <sstream>
-#include <string>
-#include <thread>
 #include <unordered_map>
 using namespace std::placeholders;
 
@@ -83,26 +77,6 @@ bool FindAnyPartial(const std::string& value,
                      });
 }
 
-std::string GetDirName(std::string path) {
-  if (path.size() && path.back() == '/')
-    path.pop_back();
-  size_t last_slash = path.find_last_of('/');
-  if (last_slash == std::string::npos)
-    return ".";
-  if (last_slash == 0)
-    return "/";
-  return path.substr(0, last_slash);
-}
-
-std::string GetBaseName(const std::string& path) {
-  return fs::path(path).filename();
-}
-
-std::string StripFileType(const std::string& path) {
-  fs::path p(path);
-  return p.parent_path() / p.stem();
-}
-
 std::vector<std::string> SplitString(const std::string& str,
                                      const std::string& delimiter) {
   // http://stackoverflow.com/a/13172514
@@ -132,54 +106,6 @@ std::string LowerPathIfInsensitive(const std::string& path) {
 #endif
 }
 
-static void GetFilesInFolderHelper(
-    std::string folder,
-    bool recursive,
-    std::string output_prefix,
-    const std::function<void(const std::string&)>& handler) {
-  std::queue<std::pair<fs::path, fs::path>> q;
-  q.emplace(fs::path(folder), fs::path(output_prefix));
-  while (!q.empty()) {
-    for (auto it = fs::directory_iterator(q.front().first); it != fs::directory_iterator(); ++it) {
-      auto path = it->path();
-      std::string filename = path.filename();
-      if (filename[0] != '.' || filename == ".ccls") {
-        fs::file_status status = it->symlink_status();
-        if (fs::is_regular_file(status))
-          handler(q.front().second / filename);
-        else if (fs::is_directory(status) || fs::is_symlink(status)) {
-          if (recursive) {
-            std::string child_dir = q.front().second / filename;
-            if (fs::is_directory(status))
-              q.push(make_pair(path, child_dir));
-          }
-        }
-      }
-    }
-    q.pop();
-  }
-}
-
-std::vector<std::string> GetFilesInFolder(std::string folder,
-                                          bool recursive,
-                                          bool add_folder_to_path) {
-  EnsureEndsInSlash(folder);
-  std::vector<std::string> result;
-  GetFilesInFolderHelper(
-      folder, recursive, add_folder_to_path ? folder : "",
-      [&result](const std::string& path) { result.push_back(path); });
-  return result;
-}
-
-void GetFilesInFolder(std::string folder,
-                      bool recursive,
-                      bool add_folder_to_path,
-                      const std::function<void(const std::string&)>& handler) {
-  EnsureEndsInSlash(folder);
-  GetFilesInFolderHelper(folder, recursive, add_folder_to_path ? folder : "",
-                         handler);
-}
-
 void EnsureEndsInSlash(std::string& path) {
   if (path.empty() || path[path.size() - 1] != '/')
     path += '/';
@@ -195,10 +121,6 @@ std::string EscapeFileName(std::string path) {
   return path;
 }
 
-bool FileExists(const std::string& filename) {
-  return fs::exists(filename);
-}
-
 std::optional<std::string> ReadContent(const std::string& filename) {
   LOG_S(INFO) << "Reading " << filename;
   char buf[4096];
@@ -209,41 +131,6 @@ std::optional<std::string> ReadContent(const std::string& filename) {
   while ((n = fread(buf, 1, sizeof buf, f)) > 0)
     ret.append(buf, n);
   return ret;
-}
-
-std::vector<std::string> ReadFileLines(std::string filename) {
-  std::vector<std::string> result;
-  std::ifstream fin(filename);
-  for (std::string line; std::getline(fin, line);)
-    result.push_back(line);
-  return result;
-}
-
-std::vector<std::string> ToLines(const std::string& content) {
-  std::vector<std::string> result;
-  std::istringstream lines(content);
-  std::string line;
-  while (getline(lines, line))
-    result.push_back(line);
-  return result;
-}
-
-std::string TextReplacer::Apply(const std::string& content) {
-  std::string result = content;
-
-  for (const Replacement& replacement : replacements) {
-    while (true) {
-      size_t idx = result.find(replacement.from);
-      if (idx == std::string::npos)
-        break;
-
-      result.replace(result.begin() + idx,
-                     result.begin() + idx + replacement.from.size(),
-                     replacement.to);
-    }
-  }
-
-  return result;
 }
 
 void WriteToFile(const std::string& filename, const std::string& content) {
@@ -277,20 +164,4 @@ std::string GetDefaultResourceDirectory() {
   }
 
   return NormalizePath(result);
-}
-
-void StartThread(const std::string& thread_name, std::function<void()> entry) {
-  new std::thread([thread_name, entry]() {
-    SetCurrentThreadName(thread_name);
-    entry();
-  });
-}
-
-TEST_SUITE("StripFileType") {
-  TEST_CASE("all") {
-    REQUIRE(StripFileType("") == "");
-    REQUIRE(StripFileType("bar") == "bar");
-    REQUIRE(StripFileType("bar.cc") == "bar");
-    REQUIRE(StripFileType("foo/bar.cc") == "foo/bar");
-  }
 }

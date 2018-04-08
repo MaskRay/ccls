@@ -517,11 +517,12 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
             std::max(int(std::thread::hardware_concurrency() * 0.8), 1);
       }
       LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
-      for (int i = 0; i < g_config->index.threads; ++i) {
-        StartThread("indexer" + std::to_string(i), [=]() {
-          Indexer_Main(diag_engine, file_consumer_shared,
-                       timestamp_manager, import_manager,
-                       import_pipeline_status, project, working_files, waiter);
+      for (int i = 0; i < g_config->index.threads; i++) {
+        new std::thread([=]() {
+          SetThreadName("indexer" + std::to_string(i));
+          Indexer_Main(diag_engine, file_consumer_shared, timestamp_manager,
+                       import_manager, import_pipeline_status, project,
+                       working_files, waiter);
         });
       }
 
