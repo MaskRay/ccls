@@ -256,8 +256,7 @@ void WorkingFile::ComputeLineMapping() {
   // For index line i, set index_to_buffer[i] to -1 if line i is duplicated.
   int i = 0;
   for (auto& line : index_lines) {
-    std::string trimmed = Trim(line);
-    uint64_t h = HashUsr(trimmed);
+    uint64_t h = HashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;
@@ -274,8 +273,7 @@ void WorkingFile::ComputeLineMapping() {
   i = 0;
   hash_to_unique.clear();
   for (auto& line : buffer_lines) {
-    std::string trimmed = Trim(line);
-    uint64_t h = HashUsr(trimmed);
+    uint64_t h = HashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
       hash_to_unique[h] = i;

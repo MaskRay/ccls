@@ -41,7 +41,7 @@ struct Handler_TextDocumentDocumentSymbol
 
     for (SymbolRef sym : file->def->outline) {
       std::optional<lsSymbolInformation> info =
-          GetSymbolInfo(db, working_files, sym, true /*use_short_name*/);
+          GetSymbolInfo(db, working_files, sym, false);
       if (!info)
         continue;
       if (sym.kind == SymbolKind::Var) {

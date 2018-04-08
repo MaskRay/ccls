@@ -284,7 +284,7 @@ lsSymbolKind GetSymbolKind(QueryDatabase* db, SymbolIdx sym) {
 std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
                                             SymbolIdx sym,
-                                            bool use_short_name) {
+                                            bool detailed_name) {
   switch (sym.kind) {
     case SymbolKind::Invalid:
       break;
@@ -301,10 +301,10 @@ std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
     default: {
       lsSymbolInformation info;
       EachEntityDef(db, sym, [&](const auto& def) {
-        if (use_short_name)
-          info.name = def.Name(true);
-        else
+        if (detailed_name)
           info.name = def.detailed_name;
+        else
+          info.name = def.Name(true);
         info.kind = def.kind;
         info.containerName = def.detailed_name;
         return false;

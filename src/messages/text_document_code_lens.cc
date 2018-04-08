@@ -59,13 +59,10 @@ void AddCodeLens(const char* singular,
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
-  std::unordered_set<lsLocation> unique_uses;
+  std::vector<lsLocation> unique_uses;
   for (Use use1 : uses) {
-    std::optional<lsLocation> location =
-        GetLsLocation(common->db, common->working_files, use1);
-    if (!location)
-      continue;
-    unique_uses.insert(*location);
+    if (auto ls_loc = GetLsLocation(common->db, common->working_files, use1))
+      unique_uses.push_back(*ls_loc);
   }
   code_lens.command->arguments.locations.assign(unique_uses.begin(),
                                                 unique_uses.end());

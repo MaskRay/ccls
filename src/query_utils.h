@@ -46,7 +46,7 @@ std::vector<lsLocationEx> GetLsLocationExs(QueryDatabase* db,
 std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
                                             WorkingFiles* working_files,
                                             SymbolIdx sym,
-                                            bool use_short_name);
+                                            bool detailed_name);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,

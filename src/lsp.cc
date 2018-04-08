@@ -200,8 +200,6 @@ lsDocumentUri lsDocumentUri::FromPath(const std::string& path) {
   return result;
 }
 
-lsDocumentUri::lsDocumentUri() {}
-
 bool lsDocumentUri::operator==(const lsDocumentUri& other) const {
   return raw_uri == other.raw_uri;
 }

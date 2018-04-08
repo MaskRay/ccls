@@ -89,7 +89,6 @@ struct lsResponseError {
 struct lsDocumentUri {
   static lsDocumentUri FromPath(const std::string& path);
 
-  lsDocumentUri();
   bool operator==(const lsDocumentUri& other) const;
 
   void SetPath(const std::string& path);
@@ -97,7 +96,6 @@ struct lsDocumentUri {
 
   std::string raw_uri;
 };
-MAKE_HASHABLE(lsDocumentUri, t.raw_uri);
 
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, lsDocumentUri& value) {
@@ -115,7 +113,6 @@ struct lsPosition {
   }
   std::string ToString() const;
 };
-MAKE_HASHABLE(lsPosition, t.line, t.character);
 MAKE_REFLECT_STRUCT(lsPosition, line, character);
 
 struct lsRange {
@@ -128,7 +125,6 @@ struct lsRange {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
 };
-MAKE_HASHABLE(lsRange, t.start, t.end);
 MAKE_REFLECT_STRUCT(lsRange, start, end);
 
 struct lsLocation {
@@ -142,7 +138,6 @@ struct lsLocation {
                                            : range < o.range;
   }
 };
-MAKE_HASHABLE(lsLocation, t.uri, t.range);
 MAKE_REFLECT_STRUCT(lsLocation, uri, range);
 
 enum class lsSymbolKind : uint8_t {
@@ -358,11 +353,13 @@ MAKE_REFLECT_STRUCT(lsTextDocumentDidChangeParams,
 // Show a message to the user.
 enum class lsMessageType : int { Error = 1, Warning = 2, Info = 3, Log = 4 };
 MAKE_REFLECT_TYPE_PROXY(lsMessageType)
+
 struct Out_ShowLogMessageParams {
   lsMessageType type = lsMessageType::Error;
   std::string message;
 };
 MAKE_REFLECT_STRUCT(Out_ShowLogMessageParams, type, message);
+
 struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
   enum class DisplayType { Show, Log };
   DisplayType display_type = DisplayType::Show;
@@ -370,6 +367,7 @@ struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
   std::string method();
   Out_ShowLogMessageParams params;
 };
+
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
   REFLECT_MEMBER_START();

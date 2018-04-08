@@ -9,6 +9,8 @@
 
 #include <algorithm>
 
+MAKE_HASHABLE(SymbolIdx, t.kind, t.id);
+
 namespace {
 
 struct Out_CclsSetInactiveRegion
