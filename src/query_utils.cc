@@ -318,21 +318,20 @@ std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
-                                             lsPosition position) {
+                                             lsPosition& ls_pos) {
   std::vector<SymbolRef> symbols;
-  symbols.reserve(1);
-
-  int target_line = position.line;
-  int target_column = position.character;
   if (working_file) {
-    std::optional<int> index_line = working_file->GetIndexPosFromBufferPos(
-        target_line, &target_column, false);
-    if (index_line)
-      target_line = *index_line;
+    if (auto line = working_file->GetIndexPosFromBufferPos(
+        ls_pos.line, &ls_pos.character, false)) {
+      ls_pos.line = *line;
+    } else {
+      ls_pos.line = -1;
+      return {};
+    }
   }
 
   for (const SymbolRef& sym : file->def->all_symbols) {
-    if (sym.range.Contains(target_line, target_column))
+    if (sym.range.Contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
   }
 

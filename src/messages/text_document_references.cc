@@ -45,26 +45,25 @@ struct Handler_TextDocumentReferences
   MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(In_TextDocumentReferences* request) override {
+    auto& params = request->params;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file)) {
+                        params.textDocument.uri.GetPath(), &file))
       return;
-    }
 
-    WorkingFile* working_file =
+    WorkingFile* wfile =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentReferences out;
     out.id = request->id;
     bool container = g_config->xref.container;
 
-    for (const SymbolRef& sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
+    for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position)) {
       // Found symbol. Return references.
       EachOccurrenceWithParent(
-          db, sym, request->params.context.includeDeclaration,
+          db, sym, params.context.includeDeclaration,
           [&](Use use, lsSymbolKind parent_kind) {
-            if (use.role & request->params.context.role)
+            if (use.role & params.context.role)
               if (std::optional<lsLocationEx> ls_loc =
                       GetLsLocationEx(db, working_files, use, container)) {
                 if (container)
@@ -75,24 +74,32 @@ struct Handler_TextDocumentReferences
       break;
     }
 
-    if (out.result.empty())
+    if (out.result.empty()) {
+      // |path| is the #include line. If the cursor is not on such line but line
+      // = 0,
+      // use the current filename.
+      std::string path;
+      if (params.position.line == 0)
+        path = file->def->path;
       for (const IndexInclude& include : file->def->includes)
-        if (include.line == request->params.position.line) {
-          // |include| is the line the cursor is on.
-          for (QueryFile& file1 : db->files)
-            if (file1.def)
-              for (const IndexInclude& include1 : file1.def->includes)
-                if (include1.resolved_path == include.resolved_path) {
-                  // Another file |file1| has the same include line.
-                  lsLocationEx result;
-                  result.uri = lsDocumentUri::FromPath(file1.def->path);
-                  result.range.start.line = result.range.end.line =
-                      include1.line;
-                  out.result.push_back(std::move(result));
-                  break;
-                }
+        if (include.line == params.position.line) {
+          path = include.resolved_path;
           break;
         }
+      if (path.size())
+        for (QueryFile& file1 : db->files)
+          if (file1.def)
+            for (const IndexInclude& include : file1.def->includes)
+              if (include.resolved_path == path) {
+                // Another file |file1| has the same include line.
+                lsLocationEx result;
+                result.uri = lsDocumentUri::FromPath(file1.def->path);
+                result.range.start.line = result.range.end.line =
+                  include.line;
+                out.result.push_back(std::move(result));
+                break;
+              }
+    }
 
     if ((int)out.result.size() >= g_config->xref.maxNum)
       out.result.resize(g_config->xref.maxNum);
