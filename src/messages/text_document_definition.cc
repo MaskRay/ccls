@@ -105,7 +105,8 @@ struct Handler_TextDocumentDefinition
         if (uses.empty() && on_def)
           uses.push_back(*on_def);
       }
-      AddRange(&out.result, GetLsLocationExs(db, working_files, uses));
+      auto locs = GetLsLocationExs(db, working_files, uses);
+      out.result.insert(out.result.end(), locs.begin(), locs.end());
       if (!out.result.empty())
         break;
     }

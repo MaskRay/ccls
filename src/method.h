@@ -15,7 +15,7 @@ extern MethodType kMethodType_CclsPublishSemanticHighlighting;
 using lsRequestId = std::variant<std::monostate, int64_t, std::string>;
 
 struct InMessage {
-  virtual ~InMessage();
+  virtual ~InMessage() = default;
 
   virtual MethodType GetMethodType() const = 0;
   virtual lsRequestId GetRequestId() const = 0;
@@ -24,10 +24,14 @@ struct InMessage {
 struct RequestInMessage : public InMessage {
   // number or string, actually no null
   lsRequestId id;
-  lsRequestId GetRequestId() const override;
+  lsRequestId GetRequestId() const override {
+    return id;
+  }
 };
 
 // NotificationInMessage does not have |id|.
 struct NotificationInMessage : public InMessage {
-  lsRequestId GetRequestId() const override;
+  lsRequestId GetRequestId() const override {
+    return std::monostate();
+  }
 };

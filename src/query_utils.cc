@@ -47,8 +47,8 @@ Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym) {
 Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym) {
   // Used to jump to file.
   if (sym.kind == SymbolKind::File)
-    return Use(Range(Position(0, 0), Position(0, 0)), sym.id, sym.kind,
-               Role::None, QueryFileId(sym.id));
+    return Use(Range{{0, 0}, {0, 0}}, sym.id, sym.kind, Role::None,
+               QueryFileId(sym.id));
   Maybe<Use> ret;
   EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.extent); });
   return ret;
@@ -126,7 +126,7 @@ std::vector<Use> GetUsesForAllBases(QueryDatabase* db, QueryFunc& root) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
           stack.push_back(&func1);
-          AddRange(&ret, func1.uses);
+          ret.insert(ret.end(), func1.uses.begin(), func1.uses.end());
         }
       });
     }
@@ -147,7 +147,7 @@ std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root) {
       if (!seen.count(func1.usr)) {
         seen.insert(func1.usr);
         stack.push_back(&func1);
-        AddRange(&ret, func1.uses);
+        ret.insert(ret.end(), func1.uses.begin(), func1.uses.end());
       }
     });
   }

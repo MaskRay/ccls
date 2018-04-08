@@ -9,6 +9,7 @@
 
 #include <loguru.hpp>
 
+#include <inttypes.h>
 #include <limits.h>
 #include <algorithm>
 #include <cassert>
@@ -280,7 +281,7 @@ struct ConstructorCache {
 struct IndexParam {
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
-  FileContentsMap file_contents;
+  std::unordered_map<std::string, FileContents> file_contents;
   std::unordered_map<std::string, int64_t> file_modification_times;
 
   // Only use this when strictly needed (ie, primary translation unit is
@@ -729,7 +730,10 @@ IndexTypeId IndexFile::ToTypeId(Usr usr) {
     return it->second;
 
   IndexTypeId id(types.size());
-  types.push_back(IndexType(id, usr));
+  IndexType type;
+  type.usr = usr;
+  type.id = id;
+  types.push_back(type);
   id_cache.usr_to_type_id[usr] = id;
   id_cache.type_id_to_usr[id] = usr;
   return id;
@@ -740,7 +744,10 @@ IndexFuncId IndexFile::ToFuncId(Usr usr) {
     return it->second;
 
   IndexFuncId id(funcs.size());
-  funcs.push_back(IndexFunc(id, usr));
+  IndexFunc func;
+  func.usr = usr;
+  func.id = id;
+  funcs.push_back(std::move(func));
   id_cache.usr_to_func_id[usr] = id;
   id_cache.func_id_to_usr[id] = usr;
   return id;
@@ -751,7 +758,10 @@ IndexVarId IndexFile::ToVarId(Usr usr) {
     return it->second;
 
   IndexVarId id(vars.size());
-  vars.push_back(IndexVar(id, usr));
+  IndexVar var;
+  var.usr = usr;
+  var.id = id;
+  vars.push_back(std::move(var));
   id_cache.usr_to_var_id[usr] = id;
   id_cache.var_id_to_usr[id] = usr;
   return id;
@@ -783,8 +793,6 @@ std::string IndexFile::ToString() {
   return Serialize(SerializeFormat::Json, *this);
 }
 
-IndexType::IndexType(IndexTypeId id, Usr usr) : usr(usr), id(id) {}
-
 template <typename T>
 void Uniquify(std::vector<Id<T>>& ids) {
   std::unordered_set<Id<T>> seen;
@@ -796,11 +804,19 @@ void Uniquify(std::vector<Id<T>>& ids) {
 }
 
 void Uniquify(std::vector<Use>& uses) {
-  std::unordered_set<Range> seen;
+  union U {
+    Range range = {};
+    uint64_t u64;
+  };
+  static_assert(sizeof(Range) == 8);
+  std::unordered_set<uint64_t> seen;
   size_t n = 0;
-  for (size_t i = 0; i < uses.size(); i++)
-    if (seen.insert(uses[i].range).second)
+  for (size_t i = 0; i < uses.size(); i++) {
+    U u;
+    u.range = uses[i].range;
+    if (seen.insert(u.u64).second)
       uses[n++] = uses[i];
+  }
   uses.resize(n);
 }
 
@@ -2343,10 +2359,6 @@ void IndexInit() {
     clang_toggleCrashRecovery(1);
 }
 
-std::string GetClangVersion() {
-  return ToString(clang_getClangVersion());
-}
-
 // |SymbolRef| is serialized this way.
 // |Use| also uses this though it has an extra field |file|,
 // which is not used by Index* so it does not need to be serialized.
@@ -2354,7 +2366,7 @@ void Reflect(Reader& visitor, Reference& value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string t = visitor.GetString();
     char* s = const_cast<char*>(t.c_str());
-    value.range = Range(s);
+    value.range = Range::FromString(s);
     s = strchr(s, '|');
     value.id.id = RawId(strtol(s + 1, &s, 10));
     value.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
@@ -2368,12 +2380,13 @@ void Reflect(Reader& visitor, Reference& value) {
 }
 void Reflect(Writer& visitor, Reference& value) {
   if (visitor.Format() == SerializeFormat::Json) {
-    std::string s = value.range.ToString();
     // RawId(-1) -> "-1"
-    s += '|' + std::to_string(
-                   static_cast<std::make_signed<RawId>::type>(value.id.id));
-    s += '|' + std::to_string(int(value.kind));
-    s += '|' + std::to_string(int(value.role));
+    char buf[99];
+    snprintf(buf, sizeof buf, "%s|%" PRId32 "|%d|%d",
+             value.range.ToString().c_str(),
+             static_cast<std::make_signed<RawId>::type>(value.id.id),
+             int(value.kind), int(value.role));
+    std::string s(buf);
     Reflect(visitor, s);
   } else {
     Reflect(visitor, value.range);

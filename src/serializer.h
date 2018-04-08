@@ -231,7 +231,7 @@ void ReflectMember(Writer& visitor, const char* name, std::optional<T>& value) {
 // The same as std::optional
 template <typename T>
 void ReflectMember(Writer& visitor, const char* name, Maybe<T>& value) {
-  if (value.HasValue() || visitor.Format() != SerializeFormat::Json) {
+  if (value.Valid() || visitor.Format() != SerializeFormat::Json) {
     visitor.Key(name);
     Reflect(visitor, value);
   }

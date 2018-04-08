@@ -11,13 +11,29 @@
 #include <cassert>
 #include <cstdint>
 #include <functional>
+#include <iterator>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 // TODO: Make all copy constructors explicit.
 
+// Used by |HANDLE_MERGEABLE| so only |range| is needed.
+MAKE_HASHABLE(Range, t.start, t.end);
+MAKE_HASHABLE(Use, t.range);
+
 namespace {
+
+template <typename T>
+void AddRange(std::vector<T>* dest, const std::vector<T>& to_add) {
+  dest->insert(dest->end(), to_add.begin(), to_add.end());
+}
+
+template <typename T>
+void AddRange(std::vector<T>* dest, std::vector<T>&& to_add) {
+  dest->insert(dest->end(), std::make_move_iterator(to_add.begin()),
+               std::make_move_iterator(to_add.end()));
+}
 
 template <typename T>
 void RemoveRange(std::vector<T>* dest, const std::vector<T>& to_remove) {
@@ -897,7 +913,7 @@ void QueryDatabase::ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates) {
 void QueryDatabase::UpdateSymbols(Maybe<Id<void>>* symbol_idx,
                                   SymbolKind kind,
                                   Id<void> idx) {
-  if (!symbol_idx->HasValue()) {
+  if (!symbol_idx->Valid()) {
     *symbol_idx = Id<void>(symbols.size());
     symbols.push_back(SymbolIdx{idx, kind});
   }
@@ -927,256 +943,4 @@ std::string_view QueryDatabase::GetSymbolName(RawId symbol_idx,
       break;
   }
   return "";
-}
-
-TEST_SUITE("query") {
-  IndexUpdate GetDelta(IndexFile previous, IndexFile current) {
-    QueryDatabase db;
-    IdMap previous_map(&db, previous.id_cache);
-    IdMap current_map(&db, current.id_cache);
-    return IndexUpdate::CreateDelta(&previous_map, &current_map, &previous,
-                                    &current);
-  }
-
-  TEST_CASE("remove defs") {
-    IndexFile previous("foo.cc", "<empty>");
-    IndexFile current("foo.cc", "<empty>");
-
-    previous.Resolve(previous.ToTypeId(HashUsr("usr1")))->def.spell =
-        Use(Range(Position(1, 0)), {}, {}, {}, {});
-    previous.Resolve(previous.ToFuncId(HashUsr("usr2")))->def.spell =
-        Use(Range(Position(2, 0)), {}, {}, {}, {});
-    previous.Resolve(previous.ToVarId(HashUsr("usr3")))->def.spell =
-        Use(Range(Position(3, 0)), {}, {}, {}, {});
-
-    IndexUpdate update = GetDelta(previous, current);
-
-    REQUIRE(update.types_removed == std::vector<Usr>{HashUsr("usr1")});
-    REQUIRE(update.funcs_removed.size() == 1);
-    REQUIRE(update.funcs_removed[0].usr == HashUsr("usr2"));
-    REQUIRE(update.vars_removed.size() == 1);
-    REQUIRE(update.vars_removed[0].usr == HashUsr("usr3"));
-  }
-
-  TEST_CASE("do not remove ref-only defs") {
-    IndexFile previous("foo.cc", "<empty>");
-    IndexFile current("foo.cc", "<empty>");
-
-    previous.Resolve(previous.ToTypeId(HashUsr("usr1")))
-        ->uses.push_back(Use{Range(Position(1, 0)), {}, {}, {}, {}});
-    previous.Resolve(previous.ToFuncId(HashUsr("usr2")))
-        ->uses.push_back(Use(Range(Position(2, 0)), {}, {}, {}, {}));
-    previous.Resolve(previous.ToVarId(HashUsr("usr3")))
-        ->uses.push_back(Use(Range(Position(3, 0)), {}, {}, {}, {}));
-
-    IndexUpdate update = GetDelta(previous, current);
-
-    REQUIRE(update.types_removed == std::vector<Usr>{});
-    REQUIRE(update.funcs_removed.empty());
-    REQUIRE(update.vars_removed.empty());
-  }
-
-  TEST_CASE("func callers") {
-    IndexFile previous("foo.cc", "<empty>");
-    IndexFile current("foo.cc", "<empty>");
-
-    IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
-    IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
-
-    pf->uses.push_back(Use(Range(Position(1, 0)), {}, {}, {}, {}));
-    cf->uses.push_back(Use(Range(Position(2, 0)), {}, {}, {}, {}));
-
-    IndexUpdate update = GetDelta(previous, current);
-
-    REQUIRE(update.funcs_removed.empty());
-    REQUIRE(update.funcs_uses.size() == 1);
-    REQUIRE(update.funcs_uses[0].id == QueryFuncId(0));
-    REQUIRE(update.funcs_uses[0].to_remove.size() == 1);
-    REQUIRE(update.funcs_uses[0].to_remove[0].range == Range(Position(1, 0)));
-    REQUIRE(update.funcs_uses[0].to_add.size() == 1);
-    REQUIRE(update.funcs_uses[0].to_add[0].range == Range(Position(2, 0)));
-  }
-
-  TEST_CASE("type usages") {
-    IndexFile previous("foo.cc", "<empty>");
-    IndexFile current("foo.cc", "<empty>");
-
-    IndexType* pt = previous.Resolve(previous.ToTypeId(HashUsr("usr")));
-    IndexType* ct = current.Resolve(current.ToTypeId(HashUsr("usr")));
-
-    pt->uses.push_back(Use(Range(Position(1, 0)), {}, {}, {}, {}));
-    ct->uses.push_back(Use(Range(Position(2, 0)), {}, {}, {}, {}));
-
-    IndexUpdate update = GetDelta(previous, current);
-
-    REQUIRE(update.types_removed == std::vector<Usr>{});
-    REQUIRE(update.types_def_update.empty());
-    REQUIRE(update.types_uses.size() == 1);
-    REQUIRE(update.types_uses[0].to_remove.size() == 1);
-    REQUIRE(update.types_uses[0].to_remove[0].range == Range(Position(1, 0)));
-    REQUIRE(update.types_uses[0].to_add.size() == 1);
-    REQUIRE(update.types_uses[0].to_add[0].range == Range(Position(2, 0)));
-  }
-
-  TEST_CASE("apply delta") {
-    IndexFile previous("foo.cc", "<empty>");
-    IndexFile current("foo.cc", "<empty>");
-
-    IndexFunc* pf = previous.Resolve(previous.ToFuncId(HashUsr("usr")));
-    IndexFunc* cf = current.Resolve(current.ToFuncId(HashUsr("usr")));
-    pf->uses.push_back(Use(Range(Position(1, 0)), {}, {}, {}, {}));
-    pf->uses.push_back(Use(Range(Position(2, 0)), {}, {}, {}, {}));
-    cf->uses.push_back(Use(Range(Position(4, 0)), {}, {}, {}, {}));
-    cf->uses.push_back(Use(Range(Position(5, 0)), {}, {}, {}, {}));
-
-    QueryDatabase db;
-    IdMap previous_map(&db, previous.id_cache);
-    IdMap current_map(&db, current.id_cache);
-    REQUIRE(db.funcs.size() == 1);
-
-    IndexUpdate import_update =
-        IndexUpdate::CreateDelta(nullptr, &previous_map, nullptr, &previous);
-    IndexUpdate delta_update = IndexUpdate::CreateDelta(
-        &previous_map, &current_map, &previous, &current);
-
-    db.ApplyIndexUpdate(&import_update);
-    REQUIRE(db.funcs[0].uses.size() == 2);
-    REQUIRE(db.funcs[0].uses[0].range == Range(Position(1, 0)));
-    REQUIRE(db.funcs[0].uses[1].range == Range(Position(2, 0)));
-
-    db.ApplyIndexUpdate(&delta_update);
-    REQUIRE(db.funcs[0].uses.size() == 2);
-    REQUIRE(db.funcs[0].uses[0].range == Range(Position(4, 0)));
-    REQUIRE(db.funcs[0].uses[1].range == Range(Position(5, 0)));
-  }
-
-  TEST_CASE("Remove variable with usage") {
-    auto load_index_from_json = [](const char* json) {
-      return Deserialize(SerializeFormat::Json, "foo.cc", json, "<empty>",
-                         std::nullopt);
-    };
-
-    auto previous = load_index_from_json(R"RAW(
-{
-  "types": [
-    {
-      "id": 0,
-      "usr": 17,
-      "detailed_name": "",
-      "short_name_offset": 0,
-      "short_name_size": 0,
-      "kind": 0,
-      "hover": "",
-      "comments": "",
-      "parents": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [
-        0
-      ],
-      "uses": []
-    }
-  ],
-  "funcs": [
-    {
-      "id": 0,
-      "usr": 4259594751088586730,
-      "detailed_name": "void foo()",
-      "short_name_offset": 5,
-      "short_name_size": 3,
-      "kind": 12,
-      "storage": 1,
-      "hover": "",
-      "comments": "",
-      "declarations": [],
-      "spell": "1:6-1:9|-1|1|2",
-      "extent": "1:1-4:2|-1|1|0",
-      "base": [],
-      "derived": [],
-      "locals": [],
-      "uses": [],
-      "callees": []
-    }
-  ],
-  "vars": [
-    {
-      "id": 0,
-      "usr": 16837348799350457167,
-      "detailed_name": "int a",
-      "short_name_offset": 4,
-      "short_name_size": 1,
-      "hover": "",
-      "comments": "",
-      "declarations": [],
-      "spell": "2:7-2:8|0|3|2",
-      "extent": "2:3-2:8|0|3|2",
-      "type": 0,
-      "uses": [
-        "3:3-3:4|0|3|4"
-      ],
-      "kind": 13,
-      "storage": 1
-    }
-  ]
-}
-    )RAW");
-
-    auto current = load_index_from_json(R"RAW(
-{
-  "types": [],
-  "funcs": [
-    {
-      "id": 0,
-      "usr": 4259594751088586730,
-      "detailed_name": "void foo()",
-      "short_name_offset": 5,
-      "short_name_size": 3,
-      "kind": 12,
-      "storage": 1,
-      "hover": "",
-      "comments": "",
-      "declarations": [],
-      "spell": "1:6-1:9|-1|1|2",
-      "extent": "1:1-5:2|-1|1|0",
-      "base": [],
-      "derived": [],
-      "locals": [],
-      "uses": [],
-      "callees": []
-    }
-  ],
-  "vars": []
-}
-    )RAW");
-
-    // Validate previous/current were parsed.
-    REQUIRE(previous->vars.size() == 1);
-    REQUIRE(current->vars.size() == 0);
-
-    QueryDatabase db;
-
-    // Apply initial file.
-    {
-      IdMap previous_map(&db, previous->id_cache);
-      IndexUpdate import_update = IndexUpdate::CreateDelta(
-          nullptr, &previous_map, nullptr, previous.get());
-      db.ApplyIndexUpdate(&import_update);
-    }
-
-    REQUIRE(db.vars.size() == 1);
-    REQUIRE(db.vars[0].uses.size() == 1);
-
-    // Apply change.
-    {
-      IdMap previous_map(&db, previous->id_cache);
-      IdMap current_map(&db, current->id_cache);
-      IndexUpdate delta_update = IndexUpdate::CreateDelta(
-          &previous_map, &current_map, previous.get(), current.get());
-      db.ApplyIndexUpdate(&delta_update);
-    }
-    REQUIRE(db.vars.size() == 1);
-    REQUIRE(db.vars[0].uses.size() == 0);
-  }
 }

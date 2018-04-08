@@ -229,16 +229,17 @@ IndexFile* FindDbForPathEnding(
 
 bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   gTestOutputMode = true;
+  std::string version = ToString(clang_getClangVersion());
 
   // Index tests change based on the version of clang used.
   static const char kRequiredClangVersion[] =
       "clang version 6.0.0 (tags/RELEASE_600/final)";
-  if (GetClangVersion() != kRequiredClangVersion &&
-      GetClangVersion().find("trunk") == std::string::npos) {
+  if (version != kRequiredClangVersion &&
+      version.find("trunk") == std::string::npos) {
     fprintf(stderr,
             "Index tests must be run using clang version %s, ccls is running "
             "with %s\n",
-            kRequiredClangVersion, GetClangVersion().c_str());
+            kRequiredClangVersion, version.c_str());
     return false;
   }
 

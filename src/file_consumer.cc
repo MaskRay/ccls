@@ -9,8 +9,9 @@
 
 namespace {
 
-std::optional<std::string> GetFileContents(const std::string& path,
-                                      FileContentsMap* file_contents) {
+std::optional<std::string> GetFileContents(
+    const std::string& path,
+    std::unordered_map<std::string, FileContents>* file_contents) {
   auto it = file_contents->find(path);
   if (it == file_contents->end()) {
     std::optional<std::string> content = ReadContent(path);
@@ -26,6 +27,34 @@ std::optional<std::string> GetFileContents(const std::string& path,
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
   return a.data[0] == b.data[0] && a.data[1] == b.data[1] &&
          a.data[2] == b.data[2];
+}
+
+FileContents::FileContents() : line_offsets_{0} {}
+
+FileContents::FileContents(const std::string& path, const std::string& content)
+    : path(path), content(content) {
+  line_offsets_.push_back(0);
+  for (size_t i = 0; i < content.size(); i++) {
+    if (content[i] == '\n')
+      line_offsets_.push_back(i + 1);
+  }
+}
+
+std::optional<int> FileContents::ToOffset(Position p) const {
+  if (0 <= p.line && size_t(p.line) < line_offsets_.size()) {
+    int ret = line_offsets_[p.line] + p.column;
+    if (size_t(ret) < content.size())
+      return ret;
+  }
+  return std::nullopt;
+}
+
+std::optional<std::string> FileContents::ContentsInRange(Range range) const {
+  std::optional<int> start_offset = ToOffset(range.start),
+                end_offset = ToOffset(range.end);
+  if (start_offset && end_offset && *start_offset < *end_offset)
+    return content.substr(*start_offset, *end_offset - *start_offset);
+  return std::nullopt;
 }
 
 bool FileConsumerSharedState::Mark(const std::string& file) {
@@ -44,9 +73,10 @@ FileConsumer::FileConsumer(FileConsumerSharedState* shared_state,
                            const std::string& parse_file)
     : shared_(shared_state), parse_file_(parse_file) {}
 
-IndexFile* FileConsumer::TryConsumeFile(CXFile file,
-                                        bool* is_first_ownership,
-                                        FileContentsMap* file_contents_map) {
+IndexFile* FileConsumer::TryConsumeFile(
+    CXFile file,
+    bool* is_first_ownership,
+    std::unordered_map<std::string, FileContents>* file_contents_map) {
   assert(is_first_ownership);
 
   CXFileUniqueID file_id;
