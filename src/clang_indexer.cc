@@ -717,7 +717,7 @@ const int IndexFile::kMajorVersion = 15;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
-    : id_cache(path), path(path), file_contents(contents) {}
+    : id_cache{path}, path(path), file_contents(contents) {}
 
 IndexTypeId IndexFile::ToTypeId(Usr usr) {
   auto it = id_cache.usr_to_type_id.find(usr);
@@ -843,9 +843,6 @@ void AddUseSpell(IndexFile* db, std::vector<Use>& uses, ClangCursor cursor) {
   AddUse(db, uses, cursor.get_spell(), cursor.get_lexical_parent().cx_cursor);
 }
 
-IdCache::IdCache(const std::string& primary_file)
-    : primary_file(primary_file) {}
-
 void OnIndexDiagnostic(CXClientData client_data,
                        CXDiagnosticSet diagnostics,
                        void* reserved) {
@@ -901,24 +898,6 @@ CXIdxClientFile OnIndexIncludedFile(CXClientData client_data,
     db->includes.push_back(include);
 
   return nullptr;
-}
-
-ClangCursor::VisitResult DumpVisitor(ClangCursor cursor,
-                                     ClangCursor parent,
-                                     int* level) {
-  fprintf(stderr, "%*s%s %s\n", *level * 2, "",
-          ToString(cursor.get_kind()).c_str(), cursor.get_spell_name().c_str());
-
-  *level += 1;
-  cursor.VisitChildren(&DumpVisitor, level);
-  *level -= 1;
-
-  return ClangCursor::VisitResult::Continue;
-}
-
-void Dump(ClangCursor cursor) {
-  int level = 0;
-  cursor.VisitChildren(&DumpVisitor, &level);
 }
 
 struct FindChildOfKindParam {
@@ -2191,8 +2170,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
-    ClangIndex* index,
-    bool dump_ast) {
+    ClangIndex* index) {
   if (!g_config->index.enabled)
     return {};
 
@@ -2217,9 +2195,6 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     return {};
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
-
-  if (dump_ast)
-    Dump(clang_getTranslationUnitCursor(tu->cx_tu));
 
   return ParseWithTu(file_consumer_shared, perf, tu.get(), index, file,
                      args, unsaved_files);

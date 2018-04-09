@@ -402,8 +402,6 @@ struct IdCache {
   std::unordered_map<IndexTypeId, Usr> type_id_to_usr;
   std::unordered_map<IndexFuncId, Usr> func_id_to_usr;
   std::unordered_map<IndexVarId, Usr> var_id_to_usr;
-
-  IdCache(const std::string& primary_file);
 };
 
 struct IndexInclude {
@@ -484,8 +482,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
-    ClangIndex* index,
-    bool dump_ast = false);
+    ClangIndex* index);
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     FileConsumerSharedState* file_consumer_shared,
     PerformanceImportFile* perf,

@@ -22,6 +22,49 @@
 MAKE_HASHABLE(Range, t.start, t.end);
 MAKE_HASHABLE(Use, t.range);
 
+template <typename TVisitor, typename TId, typename TValue>
+void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(id);
+  REFLECT_MEMBER(to_add);
+  REFLECT_MEMBER(to_remove);
+  REFLECT_MEMBER_END();
+}
+
+template <typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, WithUsr<T>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(usr);
+  REFLECT_MEMBER(value);
+  REFLECT_MEMBER_END();
+}
+
+template <typename TVisitor, typename T>
+void Reflect(TVisitor& visitor, WithFileContent<T>& value) {
+  REFLECT_MEMBER_START();
+  REFLECT_MEMBER(value);
+  REFLECT_MEMBER(file_content);
+  REFLECT_MEMBER_END();
+}
+
+// NOTICE: We're not reflecting on files_removed or files_def_update, it is too
+// much output when logging
+MAKE_REFLECT_STRUCT(IndexUpdate,
+                    types_removed,
+                    types_def_update,
+                    types_derived,
+                    types_instances,
+                    types_uses,
+                    funcs_removed,
+                    funcs_def_update,
+                    funcs_declarations,
+                    funcs_derived,
+                    funcs_uses,
+                    vars_removed,
+                    vars_def_update,
+                    vars_declarations,
+                    vars_uses);
+
 namespace {
 
 template <typename T>
@@ -414,7 +457,7 @@ Maybe<QueryVarId> QueryDatabase::GetQueryVarIdFromUsr(Usr usr) {
 }
 
 IdMap::IdMap(QueryDatabase* query_db, const IdCache& local_ids)
-    : local_ids(local_ids) {
+    : local_ids{local_ids} {
   // LOG_S(INFO) << "Creating IdMap for " << local_ids.primary_file;
   primary_file =
       *GetQueryFileIdFromPath(query_db, local_ids.primary_file, true);
