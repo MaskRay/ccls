@@ -2,6 +2,16 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 
+MAKE_REFLECT_STRUCT(QueryFile::Def,
+                    file,
+                    path,
+                    args,
+                    language,
+                    outline,
+                    all_symbols,
+                    inactive_regions,
+                    dependencies);
+
 namespace {
 MethodType kMethodType = "$ccls/fileInfo";
 

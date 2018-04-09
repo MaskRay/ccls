@@ -46,14 +46,6 @@ struct MergeableUpdate {
                   std::vector<TValue>&& to_remove)
       : id(id), to_add(std::move(to_add)), to_remove(std::move(to_remove)) {}
 };
-template <typename TVisitor, typename TId, typename TValue>
-void Reflect(TVisitor& visitor, MergeableUpdate<TId, TValue>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(id);
-  REFLECT_MEMBER(to_add);
-  REFLECT_MEMBER(to_remove);
-  REFLECT_MEMBER_END();
-}
 
 template <typename T>
 struct WithUsr {
@@ -63,13 +55,6 @@ struct WithUsr {
   WithUsr(Usr usr, const T& value) : usr(usr), value(value) {}
   WithUsr(Usr usr, T&& value) : usr(usr), value(std::move(value)) {}
 };
-template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, WithUsr<T>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
-  REFLECT_MEMBER(value);
-  REFLECT_MEMBER_END();
-}
 
 template <typename T>
 struct WithFileContent {
@@ -79,13 +64,6 @@ struct WithFileContent {
   WithFileContent(const T& value, const std::string& file_content)
       : value(value), file_content(file_content) {}
 };
-template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, WithFileContent<T>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(value);
-  REFLECT_MEMBER(file_content);
-  REFLECT_MEMBER_END();
-}
 
 struct QueryFamily {
   using FileId = Id<QueryFile>;
@@ -124,15 +102,6 @@ struct QueryFile {
     def->path = path;
   }
 };
-MAKE_REFLECT_STRUCT(QueryFile::Def,
-                    file,
-                    path,
-                    args,
-                    language,
-                    outline,
-                    all_symbols,
-                    inactive_regions,
-                    dependencies);
 
 template <typename Q, typename QDef>
 struct QueryEntity {
@@ -239,23 +208,6 @@ struct IndexUpdate {
               IndexFile& previous,
               IndexFile& current);
 };
-// NOTICE: We're not reflecting on files_removed or files_def_update, it is too
-// much output when logging
-MAKE_REFLECT_STRUCT(IndexUpdate,
-                    types_removed,
-                    types_def_update,
-                    types_derived,
-                    types_instances,
-                    types_uses,
-                    funcs_removed,
-                    funcs_def_update,
-                    funcs_declarations,
-                    funcs_derived,
-                    funcs_uses,
-                    vars_removed,
-                    vars_def_update,
-                    vars_declarations,
-                    vars_uses);
 
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.

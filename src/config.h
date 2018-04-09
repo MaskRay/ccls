@@ -223,11 +223,6 @@ struct Config {
     // Maximum number of definition/reference/... results.
     int maxNum = 2000;
   } xref;
-
-  //// For debugging
-
-  // Dump AST after parsing if some pattern matches the source filename.
-  std::vector<std::string> dumpAST;
 };
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
@@ -277,8 +272,6 @@ MAKE_REFLECT_STRUCT(Config,
                     highlight,
                     index,
                     workspaceSymbol,
-                    xref,
-
-                    dumpAST);
+                    xref);
 
 extern std::unique_ptr<Config> g_config;
