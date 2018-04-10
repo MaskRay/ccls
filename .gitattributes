@@ -1,7 +1,0 @@
-# By default, use platform specific endings.
-*.h text eol=auto
-*.cpp text eol=auto
-*.cc text eol=auto
-
-# Tests must always be crlf
-index_tests/** text eol=crlf
