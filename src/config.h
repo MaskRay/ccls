@@ -89,6 +89,11 @@ struct Config {
   } codeLens;
 
   struct Completion {
+    // 0: case-insensitive
+    // 1: case-folded, i.e. insensitive if no input character is uppercase.
+    // 2: case-sensitive
+    int caseSensitivity = 2;
+
     // Some completion UI, such as Emacs' completion-at-point and company-lsp,
     // display completion item label and detail side by side.
     // This does not look right, when you see things like:
@@ -209,6 +214,7 @@ struct Config {
   } index;
 
   struct WorkspaceSymbol {
+    int caseSensitivity = 1;
     // Maximum workspace search results.
     int maxNum = 1000;
     // If true, workspace search results will be dynamically rescored/reordered
@@ -227,6 +233,7 @@ struct Config {
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion,
+                    caseSensitivity,
                     detailedLabel,
                     filterAndSort,
                     includeBlacklist,
@@ -248,7 +255,7 @@ MAKE_REFLECT_STRUCT(Config::Index,
                     onDidChange,
                     threads,
                     whitelist);
-MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, maxNum, sort);
+MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseCommand,

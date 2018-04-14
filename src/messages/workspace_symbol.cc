@@ -129,7 +129,7 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
       int longest = 0;
       for (int i : result_indices)
         longest = std::max(longest, int(db->GetSymbolName(i, true).size()));
-      FuzzyMatcher fuzzy(query);
+      FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
       std::vector<std::pair<int, int>> permutation(result_indices.size());
       for (int i = 0; i < int(result_indices.size()); i++) {
         permutation[i] = {

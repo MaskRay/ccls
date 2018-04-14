@@ -625,15 +625,15 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexType* previous,
                                                 IndexType* current) {
-        std::optional<QueryType::Def> previous_remapped_def =
+        std::optional<QueryType::Def> prev_remapped =
             ToQuery(previous_id_map, previous->def);
-        std::optional<QueryType::Def> current_remapped_def =
+        std::optional<QueryType::Def> current_remapped =
             ToQuery(current_id_map, current->def);
-        if (current_remapped_def &&
-            previous_remapped_def != current_remapped_def &&
-            !current_remapped_def->detailed_name.empty()) {
+        if (current_remapped &&
+            !(prev_remapped == current_remapped) &&
+            !current_remapped->detailed_name.empty()) {
           types_def_update.push_back(QueryType::DefUpdate(
-              current->usr, std::move(*current_remapped_def)));
+              current->usr, std::move(*current_remapped)));
         }
 
         PROCESS_UPDATE_DIFF(QueryTypeId, types_declarations, declarations, Use);
@@ -686,15 +686,15 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexFunc* previous,
                                                 IndexFunc* current) {
-        std::optional<QueryFunc::Def> previous_remapped_def =
+        std::optional<QueryFunc::Def> prev_remapped =
             ToQuery(previous_id_map, previous->def);
-        std::optional<QueryFunc::Def> current_remapped_def =
+        std::optional<QueryFunc::Def> current_remapped =
             ToQuery(current_id_map, current->def);
-        if (current_remapped_def &&
-            previous_remapped_def != current_remapped_def &&
-            !current_remapped_def->detailed_name.empty()) {
+        if (current_remapped &&
+            !(prev_remapped == current_remapped) &&
+            !current_remapped->detailed_name.empty()) {
           funcs_def_update.push_back(QueryFunc::DefUpdate(
-              current->usr, std::move(*current_remapped_def)));
+              current->usr, std::move(*current_remapped)));
         }
 
         PROCESS_UPDATE_DIFF(QueryFuncId, funcs_declarations, declarations, Use);
@@ -736,15 +736,14 @@ IndexUpdate::IndexUpdate(const IdMap& previous_id_map,
       /*onFound:*/
       [this, &previous_id_map, &current_id_map](IndexVar* previous,
                                                 IndexVar* current) {
-        std::optional<QueryVar::Def> previous_remapped_def =
+        std::optional<QueryVar::Def> prev_remapped =
             ToQuery(previous_id_map, previous->def);
-        std::optional<QueryVar::Def> current_remapped_def =
+        std::optional<QueryVar::Def> current_remapped =
             ToQuery(current_id_map, current->def);
-        if (current_remapped_def &&
-            previous_remapped_def != current_remapped_def &&
-            !current_remapped_def->detailed_name.empty())
-          vars_def_update.push_back(QueryVar::DefUpdate(
-              current->usr, std::move(*current_remapped_def)));
+        if (current_remapped && !(prev_remapped == current_remapped) &&
+            !current_remapped->detailed_name.empty())
+          vars_def_update.push_back(
+              QueryVar::DefUpdate(current->usr, std::move(*current_remapped)));
 
         PROCESS_UPDATE_DIFF(QueryVarId, vars_declarations, declarations, Use);
         PROCESS_UPDATE_DIFF(QueryVarId, vars_uses, uses, Use);

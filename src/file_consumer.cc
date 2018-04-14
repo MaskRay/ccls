@@ -81,7 +81,11 @@ IndexFile* FileConsumer::TryConsumeFile(
 
   CXFileUniqueID file_id;
   if (clang_getFileUniqueID(file, &file_id) != 0) {
-    EmitError(file);
+    std::string file_name = FileName(file);
+    if (!file_name.empty()) {
+      LOG_S(ERROR) << "Could not get unique file id for " << file_name
+                   << " when parsing " << parse_file_;
+    }
     return nullptr;
   }
 
@@ -125,13 +129,4 @@ std::vector<std::unique_ptr<IndexFile>> FileConsumer::TakeLocalState() {
       result.push_back(std::move(entry.second));
   }
   return result;
-}
-
-void FileConsumer::EmitError(CXFile file) const {
-  std::string file_name = ToString(clang_getFileName(file));
-  // TODO: Investigate this more, why can we get an empty file name?
-  if (!file_name.empty()) {
-    LOG_S(ERROR) << "Could not get unique file id for " << file_name
-                 << " when parsing " << parse_file_;
-  }
 }

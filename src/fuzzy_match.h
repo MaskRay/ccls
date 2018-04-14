@@ -12,10 +12,11 @@ class FuzzyMatcher {
   // overflow.
   constexpr static int kMinScore = INT_MIN / 4;
 
-  FuzzyMatcher(std::string_view pattern);
+  FuzzyMatcher(std::string_view pattern, int case_sensitivity);
   int Match(std::string_view text);
 
  private:
+  int case_sensitivity;
   std::string pat;
   std::string_view text;
   int pat_set, text_set;

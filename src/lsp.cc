@@ -49,7 +49,7 @@ std::optional<std::string> ReadJsonRpcContentFrom(
     return opt_c && *opt_c == expected;
   };
   if (!expect_char('\r') || !expect_char('\n')) {
-    LOG_S(INFO) << "Unexpected token (expected \r\n sequence)";
+    LOG_S(INFO) << "Unexpected token (expected \\r\\n sequence)";
     return std::nullopt;
   }
 
