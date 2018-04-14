@@ -38,12 +38,10 @@ struct Config {
   // "json" generates `cacheDirectory/.../xxx.json` files which can be pretty
   // printed with jq.
   //
-  // "msgpack" uses a compact binary serialization format (the underlying wire
-  // format is [MessagePack](https://msgpack.org/index.html)) which typically
-  // takes only 60% of the corresponding JSON size, but is difficult to inspect.
-  // msgpack does not store map keys and you need to re-index whenever a struct
+  // "binary" uses a compact binary serialization format.
+  // It is not schema-aware and you need to re-index whenever a struct
   // member has changed.
-  SerializeFormat cacheFormat = SerializeFormat::MessagePack;
+  SerializeFormat cacheFormat = SerializeFormat::Binary;
   // Value to use for clang -resource-dir if not present in
   // compile_commands.json.
   //

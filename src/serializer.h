@@ -16,7 +16,7 @@
 #include <variant>
 #include <vector>
 
-enum class SerializeFormat { Json, MessagePack };
+enum class SerializeFormat { Binary, Json };
 
 class Reader {
  public:
@@ -27,16 +27,17 @@ class Reader {
   virtual bool IsNull() = 0;
   virtual bool IsInt() = 0;
   virtual bool IsInt64() = 0;
-  virtual bool IsUint64() = 0;
+  virtual bool IsUInt64() = 0;
   virtual bool IsDouble() = 0;
   virtual bool IsString() = 0;
 
   virtual void GetNull() = 0;
   virtual bool GetBool() = 0;
+  virtual uint8_t GetUInt8() = 0;
   virtual int GetInt() = 0;
-  virtual uint32_t GetUint32() = 0;
+  virtual uint32_t GetUInt32() = 0;
   virtual int64_t GetInt64() = 0;
-  virtual uint64_t GetUint64() = 0;
+  virtual uint64_t GetUInt64() = 0;
   virtual double GetDouble() = 0;
   virtual std::string GetString() = 0;
 
@@ -55,9 +56,10 @@ class Writer {
   virtual void Null() = 0;
   virtual void Bool(bool x) = 0;
   virtual void Int(int x) = 0;
-  virtual void Uint32(uint32_t x) = 0;
   virtual void Int64(int64_t x) = 0;
-  virtual void Uint64(uint64_t x) = 0;
+  virtual void UInt8(uint8_t x) = 0;
+  virtual void UInt32(uint32_t x) = 0;
+  virtual void UInt64(uint64_t x) = 0;
   virtual void Double(double x) = 0;
   virtual void String(const char* x) = 0;
   virtual void String(const char* x, size_t len) = 0;
@@ -192,9 +194,11 @@ void Reflect(Reader& visitor, std::optional<T>& value) {
 }
 template <typename T>
 void Reflect(Writer& visitor, std::optional<T>& value) {
-  if (value)
+  if (value) {
+    if (visitor.Format() != SerializeFormat::Json)
+      visitor.UInt8(1);
     Reflect(visitor, *value);
-  else
+  } else
     visitor.Null();
 }
 
@@ -211,9 +215,11 @@ void Reflect(Reader& visitor, Maybe<T>& value) {
 }
 template <typename T>
 void Reflect(Writer& visitor, Maybe<T>& value) {
-  if (value)
+  if (value) {
+    if (visitor.Format() != SerializeFormat::Json)
+      visitor.UInt8(1);
     Reflect(visitor, *value);
-  else
+  } else
     visitor.Null();
 }
 

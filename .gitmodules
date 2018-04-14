@@ -10,6 +10,3 @@
 [submodule "third_party/loguru"]
 	path = third_party/loguru
 	url = https://github.com/emilk/loguru
-[submodule "third_party/msgpack-c"]
-	path = third_party/msgpack-c
-	url = https://github.com/msgpack/msgpack-c
