@@ -18,22 +18,26 @@
 
 struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
+  // Translation unit for clang.
+  struct Tu {
+    ClangIndex index{0, 0};
+
+    // When |tu| was last parsed.
+    std::optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
+        last_parsed_at;
+    // Acquired when |tu| is being used.
+    std::mutex lock;
+    std::unique_ptr<ClangTranslationUnit> tu;
+  };
+
   Project::Entry file;
   WorkingFiles* working_files;
-  ClangIndex index;
 
-  // When |tu| was last parsed.
-  std::optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
-      tu_last_parsed_at;
+  Tu completion;
+  Tu diagnostics;
 
-  // Acquired when |tu| is being used.
-  std::mutex tu_lock;
-
-  // The active translation unit.
-  std::unique_ptr<ClangTranslationUnit> tu;
-
-  CompletionSession(const Project::Entry& file, WorkingFiles* working_files);
-  ~CompletionSession();
+  CompletionSession(const Project::Entry& file, WorkingFiles* wfiles)
+      : file(file), working_files(wfiles) {}
 };
 
 struct ClangCompleteManager {
@@ -49,8 +53,9 @@ struct ClangCompleteManager {
                          bool is_cached_result)>;
   using OnDropped = std::function<void(lsRequestId request_id)>;
 
-  struct ParseRequest {
-    ParseRequest(const std::string& path);
+  struct PreloadRequest {
+    PreloadRequest(const std::string& path)
+        : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
 
     std::chrono::time_point<std::chrono::high_resolution_clock> request_time;
     std::string path;
@@ -58,18 +63,20 @@ struct ClangCompleteManager {
   struct CompletionRequest {
     CompletionRequest(const lsRequestId& id,
                       const lsTextDocumentIdentifier& document,
-                      bool emit_diagnostics);
-    CompletionRequest(const lsRequestId& id,
-                      const lsTextDocumentIdentifier& document,
                       const lsPosition& position,
-                      const OnComplete& on_complete,
-                      bool emit_diagnostics);
+                      const OnComplete& on_complete)
+        : id(id),
+          document(document),
+          position(position),
+          on_complete(on_complete) {}
 
     lsRequestId id;
     lsTextDocumentIdentifier document;
-    std::optional<lsPosition> position;
-    OnComplete on_complete;  // May be null/empty.
-    bool emit_diagnostics = false;
+    lsPosition position;
+    OnComplete on_complete;
+  };
+  struct DiagnosticRequest {
+    lsTextDocumentIdentifier document;
   };
 
   ClangCompleteManager(Project* project,
@@ -138,9 +145,10 @@ struct ClangCompleteManager {
 
   // Request a code completion at the given location.
   ThreadedQueue<std::unique_ptr<CompletionRequest>> completion_request_;
+  ThreadedQueue<DiagnosticRequest> diagnostic_request_;
   // Parse requests. The path may already be parsed, in which case it should be
   // reparsed.
-  ThreadedQueue<ParseRequest> parse_requests_;
+  ThreadedQueue<PreloadRequest> preload_requests_;
 };
 
 // Cached completion information, so we can give fast completion results when

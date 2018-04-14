@@ -205,6 +205,15 @@ struct ThreadedQueue : public BaseThreadQueue {
 
   std::optional<T> TryPopFrontHigh() { return TryPopFrontHelper(2); }
 
+  template <typename Fn>
+  void Iterate(Fn fn) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto& entry : priority_)
+      fn(entry);
+    for (auto& entry : queue_)
+      fn(entry);
+  }
+
   mutable std::mutex mutex_;
 
  private:

@@ -270,7 +270,8 @@ void BuildDetailString(CXCompletionString completion_string,
                        bool& do_insert,
                        lsInsertTextFormat& format,
                        std::vector<std::string>* parameters,
-                       bool include_snippets) {
+                       bool include_snippets,
+                       int& angle_stack) {
   int num_chunks = clang_getNumCompletionChunks(completion_string);
   auto append = [&](const char* text) {
     detail += text;
@@ -285,8 +286,11 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_Optional: {
         CXCompletionString nested =
             clang_getCompletionChunkCompletionString(completion_string, i);
-        BuildDetailString(nested, label, detail, insert, do_insert, format,
-                          parameters, include_snippets);
+        // Do not add text to insert string if we're in angle brackets.
+        bool should_insert = do_insert && angle_stack == 0;
+        BuildDetailString(nested, label, detail, insert,
+                          should_insert, format, parameters,
+                          include_snippets, angle_stack);
         break;
       }
 
@@ -348,8 +352,8 @@ void BuildDetailString(CXCompletionString completion_string,
       case CXCompletionChunk_RightBracket: append("]"); break;
       case CXCompletionChunk_LeftBrace: append("{"); break;
       case CXCompletionChunk_RightBrace: append("}"); break;
-      case CXCompletionChunk_LeftAngle: append("<"); break;
-      case CXCompletionChunk_RightAngle: append(">"); break;
+      case CXCompletionChunk_LeftAngle: append("<"); angle_stack++; break;
+      case CXCompletionChunk_RightAngle: append(">"); angle_stack--; break;
       case CXCompletionChunk_Comma: append(", "); break;
       case CXCompletionChunk_Colon: append(":"); break;
       case CXCompletionChunk_SemiColon: append(";"); break;
@@ -366,7 +370,8 @@ void BuildDetailString(CXCompletionString completion_string,
 void TryEnsureDocumentParsed(ClangCompleteManager* manager,
                              std::shared_ptr<CompletionSession> session,
                              std::unique_ptr<ClangTranslationUnit>* tu,
-                             ClangIndex* index) {
+                             ClangIndex* index,
+                             bool emit_diag) {
   // Nothing to do. We already have a translation unit.
   if (*tu)
     return;
@@ -414,11 +419,10 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
   }
 }
 
-void CompletionParseMain(ClangCompleteManager* completion_manager) {
+void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
-    ClangCompleteManager::ParseRequest request =
-        completion_manager->parse_requests_.Dequeue();
+    auto request = completion_manager->preload_requests_.Dequeue();
 
     // If we don't get a session then that means we don't care about the file
     // anymore - abandon the request.
@@ -429,23 +433,23 @@ void CompletionParseMain(ClangCompleteManager* completion_manager) {
     if (!session)
       continue;
 
+    // Note: we only preload completion. We emit diagnostics for the
+    // completion preload though.
+    CompletionSession::Tu* tu = &session->completion;
+
     // If we've parsed it more recently than the request time, don't bother
     // reparsing.
-    if (session->tu_last_parsed_at &&
-        *session->tu_last_parsed_at > request.request_time) {
+    if (tu->last_parsed_at && *tu->last_parsed_at > request.request_time)
       continue;
-    }
 
     std::unique_ptr<ClangTranslationUnit> parsing;
-    TryEnsureDocumentParsed(completion_manager, session, &parsing,
-                            &session->index);
+    TryEnsureDocumentParsed(completion_manager, session, &parsing, &tu->index,
+                            true);
 
     // Activate new translation unit.
-    // tu_last_parsed_at is only read by this thread, so it doesn't need to be
-    // under the mutex.
-    session->tu_last_parsed_at = std::chrono::high_resolution_clock::now();
-    std::lock_guard<std::mutex> lock(session->tu_lock);
-    session->tu = std::move(parsing);
+    std::lock_guard<std::mutex> lock(tu->lock);
+    tu->last_parsed_at = std::chrono::high_resolution_clock::now();
+    tu->tu = std::move(parsing);
   }
 }
 
@@ -468,15 +472,15 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         completion_manager->TryGetSession(path, true /*mark_as_completion*/,
                                           true /*create_if_needed*/);
 
-    std::lock_guard<std::mutex> lock(session->tu_lock);
+    std::lock_guard<std::mutex> lock(session->completion.lock);
     Timer timer;
-    TryEnsureDocumentParsed(completion_manager, session, &session->tu,
-                            &session->index);
+    TryEnsureDocumentParsed(completion_manager, session, &session->completion.tu,
+                            &session->completion.index, false);
     timer.ResetAndPrint("[complete] TryEnsureDocumentParsed");
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
-    if (!session->tu)
+    if (!session->completion.tu)
       continue;
 
     timer.Reset();
@@ -485,184 +489,160 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
     timer.ResetAndPrint("[complete] Creating WorkingFile snapshot");
 
-    // Emit code completion data.
-    if (request->position) {
-      // Language server is 0-based, clang is 1-based.
-      unsigned line = request->position->line + 1;
-      unsigned column = request->position->character + 1;
+    unsigned const kCompleteOptions =
+        CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
+    CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
+        session->completion.tu->cx_tu, session->file.filename.c_str(),
+        request->position.line + 1, request->position.character + 1,
+        unsaved.data(), (unsigned)unsaved.size(), kCompleteOptions);
+    timer.ResetAndPrint("[complete] clangCodeCompleteAt");
+    if (!cx_results) {
+      request->on_complete({}, false /*is_cached_result*/);
+      continue;
+    }
 
-      timer.Reset();
-      unsigned const kCompleteOptions =
-          CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
-      CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
-          session->tu->cx_tu, session->file.filename.c_str(), line, column,
-          unsaved.data(), (unsigned)unsaved.size(), kCompleteOptions);
-      timer.ResetAndPrint("[complete] clangCodeCompleteAt");
-      if (!cx_results) {
-        if (request->on_complete)
-          request->on_complete({}, false /*is_cached_result*/);
+    std::vector<lsCompletionItem> ls_result;
+    // this is a guess but can be larger in case of std::optional
+    // parameters, as they may be expanded into multiple items
+    ls_result.reserve(cx_results->NumResults);
+
+    timer.Reset();
+    for (unsigned i = 0; i < cx_results->NumResults; ++i) {
+      CXCompletionResult& result = cx_results->Results[i];
+
+      // TODO: Try to figure out how we can hide base method calls without
+      // also hiding method implementation assistance, ie,
+      //
+      //    void Foo::* {
+      //    }
+      //
+
+      if (clang_getCompletionAvailability(result.CompletionString) ==
+          CXAvailability_NotAvailable)
         continue;
-      }
 
-      {
-        if (request->on_complete) {
-          std::vector<lsCompletionItem> ls_result;
-          // this is a guess but can be larger in case of std::optional parameters,
-          // as they may be expanded into multiple items
-          ls_result.reserve(cx_results->NumResults);
+      // TODO: fill in more data
+      lsCompletionItem ls_completion_item;
 
-          timer.Reset();
-          for (unsigned i = 0; i < cx_results->NumResults; ++i) {
-            CXCompletionResult& result = cx_results->Results[i];
+      ls_completion_item.kind = GetCompletionKind(result.CursorKind);
+      ls_completion_item.documentation =
+          ToString(clang_getCompletionBriefComment(result.CompletionString));
 
-            // TODO: Try to figure out how we can hide base method calls without
-            // also hiding method implementation assistance, ie,
-            //
-            //    void Foo::* {
-            //    }
-            //
+      // label/detail/filterText/insertText/priority
+      if (g_config->completion.detailedLabel) {
+        ls_completion_item.detail = ToString(
+            clang_getCompletionParent(result.CompletionString, nullptr));
 
-            if (clang_getCompletionAvailability(result.CompletionString) ==
-                CXAvailability_NotAvailable)
-              continue;
+        auto first_idx = ls_result.size();
+        ls_result.push_back(ls_completion_item);
 
-            // TODO: fill in more data
-            lsCompletionItem ls_completion_item;
+        // label/filterText/insertText
+        BuildCompletionItemTexts(ls_result, result.CompletionString,
+                                 g_config->client.snippetSupport);
 
-            ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-            ls_completion_item.documentation = ToString(
-                clang_getCompletionBriefComment(result.CompletionString));
-
-            // label/detail/filterText/insertText/priority
-            if (g_config->completion.detailedLabel) {
-              ls_completion_item.detail = ToString(
-                  clang_getCompletionParent(result.CompletionString, nullptr));
-
-              auto first_idx = ls_result.size();
-              ls_result.push_back(ls_completion_item);
-
-              // label/filterText/insertText
-              BuildCompletionItemTexts(
-                  ls_result, result.CompletionString,
-                  g_config->client.snippetSupport);
-
-              for (auto i = first_idx; i < ls_result.size(); ++i) {
-                if (g_config->client.snippetSupport &&
-                    ls_result[i].insertTextFormat ==
-                        lsInsertTextFormat::Snippet) {
-                  ls_result[i].insertText += "$0";
-                }
-
-                ls_result[i].priority_ = GetCompletionPriority(
-                    result.CompletionString, result.CursorKind,
-                    ls_result[i].filterText);
-              }
-            } else {
-              bool do_insert = true;
-              BuildDetailString(
-                  result.CompletionString, ls_completion_item.label,
-                  ls_completion_item.detail, ls_completion_item.insertText,
-                  do_insert, ls_completion_item.insertTextFormat,
-                  &ls_completion_item.parameters_,
-                  g_config->client.snippetSupport);
-              if (g_config->client.snippetSupport &&
-                  ls_completion_item.insertTextFormat ==
-                      lsInsertTextFormat::Snippet) {
-                ls_completion_item.insertText += "$0";
-              }
-              ls_completion_item.priority_ = GetCompletionPriority(
-                  result.CompletionString, result.CursorKind,
-                  ls_completion_item.label);
-              ls_result.push_back(ls_completion_item);
-            }
+        for (auto i = first_idx; i < ls_result.size(); ++i) {
+          if (g_config->client.snippetSupport &&
+              ls_result[i].insertTextFormat == lsInsertTextFormat::Snippet) {
+            ls_result[i].insertText += "$0";
           }
 
-          timer.ResetAndPrint("[complete] Building " +
-                              std::to_string(ls_result.size()) +
-                              " completion results");
-
-          request->on_complete(ls_result, false /*is_cached_result*/);
+          ls_result[i].priority_ =
+              GetCompletionPriority(result.CompletionString, result.CursorKind,
+                                    ls_result[i].filterText);
         }
+      } else {
+        bool do_insert = true;
+        int angle_stack = 0;
+        BuildDetailString(result.CompletionString, ls_completion_item.label,
+                          ls_completion_item.detail,
+                          ls_completion_item.insertText, do_insert,
+                          ls_completion_item.insertTextFormat,
+                          &ls_completion_item.parameters_,
+                          g_config->client.snippetSupport, angle_stack);
+        if (g_config->client.snippetSupport &&
+            ls_completion_item.insertTextFormat ==
+                lsInsertTextFormat::Snippet) {
+          ls_completion_item.insertText += "$0";
+        }
+        ls_completion_item.priority_ =
+            GetCompletionPriority(result.CompletionString, result.CursorKind,
+                                  ls_completion_item.label);
+        ls_result.push_back(ls_completion_item);
       }
-
-      // Make sure |ls_results| is destroyed before clearing |cx_results|.
-      clang_disposeCodeCompleteResults(cx_results);
     }
+
+    timer.ResetAndPrint("[complete] Building " +
+                        std::to_string(ls_result.size()) +
+                        " completion results");
+
+    request->on_complete(ls_result, false /*is_cached_result*/);
+
+    // Make sure |ls_results| is destroyed before clearing |cx_results|.
+    clang_disposeCodeCompleteResults(cx_results);
+  }
+}
+
+void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
+  while (true) {
+    // Fetching the completion request blocks until we have a request.
+    ClangCompleteManager::DiagnosticRequest request =
+        completion_manager->diagnostic_request_.Dequeue();
+    std::string path = request.document.uri.GetPath();
+
+    std::shared_ptr<CompletionSession> session =
+        completion_manager->TryGetSession(path, true /*mark_as_completion*/,
+                                          true /*create_if_needed*/);
+
+    // At this point, we must have a translation unit. Block until we have one.
+    std::lock_guard<std::mutex> lock(session->diagnostics.lock);
+    Timer timer;
+    TryEnsureDocumentParsed(
+        completion_manager, session, &session->diagnostics.tu,
+        &session->diagnostics.index, false /*emit_diagnostics*/);
+    timer.ResetAndPrint("[diagnostics] TryEnsureDocumentParsed");
+
+    // It is possible we failed to create the document despite
+    // |TryEnsureDocumentParsed|.
+    if (!session->diagnostics.tu)
+      continue;
+
+    timer.Reset();
+    WorkingFiles::Snapshot snapshot =
+        completion_manager->working_files_->AsSnapshot({StripFileType(path)});
+    std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
+    timer.ResetAndPrint("[diagnostics] Creating WorkingFile snapshot");
 
     // Emit diagnostics.
-    if (request->emit_diagnostics) {
-      // TODO: before emitting diagnostics check if we have another completion
-      // request and think about servicing that first, because it may be much
-      // faster than reparsing the document.
-      // TODO: have a separate thread for diagnostics?
-
-      timer.Reset();
-      session->tu =
-          ClangTranslationUnit::Reparse(std::move(session->tu), unsaved);
-      timer.ResetAndPrint("[complete] clang_reparseTranslationUnit");
-      if (!session->tu) {
-        LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
-                     << path;
-        continue;
-      }
-
-      size_t num_diagnostics = clang_getNumDiagnostics(session->tu->cx_tu);
-      std::vector<lsDiagnostic> ls_diagnostics;
-      ls_diagnostics.reserve(num_diagnostics);
-      for (unsigned i = 0; i < num_diagnostics; ++i) {
-        CXDiagnostic cx_diag = clang_getDiagnostic(session->tu->cx_tu, i);
-        std::optional<lsDiagnostic> diagnostic =
-            BuildAndDisposeDiagnostic(cx_diag, path);
-        // Filter messages like "too many errors emitted, stopping now
-        // [-ferror-limit=]" which has line = 0 and got subtracted by 1 after
-        // conversion to lsDiagnostic
-        if (diagnostic && diagnostic->range.start.line >= 0)
-          ls_diagnostics.push_back(*diagnostic);
-      }
-      completion_manager->on_diagnostic_(session->file.filename,
-                                         ls_diagnostics);
-
-      /*
-      timer.Reset();
-      completion_manager->on_index_(session->tu.get(), unsaved,
-                                    session->file.filename, session->file.args);
-      timer.ResetAndPrint("[complete] Reindex file");
-      */
+    timer.Reset();
+    session->diagnostics.tu = ClangTranslationUnit::Reparse(
+        std::move(session->diagnostics.tu), unsaved);
+    timer.ResetAndPrint("[diagnostics] clang_reparseTranslationUnit");
+    if (!session->diagnostics.tu) {
+      LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
+                   << path;
+      continue;
     }
 
-    continue;
+    size_t num_diagnostics =
+        clang_getNumDiagnostics(session->diagnostics.tu->cx_tu);
+    std::vector<lsDiagnostic> ls_diagnostics;
+    ls_diagnostics.reserve(num_diagnostics);
+    for (unsigned i = 0; i < num_diagnostics; ++i) {
+      CXDiagnostic cx_diag =
+          clang_getDiagnostic(session->diagnostics.tu->cx_tu, i);
+      std::optional<lsDiagnostic> diagnostic =
+          BuildAndDisposeDiagnostic(cx_diag, path);
+      // Filter messages like "too many errors emitted, stopping now
+      // [-ferror-limit=]" which has line = 0 and got subtracted by 1 after
+      // conversion to lsDiagnostic
+      if (diagnostic && diagnostic->range.start.line >= 0)
+        ls_diagnostics.push_back(*diagnostic);
+    }
+    completion_manager->on_diagnostic_(session->file.filename, ls_diagnostics);
   }
 }
 
 }  // namespace
-
-CompletionSession::CompletionSession(const Project::Entry& file,
-                                     WorkingFiles* working_files)
-    : file(file),
-      working_files(working_files),
-      index(0 /*excludeDeclarationsFromPCH*/, 0 /*displayDiagnostics*/) {}
-
-CompletionSession::~CompletionSession() {}
-
-ClangCompleteManager::ParseRequest::ParseRequest(const std::string& path)
-    : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
-
-ClangCompleteManager::CompletionRequest::CompletionRequest(
-    const lsRequestId& id,
-    const lsTextDocumentIdentifier& document,
-    bool emit_diagnostics)
-    : id(id), document(document), emit_diagnostics(emit_diagnostics) {}
-ClangCompleteManager::CompletionRequest::CompletionRequest(
-    const lsRequestId& id,
-    const lsTextDocumentIdentifier& document,
-    const lsPosition& position,
-    const OnComplete& on_complete,
-    bool emit_diagnostics)
-    : id(id),
-      document(document),
-      position(position),
-      on_complete(on_complete),
-      emit_diagnostics(emit_diagnostics) {}
 
 ClangCompleteManager::ClangCompleteManager(Project* project,
                                            WorkingFiles* working_files,
@@ -677,13 +657,16 @@ ClangCompleteManager::ClangCompleteManager(Project* project,
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {
   new std::thread([&]() {
-    SetThreadName("completequery");
+    SetThreadName("comp-query");
     CompletionQueryMain(this);
   });
-
   new std::thread([&]() {
-    SetThreadName("completeparse");
-    CompletionParseMain(this);
+    SetThreadName("comp-preload");
+    CompletionPreloadMain(this);
+  });
+  new std::thread([&]() {
+    SetThreadName("diag-query");
+    DiagnosticQueryMain(this);
   });
 }
 
@@ -693,14 +676,20 @@ void ClangCompleteManager::CodeComplete(
     const OnComplete& on_complete) {
   completion_request_.PushBack(std::make_unique<CompletionRequest>(
       id, completion_location.textDocument, completion_location.position,
-      on_complete, false));
+      on_complete));
 }
 
 void ClangCompleteManager::DiagnosticsUpdate(
     const lsRequestId& id,
     const lsTextDocumentIdentifier& document) {
-  completion_request_.PushBack(
-      std::make_unique<CompletionRequest>(id, document, true));
+  bool has = false;
+  diagnostic_request_.Iterate([&](const DiagnosticRequest& request) {
+    if (request.document.uri == document.uri)
+      has = true;
+  });
+  if (!has)
+    diagnostic_request_.PushBack(DiagnosticRequest{document},
+                                 true /*priority*/);
 }
 
 void ClangCompleteManager::NotifyView(const std::string& filename) {
@@ -712,7 +701,7 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
 
   // Only reparse the file if we create a new CompletionSession.
   if (EnsureCompletionOrCreatePreloadSession(filename))
-    parse_requests_.PushBack(ParseRequest(filename), true);
+    preload_requests_.PushBack(PreloadRequest(filename), true);
 }
 
 void ClangCompleteManager::NotifyEdit(const std::string& filename) {
@@ -731,7 +720,7 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   //
 
   EnsureCompletionOrCreatePreloadSession(filename);
-  parse_requests_.PushBack(ParseRequest(filename), true);
+  preload_requests_.PushBack(PreloadRequest(filename), true);
 }
 
 void ClangCompleteManager::NotifyClose(const std::string& filename) {
