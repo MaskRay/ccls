@@ -123,7 +123,7 @@ static const std::vector<std::string> preprocessorKeywords = {
     "define", "undef", "include", "if",   "ifdef", "ifndef",
     "else",   "elif",  "endif",   "line", "error", "pragma"};
 
-std::vector<lsCompletionItem> preprocessorKeywordCompletionItems(
+std::vector<lsCompletionItem> PreprocessorKeywordCompletionItems(
     const std::smatch& match) {
   std::vector<lsCompletionItem> items;
   for (auto& keyword : preprocessorKeywords) {
@@ -160,7 +160,8 @@ char* tofixedbase64(T input, char* out) {
 // when given 1000+ completion items.
 void FilterAndSortCompletionResponse(
     Out_TextDocumentComplete* complete_response,
-    const std::string& complete_text) {
+    const std::string& complete_text,
+    bool has_open_paren) {
   if (!g_config->completion.filterAndSort)
     return;
 
@@ -188,6 +189,10 @@ void FilterAndSortCompletionResponse(
       items.resize(kMaxResultSize);
       complete_response->result.isIncomplete = true;
     }
+
+    if (has_open_paren)
+      for (auto& item: items)
+        item.insertText = item.label;
 
     // Set sortText. Note that this happens after resizing - we could do it
     // before, but then we should also sort by priority.
@@ -234,6 +239,26 @@ void FilterAndSortCompletionResponse(
 
   // Trim result.
   finalize();
+}
+
+// Returns true if position is an points to a '(' character in |lines|. Skips
+// whitespace.
+bool IsOpenParenOrAngle(const std::vector<std::string>& lines,
+  const lsPosition& position) {
+  auto [c, l] = position;
+  while (l < lines.size()) {
+    const auto& line = lines[l];
+    if (c >= line.size())
+      return false;
+    if (line[c] == '(' || line[c] == '<')
+      return true;
+    if (!isspace(line[c])) break;
+    if (++c >= line.size()) {
+      c = 0;
+      l++;
+    }
+  }
+  return false;
 }
 
 struct Handler_TextDocumentCompletion : MessageHandler {
@@ -306,13 +331,15 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
     bool is_global_completion = false;
     std::string existing_completion;
+    lsPosition end_pos = request->params.position;
     if (file) {
       request->params.position = file->FindStableCompletionSource(
           request->params.position, &is_global_completion,
-          &existing_completion);
+          &existing_completion, &end_pos);
     }
 
     ParseIncludeLineResult result = ParseIncludeLine(buffer_line);
+    bool has_open_paren = IsOpenParenOrAngle(file->buffer_lines, end_pos);
 
     if (result.ok) {
       Out_TextDocumentComplete out;
@@ -325,8 +352,8 @@ struct Handler_TextDocumentCompletion : MessageHandler {
                          [&result](std::string_view k) {
                            return k == result.keyword;
                          })) {
-          out.result.items = preprocessorKeywordCompletionItems(result.match);
-          FilterAndSortCompletionResponse(&out, result.keyword);
+          out.result.items = PreprocessorKeywordCompletionItems(result.match);
+          FilterAndSortCompletionResponse(&out, result.keyword, has_open_paren);
         }
       } else if (result.keyword.compare("include") == 0) {
         {
@@ -340,7 +367,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
             if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
                out.result.items.push_back(item);
         }
-        FilterAndSortCompletionResponse(&out, result.pattern);
+        FilterAndSortCompletionResponse(&out, result.pattern, has_open_paren);
         DecorateIncludePaths(result.match, &out.result.items);
       }
 
@@ -354,15 +381,15 @@ struct Handler_TextDocumentCompletion : MessageHandler {
       QueueManager::WriteStdout(kMethodType, out);
     } else {
       ClangCompleteManager::OnComplete callback = std::bind(
-          [this, is_global_completion, existing_completion, request](
-              const std::vector<lsCompletionItem>& results,
-              bool is_cached_result) {
+          [this, request, is_global_completion, existing_completion,
+           has_open_paren](const std::vector<lsCompletionItem>& results,
+                           bool is_cached_result) {
             Out_TextDocumentComplete out;
             out.id = request->id;
             out.result.items = results;
 
             // Emit completion results.
-            FilterAndSortCompletionResponse(&out, existing_completion);
+            FilterAndSortCompletionResponse(&out, existing_completion, has_open_paren);
             QueueManager::WriteStdout(kMethodType, out);
 
             // Cache completion results.

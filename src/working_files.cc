@@ -415,7 +415,8 @@ std::string WorkingFile::FindClosestCallNameInBuffer(
 lsPosition WorkingFile::FindStableCompletionSource(
     lsPosition position,
     bool* is_global_completion,
-    std::string* existing_completion) const {
+    std::string* existing_completion,
+    lsPosition* replace_end_pos) const {
   *is_global_completion = true;
 
   int start_offset = GetOffsetForPosition(position, buffer_content);
@@ -439,6 +440,14 @@ lsPosition WorkingFile::FindStableCompletionSource(
       break;
     }
     --offset;
+  }
+
+  *replace_end_pos = position;
+  for (int i = start_offset; i < buffer_content.size(); i++) {
+    char c = buffer_content[i];
+    if (!isalnum(c) && c != '_') break;
+    // We know that replace_end_pos and position are on the same line.
+    replace_end_pos->character++;
   }
 
   *existing_completion = buffer_content.substr(offset, start_offset - offset);

@@ -69,7 +69,8 @@ struct WorkingFile {
   // content the user has entered.
   lsPosition FindStableCompletionSource(lsPosition position,
                                         bool* is_global_completion,
-                                        std::string* existing_completion) const;
+                                        std::string* existing_completion,
+                                        lsPosition* replace_end_pos) const;
 
  private:
   // Compute index_to_buffer and buffer_to_index.
