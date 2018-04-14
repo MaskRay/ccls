@@ -78,8 +78,11 @@ int FuzzyMatcher::MatchScore(int i, int j, bool last) {
   return s;
 }
 
-FuzzyMatcher::FuzzyMatcher(std::string_view pattern) {
+FuzzyMatcher::FuzzyMatcher(std::string_view pattern, int sensitivity) {
   CalculateRoles(pattern, pat_role, &pat_set);
+  if (sensitivity == 1)
+    sensitivity = pat_set & 1 << Upper ? 2 : 0;
+  case_sensitivity = sensitivity;
   size_t n = 0;
   for (size_t i = 0; i < pattern.size(); i++)
     if (pattern[i] != ' ') {
@@ -112,12 +115,13 @@ int FuzzyMatcher::Match(std::string_view text) {
                                cur[j][1] + MissScore(j, true));
       // For the first char of pattern, apply extra restriction to filter bad
       // candidates (e.g. |int| in |PRINT|)
-      if (low_pat[i] == low_text[j] &&
-          (i || text_role[j] != Tail || pat[i] == text[j])) {
-        cur[j + 1][1] = std::max(pre[j][0] + MatchScore(i, j, false),
-                                 pre[j][1] + MatchScore(i, j, true));
-      } else
-        cur[j + 1][1] = kMinScore * 2;
+      cur[j + 1][1] = (case_sensitivity ? pat[i] == text[j]
+                                        : low_pat[i] == low_text[j] &&
+                                              (i || text_role[j] != Tail ||
+                                               pat[i] == text[j]))
+                          ? std::max(pre[j][0] + MatchScore(i, j, false),
+                                     pre[j][1] + MatchScore(i, j, true))
+                          : cur[j + 1][1] = kMinScore * 2;
     }
   }
 
@@ -131,7 +135,7 @@ int FuzzyMatcher::Match(std::string_view text) {
 
 TEST_SUITE("fuzzy_match") {
   bool Ranks(std::string_view pat, std::vector<const char*> texts) {
-    FuzzyMatcher fuzzy(pat);
+    FuzzyMatcher fuzzy(pat, 0);
     std::vector<int> scores;
     for (auto text : texts)
       scores.push_back(fuzzy.Match(text));
@@ -150,7 +154,7 @@ TEST_SUITE("fuzzy_match") {
   }
 
   TEST_CASE("test") {
-    FuzzyMatcher fuzzy("");
+    FuzzyMatcher fuzzy("", 0);
     CHECK(fuzzy.Match("") == 0);
     CHECK(fuzzy.Match("aaa") < 0);
 

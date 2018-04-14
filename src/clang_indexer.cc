@@ -15,9 +15,6 @@
 #include <cassert>
 #include <chrono>
 
-// TODO: See if we can use clang_indexLoc_getFileLocation to get a type ref on
-// |Foobar| in DISALLOW_COPY(Foobar)
-
 #if CINDEX_VERSION >= 47
 #define CINDEX_HAVE_PRETTY 1
 #endif

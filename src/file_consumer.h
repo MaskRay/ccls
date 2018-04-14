@@ -68,8 +68,6 @@ struct FileConsumer {
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
 
  private:
-  void EmitError(CXFile file) const;
-
   std::unordered_map<CXFileUniqueID, std::unique_ptr<IndexFile>> local_;
   FileConsumerSharedState* shared_;
   std::string parse_file_;

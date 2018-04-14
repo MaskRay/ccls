@@ -188,9 +188,6 @@ struct TypeDef : NameMixin<TypeDef<F>> {
            types == o.types && funcs == o.funcs && vars == o.vars &&
            kind == o.kind && hover == o.hover && comments == o.comments;
   }
-  bool operator!=(const TypeDef& o) const {
-    return !(*this == o);
-  }
 };
 template <typename TVisitor, typename Family>
 void Reflect(TVisitor& visitor, TypeDef<Family>& value) {
@@ -268,9 +265,6 @@ struct FuncDef : NameMixin<FuncDef<F>> {
            bases == o.bases && vars == o.vars && callees == o.callees &&
            kind == o.kind && storage == o.storage && hover == o.hover &&
            comments == o.comments;
-  }
-  bool operator!=(const FuncDef& o) const {
-    return !(*this == o);
   }
 };
 
@@ -359,7 +353,6 @@ struct VarDef : NameMixin<VarDef<F>> {
            extent == o.extent && type == o.type && kind == o.kind &&
            storage == o.storage && hover == o.hover && comments == o.comments;
   }
-  bool operator!=(const VarDef& o) const { return !(*this == o); }
 };
 
 template <typename TVisitor, typename Family>

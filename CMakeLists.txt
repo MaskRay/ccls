@@ -6,7 +6,7 @@ include(DefaultCMakeBuildType)
 
 # Required libclang version
 set(LIBCLANG_VERSION 6.0.0 CACHE STRING "libclang version")
-set(LIBCLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR} 
+set(LIBCLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
     CACHE STRING "Downloaded libclang location")
 option(SYSTEM_LIBCLANG "Use system installation of libclang instead of \
        downloading libclang" OFF)
@@ -33,7 +33,8 @@ if(NOT CYGWIN)
   set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
 endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+# CMake sets MSVC for both MSVC and Clang(Windows)
+if(MSVC)
   # Common MSVC/Clang(Windows) options
   target_compile_options(ccls PRIVATE
                          /nologo
@@ -87,7 +88,7 @@ endif()
 ### Libraries
 
 # See cmake/FindClang.cmake
-find_package(Clang ${CLANG_VERSION} REQUIRED)
+find_package(Clang ${LIBCLANG_VERSION} REQUIRED)
 target_link_libraries(ccls PRIVATE Clang::Clang)
 
 # Enable threading support
@@ -97,7 +98,7 @@ target_link_libraries(ccls PRIVATE Threads::Threads)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
   target_link_libraries(ccls PRIVATE -lc++experimental)
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+elseif(MSVC)
 else()
   target_link_libraries(ccls PRIVATE -lstdc++fs)
 endif()
@@ -161,8 +162,8 @@ endif()
 if(NOT SYSTEM_LIBCLANG AND ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   add_custom_command(TARGET ccls
                      POST_BUILD
-                     COMMAND ${CMAKE_COMMAND} -E copy 
-                     ${DOWNLOADED_CLANG_DIR}/bin/libclang.dll 
+                     COMMAND ${CMAKE_COMMAND} -E copy
+                     ${DOWNLOADED_CLANG_DIR}/bin/libclang.dll
                      $<TARGET_FILE_DIR:ccls>
                      COMMENT "Copying libclang.dll to build directory ...")
 endif()
@@ -190,7 +191,7 @@ else()
 support clang-format 6.0.0")
   endif()
 
-  add_custom_target(format 
+  add_custom_target(format
                     COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --red --bold
                     ${Clang_FORMAT_ERROR})
 endif()

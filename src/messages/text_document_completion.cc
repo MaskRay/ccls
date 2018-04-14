@@ -214,7 +214,7 @@ void FilterAndSortCompletionResponse(
   }
 
   // Fuzzy match and remove awful candidates.
-  FuzzyMatcher fuzzy(complete_text);
+  FuzzyMatcher fuzzy(complete_text, g_config->completion.caseSensitivity);
   for (auto& item : items) {
     item.score_ =
         CaseFoldingSubsequenceMatch(complete_text, *item.filterText).first
