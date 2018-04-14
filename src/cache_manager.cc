@@ -59,10 +59,10 @@ struct RealCacheManager : ICacheManager {
 
   std::string AppendSerializationFormat(const std::string& base) {
     switch (g_config->cacheFormat) {
+      case SerializeFormat::Binary:
+        return base + ".blob";
       case SerializeFormat::Json:
         return base + ".json";
-      case SerializeFormat::MessagePack:
-        return base + ".mpack";
     }
   }
 };

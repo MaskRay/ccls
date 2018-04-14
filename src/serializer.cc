@@ -1,8 +1,8 @@
 #include "serializer.h"
 
 #include "filesystem.hh"
+#include "serializers/binary.h"
 #include "serializers/json.h"
-#include "serializers/msgpack.h"
 
 #include "indexer.h"
 
@@ -15,12 +15,10 @@ bool gTestOutputMode = false;
 //// Elementary types
 
 void Reflect(Reader& visitor, uint8_t& value) {
-  if (!visitor.IsInt())
-    throw std::invalid_argument("uint8_t");
-  value = (uint8_t)visitor.GetInt();
+  value = visitor.GetUInt8();
 }
 void Reflect(Writer& visitor, uint8_t& value) {
-  visitor.Int(value);
+  visitor.UInt8(value);
 }
 
 void Reflect(Reader& visitor, short& value) {
@@ -51,12 +49,12 @@ void Reflect(Writer& visitor, int& value) {
 }
 
 void Reflect(Reader& visitor, unsigned& value) {
-  if (!visitor.IsUint64())
+  if (!visitor.IsUInt64())
     throw std::invalid_argument("unsigned");
-  value = visitor.GetUint32();
+  value = visitor.GetUInt32();
 }
 void Reflect(Writer& visitor, unsigned& value) {
-  visitor.Uint32(value);
+  visitor.UInt32(value);
 }
 
 void Reflect(Reader& visitor, long& value) {
@@ -69,12 +67,12 @@ void Reflect(Writer& visitor, long& value) {
 }
 
 void Reflect(Reader& visitor, unsigned long& value) {
-  if (!visitor.IsUint64())
+  if (!visitor.IsUInt64())
     throw std::invalid_argument("unsigned long");
-  value = (unsigned long)visitor.GetUint64();
+  value = (unsigned long)visitor.GetUInt64();
 }
 void Reflect(Writer& visitor, unsigned long& value) {
-  visitor.Uint64(value);
+  visitor.UInt64(value);
 }
 
 void Reflect(Reader& visitor, long long& value) {
@@ -87,12 +85,12 @@ void Reflect(Writer& visitor, long long& value) {
 }
 
 void Reflect(Reader& visitor, unsigned long long& value) {
-  if (!visitor.IsUint64())
+  if (!visitor.IsUInt64())
     throw std::invalid_argument("unsigned long long");
-  value = visitor.GetUint64();
+  value = visitor.GetUInt64();
 }
 void Reflect(Writer& visitor, unsigned long long& value) {
-  visitor.Uint64(value);
+  visitor.UInt64(value);
 }
 
 void Reflect(Reader& visitor, double& value) {
@@ -302,6 +300,7 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
 }
 
 void Reflect(Reader& visitor, std::monostate&) {
+  assert(visitor.Format() == SerializeFormat::Json);
   visitor.GetNull();
 }
 
@@ -311,22 +310,31 @@ void Reflect(Writer& visitor, std::monostate&) {
 
 void Reflect(Reader& visitor, SerializeFormat& value) {
   std::string fmt = visitor.GetString();
-  value = fmt[0] == 'm' ? SerializeFormat::MessagePack : SerializeFormat::Json;
+  value = fmt[0] == 'b' ? SerializeFormat::Binary : SerializeFormat::Json;
 }
 
 void Reflect(Writer& visitor, SerializeFormat& value) {
   switch (value) {
+    case SerializeFormat::Binary:
+      visitor.String("binary");
+      break;
     case SerializeFormat::Json:
       visitor.String("json");
-      break;
-    case SerializeFormat::MessagePack:
-      visitor.String("msgpack");
       break;
   }
 }
 
 std::string Serialize(SerializeFormat format, IndexFile& file) {
   switch (format) {
+    case SerializeFormat::Binary: {
+      BinaryWriter writer;
+      int major = IndexFile::kMajorVersion;
+      int minor = IndexFile::kMinorVersion;
+      Reflect(writer, major);
+      Reflect(writer, minor);
+      Reflect(writer, file);
+      return writer.Take();
+    }
     case SerializeFormat::Json: {
       rapidjson::StringBuffer output;
       rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(output);
@@ -343,17 +351,6 @@ std::string Serialize(SerializeFormat format, IndexFile& file) {
       Reflect(json_writer, file);
       return output.GetString();
     }
-    case SerializeFormat::MessagePack: {
-      msgpack::sbuffer buf;
-      msgpack::packer<msgpack::sbuffer> pk(&buf);
-      MessagePackWriter msgpack_writer(&pk);
-      uint64_t magic = IndexFile::kMajorVersion;
-      int version = IndexFile::kMinorVersion;
-      Reflect(msgpack_writer, magic);
-      Reflect(msgpack_writer, version);
-      Reflect(msgpack_writer, file);
-      return std::string(buf.data(), buf.size());
-    }
   }
   return "";
 }
@@ -369,6 +366,26 @@ std::unique_ptr<IndexFile> Deserialize(
 
   std::unique_ptr<IndexFile> file;
   switch (format) {
+    case SerializeFormat::Binary: {
+      try {
+        int major, minor;
+        if (serialized_index_content.size() < 8)
+          throw std::invalid_argument("Invalid");
+        BinaryReader reader(serialized_index_content);
+        Reflect(reader, major);
+        Reflect(reader, minor);
+        if (major != IndexFile::kMajorVersion ||
+            minor != IndexFile::kMinorVersion)
+          throw std::invalid_argument("Invalid version");
+        file = std::make_unique<IndexFile>(path, file_content);
+        Reflect(reader, *file);
+      } catch (std::invalid_argument& e) {
+        LOG_S(INFO) << "Failed to deserialize '" << path
+                    << "': " << e.what();
+        return nullptr;
+      }
+      break;
+    }
     case SerializeFormat::Json: {
       rapidjson::Document reader;
       if (gTestOutputMode || !expected_version) {
@@ -391,32 +408,6 @@ std::unique_ptr<IndexFile> Deserialize(
       } catch (std::invalid_argument& e) {
         LOG_S(INFO) << "'" << path << "': failed to deserialize "
                     << json_reader.GetPath() << "." << e.what();
-        return nullptr;
-      }
-      break;
-    }
-
-    case SerializeFormat::MessagePack: {
-      try {
-        int major, minor;
-        if (serialized_index_content.size() < 8)
-          throw std::invalid_argument("Invalid");
-        msgpack::unpacker upk;
-        upk.reserve_buffer(serialized_index_content.size());
-        memcpy(upk.buffer(), serialized_index_content.data(),
-               serialized_index_content.size());
-        upk.buffer_consumed(serialized_index_content.size());
-        file = std::make_unique<IndexFile>(path, file_content);
-        MessagePackReader reader(&upk);
-        Reflect(reader, major);
-        Reflect(reader, minor);
-        if (major != IndexFile::kMajorVersion ||
-            minor != IndexFile::kMinorVersion)
-          throw std::invalid_argument("Invalid version");
-        Reflect(reader, *file);
-      } catch (std::invalid_argument& e) {
-        LOG_S(INFO) << "Failed to deserialize msgpack '" << path
-                    << "': " << e.what();
         return nullptr;
       }
       break;

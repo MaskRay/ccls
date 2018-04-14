@@ -135,8 +135,7 @@ target_include_directories(ccls PRIVATE
                            third_party/rapidjson/include
                            third_party/sparsepp
                            third_party/loguru
-                           third_party/doctest
-                           third_party/msgpack-c/include)
+                           third_party/doctest)
 
 ### Install
 
