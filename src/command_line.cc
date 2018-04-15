@@ -341,6 +341,9 @@ int main(int argc, char** argv) {
   if (!HasOption(options, "--log-all-to-stderr"))
     loguru::g_stderr_verbosity = loguru::Verbosity_WARNING;
 
+  loguru::g_preamble_date = false;
+  loguru::g_preamble_time = false;
+  loguru::g_preamble_verbose = false;
   loguru::g_flush_interval_ms = 0;
   loguru::init(argc, argv);
 

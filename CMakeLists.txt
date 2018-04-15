@@ -4,12 +4,12 @@ project(ccls LANGUAGES CXX)
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 include(DefaultCMakeBuildType)
 
-# Required libclang version
-set(LIBCLANG_VERSION 6.0.0 CACHE STRING "libclang version")
-set(LIBCLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
-    CACHE STRING "Downloaded libclang location")
-option(SYSTEM_LIBCLANG "Use system installation of libclang instead of \
-       downloading libclang" OFF)
+# Required Clang version
+set(CLANG_VERSION 6.0.0 CACHE STRING "Clang version")
+set(CLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
+    CACHE STRING "Downloaded Clang location")
+option(SYSTEM_CLANG "Use system installation of Clang instead of \
+       downloading Clang" OFF)
 option(ASAN "Compile with address sanitizers" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
@@ -72,23 +72,23 @@ else()
   endif()
 endif()
 
-### Download libclang if required
+### Download Clang if required
 
-if(NOT SYSTEM_LIBCLANG)
-  message(STATUS "Using downloaded libclang")
-  
+if(NOT SYSTEM_CLANG)
+  message(STATUS "Using downloaded Clang")
+
   include(DownloadAndExtractClang)
-  download_and_extract_clang(${LIBCLANG_VERSION} ${LIBCLANG_DOWNLOAD_LOCATION})
+  download_and_extract_clang(${CLANG_VERSION} ${CLANG_DOWNLOAD_LOCATION})
   # Used by FindClang
   set(CLANG_ROOT ${DOWNLOADED_CLANG_DIR})
 else()
-  message(STATUS "Using system libclang")
+  message(STATUS "Using system Clang")
 endif()
 
 ### Libraries
 
 # See cmake/FindClang.cmake
-find_package(Clang ${LIBCLANG_VERSION} REQUIRED)
+find_package(Clang ${CLANG_VERSION} REQUIRED)
 target_link_libraries(ccls PRIVATE Clang::Clang)
 
 # Enable threading support
@@ -142,7 +142,7 @@ target_include_directories(ccls PRIVATE
 install(TARGETS ccls RUNTIME DESTINATION bin)
 
 # TODO: install libclang.dll on Windows as well
-if(NOT SYSTEM_LIBCLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
   if(${CMAKE_SYSTEM_NAME} MATCHES Linux|FreeBSD)
     set_property(TARGET ccls APPEND PROPERTY
@@ -158,7 +158,7 @@ if(NOT SYSTEM_LIBCLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 endif()
 
 # Allow running from build Windows by copying libclang.dll to build directory
-if(NOT SYSTEM_LIBCLANG AND ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+if(NOT SYSTEM_CLANG AND ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   add_custom_command(TARGET ccls
                      POST_BUILD
                      COMMAND ${CMAKE_COMMAND} -E copy
