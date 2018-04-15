@@ -664,9 +664,8 @@ void SetVarDetail(IndexVar* var,
   }
 
   if (is_first_seen) {
-    std::optional<IndexTypeId> var_type =
-        ResolveToDeclarationType(db, cursor, param);
-    if (var_type) {
+    if (std::optional<IndexTypeId> var_type =
+            ResolveToDeclarationType(db, cursor, param)) {
       // Don't treat enum definition variables as instantiations.
       bool is_enum_member = semanticContainer &&
                             semanticContainer->cursor.kind == CXCursor_EnumDecl;
