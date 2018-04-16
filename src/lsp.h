@@ -239,7 +239,7 @@ MAKE_REFLECT_STRUCT(lsTextDocumentIdentifier, uri);
 struct lsVersionedTextDocumentIdentifier {
   lsDocumentUri uri;
   // The version number of this document.  number | null
-  std::variant<std::monostate, int> version;
+  std::optional<int> version;
 
   lsTextDocumentIdentifier AsTextDocumentIdentifier() const;
 };
@@ -325,12 +325,11 @@ MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
 //
 // Note that markdown strings will be sanitized - that means html will be
 // escaped.
-struct lsMarkedString1 {
-  std::string_view language;
-  std::string_view value;
+struct lsMarkedString {
+  std::optional<std::string> language;
+  std::string value;
 };
-using lsMarkedString = std::variant<std::string_view, lsMarkedString1>;
-MAKE_REFLECT_STRUCT(lsMarkedString1, language, value);
+void Reflect(Writer& visitor, lsMarkedString& value);
 
 struct lsTextDocumentContentChangeEvent {
   // The range of the document that changed.

@@ -91,8 +91,7 @@ struct ClangCompleteManager {
                     const lsTextDocumentPositionParams& completion_location,
                     const OnComplete& on_complete);
   // Request a diagnostics update.
-  void DiagnosticsUpdate(const lsRequestId& request_id,
-                         const lsTextDocumentIdentifier& document);
+  void DiagnosticsUpdate(const lsTextDocumentIdentifier& document);
 
   // Notify the completion manager that |filename| has been viewed and we
   // should begin preloading completion data.

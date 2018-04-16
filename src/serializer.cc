@@ -140,6 +140,15 @@ void Reflect(Writer& visitor, NtString& value) {
   visitor.String(s ? s : "");
 }
 
+void Reflect(Reader& visitor, JsonNull& value) {
+  assert(visitor.Format() == SerializeFormat::Json);
+  visitor.GetNull();
+}
+
+void Reflect(Writer& visitor, JsonNull& value) {
+  visitor.Null();
+}
+
 // TODO: Move this to indexer.cc
 void Reflect(Reader& visitor, IndexInclude& value) {
   REFLECT_MEMBER_START();
@@ -297,15 +306,6 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER(funcs);
   REFLECT_MEMBER(vars);
   REFLECT_MEMBER_END();
-}
-
-void Reflect(Reader& visitor, std::monostate&) {
-  assert(visitor.Format() == SerializeFormat::Json);
-  visitor.GetNull();
-}
-
-void Reflect(Writer& visitor, std::monostate&) {
-  visitor.Null();
 }
 
 void Reflect(Reader& visitor, SerializeFormat& value) {

@@ -275,6 +275,19 @@ bool lsTextEdit::operator==(const lsTextEdit& that) {
   return range == that.range && newText == that.newText;
 }
 
+void Reflect(Writer& visitor, lsMarkedString& value) {
+  // If there is a language, emit a `{language:string, value:string}` object. If
+  // not, emit a string.
+  if (value.language) {
+    REFLECT_MEMBER_START();
+    REFLECT_MEMBER(language);
+    REFLECT_MEMBER(value);
+    REFLECT_MEMBER_END();
+  } else {
+    Reflect(visitor, value.value);
+  }
+}
+
 std::string Out_ShowLogMessage::method() {
   if (display_type == DisplayType::Log)
     return "window/logMessage";

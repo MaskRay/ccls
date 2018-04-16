@@ -172,7 +172,7 @@ void RunQueryDbThread(const std::string& bin_name,
                                       args);
       },
       [](lsRequestId id) {
-        if (!std::holds_alternative<std::monostate>(id)) {
+        if (id.Valid()) {
           Out_Error out;
           out.id = id;
           out.error.code = lsErrorCodes::InternalError;
@@ -243,7 +243,7 @@ void RunQueryDbThread(const std::string& bin_name,
 //
 // |ipc| is connected to a server.
 void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
-  new std::thread([request_times]() {
+  std::thread([request_times]() {
     SetThreadName("stdin");
     auto* queue = QueueManager::instance();
     while (true) {
@@ -257,7 +257,7 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
         // Emit an error ResponseMessage if |id| is available.
         if (message) {
           lsRequestId id = message->GetRequestId();
-          if (!std::holds_alternative<std::monostate>(id)) {
+          if (id.Valid()) {
             Out_Error out;
             out.id = id;
             out.error.code = lsErrorCodes::InvalidParams;
@@ -279,12 +279,12 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
       if (method_type == kMethodType_Exit)
         break;
     }
-  });
+  }).detach();
 }
 
 void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
                         MultiQueueWaiter* waiter) {
-  new std::thread([=]() {
+  std::thread([=]() {
     SetThreadName("stdout");
     auto* queue = QueueManager::instance();
 
@@ -305,7 +305,7 @@ void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
         fflush(stdout);
       }
     }
-  });
+  }).detach();
 }
 
 void LanguageServerMain(const std::string& bin_name,

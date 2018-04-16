@@ -29,21 +29,16 @@ std::string ElideLongPath(const std::string& path) {
 
 size_t TrimCommonPathPrefix(const std::string& result,
                             const std::string& trimmer) {
-  size_t i = 0;
-  while (i < result.size() && i < trimmer.size()) {
-    char a = result[i];
-    char b = trimmer[i];
-#if defined(_WIN32)
-    a = (char)tolower(a);
-    b = (char)tolower(b);
+#ifdef _WIN32
+  std::string s = result, t = trimmer;
+  std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+  std::transform(t.begin(), t.end(), t.begin(), ::tolower);
+  if (s.compare(0, t.size(), t) == 0)
+    return t.size();
+#else
+  if (result.compare(0, trimmer.size(), trimmer) == 0)
+    return trimmer.size();
 #endif
-    if (a != b)
-      break;
-    ++i;
-  }
-
-  if (i == trimmer.size())
-    return i;
   return 0;
 }
 
@@ -51,21 +46,14 @@ size_t TrimCommonPathPrefix(const std::string& result,
 bool TrimPath(Project* project,
               const std::string& project_root,
               std::string* insert_path) {
-  size_t start = 0;
+  size_t start = TrimCommonPathPrefix(*insert_path, project_root);
   bool angle = false;
 
-  size_t len = TrimCommonPathPrefix(*insert_path, project_root);
-  if (len > start)
-    start = len;
-
-  for (auto& include_dir : project->quote_include_directories) {
-    len = TrimCommonPathPrefix(*insert_path, include_dir);
-    if (len > start)
-      start = len;
-  }
+  for (auto& include_dir : project->quote_include_directories)
+    start = std::max(start, TrimCommonPathPrefix(*insert_path, include_dir));
 
   for (auto& include_dir : project->angle_include_directories) {
-    len = TrimCommonPathPrefix(*insert_path, include_dir);
+    auto len = TrimCommonPathPrefix(*insert_path, include_dir);
     if (len > start) {
       start = len;
       angle = true;
@@ -115,8 +103,8 @@ void IncludeComplete::Rescan() {
                                           g_config->completion.includeBlacklist);
 
   is_scanning = true;
-  new std::thread([this]() {
-                    SetThreadName("scan_includes");
+  std::thread([this]() {
+    SetThreadName("scan_includes");
     Timer timer;
 
     InsertStlIncludes();
@@ -129,7 +117,7 @@ void IncludeComplete::Rescan() {
 
     timer.ResetAndPrint("[perf] Scanning for includes");
     is_scanning = false;
-  });
+  }).detach();
 }
 
 void IncludeComplete::InsertCompletionItem(const std::string& absolute_path,

@@ -13,10 +13,11 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <variant>
 #include <vector>
 
 enum class SerializeFormat { Binary, Json };
+
+struct JsonNull {};
 
 class Reader {
  public:
@@ -168,20 +169,18 @@ void Reflect(Writer& visitor, std::string_view& view);
 void Reflect(Reader& visitor, NtString& value);
 void Reflect(Writer& visitor, NtString& value);
 
-// std::monostate is used to represent JSON null
-void Reflect(Reader& visitor, std::monostate&);
-void Reflect(Writer& visitor, std::monostate&);
+void Reflect(Reader& visitor, JsonNull& value);
+void Reflect(Writer& visitor, JsonNull& value);
 
 void Reflect(Reader& visitor, SerializeFormat& value);
 void Reflect(Writer& visitor, SerializeFormat& value);
 
 //// Type constructors
 
-// ReflectMember std::optional<T> is used to represent TypeScript std::optional properties
+// ReflectMember std::optional<T> is used to represent TypeScript optional properties
 // (in `key: value` context).
 // Reflect std::optional<T> is used for a different purpose, whether an object is
-// nullable (possibly in `value` context). For the nullable semantics,
-// std::variant<std::monostate, T> is recommended.
+// nullable (possibly in `value` context).
 template <typename T>
 void Reflect(Reader& visitor, std::optional<T>& value) {
   if (visitor.IsNull()) {
@@ -241,57 +240,6 @@ void ReflectMember(Writer& visitor, const char* name, Maybe<T>& value) {
     visitor.Key(name);
     Reflect(visitor, value);
   }
-}
-
-// Helper struct to reflect std::variant
-template <size_t N, typename... Ts>
-struct ReflectVariant {
-  // If T appears in Ts..., we should set the value of std::variant<Ts...> to
-  // what we get from Reader.
-  template <typename T>
-  void ReflectTag(Reader& visitor, std::variant<Ts...>& value) {
-    if constexpr (std::disjunction_v<std::is_same<T, Ts>...>) {
-      T a;
-      Reflect(visitor, a);
-      value = std::move(a);
-    }
-  }
-
-  void operator()(Reader& visitor, std::variant<Ts...>& value) {
-    // Based on tag dispatch, call different ReflectTag helper.
-    if (visitor.IsNull())
-      ReflectTag<std::monostate>(visitor, value);
-    // It is possible that IsInt64() && IsInt(). We don't call ReflectTag<int>
-    // if int is not in Ts...
-    else if (std::disjunction_v<std::is_same<int, Ts>...> && visitor.IsInt())
-      ReflectTag<int>(visitor, value);
-    else if (visitor.IsInt64())
-      ReflectTag<int64_t>(visitor, value);
-    else if (visitor.IsString())
-      ReflectTag<std::string>(visitor, value);
-    else
-      assert(0);
-  }
-
-  // Check which type the variant contains and call corresponding Reflect.
-  void operator()(Writer& visitor, std::variant<Ts...>& value) {
-    if (value.index() == N - 1)
-      Reflect(visitor, std::get<N - 1>(value));
-    else
-      ReflectVariant<N - 1, Ts...>()(visitor, value);
-  }
-};
-
-// Writer reflection on std::variant recurses. This is induction basis.
-template <typename... Ts>
-struct ReflectVariant<0, Ts...> {
-  void operator()(Writer& visitor, std::variant<Ts...>& value) {}
-};
-
-// std::variant
-template <typename TVisitor, typename... Ts>
-void Reflect(TVisitor& visitor, std::variant<Ts...>& value) {
-  ReflectVariant<sizeof...(Ts), Ts...>()(visitor, value);
 }
 
 // std::vector
