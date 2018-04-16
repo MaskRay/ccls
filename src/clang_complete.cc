@@ -656,18 +656,18 @@ ClangCompleteManager::ClangCompleteManager(Project* project,
       on_dropped_(on_dropped),
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {
-  new std::thread([&]() {
+  std::thread([&]() {
     SetThreadName("comp-query");
     CompletionQueryMain(this);
-  });
-  new std::thread([&]() {
+  }).detach();
+  std::thread([&]() {
     SetThreadName("comp-preload");
     CompletionPreloadMain(this);
-  });
-  new std::thread([&]() {
+  }).detach();
+  std::thread([&]() {
     SetThreadName("diag-query");
     DiagnosticQueryMain(this);
-  });
+  }).detach();
 }
 
 void ClangCompleteManager::CodeComplete(
@@ -680,7 +680,6 @@ void ClangCompleteManager::CodeComplete(
 }
 
 void ClangCompleteManager::DiagnosticsUpdate(
-    const lsRequestId& id,
     const lsTextDocumentIdentifier& document) {
   bool has = false;
   diagnostic_request_.Iterate([&](const DiagnosticRequest& request) {

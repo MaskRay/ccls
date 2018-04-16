@@ -24,19 +24,15 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
   if (offset >= content.size())
     offset = (int)content.size() - 1;
 
-  lsPosition result;
+  int line = 0, col = 0;
   int i = 0;
-  while (i < offset) {
-    if (content[i] == '\n') {
-      result.line += 1;
-      result.character = 0;
-    } else {
-      result.character += 1;
-    }
-    ++i;
+  for (; i < offset; i++) {
+    if (content[i] == '\n')
+      line++, col = 0;
+    else
+      col++;
   }
-
-  return result;
+  return {line, col};
 }
 
 std::vector<std::string> ToLines(const std::string& content) {
@@ -511,8 +507,8 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
   }
 
   // version: number | null
-  if (std::holds_alternative<int>(change.textDocument.version))
-    file->version = std::get<int>(change.textDocument.version);
+  if (change.textDocument.version)
+    file->version = *change.textDocument.version;
 
   for (const lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
     // Per the spec replace everything if the rangeLength and range are not set.

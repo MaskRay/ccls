@@ -11,8 +11,8 @@ MAKE_REFLECT_STRUCT(In_Shutdown, id);
 REGISTER_IN_MESSAGE(In_Shutdown);
 
 struct Out_Shutdown : public lsOutMessage<Out_Shutdown> {
-  lsRequestId id;         // defaults to std::monostate (null)
-  std::monostate result;  // null
+  lsRequestId id;
+  JsonNull result;
 };
 MAKE_REFLECT_STRUCT(Out_Shutdown, jsonrpc, id, result);
 
