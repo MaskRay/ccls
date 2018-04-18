@@ -199,7 +199,7 @@ void TraceMe() {
   // In gdb, you need to invoke `signal SIGCONT` if you want ccls to continue
   // after detaching.
   if (getenv("CCLS_TRACEME"))
-    raise(SIGTSTP);
+    raise(SIGSTOP);
 }
 
 std::string GetExternalCommandOutput(const std::vector<std::string>& command,
