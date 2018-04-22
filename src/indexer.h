@@ -488,3 +488,40 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
 bool ConcatTypeAndName(std::string& type, const std::string& name);
 
 void IndexInit();
+
+// Abstracts away the actual indexing process. Each IIndexer instance is
+// per-thread and constructing an instance may be extremely expensive (ie,
+// acquire a lock) and should be done as rarely as possible.
+struct IIndexer {
+  struct TestEntry {
+    std::string path;
+    int num_indexes = 0;
+  };
+
+  static std::unique_ptr<IIndexer> MakeTestIndexer(
+      std::initializer_list<TestEntry> entries);
+
+  virtual ~IIndexer() = default;
+  virtual std::vector<std::unique_ptr<IndexFile>> Index(
+      FileConsumerSharedState* file_consumer_shared,
+      std::string file,
+      const std::vector<std::string>& args,
+      const std::vector<FileContents>& file_contents,
+      PerformanceImportFile* perf) = 0;
+};
+
+struct ClangIndexer : IIndexer {
+  ~ClangIndexer() override = default;
+
+  std::vector<std::unique_ptr<IndexFile>> Index(
+      FileConsumerSharedState* file_consumer_shared,
+      std::string file,
+      const std::vector<std::string>& args,
+      const std::vector<FileContents>& file_contents,
+      PerformanceImportFile* perf) override {
+    return Parse(file_consumer_shared, file, args, file_contents, perf, &index);
+  }
+
+  // Note: constructing this acquires a global lock
+  ClangIndex index;
+};

@@ -21,7 +21,6 @@
 #include "serializers/json.h"
 #include "test.h"
 #include "timer.h"
-#include "timestamp_manager.h"
 #include "working_files.h"
 
 #include <doctest/doctest.h>

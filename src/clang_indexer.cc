@@ -371,7 +371,7 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
       param->seen_files.push_back(file_name);
 
       // Set modification time.
-      std::optional<int64_t> modification_time = GetLastModificationTime(file_name);
+      std::optional<int64_t> modification_time = LastWriteTime(file_name);
       LOG_IF_S(ERROR, !modification_time)
           << "Failed fetching modification time for " << file_name;
       if (modification_time)
@@ -2357,4 +2357,61 @@ void Reflect(Writer& visitor, Reference& value) {
     Reflect(visitor, value.kind);
     Reflect(visitor, value.role);
   }
+}
+
+namespace {
+
+struct TestIndexer : IIndexer {
+  static std::unique_ptr<TestIndexer> FromEntries(
+      const std::vector<TestEntry>& entries) {
+    auto result = std::make_unique<TestIndexer>();
+
+    for (const TestEntry& entry : entries) {
+      std::vector<std::unique_ptr<IndexFile>> indexes;
+
+      if (entry.num_indexes > 0)
+        indexes.push_back(std::make_unique<IndexFile>(entry.path, "<empty>"));
+      for (int i = 1; i < entry.num_indexes; ++i) {
+        indexes.push_back(std::make_unique<IndexFile>(
+            entry.path + "_extra_" + std::to_string(i) + ".h", "<empty>"));
+      }
+
+      result->indexes.insert(std::make_pair(entry.path, std::move(indexes)));
+    }
+
+    return result;
+  }
+
+  ~TestIndexer() override = default;
+
+  std::vector<std::unique_ptr<IndexFile>> Index(
+      FileConsumerSharedState* file_consumer_shared,
+      std::string file,
+      const std::vector<std::string>& args,
+      const std::vector<FileContents>& file_contents,
+      PerformanceImportFile* perf) override {
+    auto it = indexes.find(file);
+    if (it == indexes.end()) {
+      // Don't return any indexes for unexpected data.
+      assert(false && "no indexes");
+      return {};
+    }
+
+    // FIXME: allow user to control how many times we return the index for a
+    // specific file (atm it is always 1)
+    auto result = std::move(it->second);
+    indexes.erase(it);
+    return result;
+  }
+
+  std::unordered_map<std::string, std::vector<std::unique_ptr<IndexFile>>>
+      indexes;
+};
+
+}  // namespace
+
+// static
+std::unique_ptr<IIndexer> IIndexer::MakeTestIndexer(
+    std::initializer_list<TestEntry> entries) {
+  return TestIndexer::FromEntries(entries);
 }

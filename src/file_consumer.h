@@ -18,7 +18,7 @@ MAKE_HASHABLE(CXFileUniqueID, t.data[0], t.data[1], t.data[2]);
 bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b);
 
 struct FileContents {
-  FileContents();
+  FileContents() = default;
   FileContents(const std::string& path, const std::string& content);
 
   std::optional<int> ToOffset(Position p) const;

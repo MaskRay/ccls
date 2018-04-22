@@ -2,7 +2,6 @@
 
 #include <optional>
 
-#include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -41,8 +40,11 @@ struct ICacheManager {
   virtual std::optional<std::string> LoadCachedFileContents(
       const std::string& path) = 0;
 
-  // Iterate over all loaded caches.
-  void IterateLoadedCaches(std::function<void(IndexFile*)> fn);
+  template <typename Fn>
+  void IterateLoadedCaches(Fn fn) {
+    for (const auto& cache : caches_)
+      fn(cache.second.get());
+  }
 
  protected:
   virtual std::unique_ptr<IndexFile> RawCacheLoad(const std::string& path) = 0;

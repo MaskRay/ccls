@@ -143,10 +143,3 @@ std::unique_ptr<IndexFile> ICacheManager::TakeOrLoad(const std::string& path) {
   assert(result);
   return result;
 }
-
-void ICacheManager::IterateLoadedCaches(std::function<void(IndexFile*)> fn) {
-  for (const auto& cache : caches_) {
-    assert(cache.second);
-    fn(cache.second.get());
-  }
-}
