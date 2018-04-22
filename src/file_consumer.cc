@@ -29,8 +29,6 @@ bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
          a.data[2] == b.data[2];
 }
 
-FileContents::FileContents() : line_offsets_{0} {}
-
 FileContents::FileContents(const std::string& path, const std::string& content)
     : path(path), content(content) {
   line_offsets_.push_back(0);

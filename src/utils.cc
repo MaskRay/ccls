@@ -1,5 +1,6 @@
 #include "utils.h"
 
+#include "filesystem.hh"
 #include "platform.h"
 
 #include <doctest/doctest.h>
@@ -130,6 +131,7 @@ std::optional<std::string> ReadContent(const std::string& filename) {
   size_t n;
   while ((n = fread(buf, 1, sizeof buf, f)) > 0)
     ret.append(buf, n);
+  fclose(f);
   return ret;
 }
 
@@ -140,6 +142,15 @@ void WriteToFile(const std::string& filename, const std::string& content) {
     return;
   }
   fclose(f);
+}
+
+std::optional<int64_t> LastWriteTime(const std::string& filename) {
+  std::error_code ec;
+  auto ftime = fs::last_write_time(filename, ec);
+  if (ec) return std::nullopt;
+  return std::chrono::time_point_cast<std::chrono::nanoseconds>(ftime)
+      .time_since_epoch()
+      .count();
 }
 
 std::string GetDefaultResourceDirectory() {

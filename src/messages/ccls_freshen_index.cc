@@ -1,11 +1,11 @@
 #include "cache_manager.h"
+#include "import_pipeline.h"
 #include "match.h"
 #include "message_handler.h"
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
 #include "timer.h"
-#include "timestamp_manager.h"
 #include "working_files.h"
 
 #include <loguru.hpp>
@@ -66,7 +66,7 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
       need_index.insert(file->def->path);
 
       std::optional<int64_t> modification_timestamp =
-          GetLastModificationTime(file->def->path);
+          LastWriteTime(file->def->path);
       if (!modification_timestamp)
         continue;
       std::optional<int64_t> cached_modification =

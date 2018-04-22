@@ -6,7 +6,6 @@
 #include <sparsepp/spp.h>
 
 #include <forward_list>
-#include <functional>
 
 struct QueryFile;
 struct QueryType;

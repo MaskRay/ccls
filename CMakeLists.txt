@@ -96,11 +96,12 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-  target_link_libraries(ccls PRIVATE -lc++experimental)
+if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+  target_link_libraries(ccls PRIVATE -lstdc++fs)
 elseif(MSVC)
 else()
-  target_link_libraries(ccls PRIVATE -lstdc++fs)
+  # e.g. Darwin, FreeBSD
+  target_link_libraries(ccls PRIVATE -lc++experimental)
 endif()
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
@@ -212,7 +213,6 @@ target_sources(ccls PRIVATE
                src/file_consumer.cc
                src/filesystem.cc
                src/fuzzy_match.cc
-               src/iindexer.cc
                src/import_pipeline.cc
                src/include_complete.cc
                src/method.cc
@@ -229,11 +229,9 @@ target_sources(ccls PRIVATE
                src/query.cc
                src/queue_manager.cc
                src/serializer.cc
-               src/standard_includes.cc
                src/test.cc
                src/third_party_impl.cc
                src/timer.cc
-               src/timestamp_manager.cc
                src/type_printer.cc
                src/utils.cc
                src/working_files.cc)

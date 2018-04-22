@@ -3,7 +3,6 @@
 #include "cache_manager.h"
 #include "config.h"
 #include "diagnostics_engine.h"
-#include "iindexer.h"
 #include "import_manager.h"
 #include "lsp.h"
 #include "message_handler.h"
@@ -12,15 +11,11 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 #include "timer.h"
-#include "timestamp_manager.h"
 
 #include <doctest/doctest.h>
 #include <loguru.hpp>
 
-#include <atomic>
 #include <chrono>
-#include <string>
-#include <vector>
 
 namespace {
 
@@ -63,14 +58,14 @@ struct IterationLoop {
 
 struct IModificationTimestampFetcher {
   virtual ~IModificationTimestampFetcher() = default;
-  virtual std::optional<int64_t> GetModificationTime(const std::string& path) = 0;
+  virtual std::optional<int64_t> LastWriteTime(const std::string& path) = 0;
 };
 struct RealModificationTimestampFetcher : IModificationTimestampFetcher {
   ~RealModificationTimestampFetcher() override = default;
 
   // IModificationTimestamp:
-  std::optional<int64_t> GetModificationTime(const std::string& path) override {
-    return GetLastModificationTime(path);
+  std::optional<int64_t> LastWriteTime(const std::string& path) override {
+    return ::LastWriteTime(path);
   }
 };
 struct FakeModificationTimestampFetcher : IModificationTimestampFetcher {
@@ -79,7 +74,7 @@ struct FakeModificationTimestampFetcher : IModificationTimestampFetcher {
   ~FakeModificationTimestampFetcher() override = default;
 
   // IModificationTimestamp:
-  std::optional<int64_t> GetModificationTime(const std::string& path) override {
+  std::optional<int64_t> LastWriteTime(const std::string& path) override {
     auto it = entries.find(path);
     assert(it != entries.end());
     return it->second;
@@ -174,7 +169,7 @@ ShouldParse FileNeedsParse(
   }
 
   std::optional<int64_t> modification_timestamp =
-      modification_timestamp_fetcher->GetModificationTime(path);
+      modification_timestamp_fetcher->LastWriteTime(path);
 
   // Cannot find file.
   if (!modification_timestamp)
@@ -327,7 +322,7 @@ std::vector<FileContents> PreloadFileContents(
   // still valid. if so, we can use it, otherwise we need to load from disk.
   auto get_latest_content = [](const std::string& path, int64_t cached_time,
                                const std::string& cached) -> std::string {
-    std::optional<int64_t> mod_time = GetLastModificationTime(path);
+    std::optional<int64_t> mod_time = LastWriteTime(path);
     if (!mod_time)
       return "";
 
@@ -533,6 +528,29 @@ bool IndexMergeIndexUpdates() {
 
 }  // namespace
 
+std::optional<int64_t> TimestampManager::GetLastCachedModificationTime(
+    ICacheManager* cache_manager,
+    const std::string& path) {
+  {
+    std::lock_guard<std::mutex> guard(mutex_);
+    auto it = timestamps_.find(path);
+    if (it != timestamps_.end())
+      return it->second;
+  }
+  IndexFile* file = cache_manager->TryLoad(path);
+  if (!file)
+    return std::nullopt;
+
+  UpdateCachedModificationTime(path, file->last_modification_time);
+  return file->last_modification_time;
+}
+
+void TimestampManager::UpdateCachedModificationTime(const std::string& path,
+                                                    int64_t timestamp) {
+  std::lock_guard<std::mutex> guard(mutex_);
+  timestamps_[path] = timestamp;
+}
+
 ImportPipelineStatus::ImportPipelineStatus()
     : num_active_threads(0), next_progress_output(0) {}
 
@@ -586,7 +604,7 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
   RealModificationTimestampFetcher modification_timestamp_fetcher;
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
-  auto indexer = IIndexer::MakeClangIndexer();
+  auto indexer = std::make_unique<ClangIndexer>();
 
   while (true) {
     bool did_work = false;

@@ -7,7 +7,6 @@
 // front of others.
 enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind);
-MAKE_ENUM_HASHABLE(SymbolKind);
 
 // clang/Basic/Specifiers.h clang::StorageClass
 enum class StorageClass : uint8_t {
@@ -44,7 +43,6 @@ enum class Role : uint16_t {
   All = (1 << 9) - 1,
 };
 MAKE_REFLECT_TYPE_PROXY(Role);
-MAKE_ENUM_HASHABLE(Role);
 
 inline uint16_t operator&(Role lhs, Role rhs) {
   return uint16_t(lhs) & uint16_t(rhs);

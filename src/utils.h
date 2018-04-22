@@ -62,8 +62,8 @@ void EnsureEndsInSlash(std::string& path);
 std::string EscapeFileName(std::string path);
 
 std::optional<std::string> ReadContent(const std::string& filename);
-
 void WriteToFile(const std::string& filename, const std::string& content);
+std::optional<int64_t> LastWriteTime(const std::string& filename);
 
 // http://stackoverflow.com/a/38140932
 //
@@ -91,16 +91,6 @@ inline void hash_combine(std::size_t& seed, const T& v, Rest... rest) {
       std::size_t ret = 0;                        \
       hash_combine(ret, __VA_ARGS__);             \
       return ret;                                 \
-    }                                             \
-  };                                              \
-  }
-
-#define MAKE_ENUM_HASHABLE(type)                  \
-  namespace std {                                 \
-  template <>                                     \
-  struct hash<type> {                             \
-    std::size_t operator()(const type& t) const { \
-      return hash<int>()(static_cast<int>(t));    \
     }                                             \
   };                                              \
   }

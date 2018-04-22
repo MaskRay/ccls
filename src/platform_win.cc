@@ -79,28 +79,6 @@ void SetThreadName(const std::string& thread_name) {
   }
 }
 
-std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path) {
-  struct _stat buf;
-  if (_stat(absolute_path.c_str(), &buf) != 0) {
-    switch (errno) {
-      case ENOENT:
-        // std::cerr << "GetLastModificationTime: unable to find file " <<
-        // absolute_path << std::endl;
-        return std::nullopt;
-      case EINVAL:
-        // std::cerr << "GetLastModificationTime: invalid param to _stat for
-        // file file " << absolute_path << std::endl;
-        return std::nullopt;
-      default:
-        // std::cerr << "GetLastModificationTime: unhandled for " <<
-        // absolute_path << std::endl;  exit(1);
-        return std::nullopt;
-    }
-  }
-
-  return buf.st_mtime;
-}
-
 void FreeUnusedMemory() {}
 
 // TODO Wait for debugger to attach
