@@ -30,13 +30,13 @@ struct Handler_CclsDerived : BaseMessageHandler<In_CclsDerived> {
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
         QueryType& type = db->GetType(sym);
-        out.result = GetLsLocationExs(db, working_files,
-                                      GetDeclarations(db, type.derived));
+        out.result = GetLsLocationExs(
+            db, working_files, GetDeclarations(db->usr2type, type.derived));
         break;
       } else if (sym.kind == SymbolKind::Func) {
         QueryFunc& func = db->GetFunc(sym);
-        out.result = GetLsLocationExs(db, working_files,
-                                      GetDeclarations(db, func.derived));
+        out.result = GetLsLocationExs(
+            db, working_files, GetDeclarations(db->usr2func, func.derived));
         break;
       }
     }

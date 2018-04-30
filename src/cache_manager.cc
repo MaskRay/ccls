@@ -137,9 +137,3 @@ std::unique_ptr<IndexFile> ICacheManager::TryTakeOrLoad(
 
   return RawCacheLoad(path);
 }
-
-std::unique_ptr<IndexFile> ICacheManager::TakeOrLoad(const std::string& path) {
-  auto result = TryTakeOrLoad(path);
-  assert(result);
-  return result;
-}

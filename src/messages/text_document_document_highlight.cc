@@ -24,7 +24,7 @@ struct Handler_TextDocumentDocumentHighlight
     : BaseMessageHandler<In_TextDocumentDocumentHighlight> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentDocumentHighlight* request) override {
-    QueryFileId file_id;
+    int file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
@@ -42,7 +42,7 @@ struct Handler_TextDocumentDocumentHighlight
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       // Found symbol. Return references to highlight.
       EachOccurrence(db, sym, true, [&](Use use) {
-        if (use.file != file_id)
+        if (use.file_id != file_id)
           return;
         if (std::optional<lsLocation> ls_loc =
                 GetLsLocation(db, working_files, use)) {

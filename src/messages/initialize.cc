@@ -521,7 +521,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         std::thread([=]() {
           SetThreadName("indexer" + std::to_string(i));
           Indexer_Main(diag_engine, file_consumer_shared, timestamp_manager,
-                       import_manager, import_pipeline_status, project,
+                       import_pipeline_status, project,
                        working_files, waiter);
         }).detach();
       }

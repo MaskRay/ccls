@@ -32,43 +32,27 @@ struct Index_Request {
                 lsRequestId id = {});
 };
 
-struct Index_DoIdMap {
-  std::unique_ptr<IndexFile> current;
-  std::unique_ptr<IndexFile> previous;
-  std::shared_ptr<ICacheManager> cache_manager;
-
-  PerformanceImportFile perf;
-  bool is_interactive = false;
-  bool write_to_disk = false;
-  bool load_previous = false;
-
-  Index_DoIdMap(std::unique_ptr<IndexFile> current,
-                const std::shared_ptr<ICacheManager>& cache_manager,
-                PerformanceImportFile perf,
-                bool is_interactive,
-                bool write_to_disk);
-};
-
 struct Index_OnIdMapped {
-  struct File {
-    std::unique_ptr<IndexFile> file;
-    std::unique_ptr<IdMap> ids;
-
-    File(std::unique_ptr<IndexFile> file, std::unique_ptr<IdMap> ids);
-  };
-
-  std::unique_ptr<File> previous;
-  std::unique_ptr<File> current;
   std::shared_ptr<ICacheManager> cache_manager;
+  std::unique_ptr<IndexFile> previous;
+  std::unique_ptr<IndexFile> current;
 
   PerformanceImportFile perf;
   bool is_interactive;
   bool write_to_disk;
 
   Index_OnIdMapped(const std::shared_ptr<ICacheManager>& cache_manager,
+                   std::unique_ptr<IndexFile> previous,
+                   std::unique_ptr<IndexFile> current,
                    PerformanceImportFile perf,
                    bool is_interactive,
-                   bool write_to_disk);
+                   bool write_to_disk)
+      : cache_manager(cache_manager),
+        previous(std::move(previous)),
+        current(std::move(current)),
+        perf(perf),
+        is_interactive(is_interactive),
+        write_to_disk(write_to_disk) {}
 };
 
 struct Index_OnIndexed {
@@ -95,11 +79,9 @@ class QueueManager {
 
   // Runs on querydb thread.
   ThreadedQueue<std::unique_ptr<InMessage>> for_querydb;
-  ThreadedQueue<Index_DoIdMap> do_id_map;
 
   // Runs on indexer threads.
   ThreadedQueue<Index_Request> index_request;
-  ThreadedQueue<Index_DoIdMap> load_previous_index;
   ThreadedQueue<Index_OnIdMapped> on_id_mapped;
 
   // Shared by querydb and indexer.

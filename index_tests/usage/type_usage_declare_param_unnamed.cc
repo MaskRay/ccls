@@ -5,24 +5,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [{
-      "id": 0,
-      "usr": 13749354388332789217,
-      "detailed_name": "ForwardType",
-      "qual_name_offset": 0,
-      "short_name": "ForwardType",
-      "kind": 23,
-      "declarations": ["1:8-1:19|-1|1|1"],
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [],
-      "uses": ["2:10-2:21|-1|1|4"]
-    }],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 15327735280790448926,
       "detailed_name": "void foo(ForwardType *)",
       "qual_name_offset": 5,
@@ -30,14 +13,31 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "2:6-2:9|-1|1|2",
-      "extent": "2:1-2:26|-1|1|0",
+      "spell": "2:6-2:9|0|1|2",
+      "extent": "2:1-2:26|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }],
-  "vars": []
+  "usr2type": [{
+      "usr": 13749354388332789217,
+      "detailed_name": "ForwardType",
+      "qual_name_offset": 0,
+      "short_name": "ForwardType",
+      "kind": 23,
+      "declarations": ["1:8-1:19|0|1|1"],
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": ["2:10-2:21|0|1|4"]
+    }],
+  "usr2var": []
 }
 */

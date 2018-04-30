@@ -8,24 +8,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [{
-      "id": 0,
-      "usr": 17,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "declarations": [],
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [0],
-      "uses": []
-    }],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 4259594751088586730,
       "detailed_name": "void foo()",
       "qual_name_offset": 5,
@@ -33,23 +16,39 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "3:6-3:9|-1|1|2",
-      "extent": "3:1-5:2|-1|1|0",
+      "spell": "3:6-3:9|0|1|2",
+      "extent": "3:1-5:2|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }],
-  "vars": [{
-      "id": 0,
+  "usr2type": [{
+      "usr": 17,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "declarations": [],
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [16721564935990383768],
+      "uses": []
+    }],
+  "usr2var": [{
       "usr": 16721564935990383768,
       "detailed_name": "int a",
       "qual_name_offset": 4,
       "short_name": "a",
-      "declarations": ["1:12-1:13|-1|1|1"],
-      "type": 0,
-      "uses": ["4:3-4:4|0|3|4"],
+      "declarations": ["1:12-1:13|0|1|1"],
+      "type": 17,
+      "uses": ["4:3-4:4|4259594751088586730|3|4"],
       "kind": 13,
       "storage": 2
     }]

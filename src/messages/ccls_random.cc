@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <numeric>
 
-MAKE_HASHABLE(SymbolIdx, t.kind, t.id);
+MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
 
 namespace {
 MethodType kMethodType = "$ccls/random";
@@ -20,29 +20,14 @@ REGISTER_IN_MESSAGE(In_CclsRandom);
 const double kDeclWeight = 3;
 const double kDamping = 0.1;
 
-template <typename Q>
-struct Kind;
-template <>
-struct Kind<QueryFunc> {
-  static constexpr SymbolKind value = SymbolKind::Func;
-};
-template <>
-struct Kind<QueryType> {
-  static constexpr SymbolKind value = SymbolKind::Type;
-};
-template <>
-struct Kind<QueryVar> {
-  static constexpr SymbolKind value = SymbolKind::Var;
-};
-
-template <typename Q>
+template <auto Q>
 void Add(const std::unordered_map<SymbolIdx, int>& sym2id,
          std::vector<std::unordered_map<int, double>>& adj,
-         const std::vector<Id<Q>>& ids,
+         const std::vector<Usr>& collection,
          int n,
          double w = 1) {
-  for (Id<Q> id : ids) {
-    auto it = sym2id.find(SymbolIdx{id, Kind<Q>::value});
+  for (Usr usr : collection) {
+    auto it = sym2id.find(SymbolIdx{usr, Q});
     if (it != sym2id.end())
       adj[it->second][n] += w;
   }
@@ -56,19 +41,19 @@ struct Handler_CclsRandom : BaseMessageHandler<In_CclsRandom> {
     std::vector<SymbolIdx> syms;
     int n = 0;
 
-    for (RawId i = 0; i < db->funcs.size(); i++)
-      if (db->funcs[i].AnyDef()) {
-        syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Func});
+    for (auto& it : db->usr2func)
+      if (it.second.AnyDef()) {
+        syms.push_back(SymbolIdx{it.first, SymbolKind::Func});
         sym2id[syms.back()] = n++;
       }
-    for (RawId i = 0; i < db->types.size(); i++)
-      if (db->types[i].AnyDef()) {
-        syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Type});
+    for (auto& it : db->usr2type)
+      if (it.second.AnyDef()) {
+        syms.push_back(SymbolIdx{it.first, SymbolKind::Type});
         sym2id[syms.back()] = n++;
       }
-    for (RawId i = 0; i < db->vars.size(); i++)
-      if (db->vars[i].AnyDef()) {
-        syms.push_back(SymbolIdx{Id<void>(i), SymbolKind::Var});
+    for (auto& it : db->usr2var)
+      if (it.second.AnyDef()) {
+        syms.push_back(SymbolIdx{it.first, SymbolKind::Var});
         sym2id[syms.back()] = n++;
       }
 
@@ -81,26 +66,26 @@ struct Handler_CclsRandom : BaseMessageHandler<In_CclsRandom> {
       }
     };
     n = 0;
-    for (QueryFunc& func : db->funcs)
-      if (func.AnyDef()) {
-        add(func.declarations, kDeclWeight);
-        add(func.uses, 1);
-        Add(sym2id, adj, func.derived, n);
+    for (auto& it : db->usr2func)
+      if (it.second.AnyDef()) {
+        add(it.second.declarations, kDeclWeight);
+        add(it.second.uses, 1);
+        Add<SymbolKind::Func>(sym2id, adj, it.second.derived, n);
         n++;
       }
-    for (QueryType& type : db->types)
-      if (const auto* def = type.AnyDef()) {
-        add(type.uses, 1);
-        Add(sym2id, adj, type.instances, n);
-        Add(sym2id, adj, def->funcs, n);
-        Add(sym2id, adj, def->types, n);
-        Add(sym2id, adj, def->vars, n);
+    for (auto& it : db->usr2type)
+      if (const auto* def = it.second.AnyDef()) {
+        add(it.second.uses, 1);
+        Add<SymbolKind::Var>(sym2id, adj, it.second.instances, n);
+        Add<SymbolKind::Func>(sym2id, adj, def->funcs, n);
+        Add<SymbolKind::Type>(sym2id, adj, def->types, n);
+        Add<SymbolKind::Var>(sym2id, adj, def->vars, n);
         n++;
       }
-    for (QueryVar& var : db->vars)
-      if (var.AnyDef()) {
-        add(var.declarations, kDeclWeight);
-        add(var.uses, 1);
+    for (auto& it : db->usr2var)
+      if (it.second.AnyDef()) {
+        add(it.second.declarations, kDeclWeight);
+        add(it.second.uses, 1);
         n++;
       }
     for (int i = 0; i < n; i++) {

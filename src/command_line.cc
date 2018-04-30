@@ -3,7 +3,6 @@
 #include "clang_complete.h"
 #include "diagnostics_engine.h"
 #include "file_consumer.h"
-#include "import_manager.h"
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "indexer.h"
@@ -112,7 +111,6 @@ bool QueryDbMainLoop(QueryDatabase* db,
                      MultiQueueWaiter* waiter,
                      Project* project,
                      FileConsumerSharedState* file_consumer_shared,
-                     ImportManager* import_manager,
                      ImportPipelineStatus* status,
                      TimestampManager* timestamp_manager,
                      SemanticHighlightSymbolCache* semantic_cache,
@@ -143,8 +141,7 @@ bool QueryDbMainLoop(QueryDatabase* db,
   // TODO: consider rate-limiting and checking for IPC messages so we don't
   // block requests / we can serve partial requests.
 
-  if (QueryDb_ImportMain(db, import_manager, status, semantic_cache,
-                         working_files)) {
+  if (QueryDb_ImportMain(db, status, semantic_cache, working_files)) {
     did_work = true;
   }
 
@@ -186,7 +183,6 @@ void RunQueryDbThread(const std::string& bin_name,
   auto global_code_complete_cache = std::make_unique<CodeCompleteCache>();
   auto non_global_code_complete_cache = std::make_unique<CodeCompleteCache>();
   auto signature_cache = std::make_unique<CodeCompleteCache>();
-  ImportManager import_manager;
   ImportPipelineStatus import_pipeline_status;
   TimestampManager timestamp_manager;
   QueryDatabase db;
@@ -198,7 +194,6 @@ void RunQueryDbThread(const std::string& bin_name,
     handler->project = &project;
     handler->diag_engine = &diag_engine;
     handler->file_consumer_shared = &file_consumer_shared;
-    handler->import_manager = &import_manager;
     handler->import_pipeline_status = &import_pipeline_status;
     handler->timestamp_manager = &timestamp_manager;
     handler->semantic_cache = &semantic_cache;
@@ -216,7 +211,7 @@ void RunQueryDbThread(const std::string& bin_name,
   while (true) {
     bool did_work = QueryDbMainLoop(
         &db, querydb_waiter, &project, &file_consumer_shared,
-        &import_manager, &import_pipeline_status, &timestamp_manager,
+        &import_pipeline_status, &timestamp_manager,
         &semantic_cache, &working_files, &clang_complete, &include_complete,
         global_code_complete_cache.get(), non_global_code_complete_cache.get(),
         signature_cache.get());
@@ -226,8 +221,7 @@ void RunQueryDbThread(const std::string& bin_name,
 
     if (!did_work) {
       auto* queue = QueueManager::instance();
-      querydb_waiter->Wait(&queue->on_indexed, &queue->for_querydb,
-                           &queue->do_id_map);
+      querydb_waiter->Wait(&queue->on_indexed, &queue->for_querydb);
     }
   }
 }

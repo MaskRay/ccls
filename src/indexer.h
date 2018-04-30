@@ -71,33 +71,30 @@ void Reflect(TVisitor& visitor, Id<T>& id) {
 }
 
 using IndexFileId = Id<IndexFile>;
-using IndexTypeId = Id<IndexType>;
-using IndexFuncId = Id<IndexFunc>;
-using IndexVarId = Id<IndexVar>;
 
 struct SymbolIdx {
-  Id<void> id;
+  Usr usr;
   SymbolKind kind;
 
   bool operator==(const SymbolIdx& o) const {
-    return id == o.id && kind == o.kind;
+    return usr == o.usr && kind == o.kind;
   }
   bool operator<(const SymbolIdx& o) const {
-    return !(id == o.id) ? id < o.id : kind < o.kind;
+    return usr != o.usr ? usr < o.usr : kind < o.kind;
   }
 };
-MAKE_REFLECT_STRUCT(SymbolIdx, kind, id);
+MAKE_REFLECT_STRUCT(SymbolIdx, usr, kind);
 
 struct Reference {
   Range range;
-  Id<void> id;
+  Usr usr;
   SymbolKind kind;
   Role role;
 
   bool Valid() const { return range.Valid(); }
-  operator SymbolIdx() const { return {id, kind}; }
-  std::tuple<Range, Id<void>, SymbolKind, Role> ToTuple() const {
-    return std::make_tuple(range, id, kind, role);
+  operator SymbolIdx() const { return {usr, kind}; }
+  std::tuple<Range, Usr, SymbolKind, Role> ToTuple() const {
+    return std::make_tuple(range, usr, kind, role);
   }
   bool operator==(const Reference& o) const { return ToTuple() == o.ToTuple(); }
   bool operator<(const Reference& o) const { return ToTuple() < o.ToTuple(); }
@@ -106,30 +103,19 @@ struct Reference {
 // |id,kind| refer to the referenced entity.
 struct SymbolRef : Reference {
   SymbolRef() = default;
-  SymbolRef(Range range, Id<void> id, SymbolKind kind, Role role)
-      : Reference{range, id, kind, role} {}
+  SymbolRef(Range range, Usr usr, SymbolKind kind, Role role)
+      : Reference{range, usr, kind, role} {}
 };
 
 // Represents an occurrence of a variable/type, |id,kind| refer to the lexical
 // parent.
 struct Use : Reference {
   // |file| is used in Query* but not in Index*
-  Id<QueryFile> file;
-  Use() = default;
-  Use(Range range, Id<void> id, SymbolKind kind, Role role, Id<QueryFile> file)
-      : Reference{range, id, kind, role}, file(file) {}
+  int file_id = -1;
 };
 
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
-
-struct IndexFamily {
-  using FileId = Id<IndexFile>;
-  using FuncId = Id<IndexFunc>;
-  using TypeId = Id<IndexType>;
-  using VarId = Id<IndexVar>;
-  using Range = ::Range;
-};
 
 template <typename D>
 struct NameMixin {
@@ -145,8 +131,69 @@ struct NameMixin {
   }
 };
 
-template <typename F>
-struct TypeDef : NameMixin<TypeDef<F>> {
+struct FuncDef : NameMixin<FuncDef> {
+  // General metadata.
+  std::string detailed_name;
+  NtString hover;
+  NtString comments;
+  Maybe<Use> spell;
+  Maybe<Use> extent;
+
+  // Method this method overrides.
+  std::vector<Usr> bases;
+
+  // Local variables or parameters.
+  std::vector<Usr> vars;
+
+  // Functions that this function calls.
+  std::vector<SymbolRef> callees;
+
+  int file_id;
+  // Type which declares this one (ie, it is a method)
+  Usr declaring_type = 0;
+  int16_t qual_name_offset = 0;
+  int16_t short_name_offset = 0;
+  int16_t short_name_size = 0;
+  lsSymbolKind kind = lsSymbolKind::Unknown;
+  StorageClass storage = StorageClass::Invalid;
+
+  bool operator==(const FuncDef& o) const {
+    return detailed_name == o.detailed_name && spell == o.spell &&
+           extent == o.extent && declaring_type == o.declaring_type &&
+           bases == o.bases && vars == o.vars && callees == o.callees &&
+           kind == o.kind && storage == o.storage && hover == o.hover &&
+           comments == o.comments;
+  }
+};
+MAKE_REFLECT_STRUCT(FuncDef,
+                    detailed_name,
+                    qual_name_offset,
+                    short_name_offset,
+                    short_name_size,
+                    kind,
+                    storage,
+                    hover,
+                    comments,
+                    spell,
+                    extent,
+                    file_id,
+                    declaring_type,
+                    bases,
+                    vars,
+                    callees);
+
+struct IndexFunc : NameMixin<IndexFunc> {
+  using Def = FuncDef;
+  Usr usr;
+  Def def;
+  std::vector<Use> declarations;
+  std::vector<Use> uses;
+  std::vector<Usr> derived;
+
+  bool operator<(const IndexFunc& other) const { return usr < other.usr; }
+};
+
+struct TypeDef : NameMixin<TypeDef> {
   // General metadata.
   std::string detailed_name;
   NtString hover;
@@ -165,17 +212,17 @@ struct TypeDef : NameMixin<TypeDef<F>> {
   Maybe<Use> extent;
 
   // Immediate parent types.
-  std::vector<typename F::TypeId> bases;
+  std::vector<Usr> bases;
 
   // Types, functions, and variables defined in this type.
-  std::vector<typename F::TypeId> types;
-  std::vector<typename F::FuncId> funcs;
-  std::vector<typename F::VarId> vars;
+  std::vector<Usr> types;
+  std::vector<Usr> funcs;
+  std::vector<Usr> vars;
 
-  typename F::FileId file;
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
-  Maybe<typename F::TypeId> alias_of;
+  Usr alias_of = 0;
+  int file_id;
 
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
@@ -189,140 +236,40 @@ struct TypeDef : NameMixin<TypeDef<F>> {
            kind == o.kind && hover == o.hover && comments == o.comments;
   }
 };
-template <typename TVisitor, typename Family>
-void Reflect(TVisitor& visitor, TypeDef<Family>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(qual_name_offset);
-  REFLECT_MEMBER(short_name_offset);
-  REFLECT_MEMBER(short_name_size);
-  REFLECT_MEMBER(kind);
-  REFLECT_MEMBER(hover);
-  REFLECT_MEMBER(comments);
-  REFLECT_MEMBER(spell);
-  REFLECT_MEMBER(extent);
-  REFLECT_MEMBER(file);
-  REFLECT_MEMBER(alias_of);
-  REFLECT_MEMBER(bases);
-  REFLECT_MEMBER(types);
-  REFLECT_MEMBER(funcs);
-  REFLECT_MEMBER(vars);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(TypeDef,
+                    detailed_name,
+                    qual_name_offset,
+                    short_name_offset,
+                    short_name_size,
+                    kind,
+                    hover,
+                    comments,
+                    spell,
+                    extent,
+                    file_id,
+                    alias_of,
+                    bases,
+                    types,
+                    funcs,
+                    vars);
 
 struct IndexType {
-  using Def = TypeDef<IndexFamily>;
-
+  using Def = TypeDef;
   Usr usr;
-  IndexTypeId id;
-
   Def def;
   std::vector<Use> declarations;
-
-  // Immediate derived types.
-  std::vector<IndexTypeId> derived;
-
-  // Declared variables of this type.
-  std::vector<IndexVarId> instances;
+  std::vector<Use> uses;
+  std::vector<Usr> derived;
+  std::vector<Usr> instances;
 
   // Every usage, useful for things like renames.
   // NOTE: Do not insert directly! Use AddUsage instead.
-  std::vector<Use> uses;
 
-  bool operator<(const IndexType& other) const { return id < other.id; }
+  bool operator<(const IndexType& other) const { return usr < other.usr; }
 };
 
-template <typename F>
-struct FuncDef : NameMixin<FuncDef<F>> {
-  // General metadata.
-  std::string detailed_name;
-  NtString hover;
-  NtString comments;
-  Maybe<Use> spell;
-  Maybe<Use> extent;
 
-  // Method this method overrides.
-  std::vector<typename F::FuncId> bases;
-
-  // Local variables or parameters.
-  std::vector<typename F::VarId> vars;
-
-  // Functions that this function calls.
-  std::vector<SymbolRef> callees;
-
-  typename F::FileId file;
-  // Type which declares this one (ie, it is a method)
-  Maybe<typename F::TypeId> declaring_type;
-  int16_t qual_name_offset = 0;
-  int16_t short_name_offset = 0;
-  int16_t short_name_size = 0;
-  lsSymbolKind kind = lsSymbolKind::Unknown;
-  StorageClass storage = StorageClass::Invalid;
-
-  bool operator==(const FuncDef& o) const {
-    return detailed_name == o.detailed_name && spell == o.spell &&
-           extent == o.extent && declaring_type == o.declaring_type &&
-           bases == o.bases && vars == o.vars && callees == o.callees &&
-           kind == o.kind && storage == o.storage && hover == o.hover &&
-           comments == o.comments;
-  }
-};
-
-template <typename TVisitor, typename Family>
-void Reflect(TVisitor& visitor, FuncDef<Family>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(qual_name_offset);
-  REFLECT_MEMBER(short_name_offset);
-  REFLECT_MEMBER(short_name_size);
-  REFLECT_MEMBER(kind);
-  REFLECT_MEMBER(storage);
-  REFLECT_MEMBER(hover);
-  REFLECT_MEMBER(comments);
-  REFLECT_MEMBER(spell);
-  REFLECT_MEMBER(extent);
-  REFLECT_MEMBER(file);
-  REFLECT_MEMBER(declaring_type);
-  REFLECT_MEMBER(bases);
-  REFLECT_MEMBER(vars);
-  REFLECT_MEMBER(callees);
-  REFLECT_MEMBER_END();
-}
-
-struct IndexFunc : NameMixin<IndexFunc> {
-  using Def = FuncDef<IndexFamily>;
-
-  Usr usr;
-  IndexFuncId id;
-
-  Def def;
-
-  struct Declaration {
-    // Range of only the function name.
-    Use spell;
-    // Location of the parameter names.
-    std::vector<Range> param_spellings;
-  };
-
-  // Places the function is forward-declared.
-  std::vector<Declaration> declarations;
-
-  // Methods which directly override this one.
-  std::vector<IndexFuncId> derived;
-
-  // Calls/usages of this function. If the call is coming from outside a
-  // function context then the FuncRef will not have an associated id.
-  //
-  // To get all usages, also include the ranges inside of declarations and
-  // def.spell.
-  std::vector<Use> uses;
-
-  bool operator<(const IndexFunc& other) const { return id < other.id; }
-};
-MAKE_REFLECT_STRUCT(IndexFunc::Declaration, spell, param_spellings);
-
-template <typename F>
-struct VarDef : NameMixin<VarDef<F>> {
+struct VarDef : NameMixin<VarDef> {
   // General metadata.
   std::string detailed_name;
   NtString hover;
@@ -332,9 +279,9 @@ struct VarDef : NameMixin<VarDef<F>> {
   Maybe<Use> spell;
   Maybe<Use> extent;
 
-  typename F::FileId file;
+  int file_id;
   // Type of the variable.
-  Maybe<typename F::TypeId> type;
+  Usr type = 0;
 
   // Function/type which declares this one.
   int16_t qual_name_offset = 0;
@@ -354,47 +301,28 @@ struct VarDef : NameMixin<VarDef<F>> {
            storage == o.storage && hover == o.hover && comments == o.comments;
   }
 };
-
-template <typename TVisitor, typename Family>
-void Reflect(TVisitor& visitor, VarDef<Family>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(detailed_name);
-  REFLECT_MEMBER(qual_name_offset);
-  REFLECT_MEMBER(short_name_offset);
-  REFLECT_MEMBER(short_name_size);
-  REFLECT_MEMBER(hover);
-  REFLECT_MEMBER(comments);
-  REFLECT_MEMBER(spell);
-  REFLECT_MEMBER(extent);
-  REFLECT_MEMBER(file);
-  REFLECT_MEMBER(type);
-  REFLECT_MEMBER(kind);
-  REFLECT_MEMBER(storage);
-  REFLECT_MEMBER_END();
-}
+MAKE_REFLECT_STRUCT(VarDef,
+                    detailed_name,
+                    qual_name_offset,
+                    short_name_offset,
+                    short_name_size,
+                    hover,
+                    comments,
+                    spell,
+                    extent,
+                    file_id,
+                    type,
+                    kind,
+                    storage);
 
 struct IndexVar {
-  using Def = VarDef<IndexFamily>;
-
+  using Def = VarDef;
   Usr usr;
-  IndexVarId id;
-
   Def def;
-
   std::vector<Use> declarations;
   std::vector<Use> uses;
 
-  bool operator<(const IndexVar& other) const { return id < other.id; }
-};
-
-struct IdCache {
-  std::string primary_file;
-  std::unordered_map<Usr, IndexTypeId> usr_to_type_id;
-  std::unordered_map<Usr, IndexFuncId> usr_to_func_id;
-  std::unordered_map<Usr, IndexVarId> usr_to_var_id;
-  std::unordered_map<IndexTypeId, Usr> type_id_to_usr;
-  std::unordered_map<IndexFuncId, Usr> func_id_to_usr;
-  std::unordered_map<IndexVarId, Usr> var_id_to_usr;
+  bool operator<(const IndexVar& other) const { return usr < other.usr; }
 };
 
 struct IndexInclude {
@@ -406,8 +334,6 @@ struct IndexInclude {
 };
 
 struct IndexFile {
-  IdCache id_cache;
-
   // For both JSON and MessagePack cache files.
   static const int kMajorVersion;
   // For MessagePack cache files.
@@ -432,9 +358,9 @@ struct IndexFile {
 
   std::vector<IndexInclude> includes;
   std::vector<std::string> dependencies;
-  std::vector<IndexType> types;
-  std::vector<IndexFunc> funcs;
-  std::vector<IndexVar> vars;
+  std::unordered_map<Usr, IndexFunc> usr2func;
+  std::unordered_map<Usr, IndexType> usr2type;
+  std::unordered_map<Usr, IndexVar> usr2var;
 
   // Diagnostics found when indexing this file. Not serialized.
   std::vector<lsDiagnostic> diagnostics_;
@@ -443,15 +369,12 @@ struct IndexFile {
 
   IndexFile(const std::string& path, const std::string& contents);
 
-  IndexTypeId ToTypeId(Usr usr);
-  IndexFuncId ToFuncId(Usr usr);
-  IndexVarId ToVarId(Usr usr);
-  IndexTypeId ToTypeId(const CXCursor& usr);
-  IndexFuncId ToFuncId(const CXCursor& usr);
-  IndexVarId ToVarId(const CXCursor& usr);
-  IndexType* Resolve(IndexTypeId id);
-  IndexFunc* Resolve(IndexFuncId id);
-  IndexVar* Resolve(IndexVarId id);
+  IndexFunc& ToFunc(Usr usr);
+  IndexType& ToType(Usr usr);
+  IndexVar& ToVar(Usr usr);
+  IndexFunc& ToFunc(const ClangCursor& c) { return ToFunc(c.get_usr_hash()); }
+  IndexType& ToType(const ClangCursor& c) { return ToType(c.get_usr_hash()); }
+  IndexVar& ToVar(const ClangCursor& c) { return ToVar(c.get_usr_hash()); }
 
   std::string ToString();
 };

@@ -13,8 +13,6 @@ struct PerformanceImportFile {
   uint64_t index_parse = 0;
   // [indexer] build the IndexFile object from clang parse
   uint64_t index_build = 0;
-  // [querydb] create IdMap object from IndexFile
-  uint64_t querydb_id_map = 0;
   // [indexer] save the IndexFile to disk
   uint64_t index_save_to_disk = 0;
   // [indexer] loading previously cached index
@@ -29,7 +27,6 @@ struct PerformanceImportFile {
 MAKE_REFLECT_STRUCT(PerformanceImportFile,
                     index_parse,
                     index_build,
-                    querydb_id_map,
                     index_save_to_disk,
                     index_load_cached,
                     index_make_delta);

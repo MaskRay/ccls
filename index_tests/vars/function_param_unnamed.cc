@@ -4,9 +4,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 2747674671862363334,
       "detailed_name": "void foo(int, int)",
       "qual_name_offset": 5,
@@ -14,14 +12,16 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "1:6-1:9|-1|1|2",
-      "extent": "1:1-1:22|-1|1|0",
+      "spell": "1:6-1:9|0|1|2",
+      "extent": "1:1-1:22|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }],
-  "vars": []
+  "usr2type": [],
+  "usr2var": []
 }
 */

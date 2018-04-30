@@ -31,10 +31,6 @@ struct ICacheManager {
   // the cache does not exist.
   std::unique_ptr<IndexFile> TryTakeOrLoad(const std::string& path);
 
-  // Takes the existing cache or loads the cache at |path|. Asserts the cache
-  // exists.
-  std::unique_ptr<IndexFile> TakeOrLoad(const std::string& path);
-
   virtual void WriteToCache(IndexFile& file) = 0;
 
   virtual std::optional<std::string> LoadCachedFileContents(

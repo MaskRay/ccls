@@ -9,18 +9,18 @@ lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    SymbolRef sym,
                                    const std::string& new_text) {
-  std::unordered_map<QueryFileId, lsTextDocumentEdit> path_to_edit;
+  std::unordered_map<int, lsTextDocumentEdit> path_to_edit;
 
   EachOccurrence(db, sym, true, [&](Use use) {
     std::optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
     if (!ls_location)
       return;
 
-    QueryFileId file_id = use.file;
+    int file_id = use.file_id;
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
       path_to_edit[file_id] = lsTextDocumentEdit();
 
-      QueryFile& file = db->files[file_id.id];
+      QueryFile& file = db->files[file_id];
       if (!file.def)
         return;
 
@@ -80,7 +80,7 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
 struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentRename* request) override {
-    QueryFileId file_id;
+    int file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,

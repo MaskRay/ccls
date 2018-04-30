@@ -176,8 +176,9 @@ void TraceMe() {
   // If the environment variable is defined, wait for a debugger.
   // In gdb, you need to invoke `signal SIGCONT` if you want ccls to continue
   // after detaching.
-  if (getenv("CCLS_TRACEME"))
-    raise(SIGSTOP);
+  const char* traceme = getenv("CCLS_TRACEME");
+  if (traceme)
+    raise(traceme[0] == 's' ? SIGSTOP : SIGTSTP);
 }
 
 std::string GetExternalCommandOutput(const std::vector<std::string>& command,

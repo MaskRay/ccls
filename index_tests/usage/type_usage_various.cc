@@ -14,69 +14,63 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [{
-      "id": 0,
-      "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
-      "short_name": "Foo",
-      "kind": 5,
-      "declarations": [],
-      "spell": "1:7-1:10|-1|1|2",
-      "extent": "1:1-3:2|-1|1|0",
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [0],
-      "vars": [],
-      "instances": [0, 1],
-      "uses": ["2:3-2:6|-1|1|4", "5:1-5:4|-1|1|4", "5:6-5:9|-1|1|4", "6:3-6:6|-1|1|4", "10:8-10:11|-1|1|4"]
-    }],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 9488177941273031343,
       "detailed_name": "Foo *Foo::make()",
       "qual_name_offset": 5,
       "short_name": "make",
       "kind": 6,
       "storage": 1,
-      "declarations": [{
-          "spell": "2:8-2:12|0|2|1",
-          "param_spellings": []
-        }],
-      "spell": "5:11-5:15|0|2|2",
-      "extent": "5:1-8:2|-1|1|0",
-      "declaring_type": 0,
+      "declarations": ["2:8-2:12|15041163540773201510|2|1"],
+      "spell": "5:11-5:15|15041163540773201510|2|2",
+      "extent": "5:1-8:2|0|1|0",
+      "declaring_type": 15041163540773201510,
       "bases": [],
       "derived": [],
-      "vars": [0],
+      "vars": [16380484338511689669],
       "uses": [],
       "callees": []
     }],
-  "vars": [{
-      "id": 0,
-      "usr": 14873619387499024780,
-      "detailed_name": "Foo f",
-      "qual_name_offset": 4,
-      "short_name": "f",
+  "usr2type": [{
+      "usr": 15041163540773201510,
+      "detailed_name": "Foo",
+      "qual_name_offset": 0,
+      "short_name": "Foo",
+      "kind": 5,
       "declarations": [],
-      "spell": "6:7-6:8|0|3|2",
-      "extent": "6:3-6:8|0|3|0",
-      "type": 0,
-      "uses": [],
-      "kind": 13,
-      "storage": 1
-    }, {
-      "id": 1,
+      "spell": "1:7-1:10|0|1|2",
+      "extent": "1:1-3:2|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [9488177941273031343],
+      "vars": [],
+      "instances": [16380484338511689669, 14455976355866885943],
+      "uses": ["2:3-2:6|0|1|4", "5:1-5:4|0|1|4", "5:6-5:9|0|1|4", "6:3-6:6|0|1|4", "10:8-10:11|0|1|4"]
+    }],
+  "usr2var": [{
       "usr": 14455976355866885943,
       "detailed_name": "Foo foo",
       "qual_name_offset": 4,
       "short_name": "foo",
-      "declarations": ["10:12-10:15|-1|1|1"],
-      "type": 0,
+      "declarations": ["10:12-10:15|0|1|1"],
+      "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
       "storage": 2
+    }, {
+      "usr": 16380484338511689669,
+      "detailed_name": "Foo f",
+      "qual_name_offset": 4,
+      "short_name": "f",
+      "declarations": [],
+      "spell": "6:7-6:8|9488177941273031343|3|2",
+      "extent": "6:3-6:8|9488177941273031343|3|0",
+      "type": 15041163540773201510,
+      "uses": [],
+      "kind": 13,
+      "storage": 1
     }]
 }
 */

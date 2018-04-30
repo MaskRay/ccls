@@ -32,7 +32,7 @@ struct Handler_TextDocumentDocumentSymbol
     out.id = request->id;
 
     QueryFile* file;
-    QueryFileId file_id;
+    int file_id;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
                         &file_id)) {
@@ -58,7 +58,7 @@ struct Handler_TextDocumentDocumentSymbol
 
       if (std::optional<lsLocation> location = GetLsLocation(
               db, working_files,
-              Use(sym.range, sym.id, sym.kind, sym.role, file_id))) {
+              Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
         info->location = *location;
         out.result.push_back(*info);
       }

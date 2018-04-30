@@ -5,25 +5,22 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 2747674671862363334,
       "detailed_name": "void foo(int a, int b)",
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
       "storage": 1,
-      "declarations": [{
-          "spell": "1:6-1:9|-1|1|1",
-          "param_spellings": ["1:14-1:15", "1:21-1:22"]
-        }],
+      "declarations": ["1:6-1:9|0|1|1"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }],
-  "vars": []
+  "usr2type": [],
+  "usr2var": []
 }
 */

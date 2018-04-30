@@ -14,7 +14,9 @@ struct In_CclsMemberHierarchy : public RequestInMessage {
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
 
-    Maybe<QueryTypeId> id;
+    // Type
+    Usr usr;
+    std::string id;
 
     bool qualified = false;
     int levels = 1;
@@ -34,7 +36,8 @@ REGISTER_IN_MESSAGE(In_CclsMemberHierarchy);
 struct Out_CclsMemberHierarchy
     : public lsOutMessage<Out_CclsMemberHierarchy> {
   struct Entry {
-    QueryTypeId id;
+    Usr usr;
+    std::string id;
     std::string_view name;
     std::string fieldName;
     lsLocation location;
@@ -82,11 +85,13 @@ void DoField(MessageHandler* m,
       entry1.location = *loc;
   }
   if (def1->type) {
-    entry1.id = *def1->type;
+    entry1.id = std::to_string(def1->type);
+    entry1.usr = def1->type;
     if (Expand(m, &entry1, qualified, levels))
       entry->children.push_back(std::move(entry1));
   } else {
-    entry1.id = QueryTypeId();
+    entry1.id = "0";
+    entry1.usr = 0;
     entry->children.push_back(std::move(entry1));
   }
 }
@@ -96,13 +101,13 @@ bool Expand(MessageHandler* m,
             Out_CclsMemberHierarchy::Entry* entry,
             bool qualified,
             int levels) {
-  const QueryType& type = m->db->types[entry->id.id];
-  const QueryType::Def* def = type.AnyDef();
-  // builtin types have no declaration and empty |qualified|.
-  if (CXType_FirstBuiltin <= type.usr && type.usr <= CXType_LastBuiltin) {
-    entry->name = ClangBuiltinTypeName(CXTypeKind(type.usr));
+  if (CXType_FirstBuiltin <= entry->usr && entry->usr <= CXType_LastBuiltin) {
+    entry->name = ClangBuiltinTypeName(CXTypeKind(entry->usr));
     return true;
   }
+  const QueryType& type = m->db->Type(entry->usr);
+  const QueryType::Def* def = type.AnyDef();
+  // builtin types have no declaration and empty |qualified|.
   if (!def)
     return false;
   entry->name = def->Name(qualified);
@@ -115,16 +120,17 @@ bool Expand(MessageHandler* m,
       const auto* def = stack.back()->AnyDef();
       stack.pop_back();
       if (def) {
-        EachDefinedEntity(m->db->types, def->bases, [&](QueryType& type1) {
+        EachDefinedEntity(m->db->usr2type, def->bases, [&](QueryType& type1) {
           if (!seen.count(type1.usr)) {
             seen.insert(type1.usr);
             stack.push_back(&type1);
           }
         });
         if (def->alias_of) {
-          const QueryType::Def* def1 = m->db->types[def->alias_of->id].AnyDef();
+          const QueryType::Def* def1 = m->db->Type(def->alias_of).AnyDef();
           Out_CclsMemberHierarchy::Entry entry1;
-          entry1.id = *def->alias_of;
+          entry1.id = std::to_string(def->alias_of);
+          entry1.usr = def->alias_of;
           if (def1 && def1->spell) {
             // The declaration of target type.
             if (std::optional<lsLocation> loc =
@@ -146,7 +152,7 @@ bool Expand(MessageHandler* m,
             entry->children.push_back(std::move(entry1));
           }
         } else {
-          EachDefinedEntity(m->db->vars, def->vars, [&](QueryVar& var) {
+          EachDefinedEntity(m->db->usr2var, def->vars, [&](QueryVar& var) {
             DoField(m, entry, var, qualified, levels - 1);
           });
         }
@@ -162,43 +168,48 @@ struct Handler_CclsMemberHierarchy
     : BaseMessageHandler<In_CclsMemberHierarchy> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsMemberHierarchy::Entry> BuildInitial(QueryFuncId root_id,
-                                                          bool qualified,
-                                                          int levels) {
-    const auto* def = db->funcs[root_id.id].AnyDef();
-    if (!def)
+  std::optional<Out_CclsMemberHierarchy::Entry> BuildInitial(SymbolKind kind,
+                                                             Usr root_usr,
+                                                             bool qualified,
+                                                             int levels) {
+    switch (kind) {
+    default:
       return {};
+    case SymbolKind::Func: {
+      const auto* def = db->Func(root_usr).AnyDef();
+      if (!def)
+        return {};
 
-    Out_CclsMemberHierarchy::Entry entry;
-    // Not type, |id| is invalid.
-    entry.name = std::string(def->Name(qualified));
-    if (def->spell) {
-      if (std::optional<lsLocation> loc =
-              GetLsLocation(db, working_files, *def->spell))
-        entry.location = *loc;
+      Out_CclsMemberHierarchy::Entry entry;
+      // Not type, |id| is invalid.
+      entry.name = std::string(def->Name(qualified));
+      if (def->spell) {
+        if (std::optional<lsLocation> loc =
+          GetLsLocation(db, working_files, *def->spell))
+          entry.location = *loc;
+      }
+      EachDefinedEntity(db->usr2var, def->vars, [&](QueryVar& var) {
+          DoField(this, &entry, var, qualified, levels - 1);
+        });
+      return entry;
     }
-    EachDefinedEntity(db->vars, def->vars, [&](QueryVar& var) {
-      DoField(this, &entry, var, qualified, levels - 1);
-    });
-    return entry;
-  }
+    case SymbolKind::Type: {
+      const auto* def = db->Type(root_usr).AnyDef();
+      if (!def)
+        return {};
 
-  std::optional<Out_CclsMemberHierarchy::Entry> BuildInitial(QueryTypeId root_id,
-                                                          bool qualified,
-                                                          int levels) {
-    const auto* def = db->types[root_id.id].AnyDef();
-    if (!def)
-      return {};
-
-    Out_CclsMemberHierarchy::Entry entry;
-    entry.id = root_id;
-    if (def->spell) {
-      if (std::optional<lsLocation> loc =
-              GetLsLocation(db, working_files, *def->spell))
-        entry.location = *loc;
+      Out_CclsMemberHierarchy::Entry entry;
+      entry.id = std::to_string(root_usr);
+      entry.usr = root_usr;
+      if (def->spell) {
+        if (std::optional<lsLocation> loc =
+          GetLsLocation(db, working_files, *def->spell))
+          entry.location = *loc;
+      }
+      Expand(this, &entry, qualified, levels);
+      return entry;
     }
-    Expand(this, &entry, qualified, levels);
-    return entry;
+    }
   }
 
   void Run(In_CclsMemberHierarchy* request) override {
@@ -206,11 +217,17 @@ struct Handler_CclsMemberHierarchy
     Out_CclsMemberHierarchy out;
     out.id = request->id;
 
-    if (params.id) {
+    if (params.id.size()) {
+      try {
+        params.usr = std::stoull(params.id);
+      } catch (...) {
+        return;
+      }
       Out_CclsMemberHierarchy::Entry entry;
-      entry.id = *request->params.id;
+      entry.id = std::to_string(params.usr);
+      entry.usr = params.usr;
       // entry.name is empty as it is known by the client.
-      if (entry.id.id < db->types.size() &&
+      if (db->usr2type.count(entry.usr) &&
           Expand(this, &entry, params.qualified, params.levels))
         out.result = std::move(entry);
     } else {
@@ -224,17 +241,14 @@ struct Handler_CclsMemberHierarchy
            FindSymbolsAtLocation(wfile, file, params.position)) {
         switch (sym.kind) {
           case SymbolKind::Func:
-            out.result = BuildInitial(QueryFuncId(sym.id), params.qualified,
-                                      params.levels);
-            break;
           case SymbolKind::Type:
-            out.result = BuildInitial(QueryTypeId(sym.id), params.qualified,
+            out.result = BuildInitial(sym.kind, sym.usr, params.qualified,
                                       params.levels);
             break;
           case SymbolKind::Var: {
             const QueryVar::Def* def = db->GetVar(sym).AnyDef();
             if (def && def->type)
-              out.result = BuildInitial(QueryTypeId(*def->type),
+              out.result = BuildInitial(SymbolKind::Type, def->type,
                                         params.qualified, params.levels);
             break;
           }

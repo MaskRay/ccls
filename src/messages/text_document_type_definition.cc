@@ -36,17 +36,17 @@ struct Handler_TextDocumentTypeDefinition
     out.id = request->id;
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      Id<void> id = sym.id;
+      Usr usr = sym.usr;
       switch (sym.kind) {
         case SymbolKind::Var: {
           const QueryVar::Def* def = db->GetVar(sym).AnyDef();
           if (!def || !def->type)
             continue;
-          id = *def->type;
+          usr = def->type;
+          [[fallthrough]];
         }
-          // fallthrough
         case SymbolKind::Type: {
-          QueryType& type = db->types[id.id];
+          QueryType& type = db->Type(usr);
           for (const auto& def : type.def)
             if (def.spell) {
               if (auto ls_loc = GetLsLocationEx(db, working_files, *def.spell,
