@@ -15,10 +15,13 @@ namespace {
 MethodType kMethodType = "workspace/symbol";
 
 // Lookup |symbol| in |db| and insert the value into |result|.
-bool InsertSymbolIntoResult(QueryDatabase* db,
-                            WorkingFiles* working_files,
-                            SymbolIdx symbol,
-                            std::vector<lsSymbolInformation>* result) {
+bool AddSymbol(
+    QueryDatabase* db,
+    WorkingFiles* working_files,
+    int i,
+    bool use_detailed,
+    std::vector<std::tuple<lsSymbolInformation, bool, int>>* result) {
+  SymbolIdx symbol = db->symbols[i];
   std::optional<lsSymbolInformation> info =
       GetSymbolInfo(db, working_files, symbol, true);
   if (!info)
@@ -38,7 +41,7 @@ bool InsertSymbolIntoResult(QueryDatabase* db,
   if (!ls_location)
     return false;
   info->location = *ls_location;
-  result->push_back(*info);
+  result->emplace_back(*info, use_detailed, i);
   return true;
 }
 
@@ -72,82 +75,58 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
 
     std::string query = request->params.query;
 
-    std::unordered_set<std::string> inserted_results;
-    // db->detailed_names indices of each lsSymbolInformation in out.result
-    std::vector<int> result_indices;
-    std::vector<lsSymbolInformation> unsorted_results;
-    inserted_results.reserve(g_config->workspaceSymbol.maxNum);
-    result_indices.reserve(g_config->workspaceSymbol.maxNum);
-
-    // We use detailed_names without parameters for matching.
-
-    // Find exact substring matches.
-    for (int i = 0; i < db->symbols.size(); ++i) {
-      std::string_view detailed_name = db->GetSymbolName(i, true);
-      if (detailed_name.find(query) != std::string::npos) {
-        // Do not show the same entry twice.
-        if (!inserted_results.insert(std::string(detailed_name)).second)
-          continue;
-
-        if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
-                                   &unsorted_results)) {
-          result_indices.push_back(i);
-          if (unsorted_results.size() >= g_config->workspaceSymbol.maxNum)
-            break;
-        }
-      }
-    }
+    // {symbol info, matching detailed_name or short_name, index}
+    std::vector<std::tuple<lsSymbolInformation, bool, int>> unsorted;
+    bool sensitive = g_config->workspaceSymbol.caseSensitivity;
 
     // Find subsequence matches.
-    if (unsorted_results.size() < g_config->workspaceSymbol.maxNum) {
-      std::string query_without_space;
-      query_without_space.reserve(query.size());
-      for (char c : query)
-        if (!isspace(c))
-          query_without_space += c;
+    std::string query_without_space;
+    query_without_space.reserve(query.size());
+    for (char c : query)
+      if (!isspace(c))
+        query_without_space += c;
 
-      for (int i = 0; i < (int)db->symbols.size(); ++i) {
-        std::string_view detailed_name = db->GetSymbolName(i, true);
-        if (CaseFoldingSubsequenceMatch(query_without_space, detailed_name)
-                .first) {
-          // Do not show the same entry twice.
-          if (!inserted_results.insert(std::string(detailed_name)).second)
-            continue;
-
-          if (InsertSymbolIntoResult(db, working_files, db->symbols[i],
-                                     &unsorted_results)) {
-            result_indices.push_back(i);
-            if (unsorted_results.size() >= g_config->workspaceSymbol.maxNum)
-              break;
-          }
-        }
-      }
+    for (int i = 0; i < (int)db->symbols.size(); ++i) {
+      std::string_view detailed_name = db->GetSymbolName(i, true);
+      int pos =
+        ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
+      if (pos >= 0 &&
+        AddSymbol(db, working_files, i,
+          detailed_name.find(':', pos) != std::string::npos,
+          &unsorted) &&
+        unsorted.size() >= g_config->workspaceSymbol.maxNum)
+        break;
     }
 
     if (g_config->workspaceSymbol.sort && query.size() <= FuzzyMatcher::kMaxPat) {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
-      for (int i : result_indices)
-        longest = std::max(longest, int(db->GetSymbolName(i, true).size()));
+      for (int i = 0; i < int(unsorted.size()); i++) {
+        longest = std::max(
+            longest,
+            int(db->GetSymbolName(std::get<2>(unsorted[i]), true).size()));
+      }
       FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
-      std::vector<std::pair<int, int>> permutation(result_indices.size());
-      for (int i = 0; i < int(result_indices.size()); i++) {
+      std::vector<std::pair<int, int>> permutation(unsorted.size());
+      for (int i = 0; i < int(unsorted.size()); i++) {
         permutation[i] = {
-            fuzzy.Match(db->GetSymbolName(result_indices[i], true)), i};
+            fuzzy.Match(db->GetSymbolName(std::get<2>(unsorted[i]),
+                                          std::get<1>(unsorted[i]))),
+            i};
       }
       std::sort(permutation.begin(), permutation.end(),
                 std::greater<std::pair<int, int>>());
-      out.result.reserve(result_indices.size());
+      out.result.reserve(unsorted.size());
       // Discard awful candidates.
-      for (int i = 0; i < int(result_indices.size()) &&
+      for (int i = 0; i < int(unsorted.size()) &&
                       permutation[i].first > FuzzyMatcher::kMinScore;
            i++)
         out.result.push_back(
-            std::move(unsorted_results[permutation[i].second]));
+            std::move(std::get<0>(unsorted[permutation[i].second])));
     } else {
-      out.result.reserve(unsorted_results.size());
-      for (const auto& entry : unsorted_results)
-        out.result.push_back(std::move(entry));
+      out.result.reserve(unsorted.size());
+      for (auto& entry : unsorted)
+        out.result.push_back(std::get<0>(entry));
     }
 
     LOG_S(INFO) << "[querydb] Found " << out.result.size()
