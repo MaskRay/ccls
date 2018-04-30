@@ -29,7 +29,8 @@ struct In_CclsCallHierarchy : public RequestInMessage {
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
 
-    Maybe<QueryFuncId> id;
+    Usr usr;
+    std::string id;
 
     // true: callee tree (functions called by this function); false: caller tree
     // (where this function is called)
@@ -56,7 +57,8 @@ REGISTER_IN_MESSAGE(In_CclsCallHierarchy);
 
 struct Out_CclsCallHierarchy : public lsOutMessage<Out_CclsCallHierarchy> {
   struct Entry {
-    QueryFuncId id;
+    Usr usr;
+    std::string id;
     std::string_view name;
     lsLocation location;
     CallType callType = CallType::Direct;
@@ -83,7 +85,7 @@ bool Expand(MessageHandler* m,
             CallType call_type,
             bool qualified,
             int levels) {
-  const QueryFunc& func = m->db->funcs[entry->id.id];
+  const QueryFunc& func = m->db->Func(entry->usr);
   const QueryFunc::Def* def = func.AnyDef();
   entry->numChildren = 0;
   if (!def)
@@ -92,7 +94,8 @@ bool Expand(MessageHandler* m,
     entry->numChildren++;
     if (levels > 0) {
       Out_CclsCallHierarchy::Entry entry1;
-      entry1.id = QueryFuncId(use.id);
+      entry1.id = std::to_string(use.usr);
+      entry1.usr = use.usr;
       if (auto loc = GetLsLocation(m->db, m->working_files, use))
         entry1.location = *loc;
       entry1.callType = call_type;
@@ -105,7 +108,7 @@ bool Expand(MessageHandler* m,
       if (const auto* def = func.AnyDef())
         for (SymbolRef ref : def->callees)
           if (ref.kind == SymbolKind::Func)
-            handle(Use(ref.range, ref.id, ref.kind, ref.role, def->file),
+            handle(Use{{ref.range, ref.usr, ref.kind, ref.role}, def->file_id},
                    call_type);
     } else {
       for (Use use : func.uses)
@@ -127,7 +130,7 @@ bool Expand(MessageHandler* m,
       const QueryFunc& func1 = *stack.back();
       stack.pop_back();
       if (auto* def1 = func1.AnyDef()) {
-        EachDefinedEntity(m->db->funcs, def1->bases, [&](QueryFunc& func2) {
+        EachDefinedEntity(m->db->usr2func, def1->bases, [&](QueryFunc& func2) {
           if (!seen.count(func2.usr)) {
             seen.insert(func2.usr);
             stack.push_back(&func2);
@@ -144,7 +147,7 @@ bool Expand(MessageHandler* m,
     while (stack.size()) {
       const QueryFunc& func1 = *stack.back();
       stack.pop_back();
-      EachDefinedEntity(m->db->funcs, func1.derived, [&](QueryFunc& func2) {
+      EachDefinedEntity(m->db->usr2func, func1.derived, [&](QueryFunc& func2) {
         if (!seen.count(func2.usr)) {
           seen.insert(func2.usr);
           stack.push_back(&func2);
@@ -160,17 +163,18 @@ struct Handler_CclsCallHierarchy
     : BaseMessageHandler<In_CclsCallHierarchy> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsCallHierarchy::Entry> BuildInitial(QueryFuncId root_id,
-                                                        bool callee,
-                                                        CallType call_type,
-                                                        bool qualified,
-                                                        int levels) {
-    const auto* def = db->funcs[root_id.id].AnyDef();
+  std::optional<Out_CclsCallHierarchy::Entry> BuildInitial(Usr root_usr,
+                                                           bool callee,
+                                                           CallType call_type,
+                                                           bool qualified,
+                                                           int levels) {
+    const auto* def = db->Func(root_usr).AnyDef();
     if (!def)
       return {};
 
     Out_CclsCallHierarchy::Entry entry;
-    entry.id = root_id;
+    entry.id = std::to_string(root_usr);
+    entry.usr = root_usr;
     entry.callType = CallType::Direct;
     if (def->spell) {
       if (std::optional<lsLocation> loc =
@@ -186,11 +190,17 @@ struct Handler_CclsCallHierarchy
     Out_CclsCallHierarchy out;
     out.id = request->id;
 
-    if (params.id) {
+    if (params.id.size()) {
+      try {
+        params.usr = std::stoull(params.id);
+      } catch (...) {
+        return;
+      }
       Out_CclsCallHierarchy::Entry entry;
-      entry.id = *params.id;
+      entry.id = std::to_string(params.usr);
+      entry.usr = params.usr;
       entry.callType = CallType::Direct;
-      if (entry.id.id < db->funcs.size())
+      if (db->usr2func.count(params.usr))
         Expand(this, &entry, params.callee, params.callType, params.qualified,
                params.levels);
       out.result = std::move(entry);
@@ -204,9 +214,8 @@ struct Handler_CclsCallHierarchy
       for (SymbolRef sym :
            FindSymbolsAtLocation(working_file, file, params.position)) {
         if (sym.kind == SymbolKind::Func) {
-          out.result =
-              BuildInitial(QueryFuncId(sym.id), params.callee, params.callType,
-                           params.qualified, params.levels);
+          out.result = BuildInitial(sym.usr, params.callee, params.callType,
+                                    params.qualified, params.levels);
           break;
         }
       }

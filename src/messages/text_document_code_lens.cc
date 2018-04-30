@@ -50,12 +50,12 @@ void AddCodeLens(const char* singular,
   std::optional<lsRange> range = GetLsRange(common->working_file, use.range);
   if (!range)
     return;
-  if (use.file == QueryFileId())
+  if (use.file_id < 0)
     return;
   code_lens.range = *range;
   code_lens.command = lsCommand<lsCodeLensCommandArguments>();
   code_lens.command->command = "ccls.showReferences";
-  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, use.file);
+  code_lens.command->arguments.uri = GetLsDocumentUri(common->db, use.file_id);
   code_lens.command->arguments.position = code_lens.range.start;
 
   // Add unique uses.
@@ -106,7 +106,7 @@ struct Handler_TextDocumentCodeLens
     for (SymbolRef sym : file->def->outline) {
       // NOTE: We OffsetColumn so that the code lens always show up in a
       // predictable order. Otherwise, the client may randomize it.
-      Use use(sym.range, sym.id, sym.kind, sym.role, file->def->file);
+      Use use{{sym.range, sym.usr, sym.kind, sym.role}, file->id};
 
       switch (sym.kind) {
         case SymbolKind::Type: {
@@ -117,10 +117,10 @@ struct Handler_TextDocumentCodeLens
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0),
                       type.uses, true /*force_display*/);
           AddCodeLens("derived", "derived", &common, OffsetStartColumn(use, 1),
-                      GetDeclarations(db, type.derived),
+                      GetDeclarations(db->usr2type, type.derived),
                       false /*force_display*/);
           AddCodeLens("var", "vars", &common, OffsetStartColumn(use, 2),
-                      GetDeclarations(db, type.instances),
+                      GetDeclarations(db->usr2var, type.instances),
                       false /*force_display*/);
           break;
         }
@@ -165,9 +165,10 @@ struct Handler_TextDocumentCodeLens
                           false /*force_display*/);
           }
 
-          AddCodeLens(
-              "derived", "derived", &common, OffsetStartColumn(use, offset++),
-              GetDeclarations(db, func.derived), false /*force_display*/);
+          AddCodeLens("derived", "derived", &common,
+                      OffsetStartColumn(use, offset++),
+                      GetDeclarations(db->usr2func, func.derived),
+                      false /*force_display*/);
 
           // "Base"
           if (def->bases.size() == 1) {
@@ -194,7 +195,7 @@ struct Handler_TextDocumentCodeLens
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(use, 1),
-                        GetDeclarations(db, def->bases),
+                        GetDeclarations(db->usr2type, def->bases),
                         false /*force_display*/);
           }
 

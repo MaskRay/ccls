@@ -11,26 +11,35 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [{
-      "id": 0,
-      "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
-      "short_name": "Foo",
-      "kind": 5,
-      "declarations": [],
-      "spell": "1:7-1:10|-1|1|2",
-      "extent": "1:1-5:2|-1|1|0",
+  "usr2func": [{
+      "usr": 3545323327609582678,
+      "detailed_name": "void Foo::operator()(bool)",
+      "qual_name_offset": 5,
+      "short_name": "operator()",
+      "kind": 6,
+      "storage": 1,
+      "declarations": ["3:8-3:18|15041163540773201510|2|1"],
+      "declaring_type": 15041163540773201510,
       "bases": [],
       "derived": [],
-      "types": [],
-      "funcs": [0, 1, 2],
       "vars": [],
-      "instances": [],
-      "uses": ["7:1-7:4|-1|1|4", "7:25-7:28|-1|1|4"]
-    }],
-  "funcs": [{
-      "id": 0,
+      "uses": [],
+      "callees": []
+    }, {
+      "usr": 3986818119971932909,
+      "detailed_name": "int Foo::operator()(int a, int b)",
+      "qual_name_offset": 4,
+      "short_name": "operator()",
+      "kind": 6,
+      "storage": 1,
+      "declarations": ["4:7-4:17|15041163540773201510|2|1"],
+      "declaring_type": 15041163540773201510,
+      "bases": [],
+      "derived": [],
+      "vars": [],
+      "uses": [],
+      "callees": []
+    }, {
       "usr": 7874436189163837815,
       "detailed_name": "void Foo::operator()(int)",
       "qual_name_offset": 5,
@@ -38,68 +47,47 @@ OUTPUT:
       "kind": 6,
       "storage": 1,
       "declarations": [],
-      "spell": "2:8-2:18|0|2|2",
-      "extent": "2:3-2:27|0|2|0",
-      "declaring_type": 0,
+      "spell": "2:8-2:18|15041163540773201510|2|2",
+      "extent": "2:3-2:27|15041163540773201510|2|0",
+      "declaring_type": 15041163540773201510,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }, {
-      "id": 1,
-      "usr": 3545323327609582678,
-      "detailed_name": "void Foo::operator()(bool)",
-      "qual_name_offset": 5,
-      "short_name": "operator()",
-      "kind": 6,
-      "storage": 1,
-      "declarations": [{
-          "spell": "3:8-3:18|0|2|1",
-          "param_spellings": ["3:23-3:23"]
-        }],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [],
-      "uses": [],
-      "callees": []
-    }, {
-      "id": 2,
-      "usr": 3986818119971932909,
-      "detailed_name": "int Foo::operator()(int a, int b)",
-      "qual_name_offset": 4,
-      "short_name": "operator()",
-      "kind": 6,
-      "storage": 1,
-      "declarations": [{
-          "spell": "4:7-4:17|0|2|1",
-          "param_spellings": ["4:22-4:23", "4:29-4:30"]
-        }],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [],
-      "uses": [],
-      "callees": []
-    }, {
-      "id": 3,
       "usr": 8288368475529136092,
       "detailed_name": "Foo &operator+=(const Foo &, const int &)",
       "qual_name_offset": 5,
       "short_name": "operator+=",
       "kind": 12,
       "storage": 1,
-      "declarations": [{
-          "spell": "7:6-7:17|-1|1|1",
-          "param_spellings": ["7:29-7:29", "7:41-7:41"]
-        }],
+      "declarations": ["7:6-7:17|0|1|1"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }],
-  "vars": []
+  "usr2type": [{
+      "usr": 15041163540773201510,
+      "detailed_name": "Foo",
+      "qual_name_offset": 0,
+      "short_name": "Foo",
+      "kind": 5,
+      "declarations": [],
+      "spell": "1:7-1:10|0|1|2",
+      "extent": "1:1-5:2|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [7874436189163837815, 3545323327609582678, 3986818119971932909],
+      "vars": [],
+      "instances": [],
+      "uses": ["7:1-7:4|0|1|4", "7:25-7:28|0|1|4"]
+    }],
+  "usr2var": []
 }
 */

@@ -3,8 +3,8 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [],
-  "funcs": [],
-  "vars": []
+  "usr2func": [],
+  "usr2type": [],
+  "usr2var": []
 }
 */

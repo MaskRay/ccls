@@ -13,44 +13,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [{
-      "id": 0,
-      "usr": 13611487872560323389,
-      "detailed_name": "Wrapper",
-      "qual_name_offset": 0,
-      "short_name": "Wrapper",
-      "kind": 23,
-      "declarations": ["2:3-2:10|-1|1|4"],
-      "spell": "1:8-1:15|-1|1|2",
-      "extent": "1:1-3:2|-1|1|0",
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [0],
-      "vars": [],
-      "instances": [],
-      "uses": ["2:3-2:10|0|2|4", "7:1-7:8|-1|1|4"]
-    }],
-  "funcs": [{
-      "id": 0,
-      "usr": 10544127002917214589,
-      "detailed_name": "void Wrapper::Wrapper(int i)",
-      "qual_name_offset": 5,
-      "short_name": "Wrapper",
-      "kind": 9,
-      "storage": 1,
-      "declarations": [{
-          "spell": "2:3-2:10|0|2|1",
-          "param_spellings": ["2:15-2:16"]
-        }],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [],
-      "uses": ["8:10-8:18|2|3|288"],
-      "callees": []
-    }, {
-      "id": 1,
+  "usr2func": [{
       "usr": 468307235068920063,
       "detailed_name": "int called()",
       "qual_name_offset": 4,
@@ -58,15 +21,29 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "5:5-5:11|-1|1|2",
-      "extent": "5:1-5:27|-1|1|0",
+      "spell": "5:5-5:11|0|1|2",
+      "extent": "5:1-5:27|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:10-8:16|2|3|32"],
+      "uses": ["8:10-8:16|11404881820527069090|3|32"],
       "callees": []
     }, {
-      "id": 2,
+      "usr": 10544127002917214589,
+      "detailed_name": "void Wrapper::Wrapper(int i)",
+      "qual_name_offset": 5,
+      "short_name": "Wrapper",
+      "kind": 9,
+      "storage": 1,
+      "declarations": ["2:3-2:10|13611487872560323389|2|1"],
+      "declaring_type": 13611487872560323389,
+      "bases": [],
+      "derived": [],
+      "vars": [],
+      "uses": ["8:10-8:18|11404881820527069090|3|288"],
+      "callees": []
+    }, {
       "usr": 11404881820527069090,
       "detailed_name": "Wrapper caller()",
       "qual_name_offset": 8,
@@ -74,14 +51,33 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "7:9-7:15|-1|1|2",
-      "extent": "7:1-9:2|-1|1|0",
+      "spell": "7:9-7:15|0|1|2",
+      "extent": "7:1-9:2|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["8:10-8:18|0|3|288", "8:10-8:16|1|3|32"]
+      "callees": ["8:10-8:18|10544127002917214589|3|288", "8:10-8:16|468307235068920063|3|32"]
     }],
-  "vars": []
+  "usr2type": [{
+      "usr": 13611487872560323389,
+      "detailed_name": "Wrapper",
+      "qual_name_offset": 0,
+      "short_name": "Wrapper",
+      "kind": 23,
+      "declarations": ["2:3-2:10|0|1|4"],
+      "spell": "1:8-1:15|0|1|2",
+      "extent": "1:1-3:2|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [10544127002917214589],
+      "vars": [],
+      "instances": [],
+      "uses": ["2:3-2:10|13611487872560323389|2|4", "7:1-7:8|0|1|4"]
+    }],
+  "usr2var": []
 }
 */

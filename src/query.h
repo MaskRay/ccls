@@ -30,20 +30,22 @@ struct IdMap;
 // that it can be merged with other updates before actually being applied to
 // the main database. See |MergeableUpdate|.
 
-template <typename TId, typename TValue>
+template <typename TValue>
 struct MergeableUpdate {
   // The type/func/var which is getting new usages.
-  TId id;
+  Usr usr;
   // Entries to add and remove.
-  std::vector<TValue> to_add;
   std::vector<TValue> to_remove;
+  std::vector<TValue> to_add;
 
-  MergeableUpdate(TId id, std::vector<TValue>&& to_add)
-      : id(id), to_add(std::move(to_add)) {}
-  MergeableUpdate(TId id,
-                  std::vector<TValue>&& to_add,
-                  std::vector<TValue>&& to_remove)
-      : id(id), to_add(std::move(to_add)), to_remove(std::move(to_remove)) {}
+  MergeableUpdate(Usr usr,
+                  std::vector<TValue>&& to_remove,
+                  std::vector<TValue>&& to_add)
+      : usr(usr), to_remove(std::move(to_remove)), to_add(std::move(to_add)) {}
+  MergeableUpdate(Usr usr,
+                  const std::vector<TValue>& to_remove,
+                  const std::vector<TValue>& to_add)
+      : usr(usr), to_remove(to_remove), to_add(to_add) {}
 };
 
 template <typename T>
@@ -52,7 +54,7 @@ struct WithUsr {
   T value;
 
   WithUsr(Usr usr, const T& value) : usr(usr), value(value) {}
-  WithUsr(Usr usr, T&& value) : usr(usr), value(std::move(value)) {}
+  WithUsr(Usr usr, T&& value) : usr(usr), value(value) {}
 };
 
 template <typename T>
@@ -64,17 +66,8 @@ struct WithFileContent {
       : value(value), file_content(file_content) {}
 };
 
-struct QueryFamily {
-  using FileId = Id<QueryFile>;
-  using FuncId = Id<QueryFunc>;
-  using TypeId = Id<QueryType>;
-  using VarId = Id<QueryVar>;
-  using Range = Reference;
-};
-
 struct QueryFile {
   struct Def {
-    Id<QueryFile> file;
     std::string path;
     std::vector<std::string> args;
     // Language identifier
@@ -93,21 +86,15 @@ struct QueryFile {
 
   using DefUpdate = WithFileContent<Def>;
 
+  int id = -1;
   std::optional<Def> def;
-  Maybe<Id<void>> symbol_idx;
-
-  explicit QueryFile(const std::string& path) {
-    def = Def();
-    def->path = path;
-  }
+  int symbol_idx = -1;
 };
 
 template <typename Q, typename QDef>
 struct QueryEntity {
   using Def = QDef;
   using DefUpdate = WithUsr<Def>;
-  using DeclarationsUpdate = MergeableUpdate<Id<Q>, Use>;
-  using UsesUpdate = MergeableUpdate<Id<Q>, Use>;
   Def* AnyDef() {
     Def* ret = nullptr;
     for (auto& i : static_cast<Q*>(this)->def) {
@@ -120,50 +107,40 @@ struct QueryEntity {
   const Def* AnyDef() const { return const_cast<QueryEntity*>(this)->AnyDef(); }
 };
 
-struct QueryType : QueryEntity<QueryType, TypeDef<QueryFamily>> {
-  using DerivedUpdate = MergeableUpdate<QueryTypeId, QueryTypeId>;
-  using InstancesUpdate = MergeableUpdate<QueryTypeId, QueryVarId>;
+using UsrUpdate = MergeableUpdate<Usr>;
+using UseUpdate = MergeableUpdate<Use>;
 
+struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
-  Maybe<Id<void>> symbol_idx;
+  int symbol_idx = -1;
   std::forward_list<Def> def;
   std::vector<Use> declarations;
-  std::vector<QueryTypeId> derived;
-  std::vector<QueryVarId> instances;
   std::vector<Use> uses;
-
-  explicit QueryType(const Usr& usr) : usr(usr) {}
+  std::vector<Usr> derived;
 };
 
-struct QueryFunc : QueryEntity<QueryFunc, FuncDef<QueryFamily>> {
-  using DerivedUpdate = MergeableUpdate<QueryFuncId, QueryFuncId>;
-
+struct QueryType : QueryEntity<QueryType, TypeDef> {
   Usr usr;
-  Maybe<Id<void>> symbol_idx;
+  int symbol_idx = -1;
   std::forward_list<Def> def;
   std::vector<Use> declarations;
-  std::vector<QueryFuncId> derived;
   std::vector<Use> uses;
-
-  explicit QueryFunc(const Usr& usr) : usr(usr) {}
+  std::vector<Usr> derived;
+  std::vector<Usr> instances;
 };
 
-struct QueryVar : QueryEntity<QueryVar, VarDef<QueryFamily>> {
+struct QueryVar : QueryEntity<QueryVar, VarDef> {
   Usr usr;
-  Maybe<Id<void>> symbol_idx;
+  int symbol_idx = -1;
   std::forward_list<Def> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
-
-  explicit QueryVar(const Usr& usr) : usr(usr) {}
 };
 
 struct IndexUpdate {
   // Creates a new IndexUpdate based on the delta from previous to current. If
   // no delta computation should be done just pass null for previous.
-  static IndexUpdate CreateDelta(const IdMap* previous_id_map,
-                                 const IdMap* current_id_map,
-                                 IndexFile* previous,
+  static IndexUpdate CreateDelta(IndexFile* previous,
                                  IndexFile* current);
 
   // Merge |update| into this update; this can reduce overhead / index update
@@ -173,39 +150,32 @@ struct IndexUpdate {
   // Dump the update to a string.
   std::string ToString();
 
+  int file_id;
+
   // File updates.
-  std::vector<std::string> files_removed;
-  std::vector<QueryFile::DefUpdate> files_def_update;
+  std::optional<std::string> files_removed;
+  std::optional<QueryFile::DefUpdate> files_def_update;
+
+  // Function updates.
+  std::vector<Usr> funcs_removed;
+  std::vector<QueryFunc::DefUpdate> funcs_def_update;
+  std::vector<UseUpdate> funcs_declarations;
+  std::vector<UseUpdate> funcs_uses;
+  std::vector<UsrUpdate> funcs_derived;
 
   // Type updates.
   std::vector<Usr> types_removed;
   std::vector<QueryType::DefUpdate> types_def_update;
-  std::vector<QueryType::DeclarationsUpdate> types_declarations;
-  std::vector<QueryType::DerivedUpdate> types_derived;
-  std::vector<QueryType::InstancesUpdate> types_instances;
-  std::vector<QueryType::UsesUpdate> types_uses;
-
-  // Function updates.
-  std::vector<WithUsr<QueryFileId>> funcs_removed;
-  std::vector<QueryFunc::DefUpdate> funcs_def_update;
-  std::vector<QueryFunc::DeclarationsUpdate> funcs_declarations;
-  std::vector<QueryFunc::DerivedUpdate> funcs_derived;
-  std::vector<QueryFunc::UsesUpdate> funcs_uses;
+  std::vector<UseUpdate> types_declarations;
+  std::vector<UseUpdate> types_uses;
+  std::vector<UsrUpdate> types_derived;
+  std::vector<UsrUpdate> types_instances;
 
   // Variable updates.
-  std::vector<WithUsr<QueryFileId>> vars_removed;
+  std::vector<Usr> vars_removed;
   std::vector<QueryVar::DefUpdate> vars_def_update;
-  std::vector<QueryVar::DeclarationsUpdate> vars_declarations;
-  std::vector<QueryVar::UsesUpdate> vars_uses;
-
- private:
-  // Creates an index update assuming that |previous| is already
-  // in the index, so only the delta between |previous| and |current|
-  // will be applied.
-  IndexUpdate(const IdMap& previous_id_map,
-              const IdMap& current_id_map,
-              IndexFile& previous,
-              IndexFile& current);
+  std::vector<UseUpdate> vars_declarations;
+  std::vector<UseUpdate> vars_uses;
 };
 
 // The query database is heavily optimized for fast queries. It is stored
@@ -214,97 +184,32 @@ struct QueryDatabase {
   // All File/Func/Type/Var symbols.
   std::vector<SymbolIdx> symbols;
 
-  // Raw data storage. Accessible via SymbolIdx instances.
   std::vector<QueryFile> files;
-  std::vector<QueryType> types;
-  std::vector<QueryFunc> funcs;
-  std::vector<QueryVar> vars;
-
-  // Lookup symbol based on a usr.
-  std::unordered_map<std::string, QueryFileId> usr_to_file;
-  spp::sparse_hash_map<Usr, QueryTypeId> usr_to_type;
-  spp::sparse_hash_map<Usr, QueryFuncId> usr_to_func;
-  spp::sparse_hash_map<Usr, QueryVarId> usr_to_var;
+  std::unordered_map<std::string, int> name2file_id;
+  spp::sparse_hash_map<Usr, QueryFunc> usr2func;
+  spp::sparse_hash_map<Usr, QueryType> usr2type;
+  spp::sparse_hash_map<Usr, QueryVar> usr2var;
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);
-  void RemoveUsrs(SymbolKind usr_kind,
-                  const std::vector<WithUsr<QueryFileId>>& to_remove);
+  void RemoveUsrs(SymbolKind usr_kind, int file_id, const std::vector<Usr>& to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
-  void ImportOrUpdate(const std::vector<QueryFile::DefUpdate>& updates);
-  void ImportOrUpdate(std::vector<QueryType::DefUpdate>&& updates);
-  void ImportOrUpdate(std::vector<QueryFunc::DefUpdate>&& updates);
-  void ImportOrUpdate(std::vector<QueryVar::DefUpdate>&& updates);
-  void UpdateSymbols(Maybe<Id<void>>* symbol_idx,
+  int Update(QueryFile::DefUpdate&& u);
+  void Update(int file_id, std::vector<QueryType::DefUpdate>&& updates);
+  void Update(int file_id, std::vector<QueryFunc::DefUpdate>&& updates);
+  void Update(int file_id, std::vector<QueryVar::DefUpdate>&& updates);
+  void UpdateSymbols(int* symbol_idx,
                      SymbolKind kind,
-                     Id<void> idx);
-  std::string_view GetSymbolName(RawId symbol_idx, bool qualified) const;
+                     Usr usr);
+  std::string_view GetSymbolName(int symbol_idx, bool qualified);
 
-  // Query the indexing structure to look up symbol id for given Usr.
-  Maybe<QueryFileId> GetQueryFileIdFromPath(const std::string& path);
-  Maybe<QueryTypeId> GetQueryTypeIdFromUsr(Usr usr);
-  Maybe<QueryFuncId> GetQueryFuncIdFromUsr(Usr usr);
-  Maybe<QueryVarId> GetQueryVarIdFromUsr(Usr usr);
+  QueryFile& GetFile(SymbolIdx ref) { return files[ref.usr]; }
+  QueryFunc& GetFunc(SymbolIdx ref) { return usr2func[ref.usr]; }
+  QueryType& GetType(SymbolIdx ref) { return usr2type[ref.usr]; }
+  QueryVar& GetVar(SymbolIdx ref) { return usr2var[ref.usr]; }
 
-  QueryFile& GetFile(SymbolIdx ref) { return files[ref.id.id]; }
-  QueryFunc& GetFunc(SymbolIdx ref) { return funcs[ref.id.id]; }
-  QueryType& GetType(SymbolIdx ref) { return types[ref.id.id]; }
-  QueryVar& GetVar(SymbolIdx ref) { return vars[ref.id.id]; }
-};
-
-template <typename I>
-struct IndexToQuery;
-
-// clang-format off
-template <> struct IndexToQuery<IndexFileId> { using type = QueryFileId; };
-template <> struct IndexToQuery<IndexFuncId> { using type = QueryFuncId; };
-template <> struct IndexToQuery<IndexTypeId> { using type = QueryTypeId; };
-template <> struct IndexToQuery<IndexVarId> { using type = QueryVarId; };
-template <> struct IndexToQuery<Use> { using type = Use; };
-template <> struct IndexToQuery<SymbolRef> { using type = SymbolRef; };
-template <> struct IndexToQuery<IndexFunc::Declaration> { using type = Use; };
-template <typename I> struct IndexToQuery<std::optional<I>> {
-  using type = std::optional<typename IndexToQuery<I>::type>;
-};
-template <typename I> struct IndexToQuery<std::vector<I>> {
-  using type = std::vector<typename IndexToQuery<I>::type>;
-};
-// clang-format on
-
-struct IdMap {
-  const IdCache& local_ids;
-  QueryFileId primary_file;
-
-  IdMap(QueryDatabase* query_db, const IdCache& local_ids);
-
-  // FIXME Too verbose
-  // clang-format off
-  QueryTypeId ToQuery(IndexTypeId id) const;
-  QueryFuncId ToQuery(IndexFuncId id) const;
-  QueryVarId ToQuery(IndexVarId id) const;
-  SymbolRef ToQuery(SymbolRef ref) const;
-  Use ToQuery(Reference ref) const;
-  Use ToQuery(Use ref) const;
-  Use ToQuery(IndexFunc::Declaration decl) const;
-  template <typename I>
-  Maybe<typename IndexToQuery<I>::type> ToQuery(Maybe<I> id) const {
-    if (!id)
-      return std::nullopt;
-    return ToQuery(*id);
-  }
-  template <typename I>
-  std::vector<typename IndexToQuery<I>::type> ToQuery(const std::vector<I>& a) const {
-    std::vector<typename IndexToQuery<I>::type> ret;
-    ret.reserve(a.size());
-    for (auto& x : a)
-      ret.push_back(ToQuery(x));
-    return ret;
-  }
-  // clang-format on
-
- private:
-  spp::sparse_hash_map<IndexTypeId, QueryTypeId> cached_type_ids_;
-  spp::sparse_hash_map<IndexFuncId, QueryFuncId> cached_func_ids_;
-  spp::sparse_hash_map<IndexVarId, QueryVarId> cached_var_ids_;
+  QueryFunc& Func(Usr usr) { return usr2func[usr]; }
+  QueryType& Type(Usr usr) { return usr2type[usr]; }
+  QueryVar& Var(Usr usr) { return usr2var[usr]; }
 };

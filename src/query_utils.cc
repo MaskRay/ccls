@@ -16,26 +16,6 @@ int ComputeRangeSize(const Range& range) {
   return range.end.column - range.start.column;
 }
 
-template <typename Q>
-std::vector<Use> GetDeclarations(std::vector<Q>& entities,
-                                 const std::vector<Id<Q>>& ids) {
-  std::vector<Use> ret;
-  ret.reserve(ids.size());
-  for (auto id : ids) {
-    Q& entity = entities[id.id];
-    bool has_def = false;
-    for (auto& def : entity.def)
-      if (def.spell) {
-        ret.push_back(*def.spell);
-        has_def = true;
-        break;
-      }
-    if (!has_def && entity.declarations.size())
-      ret.push_back(entity.declarations[0]);
-  }
-  return ret;
-}
-
 }  // namespace
 
 Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym) {
@@ -47,57 +27,11 @@ Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym) {
 Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym) {
   // Used to jump to file.
   if (sym.kind == SymbolKind::File)
-    return Use(Range{{0, 0}, {0, 0}}, sym.id, sym.kind, Role::None,
-               QueryFileId(sym.id));
+    return Use{{Range{{0, 0}, {0, 0}}, sym.usr, sym.kind, Role::None},
+               int(sym.usr)};
   Maybe<Use> ret;
   EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.extent); });
   return ret;
-}
-
-Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                               SymbolIdx sym) {
-  switch (sym.kind) {
-    case SymbolKind::File:
-      return QueryFileId(sym.id);
-    case SymbolKind::Func: {
-      QueryFunc& func = db->GetFunc(sym);
-      if (!func.declarations.empty())
-        return func.declarations[0].file;
-      if (const auto* def = func.AnyDef())
-        return def->file;
-      break;
-    }
-    case SymbolKind::Type: {
-      if (const auto* def = db->GetType(sym).AnyDef())
-        return def->file;
-      break;
-    }
-    case SymbolKind::Var: {
-      if (const auto* def = db->GetVar(sym).AnyDef())
-        return def->file;
-      break;
-    }
-    case SymbolKind::Invalid: {
-      assert(false && "unexpected");
-      break;
-    }
-  }
-  return std::nullopt;
-}
-
-std::vector<Use> GetDeclarations(QueryDatabase* db,
-                                 const std::vector<QueryFuncId>& ids) {
-  return GetDeclarations(db->funcs, ids);
-}
-
-std::vector<Use> GetDeclarations(QueryDatabase* db,
-                                 const std::vector<QueryTypeId>& ids) {
-  return GetDeclarations(db->types, ids);
-}
-
-std::vector<Use> GetDeclarations(QueryDatabase* db,
-                                 const std::vector<QueryVarId>& ids) {
-  return GetDeclarations(db->vars, ids);
 }
 
 std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym) {
@@ -122,7 +56,7 @@ std::vector<Use> GetUsesForAllBases(QueryDatabase* db, QueryFunc& root) {
     QueryFunc& func = *stack.back();
     stack.pop_back();
     if (auto* def = func.AnyDef()) {
-      EachDefinedEntity(db->funcs, def->bases, [&](QueryFunc& func1) {
+      EachDefinedEntity(db->usr2func, def->bases, [&](QueryFunc& func1) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
           stack.push_back(&func1);
@@ -143,7 +77,7 @@ std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root) {
   while (!stack.empty()) {
     QueryFunc& func = *stack.back();
     stack.pop_back();
-    EachDefinedEntity(db->funcs, func.derived, [&](QueryFunc& func1) {
+    EachDefinedEntity(db->usr2func, func.derived, [&](QueryFunc& func1) {
       if (!seen.count(func1.usr)) {
         seen.insert(func1.usr);
         stack.push_back(&func1);
@@ -197,9 +131,9 @@ std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& locati
 }
 
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
-                               QueryFileId file_id,
+                               int file_id,
                                std::string* path) {
-  QueryFile& file = db->files[file_id.id];
+  QueryFile& file = db->files[file_id];
   if (file.def) {
     *path = file.def->path;
     return lsDocumentUri::FromPath(*path);
@@ -209,8 +143,8 @@ lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
   }
 }
 
-lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id) {
-  QueryFile& file = db->files[file_id.id];
+lsDocumentUri GetLsDocumentUri(QueryDatabase* db, int file_id) {
+  QueryFile& file = db->files[file_id];
   if (file.def) {
     return lsDocumentUri::FromPath(file.def->path);
   } else {
@@ -222,7 +156,7 @@ std::optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
                                    Use use) {
   std::string path;
-  lsDocumentUri uri = GetLsDocumentUri(db, use.file, &path);
+  lsDocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
   std::optional<lsRange> range =
       GetLsRange(working_files->GetFileByFilename(path), use.range);
   if (!range)
@@ -358,7 +292,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
               t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
               if (t)
                 return t > 0;
-              return a.id < b.id;
+              return a.usr < b.usr;
             });
 
   return symbols;

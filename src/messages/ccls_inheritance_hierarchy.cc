@@ -13,7 +13,8 @@ struct In_CclsInheritanceHierarchy : public RequestInMessage {
     lsTextDocumentIdentifier textDocument;
     lsPosition position;
 
-    Maybe<Id<void>> id;
+    Usr usr;
+    std::string id;
     SymbolKind kind = SymbolKind::Invalid;
 
     // true: derived classes/functions; false: base classes/functions
@@ -38,7 +39,8 @@ REGISTER_IN_MESSAGE(In_CclsInheritanceHierarchy);
 struct Out_CclsInheritanceHierarchy
     : public lsOutMessage<Out_CclsInheritanceHierarchy> {
   struct Entry {
-    Id<void> id;
+    Usr usr;
+    std::string id;
     SymbolKind kind;
     std::string_view name;
     lsLocation location;
@@ -86,9 +88,10 @@ bool ExpandHelper(MessageHandler* m,
   }
   if (derived) {
     if (levels > 0) {
-      for (auto id : entity.derived) {
+      for (auto usr : entity.derived) {
         Out_CclsInheritanceHierarchy::Entry entry1;
-        entry1.id = id;
+        entry1.id = std::to_string(usr);
+        entry1.usr = usr;
         entry1.kind = entry->kind;
         if (Expand(m, &entry1, derived, qualified, levels - 1))
           entry->children.push_back(std::move(entry1));
@@ -98,9 +101,10 @@ bool ExpandHelper(MessageHandler* m,
       entry->numChildren = int(entity.derived.size());
   } else {
     if (levels > 0) {
-      for (auto id : def->bases) {
+      for (auto usr : def->bases) {
         Out_CclsInheritanceHierarchy::Entry entry1;
-        entry1.id = id;
+        entry1.id = std::to_string(usr);
+        entry1.usr = usr;
         entry1.kind = entry->kind;
         if (Expand(m, &entry1, derived, qualified, levels - 1))
           entry->children.push_back(std::move(entry1));
@@ -119,10 +123,10 @@ bool Expand(MessageHandler* m,
             int levels) {
   if (entry->kind == SymbolKind::Func)
     return ExpandHelper(m, entry, derived, qualified, levels,
-                        m->db->funcs[entry->id.id]);
+                        m->db->Func(entry->usr));
   else
     return ExpandHelper(m, entry, derived, qualified, levels,
-                        m->db->types[entry->id.id]);
+                        m->db->Type(entry->usr));
 }
 
 struct Handler_CclsInheritanceHierarchy
@@ -132,7 +136,8 @@ struct Handler_CclsInheritanceHierarchy
   std::optional<Out_CclsInheritanceHierarchy::Entry>
   BuildInitial(SymbolRef sym, bool derived, bool qualified, int levels) {
     Out_CclsInheritanceHierarchy::Entry entry;
-    entry.id = sym.id;
+    entry.id = std::to_string(sym.usr);
+    entry.usr = sym.usr;
     entry.kind = sym.kind;
     Expand(this, &entry, derived, qualified, levels);
     return entry;
@@ -143,15 +148,19 @@ struct Handler_CclsInheritanceHierarchy
     Out_CclsInheritanceHierarchy out;
     out.id = request->id;
 
-    if (params.id) {
+    if (params.id.size()) {
+      try {
+        params.usr = std::stoull(params.id);
+      } catch (...) {
+        return;
+      }
       Out_CclsInheritanceHierarchy::Entry entry;
-      entry.id = *params.id;
+      entry.id = std::to_string(params.usr);
+      entry.usr = params.usr;
       entry.kind = params.kind;
-      if (((entry.kind == SymbolKind::Func && entry.id.id < db->funcs.size()) ||
-           (entry.kind == SymbolKind::Type &&
-            entry.id.id < db->types.size())) &&
-          Expand(this, &entry, params.derived, params.qualified,
-                 params.levels))
+      if (((entry.kind == SymbolKind::Func && db->usr2func.count(entry.usr)) ||
+           (entry.kind == SymbolKind::Type && db->usr2type.count(entry.usr))) &&
+          Expand(this, &entry, params.derived, params.qualified, params.levels))
         out.result = std::move(entry);
     } else {
       QueryFile* file;

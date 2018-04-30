@@ -8,9 +8,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 468307235068920063,
       "detailed_name": "void called()",
       "qual_name_offset": 5,
@@ -18,15 +16,15 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "1:6-1:12|-1|1|2",
-      "extent": "1:1-1:17|-1|1|0",
+      "spell": "1:6-1:12|0|1|2",
+      "extent": "1:1-1:17|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["3:3-3:9|1|3|32"],
+      "uses": ["3:3-3:9|11404881820527069090|3|32"],
       "callees": []
     }, {
-      "id": 1,
       "usr": 11404881820527069090,
       "detailed_name": "void caller()",
       "qual_name_offset": 5,
@@ -34,14 +32,16 @@ OUTPUT:
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "2:6-2:12|-1|1|2",
-      "extent": "2:1-4:2|-1|1|0",
+      "spell": "2:6-2:12|0|1|2",
+      "extent": "2:1-4:2|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["3:3-3:9|0|3|32"]
+      "callees": ["3:3-3:9|468307235068920063|3|32"]
     }],
-  "vars": []
+  "usr2type": [],
+  "usr2var": []
 }
 */

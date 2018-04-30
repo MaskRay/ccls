@@ -9,7 +9,7 @@
 
 #include <algorithm>
 
-MAKE_HASHABLE(SymbolIdx, t.kind, t.id);
+MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
 
 namespace {
 
@@ -130,22 +130,22 @@ bool FindFileOrFail(QueryDatabase* db,
                     std::optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
-                    QueryFileId* out_file_id) {
+                    int* out_file_id) {
   *out_query_file = nullptr;
 
-  auto it = db->usr_to_file.find(LowerPathIfInsensitive(absolute_path));
-  if (it != db->usr_to_file.end()) {
-    QueryFile& file = db->files[it->second.id];
+  auto it = db->name2file_id.find(LowerPathIfInsensitive(absolute_path));
+  if (it != db->name2file_id.end()) {
+    QueryFile& file = db->files[it->second];
     if (file.def) {
       *out_query_file = &file;
       if (out_file_id)
-        *out_file_id = QueryFileId(it->second.id);
+        *out_file_id = it->second;
       return true;
     }
   }
 
   if (out_file_id)
-    *out_file_id = QueryFileId();
+    *out_file_id = -1;
 
   bool indexing = project->absolute_path_to_entry_index_.find(absolute_path) !=
                   project->absolute_path_to_entry_index_.end();

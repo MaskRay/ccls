@@ -30,7 +30,7 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
     out.id = request->id;
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      Id<void> id = sym.id;
+      Usr usr = sym.usr;
       switch (sym.kind) {
         default:
           break;
@@ -38,15 +38,14 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
           const QueryVar::Def* def = db->GetVar(sym).AnyDef();
           if (!def || !def->type)
             continue;
-          id = *def->type;
+          usr = def->type;
+          [[fallthrough]];
         }
-        // fallthrough
-        case SymbolKind::Type: {
-          QueryType& type = db->types[id.id];
-          out.result = GetLsLocationExs(db, working_files,
-                                        GetDeclarations(db, type.instances));
+        case SymbolKind::Type:
+          out.result = GetLsLocationExs(
+              db, working_files,
+              GetDeclarations(db->usr2var, db->Type(usr).instances));
           break;
-        }
       }
     }
     QueueManager::WriteStdout(kMethodType, out);

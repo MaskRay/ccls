@@ -214,7 +214,6 @@ void ReflectShortName(Writer& visitor, Def& def) {
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexType& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
@@ -238,7 +237,6 @@ void Reflect(TVisitor& visitor, IndexType& value) {
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
@@ -261,7 +259,6 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
 template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexVar& value) {
   REFLECT_MEMBER_START();
-  REFLECT_MEMBER2("id", value.id);
   REFLECT_MEMBER2("usr", value.usr);
   REFLECT_MEMBER2("detailed_name", value.def.detailed_name);
   REFLECT_MEMBER2("qual_name_offset", value.def.qual_name_offset);
@@ -279,13 +276,6 @@ void Reflect(TVisitor& visitor, IndexVar& value) {
 
 // IndexFile
 bool ReflectMemberStart(Writer& visitor, IndexFile& value) {
-  // FIXME
-  auto it = value.id_cache.usr_to_type_id.find(HashUsr(""));
-  if (it != value.id_cache.usr_to_type_id.end()) {
-    value.Resolve(it->second)->def.detailed_name = "<fundamental>";
-    assert(value.Resolve(it->second)->uses.size() == 0);
-  }
-
   visitor.StartObject();
   return true;
 }
@@ -302,9 +292,9 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
   if (!gTestOutputMode)
     REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(skipped_by_preprocessor);
-  REFLECT_MEMBER(types);
-  REFLECT_MEMBER(funcs);
-  REFLECT_MEMBER(vars);
+  REFLECT_MEMBER(usr2func);
+  REFLECT_MEMBER(usr2type);
+  REFLECT_MEMBER(usr2var);
   REFLECT_MEMBER_END();
 }
 
@@ -416,19 +406,5 @@ std::unique_ptr<IndexFile> Deserialize(
 
   // Restore non-serialized state.
   file->path = path;
-  file->id_cache.primary_file = file->path;
-  for (const auto& type : file->types) {
-    file->id_cache.type_id_to_usr[type.id] = type.usr;
-    file->id_cache.usr_to_type_id[type.usr] = type.id;
-  }
-  for (const auto& func : file->funcs) {
-    file->id_cache.func_id_to_usr[func.id] = func.usr;
-    file->id_cache.usr_to_func_id[func.usr] = func.id;
-  }
-  for (const auto& var : file->vars) {
-    file->id_cache.var_id_to_usr[var.id] = var.usr;
-    file->id_cache.usr_to_var_id[var.usr] = var.id;
-  }
-
   return file;
 }

@@ -15,7 +15,6 @@ struct ClangTranslationUnit;
 class DiagnosticsEngine;
 struct FileConsumerSharedState;
 struct ICacheManager;
-struct ImportManager;
 struct MultiQueueWaiter;
 struct Project;
 struct QueryDatabase;
@@ -53,14 +52,12 @@ void IndexWithTuFromCodeCompletion(
 void Indexer_Main(DiagnosticsEngine* diag_engine,
                   FileConsumerSharedState* file_consumer_shared,
                   TimestampManager* timestamp_manager,
-                  ImportManager* import_manager,
                   ImportPipelineStatus* status,
                   Project* project,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter);
 
 bool QueryDb_ImportMain(QueryDatabase* db,
-                        ImportManager* import_manager,
                         ImportPipelineStatus* status,
                         SemanticHighlightSymbolCache* semantic_cache,
                         WorkingFiles* working_files);

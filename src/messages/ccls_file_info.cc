@@ -3,7 +3,6 @@
 #include "queue_manager.h"
 
 MAKE_REFLECT_STRUCT(QueryFile::Def,
-                    file,
                     path,
                     args,
                     language,

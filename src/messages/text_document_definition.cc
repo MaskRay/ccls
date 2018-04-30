@@ -33,7 +33,7 @@ std::vector<Use> GetNonDefDeclarationTargets(QueryDatabase* db, SymbolRef sym) {
         for (auto& def : db->GetVar(sym).def)
           if (def.type) {
             if (Maybe<Use> use = GetDefinitionSpell(
-                    db, SymbolIdx{*def.type, SymbolKind::Type})) {
+                    db, SymbolIdx{def.type, SymbolKind::Type})) {
               ret.push_back(*use);
               break;
             }
@@ -51,7 +51,7 @@ struct Handler_TextDocumentDefinition
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentDefinition* request) override {
     auto& params = request->params;
-    QueryFileId file_id;
+    int file_id;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file, &file_id))
@@ -79,7 +79,7 @@ struct Handler_TextDocumentDefinition
         if (def.spell && def.extent) {
           Use spell = *def.spell;
           // If on a definition, clear |uses| to find declarations below.
-          if (spell.file == file_id &&
+          if (spell.file_id == file_id &&
               spell.range.Contains(ls_pos.line, ls_pos.character)) {
             on_def = spell;
             uses.clear();
@@ -148,7 +148,7 @@ struct Handler_TextDocumentDefinition
           if (Maybe<Use> use = GetDefinitionSpell(db, db->symbols[i])) {
             std::tuple<int, int, bool, int> score{
                 int(name.size() - short_query.size()), 0,
-                use->file != file_id,
+                use->file_id != file_id,
                 std::abs(use->range.start.line - position.line)};
             // Update the score with qualified name if the qualified name
             // occurs in |name|.

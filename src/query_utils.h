@@ -7,17 +7,28 @@
 
 Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym);
 Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym);
-Maybe<QueryFileId> GetDeclarationFileForSymbol(QueryDatabase* db,
-                                               SymbolIdx sym);
 
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
 // for each id.
-std::vector<Use> GetDeclarations(QueryDatabase* db,
-                                 const std::vector<QueryFuncId>& ids);
-std::vector<Use> GetDeclarations(QueryDatabase* db,
-                                 const std::vector<QueryTypeId>& ids);
-std::vector<Use> GetDeclarations(QueryDatabase* db,
-                                 const std::vector<QueryVarId>& ids);
+template <typename Q>
+std::vector<Use> GetDeclarations(spp::sparse_hash_map<Usr, Q>& usr2entity,
+                                 const std::vector<Usr>& usrs) {
+  std::vector<Use> ret;
+  ret.reserve(usrs.size());
+  for (Usr usr : usrs) {
+    Q& entity = usr2entity[usr];
+    bool has_def = false;
+    for (auto& def : entity.def)
+      if (def.spell) {
+        ret.push_back(*def.spell);
+        has_def = true;
+        break;
+      }
+    if (!has_def && entity.declarations.size())
+      ret.push_back(entity.declarations[0]);
+  }
+  return ret;
+}
 
 // Get non-defining declarations.
 std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym);
@@ -28,9 +39,9 @@ std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
                                    const Position& position);
 std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location);
 lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
-                               QueryFileId file_id,
+                               int file_id,
                                std::string* path);
-lsDocumentUri GetLsDocumentUri(QueryDatabase* db, QueryFileId file_id);
+lsDocumentUri GetLsDocumentUri(QueryDatabase* db, int file_id);
 
 std::optional<lsLocation> GetLsLocation(QueryDatabase* db,
                                    WorkingFiles* working_files,
@@ -124,11 +135,11 @@ void EachOccurrenceWithParent(QueryDatabase* db,
 }
 
 template <typename Q, typename Fn>
-void EachDefinedEntity(std::vector<Q>& collection,
-                       const std::vector<Id<Q>>& ids,
+void EachDefinedEntity(spp::sparse_hash_map<Usr, Q>& collection,
+                       const std::vector<Usr>& usrs,
                        Fn&& fn) {
-  for (Id<Q> x : ids) {
-    Q& obj = collection[x.id];
+  for (Usr usr : usrs) {
+    Q& obj = collection[usr];
     if (!obj.def.empty())
       fn(obj);
   }

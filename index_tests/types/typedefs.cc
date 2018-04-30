@@ -6,23 +6,22 @@ OUTPUT:
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [{
-      "id": 0,
-      "usr": 13838176792705659279,
-      "detailed_name": "<fundamental>",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "declarations": [],
+  "usr2func": [{
+      "usr": 8105378401105136463,
+      "detailed_name": "func g",
+      "qual_name_offset": 5,
+      "short_name": "g",
+      "kind": 12,
+      "storage": 3,
+      "declarations": ["2:13-2:14|0|1|1"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "types": [],
-      "funcs": [],
       "vars": [],
-      "instances": [],
-      "uses": []
-    }, {
-      "id": 1,
+      "uses": [],
+      "callees": []
+    }],
+  "usr2type": [{
       "usr": 10383876566159302459,
       "detailed_name": "func",
       "qual_name_offset": 0,
@@ -30,8 +29,23 @@ OUTPUT:
       "kind": 252,
       "hover": "typedef int (func)(const int *a, const int *b)",
       "declarations": [],
-      "spell": "1:14-1:18|-1|1|2",
-      "extent": "1:1-1:47|-1|1|0",
+      "spell": "1:14-1:18|0|1|2",
+      "extent": "1:1-1:47|0|1|0",
+      "alias_of": 13838176792705659279,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": ["1:14-1:18|0|1|4", "2:8-2:12|0|1|4"]
+    }, {
+      "usr": 13838176792705659279,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "declarations": [],
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -39,26 +53,8 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["1:14-1:18|-1|1|4", "2:8-2:12|-1|1|4"]
+      "uses": []
     }],
-  "funcs": [{
-      "id": 0,
-      "usr": 8105378401105136463,
-      "detailed_name": "func g",
-      "qual_name_offset": 5,
-      "short_name": "g",
-      "kind": 12,
-      "storage": 3,
-      "declarations": [{
-          "spell": "2:13-2:14|-1|1|1",
-          "param_spellings": ["2:13-2:13", "2:13-2:13"]
-        }],
-      "bases": [],
-      "derived": [],
-      "vars": [],
-      "uses": [],
-      "callees": []
-    }],
-  "vars": []
+  "usr2var": []
 }
 */

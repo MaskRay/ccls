@@ -9,26 +9,23 @@ OUTPUT: simple_header.h
 {
   "includes": [],
   "skipped_by_preprocessor": [],
-  "types": [],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 16236105532929924676,
       "detailed_name": "void header()",
       "qual_name_offset": 5,
       "short_name": "header",
       "kind": 12,
       "storage": 1,
-      "declarations": [{
-          "spell": "3:6-3:12|-1|1|1",
-          "param_spellings": []
-        }],
+      "declarations": ["3:6-3:12|0|1|1"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
       "callees": []
     }],
-  "vars": []
+  "usr2type": [],
+  "usr2var": []
 }
 OUTPUT: simple_impl.cc
 {
@@ -37,9 +34,7 @@ OUTPUT: simple_impl.cc
       "resolved_path": "&simple_header.h"
     }],
   "skipped_by_preprocessor": [],
-  "types": [],
-  "funcs": [{
-      "id": 0,
+  "usr2func": [{
       "usr": 3373269392705484958,
       "detailed_name": "void impl()",
       "qual_name_offset": 5,
@@ -47,15 +42,15 @@ OUTPUT: simple_impl.cc
       "kind": 12,
       "storage": 1,
       "declarations": [],
-      "spell": "3:6-3:10|-1|1|2",
-      "extent": "3:1-5:2|-1|1|0",
+      "spell": "3:6-3:10|0|1|2",
+      "extent": "3:1-5:2|0|1|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["4:3-4:9|1|3|32"]
+      "callees": ["4:3-4:9|16236105532929924676|3|32"]
     }, {
-      "id": 1,
       "usr": 16236105532929924676,
       "detailed_name": "",
       "qual_name_offset": 0,
@@ -63,12 +58,14 @@ OUTPUT: simple_impl.cc
       "kind": 0,
       "storage": 0,
       "declarations": [],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:9|0|3|32"],
+      "uses": ["4:3-4:9|3373269392705484958|3|32"],
       "callees": []
     }],
-  "vars": []
+  "usr2type": [],
+  "usr2var": []
 }
 */
