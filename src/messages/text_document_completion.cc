@@ -214,10 +214,11 @@ void FilterAndSortCompletionResponse(
   }
 
   // Fuzzy match and remove awful candidates.
-  FuzzyMatcher fuzzy(complete_text, g_config->completion.caseSensitivity);
+  bool sensitive = g_config->completion.caseSensitivity;
+  FuzzyMatcher fuzzy(complete_text, sensitive);
   for (auto& item : items) {
     item.score_ =
-        CaseFoldingSubsequenceMatch(complete_text, *item.filterText).first
+        ReverseSubseqMatch(complete_text, *item.filterText, sensitive) >= 0
             ? fuzzy.Match(*item.filterText)
             : FuzzyMatcher::kMinScore;
   }

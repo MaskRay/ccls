@@ -49,21 +49,20 @@ std::string_view LexIdentifierAroundPos(lsPosition position,
 
 // Find discontinous |search| in |content|.
 // Return |found| and the count of skipped chars before found.
-std::pair<bool, int> CaseFoldingSubsequenceMatch(std::string_view search,
-                                                 std::string_view content) {
-  bool hasUppercaseLetter = std::any_of(search.begin(), search.end(), isupper);
-  int skip = 0;
-  size_t j = 0;
-  for (char c : search) {
-    while (j < content.size() &&
-           (hasUppercaseLetter ? content[j] != c
-                               : tolower(content[j]) != tolower(c)))
-      ++j, ++skip;
-    if (j == content.size())
-      return {false, skip};
-    ++j;
-  }
-  return {true, skip};
+int ReverseSubseqMatch(std::string_view pat,
+                       std::string_view text,
+                       int case_sensitivity) {
+  if (case_sensitivity == 1)
+    case_sensitivity = std::any_of(pat.begin(), pat.end(), isupper) ? 2 : 0;
+  int j = pat.size();
+  if (!j)
+    return text.size();
+  for (int i = text.size(); i--;)
+    if ((case_sensitivity ? text[i] == pat[j - 1]
+                          : tolower(text[i]) == tolower(pat[j - 1])) &&
+        !--j)
+      return i;
+  return -1;
 }
 
 TEST_SUITE("Offset") {
@@ -84,23 +83,5 @@ TEST_SUITE("Offset") {
   TEST_CASE("at end of content") {
     REQUIRE(GetOffsetForPosition(lsPosition{0, 0}, "") == 0);
     REQUIRE(GetOffsetForPosition(lsPosition{0, 1}, "a") == 1);
-  }
-}
-
-TEST_SUITE("Substring") {
-  TEST_CASE("skip") {
-    REQUIRE(CaseFoldingSubsequenceMatch("a", "a") == std::make_pair(true, 0));
-    REQUIRE(CaseFoldingSubsequenceMatch("b", "a") == std::make_pair(false, 1));
-    REQUIRE(CaseFoldingSubsequenceMatch("", "") == std::make_pair(true, 0));
-    REQUIRE(CaseFoldingSubsequenceMatch("a", "ba") == std::make_pair(true, 1));
-    REQUIRE(CaseFoldingSubsequenceMatch("aa", "aba") ==
-            std::make_pair(true, 1));
-    REQUIRE(CaseFoldingSubsequenceMatch("aa", "baa") ==
-            std::make_pair(true, 1));
-    REQUIRE(CaseFoldingSubsequenceMatch("aA", "aA") == std::make_pair(true, 0));
-    REQUIRE(CaseFoldingSubsequenceMatch("aA", "aa") ==
-            std::make_pair(false, 1));
-    REQUIRE(CaseFoldingSubsequenceMatch("incstdioh", "include <stdio.h>") ==
-            std::make_pair(true, 7));
   }
 }

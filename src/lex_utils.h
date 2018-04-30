@@ -11,5 +11,6 @@ int GetOffsetForPosition(lsPosition position, std::string_view content);
 std::string_view LexIdentifierAroundPos(lsPosition position,
                                         std::string_view content);
 
-std::pair<bool, int> CaseFoldingSubsequenceMatch(std::string_view search,
-                                                 std::string_view content);
+int ReverseSubseqMatch(std::string_view pat,
+                       std::string_view text,
+                       int case_sensitivity);

@@ -354,6 +354,8 @@ struct IndexParam {
 };
 
 IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
+  if (!file)
+    return nullptr;
   bool is_first_ownership = false;
   IndexFile* db = param->file_consumer->TryConsumeFile(
       file, &is_first_ownership, &param->file_contents);
