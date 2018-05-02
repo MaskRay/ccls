@@ -72,14 +72,10 @@ struct ThreadedQueue : public BaseThreadQueue {
   ThreadedQueue() : total_count_(0) {
     owned_waiter_ = std::make_unique<MultiQueueWaiter>();
     waiter_ = owned_waiter_.get();
-    owned_waiter1_ = std::make_unique<MultiQueueWaiter>();
-    waiter1_ = owned_waiter1_.get();
   }
 
-  // TODO remove waiter1 after split of on_indexed
-  explicit ThreadedQueue(MultiQueueWaiter* waiter,
-                         MultiQueueWaiter* waiter1 = nullptr)
-      : total_count_(0), waiter_(waiter), waiter1_(waiter1) {}
+  explicit ThreadedQueue(MultiQueueWaiter* waiter)
+      : total_count_(0), waiter_(waiter) {}
 
   // Returns the number of elements in the queue. This is lock-free.
   size_t Size() const { return total_count_; }
@@ -94,8 +90,6 @@ struct ThreadedQueue : public BaseThreadQueue {
       (queue_.*push)(std::move(t));
     ++total_count_;
     waiter_->cv.notify_one();
-    if (waiter1_)
-      waiter1_->cv.notify_one();
   }
 
   void PushFront(T&& t, bool priority = false) {
@@ -222,7 +216,4 @@ struct ThreadedQueue : public BaseThreadQueue {
   std::deque<T> queue_;
   MultiQueueWaiter* waiter_;
   std::unique_ptr<MultiQueueWaiter> owned_waiter_;
-  // TODO remove waiter1 after split of on_indexed
-  MultiQueueWaiter* waiter1_;
-  std::unique_ptr<MultiQueueWaiter> owned_waiter1_;
 };

@@ -438,12 +438,12 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
     IndexUpdate update = IndexUpdate::CreateDelta(response->previous.get(),
                                                   response->current.get());
     response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
-    LOG_S(INFO) << "Built index update for " << response->current->path
+    LOG_S(INFO) << "built index for " << response->current->path
                 << " (is_delta=" << !!response->previous << ")";
 
     // Write current index to disk if requested.
     if (response->write_to_disk) {
-      LOG_S(INFO) << "Writing index to disk for " << response->current->path;
+      LOG_S(INFO) << "store index for " << response->current->path;
       time.Reset();
       response->cache_manager->WriteToCache(*response->current);
       response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
