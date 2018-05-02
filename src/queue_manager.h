@@ -79,14 +79,11 @@ class QueueManager {
 
   // Runs on querydb thread.
   ThreadedQueue<std::unique_ptr<InMessage>> for_querydb;
+  ThreadedQueue<Index_OnIndexed> on_indexed;
 
   // Runs on indexer threads.
   ThreadedQueue<Index_Request> index_request;
   ThreadedQueue<Index_OnIdMapped> on_id_mapped;
-
-  // Shared by querydb and indexer.
-  // TODO split on_indexed
-  ThreadedQueue<Index_OnIndexed> on_indexed;
 
  private:
   explicit QueueManager(MultiQueueWaiter* querydb_waiter,

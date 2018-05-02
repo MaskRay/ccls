@@ -2,8 +2,6 @@
 
 #include "serializer.h"
 
-#include <cstdint>
-
 // Contains timing information for the entire pipeline for importing a file
 // into the querydb.
 struct PerformanceImportFile {

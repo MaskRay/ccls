@@ -50,10 +50,9 @@ QueueManager::QueueManager(MultiQueueWaiter* querydb_waiter,
                            MultiQueueWaiter* stdout_waiter)
     : for_stdout(stdout_waiter),
       for_querydb(querydb_waiter),
+      on_indexed(querydb_waiter),
       index_request(indexer_waiter),
-      on_id_mapped(indexer_waiter),
-      // TODO on_indexed is shared by "querydb" and "indexer"
-      on_indexed(querydb_waiter, indexer_waiter) {}
+      on_id_mapped(indexer_waiter) {}
 
 bool QueueManager::HasWork() {
   return !index_request.IsEmpty() || !on_id_mapped.IsEmpty() ||
