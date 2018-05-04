@@ -112,7 +112,8 @@ std::string FileName(CXFile file) {
   ret = ToString(clang_File_tryGetRealPathName(file));
 #endif
   if (ret.empty())
-    ret = ToString(clang_getFileName(file));
+    // clang_getFileName return values may contain ..
+    ret = NormalizePath(ToString(clang_getFileName(file)));
   // Resolve /usr/include/c++/7.3.0 symlink.
   if (!StartsWith(ret, g_config->projectRoot))
     ret = fs::canonical(ret);

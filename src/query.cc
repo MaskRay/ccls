@@ -16,54 +16,9 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// TODO: Make all copy constructors explicit.
-
 // Used by |HANDLE_MERGEABLE| so only |range| is needed.
 MAKE_HASHABLE(Range, t.start, t.end);
 MAKE_HASHABLE(Use, t.range);
-
-template <typename TVisitor, typename TValue>
-void Reflect(TVisitor& visitor, MergeableUpdate<TValue>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
-  REFLECT_MEMBER(to_remove);
-  REFLECT_MEMBER(to_add);
-  REFLECT_MEMBER_END();
-}
-
-template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, WithUsr<T>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(usr);
-  REFLECT_MEMBER(value);
-  REFLECT_MEMBER_END();
-}
-
-template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, WithFileContent<T>& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(value);
-  REFLECT_MEMBER(file_content);
-  REFLECT_MEMBER_END();
-}
-
-// NOTICE: We're not reflecting on files_removed or files_def_update, it is too
-// much output when logging
-MAKE_REFLECT_STRUCT(IndexUpdate,
-                    types_removed,
-                    types_def_update,
-                    types_derived,
-                    types_instances,
-                    types_uses,
-                    funcs_removed,
-                    funcs_def_update,
-                    funcs_declarations,
-                    funcs_derived,
-                    funcs_uses,
-                    vars_removed,
-                    vars_def_update,
-                    vars_declarations,
-                    vars_uses);
 
 namespace {
 
@@ -115,57 +70,6 @@ void RemoveRange(std::vector<T>& dest, const std::vector<T>& to_remove) {
         [&](const T& t) { return to_remove_set.count(t) > 0; }),
       dest.end());
   }
-}
-
-// Compares |previous| and |current|, adding all elements that are in |previous|
-// but not |current| to |removed|, and all elements that are in |current| but
-// not |previous| to |added|.
-//
-// Returns true iff |removed| or |added| are non-empty.
-template <typename T>
-bool ComputeDifferenceForUpdate(std::vector<T> previous,
-                                std::vector<T> current,
-                                std::vector<T>* removed,
-                                std::vector<T>* added) {
-  // We need to sort to use std::set_difference.
-  std::sort(previous.begin(), previous.end());
-  std::sort(current.begin(), current.end());
-
-  auto it0 = previous.begin(), it1 = current.begin();
-  while (it0 != previous.end() && it1 != current.end()) {
-    // Elements in |previous| that are not in |current|.
-    if (*it0 < *it1)
-      removed->push_back(std::move(*it0++));
-    // Elements in |current| that are not in |previous|.
-    else if (*it1 < *it0)
-      added->push_back(std::move(*it1++));
-    else
-      ++it0, ++it1;
-  }
-  while (it0 != previous.end())
-    removed->push_back(std::move(*it0++));
-  while (it1 != current.end())
-    added->push_back(std::move(*it1++));
-
-  return !removed->empty() || !added->empty();
-}
-
-template <typename T>
-void CompareGroups(std::unordered_map<Usr, T>& prev,
-                   std::unordered_map<Usr, T>& curr,
-                   std::function<void(T&)> on_remove,
-                   std::function<void(T&)> on_add,
-                   std::function<void(T&, T&)> on_found) {
-  for (auto& it : prev) {
-    auto it1 = curr.find(it.first);
-    if (it1 != curr.end())
-      on_found(it.second, it1->second);
-    else
-      on_remove(it.second);
-  }
-  for (auto& it : curr)
-    if (!prev.count(it.first))
-      on_add(it.second);
 }
 
 QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
@@ -291,144 +195,60 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   if (!previous)
     previous = &empty;
 
-// |query_name| is the name of the variable on the query type.
-// |index_name| is the name of the variable on the index type.
-// |type| is the type of the variable.
-#define PROCESS_DIFF(type_id, query_name, index_name, type)  \
-  {                                                          \
-    /* Check for changes. */                                 \
-    std::vector<type> removed, added;                        \
-    bool did_add = ComputeDifferenceForUpdate(               \
-        prev.index_name, curr.index_name, &removed, &added); \
-    if (did_add) {                                           \
-      r.query_name.push_back(MergeableUpdate<type>(          \
-          curr.usr, std::move(removed), std::move(added)));  \
-    }                                                        \
-  }
-  // File
   r.files_def_update = BuildFileDefUpdate(*current);
 
-  // **NOTE** We only remove entries if they were defined in the previous index.
-  // For example, if a type is included from another file it will be defined
-  // simply so we can attribute the usage/reference to it. If the reference goes
-  // away we don't want to remove the type/func/var usage.
+  for (auto& it : previous->usr2func) {
+    auto& func = it.second;
+    if (func.def.spell)
+      r.funcs_removed.push_back(func.usr);
+    r.funcs_declarations[func.usr].first = func.declarations;
+    r.funcs_uses[func.usr].first = func.uses;
+    r.funcs_derived[func.usr].first = func.derived;
+  }
+  for (auto& it : current->usr2func) {
+    auto& func = it.second;
+    if (func.def.detailed_name.size())
+      r.funcs_def_update.emplace_back(it.first, func.def);
+    r.funcs_declarations[func.usr].second = func.declarations;
+    r.funcs_uses[func.usr].second = func.uses;
+    r.funcs_derived[func.usr].second = func.derived;
+  }
 
-  // Functions
-  CompareGroups<IndexFunc>(
-      previous->usr2func, current->usr2func,
-      /*onRemoved:*/
-      [&r](IndexFunc& func) {
-        if (func.def.spell)
-          r.funcs_removed.push_back(func.usr);
-        if (func.declarations.size())
-          r.funcs_declarations.push_back(UseUpdate{func.usr, func.declarations, {}});
-        if (func.uses.size())
-          r.funcs_uses.push_back(UseUpdate{func.usr, func.uses, {}});
-        if (func.derived.size())
-          r.funcs_derived.push_back(UsrUpdate{func.usr, func.derived, {}});
-      },
-      /*onAdded:*/
-      [&r](IndexFunc& func) {
-        if (func.def.detailed_name.size())
-          r.funcs_def_update.emplace_back(func.usr, func.def);
-        if (func.declarations.size())
-          r.funcs_declarations.push_back(UseUpdate{func.usr, {}, func.declarations});
-        if (func.uses.size())
-          r.funcs_uses.push_back(UseUpdate{func.usr, {}, func.uses});
-        if (func.derived.size())
-          r.funcs_derived.push_back(UsrUpdate{func.usr, {}, func.derived});
-      },
-      /*onFound:*/
-      [&r](IndexFunc& prev, IndexFunc& curr) {
-        if (curr.def.detailed_name.size() && !(prev.def == curr.def))
-          r.funcs_def_update.emplace_back(curr.usr, curr.def);
+  for (auto& it : previous->usr2type) {
+    auto& type = it.second;
+    if (type.def.spell)
+      r.types_removed.push_back(type.usr);
+    r.types_declarations[type.usr].first = type.declarations;
+    r.types_uses[type.usr].first = type.uses;
+    r.types_derived[type.usr].first = type.derived;
+    r.types_instances[type.usr].first = type.instances;
+  };
+  for (auto& it : current->usr2type) {
+    auto& type = it.second;
+    if (type.def.detailed_name.size())
+      r.types_def_update.emplace_back(it.first, type.def);
+    r.types_declarations[type.usr].second = type.declarations;
+    r.types_uses[type.usr].second = type.uses;
+    r.types_derived[type.usr].second = type.derived;
+    r.types_instances[type.usr].second = type.instances;
+  };
 
-        PROCESS_DIFF(QueryFuncId, funcs_declarations, declarations, Use);
-        PROCESS_DIFF(QueryFuncId, funcs_uses, uses, Use);
-        PROCESS_DIFF(QueryFuncId, funcs_derived, derived, Usr);
-      });
-
-  // Types
-  CompareGroups<IndexType>(
-      previous->usr2type, current->usr2type,
-      /*onRemoved:*/
-      [&r](IndexType& type) {
-        if (type.def.spell)
-          r.types_removed.push_back(type.usr);
-        if (type.declarations.size())
-          r.types_declarations.push_back(UseUpdate{type.usr, type.declarations, {}});
-        if (type.uses.size())
-          r.types_uses.push_back(UseUpdate{type.usr, type.uses, {}});
-        if (type.derived.size())
-          r.types_derived.push_back(UsrUpdate{type.usr, type.derived, {}});
-        if (type.instances.size())
-          r.types_instances.push_back(UsrUpdate{type.usr, type.instances, {}});
-      },
-      /*onAdded:*/
-      [&r](IndexType& type) {
-        if (type.def.detailed_name.size())
-          r.types_def_update.emplace_back(type.usr, type.def);
-        if (type.declarations.size())
-          r.types_declarations.push_back(UseUpdate{type.usr, {}, type.declarations});
-        if (type.uses.size())
-          r.types_uses.push_back(UseUpdate{type.usr, {}, type.uses});
-        if (type.derived.size())
-          r.types_derived.push_back(UsrUpdate{type.usr, {}, type.derived});
-        if (type.instances.size())
-          r.types_instances.push_back(UsrUpdate{type.usr, {}, type.instances});
-      },
-      /*onFound:*/
-      [&r](IndexType& prev, IndexType& curr) {
-        if (curr.def.detailed_name.size() && !(prev.def == curr.def))
-          r.types_def_update.emplace_back(curr.usr, curr.def);
-
-        PROCESS_DIFF(QueryTypeId, types_declarations, declarations, Use);
-        PROCESS_DIFF(QueryTypeId, types_uses, uses, Use);
-        PROCESS_DIFF(QueryTypeId, types_derived, derived, Usr);
-        PROCESS_DIFF(QueryTypeId, types_instances, instances, Usr);
-      });
-
-  // Variables
-  CompareGroups<IndexVar>(
-      previous->usr2var, current->usr2var,
-      /*onRemoved:*/
-      [&r](IndexVar& var) {
-        if (var.def.spell)
-          r.vars_removed.push_back(var.usr);
-        if (!var.declarations.empty())
-          r.vars_declarations.push_back(UseUpdate{var.usr, var.declarations, {}});
-        if (!var.uses.empty())
-          r.vars_uses.push_back(UseUpdate{var.usr, var.uses, {}});
-      },
-      /*onAdded:*/
-      [&r](IndexVar& var) {
-        if (var.def.detailed_name.size())
-          r.vars_def_update.emplace_back(var.usr, var.def);
-        if (var.declarations.size())
-          r.vars_declarations.push_back(UseUpdate{var.usr, {}, var.declarations});
-        if (var.uses.size())
-          r.vars_uses.push_back(UseUpdate{var.usr, {}, var.uses});
-      },
-      /*onFound:*/
-      [&r](IndexVar& prev, IndexVar& curr) {
-        if (curr.def.detailed_name.size() && !(prev.def == curr.def))
-          r.vars_def_update.emplace_back(curr.usr, curr.def);
-
-        PROCESS_DIFF(QueryVarId, vars_declarations, declarations, Use);
-        PROCESS_DIFF(QueryVarId, vars_uses, uses, Use);
-      });
+  for (auto& it : previous->usr2var) {
+    auto& var = it.second;
+    if (var.def.spell)
+      r.vars_removed.push_back(var.usr);
+    r.vars_declarations[var.usr].first = var.declarations;
+    r.vars_uses[var.usr].first = var.uses;
+  }
+  for (auto& it : current->usr2var) {
+    auto& var = it.second;
+    if (var.def.detailed_name.size())
+      r.vars_def_update.emplace_back(it.first, var.def);
+    r.vars_declarations[var.usr].second = var.declarations;
+    r.vars_uses[var.usr].second = var.uses;
+  }
 
   return r;
-#undef PROCESS_DIFF
-}
-
-std::string IndexUpdate::ToString() {
-  rapidjson::StringBuffer output;
-  rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-  JsonWriter json_writer(&writer);
-  IndexUpdate& update = *this;
-  Reflect(json_writer, update);
-  return output.GetString();
 }
 
 // ------------------------
@@ -490,11 +310,11 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* u) {
 //  MergeableUpdate<QueryTypeId, QueryTypeId> def                =>  QueryType
 //  def->def_var_name  =>  std::vector<QueryTypeId>
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
-  for (auto merge_update : u->update_var_name) {                      \
-    auto& entity = storage_name[merge_update.usr];                    \
-    AssignFileId(u->file_id, merge_update.to_add);                    \
-    AddRange(u->file_id, entity.def_var_name, merge_update.to_add);   \
-    RemoveRange(entity.def_var_name, merge_update.to_remove);         \
+  for (auto& it : u->update_var_name) {                               \
+    auto& entity = storage_name[it.first];                            \
+    RemoveRange(entity.def_var_name, it.second.first);                \
+    AssignFileId(u->file_id, it.second.second);                       \
+    AddRange(u->file_id, entity.def_var_name, it.second.second);      \
   }
 
   if (u->files_removed)
@@ -534,46 +354,52 @@ int QueryDatabase::Update(QueryFile::DefUpdate&& u) {
   return existing.id;
 }
 
-void QueryDatabase::Update(int file_id, std::vector<QueryFunc::DefUpdate>&& updates) {
-  for (auto& u : updates) {
-    auto& def = u.value;
+void QueryDatabase::Update(int file_id,
+                           std::vector<std::pair<Usr, QueryFunc::Def>>&& us) {
+  for (auto& u : us) {
+    auto& def = u.second;
     assert(!def.detailed_name.empty());
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
     AssignFileId(file_id, def.callees);
-    QueryFunc& existing = Func(u.usr);
+    QueryFunc& existing = Func(u.first);
+    existing.usr = u.first;
     if (!TryReplaceDef(existing.def, std::move(def))) {
       existing.def.push_front(std::move(def));
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, existing.usr);
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Func, u.first);
     }
   }
 }
 
-void QueryDatabase::Update(int file_id, std::vector<QueryType::DefUpdate>&& updates) {
-  for (auto& u : updates) {
-    auto& def = u.value;
+void QueryDatabase::Update(int file_id,
+                           std::vector<std::pair<Usr, QueryType::Def>>&& us) {
+  for (auto& u : us) {
+    auto& def = u.second;
     assert(!def.detailed_name.empty());
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
-    QueryType& existing = Type(u.usr);
+    QueryType& existing = Type(u.first);
+    existing.usr = u.first;
     if (!TryReplaceDef(existing.def, std::move(def))) {
       existing.def.push_front(std::move(def));
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, existing.usr);
+      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, u.first);
     }
   }
 }
 
-void QueryDatabase::Update(int file_id, std::vector<QueryVar::DefUpdate>&& updates) {
-  for (auto& u : updates) {
-    auto& def = u.value;
+void QueryDatabase::Update(int file_id,
+                           std::vector<std::pair<Usr, QueryVar::Def>>&& us) {
+  for (auto& u : us) {
+    auto& def = u.second;
     assert(!def.detailed_name.empty());
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
-    QueryVar& existing = Var(u.usr);
+    QueryVar& existing = Var(u.first);
+    existing.usr = u.first;
     if (!TryReplaceDef(existing.def, std::move(def))) {
       existing.def.push_front(std::move(def));
       if (!existing.def.front().is_local())
-        UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, existing.usr);
+        UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, u.first);
     }
   }
 }
