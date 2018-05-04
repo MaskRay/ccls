@@ -14,12 +14,11 @@
 #include "symbol.h"
 #include "utils.h"
 
-#include <assert.h>
 #include <stdint.h>
 #include <algorithm>
-#include <unordered_map>
 #include <optional>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 struct IndexFile;
@@ -29,48 +28,6 @@ struct IndexVar;
 struct QueryFile;
 
 using RawId = uint32_t;
-
-template <typename T>
-struct Id {
-  RawId id;
-
-  // Invalid id.
-  Id() : id(-1) {}
-  explicit Id(RawId id) : id(id) {}
-  // Id<T> -> Id<void> or Id<T> -> Id<T> is allowed implicitly.
-  template <typename U,
-            typename std::enable_if_t<std::is_void_v<T> || std::is_same_v<T, U>,
-                                      bool> = false>
-  Id(Id<U> o) : id(o.id) {}
-  template <
-      typename U,
-      typename std::enable_if_t<!(std::is_void_v<T> || std::is_same_v<T, U>),
-                                bool> = false>
-  explicit Id(Id<U> o) : id(o.id) {}
-
-  // Needed for google::dense_hash_map.
-  explicit operator RawId() const { return id; }
-
-  bool Valid() const { return id != RawId(-1); }
-
-  bool operator==(const Id& o) const { return id == o.id; }
-  bool operator!=(const Id& o) const { return id != o.id; }
-  bool operator<(const Id& o) const { return id < o.id; }
-};
-
-namespace std {
-template <typename T>
-struct hash<Id<T>> {
-  size_t operator()(const Id<T>& k) const { return hash<RawId>()(k.id); }
-};
-}  // namespace std
-
-template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, Id<T>& id) {
-  Reflect(visitor, id.id);
-}
-
-using IndexFileId = Id<IndexFile>;
 
 struct SymbolIdx {
   Usr usr;
@@ -189,8 +146,6 @@ struct IndexFunc : NameMixin<IndexFunc> {
   std::vector<Use> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
-
-  bool operator<(const IndexFunc& other) const { return usr < other.usr; }
 };
 
 struct TypeDef : NameMixin<TypeDef> {
@@ -261,13 +216,7 @@ struct IndexType {
   std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
-
-  // Every usage, useful for things like renames.
-  // NOTE: Do not insert directly! Use AddUsage instead.
-
-  bool operator<(const IndexType& other) const { return usr < other.usr; }
 };
-
 
 struct VarDef : NameMixin<VarDef> {
   // General metadata.
@@ -321,8 +270,6 @@ struct IndexVar {
   Def def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
-
-  bool operator<(const IndexVar& other) const { return usr < other.usr; }
 };
 
 struct IndexInclude {
@@ -434,8 +381,6 @@ struct IIndexer {
 };
 
 struct ClangIndexer : IIndexer {
-  ~ClangIndexer() override = default;
-
   std::vector<std::unique_ptr<IndexFile>> Index(
       FileConsumerSharedState* file_consumer_shared,
       std::string file,

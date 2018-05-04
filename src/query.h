@@ -13,50 +13,6 @@ struct QueryFunc;
 struct QueryVar;
 struct QueryDatabase;
 
-using QueryFileId = Id<QueryFile>;
-using QueryTypeId = Id<QueryType>;
-using QueryFuncId = Id<QueryFunc>;
-using QueryVarId = Id<QueryVar>;
-
-struct IdMap;
-
-// There are two sources of reindex updates: the (single) definition of a
-// symbol has changed, or one of many users of the symbol has changed.
-//
-// For simplicitly, if the single definition has changed, we update all of the
-// associated single-owner definition data. See |Update*DefId|.
-//
-// If one of the many symbol users submits an update, we store the update such
-// that it can be merged with other updates before actually being applied to
-// the main database. See |MergeableUpdate|.
-
-template <typename TValue>
-struct MergeableUpdate {
-  // The type/func/var which is getting new usages.
-  Usr usr;
-  // Entries to add and remove.
-  std::vector<TValue> to_remove;
-  std::vector<TValue> to_add;
-
-  MergeableUpdate(Usr usr,
-                  std::vector<TValue>&& to_remove,
-                  std::vector<TValue>&& to_add)
-      : usr(usr), to_remove(std::move(to_remove)), to_add(std::move(to_add)) {}
-  MergeableUpdate(Usr usr,
-                  const std::vector<TValue>& to_remove,
-                  const std::vector<TValue>& to_add)
-      : usr(usr), to_remove(to_remove), to_add(to_add) {}
-};
-
-template <typename T>
-struct WithUsr {
-  Usr usr;
-  T value;
-
-  WithUsr(Usr usr, const T& value) : usr(usr), value(value) {}
-  WithUsr(Usr usr, T&& value) : usr(usr), value(value) {}
-};
-
 template <typename T>
 struct WithFileContent {
   T value;
@@ -94,7 +50,6 @@ struct QueryFile {
 template <typename Q, typename QDef>
 struct QueryEntity {
   using Def = QDef;
-  using DefUpdate = WithUsr<Def>;
   Def* AnyDef() {
     Def* ret = nullptr;
     for (auto& i : static_cast<Q*>(this)->def) {
@@ -107,8 +62,10 @@ struct QueryEntity {
   const Def* AnyDef() const { return const_cast<QueryEntity*>(this)->AnyDef(); }
 };
 
-using UsrUpdate = MergeableUpdate<Usr>;
-using UseUpdate = MergeableUpdate<Use>;
+using UseUpdate =
+    std::unordered_map<Usr, std::pair<std::vector<Use>, std::vector<Use>>>;
+using UsrUpdate =
+    std::unordered_map<Usr, std::pair<std::vector<Usr>, std::vector<Usr>>>;
 
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
@@ -147,9 +104,6 @@ struct IndexUpdate {
   // work can be parallelized.
   void Merge(IndexUpdate&& update);
 
-  // Dump the update to a string.
-  std::string ToString();
-
   int file_id;
 
   // File updates.
@@ -158,24 +112,24 @@ struct IndexUpdate {
 
   // Function updates.
   std::vector<Usr> funcs_removed;
-  std::vector<QueryFunc::DefUpdate> funcs_def_update;
-  std::vector<UseUpdate> funcs_declarations;
-  std::vector<UseUpdate> funcs_uses;
-  std::vector<UsrUpdate> funcs_derived;
+  std::vector<std::pair<Usr, QueryFunc::Def>> funcs_def_update;
+  UseUpdate funcs_declarations;
+  UseUpdate funcs_uses;
+  UsrUpdate funcs_derived;
 
   // Type updates.
   std::vector<Usr> types_removed;
-  std::vector<QueryType::DefUpdate> types_def_update;
-  std::vector<UseUpdate> types_declarations;
-  std::vector<UseUpdate> types_uses;
-  std::vector<UsrUpdate> types_derived;
-  std::vector<UsrUpdate> types_instances;
+  std::vector<std::pair<Usr, QueryType::Def>> types_def_update;
+  UseUpdate types_declarations;
+  UseUpdate types_uses;
+  UsrUpdate types_derived;
+  UsrUpdate types_instances;
 
   // Variable updates.
   std::vector<Usr> vars_removed;
-  std::vector<QueryVar::DefUpdate> vars_def_update;
-  std::vector<UseUpdate> vars_declarations;
-  std::vector<UseUpdate> vars_uses;
+  std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
+  UseUpdate vars_declarations;
+  UseUpdate vars_uses;
 };
 
 // The query database is heavily optimized for fast queries. It is stored
@@ -196,12 +150,10 @@ struct QueryDatabase {
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
   int Update(QueryFile::DefUpdate&& u);
-  void Update(int file_id, std::vector<QueryType::DefUpdate>&& updates);
-  void Update(int file_id, std::vector<QueryFunc::DefUpdate>&& updates);
-  void Update(int file_id, std::vector<QueryVar::DefUpdate>&& updates);
-  void UpdateSymbols(int* symbol_idx,
-                     SymbolKind kind,
-                     Usr usr);
+  void Update(int file_id, std::vector<std::pair<Usr, QueryType::Def>>&& us);
+  void Update(int file_id, std::vector<std::pair<Usr, QueryFunc::Def>>&& us);
+  void Update(int file_id, std::vector<std::pair<Usr, QueryVar::Def>>&& us);
+  void UpdateSymbols(int* symbol_idx, SymbolKind kind, Usr usr);
   std::string_view GetSymbolName(int symbol_idx, bool qualified);
 
   QueryFile& GetFile(SymbolIdx ref) { return files[ref.usr]; }

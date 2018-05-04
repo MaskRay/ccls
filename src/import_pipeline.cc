@@ -355,7 +355,7 @@ void ParseFile(DiagnosticsEngine* diag_engine,
     return;
   }
 
-  LOG_S(INFO) << "Parsing " << path_to_index;
+  LOG_S(INFO) << "parse " << path_to_index;
   std::vector<FileContents> file_contents = PreloadFileContents(
       request.cache_manager, entry, request.contents, path_to_index);
 
@@ -387,7 +387,7 @@ void ParseFile(DiagnosticsEngine* diag_engine,
 
     // When main thread does IdMap request it will request the previous index if
     // needed.
-    LOG_S(INFO) << "Emitting index result for " << new_index->path;
+    LOG_S(INFO) << "emit index for " << new_index->path;
     result.push_back(
         Index_OnIdMapped(request.cache_manager,
                          request.cache_manager->TryTakeOrLoad(path_to_index),
