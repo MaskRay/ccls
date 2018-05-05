@@ -262,12 +262,12 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
 
 // std::unordered_map
 template <typename V>
-void Reflect(Reader& visitor, std::unordered_map<uint64_t, V>& values) {
+void Reflect(Reader& visitor, std::unordered_map<uint64_t, V>& map) {
   visitor.IterArray([&](Reader& entry) {
     V val;
     Reflect(entry, val);
     auto usr = val.usr;
-    values[usr] = std::move(val);
+    map[usr] = std::move(val);
   });
 }
 template <typename V>
@@ -280,6 +280,10 @@ void Reflect(Writer& visitor, std::unordered_map<uint64_t, V>& map) {
     Reflect(visitor, it.second);
   visitor.EndArray();
 }
+
+// Used by IndexFile::dependencies. Timestamps are emitted for Binary.
+void Reflect(Reader& visitor, std::unordered_map<std::string, int64_t>& map);
+void Reflect(Writer& visitor, std::unordered_map<std::string, int64_t>& map);
 
 // ReflectMember
 

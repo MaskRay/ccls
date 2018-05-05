@@ -9,11 +9,12 @@
 
 #include <loguru.hpp>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <algorithm>
-#include <cassert>
 #include <chrono>
+#include <unordered_set>
 
 #if CINDEX_VERSION >= 47
 #define CINDEX_HAVE_PRETTY 1
@@ -279,7 +280,7 @@ struct IndexParam {
   std::unordered_set<CXFile> seen_cx_files;
   std::vector<std::string> seen_files;
   std::unordered_map<std::string, FileContents> file_contents;
-  std::unordered_map<std::string, int64_t> file_modification_times;
+  std::unordered_map<std::string, int64_t> file2write_time;
 
   // Only use this when strictly needed (ie, primary translation unit is
   // needed). Most logic should get the IndexFile instance via
@@ -373,11 +374,11 @@ IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
       param->seen_files.push_back(file_name);
 
       // Set modification time.
-      std::optional<int64_t> modification_time = LastWriteTime(file_name);
-      LOG_IF_S(ERROR, !modification_time)
-          << "Failed fetching modification time for " << file_name;
-      if (modification_time)
-        param->file_modification_times[file_name] = *modification_time;
+      std::optional<int64_t> write_time = LastWriteTime(file_name);
+      LOG_IF_S(ERROR, !write_time) << "failed to fetch write time for "
+                                   << file_name;
+      if (write_time)
+        param->file2write_time[file_name] = *write_time;
     }
   }
 
@@ -2010,7 +2011,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
 }
 
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    FileConsumerSharedState* file_consumer_shared,
+    VFS* vfs,
     std::string file,
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
@@ -2041,12 +2042,11 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
-  return ParseWithTu(file_consumer_shared, perf, tu.get(), index, file,
-                     args, unsaved_files);
+  return ParseWithTu(vfs, perf, tu.get(), index, file, args, unsaved_files);
 }
 
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
-    FileConsumerSharedState* file_consumer_shared,
+    VFS* vfs,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
     ClangIndex* index,
@@ -2067,7 +2067,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
   callback.indexDeclaration = &OnIndexDeclaration;
   callback.indexEntityReference = &OnIndexReference;
 
-  FileConsumer file_consumer(file_consumer_shared, file);
+  FileConsumer file_consumer(vfs, file);
   IndexParam param(tu, &file_consumer);
   for (const CXUnsavedFile& contents : file_contents) {
     param.file_contents[contents.Filename] = FileContents(
@@ -2140,15 +2140,13 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     }
 
     // Update file contents and modification time.
-    entry->last_modification_time = param.file_modification_times[entry->path];
+    entry->last_write_time = param.file2write_time[entry->path];
 
     // Update dependencies for the file. Do not include the file in its own
     // dependency set.
-    entry->dependencies = param.seen_files;
-    entry->dependencies.erase(
-        std::remove(entry->dependencies.begin(), entry->dependencies.end(),
-                    entry->path),
-        entry->dependencies.end());
+    for (const std::string& path : param.seen_files)
+      if (path != entry->path && path != entry->import_file)
+        entry->dependencies[path] = param.file2write_time[path];
   }
 
   return result;
@@ -2229,10 +2227,8 @@ struct TestIndexer : IIndexer {
     return result;
   }
 
-  ~TestIndexer() override = default;
-
   std::vector<std::unique_ptr<IndexFile>> Index(
-      FileConsumerSharedState* file_consumer_shared,
+      VFS* vfs,
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents,

@@ -76,7 +76,9 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
   def.args = std::move(indexed.args);
   def.includes = std::move(indexed.includes);
   def.inactive_regions = std::move(indexed.skipped_by_preprocessor);
-  def.dependencies = std::move(indexed.dependencies);
+  def.dependencies.reserve(indexed.dependencies.size());
+  for (auto& dep : indexed.dependencies)
+    def.dependencies.push_back(dep.first);
   def.language = indexed.language;
 
   auto add_all_symbols = [&](Use use, Usr usr, SymbolKind kind) {

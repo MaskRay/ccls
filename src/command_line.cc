@@ -110,9 +110,8 @@ See more on https://github.com/MaskRay/ccls/wiki
 bool QueryDbMainLoop(QueryDatabase* db,
                      MultiQueueWaiter* waiter,
                      Project* project,
-                     FileConsumerSharedState* file_consumer_shared,
+                     VFS* vfs,
                      ImportPipelineStatus* status,
-                     TimestampManager* timestamp_manager,
                      SemanticHighlightSymbolCache* semantic_cache,
                      WorkingFiles* working_files,
                      ClangCompleteManager* clang_complete,
@@ -154,18 +153,13 @@ void RunQueryDbThread(const std::string& bin_name,
   Project project;
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
-  FileConsumerSharedState file_consumer_shared;
+  VFS vfs;
   DiagnosticsEngine diag_engine;
 
   ClangCompleteManager clang_complete(
       &project, &working_files,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
         diag_engine.Publish(&working_files, path, diagnostics);
-      },
-      [&](ClangTranslationUnit* tu, const std::vector<CXUnsavedFile>& unsaved,
-          const std::string& path, const std::vector<std::string>& args) {
-        IndexWithTuFromCodeCompletion(&file_consumer_shared, tu, unsaved, path,
-                                      args);
       },
       [](lsRequestId id) {
         if (id.Valid()) {
@@ -184,7 +178,6 @@ void RunQueryDbThread(const std::string& bin_name,
   auto non_global_code_complete_cache = std::make_unique<CodeCompleteCache>();
   auto signature_cache = std::make_unique<CodeCompleteCache>();
   ImportPipelineStatus import_pipeline_status;
-  TimestampManager timestamp_manager;
   QueryDatabase db;
 
   // Setup shared references.
@@ -193,9 +186,8 @@ void RunQueryDbThread(const std::string& bin_name,
     handler->waiter = indexer_waiter;
     handler->project = &project;
     handler->diag_engine = &diag_engine;
-    handler->file_consumer_shared = &file_consumer_shared;
+    handler->vfs = &vfs;
     handler->import_pipeline_status = &import_pipeline_status;
-    handler->timestamp_manager = &timestamp_manager;
     handler->semantic_cache = &semantic_cache;
     handler->working_files = &working_files;
     handler->clang_complete = &clang_complete;
@@ -210,8 +202,8 @@ void RunQueryDbThread(const std::string& bin_name,
   SetThreadName("querydb");
   while (true) {
     bool did_work = QueryDbMainLoop(
-        &db, querydb_waiter, &project, &file_consumer_shared,
-        &import_pipeline_status, &timestamp_manager,
+        &db, querydb_waiter, &project, &vfs,
+        &import_pipeline_status,
         &semantic_cache, &working_files, &clang_complete, &include_complete,
         global_code_complete_cache.get(), non_global_code_complete_cache.get(),
         signature_cache.get());

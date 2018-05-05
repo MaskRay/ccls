@@ -280,3 +280,4 @@ MAKE_REFLECT_STRUCT(Config,
                     xref);
 
 extern std::unique_ptr<Config> g_config;
+thread_local extern int g_thread_id;

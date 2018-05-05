@@ -41,10 +41,14 @@ struct Handler_WorkspaceDidChangeWatchedFiles
   void Run(In_WorkspaceDidChangeWatchedFiles* request) override {
     for (lsFileEvent& event : request->params.changes) {
       std::string path = event.uri.GetPath();
-      auto it = project->absolute_path_to_entry_index_.find(path);
-      if (it == project->absolute_path_to_entry_index_.end())
-        continue;
-      const Project::Entry& entry = project->entries[it->second];
+      Project::Entry entry;
+      {
+        std::lock_guard<std::mutex> lock(project->mutex_);
+        auto it = project->absolute_path_to_entry_index_.find(path);
+        if (it == project->absolute_path_to_entry_index_.end())
+          continue;
+        entry = project->entries[it->second];
+      }
       bool is_interactive =
           working_files->GetFileByFilename(entry.filename) != nullptr;
       switch (event.type) {
@@ -55,8 +59,7 @@ struct Handler_WorkspaceDidChangeWatchedFiles
             LOG_S(ERROR) << "Unable to read file content after saving " << path;
           else {
             QueueManager::instance()->index_request.PushBack(
-                Index_Request(path, entry.args, is_interactive, *content,
-                              ICacheManager::Make()));
+                Index_Request(path, entry.args, is_interactive, *content));
             if (is_interactive)
               clang_complete->NotifySave(path);
           }
@@ -64,8 +67,7 @@ struct Handler_WorkspaceDidChangeWatchedFiles
         }
         case lsFileChangeType::Deleted:
           QueueManager::instance()->index_request.PushBack(
-              Index_Request(path, entry.args, is_interactive, std::string(),
-                            ICacheManager::Make()));
+              Index_Request(path, entry.args, is_interactive, std::string()));
           break;
       }
     }

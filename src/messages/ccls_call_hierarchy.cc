@@ -4,6 +4,8 @@
 
 #include <loguru.hpp>
 
+#include <unordered_set>
+
 namespace {
 
 MethodType kMethodType = "$ccls/callHierarchy";

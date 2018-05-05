@@ -38,13 +38,12 @@ struct Handler_TextDocumentDidOpen
     // NOTE: This function blocks code lens. If it starts taking a long time
     // we will need to find a way to unblock the code lens request.
     const auto& params = request->params;
-    Timer time;
     std::string path = params.textDocument.uri.GetPath();
 
-    std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make();
+    ICacheManager cache;
     WorkingFile* working_file = working_files->OnOpen(params.textDocument);
     std::optional<std::string> cached_file_contents =
-        cache_manager->LoadCachedFileContents(path);
+        cache.LoadCachedFileContents(path);
     if (cached_file_contents)
       working_file->SetIndexContent(*cached_file_contents);
 
@@ -55,10 +54,6 @@ struct Handler_TextDocumentDidOpen
       EmitSemanticHighlighting(db, semantic_cache, working_file, file);
     }
 
-    time.ResetAndPrint(
-        "[querydb] Loading cached index file for DidOpen (blocks "
-        "CodeLens)");
-
     include_complete->AddFile(working_file->filename);
     clang_complete->NotifyView(path);
     if (params.args.size())
@@ -68,10 +63,10 @@ struct Handler_TextDocumentDidOpen
     if (SourceFileLanguage(path) != LanguageId::Unknown) {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
       QueueManager::instance()->index_request.PushBack(
-        Index_Request(
-          entry.filename, params.args.size() ? params.args : entry.args,
-          true /*is_interactive*/, params.textDocument.text, cache_manager),
-        true /* priority */);
+          Index_Request(entry.filename,
+                        params.args.size() ? params.args : entry.args,
+                        true /*is_interactive*/, params.textDocument.text),
+          true /* priority */);
 
       clang_complete->FlushSession(entry.filename);
       LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;

@@ -244,7 +244,6 @@ target_sources(ccls PRIVATE
                src/messages/ccls_derived.cc
                src/messages/ccls_file_info.cc
                src/messages/ccls_freshen_index.cc
-               src/messages/ccls_index_file.cc
                src/messages/ccls_inheritance_hierarchy.cc
                src/messages/ccls_member_hierarchy.cc
                src/messages/ccls_random.cc

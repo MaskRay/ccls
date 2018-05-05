@@ -461,14 +461,18 @@ void Project::Load(const std::string& root_directory) {
   }
 
   // Setup project entries.
+  std::lock_guard<std::mutex> lock(mutex_);
   absolute_path_to_entry_index_.reserve(entries.size());
-  for (size_t i = 0; i < entries.size(); ++i)
+  for (size_t i = 0; i < entries.size(); ++i) {
+    entries[i].id = i;
     absolute_path_to_entry_index_[entries[i].filename] = i;
+  }
 }
 
 void Project::SetFlagsForFile(
     const std::vector<std::string>& flags,
     const std::string& path) {
+  std::lock_guard<std::mutex> lock(mutex_);
   auto it = absolute_path_to_entry_index_.find(path);
   if (it != absolute_path_to_entry_index_.end()) {
     // The entry already exists in the project, just set the flags.
@@ -485,9 +489,12 @@ void Project::SetFlagsForFile(
 
 Project::Entry Project::FindCompilationEntryForFile(
     const std::string& filename) {
-  auto it = absolute_path_to_entry_index_.find(filename);
-  if (it != absolute_path_to_entry_index_.end())
-    return entries[it->second];
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto it = absolute_path_to_entry_index_.find(filename);
+    if (it != absolute_path_to_entry_index_.end())
+      return entries[it->second];
+  }
 
   // We couldn't find the file. Try to infer it.
   // TODO: Cache inferred file in a separate array (using a lock or similar)
@@ -554,8 +561,7 @@ void Project::Index(QueueManager* queue,
     }
     bool is_interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
     queue->index_request.PushBack(Index_Request(entry.filename, entry.args,
-                                                is_interactive, *content,
-                                                ICacheManager::Make(), id));
+                                                is_interactive, *content, id));
   });
 }
 

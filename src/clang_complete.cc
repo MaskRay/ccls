@@ -647,12 +647,10 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
 ClangCompleteManager::ClangCompleteManager(Project* project,
                                            WorkingFiles* working_files,
                                            OnDiagnostic on_diagnostic,
-                                           OnIndex on_index,
                                            OnDropped on_dropped)
     : project_(project),
       working_files_(working_files),
       on_diagnostic_(on_diagnostic),
-      on_index_(on_index),
       on_dropped_(on_dropped),
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {

@@ -519,9 +519,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
       for (int i = 0; i < g_config->index.threads; i++) {
         std::thread([=]() {
+          g_thread_id = i + 1;
           SetThreadName("indexer" + std::to_string(i));
-          Indexer_Main(diag_engine, file_consumer_shared, timestamp_manager,
-                       import_pipeline_status, project,
+          Indexer_Main(diag_engine, vfs, import_pipeline_status, project,
                        working_files, waiter);
         }).detach();
       }

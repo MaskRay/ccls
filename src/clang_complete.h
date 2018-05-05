@@ -82,7 +82,6 @@ struct ClangCompleteManager {
   ClangCompleteManager(Project* project,
                        WorkingFiles* working_files,
                        OnDiagnostic on_diagnostic,
-                       OnIndex on_index,
                        OnDropped on_dropped);
 
   // Start a code completion at the given location. |on_complete| will run when
@@ -127,7 +126,6 @@ struct ClangCompleteManager {
   Project* project_;
   WorkingFiles* working_files_;
   OnDiagnostic on_diagnostic_;
-  OnIndex on_index_;
   OnDropped on_dropped_;
 
   using LruSessionCache = LruCache<std::string, CompletionSession>;
