@@ -17,8 +17,7 @@
 #include <unordered_set>
 
 // Used by |HANDLE_MERGEABLE| so only |range| is needed.
-MAKE_HASHABLE(Range, t.start, t.end);
-MAKE_HASHABLE(Use, t.range);
+MAKE_HASHABLE(Use, t.range, t.file_id);
 
 namespace {
 
@@ -48,7 +47,6 @@ void AssignFileId(int file_id, std::vector<T>& xs) {
     AssignFileId(file_id, x);
 }
 
-
 void AddRange(int file_id, std::vector<Use>& into, const std::vector<Use>& from) {
   into.reserve(into.size() + from.size());
   for (Use use : from) {
@@ -62,39 +60,24 @@ void AddRange(int _, std::vector<Usr>& into, const std::vector<Usr>& from) {
 }
 
 template <typename T>
-void RemoveRange(std::vector<T>& dest, const std::vector<T>& to_remove) {
+void RemoveRange(std::vector<T>& from, const std::vector<T>& to_remove) {
   if (to_remove.size()) {
     std::unordered_set<T> to_remove_set(to_remove.begin(), to_remove.end());
-    dest.erase(
-      std::remove_if(dest.begin(), dest.end(),
+    from.erase(
+      std::remove_if(from.begin(), from.end(),
         [&](const T& t) { return to_remove_set.count(t) > 0; }),
-      dest.end());
+      from.end());
   }
 }
 
 QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
   QueryFile::Def def;
-  def.path = indexed.path;
-  def.args = indexed.args;
-  def.includes = indexed.includes;
-  def.inactive_regions = indexed.skipped_by_preprocessor;
-  def.dependencies = indexed.dependencies;
-
-  // Convert enum to markdown compatible strings
-  def.language = [&indexed]() {
-    switch (indexed.language) {
-      case LanguageId::C:
-        return "c";
-      case LanguageId::Cpp:
-        return "cpp";
-      case LanguageId::ObjC:
-        return "objective-c";
-      case LanguageId::ObjCpp:
-        return "objective-cpp";
-      default:
-        return "";
-    }
-  }();
+  def.path = std::move(indexed.path);
+  def.args = std::move(indexed.args);
+  def.includes = std::move(indexed.includes);
+  def.inactive_regions = std::move(indexed.skipped_by_preprocessor);
+  def.dependencies = std::move(indexed.dependencies);
+  def.language = indexed.language;
 
   auto add_all_symbols = [&](Use use, Usr usr, SymbolKind kind) {
     def.all_symbols.push_back(SymbolRef(use.range, usr, kind, use.role));
@@ -172,10 +155,8 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
 template <typename Q>
 bool TryReplaceDef(std::forward_list<Q>& def_list, Q&& def) {
   for (auto& def1 : def_list)
-    if (def1.file_id == def.file_id) {
-      if (!def1.spell || def.spell) {
-        def1 = std::move(def);
-      }
+    if (def1.spell->file_id == def.spell->file_id) {
+      def1 = std::move(def);
       return true;
     }
   return false;
@@ -195,57 +176,57 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   if (!previous)
     previous = &empty;
 
-  r.files_def_update = BuildFileDefUpdate(*current);
+  r.files_def_update = BuildFileDefUpdate(std::move(*current));
 
   for (auto& it : previous->usr2func) {
     auto& func = it.second;
     if (func.def.spell)
       r.funcs_removed.push_back(func.usr);
-    r.funcs_declarations[func.usr].first = func.declarations;
-    r.funcs_uses[func.usr].first = func.uses;
-    r.funcs_derived[func.usr].first = func.derived;
+    r.funcs_declarations[func.usr].first = std::move(func.declarations);
+    r.funcs_uses[func.usr].first = std::move(func.uses);
+    r.funcs_derived[func.usr].first = std::move(func.derived);
   }
   for (auto& it : current->usr2func) {
     auto& func = it.second;
-    if (func.def.detailed_name.size())
+    if (func.def.spell && func.def.detailed_name.size())
       r.funcs_def_update.emplace_back(it.first, func.def);
-    r.funcs_declarations[func.usr].second = func.declarations;
-    r.funcs_uses[func.usr].second = func.uses;
-    r.funcs_derived[func.usr].second = func.derived;
+    r.funcs_declarations[func.usr].second = std::move(func.declarations);
+    r.funcs_uses[func.usr].second = std::move(func.uses);
+    r.funcs_derived[func.usr].second = std::move(func.derived);
   }
 
   for (auto& it : previous->usr2type) {
     auto& type = it.second;
     if (type.def.spell)
       r.types_removed.push_back(type.usr);
-    r.types_declarations[type.usr].first = type.declarations;
-    r.types_uses[type.usr].first = type.uses;
-    r.types_derived[type.usr].first = type.derived;
-    r.types_instances[type.usr].first = type.instances;
+    r.types_declarations[type.usr].first = std::move(type.declarations);
+    r.types_uses[type.usr].first = std::move(type.uses);
+    r.types_derived[type.usr].first = std::move(type.derived);
+    r.types_instances[type.usr].first = std::move(type.instances);
   };
   for (auto& it : current->usr2type) {
     auto& type = it.second;
-    if (type.def.detailed_name.size())
+    if (type.def.spell && type.def.detailed_name.size())
       r.types_def_update.emplace_back(it.first, type.def);
-    r.types_declarations[type.usr].second = type.declarations;
-    r.types_uses[type.usr].second = type.uses;
-    r.types_derived[type.usr].second = type.derived;
-    r.types_instances[type.usr].second = type.instances;
+    r.types_declarations[type.usr].second = std::move(type.declarations);
+    r.types_uses[type.usr].second = std::move(type.uses);
+    r.types_derived[type.usr].second = std::move(type.derived);
+    r.types_instances[type.usr].second = std::move(type.instances);
   };
 
   for (auto& it : previous->usr2var) {
     auto& var = it.second;
     if (var.def.spell)
       r.vars_removed.push_back(var.usr);
-    r.vars_declarations[var.usr].first = var.declarations;
-    r.vars_uses[var.usr].first = var.uses;
+    r.vars_declarations[var.usr].first = std::move(var.declarations);
+    r.vars_uses[var.usr].first = std::move(var.uses);
   }
   for (auto& it : current->usr2var) {
     auto& var = it.second;
-    if (var.def.detailed_name.size())
+    if (var.def.spell && var.def.detailed_name.size())
       r.vars_def_update.emplace_back(it.first, var.def);
-    r.vars_declarations[var.usr].second = var.declarations;
-    r.vars_uses[var.usr].second = var.uses;
+    r.vars_declarations[var.usr].second = std::move(var.declarations);
+    r.vars_uses[var.usr].second = std::move(var.uses);
   }
 
   return r;
@@ -281,7 +262,7 @@ void QueryDatabase::RemoveUsrs(
       for (auto usr : to_remove) {
         QueryFunc& func = Func(usr);
         func.def.remove_if([=](const QueryFunc::Def& def) {
-          return def.file_id == file_id;
+          return def.spell->file_id == file_id;
         });
       }
       break;
@@ -290,7 +271,7 @@ void QueryDatabase::RemoveUsrs(
       for (auto usr : to_remove) {
         QueryVar& var = Var(usr);
         var.def.remove_if([=](const QueryVar::Def& def) {
-          return def.file_id == file_id;
+          return def.spell->file_id == file_id;
         });
       }
       break;
@@ -312,6 +293,7 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* u) {
 #define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
   for (auto& it : u->update_var_name) {                               \
     auto& entity = storage_name[it.first];                            \
+    AssignFileId(u->file_id, it.second.first);                        \
     RemoveRange(entity.def_var_name, it.second.first);                \
     AssignFileId(u->file_id, it.second.second);                       \
     AddRange(u->file_id, entity.def_var_name, it.second.second);      \

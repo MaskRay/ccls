@@ -108,7 +108,8 @@ bool Expand(MessageHandler* m,
       if (const auto* def = func.AnyDef())
         for (SymbolRef ref : def->callees)
           if (ref.kind == SymbolKind::Func)
-            handle(Use{{ref.range, ref.usr, ref.kind, ref.role}, def->file_id},
+            handle(Use{{ref.range, ref.usr, ref.kind, ref.role},
+                       def->spell->file_id},
                    call_type);
     } else {
       for (Use use : func.uses)

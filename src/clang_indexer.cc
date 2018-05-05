@@ -718,27 +718,20 @@ std::string IndexFile::ToString() {
   return Serialize(SerializeFormat::Json, *this);
 }
 
-void Uniquify(std::vector<Usr>& ids) {
+void Uniquify(std::vector<Usr>& usrs) {
   std::unordered_set<Usr> seen;
   size_t n = 0;
-  for (size_t i = 0; i < ids.size(); i++)
-    if (seen.insert(ids[i]).second)
-      ids[n++] = ids[i];
-  ids.resize(n);
+  for (size_t i = 0; i < usrs.size(); i++)
+    if (seen.insert(usrs[i]).second)
+      usrs[n++] = usrs[i];
+  usrs.resize(n);
 }
 
 void Uniquify(std::vector<Use>& uses) {
-  union U {
-    Range range = {};
-    uint64_t u64;
-  };
-  static_assert(sizeof(Range) == 8);
-  std::unordered_set<uint64_t> seen;
+  std::unordered_set<Range> seen;
   size_t n = 0;
   for (size_t i = 0; i < uses.size(); i++) {
-    U u;
-    u.range = uses[i].range;
-    if (seen.insert(u.u64).second)
+    if (seen.insert(uses[i].range).second)
       uses[n++] = uses[i];
   }
   uses.resize(n);

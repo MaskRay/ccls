@@ -91,18 +91,6 @@ bool ShouldAddToAngleIncludes(const std::string& arg) {
   return StartsWithAny(arg, kAngleIncludeArgs);
 }
 
-LanguageId SourceFileLanguage(const std::string& path) {
-  if (EndsWith(path, ".c"))
-    return LanguageId::C;
-  else if (EndsWith(path, ".cpp") || EndsWith(path, ".cc"))
-    return LanguageId::Cpp;
-  else if (EndsWith(path, ".mm"))
-    return LanguageId::ObjCpp;
-  else if (EndsWith(path, ".m"))
-    return LanguageId::ObjC;
-  return LanguageId::Unknown;
-}
-
 Project::Entry GetCompilationEntryFromCompileCommandEntry(
     ProjectConfig* config,
     const CompileCommandsEntry& entry) {

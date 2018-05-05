@@ -37,43 +37,6 @@ MAKE_REFLECT_STRUCT(Out_Progress::Params,
                     activeThreads);
 MAKE_REFLECT_STRUCT(Out_Progress, jsonrpc, method, params);
 
-// Instead of processing messages forever, we only process upto
-// |kIterationSize| messages of a type at one time. While the import time
-// likely stays the same, this should reduce overall queue lengths which means
-// the user gets a usable index faster.
-struct IterationLoop {
-  const int kIterationSize = 100;
-  int count = 0;
-
-  bool Next() {
-    return count++ < kIterationSize;
-  }
-  void Reset() {
-    count = 0;
-  }
-};
-
-struct IModificationTimestampFetcher {
-  virtual ~IModificationTimestampFetcher() = default;
-  virtual std::optional<int64_t> LastWriteTime(const std::string& path) = 0;
-};
-struct RealModificationTimestampFetcher : IModificationTimestampFetcher {
-  // IModificationTimestamp:
-  std::optional<int64_t> LastWriteTime(const std::string& path) override {
-    return ::LastWriteTime(path);
-  }
-};
-struct FakeModificationTimestampFetcher : IModificationTimestampFetcher {
-  std::unordered_map<std::string, std::optional<int64_t>> entries;
-
-  // IModificationTimestamp:
-  std::optional<int64_t> LastWriteTime(const std::string& path) override {
-    auto it = entries.find(path);
-    assert(it != entries.end());
-    return it->second;
-  }
-};
-
 long long GetCurrentTimeInMilliseconds() {
   auto time_since_epoch = Timer::Clock::now().time_since_epoch();
   long long elapsed_milliseconds =
@@ -138,7 +101,6 @@ enum class ShouldParse { Yes, No, NoSuchFile };
 ShouldParse FileNeedsParse(
     bool is_interactive,
     TimestampManager* timestamp_manager,
-    IModificationTimestampFetcher* modification_timestamp_fetcher,
     const std::shared_ptr<ICacheManager>& cache_manager,
     IndexFile* opt_previous_index,
     const std::string& path,
@@ -150,8 +112,7 @@ ShouldParse FileNeedsParse(
     return "";
   };
 
-  std::optional<int64_t> modification_timestamp =
-      modification_timestamp_fetcher->LastWriteTime(path);
+  std::optional<int64_t> modification_timestamp = LastWriteTime(path);
 
   // Cannot find file.
   if (!modification_timestamp)
@@ -193,7 +154,6 @@ enum CacheLoadResult { Parse, DoNotParse };
 CacheLoadResult TryLoadFromCache(
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
-    IModificationTimestampFetcher* modification_timestamp_fetcher,
     const std::shared_ptr<ICacheManager>& cache_manager,
     bool is_interactive,
     const Project::Entry& entry,
@@ -209,10 +169,9 @@ CacheLoadResult TryLoadFromCache(
   // from cache.
 
   // Check timestamps and update |file_consumer_shared|.
-  ShouldParse path_state = FileNeedsParse(
-      is_interactive, timestamp_manager, modification_timestamp_fetcher,
-      cache_manager, previous_index, path_to_index, entry.args,
-      std::nullopt);
+  ShouldParse path_state =
+      FileNeedsParse(is_interactive, timestamp_manager, cache_manager,
+                     previous_index, path_to_index, entry.args, std::nullopt);
   if (path_state == ShouldParse::Yes)
     file_consumer_shared->Reset(path_to_index);
 
@@ -228,8 +187,7 @@ CacheLoadResult TryLoadFromCache(
   for (const std::string& dependency : previous_index->dependencies) {
     assert(!dependency.empty());
 
-    if (FileNeedsParse(is_interactive, timestamp_manager,
-                       modification_timestamp_fetcher, cache_manager,
+    if (FileNeedsParse(is_interactive, timestamp_manager, cache_manager,
                        previous_index, dependency, entry.args,
                        previous_index->path) == ShouldParse::Yes) {
       needs_reparse = true;
@@ -245,7 +203,7 @@ CacheLoadResult TryLoadFromCache(
     return CacheLoadResult::Parse;
 
   // No timestamps changed - load directly from cache.
-  LOG_S(INFO) << "Skipping parse; no timestamp change for " << path_to_index;
+  LOG_S(INFO) << "load index for " << path_to_index;
 
   // TODO/FIXME: real perf
   PerformanceImportFile perf;
@@ -333,7 +291,6 @@ void ParseFile(DiagnosticsEngine* diag_engine,
                WorkingFiles* working_files,
                FileConsumerSharedState* file_consumer_shared,
                TimestampManager* timestamp_manager,
-               IModificationTimestampFetcher* modification_timestamp_fetcher,
                IIndexer* indexer,
                const Index_Request& request,
                const Project::Entry& entry) {
@@ -349,11 +306,9 @@ void ParseFile(DiagnosticsEngine* diag_engine,
 
   // Try to load the file from cache.
   if (TryLoadFromCache(file_consumer_shared, timestamp_manager,
-                       modification_timestamp_fetcher, request.cache_manager,
-                       request.is_interactive, entry,
-                       path_to_index) == CacheLoadResult::DoNotParse) {
+                       request.cache_manager, request.is_interactive, entry,
+                       path_to_index) == CacheLoadResult::DoNotParse)
     return;
-  }
 
   LOG_S(INFO) << "parse " << path_to_index;
   std::vector<FileContents> file_contents = PreloadFileContents(
@@ -404,7 +359,6 @@ bool IndexMain_DoParse(
     WorkingFiles* working_files,
     FileConsumerSharedState* file_consumer_shared,
     TimestampManager* timestamp_manager,
-    IModificationTimestampFetcher* modification_timestamp_fetcher,
     IIndexer* indexer) {
   auto* queue = QueueManager::instance();
   std::optional<Index_Request> request = queue->index_request.TryPopFront();
@@ -414,8 +368,7 @@ bool IndexMain_DoParse(
   Project::Entry entry;
   entry.filename = request->path;
   entry.args = request->args;
-  ParseFile(diag_engine, working_files, file_consumer_shared,
-            timestamp_manager, modification_timestamp_fetcher,
+  ParseFile(diag_engine, working_files, file_consumer_shared, timestamp_manager,
             indexer, request.value(), entry);
   return true;
 }
@@ -424,8 +377,7 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
   auto* queue = QueueManager::instance();
 
   bool did_work = false;
-  IterationLoop loop;
-  while (loop.Next()) {
+  for (int i = 100; i--; ) {
     std::optional<Index_OnIdMapped> response = queue->on_id_mapped.TryPopFront();
     if (!response)
       return did_work;
@@ -434,23 +386,23 @@ bool IndexMain_DoCreateIndexUpdate(TimestampManager* timestamp_manager) {
 
     Timer time;
 
-    // Build delta update.
-    IndexUpdate update = IndexUpdate::CreateDelta(response->previous.get(),
-                                                  response->current.get());
-    response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
-    LOG_S(INFO) << "built index for " << response->current->path
-                << " (is_delta=" << !!response->previous << ")";
-
     // Write current index to disk if requested.
+    std::string path = response->current->path;
     if (response->write_to_disk) {
-      LOG_S(INFO) << "store index for " << response->current->path;
+      LOG_S(INFO) << "store index for " << path;
       time.Reset();
       response->cache_manager->WriteToCache(*response->current);
       response->perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
       timestamp_manager->UpdateCachedModificationTime(
-          response->current->path,
-          response->current->last_modification_time);
+          path, response->current->last_modification_time);
     }
+
+    // Build delta update.
+    IndexUpdate update = IndexUpdate::CreateDelta(response->previous.get(),
+                                                  response->current.get());
+    response->perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
+    LOG_S(INFO) << "built index for " << path
+                << " (is_delta=" << !!response->previous << ")";
 
     Index_OnIndexed reply(std::move(update), response->perf);
     queue->on_indexed.PushBack(std::move(reply), response->is_interactive);
@@ -533,7 +485,6 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
                   Project* project,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter) {
-  RealModificationTimestampFetcher modification_timestamp_fetcher;
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
   auto indexer = std::make_unique<ClangIndexer>();
@@ -555,7 +506,6 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
       // index.
       did_work = IndexMain_DoParse(diag_engine, working_files,
                                    file_consumer_shared, timestamp_manager,
-                                   &modification_timestamp_fetcher,
                                    indexer.get()) ||
                  did_work;
 
@@ -614,8 +564,7 @@ bool QueryDb_ImportMain(QueryDatabase* db,
 
   bool did_work = false;
 
-  IterationLoop loop;
-  while (loop.Next()) {
+  for (int i = 80; i--; ) {
     std::optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
     if (!response)
       break;
@@ -625,154 +574,4 @@ bool QueryDb_ImportMain(QueryDatabase* db,
   }
 
   return did_work;
-}
-
-TEST_SUITE("ImportPipeline") {
-  struct Fixture {
-    Fixture() {
-      g_config = std::make_unique<Config>();
-      QueueManager::Init(&querydb_waiter, &indexer_waiter, &stdout_waiter);
-
-      queue = QueueManager::instance();
-      cache_manager = ICacheManager::MakeFake({});
-      indexer = IIndexer::MakeTestIndexer({});
-      diag_engine.Init();
-    }
-
-    bool PumpOnce() {
-      return IndexMain_DoParse(&diag_engine, &working_files,
-                               &file_consumer_shared, &timestamp_manager,
-                               &modification_timestamp_fetcher, indexer.get());
-    }
-
-    void MakeRequest(const std::string& path,
-                     const std::vector<std::string>& args = {},
-                     bool is_interactive = false,
-                     const std::string& contents = "void foo();") {
-      queue->index_request.PushBack(
-          Index_Request(path, args, is_interactive, contents, cache_manager));
-    }
-
-    MultiQueueWaiter querydb_waiter;
-    MultiQueueWaiter indexer_waiter;
-    MultiQueueWaiter stdout_waiter;
-
-    QueueManager* queue = nullptr;
-    DiagnosticsEngine diag_engine;
-    WorkingFiles working_files;
-    FileConsumerSharedState file_consumer_shared;
-    TimestampManager timestamp_manager;
-    FakeModificationTimestampFetcher modification_timestamp_fetcher;
-    std::shared_ptr<ICacheManager> cache_manager;
-    std::unique_ptr<IIndexer> indexer;
-  };
-
-  TEST_CASE_FIXTURE(Fixture, "FileNeedsParse") {
-    auto check = [&](const std::string& file, bool is_dependency = false,
-                     bool is_interactive = false,
-                     const std::vector<std::string>& old_args = {},
-                     const std::vector<std::string>& new_args = {}) {
-      std::unique_ptr<IndexFile> opt_previous_index;
-      if (!old_args.empty()) {
-        opt_previous_index = std::make_unique<IndexFile>("---.cc", "<empty>");
-        opt_previous_index->args = old_args;
-      }
-      std::optional<std::string> from;
-      if (is_dependency)
-        from = std::string("---.cc");
-      return FileNeedsParse(is_interactive /*is_interactive*/,
-                            &timestamp_manager, &modification_timestamp_fetcher,
-                            cache_manager, opt_previous_index.get(), file,
-                            new_args, from);
-    };
-
-    // A file with no timestamp is not imported, since this implies the file no
-    // longer exists on disk.
-    modification_timestamp_fetcher.entries["bar.h"] = std::nullopt;
-    REQUIRE(check("bar.h", false /*is_dependency*/) == ShouldParse::NoSuchFile);
-
-    // A dependency is only imported once.
-    modification_timestamp_fetcher.entries["foo.h"] = 5;
-    REQUIRE(check("foo.h", true /*is_dependency*/) == ShouldParse::Yes);
-    REQUIRE(check("foo.h", true /*is_dependency*/) == ShouldParse::No);
-
-    // An interactive dependency is imported.
-    REQUIRE(check("foo.h", true /*is_dependency*/) == ShouldParse::No);
-    REQUIRE(check("foo.h", true /*is_dependency*/, true /*is_interactive*/) ==
-            ShouldParse::Yes);
-
-    // A file whose timestamp has not changed is not imported. When the
-    // timestamp changes (either forward or backward) it is reimported.
-    auto check_timestamp_change = [&](int64_t timestamp) {
-      modification_timestamp_fetcher.entries["aa.cc"] = timestamp;
-      REQUIRE(check("aa.cc") == ShouldParse::Yes);
-      REQUIRE(check("aa.cc") == ShouldParse::Yes);
-      REQUIRE(check("aa.cc") == ShouldParse::Yes);
-      timestamp_manager.UpdateCachedModificationTime("aa.cc", timestamp);
-      REQUIRE(check("aa.cc") == ShouldParse::No);
-    };
-    check_timestamp_change(5);
-    check_timestamp_change(6);
-    check_timestamp_change(5);
-    check_timestamp_change(4);
-
-    // Argument change implies reimport, even if timestamp has not changed.
-    timestamp_manager.UpdateCachedModificationTime("aa.cc", 5);
-    modification_timestamp_fetcher.entries["aa.cc"] = 5;
-    REQUIRE(check("aa.cc", false /*is_dependency*/, false /*is_interactive*/,
-                  {"b"} /*old_args*/,
-                  {"b", "a"} /*new_args*/) == ShouldParse::Yes);
-  }
-
-  // FIXME: validate other state like timestamp_manager, etc.
-  // FIXME: add more interesting tests that are not the happy path
-  // FIXME: test
-  //   - IndexMain_DoCreateIndexUpdate
-  //   - IndexMain_LoadPreviousIndex
-  //   - QueryDb_ImportMain
-
-  TEST_CASE_FIXTURE(Fixture, "index request with zero results") {
-    indexer = IIndexer::MakeTestIndexer({IIndexer::TestEntry{"foo.cc", 0}});
-
-    MakeRequest("foo.cc");
-
-    REQUIRE(queue->index_request.Size() == 1);
-    REQUIRE(queue->on_id_mapped.Size() == 0);
-    PumpOnce();
-    REQUIRE(queue->index_request.Size() == 0);
-    REQUIRE(queue->on_id_mapped.Size() == 0);
-
-    REQUIRE(file_consumer_shared.used_files.empty());
-  }
-
-  TEST_CASE_FIXTURE(Fixture, "one index request") {
-    indexer = IIndexer::MakeTestIndexer({IIndexer::TestEntry{"foo.cc", 100}});
-
-    MakeRequest("foo.cc");
-
-    REQUIRE(queue->index_request.Size() == 1);
-    REQUIRE(queue->on_id_mapped.Size() == 0);
-    PumpOnce();
-    REQUIRE(queue->index_request.Size() == 0);
-    REQUIRE(queue->on_id_mapped.Size() == 100);
-
-    REQUIRE(file_consumer_shared.used_files.empty());
-  }
-
-  TEST_CASE_FIXTURE(Fixture, "multiple index requests") {
-    indexer = IIndexer::MakeTestIndexer(
-        {IIndexer::TestEntry{"foo.cc", 100}, IIndexer::TestEntry{"bar.cc", 5}});
-
-    MakeRequest("foo.cc");
-    MakeRequest("bar.cc");
-
-    REQUIRE(queue->index_request.Size() == 2);
-    //REQUIRE(queue->do_id_map.Size() == 0);
-    while (PumpOnce()) {
-    }
-    REQUIRE(queue->index_request.Size() == 0);
-    //REQUIRE(queue->do_id_map.Size() == 105);
-
-    REQUIRE(file_consumer_shared.used_files.empty());
-  }
 }
