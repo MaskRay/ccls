@@ -11,13 +11,11 @@ Index_Request::Index_Request(
     const std::vector<std::string>& args,
     bool is_interactive,
     const std::string& contents,
-    const std::shared_ptr<ICacheManager>& cache_manager,
     lsRequestId id)
     : path(path),
       args(args),
       is_interactive(is_interactive),
       contents(contents),
-      cache_manager(cache_manager),
       id(id) {}
 
 Index_OnIndexed::Index_OnIndexed(IndexUpdate&& update,
@@ -51,10 +49,4 @@ QueueManager::QueueManager(MultiQueueWaiter* querydb_waiter,
     : for_stdout(stdout_waiter),
       for_querydb(querydb_waiter),
       on_indexed(querydb_waiter),
-      index_request(indexer_waiter),
-      on_id_mapped(indexer_waiter) {}
-
-bool QueueManager::HasWork() {
-  return !index_request.IsEmpty() || !on_id_mapped.IsEmpty() ||
-         !on_indexed.IsEmpty();
-}
+      index_request(indexer_waiter) {}

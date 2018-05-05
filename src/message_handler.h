@@ -15,14 +15,13 @@ struct ClangCompleteManager;
 struct CodeCompleteCache;
 struct Config;
 class DiagnosticsEngine;
-struct FileConsumerSharedState;
+struct VFS;
 struct ImportManager;
 struct ImportPipelineStatus;
 struct IncludeComplete;
 struct MultiQueueWaiter;
 struct Project;
 struct QueryDatabase;
-struct TimestampManager;
 struct WorkingFile;
 struct WorkingFiles;
 
@@ -107,10 +106,9 @@ struct MessageHandler {
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;
   DiagnosticsEngine* diag_engine = nullptr;
-  FileConsumerSharedState* file_consumer_shared = nullptr;
+  VFS* vfs = nullptr;
   ImportManager* import_manager = nullptr;
   ImportPipelineStatus* import_pipeline_status = nullptr;
-  TimestampManager* timestamp_manager = nullptr;
   SemanticHighlightSymbolCache* semantic_cache = nullptr;
   WorkingFiles* working_files = nullptr;
   ClangCompleteManager* clang_complete = nullptr;
@@ -139,7 +137,7 @@ struct BaseMessageHandler : MessageHandler {
 };
 
 bool FindFileOrFail(QueryDatabase* db,
-                    const Project* project,
+                    Project* project,
                     std::optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,

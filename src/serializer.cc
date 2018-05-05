@@ -283,14 +283,13 @@ template <typename TVisitor>
 void Reflect(TVisitor& visitor, IndexFile& value) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
-    REFLECT_MEMBER(last_modification_time);
+    REFLECT_MEMBER(last_write_time);
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(import_file);
     REFLECT_MEMBER(args);
+    REFLECT_MEMBER(dependencies);
   }
   REFLECT_MEMBER(includes);
-  if (!gTestOutputMode)
-    REFLECT_MEMBER(dependencies);
   REFLECT_MEMBER(skipped_by_preprocessor);
   REFLECT_MEMBER(usr2func);
   REFLECT_MEMBER(usr2type);
@@ -312,6 +311,27 @@ void Reflect(Writer& visitor, SerializeFormat& value) {
       visitor.String("json");
       break;
   }
+}
+
+void Reflect(Reader& visitor, std::unordered_map<std::string, int64_t>& map) {
+  visitor.IterArray([&](Reader& entry) {
+                      std::string name;
+    Reflect(entry, name);
+    if (visitor.Format() == SerializeFormat::Binary)
+      Reflect(entry, map[name]);
+    else
+      map[name] = 0;
+  });
+}
+void Reflect(Writer& visitor, std::unordered_map<std::string, int64_t>& map) {
+  visitor.StartArray(map.size());
+  for (auto& it : map) {
+    std::string key = it.first;
+    Reflect(visitor, key);
+    if (visitor.Format() == SerializeFormat::Binary)
+      Reflect(visitor, it.second);
+  }
+  visitor.EndArray();
 }
 
 std::string Serialize(SerializeFormat format, IndexFile& file) {

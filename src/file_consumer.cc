@@ -55,21 +55,48 @@ std::optional<std::string> FileContents::ContentsInRange(Range range) const {
   return std::nullopt;
 }
 
-bool FileConsumerSharedState::Mark(const std::string& file) {
+VFS::State VFS::Get(const std::string& file) {
   std::lock_guard<std::mutex> lock(mutex);
-  return used_files.insert(file).second;
+  auto it = state.find(file);
+  if (it != state.end())
+    return it->second;
+  return {0, 0, 0};
 }
 
-void FileConsumerSharedState::Reset(const std::string& file) {
+bool VFS::Mark(const std::string& file, int owner, int stage) {
   std::lock_guard<std::mutex> lock(mutex);
-  auto it = used_files.find(file);
-  if (it != used_files.end())
-    used_files.erase(it);
+  State& st = state[file];
+  if (st.stage < stage) {
+    st.owner = owner;
+    st.stage = stage;
+    return true;
+  } else
+    return false;
 }
 
-FileConsumer::FileConsumer(FileConsumerSharedState* shared_state,
-                           const std::string& parse_file)
-    : shared_(shared_state), parse_file_(parse_file) {}
+bool VFS::Stamp(const std::string& file, int64_t ts) {
+  std::lock_guard<std::mutex> lock(mutex);
+  State& st = state[file];
+  if (st.timestamp < ts) {
+    st.timestamp = ts;
+    return true;
+  } else
+    return false;
+}
+
+void VFS::ResetLocked(const std::string& file) {
+  State& st = state[file];
+  if (st.owner == g_thread_id)
+    st.stage = 0;
+}
+
+void VFS::Reset(const std::string& file) {
+  std::lock_guard<std::mutex> lock(mutex);
+  ResetLocked(file);
+}
+
+FileConsumer::FileConsumer(VFS* vfs, const std::string& parse_file)
+    : vfs_(vfs), parse_file_(parse_file), thread_id_(g_thread_id) {}
 
 IndexFile* FileConsumer::TryConsumeFile(
     CXFile file,
@@ -96,12 +123,9 @@ IndexFile* FileConsumer::TryConsumeFile(
 
   std::string file_name = FileName(file);
 
-  // No result in local; we need to query global.
-  bool did_insert = shared_->Mark(file_name);
-
   // We did not take the file from global. Cache that we failed so we don't try
   // again and return nullptr.
-  if (!did_insert) {
+  if (!vfs_->Mark(file_name, thread_id_, 2)) {
     local_[file_id] = nullptr;
     return nullptr;
   }

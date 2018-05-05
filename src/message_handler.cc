@@ -126,7 +126,7 @@ MessageHandler::MessageHandler() {
 std::vector<MessageHandler*>* MessageHandler::message_handlers = nullptr;
 
 bool FindFileOrFail(QueryDatabase* db,
-                    const Project* project,
+                    Project* project,
                     std::optional<lsRequestId> id,
                     const std::string& absolute_path,
                     QueryFile** out_query_file,
@@ -147,8 +147,12 @@ bool FindFileOrFail(QueryDatabase* db,
   if (out_file_id)
     *out_file_id = -1;
 
-  bool indexing = project->absolute_path_to_entry_index_.find(absolute_path) !=
-                  project->absolute_path_to_entry_index_.end();
+  bool indexing;
+  {
+    std::lock_guard<std::mutex> lock(project->mutex_);
+    indexing = project->absolute_path_to_entry_index_.find(absolute_path) !=
+      project->absolute_path_to_entry_index_.end();
+  }
   if (indexing)
     LOG_S(INFO) << "\"" << absolute_path << "\" is being indexed.";
   else

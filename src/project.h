@@ -19,6 +19,7 @@ struct Project {
     std::vector<std::string> args;
     // If true, this entry is inferred and was not read from disk.
     bool is_inferred = false;
+    int id = -1;
   };
 
   // Include directories for "" headers
@@ -27,7 +28,8 @@ struct Project {
   std::vector<std::string> angle_include_directories;
 
   std::vector<Entry> entries;
-  std::unordered_map<std::string, int> absolute_path_to_entry_index_;
+  std::mutex mutex_;
+  std::unordered_map<std::string, int> absolute_path_to_entry_index_ GUARDED_BY(mutex_);
 
   // Loads a project for the given |directory|.
   //
