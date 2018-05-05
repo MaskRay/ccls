@@ -105,7 +105,6 @@ struct FuncDef : NameMixin<FuncDef> {
   // Functions that this function calls.
   std::vector<SymbolRef> callees;
 
-  int file_id;
   // Type which declares this one (ie, it is a method)
   Usr declaring_type = 0;
   int16_t qual_name_offset = 0;
@@ -133,7 +132,6 @@ MAKE_REFLECT_STRUCT(FuncDef,
                     comments,
                     spell,
                     extent,
-                    file_id,
                     declaring_type,
                     bases,
                     vars,
@@ -177,7 +175,6 @@ struct TypeDef : NameMixin<TypeDef> {
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).
   Usr alias_of = 0;
-  int file_id;
 
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
@@ -201,7 +198,6 @@ MAKE_REFLECT_STRUCT(TypeDef,
                     comments,
                     spell,
                     extent,
-                    file_id,
                     alias_of,
                     bases,
                     types,
@@ -228,7 +224,6 @@ struct VarDef : NameMixin<VarDef> {
   Maybe<Use> spell;
   Maybe<Use> extent;
 
-  int file_id;
   // Type of the variable.
   Usr type = 0;
 
@@ -259,7 +254,6 @@ MAKE_REFLECT_STRUCT(VarDef,
                     comments,
                     spell,
                     extent,
-                    file_id,
                     type,
                     kind,
                     storage);

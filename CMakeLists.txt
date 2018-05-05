@@ -216,6 +216,7 @@ target_sources(ccls PRIVATE
                src/import_pipeline.cc
                src/include_complete.cc
                src/method.cc
+               src/language.cc
                src/lex_utils.cc
                src/lsp.cc
                src/match.cc

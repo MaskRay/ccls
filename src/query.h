@@ -26,8 +26,7 @@ struct QueryFile {
   struct Def {
     std::string path;
     std::vector<std::string> args;
-    // Language identifier
-    std::string language;
+    LanguageId language;
     // Includes in the file.
     std::vector<IndexInclude> includes;
     // Outline of the file (ie, for code lens).

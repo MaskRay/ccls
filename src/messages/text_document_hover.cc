@@ -21,14 +21,13 @@ std::optional<lsMarkedString> GetComments(QueryDatabase* db, SymbolRef sym) {
 
 // Returns the hover or detailed name for `sym`, if any.
 std::optional<lsMarkedString> GetHoverOrName(QueryDatabase* db,
-  const std::string& language,
-  SymbolRef sym) {
-
+                                             LanguageId lang,
+                                             SymbolRef sym) {
   std::optional<lsMarkedString> ret;
   WithEntity(db, sym, [&](const auto& entity) {
     if (const auto* def = entity.AnyDef()) {
       lsMarkedString m;
-      m.language = language;
+      m.language = LanguageIdentifier(lang);
       if (!def->hover.empty()) {
         m.value = def->hover;
         ret = m;

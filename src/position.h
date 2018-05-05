@@ -48,6 +48,21 @@ struct Range {
   }
 };
 
+namespace std {
+template <>
+struct hash<Range> {
+  std::size_t operator()(Range x) const {
+    union U {
+      Range range = {};
+      uint64_t u64;
+    } u;
+    static_assert(sizeof(Range) == 8);
+    u.range = x;
+    return hash<uint64_t>()(u.u64);
+  }
+};
+}
+
 // Reflection
 class Reader;
 class Writer;

@@ -61,19 +61,21 @@ struct Handler_TextDocumentDidOpen
 
     include_complete->AddFile(working_file->filename);
     clang_complete->NotifyView(path);
+    if (params.args.size())
+      project->SetFlagsForFile(params.args, path);
 
-    // Submit new index request.
-    Project::Entry entry = project->FindCompilationEntryForFile(path);
-    QueueManager::instance()->index_request.PushBack(
+    // Submit new index request if it is not a header file.
+    if (SourceFileLanguage(path) != LanguageId::Unknown) {
+      Project::Entry entry = project->FindCompilationEntryForFile(path);
+      QueueManager::instance()->index_request.PushBack(
         Index_Request(
-            entry.filename, params.args.size() ? params.args : entry.args,
-            true /*is_interactive*/, params.textDocument.text, cache_manager),
+          entry.filename, params.args.size() ? params.args : entry.args,
+          true /*is_interactive*/, params.textDocument.text, cache_manager),
         true /* priority */);
 
-    clang_complete->FlushSession(entry.filename);
-    LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;
-    if (params.args.size())
-        project->SetFlagsForFile(params.args, path);
+      clang_complete->FlushSession(entry.filename);
+      LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;
+    }
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);
