@@ -285,7 +285,7 @@ struct IndexFile {
 
   std::string path;
   std::vector<std::string> args;
-  int64_t last_modification_time = 0;
+  int64_t last_write_time = 0;
   LanguageId language = LanguageId::Unknown;
 
   // The path to the translation unit cc file which caused the creation of this
@@ -298,7 +298,7 @@ struct IndexFile {
   std::vector<Range> skipped_by_preprocessor;
 
   std::vector<IndexInclude> includes;
-  std::vector<std::string> dependencies;
+  std::unordered_map<std::string, int64_t> dependencies;
   std::unordered_map<Usr, IndexFunc> usr2func;
   std::unordered_map<Usr, IndexType> usr2type;
   std::unordered_map<Usr, IndexVar> usr2var;
@@ -334,14 +334,14 @@ struct NamespaceHelper {
 // |dependencies| are the existing dependencies of |import_file| if this is a
 // reparse.
 std::vector<std::unique_ptr<IndexFile>> Parse(
-    FileConsumerSharedState* file_consumer_shared,
+    VFS* vfs,
     std::string file,
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
     PerformanceImportFile* perf,
     ClangIndex* index);
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
-    FileConsumerSharedState* file_consumer_shared,
+    VFS* vfs,
     PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
     ClangIndex* index,
@@ -367,7 +367,7 @@ struct IIndexer {
 
   virtual ~IIndexer() = default;
   virtual std::vector<std::unique_ptr<IndexFile>> Index(
-      FileConsumerSharedState* file_consumer_shared,
+      VFS* vfs,
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents,
@@ -376,12 +376,12 @@ struct IIndexer {
 
 struct ClangIndexer : IIndexer {
   std::vector<std::unique_ptr<IndexFile>> Index(
-      FileConsumerSharedState* file_consumer_shared,
+      VFS* vfs,
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents,
       PerformanceImportFile* perf) override {
-    return Parse(file_consumer_shared, file, args, file_contents, perf, &index);
+    return Parse(vfs, file, args, file_contents, perf, &index);
   }
 
   // Note: constructing this acquires a global lock

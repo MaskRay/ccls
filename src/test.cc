@@ -292,9 +292,9 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
 
         // Run test.
         g_config = std::make_unique<Config>();
-        FileConsumerSharedState file_consumer_shared;
+        VFS vfs;
         PerformanceImportFile perf;
-        auto dbs = Parse(&file_consumer_shared, path, flags, {}, &perf, &index);
+        auto dbs = Parse(&vfs, path, flags, {}, &perf, &index);
 
         for (const auto& entry : all_expected_output) {
           const std::string& expected_path = entry.first;

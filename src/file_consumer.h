@@ -8,7 +8,6 @@
 #include <functional>
 #include <mutex>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 struct IndexFile;
@@ -30,13 +29,19 @@ struct FileContents {
   std::vector<int> line_offsets_;
 };
 
-struct FileConsumerSharedState {
-  mutable std::unordered_set<std::string> used_files;
+struct VFS {
+  struct State {
+    int64_t timestamp;
+    int owner;
+    int stage;
+  };
+  mutable std::unordered_map<std::string, State> state;
   mutable std::mutex mutex;
 
-  // Mark the file as used. Returns true if the file was not previously used.
-  bool Mark(const std::string& file);
-  // Reset the used state (ie, mark the file as unused).
+  State Get(const std::string& file);
+  bool Mark(const std::string& file, int owner, int stage);
+  bool Stamp(const std::string& file, int64_t ts);
+  void ResetLocked(const std::string& file);
   void Reset(const std::string& file);
 };
 
@@ -48,8 +53,7 @@ struct FileConsumerSharedState {
 // The indexer does this because header files do not have their own translation
 // units but we still want to index them.
 struct FileConsumer {
-  FileConsumer(FileConsumerSharedState* shared_state,
-               const std::string& parse_file);
+  FileConsumer(VFS* vfs, const std::string& parse_file);
 
   // Returns true if this instance owns given |file|. This will also attempt to
   // take ownership over |file|.
@@ -69,6 +73,7 @@ struct FileConsumer {
 
  private:
   std::unordered_map<CXFileUniqueID, std::unique_ptr<IndexFile>> local_;
-  FileConsumerSharedState* shared_;
+  VFS* vfs_;
   std::string parse_file_;
+  int thread_id_;
 };

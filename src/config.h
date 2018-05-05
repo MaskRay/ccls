@@ -42,44 +42,22 @@ struct Config {
   // It is not schema-aware and you need to re-index whenever a struct
   // member has changed.
   SerializeFormat cacheFormat = SerializeFormat::Binary;
-  // Value to use for clang -resource-dir if not present in
-  // compile_commands.json.
-  //
-  // ccls includes a resource directory, this should not need to be configured
-  // unless you're using an esoteric configuration. Consider reporting a bug and
-  // fixing upstream instead of configuring this.
-  //
-  // Example value: "/path/to/lib/clang/5.0.1/"
-  std::string resourceDirectory;
 
-  // Additional arguments to pass to clang.
-  std::vector<std::string> extraClangArguments;
+  struct Clang {
+    // Additional arguments to pass to clang.
+    std::vector<std::string> extraArgs;
 
-  // If true, ccls will send progress reports while indexing
-  // How often should ccls send progress report messages?
-  //  -1: never
-  //   0: as often as possible
-  //   xxx: at most every xxx milliseconds
-  //
-  // Empty progress reports (ie, idle) are delivered as often as they are
-  // available and may exceed this value.
-  //
-  // This does not guarantee a progress report will be delivered every
-  // interval; it could take significantly longer if ccls is completely idle.
-  int progressReportFrequencyMs = 500;
-
-  // If true, document links are reported for #include directives.
-  bool showDocumentLinksOnIncludes = true;
-
-  // Version of the client. If undefined the version check is skipped. Used to
-  // inform users their vscode client is too old and needs to be updated.
-  std::optional<int> clientVersion;
+    // Value to use for clang -resource-dir if not specified.
+    //
+    // This option defaults to clang -print-resource-dir and should not be
+    // specified unless you are using an esoteric configuration.
+    std::string resourceDir;
+  } clang;
 
   struct ClientCapability {
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = false;
-  };
-  ClientCapability client;
+  } client;
 
   struct CodeLens {
     // Enables code lens on parameter and function variables.
@@ -228,6 +206,7 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
+MAKE_REFLECT_STRUCT(Config::Clang, extraArgs, resourceDir);
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion,
@@ -260,16 +239,8 @@ MAKE_REFLECT_STRUCT(Config,
                     compilationDatabaseDirectory,
                     cacheDirectory,
                     cacheFormat,
-                    resourceDirectory,
 
-                    extraClangArguments,
-
-                    progressReportFrequencyMs,
-
-                    showDocumentLinksOnIncludes,
-
-                    clientVersion,
-
+                    clang,
                     client,
                     codeLens,
                     completion,
@@ -280,3 +251,4 @@ MAKE_REFLECT_STRUCT(Config,
                     xref);
 
 extern std::unique_ptr<Config> g_config;
+thread_local extern int g_thread_id;

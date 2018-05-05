@@ -10,6 +10,10 @@
 #define ATTRIBUTE_UNUSED
 #endif
 
+#ifdef __clang__
+#define GUARDED_BY(x)  __attribute__((guarded_by(x)))
+#endif
+
 // TODO GCC
 #if __has_builtin(__builtin_unreachable)
 #define CCLS_BUILTIN_UNREACHABLE __builtin_unreachable()

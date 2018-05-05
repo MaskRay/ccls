@@ -34,13 +34,7 @@ REGISTER_IN_MESSAGE(In_CclsFreshenIndex);
 struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_CclsFreshenIndex* request) override {
-    LOG_S(INFO) << "Freshening " << project->entries.size() << " files";
-
-    // TODO: think about this flow and test it more.
     GroupMatch matcher(request->params.whitelist, request->params.blacklist);
-
-    // Unmark all files whose timestamp has changed.
-    std::shared_ptr<ICacheManager> cache_manager = ICacheManager::Make();
 
     std::queue<const QueryFile*> q;
     // |need_index| stores every filename ever enqueued.
@@ -65,15 +59,15 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
       q.pop();
       need_index.insert(file->def->path);
 
-      std::optional<int64_t> modification_timestamp =
-          LastWriteTime(file->def->path);
-      if (!modification_timestamp)
+      std::optional<int64_t> write_time = LastWriteTime(file->def->path);
+      if (!write_time)
         continue;
-      std::optional<int64_t> cached_modification =
-          timestamp_manager->GetLastCachedModificationTime(cache_manager.get(),
-                                                           file->def->path);
-      if (modification_timestamp != cached_modification)
-        file_consumer_shared->Reset(file->def->path);
+      {
+        std::lock_guard<std::mutex> lock(vfs->mutex);
+        VFS::State& st = vfs->state[file->def->path];
+        if (st.timestamp < write_time)
+          st.stage = 0;
+      }
 
       if (request->params.dependencies)
         for (const std::string& path : graph[file->def->path]) {
@@ -85,10 +79,8 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
         }
     }
 
-    Timer time;
     // Send index requests for every file.
     project->Index(QueueManager::instance(), working_files, lsRequestId());
-    time.ResetAndPrint("[perf] Dispatched $ccls/freshenIndex index requests");
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsFreshenIndex);

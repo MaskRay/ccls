@@ -21,14 +21,12 @@ struct Index_Request {
   std::vector<std::string> args;
   bool is_interactive;
   std::string contents;  // Preloaded contents.
-  std::shared_ptr<ICacheManager> cache_manager;
   lsRequestId id;
 
   Index_Request(const std::string& path,
                 const std::vector<std::string>& args,
                 bool is_interactive,
                 const std::string& contents,
-                const std::shared_ptr<ICacheManager>& cache_manager,
                 lsRequestId id = {});
 };
 
@@ -72,8 +70,6 @@ class QueueManager {
                    MultiQueueWaiter* stdout_waiter);
   static void WriteStdout(MethodType method, lsBaseOutMessage& response);
 
-  bool HasWork();
-
   // Messages received by "stdout" thread.
   ThreadedQueue<Stdout_Request> for_stdout;
 
@@ -83,7 +79,6 @@ class QueueManager {
 
   // Runs on indexer threads.
   ThreadedQueue<Index_Request> index_request;
-  ThreadedQueue<Index_OnIdMapped> on_id_mapped;
 
  private:
   explicit QueueManager(MultiQueueWaiter* querydb_waiter,
