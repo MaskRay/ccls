@@ -11,6 +11,7 @@ set(CLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
 option(SYSTEM_CLANG "Use system installation of Clang instead of \
        downloading Clang" OFF)
 option(ASAN "Compile with address sanitizers" OFF)
+option(CLANG_USE_BUNDLED_LIBC++ "Let Clang use bundled libc++" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
 add_executable(ccls "")
@@ -81,6 +82,14 @@ if(NOT SYSTEM_CLANG)
   download_and_extract_clang(${CLANG_VERSION} ${CLANG_DOWNLOAD_LOCATION})
   # Used by FindClang
   set(CLANG_ROOT ${DOWNLOADED_CLANG_DIR})
+
+  if(CLANG_USE_BUNDLED_LIBC++)
+    target_compile_options(ccls PRIVATE -stdlib=libc++)
+    target_link_libraries(ccls PRIVATE ${CLANG_ROOT}/lib/libc++.a
+                                       ${CLANG_ROOT}/lib/libc++abi.a
+                                       ${CLANG_ROOT}/lib/libc++experimental.a)
+  endif()
+
 else()
   message(STATUS "Using system Clang")
 endif()
