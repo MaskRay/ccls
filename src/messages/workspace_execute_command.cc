@@ -20,14 +20,6 @@ struct Out_WorkspaceExecuteCommand
 };
 MAKE_REFLECT_STRUCT(Out_WorkspaceExecuteCommand, jsonrpc, id, result);
 
-void Reflect(Writer& visitor, Out_WorkspaceExecuteCommand& value) {
-  REFLECT_MEMBER_START();
-  REFLECT_MEMBER(jsonrpc);
-  REFLECT_MEMBER(id);
-  REFLECT_MEMBER(result);
-  REFLECT_MEMBER_END();
-}
-
 struct Handler_WorkspaceExecuteCommand
     : BaseMessageHandler<In_WorkspaceExecuteCommand> {
   MethodType GetMethodType() const override { return kMethodType; }
