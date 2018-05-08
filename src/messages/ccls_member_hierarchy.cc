@@ -59,7 +59,10 @@ MAKE_REFLECT_STRUCT(Out_CclsMemberHierarchy::Entry,
                     location,
                     numChildren,
                     children);
-MAKE_REFLECT_STRUCT(Out_CclsMemberHierarchy, jsonrpc, id, result);
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsMemberHierarchy,
+                                       jsonrpc,
+                                       id,
+                                       result);
 
 bool Expand(MessageHandler* m,
             Out_CclsMemberHierarchy::Entry* entry,
