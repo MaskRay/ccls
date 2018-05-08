@@ -563,6 +563,9 @@ void Project::Index(QueueManager* queue,
     queue->index_request.PushBack(Index_Request(entry.filename, entry.args,
                                                 is_interactive, *content, id));
   });
+  // dummy request to indicate that project is loaded and
+  // trigger refreshing semantic highlight for all working files
+  queue->index_request.PushBack(Index_Request("", {}, false, ""));
 }
 
 TEST_SUITE("Project") {

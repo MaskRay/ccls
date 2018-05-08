@@ -510,12 +510,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       // Start indexer threads. Start this after loading the project, as that
       // may take a long time. Indexer threads will emit status/progress
       // reports.
-      if (g_config->index.threads == 0) {
-        // If the user has not specified how many indexers to run, try to
-        // guess an appropriate value. Default to 80% utilization.
-        g_config->index.threads =
-            std::max(int(std::thread::hardware_concurrency() * 0.8), 1);
-      }
+      if (g_config->index.threads == 0)
+        g_config->index.threads = std::thread::hardware_concurrency();
+
       LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
       for (int i = 0; i < g_config->index.threads; i++) {
         std::thread([=]() {

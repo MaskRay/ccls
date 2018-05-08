@@ -71,6 +71,13 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
   auto& request = *opt_request;
   ICacheManager cache;
 
+  // dummy one to trigger refresh semantic highlight
+  if (request.path.empty()) {
+    queue->on_indexed.PushBack(
+        Index_OnIndexed(IndexUpdate{}, PerformanceImportFile()), false);
+    return false;
+  }
+
   Project::Entry entry;
   {
     std::lock_guard<std::mutex> lock(project->mutex_);
@@ -216,6 +223,18 @@ void QueryDb_OnIndexed(QueueManager* queue,
                        SemanticHighlightSymbolCache* semantic_cache,
                        WorkingFiles* working_files,
                        Index_OnIndexed* response) {
+
+  if (response->update.file_id < 0) { // dummy
+    LOG_S(INFO) << "Loaded project. Refresh semantic highlight for all working file.";
+    std::lock_guard<std::mutex> lock(working_files->files_mutex);
+    for (auto& f : working_files->files) {
+      int file_id = db->name2file_id[LowerPathIfInsensitive(f->filename)];
+      QueryFile* file = &db->files[file_id];
+      EmitSemanticHighlighting(db, semantic_cache, f.get(), file);
+    }
+    return;
+  }
+
   Timer time;
   db->ApplyIndexUpdate(&response->update);
 
