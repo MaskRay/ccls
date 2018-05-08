@@ -106,8 +106,6 @@ void IncludeComplete::Rescan() {
     SetThreadName("scan_includes");
     Timer timer;
 
-    // InsertIncludesFromDirectory(g_config->projectRoot,
-    //                             false /*use_angle_brackets*/);
     for (const std::string& dir : project_->quote_include_directories)
       InsertIncludesFromDirectory(dir, false /*use_angle_brackets*/);
     for (const std::string& dir : project_->angle_include_directories)

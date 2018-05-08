@@ -99,7 +99,10 @@ struct IndexUpdate {
   static IndexUpdate CreateDelta(IndexFile* previous,
                                  IndexFile* current);
 
-  int file_id = -1;
+  int file_id;
+
+  // Dummy one to refresh all semantic highlight.
+  bool refresh = false;
 
   // File updates.
   std::optional<std::string> files_removed;
