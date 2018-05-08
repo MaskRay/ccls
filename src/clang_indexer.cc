@@ -1841,12 +1841,15 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       if (!ns.def.spell) {
         ClangCursor sem_parent = referenced.get_semantic_parent();
         ClangCursor lex_parent = referenced.get_lexical_parent();
-        ns.def.spell =
-            SetUse(db, referenced.get_spell(), sem_parent, Role::Definition);
-        ns.def.extent =
-            SetUse(db, referenced.get_extent(), lex_parent, Role::None);
-        std::string name = referenced.get_spell_name();
-        SetTypeName(ns, referenced, nullptr, name.c_str(), param);
+        CXFile referenced_file;
+        Range spell = referenced.get_spell(&referenced_file);
+        if (file == referenced_file) {
+          ns.def.spell = SetUse(db, spell, sem_parent, Role::Definition);
+          ns.def.extent =
+              SetUse(db, referenced.get_extent(), lex_parent, Role::None);
+          std::string name = referenced.get_spell_name();
+          SetTypeName(ns, referenced, nullptr, name.c_str(), param);
+        }
       }
       break;
     }

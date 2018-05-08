@@ -99,11 +99,7 @@ struct IndexUpdate {
   static IndexUpdate CreateDelta(IndexFile* previous,
                                  IndexFile* current);
 
-  // Merge |update| into this update; this can reduce overhead / index update
-  // work can be parallelized.
-  void Merge(IndexUpdate&& update);
-
-  int file_id;
+  int file_id = -1;
 
   // File updates.
   std::optional<std::string> files_removed;
