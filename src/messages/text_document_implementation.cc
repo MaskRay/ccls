@@ -3,18 +3,19 @@
 #include "queue_manager.h"
 
 namespace {
-MethodType kMethodType = "$ccls/derived";
+MethodType kMethodType = "textDocument/implementation";
 
-struct In_CclsDerived : public RequestInMessage {
+struct In_TextDocumentImplementation : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   lsTextDocumentPositionParams params;
 };
-MAKE_REFLECT_STRUCT(In_CclsDerived, id, params);
-REGISTER_IN_MESSAGE(In_CclsDerived);
+MAKE_REFLECT_STRUCT(In_TextDocumentImplementation, id, params);
+REGISTER_IN_MESSAGE(In_TextDocumentImplementation);
 
-struct Handler_CclsDerived : BaseMessageHandler<In_CclsDerived> {
+struct Handler_TextDocumentImplementation
+    : BaseMessageHandler<In_TextDocumentImplementation> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_CclsDerived* request) override {
+  void Run(In_TextDocumentImplementation* request) override {
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
@@ -43,5 +44,5 @@ struct Handler_CclsDerived : BaseMessageHandler<In_CclsDerived> {
     QueueManager::WriteStdout(kMethodType, out);
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsDerived);
+REGISTER_MESSAGE_HANDLER(Handler_TextDocumentImplementation);
 }  // namespace

@@ -49,11 +49,6 @@ std::string StringJoin(const TValues& values, const std::string& sep = ", ") {
                        sep);
 }
 
-template <typename TCollection, typename TValue>
-bool ContainsValue(const TCollection& collection, const TValue& value) {
-  return collection.find(value) != collection.end();
-}
-
 // Ensures that |path| ends in a slash.
 void EnsureEndsInSlash(std::string& path);
 

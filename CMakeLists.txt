@@ -252,7 +252,6 @@ target_sources(ccls PRIVATE
                src/messages/ccls_base.cc
                src/messages/ccls_call_hierarchy.cc
                src/messages/ccls_callers.cc
-               src/messages/ccls_derived.cc
                src/messages/ccls_file_info.cc
                src/messages/ccls_freshen_index.cc
                src/messages/ccls_inheritance_hierarchy.cc
@@ -272,6 +271,7 @@ target_sources(ccls PRIVATE
                src/messages/text_document_document_highlight.cc
                src/messages/text_document_document_symbol.cc
                src/messages/text_document_hover.cc
+               src/messages/text_document_implementation.cc
                src/messages/text_document_references.cc
                src/messages/text_document_rename.cc
                src/messages/text_document_signature_help.cc
