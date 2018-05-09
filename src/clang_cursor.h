@@ -67,6 +67,7 @@ class ClangCursor {
   std::string get_display_name() const;
   std::string get_usr() const;
   Usr get_usr_hash() const;
+  std::optional<Usr> get_opt_usr_hash() const;
 
   bool is_definition() const;
 
@@ -107,15 +108,6 @@ class ClangCursor {
 
   CXCursor cx_cursor;
 };
-
-namespace std {
-template <>
-struct hash<ClangCursor> {
-  size_t operator()(const ClangCursor& x) const {
-    return clang_hashCursor(x.cx_cursor);
-  }
-};
-}  // namespace std
 
 // Simple RAII wrapper about CXIndex.
 // Note: building a ClangIndex instance acquires a global lock, since libclang

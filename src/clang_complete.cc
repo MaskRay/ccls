@@ -275,7 +275,7 @@ void BuildDetailString(CXCompletionString completion_string,
   int num_chunks = clang_getNumCompletionChunks(completion_string);
   auto append = [&](const char* text) {
     detail += text;
-    if (do_insert)
+    if (do_insert && include_snippets)
       insert += text;
   };
   for (int i = 0; i < num_chunks; ++i) {
@@ -587,6 +587,8 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
     // Fetching the completion request blocks until we have a request.
     ClangCompleteManager::DiagnosticRequest request =
         completion_manager->diagnostic_request_.Dequeue();
+    if (!g_config->diagnostics.onType)
+      continue;
     std::string path = request.document.uri.GetPath();
 
     std::shared_ptr<CompletionSession> session =

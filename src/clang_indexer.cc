@@ -557,15 +557,10 @@ IndexType* ResolveToDeclarationType(IndexFile* db,
 
   ClangCursor declaration =
       type.get_declaration().template_specialization_to_template_definition();
-  CXString cx_usr = clang_getCursorUSR(declaration.cx_cursor);
-  const char* str_usr = clang_getCString(cx_usr);
-  if (!str_usr || str_usr[0] == '\0') {
-    clang_disposeString(cx_usr);
+  std::optional<Usr> usr = declaration.get_opt_usr_hash();
+  if (!usr)
     return nullptr;
-  }
-  Usr usr = HashUsr(str_usr);
-  clang_disposeString(cx_usr);
-  IndexType& typ = db->ToType(usr);
+  IndexType& typ = db->ToType(*usr);
   if (typ.def.detailed_name.empty()) {
     std::string name = declaration.get_spell_name();
     SetTypeName(typ, declaration, nullptr, name.c_str(), param);
@@ -602,11 +597,12 @@ void SetVarDetail(IndexVar& var,
       param->ns.QualifiedName(semanticContainer, short_name);
 
   if (cursor.get_kind() == CXCursor_EnumConstantDecl && semanticContainer) {
-    CXType enum_type = clang_getCanonicalType(
-        clang_getEnumDeclIntegerType(semanticContainer->cursor));
+    CXTypeKind k = clang_getCanonicalType(
+                       clang_getEnumDeclIntegerType(semanticContainer->cursor))
+                       .kind;
     std::string hover = qualified_name + " = ";
-    if (enum_type.kind == CXType_UInt || enum_type.kind == CXType_ULong ||
-        enum_type.kind == CXType_ULongLong)
+    if (k == CXType_Char_U || k == CXType_UChar || k == CXType_UShort ||
+        k == CXType_UInt || k == CXType_ULong || k == CXType_ULongLong)
       hover += std::to_string(
           clang_getEnumConstantDeclUnsignedValue(cursor.cx_cursor));
     else
@@ -896,15 +892,15 @@ void VisitDeclForTypeUsageVisitorHandler(ClangCursor cursor,
     }
   }
 
-  std::string referenced_usr =
+  std::optional<Usr> referenced_usr =
       cursor.get_referenced()
           .template_specialization_to_template_definition()
-          .get_usr();
-  // TODO: things in STL cause this to be empty. Figure out why and document it.
-  if (referenced_usr == "")
+          .get_opt_usr_hash();
+  // In STL this may be empty.
+  if (!referenced_usr)
     return;
 
-  IndexType& ref_type = db->ToType(HashUsr(referenced_usr));
+  IndexType& ref_type = db->ToType(*referenced_usr);
 
   if (!param->initial_type)
     param->initial_type = &ref_type;
@@ -1129,12 +1125,10 @@ ClangCursor::VisitResult AddDeclInitializerUsagesVisitor(ClangCursor cursor,
       // cursor.get_referenced().template_specialization_to_template_definition().get_type().strip_qualifiers().get_usr_hash();
       auto ref_usr = cursor.get_referenced()
                          .template_specialization_to_template_definition()
-                         .get_usr();
-      // std::string ref_usr = ref.get_usr_hash();
-      if (ref_usr.empty())
+                         .get_opt_usr_hash();
+      if (!ref_usr)
         break;
-
-      IndexVar& ref_var = db->ToVar(HashUsr(ref_usr));
+      IndexVar& ref_var = db->ToVar(*ref_usr);
       AddUseSpell(db, ref_var.uses, cursor);
       break;
     }
@@ -1347,8 +1341,8 @@ std::tuple<std::string, int16_t, int16_t> NamespaceHelper::QualifiedName(
   std::string qualifier;
   while (cursor.get_kind() != CXCursor_TranslationUnit &&
          GetSymbolKind(cursor.get_kind()) == SymbolKind::Type) {
-    auto it = container_cursor_to_qualified_name.find(cursor);
-    if (it != container_cursor_to_qualified_name.end()) {
+    auto it = usr2qualified_name.find(cursor.get_usr_hash());
+    if (it != usr2qualified_name.end()) {
       qualifier = it->second;
       break;
     }
@@ -1365,7 +1359,7 @@ std::tuple<std::string, int16_t, int16_t> NamespaceHelper::QualifiedName(
     else
       qualifier += GetAnonName(namespaces[i].get_kind());
     qualifier += "::";
-    container_cursor_to_qualified_name[namespaces[i]] = qualifier;
+    usr2qualified_name[namespaces[i].get_usr_hash()] = qualifier;
   }
   int16_t pos = qualifier.size();
   qualifier.append(unqualified_name);
@@ -2013,13 +2007,12 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
   }
 }
 
-std::vector<std::unique_ptr<IndexFile>> Parse(
+std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
     VFS* vfs,
     std::string file,
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents,
-    PerformanceImportFile* perf,
-    ClangIndex* index) {
+    PerformanceImportFile* perf) {
   if (!g_config->index.enabled)
     return {};
 
@@ -2037,7 +2030,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
   }
 
   std::unique_ptr<ClangTranslationUnit> tu = ClangTranslationUnit::Create(
-      index, file, args, unsaved_files,
+      &index, file, args, unsaved_files,
       CXTranslationUnit_KeepGoing |
           CXTranslationUnit_DetailedPreprocessingRecord);
   if (!tu)
@@ -2045,7 +2038,7 @@ std::vector<std::unique_ptr<IndexFile>> Parse(
 
   perf->index_parse = timer.ElapsedMicrosecondsAndReset();
 
-  return ParseWithTu(vfs, perf, tu.get(), index, file, args, unsaved_files);
+  return ParseWithTu(vfs, perf, tu.get(), &index, file, args, unsaved_files);
 }
 
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
@@ -2205,59 +2198,4 @@ void Reflect(Writer& visitor, Reference& value) {
     Reflect(visitor, value.kind);
     Reflect(visitor, value.role);
   }
-}
-
-namespace {
-
-struct TestIndexer : IIndexer {
-  static std::unique_ptr<TestIndexer> FromEntries(
-      const std::vector<TestEntry>& entries) {
-    auto result = std::make_unique<TestIndexer>();
-
-    for (const TestEntry& entry : entries) {
-      std::vector<std::unique_ptr<IndexFile>> indexes;
-
-      if (entry.num_indexes > 0)
-        indexes.push_back(std::make_unique<IndexFile>(entry.path, "<empty>"));
-      for (int i = 1; i < entry.num_indexes; ++i) {
-        indexes.push_back(std::make_unique<IndexFile>(
-            entry.path + "_extra_" + std::to_string(i) + ".h", "<empty>"));
-      }
-
-      result->indexes.insert(std::make_pair(entry.path, std::move(indexes)));
-    }
-
-    return result;
-  }
-
-  std::vector<std::unique_ptr<IndexFile>> Index(
-      VFS* vfs,
-      std::string file,
-      const std::vector<std::string>& args,
-      const std::vector<FileContents>& file_contents,
-      PerformanceImportFile* perf) override {
-    auto it = indexes.find(file);
-    if (it == indexes.end()) {
-      // Don't return any indexes for unexpected data.
-      assert(false && "no indexes");
-      return {};
-    }
-
-    // FIXME: allow user to control how many times we return the index for a
-    // specific file (atm it is always 1)
-    auto result = std::move(it->second);
-    indexes.erase(it);
-    return result;
-  }
-
-  std::unordered_map<std::string, std::vector<std::unique_ptr<IndexFile>>>
-      indexes;
-};
-
-}  // namespace
-
-// static
-std::unique_ptr<IIndexer> IIndexer::MakeTestIndexer(
-    std::initializer_list<TestEntry> entries) {
-  return TestIndexer::FromEntries(entries);
 }

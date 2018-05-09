@@ -137,6 +137,9 @@ struct Config {
     // If true, diagnostics from a full document parse will be reported.
     bool onParse = true;
 
+    // If true, diagnostics from typing will be reported.
+    bool onType = true;
+
     std::vector<std::string> whitelist;
   } diagnostics;
 
@@ -211,6 +214,7 @@ MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion,
                     caseSensitivity,
+                    dropOldRequests,
                     detailedLabel,
                     filterAndSort,
                     includeBlacklist,
@@ -221,6 +225,7 @@ MAKE_REFLECT_STRUCT(Config::Diagnostics,
                     blacklist,
                     frequencyMs,
                     onParse,
+                    onType,
                     whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index,

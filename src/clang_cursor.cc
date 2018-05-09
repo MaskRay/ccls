@@ -131,6 +131,18 @@ Usr ClangCursor::get_usr_hash() const {
   return ret;
 }
 
+std::optional<Usr> ClangCursor::get_opt_usr_hash() const {
+  CXString usr = clang_getCursorUSR(cx_cursor);
+  const char* str = clang_getCString(usr);
+  if (!str || str[0] == '\0') {
+    clang_disposeString(usr);
+    return {};
+  }
+  Usr ret = HashUsr(str);
+  clang_disposeString(usr);
+  return ret;
+}
+
 bool ClangCursor::is_definition() const {
   return clang_isCursorDefinition(cx_cursor);
 }

@@ -63,7 +63,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
                    WorkingFiles* working_files,
                    Project* project,
                    VFS* vfs,
-                   IIndexer* indexer) {
+                   ClangIndexer* indexer) {
   auto* queue = QueueManager::instance();
   std::optional<Index_Request> opt_request = queue->index_request.TryPopFront();
   if (!opt_request)
@@ -211,10 +211,10 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
                   MultiQueueWaiter* waiter) {
   auto* queue = QueueManager::instance();
   // Build one index per-indexer, as building the index acquires a global lock.
-  auto indexer = std::make_unique<ClangIndexer>();
+  ClangIndexer indexer;
 
   while (true)
-    if (!Indexer_Parse(diag_engine, working_files, project, vfs, indexer.get()))
+    if (!Indexer_Parse(diag_engine, working_files, project, vfs, &indexer))
       waiter->Wait(&queue->index_request);
 }
 
