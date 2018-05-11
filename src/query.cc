@@ -5,13 +5,12 @@
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
-#include <optional>
 #include <loguru.hpp>
 
 #include <cassert>
 #include <cstdint>
 #include <functional>
-#include <iterator>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

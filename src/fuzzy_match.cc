@@ -121,7 +121,7 @@ int FuzzyMatcher::Match(std::string_view text) {
                                                pat[i] == text[j]))
                           ? std::max(pre[j][0] + MatchScore(i, j, false),
                                      pre[j][1] + MatchScore(i, j, true))
-                          : cur[j + 1][1] = kMinScore * 2;
+                          : kMinScore * 2;
     }
   }
 

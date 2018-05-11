@@ -69,7 +69,7 @@ std::vector<std::string> kBlacklist = {
 // Arguments which are followed by a potentially relative path. We need to make
 // all relative paths absolute, otherwise libclang will not resolve them.
 std::vector<std::string> kPathArgs = {
-    "-I",        "-iquote",        "-isystem",     "--sysroot=",
+    "-I",        "-iquote",        "-cxx-isystem", "-isystem",     "--sysroot=",
     "-isysroot", "-gcc-toolchain", "-include-pch", "-iframework",
     "-F",        "-imacros",       "-include",     "/I",
     "-idirafter"};
@@ -82,7 +82,7 @@ std::vector<std::string> kNormalizePathArgs = {"--sysroot="};
 // Arguments whose path arguments should be injected into include dir lookup
 // for #include completion.
 std::vector<std::string> kQuoteIncludeArgs = {"-iquote", "-I", "/I"};
-std::vector<std::string> kAngleIncludeArgs = {"-isystem", "-I", "/I"};
+std::vector<std::string> kAngleIncludeArgs = {"-cxx-isystem", "-isystem", "-I", "/I"};
 
 bool ShouldAddToQuoteIncludes(const std::string& arg) {
   return StartsWithAny(arg, kQuoteIncludeArgs);
@@ -152,16 +152,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   for (; i < args.size(); ++i) {
     std::string arg = args[i];
 
-    // If blacklist skip.
-    if (!next_flag_is_path) {
-      if (StartsWithAny(arg, kBlacklistMulti)) {
-        ++i;
-        continue;
-      }
-      if (StartsWithAny(arg, kBlacklist))
-        continue;
-    }
-
     // Finish processing path for the previous argument, which was a switch.
     // {"-I", "foo"} style.
     if (next_flag_is_path) {
@@ -177,6 +167,12 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       add_next_flag_to_quote_dirs = false;
       add_next_flag_to_angle_dirs = false;
     } else {
+      // If blacklist skip.
+      if (StartsWithAny(arg, kBlacklistMulti)) {
+        i++;
+        continue;
+      }
+
       // Check to see if arg is a path and needs to be updated.
       for (const std::string& flag_type : kPathArgs) {
         // {"-I", "foo"} style.
@@ -184,7 +180,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
           next_flag_is_path = true;
           add_next_flag_to_quote_dirs = ShouldAddToQuoteIncludes(arg);
           add_next_flag_to_angle_dirs = ShouldAddToAngleIncludes(arg);
-          break;
+          goto done;
         }
 
         // {"-Ifoo"} style.
@@ -198,9 +194,12 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
             config->quote_dirs.insert(path);
           if (ShouldAddToAngleIncludes(flag_type))
             config->angle_dirs.insert(path);
-          break;
+          goto done;
         }
       }
+
+      if (StartsWithAny(arg, kBlacklist))
+        continue;
 
       // This is most likely the file path we will be passing to clang. The
       // path needs to be absolute, otherwise clang_codeCompleteAt is extremely
@@ -215,6 +214,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         continue;
     }
 
+  done:
     result.args.push_back(arg);
   }
 

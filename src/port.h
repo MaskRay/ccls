@@ -12,6 +12,8 @@
 
 #ifdef __clang__
 #define GUARDED_BY(x)  __attribute__((guarded_by(x)))
+#else
+#define GUARDED_BY(x)
 #endif
 
 // TODO GCC
