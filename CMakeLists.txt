@@ -85,11 +85,12 @@ if(NOT SYSTEM_CLANG)
 
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang AND CLANG_USE_BUNDLED_LIBC++)
     message(STATUS "Using bundled libc++")
-    target_compile_options(ccls PRIVATE -stdlib=libc++)
-    target_include_directories(ccls PRIVATE ${CLANG_ROOT}/include/c++/v1)
-    target_link_libraries(ccls PRIVATE ${CLANG_ROOT}/lib/libc++.a
-                                       ${CLANG_ROOT}/lib/libc++abi.a
-                                       ${CLANG_ROOT}/lib/libc++experimental.a)
+    target_compile_options(ccls PRIVATE -nostdinc++ -cxx-isystem ${CLANG_ROOT}/include/c++/v1)
+    target_link_libraries(ccls PRIVATE -stdlib=libc++ -L${CLANG_ROOT}/lib -lc++experimental)
+    if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+      # FreeBSD uses system libcxxrt.a and does not need libc++abi.
+      target_link_libraries(ccls PRIVATE c++abi)
+    endif()
   endif()
 
 else()
@@ -107,15 +108,13 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-  target_link_libraries(ccls PRIVATE -lstdc++fs)
-elseif(MSVC)
-else()
-  # e.g. Darwin, FreeBSD
+if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
   target_link_libraries(ccls PRIVATE -lc++experimental)
-endif()
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+elseif(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+  if(NOT CLANG_USE_BUNDLED_LIBC++)
+    target_link_libraries(ccls PRIVATE -lstdc++fs)
+  endif()
   # loguru calls dladdr
   target_link_libraries(ccls PRIVATE ${CMAKE_DL_LIBS})
 
@@ -125,6 +124,9 @@ elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
   # src/platform_posix.cc uses libthr
   find_package(Backtrace REQUIRED)
   target_link_libraries(ccls PRIVATE ${Backtrace_LIBRARIES} kvm thr)
+  if(SYSTEM_CLANG)
+    target_link_libraries(ccls PRIVATE c++experimental)
+  endif()
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
   # sparsepp/spp_memory.h uses LibPsapi
