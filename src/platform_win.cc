@@ -49,36 +49,6 @@ std::string NormalizePath(const std::string& path) {
   return result;
 }
 
-// See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
-const DWORD MS_VC_EXCEPTION = 0x406D1388;
-#pragma pack(push, 8)
-typedef struct tagTHREADNAME_INFO {
-  DWORD dwType;      // Must be 0x1000.
-  LPCSTR szName;     // Pointer to name (in user addr space).
-  DWORD dwThreadID;  // Thread ID (-1=caller thread).
-  DWORD dwFlags;     // Reserved for future use, must be zero.
-} THREADNAME_INFO;
-#pragma pack(pop)
-void SetThreadName(const std::string& thread_name) {
-  loguru::set_thread_name(thread_name.c_str());
-
-  THREADNAME_INFO info;
-  info.dwType = 0x1000;
-  info.szName = thread_name.c_str();
-  info.dwThreadID = (DWORD)-1;
-  info.dwFlags = 0;
-
-  __try {
-    RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR),
-                   (ULONG_PTR*)&info);
-#ifdef _MSC_VER
-  } __except (EXCEPTION_EXECUTE_HANDLER) {
-#else
-  } catch (...) {
-#endif
-  }
-}
-
 void FreeUnusedMemory() {}
 
 // TODO Wait for debugger to attach

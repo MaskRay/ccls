@@ -1,10 +1,9 @@
 #pragma once
 
-#include <optional>
-#include <string_view>
-
 #include <memory>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 void PlatformInit();
@@ -12,9 +11,7 @@ void PlatformInit();
 std::string GetExecutablePath();
 std::string NormalizePath(const std::string& path);
 
-void SetThreadName(const std::string& thread_name);
-
-std::optional<int64_t> GetLastModificationTime(const std::string& absolute_path);
+void SetThreadName(const char* name);
 
 // Free any unused memory and return it to the system.
 void FreeUnusedMemory();

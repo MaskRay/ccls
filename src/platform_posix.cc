@@ -1,9 +1,12 @@
+#include <llvm/ADT/Twine.h>
+#include <llvm/Support/Threading.h>
+
 #if defined(__unix__) || defined(__APPLE__)
 #include "platform.h"
 
 #include "utils.h"
 
-#include "loguru.hpp"
+#include <loguru.hpp>
 
 #include <pthread.h>
 #if defined(__FreeBSD__)
@@ -155,17 +158,6 @@ std::string NormalizePath(const std::string& path) {
   return resolved ? *resolved : path;
 }
 
-void SetThreadName(const std::string& thread_name) {
-  loguru::set_thread_name(thread_name.c_str());
-#if defined(__APPLE__)
-  pthread_setname_np(thread_name.c_str());
-#elif defined(__FreeBSD__) || defined(__OpenBSD__)
-  pthread_set_name_np(pthread_self(), thread_name.c_str());
-#elif defined(__linux__)
-  pthread_setname_np(pthread_self(), thread_name.c_str());
-#endif
-}
-
 void FreeUnusedMemory() {
 #if defined(__GLIBC__)
   malloc_trim(0);
@@ -225,3 +217,8 @@ std::string GetExternalCommandOutput(const std::vector<std::string>& command,
 }
 
 #endif
+
+void SetThreadName(const char* name) {
+  loguru::set_thread_name(name);
+  llvm::set_thread_name(name);
+}
