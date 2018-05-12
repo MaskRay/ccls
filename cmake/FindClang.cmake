@@ -8,7 +8,6 @@
 #
 #   Clang_FOUND         - True if headers and requested libraries were found
 #   Clang_EXECUTABLE    - Clang executable
-#   Clang_FORMAT        - Clang-format executable
 #   Clang_RESOURCE_DIR  - Clang resource directory
 #   Clang_VERSION       - Clang version as reported by Clang executable
 #
@@ -19,7 +18,6 @@
 # This module reads hints about which libraries to look for and where to find
 # them from the following variables::
 #
-#   CLANG_CXX           - Search for and add Clang C++ libraries
 #   CLANG_ROOT          - If set, only look for Clang components in CLANG_ROOT
 #
 # Example to link against Clang target::
@@ -41,6 +39,11 @@ macro(_Clang_find_library VAR NAME)
   endif()
 endmacro()
 
+macro(_Clang_find_add_library NAME)
+  _Clang_find_library(${NAME}_LIBRARY ${NAME})
+  list(APPEND _Clang_LIBRARIES ${${NAME}_LIBRARY})
+endmacro()
+
 macro(_Clang_find_path VAR INCLUDE_FILE)
   if (CLANG_ROOT)
     find_path(${VAR} ${INCLUDE_FILE}
@@ -59,45 +62,22 @@ macro(_Clang_find_program VAR NAME)
   endif()
 endmacro()
 
-# Macro to avoid duplicating logic for each Clang C++ library
-macro(_Clang_find_and_add_cxx_lib NAME INCLUDE_FILE)
-  # Find library
-  _Clang_find_library(Clang_${NAME}_LIBRARY ${NAME})
-  list(APPEND _Clang_REQUIRED_VARS Clang_${NAME}_LIBRARY)
-  list(APPEND _Clang_CXX_LIBRARIES ${Clang_${NAME}_LIBRARY})
-
-  # Find corresponding include directory
-  _Clang_find_path(Clang_${NAME}_INCLUDE_DIR ${INCLUDE_FILE})
-  list(APPEND _Clang_REQUIRED_VARS Clang_${NAME}_INCLUDE_DIR)
-  list(APPEND _Clang_CXX_INCLUDE_DIRS ${Clang_${NAME}_INCLUDE_DIR})
-endmacro()
-
 ### Start
 
 set(_Clang_REQUIRED_VARS Clang_LIBRARY Clang_INCLUDE_DIR Clang_EXECUTABLE
-                         Clang_RESOURCE_DIR Clang_VERSION)
+                         Clang_RESOURCE_DIR Clang_VERSION
+                         LLVM_INCLUDE_DIR LLVM_BUILD_INCLUDE_DIR)
 
 _Clang_find_library(Clang_LIBRARY clang)
+_Clang_find_add_library(clangDriver)
+_Clang_find_add_library(LLVMOption)
+_Clang_find_add_library(LLVMSupport)
+_Clang_find_add_library(LLVMDemangle)
 _Clang_find_path(Clang_INCLUDE_DIR clang-c/Index.h)
+_Clang_find_path(Clang_BUILD_INCLUDE_DIR clang/Driver/Options.inc)
+_Clang_find_path(LLVM_INCLUDE_DIR llvm/PassInfo.h)
+_Clang_find_path(LLVM_BUILD_INCLUDE_DIR llvm/Config/llvm-config.h)
 
-if(CLANG_CXX)
-  # The order is derived by topological sorting LINK_LIBS in
-  # clang/lib/*/CMakeLists.txt
-  _Clang_find_and_add_cxx_lib(clangFormat clang/Format/Format.h)
-  _Clang_find_and_add_cxx_lib(clangToolingCore clang/Tooling/Core/Diagnostic.h)
-  _Clang_find_and_add_cxx_lib(clangRewrite clang/Rewrite/Core/Rewriter.h)
-  _Clang_find_and_add_cxx_lib(clangAST clang/AST/AST.h)
-  _Clang_find_and_add_cxx_lib(clangLex clang/Lex/Lexer.h)
-  _Clang_find_and_add_cxx_lib(clangBasic clang/Basic/ABI.h)
-
-  # The order is derived from llvm-config --libs core
-  _Clang_find_and_add_cxx_lib(LLVMCore llvm/Pass.h)
-  _Clang_find_and_add_cxx_lib(LLVMBinaryFormat llvm/BinaryFormat/Dwarf.h)
-  _Clang_find_and_add_cxx_lib(LLVMSupport llvm/Support/Error.h)
-  _Clang_find_and_add_cxx_lib(LLVMDemangle llvm/Demangle/Demangle.h)
-endif()
-
-_Clang_find_program(Clang_FORMAT clang-format)
 _Clang_find_program(Clang_EXECUTABLE clang)
 if(Clang_EXECUTABLE)
   # Find Clang resource directory with Clang executable
@@ -127,12 +107,10 @@ find_package_handle_standard_args(Clang
 )
 
 if(Clang_FOUND AND NOT TARGET Clang::Clang)
-  set(_Clang_LIBRARIES ${Clang_LIBRARY} ${_Clang_CXX_LIBRARIES})
-  set(_Clang_INCLUDE_DIRS ${Clang_INCLUDE_DIR} ${_Clang_CXX_INCLUDE_DIRS})
+  add_library(Clang::Clang UNKNOWN IMPORTED)
+  set_target_properties(Clang::Clang PROPERTIES
+    IMPORTED_LOCATION ${Clang_LIBRARY}
+    INTERFACE_INCLUDE_DIRECTORIES "${Clang_INCLUDE_DIR};${Clang_BUILD_INCLUDE_DIR};${LLVM_INCLUDE_DIR};${LLVM_BUILD_INCLUDE_DIR}")
 
-  add_library(Clang::Clang INTERFACE IMPORTED)
-  set_property(TARGET Clang::Clang PROPERTY
-               INTERFACE_LINK_LIBRARIES ${_Clang_LIBRARIES})
-  set_property(TARGET Clang::Clang PROPERTY
-               INTERFACE_INCLUDE_DIRECTORIES ${_Clang_INCLUDE_DIRS})
+  set_property(TARGET Clang::Clang PROPERTY INTERFACE_LINK_LIBRARIES ${_Clang_LIBRARIES})
 endif()

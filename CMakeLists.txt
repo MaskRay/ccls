@@ -86,10 +86,12 @@ if(NOT SYSTEM_CLANG)
   if(${CMAKE_CXX_COMPILER_ID} STREQUAL Clang AND CLANG_USE_BUNDLED_LIBC++)
     message(STATUS "Using bundled libc++")
     target_compile_options(ccls PRIVATE -nostdinc++ -cxx-isystem ${CLANG_ROOT}/include/c++/v1)
-    target_link_libraries(ccls PRIVATE -stdlib=libc++ -L${CLANG_ROOT}/lib -lc++experimental)
     if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
+      # Don't use -stdlib=libc++ because while ccls is linked with libc++, bundled clang+llvm require libstdc++
+      target_link_libraries(ccls PRIVATE -L${CLANG_ROOT}/lib c++ c++experimental c++abi)
+    else()
       # FreeBSD uses system libcxxrt.a and does not need libc++abi.
-      target_link_libraries(ccls PRIVATE c++abi)
+      target_link_libraries(ccls PRIVATE -stdlib=libc++ -L${CLANG_ROOT}/lib c++experimental)
     endif()
   endif()
 
@@ -101,7 +103,11 @@ endif()
 
 # See cmake/FindClang.cmake
 find_package(Clang ${CLANG_VERSION} REQUIRED)
+find_package(Curses REQUIRED)
 target_link_libraries(ccls PRIVATE Clang::Clang)
+if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
+  target_link_libraries(ccls PRIVATE Clang::Clang ${CURSES_LIBRARIES})
+endif()
 
 # Enable threading support
 set(THREADS_PREFER_PTHREAD_FLAG ON)
@@ -187,27 +193,6 @@ endif()
 # target_sources further down
 file(GLOB SOURCES src/*.cc src/*.h src/serializers/*.cc src/serializers/*.h
                   src/messages/*.h src/messages/*.cc)
-
-if(Clang_FORMAT AND ${Clang_VERSION} STREQUAL 6.0.0)
-  add_custom_target(format
-                    COMMAND ${Clang_FORMAT} -i ${SOURCES}
-                    # .clang-format is located in the ccls root project dir
-                    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-                    COMMENT "Running clang-format ...")
-else()
-  # Set error message depending on which condition was false
-  if (NOT Clang_FORMAT)
-    set(Clang_FORMAT_ERROR "Error: clang-format executable not found")
-  elseif(NOT ${Clang_VERSION} STREQUAL 6.0.0)
-    set(Clang_FORMAT_ERROR "Error: clang-format version does not match \
-6.0.0. Due to differences in clang-format output between versions we only \
-support clang-format 6.0.0")
-  endif()
-
-  add_custom_target(format
-                    COMMAND ${CMAKE_COMMAND} -E cmake_echo_color --red --bold
-                    ${Clang_FORMAT_ERROR})
-endif()
 
 ### Sources
 
