@@ -16,15 +16,6 @@
 #include <unordered_map>
 using namespace std::placeholders;
 
-// DEFAULT_RESOURCE_DIRECTORY is passed with quotes for non-MSVC compilers, ie,
-// foo vs "foo".
-#if defined(_MSC_VER)
-#define _STRINGIFY(x) #x
-#define ENSURE_STRING_MACRO_ARGUMENT(x) _STRINGIFY(x)
-#else
-#define ENSURE_STRING_MACRO_ARGUMENT(x) x
-#endif
-
 void TrimInPlace(std::string& s) {
   auto f = [](char c) { return !isspace(c); };
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
@@ -137,8 +128,9 @@ std::optional<std::string> ReadContent(const std::string& filename) {
 
 void WriteToFile(const std::string& filename, const std::string& content) {
   FILE* f = fopen(filename.c_str(), "wb");
-  if (!f || fwrite(content.c_str(), content.size(), 1, f) != 1) {
-    LOG_S(ERROR) << "Failed to write to " << filename << ' ' << strerror(errno);
+  if (!f ||
+      (content.size() && fwrite(content.c_str(), content.size(), 1, f) != 1)) {
+    LOG_S(ERROR) << "failed to write to " << filename << ' ' << strerror(errno);
     return;
   }
   fclose(f);
@@ -154,25 +146,5 @@ std::optional<int64_t> LastWriteTime(const std::string& filename) {
 }
 
 std::string GetDefaultResourceDirectory() {
-  std::string result;
-
-  std::string resource_directory =
-      std::string(ENSURE_STRING_MACRO_ARGUMENT(DEFAULT_RESOURCE_DIRECTORY));
-  // Remove double quoted resource dir if it was passed with quotes
-  // by the build system.
-  if (resource_directory.size() >= 2 && resource_directory[0] == '"' &&
-      resource_directory[resource_directory.size() - 1] == '"') {
-    resource_directory =
-        resource_directory.substr(1, resource_directory.size() - 2);
-  }
-  if (resource_directory.compare(0, 2, "..") == 0) {
-    std::string executable_path = GetExecutablePath();
-    size_t pos = executable_path.find_last_of('/');
-    result = executable_path.substr(0, pos + 1);
-    result += resource_directory;
-  } else {
-    result = resource_directory;
-  }
-
-  return NormalizePath(result);
+  return DEFAULT_RESOURCE_DIRECTORY;
 }

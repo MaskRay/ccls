@@ -519,8 +519,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
           g_thread_id = i + 1;
           std::string name = "indexer" + std::to_string(i);
           SetThreadName(name.c_str());
-          Indexer_Main(diag_engine, vfs, import_pipeline_status, project,
-                       working_files, waiter);
+          Indexer_Main(diag_engine, vfs, project, working_files, waiter);
         }).detach();
       }
 

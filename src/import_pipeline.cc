@@ -1,8 +1,10 @@
 #include "import_pipeline.h"
 
 #include "cache_manager.h"
+#include "clang_complete.h"
 #include "config.h"
 #include "diagnostics_engine.h"
+#include "include_complete.h"
 #include "lsp.h"
 #include "message_handler.h"
 #include "platform.h"
@@ -15,6 +17,7 @@
 #include <loguru.hpp>
 
 #include <chrono>
+#include <thread>
 
 namespace {
 
@@ -201,11 +204,19 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
   return true;
 }
 
+// This function returns true if e2e timing should be displayed for the given
+// MethodId.
+bool ShouldDisplayMethodTiming(MethodType type) {
+  return
+    type != kMethodType_TextDocumentPublishDiagnostics &&
+    type != kMethodType_CclsPublishInactiveRegions &&
+    type != kMethodType_Unknown;
+}
+
 }  // namespace
 
 void Indexer_Main(DiagnosticsEngine* diag_engine,
                   VFS* vfs,
-                  ImportPipelineStatus* status,
                   Project* project,
                   WorkingFiles* working_files,
                   MultiQueueWaiter* waiter) {
@@ -218,10 +229,8 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
       waiter->Wait(&queue->index_request);
 }
 
-namespace {
 void QueryDb_OnIndexed(QueueManager* queue,
                        QueryDatabase* db,
-                       ImportPipelineStatus* status,
                        SemanticHighlightSymbolCache* semantic_cache,
                        WorkingFiles* working_files,
                        Index_OnIndexed* response) {
@@ -264,23 +273,154 @@ void QueryDb_OnIndexed(QueueManager* queue,
   }
 }
 
-}  // namespace
+void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
+  std::thread([request_times]() {
+    SetThreadName("stdin");
+    auto* queue = QueueManager::instance();
+    while (true) {
+      std::unique_ptr<InMessage> message;
+      std::optional<std::string> err =
+          MessageRegistry::instance()->ReadMessageFromStdin(&message);
 
-bool QueryDb_ImportMain(QueryDatabase* db,
-                        ImportPipelineStatus* status,
-                        SemanticHighlightSymbolCache* semantic_cache,
-                        WorkingFiles* working_files) {
-  auto* queue = QueueManager::instance();
-  bool did_work = false;
+      // Message parsing can fail if we don't recognize the method.
+      if (err) {
+        // The message may be partially deserialized.
+        // Emit an error ResponseMessage if |id| is available.
+        if (message) {
+          lsRequestId id = message->GetRequestId();
+          if (id.Valid()) {
+            Out_Error out;
+            out.id = id;
+            out.error.code = lsErrorCodes::InvalidParams;
+            out.error.message = std::move(*err);
+            queue->WriteStdout(kMethodType_Unknown, out);
+          }
+        }
+        continue;
+      }
 
-  for (int i = 80; i--; ) {
-    std::optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
-    if (!response)
-      break;
-    did_work = true;
-    QueryDb_OnIndexed(queue, db, status, semantic_cache, working_files,
-                      &*response);
+      // Cache |method_id| so we can access it after moving |message|.
+      MethodType method_type = message->GetMethodType();
+      (*request_times)[method_type] = Timer();
+
+      queue->for_querydb.PushBack(std::move(message));
+
+      // If the message was to exit then querydb will take care of the actual
+      // exit. Stop reading from stdin since it might be detached.
+      if (method_type == kMethodType_Exit)
+        break;
+    }
+  }).detach();
+}
+
+void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
+                        MultiQueueWaiter* waiter) {
+  std::thread([=]() {
+    SetThreadName("stdout");
+    auto* queue = QueueManager::instance();
+
+    while (true) {
+      std::vector<Stdout_Request> messages = queue->for_stdout.DequeueAll();
+      if (messages.empty()) {
+        waiter->Wait(&queue->for_stdout);
+        continue;
+      }
+
+      for (auto& message : messages) {
+        if (ShouldDisplayMethodTiming(message.method)) {
+          Timer time = (*request_times)[message.method];
+          time.ResetAndPrint("[e2e] Running " + std::string(message.method));
+        }
+
+        fwrite(message.content.c_str(), message.content.size(), 1, stdout);
+        fflush(stdout);
+      }
+    }
+  }).detach();
+}
+
+void MainLoop(MultiQueueWaiter* querydb_waiter,
+              MultiQueueWaiter* indexer_waiter) {
+  Project project;
+  SemanticHighlightSymbolCache semantic_cache;
+  WorkingFiles working_files;
+  VFS vfs;
+  DiagnosticsEngine diag_engine;
+
+  ClangCompleteManager clang_complete(
+      &project, &working_files,
+      [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
+        diag_engine.Publish(&working_files, path, diagnostics);
+      },
+      [](lsRequestId id) {
+        if (id.Valid()) {
+          Out_Error out;
+          out.id = id;
+          out.error.code = lsErrorCodes::InternalError;
+          out.error.message =
+              "Dropping completion request; a newer request "
+              "has come in that will be serviced instead.";
+          QueueManager::WriteStdout(kMethodType_Unknown, out);
+        }
+      });
+
+  IncludeComplete include_complete(&project);
+  auto global_code_complete_cache = std::make_unique<CodeCompleteCache>();
+  auto non_global_code_complete_cache = std::make_unique<CodeCompleteCache>();
+  auto signature_cache = std::make_unique<CodeCompleteCache>();
+  QueryDatabase db;
+
+  // Setup shared references.
+  for (MessageHandler* handler : *MessageHandler::message_handlers) {
+    handler->db = &db;
+    handler->waiter = indexer_waiter;
+    handler->project = &project;
+    handler->diag_engine = &diag_engine;
+    handler->vfs = &vfs;
+    handler->semantic_cache = &semantic_cache;
+    handler->working_files = &working_files;
+    handler->clang_complete = &clang_complete;
+    handler->include_complete = &include_complete;
+    handler->global_code_complete_cache = global_code_complete_cache.get();
+    handler->non_global_code_complete_cache =
+        non_global_code_complete_cache.get();
+    handler->signature_cache = signature_cache.get();
   }
 
-  return did_work;
+  // Run query db main loop.
+  SetThreadName("querydb");
+  auto* queue = QueueManager::instance();
+  while (true) {
+    std::vector<std::unique_ptr<InMessage>> messages =
+        queue->for_querydb.DequeueAll();
+    bool did_work = messages.size();
+    for (auto& message : messages) {
+      // TODO: Consider using std::unordered_map to lookup the handler
+      for (MessageHandler* handler : *MessageHandler::message_handlers) {
+        if (handler->GetMethodType() == message->GetMethodType()) {
+          handler->Run(std::move(message));
+          break;
+        }
+      }
+
+      if (message)
+        LOG_S(ERROR) << "No handler for " << message->GetMethodType();
+    }
+
+    for (int i = 80; i--;) {
+      std::optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
+      if (!response)
+        break;
+      did_work = true;
+      QueryDb_OnIndexed(queue, &db, &semantic_cache, &working_files, &*response);
+    }
+
+    // Cleanup and free any unused memory.
+    FreeUnusedMemory();
+
+    if (!did_work) {
+      auto* queue = QueueManager::instance();
+      querydb_waiter->Wait(&queue->on_indexed, &queue->for_querydb);
+    }
+  }
 }

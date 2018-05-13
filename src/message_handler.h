@@ -17,7 +17,6 @@ struct Config;
 class DiagnosticsEngine;
 struct VFS;
 struct ImportManager;
-struct ImportPipelineStatus;
 struct IncludeComplete;
 struct MultiQueueWaiter;
 struct Project;
@@ -108,7 +107,6 @@ struct MessageHandler {
   DiagnosticsEngine* diag_engine = nullptr;
   VFS* vfs = nullptr;
   ImportManager* import_manager = nullptr;
-  ImportPipelineStatus* import_pipeline_status = nullptr;
   SemanticHighlightSymbolCache* semantic_cache = nullptr;
   WorkingFiles* working_files = nullptr;
   ClangCompleteManager* clang_complete = nullptr;

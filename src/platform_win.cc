@@ -3,8 +3,6 @@
 
 #include "utils.h"
 
-#include <loguru.hpp>
-
 #include <Windows.h>
 #include <direct.h>
 #include <fcntl.h>
@@ -16,22 +14,6 @@
 #include <algorithm>
 #include <cassert>
 #include <string>
-
-void PlatformInit() {
-  // We need to write to stdout in binary mode because in Windows, writing
-  // \n will implicitly write \r\n. Language server API will ignore a
-  // \r\r\n split request.
-  _setmode(_fileno(stdout), O_BINARY);
-  _setmode(_fileno(stdin), O_BINARY);
-}
-
-// See
-// https://stackoverflow.com/questions/143174/how-do-i-get-the-directory-that-a-program-is-running-from
-std::string GetExecutablePath() {
-  char result[MAX_PATH] = {0};
-  GetModuleFileName(NULL, result, MAX_PATH);
-  return NormalizePath(result);
-}
 
 std::string NormalizePath(const std::string& path) {
   DWORD retval = 0;
