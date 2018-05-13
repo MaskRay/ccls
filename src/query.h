@@ -3,9 +3,8 @@
 #include "indexer.h"
 #include "serializer.h"
 
-#include <sparsepp/spp.h>
-
-#include <forward_list>
+#include <llvm/ADT/DenseMap.h>
+#include <llvm/ADT/SmallVector.h>
 
 struct QueryFile;
 struct QueryType;
@@ -69,7 +68,7 @@ using UsrUpdate =
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
   int symbol_idx = -1;
-  std::forward_list<Def> def;
+  llvm::SmallVector<Def, 1> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
@@ -78,7 +77,7 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
 struct QueryType : QueryEntity<QueryType, TypeDef> {
   Usr usr;
   int symbol_idx = -1;
-  std::forward_list<Def> def;
+  llvm::SmallVector<Def, 1> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
@@ -88,7 +87,7 @@ struct QueryType : QueryEntity<QueryType, TypeDef> {
 struct QueryVar : QueryEntity<QueryVar, VarDef> {
   Usr usr;
   int symbol_idx = -1;
-  std::forward_list<Def> def;
+  llvm::SmallVector<Def, 1> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
 };
@@ -138,9 +137,9 @@ struct QueryDatabase {
 
   std::vector<QueryFile> files;
   std::unordered_map<std::string, int> name2file_id;
-  spp::sparse_hash_map<Usr, QueryFunc> usr2func;
-  spp::sparse_hash_map<Usr, QueryType> usr2type;
-  spp::sparse_hash_map<Usr, QueryVar> usr2var;
+  llvm::DenseMap<Usr, QueryFunc> usr2func;
+  llvm::DenseMap<Usr, QueryType> usr2type;
+  llvm::DenseMap<Usr, QueryVar> usr2var;
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);

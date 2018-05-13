@@ -35,15 +35,17 @@ using namespace llvm::opt;
 #include <vector>
 
 struct CompileCommandsEntry {
-  fs::path directory;
+  std::string directory;
   std::string file;
   std::string command;
   std::vector<std::string> args;
 
-  fs::path ResolveIfRelative(fs::path path) const {
-    if (path.is_absolute())
+  std::string ResolveIfRelative(std::string path) const {
+    if (sys::path::is_absolute(path))
       return path;
-    return directory / path;
+    SmallString<256> Ret;
+    sys::path::append(Ret, directory, path);
+    return Ret.str();
   }
 };
 MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
@@ -56,7 +58,7 @@ struct ProjectConfig {
   std::unordered_set<std::string> quote_dirs;
   std::unordered_set<std::string> angle_dirs;
   std::vector<std::string> extra_flags;
-  fs::path project_dir;
+  std::string project_dir;
   ProjectMode mode = ProjectMode::CompileCommandsJson;
 };
 
@@ -72,7 +74,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     const CompileCommandsEntry& entry) {
   Project::Entry result;
   result.filename = entry.file;
-  const std::string base_name = fs::path(entry.file).filename();
+  const std::string base_name = sys::path::filename(entry.file);
 
   // Expand %c %cpp %clang
   std::vector<std::string> args;
@@ -145,7 +147,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (!Args.hasArg(OPT_resource_dir))
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);
   if (!Args.hasArg(OPT_working_directory))
-    args.push_back("-working-directory=" + entry.directory.string());
+    args.push_back("-working-directory=" + entry.directory);
 
   // There could be a clang version mismatch between what the project uses and
   // what ccls uses. Make sure we do not emit warnings for mismatched options.
@@ -176,10 +178,11 @@ std::vector<std::string> ReadCompilerArgumentsFromFile(
 std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
   std::vector<Project::Entry> result;
   config->mode = ProjectMode::DotCcls;
-  LOG_IF_S(WARNING, !fs::exists(config->project_dir / ".ccls") &&
-                        config->extra_flags.empty())
-      << "ccls has no clang arguments. Considering adding either a "
-         "compile_commands.json or .ccls file. See the ccls README for "
+  SmallString<256> Path;
+  sys::path::append(Path, config->project_dir, ".ccls");
+  LOG_IF_S(WARNING, !sys::fs::exists(Path) && config->extra_flags.empty())
+      << "ccls has no clang arguments. Use either "
+         "compile_commands.json or .ccls, See ccls README for "
          "more information.";
 
   std::unordered_map<std::string, std::vector<std::string>> folder_args;
@@ -190,21 +193,20 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig* config) {
                    [&folder_args, &files](const std::string& path) {
                      if (SourceFileLanguage(path) != LanguageId::Unknown) {
                        files.push_back(path);
-                     } else if (fs::path(path).filename() == ".ccls") {
+                     } else if (sys::path::filename(path) == ".ccls") {
                        LOG_S(INFO) << "Using .ccls arguments from " << path;
-                       folder_args.emplace(
-                           fs::path(path).parent_path().string(),
-                           ReadCompilerArgumentsFromFile(path));
+                       folder_args.emplace(sys::path::parent_path(path),
+                                           ReadCompilerArgumentsFromFile(path));
                      }
                    });
 
-  const std::string project_dir = config->project_dir.string();
+  const std::string& project_dir = config->project_dir;
   const auto& project_dir_args = folder_args[project_dir];
   LOG_IF_S(INFO, !project_dir_args.empty())
       << "Using .ccls arguments " << StringJoin(project_dir_args);
 
-  auto GetCompilerArgumentForFile = [&project_dir, &folder_args](fs::path cur) {
-    while (!(cur = cur.parent_path()).empty()) {
+  auto GetCompilerArgumentForFile = [&project_dir, &folder_args](std::string cur) {
+    while (!(cur = sys::path::parent_path(cur)).empty()) {
       auto it = folder_args.find(cur);
       if (it != folder_args.end())
         return it->second;
@@ -235,16 +237,20 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     ProjectConfig* project,
     const std::string& opt_compilation_db_dir) {
   // If there is a .ccls file always load using directory listing.
-  if (fs::exists(project->project_dir / ".ccls"))
+  SmallString<256> Path;
+  sys::path::append(Path, project->project_dir, ".ccls");
+  if (sys::fs::exists(Path))
     return LoadFromDirectoryListing(project);
 
   // If |compilationDatabaseCommand| is specified, execute it to get the compdb.
-  fs::path comp_db_dir;
+  std::string comp_db_dir;
+  Path.clear();
   if (g_config->compilationDatabaseCommand.empty()) {
     project->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
-    comp_db_dir = opt_compilation_db_dir.empty() ? project->project_dir.string()
+    comp_db_dir = opt_compilation_db_dir.empty() ? project->project_dir
                                                  : opt_compilation_db_dir;
+    sys::path::append(Path, comp_db_dir, "compile_commands.json");
   } else {
     project->mode = ProjectMode::ExternalCommand;
 #ifdef _WIN32
@@ -254,6 +260,7 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     if (!mkdtemp(tmpdir))
       return {};
     comp_db_dir = tmpdir;
+    sys::path::append(Path, comp_db_dir, "compile_commands.json");
     rapidjson::StringBuffer input;
     rapidjson::Writer<rapidjson::StringBuffer> writer(input);
     JsonWriter json_writer(&writer);
@@ -262,14 +269,12 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
         std::vector<std::string>{g_config->compilationDatabaseCommand,
                                  project->project_dir},
         input.GetString());
-    FILE* fout = fopen((comp_db_dir / "compile_commands.json").c_str(), "wb");
+    FILE* fout = fopen(Path.c_str(), "wb");
     fwrite(contents.c_str(), contents.size(), 1, fout);
     fclose(fout);
 #endif
   }
 
-  fs::path comp_db_path = comp_db_dir / "compile_commands.json";
-  LOG_S(INFO) << "Trying to load " << comp_db_path.string();
   CXCompilationDatabase_Error cx_db_load_error;
   CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
       comp_db_dir.c_str(), &cx_db_load_error);
@@ -277,16 +282,17 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 #ifdef _WIN32
   // TODO
 #else
-    unlink(comp_db_path.c_str());
+    unlink(Path.c_str());
     rmdir(comp_db_dir.c_str());
 #endif
   }
-
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
-    LOG_S(INFO) << "Unable to load " << comp_db_path.string()
+    LOG_S(INFO) << "unable to load " << Path.c_str()
                 << "; using directory listing instead.";
     return LoadFromDirectoryListing(project);
   }
+
+  LOG_S(INFO) << "loaded " << Path.c_str();
 
   Timer clang_time;
   Timer our_time;
@@ -437,13 +443,12 @@ Project::Entry Project::FindCompilationEntryForFile(
 
     // |best_entry| probably has its own path in the arguments. We need to remap
     // that path to the new filename.
-    fs::path best_entry_base_name = fs::path(best_entry->filename).filename();
+    std::string best_entry_base_name = sys::path::filename(best_entry->filename);
     for (std::string& arg : result.args) {
       try {
         if (arg == best_entry->filename ||
-            fs::path(arg).filename() == best_entry_base_name) {
+            sys::path::filename(arg) == best_entry_base_name)
           arg = filename;
-        }
       } catch (...) {
       }
     }
