@@ -11,7 +11,7 @@ set(CLANG_ARCHIVE_EXT .tar.xz)
 if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
 
   set(CLANG_ARCHIVE_NAME
-      clang+llvm-${CLANG_VERSION}-x86_64-linux-gnu-ubuntu-14.04)
+      clang+llvm-${CLANG_VERSION}-x86_64-linux-gnu-ubuntu-16.04)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
 
