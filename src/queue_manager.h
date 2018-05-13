@@ -1,7 +1,6 @@
 #pragma once
 
 #include "method.h"
-#include "performance.h"
 #include "query.h"
 #include "threaded_queue.h"
 

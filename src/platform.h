@@ -6,9 +6,6 @@
 #include <string_view>
 #include <vector>
 
-void PlatformInit();
-
-std::string GetExecutablePath();
 std::string NormalizePath(const std::string& path);
 
 void SetThreadName(const char* name);

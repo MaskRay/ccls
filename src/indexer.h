@@ -8,7 +8,6 @@
 #include "lsp.h"
 #include "maybe.h"
 #include "nt_string.h"
-#include "performance.h"
 #include "position.h"
 #include "serializer.h"
 #include "symbol.h"

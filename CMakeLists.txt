@@ -34,6 +34,9 @@ if(NOT CYGWIN)
   set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
 endif()
 
+# To link against LLVM libraries (usually compiled with -fno-rtti)
+target_compile_options(ccls PRIVATE -fno-rtti)
+
 # CMake sets MSVC for both MSVC and Clang(Windows)
 if(MSVC)
   # Common MSVC/Clang(Windows) options
@@ -205,12 +208,12 @@ target_sources(ccls PRIVATE
                src/clang_indexer.cc
                src/clang_translation_unit.cc
                src/clang_utils.cc
-               src/command_line.cc
                src/config.cc
                src/diagnostics_engine.cc
                src/file_consumer.cc
                src/filesystem.cc
                src/fuzzy_match.cc
+               src/main.cc
                src/import_pipeline.cc
                src/include_complete.cc
                src/method.cc
