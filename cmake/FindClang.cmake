@@ -70,6 +70,7 @@ set(_Clang_REQUIRED_VARS Clang_LIBRARY Clang_INCLUDE_DIR Clang_EXECUTABLE
 
 _Clang_find_library(Clang_LIBRARY clang)
 _Clang_find_add_library(clangDriver)
+_Clang_find_add_library(clangBasic)
 _Clang_find_add_library(LLVMOption)
 _Clang_find_add_library(LLVMSupport)
 _Clang_find_add_library(LLVMDemangle)

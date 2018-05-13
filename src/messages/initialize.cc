@@ -1,6 +1,5 @@
 #include "cache_manager.h"
 #include "diagnostics_engine.h"
-#include "filesystem.hh"
 #include "import_pipeline.h"
 #include "include_complete.h"
 #include "message_handler.h"
@@ -10,6 +9,9 @@
 #include "serializers/json.h"
 #include "timer.h"
 #include "working_files.h"
+
+#include "filesystem.hh"
+using namespace llvm;
 
 #include <loguru.hpp>
 
@@ -492,10 +494,10 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       config->projectRoot = project_path;
       // Create two cache directories for files inside and outside of the
       // project.
-      fs::create_directories(config->cacheDirectory +
-                             EscapeFileName(config->projectRoot));
-      fs::create_directories(config->cacheDirectory + '@' +
-                             EscapeFileName(config->projectRoot));
+      sys::fs::create_directories(config->cacheDirectory +
+                                  EscapeFileName(config->projectRoot));
+      sys::fs::create_directories(config->cacheDirectory + '@' +
+                                  EscapeFileName(config->projectRoot));
 
       g_config = std::move(config);
       Timer time;

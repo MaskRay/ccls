@@ -11,7 +11,7 @@ Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym);
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
 // for each id.
 template <typename Q>
-std::vector<Use> GetDeclarations(spp::sparse_hash_map<Usr, Q>& usr2entity,
+std::vector<Use> GetDeclarations(llvm::DenseMap<Usr, Q>& usr2entity,
                                  const std::vector<Usr>& usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
@@ -135,7 +135,7 @@ void EachOccurrenceWithParent(QueryDatabase* db,
 }
 
 template <typename Q, typename Fn>
-void EachDefinedEntity(spp::sparse_hash_map<Usr, Q>& collection,
+void EachDefinedEntity(llvm::DenseMap<Usr, Q>& collection,
                        const std::vector<Usr>& usrs,
                        Fn&& fn) {
   for (Usr usr : usrs) {

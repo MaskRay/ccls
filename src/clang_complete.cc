@@ -1,9 +1,11 @@
 #include "clang_complete.h"
 
 #include "clang_utils.h"
-#include "filesystem.hh"
 #include "platform.h"
 #include "timer.h"
+
+#include "filesystem.hh"
+using namespace llvm;
 
 #include <loguru.hpp>
 
@@ -29,8 +31,9 @@ unsigned Flags() {
 }
 
 std::string StripFileType(const std::string& path) {
-  fs::path p(path);
-  return p.parent_path() / p.stem();
+  SmallString<128> Ret;
+  sys::path::append(Ret, sys::path::parent_path(path), sys::path::stem(path));
+  return Ret.str();
 }
 
 unsigned GetCompletionPriority(const CXCompletionString& str,

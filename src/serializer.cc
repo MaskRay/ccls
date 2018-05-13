@@ -160,7 +160,7 @@ void Reflect(Writer& visitor, IndexInclude& value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(line);
   if (gTestOutputMode) {
-    std::string basename = fs::path(value.resolved_path).filename();
+    std::string basename = llvm::sys::path::filename(value.resolved_path);
     if (!StartsWith(value.resolved_path, "&"))
       basename = "&" + basename;
     REFLECT_MEMBER2("resolved_path", basename);
