@@ -1,6 +1,7 @@
 #include "utils.h"
 
 #include "filesystem.hh"
+using namespace llvm;
 #include "platform.h"
 
 #include <doctest/doctest.h>
@@ -137,12 +138,10 @@ void WriteToFile(const std::string& filename, const std::string& content) {
 }
 
 std::optional<int64_t> LastWriteTime(const std::string& filename) {
-  std::error_code ec;
-  auto ftime = fs::last_write_time(filename, ec);
-  if (ec) return std::nullopt;
-  return std::chrono::time_point_cast<std::chrono::nanoseconds>(ftime)
-      .time_since_epoch()
-      .count();
+  sys::fs::file_status Status;
+  if (sys::fs::status(filename, Status))
+    return {};
+  return Status.getLastModificationTime().time_since_epoch().count();
 }
 
 std::string GetDefaultResourceDirectory() {

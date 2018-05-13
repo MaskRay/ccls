@@ -91,10 +91,9 @@ if(NOT SYSTEM_CLANG)
     target_compile_options(ccls PRIVATE -nostdinc++ -cxx-isystem ${CLANG_ROOT}/include/c++/v1)
     if(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
       # Don't use -stdlib=libc++ because while ccls is linked with libc++, bundled clang+llvm require libstdc++
-      target_link_libraries(ccls PRIVATE -L${CLANG_ROOT}/lib c++ c++experimental c++abi)
-    else()
-      # FreeBSD uses system libcxxrt.a and does not need libc++abi.
-      target_link_libraries(ccls PRIVATE -stdlib=libc++ -L${CLANG_ROOT}/lib c++experimental)
+      target_link_libraries(ccls PRIVATE -L${CLANG_ROOT}/lib c++ c++abi)
+
+      # FreeBSD defaults to -stdlib=libc++ and uses system libcxxrt.a
     endif()
   endif()
 
@@ -121,25 +120,17 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
   target_link_libraries(ccls PRIVATE -lc++experimental)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-  if(NOT CLANG_USE_BUNDLED_LIBC++)
-    target_link_libraries(ccls PRIVATE -lstdc++fs)
-  endif()
   # loguru calls dladdr
   target_link_libraries(ccls PRIVATE ${CMAKE_DL_LIBS})
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
   # loguru::stacktrace_as_stdstring calls backtrace_symbols
-  # sparsepp/spp_memory.h uses libkvm
   # src/platform_posix.cc uses libthr
   find_package(Backtrace REQUIRED)
-  target_link_libraries(ccls PRIVATE ${Backtrace_LIBRARIES} kvm thr)
+  target_link_libraries(ccls PRIVATE ${Backtrace_LIBRARIES} thr)
   if(SYSTEM_CLANG)
     target_link_libraries(ccls PRIVATE c++experimental)
   endif()
-
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-  # sparsepp/spp_memory.h uses LibPsapi
-  target_link_libraries(ccls PRIVATE Psapi)
 endif()
 
 ### Definitions
@@ -156,7 +147,6 @@ target_include_directories(ccls PRIVATE
                            src
                            third_party
                            third_party/rapidjson/include
-                           third_party/sparsepp
                            third_party/loguru
                            third_party/doctest)
 

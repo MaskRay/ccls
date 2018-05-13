@@ -154,7 +154,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
 
 // Returns true if an element with the same file is found.
 template <typename Q>
-bool TryReplaceDef(std::forward_list<Q>& def_list, Q&& def) {
+bool TryReplaceDef(llvm::SmallVectorImpl<Q>& def_list, Q&& def) {
   for (auto& def1 : def_list)
     if (def1.spell->file_id == def.spell->file_id) {
       def1 = std::move(def);
@@ -262,18 +262,22 @@ void QueryDatabase::RemoveUsrs(
     case SymbolKind::Func: {
       for (auto usr : to_remove) {
         QueryFunc& func = Func(usr);
-        func.def.remove_if([=](const QueryFunc::Def& def) {
+        auto it = llvm::find_if(func.def, [=](const QueryFunc::Def& def) {
           return def.spell->file_id == file_id;
         });
+        if (it != func.def.end())
+          func.def.erase(it);
       }
       break;
     }
     case SymbolKind::Var: {
       for (auto usr : to_remove) {
         QueryVar& var = Var(usr);
-        var.def.remove_if([=](const QueryVar::Def& def) {
+        auto it = llvm::find_if(var.def, [=](const QueryVar::Def& def) {
           return def.spell->file_id == file_id;
         });
+        if (it != var.def.end())
+          var.def.erase(it);
       }
       break;
     }
@@ -348,7 +352,7 @@ void QueryDatabase::Update(int file_id,
     QueryFunc& existing = Func(u.first);
     existing.usr = u.first;
     if (!TryReplaceDef(existing.def, std::move(def))) {
-      existing.def.push_front(std::move(def));
+      existing.def.push_back(std::move(def));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Func, u.first);
     }
   }
@@ -364,7 +368,7 @@ void QueryDatabase::Update(int file_id,
     QueryType& existing = Type(u.first);
     existing.usr = u.first;
     if (!TryReplaceDef(existing.def, std::move(def))) {
-      existing.def.push_front(std::move(def));
+      existing.def.push_back(std::move(def));
       UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, u.first);
     }
   }
@@ -380,7 +384,7 @@ void QueryDatabase::Update(int file_id,
     QueryVar& existing = Var(u.first);
     existing.usr = u.first;
     if (!TryReplaceDef(existing.def, std::move(def))) {
-      existing.def.push_front(std::move(def));
+      existing.def.push_back(std::move(def));
       if (!existing.def.front().is_local())
         UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, u.first);
     }

@@ -1,10 +1,10 @@
 #pragma once
 
-#include <experimental/filesystem>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Path.h>
+
 #include <functional>
 #include <string>
-
-namespace fs = std::experimental::filesystem;
 
 void GetFilesInFolder(std::string folder,
                       bool recursive,
