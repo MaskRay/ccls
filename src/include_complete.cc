@@ -8,6 +8,8 @@
 
 #include <thread>
 
+#include "standard_headers.inc"
+
 namespace {
 
 struct CompletionCandidate {
@@ -95,6 +97,9 @@ void IncludeComplete::Rescan() {
   completion_items.clear();
   absolute_path_to_completion_item.clear();
   inserted_paths.clear();
+
+  for (auto& header : kStandardHeaders)
+    completion_items.push_back(BuildCompletionItem(header, true, true));
 
   if (!match_ && (g_config->completion.includeWhitelist.size() ||
                   g_config->completion.includeBlacklist.size()))
