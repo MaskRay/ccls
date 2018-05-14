@@ -12,6 +12,7 @@ option(SYSTEM_CLANG "Use system installation of Clang instead of \
        downloading Clang" OFF)
 option(ASAN "Compile with address sanitizers" OFF)
 option(CLANG_USE_BUNDLED_LIBC++ "Let Clang use bundled libc++" OFF)
+option(USE_SHARED_LLVM "Link against libLLVM.so instead separate LLVM{Option,Support,...}" OFF)
 
 # Sources for the executable are specified at end of CMakeLists.txt
 add_executable(ccls "")
@@ -105,11 +106,7 @@ endif()
 
 # See cmake/FindClang.cmake
 find_package(Clang ${CLANG_VERSION} REQUIRED)
-find_package(Curses REQUIRED)
 target_link_libraries(ccls PRIVATE Clang::Clang)
-if(NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
-  target_link_libraries(ccls PRIVATE Clang::Clang ${CURSES_LIBRARIES})
-endif()
 
 # Enable threading support
 set(THREADS_PREFER_PTHREAD_FLAG ON)
