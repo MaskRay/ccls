@@ -776,7 +776,6 @@ std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(
     // If this request is for a completion, we should move it to
     // |completion_sessions|.
     if (mark_as_completion) {
-      assert(!completion_sessions_.TryGet(filename));
       preloaded_sessions_.TryTake(filename);
       completion_sessions_.Insert(filename, preloaded_session);
     }
