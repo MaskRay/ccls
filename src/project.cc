@@ -95,25 +95,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   if (args.empty())
     return result;
 
-  std::string first_arg = args[0];
-  // Windows' filesystem is not case sensitive, so we compare only
-  // the lower case variant.
-  std::transform(first_arg.begin(), first_arg.end(), first_arg.begin(),
-                 tolower);
-  bool clang_cl = strstr(first_arg.c_str(), "clang-cl") ||
-                  strstr(first_arg.c_str(), "cl.exe");
-  // Clang only cares about the last --driver-mode flag, so the loop
-  // iterates in reverse to find the last one as soon as possible
-  // in case of multiple --driver-mode flags.
-  for (int i = args.size() - 1; i >= 0; --i) {
-    if (strstr(args[i].c_str(), "--dirver-mode=")) {
-      clang_cl = clang_cl || strstr(args[i].c_str(), "--driver-mode=cl");
-      break;
-    }
-  }
-  // Compiler driver.
-  result.args.push_back(args[0]);
-
   std::unique_ptr<OptTable> Opts = driver::createDriverOptTable();
   unsigned MissingArgIndex, MissingArgCount;
   std::vector<const char*> cargs;

@@ -44,10 +44,6 @@ struct ClangCompleteManager {
   using OnDiagnostic =
       std::function<void(std::string path,
                          std::vector<lsDiagnostic> diagnostics)>;
-  using OnIndex = std::function<void(ClangTranslationUnit* tu,
-                                     const std::vector<CXUnsavedFile>& unsaved,
-                                     const std::string& path,
-                                     const std::vector<std::string>& args)>;
   using OnComplete =
       std::function<void(const std::vector<lsCompletionItem>& results,
                          bool is_cached_result)>;
