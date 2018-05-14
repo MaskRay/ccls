@@ -365,7 +365,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
             lock.lock();
           std::string quote = result.match[5];
           for (auto& item : include_complete->completion_items)
-            if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
+            // if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
                out.result.items.push_back(item);
         }
         FilterAndSortCompletionResponse(&out, result.pattern, has_open_paren);
