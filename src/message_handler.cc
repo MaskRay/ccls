@@ -245,15 +245,14 @@ void EmitSemanticHighlighting(QueryDatabase* db,
             detailed_name.substr(0, detailed_name.find('<'));
         int16_t start_line = sym.range.start.line;
         int16_t start_col = sym.range.start.column;
-        if (start_line >= 0 && start_line < working_file->index_lines.size()) {
-          std::string_view line = working_file->index_lines[start_line];
-          sym.range.end.line = start_line;
-          if (start_col + concise_name.size() <= line.size() &&
-              line.compare(start_col, concise_name.size(), concise_name) == 0)
-            sym.range.end.column = start_col + concise_name.size();
-          else
-            continue;  // applies to for loop
-        }
+        if (start_line < 0 || start_line >= working_file->index_lines.size())
+          continue;
+        std::string_view line = working_file->index_lines[start_line];
+        sym.range.end.line = start_line;
+        if (!(start_col + concise_name.size() <= line.size() &&
+              line.compare(start_col, concise_name.size(), concise_name) == 0))
+          continue;
+        sym.range.end.column = start_col + concise_name.size();
         break;
       }
       case SymbolKind::Type:

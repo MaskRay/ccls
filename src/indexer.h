@@ -13,6 +13,8 @@
 #include "symbol.h"
 #include "utils.h"
 
+#include <llvm/ADT/StringMap.h>
+
 #include <stdint.h>
 #include <algorithm>
 #include <optional>
@@ -297,7 +299,7 @@ struct IndexFile {
   std::vector<Range> skipped_by_preprocessor;
 
   std::vector<IndexInclude> includes;
-  std::unordered_map<std::string, int64_t> dependencies;
+  llvm::StringMap<int64_t> dependencies;
   std::unordered_map<Usr, IndexFunc> usr2func;
   std::unordered_map<Usr, IndexType> usr2type;
   std::unordered_map<Usr, IndexVar> usr2var;
