@@ -10,6 +10,8 @@
 
 #include <stdexcept>
 
+using namespace llvm;
+
 bool gTestOutputMode = false;
 
 //// Elementary types
@@ -147,6 +149,49 @@ void Reflect(Reader& visitor, JsonNull& value) {
 
 void Reflect(Writer& visitor, JsonNull& value) {
   visitor.Null();
+}
+
+// std::unordered_map
+template <typename V>
+void Reflect(Reader& visitor, std::unordered_map<Usr, V>& map) {
+  visitor.IterArray([&](Reader& entry) {
+    V val;
+    Reflect(entry, val);
+    auto usr = val.usr;
+    map[usr] = std::move(val);
+  });
+}
+template <typename V>
+void Reflect(Writer& visitor, std::unordered_map<Usr, V>& map) {
+  std::vector<std::pair<uint64_t, V>> xs(map.begin(), map.end());
+  std::sort(xs.begin(), xs.end(),
+            [](const auto& a, const auto& b) { return a.first < b.first; });
+  visitor.StartArray(xs.size());
+  for (auto& it : xs)
+    Reflect(visitor, it.second);
+  visitor.EndArray();
+}
+
+// Used by IndexFile::dependencies. Timestamps are emitted for Binary.
+void Reflect(Reader& visitor, StringMap<int64_t>& map) {
+  visitor.IterArray([&](Reader& entry) {
+                      std::string name;
+    Reflect(entry, name);
+    if (visitor.Format() == SerializeFormat::Binary)
+      Reflect(entry, map[name]);
+    else
+      map[name] = 0;
+  });
+}
+void Reflect(Writer& visitor, StringMap<int64_t>& map) {
+  visitor.StartArray(map.size());
+  for (auto& it : map) {
+    std::string key = it.first();
+    Reflect(visitor, key);
+    if (visitor.Format() == SerializeFormat::Binary)
+      Reflect(visitor, it.second);
+  }
+  visitor.EndArray();
 }
 
 // TODO: Move this to indexer.cc
@@ -311,27 +356,6 @@ void Reflect(Writer& visitor, SerializeFormat& value) {
       visitor.String("json");
       break;
   }
-}
-
-void Reflect(Reader& visitor, std::unordered_map<std::string, int64_t>& map) {
-  visitor.IterArray([&](Reader& entry) {
-                      std::string name;
-    Reflect(entry, name);
-    if (visitor.Format() == SerializeFormat::Binary)
-      Reflect(entry, map[name]);
-    else
-      map[name] = 0;
-  });
-}
-void Reflect(Writer& visitor, std::unordered_map<std::string, int64_t>& map) {
-  visitor.StartArray(map.size());
-  for (auto& it : map) {
-    std::string key = it.first;
-    Reflect(visitor, key);
-    if (visitor.Format() == SerializeFormat::Binary)
-      Reflect(visitor, it.second);
-  }
-  visitor.EndArray();
 }
 
 std::string Serialize(SerializeFormat format, IndexFile& file) {

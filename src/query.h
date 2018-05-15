@@ -3,7 +3,6 @@
 #include "indexer.h"
 #include "serializer.h"
 
-#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 
 struct QueryFile;
@@ -136,10 +135,10 @@ struct QueryDatabase {
   std::vector<SymbolIdx> symbols;
 
   std::vector<QueryFile> files;
-  std::unordered_map<std::string, int> name2file_id;
-  llvm::DenseMap<Usr, QueryFunc> usr2func;
-  llvm::DenseMap<Usr, QueryType> usr2type;
-  llvm::DenseMap<Usr, QueryVar> usr2var;
+  llvm::StringMap<int> name2file_id;
+  std::unordered_map<Usr, QueryFunc> usr2func;
+  std::unordered_map<Usr, QueryType> usr2type;
+  std::unordered_map<Usr, QueryVar> usr2var;
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);

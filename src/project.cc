@@ -16,6 +16,8 @@
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/Option/ArgList.h>
 #include <llvm/Option/OptTable.h>
+#include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/LineIterator.h>
 using namespace clang;
 using namespace llvm;
 using namespace llvm::opt;
@@ -29,7 +31,6 @@ using namespace llvm::opt;
 #include <unistd.h>
 #endif
 
-#include <fstream>
 #include <limits>
 #include <unordered_set>
 #include <vector>
@@ -145,14 +146,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
 std::vector<std::string> ReadCompilerArgumentsFromFile(
     const std::string& path) {
+  auto MBOrErr = MemoryBuffer::getFile(path);
+  if (!MBOrErr) return {};
   std::vector<std::string> args;
-  std::ifstream fin(path);
-  for (std::string line; std::getline(fin, line);) {
-    TrimInPlace(line);
-    if (line.empty() || StartsWith(line, "#"))
-      continue;
-    args.push_back(line);
-  }
+  for (line_iterator I(*MBOrErr.get(), true, '#'), E; I != E; ++I)
+    args.push_back(*I);
   return args;
 }
 

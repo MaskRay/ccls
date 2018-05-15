@@ -13,7 +13,6 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
 enum class SerializeFormat { Binary, Json };
@@ -281,31 +280,6 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
     Reflect(visitor, value);
   visitor.EndArray();
 }
-
-// std::unordered_map
-template <typename V>
-void Reflect(Reader& visitor, std::unordered_map<uint64_t, V>& map) {
-  visitor.IterArray([&](Reader& entry) {
-    V val;
-    Reflect(entry, val);
-    auto usr = val.usr;
-    map[usr] = std::move(val);
-  });
-}
-template <typename V>
-void Reflect(Writer& visitor, std::unordered_map<uint64_t, V>& map) {
-  std::vector<std::pair<uint64_t, V>> xs(map.begin(), map.end());
-  std::sort(xs.begin(), xs.end(),
-            [](const auto& a, const auto& b) { return a.first < b.first; });
-  visitor.StartArray(xs.size());
-  for (auto& it : xs)
-    Reflect(visitor, it.second);
-  visitor.EndArray();
-}
-
-// Used by IndexFile::dependencies. Timestamps are emitted for Binary.
-void Reflect(Reader& visitor, std::unordered_map<std::string, int64_t>& map);
-void Reflect(Writer& visitor, std::unordered_map<std::string, int64_t>& map);
 
 // ReflectMember
 

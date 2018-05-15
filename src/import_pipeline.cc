@@ -115,11 +115,11 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
                        path_to_index, entry.args, std::nullopt))
       reparse = 2;
     for (const auto& dep : prev->dependencies)
-      if (auto write_time1 = LastWriteTime(dep.first)) {
+      if (auto write_time1 = LastWriteTime(dep.first().str())) {
         if (dep.second < *write_time1) {
           reparse = 2;
           std::lock_guard<std::mutex> lock(vfs->mutex);
-          vfs->state[dep.first].stage = 0;
+          vfs->state[dep.first().str()].stage = 0;
         }
       } else
         reparse = 2;
@@ -134,8 +134,8 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
         request.is_interactive);
     }
     for (const auto& dep : dependencies)
-      if (vfs->Mark(dep.first, 0, 2)) {
-        prev = cache.RawCacheLoad(dep.first);
+      if (vfs->Mark(dep.first().str(), 0, 2)) {
+        prev = cache.RawCacheLoad(dep.first().str());
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         queue->on_indexed.PushBack(Index_OnIndexed(std::move(update), perf),
           request.is_interactive);
@@ -189,7 +189,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     if (entry.id >= 0) {
       std::lock_guard<std::mutex> lock(project->mutex_);
       for (auto& dep : curr->dependencies)
-        project->absolute_path_to_entry_index_[dep.first] = entry.id;
+        project->absolute_path_to_entry_index_[dep.first()] = entry.id;
     }
 
     // Build delta update.
@@ -388,7 +388,6 @@ void MainLoop(MultiQueueWaiter* querydb_waiter,
   }
 
   // Run query db main loop.
-  SetThreadName("querydb");
   auto* queue = QueueManager::instance();
   while (true) {
     std::vector<std::unique_ptr<InMessage>> messages =

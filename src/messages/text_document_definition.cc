@@ -155,7 +155,7 @@ struct Handler_TextDocumentDefinition
             auto pos = name.rfind(query);
             if (pos != std::string::npos) {
               std::get<0>(score) = int(name.size() - query.size());
-              std::get<1>(score) = -pos;
+              std::get<1>(score) = -int(pos);
             }
             if (score < best_score) {
               best_score = score;

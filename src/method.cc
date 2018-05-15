@@ -12,7 +12,7 @@ MethodType kMethodType_CclsPublishSemanticHighlighting =
 void Reflect(Reader& visitor, lsRequestId& value) {
   if (visitor.IsInt64()) {
     value.type = lsRequestId::kInt;
-    value.value = visitor.GetInt64();
+    value.value = int(visitor.GetInt64());
   } else if (visitor.IsInt()) {
     value.type = lsRequestId::kInt;
     value.value = visitor.GetInt();
