@@ -95,6 +95,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   }
   if (args.empty())
     return result;
+  args.insert(args.end(), config->extra_flags.begin(),
+              config->extra_flags.end());
 
   std::unique_ptr<OptTable> Opts = driver::createDriverOptTable();
   unsigned MissingArgIndex, MissingArgCount;
@@ -111,6 +113,11 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     config->angle_dirs.insert(entry.ResolveIfRelative(A->getValue()));
   for (const auto* A : Args.filtered(OPT_I, OPT_iquote))
     config->quote_dirs.insert(entry.ResolveIfRelative(A->getValue()));
+  for (const auto* A : Args.filtered(OPT_idirafter)) {
+    std::string dir = entry.ResolveIfRelative(A->getValue());
+    config->angle_dirs.insert(dir);
+    config->quote_dirs.insert(dir);
+  }
 
   for (size_t i = 1; i < args.size(); i++)
     // This is most likely the file path we will be passing to clang. The
@@ -121,10 +128,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       args[i] = entry.ResolveIfRelative(args[i]);
       continue;
     }
-
-  // We don't do any special processing on user-given extra flags.
-  for (const auto& flag : config->extra_flags)
-    args.push_back(flag);
 
   if (!Args.hasArg(OPT_resource_dir))
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);

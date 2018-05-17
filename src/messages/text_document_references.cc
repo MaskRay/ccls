@@ -2,7 +2,7 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 
-#include <loguru.hpp>
+#include <unordered_set>
 
 namespace {
 MethodType kMethodType = "textDocument/references";
@@ -10,8 +10,9 @@ MethodType kMethodType = "textDocument/references";
 struct In_TextDocumentReferences : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct lsReferenceContext {
+    bool base = true;
     // Include the declaration of the current symbol.
-    bool includeDeclaration;
+    bool includeDeclaration = false;
     // Include references with these |Role| bits set.
     Role role = Role::All;
   };
@@ -24,6 +25,7 @@ struct In_TextDocumentReferences : public RequestInMessage {
   Params params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentReferences::lsReferenceContext,
+                    base,
                     includeDeclaration,
                     role);
 MAKE_REFLECT_STRUCT(In_TextDocumentReferences::Params,
@@ -60,17 +62,47 @@ struct Handler_TextDocumentReferences
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position)) {
       // Found symbol. Return references.
-      EachOccurrenceWithParent(
-          db, sym, params.context.includeDeclaration,
-          [&](Use use, lsSymbolKind parent_kind) {
-            if (use.role & params.context.role)
-              if (std::optional<lsLocationEx> ls_loc =
-                      GetLsLocationEx(db, working_files, use, container)) {
-                if (container)
-                  ls_loc->parentKind = parent_kind;
-                out.result.push_back(*ls_loc);
-              }
-          });
+      std::unordered_set<Usr> seen;
+      seen.insert(sym.usr);
+      std::vector<Usr> stack{sym.usr};
+      if (sym.kind != SymbolKind::Func)
+        params.context.base = false;
+      while (stack.size()) {
+        sym.usr = stack.back();
+        stack.pop_back();
+        auto fn = [&](Use use, lsSymbolKind parent_kind) {
+          if (use.role & params.context.role)
+            if (std::optional<lsLocationEx> ls_loc =
+                    GetLsLocationEx(db, working_files, use, container)) {
+              if (container)
+                ls_loc->parentKind = parent_kind;
+              out.result.push_back(*ls_loc);
+            }
+        };
+        WithEntity(db, sym, [&](const auto& entity) {
+          lsSymbolKind parent_kind = lsSymbolKind::Unknown;
+          for (auto& def : entity.def)
+            if (def.spell) {
+              parent_kind = GetSymbolKind(db, sym);
+              if (params.context.base)
+                for (Usr usr : def.GetBases())
+                  if (!seen.count(usr)) {
+                    seen.insert(usr);
+                    stack.push_back(usr);
+                  }
+              break;
+            }
+          for (Use use : entity.uses)
+            fn(use, parent_kind);
+          if (params.context.includeDeclaration) {
+            for (auto& def : entity.def)
+              if (def.spell)
+                fn(*def.spell, parent_kind);
+            for (Use use : entity.declarations)
+              fn(use, parent_kind);
+          }
+        });
+      }
       break;
     }
 

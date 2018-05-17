@@ -14,7 +14,20 @@ a C/C++/Objective-C language server.
   * preprocessor skipped regions
   * semantic highlighting, including support for [rainbow semantic highlighting](https://medium.com/@evnbr/coding-in-color-3a6db2743a1e)
 
-It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strenghened, (see [wiki/FAQ]). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
+It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strenghened, (see [wiki/FAQ](../../wiki/FAQ). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
+
+The comparison with cquery as noted on 2018-05-17:
+
+|             | cquery                         | ccls                      |
+|------------ |--------------------------------|---------------------------|
+| third_party | more                           | fewer                     |
+| C++         | C++14                          | C++17                     |
+| clang API   | libclang (C)                   | libclang + clang/llvm C++ |
+| Filesystem  | AbsolutePath + custom routines | llvm/Support              |
+| index       |                                | slight enhancement        |
+| pipeline    | index merge+id remapping       | simpler and more robust   |
+
+cquery has system include path detection (through running the compiler driver) while ccls does not.
 
 # >>> [Getting started](../../wiki/Getting-started) (CLICK HERE) <<<
 

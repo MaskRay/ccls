@@ -69,13 +69,11 @@ struct MultiQueueWaiter {
 template <class T>
 struct ThreadedQueue : public BaseThreadQueue {
  public:
-  ThreadedQueue() : total_count_(0) {
+  ThreadedQueue() {
     owned_waiter_ = std::make_unique<MultiQueueWaiter>();
     waiter_ = owned_waiter_.get();
   }
-
-  explicit ThreadedQueue(MultiQueueWaiter* waiter)
-      : total_count_(0), waiter_(waiter) {}
+  explicit ThreadedQueue(MultiQueueWaiter* waiter) : waiter_(waiter) {}
 
   // Returns the number of elements in the queue. This is lock-free.
   size_t Size() const { return total_count_; }
@@ -90,10 +88,6 @@ struct ThreadedQueue : public BaseThreadQueue {
       (queue_.*push)(std::move(t));
     ++total_count_;
     waiter_->cv.notify_one();
-  }
-
-  void PushFront(T&& t, bool priority = false) {
-    Push<&std::deque<T>::push_front>(std::move(t), priority);
   }
 
   void PushBack(T&& t, bool priority = false) {
@@ -162,7 +156,7 @@ struct ThreadedQueue : public BaseThreadQueue {
 
   // Get the first element from the queue without blocking. Returns a null
   // value if the queue is empty.
-  std::optional<T> TryPopFrontHelper(int which) {
+  std::optional<T> TryPopFront() {
     std::lock_guard<std::mutex> lock(mutex_);
     auto execute = [&](std::deque<T>* q) {
       auto val = std::move(q->front());
@@ -170,34 +164,12 @@ struct ThreadedQueue : public BaseThreadQueue {
       --total_count_;
       return std::move(val);
     };
-    if (which & 2 && priority_.size())
-      return execute(&priority_);
-    if (which & 1 && queue_.size())
-      return execute(&queue_);
-    return std::nullopt;
-  }
-
-  std::optional<T> TryPopFront() { return TryPopFrontHelper(3); }
-
-  std::optional<T> TryPopBack() {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto execute = [&](std::deque<T>* q) {
-      auto val = std::move(q->back());
-      q->pop_back();
-      --total_count_;
-      return std::move(val);
-    };
-    // Reversed
-    if (queue_.size())
-      return execute(&queue_);
     if (priority_.size())
       return execute(&priority_);
+    if (queue_.size())
+      return execute(&queue_);
     return std::nullopt;
   }
-
-  std::optional<T> TryPopFrontLow() { return TryPopFrontHelper(1); }
-
-  std::optional<T> TryPopFrontHigh() { return TryPopFrontHelper(2); }
 
   template <typename Fn>
   void Iterate(Fn fn) {
@@ -211,7 +183,7 @@ struct ThreadedQueue : public BaseThreadQueue {
   mutable std::mutex mutex_;
 
  private:
-  std::atomic<int> total_count_;
+  std::atomic<int> total_count_{0};
   std::deque<T> priority_;
   std::deque<T> queue_;
   MultiQueueWaiter* waiter_;
