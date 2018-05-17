@@ -114,6 +114,7 @@ struct FuncDef : NameMixin<FuncDef> {
   lsSymbolKind kind = lsSymbolKind::Unknown;
   StorageClass storage = StorageClass::Invalid;
 
+  std::vector<Usr> GetBases() const { return bases; }
   bool operator==(const FuncDef& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && declaring_type == o.declaring_type &&
@@ -182,6 +183,7 @@ struct TypeDef : NameMixin<TypeDef> {
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
 
+  std::vector<Usr> GetBases() const { return bases; }
   bool operator==(const TypeDef& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && alias_of == o.alias_of && bases == o.bases &&
@@ -240,6 +242,7 @@ struct VarDef : NameMixin<VarDef> {
 
   bool is_local() const { return kind == lsSymbolKind::Variable; }
 
+  std::vector<Usr> GetBases() const { return {}; }
   bool operator==(const VarDef& o) const {
     return detailed_name == o.detailed_name && spell == o.spell &&
            extent == o.extent && type == o.type && kind == o.kind &&

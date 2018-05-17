@@ -110,30 +110,6 @@ void EachOccurrence(QueryDatabase* db,
 
 lsSymbolKind GetSymbolKind(QueryDatabase* db, SymbolIdx sym);
 
-template <typename Fn>
-void EachOccurrenceWithParent(QueryDatabase* db,
-                              SymbolIdx sym,
-                              bool include_decl,
-                              Fn&& fn) {
-  WithEntity(db, sym, [&](const auto& entity) {
-    lsSymbolKind parent_kind = lsSymbolKind::Unknown;
-    for (auto& def : entity.def)
-      if (def.spell) {
-        parent_kind = GetSymbolKind(db, sym);
-        break;
-      }
-    for (Use use : entity.uses)
-      fn(use, parent_kind);
-    if (include_decl) {
-      for (auto& def : entity.def)
-        if (def.spell)
-          fn(*def.spell, parent_kind);
-      for (Use use : entity.declarations)
-        fn(use, parent_kind);
-    }
-  });
-}
-
 template <typename Q, typename Fn>
 void EachDefinedEntity(std::unordered_map<Usr, Q>& collection,
                        const std::vector<Usr>& usrs,
