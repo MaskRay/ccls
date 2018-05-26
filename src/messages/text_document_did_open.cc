@@ -65,7 +65,7 @@ struct Handler_TextDocumentDidOpen
       QueueManager::instance()->index_request.PushBack(
           Index_Request(entry.filename,
                         params.args.size() ? params.args : entry.args,
-                        true /*is_interactive*/, params.textDocument.text),
+                        true /*is_interactive*/),
           true /* priority */);
 
       clang_complete->FlushSession(entry.filename);
