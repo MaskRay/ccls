@@ -6,17 +6,11 @@
 
 #include <sstream>
 
-Index_Request::Index_Request(
-    const std::string& path,
-    const std::vector<std::string>& args,
-    bool is_interactive,
-    const std::string& contents,
-    lsRequestId id)
-    : path(path),
-      args(args),
-      is_interactive(is_interactive),
-      contents(contents),
-      id(id) {}
+Index_Request::Index_Request(const std::string& path,
+                             const std::vector<std::string>& args,
+                             bool is_interactive,
+                             lsRequestId id)
+    : path(path), args(args), is_interactive(is_interactive), id(id) {}
 
 Index_OnIndexed::Index_OnIndexed(IndexUpdate&& update,
                                  PerformanceImportFile perf)

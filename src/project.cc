@@ -458,19 +458,13 @@ void Project::Index(QueueManager* queue,
                     WorkingFiles* wfiles,
                     lsRequestId id) {
   ForAllFilteredFiles([&](int i, const Project::Entry& entry) {
-    std::optional<std::string> content = ReadContent(entry.filename);
-    if (!content) {
-      LOG_S(ERROR) << "When loading project, canont read file "
-                   << entry.filename;
-      return;
-    }
     bool is_interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-    queue->index_request.PushBack(Index_Request(entry.filename, entry.args,
-                                                is_interactive, *content, id));
+    queue->index_request.PushBack(
+        Index_Request(entry.filename, entry.args, is_interactive, id));
   });
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
-  queue->index_request.PushBack(Index_Request("", {}, false, ""));
+  queue->index_request.PushBack(Index_Request("", {}, false));
 }
 
 TEST_SUITE("Project") {

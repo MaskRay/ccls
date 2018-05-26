@@ -2,6 +2,8 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 
+#include <unordered_set>
+
 namespace {
 MethodType kMethodType = "$ccls/inheritanceHierarchy";
 
@@ -79,19 +81,22 @@ bool ExpandHelper(MessageHandler* m,
                   int levels,
                   Q& entity) {
   const auto* def = entity.AnyDef();
-  if (!def) {
+  if (def) {
+    entry->name = def->Name(qualified);
+    if (def->spell) {
+      if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
+        entry->location = *loc;
+    }
+  } else if (!derived) {
     entry->numChildren = 0;
     return false;
   }
-  entry->name = def->Name(qualified);
-  if (def->spell) {
-    if (std::optional<lsLocation> loc =
-            GetLsLocation(m->db, m->working_files, *def->spell))
-      entry->location = *loc;
-  }
+  std::unordered_set<Usr> seen;
   if (derived) {
     if (levels > 0) {
       for (auto usr : entity.derived) {
+        if (seen.insert(usr).second)
+          continue;
         Out_CclsInheritanceHierarchy::Entry entry1;
         entry1.id = std::to_string(usr);
         entry1.usr = usr;
@@ -105,6 +110,8 @@ bool ExpandHelper(MessageHandler* m,
   } else {
     if (levels > 0) {
       for (auto usr : def->bases) {
+        if (seen.insert(usr).second)
+          continue;
         Out_CclsInheritanceHierarchy::Entry entry1;
         entry1.id = std::to_string(usr);
         entry1.usr = usr;

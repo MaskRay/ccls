@@ -267,12 +267,8 @@ struct lsTextDocumentClientCapabilities {
       // and `${3:foo}`. `$0` defines the final tab stop, it defaults to
       // the end of the snippet. Placeholders with equal identifiers are linked,
       // that is typing in one will update others too.
-      std::optional<bool> snippetSupport;
-    };
-
-    // The client supports the following `CompletionItem` specific
-    // capabilities.
-    std::optional<lsCompletionItem> completionItem;
+      bool snippetSupport = false;
+    } completionItem;
   } completion;
 
   struct lsGenericDynamicReg {
@@ -426,114 +422,110 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
   MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(In_InitializeRequest* request) override {
-    // Log initialization parameters.
-    rapidjson::StringBuffer output;
-    rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-    JsonWriter json_writer(&writer);
-    Reflect(json_writer, request->params.initializationOptions);
-    LOG_S(INFO) << "Init parameters: " << output.GetString();
-    std::unique_ptr<Config> config;
-
-    if (request->params.rootUri) {
-      std::string project_path =
-          NormalizePath(request->params.rootUri->GetPath());
-      LOG_S(INFO) << "[querydb] Initialize in directory " << project_path
-                  << " with uri " << request->params.rootUri->raw_uri;
-
-      {
-        if (request->params.initializationOptions)
-          config = std::make_unique<Config>(*request->params.initializationOptions);
-        else
-          config = std::make_unique<Config>();
-        rapidjson::Document reader;
-        reader.Parse(g_init_options.c_str());
-        if (!reader.HasParseError()) {
-          JsonReader json_reader{&reader};
-          try {
-            Reflect(json_reader, *config);
-          } catch (std::invalid_argument&) {
-            // This will not trigger because parse error is handled in
-            // MessageRegistry::Parse in lsp.cc
-          }
-        }
-
-        if (config->cacheDirectory.empty()) {
-          LOG_S(ERROR) << "cacheDirectory cannot be empty.";
-          exit(1);
-        } else {
-          config->cacheDirectory = NormalizePath(config->cacheDirectory);
-          EnsureEndsInSlash(config->cacheDirectory);
-        }
-      }
-
-      // Client capabilities
-      {
-        const auto& cap = request->params.capabilities.textDocument;
-        if (cap.completion.completionItem)
-          config->client.snippetSupport =
-              cap.completion.completionItem->snippetSupport.value_or(false);
-      }
-
-      // Ensure there is a resource directory.
-      if (config->clang.resourceDir.empty())
-        config->clang.resourceDir = GetDefaultResourceDirectory();
-      LOG_S(INFO) << "Using -resource-dir=" << config->clang.resourceDir;
-
-      // Send initialization before starting indexers, so we don't send a
-      // status update too early.
-      // TODO: query request->params.capabilities.textDocument and support
-      // only things the client supports.
-
-      Out_InitializeResponse out;
-      out.id = request->id;
-
-      QueueManager::WriteStdout(kMethodType, out);
-
-      // Set project root.
-      EnsureEndsInSlash(project_path);
-      config->projectRoot = project_path;
-      // Create two cache directories for files inside and outside of the
-      // project.
-      sys::fs::create_directories(config->cacheDirectory +
-                                  EscapeFileName(config->projectRoot));
-      sys::fs::create_directories(config->cacheDirectory + '@' +
-                                  EscapeFileName(config->projectRoot));
-
-      g_config = std::move(config);
-      Timer time;
-      diag_engine->Init();
-      semantic_cache->Init();
-
-      // Open up / load the project.
-      project->Load(project_path);
-      time.ResetAndPrint("[perf] Loaded compilation entries (" +
-                         std::to_string(project->entries.size()) + " files)");
-
-      // Start indexer threads. Start this after loading the project, as that
-      // may take a long time. Indexer threads will emit status/progress
-      // reports.
-      if (g_config->index.threads == 0)
-        g_config->index.threads = std::thread::hardware_concurrency();
-
-      LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
-      for (int i = 0; i < g_config->index.threads; i++) {
-        std::thread([=]() {
-          g_thread_id = i + 1;
-          std::string name = "indexer" + std::to_string(i);
-          SetThreadName(name.c_str());
-          Indexer_Main(diag_engine, vfs, project, working_files, waiter);
-        }).detach();
-      }
-
-      // Start scanning include directories before dispatching project
-      // files, because that takes a long time.
-      include_complete->Rescan();
-
-      time.Reset();
-      project->Index(QueueManager::instance(), working_files, request->id);
-      // We need to support multiple concurrent index processes.
-      time.ResetAndPrint("[perf] Dispatched initial index requests");
+    auto& params = request->params;
+    if (!params.rootUri)
+      return;
+    {
+      rapidjson::StringBuffer output;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+      JsonWriter json_writer(&writer);
+      Reflect(json_writer, params.initializationOptions);
+      LOG_S(INFO) << "initializationOptions: " << output.GetString();
     }
+
+    std::string project_path = NormalizePath(params.rootUri->GetPath());
+    LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
+                << params.rootUri->raw_uri;
+
+    {
+      if (params.initializationOptions)
+        g_config = std::make_unique<Config>(*params.initializationOptions);
+      else
+        g_config = std::make_unique<Config>();
+      rapidjson::Document reader;
+      reader.Parse(g_init_options.c_str());
+      if (!reader.HasParseError()) {
+        JsonReader json_reader{&reader};
+        try {
+          Reflect(json_reader, *g_config);
+        } catch (std::invalid_argument&) {
+          // This will not trigger because parse error is handled in
+          // MessageRegistry::Parse in lsp.cc
+        }
+      }
+
+      if (g_config->cacheDirectory.empty()) {
+        LOG_S(ERROR) << "cacheDirectory cannot be empty.";
+        exit(1);
+      } else {
+        g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
+        EnsureEndsInSlash(g_config->cacheDirectory);
+      }
+    }
+
+    // Client capabilities
+    const auto& capabilities = params.capabilities;
+    g_config->client.snippetSupport =
+        capabilities.textDocument.completion.completionItem.snippetSupport;
+
+    // Ensure there is a resource directory.
+    if (g_config->clang.resourceDir.empty())
+      g_config->clang.resourceDir = GetDefaultResourceDirectory();
+    LOG_S(INFO) << "Using -resource-dir=" << g_config->clang.resourceDir;
+
+    // Send initialization before starting indexers, so we don't send a
+    // status update too early.
+    // TODO: query request->params.capabilities.textDocument and support
+    // only things the client supports.
+
+    Out_InitializeResponse out;
+    out.id = request->id;
+
+    QueueManager::WriteStdout(kMethodType, out);
+
+    // Set project root.
+    EnsureEndsInSlash(project_path);
+    g_config->projectRoot = project_path;
+    // Create two cache directories for files inside and outside of the
+    // project.
+    sys::fs::create_directories(g_config->cacheDirectory +
+                                EscapeFileName(g_config->projectRoot));
+    sys::fs::create_directories(g_config->cacheDirectory + '@' +
+                                EscapeFileName(g_config->projectRoot));
+
+    Timer time;
+    diag_engine->Init();
+    semantic_cache->Init();
+
+    // Open up / load the project.
+    project->Load(project_path);
+    time.ResetAndPrint("[perf] Loaded compilation entries (" +
+                       std::to_string(project->entries.size()) + " files)");
+
+    // Start indexer threads. Start this after loading the project, as that
+    // may take a long time. Indexer threads will emit status/progress
+    // reports.
+    if (g_config->index.threads == 0)
+      g_config->index.threads = std::thread::hardware_concurrency();
+
+    LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
+    for (int i = 0; i < g_config->index.threads; i++) {
+      std::thread([=]() {
+        g_thread_id = i + 1;
+        std::string name = "indexer" + std::to_string(i);
+        SetThreadName(name.c_str());
+        Indexer_Main(diag_engine, vfs, project, working_files, waiter);
+      }).detach();
+    }
+
+    // Start scanning include directories before dispatching project
+    // files, because that takes a long time.
+    include_complete->Rescan();
+
+    time.Reset();
+    project->Index(QueueManager::instance(), working_files, request->id);
+    // We need to support multiple concurrent index processes.
+    time.ResetAndPrint("[perf] Dispatched initial index requests");
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_Initialize);
