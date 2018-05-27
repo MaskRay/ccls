@@ -6,6 +6,10 @@
 #include "project.h"
 #include "timer.h"
 
+#include <llvm/ADT/Twine.h>
+#include <llvm/Support/Threading.h>
+using namespace llvm;
+
 #include <thread>
 
 namespace {
@@ -103,7 +107,7 @@ void IncludeComplete::Rescan() {
 
   is_scanning = true;
   std::thread([this]() {
-    SetThreadName("scan_includes");
+    set_thread_name("scan_includes");
     Timer timer;
 
     for (const std::string& dir : project_->quote_include_directories)

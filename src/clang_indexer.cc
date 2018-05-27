@@ -2,12 +2,11 @@
 
 #include "clang_cursor.h"
 #include "clang_utils.h"
+#include "log.hh"
 #include "platform.h"
 #include "serializer.h"
 #include "timer.h"
 #include "type_printer.h"
-
-#include <loguru.hpp>
 
 #include <assert.h>
 #include <inttypes.h>

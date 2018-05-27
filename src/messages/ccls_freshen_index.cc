@@ -1,14 +1,13 @@
 #include "cache_manager.h"
-#include "import_pipeline.h"
 #include "match.h"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
 #include "timer.h"
 #include "working_files.h"
 
-#include <loguru.hpp>
 #include <queue>
 #include <unordered_set>
 

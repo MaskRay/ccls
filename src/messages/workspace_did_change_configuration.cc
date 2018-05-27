@@ -6,8 +6,6 @@
 #include "timer.h"
 #include "working_files.h"
 
-#include <loguru.hpp>
-
 namespace {
 MethodType kMethodType = "workspace/didChangeConfiguration";
 
@@ -38,7 +36,6 @@ struct Handler_WorkspaceDidChangeConfiguration
         "[perf] Dispatched workspace/didChangeConfiguration index requests");
 
     clang_complete->FlushAllSessions();
-    LOG_S(INFO) << "Flushed all clang complete sessions";
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceDidChangeConfiguration);

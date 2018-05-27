@@ -201,14 +201,15 @@ target_sources(ccls PRIVATE
                src/filesystem.cc
                src/fuzzy_match.cc
                src/main.cc
-               src/import_pipeline.cc
                src/include_complete.cc
                src/method.cc
                src/language.cc
                src/lex_utils.cc
+               src/log.cc
                src/lsp.cc
                src/match.cc
                src/message_handler.cc
+               src/pipeline.cc
                src/platform_posix.cc
                src/platform_win.cc
                src/port.cc

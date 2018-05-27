@@ -1,8 +1,10 @@
 #include "cache_manager.h"
 #include "diagnostics_engine.h"
-#include "import_pipeline.h"
+#include "filesystem.hh"
 #include "include_complete.h"
+#include "log.hh"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "project.h"
 #include "queue_manager.h"
@@ -10,10 +12,9 @@
 #include "timer.h"
 #include "working_files.h"
 
-#include "filesystem.hh"
+#include <llvm/ADT/Twine.h>
+#include <llvm/Support/Threading.h>
 using namespace llvm;
-
-#include <loguru.hpp>
 
 #include <iostream>
 #include <stdexcept>
@@ -508,12 +509,12 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     if (g_config->index.threads == 0)
       g_config->index.threads = std::thread::hardware_concurrency();
 
-    LOG_S(INFO) << "Starting " << g_config->index.threads << " indexers";
+    LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
     for (int i = 0; i < g_config->index.threads; i++) {
       std::thread([=]() {
         g_thread_id = i + 1;
         std::string name = "indexer" + std::to_string(i);
-        SetThreadName(name.c_str());
+        set_thread_name(name.c_str());
         Indexer_Main(diag_engine, vfs, project, working_files, waiter);
       }).detach();
     }

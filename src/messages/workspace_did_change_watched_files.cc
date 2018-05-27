@@ -5,8 +5,6 @@
 #include "queue_manager.h"
 #include "working_files.h"
 
-#include <loguru/loguru.hpp>
-
 namespace {
 MethodType kMethodType = "workspace/didChangeWatchedFiles";
 

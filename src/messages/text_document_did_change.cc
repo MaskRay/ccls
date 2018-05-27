@@ -5,8 +5,6 @@
 #include "working_files.h"
 #include "queue_manager.h"
 
-#include <loguru/loguru.hpp>
-
 namespace {
 MethodType kMethodType = "textDocument/didChange";
 

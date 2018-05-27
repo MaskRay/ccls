@@ -304,14 +304,6 @@ struct lsWorkspaceEdit {
 };
 MAKE_REFLECT_STRUCT(lsWorkspaceEdit, documentChanges);
 
-struct lsFormattingOptions {
-  // Size of a tab in spaces.
-  int tabSize;
-  // Prefer spaces over tabs.
-  bool insertSpaces;
-};
-MAKE_REFLECT_STRUCT(lsFormattingOptions, tabSize, insertSpaces);
-
 // MarkedString can be used to render human readable text. It is either a
 // markdown string or a code-block that provides a language and a code snippet.
 // The language identifier is sematically equal to the std::optional language

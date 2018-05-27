@@ -2,9 +2,7 @@
 
 #include "queue_manager.h"
 
-#include <loguru.hpp>
-
-#include <climits>
+#include <limits.h>
 #include <unordered_set>
 
 namespace {

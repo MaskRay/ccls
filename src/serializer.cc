@@ -1,12 +1,11 @@
 #include "serializer.h"
 
 #include "filesystem.hh"
+#include "log.hh"
 #include "serializers/binary.h"
 #include "serializers/json.h"
 
 #include "indexer.h"
-
-#include <loguru.hpp>
 
 #include <stdexcept>
 
@@ -414,7 +413,7 @@ std::unique_ptr<IndexFile> Deserialize(
         file = std::make_unique<IndexFile>(path, file_content);
         Reflect(reader, *file);
       } catch (std::invalid_argument& e) {
-        LOG_S(INFO) << "Failed to deserialize '" << path
+        LOG_S(INFO) << "failed to deserialize '" << path
                     << "': " << e.what();
         return nullptr;
       }

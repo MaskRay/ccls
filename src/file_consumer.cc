@@ -2,10 +2,9 @@
 
 #include "clang_utils.h"
 #include "indexer.h"
+#include "log.hh"
 #include "platform.h"
 #include "utils.h"
-
-#include <loguru.hpp>
 
 namespace {
 
@@ -108,8 +107,8 @@ IndexFile* FileConsumer::TryConsumeFile(
   if (clang_getFileUniqueID(file, &file_id) != 0) {
     std::string file_name = FileName(file);
     if (!file_name.empty()) {
-      // LOG_S(ERROR) << "Could not get unique file id for " << file_name
-      // << " when parsing " << parse_file_;
+      LOG_S(ERROR) << "Could not get unique file id for " << file_name
+                   << " when parsing " << parse_file_;
     }
     return nullptr;
   }

@@ -5,8 +5,6 @@
 #include "lsp.h"
 #include "platform.h"
 
-#include <loguru/loguru.hpp>
-
 #include <algorithm>
 #include <unordered_map>
 

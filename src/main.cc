@@ -1,4 +1,5 @@
-#include "import_pipeline.h"
+#include "log.hh"
+#include "pipeline.hh"
 #include "platform.h"
 #include "serializer.h"
 #include "serializers/json.h"
@@ -7,12 +8,12 @@
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Process.h>
+#include <llvm/Support/Signals.h>
 using namespace llvm;
 using namespace llvm::cl;
 
 #include <doctest/doctest.h>
 #include <rapidjson/error/en.h>
-#include <loguru.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -34,10 +35,15 @@ opt<std::string> opt_log_file_append("log-file-append", desc("log"), value_desc(
 
 list<std::string> opt_extra(Positional, ZeroOrMore, desc("extra"));
 
+void CloseLog() {
+  fclose(ccls::log::file);
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
   TraceMe();
+  sys::PrintStackTraceOnErrorSignal(argv[0]);
 
   ParseCommandLineOptions(argc, argv,
                           "C/C++/Objective-C language server\n\n"
@@ -49,13 +55,6 @@ int main(int argc, char** argv) {
     if (!opt_test_unit)
       return 0;
   }
-
-  loguru::g_stderr_verbosity = opt_verbose - 1;
-  loguru::g_preamble_date = false;
-  loguru::g_preamble_time = false;
-  loguru::g_preamble_verbose = false;
-  loguru::g_flush_interval_ms = 0;
-  loguru::init(argc, argv);
 
   MultiQueueWaiter querydb_waiter, indexer_waiter, stdout_waiter;
   QueueManager::Init(&querydb_waiter, &indexer_waiter, &stdout_waiter);
@@ -72,10 +71,19 @@ int main(int argc, char** argv) {
 
   bool language_server = true;
 
-  if (opt_log_file.size())
-    loguru::add_file(opt_log_file.c_str(), loguru::Truncate, opt_verbose);
-  if (opt_log_file_append.size())
-    loguru::add_file(opt_log_file_append.c_str(), loguru::Append, opt_verbose);
+  if (opt_log_file.size() || opt_log_file_append.size()) {
+    ccls::log::file = opt_log_file.size()
+                          ? fopen(opt_log_file.c_str(), "wb")
+                          : fopen(opt_log_file_append.c_str(), "ab");
+    if (!ccls::log::file) {
+      fprintf(
+          stderr, "failed to open %s\n",
+          (opt_log_file.size() ? opt_log_file : opt_log_file_append).c_str());
+      return 2;
+    }
+    setbuf(ccls::log::file, NULL);
+    atexit(CloseLog);
+  }
 
   if (opt_test_unit) {
     language_server = false;

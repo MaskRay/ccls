@@ -1,13 +1,14 @@
 #include "clang_complete.h"
 
 #include "clang_utils.h"
+#include "filesystem.hh"
+#include "log.hh"
 #include "platform.h"
 #include "timer.h"
 
-#include "filesystem.hh"
+#include <llvm/ADT/Twine.h>
+#include <llvm/Support/Threading.h>
 using namespace llvm;
-
-#include <loguru.hpp>
 
 #include <algorithm>
 #include <thread>
@@ -660,15 +661,15 @@ ClangCompleteManager::ClangCompleteManager(Project* project,
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {
   std::thread([&]() {
-    SetThreadName("comp-query");
+    set_thread_name("comp-query");
     CompletionQueryMain(this);
   }).detach();
   std::thread([&]() {
-    SetThreadName("comp-preload");
+    set_thread_name("comp-preload");
     CompletionPreloadMain(this);
   }).detach();
   std::thread([&]() {
-    SetThreadName("diag-query");
+    set_thread_name("diag-query");
     DiagnosticQueryMain(this);
   }).detach();
 }
@@ -803,10 +804,11 @@ void ClangCompleteManager::FlushSession(const std::string& filename) {
 }
 
 void ClangCompleteManager::FlushAllSessions() {
-	std::lock_guard<std::mutex> lock(sessions_lock_);
+  LOG_S(INFO) << "flush all clang complete sessions";
+  std::lock_guard<std::mutex> lock(sessions_lock_);
 
-	preloaded_sessions_.Clear();
-	completion_sessions_.Clear();
+  preloaded_sessions_.Clear();
+  completion_sessions_.Clear();
 }
 
 void CodeCompleteCache::WithLock(std::function<void()> action) {

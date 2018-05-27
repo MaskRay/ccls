@@ -7,8 +7,6 @@
 #include "timer.h"
 #include "working_files.h"
 
-#include <loguru.hpp>
-
 namespace {
 MethodType kMethodType = "textDocument/didOpen";
 
@@ -69,7 +67,6 @@ struct Handler_TextDocumentDidOpen
           true /* priority */);
 
       clang_complete->FlushSession(entry.filename);
-      LOG_S(INFO) << "Flushed clang complete sessions for " << entry.filename;
     }
   }
 };

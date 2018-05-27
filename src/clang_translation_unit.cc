@@ -1,10 +1,9 @@
 #include "clang_translation_unit.h"
 
 #include "clang_utils.h"
+#include "log.hh"
 #include "platform.h"
 #include "utils.h"
-
-#include <loguru.hpp>
 
 namespace {
 

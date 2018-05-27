@@ -8,8 +8,6 @@
 
 #include "lex_utils.h"
 
-#include <loguru.hpp>
-
 #include <regex>
 
 namespace {

@@ -1,10 +1,9 @@
 #include "lsp.h"
 
+#include "log.hh"
 #include "serializers/json.h"
 
-#include <doctest/doctest.h>
 #include <rapidjson/writer.h>
-#include <loguru.hpp>
 
 #include <stdio.h>
 
@@ -66,45 +65,6 @@ std::optional<std::string> ReadJsonRpcContentFrom(
   }
 
   return content;
-}
-
-std::function<std::optional<char>()> MakeContentReader(std::string* content,
-                                                  bool can_be_empty) {
-  return [content, can_be_empty]() -> std::optional<char> {
-    if (!can_be_empty)
-      REQUIRE(!content->empty());
-    if (content->empty())
-      return std::nullopt;
-    char c = (*content)[0];
-    content->erase(content->begin());
-    return c;
-  };
-}
-
-TEST_SUITE("FindIncludeLine") {
-  TEST_CASE("ReadContentFromSource") {
-    auto parse_correct = [](std::string content) -> std::string {
-      auto reader = MakeContentReader(&content, false /*can_be_empty*/);
-      auto got = ReadJsonRpcContentFrom(reader);
-      REQUIRE(got);
-      return got.value();
-    };
-
-    auto parse_incorrect = [](std::string content) -> std::optional<std::string> {
-      auto reader = MakeContentReader(&content, true /*can_be_empty*/);
-      return ReadJsonRpcContentFrom(reader);
-    };
-
-    REQUIRE(parse_correct("Content-Length: 0\r\n\r\n") == "");
-    REQUIRE(parse_correct("Content-Length: 1\r\n\r\na") == "a");
-    REQUIRE(parse_correct("Content-Length: 4\r\n\r\nabcd") == "abcd");
-
-    REQUIRE(parse_incorrect("ggg") == std::optional<std::string>());
-    REQUIRE(parse_incorrect("Content-Length: 0\r\n") ==
-            std::optional<std::string>());
-    REQUIRE(parse_incorrect("Content-Length: 5\r\n\r\nab") ==
-            std::optional<std::string>());
-  }
 }
 
 std::optional<char> ReadCharFromStdinBlocking() {

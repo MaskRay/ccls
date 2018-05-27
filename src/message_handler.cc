@@ -1,11 +1,10 @@
 #include "message_handler.h"
 
 #include "lex_utils.h"
+#include "log.hh"
 #include "project.h"
 #include "query_utils.h"
 #include "queue_manager.h"
-
-#include <loguru.hpp>
 
 #include <algorithm>
 
@@ -156,14 +155,7 @@ bool FindFileOrFail(QueryDatabase* db,
   if (indexing)
     LOG_S(INFO) << "\"" << absolute_path << "\" is being indexed.";
   else
-    LOG_S(INFO) << "Unable to find file \"" << absolute_path << "\"";
-  /*
-  LOG_S(INFO) << "Files (size=" << db->usr_to_file.size() << "): "
-              << StringJoinMap(db->usr_to_file,
-                               [](const std::pair<NormalizedPath, QueryFileId>& entry) {
-                                 return entry.first.path;
-                               });
-  */
+    LOG_S(INFO) << "unable to find file \"" << absolute_path << "\"";
 
   if (id) {
     Out_Error out;
