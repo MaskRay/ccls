@@ -2,11 +2,10 @@
 
 #include "filesystem.hh"
 using namespace llvm;
+#include "log.hh"
 #include "platform.h"
 
-#include <doctest/doctest.h>
 #include <siphash.h>
-#include <loguru/loguru.hpp>
 
 #include <assert.h>
 #include <ctype.h>

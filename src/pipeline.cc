@@ -1,10 +1,11 @@
-#include "import_pipeline.h"
+#include "pipeline.hh"
 
 #include "cache_manager.h"
 #include "clang_complete.h"
 #include "config.h"
 #include "diagnostics_engine.h"
 #include "include_complete.h"
+#include "log.hh"
 #include "lsp.h"
 #include "message_handler.h"
 #include "platform.h"
@@ -13,8 +14,9 @@
 #include "queue_manager.h"
 #include "timer.h"
 
-#include <doctest/doctest.h>
-#include <loguru.hpp>
+#include <llvm/ADT/Twine.h>
+#include <llvm/Support/Threading.h>
+using namespace llvm;
 
 #include <chrono>
 #include <thread>
@@ -275,7 +277,7 @@ void QueryDb_OnIndexed(QueueManager* queue,
 
 void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
   std::thread([request_times]() {
-    SetThreadName("stdin");
+    set_thread_name("stdin");
     auto* queue = QueueManager::instance();
     while (true) {
       std::unique_ptr<InMessage> message;
@@ -316,7 +318,7 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
 void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
                         MultiQueueWaiter* waiter) {
   std::thread([=]() {
-    SetThreadName("stdout");
+    set_thread_name("stdout");
     auto* queue = QueueManager::instance();
 
     while (true) {

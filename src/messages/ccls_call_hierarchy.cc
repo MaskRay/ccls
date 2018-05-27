@@ -2,8 +2,6 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 
-#include <loguru.hpp>
-
 #include <unordered_set>
 
 namespace {

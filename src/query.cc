@@ -5,7 +5,6 @@
 #include "serializers/json.h"
 
 #include <doctest/doctest.h>
-#include <loguru.hpp>
 
 #include <cassert>
 #include <cstdint>

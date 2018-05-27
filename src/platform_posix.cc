@@ -1,12 +1,7 @@
-#include <llvm/ADT/Twine.h>
-#include <llvm/Support/Threading.h>
-
 #if defined(__unix__) || defined(__APPLE__)
 #include "platform.h"
 
 #include "utils.h"
-
-#include <loguru.hpp>
 
 #include <assert.h>
 #include <limits.h>
@@ -160,8 +155,3 @@ std::string GetExternalCommandOutput(const std::vector<std::string>& command,
 }
 
 #endif
-
-void SetThreadName(const char* name) {
-  loguru::set_thread_name(name);
-  llvm::set_thread_name(name);
-}

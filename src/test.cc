@@ -11,7 +11,6 @@
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-#include <loguru/loguru.hpp>
 
 #include <stdio.h>
 #include <stdlib.h>

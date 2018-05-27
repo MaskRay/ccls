@@ -4,6 +4,7 @@
 #include "clang_utils.h"
 #include "filesystem.hh"
 #include "language.h"
+#include "log.hh"
 #include "match.h"
 #include "platform.h"
 #include "queue_manager.h"
@@ -25,7 +26,6 @@ using namespace llvm::opt;
 #include <clang-c/CXCompilationDatabase.h>
 #include <doctest/doctest.h>
 #include <rapidjson/writer.h>
-#include <loguru.hpp>
 
 #if defined(__unix__) || defined(__APPLE__)
 #include <unistd.h>

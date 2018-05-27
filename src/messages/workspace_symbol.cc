@@ -4,8 +4,6 @@
 #include "query_utils.h"
 #include "queue_manager.h"
 
-#include <loguru.hpp>
-
 #include <ctype.h>
 #include <limits.h>
 #include <algorithm>
@@ -70,9 +68,6 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
     Out_WorkspaceSymbol out;
     out.id = request->id;
 
-    LOG_S(INFO) << "[querydb] Considering " << db->symbols.size()
-                << " candidates for query " << request->params.query;
-
     std::string query = request->params.query;
 
     // {symbol info, matching detailed_name or short_name, index}
@@ -129,8 +124,6 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
         out.result.push_back(std::get<0>(entry));
     }
 
-    LOG_S(INFO) << "[querydb] Found " << out.result.size()
-                << " results for query " << query;
     QueueManager::WriteStdout(kMethodType, out);
   }
 };

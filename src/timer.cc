@@ -1,6 +1,6 @@
 #include "timer.h"
 
-#include <loguru.hpp>
+#include "log.hh"
 
 Timer::Timer() {
   Reset();

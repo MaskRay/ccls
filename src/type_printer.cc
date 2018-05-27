@@ -1,7 +1,5 @@
 #include "type_printer.h"
 
-#include <loguru.hpp>
-
 namespace {
 
 int GetNameInsertingPosition(const std::string& type_desc,
@@ -82,12 +80,8 @@ std::tuple<std::string, int16_t, int16_t, int16_t> GetFunctionSignature(
     std::string type_desc_with_names(type_desc.begin(), type_desc.begin() + i);
     type_desc_with_names.append(func_name);
     for (auto& arg : args) {
-      if (arg.first < 0) {
-        LOG_S(ERROR)
-            << "When adding argument names to '" << type_desc
-            << "', failed to detect positions to insert argument names";
+      if (arg.first < 0)
         break;
-      }
       if (arg.second.empty())
         continue;
       // TODO Use inside-out syntax. Note, clang/lib/AST/TypePrinter.cpp does

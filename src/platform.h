@@ -8,8 +8,6 @@
 
 std::string NormalizePath(const std::string& path);
 
-void SetThreadName(const char* name);
-
 // Free any unused memory and return it to the system.
 void FreeUnusedMemory();
 

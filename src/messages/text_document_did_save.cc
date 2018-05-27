@@ -4,8 +4,6 @@
 #include "project.h"
 #include "queue_manager.h"
 
-#include <loguru/loguru.hpp>
-
 namespace {
 MethodType kMethodType = "textDocument/didSave";
 

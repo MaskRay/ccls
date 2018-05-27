@@ -1,10 +1,10 @@
 #include "working_files.h"
 
 #include "lex_utils.h"
+#include "log.hh"
 #include "position.h"
 
 #include <doctest/doctest.h>
-#include <loguru.hpp>
 
 #include <algorithm>
 #include <climits>
@@ -320,23 +320,9 @@ void WorkingFile::ComputeLineMapping() {
 std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
                                                     int* column,
                                                     bool is_end) {
-  // The implementation is simple but works pretty well for most cases. We
-  // lookup the line contents in the indexed file contents, and try to find the
-  // most similar line in the current buffer file.
-  //
-  // Previously, this was implemented by tracking edits and by running myers
-  // diff algorithm. They were complex implementations that did not work as
-  // well.
-
-  // Note: |index_line| and |buffer_line| are 1-based.
-
-  // TODO: reenable this assert once we are using the real indexed file.
-  // assert(index_line >= 1 && index_line <= index_lines.size());
   if (line < 0 || line >= (int)index_lines.size()) {
-    loguru::Text stack = loguru::stacktrace();
-    LOG_S(WARNING) << "Bad index_line (got " << line << ", expected [0, "
-                   << index_lines.size() << ")) in " << filename
-                   << stack.c_str();
+    LOG_S(WARNING) << "bad index_line (got " << line << ", expected [0, "
+                   << index_lines.size() << ")) in " << filename;
     return std::nullopt;
   }
 
