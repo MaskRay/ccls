@@ -5,12 +5,10 @@
 
 #include <functional>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-class QueueManager;
 struct WorkingFiles;
 
 struct Project {
@@ -29,7 +27,7 @@ struct Project {
 
   std::vector<Entry> entries;
   std::mutex mutex_;
-  std::unordered_map<std::string, int> absolute_path_to_entry_index_ GUARDED_BY(mutex_);
+  std::unordered_map<std::string, int> absolute_path_to_entry_index_;
 
   // Loads a project for the given |directory|.
   //
@@ -58,5 +56,5 @@ struct Project {
   void ForAllFilteredFiles(
       std::function<void(int i, const Entry& entry)> action);
 
-  void Index(QueueManager* queue, WorkingFiles* wfiles, lsRequestId id);
+  void Index(WorkingFiles* wfiles, lsRequestId id);
 };

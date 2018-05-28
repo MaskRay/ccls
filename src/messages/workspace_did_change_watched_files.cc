@@ -1,9 +1,9 @@
-#include "cache_manager.h"
 #include "clang_complete.h"
 #include "message_handler.h"
 #include "project.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
 #include "working_files.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "workspace/didChangeWatchedFiles";
@@ -52,15 +52,13 @@ struct Handler_WorkspaceDidChangeWatchedFiles
       switch (event.type) {
         case lsFileChangeType::Created:
         case lsFileChangeType::Changed: {
-          QueueManager::instance()->index_request.PushBack(
-              Index_Request(path, entry.args, is_interactive));
+          pipeline::Index(path, entry.args, is_interactive);
           if (is_interactive)
             clang_complete->NotifySave(path);
           break;
         }
         case lsFileChangeType::Deleted:
-          QueueManager::instance()->index_request.PushBack(
-              Index_Request(path, entry.args, is_interactive));
+          pipeline::Index(path, entry.args, is_interactive);
           break;
       }
     }

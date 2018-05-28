@@ -1,6 +1,7 @@
 #include "diagnostics_engine.h"
 
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 #include <chrono>
 
@@ -30,6 +31,6 @@ void DiagnosticsEngine::Publish(WorkingFiles* working_files,
     Out_TextDocumentPublishDiagnostics out;
     out.params.uri = lsDocumentUri::FromPath(path);
     out.params.diagnostics = diagnostics;
-    QueueManager::WriteStdout(kMethodType_TextDocumentPublishDiagnostics, out);
+    pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics, out);
   }
 }

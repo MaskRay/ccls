@@ -1,6 +1,7 @@
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 #include <unordered_set>
 
@@ -135,7 +136,7 @@ struct Handler_TextDocumentReferences
 
     if ((int)out.result.size() >= g_config->xref.maxNum)
       out.result.resize(g_config->xref.maxNum);
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentReferences);

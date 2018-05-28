@@ -94,26 +94,6 @@ struct ThreadedQueue : public BaseThreadQueue {
     Push<&std::deque<T>::push_back>(std::move(t), priority);
   }
 
-  // Add a set of elements to the queue.
-  void EnqueueAll(std::vector<T>&& elements, bool priority = false) {
-    if (elements.empty())
-      return;
-
-    std::lock_guard<std::mutex> lock(mutex_);
-
-    total_count_ += elements.size();
-
-    for (T& element : elements) {
-      if (priority)
-        priority_.push_back(std::move(element));
-      else
-        queue_.push_back(std::move(element));
-    }
-    elements.clear();
-
-    waiter_->cv.notify_all();
-  }
-
   // Return all elements in the queue.
   std::vector<T> DequeueAll() {
     std::lock_guard<std::mutex> lock(mutex_);

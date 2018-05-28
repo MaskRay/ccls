@@ -107,7 +107,7 @@ void IncludeComplete::Rescan() {
 
   is_scanning = true;
   std::thread([this]() {
-    set_thread_name("scan_includes");
+    set_thread_name("include");
     Timer timer;
 
     for (const std::string& dir : project_->quote_include_directories)

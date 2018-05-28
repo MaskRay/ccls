@@ -1,7 +1,6 @@
 #pragma once
 
-#include "clang_cursor.h"
-#include "clang_translation_unit.h"
+#include "clang_tu.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
 #include "language.h"

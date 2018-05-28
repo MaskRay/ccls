@@ -48,15 +48,6 @@ bool StartsWith(std::string_view s, std::string_view prefix) {
          std::equal(prefix.begin(), prefix.end(), s.begin());
 }
 
-bool AnyStartsWith(const std::vector<std::string>& xs,
-                   std::string_view prefix) {
-  return std::any_of(xs.begin(), xs.end(), std::bind(StartsWith, _1, prefix));
-}
-
-bool StartsWithAny(std::string_view s, const std::vector<std::string>& ps) {
-  return std::any_of(ps.begin(), ps.end(), std::bind(StartsWith, s, _1));
-}
-
 bool EndsWithAny(std::string_view s, const std::vector<std::string>& ss) {
   return std::any_of(ss.begin(), ss.end(), std::bind(EndsWith, s, _1));
 }

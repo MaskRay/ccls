@@ -1,6 +1,8 @@
 #include "message_handler.h"
+#include "pipeline.hh"
+using namespace ccls;
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 #include <unordered_set>
 
@@ -225,7 +227,7 @@ struct Handler_CclsCallHierarchy
       }
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsCallHierarchy);

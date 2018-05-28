@@ -1,7 +1,8 @@
 #include "lex_utils.h"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 #include <ctype.h>
 #include <limits.h>
@@ -173,7 +174,7 @@ struct Handler_TextDocumentDefinition
       }
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDefinition);

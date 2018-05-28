@@ -2,7 +2,8 @@
 #include "lsp_code_action.h"
 #include "message_handler.h"
 #include "query_utils.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/codeLens";
@@ -225,7 +226,7 @@ struct Handler_TextDocumentCodeLens
       };
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeLens);

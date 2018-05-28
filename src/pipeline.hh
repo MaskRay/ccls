@@ -1,28 +1,35 @@
 #pragma once
 
-#include "queue_manager.h"
+#include "method.h"
+#include "query.h"
 #include "timer.h"
 
-#include <atomic>
+#include <string>
 #include <unordered_map>
+#include <vector>
 
-struct ClangTranslationUnit;
 class DiagnosticsEngine;
 struct VFS;
-struct ICacheManager;
 struct Project;
-struct QueryDatabase;
-struct SemanticHighlightSymbolCache;
 struct WorkingFiles;
+struct lsBaseOutMessage;
 
+namespace ccls::pipeline {
+
+void Init();
+void LaunchStdin(std::unordered_map<MethodType, Timer>* request_times);
+void LaunchStdout(std::unordered_map<MethodType, Timer>* request_times);
 void Indexer_Main(DiagnosticsEngine* diag_engine,
                   VFS* vfs,
                   Project* project,
-                  WorkingFiles* working_files,
-                  MultiQueueWaiter* waiter);
+                  WorkingFiles* working_files);
+void MainLoop();
 
-void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times);
-void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
-                        MultiQueueWaiter* waiter);
-void MainLoop(MultiQueueWaiter* querydb_waiter,
-              MultiQueueWaiter* indexer_waiter);
+void Index(const std::string& path,
+           const std::vector<std::string>& args,
+           bool is_interactive,
+           lsRequestId id = {});
+
+std::optional<std::string> LoadCachedFileContents(const std::string& path);
+void WriteStdout(MethodType method, lsBaseOutMessage& response);
+}

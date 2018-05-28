@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/implementation";
@@ -41,7 +42,7 @@ struct Handler_TextDocumentImplementation
         break;
       }
     }
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentImplementation);

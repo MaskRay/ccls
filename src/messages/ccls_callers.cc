@@ -1,6 +1,7 @@
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "$ccls/callers";
@@ -39,7 +40,7 @@ struct Handler_CclsCallers : BaseMessageHandler<In_CclsCallers> {
         break;
       }
     }
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsCallers);

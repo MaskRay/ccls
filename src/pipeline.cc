@@ -1,6 +1,5 @@
 #include "pipeline.hh"
 
-#include "cache_manager.h"
 #include "clang_complete.h"
 #include "config.h"
 #include "diagnostics_engine.h"
@@ -11,17 +10,42 @@
 #include "platform.h"
 #include "project.h"
 #include "query_utils.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
 #include "timer.h"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
 using namespace llvm;
 
-#include <chrono>
 #include <thread>
 
+struct Index_Request {
+  std::string path;
+  std::vector<std::string> args;
+  bool is_interactive;
+  lsRequestId id;
+};
+
+struct Index_OnIndexed {
+  IndexUpdate update;
+  PerformanceImportFile perf;
+};
+
+struct Stdout_Request {
+  MethodType method;
+  std::string content;
+};
+
+namespace ccls::pipeline {
 namespace {
+
+MultiQueueWaiter* main_waiter;
+MultiQueueWaiter* indexer_waiter;
+MultiQueueWaiter* stdout_waiter;
+ThreadedQueue<std::unique_ptr<InMessage>>* on_request;
+ThreadedQueue<Index_Request>* index_request;
+ThreadedQueue<Index_OnIndexed>* on_indexed;
+ThreadedQueue<Stdout_Request>* for_stdout;
 
 // Checks if |path| needs to be reparsed. This will modify cached state
 // such that calling this function twice with the same path may return true
@@ -64,24 +88,57 @@ bool FileNeedsParse(int64_t write_time,
   return false;
 };
 
+std::string AppendSerializationFormat(const std::string& base) {
+  switch (g_config->cacheFormat) {
+    case SerializeFormat::Binary:
+      return base + ".blob";
+    case SerializeFormat::Json:
+      return base + ".json";
+  }
+}
+
+std::string GetCachePath(const std::string& source_file) {
+  std::string cache_file;
+  size_t len = g_config->projectRoot.size();
+  if (StartsWith(source_file, g_config->projectRoot)) {
+    cache_file = EscapeFileName(g_config->projectRoot) +
+                 EscapeFileName(source_file.substr(len));
+  } else {
+    cache_file = '@' + EscapeFileName(g_config->projectRoot) +
+                 EscapeFileName(source_file);
+  }
+
+  return g_config->cacheDirectory + cache_file;
+}
+
+std::unique_ptr<IndexFile> RawCacheLoad(
+    const std::string& path) {
+  std::string cache_path = GetCachePath(path);
+  std::optional<std::string> file_content = ReadContent(cache_path);
+  std::optional<std::string> serialized_indexed_content =
+      ReadContent(AppendSerializationFormat(cache_path));
+  if (!file_content || !serialized_indexed_content)
+    return nullptr;
+
+  return Deserialize(g_config->cacheFormat, path, *serialized_indexed_content,
+                     *file_content, IndexFile::kMajorVersion);
+}
+
 bool Indexer_Parse(DiagnosticsEngine* diag_engine,
                    WorkingFiles* working_files,
                    Project* project,
                    VFS* vfs,
                    ClangIndexer* indexer) {
-  auto* queue = QueueManager::instance();
-  std::optional<Index_Request> opt_request = queue->index_request.TryPopFront();
+  std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
   auto& request = *opt_request;
-  ICacheManager cache;
 
   // Dummy one to trigger refresh semantic highlight.
   if (request.path.empty()) {
     IndexUpdate dummy;
     dummy.refresh = true;
-    queue->on_indexed.PushBack(
-        Index_OnIndexed(std::move(dummy), PerformanceImportFile()), false);
+    on_indexed->PushBack({std::move(dummy), PerformanceImportFile()}, false);
     return false;
   }
 
@@ -108,7 +165,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     return true;
 
   int reparse; // request.is_interactive;
-  prev = cache.RawCacheLoad(path_to_index);
+  prev = RawCacheLoad(path_to_index);
   if (!prev)
     reparse = 2;
   else {
@@ -132,15 +189,13 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     auto dependencies = prev->dependencies;
     if (reparse) {
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-      queue->on_indexed.PushBack(Index_OnIndexed(std::move(update), perf),
-        request.is_interactive);
+      on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
     }
     for (const auto& dep : dependencies)
       if (vfs->Mark(dep.first().str(), 0, 2)) {
-        prev = cache.RawCacheLoad(dep.first().str());
+        prev = RawCacheLoad(dep.first().str());
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-        queue->on_indexed.PushBack(Index_OnIndexed(std::move(update), perf),
-          request.is_interactive);
+        on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
       }
 
     std::lock_guard<std::mutex> lock(vfs->mutex);
@@ -152,7 +207,6 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
 
   LOG_S(INFO) << "parse " << path_to_index;
 
-  std::vector<Index_OnIdMapped> result;
   PerformanceImportFile perf;
   auto indexes = indexer->Index(vfs, path_to_index, entry.args, {}, &perf);
 
@@ -162,7 +216,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
       out.id = request.id;
       out.error.code = lsErrorCodes::InternalError;
       out.error.message = "Failed to index " + path_to_index;
-      QueueManager::WriteStdout(kMethodType_Unknown, out);
+      pipeline::WriteStdout(kMethodType_Unknown, out);
     }
     vfs->Reset(path_to_index);
     return true;
@@ -179,12 +233,17 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     if (!(vfs->Stamp(path, curr->last_write_time) || path == path_to_index))
       continue;
     LOG_S(INFO) << "emit index for " << path;
-    prev = cache.RawCacheLoad(path);
+    prev = RawCacheLoad(path);
 
     // Write current index to disk if requested.
     LOG_S(INFO) << "store index for " << path;
     Timer time;
-    cache.WriteToCache(*curr);
+    {
+      std::string cache_path = GetCachePath(path);
+      WriteToFile(cache_path, curr->file_contents);
+      WriteToFile(AppendSerializationFormat(cache_path),
+                  Serialize(g_config->cacheFormat, *curr));
+    }
     perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
 
     vfs->Reset(path_to_index);
@@ -199,8 +258,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
     LOG_S(INFO) << "built index for " << path << " (is_delta=" << !!prev << ")";
 
-    Index_OnIndexed reply(std::move(update), perf);
-    queue->on_indexed.PushBack(std::move(reply), request.is_interactive);
+    on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
   }
 
   return true;
@@ -217,26 +275,34 @@ bool ShouldDisplayMethodTiming(MethodType type) {
 
 }  // namespace
 
+void Init() {
+  main_waiter = new MultiQueueWaiter;
+  on_request = new ThreadedQueue<std::unique_ptr<InMessage>>(main_waiter);
+  on_indexed = new ThreadedQueue<Index_OnIndexed>(main_waiter);
+
+  indexer_waiter = new MultiQueueWaiter;
+  index_request = new ThreadedQueue<Index_Request>(indexer_waiter);
+
+  stdout_waiter = new MultiQueueWaiter;
+  for_stdout = new ThreadedQueue<Stdout_Request>(stdout_waiter);
+}
+
 void Indexer_Main(DiagnosticsEngine* diag_engine,
                   VFS* vfs,
                   Project* project,
-                  WorkingFiles* working_files,
-                  MultiQueueWaiter* waiter) {
-  auto* queue = QueueManager::instance();
+                  WorkingFiles* working_files) {
   // Build one index per-indexer, as building the index acquires a global lock.
   ClangIndexer indexer;
 
   while (true)
     if (!Indexer_Parse(diag_engine, working_files, project, vfs, &indexer))
-      waiter->Wait(&queue->index_request);
+      indexer_waiter->Wait(index_request);
 }
 
-void QueryDb_OnIndexed(QueueManager* queue,
-                       QueryDatabase* db,
-                       SemanticHighlightSymbolCache* semantic_cache,
-                       WorkingFiles* working_files,
-                       Index_OnIndexed* response) {
-
+void Main_OnIndexed(QueryDatabase* db,
+                    SemanticHighlightSymbolCache* semantic_cache,
+                    WorkingFiles* working_files,
+                    Index_OnIndexed* response) {
   if (response->update.refresh) {
     LOG_S(INFO) << "Loaded project. Refresh semantic highlight for all working file.";
     std::lock_guard<std::mutex> lock(working_files->files_mutex);
@@ -257,9 +323,8 @@ void QueryDb_OnIndexed(QueueManager* queue,
   if (response->update.files_def_update) {
     auto& update = *response->update.files_def_update;
     time.ResetAndPrint("apply index for " + update.value.path);
-    WorkingFile* working_file =
-        working_files->GetFileByFilename(update.value.path);
-    if (working_file) {
+    if (WorkingFile* working_file =
+            working_files->GetFileByFilename(update.value.path)) {
       // Update indexed content.
       working_file->SetIndexContent(update.file_content);
 
@@ -275,10 +340,9 @@ void QueryDb_OnIndexed(QueueManager* queue,
   }
 }
 
-void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
+void LaunchStdin(std::unordered_map<MethodType, Timer>* request_times) {
   std::thread([request_times]() {
     set_thread_name("stdin");
-    auto* queue = QueueManager::instance();
     while (true) {
       std::unique_ptr<InMessage> message;
       std::optional<std::string> err =
@@ -295,7 +359,7 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
             out.id = id;
             out.error.code = lsErrorCodes::InvalidParams;
             out.error.message = std::move(*err);
-            queue->WriteStdout(kMethodType_Unknown, out);
+            WriteStdout(kMethodType_Unknown, out);
           }
         }
         continue;
@@ -305,7 +369,7 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
       MethodType method_type = message->GetMethodType();
       (*request_times)[method_type] = Timer();
 
-      queue->for_querydb.PushBack(std::move(message));
+      on_request->PushBack(std::move(message));
 
       // If the message was to exit then querydb will take care of the actual
       // exit. Stop reading from stdin since it might be detached.
@@ -315,16 +379,14 @@ void LaunchStdinLoop(std::unordered_map<MethodType, Timer>* request_times) {
   }).detach();
 }
 
-void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
-                        MultiQueueWaiter* waiter) {
+void LaunchStdout(std::unordered_map<MethodType, Timer>* request_times) {
   std::thread([=]() {
     set_thread_name("stdout");
-    auto* queue = QueueManager::instance();
 
     while (true) {
-      std::vector<Stdout_Request> messages = queue->for_stdout.DequeueAll();
+      std::vector<Stdout_Request> messages = for_stdout->DequeueAll();
       if (messages.empty()) {
-        waiter->Wait(&queue->for_stdout);
+        stdout_waiter->Wait(for_stdout);
         continue;
       }
 
@@ -341,8 +403,7 @@ void LaunchStdoutThread(std::unordered_map<MethodType, Timer>* request_times,
   }).detach();
 }
 
-void MainLoop(MultiQueueWaiter* querydb_waiter,
-              MultiQueueWaiter* indexer_waiter) {
+void MainLoop() {
   Project project;
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
@@ -362,7 +423,7 @@ void MainLoop(MultiQueueWaiter* querydb_waiter,
           out.error.message =
               "Dropping completion request; a newer request "
               "has come in that will be serviced instead.";
-          QueueManager::WriteStdout(kMethodType_Unknown, out);
+          pipeline::WriteStdout(kMethodType_Unknown, out);
         }
       });
 
@@ -389,11 +450,8 @@ void MainLoop(MultiQueueWaiter* querydb_waiter,
     handler->signature_cache = signature_cache.get();
   }
 
-  // Run query db main loop.
-  auto* queue = QueueManager::instance();
   while (true) {
-    std::vector<std::unique_ptr<InMessage>> messages =
-        queue->for_querydb.DequeueAll();
+    std::vector<std::unique_ptr<InMessage>> messages = on_request->DequeueAll();
     bool did_work = messages.size();
     for (auto& message : messages) {
       // TODO: Consider using std::unordered_map to lookup the handler
@@ -409,19 +467,40 @@ void MainLoop(MultiQueueWaiter* querydb_waiter,
     }
 
     for (int i = 80; i--;) {
-      std::optional<Index_OnIndexed> response = queue->on_indexed.TryPopFront();
+      std::optional<Index_OnIndexed> response = on_indexed->TryPopFront();
       if (!response)
         break;
       did_work = true;
-      QueryDb_OnIndexed(queue, &db, &semantic_cache, &working_files, &*response);
+      Main_OnIndexed(&db, &semantic_cache, &working_files, &*response);
     }
 
     // Cleanup and free any unused memory.
     FreeUnusedMemory();
 
-    if (!did_work) {
-      auto* queue = QueueManager::instance();
-      querydb_waiter->Wait(&queue->on_indexed, &queue->for_querydb);
-    }
+    if (!did_work)
+      main_waiter->Wait(on_indexed, on_request);
   }
+}
+
+void Index(const std::string& path,
+           const std::vector<std::string>& args,
+           bool interactive,
+           lsRequestId id) {
+  index_request->PushBack({path, args, interactive, id}, interactive);
+}
+
+std::optional<std::string> LoadCachedFileContents(const std::string& path) {
+  return ReadContent(GetCachePath(path));
+}
+
+void WriteStdout(MethodType method, lsBaseOutMessage& response) {
+  std::ostringstream sstream;
+  response.Write(sstream);
+
+  Stdout_Request out;
+  out.content = sstream.str();
+  out.method = method;
+  for_stdout->PushBack(std::move(out));
+}
+
 }

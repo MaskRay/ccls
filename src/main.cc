@@ -5,6 +5,7 @@
 #include "serializers/json.h"
 #include "test.h"
 #include "working_files.h"
+using namespace ccls;
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Process.h>
@@ -56,8 +57,7 @@ int main(int argc, char** argv) {
       return 0;
   }
 
-  MultiQueueWaiter querydb_waiter, indexer_waiter, stdout_waiter;
-  QueueManager::Init(&querydb_waiter, &indexer_waiter, &stdout_waiter);
+  pipeline::Init();
 
 #ifdef _WIN32
   // We need to write to stdout in binary mode because in Windows, writing
@@ -132,11 +132,11 @@ int main(int argc, char** argv) {
     std::unordered_map<MethodType, Timer> request_times;
 
     // The thread that reads from stdin and dispatchs commands to the main thread.
-    LaunchStdinLoop(&request_times);
+    pipeline::LaunchStdin(&request_times);
     // The thread that writes responses from the main thread to stdout.
-    LaunchStdoutThread(&request_times, &stdout_waiter);
+    pipeline::LaunchStdout(&request_times);
     // Main thread which also spawns indexer threads upon the "initialize" request.
-    MainLoop(&querydb_waiter, &indexer_waiter);
+    pipeline::MainLoop();
   }
 
   return 0;

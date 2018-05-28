@@ -284,8 +284,6 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
                              &all_expected_output);
 
         // Build flags.
-        if (!AnyStartsWith(flags, "-x"))
-          flags.push_back("-xc++");
         flags.push_back("-resource-dir=" + GetDefaultResourceDirectory());
         flags.push_back(path);
 

@@ -1,7 +1,8 @@
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
 #include "symbol.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/documentHighlight";
@@ -61,7 +62,7 @@ struct Handler_TextDocumentDocumentHighlight
       break;
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentHighlight);

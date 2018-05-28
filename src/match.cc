@@ -1,7 +1,8 @@
 #include "match.h"
 
 #include "lsp.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 #include <doctest/doctest.h>
 
@@ -32,7 +33,7 @@ std::optional<Matcher> Matcher::Create(const std::string& search) {
     out.params.type = lsMessageType::Error;
     out.params.message = "ccls: Parsing EMCAScript regex \"" + search +
                          "\" failed; " + e.what();
-    QueueManager::WriteStdout(kMethodType_Unknown, out);
+    pipeline::WriteStdout(kMethodType_Unknown, out);
     return std::nullopt;
   }
 }

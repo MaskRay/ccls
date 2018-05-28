@@ -1,9 +1,9 @@
-#include "cache_manager.h"
 #include "clang_complete.h"
 #include "include_complete.h"
 #include "message_handler.h"
 #include "project.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 #include "timer.h"
 #include "working_files.h"
 
@@ -38,11 +38,9 @@ struct Handler_TextDocumentDidOpen
     const auto& params = request->params;
     std::string path = params.textDocument.uri.GetPath();
 
-    ICacheManager cache;
     WorkingFile* working_file = working_files->OnOpen(params.textDocument);
-    std::optional<std::string> cached_file_contents =
-        cache.LoadCachedFileContents(path);
-    if (cached_file_contents)
+    if (std::optional<std::string> cached_file_contents =
+            pipeline::LoadCachedFileContents(path))
       working_file->SetIndexContent(*cached_file_contents);
 
     QueryFile* file = nullptr;
@@ -60,11 +58,8 @@ struct Handler_TextDocumentDidOpen
     // Submit new index request if it is not a header file.
     if (SourceFileLanguage(path) != LanguageId::Unknown) {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
-      QueueManager::instance()->index_request.PushBack(
-          Index_Request(entry.filename,
-                        params.args.size() ? params.args : entry.args,
-                        true /*is_interactive*/),
-          true /* priority */);
+      pipeline::Index(entry.filename,
+                      params.args.size() ? params.args : entry.args, true);
 
       clang_complete->FlushSession(entry.filename);
     }

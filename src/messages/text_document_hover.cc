@@ -1,6 +1,7 @@
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/hover";
@@ -99,7 +100,7 @@ struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
       }
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentHover);

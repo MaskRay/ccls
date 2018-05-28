@@ -1,4 +1,3 @@
-#include "cache_manager.h"
 #include "diagnostics_engine.h"
 #include "filesystem.hh"
 #include "include_complete.h"
@@ -7,10 +6,10 @@
 #include "pipeline.hh"
 #include "platform.h"
 #include "project.h"
-#include "queue_manager.h"
 #include "serializers/json.h"
 #include "timer.h"
 #include "working_files.h"
+using namespace ccls;
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
@@ -482,7 +481,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     Out_InitializeResponse out;
     out.id = request->id;
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
 
     // Set project root.
     EnsureEndsInSlash(project_path);
@@ -515,7 +514,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         g_thread_id = i + 1;
         std::string name = "indexer" + std::to_string(i);
         set_thread_name(name.c_str());
-        Indexer_Main(diag_engine, vfs, project, working_files, waiter);
+        pipeline::Indexer_Main(diag_engine, vfs, project, working_files);
       }).detach();
     }
 
@@ -524,7 +523,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     include_complete->Rescan();
 
     time.Reset();
-    project->Index(QueueManager::instance(), working_files, request->id);
+    project->Index(working_files, request->id);
     // We need to support multiple concurrent index processes.
     time.ResetAndPrint("[perf] Dispatched initial index requests");
   }

@@ -1,12 +1,11 @@
-#include "cache_manager.h"
 #include "match.h"
 #include "message_handler.h"
-#include "pipeline.hh"
 #include "platform.h"
 #include "project.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
 #include "timer.h"
 #include "working_files.h"
+using namespace ccls;
 
 #include <queue>
 #include <unordered_set>
@@ -79,7 +78,7 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
     }
 
     // Send index requests for every file.
-    project->Index(QueueManager::instance(), working_files, lsRequestId());
+    project->Index(working_files, lsRequestId());
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsFreshenIndex);

@@ -4,7 +4,8 @@
 #include "log.hh"
 #include "project.h"
 #include "query_utils.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 #include <algorithm>
 
@@ -167,7 +168,7 @@ bool FindFileOrFail(QueryDatabase* db,
       out.error.code = lsErrorCodes::InternalError;
       out.error.message = "Unable to find file " + absolute_path;
     }
-    QueueManager::WriteStdout(kMethodType_Unknown, out);
+    pipeline::WriteStdout(kMethodType_Unknown, out);
   }
 
   return false;
@@ -182,7 +183,7 @@ void EmitInactiveLines(WorkingFile* working_file,
     if (ls_skipped)
       out.params.inactiveRegions.push_back(*ls_skipped);
   }
-  QueueManager::WriteStdout(kMethodType_CclsPublishInactiveRegions, out);
+  pipeline::WriteStdout(kMethodType_CclsPublishInactiveRegions, out);
 }
 
 void EmitSemanticHighlighting(QueryDatabase* db,
@@ -343,5 +344,5 @@ void EmitSemanticHighlighting(QueryDatabase* db,
   for (auto& entry : grouped_symbols)
     if (entry.second.ranges.size())
       out.params.symbols.push_back(entry.second);
-  QueueManager::WriteStdout(kMethodType_CclsPublishSemanticHighlighting, out);
+  pipeline::WriteStdout(kMethodType_CclsPublishSemanticHighlighting, out);
 }
