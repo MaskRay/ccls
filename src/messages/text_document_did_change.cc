@@ -1,9 +1,9 @@
-#include "cache_manager.h"
 #include "clang_complete.h"
 #include "message_handler.h"
 #include "project.h"
 #include "working_files.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/didChange";
@@ -25,9 +25,7 @@ struct Handler_TextDocumentDidChange
     working_files->OnChange(request->params);
     if (g_config->index.onDidChange) {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
-      QueueManager::instance()->index_request.PushBack(
-          Index_Request(entry.filename, entry.args, true /*is_interactive*/),
-          true);
+      pipeline::Index(entry.filename, entry.args, true);
     }
     clang_complete->NotifyEdit(path);
     clang_complete->DiagnosticsUpdate(

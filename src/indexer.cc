@@ -1,7 +1,5 @@
 #include "indexer.h"
 
-#include "clang_cursor.h"
-#include "clang_utils.h"
 #include "log.hh"
 #include "platform.h"
 #include "serializer.h"

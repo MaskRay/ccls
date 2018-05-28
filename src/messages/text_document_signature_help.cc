@@ -1,6 +1,7 @@
 #include "clang_complete.h"
 #include "message_handler.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 #include "timer.h"
 
 #include <stdint.h>
@@ -142,7 +143,7 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
           out.result.activeParameter = active_param;
 
           Timer timer;
-          QueueManager::WriteStdout(kMethodType, out);
+          pipeline::WriteStdout(kMethodType, out);
 
           if (!is_cached_result) {
             signature_cache->WithLock([&]() {

@@ -2,9 +2,10 @@
 #include "fuzzy_match.h"
 #include "include_complete.h"
 #include "message_handler.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
 #include "timer.h"
 #include "working_files.h"
+using namespace ccls;
 
 #include "lex_utils.h"
 
@@ -270,7 +271,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
     auto write_empty_result = [request]() {
       Out_TextDocumentComplete out;
       out.id = request->id;
-      QueueManager::WriteStdout(kMethodType, out);
+      pipeline::WriteStdout(kMethodType, out);
     };
 
     std::string path = request->params.textDocument.uri.GetPath();
@@ -377,7 +378,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
         item.textEdit->range.end.character = (int)buffer_line.size();
       }
 
-      QueueManager::WriteStdout(kMethodType, out);
+      pipeline::WriteStdout(kMethodType, out);
     } else {
       ClangCompleteManager::OnComplete callback = std::bind(
           [this, request, is_global_completion, existing_completion,
@@ -389,7 +390,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
             // Emit completion results.
             FilterAndSortCompletionResponse(&out, existing_completion, has_open_paren);
-            QueueManager::WriteStdout(kMethodType, out);
+            pipeline::WriteStdout(kMethodType, out);
 
             // Cache completion results.
             if (!is_cached_result) {

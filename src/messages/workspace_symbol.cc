@@ -1,8 +1,9 @@
 #include "fuzzy_match.h"
 #include "lex_utils.h"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 #include <ctype.h>
 #include <limits.h>
@@ -124,7 +125,7 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
         out.result.push_back(std::get<0>(entry));
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceSymbol);

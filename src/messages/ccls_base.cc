@@ -1,6 +1,7 @@
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 namespace {
 
@@ -43,7 +44,7 @@ struct Handler_CclsBase : BaseMessageHandler<In_CclsBase> {
         break;
       }
     }
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsBase);

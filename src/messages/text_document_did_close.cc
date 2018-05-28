@@ -1,7 +1,8 @@
 #include "clang_complete.h"
 #include "message_handler.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
 #include "working_files.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/didClose";
@@ -27,7 +28,7 @@ struct Handler_TextDocumentDidClose
     // Clear any diagnostics for the file.
     Out_TextDocumentPublishDiagnostics out;
     out.params.uri = request->params.textDocument.uri;
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
 
     // Remove internal state.
     working_files->OnClose(request->params.textDocument);

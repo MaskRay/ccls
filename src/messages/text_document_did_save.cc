@@ -1,8 +1,8 @@
-#include "cache_manager.h"
 #include "clang_complete.h"
 #include "message_handler.h"
 #include "project.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/didSave";
@@ -29,7 +29,8 @@ struct Handler_TextDocumentDidSave
   MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(In_TextDocumentDidSave* request) override {
-    std::string path = request->params.textDocument.uri.GetPath();
+    const auto& params = request->params;
+    std::string path = params.textDocument.uri.GetPath();
 
     // Send out an index request, and copy the current buffer state so we
     // can update the cached index contents when the index is done.
@@ -47,9 +48,7 @@ struct Handler_TextDocumentDidSave
     // TODO: send as priority request
     if (!g_config->index.onDidChange) {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
-      QueueManager::instance()->index_request.PushBack(
-          Index_Request(entry.filename, entry.args, true /*is_interactive*/),
-          true);
+      pipeline::Index(entry.filename, entry.args, true);
     }
 
     clang_complete->NotifySave(path);

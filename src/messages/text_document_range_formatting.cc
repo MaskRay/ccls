@@ -1,7 +1,8 @@
 #include "clang_format.h"
 #include "lex_utils.h"
 #include "message_handler.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 #include "working_files.h"
 
 #include <loguru.hpp>
@@ -64,7 +65,7 @@ struct Handler_TextDocumentRangeFormatting
     response.result = {};
 #endif
 
-    QueueManager::WriteStdout(kMethodType, response);
+    pipeline::WriteStdout(kMethodType, response);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentRangeFormatting);

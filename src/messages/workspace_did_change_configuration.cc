@@ -1,8 +1,8 @@
-#include "cache_manager.h"
 #include "clang_complete.h"
 #include "message_handler.h"
 #include "project.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 #include "timer.h"
 #include "working_files.h"
 
@@ -31,7 +31,7 @@ struct Handler_WorkspaceDidChangeConfiguration
                        std::to_string(project->entries.size()) + " files)");
 
     time.Reset();
-    project->Index(QueueManager::instance(), working_files, lsRequestId());
+    project->Index(working_files, lsRequestId());
     time.ResetAndPrint(
         "[perf] Dispatched workspace/didChangeConfiguration index requests");
 

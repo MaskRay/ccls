@@ -21,14 +21,8 @@ unsigned Flags() {
          CXTranslationUnit_CacheCompletionResults |
          CXTranslationUnit_PrecompiledPreamble |
          CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
-         CXTranslationUnit_DetailedPreprocessingRecord
-#if !defined(_WIN32)
-         // For whatever reason, CreatePreambleOnFirstParse causes clang to
-         // become very crashy on windows.
-         // TODO: do more investigation, submit fixes to clang.
-         | CXTranslationUnit_CreatePreambleOnFirstParse
-#endif
-      ;
+         CXTranslationUnit_DetailedPreprocessingRecord |
+         CXTranslationUnit_CreatePreambleOnFirstParse;
 }
 
 std::string StripFileType(const std::string& path) {
@@ -56,23 +50,6 @@ unsigned GetCompletionPriority(const CXCompletionString& str,
   }
   return priority;
 }
-
-/*
-bool IsCallKind(CXCursorKind kind) {
-  switch (kind) {
-    case CXCursor_ObjCInstanceMethodDecl:
-    case CXCursor_CXXMethod:
-    case CXCursor_FunctionTemplate:
-    case CXCursor_FunctionDecl:
-    case CXCursor_Constructor:
-    case CXCursor_Destructor:
-    case CXCursor_ConversionFunction:
-      return true;
-    default:
-      return false;
-  }
-}
-*/
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
@@ -383,8 +360,8 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
   std::vector<std::string> args = session->file.args;
 
   // -fspell-checking enables FixIts for, ie, misspelled types.
-  if (!AnyStartsWith(args, "-fno-spell-checking") &&
-      !AnyStartsWith(args, "-fspell-checking")) {
+  if (!std::count(args.begin(), args.end(), "-fno-spell-checking") &&
+      !std::count(args.begin(), args.end(), "-fspell-checking")) {
     args.push_back("-fspell-checking");
   }
 

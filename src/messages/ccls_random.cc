@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 #include <math.h>
 #include <stdlib.h>
@@ -126,7 +127,7 @@ struct Handler_CclsRandom : BaseMessageHandler<In_CclsRandom> {
         break;
       }
     }
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsRandom);

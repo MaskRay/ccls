@@ -1,6 +1,7 @@
 #include "message_handler.h"
 #include "query_utils.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
+using namespace ccls;
 
 #include <unordered_set>
 
@@ -95,7 +96,7 @@ bool ExpandHelper(MessageHandler* m,
   if (derived) {
     if (levels > 0) {
       for (auto usr : entity.derived) {
-        if (seen.insert(usr).second)
+        if (!seen.insert(usr).second)
           continue;
         Out_CclsInheritanceHierarchy::Entry entry1;
         entry1.id = std::to_string(usr);
@@ -110,7 +111,7 @@ bool ExpandHelper(MessageHandler* m,
   } else {
     if (levels > 0) {
       for (auto usr : def->bases) {
-        if (seen.insert(usr).second)
+        if (!seen.insert(usr).second)
           continue;
         Out_CclsInheritanceHierarchy::Entry entry1;
         entry1.id = std::to_string(usr);
@@ -180,17 +181,15 @@ struct Handler_CclsInheritanceHierarchy
       WorkingFile* wfile =
           working_files->GetFileByFilename(file->def->path);
 
-      for (SymbolRef sym :
-           FindSymbolsAtLocation(wfile, file, params.position)) {
+      for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position))
         if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
           out.result = BuildInitial(sym, params.derived, params.qualified,
                                     params.levels);
           break;
         }
-      }
     }
 
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsInheritanceHierarchy);

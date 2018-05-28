@@ -1,6 +1,6 @@
 #include "query_utils.h"
 
-#include "queue_manager.h"
+#include "pipeline.hh"
 
 #include <limits.h>
 #include <unordered_set>

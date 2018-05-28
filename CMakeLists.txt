@@ -189,11 +189,8 @@ file(GLOB SOURCES src/*.cc src/*.h src/serializers/*.cc src/serializers/*.h
 target_sources(ccls PRIVATE third_party/siphash.cc)
 
 target_sources(ccls PRIVATE
-               src/cache_manager.cc
                src/clang_complete.cc
-               src/clang_cursor.cc
-               src/clang_indexer.cc
-               src/clang_translation_unit.cc
+               src/clang_tu.cc
                src/clang_utils.cc
                src/config.cc
                src/diagnostics_engine.cc
@@ -202,6 +199,7 @@ target_sources(ccls PRIVATE
                src/fuzzy_match.cc
                src/main.cc
                src/include_complete.cc
+               src/indexer.cc
                src/method.cc
                src/language.cc
                src/lex_utils.cc
@@ -212,12 +210,10 @@ target_sources(ccls PRIVATE
                src/pipeline.cc
                src/platform_posix.cc
                src/platform_win.cc
-               src/port.cc
                src/position.cc
                src/project.cc
                src/query_utils.cc
                src/query.cc
-               src/queue_manager.cc
                src/serializer.cc
                src/test.cc
                src/third_party_impl.cc

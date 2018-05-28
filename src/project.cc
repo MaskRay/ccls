@@ -1,17 +1,17 @@
 #include "project.h"
 
-#include "cache_manager.h"
 #include "clang_utils.h"
 #include "filesystem.hh"
 #include "language.h"
 #include "log.hh"
 #include "match.h"
 #include "platform.h"
-#include "queue_manager.h"
+#include "pipeline.hh"
 #include "serializers/json.h"
 #include "timer.h"
 #include "utils.h"
 #include "working_files.h"
+using namespace ccls;
 
 #include <clang/Driver/Options.h>
 #include <llvm/ADT/ArrayRef.h>
@@ -454,17 +454,15 @@ void Project::ForAllFilteredFiles(
   }
 }
 
-void Project::Index(QueueManager* queue,
-                    WorkingFiles* wfiles,
+void Project::Index(WorkingFiles* wfiles,
                     lsRequestId id) {
   ForAllFilteredFiles([&](int i, const Project::Entry& entry) {
     bool is_interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-    queue->index_request.PushBack(
-        Index_Request(entry.filename, entry.args, is_interactive, id));
+    pipeline::Index(entry.filename, entry.args, is_interactive, id);
   });
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
-  queue->index_request.PushBack(Index_Request("", {}, false));
+  pipeline::Index("", {}, false);
 }
 
 TEST_SUITE("Project") {

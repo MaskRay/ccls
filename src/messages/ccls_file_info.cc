@@ -1,6 +1,7 @@
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "query_utils.h"
-#include "queue_manager.h"
+using namespace ccls;
 
 MAKE_REFLECT_STRUCT(QueryFile::Def,
                     path,
@@ -49,7 +50,7 @@ struct Handler_CclsFileInfo : BaseMessageHandler<In_CclsFileInfo> {
     out.result.language = file->def->language;
     out.result.includes = file->def->includes;
     out.result.inactive_regions = file->def->inactive_regions;
-    QueueManager::WriteStdout(kMethodType, out);
+    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsFileInfo);
