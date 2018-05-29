@@ -269,9 +269,8 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 #endif
   }
   if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
-    LOG_S(INFO) << "unable to load " << Path.c_str()
-                << "; using directory listing instead.";
-    return LoadFromDirectoryListing(project);
+    LOG_S(WARNING) << "unable to load " << Path.c_str();
+    return {};
   }
 
   LOG_S(INFO) << "loaded " << Path.c_str();

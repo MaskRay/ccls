@@ -171,7 +171,7 @@ struct TypeDef : NameMixin<TypeDef> {
   // Types, functions, and variables defined in this type.
   std::vector<Usr> types;
   std::vector<Usr> funcs;
-  std::vector<Usr> vars;
+  std::vector<std::pair<Usr, int64_t>> vars;
 
   // If set, then this is the same underlying type as the given value (ie, this
   // type comes from a using or typedef statement).

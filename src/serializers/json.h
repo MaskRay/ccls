@@ -51,13 +51,13 @@ class JsonReader : public Reader {
     path_.pop_back();
   }
 
-  void DoMember(const char* name, std::function<void(Reader&)> fn) override {
+  void Member(const char* name, std::function<void()> fn) override {
     path_.push_back(name);
     auto it = m_->FindMember(name);
     if (it != m_->MemberEnd()) {
       auto saved = m_;
       m_ = &it->value;
-      fn(*this);
+      fn();
       m_ = saved;
     }
     path_.pop_back();

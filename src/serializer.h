@@ -48,7 +48,7 @@ class Reader {
   virtual std::unique_ptr<Reader> operator[](const char* x) = 0;
 
   virtual void IterArray(std::function<void(Reader&)> fn) = 0;
-  virtual void DoMember(const char* name, std::function<void(Reader&)> fn) = 0;
+  virtual void Member(const char* name, std::function<void()> fn) = 0;
 };
 
 class Writer {
@@ -75,8 +75,8 @@ class Writer {
 
 struct IndexFile;
 
-#define REFLECT_MEMBER_START() ReflectMemberStart(visitor, value)
-#define REFLECT_MEMBER_END() ReflectMemberEnd(visitor, value);
+#define REFLECT_MEMBER_START() ReflectMemberStart(visitor)
+#define REFLECT_MEMBER_END() ReflectMemberEnd(visitor);
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
 #define REFLECT_MEMBER_MANDATORY_OPTIONAL(name) \
   ReflectMember(visitor, #name, value.name, mandatory_optional_tag{})
@@ -265,6 +265,19 @@ void ReflectMember(Writer& visitor,
   Reflect(visitor, value);
 }
 
+template <typename L, typename R>
+void Reflect(Reader& vis, std::pair<L, R>& v) {
+  vis.Member("L", [&]() { Reflect(vis, v.first); });
+  vis.Member("R", [&]() { Reflect(vis, v.second); });
+}
+template <typename L, typename R>
+void Reflect(Writer& vis, std::pair<L, R>& v) {
+  vis.StartObject();
+  ReflectMember(vis, "L", v.first);
+  ReflectMember(vis, "R", v.second);
+  vis.EndObject();
+}
+
 // std::vector
 template <typename T>
 void Reflect(Reader& visitor, std::vector<T>& values) {
@@ -284,31 +297,27 @@ void Reflect(Writer& visitor, std::vector<T>& values) {
 
 // ReflectMember
 
-template <typename T>
-bool ReflectMemberStart(Reader& visitor, T& value) {
+inline bool ReflectMemberStart(Reader& vis) {
   return false;
 }
-template <typename T>
-bool ReflectMemberStart(Writer& visitor, T& value) {
-  visitor.StartObject();
+inline bool ReflectMemberStart(Writer& vis) {
+  vis.StartObject();
   return true;
 }
 
-template <typename T>
-void ReflectMemberEnd(Reader& visitor, T& value) {}
-template <typename T>
-void ReflectMemberEnd(Writer& visitor, T& value) {
-  visitor.EndObject();
+inline void ReflectMemberEnd(Reader& vis) {}
+inline void ReflectMemberEnd(Writer& vis) {
+  vis.EndObject();
 }
 
 template <typename T>
-void ReflectMember(Reader& visitor, const char* name, T& value) {
-  visitor.DoMember(name, [&](Reader& child) { Reflect(child, value); });
+void ReflectMember(Reader& vis, const char* name, T& v) {
+  vis.Member(name, [&]() { Reflect(vis, v); });
 }
 template <typename T>
-void ReflectMember(Writer& visitor, const char* name, T& value) {
-  visitor.Key(name);
-  Reflect(visitor, value);
+void ReflectMember(Writer& vis, const char* name, T& v) {
+  vis.Key(name);
+  Reflect(vis, v);
 }
 
 // API

@@ -39,10 +39,10 @@ class BinaryReader : public Reader {
   // Abuse how the function is called in serializer.h
   bool IsNull() override { return !*p_++; }
   bool IsInt() override { return true; }
-  bool IsInt64() override {return true;}
-  bool IsUInt64() override {return true;}
-  bool IsDouble() override {return true;};
-  bool IsString() override {return true;}
+  bool IsInt64() override { return true; }
+  bool IsUInt64() override { return true; }
+  bool IsDouble() override { return true; }
+  bool IsString() override { return true; }
 
   void GetNull() override {}
   bool GetBool() override { return Get<bool>(); }
@@ -69,8 +69,8 @@ class BinaryReader : public Reader {
       fn(*this);
   }
 
-  void DoMember(const char*, std::function<void(Reader&)> fn) override {
-    fn(*this);
+  void Member(const char*, std::function<void()> fn) override {
+    fn();
   }
 };
 
