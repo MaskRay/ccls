@@ -80,7 +80,7 @@ struct Handler_CclsRandom : BaseMessageHandler<In_CclsRandom> {
         Add<SymbolKind::Var>(sym2id, adj, it.second.instances, n);
         Add<SymbolKind::Func>(sym2id, adj, def->funcs, n);
         Add<SymbolKind::Type>(sym2id, adj, def->types, n);
-        Add<SymbolKind::Var>(sym2id, adj, def->vars, n);
+        //Add<SymbolKind::Var>(sym2id, adj, def->vars, n);
         n++;
       }
     for (auto& it : db->usr2var)

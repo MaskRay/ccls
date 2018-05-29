@@ -74,17 +74,29 @@ bool Expand(MessageHandler* m,
 void DoField(MessageHandler* m,
              Out_CclsMemberHierarchy::Entry* entry,
              const QueryVar& var,
+             int64_t offset,
              bool qualified,
              int levels) {
   const QueryVar::Def* def1 = var.AnyDef();
   if (!def1)
     return;
   Out_CclsMemberHierarchy::Entry entry1;
+  // With multiple inheritance, the offset is incorrect.
+  if (offset >= 0) {
+    if (offset / 8 < 10)
+      entry1.fieldName += ' ';
+    entry1.fieldName += std::to_string(offset / 8);
+    if (offset % 8) {
+      entry1.fieldName += '.';
+      entry1.fieldName += std::to_string(offset % 8);
+    }
+    entry1.fieldName += ' ';
+  }
   if (qualified)
-    entry1.fieldName = def1->detailed_name;
+    entry1.fieldName += def1->detailed_name;
   else
-    entry1.fieldName = def1->detailed_name.substr(0, def1->qual_name_offset) +
-                       std::string(def1->Name(false));
+    entry1.fieldName += def1->detailed_name.substr(0, def1->qual_name_offset) +
+                        std::string(def1->Name(false));
   if (def1->spell) {
     if (std::optional<lsLocation> loc =
             GetLsLocation(m->db, m->working_files, *def1->spell))
@@ -158,9 +170,11 @@ bool Expand(MessageHandler* m,
             entry->children.push_back(std::move(entry1));
           }
         } else {
-          EachDefinedEntity(m->db->usr2var, def->vars, [&](QueryVar& var) {
-            DoField(m, entry, var, qualified, levels - 1);
-          });
+          for (auto it : def->vars) {
+            QueryVar& var = m->db->usr2var[it.first];
+            if (!var.def.empty())
+              DoField(m, entry, var, it.second, qualified, levels - 1);
+          }
         }
       }
     }
@@ -195,7 +209,7 @@ struct Handler_CclsMemberHierarchy
           entry.location = *loc;
       }
       EachDefinedEntity(db->usr2var, def->vars, [&](QueryVar& var) {
-          DoField(this, &entry, var, qualified, levels - 1);
+          DoField(this, &entry, var, -1, qualified, levels - 1);
         });
       return entry;
     }

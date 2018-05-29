@@ -681,7 +681,7 @@ void OnIndexReference_Function(IndexFile* db,
 }  // namespace
 
 // static
-const int IndexFile::kMajorVersion = 15;
+const int IndexFile::kMajorVersion = 16;
 const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
@@ -1491,8 +1491,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           }
           case SymbolKind::Type:
             if (decl->semanticContainer->cursor.kind != CXCursor_EnumDecl) {
+              long offset = clang_Cursor_getOffsetOfField(cursor.cx_cursor);
               db->ToType(decl->semanticContainer->cursor)
-                  .def.vars.push_back(var.usr);
+                  .def.vars.emplace_back(var.usr, offset);
             }
             break;
           default:
