@@ -125,7 +125,7 @@ MessageHandler::MessageHandler() {
 // static
 std::vector<MessageHandler*>* MessageHandler::message_handlers = nullptr;
 
-bool FindFileOrFail(QueryDatabase* db,
+bool FindFileOrFail(DB* db,
                     Project* project,
                     std::optional<lsRequestId> id,
                     const std::string& absolute_path,
@@ -186,7 +186,7 @@ void EmitInactiveLines(WorkingFile* working_file,
   pipeline::WriteStdout(kMethodType_CclsPublishInactiveRegions, out);
 }
 
-void EmitSemanticHighlighting(QueryDatabase* db,
+void EmitSemanticHighlighting(DB* db,
                               SemanticHighlightSymbolCache* semantic_cache,
                               WorkingFile* working_file,
                               QueryFile* file) {

@@ -6,7 +6,7 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/rename";
 
-lsWorkspaceEdit BuildWorkspaceEdit(QueryDatabase* db,
+lsWorkspaceEdit BuildWorkspaceEdit(DB* db,
                                    WorkingFiles* working_files,
                                    SymbolRef sym,
                                    const std::string& new_text) {

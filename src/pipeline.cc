@@ -299,7 +299,7 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
       indexer_waiter->Wait(index_request);
 }
 
-void Main_OnIndexed(QueryDatabase* db,
+void Main_OnIndexed(DB* db,
                     SemanticHighlightSymbolCache* semantic_cache,
                     WorkingFiles* working_files,
                     Index_OnIndexed* response) {
@@ -431,7 +431,7 @@ void MainLoop() {
   auto global_code_complete_cache = std::make_unique<CodeCompleteCache>();
   auto non_global_code_complete_cache = std::make_unique<CodeCompleteCache>();
   auto signature_cache = std::make_unique<CodeCompleteCache>();
-  QueryDatabase db;
+  DB db;
 
   // Setup shared references.
   for (MessageHandler* handler : *MessageHandler::message_handlers) {

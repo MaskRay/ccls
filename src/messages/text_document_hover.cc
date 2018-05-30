@@ -7,7 +7,7 @@ namespace {
 MethodType kMethodType = "textDocument/hover";
 
 // Find the comments for |sym|, if any.
-std::optional<lsMarkedString> GetComments(QueryDatabase* db, SymbolRef sym) {
+std::optional<lsMarkedString> GetComments(DB* db, SymbolRef sym) {
   std::optional<lsMarkedString> ret;
   WithEntity(db, sym, [&](const auto& entity) {
     if (const auto* def = entity.AnyDef())
@@ -21,7 +21,7 @@ std::optional<lsMarkedString> GetComments(QueryDatabase* db, SymbolRef sym) {
 }
 
 // Returns the hover or detailed name for `sym`, if any.
-std::optional<lsMarkedString> GetHoverOrName(QueryDatabase* db,
+std::optional<lsMarkedString> GetHoverOrName(DB* db,
                                              LanguageId lang,
                                              SymbolRef sym) {
   std::optional<lsMarkedString> ret;

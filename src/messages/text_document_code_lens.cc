@@ -31,7 +31,7 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentCodeLens, jsonrpc, id, result);
 
 struct CommonCodeLensParams {
   std::vector<TCodeLens>* result;
-  QueryDatabase* db;
+  DB* db;
   WorkingFiles* working_files;
   WorkingFile* working_file;
 };
@@ -118,10 +118,10 @@ struct Handler_TextDocumentCodeLens
           AddCodeLens("ref", "refs", &common, OffsetStartColumn(use, 0),
                       type.uses, true /*force_display*/);
           AddCodeLens("derived", "derived", &common, OffsetStartColumn(use, 1),
-                      GetDeclarations(db->usr2type, type.derived),
+                      GetTypeDeclarations(db, type.derived),
                       false /*force_display*/);
           AddCodeLens("var", "vars", &common, OffsetStartColumn(use, 2),
-                      GetDeclarations(db->usr2var, type.instances),
+                      GetVarDeclarations(db, type.instances),
                       false /*force_display*/);
           break;
         }
@@ -168,7 +168,7 @@ struct Handler_TextDocumentCodeLens
 
           AddCodeLens("derived", "derived", &common,
                       OffsetStartColumn(use, offset++),
-                      GetDeclarations(db->usr2func, func.derived),
+                      GetFuncDeclarations(db, func.derived),
                       false /*force_display*/);
 
           // "Base"
@@ -196,7 +196,7 @@ struct Handler_TextDocumentCodeLens
             }
           } else {
             AddCodeLens("base", "base", &common, OffsetStartColumn(use, 1),
-                        GetDeclarations(db->usr2type, def->bases),
+                        GetTypeDeclarations(db, def->bases),
                         false /*force_display*/);
           }
 

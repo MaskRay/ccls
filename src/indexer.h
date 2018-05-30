@@ -64,7 +64,7 @@ struct SymbolRef : Reference {
       : Reference{range, usr, kind, role} {}
 };
 
-// Represents an occurrence of a variable/type, |id,kind| refer to the lexical
+// Represents an occurrence of a variable/type, |usr,kind| refer to the lexical
 // parent.
 struct Use : Reference {
   // |file| is used in Query* but not in Index*
@@ -239,7 +239,10 @@ struct VarDef : NameMixin<VarDef> {
   // (declaration).
   StorageClass storage = StorageClass::Invalid;
 
-  bool is_local() const { return kind == lsSymbolKind::Variable; }
+  bool is_local() const {
+    return spell && spell->kind != SymbolKind::File &&
+           storage == StorageClass::None;
+  }
 
   std::vector<Usr> GetBases() const { return {}; }
   bool operator==(const VarDef& o) const {

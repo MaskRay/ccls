@@ -136,7 +136,7 @@ bool Expand(MessageHandler* m,
       const QueryFunc& func1 = *stack.back();
       stack.pop_back();
       if (auto* def1 = func1.AnyDef()) {
-        EachDefinedEntity(m->db->usr2func, def1->bases, [&](QueryFunc& func2) {
+        EachDefinedFunc(m->db, def1->bases, [&](QueryFunc& func2) {
           if (!seen.count(func2.usr)) {
             seen.insert(func2.usr);
             stack.push_back(&func2);
@@ -153,7 +153,7 @@ bool Expand(MessageHandler* m,
     while (stack.size()) {
       const QueryFunc& func1 = *stack.back();
       stack.pop_back();
-      EachDefinedEntity(m->db->usr2func, func1.derived, [&](QueryFunc& func2) {
+      EachDefinedFunc(m->db, func1.derived, [&](QueryFunc& func2) {
         if (!seen.count(func2.usr)) {
           seen.insert(func2.usr);
           stack.push_back(&func2);
@@ -206,7 +206,7 @@ struct Handler_CclsCallHierarchy
       entry.id = std::to_string(params.usr);
       entry.usr = params.usr;
       entry.callType = CallType::Direct;
-      if (db->usr2func.count(params.usr))
+      if (db->HasFunc(params.usr))
         Expand(this, &entry, params.callee, params.callType, params.qualified,
                params.levels);
       out.result = std::move(entry);

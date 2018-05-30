@@ -20,7 +20,7 @@ struct ImportManager;
 struct IncludeComplete;
 struct MultiQueueWaiter;
 struct Project;
-struct QueryDatabase;
+struct DB;
 struct WorkingFile;
 struct WorkingFiles;
 
@@ -101,7 +101,7 @@ MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting,
   static type type##message_handler_instance_;
 
 struct MessageHandler {
-  QueryDatabase* db = nullptr;
+  DB* db = nullptr;
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;
   DiagnosticsEngine* diag_engine = nullptr;
@@ -134,7 +134,7 @@ struct BaseMessageHandler : MessageHandler {
   }
 };
 
-bool FindFileOrFail(QueryDatabase* db,
+bool FindFileOrFail(DB* db,
                     Project* project,
                     std::optional<lsRequestId> id,
                     const std::string& absolute_path,
@@ -144,7 +144,7 @@ bool FindFileOrFail(QueryDatabase* db,
 void EmitInactiveLines(WorkingFile* working_file,
                        const std::vector<Range>& inactive_regions);
 
-void EmitSemanticHighlighting(QueryDatabase* db,
+void EmitSemanticHighlighting(DB* db,
                               SemanticHighlightSymbolCache* semantic_cache,
                               WorkingFile* working_file,
                               QueryFile* file);

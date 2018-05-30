@@ -138,7 +138,7 @@ bool Expand(MessageHandler* m,
       const auto* def = stack.back()->AnyDef();
       stack.pop_back();
       if (def) {
-        EachDefinedEntity(m->db->usr2type, def->bases, [&](QueryType& type1) {
+        EachDefinedType(m->db, def->bases, [&](QueryType& type1) {
           if (!seen.count(type1.usr)) {
             seen.insert(type1.usr);
             stack.push_back(&type1);
@@ -171,7 +171,7 @@ bool Expand(MessageHandler* m,
           }
         } else {
           for (auto it : def->vars) {
-            QueryVar& var = m->db->usr2var[it.first];
+            QueryVar& var = m->db->Var(it.first);
             if (!var.def.empty())
               DoField(m, entry, var, it.second, qualified, levels - 1);
           }
@@ -208,7 +208,7 @@ struct Handler_CclsMemberHierarchy
           GetLsLocation(db, working_files, *def->spell))
           entry.location = *loc;
       }
-      EachDefinedEntity(db->usr2var, def->vars, [&](QueryVar& var) {
+      EachDefinedVar(db, def->vars, [&](QueryVar& var) {
           DoField(this, &entry, var, -1, qualified, levels - 1);
         });
       return entry;
@@ -247,7 +247,7 @@ struct Handler_CclsMemberHierarchy
       entry.id = std::to_string(params.usr);
       entry.usr = params.usr;
       // entry.name is empty as it is known by the client.
-      if (db->usr2type.count(entry.usr) &&
+      if (db->HasType(entry.usr) &&
           Expand(this, &entry, params.qualified, params.levels))
         out.result = std::move(entry);
     } else {
