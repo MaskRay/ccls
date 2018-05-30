@@ -15,22 +15,21 @@ MethodType kMethodType = "workspace/symbol";
 
 // Lookup |symbol| in |db| and insert the value into |result|.
 bool AddSymbol(
-    QueryDatabase* db,
+    DB* db,
     WorkingFiles* working_files,
-    int i,
+    SymbolIdx sym,
     bool use_detailed,
-    std::vector<std::tuple<lsSymbolInformation, bool, int>>* result) {
-  SymbolIdx symbol = db->symbols[i];
+    std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>>* result) {
   std::optional<lsSymbolInformation> info =
-      GetSymbolInfo(db, working_files, symbol, true);
+      GetSymbolInfo(db, working_files, sym, true);
   if (!info)
     return false;
 
   Use loc;
-  if (Maybe<Use> location = GetDefinitionExtent(db, symbol))
+  if (Maybe<Use> location = GetDefinitionExtent(db, sym))
     loc = *location;
   else {
-    auto decls = GetNonDefDeclarations(db, symbol);
+    auto decls = GetNonDefDeclarations(db, sym);
     if (decls.empty())
       return false;
     loc = decls[0];
@@ -40,7 +39,7 @@ bool AddSymbol(
   if (!ls_location)
     return false;
   info->location = *ls_location;
-  result->emplace_back(*info, use_detailed, i);
+  result->emplace_back(*info, int(use_detailed), sym);
   return true;
 }
 
@@ -72,7 +71,7 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
     std::string query = request->params.query;
 
     // {symbol info, matching detailed_name or short_name, index}
-    std::vector<std::tuple<lsSymbolInformation, bool, int>> unsorted;
+    std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> cands;
     bool sensitive = g_config->workspaceSymbol.caseSensitivity;
 
     // Find subsequence matches.
@@ -82,47 +81,52 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
       if (!isspace(c))
         query_without_space += c;
 
-    for (int i = 0; i < (int)db->symbols.size(); ++i) {
-      std::string_view detailed_name = db->GetSymbolName(i, true);
+    auto Add = [&](SymbolIdx sym) {
+      std::string_view detailed_name = db->GetSymbolName(sym, true);
       int pos =
         ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
-      if (pos >= 0 &&
-        AddSymbol(db, working_files, i,
-          detailed_name.find(':', pos) != std::string::npos,
-          &unsorted) &&
-        unsorted.size() >= g_config->workspaceSymbol.maxNum)
-        break;
-    }
+      return pos >= 0 &&
+             AddSymbol(db, working_files, sym,
+                       detailed_name.find(':', pos) != std::string::npos,
+                       &cands) &&
+             cands.size() >= g_config->workspaceSymbol.maxNum;
+    };
+    for (auto& func : db->funcs)
+      if (Add({func.usr, SymbolKind::Func}))
+        goto done_add;
+    for (auto& type : db->types)
+      if (Add({type.usr, SymbolKind::Type}))
+        goto done_add;
+    for (auto& var : db->vars)
+      if (var.def.size() && !var.def[0].is_local() &&
+          Add({var.usr, SymbolKind::Var}))
+        goto done_add;
+ done_add:
 
     if (g_config->workspaceSymbol.sort && query.size() <= FuzzyMatcher::kMaxPat) {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
-      for (int i = 0; i < int(unsorted.size()); i++) {
+      for (auto& cand : cands)
         longest = std::max(
-            longest,
-            int(db->GetSymbolName(std::get<2>(unsorted[i]), true).size()));
-      }
+            longest, int(db->GetSymbolName(std::get<2>(cand), true).size()));
       FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
-      std::vector<std::pair<int, int>> permutation(unsorted.size());
-      for (int i = 0; i < int(unsorted.size()); i++) {
-        permutation[i] = {
-            fuzzy.Match(db->GetSymbolName(std::get<2>(unsorted[i]),
-                                          std::get<1>(unsorted[i]))),
-            i};
+      for (auto& cand : cands)
+        std::get<1>(cand) = fuzzy.Match(
+            db->GetSymbolName(std::get<2>(cand), std::get<1>(cand)));
+      std::sort(cands.begin(), cands.end(), [](const auto& l, const auto& r) {
+        return std::get<1>(l) > std::get<1>(r);
+      });
+      out.result.reserve(cands.size());
+      for (auto& cand: cands) {
+        // Discard awful candidates.
+        if (std::get<1>(cand) <= FuzzyMatcher::kMinScore)
+          break;
+        out.result.push_back(std::get<0>(cand));
       }
-      std::sort(permutation.begin(), permutation.end(),
-                std::greater<std::pair<int, int>>());
-      out.result.reserve(unsorted.size());
-      // Discard awful candidates.
-      for (int i = 0; i < int(unsorted.size()) &&
-                      permutation[i].first > FuzzyMatcher::kMinScore;
-           i++)
-        out.result.push_back(
-            std::move(std::get<0>(unsorted[permutation[i].second])));
     } else {
-      out.result.reserve(unsorted.size());
-      for (auto& entry : unsorted)
-        out.result.push_back(std::get<0>(entry));
+      out.result.reserve(cands.size());
+      for (auto& cand : cands)
+        out.result.push_back(std::get<0>(cand));
     }
 
     pipeline::WriteStdout(kMethodType, out);

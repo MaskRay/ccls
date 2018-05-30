@@ -43,9 +43,9 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
           [[fallthrough]];
         }
         case SymbolKind::Type:
-          out.result = GetLsLocationExs(
-              db, working_files,
-              GetDeclarations(db->usr2var, db->Type(usr).instances));
+          out.result =
+              GetLsLocationExs(db, working_files,
+                               GetVarDeclarations(db, db->Type(usr).instances));
           break;
       }
     }

@@ -3,6 +3,7 @@
 #include "indexer.h"
 #include "serializer.h"
 
+#include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringMap.h>
 
@@ -10,7 +11,7 @@ struct QueryFile;
 struct QueryType;
 struct QueryFunc;
 struct QueryVar;
-struct QueryDatabase;
+struct DB;
 
 template <typename T>
 struct WithFileContent {
@@ -42,7 +43,6 @@ struct QueryFile {
 
   int id = -1;
   std::optional<Def> def;
-  int symbol_idx = -1;
 };
 
 template <typename Q, typename QDef>
@@ -67,7 +67,6 @@ using UsrUpdate =
 
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
-  int symbol_idx = -1;
   llvm::SmallVector<Def, 1> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
@@ -76,7 +75,6 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
 
 struct QueryType : QueryEntity<QueryType, TypeDef> {
   Usr usr;
-  int symbol_idx = -1;
   llvm::SmallVector<Def, 1> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
@@ -86,7 +84,6 @@ struct QueryType : QueryEntity<QueryType, TypeDef> {
 
 struct QueryVar : QueryEntity<QueryVar, VarDef> {
   Usr usr;
-  int symbol_idx = -1;
   llvm::SmallVector<Def, 1> def;
   std::vector<Use> declarations;
   std::vector<Use> uses;
@@ -108,6 +105,7 @@ struct IndexUpdate {
   std::optional<QueryFile::DefUpdate> files_def_update;
 
   // Function updates.
+  int funcs_hint;
   std::vector<Usr> funcs_removed;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_def_update;
   UseUpdate funcs_declarations;
@@ -115,6 +113,7 @@ struct IndexUpdate {
   UsrUpdate funcs_derived;
 
   // Type updates.
+  int types_hint;
   std::vector<Usr> types_removed;
   std::vector<std::pair<Usr, QueryType::Def>> types_def_update;
   UseUpdate types_declarations;
@@ -123,23 +122,42 @@ struct IndexUpdate {
   UsrUpdate types_instances;
 
   // Variable updates.
+  int vars_hint;
   std::vector<Usr> vars_removed;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
   UseUpdate vars_declarations;
   UseUpdate vars_uses;
 };
 
+template <typename Q>
+struct EntityToIndex {
+  using argument_type = const Q&;
+  llvm::DenseMap<Usr, unsigned> m;
+  unsigned operator()(const Q& entity) const {
+    return m[entity.usr];
+  }
+};
+
+struct WrappedUsr {
+  Usr usr;
+};
+template <>
+struct llvm::DenseMapInfo<WrappedUsr> {
+  static inline WrappedUsr getEmptyKey() { return {0}; }
+  static inline WrappedUsr getTombstoneKey() { return {~0ULL}; }
+  static unsigned getHashValue(WrappedUsr w) { return w.usr; }
+  static bool isEqual(WrappedUsr l, WrappedUsr r) { return l.usr == r.usr; }
+};
+
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
-struct QueryDatabase {
-  // All File/Func/Type/Var symbols.
-  std::vector<SymbolIdx> symbols;
-
+struct DB {
   std::vector<QueryFile> files;
   llvm::StringMap<int> name2file_id;
-  std::unordered_map<Usr, QueryFunc> usr2func;
-  std::unordered_map<Usr, QueryType> usr2type;
-  std::unordered_map<Usr, QueryVar> usr2var;
+  llvm::DenseMap<WrappedUsr, int> func_usr, type_usr, var_usr;
+  std::vector<QueryFunc> funcs;
+  std::vector<QueryType> types;
+  std::vector<QueryVar> vars;
 
   // Marks the given Usrs as invalid.
   void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);
@@ -150,15 +168,18 @@ struct QueryDatabase {
   void Update(int file_id, std::vector<std::pair<Usr, QueryType::Def>>&& us);
   void Update(int file_id, std::vector<std::pair<Usr, QueryFunc::Def>>&& us);
   void Update(int file_id, std::vector<std::pair<Usr, QueryVar::Def>>&& us);
-  void UpdateSymbols(int* symbol_idx, SymbolKind kind, Usr usr);
-  std::string_view GetSymbolName(int symbol_idx, bool qualified);
+  std::string_view GetSymbolName(SymbolIdx sym, bool qualified);
+
+  bool HasFunc(Usr usr) const { return func_usr.count({usr}); }
+  bool HasType(Usr usr) const { return type_usr.count({usr}); }
+  bool HasVar(Usr usr) const { return var_usr.count({usr}); }
+
+  QueryFunc& Func(Usr usr) { return funcs[func_usr[{usr}]]; }
+  QueryType& Type(Usr usr) { return types[type_usr[{usr}]]; }
+  QueryVar& Var(Usr usr) { return vars[var_usr[{usr}]]; }
 
   QueryFile& GetFile(SymbolIdx ref) { return files[ref.usr]; }
-  QueryFunc& GetFunc(SymbolIdx ref) { return usr2func[ref.usr]; }
-  QueryType& GetType(SymbolIdx ref) { return usr2type[ref.usr]; }
-  QueryVar& GetVar(SymbolIdx ref) { return usr2var[ref.usr]; }
-
-  QueryFunc& Func(Usr usr) { return usr2func[usr]; }
-  QueryType& Type(Usr usr) { return usr2type[usr]; }
-  QueryVar& Var(Usr usr) { return usr2var[usr]; }
+  QueryFunc& GetFunc(SymbolIdx ref) { return Func(ref.usr); }
+  QueryType& GetType(SymbolIdx ref) { return Type(ref.usr); }
+  QueryVar& GetVar(SymbolIdx ref) { return Var(ref.usr); }
 };

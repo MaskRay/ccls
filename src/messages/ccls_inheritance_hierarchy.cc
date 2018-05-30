@@ -169,8 +169,8 @@ struct Handler_CclsInheritanceHierarchy
       entry.id = std::to_string(params.usr);
       entry.usr = params.usr;
       entry.kind = params.kind;
-      if (((entry.kind == SymbolKind::Func && db->usr2func.count(entry.usr)) ||
-           (entry.kind == SymbolKind::Type && db->usr2type.count(entry.usr))) &&
+      if (((entry.kind == SymbolKind::Func && db->HasFunc(entry.usr)) ||
+           (entry.kind == SymbolKind::Type && db->HasType(entry.usr))) &&
           Expand(this, &entry, params.derived, params.qualified, params.levels))
         out.result = std::move(entry);
     } else {

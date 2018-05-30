@@ -230,7 +230,6 @@ target_sources(ccls PRIVATE
                src/messages/ccls_freshen_index.cc
                src/messages/ccls_inheritance_hierarchy.cc
                src/messages/ccls_member_hierarchy.cc
-               src/messages/ccls_random.cc
                src/messages/ccls_vars.cc
                src/messages/exit.cc
                src/messages/initialize.cc

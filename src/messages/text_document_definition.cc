@@ -25,7 +25,7 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
-std::vector<Use> GetNonDefDeclarationTargets(QueryDatabase* db, SymbolRef sym) {
+std::vector<Use> GetNonDefDeclarationTargets(DB* db, SymbolRef sym) {
   switch (sym.kind) {
     case SymbolKind::Var: {
       std::vector<Use> ret = GetNonDefDeclarations(db, sym);
@@ -135,18 +135,16 @@ struct Handler_TextDocumentDefinition
         // substring, we use the tuple <length difference, negative position,
         // not in the same file, line distance> to find the best match.
         std::tuple<int, int, bool, int> best_score{INT_MAX, 0, true, 0};
-        int best_i = -1;
-        for (int i = 0; i < (int)db->symbols.size(); ++i) {
-          if (db->symbols[i].kind == SymbolKind::Invalid)
-            continue;
-
-          std::string_view short_name = db->GetSymbolName(i, false),
+        SymbolIdx best_sym;
+        best_sym.kind = SymbolKind::Invalid;
+        auto fn = [&](SymbolIdx sym) {
+          std::string_view short_name = db->GetSymbolName(sym, false),
                            name = short_query.size() < query.size()
-                                      ? db->GetSymbolName(i, true)
+                                      ? db->GetSymbolName(sym, true)
                                       : short_name;
           if (short_name != short_query)
-            continue;
-          if (Maybe<Use> use = GetDefinitionSpell(db, db->symbols[i])) {
+            return;
+          if (Maybe<Use> use = GetDefinitionSpell(db, sym)) {
             std::tuple<int, int, bool, int> score{
                 int(name.size() - short_query.size()), 0,
                 use->file_id != file_id,
@@ -160,12 +158,20 @@ struct Handler_TextDocumentDefinition
             }
             if (score < best_score) {
               best_score = score;
-              best_i = i;
+              best_sym = sym;
             }
           }
-        }
-        if (best_i != -1) {
-          Maybe<Use> use = GetDefinitionSpell(db, db->symbols[best_i]);
+        };
+        for (auto& func : db->funcs)
+          fn({func.usr, SymbolKind::Func});
+        for (auto& type : db->types)
+          fn({type.usr, SymbolKind::Type});
+        for (auto& var : db->vars)
+          if (var.def.size() && !var.def[0].is_local())
+            fn({var.usr, SymbolKind::Var});
+
+        if (best_sym.kind != SymbolKind::Invalid) {
+          Maybe<Use> use = GetDefinitionSpell(db, best_sym);
           assert(use);
           if (auto ls_loc = GetLsLocationEx(db, working_files, *use,
                                             g_config->xref.container))

@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// Used by |HANDLE_MERGEABLE| so only |range| is needed.
+// Used by |REMOVE_ADD| so only |range| is needed.
 MAKE_HASHABLE(Use, t.range, t.file_id);
 
 namespace {
@@ -178,6 +178,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
 
   r.files_def_update = BuildFileDefUpdate(std::move(*current));
 
+  r.funcs_hint = int(current->usr2func.size() - previous->usr2func.size());
   for (auto& it : previous->usr2func) {
     auto& func = it.second;
     if (func.def.spell)
@@ -195,6 +196,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
     r.funcs_derived[func.usr].second = std::move(func.derived);
   }
 
+  r.types_hint = int(current->usr2type.size() - previous->usr2type.size());
   for (auto& it : previous->usr2type) {
     auto& type = it.second;
     if (type.def.spell)
@@ -214,6 +216,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
     r.types_instances[type.usr].second = std::move(type.instances);
   };
 
+  r.vars_hint = int(current->usr2var.size() - previous->usr2var.size());
   for (auto& it : previous->usr2var) {
     auto& var = it.second;
     if (var.def.spell)
@@ -232,34 +235,14 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   return r;
 }
 
-// ------------------------
-// QUERYDB THREAD FUNCTIONS
-// ------------------------
-
-void QueryDatabase::RemoveUsrs(SymbolKind usr_kind,
-                               const std::vector<Usr>& to_remove) {
-  switch (usr_kind) {
-    case SymbolKind::Type: {
-      for (Usr usr : to_remove) {
-        QueryType& type = usr2type[usr];
-        if (type.symbol_idx >= 0)
-          symbols[type.symbol_idx].kind = SymbolKind::Invalid;
-        type.def.clear();
-      }
-      break;
-    }
-    default:
-      break;
-  }
-}
-
-void QueryDatabase::RemoveUsrs(
-    SymbolKind kind,
-    int file_id,
-    const std::vector<Usr>& to_remove) {
+void DB::RemoveUsrs(SymbolKind kind,
+                    int file_id,
+                    const std::vector<Usr>& to_remove) {
   switch (kind) {
     case SymbolKind::Func: {
-      for (auto usr : to_remove) {
+      for (Usr usr : to_remove) {
+        // FIXME
+        if (!HasFunc(usr)) continue;
         QueryFunc& func = Func(usr);
         auto it = llvm::find_if(func.def, [=](const QueryFunc::Def& def) {
           return def.spell->file_id == file_id;
@@ -269,8 +252,23 @@ void QueryDatabase::RemoveUsrs(
       }
       break;
     }
+    case SymbolKind::Type: {
+      for (Usr usr : to_remove) {
+        // FIXME
+        if (!HasType(usr)) continue;
+        QueryType& type = Type(usr);
+        auto it = llvm::find_if(type.def, [=](const QueryType::Def& def) {
+          return def.spell->file_id == file_id;
+        });
+        if (it != type.def.end())
+          type.def.erase(it);
+      }
+      break;
+    }
     case SymbolKind::Var: {
-      for (auto usr : to_remove) {
+      for (Usr usr : to_remove) {
+        // FIXME
+        if (!HasVar(usr)) continue;
         QueryVar& var = Var(usr);
         auto it = llvm::find_if(var.def, [=](const QueryVar::Def& def) {
           return def.spell->file_id == file_id;
@@ -281,26 +279,21 @@ void QueryDatabase::RemoveUsrs(
       break;
     }
     default:
-      assert(false);
       break;
   }
 }
 
-void QueryDatabase::ApplyIndexUpdate(IndexUpdate* u) {
-// This function runs on the querydb thread.
-
-// Example types:
-//  storage_name       =>  std::vector<std::optional<QueryType>>
-//  merge_update       =>  QueryType::DerivedUpdate =>
-//  MergeableUpdate<QueryTypeId, QueryTypeId> def                =>  QueryType
-//  def->def_var_name  =>  std::vector<QueryTypeId>
-#define HANDLE_MERGEABLE(update_var_name, def_var_name, storage_name) \
-  for (auto& it : u->update_var_name) {                               \
-    auto& entity = storage_name[it.first];                            \
-    AssignFileId(u->file_id, it.second.first);                        \
-    RemoveRange(entity.def_var_name, it.second.first);                \
-    AssignFileId(u->file_id, it.second.second);                       \
-    AddRange(u->file_id, entity.def_var_name, it.second.second);      \
+void DB::ApplyIndexUpdate(IndexUpdate* u) {
+#define REMOVE_ADD(C, F)                                      \
+  for (auto& it : u->C##s_##F) {                              \
+    auto R = C##_usr.try_emplace({it.first}, C##_usr.size()); \
+    if (R.second)                                             \
+      C##s.emplace_back().usr = it.first;                     \
+    auto& entity = C##s[R.first->second];                     \
+    AssignFileId(u->file_id, it.second.first);                \
+    RemoveRange(entity.F, it.second.first);                   \
+    AssignFileId(u->file_id, it.second.second);               \
+    AddRange(u->file_id, entity.F, it.second.second);         \
   }
 
   if (u->files_removed)
@@ -308,101 +301,108 @@ void QueryDatabase::ApplyIndexUpdate(IndexUpdate* u) {
         std::nullopt;
   u->file_id = u->files_def_update ? Update(std::move(*u->files_def_update)) : -1;
 
+  const double grow = 1.3;
+  size_t t;
+
+  if ((t = funcs.size() + u->funcs_hint) > funcs.capacity()) {
+    t = size_t(t * grow);
+    funcs.reserve(t);
+    func_usr.reserve(t);
+  }
   RemoveUsrs(SymbolKind::Func, u->file_id, u->funcs_removed);
   Update(u->file_id, std::move(u->funcs_def_update));
-  HANDLE_MERGEABLE(funcs_declarations, declarations, usr2func);
-  HANDLE_MERGEABLE(funcs_derived, derived, usr2func);
-  HANDLE_MERGEABLE(funcs_uses, uses, usr2func);
+  REMOVE_ADD(func, declarations);
+  REMOVE_ADD(func, derived);
+  REMOVE_ADD(func, uses);
 
-  RemoveUsrs(SymbolKind::Type, u->types_removed);
+  if ((t = types.size() + u->types_hint) > types.capacity()) {
+    t = size_t(t * grow);
+    types.reserve(t);
+    type_usr.reserve(t);
+  }
+  RemoveUsrs(SymbolKind::Type, u->file_id, u->types_removed);
   Update(u->file_id, std::move(u->types_def_update));
-  HANDLE_MERGEABLE(types_declarations, declarations, usr2type);
-  HANDLE_MERGEABLE(types_derived, derived, usr2type);
-  HANDLE_MERGEABLE(types_instances, instances, usr2type);
-  HANDLE_MERGEABLE(types_uses, uses, usr2type);
+  REMOVE_ADD(type, declarations);
+  REMOVE_ADD(type, derived);
+  REMOVE_ADD(type, instances);
+  REMOVE_ADD(type, uses);
 
+  if ((t = vars.size() + u->vars_hint) > vars.capacity()) {
+    t = size_t(t * grow);
+    vars.reserve(t);
+    var_usr.reserve(t);
+  }
   RemoveUsrs(SymbolKind::Var, u->file_id, u->vars_removed);
   Update(u->file_id, std::move(u->vars_def_update));
-  HANDLE_MERGEABLE(vars_declarations, declarations, usr2var);
-  HANDLE_MERGEABLE(vars_uses, uses, usr2var);
+  REMOVE_ADD(var, declarations);
+  REMOVE_ADD(var, uses);
 
-#undef HANDLE_MERGEABLE
+#undef REMOVE_ADD
 }
 
-int QueryDatabase::Update(QueryFile::DefUpdate&& u) {
+int DB::Update(QueryFile::DefUpdate&& u) {
   int id = files.size();
   auto it = name2file_id.try_emplace(LowerPathIfInsensitive(u.value.path), id);
   if (it.second)
     files.emplace_back().id = id;
   QueryFile& existing = files[it.first->second];
   existing.def = u.value;
-  UpdateSymbols(&existing.symbol_idx, SymbolKind::File, it.first->second);
   return existing.id;
 }
 
-void QueryDatabase::Update(int file_id,
-                           std::vector<std::pair<Usr, QueryFunc::Def>>&& us) {
+void DB::Update(int file_id, std::vector<std::pair<Usr, QueryFunc::Def>>&& us) {
   for (auto& u : us) {
     auto& def = u.second;
     assert(!def.detailed_name.empty());
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
     AssignFileId(file_id, def.callees);
-    QueryFunc& existing = Func(u.first);
+    auto R = func_usr.try_emplace({u.first}, func_usr.size());
+    if (R.second)
+      funcs.emplace_back();
+    QueryFunc& existing = funcs[R.first->second];
     existing.usr = u.first;
-    if (!TryReplaceDef(existing.def, std::move(def))) {
+    if (!TryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Func, u.first);
-    }
   }
 }
 
-void QueryDatabase::Update(int file_id,
-                           std::vector<std::pair<Usr, QueryType::Def>>&& us) {
+void DB::Update(int file_id, std::vector<std::pair<Usr, QueryType::Def>>&& us) {
   for (auto& u : us) {
     auto& def = u.second;
     assert(!def.detailed_name.empty());
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
-    QueryType& existing = Type(u.first);
+    auto R = type_usr.try_emplace({u.first}, type_usr.size());
+    if (R.second)
+      types.emplace_back();
+    QueryType& existing = types[R.first->second];
     existing.usr = u.first;
-    if (!TryReplaceDef(existing.def, std::move(def))) {
+    if (!TryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
-      UpdateSymbols(&existing.symbol_idx, SymbolKind::Type, u.first);
-    }
+
   }
 }
 
-void QueryDatabase::Update(int file_id,
-                           std::vector<std::pair<Usr, QueryVar::Def>>&& us) {
+void DB::Update(int file_id, std::vector<std::pair<Usr, QueryVar::Def>>&& us) {
   for (auto& u : us) {
     auto& def = u.second;
     assert(!def.detailed_name.empty());
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
-    QueryVar& existing = Var(u.first);
+    auto R = var_usr.try_emplace({u.first}, var_usr.size());
+    if (R.second)
+      vars.emplace_back();
+    QueryVar& existing = vars[R.first->second];
     existing.usr = u.first;
-    if (!TryReplaceDef(existing.def, std::move(def))) {
+    if (!TryReplaceDef(existing.def, std::move(def)))
       existing.def.push_back(std::move(def));
-      if (!existing.def.front().is_local())
-        UpdateSymbols(&existing.symbol_idx, SymbolKind::Var, u.first);
-    }
   }
 }
 
-void QueryDatabase::UpdateSymbols(int* symbol_idx,
-                                  SymbolKind kind,
-                                  Usr usr) {
-  if (*symbol_idx < 0) {
-    *symbol_idx = symbols.size();
-    symbols.push_back(SymbolIdx{usr, kind});
-  }
-}
-
-std::string_view QueryDatabase::GetSymbolName(int symbol_idx,
-                                              bool qualified) {
-  Usr usr = symbols[symbol_idx].usr;
-  switch (symbols[symbol_idx].kind) {
+std::string_view DB::GetSymbolName(SymbolIdx sym, bool qualified) {
+  Usr usr = sym.usr;
+  switch (sym.kind) {
     default:
       break;
     case SymbolKind::File:

@@ -5,66 +5,49 @@
 
 #include <optional>
 
-Maybe<Use> GetDefinitionSpell(QueryDatabase* db, SymbolIdx sym);
-Maybe<Use> GetDefinitionExtent(QueryDatabase* db, SymbolIdx sym);
+Maybe<Use> GetDefinitionSpell(DB* db, SymbolIdx sym);
+Maybe<Use> GetDefinitionExtent(DB* db, SymbolIdx sym);
 
 // Get defining declaration (if exists) or an arbitrary declaration (otherwise)
 // for each id.
-template <typename Q>
-std::vector<Use> GetDeclarations(std::unordered_map<Usr, Q>& usr2entity,
-                                 const std::vector<Usr>& usrs) {
-  std::vector<Use> ret;
-  ret.reserve(usrs.size());
-  for (Usr usr : usrs) {
-    Q& entity = usr2entity[usr];
-    bool has_def = false;
-    for (auto& def : entity.def)
-      if (def.spell) {
-        ret.push_back(*def.spell);
-        has_def = true;
-        break;
-      }
-    if (!has_def && entity.declarations.size())
-      ret.push_back(entity.declarations[0]);
-  }
-  return ret;
-}
+std::vector<Use> GetFuncDeclarations(DB*, const std::vector<Usr>&);
+std::vector<Use> GetTypeDeclarations(DB*, const std::vector<Usr>&);
+std::vector<Use> GetVarDeclarations(DB*, const std::vector<Usr>&);
 
 // Get non-defining declarations.
-std::vector<Use> GetNonDefDeclarations(QueryDatabase* db, SymbolIdx sym);
+std::vector<Use> GetNonDefDeclarations(DB* db, SymbolIdx sym);
 
-std::vector<Use> GetUsesForAllBases(QueryDatabase* db, QueryFunc& root);
-std::vector<Use> GetUsesForAllDerived(QueryDatabase* db, QueryFunc& root);
+std::vector<Use> GetUsesForAllBases(DB* db, QueryFunc& root);
+std::vector<Use> GetUsesForAllDerived(DB* db, QueryFunc& root);
 std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
-                                   const Position& position);
-std::optional<lsRange> GetLsRange(WorkingFile* working_file, const Range& location);
-lsDocumentUri GetLsDocumentUri(QueryDatabase* db,
-                               int file_id,
-                               std::string* path);
-lsDocumentUri GetLsDocumentUri(QueryDatabase* db, int file_id);
+                                        const Position& position);
+std::optional<lsRange> GetLsRange(WorkingFile* working_file,
+                                  const Range& location);
+lsDocumentUri GetLsDocumentUri(DB* db, int file_id, std::string* path);
+lsDocumentUri GetLsDocumentUri(DB* db, int file_id);
 
-std::optional<lsLocation> GetLsLocation(QueryDatabase* db,
-                                   WorkingFiles* working_files,
-                                   Use use);
-std::optional<lsLocationEx> GetLsLocationEx(QueryDatabase* db,
-                                       WorkingFiles* working_files,
-                                       Use use,
-                                       bool container);
-std::vector<lsLocationEx> GetLsLocationExs(QueryDatabase* db,
+std::optional<lsLocation> GetLsLocation(DB* db,
+                                        WorkingFiles* working_files,
+                                        Use use);
+std::optional<lsLocationEx> GetLsLocationEx(DB* db,
+                                            WorkingFiles* working_files,
+                                            Use use,
+                                            bool container);
+std::vector<lsLocationEx> GetLsLocationExs(DB* db,
                                            WorkingFiles* working_files,
                                            const std::vector<Use>& refs);
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(QueryDatabase* db,
-                                            WorkingFiles* working_files,
-                                            SymbolIdx sym,
-                                            bool detailed_name);
+std::optional<lsSymbolInformation> GetSymbolInfo(DB* db,
+                                                 WorkingFiles* working_files,
+                                                 SymbolIdx sym,
+                                                 bool detailed_name);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
                                              QueryFile* file,
                                              lsPosition& ls_pos);
 
 template <typename Fn>
-void WithEntity(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
+void WithEntity(DB* db, SymbolIdx sym, Fn&& fn) {
   switch (sym.kind) {
     case SymbolKind::Invalid:
     case SymbolKind::File:
@@ -82,7 +65,7 @@ void WithEntity(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
 }
 
 template <typename Fn>
-void EachEntityDef(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
+void EachEntityDef(DB* db, SymbolIdx sym, Fn&& fn) {
   WithEntity(db, sym, [&](const auto& entity) {
     for (auto& def : entity.def)
       if (!fn(def))
@@ -91,10 +74,7 @@ void EachEntityDef(QueryDatabase* db, SymbolIdx sym, Fn&& fn) {
 }
 
 template <typename Fn>
-void EachOccurrence(QueryDatabase* db,
-                    SymbolIdx sym,
-                    bool include_decl,
-                    Fn&& fn) {
+void EachOccurrence(DB* db, SymbolIdx sym, bool include_decl, Fn&& fn) {
   WithEntity(db, sym, [&](const auto& entity) {
     for (Use use : entity.uses)
       fn(use);
@@ -108,14 +88,31 @@ void EachOccurrence(QueryDatabase* db,
   });
 }
 
-lsSymbolKind GetSymbolKind(QueryDatabase* db, SymbolIdx sym);
+lsSymbolKind GetSymbolKind(DB* db, SymbolIdx sym);
 
-template <typename Q, typename Fn>
-void EachDefinedEntity(std::unordered_map<Usr, Q>& collection,
-                       const std::vector<Usr>& usrs,
-                       Fn&& fn) {
+template <typename Fn>
+void EachDefinedFunc(DB* db, const std::vector<Usr>& usrs, Fn&& fn) {
   for (Usr usr : usrs) {
-    Q& obj = collection[usr];
+    auto& obj = db->Func(usr);
+    if (!obj.def.empty())
+      fn(obj);
+  }
+}
+
+
+template <typename Fn>
+void EachDefinedType(DB* db, const std::vector<Usr>& usrs, Fn&& fn) {
+  for (Usr usr : usrs) {
+    auto& obj = db->Type(usr);
+    if (!obj.def.empty())
+      fn(obj);
+  }
+}
+
+template <typename Fn>
+void EachDefinedVar(DB* db, const std::vector<Usr>& usrs, Fn&& fn) {
+  for (Usr usr : usrs) {
+    auto& obj = db->Var(usr);
     if (!obj.def.empty())
       fn(obj);
   }
