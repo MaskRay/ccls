@@ -121,7 +121,7 @@ struct Handler_TextDocumentCodeLens
                       GetTypeDeclarations(db, type.derived),
                       false /*force_display*/);
           AddCodeLens("var", "vars", &common, OffsetStartColumn(use, 2),
-                      GetVarDeclarations(db, type.instances),
+                      GetVarDeclarations(db, type.instances, true),
                       false /*force_display*/);
           break;
         }

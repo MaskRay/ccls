@@ -12,7 +12,7 @@ Maybe<Use> GetDefinitionExtent(DB* db, SymbolIdx sym);
 // for each id.
 std::vector<Use> GetFuncDeclarations(DB*, const std::vector<Usr>&);
 std::vector<Use> GetTypeDeclarations(DB*, const std::vector<Usr>&);
-std::vector<Use> GetVarDeclarations(DB*, const std::vector<Usr>&);
+std::vector<Use> GetVarDeclarations(DB*, const std::vector<Usr>&, unsigned);
 
 // Get non-defining declarations.
 std::vector<Use> GetNonDefDeclarations(DB* db, SymbolIdx sym);
