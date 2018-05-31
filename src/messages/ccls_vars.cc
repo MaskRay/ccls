@@ -8,9 +8,17 @@ MethodType kMethodType = "$ccls/vars";
 
 struct In_CclsVars : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
-
-  lsTextDocumentPositionParams params;
+  struct Params : lsTextDocumentPositionParams {
+    // 1: field
+    // 2: local
+    // 4: parameter
+    unsigned kind = ~0u;
+  } params;
 };
+MAKE_REFLECT_STRUCT(In_CclsVars::Params,
+                    textDocument,
+                    position,
+                    kind);
 MAKE_REFLECT_STRUCT(In_CclsVars, id, params);
 REGISTER_IN_MESSAGE(In_CclsVars);
 
@@ -18,11 +26,11 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
   MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(In_CclsVars* request) override {
+    auto& params = request->params;
     QueryFile* file;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file)) {
+                        params.textDocument.uri.GetPath(), &file))
       return;
-    }
 
     WorkingFile* working_file =
         working_files->GetFileByFilename(file->def->path);
@@ -30,7 +38,7 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
     Out_LocationList out;
     out.id = request->id;
     for (SymbolRef sym :
-         FindSymbolsAtLocation(working_file, file, request->params.position)) {
+         FindSymbolsAtLocation(working_file, file, params.position)) {
       Usr usr = sym.usr;
       switch (sym.kind) {
         default:
@@ -43,9 +51,9 @@ struct Handler_CclsVars : BaseMessageHandler<In_CclsVars> {
           [[fallthrough]];
         }
         case SymbolKind::Type:
-          out.result =
-              GetLsLocationExs(db, working_files,
-                               GetVarDeclarations(db, db->Type(usr).instances));
+          out.result = GetLsLocationExs(
+              db, working_files,
+              GetVarDeclarations(db, db->Type(usr).instances, params.kind));
           break;
       }
     }

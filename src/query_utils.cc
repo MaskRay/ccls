@@ -59,8 +59,35 @@ std::vector<Use> GetFuncDeclarations(DB* db, const std::vector<Usr>& usrs) {
 std::vector<Use> GetTypeDeclarations(DB* db, const std::vector<Usr>& usrs) {
   return GetDeclarations(db->type_usr, db->types, usrs);
 }
-std::vector<Use> GetVarDeclarations(DB* db, const std::vector<Usr>& usrs) {
-  return GetDeclarations(db->var_usr, db->vars, usrs);
+std::vector<Use> GetVarDeclarations(DB* db,
+                                    const std::vector<Usr>& usrs,
+                                    unsigned kind) {
+  std::vector<Use> ret;
+  ret.reserve(usrs.size());
+  for (Usr usr : usrs) {
+    QueryVar& var = db->Var(usr);
+    bool has_def = false;
+    for (auto& def : var.def)
+      if (def.spell) {
+        has_def = true;
+        // See messages/ccls_vars.cc
+        if (def.kind == lsSymbolKind::Field) {
+          if (!(kind & 1))
+            break;
+        } else if (def.kind == lsSymbolKind::Variable) {
+          if (!(kind & 2))
+            break;
+        } else if (def.kind == lsSymbolKind::Parameter) {
+          if (!(kind & 4))
+            break;
+        }
+        ret.push_back(*def.spell);
+        break;
+      }
+    if (!has_def && var.declarations.size())
+      ret.push_back(var.declarations[0]);
+  }
+  return ret;
 }
 
 std::vector<Use> GetNonDefDeclarations(DB* db, SymbolIdx sym) {
