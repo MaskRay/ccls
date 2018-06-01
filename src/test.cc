@@ -290,8 +290,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
         // Run test.
         g_config = std::make_unique<Config>();
         VFS vfs;
-        PerformanceImportFile perf;
-        auto dbs = index.Index(&vfs, path, flags, {}, &perf);
+        auto dbs = index.Index(&vfs, path, flags, {});
 
         for (const auto& entry : all_expected_output) {
           const std::string& expected_path = entry.first;

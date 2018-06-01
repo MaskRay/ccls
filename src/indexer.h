@@ -21,12 +21,6 @@
 #include <unordered_map>
 #include <vector>
 
-struct IndexFile;
-struct IndexType;
-struct IndexFunc;
-struct IndexVar;
-struct QueryFile;
-
 struct SymbolIdx {
   Usr usr;
   SymbolKind kind;
@@ -56,11 +50,7 @@ struct Reference {
 };
 
 // |id,kind| refer to the referenced entity.
-struct SymbolRef : Reference {
-  SymbolRef() = default;
-  SymbolRef(Range range, Usr usr, SymbolKind kind, Role role)
-      : Reference{range, usr, kind, role} {}
-};
+struct SymbolRef : Reference {};
 
 // Represents an occurrence of a variable/type, |usr,kind| refer to the lexical
 // parent.
@@ -322,7 +312,6 @@ struct NamespaceHelper {
 
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     VFS* vfs,
-    PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
     ClangIndex* index,
     const std::string& file,
@@ -338,8 +327,7 @@ struct ClangIndexer {
       VFS* vfs,
       std::string file,
       const std::vector<std::string>& args,
-      const std::vector<FileContents>& file_contents,
-      PerformanceImportFile* perf);
+      const std::vector<FileContents>& file_contents);
 
   // Note: constructing this acquires a global lock
   ClangIndex index;

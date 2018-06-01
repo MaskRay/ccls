@@ -216,7 +216,6 @@ target_sources(ccls PRIVATE
                src/serializer.cc
                src/test.cc
                src/third_party_impl.cc
-               src/timer.cc
                src/type_printer.cc
                src/utils.cc
                src/working_files.cc)

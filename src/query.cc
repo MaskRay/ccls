@@ -80,10 +80,10 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
   def.language = indexed.language;
 
   auto add_all_symbols = [&](Use use, Usr usr, SymbolKind kind) {
-    def.all_symbols.push_back(SymbolRef(use.range, usr, kind, use.role));
+    def.all_symbols.push_back(SymbolRef{{use.range, usr, kind, use.role}});
   };
   auto add_outline = [&](Use use, Usr usr, SymbolKind kind) {
-    def.outline.push_back(SymbolRef(use.range, usr, kind, use.role));
+    def.outline.push_back(SymbolRef{{use.range, usr, kind, use.role}});
   };
 
   for (auto& it : indexed.usr2type) {

@@ -2,9 +2,8 @@
 #include "message_handler.h"
 #include "project.h"
 #include "pipeline.hh"
-using namespace ccls;
-#include "timer.h"
 #include "working_files.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "workspace/didChangeConfiguration";
@@ -25,15 +24,8 @@ struct Handler_WorkspaceDidChangeConfiguration
     : BaseMessageHandler<In_WorkspaceDidChangeConfiguration> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_WorkspaceDidChangeConfiguration* request) override {
-    Timer time;
     project->Load(g_config->projectRoot);
-    time.ResetAndPrint("[perf] Loaded compilation entries (" +
-                       std::to_string(project->entries.size()) + " files)");
-
-    time.Reset();
     project->Index(working_files, lsRequestId());
-    time.ResetAndPrint(
-        "[perf] Dispatched workspace/didChangeConfiguration index requests");
 
     clang_complete->FlushAllSessions();
   }

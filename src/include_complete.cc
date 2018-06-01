@@ -4,10 +4,10 @@
 #include "match.h"
 #include "platform.h"
 #include "project.h"
-#include "timer.h"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
+#include <llvm/Support/Timer.h>
 using namespace llvm;
 
 #include <thread>
@@ -108,14 +108,14 @@ void IncludeComplete::Rescan() {
   is_scanning = true;
   std::thread([this]() {
     set_thread_name("include");
-    Timer timer;
+    Timer timer("include", "scan include paths");
+    TimeRegion region(timer);
 
     for (const std::string& dir : project_->quote_include_directories)
       InsertIncludesFromDirectory(dir, false /*use_angle_brackets*/);
     for (const std::string& dir : project_->angle_include_directories)
       InsertIncludesFromDirectory(dir, true /*use_angle_brackets*/);
 
-    timer.ResetAndPrint("[perf] Scanning for includes");
     is_scanning = false;
   }).detach();
 }
