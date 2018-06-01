@@ -2,6 +2,7 @@
 #include "pipeline.hh"
 #include "query_utils.h"
 using namespace ccls;
+using namespace clang;
 
 namespace {
 MethodType kMethodType = "textDocument/documentSymbol";
@@ -51,9 +52,8 @@ struct Handler_TextDocumentDocumentSymbol
         if (!def || !def->spell)
           continue;
         // Ignore local variables.
-        if (def->spell->kind == SymbolKind::Func &&
-            def->storage != StorageClass::Static &&
-            def->storage != StorageClass::Extern)
+        if (def->spell->kind == SymbolKind::Func && def->storage != SC_Static &&
+            def->storage != SC_Extern)
           continue;
       }
 

@@ -288,7 +288,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
         flags.push_back(path);
 
         // Run test.
-        g_config = std::make_unique<Config>();
+        g_config = new Config;
         VFS vfs;
         auto dbs = index.Index(&vfs, path, flags, {});
 

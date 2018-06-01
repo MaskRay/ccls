@@ -438,9 +438,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     {
       if (params.initializationOptions)
-        g_config = std::make_unique<Config>(*params.initializationOptions);
+        g_config = new Config(*params.initializationOptions);
       else
-        g_config = std::make_unique<Config>();
+        g_config = new Config;
       rapidjson::Document reader;
       reader.Parse(g_init_options.c_str());
       if (!reader.HasParseError()) {

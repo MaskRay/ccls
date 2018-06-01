@@ -6,6 +6,8 @@
 #include "pipeline.hh"
 using namespace ccls;
 
+using namespace clang;
+
 #include <algorithm>
 
 MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
@@ -187,10 +189,11 @@ void EmitInactiveLines(WorkingFile* working_file,
 
 void EmitSemanticHighlighting(DB* db,
                               SemanticHighlightSymbolCache* semantic_cache,
-                              WorkingFile* working_file,
+                              WorkingFile* wfile,
                               QueryFile* file) {
   assert(file->def);
-  if (!semantic_cache->match_->IsMatch(file->def->path))
+  if (wfile->buffer_content.size() > g_config->largeFileSize ||
+      !semantic_cache->match_->IsMatch(file->def->path))
     return;
   auto semantic_cache_for_file =
       semantic_cache->GetCacheForFile(file->def->path);
@@ -202,7 +205,7 @@ void EmitSemanticHighlighting(DB* db,
     std::string_view detailed_name;
     lsSymbolKind parent_kind = lsSymbolKind::Unknown;
     lsSymbolKind kind = lsSymbolKind::Unknown;
-    StorageClass storage = StorageClass::Invalid;
+    StorageClass storage = SC_None;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
       case SymbolKind::Func: {
@@ -237,9 +240,9 @@ void EmitSemanticHighlighting(DB* db,
             detailed_name.substr(0, detailed_name.find('<'));
         int16_t start_line = sym.range.start.line;
         int16_t start_col = sym.range.start.column;
-        if (start_line < 0 || start_line >= working_file->index_lines.size())
+        if (start_line < 0 || start_line >= wfile->index_lines.size())
           continue;
-        std::string_view line = working_file->index_lines[start_line];
+        std::string_view line = wfile->index_lines[start_line];
         sym.range.end.line = start_line;
         if (!(start_col + concise_name.size() <= line.size() &&
               line.compare(start_col, concise_name.size(), concise_name) == 0))
@@ -280,7 +283,7 @@ void EmitSemanticHighlighting(DB* db,
         continue;  // applies to for loop
     }
 
-    std::optional<lsRange> loc = GetLsRange(working_file, sym.range);
+    std::optional<lsRange> loc = GetLsRange(wfile, sym.range);
     if (loc) {
       auto it = grouped_symbols.find(sym);
       if (it != grouped_symbols.end()) {
@@ -339,7 +342,7 @@ void EmitSemanticHighlighting(DB* db,
 
   // Publish.
   Out_CclsPublishSemanticHighlighting out;
-  out.params.uri = lsDocumentUri::FromPath(working_file->filename);
+  out.params.uri = lsDocumentUri::FromPath(wfile->filename);
   for (auto& entry : grouped_symbols)
     if (entry.second.ranges.size())
       out.params.symbols.push_back(entry.second);

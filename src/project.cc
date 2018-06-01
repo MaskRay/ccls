@@ -450,7 +450,9 @@ TEST_SUITE("Project") {
   void CheckFlags(const std::string& directory, const std::string& file,
                   std::vector<std::string> raw,
                   std::vector<std::string> expected) {
-    g_config = std::make_unique<Config>();
+    if (g_config)
+      delete g_config;
+    g_config = new Config;
     g_config->clang.resourceDir = "/w/resource_dir/";
     ProjectConfig project;
     project.project_dir = "/w/c/s/";
@@ -536,7 +538,9 @@ TEST_SUITE("Project") {
   }
 
   TEST_CASE("Directory extraction") {
-    g_config = std::make_unique<Config>();
+    if (g_config)
+      delete g_config;
+    g_config = new Config;
     ProjectConfig config;
     config.project_dir = "/w/c/s/";
 

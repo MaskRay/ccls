@@ -12,6 +12,7 @@
 #include "symbol.h"
 #include "utils.h"
 
+#include <clang/Basic/Specifiers.h>
 #include <llvm/ADT/StringMap.h>
 
 #include <stdint.h>
@@ -62,6 +63,8 @@ struct Use : Reference {
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
 
+MAKE_REFLECT_TYPE_PROXY2(clang::StorageClass, uint8_t);
+
 template <typename D>
 struct NameMixin {
   std::string_view Name(bool qualified) const {
@@ -99,7 +102,7 @@ struct FuncDef : NameMixin<FuncDef> {
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
-  StorageClass storage = StorageClass::Invalid;
+  clang::StorageClass storage = clang::SC_None;
 
   std::vector<Usr> GetBases() const { return bases; }
   bool operator==(const FuncDef& o) const {
@@ -213,11 +216,11 @@ struct VarDef : NameMixin<VarDef> {
   lsSymbolKind kind = lsSymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
-  StorageClass storage = StorageClass::Invalid;
+  clang::StorageClass storage = clang::SC_None;
 
   bool is_local() const {
     return spell && spell->kind != SymbolKind::File &&
-           storage == StorageClass::None;
+           storage == clang::SC_None;
   }
 
   std::vector<Usr> GetBases() const { return {}; }
