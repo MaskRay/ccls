@@ -12,11 +12,11 @@ OUTPUT:
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 6666242542855173890,
-      "detailed_name": "void Derived::foo()",
+      "detailed_name": "void Derived::foo() override",
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:8-5:11|10963370434658308541|2|2",
       "extent": "5:3-5:25|10963370434658308541|2|0",
@@ -28,11 +28,11 @@ OUTPUT:
       "callees": []
     }, {
       "usr": 9948027785633571339,
-      "detailed_name": "void Root::foo()",
-      "qual_name_offset": 5,
+      "detailed_name": "virtual void Root::foo()",
+      "qual_name_offset": 13,
       "short_name": "foo",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["2:16-2:19|3897841498936210886|2|1"],
       "declaring_type": 3897841498936210886,
       "bases": [],

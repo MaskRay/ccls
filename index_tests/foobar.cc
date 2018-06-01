@@ -94,7 +94,7 @@ OUTPUT:
       "type": 10528472276654770367,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 16721564935990383768,
       "detailed_name": "Foo<A>::Inner a",
@@ -106,7 +106,7 @@ OUTPUT:
       "type": 13938528237873543349,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

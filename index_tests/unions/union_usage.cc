@@ -22,7 +22,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "act",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "8:6-8:9|0|1|2",
       "extent": "8:1-10:2|0|1|0",
@@ -98,7 +98,7 @@ OUTPUT:
       "type": 8501689086387244262,
       "uses": ["9:3-9:4|13982179977217945200|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 8804696910588009104,
       "detailed_name": "bool Foo::b",

@@ -76,6 +76,7 @@ OUTPUT:
       "detailed_name": "float [3] vector3::v",
       "qual_name_offset": 10,
       "short_name": "v",
+      "hover": "float [3] vector3::v[3]",
       "declarations": [],
       "spell": "3:9-3:10|17937907487590875128|2|2",
       "extent": "3:3-3:13|17937907487590875128|2|0",

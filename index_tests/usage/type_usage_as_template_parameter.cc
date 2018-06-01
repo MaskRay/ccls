@@ -21,7 +21,7 @@ OUTPUT:
       "qual_name_offset": 15,
       "short_name": "return_type",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "9:16-9:27|0|1|2",
       "extent": "9:1-12:2|0|1|0",
@@ -78,7 +78,7 @@ OUTPUT:
       "type": 3286534761799572592,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 12857919739649552168,
       "detailed_name": "unique_ptr<bool> f0",
@@ -90,7 +90,7 @@ OUTPUT:
       "type": 3286534761799572592,
       "uses": [],
       "kind": 13,
-      "storage": 3
+      "storage": 2
     }, {
       "usr": 18075066956054788088,
       "detailed_name": "unique_ptr<S> f1",
@@ -102,7 +102,7 @@ OUTPUT:
       "type": 3286534761799572592,
       "uses": [],
       "kind": 13,
-      "storage": 3
+      "storage": 2
     }]
 }
 */

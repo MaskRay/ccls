@@ -63,7 +63,7 @@ OUTPUT:
       "type": 5792006888140599735,
       "uses": [],
       "kind": 8,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

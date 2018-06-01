@@ -20,7 +20,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Runner",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "6:6-6:12|0|1|2",
       "extent": "6:1-10:2|0|1|0",
@@ -36,7 +36,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Accept",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:8-3:14|11072669167287398027|2|2",
       "extent": "3:3-3:24|11072669167287398027|2|0",
@@ -109,7 +109,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 12898699035586282159,
       "detailed_name": "int ns::Foo",
@@ -121,7 +121,7 @@ OUTPUT:
       "type": 17,
       "uses": ["7:18-7:21|631910859630953711|3|4", "9:10-9:13|631910859630953711|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

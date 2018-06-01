@@ -57,7 +57,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 13545144895171991916,
       "detailed_name": "const int Foo::var",
@@ -68,7 +68,7 @@ OUTPUT:
       "type": 17,
       "uses": ["6:19-6:22|0|1|4", "7:20-7:23|0|1|4"],
       "kind": 8,
-      "storage": 3
+      "storage": 2
     }, {
       "usr": 16721564935990383768,
       "detailed_name": "int a",
@@ -81,7 +81,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

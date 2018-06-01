@@ -11,7 +11,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "2:6-2:9|0|1|2",
       "extent": "2:1-2:26|0|1|0",

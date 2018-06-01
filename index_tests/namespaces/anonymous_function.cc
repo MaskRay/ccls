@@ -13,7 +13,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["2:6-2:9|7144845543074395457|2|1"],
       "declaring_type": 7144845543074395457,
       "bases": [],

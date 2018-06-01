@@ -13,7 +13,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:6-3:9|0|1|2",
       "extent": "3:1-3:30|0|1|0",
@@ -51,7 +51,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 8730439006497971620,
       "detailed_name": "Foo *p0",
@@ -63,7 +63,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

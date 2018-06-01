@@ -18,7 +18,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Bar",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["5:8-5:11|15041163540773201510|2|1"],
       "spell": "8:11-8:14|15041163540773201510|2|2",
       "extent": "8:1-8:36|0|1|0",

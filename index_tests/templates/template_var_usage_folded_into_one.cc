@@ -91,13 +91,14 @@ OUTPUT:
       "detailed_name": "T var",
       "qual_name_offset": 2,
       "short_name": "var",
+      "hover": "T var = T()",
       "declarations": [],
       "spell": "5:3-5:6|0|1|2",
       "extent": "5:1-5:12|0|1|0",
       "type": 0,
       "uses": ["7:7-7:10|0|1|4", "8:7-8:10|0|1|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 12028309045033782423,
       "detailed_name": "B b",
@@ -110,7 +111,7 @@ OUTPUT:
       "type": 13892793056005362145,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 16721564935990383768,
       "detailed_name": "A a",
@@ -123,7 +124,7 @@ OUTPUT:
       "type": 6697181287623958829,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

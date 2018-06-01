@@ -17,7 +17,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:6-3:9|0|1|2",
       "extent": "3:1-5:2|0|1|0",
@@ -75,7 +75,7 @@ OUTPUT:
       "type": 7434820806199665424,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

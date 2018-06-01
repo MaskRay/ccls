@@ -14,11 +14,11 @@ OUTPUT:
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 13788753348312146871,
-      "detailed_name": "void Foo::Foo(Foo &&)",
-      "qual_name_offset": 5,
+      "detailed_name": "Foo::Foo(Foo &&) = delete",
+      "qual_name_offset": 0,
       "short_name": "Foo",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:12-5:15|15041163540773201510|2|2",
       "extent": "5:12-5:16|15041163540773201510|2|0",
@@ -100,7 +100,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

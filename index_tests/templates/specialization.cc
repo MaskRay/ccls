@@ -49,11 +49,11 @@ OUTPUT:
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 6113470698424012876,
-      "detailed_name": "void vector::clear()",
-      "qual_name_offset": 5,
+      "detailed_name": "void vector<Z2, allocator<Z2> >::clear()",
+      "qual_name_offset": 31,
       "short_name": "clear",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["27:8-27:13|1663022413889915338|2|1"],
       "declaring_type": 1663022413889915338,
       "bases": [],
@@ -67,7 +67,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["43:6-43:9|0|1|1"],
       "spell": "39:6-39:9|0|1|2",
       "extent": "39:1-39:21|0|1|0",
@@ -83,7 +83,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "clear",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["13:8-13:13|7440942986741176606|2|1"],
       "declaring_type": 7440942986741176606,
       "bases": [],
@@ -338,7 +338,7 @@ OUTPUT:
       "type": 16155717907537731864,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 2933643612409209903,
       "detailed_name": "function<void (int)> f",
@@ -350,7 +350,7 @@ OUTPUT:
       "type": 218068462278884837,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 3566687051827176322,
       "detailed_name": "vector<Z1> vz1",
@@ -362,7 +362,7 @@ OUTPUT:
       "type": 7440942986741176606,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 4917621020431490070,
       "detailed_name": "Enum::Enum1",
@@ -387,7 +387,7 @@ OUTPUT:
       "type": 7440942986741176606,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 13914496963221806870,
       "detailed_name": "const int kOnst",
@@ -400,7 +400,7 @@ OUTPUT:
       "type": 17,
       "uses": ["43:27-43:32|0|1|4"],
       "kind": 13,
-      "storage": 3
+      "storage": 2
     }, {
       "usr": 15477793821005285152,
       "detailed_name": "Enum::Enum0",
@@ -425,7 +425,7 @@ OUTPUT:
       "type": 7440942986741176606,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 17826688417349629938,
       "detailed_name": "T Value",
@@ -437,7 +437,7 @@ OUTPUT:
       "type": 0,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

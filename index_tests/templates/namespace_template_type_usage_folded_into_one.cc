@@ -79,7 +79,7 @@ OUTPUT:
       "type": 14042997404480181958,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 15768138241775955040,
       "detailed_name": "Foo<int> ns::a",
@@ -91,7 +91,7 @@ OUTPUT:
       "type": 14042997404480181958,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */
