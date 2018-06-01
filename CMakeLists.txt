@@ -202,7 +202,6 @@ target_sources(ccls PRIVATE
                src/indexer.cc
                src/method.cc
                src/language.cc
-               src/lex_utils.cc
                src/log.cc
                src/lsp.cc
                src/match.cc

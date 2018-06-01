@@ -7,21 +7,6 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/ADT/StringMap.h>
 
-struct QueryFile;
-struct QueryType;
-struct QueryFunc;
-struct QueryVar;
-struct DB;
-
-template <typename T>
-struct WithFileContent {
-  T value;
-  std::string file_content;
-
-  WithFileContent(const T& value, const std::string& file_content)
-      : value(value), file_content(file_content) {}
-};
-
 struct QueryFile {
   struct Def {
     std::string path;
@@ -39,7 +24,7 @@ struct QueryFile {
     std::vector<std::string> dependencies;
   };
 
-  using DefUpdate = WithFileContent<Def>;
+  using DefUpdate = std::pair<Def, std::string>;
 
   int id = -1;
   std::optional<Def> def;

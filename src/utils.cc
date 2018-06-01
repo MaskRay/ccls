@@ -134,6 +134,24 @@ std::optional<int64_t> LastWriteTime(const std::string& filename) {
   return Status.getLastModificationTime().time_since_epoch().count();
 }
 
+// Find discontinous |search| in |content|.
+// Return |found| and the count of skipped chars before found.
+int ReverseSubseqMatch(std::string_view pat,
+                       std::string_view text,
+                       int case_sensitivity) {
+  if (case_sensitivity == 1)
+    case_sensitivity = std::any_of(pat.begin(), pat.end(), isupper) ? 2 : 0;
+  int j = pat.size();
+  if (!j)
+    return text.size();
+  for (int i = text.size(); i--;)
+    if ((case_sensitivity ? text[i] == pat[j - 1]
+                          : tolower(text[i]) == tolower(pat[j - 1])) &&
+        !--j)
+      return i;
+  return -1;
+}
+
 std::string GetDefaultResourceDirectory() {
   return DEFAULT_RESOURCE_DIRECTORY;
 }

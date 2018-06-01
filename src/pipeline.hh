@@ -2,7 +2,6 @@
 
 #include "method.h"
 #include "query.h"
-#include "timer.h"
 
 #include <string>
 #include <unordered_map>
@@ -17,8 +16,8 @@ struct lsBaseOutMessage;
 namespace ccls::pipeline {
 
 void Init();
-void LaunchStdin(std::unordered_map<MethodType, Timer>* request_times);
-void LaunchStdout(std::unordered_map<MethodType, Timer>* request_times);
+void LaunchStdin();
+void LaunchStdout();
 void Indexer_Main(DiagnosticsEngine* diag_engine,
                   VFS* vfs,
                   Project* project,

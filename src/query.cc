@@ -148,7 +148,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
               return a.range.start < b.range.start;
             });
 
-  return QueryFile::DefUpdate(def, indexed.file_contents);
+  return {std::move(def), std::move(indexed.file_contents)};
 }
 
 // Returns true if an element with the same file is found.
@@ -342,11 +342,11 @@ void DB::ApplyIndexUpdate(IndexUpdate* u) {
 
 int DB::Update(QueryFile::DefUpdate&& u) {
   int id = files.size();
-  auto it = name2file_id.try_emplace(LowerPathIfInsensitive(u.value.path), id);
+  auto it = name2file_id.try_emplace(LowerPathIfInsensitive(u.first.path), id);
   if (it.second)
     files.emplace_back().id = id;
   QueryFile& existing = files[it.first->second];
-  existing.def = u.value;
+  existing.def = u.first;
   return existing.id;
 }
 

@@ -129,12 +129,10 @@ int main(int argc, char** argv) {
       }
     }
 
-    std::unordered_map<MethodType, Timer> request_times;
-
     // The thread that reads from stdin and dispatchs commands to the main thread.
-    pipeline::LaunchStdin(&request_times);
+    pipeline::LaunchStdin();
     // The thread that writes responses from the main thread to stdout.
-    pipeline::LaunchStdout(&request_times);
+    pipeline::LaunchStdout();
     // Main thread which also spawns indexer threads upon the "initialize" request.
     pipeline::MainLoop();
   }

@@ -3,8 +3,10 @@
 #include "log.hh"
 #include "platform.h"
 #include "serializer.h"
-#include "timer.h"
 #include "type_printer.h"
+
+#include <llvm/Support/Timer.h>
+using namespace llvm;
 
 #include <assert.h>
 #include <inttypes.h>
@@ -2016,7 +2018,8 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
 
   file = NormalizePath(file);
 
-  Timer timer;
+  Timer timer("parse", "parse tu");
+  timer.startTimer();
 
   std::vector<CXUnsavedFile> unsaved_files;
   for (const FileContents& contents : file_contents) {
@@ -2034,7 +2037,7 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
   if (!tu)
     return {};
 
-  perf->index_parse = timer.ElapsedMicrosecondsAndReset();
+  timer.stopTimer();
 
   return ParseWithTu(vfs, perf, tu.get(), &index, file, args, unsaved_files);
 }
@@ -2048,6 +2051,7 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     const std::vector<std::string>& args,
     const std::vector<CXUnsavedFile>& file_contents) {
   Timer timer;
+  timer.startTimer();
 
   IndexerCallbacks callback = {0};
   // Available callbacks:
@@ -2085,13 +2089,12 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
                  << " failed with errno=" << index_result;
     return {};
   }
-
   clang_IndexAction_dispose(index_action);
 
   ClangCursor(clang_getTranslationUnitCursor(tu->cx_tu))
       .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
 
-  perf->index_build = timer.ElapsedMicrosecondsAndReset();
+  timer.stopTimer();
 
   std::unordered_map<std::string, int> inc_to_line;
   // TODO
