@@ -1,4 +1,3 @@
-#include "lex_utils.h"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"

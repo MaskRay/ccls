@@ -1,6 +1,5 @@
 #include "message_handler.h"
 
-#include "lex_utils.h"
 #include "log.hh"
 #include "project.h"
 #include "query_utils.h"

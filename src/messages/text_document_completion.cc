@@ -7,8 +7,6 @@
 #include "working_files.h"
 using namespace ccls;
 
-#include "lex_utils.h"
-
 #include <regex>
 
 namespace {

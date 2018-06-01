@@ -11,10 +11,10 @@
 #include "project.h"
 #include "query_utils.h"
 #include "pipeline.hh"
-#include "timer.h"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
+#include <llvm/Support/Timer.h>
 using namespace llvm;
 
 #include <thread>
@@ -237,14 +237,15 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
 
     // Write current index to disk if requested.
     LOG_S(INFO) << "store index for " << path;
-    Timer time;
     {
+      Timer timer("write", "store index");
+      timer.startTimer();
       std::string cache_path = GetCachePath(path);
       WriteToFile(cache_path, curr->file_contents);
       WriteToFile(AppendSerializationFormat(cache_path),
                   Serialize(g_config->cacheFormat, *curr));
+      timer.stopTimer();
     }
-    perf.index_save_to_disk = time.ElapsedMicrosecondsAndReset();
 
     vfs->Reset(path_to_index);
     if (entry.id >= 0) {
@@ -255,22 +256,12 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
 
     // Build delta update.
     IndexUpdate update = IndexUpdate::CreateDelta(prev.get(), curr.get());
-    perf.index_make_delta = time.ElapsedMicrosecondsAndReset();
     LOG_S(INFO) << "built index for " << path << " (is_delta=" << !!prev << ")";
 
     on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
   }
 
   return true;
-}
-
-// This function returns true if e2e timing should be displayed for the given
-// MethodId.
-bool ShouldDisplayMethodTiming(MethodType type) {
-  return
-    type != kMethodType_TextDocumentPublishDiagnostics &&
-    type != kMethodType_CclsPublishInactiveRegions &&
-    type != kMethodType_Unknown;
 }
 
 }  // namespace
@@ -316,20 +307,22 @@ void Main_OnIndexed(DB* db,
     return;
   }
 
-  Timer time;
+  Timer timer("apply", "apply index");
+  timer.startTimer();
   db->ApplyIndexUpdate(&response->update);
+  timer.stopTimer();
 
   // Update indexed content, inactive lines, and semantic highlighting.
   if (response->update.files_def_update) {
     auto& update = *response->update.files_def_update;
-    time.ResetAndPrint("apply index for " + update.value.path);
+    LOG_S(INFO) << "apply index for " << update.first.path;
     if (WorkingFile* working_file =
-            working_files->GetFileByFilename(update.value.path)) {
+            working_files->GetFileByFilename(update.first.path)) {
       // Update indexed content.
-      working_file->SetIndexContent(update.file_content);
+      working_file->SetIndexContent(update.second);
 
       // Inactive lines.
-      EmitInactiveLines(working_file, update.value.inactive_regions);
+      EmitInactiveLines(working_file, update.first.inactive_regions);
 
       // Semantic highlighting.
       int file_id =
@@ -340,8 +333,8 @@ void Main_OnIndexed(DB* db,
   }
 }
 
-void LaunchStdin(std::unordered_map<MethodType, Timer>* request_times) {
-  std::thread([request_times]() {
+void LaunchStdin() {
+  std::thread([]() {
     set_thread_name("stdin");
     while (true) {
       std::unique_ptr<InMessage> message;
@@ -367,7 +360,6 @@ void LaunchStdin(std::unordered_map<MethodType, Timer>* request_times) {
 
       // Cache |method_id| so we can access it after moving |message|.
       MethodType method_type = message->GetMethodType();
-      (*request_times)[method_type] = Timer();
 
       on_request->PushBack(std::move(message));
 
@@ -379,7 +371,7 @@ void LaunchStdin(std::unordered_map<MethodType, Timer>* request_times) {
   }).detach();
 }
 
-void LaunchStdout(std::unordered_map<MethodType, Timer>* request_times) {
+void LaunchStdout() {
   std::thread([=]() {
     set_thread_name("stdout");
 
@@ -391,11 +383,6 @@ void LaunchStdout(std::unordered_map<MethodType, Timer>* request_times) {
       }
 
       for (auto& message : messages) {
-        if (ShouldDisplayMethodTiming(message.method)) {
-          Timer time = (*request_times)[message.method];
-          time.ResetAndPrint("[e2e] Running " + std::string(message.method));
-        }
-
         fwrite(message.content.c_str(), message.content.size(), 1, stdout);
         fflush(stdout);
       }

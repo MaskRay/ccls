@@ -27,8 +27,6 @@ struct IndexFunc;
 struct IndexVar;
 struct QueryFile;
 
-using RawId = uint32_t;
-
 struct SymbolIdx {
   Usr usr;
   SymbolKind kind;
@@ -153,19 +151,9 @@ struct TypeDef : NameMixin<TypeDef> {
   NtString hover;
   NtString comments;
 
-  // While a class/type can technically have a separate declaration/definition,
-  // it doesn't really happen in practice. The declaration never contains
-  // comments or insightful information. The user always wants to jump from
-  // the declaration to the definition - never the other way around like in
-  // functions and (less often) variables.
-  //
-  // It's also difficult to identify a `class Foo;` statement with the clang
-  // indexer API (it's doable using cursor AST traversal), so we don't bother
-  // supporting the feature.
   Maybe<Use> spell;
   Maybe<Use> extent;
 
-  // Immediate parent types.
   std::vector<Usr> bases;
 
   // Types, functions, and variables defined in this type.
@@ -221,8 +209,6 @@ struct VarDef : NameMixin<VarDef> {
   std::string detailed_name;
   NtString hover;
   NtString comments;
-  // TODO: definitions should be a list of ranges, since there can be more
-  //       than one - when??
   Maybe<Use> spell;
   Maybe<Use> extent;
 
