@@ -49,7 +49,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 8,
-      "storage": 3
+      "storage": 2
     }]
 }
 */

@@ -17,7 +17,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:6-3:9|0|1|2",
       "extent": "3:1-8:2|0|1|0",
@@ -57,7 +57,7 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 6081981442495435784,
       "detailed_name": "Type *a3",
@@ -69,7 +69,7 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 7997456978847868736,
       "detailed_name": "Type &a0",
@@ -81,7 +81,7 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 14939253431683105646,
       "detailed_name": "const Type *const a5",
@@ -94,7 +94,7 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 15429032129697337561,
       "detailed_name": "Type a2",
@@ -106,7 +106,7 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 17228576662112939520,
       "detailed_name": "const Type &a1",
@@ -118,7 +118,7 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

@@ -30,11 +30,11 @@ OUTPUT: make_functions.h
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 3765833212244435302,
-      "detailed_name": "void Foobar::Foobar(int &&, Bar *, bool *)",
-      "qual_name_offset": 5,
+      "detailed_name": "Foobar::Foobar(int &&, Bar *, bool *)",
+      "qual_name_offset": 0,
       "short_name": "Foobar",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "7:3-7:9|14935975554338052500|2|2",
       "extent": "7:3-7:32|14935975554338052500|2|0",
@@ -46,11 +46,11 @@ OUTPUT: make_functions.h
       "callees": []
     }, {
       "usr": 13028995015627606181,
-      "detailed_name": "void Foobar::Foobar(int)",
-      "qual_name_offset": 5,
+      "detailed_name": "Foobar::Foobar(int)",
+      "qual_name_offset": 0,
       "short_name": "Foobar",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "6:3-6:9|14935975554338052500|2|2",
       "extent": "6:3-6:17|14935975554338052500|2|0",
@@ -62,11 +62,11 @@ OUTPUT: make_functions.h
       "callees": []
     }, {
       "usr": 13131778807733950299,
-      "detailed_name": "void Foobar::Foobar()",
-      "qual_name_offset": 5,
+      "detailed_name": "Foobar::Foobar()",
+      "qual_name_offset": 0,
       "short_name": "Foobar",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:3-5:9|14935975554338052500|2|2",
       "extent": "5:3-5:14|14935975554338052500|2|0",
@@ -78,11 +78,11 @@ OUTPUT: make_functions.h
       "callees": []
     }, {
       "usr": 17321436359755983845,
-      "detailed_name": "void Foobar::Foobar(int, Bar *, bool *)",
-      "qual_name_offset": 5,
+      "detailed_name": "Foobar::Foobar(int, Bar *, bool *)",
+      "qual_name_offset": 0,
       "short_name": "Foobar",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "8:3-8:9|14935975554338052500|2|2",
       "extent": "8:3-8:30|14935975554338052500|2|0",
@@ -139,11 +139,11 @@ OUTPUT: make_functions.cc
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 2532818908869373467,
-      "detailed_name": "T *maKE_NoRefs(Args... args)",
+      "detailed_name": "T *maKE_NoRefs(Args ...args)",
       "qual_name_offset": 3,
       "short_name": "maKE_NoRefs",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "9:4-9:15|0|1|2",
       "extent": "9:1-11:2|0|1|0",
@@ -159,7 +159,7 @@ OUTPUT: make_functions.cc
       "qual_name_offset": 5,
       "short_name": "caller22",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "13:6-13:14|0|1|2",
       "extent": "13:1-18:2|0|1|0",
@@ -213,11 +213,11 @@ OUTPUT: make_functions.cc
       "callees": []
     }, {
       "usr": 15793662558620604611,
-      "detailed_name": "T *MakeUnique(Args &&... args)",
+      "detailed_name": "T *MakeUnique(Args &&...args)",
       "qual_name_offset": 3,
       "short_name": "MakeUnique",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "4:4-4:14|0|1|2",
       "extent": "4:1-6:2|0|1|0",
@@ -352,7 +352,7 @@ OUTPUT: make_functions.cc
       "type": 0,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 8463700030555379526,
       "detailed_name": "Args &&... args",
@@ -364,7 +364,7 @@ OUTPUT: make_functions.cc
       "type": 0,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

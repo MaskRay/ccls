@@ -13,11 +13,11 @@ OUTPUT: static_function_in_type.h
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 17019747379608639279,
-      "detailed_name": "void ns::Foo::Register(ns::Manager *)",
-      "qual_name_offset": 5,
+      "detailed_name": "static void ns::Foo::Register(ns::Manager *)",
+      "qual_name_offset": 12,
       "short_name": "Register",
       "kind": 254,
-      "storage": 3,
+      "storage": 2,
       "declarations": ["6:15-6:23|17262466801709381811|2|1"],
       "declaring_type": 17262466801709381811,
       "bases": [],
@@ -106,7 +106,7 @@ OUTPUT: static_function_in_type.cc
       "qual_name_offset": 5,
       "short_name": "Register",
       "kind": 254,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:11-5:19|17262466801709381811|2|2",
       "extent": "5:1-6:2|11072669167287398027|2|0",
@@ -191,7 +191,7 @@ OUTPUT: static_function_in_type.cc
       "type": 1972401196751872203,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

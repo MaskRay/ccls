@@ -57,7 +57,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 8,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

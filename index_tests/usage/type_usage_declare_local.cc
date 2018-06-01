@@ -17,7 +17,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "4:6-4:9|0|1|2",
       "extent": "4:1-7:2|0|1|0",
@@ -72,7 +72,7 @@ OUTPUT:
       "type": 8508299082070213750,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 16374832544037266261,
       "detailed_name": "ForwardType *a",
@@ -84,7 +84,7 @@ OUTPUT:
       "type": 13749354388332789217,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

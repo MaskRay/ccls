@@ -15,7 +15,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "f",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "2:6-2:7|0|1|2",
       "extent": "2:1-5:2|0|1|0",
@@ -49,25 +49,27 @@ OUTPUT:
       "detailed_name": "Foo *x",
       "qual_name_offset": 5,
       "short_name": "x",
+      "hover": "Foo *x = new Foo()",
       "declarations": [],
       "spell": "3:8-3:9|880549676430489861|3|2",
       "extent": "3:3-3:21|880549676430489861|3|0",
       "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 18422884837902130475,
       "detailed_name": "Foo *y",
       "qual_name_offset": 5,
       "short_name": "y",
+      "hover": "Foo *y = new Foo()",
       "declarations": [],
       "spell": "4:9-4:10|880549676430489861|3|2",
       "extent": "4:3-4:22|880549676430489861|3|0",
       "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

@@ -20,7 +20,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "make",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["2:8-2:12|15041163540773201510|2|1"],
       "spell": "5:11-5:15|15041163540773201510|2|2",
       "extent": "5:1-8:2|0|1|0",
@@ -58,7 +58,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
-      "storage": 2
+      "storage": 1
     }, {
       "usr": 16380484338511689669,
       "detailed_name": "Foo f",
@@ -70,7 +70,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

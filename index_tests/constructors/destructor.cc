@@ -20,11 +20,11 @@ OUTPUT:
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 3385168158331140247,
-      "detailed_name": "void Foo::Foo()",
-      "qual_name_offset": 5,
+      "detailed_name": "Foo::Foo()",
+      "qual_name_offset": 0,
       "short_name": "Foo",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:3-3:6|15041163540773201510|2|2",
       "extent": "3:3-3:11|15041163540773201510|2|0",
@@ -40,7 +40,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "7:6-7:9|0|1|2",
       "extent": "7:1-9:2|0|1|0",
@@ -52,11 +52,11 @@ OUTPUT:
       "callees": ["8:7-8:8|3385168158331140247|3|288", "8:7-8:8|3385168158331140247|3|288"]
     }, {
       "usr": 7440261702884428359,
-      "detailed_name": "void Foo::~Foo() noexcept",
-      "qual_name_offset": 5,
+      "detailed_name": "Foo::~Foo() noexcept",
+      "qual_name_offset": 0,
       "short_name": "~Foo",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "4:3-4:7|15041163540773201510|2|2",
       "extent": "4:3-4:12|15041163540773201510|2|0",
@@ -96,7 +96,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

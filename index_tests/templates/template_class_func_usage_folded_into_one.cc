@@ -15,11 +15,11 @@ OUTPUT:
   "skipped_by_preprocessor": [],
   "usr2func": [{
       "usr": 8340731781048851399,
-      "detailed_name": "int Foo::foo()",
-      "qual_name_offset": 4,
+      "detailed_name": "static int Foo::foo()",
+      "qual_name_offset": 11,
       "short_name": "foo",
       "kind": 254,
-      "storage": 3,
+      "storage": 2,
       "declarations": [],
       "spell": "3:14-3:17|10528472276654770367|2|2",
       "extent": "3:3-5:4|10528472276654770367|2|0",
@@ -75,7 +75,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 16721564935990383768,
       "detailed_name": "int a",
@@ -88,7 +88,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

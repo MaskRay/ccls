@@ -18,7 +18,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Make",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:6-5:10|0|1|2",
       "extent": "5:1-8:2|0|1|0",
@@ -30,11 +30,11 @@ OUTPUT:
       "callees": ["6:8-6:12|10530961286677896857|3|288", "6:8-6:12|10530961286677896857|3|288", "7:15-7:19|10530961286677896857|3|32", "7:15-7:19|10530961286677896857|3|32"]
     }, {
       "usr": 10530961286677896857,
-      "detailed_name": "void Type::Type()",
-      "qual_name_offset": 5,
+      "detailed_name": "Type::Type()",
+      "qual_name_offset": 0,
       "short_name": "Type",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "2:3-2:7|13487927231218873822|2|2",
       "extent": "2:3-2:12|13487927231218873822|2|0",
@@ -74,19 +74,20 @@ OUTPUT:
       "type": 13487927231218873822,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 17097499197730163115,
       "detailed_name": "Type foo1",
       "qual_name_offset": 5,
       "short_name": "foo1",
+      "hover": "Type foo1 = Type()",
       "declarations": [],
       "spell": "7:8-7:12|3957104924306079513|3|2",
       "extent": "7:3-7:21|3957104924306079513|3|0",
       "type": 13487927231218873822,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

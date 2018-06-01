@@ -15,7 +15,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["1:5-1:8|0|1|1", "2:5-2:8|0|1|1", "4:5-4:8|0|1|1"],
       "spell": "5:5-5:8|0|1|2",
       "extent": "5:1-5:36|0|1|0",
@@ -53,7 +53,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 14555488990109936920,
       "detailed_name": "int a",
@@ -65,7 +65,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 253,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

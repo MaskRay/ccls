@@ -25,7 +25,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "12:6-12:9|0|1|2",
       "extent": "12:1-15:2|0|1|0",
@@ -41,7 +41,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "gen",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["3:5-3:8|0|1|1"],
       "declaring_type": 0,
       "bases": [],
@@ -55,7 +55,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "called",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["1:6-1:12|0|1|1"],
       "declaring_type": 0,
       "bases": [],
@@ -115,7 +115,7 @@ OUTPUT:
       "type": 17,
       "uses": ["14:10-14:11|4259594751088586730|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 9648311402855509901,
       "detailed_name": "int Foo::field_var",
@@ -140,7 +140,7 @@ OUTPUT:
       "type": 17,
       "uses": ["14:45-14:55|4259594751088586730|3|4"],
       "kind": 8,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

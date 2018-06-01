@@ -19,7 +19,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "called",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "1:6-1:12|0|1|2",
       "extent": "1:1-1:17|0|1|0",
@@ -31,11 +31,11 @@ OUTPUT:
       "callees": []
     }, {
       "usr": 3385168158331140247,
-      "detailed_name": "void Foo::Foo()",
-      "qual_name_offset": 5,
+      "detailed_name": "Foo::Foo()",
+      "qual_name_offset": 0,
       "short_name": "Foo",
       "kind": 9,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["4:3-4:6|15041163540773201510|2|1"],
       "spell": "7:6-7:9|15041163540773201510|2|2",
       "extent": "7:1-9:2|0|1|0",

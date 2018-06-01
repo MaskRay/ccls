@@ -3,12 +3,12 @@
 #include "log.hh"
 #include "platform.h"
 #include "serializer.h"
-#include "type_printer.h"
 
 #include <clang/AST/AST.h>
+#include <clang/Frontend/ASTUnit.h>
 #include <llvm/Support/Timer.h>
 using namespace clang;
-using namespace llvm;
+using llvm::Timer;
 
 #include <assert.h>
 #include <inttypes.h>
@@ -17,9 +17,6 @@ using namespace llvm;
 #include <chrono>
 #include <unordered_set>
 
-#if CINDEX_VERSION >= 47
-#define CINDEX_HAVE_PRETTY 1
-#endif
 #if CINDEX_VERSION >= 48
 #define CINDEX_HAVE_ROLE 1
 #endif
@@ -28,7 +25,18 @@ namespace {
 
 // For typedef/using spanning less than or equal to (this number) of lines,
 // display their declarations on hover.
-constexpr int kMaxLinesDisplayTypeAliasDeclarations = 3;
+constexpr int kMaxDetailedLines = 3;
+
+struct CXTranslationUnitImpl {
+  /* clang::CIndexer */ void *CIdx;
+  clang::ASTUnit *TheASTUnit;
+  /* clang::cxstring::CXStringPool */ void *StringPool;
+  void *Diagnostics;
+  void *OverridenCursorsPool;
+  /* clang::index::CommentToXMLConverter */ void *CommentToXML;
+  unsigned ParsingOptions;
+  std::vector<std::string> Arguments;
+};
 
 // TODO How to check if a reference to type is a declaration?
 // This currently also includes constructors/destructors.
@@ -295,37 +303,28 @@ struct IndexParam {
   NamespaceHelper ns;
   ConstructorCache ctors;
 
-  IndexParam(ClangTranslationUnit* tu,
-             FileConsumer* file_consumer)
+  IndexParam(ClangTranslationUnit* tu, FileConsumer* file_consumer)
       : tu(tu), file_consumer(file_consumer) {}
 
-#if CINDEX_HAVE_PRETTY
-  CXPrintingPolicy print_policy = nullptr;
-  CXPrintingPolicy print_policy_more = nullptr;
-  ~IndexParam() {
-    clang_PrintingPolicy_dispose(print_policy);
-    clang_PrintingPolicy_dispose(print_policy_more);
-  }
-
   std::tuple<std::string, int16_t, int16_t, int16_t> PrettyPrintCursor(
-      CXCursor cursor,
+      CXCursor Cursor,
       std::string_view short_name) {
-    if (!print_policy) {
-      print_policy = clang_getCursorPrintingPolicy(cursor);
-      clang_PrintingPolicy_setProperty(print_policy,
-                                       CXPrintingPolicy_TerseOutput, 1);
-      clang_PrintingPolicy_setProperty(print_policy,
-                                       CXPrintingPolicy_FullyQualifiedName, 1);
-      clang_PrintingPolicy_setProperty(
-          print_policy, CXPrintingPolicy_SuppressInitializers, 1);
-      print_policy_more = clang_getCursorPrintingPolicy(cursor);
-      clang_PrintingPolicy_setProperty(print_policy_more,
-                                       CXPrintingPolicy_FullyQualifiedName, 1);
-      clang_PrintingPolicy_setProperty(print_policy_more,
-                                       CXPrintingPolicy_TerseOutput, 1);
-    }
-    std::string name =
-        ToString(clang_getCursorPrettyPrinted(cursor, print_policy_more));
+    auto TU =
+        static_cast<CXTranslationUnitImpl*>(const_cast<void*>(Cursor.data[2]));
+    ASTContext& AST = TU->TheASTUnit->getASTContext();
+    PrintingPolicy Policy = AST.getPrintingPolicy();
+    Policy.TerseOutput = 1;
+    Policy.FullyQualifiedName = true;
+
+    const Decl* D = static_cast<const Decl*>(Cursor.data[0]);
+    if (!D)
+      return {"", 0, 0, 0};
+
+    llvm::SmallString<128> Str;
+    llvm::raw_svector_ostream OS(Str);
+    D->print(OS, Policy);
+    std::string name = OS.str();
+
     for (std::string::size_type i = 0;;) {
       if ((i = name.find("(anonymous ", i)) == std::string::npos)
         break;
@@ -350,7 +349,6 @@ struct IndexParam {
     }
     return {name, i, short_name_offset, short_name_size};
   }
-#endif
 };
 
 IndexFile* ConsumeFile(IndexParam* param, CXFile file) {
@@ -610,8 +608,8 @@ void SetVarDetail(IndexVar& var,
     def.qual_name_offset = 0;
     def.hover = hover;
   } else {
-#if 0 && CINDEX_HAVE_PRETTY
-    //def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
+#if 0
+    def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
 #else
     int offset = type_name.size();
     offset += ConcatTypeAndName(type_name, qualified_name);
@@ -623,23 +621,52 @@ void SetVarDetail(IndexVar& var,
     // int (*a)(); int (&a)(); int (&&a)(); int a[1]; auto x = ...
     // We can take these into consideration after we have better support for
     // inside-out syntax.
-    CXType deref = cx_type;
-    while (deref.kind == CXType_Pointer || deref.kind == CXType_MemberPointer ||
-           deref.kind == CXType_LValueReference ||
-           deref.kind == CXType_RValueReference)
-      deref = clang_getPointeeType(deref);
-    if (deref.kind != CXType_Unexposed && deref.kind != CXType_Auto &&
-        clang_getResultType(deref).kind == CXType_Invalid &&
-        clang_getElementType(deref).kind == CXType_Invalid) {
+    QualType T = QualType::getFromOpaquePtr(cx_type.data[0]);
+    while (1) {
+      const Type* TP = T.getTypePtrOrNull();
+      if (!TP)
+        goto skip;
+      switch (TP->getTypeClass()) {
+        default:
+          break;
+        // case Type::Auto:
+        // case Type::ConstantArray:
+        // case Type::IncompleteArray:
+        // case Type::VariableArray:
+        // case Type::DependentSizedArray:
+        // case Type::Vector:
+        // case Type::Complex:
+        //   goto skip;
+        case Type::Pointer:
+          T = cast<PointerType>(TP)->getPointeeType();
+          continue;
+        case Type::LValueReference:
+        case Type::RValueReference:
+          T = cast<ReferenceType>(TP)->getPointeeType();
+          continue;
+        case Type::MemberPointer:
+          T = cast<MemberPointerType>(TP)->getPointeeType();
+          continue;
+      }
+      break;
+    }
+    if (T->getAs<FunctionType>())
+      goto skip;
+    {
       const FileContents& fc = param->file_contents[db->path];
-      std::optional<int> spell_end = fc.ToOffset(cursor.get_spell().end);
-      std::optional<int> extent_end = fc.ToOffset(cursor.get_extent().end);
-      if (extent_end && *spell_end < *extent_end)
-        def.hover = std::string(def.detailed_name.c_str()) +
-                    fc.content.substr(*spell_end, *extent_end - *spell_end);
+      Position spell_p = cursor.get_spell().end,
+               extent_p = cursor.get_extent().end;
+      if (extent_p.line - spell_p.line < kMaxDetailedLines) {
+        std::optional<int> spell_end = fc.ToOffset(spell_p),
+                           extent_end = fc.ToOffset(extent_p);
+        if (extent_end && *spell_end < *extent_end)
+          def.hover = std::string(def.detailed_name.c_str()) +
+                      fc.content.substr(*spell_end, *extent_end - *spell_end);
+      }
+    }
+   skip:;
     }
 #endif
-  }
 
   if (is_first_seen) {
     if (IndexType* var_type =
@@ -1556,15 +1583,9 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // indexing the definition, then there will not be any (ie) outline
       // information.
       if (!is_template_specialization) {
-#if CINDEX_HAVE_PRETTY
         std::tie(func.def.detailed_name, func.def.qual_name_offset,
                  func.def.short_name_offset, func.def.short_name_size) =
             param->PrettyPrintCursor(decl->cursor, decl->entityInfo->name);
-#else
-        std::tie(func.def.detailed_name, func.def.qual_name_offset,
-                 func.def.short_name_offset, func.def.short_name_size) =
-            GetFunctionSignature(db, &param->ns, decl);
-#endif
 
         // CXCursor_OverloadedDeclRef in templates are not processed by
         // OnIndexReference, thus we use TemplateVisitor to collect function
@@ -1642,8 +1663,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
       // line, with spelling name replaced with qualified name.
-      if (extent.end.line - extent.start.line <
-          kMaxLinesDisplayTypeAliasDeclarations) {
+      if (extent.end.line - extent.start.line < kMaxDetailedLines) {
         FileContents& fc = param->file_contents[db->path];
         std::optional<int> extent_start = fc.ToOffset(extent.start),
                       spell_start = fc.ToOffset(spell.start),

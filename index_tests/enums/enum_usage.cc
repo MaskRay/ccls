@@ -54,7 +54,7 @@ OUTPUT:
       "type": 16985894625255407295,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 15962370213938840720,
       "detailed_name": "Foo::B",

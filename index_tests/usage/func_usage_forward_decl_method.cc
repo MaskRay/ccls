@@ -17,7 +17,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "usage",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:6-5:11|0|1|2",
       "extent": "5:1-8:2|0|1|0",
@@ -33,7 +33,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["2:8-2:11|15041163540773201510|2|1"],
       "declaring_type": 15041163540773201510,
       "bases": [],
@@ -72,7 +72,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": ["7:3-7:4|6767773193109753523|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

@@ -18,7 +18,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "called",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "1:6-1:12|0|1|2",
       "extent": "1:1-1:17|0|1|0",
@@ -34,7 +34,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "caller",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:6-3:12|0|1|2",
       "extent": "3:1-8:2|0|1|0",
@@ -51,13 +51,14 @@ OUTPUT:
       "detailed_name": "void (*)() x",
       "qual_name_offset": 11,
       "short_name": "x",
+      "hover": "void (*)() x = &called",
       "declarations": [],
       "spell": "4:8-4:9|11404881820527069090|3|2",
       "extent": "4:3-4:19|11404881820527069090|3|0",
       "type": 0,
       "uses": ["5:3-5:4|11404881820527069090|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

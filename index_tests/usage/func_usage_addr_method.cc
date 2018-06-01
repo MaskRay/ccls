@@ -18,7 +18,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "user",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "5:6-5:10|0|1|2",
       "extent": "5:1-7:2|0|1|0",
@@ -34,7 +34,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "Used",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["2:8-2:12|15041163540773201510|2|1"],
       "declaring_type": 15041163540773201510,
       "bases": [],
@@ -66,13 +66,14 @@ OUTPUT:
       "detailed_name": "void (Foo::*)() x",
       "qual_name_offset": 16,
       "short_name": "x",
+      "hover": "void (Foo::*)() x = &Foo::Used",
       "declarations": [],
       "spell": "6:8-6:9|9376923949268137283|3|2",
       "extent": "6:3-6:22|9376923949268137283|3|0",
       "type": 0,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

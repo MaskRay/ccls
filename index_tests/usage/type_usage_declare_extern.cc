@@ -34,7 +34,7 @@ OUTPUT:
       "type": 5673439900521455039,
       "uses": [],
       "kind": 13,
-      "storage": 2
+      "storage": 1
     }]
 }
 */

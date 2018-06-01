@@ -138,7 +138,7 @@ OUTPUT:
       "type": 1532099849728741556,
       "uses": ["13:26-13:36|0|1|4", "14:27-14:37|0|1|4"],
       "kind": 8,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 9008550860229740818,
       "detailed_name": "int ns::Foo2",
@@ -151,7 +151,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 12898699035586282159,
       "detailed_name": "int ns::Foo",
@@ -164,7 +164,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

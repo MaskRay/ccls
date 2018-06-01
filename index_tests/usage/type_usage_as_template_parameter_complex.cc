@@ -89,7 +89,7 @@ OUTPUT:
       "qual_name_offset": 36,
       "short_name": "as_return_type",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "33:37-33:51|0|1|2",
       "extent": "33:1-33:92|0|1|0",
@@ -105,7 +105,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "no_return_type",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "40:6-40:20|0|1|2",
       "extent": "40:1-40:28|0|1|0",
@@ -121,7 +121,7 @@ OUTPUT:
       "qual_name_offset": 20,
       "short_name": "foo",
       "kind": 6,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["65:23-65:26|15041163540773201510|2|1"],
       "spell": "79:26-79:29|15041163540773201510|2|2",
       "extent": "79:1-79:51|0|1|0",
@@ -137,7 +137,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "empty",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "53:6-53:11|0|1|2",
       "extent": "53:1-55:2|0|1|0",
@@ -222,7 +222,7 @@ OUTPUT:
       "type": 14209198335088845323,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 2933643612409209903,
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> f",
@@ -232,7 +232,7 @@ OUTPUT:
       "type": 14209198335088845323,
       "uses": [],
       "kind": 13,
-      "storage": 2
+      "storage": 1
     }]
 }
 */

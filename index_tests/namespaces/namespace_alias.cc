@@ -24,7 +24,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "func",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "11:6-11:10|0|1|2",
       "extent": "11:1-14:2|0|1|0",
@@ -149,7 +149,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 7657277353101371136,
       "detailed_name": "int b",
@@ -162,7 +162,7 @@ OUTPUT:
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 15042442838933090518,
       "detailed_name": "int foo::bar::baz::qux",
@@ -175,7 +175,7 @@ OUTPUT:
       "type": 17,
       "uses": ["12:26-12:29|0|1|4", "13:16-13:19|0|1|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */

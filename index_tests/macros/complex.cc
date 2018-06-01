@@ -22,7 +22,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "a",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["12:1-12:20|0|1|1"],
       "spell": "12:1-12:20|0|1|2",
       "extent": "12:1-12:20|0|1|0",
@@ -38,7 +38,7 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "make1",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "6:5-6:10|0|1|2",
       "extent": "6:1-8:2|0|1|0",
@@ -77,7 +77,7 @@ OUTPUT:
       "type": 17,
       "uses": ["12:14-12:19|9720930732776154610|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 4261071340275951718,
       "detailed_name": "FOO",

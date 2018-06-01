@@ -15,7 +15,7 @@ OUTPUT: header.h
       "qual_name_offset": 5,
       "short_name": "Foo1",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "10:6-10:10|0|1|2",
       "extent": "10:1-10:15|0|1|0",
@@ -139,7 +139,7 @@ OUTPUT: header.h
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }, {
       "usr": 6141718166919284735,
       "detailed_name": "Foo3::A",
@@ -177,7 +177,7 @@ OUTPUT: header.h
       "type": 17,
       "uses": [],
       "kind": 13,
-      "storage": 3
+      "storage": 2
     }, {
       "usr": 17716334512218775320,
       "detailed_name": "Foo3::B",
@@ -206,7 +206,7 @@ OUTPUT: impl.cc
       "qual_name_offset": 5,
       "short_name": "Impl",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "3:6-3:10|0|1|2",
       "extent": "3:1-5:2|0|1|0",

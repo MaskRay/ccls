@@ -28,7 +28,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "foo",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": [],
       "spell": "10:6-10:9|0|1|2",
       "extent": "10:1-18:2|0|1|0",
@@ -44,7 +44,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "accept",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["8:6-8:12|0|1|1"],
       "declaring_type": 0,
       "bases": [],
@@ -58,7 +58,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "accept",
       "kind": 12,
-      "storage": 1,
+      "storage": 0,
       "declarations": ["7:6-7:12|0|1|1"],
       "declaring_type": 0,
       "bases": [],
@@ -141,7 +141,7 @@ OUTPUT:
       "type": 15041163540773201510,
       "uses": ["12:3-12:4|4259594751088586730|3|4", "13:3-13:4|4259594751088586730|3|4", "14:10-14:11|4259594751088586730|3|4", "15:10-15:11|4259594751088586730|3|4", "16:11-16:12|4259594751088586730|3|4", "17:10-17:11|4259594751088586730|3|4"],
       "kind": 13,
-      "storage": 1
+      "storage": 0
     }]
 }
 */
