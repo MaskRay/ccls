@@ -95,7 +95,7 @@ bool Expand(MessageHandler* m,
   entry->numChildren = 0;
   if (!def)
     return false;
-  auto handle = [&](Use use, CallType call_type) {
+  auto handle = [&](Use use, CallType call_type1) {
     entry->numChildren++;
     if (levels > 0) {
       Out_CclsCallHierarchy::Entry entry1;
@@ -103,7 +103,7 @@ bool Expand(MessageHandler* m,
       entry1.usr = use.usr;
       if (auto loc = GetLsLocation(m->db, m->working_files, use))
         entry1.location = *loc;
-      entry1.callType = call_type;
+      entry1.callType = call_type1;
       if (Expand(m, &entry1, callee, call_type, qualified, levels - 1))
         entry->children.push_back(std::move(entry1));
     }

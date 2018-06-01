@@ -8,27 +8,6 @@
 enum class SymbolKind : uint8_t { Invalid, File, Type, Func, Var };
 MAKE_REFLECT_TYPE_PROXY(SymbolKind);
 
-// clang/Basic/Specifiers.h clang::StorageClass
-enum class StorageClass : uint8_t {
-  // In |CX_StorageClass| but not in |clang::StorageClass|
-  // e.g. non-type template parameters
-  Invalid,
-
-  // These are legal on both functions and variables.
-  // e.g. global functions/variables, local variables
-  None,
-  Extern,
-  Static,
-  // e.g. |__private_extern__ int a;|
-  PrivateExtern,
-
-  // These are only legal on variables.
-  // e.g. explicit |auto int a;|
-  Auto,
-  Register
-};
-MAKE_REFLECT_TYPE_PROXY(StorageClass);
-
 enum class Role : uint16_t {
   None = 0,
   Declaration = 1 << 0,

@@ -5,7 +5,9 @@
 #include "serializer.h"
 #include "type_printer.h"
 
+#include <clang/AST/AST.h>
 #include <llvm/Support/Timer.h>
+using namespace clang;
 using namespace llvm;
 
 #include <assert.h>
@@ -151,26 +153,24 @@ lsSymbolKind GetSymbolKind(CXIdxEntityKind kind) {
   return lsSymbolKind::Unknown;
 }
 
-StorageClass GetStorageClass(CX_StorageClass storage) {
+StorageClass GetStorageC(CX_StorageClass storage) {
   switch (storage) {
+    default:
     case CX_SC_Invalid:
     case CX_SC_OpenCLWorkGroupLocal:
-      return StorageClass::Invalid;
     case CX_SC_None:
-      return StorageClass::None;
+      return SC_None;
     case CX_SC_Extern:
-      return StorageClass::Extern;
+      return SC_Extern;
     case CX_SC_Static:
-      return StorageClass::Static;
+      return SC_Static;
     case CX_SC_PrivateExtern:
-      return StorageClass::PrivateExtern;
+      return SC_PrivateExtern;
     case CX_SC_Auto:
-      return StorageClass::Auto;
+      return SC_Auto;
     case CX_SC_Register:
-      return StorageClass::Register;
+      return SC_Register;
   }
-
-  return StorageClass::None;
 }
 
 // Caches all instances of constructors, regardless if they are indexed or not.
@@ -583,7 +583,7 @@ void SetVarDetail(IndexVar& var,
     type_name = "lambda";
   if (g_config->index.comments)
     def.comments = cursor.get_comments();
-  def.storage = GetStorageClass(clang_Cursor_getStorageClass(cursor.cx_cursor));
+  def.storage = GetStorageC(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   // TODO how to make PrettyPrint'ed variable name qualified?
 #if 0 && CINDEX_HAVE_PRETTY
@@ -1526,7 +1526,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         func.def.comments = cursor.get_comments();
       func.def.kind = GetSymbolKind(decl->entityInfo->kind);
       func.def.storage =
-          GetStorageClass(clang_Cursor_getStorageClass(decl->cursor));
+          GetStorageC(clang_Cursor_getStorageClass(decl->cursor));
 
       // We don't actually need to know the return type, but we need to mark it
       // as an interesting usage.
@@ -1536,11 +1536,13 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // Add definition or declaration. This is a bit tricky because we treat
       // template specializations as declarations, even though they are
       // technically definitions.
-      // TODO: Support multiple function definitions, which is common for
-      //       template specializations.
-      if (decl->isDefinition && !is_template_specialization) {
-        // assert(!func->def.spell);
-        // assert(!func->def.extent);
+      bool is_def = decl->isDefinition;
+      if (!is_def) {
+        auto* D = static_cast<const Decl*>(decl->cursor.data[0]);
+        auto* Method = dyn_cast_or_null<CXXMethodDecl>(D->getAsFunction());
+        is_def = Method && (Method->isDefaulted() || Method->isPure());
+      }
+      if (is_def && !is_template_specialization) {
         func.def.spell = SetUse(db, spell, sem_parent, Role::Definition);
         func.def.extent = SetUse(db, extent, lex_parent, Role::None);
       } else {

@@ -63,7 +63,7 @@ struct Out_CclsPublishSemanticHighlighting
     int stableId = 0;
     lsSymbolKind parentKind;
     lsSymbolKind kind;
-    StorageClass storage;
+    clang::StorageClass storage;
     std::vector<lsRange> ranges;
   };
   struct Params {

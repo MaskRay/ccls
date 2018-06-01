@@ -2,7 +2,6 @@
 
 #include "serializer.h"
 
-#include <memory>
 #include <string>
 
 /*
@@ -192,6 +191,9 @@ struct Config {
     std::vector<std::string> whitelist;
   } index;
 
+  // Disable semantic highlighting for files larger than the size.
+  int64_t largeFileSize = 2 * 1024 * 1024;
+
   struct WorkspaceSymbol {
     int caseSensitivity = 1;
     // Maximum workspace search results.
@@ -252,8 +254,9 @@ MAKE_REFLECT_STRUCT(Config,
                     diagnostics,
                     highlight,
                     index,
+                    largeFileSize,
                     workspaceSymbol,
                     xref);
 
-extern std::unique_ptr<Config> g_config;
+extern Config* g_config;
 thread_local extern int g_thread_id;
