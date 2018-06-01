@@ -4,7 +4,6 @@
 #include "filesystem.hh"
 #include "log.hh"
 #include "platform.h"
-#include "timer.h"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
@@ -454,21 +453,17 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                                           true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->completion.lock);
-    Timer timer;
     TryEnsureDocumentParsed(completion_manager, session, &session->completion.tu,
                             &session->completion.index, false);
-    timer.ResetAndPrint("[complete] TryEnsureDocumentParsed");
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
     if (!session->completion.tu)
       continue;
 
-    timer.Reset();
     WorkingFiles::Snapshot snapshot =
         completion_manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
-    timer.ResetAndPrint("[complete] Creating WorkingFile snapshot");
 
     unsigned const kCompleteOptions =
         CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
@@ -476,7 +471,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
         session->completion.tu->cx_tu, session->file.filename.c_str(),
         request->position.line + 1, request->position.character + 1,
         unsaved.data(), (unsigned)unsaved.size(), kCompleteOptions);
-    timer.ResetAndPrint("[complete] clangCodeCompleteAt");
     if (!cx_results) {
       request->on_complete({}, false /*is_cached_result*/);
       continue;
@@ -487,7 +481,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
     // parameters, as they may be expanded into multiple items
     ls_result.reserve(cx_results->NumResults);
 
-    timer.Reset();
     for (unsigned i = 0; i < cx_results->NumResults; ++i) {
       CXCompletionResult& result = cx_results->Results[i];
 
@@ -552,10 +545,6 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       }
     }
 
-    timer.ResetAndPrint("[complete] Building " +
-                        std::to_string(ls_result.size()) +
-                        " completion results");
-
     request->on_complete(ls_result, false /*is_cached_result*/);
 
     // Make sure |ls_results| is destroyed before clearing |cx_results|.
@@ -578,28 +567,22 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
 
     // At this point, we must have a translation unit. Block until we have one.
     std::lock_guard<std::mutex> lock(session->diagnostics.lock);
-    Timer timer;
     TryEnsureDocumentParsed(
         completion_manager, session, &session->diagnostics.tu,
         &session->diagnostics.index, false /*emit_diagnostics*/);
-    timer.ResetAndPrint("[diagnostics] TryEnsureDocumentParsed");
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
     if (!session->diagnostics.tu)
       continue;
 
-    timer.Reset();
     WorkingFiles::Snapshot snapshot =
         completion_manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
-    timer.ResetAndPrint("[diagnostics] Creating WorkingFile snapshot");
 
     // Emit diagnostics.
-    timer.Reset();
     session->diagnostics.tu = ClangTranslationUnit::Reparse(
         std::move(session->diagnostics.tu), unsaved);
-    timer.ResetAndPrint("[diagnostics] clang_reparseTranslationUnit");
     if (!session->diagnostics.tu) {
       LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
                    << path;

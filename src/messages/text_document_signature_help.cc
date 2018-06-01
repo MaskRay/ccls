@@ -2,7 +2,6 @@
 #include "message_handler.h"
 #include "pipeline.hh"
 using namespace ccls;
-#include "timer.h"
 
 #include <stdint.h>
 
@@ -142,7 +141,6 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
           // Set signature to what we parsed from the working file.
           out.result.activeParameter = active_param;
 
-          Timer timer;
           pipeline::WriteStdout(kMethodType, out);
 
           if (!is_cached_result) {

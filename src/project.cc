@@ -8,7 +8,6 @@
 #include "platform.h"
 #include "pipeline.hh"
 #include "serializers/json.h"
-#include "timer.h"
 #include "utils.h"
 #include "working_files.h"
 using namespace ccls;
@@ -275,20 +274,12 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 
   LOG_S(INFO) << "loaded " << Path.c_str();
 
-  Timer clang_time;
-  Timer our_time;
-  clang_time.Pause();
-  our_time.Pause();
-
-  clang_time.Resume();
   CXCompileCommands cx_commands =
       clang_CompilationDatabase_getAllCompileCommands(cx_db);
   unsigned int num_commands = clang_CompileCommands_getSize(cx_commands);
-  clang_time.Pause();
 
   std::vector<Project::Entry> result;
   for (unsigned int i = 0; i < num_commands; i++) {
-    clang_time.Resume();
     CXCompileCommand cx_command =
         clang_CompileCommands_getCommand(cx_commands, i);
 
@@ -304,25 +295,16 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
       entry.args.push_back(
           ToString(clang_CompileCommand_getArg(cx_command, j)));
     }
-    clang_time.Pause();  // TODO: don't call ToString in this block.
-    // LOG_S(INFO) << "Got args " << StringJoin(entry.args);
 
-    our_time.Resume();
     entry.directory = directory;
     entry.file = entry.ResolveIfRelative(relative_filename);
 
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(project, entry));
-    our_time.Pause();
   }
 
-  clang_time.Resume();
   clang_CompileCommands_dispose(cx_commands);
   clang_CompilationDatabase_dispose(cx_db);
-  clang_time.Pause();
-
-  clang_time.ResetAndPrint("compile_commands.json clang time");
-  our_time.ResetAndPrint("compile_commands.json our time");
   return result;
 }
 

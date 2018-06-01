@@ -7,7 +7,6 @@
 #include "platform.h"
 #include "project.h"
 #include "serializers/json.h"
-#include "timer.h"
 #include "working_files.h"
 using namespace ccls;
 
@@ -493,14 +492,11 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     sys::fs::create_directories(g_config->cacheDirectory + '@' +
                                 EscapeFileName(g_config->projectRoot));
 
-    Timer time;
     diag_engine->Init();
     semantic_cache->Init();
 
     // Open up / load the project.
     project->Load(project_path);
-    time.ResetAndPrint("[perf] Loaded compilation entries (" +
-                       std::to_string(project->entries.size()) + " files)");
 
     // Start indexer threads. Start this after loading the project, as that
     // may take a long time. Indexer threads will emit status/progress
@@ -522,10 +518,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     // files, because that takes a long time.
     include_complete->Rescan();
 
-    time.Reset();
+    LOG_S(INFO) << "dispatch initial index requests";
     project->Index(working_files, request->id);
-    // We need to support multiple concurrent index processes.
-    time.ResetAndPrint("[perf] Dispatched initial index requests");
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_Initialize);

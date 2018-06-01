@@ -3,7 +3,6 @@
 #include "platform.h"
 #include "project.h"
 #include "pipeline.hh"
-#include "timer.h"
 #include "working_files.h"
 using namespace ccls;
 

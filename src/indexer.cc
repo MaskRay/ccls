@@ -664,7 +664,7 @@ void OnIndexReference_Function(IndexFile* db,
     case SymbolKind::Func: {
       IndexFunc& parent = db->ToFunc(parent_cursor.cx_cursor);
       parent.def.callees.push_back(
-          SymbolRef{loc, called.usr, SymbolKind::Func, role});
+          SymbolRef{{loc, called.usr, SymbolKind::Func, role}});
       called.uses.push_back(Use{{loc, parent.usr, SymbolKind::Func, role}});
       break;
     }
@@ -2011,8 +2011,7 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
     VFS* vfs,
     std::string file,
     const std::vector<std::string>& args,
-    const std::vector<FileContents>& file_contents,
-    PerformanceImportFile* perf) {
+    const std::vector<FileContents>& file_contents) {
   if (!g_config->index.enabled)
     return {};
 
@@ -2039,12 +2038,11 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
 
   timer.stopTimer();
 
-  return ParseWithTu(vfs, perf, tu.get(), &index, file, args, unsaved_files);
+  return ParseWithTu(vfs, tu.get(), &index, file, args, unsaved_files);
 }
 
 std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     VFS* vfs,
-    PerformanceImportFile* perf,
     ClangTranslationUnit* tu,
     ClangIndex* index,
     const std::string& file,

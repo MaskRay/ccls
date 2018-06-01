@@ -3,9 +3,11 @@
 #include "include_complete.h"
 #include "message_handler.h"
 #include "pipeline.hh"
-#include "timer.h"
 #include "working_files.h"
 using namespace ccls;
+
+#include <llvm/Support/Timer.h>
+using namespace llvm;
 
 #include <regex>
 
@@ -162,21 +164,8 @@ void FilterAndSortCompletionResponse(
   if (!g_config->completion.filterAndSort)
     return;
 
-  ScopedPerfTimer timer{"FilterAndSortCompletionResponse"};
-
-// Used to inject more completions.
-#if false
-  const size_t kNumIterations = 250;
-  size_t size = complete_response->result.items.size();
-  complete_response->result.items.reserve(size * (kNumIterations + 1));
-  for (size_t iteration = 0; iteration < kNumIterations; ++iteration) {
-    for (size_t i = 0; i < size; ++i) {
-      auto item = complete_response->result.items[i];
-      item.label += "#" + std::to_string(iteration);
-      complete_response->result.items.push_back(item);
-    }
-  }
-#endif
+  Timer timer("FilterAndSortCompletionResponse", "");
+  TimeRegion region(timer);
 
   auto& items = complete_response->result.items;
 

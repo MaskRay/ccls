@@ -3,9 +3,8 @@
 #include "message_handler.h"
 #include "project.h"
 #include "pipeline.hh"
-using namespace ccls;
-#include "timer.h"
 #include "working_files.h"
+using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/didOpen";

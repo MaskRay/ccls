@@ -26,11 +26,6 @@ struct Index_Request {
   lsRequestId id;
 };
 
-struct Index_OnIndexed {
-  IndexUpdate update;
-  PerformanceImportFile perf;
-};
-
 struct Stdout_Request {
   MethodType method;
   std::string content;
@@ -44,7 +39,7 @@ MultiQueueWaiter* indexer_waiter;
 MultiQueueWaiter* stdout_waiter;
 ThreadedQueue<std::unique_ptr<InMessage>>* on_request;
 ThreadedQueue<Index_Request>* index_request;
-ThreadedQueue<Index_OnIndexed>* on_indexed;
+ThreadedQueue<IndexUpdate>* on_indexed;
 ThreadedQueue<Stdout_Request>* for_stdout;
 
 // Checks if |path| needs to be reparsed. This will modify cached state
@@ -138,7 +133,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
   if (request.path.empty()) {
     IndexUpdate dummy;
     dummy.refresh = true;
-    on_indexed->PushBack({std::move(dummy), PerformanceImportFile()}, false);
+    on_indexed->PushBack(std::move(dummy), false);
     return false;
   }
 
@@ -185,17 +180,16 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
   }
 
   if (reparse < 2) {
-    PerformanceImportFile perf;
     auto dependencies = prev->dependencies;
     if (reparse) {
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-      on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
+      on_indexed->PushBack(std::move(update), request.is_interactive);
     }
     for (const auto& dep : dependencies)
       if (vfs->Mark(dep.first().str(), 0, 2)) {
         prev = RawCacheLoad(dep.first().str());
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-        on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
+        on_indexed->PushBack(std::move(update), request.is_interactive);
       }
 
     std::lock_guard<std::mutex> lock(vfs->mutex);
@@ -207,8 +201,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
 
   LOG_S(INFO) << "parse " << path_to_index;
 
-  PerformanceImportFile perf;
-  auto indexes = indexer->Index(vfs, path_to_index, entry.args, {}, &perf);
+  auto indexes = indexer->Index(vfs, path_to_index, entry.args, {});
 
   if (indexes.empty()) {
     if (g_config->index.enabled && request.id.Valid()) {
@@ -258,7 +251,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     IndexUpdate update = IndexUpdate::CreateDelta(prev.get(), curr.get());
     LOG_S(INFO) << "built index for " << path << " (is_delta=" << !!prev << ")";
 
-    on_indexed->PushBack({std::move(update), perf}, request.is_interactive);
+    on_indexed->PushBack(std::move(update), request.is_interactive);
   }
 
   return true;
@@ -269,7 +262,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
 void Init() {
   main_waiter = new MultiQueueWaiter;
   on_request = new ThreadedQueue<std::unique_ptr<InMessage>>(main_waiter);
-  on_indexed = new ThreadedQueue<Index_OnIndexed>(main_waiter);
+  on_indexed = new ThreadedQueue<IndexUpdate>(main_waiter);
 
   indexer_waiter = new MultiQueueWaiter;
   index_request = new ThreadedQueue<Index_Request>(indexer_waiter);
@@ -293,8 +286,8 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
 void Main_OnIndexed(DB* db,
                     SemanticHighlightSymbolCache* semantic_cache,
                     WorkingFiles* working_files,
-                    Index_OnIndexed* response) {
-  if (response->update.refresh) {
+                    IndexUpdate* update) {
+  if (update->refresh) {
     LOG_S(INFO) << "Loaded project. Refresh semantic highlight for all working file.";
     std::lock_guard<std::mutex> lock(working_files->files_mutex);
     for (auto& f : working_files->files) {
@@ -309,26 +302,19 @@ void Main_OnIndexed(DB* db,
 
   Timer timer("apply", "apply index");
   timer.startTimer();
-  db->ApplyIndexUpdate(&response->update);
+  db->ApplyIndexUpdate(update);
   timer.stopTimer();
 
   // Update indexed content, inactive lines, and semantic highlighting.
-  if (response->update.files_def_update) {
-    auto& update = *response->update.files_def_update;
-    LOG_S(INFO) << "apply index for " << update.first.path;
+  if (update->files_def_update) {
+    auto& def_u = *update->files_def_update;
+    LOG_S(INFO) << "apply index for " << def_u.first.path;
     if (WorkingFile* working_file =
-            working_files->GetFileByFilename(update.first.path)) {
-      // Update indexed content.
-      working_file->SetIndexContent(update.second);
-
-      // Inactive lines.
-      EmitInactiveLines(working_file, update.first.inactive_regions);
-
-      // Semantic highlighting.
-      int file_id =
-          db->name2file_id[LowerPathIfInsensitive(working_file->filename)];
-      QueryFile* file = &db->files[file_id];
-      EmitSemanticHighlighting(db, semantic_cache, working_file, file);
+            working_files->GetFileByFilename(def_u.first.path)) {
+      working_file->SetIndexContent(def_u.second);
+      EmitInactiveLines(working_file, def_u.first.inactive_regions);
+      EmitSemanticHighlighting(db, semantic_cache, working_file,
+                               &db->files[update->file_id]);
     }
   }
 }
@@ -454,11 +440,11 @@ void MainLoop() {
     }
 
     for (int i = 80; i--;) {
-      std::optional<Index_OnIndexed> response = on_indexed->TryPopFront();
-      if (!response)
+      std::optional<IndexUpdate> update = on_indexed->TryPopFront();
+      if (!update)
         break;
       did_work = true;
-      Main_OnIndexed(&db, &semantic_cache, &working_files, &*response);
+      Main_OnIndexed(&db, &semantic_cache, &working_files, &*update);
     }
 
     // Cleanup and free any unused memory.
