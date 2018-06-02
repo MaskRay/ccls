@@ -57,4 +57,6 @@ struct Project {
       std::function<void(int i, const Entry& entry)> action);
 
   void Index(WorkingFiles* wfiles, lsRequestId id);
+
+  static bool loaded;
 };
