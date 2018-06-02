@@ -49,11 +49,7 @@ struct Handler_TextDocumentDocumentSymbol
       if (sym.kind == SymbolKind::Var) {
         QueryVar& var = db->GetVar(sym);
         auto* def = var.AnyDef();
-        if (!def || !def->spell)
-          continue;
-        // Ignore local variables.
-        if (def->spell->kind == SymbolKind::Func && def->storage != SC_Static &&
-            def->storage != SC_Extern)
+        if (!def || !def->spell || def->is_local())
           continue;
       }
 

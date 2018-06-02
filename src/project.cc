@@ -325,7 +325,10 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 }  // namespace
 
+bool Project::loaded = false;
+
 void Project::Load(const std::string& root_directory) {
+  Project::loaded = false;
   // Load data.
   ProjectConfig project;
   project.extra_flags = g_config->clang.extraArgs;
@@ -428,9 +431,9 @@ void Project::ForAllFilteredFiles(
     std::string failure_reason;
     if (matcher.IsMatch(entry.filename, &failure_reason))
       action(i, entries[i]);
-    else if (g_config->index.logSkippedPaths) {
-      LOG_S(INFO) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
-                  << failure_reason << "; skipping " << entry.filename;
+    else {
+      LOG_V(1) << "[" << i + 1 << "/" << entries.size() << "]: Failed "
+               << failure_reason << "; skipping " << entry.filename;
     }
   }
 }

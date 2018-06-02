@@ -168,18 +168,22 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     if (FileNeedsParse(*write_time, vfs, request.is_interactive, &*prev,
                        path_to_index, entry.args, std::nullopt))
       reparse = 2;
-    for (const auto& dep : prev->dependencies)
-      if (auto write_time1 = LastWriteTime(dep.first().str())) {
-        if (dep.second < *write_time1) {
+    int reparseForDep = g_config->index.reparseForDependency;
+    if (reparseForDep > 1 || (reparseForDep == 1 && !Project::loaded))
+      for (const auto& dep : prev->dependencies) {
+        if (auto write_time1 = LastWriteTime(dep.first().str())) {
+          if (dep.second < *write_time1) {
+            reparse = 2;
+            std::lock_guard<std::mutex> lock(vfs->mutex);
+            vfs->state[dep.first().str()].stage = 0;
+          }
+        } else
           reparse = 2;
-          std::lock_guard<std::mutex> lock(vfs->mutex);
-          vfs->state[dep.first().str()].stage = 0;
-        }
-      } else
-        reparse = 2;
+      }
   }
 
   if (reparse < 2) {
+    LOG_S(INFO) << "load cache for " << path_to_index;
     auto dependencies = prev->dependencies;
     if (reparse) {
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
@@ -288,7 +292,8 @@ void Main_OnIndexed(DB* db,
                     WorkingFiles* working_files,
                     IndexUpdate* update) {
   if (update->refresh) {
-    LOG_S(INFO) << "Loaded project. Refresh semantic highlight for all working file.";
+    Project::loaded = true;
+    LOG_S(INFO) << "loaded project. Refresh semantic highlight for all working file.";
     std::lock_guard<std::mutex> lock(working_files->files_mutex);
     for (auto& f : working_files->files) {
       std::string filename = LowerPathIfInsensitive(f->filename);

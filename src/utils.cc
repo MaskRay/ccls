@@ -105,7 +105,6 @@ std::string EscapeFileName(std::string path) {
 }
 
 std::optional<std::string> ReadContent(const std::string& filename) {
-  LOG_S(INFO) << "read " << filename;
   char buf[4096];
   std::string ret;
   FILE* f = fopen(filename.c_str(), "rb");

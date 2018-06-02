@@ -177,13 +177,14 @@ struct Config {
     // If false, the indexer will be disabled.
     bool enabled = true;
 
-    // If true, project paths that were skipped by the whitelist/blacklist will
-    // be logged.
-    bool logSkippedPaths = false;
-
     // Allow indexing on textDocument/didChange.
     // May be too slow for big projects, so it is off by default.
     bool onDidChange = false;
+
+    // Whether to reparse a file if write times of its dependencies have
+    // changed. The file will always be reparsed if its own write time changes.
+    // 0: no, 1: only after initial load of project, 2: yes
+    int reparseForDependency = 2;
 
     // Number of indexer threads. If 0, 80% of cores are used.
     int threads = 0;
@@ -235,8 +236,8 @@ MAKE_REFLECT_STRUCT(Config::Index,
                     blacklist,
                     comments,
                     enabled,
-                    logSkippedPaths,
                     onDidChange,
+                    reparseForDependency,
                     threads,
                     whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
