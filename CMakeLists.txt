@@ -193,7 +193,7 @@ target_sources(ccls PRIVATE
                src/clang_tu.cc
                src/clang_utils.cc
                src/config.cc
-               src/diagnostics_engine.cc
+               src/diagnostics_publisher.cc
                src/file_consumer.cc
                src/filesystem.cc
                src/fuzzy_match.cc

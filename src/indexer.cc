@@ -2070,9 +2070,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
     const std::string& file,
     const std::vector<std::string>& args,
     const std::vector<CXUnsavedFile>& file_contents) {
-  Timer timer;
-  timer.startTimer();
-
   IndexerCallbacks callback = {0};
   // Available callbacks:
   // - abortQuery
@@ -2113,8 +2110,6 @@ std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
 
   ClangCursor(clang_getTranslationUnitCursor(tu->cx_tu))
       .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
-
-  timer.stopTimer();
 
   std::unordered_map<std::string, int> inc_to_line;
   // TODO

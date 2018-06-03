@@ -14,7 +14,7 @@
 struct ClangCompleteManager;
 struct CodeCompleteCache;
 struct Config;
-class DiagnosticsEngine;
+class DiagnosticsPublisher;
 struct VFS;
 struct ImportManager;
 struct IncludeComplete;
@@ -104,7 +104,7 @@ struct MessageHandler {
   DB* db = nullptr;
   MultiQueueWaiter* waiter = nullptr;
   Project* project = nullptr;
-  DiagnosticsEngine* diag_engine = nullptr;
+  DiagnosticsPublisher* diag_pub = nullptr;
   VFS* vfs = nullptr;
   ImportManager* import_manager = nullptr;
   SemanticHighlightSymbolCache* semantic_cache = nullptr;

@@ -2,7 +2,7 @@
 
 #include "clang_complete.h"
 #include "config.h"
-#include "diagnostics_engine.h"
+#include "diagnostics_publisher.hh"
 #include "include_complete.h"
 #include "log.hh"
 #include "lsp.h"
@@ -119,7 +119,7 @@ std::unique_ptr<IndexFile> RawCacheLoad(
                      *file_content, IndexFile::kMajorVersion);
 }
 
-bool Indexer_Parse(DiagnosticsEngine* diag_engine,
+bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
                    WorkingFiles* working_files,
                    Project* project,
                    VFS* vfs,
@@ -224,7 +224,7 @@ bool Indexer_Parse(DiagnosticsEngine* diag_engine,
     // to identify indexing problems. For interactive sessions, diagnostics are
     // handled by code completion.
     if (!request.is_interactive)
-      diag_engine->Publish(working_files, curr->path, curr->diagnostics_);
+      diag_pub->Publish(working_files, curr->path, curr->diagnostics_);
 
     std::string path = curr->path;
     if (!(vfs->Stamp(path, curr->last_write_time) || path == path_to_index))
@@ -275,7 +275,7 @@ void Init() {
   for_stdout = new ThreadedQueue<Stdout_Request>(stdout_waiter);
 }
 
-void Indexer_Main(DiagnosticsEngine* diag_engine,
+void Indexer_Main(DiagnosticsPublisher* diag_pub,
                   VFS* vfs,
                   Project* project,
                   WorkingFiles* working_files) {
@@ -283,7 +283,7 @@ void Indexer_Main(DiagnosticsEngine* diag_engine,
   ClangIndexer indexer;
 
   while (true)
-    if (!Indexer_Parse(diag_engine, working_files, project, vfs, &indexer))
+    if (!Indexer_Parse(diag_pub, working_files, project, vfs, &indexer))
       indexer_waiter->Wait(index_request);
 }
 
@@ -386,12 +386,12 @@ void MainLoop() {
   SemanticHighlightSymbolCache semantic_cache;
   WorkingFiles working_files;
   VFS vfs;
-  DiagnosticsEngine diag_engine;
+  DiagnosticsPublisher diag_pub;
 
   ClangCompleteManager clang_complete(
       &project, &working_files,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
-        diag_engine.Publish(&working_files, path, diagnostics);
+        diag_pub.Publish(&working_files, path, diagnostics);
       },
       [](lsRequestId id) {
         if (id.Valid()) {
@@ -416,7 +416,7 @@ void MainLoop() {
     handler->db = &db;
     handler->waiter = indexer_waiter;
     handler->project = &project;
-    handler->diag_engine = &diag_engine;
+    handler->diag_pub = &diag_pub;
     handler->vfs = &vfs;
     handler->semantic_cache = &semantic_cache;
     handler->working_files = &working_files;

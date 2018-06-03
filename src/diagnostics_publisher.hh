@@ -3,7 +3,7 @@
 #include "match.h"
 #include "working_files.h"
 
-class DiagnosticsEngine {
+class DiagnosticsPublisher {
   std::unique_ptr<GroupMatch> match_;
   int64_t nextPublish_ = 0;
   int frequencyMs_;
