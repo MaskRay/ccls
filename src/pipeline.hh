@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-class DiagnosticsEngine;
+class DiagnosticsPublisher;
 struct VFS;
 struct Project;
 struct WorkingFiles;
@@ -18,7 +18,7 @@ namespace ccls::pipeline {
 void Init();
 void LaunchStdin();
 void LaunchStdout();
-void Indexer_Main(DiagnosticsEngine* diag_engine,
+void Indexer_Main(DiagnosticsPublisher* diag_pub,
                   VFS* vfs,
                   Project* project,
                   WorkingFiles* working_files);

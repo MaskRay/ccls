@@ -1,4 +1,4 @@
-#include "diagnostics_engine.h"
+#include "diagnostics_publisher.hh"
 #include "filesystem.hh"
 #include "include_complete.h"
 #include "log.hh"
@@ -492,7 +492,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     sys::fs::create_directories(g_config->cacheDirectory + '@' +
                                 EscapeFileName(g_config->projectRoot));
 
-    diag_engine->Init();
+    diag_pub->Init();
     semantic_cache->Init();
 
     // Open up / load the project.
@@ -510,7 +510,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         g_thread_id = i + 1;
         std::string name = "indexer" + std::to_string(i);
         set_thread_name(name.c_str());
-        pipeline::Indexer_Main(diag_engine, vfs, project, working_files);
+        pipeline::Indexer_Main(diag_pub, vfs, project, working_files);
       }).detach();
     }
 

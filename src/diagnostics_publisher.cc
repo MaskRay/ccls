@@ -1,19 +1,19 @@
-#include "diagnostics_engine.h"
+#include "diagnostics_publisher.hh"
 
 #include "pipeline.hh"
 using namespace ccls;
 
 #include <chrono>
 
-void DiagnosticsEngine::Init() {
+void DiagnosticsPublisher::Init() {
   frequencyMs_ = g_config->diagnostics.frequencyMs;
   match_ = std::make_unique<GroupMatch>(g_config->diagnostics.whitelist,
                                         g_config->diagnostics.blacklist);
 }
 
-void DiagnosticsEngine::Publish(WorkingFiles* working_files,
-                                std::string path,
-                                std::vector<lsDiagnostic> diagnostics) {
+void DiagnosticsPublisher::Publish(WorkingFiles* working_files,
+                                   std::string path,
+                                   std::vector<lsDiagnostic> diagnostics) {
   // Cache diagnostics so we can show fixits.
   working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
     if (working_file)
