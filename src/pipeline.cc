@@ -190,8 +190,8 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
       on_indexed->PushBack(std::move(update), request.is_interactive);
     }
     for (const auto& dep : dependencies)
-      if (vfs->Mark(dep.first().str(), 0, 2)) {
-        prev = RawCacheLoad(dep.first().str());
+      if (vfs->Mark(dep.first().str(), 0, 2) &&
+          (prev = RawCacheLoad(dep.first().str()))) {
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update), request.is_interactive);
       }

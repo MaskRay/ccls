@@ -597,13 +597,16 @@ void SetVarDetail(IndexVar& var,
     CXTypeKind k = clang_getCanonicalType(
                        clang_getEnumDeclIntegerType(semanticContainer->cursor))
                        .kind;
-    std::string hover = qualified_name + " = ";
-    if (k == CXType_Char_U || k == CXType_UChar || k == CXType_UShort ||
-        k == CXType_UInt || k == CXType_ULong || k == CXType_ULongLong)
-      hover += std::to_string(
-          clang_getEnumConstantDeclUnsignedValue(cursor.cx_cursor));
-    else
-      hover += std::to_string(clang_getEnumConstantDeclValue(cursor.cx_cursor));
+    std::string hover = qualified_name;
+    if (auto* TD = dyn_cast_or_null<EnumConstantDecl>(
+            static_cast<const Decl*>(cursor.cx_cursor.data[0]))) {
+      hover += " = ";
+      if (k == CXType_Char_U || k == CXType_UChar || k == CXType_UShort ||
+          k == CXType_UInt || k == CXType_ULong || k == CXType_ULongLong)
+        hover += std::to_string(TD->getInitVal().getZExtValue());
+      else
+        hover += std::to_string(TD->getInitVal().getSExtValue());
+    }
     def.detailed_name = std::move(qualified_name);
     def.qual_name_offset = 0;
     def.hover = hover;
@@ -1518,13 +1521,19 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                 .def.vars.push_back(var.usr);
             break;
           }
-          case SymbolKind::Type:
-            if (decl->semanticContainer->cursor.kind != CXCursor_EnumDecl) {
-              long offset = clang_Cursor_getOffsetOfField(cursor.cx_cursor);
-              db->ToType(decl->semanticContainer->cursor)
-                  .def.vars.emplace_back(var.usr, offset);
+          case SymbolKind::Type: {
+            CXCursor parent = decl->semanticContainer->cursor;
+            long offset = clang_Cursor_getOffsetOfField(cursor.cx_cursor);
+            while (parent.kind != CXCursor_EnumDecl) {
+              IndexType& type = db->ToType(parent);
+              type.def.vars.emplace_back(var.usr, offset);
+              if (!clang_Cursor_isAnonymous(parent)) break;
+              parent = clang_getCursorSemanticParent(parent);
+              offset = -1;
+              if (GetSymbolKind(parent.kind) != SymbolKind::Type) break;
             }
             break;
+          }
           default:
             break;
         }
