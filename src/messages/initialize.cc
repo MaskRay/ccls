@@ -1,4 +1,3 @@
-#include "diagnostics_publisher.hh"
 #include "filesystem.hh"
 #include "include_complete.h"
 #include "log.hh"

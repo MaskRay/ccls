@@ -52,13 +52,12 @@ class BinaryReader : public Reader {
   uint32_t GetUInt32() override { return VarUInt(); }
   uint64_t GetUInt64() override { return VarUInt(); }
   double GetDouble() override { return Get<double>(); }
-  std::string GetString() override {
-    if (auto n = VarUInt()) {
-      std::string ret(p_, n);
-      p_ += n;
-      return ret;
-    }
-    return "";
+  const char* GetString() override {
+    const char* ret = p_;
+    while (*p_)
+      p_++;
+    p_++;
+    return ret;
   }
 
   bool HasMember(const char* x) override { return true; }
@@ -118,9 +117,8 @@ class BinaryWriter : public Writer {
   void Double(double x) override { Pack(x); }
   void String(const char* x) override { String(x, strlen(x)); }
   void String(const char* x, size_t len) override {
-    VarUInt(len);
     auto i = buf_.size();
-    buf_.resize(i + len);
+    buf_.resize(i + len + 1);
     memcpy(buf_.data() + i, x, len);
   }
   void StartArray(size_t n) override { VarUInt(n); }

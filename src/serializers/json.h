@@ -29,7 +29,7 @@ class JsonReader : public Reader {
   uint32_t GetUInt32() override { return uint32_t(m_->GetUint64()); }
   uint64_t GetUInt64() override { return m_->GetUint64(); }
   double GetDouble() override { return m_->GetDouble(); }
-  std::string GetString() override { return m_->GetString(); }
+  const char* GetString() override { return m_->GetString(); }
 
   bool HasMember(const char* x) override { return m_->HasMember(x); }
   std::unique_ptr<Reader> operator[](const char* x) override {

@@ -3,6 +3,7 @@
 #include "log.hh"
 #include "platform.h"
 #include "serializer.h"
+using ccls::Intern;
 
 #include <clang/AST/AST.h>
 #include <clang/Frontend/ASTUnit.h>
@@ -523,8 +524,10 @@ void SetTypeName(IndexType& type,
   // ns {}` which are not qualified.
   // type->def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor);
   int short_name_offset, short_name_size;
-  std::tie(type.def.detailed_name, short_name_offset, short_name_size) =
+  std::string detailed;
+  std::tie(detailed, short_name_offset, short_name_size) =
       param->ns.QualifiedName(container ? container : &parent, name);
+  type.def.detailed_name = Intern(detailed);
   type.def.qual_name_offset = 0;
   type.def.short_name_offset = short_name_offset;
   type.def.short_name_size = short_name_size;
@@ -558,7 +561,7 @@ IndexType* ResolveToDeclarationType(IndexFile* db,
   if (!usr)
     return nullptr;
   IndexType& typ = db->ToType(*usr);
-  if (typ.def.detailed_name.empty()) {
+  if (!typ.def.detailed_name[0]) {
     std::string name = declaration.get_spell_name();
     SetTypeName(typ, declaration, nullptr, name.c_str(), param);
   }
@@ -580,7 +583,7 @@ void SetVarDetail(IndexVar& var,
   if (type_name.find("(lambda at") != std::string::npos)
     type_name = "lambda";
   if (g_config->index.comments)
-    def.comments = cursor.get_comments();
+    def.comments = Intern(cursor.get_comments());
   def.storage = GetStorageC(clang_Cursor_getStorageClass(cursor.cx_cursor));
 
   // TODO how to make PrettyPrint'ed variable name qualified?
@@ -607,16 +610,16 @@ void SetVarDetail(IndexVar& var,
       else
         hover += std::to_string(TD->getInitVal().getSExtValue());
     }
-    def.detailed_name = std::move(qualified_name);
+    def.detailed_name = Intern(qualified_name);
     def.qual_name_offset = 0;
-    def.hover = hover;
+    def.hover = Intern(hover);
   } else {
 #if 0
     def.detailed_name = param->PrettyPrintCursor(cursor.cx_cursor, false);
 #else
     int offset = type_name.size();
     offset += ConcatTypeAndName(type_name, qualified_name);
-    def.detailed_name = type_name;
+    def.detailed_name = Intern(type_name);
     def.qual_name_offset = offset;
     def.short_name_offset += offset;
     // Append the textual initializer, bit field, constructor to |hover|.
@@ -663,8 +666,9 @@ void SetVarDetail(IndexVar& var,
         std::optional<int> spell_end = fc.ToOffset(spell_p),
                            extent_end = fc.ToOffset(extent_p);
         if (extent_end && *spell_end < *extent_end)
-          def.hover = std::string(def.detailed_name.c_str()) +
-                      fc.content.substr(*spell_end, *extent_end - *spell_end);
+          def.hover =
+              Intern(std::string(def.detailed_name) +
+                     fc.content.substr(*spell_end, *extent_end - *spell_end));
       }
     }
    skip:;
@@ -714,7 +718,7 @@ void OnIndexReference_Function(IndexFile* db,
 
 // static
 const int IndexFile::kMajorVersion = 16;
-const int IndexFile::kMinorVersion = 0;
+const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(const std::string& path, const std::string& contents)
     : path(path), file_contents(contents) {}
@@ -741,7 +745,7 @@ IndexVar& IndexFile::ToVar(Usr usr) {
 }
 
 std::string IndexFile::ToString() {
-  return Serialize(SerializeFormat::Json, *this);
+  return ccls::Serialize(SerializeFormat::Json, *this);
 }
 
 void Uniquify(std::vector<Usr>& usrs) {
@@ -1197,16 +1201,17 @@ ClangCursor::VisitResult VisitMacroDefinitionAndExpansions(ClangCursor cursor,
       IndexVar& var_def = db->ToVar(decl_usr);
       if (cursor.get_kind() == CXCursor_MacroDefinition) {
         CXSourceRange cx_extent = clang_getCursorExtent(cursor.cx_cursor);
-        var_def.def.detailed_name = cursor.get_display_name();
+        var_def.def.detailed_name = Intern(cursor.get_display_name());
         var_def.def.qual_name_offset = 0;
         var_def.def.short_name_offset = 0;
         var_def.def.short_name_size =
-            int16_t(strlen(var_def.def.detailed_name.c_str()));
+            int16_t(strlen(var_def.def.detailed_name));
         var_def.def.hover =
-            "#define " + GetDocumentContentInRange(param->tu->cx_tu, cx_extent);
+            Intern("#define " +
+                   GetDocumentContentInRange(param->tu->cx_tu, cx_extent));
         var_def.def.kind = lsSymbolKind::Macro;
         if (g_config->index.comments)
-          var_def.def.comments = cursor.get_comments();
+          var_def.def.comments = Intern(cursor.get_comments());
         var_def.def.spell =
             SetUse(db, decl_loc_spelling, parent, Role::Definition);
         var_def.def.extent = SetUse(
@@ -1244,7 +1249,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
       ClangCursor ref_cursor = clang_getCursorReferenced(cursor.cx_cursor);
       if (ref_cursor.get_kind() == CXCursor_NonTypeTemplateParameter) {
         IndexVar& ref_var = db->ToVar(ref_cursor);
-        if (ref_var.def.detailed_name.empty()) {
+        if (!ref_var.def.detailed_name[0]) {
           ClangCursor sem_parent = ref_cursor.get_semantic_parent();
           ClangCursor lex_parent = ref_cursor.get_lexical_parent();
           ref_var.def.spell =
@@ -1298,7 +1303,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // CXCursor_TemplateTemplateParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
-        if (ref_type.def.detailed_name.empty()) {
+        if (!ref_type.def.detailed_name[0]) {
           ClangCursor sem_parent = ref_cursor.get_semantic_parent();
           ClangCursor lex_parent = ref_cursor.get_lexical_parent();
           ref_type.def.spell =
@@ -1308,11 +1313,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
 #if 0 && CINDEX_HAVE_PRETTY
           ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
-          ref_type.def.detailed_name = ref_cursor.get_spell_name();
+          ref_type.def.detailed_name = Intern(ref_cursor.get_spell_name());
 #endif
           ref_type.def.short_name_offset = 0;
           ref_type.def.short_name_size =
-              int16_t(strlen(ref_type.def.detailed_name.c_str()));
+              int16_t(strlen(ref_type.def.detailed_name));
           ref_type.def.kind = lsSymbolKind::TypeParameter;
         }
         AddUseSpell(db, ref_type.uses, cursor);
@@ -1328,7 +1333,7 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
         // CXCursor_TemplateTypeParameter can be visited by visiting
         // CXCursor_TranslationUnit, but not (confirm this) by visiting
         // {Class,Function}Template. Thus we need to initialize it here.
-        if (ref_type.def.detailed_name.empty()) {
+        if (!ref_type.def.detailed_name[0]) {
           ClangCursor sem_parent = ref_cursor.get_semantic_parent();
           ClangCursor lex_parent = ref_cursor.get_lexical_parent();
           ref_type.def.spell =
@@ -1339,11 +1344,11 @@ ClangCursor::VisitResult TemplateVisitor(ClangCursor cursor,
           // template<class T> void f(T t){} // weird, the name is empty
           ref_type->def.detailed_name = param->PrettyPrintCursor(ref_cursor.cx_cursor);
 #else
-          ref_type.def.detailed_name = ref_cursor.get_spell_name();
+          ref_type.def.detailed_name = Intern(ref_cursor.get_spell_name());
 #endif
           ref_type.def.short_name_offset = 0;
           ref_type.def.short_name_size =
-              int16_t(strlen(ref_type.def.detailed_name.c_str()));
+              int16_t(strlen(ref_type.def.detailed_name));
           ref_type.def.kind = lsSymbolKind::TypeParameter;
         }
         AddUseSpell(db, ref_type.uses, cursor);
@@ -1443,7 +1448,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       Range spell = cursor.get_spell();
       IndexType& ns = db->ToType(HashUsr(decl->entityInfo->USR));
       ns.def.kind = GetSymbolKind(decl->entityInfo->kind);
-      if (ns.def.detailed_name.empty()) {
+      if (!ns.def.detailed_name[0]) {
         SetTypeName(ns, cursor, decl->semanticContainer, decl->entityInfo->name,
                     param);
         ns.def.spell = SetUse(db, spell, sem_parent, Role::Definition);
@@ -1559,7 +1564,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       IndexFunc& func = db->ToFunc(decl_cursor_resolved);
       if (g_config->index.comments)
-        func.def.comments = cursor.get_comments();
+        func.def.comments = Intern(cursor.get_comments());
       func.def.kind = GetSymbolKind(decl->entityInfo->kind);
       func.def.storage =
           GetStorageC(clang_Cursor_getStorageClass(decl->cursor));
@@ -1592,9 +1597,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
       // indexing the definition, then there will not be any (ie) outline
       // information.
       if (!is_template_specialization) {
-        std::tie(func.def.detailed_name, func.def.qual_name_offset,
+        std::string detailed;
+        std::tie(detailed, func.def.qual_name_offset,
                  func.def.short_name_offset, func.def.short_name_size) =
             param->PrettyPrintCursor(decl->cursor, decl->entityInfo->name);
+        func.def.detailed_name = Intern(detailed);
 
         // CXCursor_OverloadedDeclRef in templates are not processed by
         // OnIndexReference, thus we use TemplateVisitor to collect function
@@ -1668,7 +1675,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                   decl->entityInfo->name, param);
       type.def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (g_config->index.comments)
-        type.def.comments = cursor.get_comments();
+        type.def.comments = Intern(cursor.get_comments());
 
       // For Typedef/CXXTypeAlias spanning a few lines, display the declaration
       // line, with spelling name replaced with qualified name.
@@ -1679,10 +1686,10 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                       spell_end = fc.ToOffset(spell.end),
                       extent_end = fc.ToOffset(extent.end);
         if (extent_start && spell_start && spell_end && extent_end) {
-          type.def.hover =
+          type.def.hover = Intern(
               fc.content.substr(*extent_start, *spell_start - *extent_start) +
-              type.def.detailed_name.c_str() +
-              fc.content.substr(*spell_end, *extent_end - *spell_end);
+              type.def.detailed_name +
+              fc.content.substr(*spell_end, *extent_end - *spell_end));
         }
       }
 
@@ -1711,7 +1718,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
                   param);
       type.def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (g_config->index.comments)
-        type.def.comments = cursor.get_comments();
+        type.def.comments = Intern(cursor.get_comments());
       // }
 
       if (decl->isDefinition) {
@@ -1743,7 +1750,7 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           // template<class T> class function; // not visited by
           // OnIndexDeclaration template<> class function<int> {}; // current
           // cursor
-          if (origin.def.detailed_name.empty()) {
+          if (!origin.def.detailed_name[0]) {
             SetTypeName(origin, origin_cursor, nullptr,
                         &type.def.Name(false)[0], param);
             origin.def.kind = type.def.kind;
@@ -1895,7 +1902,7 @@ void OnIndexReference(CXClientData client_data, const CXIdxEntityRefInfo* ref) {
       // may not have a short_name yet. Note that we only process the lambda
       // parameter as a definition if it is in the same file as the reference,
       // as lambdas cannot be split across files.
-      if (var.def.detailed_name.empty()) {
+      if (!var.def.detailed_name[0]) {
         CXFile referenced_file;
         Range spell = referenced.get_spell(&referenced_file);
         if (file == referenced_file) {

@@ -1,5 +1,4 @@
 #pragma once
-#include "nt_string.h"
 #include "position.h"
 
 #include <clang-c/Index.h>
@@ -86,7 +85,7 @@ class ClangCursor {
   bool is_valid_kind() const;
 
   std::string get_type_description() const;
-  NtString get_comments() const;
+  std::string get_comments() const;
 
   std::string ToString() const;
 

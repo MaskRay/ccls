@@ -6,7 +6,6 @@
 #include "language.h"
 #include "lsp.h"
 #include "maybe.h"
-#include "nt_string.h"
 #include "position.h"
 #include "serializer.h"
 #include "symbol.h"
@@ -69,21 +68,21 @@ template <typename D>
 struct NameMixin {
   std::string_view Name(bool qualified) const {
     auto self = static_cast<const D*>(this);
-    return qualified ? std::string_view(
-                           self->detailed_name.c_str() + self->qual_name_offset,
-                           self->short_name_offset - self->qual_name_offset +
-                               self->short_name_size)
-                     : std::string_view(self->detailed_name.c_str() +
-                                            self->short_name_offset,
-                                        self->short_name_size);
+    return qualified
+               ? std::string_view(self->detailed_name + self->qual_name_offset,
+                                  self->short_name_offset -
+                                      self->qual_name_offset +
+                                      self->short_name_size)
+               : std::string_view(self->detailed_name + self->short_name_offset,
+                                  self->short_name_size);
   }
 };
 
 struct FuncDef : NameMixin<FuncDef> {
   // General metadata.
-  std::string detailed_name;
-  NtString hover;
-  NtString comments;
+  const char* detailed_name = "";
+  const char* hover = "";
+  const char* comments = "";
   Maybe<Use> spell;
   Maybe<Use> extent;
 
@@ -105,13 +104,6 @@ struct FuncDef : NameMixin<FuncDef> {
   clang::StorageClass storage = clang::SC_None;
 
   std::vector<Usr> GetBases() const { return bases; }
-  bool operator==(const FuncDef& o) const {
-    return detailed_name == o.detailed_name && spell == o.spell &&
-           extent == o.extent && declaring_type == o.declaring_type &&
-           bases == o.bases && vars == o.vars && callees == o.callees &&
-           kind == o.kind && storage == o.storage && hover == o.hover &&
-           comments == o.comments;
-  }
 };
 MAKE_REFLECT_STRUCT(FuncDef,
                     detailed_name,
@@ -139,10 +131,9 @@ struct IndexFunc : NameMixin<IndexFunc> {
 };
 
 struct TypeDef : NameMixin<TypeDef> {
-  // General metadata.
-  std::string detailed_name;
-  NtString hover;
-  NtString comments;
+  const char* detailed_name = "";
+  const char* hover = "";
+  const char* comments = "";
 
   Maybe<Use> spell;
   Maybe<Use> extent;
@@ -164,12 +155,6 @@ struct TypeDef : NameMixin<TypeDef> {
   lsSymbolKind kind = lsSymbolKind::Unknown;
 
   std::vector<Usr> GetBases() const { return bases; }
-  bool operator==(const TypeDef& o) const {
-    return detailed_name == o.detailed_name && spell == o.spell &&
-           extent == o.extent && alias_of == o.alias_of && bases == o.bases &&
-           types == o.types && funcs == o.funcs && vars == o.vars &&
-           kind == o.kind && hover == o.hover && comments == o.comments;
-  }
 };
 MAKE_REFLECT_STRUCT(TypeDef,
                     detailed_name,
@@ -199,9 +184,9 @@ struct IndexType {
 
 struct VarDef : NameMixin<VarDef> {
   // General metadata.
-  std::string detailed_name;
-  NtString hover;
-  NtString comments;
+  const char* detailed_name = "";
+  const char* hover = "";
+  const char* comments = "";
   Maybe<Use> spell;
   Maybe<Use> extent;
 
@@ -224,11 +209,6 @@ struct VarDef : NameMixin<VarDef> {
   }
 
   std::vector<Usr> GetBases() const { return {}; }
-  bool operator==(const VarDef& o) const {
-    return detailed_name == o.detailed_name && spell == o.spell &&
-           extent == o.extent && type == o.type && kind == o.kind &&
-           storage == o.storage && hover == o.hover && comments == o.comments;
-  }
 };
 MAKE_REFLECT_STRUCT(VarDef,
                     detailed_name,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "lsp_diagnostic.h"
 #include "method.h"
 #include "query.h"
 
@@ -7,11 +8,23 @@
 #include <unordered_map>
 #include <vector>
 
-class DiagnosticsPublisher;
+struct GroupMatch;
 struct VFS;
 struct Project;
 struct WorkingFiles;
 struct lsBaseOutMessage;
+
+class DiagnosticsPublisher {
+  std::unique_ptr<GroupMatch> match_;
+  int64_t nextPublish_ = 0;
+  int frequencyMs_;
+
+ public:
+  void Init();
+  void Publish(WorkingFiles* working_files,
+               std::string path,
+               std::vector<lsDiagnostic> diagnostics);
+};
 
 namespace ccls::pipeline {
 
