@@ -189,7 +189,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   }
   for (auto& it : current->usr2func) {
     auto& func = it.second;
-    if (func.def.spell && func.def.detailed_name.size())
+    if (func.def.spell && func.def.detailed_name[0])
       r.funcs_def_update.emplace_back(it.first, func.def);
     r.funcs_declarations[func.usr].second = std::move(func.declarations);
     r.funcs_uses[func.usr].second = std::move(func.uses);
@@ -208,7 +208,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   };
   for (auto& it : current->usr2type) {
     auto& type = it.second;
-    if (type.def.spell && type.def.detailed_name.size())
+    if (type.def.spell && type.def.detailed_name[0])
       r.types_def_update.emplace_back(it.first, type.def);
     r.types_declarations[type.usr].second = std::move(type.declarations);
     r.types_uses[type.usr].second = std::move(type.uses);
@@ -226,7 +226,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   }
   for (auto& it : current->usr2var) {
     auto& var = it.second;
-    if (var.def.spell && var.def.detailed_name.size())
+    if (var.def.spell && var.def.detailed_name[0])
       r.vars_def_update.emplace_back(it.first, var.def);
     r.vars_declarations[var.usr].second = std::move(var.declarations);
     r.vars_uses[var.usr].second = std::move(var.uses);
@@ -353,7 +353,7 @@ int DB::Update(QueryFile::DefUpdate&& u) {
 void DB::Update(int file_id, std::vector<std::pair<Usr, QueryFunc::Def>>&& us) {
   for (auto& u : us) {
     auto& def = u.second;
-    assert(!def.detailed_name.empty());
+    assert(def.detailed_name[0]);
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
     AssignFileId(file_id, def.callees);
@@ -370,7 +370,7 @@ void DB::Update(int file_id, std::vector<std::pair<Usr, QueryFunc::Def>>&& us) {
 void DB::Update(int file_id, std::vector<std::pair<Usr, QueryType::Def>>&& us) {
   for (auto& u : us) {
     auto& def = u.second;
-    assert(!def.detailed_name.empty());
+    assert(def.detailed_name[0]);
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
     auto R = type_usr.try_emplace({u.first}, type_usr.size());
@@ -387,7 +387,7 @@ void DB::Update(int file_id, std::vector<std::pair<Usr, QueryType::Def>>&& us) {
 void DB::Update(int file_id, std::vector<std::pair<Usr, QueryVar::Def>>&& us) {
   for (auto& u : us) {
     auto& def = u.second;
-    assert(!def.detailed_name.empty());
+    assert(def.detailed_name[0]);
     AssignFileId(file_id, def.spell);
     AssignFileId(file_id, def.extent);
     auto R = var_usr.try_emplace({u.first}, var_usr.size());

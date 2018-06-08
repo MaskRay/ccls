@@ -18,7 +18,7 @@ void Reflect(Reader& visitor, lsRequestId& value) {
     value.value = visitor.GetInt();
   } else if (visitor.IsString()) {
     value.type = lsRequestId::kString;
-    value.value = atoll(visitor.GetString().c_str());
+    value.value = atoll(visitor.GetString());
   } else {
     value.type = lsRequestId::kNone;
     value.value = -1;

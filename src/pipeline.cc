@@ -2,7 +2,6 @@
 
 #include "clang_complete.h"
 #include "config.h"
-#include "diagnostics_publisher.hh"
 #include "include_complete.h"
 #include "log.hh"
 #include "lsp.h"
@@ -17,7 +16,41 @@
 #include <llvm/Support/Timer.h>
 using namespace llvm;
 
+#include <chrono>
 #include <thread>
+
+void DiagnosticsPublisher::Init() {
+  frequencyMs_ = g_config->diagnostics.frequencyMs;
+  match_ = std::make_unique<GroupMatch>(g_config->diagnostics.whitelist,
+                                        g_config->diagnostics.blacklist);
+}
+
+void DiagnosticsPublisher::Publish(WorkingFiles* working_files,
+                                   std::string path,
+                                   std::vector<lsDiagnostic> diagnostics) {
+  // Cache diagnostics so we can show fixits.
+  working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
+    if (working_file)
+      working_file->diagnostics_ = diagnostics;
+  });
+
+  int64_t now =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now().time_since_epoch())
+          .count();
+  if (frequencyMs_ >= 0 && (nextPublish_ <= now || diagnostics.empty()) &&
+      match_->IsMatch(path)) {
+    nextPublish_ = now + frequencyMs_;
+
+    Out_TextDocumentPublishDiagnostics out;
+    out.params.uri = lsDocumentUri::FromPath(path);
+    out.params.diagnostics = diagnostics;
+    ccls::pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics, out);
+  }
+}
+
+namespace ccls::pipeline {
+namespace {
 
 struct Index_Request {
   std::string path;
@@ -30,9 +63,6 @@ struct Stdout_Request {
   MethodType method;
   std::string content;
 };
-
-namespace ccls::pipeline {
-namespace {
 
 MultiQueueWaiter* main_waiter;
 MultiQueueWaiter* indexer_waiter;
@@ -115,8 +145,9 @@ std::unique_ptr<IndexFile> RawCacheLoad(
   if (!file_content || !serialized_indexed_content)
     return nullptr;
 
-  return Deserialize(g_config->cacheFormat, path, *serialized_indexed_content,
-                     *file_content, IndexFile::kMajorVersion);
+  return ccls::Deserialize(g_config->cacheFormat, path,
+                           *serialized_indexed_content, *file_content,
+                           IndexFile::kMajorVersion);
 }
 
 bool Indexer_Parse(DiagnosticsPublisher* diag_pub,

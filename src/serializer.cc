@@ -1,12 +1,15 @@
 #include "serializer.h"
 
 #include "filesystem.hh"
+#include "indexer.h"
 #include "log.hh"
 #include "serializers/binary.h"
 #include "serializers/json.h"
 
-#include "indexer.h"
+#include <llvm/ADT/CachedHashString.h>
+#include <llvm/ADT/DenseSet.h>
 
+#include <mutex>
 #include <stdexcept>
 
 using namespace llvm;
@@ -131,14 +134,12 @@ void Reflect(Writer& visitor, std::string_view& data) {
     visitor.String(&data[0], (rapidjson::SizeType)data.size());
 }
 
-void Reflect(Reader& visitor, NtString& value) {
-  if (!visitor.IsString())
-    throw std::invalid_argument("std::string");
-  value = visitor.GetString();
+void Reflect(Reader& vis, const char*& v) {
+  const char* str = vis.GetString();
+  v = ccls::Intern(str);
 }
-void Reflect(Writer& visitor, NtString& value) {
-  const char* s = value.c_str();
-  visitor.String(s ? s : "");
+void Reflect(Writer& vis, const char*& v) {
+  vis.String(v);
 }
 
 void Reflect(Reader& visitor, JsonNull& value) {
@@ -223,9 +224,9 @@ void ReflectHoverAndComments(Reader& visitor, Def& def) {
 template <typename Def>
 void ReflectHoverAndComments(Writer& visitor, Def& def) {
   // Don't emit empty hover and comments in JSON test mode.
-  if (!gTestOutputMode || !def.hover.empty())
+  if (!gTestOutputMode || def.hover[0])
     ReflectMember(visitor, "hover", def.hover);
-  if (!gTestOutputMode || !def.comments.empty())
+  if (!gTestOutputMode || def.comments[0])
     ReflectMember(visitor, "comments", def.comments);
 }
 
@@ -234,7 +235,7 @@ void ReflectShortName(Reader& visitor, Def& def) {
   if (gTestOutputMode) {
     std::string short_name;
     ReflectMember(visitor, "short_name", short_name);
-    def.short_name_offset = def.detailed_name.find(short_name);
+    def.short_name_offset = std::string_view(def.detailed_name).find(short_name);
     assert(def.short_name_offset != std::string::npos);
     def.short_name_size = short_name.size();
   } else {
@@ -246,8 +247,8 @@ void ReflectShortName(Reader& visitor, Def& def) {
 template <typename Def>
 void ReflectShortName(Writer& visitor, Def& def) {
   if (gTestOutputMode) {
-    std::string short_name(
-        def.detailed_name.substr(def.short_name_offset, def.short_name_size));
+    std::string_view short_name(def.detailed_name + def.short_name_offset,
+                                def.short_name_size);
     ReflectMember(visitor, "short_name", short_name);
   } else {
     ReflectMember(visitor, "short_name_offset", def.short_name_offset);
@@ -357,6 +358,21 @@ void Reflect(Writer& visitor, SerializeFormat& value) {
   }
 }
 
+namespace ccls {
+static BumpPtrAllocator Alloc;
+static DenseSet<StringRef> Strings;
+static std::mutex AllocMutex;
+
+const char* Intern(const std::string& str) {
+  if (str.empty()) return "";
+  StringRef Str(str.data(), str.size() + 1);
+  std::lock_guard lock(AllocMutex);
+  auto R = Strings.insert(Str);
+  if (R.second)
+    *R.first = Str.copy(Alloc);
+  return R.first->data();
+}
+
 std::string Serialize(SerializeFormat format, IndexFile& file) {
   switch (format) {
     case SerializeFormat::Binary: {
@@ -450,4 +466,5 @@ std::unique_ptr<IndexFile> Deserialize(
   // Restore non-serialized state.
   file->path = path;
   return file;
+}
 }

@@ -94,9 +94,11 @@ void DoField(MessageHandler* m,
   }
   if (qualified)
     entry1.fieldName += def1->detailed_name;
-  else
-    entry1.fieldName += def1->detailed_name.substr(0, def1->qual_name_offset) +
-                        std::string(def1->Name(false));
+  else {
+    entry1.fieldName +=
+        std::string_view(def1->detailed_name).substr(0, def1->qual_name_offset);
+    entry1.fieldName += def1->Name(false);
+  }
   if (def1->spell) {
     if (std::optional<lsLocation> loc =
             GetLsLocation(m->db, m->working_files, *def1->spell))

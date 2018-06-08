@@ -1,7 +1,6 @@
 #pragma once
 
 #include "maybe.h"
-#include "nt_string.h"
 
 #include <llvm/Support/Compiler.h>
 
@@ -42,7 +41,7 @@ class Reader {
   virtual int64_t GetInt64() = 0;
   virtual uint64_t GetUInt64() = 0;
   virtual double GetDouble() = 0;
-  virtual std::string GetString() = 0;
+  virtual const char* GetString() = 0;
 
   virtual bool HasMember(const char* x) = 0;
   virtual std::unique_ptr<Reader> operator[](const char* x) = 0;
@@ -180,8 +179,8 @@ void Reflect(Writer& visitor, std::string& value);
 void Reflect(Reader& visitor, std::string_view& view);
 void Reflect(Writer& visitor, std::string_view& view);
 
-void Reflect(Reader& visitor, NtString& value);
-void Reflect(Writer& visitor, NtString& value);
+void Reflect(Reader& vis, const char*& v);
+void Reflect(Writer& vis, const char*& v);
 
 void Reflect(Reader& visitor, JsonNull& value);
 void Reflect(Writer& visitor, JsonNull& value);
@@ -322,6 +321,8 @@ void ReflectMember(Writer& vis, const char* name, T& v) {
 
 // API
 
+namespace ccls {
+const char* Intern(const std::string& str);
 std::string Serialize(SerializeFormat format, IndexFile& file);
 std::unique_ptr<IndexFile> Deserialize(
     SerializeFormat format,
@@ -329,3 +330,4 @@ std::unique_ptr<IndexFile> Deserialize(
     const std::string& serialized_index_content,
     const std::string& file_content,
     std::optional<int> expected_version);
+}
