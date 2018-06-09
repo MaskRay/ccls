@@ -48,7 +48,7 @@ struct CompileCommandsEntry {
       return path;
     SmallString<256> Ret;
     sys::path::append(Ret, directory, path);
-    return Ret.str();
+    return NormalizePath(Ret.str());
   }
 };
 MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);

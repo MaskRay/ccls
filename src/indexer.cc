@@ -1655,16 +1655,23 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
     case CXIdxEntity_Typedef:
     case CXIdxEntity_CXXTypeAlias: {
-      // Note we want to fetch the first TypeRef. Running
-      // ResolveCursorType(decl->cursor) would return
-      // the type of the typedef/using, not the type of the referenced type.
-      IndexType* alias_of = AddDeclTypeUsages(
-          db, cursor, nullptr, decl->semanticContainer, decl->lexicalContainer);
-
       IndexType& type = db->ToType(HashUsr(decl->entityInfo->USR));
-
-      if (alias_of)
-        type.def.alias_of = alias_of->usr;
+      CXType Type = clang_getCursorType(decl->entityInfo->cursor);
+      CXType CanonType = clang_getCanonicalType(Type);;
+      if (clang_equalTypes(Type,  CanonType) == 0) {
+        Usr type_usr = ClangType(CanonType).get_usr_hash();
+        if (db->usr2type.count(type_usr)) {
+          type.def.alias_of = type_usr;
+        } else {
+          // Note we want to fetch the first TypeRef. Running
+          // ResolveCursorType(decl->cursor) would return
+          // the type of the typedef/using, not the type of the referenced type.
+          IndexType* alias_of = AddDeclTypeUsages(
+              db, cursor, nullptr, decl->semanticContainer, decl->lexicalContainer);
+          if (alias_of)
+            type.def.alias_of = alias_of->usr;
+        }
+      }
 
       Range spell = cursor.get_spell();
       Range extent = cursor.get_extent();
@@ -1709,17 +1716,11 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
 
       IndexType& type = db->ToType(HashUsr(decl->entityInfo->USR));
 
-      // TODO: Eventually run with this if. Right now I want to iron out bugs
-      // this may shadow.
-      // TODO: For type section, verify if this ever runs for non definitions?
-      // if (!decl->isRedeclaration) {
-
       SetTypeName(type, cursor, decl->semanticContainer, decl->entityInfo->name,
                   param);
       type.def.kind = GetSymbolKind(decl->entityInfo->kind);
       if (g_config->index.comments)
         type.def.comments = Intern(cursor.get_comments());
-      // }
 
       if (decl->isDefinition) {
         type.def.spell = SetUse(db, spell, sem_parent, Role::Definition);
@@ -1780,12 +1781,6 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
           break;
         }
       }
-
-      // type_def->alias_of
-      // type_def->funcs
-      // type_def->types
-      // type_def->uses
-      // type_def->vars
 
       // Add type-level inheritance information.
       CXIdxCXXClassDeclInfo const* class_info =

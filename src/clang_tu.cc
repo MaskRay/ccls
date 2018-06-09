@@ -401,12 +401,9 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
 std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Reparse(
     std::unique_ptr<ClangTranslationUnit> tu,
     std::vector<CXUnsavedFile>& unsaved) {
-  int error_code;
-  {
-    error_code = clang_reparseTranslationUnit(
-        tu->cx_tu, (unsigned)unsaved.size(), unsaved.data(),
-        clang_defaultReparseOptions(tu->cx_tu));
-  }
+  int error_code = clang_reparseTranslationUnit(
+      tu->cx_tu, (unsigned)unsaved.size(), unsaved.data(),
+      clang_defaultReparseOptions(tu->cx_tu));
 
   if (error_code != CXError_Success && tu->cx_tu)
     EmitDiagnostics("<unknown>", {}, tu->cx_tu);
