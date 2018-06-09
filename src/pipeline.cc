@@ -94,17 +94,9 @@ bool FileNeedsParse(int64_t write_time,
   }
 
   // Command-line arguments changed.
-  auto is_file = [](const std::string& arg) {
-    return EndsWithAny(arg, {".h", ".c", ".cc", ".cpp", ".hpp", ".m", ".mm"});
-  };
   if (opt_previous_index) {
     auto& prev_args = opt_previous_index->args;
-    bool same = prev_args.size() == args.size();
-    for (size_t i = 0; i < args.size() && same; ++i) {
-      same = prev_args[i] == args[i] ||
-             (is_file(prev_args[i]) && is_file(args[i]));
-    }
-    if (!same) {
+    if (prev_args != args) {
       LOG_S(INFO) << "args changed for " << path << (from ? " (via " + *from + ")" : std::string());
       return true;
     }
@@ -483,11 +475,10 @@ void MainLoop() {
       Main_OnIndexed(&db, &semantic_cache, &working_files, &*update);
     }
 
-    // Cleanup and free any unused memory.
-    FreeUnusedMemory();
-
-    if (!did_work)
+    if (!did_work) {
+      FreeUnusedMemory();
       main_waiter->Wait(on_indexed, on_request);
+    }
   }
 }
 
