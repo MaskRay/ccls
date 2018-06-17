@@ -1495,13 +1495,17 @@ void OnIndexDeclaration(CXClientData client_data, const CXIdxDeclInfo* decl) {
         var.def.kind = lsSymbolKind::Parameter;
       //}
 
-      if (decl->isDefinition) {
+      if (!decl->isDefinition)
+        var.declarations.push_back(
+            SetUse(db, spell, lex_parent, Role::Declaration));
+      // For `static const`, a definition at namespace scope is not required
+      // unless odr-used.
+      if (decl->isDefinition ||
+          (decl->entityInfo->kind == CXIdxEntity_CXXStaticVariable &&
+           clang_isConstQualifiedType(clang_getCursorType(decl->cursor)))) {
         var.def.spell = SetUse(db, spell, sem_parent, Role::Definition);
         var.def.extent =
             SetUse(db, cursor.get_extent(), lex_parent, Role::None);
-      } else {
-        var.declarations.push_back(
-            SetUse(db, spell, lex_parent, Role::Declaration));
       }
 
       cursor.VisitChildren(&AddDeclInitializerUsagesVisitor, db);
