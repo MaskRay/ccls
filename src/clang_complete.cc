@@ -604,7 +604,7 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
       if (diagnostic && diagnostic->range.start.line >= 0)
         ls_diagnostics.push_back(*diagnostic);
     }
-    completion_manager->on_diagnostic_(session->file.filename, ls_diagnostics);
+    completion_manager->on_diagnostic_(path, ls_diagnostics);
   }
 }
 
