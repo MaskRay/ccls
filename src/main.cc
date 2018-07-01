@@ -9,6 +9,7 @@ using namespace ccls;
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Process.h>
+#include <llvm/Support/Program.h>
 #include <llvm/Support/Signals.h>
 using namespace llvm;
 using namespace llvm::cl;
@@ -58,15 +59,6 @@ int main(int argc, char** argv) {
   }
 
   pipeline::Init();
-
-#ifdef _WIN32
-  // We need to write to stdout in binary mode because in Windows, writing
-  // \n will implicitly write \r\n. Language server API will ignore a
-  // \r\r\n split request.
-  _setmode(_fileno(stdout), O_BINARY);
-  _setmode(_fileno(stdin), O_BINARY);
-#endif
-
   IndexInit();
 
   bool language_server = true;
@@ -129,6 +121,8 @@ int main(int argc, char** argv) {
       }
     }
 
+    sys::ChangeStdinToBinary();
+    sys::ChangeStdoutToBinary();
     // The thread that reads from stdin and dispatchs commands to the main thread.
     pipeline::LaunchStdin();
     // The thread that writes responses from the main thread to stdout.
