@@ -9,8 +9,9 @@ MethodType kMethodType = "textDocument/documentSymbol";
 
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
+  bool all = false;
 };
-MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument);
+MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument, all);
 
 struct In_TextDocumentDocumentSymbol : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -30,35 +31,44 @@ struct Handler_TextDocumentDocumentSymbol
     : BaseMessageHandler<In_TextDocumentDocumentSymbol> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentDocumentSymbol* request) override {
+    auto& params = request->params;
     Out_TextDocumentDocumentSymbol out;
     out.id = request->id;
 
     QueryFile* file;
     int file_id;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file,
-                        &file_id)) {
+                        params.textDocument.uri.GetPath(), &file, &file_id))
       return;
-    }
 
-    for (SymbolRef sym : file->def->outline) {
-      std::optional<lsSymbolInformation> info =
-          GetSymbolInfo(db, working_files, sym, false);
-      if (!info)
-        continue;
-      if (sym.kind == SymbolKind::Var) {
-        QueryVar& var = db->GetVar(sym);
-        auto* def = var.AnyDef();
-        if (!def || !def->spell || def->is_local())
-          continue;
-      }
-
-      if (std::optional<lsLocation> location = GetLsLocation(
-              db, working_files,
-              Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
-        info->location = *location;
-        out.result.push_back(*info);
-      }
+    if (params.all) {
+      for (SymbolRef sym : file->def->all_symbols)
+        if (std::optional<lsSymbolInformation> info =
+                GetSymbolInfo(db, working_files, sym, false)) {
+          if (std::optional<lsLocation> location = GetLsLocation(
+                  db, working_files,
+                  Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
+            info->location = *location;
+            out.result.push_back(*info);
+          }
+        }
+    } else {
+      for (SymbolRef sym : file->def->outline)
+        if (std::optional<lsSymbolInformation> info =
+                GetSymbolInfo(db, working_files, sym, false)) {
+          if (sym.kind == SymbolKind::Var) {
+            QueryVar& var = db->GetVar(sym);
+            auto* def = var.AnyDef();
+            if (!def || !def->spell || def->is_local())
+              continue;
+          }
+          if (std::optional<lsLocation> location = GetLsLocation(
+                  db, working_files,
+                  Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
+            info->location = *location;
+            out.result.push_back(*info);
+          }
+        }
     }
 
     pipeline::WriteStdout(kMethodType, out);
