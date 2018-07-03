@@ -2054,7 +2054,7 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
 
   file = NormalizePath(file);
 
-  Timer timer("parse", "parse tu");
+  static Timer timer("parse", "parse tu");
   timer.startTimer();
 
   std::vector<CXUnsavedFile> unsaved_files;
