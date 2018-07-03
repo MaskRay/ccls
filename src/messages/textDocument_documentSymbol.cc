@@ -20,6 +20,21 @@ struct In_TextDocumentDocumentSymbol : public RequestInMessage {
 MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentDocumentSymbol);
 
+struct lsSimpleLocation {
+  lsRange range;
+};
+MAKE_REFLECT_STRUCT(lsSimpleLocation, range);
+struct lsSimpleSymbolInformation {
+  lsSimpleLocation location;
+};
+MAKE_REFLECT_STRUCT(lsSimpleSymbolInformation, location);
+struct Out_SimpleDocumentSymbol
+    : public lsOutMessage<Out_SimpleDocumentSymbol> {
+  lsRequestId id;
+  std::vector<lsSimpleSymbolInformation> result;
+};
+MAKE_REFLECT_STRUCT(Out_SimpleDocumentSymbol, jsonrpc, id, result);
+
 struct Out_TextDocumentDocumentSymbol
     : public lsOutMessage<Out_TextDocumentDocumentSymbol> {
   lsRequestId id;
@@ -32,8 +47,6 @@ struct Handler_TextDocumentDocumentSymbol
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentDocumentSymbol* request) override {
     auto& params = request->params;
-    Out_TextDocumentDocumentSymbol out;
-    out.id = request->id;
 
     QueryFile* file;
     int file_id;
@@ -42,17 +55,17 @@ struct Handler_TextDocumentDocumentSymbol
       return;
 
     if (params.all) {
+      Out_SimpleDocumentSymbol out;
+      out.id = request->id;
       for (SymbolRef sym : file->def->all_symbols)
-        if (std::optional<lsSymbolInformation> info =
-                GetSymbolInfo(db, working_files, sym, false)) {
-          if (std::optional<lsLocation> location = GetLsLocation(
-                  db, working_files,
-                  Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
-            info->location = *location;
-            out.result.push_back(*info);
-          }
-        }
+        if (std::optional<lsLocation> location = GetLsLocation(
+                db, working_files,
+                Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id}))
+          out.result.push_back({{location->range}});
+      pipeline::WriteStdout(kMethodType, out);
     } else {
+      Out_TextDocumentDocumentSymbol out;
+      out.id = request->id;
       for (SymbolRef sym : file->def->outline)
         if (std::optional<lsSymbolInformation> info =
                 GetSymbolInfo(db, working_files, sym, false)) {
@@ -69,9 +82,8 @@ struct Handler_TextDocumentDocumentSymbol
             out.result.push_back(*info);
           }
         }
+      pipeline::WriteStdout(kMethodType, out);
     }
-
-    pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentSymbol);
