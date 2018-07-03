@@ -164,7 +164,7 @@ void FilterAndSortCompletionResponse(
   if (!g_config->completion.filterAndSort)
     return;
 
-  Timer timer("FilterAndSortCompletionResponse", "");
+  static Timer timer("FilterAndSortCompletionResponse", "");
   TimeRegion region(timer);
 
   auto& items = complete_response->result.items;

@@ -18,6 +18,9 @@ using namespace llvm;
 
 #include <chrono>
 #include <thread>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
 
 void DiagnosticsPublisher::Init() {
   frequencyMs_ = g_config->diagnostics.frequencyMs;
@@ -28,17 +31,21 @@ void DiagnosticsPublisher::Init() {
 void DiagnosticsPublisher::Publish(WorkingFiles* working_files,
                                    std::string path,
                                    std::vector<lsDiagnostic> diagnostics) {
+  bool good = true;
   // Cache diagnostics so we can show fixits.
   working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
-    if (working_file)
+    if (working_file) {
+      good = working_file->diagnostics_.empty();
       working_file->diagnostics_ = diagnostics;
+    }
   });
 
   int64_t now =
       std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::high_resolution_clock::now().time_since_epoch())
           .count();
-  if (frequencyMs_ >= 0 && (nextPublish_ <= now || diagnostics.empty()) &&
+  if (frequencyMs_ >= 0 &&
+      (nextPublish_ <= now || (!good && diagnostics.empty())) &&
       match_->IsMatch(path)) {
     nextPublish_ = now + frequencyMs_;
 
@@ -258,7 +265,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
     // Write current index to disk if requested.
     LOG_S(INFO) << "store index for " << path;
     {
-      Timer timer("write", "store index");
+      static Timer timer("write", "store index");
       timer.startTimer();
       std::string cache_path = GetCachePath(path);
       WriteToFile(cache_path, curr->file_contents);
@@ -328,7 +335,7 @@ void Main_OnIndexed(DB* db,
     return;
   }
 
-  Timer timer("apply", "apply index");
+  static Timer timer("apply", "apply index");
   timer.startTimer();
   db->ApplyIndexUpdate(update);
   timer.stopTimer();
@@ -397,8 +404,12 @@ void LaunchStdout() {
       }
 
       for (auto& message : messages) {
+#ifdef _WIN32
         fwrite(message.content.c_str(), message.content.size(), 1, stdout);
         fflush(stdout);
+#else
+        write(1, message.content.c_str(), message.content.size());
+#endif
       }
     }
   }).detach();

@@ -9,9 +9,10 @@ MethodType kMethodType = "textDocument/documentSymbol";
 
 struct lsDocumentSymbolParams {
   lsTextDocumentIdentifier textDocument;
-  bool all = false;
+  int startLine = -1;
+  int endLine = -1;
 };
-MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument, all);
+MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument, startLine, endLine);
 
 struct In_TextDocumentDocumentSymbol : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -20,18 +21,10 @@ struct In_TextDocumentDocumentSymbol : public RequestInMessage {
 MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentDocumentSymbol);
 
-struct lsSimpleLocation {
-  lsRange range;
-};
-MAKE_REFLECT_STRUCT(lsSimpleLocation, range);
-struct lsSimpleSymbolInformation {
-  lsSimpleLocation location;
-};
-MAKE_REFLECT_STRUCT(lsSimpleSymbolInformation, location);
 struct Out_SimpleDocumentSymbol
     : public lsOutMessage<Out_SimpleDocumentSymbol> {
   lsRequestId id;
-  std::vector<lsSimpleSymbolInformation> result;
+  std::vector<lsRange> result;
 };
 MAKE_REFLECT_STRUCT(Out_SimpleDocumentSymbol, jsonrpc, id, result);
 
@@ -54,14 +47,18 @@ struct Handler_TextDocumentDocumentSymbol
                         params.textDocument.uri.GetPath(), &file, &file_id))
       return;
 
-    if (params.all) {
+    if (params.startLine >= 0) {
       Out_SimpleDocumentSymbol out;
       out.id = request->id;
       for (SymbolRef sym : file->def->all_symbols)
         if (std::optional<lsLocation> location = GetLsLocation(
                 db, working_files,
-                Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id}))
-          out.result.push_back({{location->range}});
+                Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
+          if (params.startLine <= sym.range.start.line &&
+              sym.range.start.line <= params.endLine)
+            out.result.push_back(location->range);
+        }
+      std::sort(out.result.begin(), out.result.end());
       pipeline::WriteStdout(kMethodType, out);
     } else {
       Out_TextDocumentDocumentSymbol out;
