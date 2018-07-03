@@ -220,32 +220,32 @@ target_sources(ccls PRIVATE
 
 target_sources(ccls PRIVATE
                src/messages/ccls_base.cc
-               src/messages/ccls_call_hierarchy.cc
+               src/messages/ccls_callHierarchy.cc
                src/messages/ccls_callers.cc
-               src/messages/ccls_file_info.cc
-               src/messages/ccls_freshen_index.cc
-               src/messages/ccls_inheritance_hierarchy.cc
-               src/messages/ccls_member_hierarchy.cc
+               src/messages/ccls_fileInfo.cc
+               src/messages/ccls_freshenIndex.cc
+               src/messages/ccls_inheritanceHierarchy.cc
+               src/messages/ccls_memberHierarchy.cc
                src/messages/ccls_vars.cc
                src/messages/exit.cc
                src/messages/initialize.cc
                src/messages/shutdown.cc
-               src/messages/text_document_code_lens.cc
-               src/messages/text_document_completion.cc
-               src/messages/text_document_definition.cc
-               src/messages/text_document_did_change.cc
-               src/messages/text_document_did_close.cc
-               src/messages/text_document_did_open.cc
-               src/messages/text_document_did_save.cc
-               src/messages/text_document_document_highlight.cc
-               src/messages/text_document_document_symbol.cc
-               src/messages/text_document_hover.cc
-               src/messages/text_document_implementation.cc
-               src/messages/text_document_references.cc
-               src/messages/text_document_rename.cc
-               src/messages/text_document_signature_help.cc
-               src/messages/text_document_type_definition.cc
-               src/messages/workspace_did_change_configuration.cc
-               src/messages/workspace_did_change_watched_files.cc
+               src/messages/textDocument_codeLens.cc
+               src/messages/textDocument_completion.cc
+               src/messages/textDocument_definition.cc
+               src/messages/textDocument_didChange.cc
+               src/messages/textDocument_didClose.cc
+               src/messages/textDocument_didOpen.cc
+               src/messages/textDocument_didSave.cc
+               src/messages/textDocument_documentHighlight.cc
+               src/messages/textDocument_documentSymbol.cc
+               src/messages/textDocument_hover.cc
+               src/messages/textDocument_implementation.cc
+               src/messages/textDocument_references.cc
+               src/messages/textDocument_rename.cc
+               src/messages/textDocument_signatureHelp.cc
+               src/messages/textDocument_typeDefinition.cc
+               src/messages/workspace_didChangeConfiguration.cc
+               src/messages/workspace_didChangeWatchedFiles.cc
                src/messages/workspace_symbol.cc
                )
