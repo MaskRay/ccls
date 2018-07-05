@@ -12,10 +12,12 @@ struct In_TextDocumentReferences : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct lsReferenceContext {
     bool base = true;
+    // Exclude references with any |Role| bits set.
+    Role excludeRole = Role::None;
     // Include the declaration of the current symbol.
     bool includeDeclaration = false;
-    // Include references with these |Role| bits set.
-    Role role = Role::All;
+    // Include references with all |Role| bits set.
+    Role role = Role::None;
   };
   struct Params {
     lsTextDocumentIdentifier textDocument;
@@ -27,6 +29,7 @@ struct In_TextDocumentReferences : public RequestInMessage {
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentReferences::lsReferenceContext,
                     base,
+                    excludeRole,
                     includeDeclaration,
                     role);
 MAKE_REFLECT_STRUCT(In_TextDocumentReferences::Params,
@@ -72,7 +75,8 @@ struct Handler_TextDocumentReferences
         sym.usr = stack.back();
         stack.pop_back();
         auto fn = [&](Use use, lsSymbolKind parent_kind) {
-          if (use.role & params.context.role)
+          if (Role(use.role & params.context.role) == params.context.role &&
+              !(use.role & params.context.excludeRole))
             if (std::optional<lsLocationEx> ls_loc =
                     GetLsLocationEx(db, working_files, use, container)) {
               if (container)
