@@ -73,7 +73,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
   def.path = std::move(indexed.path);
   def.args = std::move(indexed.args);
   def.includes = std::move(indexed.includes);
-  def.inactive_regions = std::move(indexed.skipped_by_preprocessor);
+  def.skipped_ranges = std::move(indexed.skipped_ranges);
   def.dependencies.reserve(indexed.dependencies.size());
   for (auto& dep : indexed.dependencies)
     def.dependencies.push_back(dep.first());
@@ -172,7 +172,7 @@ bool TryReplaceDef(llvm::SmallVectorImpl<Q>& def_list, Q&& def) {
 IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
                                      IndexFile* current) {
   IndexUpdate r;
-  static IndexFile empty(current->path, "<empty>");
+  static IndexFile empty(0u, current->path, "<empty>");
   if (!previous)
     previous = &empty;
 

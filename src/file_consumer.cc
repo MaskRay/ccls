@@ -23,11 +23,6 @@ std::optional<std::string> GetFileContents(
 
 }  // namespace
 
-bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b) {
-  return a.data[0] == b.data[0] && a.data[1] == b.data[1] &&
-         a.data[2] == b.data[2];
-}
-
 FileContents::FileContents(const std::string& path, const std::string& content)
     : path(path), content(content) {
   line_offsets_.push_back(0);
@@ -98,14 +93,10 @@ FileConsumer::FileConsumer(VFS* vfs, const std::string& parse_file)
     : vfs_(vfs), parse_file_(parse_file), thread_id_(g_thread_id) {}
 
 IndexFile* FileConsumer::TryConsumeFile(
-    CXFile file,
-    bool* is_first_ownership,
+    const clang::FileEntry& File,
     std::unordered_map<std::string, FileContents>* file_contents_map) {
-  assert(is_first_ownership);
-
-  CXFileUniqueID file_id;
-  if (clang_getFileUniqueID(file, &file_id) != 0) {
-    std::string file_name = FileName(file);
+  std::string file_name = FileName(File);
+  if (!File.isValid()) {
     if (!file_name.empty()) {
       LOG_S(ERROR) << "Could not get unique file id for " << file_name
                    << " when parsing " << parse_file_;
@@ -114,33 +105,27 @@ IndexFile* FileConsumer::TryConsumeFile(
   }
 
   // Try to find cached local result.
-  auto it = local_.find(file_id);
-  if (it != local_.end()) {
-    *is_first_ownership = false;
+  unsigned UID = File.getUID();
+  auto it = local_.find(UID);
+  if (it != local_.end())
     return it->second.get();
-  }
-
-  std::string file_name = FileName(file);
 
   // We did not take the file from global. Cache that we failed so we don't try
   // again and return nullptr.
   if (!vfs_->Mark(file_name, thread_id_, 2)) {
-    local_[file_id] = nullptr;
+    local_[UID] = nullptr;
     return nullptr;
   }
 
   // Read the file contents, if we fail then we cannot index the file.
   std::optional<std::string> contents =
       GetFileContents(file_name, file_contents_map);
-  if (!contents) {
-    *is_first_ownership = false;
+  if (!contents)
     return nullptr;
-  }
 
   // Build IndexFile instance.
-  *is_first_ownership = true;
-  local_[file_id] = std::make_unique<IndexFile>(file_name, *contents);
-  return local_[file_id].get();
+  local_[UID] = std::make_unique<IndexFile>(UID, file_name, *contents);
+  return local_[UID].get();
 }
 
 std::vector<std::unique_ptr<IndexFile>> FileConsumer::TakeLocalState() {

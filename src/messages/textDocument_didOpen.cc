@@ -45,7 +45,7 @@ struct Handler_TextDocumentDidOpen
     QueryFile* file = nullptr;
     FindFileOrFail(db, project, std::nullopt, path, &file);
     if (file && file->def) {
-      EmitInactiveLines(working_file, file->def->inactive_regions);
+      EmitSkippedRanges(working_file, file->def->skipped_ranges);
       EmitSemanticHighlighting(db, semantic_cache, working_file, file);
     }
 

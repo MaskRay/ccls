@@ -307,8 +307,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
 
           // Get output from index operation.
           IndexFile* db = FindDbForPathEnding(expected_path, dbs);
-          assert(db);
-          if (!db->diagnostics_.empty()) {
+          if (db && !db->diagnostics_.empty()) {
             printf("For %s\n", path.c_str());
             for (const lsDiagnostic& diagnostic : db->diagnostics_) {
               printf("  ");

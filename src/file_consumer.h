@@ -5,6 +5,7 @@
 #include "utils.h"
 
 #include <clang-c/Index.h>
+#include <clang/Basic/FileManager.h>
 
 #include <functional>
 #include <mutex>
@@ -12,10 +13,6 @@
 #include <vector>
 
 struct IndexFile;
-
-// Needed for unordered_map usage below.
-MAKE_HASHABLE(CXFileUniqueID, t.data[0], t.data[1], t.data[2]);
-bool operator==(const CXFileUniqueID& a, const CXFileUniqueID& b);
 
 struct FileContents {
   FileContents() = default;
@@ -56,24 +53,20 @@ struct VFS {
 struct FileConsumer {
   FileConsumer(VFS* vfs, const std::string& parse_file);
 
-  // Returns true if this instance owns given |file|. This will also attempt to
-  // take ownership over |file|.
-  //
   // Returns IndexFile for the file or nullptr. |is_first_ownership| is set
   // to true iff the function just took ownership over the file. Otherwise it
   // is set to false.
   //
   // note: file_contents is passed as a parameter instead of as a member
   // variable since it is large and we do not want to copy it.
-  IndexFile* TryConsumeFile(CXFile file,
-                            bool* is_first_ownership,
+  IndexFile* TryConsumeFile(const clang::FileEntry& file,
                             std::unordered_map<std::string, FileContents>* file_contents);
 
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
 
  private:
-  std::unordered_map<CXFileUniqueID, std::unique_ptr<IndexFile>> local_;
+  std::unordered_map<unsigned, std::unique_ptr<IndexFile>> local_;
   VFS* vfs_;
   std::string parse_file_;
   int thread_id_;

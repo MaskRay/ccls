@@ -85,7 +85,6 @@ class ClangCursor {
   bool is_valid_kind() const;
 
   std::string get_type_description() const;
-  std::string get_comments() const;
 
   std::string ToString() const;
 
