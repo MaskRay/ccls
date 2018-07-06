@@ -3,6 +3,7 @@
 #include "platform.h"
 
 #include "filesystem.hh"
+using namespace clang;
 using namespace llvm;
 
 namespace {
@@ -116,6 +117,20 @@ std::string FileName(CXFile file) {
   if (ret.empty())
     // clang_getFileName return values may contain ..
     ret = NormalizePath(ToString(clang_getFileName(file)));
+  // Resolve /usr/include/c++/7.3.0 symlink.
+  if (!StartsWith(ret, g_config->projectRoot)) {
+    SmallString<256> dest;
+    sys::fs::real_path(ret, dest);
+    ret = dest.str();
+  }
+  return ret;
+}
+
+std::string FileName(const FileEntry& file) {
+  StringRef Name = file.tryGetRealPathName();
+  if (Name.empty())
+    Name = file.getName();
+  std::string ret = NormalizePath(Name);
   // Resolve /usr/include/c++/7.3.0 symlink.
   if (!StartsWith(ret, g_config->projectRoot)) {
     SmallString<256> dest;

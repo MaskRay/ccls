@@ -28,7 +28,7 @@ std::string g_init_options;
 namespace {
 opt<bool> opt_help("h", desc("Alias for -help"));
 opt<int> opt_verbose("v", desc("verbosity"), init(0));
-opt<bool> opt_test_index("test-index", desc("run index tests"));
+opt<std::string> opt_test_index("test-index", ValueOptional, init("!"), desc("run index tests"));
 opt<bool> opt_test_unit("test-unit", desc("run unit tests"));
 
 opt<std::string> opt_init("init", desc("extra initialization options"));
@@ -91,9 +91,9 @@ int main(int argc, char** argv) {
       return res;
   }
 
-  if (opt_test_index) {
+  if (opt_test_index != "!") {
     language_server = false;
-    if (!RunIndexTests("", sys::Process::StandardInIsUserInput()))
+    if (!RunIndexTests(opt_test_index, sys::Process::StandardInIsUserInput()))
       return 1;
   }
 

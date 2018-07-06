@@ -9,7 +9,7 @@ MAKE_REFLECT_STRUCT(QueryFile::Def,
                     language,
                     outline,
                     all_symbols,
-                    inactive_regions,
+                    skipped_ranges,
                     dependencies);
 
 namespace {
@@ -49,7 +49,7 @@ struct Handler_CclsFileInfo : BaseMessageHandler<In_CclsFileInfo> {
     out.result.args = file->def->args;
     out.result.language = file->def->language;
     out.result.includes = file->def->includes;
-    out.result.inactive_regions = file->def->inactive_regions;
+    out.result.skipped_ranges = file->def->skipped_ranges;
     pipeline::WriteStdout(kMethodType, out);
   }
 };

@@ -347,7 +347,7 @@ void Main_OnIndexed(DB* db,
     if (WorkingFile* working_file =
             working_files->GetFileByFilename(def_u.first.path)) {
       working_file->SetIndexContent(def_u.second);
-      EmitInactiveLines(working_file, def_u.first.inactive_regions);
+      EmitSkippedRanges(working_file, def_u.first.skipped_ranges);
       EmitSemanticHighlighting(db, semantic_cache, working_file,
                                &db->files[update->file_id]);
     }

@@ -335,7 +335,7 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
     REFLECT_MEMBER(dependencies);
   }
   REFLECT_MEMBER(includes);
-  REFLECT_MEMBER(skipped_by_preprocessor);
+  REFLECT_MEMBER(skipped_ranges);
   REFLECT_MEMBER(usr2func);
   REFLECT_MEMBER(usr2type);
   REFLECT_MEMBER(usr2var);
@@ -426,7 +426,7 @@ std::unique_ptr<IndexFile> Deserialize(
         if (major != IndexFile::kMajorVersion ||
             minor != IndexFile::kMinorVersion)
           throw std::invalid_argument("Invalid version");
-        file = std::make_unique<IndexFile>(path, file_content);
+        file = std::make_unique<IndexFile>(0u, path, file_content);
         Reflect(reader, *file);
       } catch (std::invalid_argument& e) {
         LOG_S(INFO) << "failed to deserialize '" << path
@@ -450,7 +450,7 @@ std::unique_ptr<IndexFile> Deserialize(
       if (reader.HasParseError())
         return nullptr;
 
-      file = std::make_unique<IndexFile>(path, file_content);
+      file = std::make_unique<IndexFile>(0u, path, file_content);
       JsonReader json_reader{&reader};
       try {
         Reflect(json_reader, *file);

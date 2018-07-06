@@ -141,8 +141,8 @@ bool FindFileOrFail(DB* db,
                     QueryFile** out_query_file,
                     int* out_file_id = nullptr);
 
-void EmitInactiveLines(WorkingFile* working_file,
-                       const std::vector<Range>& inactive_regions);
+void EmitSkippedRanges(WorkingFile *working_file,
+                       const std::vector<Range> &skipped_ranges);
 
 void EmitSemanticHighlighting(DB* db,
                               SemanticHighlightSymbolCache* semantic_cache,

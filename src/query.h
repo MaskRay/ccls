@@ -18,7 +18,7 @@ struct QueryFile {
     // Every symbol found in the file (ie, for goto definition)
     std::vector<SymbolRef> all_symbols;
     // Parts of the file which are disabled.
-    std::vector<Range> inactive_regions;
+    std::vector<Range> skipped_ranges;
     // Used by |$ccls/freshenIndex|.
     std::vector<std::string> dependencies;
   };

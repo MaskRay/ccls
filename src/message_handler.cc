@@ -175,11 +175,11 @@ bool FindFileOrFail(DB* db,
   return false;
 }
 
-void EmitInactiveLines(WorkingFile* working_file,
-                       const std::vector<Range>& inactive_regions) {
+void EmitSkippedRanges(WorkingFile *working_file,
+                       const std::vector<Range> &skipped_ranges) {
   Out_CclsSetInactiveRegion out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
-  for (Range skipped : inactive_regions) {
+  for (Range skipped : skipped_ranges) {
     std::optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
     if (ls_skipped)
       out.params.inactiveRegions.push_back(*ls_skipped);

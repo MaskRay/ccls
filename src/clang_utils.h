@@ -3,6 +3,7 @@
 #include "lsp_diagnostic.h"
 
 #include <clang-c/Index.h>
+#include <clang/Basic/FileManager.h>
 
 #include <optional>
 #include <vector>
@@ -12,6 +13,7 @@ std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
 
 // Returns the absolute path to |file|.
 std::string FileName(CXFile file);
+std::string FileName(const clang::FileEntry& file);
 
 std::string ToString(CXString cx_string);
 

@@ -259,67 +259,6 @@ std::string ClangCursor::get_type_description() const {
   return ::ToString(clang_getTypeSpelling(type));
 }
 
-std::string ClangCursor::get_comments() const {
-  CXSourceRange range = clang_Cursor_getCommentRange(cx_cursor);
-  if (clang_Range_isNull(range))
-    return {};
-
-  unsigned start_column;
-  clang_getSpellingLocation(clang_getRangeStart(range), nullptr, nullptr,
-                            &start_column, nullptr);
-
-  // Get associated comment text.
-  CXString cx_raw = clang_Cursor_getRawCommentText(cx_cursor);
-  int pad = -1;
-  std::string ret;
-  for (const char* p = clang_getCString(cx_raw); *p;) {
-    // The first line starts with a comment marker, but the rest needs
-    // un-indenting.
-    unsigned skip = start_column - 1;
-    for (; skip > 0 && (*p == ' ' || *p == '\t'); p++)
-      skip--;
-    const char* q = p;
-    while (*q != '\n' && *q)
-      q++;
-    if (*q)
-      q++;
-    // A minimalist approach to skip Doxygen comment markers.
-    // See https://www.stack.nl/~dimitri/doxygen/manual/docblocks.html
-    if (pad < 0) {
-      // First line, detect the length of comment marker and put into |pad|
-      const char* begin = p;
-      while (*p == '/' || *p == '*')
-        p++;
-      if (*p == '<' || *p == '!')
-        p++;
-      if (*p == ' ')
-        p++;
-      pad = int(p - begin);
-    } else {
-      // Other lines, skip |pad| bytes
-      int prefix = pad;
-      while (prefix > 0 &&
-             (*p == ' ' || *p == '/' || *p == '*' || *p == '<' || *p == '!'))
-        prefix--, p++;
-    }
-    ret.insert(ret.end(), p, q);
-    p = q;
-  }
-  clang_disposeString(cx_raw);
-  while (ret.size() && isspace(ret.back()))
-    ret.pop_back();
-  if (EndsWith(ret, "*/")) {
-    ret.resize(ret.size() - 2);
-  } else if (EndsWith(ret, "\n/")) {
-    ret.resize(ret.size() - 2);
-  }
-  while (ret.size() && isspace(ret.back()))
-    ret.pop_back();
-  if (ret.empty())
-    return {};
-  return ret;
-}
-
 std::string ClangCursor::ToString() const {
   return ::ToString(get_kind()) + " " + get_spell_name();
 }

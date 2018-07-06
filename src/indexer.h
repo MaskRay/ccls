@@ -248,6 +248,7 @@ struct IndexFile {
   // files accepted by newer ccls.
   static const int kMinorVersion;
 
+  unsigned UID;
   std::string path;
   std::vector<std::string> args;
   int64_t last_write_time = 0;
@@ -260,7 +261,7 @@ struct IndexFile {
   std::string import_file;
 
   // Source ranges that were not processed.
-  std::vector<Range> skipped_by_preprocessor;
+  std::vector<Range> skipped_ranges;
 
   std::vector<IndexInclude> includes;
   llvm::StringMap<int64_t> dependencies;
@@ -273,7 +274,7 @@ struct IndexFile {
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 
-  IndexFile(const std::string& path, const std::string& contents);
+  IndexFile(unsigned UID, const std::string& path, const std::string& contents);
 
   IndexFunc& ToFunc(Usr usr);
   IndexType& ToType(Usr usr);
@@ -292,14 +293,6 @@ struct NamespaceHelper {
       const CXIdxContainerInfo* container,
       std::string_view unqualified_name);
 };
-
-std::vector<std::unique_ptr<IndexFile>> ParseWithTu(
-    VFS* vfs,
-    ClangTranslationUnit* tu,
-    ClangIndex* index,
-    const std::string& file,
-    const std::vector<std::string>& args,
-    const std::vector<CXUnsavedFile>& file_contents);
 
 bool ConcatTypeAndName(std::string& type, const std::string& name);
 
