@@ -5,7 +5,7 @@ void foo(int p) {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 11998306017310352355,
       "detailed_name": "void foo(int p)",
@@ -19,12 +19,12 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [5875271969926422921, 11404600766177939811],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -45,9 +45,9 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "p",
       "declarations": [],
-      "spell": "1:14-1:15|11998306017310352355|3|2",
+      "spell": "1:14-1:15|11998306017310352355|3|514",
       "extent": "1:10-1:15|11998306017310352355|3|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 253,
       "storage": 0
@@ -60,7 +60,7 @@ OUTPUT:
       "declarations": [],
       "spell": "2:9-2:10|11998306017310352355|3|2",
       "extent": "2:5-2:14|11998306017310352355|3|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 0

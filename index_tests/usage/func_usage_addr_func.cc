@@ -11,7 +11,7 @@ void user() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 5264867802674151787,
       "detailed_name": "void used()",
@@ -26,7 +26,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["6:18-6:22|9376923949268137283|3|32", "7:12-7:16|9376923949268137283|3|32"],
+      "uses": ["6:18-6:22|0|1|132", "7:12-7:16|0|1|132"],
       "callees": []
     }, {
       "usr": 9376923949268137283,
@@ -41,9 +41,9 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [16088407831770615719],
+      "vars": [],
       "uses": [],
-      "callees": ["6:18-6:22|5264867802674151787|3|32", "6:18-6:22|5264867802674151787|3|32", "7:3-7:10|12924914488846929470|3|32", "7:12-7:16|5264867802674151787|3|32"]
+      "callees": []
     }, {
       "usr": 12924914488846929470,
       "detailed_name": "void consume(void (*)())",
@@ -58,15 +58,16 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["7:3-7:10|9376923949268137283|3|32"],
+      "uses": ["7:3-7:10|0|1|8228"],
       "callees": []
     }],
   "usr2type": [],
   "usr2var": [{
       "usr": 16088407831770615719,
-      "detailed_name": "void (*)() x",
-      "qual_name_offset": 11,
+      "detailed_name": "void (*x)()",
+      "qual_name_offset": 7,
       "short_name": "x",
+      "hover": "void (*x)() = &used",
       "declarations": [],
       "spell": "6:10-6:11|9376923949268137283|3|2",
       "extent": "6:3-6:22|9376923949268137283|3|0",

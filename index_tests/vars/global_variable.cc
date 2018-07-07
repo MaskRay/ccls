@@ -3,10 +3,10 @@ static int global = 0;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -23,14 +23,14 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 6834525061342585382,
-      "detailed_name": "int global",
-      "qual_name_offset": 4,
+      "detailed_name": "static int global",
+      "qual_name_offset": 11,
       "short_name": "global",
-      "hover": "int global = 0",
+      "hover": "static int global = 0",
       "declarations": [],
       "spell": "1:12-1:18|0|1|2",
       "extent": "1:1-1:22|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 2

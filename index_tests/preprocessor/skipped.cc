@@ -17,7 +17,7 @@ void hello();
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": ["2:1-4:7", "6:1-10:7", "12:1-14:7"],
+  "skipped_ranges": ["2:1-5:1", "6:1-11:1", "12:1-15:1"],
   "usr2func": [],
   "usr2type": [],
   "usr2var": []

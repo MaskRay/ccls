@@ -7,7 +7,7 @@ void caller() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 468307235068920063,
       "detailed_name": "void called()",
@@ -22,7 +22,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["3:3-3:9|11404881820527069090|3|32"],
+      "uses": ["3:3-3:9|0|1|8228"],
       "callees": []
     }, {
       "usr": 11404881820527069090,
@@ -39,7 +39,7 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["3:3-3:9|468307235068920063|3|32"]
+      "callees": []
     }],
   "usr2type": [],
   "usr2var": []

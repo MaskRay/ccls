@@ -12,12 +12,12 @@ Foo<B> b;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
       "usr": 6697181287623958829,
-      "detailed_name": "A",
-      "qual_name_offset": 0,
+      "detailed_name": "enum A {\n}",
+      "qual_name_offset": 5,
       "short_name": "A",
       "kind": 10,
       "declarations": [],
@@ -33,25 +33,25 @@ OUTPUT:
       "uses": ["9:5-9:6|0|1|4"]
     }, {
       "usr": 10528472276654770367,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo {}",
+      "qual_name_offset": 7,
       "short_name": "Foo",
-      "kind": 5,
+      "kind": 23,
       "declarations": [],
       "spell": "5:8-5:11|0|1|2",
       "extent": "5:1-7:2|0|1|0",
       "alias_of": 0,
       "bases": [],
       "derived": [],
-      "types": [],
+      "types": [13938528237873543349],
       "funcs": [],
       "vars": [],
       "instances": [12028309045033782423],
       "uses": ["9:1-9:4|0|1|4", "10:1-10:4|0|1|4"]
     }, {
       "usr": 13892793056005362145,
-      "detailed_name": "B",
-      "qual_name_offset": 0,
+      "detailed_name": "enum B {\n}",
+      "qual_name_offset": 5,
       "short_name": "B",
       "kind": 10,
       "declarations": [],
@@ -67,12 +67,12 @@ OUTPUT:
       "uses": ["10:5-10:6|0|1|4"]
     }, {
       "usr": 13938528237873543349,
-      "detailed_name": "Foo::Inner",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo::Inner {}",
+      "qual_name_offset": 7,
       "short_name": "Inner",
       "kind": 23,
       "declarations": [],
-      "spell": "6:10-6:15|10528472276654770367|2|2",
+      "spell": "6:10-6:15|10528472276654770367|2|514",
       "extent": "6:3-6:18|10528472276654770367|2|0",
       "alias_of": 0,
       "bases": [],
@@ -81,7 +81,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [16721564935990383768],
-      "uses": ["9:9-9:14|0|1|4"]
+      "uses": ["9:9-9:14|10528472276654770367|2|4"]
     }],
   "usr2var": [{
       "usr": 12028309045033782423,

@@ -6,7 +6,7 @@ void foo() {}
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4259594751088586730,
       "detailed_name": "void foo()",
@@ -16,7 +16,7 @@ OUTPUT:
       "storage": 0,
       "declarations": ["1:6-1:9|0|1|1"],
       "spell": "3:6-3:9|0|1|2",
-      "extent": "3:1-3:14|0|1|0",
+      "extent": "1:1-1:11|0|1|0",
       "declaring_type": 0,
       "bases": [],
       "derived": [],

@@ -14,7 +14,7 @@ unique_ptr<S>* return_type() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 16359708726068806331,
       "detailed_name": "unique_ptr<S> *return_type()",
@@ -28,14 +28,14 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [3364438781074774169],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
       "usr": 3286534761799572592,
-      "detailed_name": "unique_ptr",
-      "qual_name_offset": 0,
+      "detailed_name": "class unique_ptr {}",
+      "qual_name_offset": 6,
       "short_name": "unique_ptr",
       "kind": 5,
       "declarations": [],
@@ -51,8 +51,8 @@ OUTPUT:
       "uses": ["6:8-6:18|0|1|4", "7:8-7:18|0|1|4", "9:1-9:11|0|1|4", "10:3-10:13|0|1|4"]
     }, {
       "usr": 4750332761459066907,
-      "detailed_name": "S",
-      "qual_name_offset": 0,
+      "detailed_name": "struct S {}",
+      "qual_name_offset": 7,
       "short_name": "S",
       "kind": 23,
       "declarations": [],
@@ -81,8 +81,8 @@ OUTPUT:
       "storage": 0
     }, {
       "usr": 12857919739649552168,
-      "detailed_name": "unique_ptr<bool> f0",
-      "qual_name_offset": 17,
+      "detailed_name": "static unique_ptr<bool> f0",
+      "qual_name_offset": 24,
       "short_name": "f0",
       "declarations": [],
       "spell": "6:25-6:27|0|1|2",
@@ -93,8 +93,8 @@ OUTPUT:
       "storage": 2
     }, {
       "usr": 18075066956054788088,
-      "detailed_name": "unique_ptr<S> f1",
-      "qual_name_offset": 14,
+      "detailed_name": "static unique_ptr<S> f1",
+      "qual_name_offset": 21,
       "short_name": "f1",
       "declarations": [],
       "spell": "7:22-7:24|0|1|2",

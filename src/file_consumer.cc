@@ -95,25 +95,16 @@ FileConsumer::FileConsumer(VFS* vfs, const std::string& parse_file)
 IndexFile* FileConsumer::TryConsumeFile(
     const clang::FileEntry& File,
     std::unordered_map<std::string, FileContents>* file_contents_map) {
-  std::string file_name = FileName(File);
-  if (!File.isValid()) {
-    if (!file_name.empty()) {
-      LOG_S(ERROR) << "Could not get unique file id for " << file_name
-                   << " when parsing " << parse_file_;
-    }
-    return nullptr;
-  }
-
-  // Try to find cached local result.
-  unsigned UID = File.getUID();
-  auto it = local_.find(UID);
+  auto UniqueID = File.getUniqueID();
+  auto it = local_.find(UniqueID);
   if (it != local_.end())
     return it->second.get();
 
+  std::string file_name = FileName(File);
   // We did not take the file from global. Cache that we failed so we don't try
   // again and return nullptr.
   if (!vfs_->Mark(file_name, thread_id_, 2)) {
-    local_[UID] = nullptr;
+    local_[UniqueID] = nullptr;
     return nullptr;
   }
 
@@ -124,8 +115,8 @@ IndexFile* FileConsumer::TryConsumeFile(
     return nullptr;
 
   // Build IndexFile instance.
-  local_[UID] = std::make_unique<IndexFile>(UID, file_name, *contents);
-  return local_[UID].get();
+  local_[UniqueID] = std::make_unique<IndexFile>(UniqueID, file_name, *contents);
+  return local_[UniqueID].get();
 }
 
 std::vector<std::unique_ptr<IndexFile>> FileConsumer::TakeLocalState() {

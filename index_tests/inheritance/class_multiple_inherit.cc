@@ -7,15 +7,15 @@ class Derived : public MiddleA, public MiddleB {};
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
       "usr": 3897841498936210886,
-      "detailed_name": "Root",
-      "qual_name_offset": 0,
+      "detailed_name": "class Root {}",
+      "qual_name_offset": 6,
       "short_name": "Root",
       "kind": 5,
-      "declarations": ["2:24-2:28|0|1|4", "3:24-3:28|0|1|4"],
+      "declarations": [],
       "spell": "1:7-1:11|0|1|2",
       "extent": "1:1-1:14|0|1|0",
       "alias_of": 0,
@@ -25,11 +25,11 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["2:24-2:28|0|1|4", "3:24-3:28|0|1|4"]
+      "uses": ["2:24-2:28|0|1|1028", "3:24-3:28|0|1|1028"]
     }, {
       "usr": 10963370434658308541,
-      "detailed_name": "Derived",
-      "qual_name_offset": 0,
+      "detailed_name": "class Derived : public MiddleA, public MiddleB {}",
+      "qual_name_offset": 6,
       "short_name": "Derived",
       "kind": 5,
       "declarations": [],
@@ -45,11 +45,11 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 11863524815063131483,
-      "detailed_name": "MiddleA",
-      "qual_name_offset": 0,
+      "detailed_name": "class MiddleA : public Root {}",
+      "qual_name_offset": 6,
       "short_name": "MiddleA",
       "kind": 5,
-      "declarations": ["4:24-4:31|0|1|4"],
+      "declarations": [],
       "spell": "2:7-2:14|0|1|2",
       "extent": "2:1-2:31|0|1|0",
       "alias_of": 0,
@@ -59,14 +59,14 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:24-4:31|0|1|4"]
+      "uses": ["4:24-4:31|0|1|1028"]
     }, {
       "usr": 14022569716337624303,
-      "detailed_name": "MiddleB",
-      "qual_name_offset": 0,
+      "detailed_name": "class MiddleB : public Root {}",
+      "qual_name_offset": 6,
       "short_name": "MiddleB",
       "kind": 5,
-      "declarations": ["4:40-4:47|0|1|4"],
+      "declarations": [],
       "spell": "3:7-3:14|0|1|2",
       "extent": "3:1-3:31|0|1|0",
       "alias_of": 0,
@@ -76,7 +76,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:40-4:47|0|1|4"]
+      "uses": ["4:40-4:47|0|1|1028"]
     }],
   "usr2var": []
 }

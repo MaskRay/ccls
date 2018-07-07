@@ -12,7 +12,7 @@ void foo() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4259594751088586730,
       "detailed_name": "void foo()",
@@ -28,7 +28,21 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["8:3-8:9|17175780305784503374|3|32"]
+      "callees": []
+    }, {
+      "usr": 15041163540773201510,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [8599782646965457351],
+      "uses": [],
+      "callees": []
     }, {
       "usr": 17175780305784503374,
       "detailed_name": "void accept(int)",
@@ -41,11 +55,11 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:3-8:9|4259594751088586730|3|32"],
+      "uses": ["8:3-8:9|0|1|8228"],
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -61,8 +75,8 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo {}",
+      "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
       "declarations": [],
@@ -79,13 +93,13 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 8599782646965457351,
-      "detailed_name": "int Foo::x",
-      "qual_name_offset": 4,
+      "detailed_name": "static int Foo::x",
+      "qual_name_offset": 11,
       "short_name": "x",
-      "declarations": ["2:14-2:15|15041163540773201510|2|1"],
-      "type": 17,
-      "uses": ["8:15-8:16|4259594751088586730|3|4"],
-      "kind": 8,
+      "declarations": ["2:14-2:15|15041163540773201510|2|513"],
+      "type": 53,
+      "uses": ["8:15-8:16|15041163540773201510|2|12"],
+      "kind": 13,
       "storage": 2
     }]
 }

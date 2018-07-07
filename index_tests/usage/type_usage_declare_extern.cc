@@ -5,12 +5,12 @@ extern T t;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
       "usr": 5673439900521455039,
-      "detailed_name": "T",
-      "qual_name_offset": 0,
+      "detailed_name": "struct T {}",
+      "qual_name_offset": 7,
       "short_name": "T",
       "kind": 23,
       "declarations": [],
@@ -27,8 +27,8 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 1346710425945444872,
-      "detailed_name": "T t",
-      "qual_name_offset": 2,
+      "detailed_name": "extern T t",
+      "qual_name_offset": 0,
       "short_name": "t",
       "declarations": ["3:10-3:11|0|1|1"],
       "type": 5673439900521455039,

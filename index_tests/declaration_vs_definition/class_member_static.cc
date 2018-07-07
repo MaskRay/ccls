@@ -8,10 +8,24 @@ int Foo::foo;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
-  "usr2func": [],
+  "skipped_ranges": [],
+  "usr2func": [{
+      "usr": 15041163540773201510,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [8942920329766232482, 8942920329766232482],
+      "uses": [],
+      "callees": []
+    }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -23,12 +37,12 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [8942920329766232482],
+      "instances": [8942920329766232482, 8942920329766232482],
       "uses": []
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
       "declarations": [],
@@ -39,25 +53,22 @@ OUTPUT:
       "derived": [],
       "types": [],
       "funcs": [],
-      "vars": [{
-          "L": 8942920329766232482,
-          "R": -1
-        }],
+      "vars": [],
       "instances": [],
       "uses": ["5:5-5:8|0|1|4"]
     }],
   "usr2var": [{
       "usr": 8942920329766232482,
-      "detailed_name": "int Foo::foo",
-      "qual_name_offset": 4,
+      "detailed_name": "static int Foo::foo",
+      "qual_name_offset": 11,
       "short_name": "foo",
-      "declarations": ["2:14-2:17|15041163540773201510|2|1"],
-      "spell": "5:10-5:13|15041163540773201510|2|2",
-      "extent": "5:1-5:13|0|1|0",
-      "type": 17,
+      "declarations": ["2:14-2:17|15041163540773201510|2|513"],
+      "spell": "5:10-5:13|15041163540773201510|2|514",
+      "extent": "2:3-2:17|15041163540773201510|2|0",
+      "type": 53,
       "uses": [],
-      "kind": 8,
-      "storage": 0
+      "kind": 13,
+      "storage": 2
     }]
 }
 */

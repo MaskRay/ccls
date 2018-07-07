@@ -249,7 +249,7 @@ struct IndexFile {
   // files accepted by newer ccls.
   static const int kMinorVersion;
 
-  unsigned UID;
+  llvm::sys::fs::UniqueID UniqueID;
   std::string path;
   std::vector<std::string> args;
   int64_t last_write_time = 0;
@@ -275,7 +275,8 @@ struct IndexFile {
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 
-  IndexFile(unsigned UID, const std::string& path, const std::string& contents);
+  IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
+            const std::string &contents);
 
   IndexFunc& ToFunc(Usr usr);
   IndexType& ToType(Usr usr);

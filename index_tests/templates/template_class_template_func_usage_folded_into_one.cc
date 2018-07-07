@@ -13,26 +13,26 @@ int b = Foo<bool>::foo<double>();
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 9034026360701857235,
       "detailed_name": "static int Foo::foo()",
       "qual_name_offset": 11,
       "short_name": "foo",
-      "kind": 254,
-      "storage": 2,
+      "kind": 6,
+      "storage": 0,
       "declarations": [],
-      "spell": "4:14-4:17|10528472276654770367|2|2",
+      "spell": "4:14-4:17|10528472276654770367|2|514",
       "extent": "4:3-6:4|10528472276654770367|2|0",
-      "declaring_type": 10528472276654770367,
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["9:19-9:22|0|1|32", "10:20-10:23|0|1|32"],
+      "uses": ["9:19-9:22|10528472276654770367|2|36", "10:20-10:23|10528472276654770367|2|36"],
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -48,10 +48,10 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 10528472276654770367,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo {}",
+      "qual_name_offset": 7,
       "short_name": "Foo",
-      "kind": 5,
+      "kind": 23,
       "declarations": [],
       "spell": "2:8-2:11|0|1|2",
       "extent": "2:1-7:2|0|1|0",
@@ -73,7 +73,7 @@ OUTPUT:
       "declarations": [],
       "spell": "10:5-10:6|0|1|2",
       "extent": "10:1-10:33|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -86,7 +86,7 @@ OUTPUT:
       "declarations": [],
       "spell": "9:5-9:6|0|1|2",
       "extent": "9:1-9:31|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 0

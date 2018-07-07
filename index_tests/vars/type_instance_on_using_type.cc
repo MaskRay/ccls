@@ -10,7 +10,7 @@ void Foo() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4654328188330986029,
       "detailed_name": "void Foo()",
@@ -24,14 +24,14 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [6975456769752895964],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
       "usr": 4750332761459066907,
-      "detailed_name": "S",
-      "qual_name_offset": 0,
+      "detailed_name": "struct S {}",
+      "qual_name_offset": 7,
       "short_name": "S",
       "kind": 23,
       "declarations": [],
@@ -47,11 +47,10 @@ OUTPUT:
       "uses": ["2:11-2:12|0|1|4"]
     }, {
       "usr": 7434820806199665424,
-      "detailed_name": "F",
-      "qual_name_offset": 0,
+      "detailed_name": "using F = S",
+      "qual_name_offset": 6,
       "short_name": "F",
       "kind": 252,
-      "hover": "using F = S",
       "declarations": [],
       "spell": "2:7-2:8|0|1|2",
       "extent": "2:1-2:12|0|1|0",
@@ -62,7 +61,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [6975456769752895964],
-      "uses": ["2:7-2:8|0|1|4", "4:3-4:4|0|1|4"]
+      "uses": ["4:3-4:4|0|1|4"]
     }],
   "usr2var": [{
       "usr": 6975456769752895964,

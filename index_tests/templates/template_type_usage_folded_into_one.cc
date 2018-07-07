@@ -8,12 +8,12 @@ Foo<bool> b;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
       "usr": 10528472276654770367,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
       "declarations": [],
@@ -31,7 +31,7 @@ OUTPUT:
   "usr2var": [{
       "usr": 12028309045033782423,
       "detailed_name": "Foo<bool> b",
-      "qual_name_offset": 10,
+      "qual_name_offset": 4,
       "short_name": "b",
       "declarations": [],
       "spell": "5:11-5:12|0|1|2",

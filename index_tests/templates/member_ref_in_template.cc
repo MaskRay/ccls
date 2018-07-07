@@ -24,7 +24,7 @@ EXTRA_FLAGS:
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 6875364467121018690,
       "detailed_name": "void foo()",
@@ -42,14 +42,28 @@ OUTPUT:
       "uses": [],
       "callees": []
     }, {
+      "usr": 8402783583255987702,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [5866801090710377175],
+      "uses": [],
+      "callees": []
+    }, {
       "usr": 8905286151237717330,
       "detailed_name": "void C::bar()",
       "qual_name_offset": 5,
       "short_name": "bar",
       "kind": 6,
       "storage": 0,
-      "declarations": ["4:8-4:11|8402783583255987702|2|1"],
-      "declaring_type": 8402783583255987702,
+      "declarations": ["4:8-4:11|8402783583255987702|2|513"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
@@ -58,10 +72,10 @@ OUTPUT:
     }],
   "usr2type": [{
       "usr": 8402783583255987702,
-      "detailed_name": "C",
-      "qual_name_offset": 0,
+      "detailed_name": "struct C {}",
+      "qual_name_offset": 7,
       "short_name": "C",
-      "kind": 5,
+      "kind": 23,
       "declarations": [],
       "spell": "2:8-2:9|0|1|2",
       "extent": "2:1-5:2|0|1|0",
@@ -76,23 +90,6 @@ OUTPUT:
         }],
       "instances": [],
       "uses": []
-    }, {
-      "usr": 14750650276757822712,
-      "detailed_name": "T",
-      "qual_name_offset": 0,
-      "short_name": "T",
-      "kind": 26,
-      "declarations": [],
-      "spell": "1:17-1:18|0|1|2",
-      "extent": "1:11-1:18|0|1|0",
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [],
-      "uses": ["3:3-3:4|0|1|4"]
     }],
   "usr2var": [{
       "usr": 5866801090710377175,
@@ -100,7 +97,7 @@ OUTPUT:
       "qual_name_offset": 2,
       "short_name": "x",
       "declarations": [],
-      "spell": "3:5-3:6|8402783583255987702|2|2",
+      "spell": "3:5-3:6|8402783583255987702|2|514",
       "extent": "3:3-3:6|8402783583255987702|2|0",
       "type": 0,
       "uses": [],

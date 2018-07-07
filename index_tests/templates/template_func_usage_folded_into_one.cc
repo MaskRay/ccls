@@ -13,14 +13,14 @@ int b = foo<bool>();
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 326583651986177228,
       "detailed_name": "static int foo()",
       "qual_name_offset": 11,
       "short_name": "foo",
       "kind": 12,
-      "storage": 2,
+      "storage": 0,
       "declarations": [],
       "spell": "2:12-2:15|0|1|2",
       "extent": "2:1-4:2|0|1|0",
@@ -28,11 +28,11 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["6:9-6:12|0|1|32", "7:9-7:12|0|1|32"],
+      "uses": ["6:9-6:12|0|1|36", "7:9-7:12|0|1|36"],
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -56,7 +56,7 @@ OUTPUT:
       "declarations": [],
       "spell": "7:5-7:6|0|1|2",
       "extent": "7:1-7:20|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -69,7 +69,7 @@ OUTPUT:
       "declarations": [],
       "spell": "6:5-6:6|0|1|2",
       "extent": "6:1-6:19|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 0

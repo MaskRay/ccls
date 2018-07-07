@@ -10,7 +10,7 @@ void usage() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 6767773193109753523,
       "detailed_name": "void usage()",
@@ -24,9 +24,9 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [16229832321010999607],
+      "vars": [],
       "uses": [],
-      "callees": ["7:6-7:9|17922201480358737771|3|32"]
+      "callees": []
     }, {
       "usr": 17922201480358737771,
       "detailed_name": "void Foo::foo()",
@@ -34,18 +34,18 @@ OUTPUT:
       "short_name": "foo",
       "kind": 6,
       "storage": 0,
-      "declarations": ["2:8-2:11|15041163540773201510|2|1"],
-      "declaring_type": 15041163540773201510,
+      "declarations": ["2:8-2:11|15041163540773201510|2|513"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["7:6-7:9|6767773193109753523|3|32"],
+      "uses": ["7:6-7:9|15041163540773201510|2|8228"],
       "callees": []
     }],
   "usr2type": [{
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo {}",
+      "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
       "declarations": [],
@@ -70,7 +70,7 @@ OUTPUT:
       "spell": "6:8-6:9|6767773193109753523|3|2",
       "extent": "6:3-6:19|6767773193109753523|3|0",
       "type": 15041163540773201510,
-      "uses": ["7:3-7:4|6767773193109753523|3|4"],
+      "uses": ["7:3-7:4|6767773193109753523|3|12"],
       "kind": 13,
       "storage": 0
     }]

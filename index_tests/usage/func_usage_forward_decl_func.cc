@@ -7,7 +7,7 @@ void usage() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4259594751088586730,
       "detailed_name": "void foo()",
@@ -20,7 +20,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:6|6767773193109753523|3|32"],
+      "uses": ["4:3-4:6|0|1|8228"],
       "callees": []
     }, {
       "usr": 6767773193109753523,
@@ -37,7 +37,7 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["4:3-4:6|4259594751088586730|3|32"]
+      "callees": []
     }],
   "usr2type": [],
   "usr2var": []

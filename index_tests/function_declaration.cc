@@ -4,7 +4,7 @@ void foo(int a, int b);
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 2747674671862363334,
       "detailed_name": "void foo(int a, int b)",

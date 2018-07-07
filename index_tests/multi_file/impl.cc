@@ -8,8 +8,22 @@ void Impl() {
 OUTPUT: header.h
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
+      "usr": 4481210672785600703,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [6141718166919284735, 17716334512218775320, 7285646116511901840],
+      "uses": [],
+      "callees": []
+    }, {
       "usr": 11650481237659640387,
       "detailed_name": "void Foo1()",
       "qual_name_offset": 5,
@@ -27,7 +41,7 @@ OUTPUT: header.h
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -43,10 +57,10 @@ OUTPUT: header.h
       "uses": []
     }, {
       "usr": 529393482671181129,
-      "detailed_name": "Foo2",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo2 {}",
+      "qual_name_offset": 7,
       "short_name": "Foo2",
-      "kind": 5,
+      "kind": 23,
       "declarations": [],
       "spell": "13:8-13:12|0|1|2",
       "extent": "13:1-13:15|0|1|0",
@@ -60,11 +74,10 @@ OUTPUT: header.h
       "uses": []
     }, {
       "usr": 619345544228965342,
-      "detailed_name": "Foo0",
-      "qual_name_offset": 0,
+      "detailed_name": "using Foo0 = SameFileDerived",
+      "qual_name_offset": 6,
       "short_name": "Foo0",
       "kind": 252,
-      "hover": "using Foo0 = SameFileDerived",
       "declarations": [],
       "spell": "7:7-7:11|0|1|2",
       "extent": "7:1-7:29|0|1|0",
@@ -75,11 +88,11 @@ OUTPUT: header.h
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["7:7-7:11|0|1|4"]
+      "uses": []
     }, {
       "usr": 4481210672785600703,
-      "detailed_name": "Foo3",
-      "qual_name_offset": 0,
+      "detailed_name": "enum Foo3 {\n}",
+      "qual_name_offset": 5,
       "short_name": "Foo3",
       "kind": 10,
       "declarations": [],
@@ -95,11 +108,11 @@ OUTPUT: header.h
       "uses": []
     }, {
       "usr": 8420119006782424779,
-      "detailed_name": "Base",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Base {}",
+      "qual_name_offset": 7,
       "short_name": "Base",
       "kind": 23,
-      "declarations": ["5:26-5:30|0|1|4"],
+      "declarations": [],
       "spell": "3:8-3:12|0|1|2",
       "extent": "3:1-3:15|0|1|0",
       "alias_of": 0,
@@ -109,11 +122,11 @@ OUTPUT: header.h
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:26-5:30|0|1|4"]
+      "uses": ["5:26-5:30|0|1|1028"]
     }, {
       "usr": 16750616846959666305,
-      "detailed_name": "SameFileDerived",
-      "qual_name_offset": 0,
+      "detailed_name": "struct SameFileDerived : Base {}",
+      "qual_name_offset": 7,
       "short_name": "SameFileDerived",
       "kind": 23,
       "declarations": [],
@@ -136,58 +149,58 @@ OUTPUT: header.h
       "declarations": [],
       "spell": "17:5-17:9|0|1|2",
       "extent": "17:1-17:9|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 0
     }, {
       "usr": 6141718166919284735,
-      "detailed_name": "Foo3::A",
+      "detailed_name": "A",
       "qual_name_offset": 0,
       "short_name": "A",
-      "hover": "Foo3::A = 0",
+      "hover": "A = 0",
       "declarations": [],
-      "spell": "15:13-15:14|4481210672785600703|2|2",
+      "spell": "15:13-15:14|4481210672785600703|2|514",
       "extent": "15:13-15:14|4481210672785600703|2|0",
-      "type": 4481210672785600703,
+      "type": 0,
       "uses": [],
       "kind": 22,
       "storage": 0
     }, {
       "usr": 7285646116511901840,
-      "detailed_name": "Foo3::C",
+      "detailed_name": "C",
       "qual_name_offset": 0,
       "short_name": "C",
-      "hover": "Foo3::C = 2",
+      "hover": "C = 2",
       "declarations": [],
-      "spell": "15:19-15:20|4481210672785600703|2|2",
+      "spell": "15:19-15:20|4481210672785600703|2|514",
       "extent": "15:19-15:20|4481210672785600703|2|0",
-      "type": 4481210672785600703,
+      "type": 0,
       "uses": [],
       "kind": 22,
       "storage": 0
     }, {
       "usr": 8395885290297540138,
-      "detailed_name": "int Foo5",
-      "qual_name_offset": 4,
+      "detailed_name": "static int Foo5",
+      "qual_name_offset": 11,
       "short_name": "Foo5",
       "declarations": [],
       "spell": "18:12-18:16|0|1|2",
       "extent": "18:1-18:16|0|1|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 2
     }, {
       "usr": 17716334512218775320,
-      "detailed_name": "Foo3::B",
+      "detailed_name": "B",
       "qual_name_offset": 0,
       "short_name": "B",
-      "hover": "Foo3::B = 1",
+      "hover": "B = 1",
       "declarations": [],
-      "spell": "15:16-15:17|4481210672785600703|2|2",
+      "spell": "15:16-15:17|4481210672785600703|2|514",
       "extent": "15:16-15:17|4481210672785600703|2|0",
-      "type": 4481210672785600703,
+      "type": 0,
       "uses": [],
       "kind": 22,
       "storage": 0
@@ -195,11 +208,8 @@ OUTPUT: header.h
 }
 OUTPUT: impl.cc
 {
-  "includes": [{
-      "line": 0,
-      "resolved_path": "&header.h"
-    }],
-  "skipped_by_preprocessor": [],
+  "includes": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 5817708529036841195,
       "detailed_name": "void Impl()",
@@ -215,20 +225,20 @@ OUTPUT: impl.cc
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["4:3-4:7|11650481237659640387|3|32"]
+      "callees": []
     }, {
       "usr": 11650481237659640387,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
+      "detailed_name": "void Foo1()",
+      "qual_name_offset": 5,
+      "short_name": "Foo1",
+      "kind": 12,
       "storage": 0,
       "declarations": [],
       "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:7|5817708529036841195|3|32"],
+      "uses": ["4:3-4:7|0|1|8228"],
       "callees": []
     }],
   "usr2type": [],

@@ -9,10 +9,15 @@
 #include <string>
 #include <vector>
 
+namespace llvm {
+class StringRef;
+}
+
 void TrimInPlace(std::string& s);
 std::string Trim(std::string s);
 
 uint64_t HashUsr(std::string_view s);
+uint64_t HashUsr(llvm::StringRef s);
 
 // Returns true if |value| starts/ends with |start| or |ending|.
 bool StartsWith(std::string_view value, std::string_view start);

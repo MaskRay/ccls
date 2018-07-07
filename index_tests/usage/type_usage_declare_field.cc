@@ -10,12 +10,26 @@ struct Foo {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
-  "usr2func": [],
+  "skipped_ranges": [],
+  "usr2func": [{
+      "usr": 15041163540773201510,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [14314859014962085433, 14727441168849658842],
+      "uses": [],
+      "callees": []
+    }],
   "usr2type": [{
       "usr": 8508299082070213750,
-      "detailed_name": "ImplementedType",
-      "qual_name_offset": 0,
+      "detailed_name": "struct ImplementedType {}",
+      "qual_name_offset": 7,
       "short_name": "ImplementedType",
       "kind": 23,
       "declarations": [],
@@ -31,8 +45,8 @@ OUTPUT:
       "uses": ["6:3-6:18|0|1|4"]
     }, {
       "usr": 13749354388332789217,
-      "detailed_name": "ForwardType",
-      "qual_name_offset": 0,
+      "detailed_name": "struct ForwardType",
+      "qual_name_offset": 7,
       "short_name": "ForwardType",
       "kind": 23,
       "declarations": ["1:8-1:19|0|1|1"],
@@ -46,8 +60,8 @@ OUTPUT:
       "uses": ["5:3-5:14|0|1|4"]
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo {}",
+      "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
       "declarations": [],
@@ -70,11 +84,11 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 14314859014962085433,
-      "detailed_name": "ForwardType *Foo::a",
-      "qual_name_offset": 13,
+      "detailed_name": "ForwFoo::ardType *a",
+      "qual_name_offset": 0,
       "short_name": "a",
       "declarations": [],
-      "spell": "5:16-5:17|15041163540773201510|2|2",
+      "spell": "5:16-5:17|15041163540773201510|2|514",
       "extent": "5:3-5:17|15041163540773201510|2|0",
       "type": 13749354388332789217,
       "uses": [],
@@ -86,7 +100,7 @@ OUTPUT:
       "qual_name_offset": 16,
       "short_name": "b",
       "declarations": [],
-      "spell": "6:19-6:20|15041163540773201510|2|2",
+      "spell": "6:19-6:20|15041163540773201510|2|514",
       "extent": "6:3-6:20|15041163540773201510|2|0",
       "type": 8508299082070213750,
       "uses": [],

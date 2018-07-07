@@ -13,7 +13,7 @@ void accept3(Foo3*) {}
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 558620830317390922,
       "detailed_name": "void accept1(Foo1 *)",
@@ -80,27 +80,11 @@ OUTPUT:
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "declarations": [],
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [],
-      "uses": []
-    }, {
       "usr": 1544499294580512394,
-      "detailed_name": "Foo1",
-      "qual_name_offset": 0,
+      "detailed_name": "using Foo1 = Foo *",
+      "qual_name_offset": 6,
       "short_name": "Foo1",
       "kind": 252,
-      "hover": "using Foo1 = Foo*",
       "declarations": [],
       "spell": "2:7-2:11|0|1|2",
       "extent": "2:1-2:18|0|1|0",
@@ -111,29 +95,28 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["2:7-2:11|0|1|4", "4:14-4:18|0|1|4", "8:14-8:18|0|1|4"]
+      "uses": ["4:14-4:18|0|1|4", "8:14-8:18|0|1|4"]
     }, {
       "usr": 2638219001294786365,
-      "detailed_name": "Foo4",
-      "qual_name_offset": 0,
+      "detailed_name": "using Foo4 = int",
+      "qual_name_offset": 6,
       "short_name": "Foo4",
       "kind": 252,
-      "hover": "using Foo4 = int",
       "declarations": [],
       "spell": "5:7-5:11|0|1|2",
       "extent": "5:1-5:17|0|1|0",
-      "alias_of": 17,
+      "alias_of": 0,
       "bases": [],
       "derived": [],
       "types": [],
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:7-5:11|0|1|4"]
+      "uses": []
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo",
+      "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
       "declarations": ["1:8-1:11|0|1|1"],
@@ -147,11 +130,10 @@ OUTPUT:
       "uses": ["2:14-2:17|0|1|4", "3:9-3:12|0|1|4", "7:13-7:16|0|1|4"]
     }, {
       "usr": 15466821155413653804,
-      "detailed_name": "Foo2",
-      "qual_name_offset": 0,
+      "detailed_name": "typedef Foo Foo2",
+      "qual_name_offset": 12,
       "short_name": "Foo2",
       "kind": 252,
-      "hover": "typedef Foo Foo2",
       "declarations": [],
       "spell": "3:13-3:17|0|1|2",
       "extent": "3:1-3:17|0|1|0",
@@ -162,14 +144,13 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["3:13-3:17|0|1|4", "9:14-9:18|0|1|4"]
+      "uses": ["9:14-9:18|0|1|4"]
     }, {
       "usr": 17897026942631673064,
-      "detailed_name": "Foo3",
-      "qual_name_offset": 0,
+      "detailed_name": "using Foo3 = Foo1",
+      "qual_name_offset": 6,
       "short_name": "Foo3",
       "kind": 252,
-      "hover": "using Foo3 = Foo1",
       "declarations": [],
       "spell": "4:7-4:11|0|1|2",
       "extent": "4:1-4:18|0|1|0",
@@ -180,7 +161,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:7-4:11|0|1|4", "10:14-10:18|0|1|4"]
+      "uses": ["10:14-10:18|0|1|4"]
     }],
   "usr2var": []
 }

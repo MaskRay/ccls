@@ -7,18 +7,18 @@
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [],
   "usr2var": [{
-      "usr": 11674328179498211370,
+      "usr": 14219599523415845943,
       "detailed_name": "FOO",
       "qual_name_offset": 0,
       "short_name": "FOO",
       "hover": "#define FOO",
       "declarations": [],
       "spell": "2:9-2:12|0|1|2",
-      "extent": "2:9-2:12|0|1|0",
+      "extent": "2:9-2:12|0|1|2",
       "type": 0,
       "uses": [],
       "kind": 255,

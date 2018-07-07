@@ -15,7 +15,7 @@ void foo() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 468307235068920063,
       "detailed_name": "void called()",
@@ -28,7 +28,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["5:3-5:9|10177235824697315808|3|32"],
+      "uses": ["5:3-5:9|0|1|8228"],
       "callees": []
     }, {
       "usr": 4259594751088586730,
@@ -45,7 +45,7 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["9:3-9:9|10177235824697315808|3|32"]
+      "callees": []
     }, {
       "usr": 10177235824697315808,
       "detailed_name": "void caller()",
@@ -60,8 +60,8 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["9:3-9:9|4259594751088586730|3|32"],
-      "callees": ["5:3-5:9|468307235068920063|3|32"]
+      "uses": ["9:3-9:9|0|1|8228"],
+      "callees": []
     }],
   "usr2type": [],
   "usr2var": []

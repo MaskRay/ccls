@@ -3,10 +3,10 @@ extern int global;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -23,11 +23,11 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 9937941849651546906,
-      "detailed_name": "int global",
-      "qual_name_offset": 4,
+      "detailed_name": "extern int global",
+      "qual_name_offset": 11,
       "short_name": "global",
       "declarations": ["1:12-1:18|0|1|1"],
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 13,
       "storage": 1

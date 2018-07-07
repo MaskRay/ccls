@@ -172,7 +172,8 @@ bool TryReplaceDef(llvm::SmallVectorImpl<Q>& def_list, Q&& def) {
 IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
                                      IndexFile* current) {
   IndexUpdate r;
-  static IndexFile empty(0u, current->path, "<empty>");
+  static IndexFile empty(llvm::sys::fs::UniqueID(0, 0), current->path,
+                         "<empty>");
   if (!previous)
     previous = &empty;
 

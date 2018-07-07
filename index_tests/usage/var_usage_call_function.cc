@@ -11,7 +11,7 @@ void caller() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 468307235068920063,
       "detailed_name": "void called()",
@@ -26,7 +26,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:13-4:19|11404881820527069090|3|32", "7:3-7:9|11404881820527069090|3|32"],
+      "uses": ["4:13-4:19|0|1|132", "7:3-7:9|0|1|8228"],
       "callees": []
     }, {
       "usr": 11404881820527069090,
@@ -41,22 +41,22 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [9121974011454213596],
+      "vars": [],
       "uses": [],
-      "callees": ["4:13-4:19|468307235068920063|3|32", "4:13-4:19|468307235068920063|3|32", "7:3-7:9|468307235068920063|3|32"]
+      "callees": []
     }],
   "usr2type": [],
   "usr2var": [{
       "usr": 9121974011454213596,
-      "detailed_name": "void (*)() x",
-      "qual_name_offset": 11,
+      "detailed_name": "auto x",
+      "qual_name_offset": 5,
       "short_name": "x",
-      "hover": "void (*)() x = &called",
+      "hover": "auto x = &called",
       "declarations": [],
       "spell": "4:8-4:9|11404881820527069090|3|2",
       "extent": "4:3-4:19|11404881820527069090|3|0",
       "type": 0,
-      "uses": ["5:3-5:4|11404881820527069090|3|4"],
+      "uses": ["5:3-5:4|11404881820527069090|3|8236"],
       "kind": 13,
       "storage": 0
     }]

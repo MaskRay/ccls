@@ -8,7 +8,7 @@ void impl() {
 OUTPUT: simple_header.h
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 16236105532929924676,
       "detailed_name": "void header()",
@@ -29,11 +29,8 @@ OUTPUT: simple_header.h
 }
 OUTPUT: simple_impl.cc
 {
-  "includes": [{
-      "line": 0,
-      "resolved_path": "&simple_header.h"
-    }],
-  "skipped_by_preprocessor": [],
+  "includes": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 3373269392705484958,
       "detailed_name": "void impl()",
@@ -49,20 +46,20 @@ OUTPUT: simple_impl.cc
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["4:3-4:9|16236105532929924676|3|32"]
+      "callees": []
     }, {
       "usr": 16236105532929924676,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
+      "detailed_name": "void header()",
+      "qual_name_offset": 5,
+      "short_name": "header",
+      "kind": 12,
       "storage": 0,
       "declarations": [],
       "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:9|3373269392705484958|3|32"],
+      "uses": ["4:3-4:9|0|1|8228"],
       "callees": []
     }],
   "usr2type": [],

@@ -426,7 +426,8 @@ std::unique_ptr<IndexFile> Deserialize(
         if (major != IndexFile::kMajorVersion ||
             minor != IndexFile::kMinorVersion)
           throw std::invalid_argument("Invalid version");
-        file = std::make_unique<IndexFile>(0u, path, file_content);
+        file = std::make_unique<IndexFile>(sys::fs::UniqueID(0, 0), path,
+                                           file_content);
         Reflect(reader, *file);
       } catch (std::invalid_argument& e) {
         LOG_S(INFO) << "failed to deserialize '" << path
@@ -450,7 +451,8 @@ std::unique_ptr<IndexFile> Deserialize(
       if (reader.HasParseError())
         return nullptr;
 
-      file = std::make_unique<IndexFile>(0u, path, file_content);
+      file = std::make_unique<IndexFile>(sys::fs::UniqueID(0, 0), path,
+                                         file_content);
       JsonReader json_reader{&reader};
       try {
         Reflect(json_reader, *file);

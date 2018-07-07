@@ -9,12 +9,26 @@ Foo x = Foo::A;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
-  "usr2func": [],
+  "skipped_ranges": [],
+  "usr2func": [{
+      "usr": 16985894625255407295,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [439339022761937396, 15962370213938840720],
+      "uses": [],
+      "callees": []
+    }],
   "usr2type": [{
       "usr": 16985894625255407295,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "enum class Foo : int {\n}",
+      "qual_name_offset": 11,
       "short_name": "Foo",
       "kind": 10,
       "declarations": [],
@@ -36,10 +50,10 @@ OUTPUT:
       "short_name": "A",
       "hover": "Foo::A = 0",
       "declarations": [],
-      "spell": "2:3-2:4|16985894625255407295|2|2",
+      "spell": "2:3-2:4|16985894625255407295|2|514",
       "extent": "2:3-2:4|16985894625255407295|2|0",
-      "type": 16985894625255407295,
-      "uses": ["6:14-6:15|0|1|4"],
+      "type": 0,
+      "uses": ["6:14-6:15|16985894625255407295|2|4"],
       "kind": 22,
       "storage": 0
     }, {
@@ -57,14 +71,14 @@ OUTPUT:
       "storage": 0
     }, {
       "usr": 15962370213938840720,
-      "detailed_name": "Foo::B",
+      "detailed_name": "Foo::B = 20",
       "qual_name_offset": 0,
       "short_name": "B",
-      "hover": "Foo::B = 20",
+      "hover": "Foo::B = 20 = 20",
       "declarations": [],
-      "spell": "3:3-3:4|16985894625255407295|2|2",
+      "spell": "3:3-3:4|16985894625255407295|2|514",
       "extent": "3:3-3:9|16985894625255407295|2|0",
-      "type": 16985894625255407295,
+      "type": 0,
       "uses": [],
       "kind": 22,
       "storage": 0

@@ -34,12 +34,12 @@ EXTRA_FLAGS:
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": ["12:1-28:7"],
+  "skipped_ranges": ["12:1-29:1"],
   "usr2func": [],
   "usr2type": [{
       "usr": 6697181287623958829,
-      "detailed_name": "A",
-      "qual_name_offset": 0,
+      "detailed_name": "enum A {\n}",
+      "qual_name_offset": 5,
       "short_name": "A",
       "kind": 10,
       "declarations": [],
@@ -54,24 +54,9 @@ OUTPUT:
       "instances": [16721564935990383768],
       "uses": ["7:1-7:2|0|1|4", "7:11-7:12|0|1|4"]
     }, {
-      "usr": 11919899838872947844,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "declarations": [],
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [],
-      "uses": ["5:1-5:2|0|1|4", "5:9-5:10|0|1|4"]
-    }, {
       "usr": 13892793056005362145,
-      "detailed_name": "B",
-      "qual_name_offset": 0,
+      "detailed_name": "enum B {\n}",
+      "qual_name_offset": 5,
       "short_name": "B",
       "kind": 10,
       "declarations": [],
@@ -96,7 +81,7 @@ OUTPUT:
       "spell": "5:3-5:6|0|1|2",
       "extent": "5:1-5:12|0|1|0",
       "type": 0,
-      "uses": ["7:7-7:10|0|1|4", "8:7-8:10|0|1|4"],
+      "uses": ["7:7-7:10|0|1|12", "8:7-8:10|0|1|12"],
       "kind": 13,
       "storage": 0
     }, {
