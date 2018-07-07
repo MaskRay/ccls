@@ -8,8 +8,8 @@
 #include <clang/Basic/FileManager.h>
 
 #include <functional>
+#include <map>
 #include <mutex>
-#include <unordered_map>
 #include <vector>
 
 struct IndexFile;
@@ -66,7 +66,7 @@ struct FileConsumer {
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
 
  private:
-  std::unordered_map<unsigned, std::unique_ptr<IndexFile>> local_;
+  std::map<llvm::sys::fs::UniqueID, std::unique_ptr<IndexFile>> local_;
   VFS* vfs_;
   std::string parse_file_;
   int thread_id_;

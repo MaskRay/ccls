@@ -4,7 +4,7 @@ void foo() {}
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4259594751088586730,
       "detailed_name": "void foo()",

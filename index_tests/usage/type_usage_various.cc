@@ -13,7 +13,7 @@ extern Foo foo;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 9488177941273031343,
       "detailed_name": "Foo *Foo::make()",
@@ -21,20 +21,20 @@ OUTPUT:
       "short_name": "make",
       "kind": 6,
       "storage": 0,
-      "declarations": ["2:8-2:12|15041163540773201510|2|1"],
-      "spell": "5:11-5:15|15041163540773201510|2|2",
-      "extent": "5:1-8:2|0|1|0",
-      "declaring_type": 15041163540773201510,
+      "declarations": ["2:8-2:12|15041163540773201510|2|513"],
+      "spell": "5:11-5:15|15041163540773201510|2|514",
+      "extent": "2:3-2:14|15041163540773201510|2|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [16380484338511689669],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
       "declarations": [],
@@ -51,8 +51,8 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 14455976355866885943,
-      "detailed_name": "Foo foo",
-      "qual_name_offset": 4,
+      "detailed_name": "extern Foo foo",
+      "qual_name_offset": 11,
       "short_name": "foo",
       "declarations": ["10:12-10:15|0|1|1"],
       "type": 15041163540773201510,

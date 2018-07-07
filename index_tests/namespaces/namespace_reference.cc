@@ -13,7 +13,7 @@ void Runner() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 631910859630953711,
       "detailed_name": "void Runner()",
@@ -29,7 +29,21 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["7:7-7:13|17328473273923617489|3|32", "9:3-9:9|17328473273923617489|3|32"]
+      "callees": []
+    }, {
+      "usr": 11072669167287398027,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [12898699035586282159],
+      "uses": [],
+      "callees": []
     }, {
       "usr": 17328473273923617489,
       "detailed_name": "void ns::Accept(int a)",
@@ -38,17 +52,17 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": [],
-      "spell": "3:8-3:14|11072669167287398027|2|2",
+      "spell": "3:8-3:14|11072669167287398027|2|514",
       "extent": "3:3-3:24|11072669167287398027|2|0",
-      "declaring_type": 11072669167287398027,
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [3649375698083002347],
-      "uses": ["7:7-7:13|631910859630953711|3|32", "9:3-9:9|631910859630953711|3|32"],
+      "vars": [],
+      "uses": ["7:7-7:13|11072669167287398027|2|8228", "9:3-9:9|11072669167287398027|2|8228"],
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -64,39 +78,19 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 11072669167287398027,
-      "detailed_name": "ns",
-      "qual_name_offset": 0,
+      "detailed_name": "namespace ns {\n}",
+      "qual_name_offset": 10,
       "short_name": "ns",
       "kind": 3,
-      "declarations": [],
-      "spell": "1:11-1:13|0|1|2",
-      "extent": "1:1-4:2|0|1|0",
+      "declarations": ["1:11-1:13|0|1|1"],
       "alias_of": 0,
-      "bases": [13838176792705659279],
+      "bases": [],
       "derived": [],
       "types": [],
       "funcs": [17328473273923617489],
-      "vars": [{
-          "L": 12898699035586282159,
-          "R": -1
-        }],
-      "instances": [],
-      "uses": ["1:11-1:13|0|1|4", "7:3-7:5|631910859630953711|3|4", "7:14-7:16|631910859630953711|3|4", "8:19-8:21|631910859630953711|3|4"]
-    }, {
-      "usr": 13838176792705659279,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "declarations": [],
-      "alias_of": 0,
-      "bases": [],
-      "derived": [11072669167287398027],
-      "types": [],
-      "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": []
+      "uses": ["7:3-7:5|0|1|4", "7:14-7:16|0|1|4", "8:19-8:21|0|1|4"]
     }],
   "usr2var": [{
       "usr": 3649375698083002347,
@@ -104,9 +98,9 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "a",
       "declarations": [],
-      "spell": "3:19-3:20|17328473273923617489|3|2",
+      "spell": "3:19-3:20|17328473273923617489|3|514",
       "extent": "3:15-3:20|17328473273923617489|3|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 253,
       "storage": 0
@@ -116,10 +110,10 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "Foo",
       "declarations": [],
-      "spell": "2:7-2:10|11072669167287398027|2|2",
+      "spell": "2:7-2:10|11072669167287398027|2|514",
       "extent": "2:3-2:10|11072669167287398027|2|0",
-      "type": 17,
-      "uses": ["7:18-7:21|631910859630953711|3|4", "9:10-9:13|631910859630953711|3|4"],
+      "type": 53,
+      "uses": ["7:18-7:21|11072669167287398027|2|12", "9:10-9:13|11072669167287398027|2|12"],
       "kind": 13,
       "storage": 0
     }]

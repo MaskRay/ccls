@@ -4,12 +4,12 @@ static Type t;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
       "usr": 13487927231218873822,
-      "detailed_name": "Type",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Type {}",
+      "qual_name_offset": 7,
       "short_name": "Type",
       "kind": 23,
       "declarations": [],
@@ -26,8 +26,8 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 6601831367240627080,
-      "detailed_name": "Type t",
-      "qual_name_offset": 5,
+      "detailed_name": "static Type t",
+      "qual_name_offset": 0,
       "short_name": "t",
       "declarations": [],
       "spell": "2:13-2:14|0|1|2",

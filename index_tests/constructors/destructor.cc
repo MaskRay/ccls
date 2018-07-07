@@ -17,7 +17,7 @@ void foo() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 3385168158331140247,
       "detailed_name": "Foo::Foo()",
@@ -26,13 +26,13 @@ OUTPUT:
       "kind": 9,
       "storage": 0,
       "declarations": [],
-      "spell": "3:3-3:6|15041163540773201510|2|2",
+      "spell": "3:3-3:6|15041163540773201510|2|514",
       "extent": "3:3-3:11|15041163540773201510|2|0",
-      "declaring_type": 15041163540773201510,
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:7-8:8|4259594751088586730|3|288"],
+      "uses": ["8:7-8:8|15041163540773201510|2|8228"],
       "callees": []
     }, {
       "usr": 4259594751088586730,
@@ -47,9 +47,9 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [1893354193220338759],
+      "vars": [],
       "uses": [],
-      "callees": ["8:7-8:8|3385168158331140247|3|288", "8:7-8:8|3385168158331140247|3|288"]
+      "callees": []
     }, {
       "usr": 7440261702884428359,
       "detailed_name": "Foo::~Foo() noexcept",
@@ -58,9 +58,9 @@ OUTPUT:
       "kind": 6,
       "storage": 0,
       "declarations": [],
-      "spell": "4:3-4:7|15041163540773201510|2|2",
+      "spell": "4:3-4:4|15041163540773201510|2|514",
       "extent": "4:3-4:12|15041163540773201510|2|0",
-      "declaring_type": 15041163540773201510,
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
@@ -69,11 +69,11 @@ OUTPUT:
     }],
   "usr2type": [{
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
-      "declarations": ["3:3-3:6|0|1|4", "4:4-4:7|0|1|4"],
+      "declarations": [],
       "spell": "1:7-1:10|0|1|2",
       "extent": "1:1-5:2|0|1|0",
       "alias_of": 0,
@@ -83,7 +83,7 @@ OUTPUT:
       "funcs": [3385168158331140247, 7440261702884428359],
       "vars": [],
       "instances": [1893354193220338759],
-      "uses": ["3:3-3:6|15041163540773201510|2|4", "8:3-8:6|0|1|4"]
+      "uses": ["3:3-3:6|0|1|4", "4:4-4:7|0|1|4", "8:3-8:6|0|1|4"]
     }],
   "usr2var": [{
       "usr": 1893354193220338759,

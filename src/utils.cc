@@ -38,6 +38,10 @@ uint64_t HashUsr(std::string_view s) {
   return ret;
 }
 
+uint64_t HashUsr(llvm::StringRef s) {
+  return HashUsr(std::string_view(s.data(), s.size()));
+}
+
 bool EndsWith(std::string_view s, std::string_view suffix) {
   return s.size() >= suffix.size() &&
          std::equal(suffix.rbegin(), suffix.rend(), s.rbegin());

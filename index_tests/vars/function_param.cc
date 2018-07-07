@@ -6,7 +6,7 @@ void foo(Foo* p0, Foo* p1) {}
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 8908726657907936744,
       "detailed_name": "void foo(Foo *p0, Foo *p1)",
@@ -20,14 +20,14 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [8730439006497971620, 2525014371090380500],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo",
+      "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
       "declarations": ["1:8-1:11|0|1|1"],
@@ -46,7 +46,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "p1",
       "declarations": [],
-      "spell": "3:24-3:26|8908726657907936744|3|2",
+      "spell": "3:24-3:26|8908726657907936744|3|514",
       "extent": "3:19-3:26|8908726657907936744|3|0",
       "type": 15041163540773201510,
       "uses": [],
@@ -58,7 +58,7 @@ OUTPUT:
       "qual_name_offset": 5,
       "short_name": "p0",
       "declarations": [],
-      "spell": "3:15-3:17|8908726657907936744|3|2",
+      "spell": "3:15-3:17|8908726657907936744|3|514",
       "extent": "3:10-3:17|8908726657907936744|3|0",
       "type": 15041163540773201510,
       "uses": [],

@@ -10,7 +10,7 @@ void Foo() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4654328188330986029,
       "detailed_name": "void Foo()",
@@ -24,14 +24,14 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [16374832544037266261, 2580122838476012357],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
       "usr": 8508299082070213750,
-      "detailed_name": "ImplementedType",
-      "qual_name_offset": 0,
+      "detailed_name": "struct ImplementedType {}",
+      "qual_name_offset": 7,
       "short_name": "ImplementedType",
       "kind": 23,
       "declarations": [],
@@ -47,8 +47,8 @@ OUTPUT:
       "uses": ["6:3-6:18|0|1|4"]
     }, {
       "usr": 13749354388332789217,
-      "detailed_name": "ForwardType",
-      "qual_name_offset": 0,
+      "detailed_name": "struct ForwardType",
+      "qual_name_offset": 7,
       "short_name": "ForwardType",
       "kind": 23,
       "declarations": ["1:8-1:19|0|1|1"],
@@ -76,7 +76,7 @@ OUTPUT:
     }, {
       "usr": 16374832544037266261,
       "detailed_name": "ForwardType *a",
-      "qual_name_offset": 13,
+      "qual_name_offset": 0,
       "short_name": "a",
       "declarations": [],
       "spell": "5:16-5:17|4654328188330986029|3|2",

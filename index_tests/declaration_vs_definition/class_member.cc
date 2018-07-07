@@ -6,10 +6,24 @@ class Foo {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
-  "usr2func": [],
+  "skipped_ranges": [],
+  "usr2func": [{
+      "usr": 15041163540773201510,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [9736582033442720743],
+      "uses": [],
+      "callees": []
+    }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -25,8 +39,8 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
       "declarations": [],
@@ -50,9 +64,9 @@ OUTPUT:
       "qual_name_offset": 4,
       "short_name": "foo",
       "declarations": [],
-      "spell": "2:7-2:10|15041163540773201510|2|2",
+      "spell": "2:7-2:10|15041163540773201510|2|514",
       "extent": "2:3-2:10|15041163540773201510|2|0",
-      "type": 17,
+      "type": 53,
       "uses": [],
       "kind": 8,
       "storage": 0

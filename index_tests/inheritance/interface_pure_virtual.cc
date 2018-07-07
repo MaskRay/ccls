@@ -6,7 +6,7 @@ class IFoo {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 3277829753446788562,
       "detailed_name": "virtual void IFoo::foo() = 0",
@@ -14,10 +14,8 @@ OUTPUT:
       "short_name": "foo",
       "kind": 6,
       "storage": 0,
-      "declarations": [],
-      "spell": "2:16-2:19|9949214233977131946|2|2",
-      "extent": "2:3-2:25|9949214233977131946|2|0",
-      "declaring_type": 9949214233977131946,
+      "declarations": ["2:16-2:19|9949214233977131946|2|577"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
@@ -26,8 +24,8 @@ OUTPUT:
     }],
   "usr2type": [{
       "usr": 9949214233977131946,
-      "detailed_name": "IFoo",
-      "qual_name_offset": 0,
+      "detailed_name": "class IFoo {}",
+      "qual_name_offset": 6,
       "short_name": "IFoo",
       "kind": 5,
       "declarations": [],

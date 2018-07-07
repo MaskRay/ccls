@@ -6,7 +6,7 @@ void foo();
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 5010253035933134245,
       "detailed_name": "void (anon ns)::foo()",
@@ -15,7 +15,7 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": ["2:6-2:9|7144845543074395457|2|1"],
-      "declaring_type": 7144845543074395457,
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],

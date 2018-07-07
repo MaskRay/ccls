@@ -6,7 +6,7 @@ void foo() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 4259594751088586730,
       "detailed_name": "void foo()",
@@ -20,12 +20,12 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [14014650769929566957],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -48,8 +48,8 @@ OUTPUT:
       "declarations": [],
       "spell": "2:7-2:8|4259594751088586730|3|2",
       "extent": "2:3-2:8|4259594751088586730|3|0",
-      "type": 17,
-      "uses": ["3:3-3:4|4259594751088586730|3|4"],
+      "type": 53,
+      "uses": ["3:3-3:4|4259594751088586730|3|20"],
       "kind": 13,
       "storage": 0
     }]

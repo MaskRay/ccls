@@ -11,7 +11,7 @@ void Foo::Bar(Template<double>&) {}
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 8412238651648388423,
       "detailed_name": "void Foo::Bar(Template<double> &)",
@@ -19,10 +19,10 @@ OUTPUT:
       "short_name": "Bar",
       "kind": 6,
       "storage": 0,
-      "declarations": ["5:8-5:11|15041163540773201510|2|1"],
-      "spell": "8:11-8:14|15041163540773201510|2|2",
-      "extent": "8:1-8:36|0|1|0",
-      "declaring_type": 15041163540773201510,
+      "declarations": ["5:8-5:11|15041163540773201510|2|513"],
+      "spell": "8:11-8:14|15041163540773201510|2|514",
+      "extent": "5:3-5:30|15041163540773201510|2|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
@@ -31,8 +31,8 @@ OUTPUT:
     }],
   "usr2type": [{
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Foo {}",
+      "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
       "declarations": [],
@@ -48,8 +48,8 @@ OUTPUT:
       "uses": ["8:6-8:9|0|1|4"]
     }, {
       "usr": 17107291254533526269,
-      "detailed_name": "Template",
-      "qual_name_offset": 0,
+      "detailed_name": "class Template {}",
+      "qual_name_offset": 6,
       "short_name": "Template",
       "kind": 5,
       "declarations": [],

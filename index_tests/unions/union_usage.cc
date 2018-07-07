@@ -15,8 +15,22 @@ void act(Foo*) {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
+      "usr": 8501689086387244262,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [9529311430721959843, 8804696910588009104],
+      "uses": [],
+      "callees": []
+    }, {
       "usr": 13982179977217945200,
       "detailed_name": "void act(Foo *)",
       "qual_name_offset": 5,
@@ -34,7 +48,7 @@ OUTPUT:
       "callees": []
     }],
   "usr2type": [{
-      "usr": 3,
+      "usr": 37,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -49,7 +63,7 @@ OUTPUT:
       "instances": [8804696910588009104],
       "uses": []
     }, {
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -65,10 +79,10 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 8501689086387244262,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "union Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
-      "kind": 23,
+      "kind": 5,
       "declarations": [],
       "spell": "1:7-1:10|0|1|2",
       "extent": "1:1-4:2|0|1|0",
@@ -96,33 +110,31 @@ OUTPUT:
       "spell": "6:5-6:6|0|1|2",
       "extent": "6:1-6:6|0|1|0",
       "type": 8501689086387244262,
-      "uses": ["9:3-9:4|13982179977217945200|3|4"],
+      "uses": ["9:3-9:4|0|1|4"],
       "kind": 13,
       "storage": 0
     }, {
       "usr": 8804696910588009104,
-      "detailed_name": "bool Foo::b",
-      "qual_name_offset": 5,
+      "detailed_name": "Foo::bool b : 3",
+      "qual_name_offset": 0,
       "short_name": "b",
-      "hover": "bool Foo::b : 3",
       "declarations": [],
-      "spell": "3:8-3:9|8501689086387244262|2|2",
+      "spell": "3:8-3:9|8501689086387244262|2|514",
       "extent": "3:3-3:13|8501689086387244262|2|0",
-      "type": 3,
+      "type": 37,
       "uses": [],
       "kind": 8,
       "storage": 0
     }, {
       "usr": 9529311430721959843,
-      "detailed_name": "int Foo::a",
+      "detailed_name": "int Foo::a : 5",
       "qual_name_offset": 4,
       "short_name": "a",
-      "hover": "int Foo::a : 5",
       "declarations": [],
-      "spell": "2:7-2:8|8501689086387244262|2|2",
+      "spell": "2:7-2:8|8501689086387244262|2|514",
       "extent": "2:3-2:12|8501689086387244262|2|0",
-      "type": 17,
-      "uses": ["9:5-9:6|13982179977217945200|3|4"],
+      "type": 53,
+      "uses": ["9:5-9:6|8501689086387244262|2|20"],
       "kind": 8,
       "storage": 0
     }]

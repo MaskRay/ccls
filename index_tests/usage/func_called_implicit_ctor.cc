@@ -12,7 +12,7 @@ Wrapper caller() {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 468307235068920063,
       "detailed_name": "int called()",
@@ -27,7 +27,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:10-8:16|11404881820527069090|3|32"],
+      "uses": ["8:10-8:16|0|1|8228"],
       "callees": []
     }, {
       "usr": 10544127002917214589,
@@ -36,12 +36,12 @@ OUTPUT:
       "short_name": "Wrapper",
       "kind": 9,
       "storage": 0,
-      "declarations": ["2:3-2:10|13611487872560323389|2|1"],
-      "declaring_type": 13611487872560323389,
+      "declarations": ["2:3-2:10|13611487872560323389|2|513"],
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:10-8:18|11404881820527069090|3|288"],
+      "uses": ["8:10-8:16|13611487872560323389|2|8228"],
       "callees": []
     }, {
       "usr": 11404881820527069090,
@@ -58,15 +58,15 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": ["8:10-8:18|10544127002917214589|3|288", "8:10-8:16|468307235068920063|3|32"]
+      "callees": []
     }],
   "usr2type": [{
       "usr": 13611487872560323389,
-      "detailed_name": "Wrapper",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Wrapper {}",
+      "qual_name_offset": 7,
       "short_name": "Wrapper",
       "kind": 23,
-      "declarations": ["2:3-2:10|0|1|4"],
+      "declarations": [],
       "spell": "1:8-1:15|0|1|2",
       "extent": "1:1-3:2|0|1|0",
       "alias_of": 0,
@@ -76,7 +76,7 @@ OUTPUT:
       "funcs": [10544127002917214589],
       "vars": [],
       "instances": [],
-      "uses": ["2:3-2:10|13611487872560323389|2|4", "7:1-7:8|0|1|4"]
+      "uses": ["2:3-2:10|0|1|4", "7:1-7:8|0|1|4"]
     }],
   "usr2var": []
 }

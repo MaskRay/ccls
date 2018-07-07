@@ -82,7 +82,7 @@ unique_ptr<S1, S2>* Foo::foo() { return nullptr; }
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": ["7:1-14:7", "17:1-32:7", "35:1-39:7", "42:1-52:7", "57:1-63:7", "68:1-78:7"],
+  "skipped_ranges": ["7:1-15:1", "17:1-33:1", "35:1-40:1", "42:1-53:1", "57:1-64:1", "68:1-79:1"],
   "usr2func": [{
       "usr": 1246637699196435450,
       "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> *as_return_type(unique_ptr<S1, S2> *)",
@@ -122,10 +122,10 @@ OUTPUT:
       "short_name": "foo",
       "kind": 6,
       "storage": 0,
-      "declarations": ["65:23-65:26|15041163540773201510|2|1"],
-      "spell": "79:26-79:29|15041163540773201510|2|2",
-      "extent": "79:1-79:51|0|1|0",
-      "declaring_type": 15041163540773201510,
+      "declarations": ["65:23-65:26|15041163540773201510|2|513"],
+      "spell": "79:26-79:29|15041163540773201510|2|514",
+      "extent": "65:3-65:28|15041163540773201510|2|0",
+      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
@@ -144,14 +144,14 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [500112618220246],
+      "vars": [],
       "uses": [],
       "callees": []
     }],
   "usr2type": [{
       "usr": 4310164820010458371,
-      "detailed_name": "S1",
-      "qual_name_offset": 0,
+      "detailed_name": "struct S1",
+      "qual_name_offset": 7,
       "short_name": "S1",
       "kind": 23,
       "declarations": ["4:8-4:10|0|1|1"],
@@ -165,8 +165,8 @@ OUTPUT:
       "uses": ["15:30-15:32|0|1|4", "33:23-33:25|0|1|4", "33:63-33:65|0|1|4", "54:25-54:27|0|1|4", "65:14-65:16|0|1|4", "79:12-79:14|0|1|4"]
     }, {
       "usr": 12728490517004312484,
-      "detailed_name": "S2",
-      "qual_name_offset": 0,
+      "detailed_name": "struct S2",
+      "qual_name_offset": 7,
       "short_name": "S2",
       "kind": 23,
       "declarations": ["5:8-5:10|0|1|1"],
@@ -180,8 +180,8 @@ OUTPUT:
       "uses": ["15:34-15:36|0|1|4", "15:39-15:41|0|1|4", "33:27-33:29|0|1|4", "33:32-33:34|0|1|4", "33:67-33:69|0|1|4", "54:29-54:31|0|1|4", "54:34-54:36|0|1|4", "65:18-65:20|0|1|4", "79:16-79:18|0|1|4"]
     }, {
       "usr": 14209198335088845323,
-      "detailed_name": "unique_ptr",
-      "qual_name_offset": 0,
+      "detailed_name": "class unique_ptr",
+      "qual_name_offset": 6,
       "short_name": "unique_ptr",
       "kind": 5,
       "declarations": ["2:7-2:17|0|1|1"],
@@ -195,8 +195,8 @@ OUTPUT:
       "uses": ["15:8-15:18|0|1|4", "15:19-15:29|0|1|4", "33:1-33:11|0|1|4", "33:12-33:22|0|1|4", "33:52-33:62|0|1|4", "54:3-54:13|0|1|4", "54:14-54:24|0|1|4", "65:3-65:13|0|1|4", "79:1-79:11|0|1|4"]
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
       "declarations": [],
@@ -225,8 +225,8 @@ OUTPUT:
       "storage": 0
     }, {
       "usr": 2933643612409209903,
-      "detailed_name": "unique_ptr<unique_ptr<S1, S2>, S2> f",
-      "qual_name_offset": 35,
+      "detailed_name": "extern unique_ptr<unique_ptr<S1, S2>, S2> f",
+      "qual_name_offset": 42,
       "short_name": "f",
       "declarations": ["15:43-15:44|0|1|1"],
       "type": 14209198335088845323,

@@ -11,12 +11,26 @@ const VarType Holder::static_var;
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
-  "usr2func": [],
+  "skipped_ranges": [],
+  "usr2func": [{
+      "usr": 10028537921178202800,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [7057400933868440116, 7057400933868440116],
+      "uses": [],
+      "callees": []
+    }],
   "usr2type": [{
       "usr": 5792006888140599735,
-      "detailed_name": "VarType",
-      "qual_name_offset": 0,
+      "detailed_name": "enum VarType {\n}",
+      "qual_name_offset": 5,
       "short_name": "VarType",
       "kind": 10,
       "declarations": [],
@@ -28,12 +42,12 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [7057400933868440116],
+      "instances": [7057400933868440116, 7057400933868440116],
       "uses": ["4:20-4:27|0|1|4", "4:42-4:49|0|1|4", "7:7-7:14|0|1|4"]
     }, {
       "usr": 10028537921178202800,
-      "detailed_name": "Holder",
-      "qual_name_offset": 0,
+      "detailed_name": "struct Holder {}",
+      "qual_name_offset": 7,
       "short_name": "Holder",
       "kind": 23,
       "declarations": [],
@@ -44,26 +58,23 @@ OUTPUT:
       "derived": [],
       "types": [],
       "funcs": [],
-      "vars": [{
-          "L": 7057400933868440116,
-          "R": -1
-        }],
+      "vars": [],
       "instances": [],
       "uses": ["7:15-7:21|0|1|4"]
     }],
   "usr2var": [{
       "usr": 7057400933868440116,
-      "detailed_name": "const VarType Holder::static_var",
-      "qual_name_offset": 14,
+      "detailed_name": "static constexpr VarType Holder::static_var",
+      "qual_name_offset": 25,
       "short_name": "static_var",
-      "hover": "const VarType Holder::static_var = (VarType)0x0",
-      "declarations": ["4:28-4:38|10028537921178202800|2|1"],
-      "spell": "7:23-7:33|10028537921178202800|2|2",
-      "extent": "7:1-7:33|0|1|0",
+      "hover": "static constexpr VarType Holder::static_var = (VarType)0",
+      "declarations": ["4:28-4:38|10028537921178202800|2|513"],
+      "spell": "7:23-7:33|10028537921178202800|2|514",
+      "extent": "4:3-4:53|10028537921178202800|2|0",
       "type": 5792006888140599735,
       "uses": [],
-      "kind": 8,
-      "storage": 0
+      "kind": 13,
+      "storage": 2
     }]
 }
 */

@@ -4,7 +4,7 @@ void foo(ForwardType*) {}
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
+  "skipped_ranges": [],
   "usr2func": [{
       "usr": 15327735280790448926,
       "detailed_name": "void foo(ForwardType *)",
@@ -24,8 +24,8 @@ OUTPUT:
     }],
   "usr2type": [{
       "usr": 13749354388332789217,
-      "detailed_name": "ForwardType",
-      "qual_name_offset": 0,
+      "detailed_name": "struct ForwardType",
+      "qual_name_offset": 7,
       "short_name": "ForwardType",
       "kind": 23,
       "declarations": ["1:8-1:19|0|1|1"],

@@ -5,10 +5,24 @@ class Foo {
 OUTPUT:
 {
   "includes": [],
-  "skipped_by_preprocessor": [],
-  "usr2func": [],
+  "skipped_ranges": [],
+  "usr2func": [{
+      "usr": 15041163540773201510,
+      "detailed_name": "",
+      "qual_name_offset": 0,
+      "short_name": "",
+      "kind": 0,
+      "storage": 0,
+      "declarations": [],
+      "declaring_type": 0,
+      "bases": [],
+      "derived": [],
+      "vars": [5844987037615239736],
+      "uses": [],
+      "callees": []
+    }],
   "usr2type": [{
-      "usr": 17,
+      "usr": 53,
       "detailed_name": "",
       "qual_name_offset": 0,
       "short_name": "",
@@ -24,8 +38,8 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 15041163540773201510,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
+      "detailed_name": "class Foo {}",
+      "qual_name_offset": 6,
       "short_name": "Foo",
       "kind": 5,
       "declarations": [],
@@ -42,13 +56,13 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 5844987037615239736,
-      "detailed_name": "int Foo::member",
-      "qual_name_offset": 4,
+      "detailed_name": "static int Foo::member",
+      "qual_name_offset": 11,
       "short_name": "member",
-      "declarations": ["2:14-2:20|15041163540773201510|2|1"],
-      "type": 17,
+      "declarations": ["2:14-2:20|15041163540773201510|2|513"],
+      "type": 53,
       "uses": [],
-      "kind": 8,
+      "kind": 13,
       "storage": 2
     }]
 }
