@@ -1,6 +1,5 @@
 #pragma once
 
-#include "clang_tu.h"
 #include "clang_utils.h"
 #include "file_consumer.h"
 #include "language.h"
@@ -20,6 +19,8 @@
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+
+using Usr = uint64_t;
 
 struct SymbolIdx {
   Usr usr;
@@ -279,9 +280,6 @@ struct IndexFile {
   IndexFunc& ToFunc(Usr usr);
   IndexType& ToType(Usr usr);
   IndexVar& ToVar(Usr usr);
-  IndexFunc& ToFunc(const ClangCursor& c) { return ToFunc(c.get_usr_hash()); }
-  IndexType& ToType(const ClangCursor& c) { return ToType(c.get_usr_hash()); }
-  IndexVar& ToVar(const ClangCursor& c) { return ToVar(c.get_usr_hash()); }
 
   std::string ToString();
 };
@@ -304,7 +302,4 @@ struct ClangIndexer {
       std::string file,
       const std::vector<std::string>& args,
       const std::vector<FileContents>& file_contents);
-
-  // Note: constructing this acquires a global lock
-  ClangIndex index;
 };

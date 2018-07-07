@@ -270,6 +270,58 @@ class IndexDataConsumer : public index::IndexDataConsumer {
   IndexParam& param;
   llvm::DenseMap<const Decl*, Usr> Decl2usr;
 
+  std::string GetComment(const Decl* D) {
+    SourceManager &SM = Ctx->getSourceManager();
+    const RawComment *RC = Ctx->getRawCommentForAnyRedecl(D);
+    if (!RC) return "";
+    StringRef Raw = RC->getRawText(Ctx->getSourceManager());
+    SourceRange R = RC->getSourceRange();
+    std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(R.getBegin());
+    unsigned start_column = SM.getLineNumber(BInfo.first, BInfo.second);
+    std::string ret;
+    int pad = -1;
+    for (const char *p = Raw.data(), *E = Raw.end(); p < E;) {
+      // The first line starts with a comment marker, but the rest needs
+      // un-indenting.
+      unsigned skip = start_column - 1;
+      for (; skip > 0 && p < E && (*p == ' ' || *p == '\t'); p++)
+        skip--;
+      const char *q = p;
+      while (q < E && *q != '\n')
+        q++;
+      if (q < E)
+        q++;
+      // A minimalist approach to skip Doxygen comment markers.
+      // See https://www.stack.nl/~dimitri/doxygen/manual/docblocks.html
+      if (pad < 0) {
+        // First line, detect the length of comment marker and put into |pad|
+        const char *begin = p;
+        while (p < E && (*p == '/' || *p == '*'))
+          p++;
+        if (p < E && (*p == '<' || *p == '!'))
+          p++;
+        if (p < E && *p == ' ')
+          p++;
+        pad = int(p - begin);
+      } else {
+        // Other lines, skip |pad| bytes
+        int prefix = pad;
+        while (prefix > 0 && p < E &&
+               (*p == ' ' || *p == '/' || *p == '*' || *p == '<' || *p == '!'))
+          prefix--, p++;
+      }
+      ret.insert(ret.end(), p, q);
+      p = q;
+    }
+    while (ret.size() && isspace(ret.back()))
+      ret.pop_back();
+    if (StringRef(ret).endswith("*/") || StringRef(ret).endswith("\n/"))
+      ret.resize(ret.size() - 2);
+    while (ret.size() && isspace(ret.back()))
+      ret.pop_back();
+    return ret;
+  }
+
   Usr GetUsr(const Decl* D) {
     D = D->getCanonicalDecl();
     auto R = Decl2usr.try_emplace(D);
@@ -429,7 +481,7 @@ public:
       if (!func->def.detailed_name[0]) {
         SetName(D, short_name, qualified, func->def);
         if (g_config->index.comments)
-          func->def.comments = Intern("");
+          func->def.comments = Intern(GetComment(D));
       }
       if (is_def || (is_decl && !func->def.spell)) {
         if (func->def.spell)
@@ -450,7 +502,7 @@ public:
       if (!type->def.detailed_name[0]) {
         SetName(D, short_name, qualified, type->def);
         if (g_config->index.comments)
-          type->def.comments = Intern("");
+          type->def.comments = Intern(GetComment(D));
       }
       if (is_def || (is_decl && !type->def.spell)) {
         if (type->def.spell)
@@ -465,7 +517,7 @@ public:
       if (!var->def.detailed_name[0]) {
         SetName(D, short_name, qualified, var->def);
         if (g_config->index.comments)
-          var->def.comments = Intern("");
+          var->def.comments = Intern(GetComment(D));
       }
       if (is_def || (is_decl && !var->def.spell)) {
         if (var->def.spell)
@@ -632,27 +684,6 @@ void Uniquify(std::vector<Use>& uses) {
   }
   uses.resize(n);
 }
-
-void AddUse(IndexFile* db,
-            std::vector<Use>& uses,
-            Range range,
-            ClangCursor parent,
-            Role role = Role::Reference) {
-  // switch (GetSymbolKind(parent.get_kind())) {
-  //   case SymbolKind::Func:
-  //     uses.push_back(Use{
-  //         {range, db->ToFunc(parent.cx_cursor).usr, SymbolKind::Func, role}});
-  //     break;
-  //   case SymbolKind::Type:
-  //     uses.push_back(Use{
-  //         {range, db->ToType(parent.cx_cursor).usr, SymbolKind::Type, role}});
-  //     break;
-  //   default:
-  //     uses.push_back(Use{{range, 0, SymbolKind::File, role}});
-  //     break;
-  // }
-}
-
 
 std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
     VFS* vfs,
