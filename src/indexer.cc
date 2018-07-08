@@ -30,7 +30,7 @@ using llvm::Timer;
 namespace {
 
 struct IndexParam {
-  std::map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
+  std::unordered_map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
   std::unordered_map<std::string, FileContents> file_contents;
   std::unordered_map<std::string, int64_t> file2write_time;
   llvm::DenseMap<const Decl*, Usr> Decl2usr;
