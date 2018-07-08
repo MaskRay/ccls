@@ -114,7 +114,7 @@ find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-  target_link_libraries(ccls PRIVATE -lc++experimental)
+  target_link_libraries(ccls PRIVATE -L${CLANG_ROOT}/lib -lc++experimental)
 
 elseif(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
   # loguru calls dladdr
