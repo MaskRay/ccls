@@ -25,7 +25,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [449111627548814328, 17097499197730163115],
       "uses": [],
       "callees": []
     }, {
@@ -77,10 +77,10 @@ OUTPUT:
       "storage": 0
     }, {
       "usr": 17097499197730163115,
-      "detailed_name": "auto foo1",
+      "detailed_name": "Type foo1",
       "qual_name_offset": 5,
       "short_name": "foo1",
-      "hover": "auto foo1 = Type()",
+      "hover": "Type foo1 = Type()",
       "declarations": [],
       "spell": "7:8-7:12|3957104924306079513|3|2",
       "extent": "7:3-7:21|3957104924306079513|3|0",

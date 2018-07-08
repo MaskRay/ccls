@@ -8,35 +8,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 1428566502523368801,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [3348817847649945564, 4821094820988543895, 15292551660437765731],
-      "uses": [],
-      "callees": []
-    }, {
-      "usr": 17937907487590875128,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [1963212417280098348],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 82,
       "detailed_name": "",

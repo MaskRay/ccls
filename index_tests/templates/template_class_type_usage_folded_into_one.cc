@@ -51,6 +51,23 @@ OUTPUT:
       "instances": [],
       "uses": ["9:5-9:6|0|1|4"]
     }, {
+      "usr": 7074603899792463171,
+      "detailed_name": "Inner",
+      "qual_name_offset": 0,
+      "short_name": "Inner",
+      "kind": 26,
+      "declarations": [],
+      "spell": "6:3-6:18|0|1|2",
+      "extent": "6:3-6:18|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [16721564935990383768],
+      "uses": []
+    }, {
       "usr": 10528472276654770367,
       "detailed_name": "struct Foo {}",
       "qual_name_offset": 7,
@@ -99,8 +116,25 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [16721564935990383768, 12028309045033782423],
+      "instances": [],
       "uses": ["9:9-9:14|10528472276654770367|2|4", "10:9-10:14|10528472276654770367|2|4"]
+    }, {
+      "usr": 15961308565836244174,
+      "detailed_name": "Inner",
+      "qual_name_offset": 0,
+      "short_name": "Inner",
+      "kind": 26,
+      "declarations": [],
+      "spell": "6:3-6:18|0|1|2",
+      "extent": "6:3-6:18|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [12028309045033782423],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 12028309045033782423,
@@ -110,7 +144,7 @@ OUTPUT:
       "declarations": [],
       "spell": "10:15-10:16|0|1|2",
       "extent": "10:1-10:16|0|1|0",
-      "type": 13938528237873543349,
+      "type": 15961308565836244174,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -122,7 +156,7 @@ OUTPUT:
       "declarations": [],
       "spell": "9:15-9:16|0|1|2",
       "extent": "9:1-9:16|0|1|0",
-      "type": 13938528237873543349,
+      "type": 7074603899792463171,
       "uses": [],
       "kind": 13,
       "storage": 0

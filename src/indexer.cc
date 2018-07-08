@@ -33,7 +33,12 @@ struct IndexParam {
   std::unordered_map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
   std::unordered_map<std::string, FileContents> file_contents;
   std::unordered_map<std::string, int64_t> file2write_time;
-  llvm::DenseMap<const Decl*, Usr> Decl2usr;
+  struct DeclInfo {
+    Usr usr;
+    std::string short_name;
+    std::string qualified;
+  };
+  std::unordered_map<const Decl*, DeclInfo> Decl2Info;
 
   ASTUnit& Unit;
   ASTContext* Ctx;
@@ -67,6 +72,20 @@ struct IndexParam {
     return db;
   }
 };
+
+StringRef GetSourceInRange(const SourceManager &SM, const LangOptions &LangOpts,
+                           SourceRange R) {
+  SourceLocation BLoc = R.getBegin(), ELoc = R.getEnd();
+  std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc),
+                              EInfo = SM.getDecomposedLoc(ELoc);
+  bool invalid = false;
+  StringRef Buf = SM.getBufferData(BInfo.first, &invalid);
+  if (invalid)
+    return "";
+  return Buf.substr(BInfo.second, EInfo.second + Lexer::MeasureTokenLength(
+                                                     ELoc, SM, LangOpts) -
+                                      BInfo.second);
+}
 
 Range FromSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
                       SourceRange R, llvm::sys::fs::UniqueID *UniqueID,
@@ -120,56 +139,65 @@ SymbolKind GetSymbolKind(const Decl* D) {
   case Decl::NamespaceAlias:
   case Decl::ClassTemplate:
   case Decl::TypeAliasTemplate:
+  case Decl::TemplateTemplateParm:
   case Decl::Enum:
   case Decl::Record:
   case Decl::CXXRecord:
   case Decl::ClassTemplateSpecialization:
+  case Decl::ClassTemplatePartialSpecialization:
   case Decl::TypeAlias:
   case Decl::Typedef:
   case Decl::UnresolvedUsingTypename:
     return SymbolKind::Type;
+  case Decl::VarTemplate:
+  case Decl::Binding:
   case Decl::Field:
   case Decl::Var:
   case Decl::ParmVar:
   case Decl::ImplicitParam:
   case Decl::Decomposition:
   case Decl::EnumConstant:
+  case Decl::UnresolvedUsingValue:
     return SymbolKind::Var;
   default:
     return SymbolKind::Invalid;
   }
 }
 
+// clang/lib/AST/DeclPrinter.cpp
+QualType GetBaseType(QualType T, bool deduce_auto) {
+  QualType BaseType = T;
+  while (!BaseType.isNull() && !BaseType->isSpecifierType()) {
+    if (const PointerType *PTy = BaseType->getAs<PointerType>())
+      BaseType = PTy->getPointeeType();
+    else if (const BlockPointerType *BPy = BaseType->getAs<BlockPointerType>())
+      BaseType = BPy->getPointeeType();
+    else if (const ArrayType* ATy = dyn_cast<ArrayType>(BaseType))
+      BaseType = ATy->getElementType();
+    else if (const VectorType *VTy = BaseType->getAs<VectorType>())
+      BaseType = VTy->getElementType();
+    else if (const ReferenceType *RTy = BaseType->getAs<ReferenceType>())
+      BaseType = RTy->getPointeeType();
+    else if (const ParenType *PTy = BaseType->getAs<ParenType>())
+      BaseType = PTy->desugar();
+    else if (deduce_auto) {
+      if (const AutoType *ATy = BaseType->getAs<AutoType>())
+        BaseType = ATy->getDeducedType();
+      else
+        break;
+    }
+    else
+      break;
+  }
+  return BaseType;
+}
+
 const Decl* GetTypeDecl(QualType T) {
   Decl *D = nullptr;
-  const Type *TP;
-  for(;;) {
-    T = T.getUnqualifiedType();
-    TP = T.getTypePtrOrNull();
-    if (!TP)
-      return D;
-    switch (TP->getTypeClass()) {
-    case Type::Pointer:
-      T = cast<PointerType>(TP)->getPointeeType();
-      continue;
-    case Type::BlockPointer:
-      T = cast<BlockPointerType>(TP)->getPointeeType();
-      continue;
-    case Type::LValueReference:
-    case Type::RValueReference:
-      T = cast<ReferenceType>(TP)->getPointeeType();
-      continue;
-    case Type::ObjCObjectPointer:
-      T = cast<ObjCObjectPointerType>(TP)->getPointeeType();
-      continue;
-    case Type::MemberPointer:
-      T = cast<MemberPointerType>(TP)->getPointeeType();
-      continue;
-    default:
-      break;
-    }
-    break;
-  }
+  T = GetBaseType(T.getUnqualifiedType(), true);
+  const Type* TP = T.getTypePtrOrNull();
+  if (!TP)
+    return nullptr;
 
 try_again:
   switch (TP->getTypeClass()) {
@@ -185,6 +213,9 @@ try_again:
   case Type::Record:
   case Type::Enum:
     D = cast<TagType>(TP)->getDecl();
+    break;
+  case Type::TemplateTypeParm:
+    D = cast<TemplateTypeParmType>(TP)->getDecl();
     break;
   case Type::TemplateSpecialization:
     if (const RecordType *Record = TP->getAs<RecordType>())
@@ -313,15 +344,23 @@ public:
     return ret;
   }
 
-  Usr GetUsr(const Decl* D) const {
+  Usr GetUsr(const Decl *D, IndexParam::DeclInfo **info = nullptr) const {
     D = D->getCanonicalDecl();
-    auto R = param.Decl2usr.try_emplace(D);
+    auto R = param.Decl2Info.try_emplace(D);
     if (R.second) {
       SmallString<256> USR;
       index::generateUSRForDecl(D, USR);
-      R.first->second = HashUsr(USR);
+      auto &info = R.first->second;
+      info.usr = HashUsr(USR);
+      if (auto *ND = dyn_cast<NamedDecl>(D)) {
+        info.short_name = ND->getNameAsString();
+        info.qualified = ND->getQualifiedNameAsString();
+        SimplifyAnonymous(info.qualified);
+      }
     }
-    return R.first->second;
+    if (info)
+      *info = &R.first->second;
+    return R.first->second.usr;
   }
 
   Use GetUse(IndexFile *db, Range range, const DeclContext *DC,
@@ -367,13 +406,10 @@ public:
 
   template <typename Def>
   void SetName(const Decl *D, std::string_view short_name,
-               std::string_view qualified, Def &def, bool hover = false) {
+               std::string_view qualified, Def &def) {
     SmallString<256> Str;
     llvm::raw_svector_ostream OS(Str);
-    PrintingPolicy PP = GetDefaultPolicy();
-    if (hover)
-      PP.SuppressInitializers = false;
-    D->print(OS, PP);
+    D->print(OS, GetDefaultPolicy());
 
     std::string name = OS.str();
     SimplifyAnonymous(name);
@@ -381,44 +417,96 @@ public:
     if (i == std::string::npos) {
       // e.g. operator type-parameter-1
       i = 0;
-      if (!hover)
-        def.short_name_offset = 0;
-    } else if (short_name.size()) {
+      def.short_name_offset = 0;
+    } else if (short_name.size() && (!i || name[i - 1] != ':')) {
       name.replace(i, short_name.size(), qualified);
-      if (!hover)
-        def.short_name_offset = i + qualified.size() - short_name.size();
+      def.short_name_offset = i + qualified.size() - short_name.size();
     } else {
-      if (!hover)
-        def.short_name_offset = i;
+      def.short_name_offset = i;
     }
-    if (hover) {
-      if (name != def.detailed_name)
-        def.hover = Intern(name);
-    } else {
+    def.short_name_size = short_name.size();
+    for (int paren = 0; i; i--) {
+      // Skip parentheses in "(anon struct)::name"
+      if (name[i - 1] == ')')
+        paren++;
+      else if (name[i - 1] == '(')
+        paren--;
+      else if (!(paren > 0 || isalnum(name[i - 1]) || name[i - 1] == '_' ||
+                 name[i - 1] == ':'))
+        break;
+    }
+    def.qual_name_offset = i;
+    def.detailed_name = Intern(name);
+  }
+
+  void SetVarName(const Decl *D, std::string_view short_name,
+                  std::string_view qualified, IndexVar::Def &def) {
+    QualType T;
+    const Expr* init = nullptr;
+    if (auto *VD = dyn_cast<VarDecl>(D)) {
+      T = VD->getType();
+      init = VD->getAnyInitializer();
+      def.storage = VD->getStorageClass();
+    } else if (auto *FD = dyn_cast<FieldDecl>(D)) {
+      T = FD->getType();
+      init = FD->getInClassInitializer();
+    }
+    auto BT = GetBaseType(T, false);
+    if (!BT.isNull() && BT->getAs<AutoType>()) {
+      SmallString<256> Str;
+      llvm::raw_svector_ostream OS(Str);
+      PrintingPolicy PP = GetDefaultPolicy();
+      T.print(OS, PP);
+      if (Str.size() &&
+        (Str.back() != ' ' && Str.back() != '*' && Str.back() != '&'))
+        Str += ' ';
+      def.qual_name_offset = Str.size();
+      def.short_name_offset = Str.size() + qualified.size() - short_name.size();
       def.short_name_size = short_name.size();
-      for (int paren = 0; i; i--) {
-        // Skip parentheses in "(anon struct)::name"
-        if (name[i - 1] == ')')
-          paren++;
-        else if (name[i - 1] == '(')
-          paren--;
-        else if (!(paren > 0 || isalnum(name[i - 1]) || name[i - 1] == '_' ||
-            name[i - 1] == ':'))
-          break;
-      }
-      def.qual_name_offset = i;
-      def.detailed_name = Intern(name);
+      Str += StringRef(qualified.data(), qualified.size());
+      def.detailed_name = Intern(Str.str());
+    } else {
+      SetName(D, short_name, qualified, def);
+    }
+    if (init) {
+      SourceManager &SM = Ctx->getSourceManager();
+      const LangOptions& Lang = Ctx->getLangOpts();
+      SourceRange R = init->getSourceRange();
+      SourceLocation L = D->getLocation();
+      if (!SM.isBeforeInTranslationUnit(L, R.getBegin()))
+        return;
+      StringRef Buf = GetSourceInRange(SM, Lang, R);
+      Twine T =
+          def.detailed_name +
+          (Buf.size() && Buf[0] == ':' ? Twine(" ", Buf) : Twine(" = ", Buf));
+      def.hover =
+          def.storage == SC_Static && strncmp(def.detailed_name, "static ", 7)
+              ? Intern(("static " + T).str())
+              : Intern(T.str());
     }
   }
 
-  void AddMacroUse(SourceManager &SM, std::vector<Use> &uses,
+  void AddMacroUse(SourceManager &SM, Usr usr, SymbolKind kind,
                    SourceLocation Spell) const {
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Spell));
-    if (FE) {
-      IndexFile *db = param.ConsumeFile(*FE);
-      Range spell =
-          FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Spell, Spell));
-      uses.push_back(GetUse(db, spell, nullptr, Role::Dynamic));
+    if (!FE) return;
+    IndexFile *db = param.ConsumeFile(*FE);
+    if (!db) return;
+    Range spell =
+        FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Spell, Spell));
+    Use use = GetUse(db, spell, nullptr, Role::Dynamic);
+    switch (kind) {
+    case SymbolKind::Func:
+      db->ToFunc(usr).uses.push_back(use);
+      break;
+    case SymbolKind::Type:
+      db->ToType(usr).uses.push_back(use);
+      break;
+    case SymbolKind::Var:
+      db->ToVar(usr).uses.push_back(use);
+      break;
+    default:
+      llvm_unreachable("");
     }
   }
 
@@ -450,17 +538,20 @@ public:
     SourceLocation Spell = SM.getSpellingLoc(Loc);
     Loc = SM.getFileLoc(Loc);
     Range loc = FromTokenRange(SM, Lang, SourceRange(Loc, Loc));
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Loc));
+    FileID LocFID = SM.getFileID(Loc);
+    const FileEntry *FE = SM.getFileEntryForID(LocFID);
     if (!FE) {
       // TODO
 #if LLVM_VERSION_MAJOR < 7
       auto P = SM.getExpansionRange(Loc);
       loc = FromCharRange(SM, Ctx->getLangOpts(), SourceRange(P.first, P.second));
-      FE = SM.getFileEntryForID(SM.getFileID(P.first));
+      LocFID = SM.getFileID(P.first);
+      FE = SM.getFileEntryForID(LocFID);
 #else
       auto R = SM.getExpansionRange(Loc);
       loc = FromTokenRange(SM, Lang, R.getAsRange());
-      FE = SM.getFileEntryForID(SM.getFileID(R.getBegin()));
+      LocFID = SM.getFileID(R.getBegin());
+      FE = SM.getFileEntryForID(LocFID);
 #endif
       if (!FE)
         return true;
@@ -476,26 +567,14 @@ public:
 
     bool is_decl = Roles & uint32_t(index::SymbolRole::Declaration);
     bool is_def = Roles & uint32_t(index::SymbolRole::Definition);
-    std::string short_name, qualified;
-
-    if (auto* ND = dyn_cast<NamedDecl>(D)) {
-      short_name = ND->getNameAsString();
-      qualified = ND->getQualifiedNameAsString();
-      SimplifyAnonymous(qualified);
-    }
-
     IndexFunc *func = nullptr;
     IndexType *type = nullptr;
     IndexVar *var = nullptr;
     SymbolKind kind = GetSymbolKind(D);
-    Usr usr = GetUsr(D);
+    IndexParam::DeclInfo* info;
+    Usr usr = GetUsr(D, &info);
 
     auto do_def_decl = [&](auto *entity) {
-      if (!entity->def.detailed_name[0]) {
-        SetName(D, short_name, qualified, entity->def);
-        if (entity->def.comments[0] == '\0' && g_config->index.comments)
-          entity->def.comments = Intern(GetComment(D));
-      }
       if (is_def) {
         entity->def.spell = GetUse(db, loc, SemDC, role);
         entity->def.extent =
@@ -505,19 +584,25 @@ public:
         entity->declarations.push_back(GetUse(db, loc, LexDC, role));
       } else {
         entity->uses.push_back(GetUse(db, loc, LexDC, role));
+        return;
       }
-      if (Spell != Loc)
-        AddMacroUse(SM, entity->uses, Spell);
+      if (entity->def.comments[0] == '\0' && g_config->index.comments)
+        entity->def.comments = Intern(GetComment(OrigD));
     };
     switch (kind) {
     case SymbolKind::Invalid:
-      LOG_S(INFO) << "Unhandled " << int(D->getKind());
+      LOG_S(INFO) << "Unhandled " << int(D->getKind()) << " " << info->qualified
+                  << " in " << db->path << ":" << loc.start.line;
       return true;
     case SymbolKind::File:
       return true;
     case SymbolKind::Func:
       func = &db->ToFunc(usr);
       do_def_decl(func);
+      if (Spell != Loc)
+        AddMacroUse(SM, usr, SymbolKind::Func, Spell);
+      if (func->def.detailed_name[0] == '\0')
+        SetName(OrigD, info->short_name, info->qualified, func->def);
       if (is_def || is_decl) {
         const Decl* DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Type)
@@ -527,6 +612,10 @@ public:
     case SymbolKind::Type:
       type = &db->ToType(usr);
       do_def_decl(type);
+      if (Spell != Loc)
+        AddMacroUse(SM, usr, SymbolKind::Type, Spell);
+      if (type->def.detailed_name[0] == '\0')
+        SetName(OrigD, info->short_name, info->qualified, type->def);
       if (is_def || is_decl) {
         const Decl* DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Type)
@@ -536,28 +625,21 @@ public:
     case SymbolKind::Var:
       var = &db->ToVar(usr);
       do_def_decl(var);
+      if (Spell != Loc)
+        AddMacroUse(SM, usr, SymbolKind::Var, Spell);
+      if (var->def.detailed_name[0] == '\0')
+        SetVarName(OrigD, info->short_name, info->qualified, var->def);
+      QualType T;
+      if (auto *VD = dyn_cast<VarDecl>(D))
+        T = VD->getType();
+      else if (auto *FD = dyn_cast<FieldDecl>(D))
+        T = FD->getType();
       if (is_def || is_decl) {
         const Decl* DC = cast<Decl>(SemDC);
-        if (GetSymbolKind(DC) == SymbolKind::Type)
+        if (GetSymbolKind(DC) == SymbolKind::Func)
           db->ToFunc(GetUsr(DC)).def.vars.push_back(usr);
         else if (auto *ND = dyn_cast<NamespaceDecl>(SemDC))
           db->ToType(GetUsr(ND)).def.vars.emplace_back(usr, -1);
-        QualType T;
-        if (auto *VD = dyn_cast<VarDecl>(D)) {
-          var->def.storage = VD->getStorageClass();
-          T = VD->getType();
-          // O(n^2)
-          for (auto I : VD->redecls())
-            if (I->hasInit()) {
-              // TODO missing "static" in definition
-              SetName(I, short_name, qualified, var->def, true);
-              break;
-            }
-        } else if (auto *FD = dyn_cast<FieldDecl>(D)) {
-          T = FD->getType();
-          if (FD->hasInClassInitializer())
-            SetName(D, short_name, qualified, var->def, true);
-        }
         if (!T.isNull()) {
           if (auto *BT = T->getAs<BuiltinType>()) {
             Usr usr1 = static_cast<Usr>(BT->getKind());
@@ -565,15 +647,40 @@ public:
             db->ToType(usr1).instances.push_back(usr);
           } else {
             for (const Decl *D1 = GetTypeDecl(T); D1; D1 = GetSpecialized(D1)) {
-              Usr usr1 = GetUsr(D1);
+              IndexParam::DeclInfo* info1;
+              Usr usr1 = GetUsr(D1, &info1);
               auto it = db->usr2type.find(usr1);
               if (it != db->usr2type.end()) {
                 var->def.type = usr1;
                 it->second.instances.push_back(usr);
                 break;
               }
+              // e.g. TemplateTypeParmDecl is not handled by handleDeclOccurence.
+              SourceRange R1 = D1->getSourceRange();
+              if (SM.getFileID(R1.getBegin()) == LocFID) {
+                IndexType& type1 = db->ToType(usr1);
+                Range loc1 = FromTokenRange(SM, Lang, R1);
+                type1.def.spell = GetUse(db, loc1, SemDC, Role::Definition);
+                type1.def.extent = GetUse(db, loc1, LexDC, Role::None);
+                type1.def.detailed_name = Intern(info1->short_name);
+                type1.def.short_name_size = int16_t(info1->short_name.size());
+                type1.def.kind = lsSymbolKind::TypeParameter;
+                var->def.type = usr1;
+                type1.instances.push_back(usr);
+                break;
+              }
             }
           }
+        }
+      } else if (!var->def.spell && var->declarations.empty()) {
+        // e.g. lambda parameter
+        SourceLocation L = OrigD->getLocation();
+        if (SM.getFileID(L) == LocFID) {
+          var->def.spell = GetUse(db, FromTokenRange(SM, Lang, {L, L}), SemDC,
+                                  Role::Definition);
+          var->def.extent =
+              GetUse(db, FromTokenRange(SM, Lang, OrigD->getSourceRange()),
+                     LexDC, Role::None);
         }
       }
       break;
@@ -643,8 +750,13 @@ public:
       break;
     case Decl::TypeAliasTemplate:
       type->def.kind = lsSymbolKind::TypeAlias;
+    case Decl::VarTemplate:
+      type->def.kind = lsSymbolKind::Variable;
+    case Decl::TemplateTemplateParm:
+      type->def.kind = lsSymbolKind::TypeParameter;
       break;
     case Decl::ClassTemplateSpecialization:
+    case Decl::ClassTemplatePartialSpecialization:
       type->def.kind = lsSymbolKind::Class;
       if (is_def || is_decl) {
         if (auto *RD = dyn_cast<CXXRecordDecl>(D)) {
@@ -686,6 +798,11 @@ public:
         }
       }
       break;
+    case Decl::Binding:
+      var->def.kind = lsSymbolKind::Variable;
+    case Decl::Field:
+      var->def.kind = lsSymbolKind::Field;
+      break;
     case Decl::Function:
       func->def.kind = lsSymbolKind::Function;
       break;
@@ -713,9 +830,6 @@ public:
     case Decl::CXXDestructor:
       func->def.kind = lsSymbolKind::Method;
       break;
-    case Decl::Field:
-      var->def.kind = lsSymbolKind::Field;
-      break;
     case Decl::Var:
     case Decl::Decomposition:
       var->def.kind = lsSymbolKind::Variable;
@@ -737,6 +851,9 @@ public:
         var->def.hover = Intern(var->def.detailed_name + init);
       }
       break;
+    case Decl::UnresolvedUsingValue:
+      var->def.kind = lsSymbolKind::Variable;
+      break;
     default:
       LOG_S(INFO) << "Unhandled " << int(D->getKind());
       break;
@@ -757,13 +874,18 @@ class IndexPPCallbacks : public PPCallbacks {
   }
 
 public:
-  IndexPPCallbacks(SourceManager& SM, IndexParam& param) : SM(SM), param(param) {}
+  IndexPPCallbacks(SourceManager &SM, IndexParam &param)
+      : SM(SM), param(param) {}
   void InclusionDirective(SourceLocation HashLoc, const Token &Tok,
                           StringRef Included, bool IsAngled,
                           CharSourceRange FilenameRange, const FileEntry *File,
                           StringRef SearchPath, StringRef RelativePath,
-                          const Module *Imported,
-                          SrcMgr::CharacteristicKind FileType) override {
+                          const Module *Imported
+#if LLVM_VERSION_MAJOR >= 7
+                          ,
+                          SrcMgr::CharacteristicKind FileType
+#endif
+                          ) override {
     if (!File)
       return;
     llvm::sys::fs::UniqueID UniqueID;
@@ -780,25 +902,27 @@ public:
   }
   void MacroDefined(const Token &Tok, const MacroDirective *MD) override {
     llvm::sys::fs::UniqueID UniqueID;
+    const LangOptions& Lang = param.Ctx->getLangOpts();
     SourceLocation L = MD->getLocation();
-    auto range =
-        FromTokenRange(SM, param.Ctx->getLangOpts(), {L, L}, &UniqueID);
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(L));
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {
       auto[Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
-      if (!var.def.detailed_name[0]) {
+      auto range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
+      var.def.kind = lsSymbolKind::Macro;
+      if (var.def.spell)
+        var.declarations.push_back(*var.def.spell);
+      var.def.spell = Use{{range, 0, SymbolKind::File, Role::Definition}};
+      const MacroInfo *MI = MD->getMacroInfo();
+      SourceRange R(MI->getDefinitionLoc(), MI->getDefinitionEndLoc());
+      range = FromTokenRange(SM, param.Ctx->getLangOpts(), R);
+      var.def.extent = Use{{range, 0, SymbolKind::File, Role::None}};
+      if (var.def.detailed_name[0] == '\0') {
         var.def.detailed_name = Intern(Name);
         var.def.short_name_size = Name.size();
-        // TODO defin
-        var.def.hover = Intern(Twine("#define ", Name).str());
-        var.def.kind = lsSymbolKind::Macro;
-        if (var.def.spell)
-          var.declarations.push_back(*var.def.spell);
-        var.def.spell = Use{{range, 0, SymbolKind::File, Role::Definition}};
-        var.def.extent = var.def.spell;
+        var.def.hover = Intern(Twine("#define ", GetSourceInRange(SM, Lang, R)).str());
       }
     }
   }

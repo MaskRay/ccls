@@ -30,20 +30,6 @@ OUTPUT:
       "uses": [],
       "callees": []
     }, {
-      "usr": 15041163540773201510,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [8599782646965457351],
-      "uses": [],
-      "callees": []
-    }, {
       "usr": 17175780305784503374,
       "detailed_name": "void accept(int)",
       "qual_name_offset": 5,

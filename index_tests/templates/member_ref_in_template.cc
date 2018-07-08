@@ -42,20 +42,6 @@ OUTPUT:
       "uses": [],
       "callees": []
     }, {
-      "usr": 8402783583255987702,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [5866801090710377175],
-      "uses": [],
-      "callees": []
-    }, {
       "usr": 8905286151237717330,
       "detailed_name": "void C::bar()",
       "qual_name_offset": 5,
@@ -90,6 +76,23 @@ OUTPUT:
         }],
       "instances": [],
       "uses": []
+    }, {
+      "usr": 14750650276757822712,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "T",
+      "kind": 26,
+      "declarations": [],
+      "spell": "1:11-1:18|8402783583255987702|2|2",
+      "extent": "1:11-1:18|8402783583255987702|2|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [5866801090710377175],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 5866801090710377175,
@@ -99,7 +102,7 @@ OUTPUT:
       "declarations": [],
       "spell": "3:5-3:6|8402783583255987702|2|514",
       "extent": "3:3-3:6|8402783583255987702|2|0",
-      "type": 0,
+      "type": 14750650276757822712,
       "uses": [],
       "kind": 8,
       "storage": 0

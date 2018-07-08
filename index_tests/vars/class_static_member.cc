@@ -8,21 +8,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 15041163540773201510,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [5844987037615239736, 5844987037615239736],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 15041163540773201510,
       "detailed_name": "class Foo {}",
@@ -46,7 +32,6 @@ OUTPUT:
       "detailed_name": "static Foo *Foo::member",
       "qual_name_offset": 12,
       "short_name": "member",
-      "hover": "Foo *Foo::member = nullptr",
       "declarations": ["2:15-2:21|15041163540773201510|2|513"],
       "spell": "4:11-4:17|15041163540773201510|2|514",
       "extent": "4:1-4:27|0|1|0",

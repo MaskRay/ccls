@@ -14,17 +14,17 @@ MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
 
 namespace {
 
-struct Out_CclsSetInactiveRegion
-    : public lsOutMessage<Out_CclsSetInactiveRegion> {
+struct Out_CclsSetSkippedRanges
+    : public lsOutMessage<Out_CclsSetSkippedRanges> {
   struct Params {
     lsDocumentUri uri;
-    std::vector<lsRange> inactiveRegions;
+    std::vector<lsRange> skippedRanges;
   };
-  std::string method = "$ccls/setInactiveRegions";
+  std::string method = "$ccls/setSkippedRanges";
   Params params;
 };
-MAKE_REFLECT_STRUCT(Out_CclsSetInactiveRegion::Params, uri, inactiveRegions);
-MAKE_REFLECT_STRUCT(Out_CclsSetInactiveRegion, jsonrpc, method, params);
+MAKE_REFLECT_STRUCT(Out_CclsSetSkippedRanges::Params, uri, skippedRanges);
+MAKE_REFLECT_STRUCT(Out_CclsSetSkippedRanges, jsonrpc, method, params);
 
 struct ScanLineEvent {
   lsPosition pos;
@@ -177,14 +177,14 @@ bool FindFileOrFail(DB* db,
 
 void EmitSkippedRanges(WorkingFile *working_file,
                        const std::vector<Range> &skipped_ranges) {
-  Out_CclsSetInactiveRegion out;
+  Out_CclsSetSkippedRanges out;
   out.params.uri = lsDocumentUri::FromPath(working_file->filename);
   for (Range skipped : skipped_ranges) {
     std::optional<lsRange> ls_skipped = GetLsRange(working_file, skipped);
     if (ls_skipped)
-      out.params.inactiveRegions.push_back(*ls_skipped);
+      out.params.skippedRanges.push_back(*ls_skipped);
   }
-  pipeline::WriteStdout(kMethodType_CclsPublishInactiveRegions, out);
+  pipeline::WriteStdout(kMethodType_CclsPublishSkippedRanges, out);
 }
 
 void EmitSemanticHighlighting(DB* db,

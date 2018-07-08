@@ -51,8 +51,8 @@ OUTPUT: static.cc
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 14576076421851654759,
-      "detailed_name": "static void Buffer::CreateSharedBuffer()",
-      "qual_name_offset": 12,
+      "detailed_name": "void Buffer::CreateSharedBuffer()",
+      "qual_name_offset": 5,
       "short_name": "CreateSharedBuffer",
       "kind": 6,
       "storage": 0,

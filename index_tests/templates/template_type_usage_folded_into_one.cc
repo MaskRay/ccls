@@ -11,6 +11,23 @@ OUTPUT:
   "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{
+      "usr": 5123806965838456033,
+      "detailed_name": "Foo",
+      "qual_name_offset": 0,
+      "short_name": "Foo",
+      "kind": 26,
+      "declarations": [],
+      "spell": "1:1-2:13|0|1|2",
+      "extent": "1:1-2:13|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [16721564935990383768],
+      "uses": []
+    }, {
       "usr": 10528472276654770367,
       "detailed_name": "class Foo {}",
       "qual_name_offset": 6,
@@ -25,8 +42,25 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [16721564935990383768, 12028309045033782423],
+      "instances": [],
       "uses": ["4:1-4:4|0|1|4", "5:1-5:4|0|1|4"]
+    }, {
+      "usr": 14134940367505932005,
+      "detailed_name": "Foo",
+      "qual_name_offset": 0,
+      "short_name": "Foo",
+      "kind": 26,
+      "declarations": [],
+      "spell": "1:1-2:13|0|1|2",
+      "extent": "1:1-2:13|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [12028309045033782423],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 12028309045033782423,
@@ -36,7 +70,7 @@ OUTPUT:
       "declarations": [],
       "spell": "5:11-5:12|0|1|2",
       "extent": "5:1-5:12|0|1|0",
-      "type": 10528472276654770367,
+      "type": 14134940367505932005,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -48,7 +82,7 @@ OUTPUT:
       "declarations": [],
       "spell": "4:10-4:11|0|1|2",
       "extent": "4:1-4:11|0|1|0",
-      "type": 10528472276654770367,
+      "type": 5123806965838456033,
       "uses": [],
       "kind": 13,
       "storage": 0
