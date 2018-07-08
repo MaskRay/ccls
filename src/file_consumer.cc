@@ -80,7 +80,7 @@ bool VFS::Stamp(const std::string& file, int64_t ts) {
 
 void VFS::ResetLocked(const std::string& file) {
   State& st = state[file];
-  if (st.owner == g_thread_id)
+  if (st.owner == 0 || st.owner == g_thread_id)
     st.stage = 0;
 }
 

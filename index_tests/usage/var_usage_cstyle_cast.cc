@@ -70,7 +70,7 @@ OUTPUT:
       "hover": "static constexpr VarType Holder::static_var = (VarType)0",
       "declarations": ["4:28-4:38|10028537921178202800|2|513"],
       "spell": "7:23-7:33|10028537921178202800|2|514",
-      "extent": "4:3-4:53|10028537921178202800|2|0",
+      "extent": "7:1-7:33|0|1|0",
       "type": 5792006888140599735,
       "uses": [],
       "kind": 13,

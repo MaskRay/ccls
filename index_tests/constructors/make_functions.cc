@@ -132,7 +132,10 @@ OUTPUT: make_functions.h
 }
 OUTPUT: make_functions.cc
 {
-  "includes": [],
+  "includes": [{
+      "line": 0,
+      "resolved_path": "&make_functions.h"
+    }],
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 2532818908869373467,

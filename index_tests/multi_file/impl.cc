@@ -208,7 +208,10 @@ OUTPUT: header.h
 }
 OUTPUT: impl.cc
 {
-  "includes": [],
+  "includes": [{
+      "line": 0,
+      "resolved_path": "&header.h"
+    }],
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 5817708529036841195,

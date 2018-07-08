@@ -59,7 +59,7 @@ int main(int argc, char** argv) {
   }
 
   pipeline::Init();
-  IndexInit();
+  idx::IndexInit();
 
   bool language_server = true;
 

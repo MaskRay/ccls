@@ -44,7 +44,10 @@ OUTPUT: static.h
 }
 OUTPUT: static.cc
 {
-  "includes": [],
+  "includes": [{
+      "line": 0,
+      "resolved_path": "&static.h"
+    }],
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 14576076421851654759,
@@ -55,7 +58,7 @@ OUTPUT: static.cc
       "storage": 0,
       "declarations": [],
       "spell": "3:14-3:32|9411323049603567600|2|514",
-      "extent": "4:3-4:35|9411323049603567600|2|0",
+      "extent": "3:1-3:37|0|1|0",
       "declaring_type": 0,
       "bases": [],
       "derived": [],

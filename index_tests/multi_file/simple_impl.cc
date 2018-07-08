@@ -29,7 +29,10 @@ OUTPUT: simple_header.h
 }
 OUTPUT: simple_impl.cc
 {
-  "includes": [],
+  "includes": [{
+      "line": 0,
+      "resolved_path": "&simple_header.h"
+    }],
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 3373269392705484958,

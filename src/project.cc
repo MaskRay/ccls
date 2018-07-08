@@ -186,11 +186,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   // what ccls uses. Make sure we do not emit warnings for mismatched options.
   args.push_back("-Wno-unknown-warning-option");
 
-  // Using -fparse-all-comments enables documentation in the indexer and in
-  // code completion.
-  if (g_config->index.comments > 1)
-    args.push_back("-fparse-all-comments");
-
+  result.directory = entry.directory;
   result.args = std::move(args);
   return result;
 }

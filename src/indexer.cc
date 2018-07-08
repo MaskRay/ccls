@@ -14,8 +14,8 @@ using ccls::Intern;
 #include <clang/Index/USRGeneration.h>
 #include <clang/Lex/PreprocessorOptions.h>
 #include <llvm/ADT/DenseSet.h>
-#include <llvm/Support/Timer.h>
 #include <llvm/Support/CrashRecoveryContext.h>
+#include <llvm/Support/Timer.h>
 using namespace clang;
 using llvm::Timer;
 
@@ -35,19 +35,10 @@ struct IndexParam {
   std::unordered_map<std::string, int64_t> file2write_time;
   llvm::DenseMap<const Decl*, Usr> Decl2usr;
 
-  // Only use this when strictly needed (ie, primary translation unit is
-  // needed). Most logic should get the IndexFile instance via
-  // |file_consumer|.
-  //
-  // This can be null if we're not generating an index for the primary
-  // translation unit.
-  IndexFile* primary_file = nullptr;
-
   ASTUnit& Unit;
   ASTContext* Ctx;
 
   FileConsumer* file_consumer = nullptr;
-  NamespaceHelper ns;
 
   IndexParam(ASTUnit& Unit, FileConsumer* file_consumer)
       : Unit(Unit), file_consumer(file_consumer) {}
@@ -458,7 +449,7 @@ public:
 #endif
     SourceLocation Spell = SM.getSpellingLoc(Loc);
     Loc = SM.getFileLoc(Loc);
-    Range loc = FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Loc, Loc));
+    Range loc = FromTokenRange(SM, Lang, SourceRange(Loc, Loc));
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Loc));
     if (!FE) {
       // TODO
@@ -468,7 +459,7 @@ public:
       FE = SM.getFileEntryForID(SM.getFileID(P.first));
 #else
       auto R = SM.getExpansionRange(Loc);
-      loc = FromTokenRange(SM, Ctx->getLangOpts(), R.getAsRange());
+      loc = FromTokenRange(SM, Lang, R.getAsRange());
       FE = SM.getFileEntryForID(SM.getFileID(R.getBegin()));
 #endif
       if (!FE)
@@ -478,11 +469,9 @@ public:
     if (!db)
       return true;
 
-    const DeclContext *SemDC = D->getDeclContext();
-    const DeclContext *LexDC = D->getLexicalDeclContext();
-    (void)SemDC;
-    (void)LexDC;
-    Range extent = FromTokenRange(SM, Lang, D->getSourceRange());
+    const Decl* OrigD = ASTNode.OrigD;
+    const DeclContext *SemDC = OrigD->getDeclContext();
+    const DeclContext *LexDC = OrigD->getLexicalDeclContext();
     Role role = static_cast<Role>(Roles);
 
     bool is_decl = Roles & uint32_t(index::SymbolRole::Declaration);
@@ -504,13 +493,14 @@ public:
     auto do_def_decl = [&](auto *entity) {
       if (!entity->def.detailed_name[0]) {
         SetName(D, short_name, qualified, entity->def);
-        if (g_config->index.comments)
+        if (entity->def.comments[0] == '\0' && g_config->index.comments)
           entity->def.comments = Intern(GetComment(D));
       }
       if (is_def) {
-        entity->def.spell = GetUse(db, loc, LexDC, role);
-        // extent may come from a declaration.
-        entity->def.extent = GetUse(db, extent, LexDC, Role::None);
+        entity->def.spell = GetUse(db, loc, SemDC, role);
+        entity->def.extent =
+            GetUse(db, FromTokenRange(SM, Lang, OrigD->getSourceRange()), LexDC,
+                   Role::None);
       } else if (is_decl) {
         entity->declarations.push_back(GetUse(db, loc, LexDC, role));
       } else {
@@ -737,7 +727,8 @@ public:
       break;
     case Decl::EnumConstant:
       var->def.kind = lsSymbolKind::EnumMember;
-      if (is_def) {
+      // TODO Pretty printer may print =
+      if (is_def && strchr(var->def.detailed_name, '=') == nullptr) {
         auto *ECD = cast<EnumConstantDecl>(D);
         const auto &Val = ECD->getInitVal();
         std::string init =
@@ -767,6 +758,26 @@ class IndexPPCallbacks : public PPCallbacks {
 
 public:
   IndexPPCallbacks(SourceManager& SM, IndexParam& param) : SM(SM), param(param) {}
+  void InclusionDirective(SourceLocation HashLoc, const Token &Tok,
+                          StringRef Included, bool IsAngled,
+                          CharSourceRange FilenameRange, const FileEntry *File,
+                          StringRef SearchPath, StringRef RelativePath,
+                          const Module *Imported,
+                          SrcMgr::CharacteristicKind FileType) override {
+    if (!File)
+      return;
+    llvm::sys::fs::UniqueID UniqueID;
+    SourceRange R = FilenameRange.getAsRange();
+    auto spell = FromCharRange(SM, param.Ctx->getLangOpts(), R, &UniqueID);
+    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(R.getBegin()));
+    if (!FE)
+      return;
+    if (IndexFile *db = param.ConsumeFile(*FE)) {
+      std::string file_name = FileName(*File);
+      if (file_name.size())
+        db->includes.push_back({spell.start.line, std::move(file_name)});
+    }
+  }
   void MacroDefined(const Token &Tok, const MacroDirective *MD) override {
     llvm::sys::fs::UniqueID UniqueID;
     SourceLocation L = MD->getLocation();
@@ -806,8 +817,10 @@ public:
   }
   void MacroUndefined(const Token &Tok, const MacroDefinition &MD,
                       const MacroDirective *UD) override {
-    SourceLocation L = UD->getLocation();
-    MacroExpands(Tok, MD, {L, L}, nullptr);
+    if (UD) {
+      SourceLocation L = UD->getLocation();
+      MacroExpands(Tok, MD, {L, L}, nullptr);
+    }
   }
   void SourceRangeSkipped(SourceRange Range, SourceLocation EndifLoc) override {
     llvm::sys::fs::UniqueID UniqueID;
@@ -882,20 +895,27 @@ void Uniquify(std::vector<Use>& uses) {
   uses.resize(n);
 }
 
-std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
+
+namespace ccls::idx {
+void IndexInit() {
+  // This calls llvm::InitializeAllTargets() ... for us, we would otherwise link
+  // all target libraries.
+  CXIndex CXIdx = clang_createIndex(0, 0);
+  clang_disposeIndex(CXIdx);
+}
+
+std::vector<std::unique_ptr<IndexFile>> Index(
     VFS* vfs,
-    std::string file,
+    const std::string& opt_wdir,
+    const std::string& file,
     const std::vector<std::string>& args,
     const std::vector<FileContents>& file_contents) {
   if (!g_config->index.enabled)
     return {};
 
-  file = NormalizePath(file);
-
   std::vector<const char *> Args;
   for (auto& arg: args)
     Args.push_back(arg.c_str());
-  Args.push_back("-fno-spell-checking");
   auto PCHCO = std::make_shared<PCHContainerOperations>();
   IntrusiveRefCntPtr<DiagnosticsEngine>
     Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions));
@@ -903,7 +923,22 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
       createInvocationFromCommandLine(Args, Diags);
   if (!CI)
     return {};
-  CI->getLangOpts()->CommentOpts.ParseAllComments = true;
+  // -fparse-all-comments enables documentation in the indexer and in
+  // code completion.
+  if (g_config->index.comments > 1)
+    CI->getLangOpts()->CommentOpts.ParseAllComments = true;
+  CI->getLangOpts()->SpellChecking = false;
+  {
+    // FileSystemOptions& FSOpts = CI->getFileSystemOpts();
+    // if (FSOpts.WorkingDir.empty())
+    //   FSOpts.WorkingDir = opt_wdir;
+    // HeaderSearchOptions &HSOpts = CI->getHeaderSearchOpts();
+    // llvm::errs() << HSOpts.ResourceDir << "\n";
+    // // lib/clang/7.0.0 is incorrect
+    // if (HSOpts.ResourceDir.compare(0, 3, "lib") == 0 &&
+    //     HSOpts.UseBuiltinIncludes)
+    //   HSOpts.ResourceDir = g_config->clang.resourceDir;
+  }
 
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> BufOwner;
   for (auto &c : file_contents) {
@@ -929,31 +964,42 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
 
   std::unique_ptr<FrontendAction> IndexAction = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
-  llvm::CrashRecoveryContextCleanupRegistrar<FrontendAction> IndexActionCleanup(
-      IndexAction.get());
 
   DiagnosticErrorTrap DiagTrap(*Diags);
-  bool Success = ASTUnit::LoadFromCompilerInvocationAction(
-      std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
-      /*Persistent=*/true, "/home/maskray/Dev/llvm/release/lib/clang/7.0.0",
-      /*OnlyLocalDecls=*/true,
-      /*CaptureDiagnostics=*/true, 0, false, false, true);
+  bool success = false;
+  llvm::CrashRecoveryContext CRC;
+  {
+    auto compile = [&]() {
+      success = ASTUnit::LoadFromCompilerInvocationAction(
+          std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
+          /*Persistent=*/true, /*ResourceDir=*/"",
+          /*OnlyLocalDecls=*/true,
+          /*CaptureDiagnostics=*/true, 0, false, false, true);
+    };
+    const char *env = getenv("CCLS_CRASH_RECOVERY");
+    if (env && strcmp(env, "0") == 0)
+      compile();
+    else
+      CRC.RunSafely(compile);
+  }
+
   if (!Unit) {
     LOG_S(ERROR) << "failed to index " << file;
     return {};
   }
-  if (!Success)
+  if (!success) {
+    LOG_S(ERROR) << "clang crashed for " << file;
     return {};
+  }
 
   // ClangCursor(clang_getTranslationUnitCursor(tu->cx_tu))
   //     .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
   const SourceManager& SM = Unit->getSourceManager();
   const FileEntry* FE = SM.getFileEntryForID(SM.getMainFileID());
-  param.primary_file = param.ConsumeFile(*FE);
+  IndexFile* main_file = param.ConsumeFile(*FE);
   std::unordered_map<std::string, int> inc_to_line;
-  // TODO
-  if (param.primary_file)
-    for (auto& inc : param.primary_file->includes)
+  if (main_file)
+    for (auto& inc : main_file->includes)
       inc_to_line[inc.resolved_path] = inc.line;
 
   auto result = param.file_consumer->TakeLocalState();
@@ -974,7 +1020,7 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
     for (auto& it : entry->usr2var)
       Uniquify(it.second.uses);
 
-    if (param.primary_file) {
+    if (main_file) {
       // If there are errors, show at least one at the include position.
       auto it = inc_to_line.find(entry->path);
       if (it != inc_to_line.end()) {
@@ -984,7 +1030,7 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
             continue;
           ls_diagnostic.range =
               lsRange{lsPosition{line, 10}, lsPosition{line, 10}};
-          param.primary_file->diagnostics_.push_back(ls_diagnostic);
+          main_file->diagnostics_.push_back(ls_diagnostic);
           break;
         }
       }
@@ -1002,11 +1048,6 @@ std::vector<std::unique_ptr<IndexFile>> ClangIndexer::Index(
 
   return result;
 }
-
-void IndexInit() {
-  // InitLLVM
-  CXIndex CXIdx = clang_createIndex(0, 0);
-  clang_disposeIndex(CXIdx);
 }
 
 // |SymbolRef| is serialized this way.
