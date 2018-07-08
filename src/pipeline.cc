@@ -79,34 +79,21 @@ ThreadedQueue<Index_Request>* index_request;
 ThreadedQueue<IndexUpdate>* on_indexed;
 ThreadedQueue<Stdout_Request>* for_stdout;
 
-// Checks if |path| needs to be reparsed. This will modify cached state
-// such that calling this function twice with the same path may return true
-// the first time but will return false the second.
-//
-// |from|: The file which generated the parse request for this file.
-bool FileNeedsParse(int64_t write_time,
-                    VFS* vfs,
-                    bool is_interactive,
-                    IndexFile* opt_previous_index,
-                    const std::string& path,
-                    const std::vector<std::string>& args,
-                    const std::optional<std::string>& from) {
+bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
+                  const std::vector<std::string> &args,
+                  const std::optional<std::string> &from) {
   {
     std::lock_guard<std::mutex> lock(vfs->mutex);
-    if (vfs->state[path].timestamp < write_time) {
+    if (prev->last_write_time < vfs->state[path].timestamp) {
       LOG_S(INFO) << "timestamp changed for " << path
                   << (from ? " (via " + *from + ")" : std::string());
       return true;
     }
   }
 
-  // Command-line arguments changed.
-  if (opt_previous_index) {
-    auto& prev_args = opt_previous_index->args;
-    if (prev_args != args) {
-      LOG_S(INFO) << "args changed for " << path << (from ? " (via " + *from + ")" : std::string());
-      return true;
-    }
+  if (prev->args != args) {
+    LOG_S(INFO) << "args changed for " << path << (from ? " (via " + *from + ")" : std::string());
+    return true;
   }
 
   return false;
@@ -184,18 +171,15 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
   std::optional<int64_t> write_time = LastWriteTime(path_to_index);
   if (!write_time)
     return true;
-  // FIXME Don't drop
-  if (!vfs->Mark(path_to_index, g_thread_id, 1))
+  int reparse = vfs->Stamp(path_to_index, *write_time);
+  if (!vfs->Mark(path_to_index, g_thread_id, 1) && !reparse)
     return true;
 
-  int reparse; // request.is_interactive;
   prev = RawCacheLoad(path_to_index);
   if (!prev)
     reparse = 2;
   else {
-    reparse = vfs->Stamp(path_to_index, prev->last_write_time);
-    if (FileNeedsParse(*write_time, vfs, request.is_interactive, &*prev,
-                       path_to_index, entry.args, std::nullopt))
+    if (CacheInvalid(vfs, prev.get(), path_to_index, entry.args, std::nullopt))
       reparse = 2;
     int reparseForDep = g_config->index.reparseForDependency;
     if (reparseForDep > 1 || (reparseForDep == 1 && !Project::loaded))
@@ -218,7 +202,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
       on_indexed->PushBack(std::move(update), request.is_interactive);
     }
-    for (const auto& dep : dependencies)
+    for (const auto &dep : dependencies)
       if (vfs->Mark(dep.first().str(), 0, 2) &&
           (prev = RawCacheLoad(dep.first().str()))) {
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
@@ -273,7 +257,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
       timer.stopTimer();
     }
 
-    vfs->Reset(path_to_index);
+    vfs->Reset(path);
     if (entry.id >= 0) {
       std::lock_guard<std::mutex> lock(project->mutex_);
       for (auto& dep : curr->dependencies)
