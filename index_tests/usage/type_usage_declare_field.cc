@@ -11,21 +11,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 15041163540773201510,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [14314859014962085433, 14727441168849658842],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 8508299082070213750,
       "detailed_name": "struct ImplementedType {}",

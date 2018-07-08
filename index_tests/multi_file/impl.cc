@@ -10,20 +10,6 @@ OUTPUT: header.h
   "includes": [],
   "skipped_ranges": [],
   "usr2func": [{
-      "usr": 4481210672785600703,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [6141718166919284735, 17716334512218775320, 7285646116511901840],
-      "uses": [],
-      "callees": []
-    }, {
       "usr": 11650481237659640387,
       "detailed_name": "void Foo1()",
       "qual_name_offset": 5,

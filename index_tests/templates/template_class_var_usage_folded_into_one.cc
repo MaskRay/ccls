@@ -11,21 +11,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 10528472276654770367,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [13545144895171991916],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 53,
       "detailed_name": "",

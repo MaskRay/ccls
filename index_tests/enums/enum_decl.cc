@@ -8,21 +8,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 16985894625255407295,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [439339022761937396, 15962370213938840720],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 16985894625255407295,
       "detailed_name": "enum Foo {\n}",

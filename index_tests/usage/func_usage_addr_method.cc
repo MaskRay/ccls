@@ -25,7 +25,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [4636142131003982569],
       "uses": [],
       "callees": []
     }, {
@@ -63,10 +63,10 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 4636142131003982569,
-      "detailed_name": "auto x",
-      "qual_name_offset": 5,
+      "detailed_name": "void (Foo::*)() x",
+      "qual_name_offset": 16,
       "short_name": "x",
-      "hover": "auto x = &Foo::Used",
+      "hover": "void (Foo::*)() x = &Foo::Used",
       "declarations": [],
       "spell": "6:8-6:9|9376923949268137283|3|2",
       "extent": "6:3-6:22|9376923949268137283|3|0",

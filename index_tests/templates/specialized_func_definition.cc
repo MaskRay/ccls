@@ -24,8 +24,8 @@ OUTPUT:
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 6995843774014807426,
-      "detailed_name": "void Template<void>::Foo()",
-      "qual_name_offset": 5,
+      "detailed_name": "template <> void Template<void>::Foo()",
+      "qual_name_offset": 31,
       "short_name": "Foo",
       "kind": 6,
       "storage": 0,

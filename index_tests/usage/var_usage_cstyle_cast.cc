@@ -12,21 +12,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 10028537921178202800,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [7057400933868440116, 7057400933868440116],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 5792006888140599735,
       "detailed_name": "enum VarType {\n}",
@@ -67,7 +53,7 @@ OUTPUT:
       "detailed_name": "static constexpr VarType Holder::static_var",
       "qual_name_offset": 25,
       "short_name": "static_var",
-      "hover": "static constexpr VarType Holder::static_var = (VarType)0",
+      "hover": "static constexpr VarType Holder::static_var = (VarType)0x0",
       "declarations": ["4:28-4:38|10028537921178202800|2|513"],
       "spell": "7:23-7:33|10028537921178202800|2|514",
       "extent": "7:1-7:33|0|1|0",

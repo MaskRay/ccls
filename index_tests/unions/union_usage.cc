@@ -17,20 +17,6 @@ OUTPUT:
   "includes": [],
   "skipped_ranges": [],
   "usr2func": [{
-      "usr": 8501689086387244262,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [9529311430721959843, 8804696910588009104],
-      "uses": [],
-      "callees": []
-    }, {
       "usr": 13982179977217945200,
       "detailed_name": "void act(Foo *)",
       "qual_name_offset": 5,

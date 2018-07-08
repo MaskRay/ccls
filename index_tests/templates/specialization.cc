@@ -76,20 +76,6 @@ OUTPUT:
       "uses": [],
       "callees": []
     }, {
-      "usr": 9201299975592934124,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [15477793821005285152, 4917621020431490070],
-      "uses": [],
-      "callees": []
-    }, {
       "usr": 17498190318698490707,
       "detailed_name": "void foo(T Value)",
       "qual_name_offset": 5,
@@ -102,7 +88,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [17826688417349629938],
       "uses": [],
       "callees": []
     }, {
@@ -136,6 +122,23 @@ OUTPUT:
       "instances": [13914496963221806870],
       "uses": []
     }, {
+      "usr": 218068462278884837,
+      "detailed_name": "template <typename T, typename ...Args> class function<type-parameter-0-0 (type-parameter-0-1...)> {}",
+      "qual_name_offset": 46,
+      "short_name": "function",
+      "kind": 5,
+      "declarations": [],
+      "spell": "5:7-5:15|0|1|2",
+      "extent": "4:1-5:30|0|1|0",
+      "alias_of": 0,
+      "bases": [15019211479263750068],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": []
+    }, {
       "usr": 1663022413889915338,
       "detailed_name": "template<> class vector<Z2, allocator<Z2>> {}",
       "qual_name_offset": 17,
@@ -151,6 +154,23 @@ OUTPUT:
       "funcs": [6113470698424012876],
       "vars": [],
       "instances": [15931696253641284761],
+      "uses": []
+    }, {
+      "usr": 3231449734830406187,
+      "detailed_name": "function",
+      "qual_name_offset": 0,
+      "short_name": "function",
+      "kind": 26,
+      "declarations": [],
+      "spell": "4:1-5:30|0|1|2",
+      "extent": "4:1-5:30|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [2933643612409209903],
       "uses": []
     }, {
       "usr": 5760043510674081814,
@@ -180,11 +200,11 @@ OUTPUT:
       "extent": "12:1-14:2|0|1|0",
       "alias_of": 0,
       "bases": [],
-      "derived": [1663022413889915338],
+      "derived": [16155717907537731864, 1663022413889915338],
       "types": [],
       "funcs": [18107614608385228556],
       "vars": [],
-      "instances": [5792869548777559988, 86949563628772958, 3566687051827176322],
+      "instances": [],
       "uses": ["17:7-17:13|0|1|4", "26:7-26:13|0|1|4", "30:1-30:7|0|1|4", "31:1-31:7|0|1|4", "32:1-32:7|0|1|4", "33:1-33:7|0|1|4"]
     }, {
       "usr": 9201299975592934124,
@@ -221,6 +241,57 @@ OUTPUT:
       "instances": [],
       "uses": ["26:14-26:16|0|1|4", "33:8-33:10|0|1|4"]
     }, {
+      "usr": 11153492883079050853,
+      "detailed_name": "vector",
+      "qual_name_offset": 0,
+      "short_name": "vector",
+      "kind": 26,
+      "declarations": [],
+      "spell": "16:1-17:20|0|1|2",
+      "extent": "16:1-17:20|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [86949563628772958],
+      "uses": []
+    }, {
+      "usr": 13322943937025195708,
+      "detailed_name": "vector",
+      "qual_name_offset": 0,
+      "short_name": "vector",
+      "kind": 26,
+      "declarations": [],
+      "spell": "11:1-14:2|0|1|2",
+      "extent": "11:1-14:2|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [5792869548777559988],
+      "uses": []
+    }, {
+      "usr": 14111105212951082474,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "T",
+      "kind": 26,
+      "declarations": [],
+      "spell": "38:11-38:21|17498190318698490707|3|2",
+      "extent": "38:11-38:21|17498190318698490707|3|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [17826688417349629938],
+      "uses": []
+    }, {
       "usr": 15019211479263750068,
       "detailed_name": "class function",
       "qual_name_offset": 6,
@@ -229,12 +300,29 @@ OUTPUT:
       "declarations": ["2:7-2:15|0|1|1"],
       "alias_of": 0,
       "bases": [],
+      "derived": [218068462278884837],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": ["5:7-5:15|0|1|4", "7:1-7:9|0|1|4"]
+    }, {
+      "usr": 15440970074034693939,
+      "detailed_name": "vector",
+      "qual_name_offset": 0,
+      "short_name": "vector",
+      "kind": 26,
+      "declarations": [],
+      "spell": "21:1-21:26|0|1|2",
+      "extent": "21:1-21:26|0|1|0",
+      "alias_of": 0,
+      "bases": [],
       "derived": [],
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [2933643612409209903],
-      "uses": ["5:7-5:15|0|1|4", "7:1-7:9|0|1|4"]
+      "instances": [3566687051827176322],
+      "uses": []
     }, {
       "usr": 15695704394170757108,
       "detailed_name": "class allocator",
@@ -250,6 +338,23 @@ OUTPUT:
       "vars": [],
       "instances": [],
       "uses": ["11:39-11:48|0|1|4"]
+    }, {
+      "usr": 16155717907537731864,
+      "detailed_name": "template <typename T> class vector<type-parameter-0-0 *, allocator<type-parameter-0-0 *>> {}",
+      "qual_name_offset": 28,
+      "short_name": "vector",
+      "kind": 5,
+      "declarations": [],
+      "spell": "17:7-17:13|0|1|2",
+      "extent": "16:1-17:20|0|1|0",
+      "alias_of": 0,
+      "bases": [7440942986741176606],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 86949563628772958,
@@ -259,7 +364,7 @@ OUTPUT:
       "declarations": [],
       "spell": "31:14-31:17|0|1|2",
       "extent": "31:1-31:17|0|1|0",
-      "type": 7440942986741176606,
+      "type": 11153492883079050853,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -271,7 +376,7 @@ OUTPUT:
       "declarations": [],
       "spell": "7:21-7:22|0|1|2",
       "extent": "7:1-7:22|0|1|0",
-      "type": 15019211479263750068,
+      "type": 3231449734830406187,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -283,7 +388,7 @@ OUTPUT:
       "declarations": [],
       "spell": "32:12-32:15|0|1|2",
       "extent": "32:1-32:15|0|1|0",
-      "type": 7440942986741176606,
+      "type": 15440970074034693939,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -308,7 +413,7 @@ OUTPUT:
       "declarations": [],
       "spell": "30:14-30:16|0|1|2",
       "extent": "30:1-30:16|0|1|0",
-      "type": 7440942986741176606,
+      "type": 13322943937025195708,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -358,7 +463,7 @@ OUTPUT:
       "declarations": [],
       "spell": "39:12-39:17|17498190318698490707|3|514",
       "extent": "39:10-39:17|17498190318698490707|3|0",
-      "type": 0,
+      "type": 14111105212951082474,
       "uses": [],
       "kind": 253,
       "storage": 0

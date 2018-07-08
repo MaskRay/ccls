@@ -31,21 +31,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
-      "uses": [],
-      "callees": []
-    }, {
-      "usr": 14450849931009540802,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [15042442838933090518],
+      "vars": [6030927277961448585, 7657277353101371136],
       "uses": [],
       "callees": []
     }],
@@ -106,7 +92,10 @@ OUTPUT:
       "derived": [],
       "types": [],
       "funcs": [],
-      "vars": [],
+      "vars": [{
+          "L": 15042442838933090518,
+          "R": -1
+        }],
       "instances": [],
       "uses": ["9:27-9:30|17805385787823406700|2|4", "12:21-12:24|17805385787823406700|2|4"]
     }, {

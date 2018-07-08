@@ -19,35 +19,7 @@ OUTPUT:
 {
   "includes": [],
   "skipped_ranges": [],
-  "usr2func": [{
-      "usr": 11072669167287398027,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [12898699035586282159, 9008550860229740818],
-      "uses": [],
-      "callees": []
-    }, {
-      "usr": 12688716854043726585,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [4731849186641714451, 4731849186641714451],
-      "uses": [],
-      "callees": []
-    }],
+  "usr2func": [],
   "usr2type": [{
       "usr": 53,
       "detailed_name": "",
@@ -92,7 +64,13 @@ OUTPUT:
       "derived": [],
       "types": [1532099849728741556, 12688716854043726585],
       "funcs": [],
-      "vars": [],
+      "vars": [{
+          "L": 12898699035586282159,
+          "R": -1
+        }, {
+          "L": 9008550860229740818,
+          "R": -1
+        }],
       "instances": [],
       "uses": []
     }, {
@@ -118,7 +96,7 @@ OUTPUT:
       "detailed_name": "static constexpr ns::VarType ns::Holder::static_var",
       "qual_name_offset": 29,
       "short_name": "static_var",
-      "hover": "static constexpr ns::VarType ns::Holder::static_var = (ns::VarType)0",
+      "hover": "static constexpr ns::VarType ns::Holder::static_var = (VarType)0x0",
       "declarations": ["6:30-6:40|12688716854043726585|2|513"],
       "spell": "10:37-10:47|12688716854043726585|2|514",
       "extent": "9:3-10:47|11072669167287398027|2|0",
