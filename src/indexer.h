@@ -285,22 +285,11 @@ struct IndexFile {
   std::string ToString();
 };
 
-struct NamespaceHelper {
-  std::unordered_map<Usr, std::string> usr2qualified_name;
-
-  std::tuple<std::string, int16_t, int16_t> QualifiedName(
-      const CXIdxContainerInfo* container,
-      std::string_view unqualified_name);
-};
-
-bool ConcatTypeAndName(std::string& type, const std::string& name);
-
+namespace ccls::idx {
 void IndexInit();
 
-struct ClangIndexer {
-  std::vector<std::unique_ptr<IndexFile>> Index(
-      VFS* vfs,
-      std::string file,
-      const std::vector<std::string>& args,
-      const std::vector<FileContents>& file_contents);
-};
+std::vector<std::unique_ptr<IndexFile>>
+Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
+  const std::vector<std::string> &args,
+  const std::vector<FileContents> &file_contents);
+}

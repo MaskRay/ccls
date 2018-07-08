@@ -78,7 +78,10 @@ OUTPUT: static_function_in_type.h
 }
 OUTPUT: static_function_in_type.cc
 {
-  "includes": [],
+  "includes": [{
+      "line": 0,
+      "resolved_path": "&static_function_in_type.h"
+    }],
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 17019747379608639279,
@@ -89,7 +92,7 @@ OUTPUT: static_function_in_type.cc
       "storage": 0,
       "declarations": [],
       "spell": "5:11-5:19|17262466801709381811|2|514",
-      "extent": "6:3-6:33|17262466801709381811|2|0",
+      "extent": "5:1-6:2|11072669167287398027|2|0",
       "declaring_type": 0,
       "bases": [],
       "derived": [],

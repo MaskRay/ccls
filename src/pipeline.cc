@@ -152,8 +152,7 @@ std::unique_ptr<IndexFile> RawCacheLoad(
 bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
                    WorkingFiles* working_files,
                    Project* project,
-                   VFS* vfs,
-                   ClangIndexer* indexer) {
+                   VFS* vfs) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
@@ -235,7 +234,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
 
   LOG_S(INFO) << "parse " << path_to_index;
 
-  auto indexes = indexer->Index(vfs, path_to_index, entry.args, {});
+  auto indexes = idx::Index(vfs, entry.directory, path_to_index, entry.args, {});
 
   if (indexes.empty()) {
     if (g_config->index.enabled && request.id.Valid()) {
@@ -309,11 +308,8 @@ void Indexer_Main(DiagnosticsPublisher* diag_pub,
                   VFS* vfs,
                   Project* project,
                   WorkingFiles* working_files) {
-  // Build one index per-indexer, as building the index acquires a global lock.
-  ClangIndexer indexer;
-
   while (true)
-    if (!Indexer_Parse(diag_pub, working_files, project, vfs, &indexer))
+    if (!Indexer_Parse(diag_pub, working_files, project, vfs))
       indexer_waiter->Wait(index_request);
 }
 

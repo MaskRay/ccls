@@ -87,7 +87,10 @@ OUTPUT: funky_enum.h
 }
 OUTPUT: funky_enum.cc
 {
-  "includes": [],
+  "includes": [{
+      "line": 1,
+      "resolved_path": "&funky_enum.h"
+    }],
   "skipped_ranges": [],
   "usr2func": [],
   "usr2type": [{

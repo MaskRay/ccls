@@ -7,9 +7,8 @@
 #include <clang-c/Index.h>
 #include <clang/Basic/FileManager.h>
 
-#include <functional>
-#include <map>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 struct IndexFile;
@@ -43,6 +42,17 @@ struct VFS {
   void Reset(const std::string& file);
 };
 
+namespace std {
+template <>
+struct hash<llvm::sys::fs::UniqueID> {
+  std::size_t operator()(llvm::sys::fs::UniqueID ID) const {
+    size_t ret = ID.getDevice();
+    hash_combine(ret, ID.getFile());
+    return ret;
+  }
+};
+}
+
 // FileConsumer is used by the indexer. When it encouters a file, it tries to
 // take ownership over it. If the indexer has ownership over a file, it will
 // produce an index, otherwise, it will emit nothing for that declarations
@@ -66,7 +76,7 @@ struct FileConsumer {
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
 
  private:
-  std::map<llvm::sys::fs::UniqueID, std::unique_ptr<IndexFile>> local_;
+  std::unordered_map<llvm::sys::fs::UniqueID, std::unique_ptr<IndexFile>> local_;
   VFS* vfs_;
   std::string parse_file_;
   int thread_id_;

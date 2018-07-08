@@ -59,7 +59,6 @@ OUTPUT:
       "detailed_name": "B = 20",
       "qual_name_offset": 0,
       "short_name": "B",
-      "hover": "B = 20 = 20",
       "declarations": [],
       "spell": "3:3-3:4|16985894625255407295|2|514",
       "extent": "3:3-3:9|16985894625255407295|2|0",

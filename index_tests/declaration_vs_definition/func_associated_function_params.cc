@@ -18,7 +18,7 @@ OUTPUT:
       "storage": 0,
       "declarations": ["1:5-1:8|0|1|1", "2:5-2:8|0|1|1", "4:5-4:8|0|1|1"],
       "spell": "5:5-5:8|0|1|2",
-      "extent": "1:1-1:18|0|1|0",
+      "extent": "5:1-5:36|0|1|0",
       "declaring_type": 0,
       "bases": [],
       "derived": [],

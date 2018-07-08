@@ -13,6 +13,7 @@ struct WorkingFiles;
 
 struct Project {
   struct Entry {
+    std::string directory;
     std::string filename;
     std::vector<std::string> args;
     // If true, this entry is inferred and was not read from disk.
