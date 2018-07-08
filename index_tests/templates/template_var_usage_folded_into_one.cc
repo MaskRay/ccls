@@ -54,6 +54,23 @@ OUTPUT:
       "instances": [16721564935990383768],
       "uses": ["7:1-7:2|0|1|4", "7:11-7:12|0|1|4"]
     }, {
+      "usr": 11919899838872947844,
+      "detailed_name": "T",
+      "qual_name_offset": 0,
+      "short_name": "T",
+      "kind": 26,
+      "declarations": [],
+      "spell": "4:10-4:20|0|1|2",
+      "extent": "4:10-4:20|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [8096973118640070624],
+      "uses": []
+    }, {
       "usr": 13892793056005362145,
       "detailed_name": "enum B {\n}",
       "qual_name_offset": 5,
@@ -80,7 +97,7 @@ OUTPUT:
       "declarations": [],
       "spell": "5:3-5:6|0|1|2",
       "extent": "5:1-5:12|0|1|0",
-      "type": 0,
+      "type": 11919899838872947844,
       "uses": ["7:7-7:10|0|1|12", "8:7-8:10|0|1|12"],
       "kind": 13,
       "storage": 0

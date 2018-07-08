@@ -27,20 +27,6 @@ OUTPUT:
       "vars": [],
       "uses": ["6:11-6:17|0|1|36"],
       "callees": []
-    }, {
-      "usr": 15041163540773201510,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [4220150017963593039],
-      "uses": [],
-      "callees": []
     }],
   "usr2type": [{
       "usr": 53,

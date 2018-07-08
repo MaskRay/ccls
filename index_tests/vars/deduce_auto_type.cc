@@ -22,7 +22,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [10601729374837386290, 18422884837902130475],
       "uses": [],
       "callees": []
     }],
@@ -41,7 +41,7 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [18422884837902130475],
+      "instances": [10601729374837386290, 18422884837902130475],
       "uses": ["3:16-3:19|0|1|4", "4:17-4:20|0|1|4"]
     }],
   "usr2var": [{
@@ -53,16 +53,16 @@ OUTPUT:
       "declarations": [],
       "spell": "3:8-3:9|880549676430489861|3|2",
       "extent": "3:3-3:21|880549676430489861|3|0",
-      "type": 0,
+      "type": 15041163540773201510,
       "uses": [],
       "kind": 13,
       "storage": 0
     }, {
       "usr": 18422884837902130475,
-      "detailed_name": "auto *y",
-      "qual_name_offset": 6,
+      "detailed_name": "Foo *y",
+      "qual_name_offset": 5,
       "short_name": "y",
-      "hover": "auto *y = new Foo()",
+      "hover": "Foo *y = new Foo()",
       "declarations": [],
       "spell": "4:9-4:10|880549676430489861|3|2",
       "extent": "4:3-4:22|880549676430489861|3|0",

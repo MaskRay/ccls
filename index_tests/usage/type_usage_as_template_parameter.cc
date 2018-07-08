@@ -28,7 +28,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [3364438781074774169],
       "uses": [],
       "callees": []
     }],
@@ -47,8 +47,25 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [12857919739649552168, 18075066956054788088, 3364438781074774169],
+      "instances": [],
       "uses": ["6:8-6:18|0|1|4", "7:8-7:18|0|1|4", "9:1-9:11|0|1|4", "10:3-10:13|0|1|4"]
+    }, {
+      "usr": 4186953406371619898,
+      "detailed_name": "unique_ptr",
+      "qual_name_offset": 0,
+      "short_name": "unique_ptr",
+      "kind": 26,
+      "declarations": [],
+      "spell": "1:1-2:20|0|1|2",
+      "extent": "1:1-2:20|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [18075066956054788088, 3364438781074774169],
+      "uses": []
     }, {
       "usr": 4750332761459066907,
       "detailed_name": "struct S {}",
@@ -66,6 +83,23 @@ OUTPUT:
       "vars": [],
       "instances": [],
       "uses": ["7:19-7:20|0|1|4", "9:12-9:13|0|1|4", "10:14-10:15|0|1|4"]
+    }, {
+      "usr": 16848604152578034754,
+      "detailed_name": "unique_ptr",
+      "qual_name_offset": 0,
+      "short_name": "unique_ptr",
+      "kind": 26,
+      "declarations": [],
+      "spell": "1:1-2:20|0|1|2",
+      "extent": "1:1-2:20|0|1|0",
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [12857919739649552168],
+      "uses": []
     }],
   "usr2var": [{
       "usr": 3364438781074774169,
@@ -75,7 +109,7 @@ OUTPUT:
       "declarations": [],
       "spell": "10:18-10:23|16359708726068806331|3|2",
       "extent": "10:3-10:23|16359708726068806331|3|0",
-      "type": 3286534761799572592,
+      "type": 4186953406371619898,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -87,7 +121,7 @@ OUTPUT:
       "declarations": [],
       "spell": "6:25-6:27|0|1|2",
       "extent": "6:1-6:27|0|1|0",
-      "type": 3286534761799572592,
+      "type": 16848604152578034754,
       "uses": [],
       "kind": 13,
       "storage": 2
@@ -99,7 +133,7 @@ OUTPUT:
       "declarations": [],
       "spell": "7:22-7:24|0|1|2",
       "extent": "7:1-7:24|0|1|0",
-      "type": 3286534761799572592,
+      "type": 4186953406371619898,
       "uses": [],
       "kind": 13,
       "storage": 2

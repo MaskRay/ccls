@@ -31,20 +31,6 @@ OUTPUT:
       "uses": [],
       "callees": []
     }, {
-      "usr": 11072669167287398027,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [12898699035586282159],
-      "uses": [],
-      "callees": []
-    }, {
       "usr": 17328473273923617489,
       "detailed_name": "void ns::Accept(int a)",
       "qual_name_offset": 5,
@@ -57,7 +43,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [3649375698083002347],
       "uses": ["7:7-7:13|11072669167287398027|2|8228", "9:3-9:9|11072669167287398027|2|8228"],
       "callees": []
     }],
@@ -88,7 +74,10 @@ OUTPUT:
       "derived": [],
       "types": [],
       "funcs": [17328473273923617489],
-      "vars": [],
+      "vars": [{
+          "L": 12898699035586282159,
+          "R": -1
+        }],
       "instances": [],
       "uses": ["7:3-7:5|0|1|4", "7:14-7:16|0|1|4", "8:19-8:21|0|1|4"]
     }],

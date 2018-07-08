@@ -320,7 +320,7 @@ void Main_OnIndexed(DB* db,
   db->ApplyIndexUpdate(update);
   timer.stopTimer();
 
-  // Update indexed content, inactive lines, and semantic highlighting.
+  // Update indexed content, skipped ranges, and semantic highlighting.
   if (update->files_def_update) {
     auto& def_u = *update->files_def_update;
     LOG_S(INFO) << "apply index for " << def_u.first.path;

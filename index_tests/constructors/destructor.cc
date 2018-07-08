@@ -47,7 +47,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [1893354193220338759],
       "uses": [],
       "callees": []
     }, {

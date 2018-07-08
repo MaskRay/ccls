@@ -150,7 +150,7 @@ OUTPUT: make_functions.cc
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [3908732770590594660],
       "uses": ["17:3-17:14|0|1|8228"],
       "callees": []
     }, {
@@ -182,7 +182,7 @@ OUTPUT: make_functions.cc
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [8463700030555379526],
       "uses": ["14:3-14:13|0|1|8228", "15:3-15:13|0|1|8228", "16:3-16:13|0|1|8228"],
       "callees": []
     }],

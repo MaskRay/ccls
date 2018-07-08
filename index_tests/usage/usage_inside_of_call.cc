@@ -32,7 +32,7 @@ OUTPUT:
       "declaring_type": 0,
       "bases": [],
       "derived": [],
-      "vars": [],
+      "vars": [8039186520399841081],
       "uses": [],
       "callees": []
     }, {
@@ -48,20 +48,6 @@ OUTPUT:
       "derived": [],
       "vars": [],
       "uses": ["14:14-14:17|0|1|8228"],
-      "callees": []
-    }, {
-      "usr": 15041163540773201510,
-      "detailed_name": "",
-      "qual_name_offset": 0,
-      "short_name": "",
-      "kind": 0,
-      "storage": 0,
-      "declarations": [],
-      "declaring_type": 0,
-      "bases": [],
-      "derived": [],
-      "vars": [11489549839875479478, 9648311402855509901, 11489549839875479478],
-      "uses": [],
       "callees": []
     }, {
       "usr": 18319417758892371313,
@@ -144,7 +130,6 @@ OUTPUT:
       "detailed_name": "static int Foo::static_var",
       "qual_name_offset": 11,
       "short_name": "static_var",
-      "hover": "int Foo::static_var = 0",
       "declarations": ["6:14-6:24|15041163540773201510|2|513"],
       "spell": "10:10-10:20|15041163540773201510|2|514",
       "extent": "10:1-10:24|0|1|0",

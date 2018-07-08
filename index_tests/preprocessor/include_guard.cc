@@ -18,7 +18,7 @@ OUTPUT:
       "hover": "#define FOO",
       "declarations": [],
       "spell": "2:9-2:12|0|1|2",
-      "extent": "2:9-2:12|0|1|2",
+      "extent": "2:9-2:12|0|1|0",
       "type": 0,
       "uses": [],
       "kind": 255,
