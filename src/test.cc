@@ -6,7 +6,6 @@
 #include "serializer.h"
 #include "utils.h"
 
-#include <doctest/doctest.h>
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>

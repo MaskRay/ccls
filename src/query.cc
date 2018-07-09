@@ -4,8 +4,6 @@
 #include "serializer.h"
 #include "serializers/json.h"
 
-#include <doctest/doctest.h>
-
 #include <cassert>
 #include <cstdint>
 #include <functional>

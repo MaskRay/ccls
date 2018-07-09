@@ -1,6 +1,3 @@
 [submodule "third_party/rapidjson"]
 	path = third_party/rapidjson
 	url = https://github.com/miloyip/rapidjson
-[submodule "third_party/doctest"]
-	path = third_party/doctest
-	url = https://github.com/onqtam/doctest

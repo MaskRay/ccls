@@ -14,7 +14,6 @@ using namespace ccls;
 using namespace llvm;
 using namespace llvm::cl;
 
-#include <doctest/doctest.h>
 #include <rapidjson/error/en.h>
 
 #include <stdio.h>
@@ -29,7 +28,6 @@ namespace {
 opt<bool> opt_help("h", desc("Alias for -help"));
 opt<int> opt_verbose("v", desc("verbosity"), init(0));
 opt<std::string> opt_test_index("test-index", ValueOptional, init("!"), desc("run index tests"));
-opt<bool> opt_test_unit("test-unit", desc("run unit tests"));
 
 opt<std::string> opt_init("init", desc("extra initialization options"));
 opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"));
@@ -53,9 +51,7 @@ int main(int argc, char** argv) {
 
   if (opt_help) {
     PrintHelpMessage();
-    // Also emit doctest help if --test-unit is passed.
-    if (!opt_test_unit)
-      return 0;
+    return 0;
   }
 
   pipeline::Init();
@@ -75,20 +71,6 @@ int main(int argc, char** argv) {
     }
     setbuf(ccls::log::file, NULL);
     atexit(CloseLog);
-  }
-
-  if (opt_test_unit) {
-    language_server = false;
-    doctest::Context context;
-    std::vector<const char*> args{argv[0]};
-    if (opt_help)
-      args.push_back("-h");
-    for (auto& arg : opt_extra)
-      args.push_back(arg.c_str());
-    context.applyCommandLine(args.size(), args.data());
-    int res = context.run();
-    if (res != 0 || context.shouldExit())
-      return res;
   }
 
   if (opt_test_index != "!") {
