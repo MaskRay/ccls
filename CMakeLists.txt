@@ -113,21 +113,9 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
-if(${CMAKE_SYSTEM_NAME} STREQUAL Darwin)
-  target_link_libraries(ccls PRIVATE -lc++experimental)
-
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL Linux)
-  # loguru calls dladdr
-  target_link_libraries(ccls PRIVATE ${CMAKE_DL_LIBS})
-
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
-  # loguru::stacktrace_as_stdstring calls backtrace_symbols
+if(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
   # src/platform_posix.cc uses libthr
-  find_package(Backtrace REQUIRED)
-  target_link_libraries(ccls PRIVATE ${Backtrace_LIBRARIES} thr)
-  if(SYSTEM_CLANG)
-    target_link_libraries(ccls PRIVATE c++experimental)
-  endif()
+  target_link_libraries(ccls PRIVATE thr)
 endif()
 
 ### Definitions
