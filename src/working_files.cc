@@ -3,8 +3,6 @@
 #include "log.hh"
 #include "position.h"
 
-#include <doctest/doctest.h>
-
 #include <algorithm>
 #include <climits>
 #include <numeric>

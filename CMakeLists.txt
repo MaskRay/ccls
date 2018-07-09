@@ -143,9 +143,7 @@ target_compile_definitions(ccls PRIVATE
 target_include_directories(ccls PRIVATE
                            src
                            third_party
-                           third_party/rapidjson/include
-                           third_party/loguru
-                           third_party/doctest)
+                           third_party/rapidjson/include)
 
 ### Install
 
@@ -214,7 +212,6 @@ target_sources(ccls PRIVATE
                src/query.cc
                src/serializer.cc
                src/test.cc
-               src/third_party_impl.cc
                src/utils.cc
                src/working_files.cc)
 

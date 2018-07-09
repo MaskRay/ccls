@@ -1,7 +1,5 @@
 #include "fuzzy_match.h"
 
-#include <doctest/doctest.h>
-
 #include <ctype.h>
 #include <stdio.h>
 #include <algorithm>
@@ -133,6 +131,7 @@ int FuzzyMatcher::Match(std::string_view text) {
   return ret;
 }
 
+#if 0
 TEST_SUITE("fuzzy_match") {
   bool Ranks(std::string_view pat, std::vector<const char*> texts) {
     FuzzyMatcher fuzzy(pat, 0);
@@ -180,3 +179,4 @@ TEST_SUITE("fuzzy_match") {
     CHECK(Ranks("Int", {"int", "INT", "PRINT"}));
   }
 }
+#endif
