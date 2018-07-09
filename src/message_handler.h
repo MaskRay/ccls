@@ -64,7 +64,10 @@ struct Out_CclsPublishSemanticHighlighting
     lsSymbolKind parentKind;
     lsSymbolKind kind;
     clang::StorageClass storage;
-    std::vector<lsRange> ranges;
+    std::vector<std::pair<int, int>> ranges;
+
+    // `lsRanges` is used to compute `ranges`.
+    std::vector<lsRange> lsRanges;
   };
   struct Params {
     lsDocumentUri uri;
