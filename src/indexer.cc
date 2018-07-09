@@ -128,6 +128,7 @@ SymbolKind GetSymbolKind(const Decl* D) {
   switch (D->getKind()) {
   case Decl::TranslationUnit:
     return SymbolKind::File;
+  case Decl::ObjCMethod:
   case Decl::FunctionTemplate:
   case Decl::Function:
   case Decl::CXXMethod:
@@ -137,6 +138,9 @@ SymbolKind GetSymbolKind(const Decl* D) {
     return SymbolKind::Func;
   case Decl::Namespace:
   case Decl::NamespaceAlias:
+  case Decl::ObjCCategory:
+  case Decl::ObjCInterface:
+  case Decl::ObjCProtocol:
   case Decl::ClassTemplate:
   case Decl::TypeAliasTemplate:
   case Decl::TemplateTemplateParm:
@@ -149,9 +153,11 @@ SymbolKind GetSymbolKind(const Decl* D) {
   case Decl::Typedef:
   case Decl::UnresolvedUsingTypename:
     return SymbolKind::Type;
+  case Decl::ObjCProperty:
   case Decl::VarTemplate:
   case Decl::Binding:
   case Decl::Field:
+  case Decl::ObjCIvar:
   case Decl::Var:
   case Decl::ParmVar:
   case Decl::ImplicitParam:
@@ -161,6 +167,51 @@ SymbolKind GetSymbolKind(const Decl* D) {
     return SymbolKind::Var;
   default:
     return SymbolKind::Invalid;
+  }
+}
+
+LanguageId GetDeclLanguage(const Decl *D) {
+  switch (D->getKind()) {
+    default:
+      return LanguageId::C;
+    case Decl::ImplicitParam:
+    case Decl::ObjCAtDefsField:
+    case Decl::ObjCCategory:
+    case Decl::ObjCCategoryImpl:
+    case Decl::ObjCCompatibleAlias:
+    case Decl::ObjCImplementation:
+    case Decl::ObjCInterface:
+    case Decl::ObjCIvar:
+    case Decl::ObjCMethod:
+    case Decl::ObjCProperty:
+    case Decl::ObjCPropertyImpl:
+    case Decl::ObjCProtocol:
+    case Decl::ObjCTypeParam:
+      return LanguageId::ObjC;
+    case Decl::CXXConstructor:
+    case Decl::CXXConversion:
+    case Decl::CXXDestructor:
+    case Decl::CXXMethod:
+    case Decl::CXXRecord:
+    case Decl::ClassTemplate:
+    case Decl::ClassTemplatePartialSpecialization:
+    case Decl::ClassTemplateSpecialization:
+    case Decl::Friend:
+    case Decl::FriendTemplate:
+    case Decl::FunctionTemplate:
+    case Decl::LinkageSpec:
+    case Decl::Namespace:
+    case Decl::NamespaceAlias:
+    case Decl::NonTypeTemplateParm:
+    case Decl::StaticAssert:
+    case Decl::TemplateTemplateParm:
+    case Decl::TemplateTypeParm:
+    case Decl::UnresolvedUsingTypename:
+    case Decl::UnresolvedUsingValue:
+    case Decl::Using:
+    case Decl::UsingDirective:
+    case Decl::UsingShadow:
+      return LanguageId::Cpp;
   }
 }
 
@@ -566,6 +617,7 @@ public:
     const DeclContext *SemDC = OrigD->getDeclContext();
     const DeclContext *LexDC = OrigD->getLexicalDeclContext();
     Role role = static_cast<Role>(Roles);
+    db->language = std::max(db->language, GetDeclLanguage(OrigD));
 
     bool is_decl = Roles & uint32_t(index::SymbolRole::Declaration);
     bool is_def = Roles & uint32_t(index::SymbolRole::Definition);
@@ -702,6 +754,33 @@ public:
       }
       break;
     }
+    case Decl::ObjCCategory:
+    case Decl::ObjCImplementation:
+    case Decl::ObjCInterface:
+    case Decl::ObjCProtocol:
+      type->def.kind = lsSymbolKind::Interface;
+      break;
+    case Decl::ObjCMethod:
+      func->def.kind = lsSymbolKind::Method;
+      break;
+    case Decl::ObjCProperty:
+      var->def.kind = lsSymbolKind::Property;
+      break;
+    case Decl::ClassTemplate:
+      type->def.kind = lsSymbolKind::Class;
+      break;
+    case Decl::FunctionTemplate:
+      func->def.kind = lsSymbolKind::Function;
+      break;
+    case Decl::TypeAliasTemplate:
+      type->def.kind = lsSymbolKind::TypeAlias;
+      break;
+    case Decl::VarTemplate:
+      var->def.kind = lsSymbolKind::Variable;
+      break;
+    case Decl::TemplateTemplateParm:
+      type->def.kind = lsSymbolKind::TypeParameter;
+      break;
     case Decl::Enum:
       type->def.kind = lsSymbolKind::Enum;
       break;
@@ -744,19 +823,6 @@ public:
       }
       break;
     }
-    case Decl::ClassTemplate:
-      type->def.kind = lsSymbolKind::Class;
-      break;
-    case Decl::FunctionTemplate:
-      type->def.kind = lsSymbolKind::Function;
-      break;
-    case Decl::TypeAliasTemplate:
-      type->def.kind = lsSymbolKind::TypeAlias;
-    case Decl::VarTemplate:
-      type->def.kind = lsSymbolKind::Variable;
-    case Decl::TemplateTemplateParm:
-      type->def.kind = lsSymbolKind::TypeParameter;
-      break;
     case Decl::ClassTemplateSpecialization:
     case Decl::ClassTemplatePartialSpecialization:
       type->def.kind = lsSymbolKind::Class;
@@ -802,7 +868,9 @@ public:
       break;
     case Decl::Binding:
       var->def.kind = lsSymbolKind::Variable;
+      break;
     case Decl::Field:
+    case Decl::ObjCIvar:
       var->def.kind = lsSymbolKind::Field;
       break;
     case Decl::Function:
@@ -1118,8 +1186,6 @@ std::vector<std::unique_ptr<IndexFile>> Index(
     return {};
   }
 
-  // ClangCursor(clang_getTranslationUnitCursor(tu->cx_tu))
-  //     .VisitChildren(&VisitMacroDefinitionAndExpansions, &param);
   const SourceManager& SM = Unit->getSourceManager();
   const FileEntry* FE = SM.getFileEntryForID(SM.getMainFileID());
   IndexFile* main_file = param.ConsumeFile(*FE);
