@@ -531,11 +531,13 @@ public:
         off |= 1u << 31;
       Loc = SourceLocation::getFromRawEncoding(off);
     }
+#else
+    FileID LocFID;
 #endif
     SourceLocation Spell = SM.getSpellingLoc(Loc);
     Loc = SM.getFileLoc(Loc);
     Range loc = FromTokenRange(SM, Lang, SourceRange(Loc, Loc));
-    FileID LocFID = SM.getFileID(Loc);
+    LocFID = SM.getFileID(Loc);
     const FileEntry *FE = SM.getFileEntryForID(LocFID);
     if (!FE) {
       // TODO
