@@ -3,6 +3,9 @@
 #include "query_utils.h"
 using namespace ccls;
 
+#include <clang/AST/Type.h>
+using namespace clang;
+
 #include <unordered_set>
 
 namespace {
@@ -121,7 +124,7 @@ bool Expand(MessageHandler* m,
             Out_CclsMemberHierarchy::Entry* entry,
             bool qualified,
             int levels) {
-  if (CXType_FirstBuiltin <= entry->usr && entry->usr <= CXType_LastBuiltin) {
+  if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = ClangBuiltinTypeName(CXTypeKind(entry->usr));
     return true;
   }
