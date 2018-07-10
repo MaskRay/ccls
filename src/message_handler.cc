@@ -345,16 +345,19 @@ void EmitSemanticHighlighting(DB *db,
     std::sort(scratch.begin(), scratch.end(),
       [](auto &l, auto &r) { return l.first.start < r.first.start; });
     const auto &buf = wfile->buffer_content;
-    int l = 0, c = 0, i = 0;
+    int l = 0, c = 0, i = 0, p = 0;
     auto mov = [&](int line, int col) {
       if (l < line)
         c = 0;
-      for (; l < line && i < buf.size(); i++)
+      for (; l < line && i < buf.size(); i++) {
         if (buf[i] == '\n')
           l++;
+        if (uint8_t(buf[i]) < 128 || 192 <= uint8_t(buf[i]))
+          p++;
+      }
       if (l < line) return true;
-      for (; c < col && i < buf.size(); c++)
-        if (uint8_t(buf[i++]) >= 128)
+      for (; c < col && i < buf.size() && buf[i] != '\n'; c++)
+        if (p++, uint8_t(buf[i++]) >= 128)
           // Skip 0b10xxxxxx
           while (i < buf.size() && uint8_t(buf[i]) >= 128 && uint8_t(buf[i]) < 192)
             i++;
@@ -364,10 +367,10 @@ void EmitSemanticHighlighting(DB *db,
       lsRange &r = entry.first;
       if (mov(r.start.line, r.start.character))
         continue;
-      int beg = i;
+      int beg = p;
       if (mov(r.end.line, r.end.character))
         continue;
-      entry.second->ranges.emplace_back(beg, i);
+      entry.second->ranges.emplace_back(beg, p);
     }
   }
 

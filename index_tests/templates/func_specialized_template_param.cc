@@ -19,8 +19,8 @@ OUTPUT:
       "short_name": "Bar",
       "kind": 6,
       "storage": 0,
-      "declarations": ["5:8-5:11|15041163540773201510|2|513"],
-      "spell": "8:11-8:14|15041163540773201510|2|514",
+      "declarations": ["5:8-5:11|15041163540773201510|2|1025"],
+      "spell": "8:11-8:14|15041163540773201510|2|1026",
       "extent": "8:1-8:36|0|1|0",
       "declaring_type": 0,
       "bases": [],
@@ -30,6 +30,21 @@ OUTPUT:
       "callees": []
     }],
   "usr2type": [{
+      "usr": 2100211316767379401,
+      "detailed_name": "template<> class Template<double>",
+      "qual_name_offset": 17,
+      "short_name": "Template",
+      "kind": 5,
+      "declarations": [],
+      "alias_of": 0,
+      "bases": [],
+      "derived": [],
+      "types": [],
+      "funcs": [],
+      "vars": [],
+      "instances": [],
+      "uses": ["5:12-5:20|0|1|4", "8:15-8:23|0|1|4"]
+    }, {
       "usr": 15041163540773201510,
       "detailed_name": "struct Foo {}",
       "qual_name_offset": 7,
@@ -62,7 +77,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:12-5:20|0|1|4", "8:15-8:23|0|1|4"]
+      "uses": []
     }],
   "usr2var": []
 }

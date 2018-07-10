@@ -45,7 +45,7 @@ OUTPUT:
       "detailed_name": "static int Foo::member",
       "qual_name_offset": 11,
       "short_name": "member",
-      "declarations": ["2:14-2:20|15041163540773201510|2|513"],
+      "declarations": ["2:14-2:20|15041163540773201510|2|1025"],
       "type": 53,
       "uses": [],
       "kind": 13,

@@ -23,7 +23,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["2:24-2:30|0|1|1028"]
+      "uses": ["2:24-2:30|0|1|2052"]
     }, {
       "usr": 10963370434658308541,
       "detailed_name": "class Derived : public Parent {}",

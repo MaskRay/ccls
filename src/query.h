@@ -113,15 +113,6 @@ struct IndexUpdate {
   UseUpdate vars_uses;
 };
 
-template <typename Q>
-struct EntityToIndex {
-  using argument_type = const Q&;
-  llvm::DenseMap<Usr, unsigned> m;
-  unsigned operator()(const Q& entity) const {
-    return m[entity.usr];
-  }
-};
-
 struct WrappedUsr {
   Usr usr;
 };

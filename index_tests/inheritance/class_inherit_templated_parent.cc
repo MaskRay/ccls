@@ -34,7 +34,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["13:43-13:51|0|1|1028"]
+      "uses": ["13:43-13:51|0|1|2052"]
     }, {
       "usr": 10651399730831737929,
       "detailed_name": "class Derived2 : Base2<T> {}",
@@ -51,7 +51,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["13:56-13:64|0|1|1028"]
+      "uses": ["13:56-13:64|0|1|2052"]
     }, {
       "usr": 10963370434658308541,
       "detailed_name": "class Derived : Base1<3>, Base2<Derived>, Derived1<4>, Derived2<Derived> {}",
@@ -68,7 +68,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["13:33-13:40|0|1|1028", "13:65-13:72|0|1|1028"]
+      "uses": ["13:33-13:40|0|1|2052", "13:65-13:72|0|1|2052"]
     }, {
       "usr": 11118288764693061434,
       "detailed_name": "class Base2 {}",
@@ -85,7 +85,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["11:18-11:23|0|1|1028", "13:27-13:32|0|1|1028"]
+      "uses": ["13:27-13:32|0|1|2052"]
     }, {
       "usr": 11930058224338108382,
       "detailed_name": "class Base1 {}",
@@ -102,7 +102,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["8:18-8:23|0|1|1028", "13:17-13:22|0|1|1028"]
+      "uses": ["13:17-13:22|0|1|2052"]
     }],
   "usr2var": []
 }

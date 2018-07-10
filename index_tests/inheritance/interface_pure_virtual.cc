@@ -14,7 +14,7 @@ OUTPUT:
       "short_name": "foo",
       "kind": 6,
       "storage": 0,
-      "declarations": ["2:16-2:19|9949214233977131946|2|577"],
+      "declarations": ["2:16-2:19|9949214233977131946|2|1089"],
       "declaring_type": 0,
       "bases": [],
       "derived": [],

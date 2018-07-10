@@ -35,7 +35,7 @@ OUTPUT:
       "short_name": "unique_ptr",
       "kind": 26,
       "declarations": [],
-      "spell": "1:1-2:20|0|1|2",
+      "spell": "2:7-2:17|0|1|2",
       "extent": "1:1-2:20|0|1|0",
       "alias_of": 0,
       "bases": [],

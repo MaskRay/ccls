@@ -68,7 +68,7 @@ OUTPUT:
       "short_name": "clear",
       "kind": 6,
       "storage": 0,
-      "declarations": ["27:8-27:13|1663022413889915338|2|513"],
+      "declarations": ["27:8-27:13|1663022413889915338|2|1025"],
       "declaring_type": 0,
       "bases": [],
       "derived": [],
@@ -98,7 +98,7 @@ OUTPUT:
       "short_name": "clear",
       "kind": 6,
       "storage": 0,
-      "declarations": ["13:8-13:13|7440942986741176606|2|513"],
+      "declarations": ["13:8-13:13|7440942986741176606|2|1025"],
       "declaring_type": 0,
       "bases": [],
       "derived": [],
@@ -137,7 +137,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": []
+      "uses": ["7:1-7:9|0|1|4"]
     }, {
       "usr": 1663022413889915338,
       "detailed_name": "template<> class vector<Z2, allocator<Z2>> {}",
@@ -154,7 +154,7 @@ OUTPUT:
       "funcs": [6113470698424012876],
       "vars": [],
       "instances": [15931696253641284761],
-      "uses": []
+      "uses": ["26:7-26:13|0|1|4", "33:1-33:7|0|1|4"]
     }, {
       "usr": 3231449734830406187,
       "detailed_name": "function",
@@ -162,7 +162,7 @@ OUTPUT:
       "short_name": "function",
       "kind": 26,
       "declarations": [],
-      "spell": "4:1-5:30|0|1|2",
+      "spell": "5:7-5:15|0|1|2",
       "extent": "4:1-5:30|0|1|0",
       "alias_of": 0,
       "bases": [],
@@ -188,7 +188,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["32:8-32:10|0|1|4"]
+      "uses": ["21:23-21:25|0|1|4", "32:8-32:10|0|1|4"]
     }, {
       "usr": 7440942986741176606,
       "detailed_name": "class vector {}",
@@ -205,7 +205,7 @@ OUTPUT:
       "funcs": [18107614608385228556],
       "vars": [],
       "instances": [],
-      "uses": ["17:7-17:13|0|1|4", "26:7-26:13|0|1|4", "30:1-30:7|0|1|4", "31:1-31:7|0|1|4", "32:1-32:7|0|1|4", "33:1-33:7|0|1|4"]
+      "uses": ["21:16-21:22|0|1|4", "30:1-30:7|0|1|4", "32:1-32:7|0|1|4"]
     }, {
       "usr": 9201299975592934124,
       "detailed_name": "enum Enum {\n}",
@@ -247,7 +247,7 @@ OUTPUT:
       "short_name": "vector",
       "kind": 26,
       "declarations": [],
-      "spell": "16:1-17:20|0|1|2",
+      "spell": "17:7-17:13|0|1|2",
       "extent": "16:1-17:20|0|1|0",
       "alias_of": 0,
       "bases": [],
@@ -264,7 +264,7 @@ OUTPUT:
       "short_name": "vector",
       "kind": 26,
       "declarations": [],
-      "spell": "11:1-14:2|0|1|2",
+      "spell": "12:7-12:13|0|1|2",
       "extent": "11:1-14:2|0|1|0",
       "alias_of": 0,
       "bases": [],
@@ -281,7 +281,7 @@ OUTPUT:
       "short_name": "T",
       "kind": 26,
       "declarations": [],
-      "spell": "38:11-38:21|17498190318698490707|3|2",
+      "spell": "38:20-38:21|17498190318698490707|3|2",
       "extent": "38:11-38:21|17498190318698490707|3|0",
       "alias_of": 0,
       "bases": [],
@@ -305,7 +305,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:7-5:15|0|1|4", "7:1-7:9|0|1|4"]
+      "uses": []
     }, {
       "usr": 15440970074034693939,
       "detailed_name": "vector",
@@ -313,7 +313,7 @@ OUTPUT:
       "short_name": "vector",
       "kind": 26,
       "declarations": [],
-      "spell": "21:1-21:26|0|1|2",
+      "spell": "21:16-21:22|0|1|2",
       "extent": "21:1-21:26|0|1|0",
       "alias_of": 0,
       "bases": [],
@@ -337,7 +337,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["11:39-11:48|0|1|4"]
+      "uses": []
     }, {
       "usr": 16155717907537731864,
       "detailed_name": "template <typename T> class vector<type-parameter-0-0 *, allocator<type-parameter-0-0 *>> {}",
@@ -354,7 +354,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": []
+      "uses": ["31:1-31:7|0|1|4"]
     }],
   "usr2var": [{
       "usr": 86949563628772958,
@@ -399,7 +399,7 @@ OUTPUT:
       "short_name": "Enum1",
       "hover": "Enum1 = 1",
       "declarations": [],
-      "spell": "36:10-36:15|9201299975592934124|2|514",
+      "spell": "36:10-36:15|9201299975592934124|2|1026",
       "extent": "36:10-36:15|9201299975592934124|2|0",
       "type": 0,
       "uses": [],
@@ -437,7 +437,7 @@ OUTPUT:
       "short_name": "Enum0",
       "hover": "Enum0 = 0",
       "declarations": [],
-      "spell": "36:3-36:8|9201299975592934124|2|514",
+      "spell": "36:3-36:8|9201299975592934124|2|1026",
       "extent": "36:3-36:8|9201299975592934124|2|0",
       "type": 0,
       "uses": ["43:20-43:25|9201299975592934124|2|4"],
@@ -461,7 +461,7 @@ OUTPUT:
       "qual_name_offset": 2,
       "short_name": "Value",
       "declarations": [],
-      "spell": "39:12-39:17|17498190318698490707|3|514",
+      "spell": "39:12-39:17|17498190318698490707|3|1026",
       "extent": "39:10-39:17|17498190318698490707|3|0",
       "type": 14111105212951082474,
       "uses": [],

@@ -19,12 +19,10 @@ using ccls::Intern;
 using namespace clang;
 using llvm::Timer;
 
-#include <assert.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <algorithm>
 #include <map>
-#include <chrono>
 #include <unordered_set>
 
 namespace {
@@ -54,12 +52,10 @@ struct IndexParam {
 
     // If this is the first time we have seen the file (ignoring if we are
     // generating an index for it):
-    auto it = SeenUniqueID.try_emplace(File.getUniqueID());
-    if (it.second) {
+    auto [it, inserted] = SeenUniqueID.try_emplace(File.getUniqueID());
+    if (inserted) {
       std::string file_name = FileName(File);
-      // Add to all files we have seen so we can generate proper dependency
-      // graph.
-      it.first->second = file_name;
+      it->second = file_name;
 
       // Set modification time.
       std::optional<int64_t> write_time = LastWriteTime(file_name);
@@ -397,11 +393,11 @@ public:
 
   Usr GetUsr(const Decl *D, IndexParam::DeclInfo **info = nullptr) const {
     D = D->getCanonicalDecl();
-    auto R = param.Decl2Info.try_emplace(D);
-    if (R.second) {
+    auto [it, inserted] = param.Decl2Info.try_emplace(D);
+    if (inserted) {
       SmallString<256> USR;
       index::generateUSRForDecl(D, USR);
-      auto &info = R.first->second;
+      auto &info = it->second;
       info.usr = HashUsr(USR);
       if (auto *ND = dyn_cast<NamedDecl>(D)) {
         info.short_name = ND->getNameAsString();
@@ -410,8 +406,8 @@ public:
       }
     }
     if (info)
-      *info = &R.first->second;
-    return R.first->second.usr;
+      *info = &it->second;
+    return it->second.usr;
   }
 
   Use GetUse(IndexFile *db, Range range, const DeclContext *DC,
@@ -713,9 +709,11 @@ public:
               SourceRange R1 = D1->getSourceRange();
               if (SM.getFileID(R1.getBegin()) == LocFID) {
                 IndexType& type1 = db->ToType(usr1);
-                Range loc1 = FromTokenRange(SM, Lang, R1);
-                type1.def.spell = GetUse(db, loc1, SemDC, Role::Definition);
-                type1.def.extent = GetUse(db, loc1, LexDC, Role::None);
+                SourceLocation L1 = D1->getLocation();
+                type1.def.spell = GetUse(db, FromTokenRange(SM, Lang, {L1, L1}),
+                                         SemDC, Role::Definition);
+                type1.def.extent =
+                    GetUse(db, FromTokenRange(SM, Lang, R1), LexDC, Role::None);
                 type1.def.detailed_name = Intern(info1->short_name);
                 type1.def.short_name_size = int16_t(info1->short_name.size());
                 type1.def.kind = lsSymbolKind::TypeParameter;
@@ -1046,24 +1044,24 @@ IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
     : UniqueID(UniqueID), path(path), file_contents(contents) {}
 
 IndexFunc& IndexFile::ToFunc(Usr usr) {
-  auto ret = usr2func.try_emplace(usr);
-  if (ret.second)
-    ret.first->second.usr = usr;
-  return ret.first->second;
+  auto [it, inserted] = usr2func.try_emplace(usr);
+  if (inserted)
+    it->second.usr = usr;
+  return it->second;
 }
 
 IndexType& IndexFile::ToType(Usr usr) {
-  auto ret = usr2type.try_emplace(usr);
-  if (ret.second)
-    ret.first->second.usr = usr;
-  return ret.first->second;
+  auto [it, inserted] = usr2type.try_emplace(usr);
+  if (inserted)
+    it->second.usr = usr;
+  return it->second;
 }
 
 IndexVar& IndexFile::ToVar(Usr usr) {
-  auto ret = usr2var.try_emplace(usr);
-  if (ret.second)
-    ret.first->second.usr = usr;
-  return ret.first->second;
+  auto [it, inserted] = usr2var.try_emplace(usr);
+  if (inserted)
+    it->second.usr = usr;
+  return it->second;
 }
 
 std::string IndexFile::ToString() {
@@ -1151,10 +1149,12 @@ std::vector<std::unique_ptr<IndexFile>> Index(
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
 
   index::IndexingOptions IndexOpts;
-  memset(&IndexOpts, 1, sizeof IndexOpts);
   IndexOpts.SystemSymbolFilter =
       index::IndexingOptions::SystemSymbolFilterKind::All;
   IndexOpts.IndexFunctionLocals = true;
+#if LLVM_VERSION_MAJOR >= 7
+  IndexOpts.IndexImplicitInstantiation = true;
+#endif
 
   std::unique_ptr<FrontendAction> IndexAction = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));

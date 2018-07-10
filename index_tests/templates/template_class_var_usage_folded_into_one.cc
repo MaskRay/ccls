@@ -64,7 +64,7 @@ OUTPUT:
       "qual_name_offset": 21,
       "short_name": "var",
       "hover": "static constexpr int Foo::var = 3",
-      "declarations": ["3:24-3:27|10528472276654770367|2|513"],
+      "declarations": ["3:24-3:27|10528472276654770367|2|1025"],
       "type": 53,
       "uses": ["6:19-6:22|10528472276654770367|2|12", "7:20-7:23|10528472276654770367|2|12"],
       "kind": 13,
