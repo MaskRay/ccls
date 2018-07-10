@@ -62,7 +62,7 @@ OUTPUT: simple_impl.cc
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:9|0|1|8228"],
+      "uses": ["4:3-4:9|0|1|16420"],
       "callees": []
     }],
   "usr2type": [],

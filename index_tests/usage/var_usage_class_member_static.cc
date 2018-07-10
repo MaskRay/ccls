@@ -41,7 +41,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:3-8:9|0|1|8228"],
+      "uses": ["8:3-8:9|0|1|16420"],
       "callees": []
     }],
   "usr2type": [{
@@ -82,7 +82,7 @@ OUTPUT:
       "detailed_name": "static int Foo::x",
       "qual_name_offset": 11,
       "short_name": "x",
-      "declarations": ["2:14-2:15|15041163540773201510|2|513"],
+      "declarations": ["2:14-2:15|15041163540773201510|2|1025"],
       "type": 53,
       "uses": ["8:15-8:16|15041163540773201510|2|12"],
       "kind": 13,

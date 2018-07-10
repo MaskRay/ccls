@@ -60,7 +60,7 @@ OUTPUT:
       "short_name": "T",
       "kind": 26,
       "declarations": [],
-      "spell": "4:10-4:20|0|1|2",
+      "spell": "4:19-4:20|0|1|2",
       "extent": "4:10-4:20|0|1|0",
       "alias_of": 0,
       "bases": [],

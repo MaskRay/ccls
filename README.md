@@ -1,6 +1,6 @@
 # ccls
 
-ccls is a fork of cquery (originally written by Jacob Dufault),
+ccls is a rewrite of cquery (originally written by Jacob Dufault),
 a C/C++/Objective-C language server.
 
   * code completion (with both signature help and snippets)
@@ -16,16 +16,16 @@ a C/C++/Objective-C language server.
 
 It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strenghened, (see [wiki/FAQ](../../wiki/FAQ). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
 
-The comparison with cquery as noted on 2018-05-17:
+The comparison with cquery as noted on 2018-07-09:
 
-|             | cquery                         | ccls                      |
-|------------ |--------------------------------|---------------------------|
-| third_party | more                           | fewer                     |
-| C++         | C++14                          | C++17                     |
-| clang API   | libclang (C)                   | libclang + clang/llvm C++ |
-| Filesystem  | AbsolutePath + custom routines | llvm/Support              |
-| index       |                                | slight enhancement        |
-| pipeline    | index merge+id remapping       | simpler and more robust   |
+|             | cquery                         | ccls                         |
+|------------ |--------------------------------|------------------------------|
+| third_party | more                           | fewer                        |
+| C++         | C++14                          | C++17                        |
+| clang API   | libclang (C)                   | libclang + clang/llvm C++    |
+| Filesystem  | AbsolutePath + custom routines | llvm/Support                 |
+| index       | libclang                       | clangIndex, some enhancement |
+| pipeline    | index merge+id remapping       | simpler and more robust      |
 
 cquery has system include path detection (through running the compiler driver) while ccls does not.
 

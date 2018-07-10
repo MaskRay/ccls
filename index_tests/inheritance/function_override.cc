@@ -18,7 +18,7 @@ OUTPUT:
       "kind": 6,
       "storage": 0,
       "declarations": [],
-      "spell": "5:8-5:11|10963370434658308541|2|2626",
+      "spell": "5:8-5:11|10963370434658308541|2|5186",
       "extent": "5:3-5:25|10963370434658308541|2|0",
       "declaring_type": 0,
       "bases": [9948027785633571339],
@@ -33,7 +33,7 @@ OUTPUT:
       "short_name": "foo",
       "kind": 6,
       "storage": 0,
-      "declarations": ["2:16-2:19|3897841498936210886|2|577"],
+      "declarations": ["2:16-2:19|3897841498936210886|2|1089"],
       "declaring_type": 0,
       "bases": [],
       "derived": [6666242542855173890],
@@ -57,7 +57,7 @@ OUTPUT:
       "funcs": [9948027785633571339],
       "vars": [],
       "instances": [],
-      "uses": ["4:24-4:28|0|1|1028"]
+      "uses": ["4:24-4:28|0|1|2052"]
     }, {
       "usr": 10963370434658308541,
       "detailed_name": "class Derived : public Root {}",

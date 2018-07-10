@@ -25,7 +25,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["2:24-2:28|0|1|1028", "3:24-3:28|0|1|1028"]
+      "uses": ["2:24-2:28|0|1|2052", "3:24-3:28|0|1|2052"]
     }, {
       "usr": 10963370434658308541,
       "detailed_name": "class Derived : public MiddleA, public MiddleB {}",
@@ -59,7 +59,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:24-4:31|0|1|1028"]
+      "uses": ["4:24-4:31|0|1|2052"]
     }, {
       "usr": 14022569716337624303,
       "detailed_name": "class MiddleB : public Root {}",
@@ -76,7 +76,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:40-4:47|0|1|1028"]
+      "uses": ["4:40-4:47|0|1|2052"]
     }],
   "usr2var": []
 }
