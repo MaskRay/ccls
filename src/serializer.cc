@@ -330,6 +330,7 @@ void Reflect(TVisitor& visitor, IndexFile& value) {
   if (!gTestOutputMode) {
     REFLECT_MEMBER(last_write_time);
     REFLECT_MEMBER(language);
+    REFLECT_MEMBER(lid2path);
     REFLECT_MEMBER(import_file);
     REFLECT_MEMBER(args);
     REFLECT_MEMBER(dependencies);

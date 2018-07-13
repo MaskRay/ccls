@@ -15,6 +15,7 @@ using ccls::Intern;
 #include <clang/Lex/PreprocessorOptions.h>
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Support/CrashRecoveryContext.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/Timer.h>
 using namespace clang;
 using llvm::Timer;
@@ -47,8 +48,7 @@ struct IndexParam {
       : Unit(Unit), file_consumer(file_consumer) {}
 
   IndexFile *ConsumeFile(const FileEntry &File) {
-    IndexFile *db =
-      file_consumer->TryConsumeFile(File, &file_contents);
+    IndexFile *db = file_consumer->TryConsumeFile(File, &file_contents);
 
     // If this is the first time we have seen the file (ignoring if we are
     // generating an index for it):
@@ -530,15 +530,25 @@ public:
     }
   }
 
-  void AddMacroUse(SourceManager &SM, Usr usr, SymbolKind kind,
+  void AddMacroUse(IndexFile *db, SourceManager &SM, Usr usr, SymbolKind kind,
                    SourceLocation Spell) const {
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Spell));
     if (!FE) return;
-    IndexFile *db = param.ConsumeFile(*FE);
-    if (!db) return;
+    auto UID = FE->getUniqueID();
+    auto [it, inserted] = db->uid2lid_and_path.try_emplace(UID);
+    if (inserted) {
+      it->second.first = db->uid2lid_and_path.size() - 1;
+      SmallString<256> Path = FE->tryGetRealPathName();
+      if (Path.empty())
+        Path = FE->getName();
+      if (!llvm::sys::path::is_absolute(Path) &&
+          !SM.getFileManager().makeAbsolutePath(Path))
+        return;
+      it->second.second = Path.str();
+    }
     Range spell =
         FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Spell, Spell));
-    Use use = GetUse(db, spell, nullptr, Role::Dynamic);
+    Use use{{spell, 0, SymbolKind::File, Role::Dynamic}, it->second.first};
     switch (kind) {
     case SymbolKind::Func:
       db->ToFunc(usr).uses.push_back(use);
@@ -582,26 +592,21 @@ public:
     FileID LocFID;
 #endif
     SourceLocation Spell = SM.getSpellingLoc(Loc);
-    Loc = SM.getFileLoc(Loc);
-    Range loc = FromTokenRange(SM, Lang, SourceRange(Loc, Loc));
-    LocFID = SM.getFileID(Loc);
-    const FileEntry *FE = SM.getFileEntryForID(LocFID);
-    if (!FE) {
-      // TODO
+    const FileEntry *FE;
+    Range loc;
 #if LLVM_VERSION_MAJOR < 7
-      auto P = SM.getExpansionRange(Loc);
-      loc = FromCharRange(SM, Ctx->getLangOpts(), SourceRange(P.first, P.second));
-      LocFID = SM.getFileID(P.first);
-      FE = SM.getFileEntryForID(LocFID);
+    auto P = SM.getExpansionRange(Loc);
+    loc = FromCharRange(SM, Ctx->getLangOpts(), SourceRange(P.first, P.second));
+    LocFID = SM.getFileID(P.first);
+    FE = SM.getFileEntryForID(LocFID);
 #else
-      auto R = SM.getExpansionRange(Loc);
-      loc = FromTokenRange(SM, Lang, R.getAsRange());
-      LocFID = SM.getFileID(R.getBegin());
-      FE = SM.getFileEntryForID(LocFID);
+    auto R = SM.getExpansionRange(Loc);
+    loc = FromTokenRange(SM, Lang, R.getAsRange());
+    LocFID = SM.getFileID(R.getBegin());
+    FE = SM.getFileEntryForID(LocFID);
 #endif
-      if (!FE)
-        return true;
-    }
+    if (!FE)
+      return true;
     IndexFile *db = param.ConsumeFile(*FE);
     if (!db)
       return true;
@@ -647,7 +652,7 @@ public:
       func = &db->ToFunc(usr);
       do_def_decl(func);
       if (Spell != Loc)
-        AddMacroUse(SM, usr, SymbolKind::Func, Spell);
+        AddMacroUse(db, SM, usr, SymbolKind::Func, Spell);
       if (func->def.detailed_name[0] == '\0')
         SetName(OrigD, info->short_name, info->qualified, func->def);
       if (is_def || is_decl) {
@@ -660,7 +665,7 @@ public:
       type = &db->ToType(usr);
       do_def_decl(type);
       if (Spell != Loc)
-        AddMacroUse(SM, usr, SymbolKind::Type, Spell);
+        AddMacroUse(db, SM, usr, SymbolKind::Type, Spell);
       if (type->def.detailed_name[0] == '\0')
         SetName(OrigD, info->short_name, info->qualified, type->def);
       if (is_def || is_decl) {
@@ -673,7 +678,7 @@ public:
       var = &db->ToVar(usr);
       do_def_decl(var);
       if (Spell != Loc)
-        AddMacroUse(SM, usr, SymbolKind::Var, Spell);
+        AddMacroUse(db, SM, usr, SymbolKind::Var, Spell);
       if (var->def.detailed_name[0] == '\0')
         SetVarName(OrigD, info->short_name, info->qualified, var->def);
       QualType T;
@@ -994,14 +999,16 @@ public:
   void MacroExpands(const Token &Tok, const MacroDefinition &MD,
                     SourceRange R, const MacroArgs *Args) override {
     llvm::sys::fs::UniqueID UniqueID;
-    auto range = FromTokenRange(SM, param.Ctx->getLangOpts(), R, &UniqueID);
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(R.getBegin()));
+    SourceLocation L = SM.getSpellingLoc(R.getBegin());
+    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(L));
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {
       auto[Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
-      var.uses.push_back({{range, 0, SymbolKind::File, Role::Reference}});
+      var.uses.push_back(
+          {{FromTokenRange(SM, param.Ctx->getLangOpts(), {L, L}, &UniqueID), 0,
+            SymbolKind::File, Role::Dynamic}});
     }
   }
   void MacroUndefined(const Token &Tok, const MacroDefinition &MD,
@@ -1033,8 +1040,8 @@ public:
 };
 }
 
-const int IndexFile::kMajorVersion = 16;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMajorVersion = 17;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
                      const std::string &contents)
@@ -1185,6 +1192,9 @@ std::vector<std::unique_ptr<IndexFile>> Index(
   for (std::unique_ptr<IndexFile>& entry : result) {
     entry->import_file = file;
     entry->args = args;
+    for (auto &[_, it] : entry->uid2lid_and_path)
+      entry->lid2path.emplace_back(it.first, std::move(it.second));
+    entry->uid2lid_and_path.clear();
     for (auto& it : entry->usr2func) {
       // e.g. declaration + out-of-line definition
       Uniquify(it.second.derived);
@@ -1220,7 +1230,7 @@ std::vector<std::unique_ptr<IndexFile>> Index(
 
     // Update dependencies for the file. Do not include the file in its own
     // dependency set.
-    for (auto & [ _, path ] : param.SeenUniqueID)
+    for (auto &[_, path] : param.SeenUniqueID)
       if (path != entry->path && path != entry->import_file)
         entry->dependencies[path] = param.file2write_time[path];
   }
@@ -1232,34 +1242,67 @@ std::vector<std::unique_ptr<IndexFile>> Index(
 // |SymbolRef| is serialized this way.
 // |Use| also uses this though it has an extra field |file|,
 // which is not used by Index* so it does not need to be serialized.
-void Reflect(Reader& visitor, Reference& value) {
-  if (visitor.Format() == SerializeFormat::Json) {
-    std::string t = visitor.GetString();
-    char* s = const_cast<char*>(t.c_str());
-    value.range = Range::FromString(s);
+void Reflect(Reader &vis, Reference &v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    std::string t = vis.GetString();
+    char *s = const_cast<char *>(t.c_str());
+    v.range = Range::FromString(s);
     s = strchr(s, '|');
-    value.usr = strtoull(s + 1, &s, 10);
-    value.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
-    value.role = static_cast<Role>(strtol(s + 1, &s, 10));
+    v.usr = strtoull(s + 1, &s, 10);
+    v.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
+    v.role = static_cast<Role>(strtol(s + 1, &s, 10));
   } else {
-    Reflect(visitor, value.range);
-    Reflect(visitor, value.usr);
-    Reflect(visitor, value.kind);
-    Reflect(visitor, value.role);
+    Reflect(vis, v.range);
+    Reflect(vis, v.usr);
+    Reflect(vis, v.kind);
+    Reflect(vis, v.role);
   }
 }
-void Reflect(Writer& visitor, Reference& value) {
-  if (visitor.Format() == SerializeFormat::Json) {
+void Reflect(Writer &vis, Reference &v) {
+  if (vis.Format() == SerializeFormat::Json) {
     char buf[99];
     snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d",
-             value.range.ToString().c_str(), value.usr, int(value.kind),
-             int(value.role));
+             v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role));
     std::string s(buf);
-    Reflect(visitor, s);
+    Reflect(vis, s);
   } else {
-    Reflect(visitor, value.range);
-    Reflect(visitor, value.usr);
-    Reflect(visitor, value.kind);
-    Reflect(visitor, value.role);
+    Reflect(vis, v.range);
+    Reflect(vis, v.usr);
+    Reflect(vis, v.kind);
+    Reflect(vis, v.role);
+  }
+}
+
+void Reflect(Reader& vis, Use& v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    std::string t = vis.GetString();
+    char* s = const_cast<char*>(t.c_str());
+    v.range = Range::FromString(s);
+    s = strchr(s, '|');
+    v.usr = strtoull(s + 1, &s, 10);
+    v.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
+    v.role = static_cast<Role>(strtol(s + 1, &s, 10));
+    if (*s == '|')
+      v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
+  } else {
+    Reflect(vis, static_cast<Reference&>(v));
+    Reflect(vis, v.file_id);
+  }
+}
+void Reflect(Writer& vis, Use& v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    char buf[99];
+    if (v.file_id == -1)
+      snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d",
+               v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role));
+    else
+      snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d|%d",
+               v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role),
+               v.file_id);
+    std::string s(buf);
+    Reflect(vis, s);
+  } else {
+    Reflect(vis, static_cast<Reference&>(v));
+    Reflect(vis, v.file_id);
   }
 }
