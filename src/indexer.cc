@@ -813,7 +813,7 @@ public:
     }
       [[fallthrough]];
     case Decl::Record: {
-      auto *RD = cast<RecordDecl>(D);
+      auto *RD = cast<RecordDecl>(OrigD);
       // spec has no Union, use Class
       type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
                                                       : lsSymbolKind::Class;
