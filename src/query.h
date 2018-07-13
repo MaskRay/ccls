@@ -27,6 +27,7 @@ struct QueryFile {
 
   int id = -1;
   std::optional<Def> def;
+  std::unordered_map<SymbolRef, int> symbol2refcnt;
 };
 
 template <typename Q, typename QDef>
@@ -84,6 +85,9 @@ struct IndexUpdate {
   // Dummy one to refresh all semantic highlight.
   bool refresh = false;
 
+  decltype(IndexFile::lid2path) prev_lid2path;
+  decltype(IndexFile::lid2path) lid2path;
+
   // File updates.
   std::optional<std::string> files_removed;
   std::optional<QueryFile::DefUpdate> files_def_update;
@@ -124,6 +128,8 @@ struct llvm::DenseMapInfo<WrappedUsr> {
   static bool isEqual(WrappedUsr l, WrappedUsr r) { return l.usr == r.usr; }
 };
 
+using Lid2file_id = std::unordered_map<int, int>;
+
 // The query database is heavily optimized for fast queries. It is stored
 // in-memory.
 struct DB {
@@ -134,15 +140,17 @@ struct DB {
   std::vector<QueryType> types;
   std::vector<QueryVar> vars;
 
-  // Marks the given Usrs as invalid.
-  void RemoveUsrs(SymbolKind usr_kind, const std::vector<Usr>& to_remove);
-  void RemoveUsrs(SymbolKind usr_kind, int file_id, const std::vector<Usr>& to_remove);
+  void RemoveUsrs(SymbolKind kind, int file_id, const std::vector<Usr>& to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate* update);
+  int GetFileId(const std::string& path);
   int Update(QueryFile::DefUpdate&& u);
-  void Update(int file_id, std::vector<std::pair<Usr, QueryType::Def>>&& us);
-  void Update(int file_id, std::vector<std::pair<Usr, QueryFunc::Def>>&& us);
-  void Update(int file_id, std::vector<std::pair<Usr, QueryVar::Def>>&& us);
+  void Update(const Lid2file_id &, int file_id,
+              std::vector<std::pair<Usr, QueryType::Def>> &&us);
+  void Update(const Lid2file_id &, int file_id,
+              std::vector<std::pair<Usr, QueryFunc::Def>> &&us);
+  void Update(const Lid2file_id &, int file_id,
+              std::vector<std::pair<Usr, QueryVar::Def>> &&us);
   std::string_view GetSymbolName(SymbolIdx sym, bool qualified);
 
   bool HasFunc(Usr usr) const { return func_usr.count({usr}); }

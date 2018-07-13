@@ -52,16 +52,23 @@ struct Reference {
 
 // |id,kind| refer to the referenced entity.
 struct SymbolRef : Reference {};
+MAKE_HASHABLE(SymbolRef, t.range, t.usr, t.kind, t.role);
 
 // Represents an occurrence of a variable/type, |usr,kind| refer to the lexical
 // parent.
 struct Use : Reference {
   // |file| is used in Query* but not in Index*
   int file_id = -1;
+  bool operator==(const Use& o) const {
+    return range == o.range && usr == o.usr && kind == o.kind &&
+           role == o.role && file_id == o.file_id;
+  }
 };
 
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);
+void Reflect(Reader& visitor, Use& value);
+void Reflect(Writer& visitor, Use& value);
 
 MAKE_REFLECT_TYPE_PROXY2(clang::StorageClass, uint8_t);
 
@@ -254,6 +261,11 @@ struct IndexFile {
   std::vector<std::string> args;
   int64_t last_write_time = 0;
   LanguageId language = LanguageId::Unknown;
+
+  // uid2lid_and_path is used to generate lid2path, but not serialized.
+  std::unordered_map<llvm::sys::fs::UniqueID, std::pair<int, std::string>>
+      uid2lid_and_path;
+  std::vector<std::pair<int, std::string>> lid2path;
 
   // The path to the translation unit cc file which caused the creation of this
   // IndexFile. When parsing a translation unit we generate many IndexFile

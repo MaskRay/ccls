@@ -319,10 +319,12 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
     }
   }
 
-  for (const SymbolRef& sym : file->def->all_symbols) {
+  for (SymbolRef sym : file->def->all_symbols)
     if (sym.range.Contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
-  }
+  for (auto[sym, refcnt] : file->symbol2refcnt)
+    if (refcnt > 0 && sym.range.Contains(ls_pos.line, ls_pos.character))
+      symbols.push_back(sym);
 
   // Order shorter ranges first, since they are more detailed/precise. This is
   // important for macros which generate code so that we can resolving the
@@ -340,8 +342,10 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
               int t = ComputeRangeSize(a.range) - ComputeRangeSize(b.range);
               if (t)
                 return t < 0;
-              t = (a.role & Role::Definition) - (b.role & Role::Definition);
-              if (t)
+              // MacroExpansion
+              if ((t = (a.role & Role::Dynamic) - (b.role & Role::Dynamic)))
+                return t > 0;
+              if ((t = (a.role & Role::Definition) - (b.role & Role::Definition)))
                 return t > 0;
               // operator> orders Var/Func before Type.
               t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
