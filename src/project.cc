@@ -16,6 +16,7 @@ using namespace ccls;
 #include <clang/Driver/Driver.h>
 #include <clang/Driver/Options.h>
 #include <clang/Frontend/CompilerInstance.h>
+#include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/Option/ArgList.h>
 #include <llvm/Option/OptTable.h>
@@ -25,7 +26,6 @@ using namespace clang;
 using namespace llvm;
 using namespace llvm::opt;
 
-#include <clang-c/CXCompilationDatabase.h>
 #include <rapidjson/writer.h>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -142,14 +142,14 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
     return result;
   const driver::ArgStringList& CCArgs = Jobs.begin()->getArguments();
 
-  auto Invocation = std::make_unique<CompilerInvocation>();
-  CompilerInvocation::CreateFromArgs(*Invocation, CCArgs.data(),
+  auto CI = std::make_unique<CompilerInvocation>();
+  CompilerInvocation::CreateFromArgs(*CI, CCArgs.data(),
                                      CCArgs.data() + CCArgs.size(), Diags);
-  Invocation->getFrontendOpts().DisableFree = false;
-  Invocation->getCodeGenOpts().DisableFree = false;
+  CI->getFrontendOpts().DisableFree = false;
+  CI->getCodeGenOpts().DisableFree = false;
 
-  HeaderSearchOptions& HeaderOpts = Invocation->getHeaderSearchOpts();
-  for (auto& E : HeaderOpts.UserEntries) {
+  HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
+  for (auto &E : HeaderOpts.UserEntries) {
     std::string path = entry.ResolveIfRelative(E.Path);
     switch (E.Group) {
       default:
@@ -178,7 +178,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
 
   // if (HeaderOpts.ResourceDir.empty() && HeaderOpts.UseBuiltinIncludes)
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);
-  // if (Invocation->getFileSystemOpts().WorkingDir.empty())
+  // if (CI->getFileSystemOpts().WorkingDir.empty())
     args.push_back("-working-directory=" + entry.directory);
 
   // There could be a clang version mismatch between what the project uses and
@@ -300,9 +300,9 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 #endif
   }
 
-  CXCompilationDatabase_Error cx_db_load_error;
-  CXCompilationDatabase cx_db = clang_CompilationDatabase_fromDirectory(
-      comp_db_dir.c_str(), &cx_db_load_error);
+  std::string err_msg;
+  std::unique_ptr<tooling::CompilationDatabase> CDB =
+      tooling::CompilationDatabase::loadFromDirectory(comp_db_dir, err_msg);
   if (!g_config->compilationDatabaseCommand.empty()) {
 #ifdef _WIN32
   // TODO
@@ -311,44 +311,22 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
     rmdir(comp_db_dir.c_str());
 #endif
   }
-  if (cx_db_load_error == CXCompilationDatabase_CanNotLoadDatabase) {
-    LOG_S(WARNING) << "unable to load " << Path.c_str();
+  if (!CDB) {
+    LOG_S(WARNING) << "failed to load " << Path.c_str() << " " << err_msg;
     return {};
   }
 
   LOG_S(INFO) << "loaded " << Path.c_str();
 
-  CXCompileCommands cx_commands =
-      clang_CompilationDatabase_getAllCompileCommands(cx_db);
-  unsigned int num_commands = clang_CompileCommands_getSize(cx_commands);
-
   std::vector<Project::Entry> result;
-  for (unsigned int i = 0; i < num_commands; i++) {
-    CXCompileCommand cx_command =
-        clang_CompileCommands_getCommand(cx_commands, i);
-
-    std::string directory =
-        ToString(clang_CompileCommand_getDirectory(cx_command));
-    std::string relative_filename =
-        ToString(clang_CompileCommand_getFilename(cx_command));
-
-    unsigned num_args = clang_CompileCommand_getNumArgs(cx_command);
+  for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     CompileCommandsEntry entry;
-    entry.args.reserve(num_args);
-    for (unsigned j = 0; j < num_args; ++j) {
-      entry.args.push_back(
-          ToString(clang_CompileCommand_getArg(cx_command, j)));
-    }
-
-    entry.directory = directory;
-    entry.file = entry.ResolveIfRelative(relative_filename);
-
+    entry.directory = std::move(Cmd.Directory);
+    entry.file = entry.ResolveIfRelative(Cmd.Filename);
+    entry.args = std::move(Cmd.CommandLine);
     result.push_back(
         GetCompilationEntryFromCompileCommandEntry(project, entry));
   }
-
-  clang_CompileCommands_dispose(cx_commands);
-  clang_CompilationDatabase_dispose(cx_db);
   return result;
 }
 

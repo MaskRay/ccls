@@ -69,6 +69,7 @@ set(_Clang_REQUIRED_VARS Clang_LIBRARY Clang_INCLUDE_DIR Clang_EXECUTABLE
                          LLVM_INCLUDE_DIR LLVM_BUILD_INCLUDE_DIR)
 
 _Clang_find_library(Clang_LIBRARY clang)
+_Clang_find_add_library(clangTooling)
 _Clang_find_add_library(clangIndex)
 _Clang_find_add_library(clangFrontend)
 _Clang_find_add_library(clangParse)
