@@ -8,9 +8,6 @@
 #include <optional>
 #include <vector>
 
-std::optional<lsDiagnostic> BuildAndDisposeDiagnostic(CXDiagnostic diagnostic,
-                                                 const std::string& path);
-
 // Returns the absolute path to |file|.
 std::string FileName(CXFile file);
 std::string FileName(const clang::FileEntry& file);
@@ -19,4 +16,4 @@ std::string ToString(CXString cx_string);
 
 std::string ToString(CXCursorKind cursor_kind);
 
-const char* ClangBuiltinTypeName(CXTypeKind);
+const char* ClangBuiltinTypeName(int);

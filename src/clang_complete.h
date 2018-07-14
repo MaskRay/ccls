@@ -19,8 +19,6 @@ struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
   // Translation unit for clang.
   struct Tu {
-    ClangIndex index{0, 0};
-
     // When |tu| was last parsed.
     std::optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
         last_parsed_at;

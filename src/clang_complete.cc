@@ -5,6 +5,8 @@
 #include "log.hh"
 #include "platform.h"
 
+#include "clang/Frontend/CompilerInstance.h"
+#include "clang/Frontend/FrontendDiagnostic.h"
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
@@ -16,25 +18,15 @@ using namespace llvm;
 
 namespace {
 
-unsigned Flags() {
-  // TODO: use clang_defaultEditingTranslationUnitOptions()?
-  return CXTranslationUnit_Incomplete | CXTranslationUnit_KeepGoing |
-         CXTranslationUnit_CacheCompletionResults |
-         CXTranslationUnit_PrecompiledPreamble |
-         CXTranslationUnit_IncludeBriefCommentsInCodeCompletion |
-         CXTranslationUnit_DetailedPreprocessingRecord |
-         CXTranslationUnit_CreatePreambleOnFirstParse;
-}
-
 std::string StripFileType(const std::string& path) {
   SmallString<128> Ret;
   sys::path::append(Ret, sys::path::parent_path(path), sys::path::stem(path));
   return Ret.str();
 }
 
-unsigned GetCompletionPriority(const CodeCompletionString& CCS,
+unsigned GetCompletionPriority(const CodeCompletionString &CCS,
                                CXCursorKind result_kind,
-                               const std::optional<std::string>& typedText) {
+                               const std::optional<std::string> &typedText) {
   unsigned priority = CCS.getPriority();
   if (CCS.getAvailability() != CXAvailability_Available ||
       result_kind == CXCursor_Destructor ||
@@ -196,35 +188,29 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem> &out,
       // clang-format on
     }
 
-    for (auto i = out_first; i < out.size(); ++i)
-      out[i].label += text;
+    if (Kind != CodeCompletionString::CK_Informative)
+      for (auto i = out_first; i < out.size(); ++i) {
+        out[i].label += text;
+        if (!include_snippets && !out[i].parameters_.empty())
+          continue;
 
-    if (Kind == CodeCompletionString::CK_Informative)
-      continue;
-
-    for (auto i = out_first; i < out.size(); ++i) {
-      if (!include_snippets && !out[i].parameters_.empty())
-        continue;
-
-      if (Kind == CodeCompletionString::CK_Placeholder) {
-        out[i].insertText +=
+        if (Kind == CodeCompletionString::CK_Placeholder) {
+          out[i].insertText +=
             "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
-        out[i].insertTextFormat = lsInsertTextFormat::Snippet;
-      } else {
-        out[i].insertText += text;
+          out[i].insertTextFormat = lsInsertTextFormat::Snippet;
+        } else {
+          out[i].insertText += text;
+        }
       }
+  }
+
+  if (result_type.size())
+    for (auto i = out_first; i < out.size(); ++i) {
+      // ' : ' for variables,
+      // ' -> ' (trailing return type-like) for functions
+      out[i].label += (out[i].label == out[i].filterText ? " : " : " -> ");
+      out[i].label += result_type;
     }
-  }
-
-  if (result_type.empty())
-    return;
-
-  for (auto i = out_first; i < out.size(); ++i) {
-    // ' : ' for variables,
-    // ' -> ' (trailing return type-like) for functions
-    out[i].label += (out[i].label == out[i].filterText ? " : " : " -> ");
-    out[i].label += result_type;
-  }
 }
 
 // |do_insert|: if |!do_insert|, do not append strings to |insert| after
@@ -298,56 +284,87 @@ void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
   }
 }
 
+class CaptureCompletionResults : public CodeCompleteConsumer {
+  std::shared_ptr<clang::GlobalCodeCompletionAllocator> Alloc;
+  CodeCompletionTUInfo CCTUInfo;
+
+public:
+  std::vector<lsCompletionItem> ls_items;
+
+  CaptureCompletionResults(const CodeCompleteOptions &Opts)
+      : CodeCompleteConsumer(Opts, false),
+        Alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()),
+        CCTUInfo(Alloc) {}
+
+  void ProcessCodeCompleteResults(Sema &S, 
+    CodeCompletionContext Context,
+    CodeCompletionResult *Results,
+    unsigned NumResults) override {
+    ls_items.reserve(NumResults);
+    for (unsigned i = 0; i != NumResults; i++) {
+      CodeCompletionString *CCS = Results[i].CreateCodeCompletionString(
+          S, Context, getAllocator(), getCodeCompletionTUInfo(),
+          includeBriefComments());
+      if (CCS->getAvailability() == CXAvailability_NotAvailable)
+        continue;
+
+      lsCompletionItem ls_item;
+      ls_item.kind = GetCompletionKind(Results[i].CursorKind);
+      if (const char* brief = CCS->getBriefComment())
+        ls_item.documentation = brief;
+
+      // label/detail/filterText/insertText/priority
+      if (g_config->completion.detailedLabel) {
+        ls_item.detail = CCS->getParentContextName().str();
+
+        size_t first_idx = ls_items.size();
+        ls_items.push_back(ls_item);
+        BuildCompletionItemTexts(ls_items, *CCS,
+                                 g_config->client.snippetSupport);
+
+        for (size_t j = first_idx; j < ls_items.size(); j++) {
+          if (g_config->client.snippetSupport &&
+              ls_items[j].insertTextFormat == lsInsertTextFormat::Snippet)
+            ls_items[j].insertText += "$0";
+          ls_items[j].priority_ = GetCompletionPriority(
+              *CCS, Results[i].CursorKind, ls_items[i].filterText);
+        }
+      } else {
+        bool do_insert = true;
+        int angle_stack = 0;
+        BuildDetailString(*CCS, ls_item, do_insert,
+                          &ls_item.parameters_,
+                          g_config->client.snippetSupport, angle_stack);
+        if (g_config->client.snippetSupport &&
+            ls_item.insertTextFormat == lsInsertTextFormat::Snippet)
+          ls_item.insertText += "$0";
+        ls_item.priority_ =
+            GetCompletionPriority(*CCS, Results[i].CursorKind, ls_item.label);
+        ls_items.push_back(ls_item);
+      }
+    }
+  }
+
+  CodeCompletionAllocator &getAllocator() override { return *Alloc; }
+
+  CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo;}
+};
+
 void TryEnsureDocumentParsed(ClangCompleteManager* manager,
                              std::shared_ptr<CompletionSession> session,
                              std::unique_ptr<ClangTranslationUnit>* tu,
-                             ClangIndex* index,
                              bool emit_diag) {
   // Nothing to do. We already have a translation unit.
   if (*tu)
     return;
 
-  std::vector<std::string> args = session->file.args;
-
-  // -fspell-checking enables FixIts for, ie, misspelled types.
-  if (!std::count(args.begin(), args.end(), "-fno-spell-checking") &&
-      !std::count(args.begin(), args.end(), "-fspell-checking")) {
-    args.push_back("-fspell-checking");
-  }
-
+  const auto &args = session->file.args;
   WorkingFiles::Snapshot snapshot = session->working_files->AsSnapshot(
       {StripFileType(session->file.filename)});
-  std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
 
   LOG_S(INFO) << "Creating completion session with arguments "
               << StringJoin(args, " ");
-  *tu = ClangTranslationUnit::Create(index, session->file.filename, args,
-                                     unsaved, Flags());
-
-  // Build diagnostics.
-  if (g_config->diagnostics.onParse && *tu) {
-    // If we're emitting diagnostics, do an immediate reparse, otherwise we will
-    // emit stale/bad diagnostics.
-    *tu = ClangTranslationUnit::Reparse(std::move(*tu), unsaved);
-    if (!*tu) {
-      LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
-                   << session->file.filename;
-      return;
-    }
-
-    std::vector<lsDiagnostic> ls_diagnostics;
-    unsigned num_diagnostics = clang_getNumDiagnostics((*tu)->cx_tu);
-    for (unsigned i = 0; i < num_diagnostics; ++i) {
-      std::optional<lsDiagnostic> diagnostic = BuildAndDisposeDiagnostic(
-          clang_getDiagnostic((*tu)->cx_tu, i), session->file.filename);
-      // Filter messages like "too many errors emitted, stopping now
-      // [-ferror-limit=]" which has line = 0 and got subtracted by 1 after
-      // conversion to lsDiagnostic
-      if (diagnostic && diagnostic->range.start.line >= 0)
-        ls_diagnostics.push_back(*diagnostic);
-    }
-    manager->on_diagnostic_(session->file.filename, ls_diagnostics);
-  }
+  *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot);
 }
 
 void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
@@ -374,8 +391,7 @@ void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
       continue;
 
     std::unique_ptr<ClangTranslationUnit> parsing;
-    TryEnsureDocumentParsed(completion_manager, session, &parsing, &tu->index,
-                            true);
+    TryEnsureDocumentParsed(completion_manager, session, &parsing, true);
 
     // Activate new translation unit.
     std::lock_guard<std::mutex> lock(tu->lock);
@@ -404,84 +420,43 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                                           true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->completion.lock);
-    TryEnsureDocumentParsed(completion_manager, session, &session->completion.tu,
-                            &session->completion.index, false);
+    TryEnsureDocumentParsed(completion_manager, session, &session->completion.tu, false);
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
-    if (!session->completion.tu)
-      continue;
+    if (ClangTranslationUnit* tu = session->completion.tu.get()) {
+      WorkingFiles::Snapshot snapshot =
+          completion_manager->working_files_->AsSnapshot({StripFileType(path)});
+      IntrusiveRefCntPtr<FileManager> FileMgr(&tu->Unit->getFileManager());
+      IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
+      IntrusiveRefCntPtr<DiagnosticsEngine> Diag(new DiagnosticsEngine(
+          IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs), &*DiagOpts));
+      // StoreDiags Diags;
+      // IntrusiveRefCntPtr<DiagnosticsEngine> DiagE =
+      //     CompilerInstance::createDiagnostics(DiagOpts.get(), &Diags, false);
 
-    WorkingFiles::Snapshot snapshot =
-        completion_manager->working_files_->AsSnapshot({StripFileType(path)});
-    std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
+      IntrusiveRefCntPtr<SourceManager> SrcMgr(
+          new SourceManager(*Diag, *FileMgr));
+      std::vector<ASTUnit::RemappedFile> Remapped = GetRemapped(snapshot);
+      SmallVector<StoredDiagnostic, 8> Diagnostics;
+      SmallVector<const llvm::MemoryBuffer *, 1> TemporaryBuffers;
 
-    unsigned const kCompleteOptions =
-        CXCodeComplete_IncludeMacros | CXCodeComplete_IncludeBriefComments;
-    CXCodeCompleteResults* cx_results = clang_codeCompleteAt(
-        session->completion.tu->cx_tu, session->file.filename.c_str(),
-        request->position.line + 1, request->position.character + 1,
-        unsaved.data(), (unsigned)unsaved.size(), kCompleteOptions);
-    if (!cx_results) {
-      request->on_complete({}, false /*is_cached_result*/);
-      continue;
+      CodeCompleteOptions Opts;
+      LangOptions LangOpts;
+      Opts.IncludeBriefComments = true;
+      Opts.LoadExternal = false;
+      Opts.IncludeFixIts = true;
+      CaptureCompletionResults capture(Opts);
+      tu->Unit->CodeComplete(session->file.filename, request->position.line + 1,
+                             request->position.character + 1, Remapped,
+                             /*IncludeMacros=*/true,
+                             /*IncludeCodePatterns=*/false,
+                             /*IncludeBriefComments=*/true, capture, tu->PCHCO,
+                             *Diag, LangOpts, *SrcMgr, *FileMgr, Diagnostics,
+                             TemporaryBuffers);
+      request->on_complete(capture.ls_items, false /*is_cached_result*/);
+      // completion_manager->on_diagnostic_(session->file.filename, Diags.take());
     }
-
-    std::vector<lsCompletionItem> ls_result;
-    // this is a guess but can be larger in case of std::optional
-    // parameters, as they may be expanded into multiple items
-    ls_result.reserve(cx_results->NumResults);
-
-    for (unsigned i = 0; i < cx_results->NumResults; ++i) {
-      CXCompletionResult& result = cx_results->Results[i];
-      auto CCS = (CodeCompletionString *)result.CompletionString;
-      if (CCS->getAvailability() == CXAvailability_NotAvailable)
-        continue;
-
-      lsCompletionItem ls_item;
-      ls_item.kind = GetCompletionKind(result.CursorKind);
-      if (const char* brief = CCS->getBriefComment())
-        ls_item.documentation = brief;
-
-      // label/detail/filterText/insertText/priority
-      if (g_config->completion.detailedLabel) {
-        ls_item.detail = CCS->getParentContextName().str();
-
-        auto first_idx = ls_result.size();
-        ls_result.push_back(ls_item);
-
-        // label/filterText/insertText
-        BuildCompletionItemTexts(ls_result, *CCS,
-                                 g_config->client.snippetSupport);
-
-        for (auto i = first_idx; i < ls_result.size(); ++i) {
-          if (g_config->client.snippetSupport &&
-              ls_result[i].insertTextFormat == lsInsertTextFormat::Snippet) {
-            ls_result[i].insertText += "$0";
-          }
-
-          ls_result[i].priority_ = GetCompletionPriority(
-              *CCS, result.CursorKind, ls_result[i].filterText);
-        }
-      } else {
-        bool do_insert = true;
-        int angle_stack = 0;
-        BuildDetailString(*CCS, ls_item, do_insert,
-                          &ls_item.parameters_,
-                          g_config->client.snippetSupport, angle_stack);
-        if (g_config->client.snippetSupport &&
-            ls_item.insertTextFormat == lsInsertTextFormat::Snippet)
-          ls_item.insertText += "$0";
-        ls_item.priority_ =
-            GetCompletionPriority(*CCS, result.CursorKind, ls_item.label);
-        ls_result.push_back(ls_item);
-      }
-    }
-
-    request->on_complete(ls_result, false /*is_cached_result*/);
-
-    // Make sure |ls_results| is destroyed before clearing |cx_results|.
-    clang_disposeCodeCompleteResults(cx_results);
   }
 }
 
@@ -500,44 +475,72 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
 
     // At this point, we must have a translation unit. Block until we have one.
     std::lock_guard<std::mutex> lock(session->diagnostics.lock);
-    TryEnsureDocumentParsed(
-        completion_manager, session, &session->diagnostics.tu,
-        &session->diagnostics.index, false /*emit_diagnostics*/);
+    TryEnsureDocumentParsed(completion_manager, session,
+                            &session->diagnostics.tu,
+                            false /*emit_diagnostics*/);
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
-    if (!session->diagnostics.tu)
+    ClangTranslationUnit* tu = session->diagnostics.tu.get();
+    if (!tu)
       continue;
 
     WorkingFiles::Snapshot snapshot =
         completion_manager->working_files_->AsSnapshot({StripFileType(path)});
-    std::vector<CXUnsavedFile> unsaved = snapshot.AsUnsavedFiles();
-
-    // Emit diagnostics.
-    session->diagnostics.tu = ClangTranslationUnit::Reparse(
-        std::move(session->diagnostics.tu), unsaved);
-    if (!session->diagnostics.tu) {
+    llvm::CrashRecoveryContext CRC;
+    if (tu->Reparse(CRC, snapshot)) {
       LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
                    << path;
       continue;
     }
 
-    size_t num_diagnostics =
-        clang_getNumDiagnostics(session->diagnostics.tu->cx_tu);
-    std::vector<lsDiagnostic> ls_diagnostics;
-    ls_diagnostics.reserve(num_diagnostics);
-    for (unsigned i = 0; i < num_diagnostics; ++i) {
-      CXDiagnostic cx_diag =
-          clang_getDiagnostic(session->diagnostics.tu->cx_tu, i);
-      std::optional<lsDiagnostic> diagnostic =
-          BuildAndDisposeDiagnostic(cx_diag, path);
-      // Filter messages like "too many errors emitted, stopping now
-      // [-ferror-limit=]" which has line = 0 and got subtracted by 1 after
-      // conversion to lsDiagnostic
-      if (diagnostic && diagnostic->range.start.line >= 0)
-        ls_diagnostics.push_back(*diagnostic);
+    auto &SM = tu->Unit->getSourceManager();
+    auto &LangOpts = tu->Unit->getLangOpts();
+    std::vector<lsDiagnostic> ls_diags;
+    for (ASTUnit::stored_diag_iterator I = tu->Unit->stored_diag_begin(),
+                                       E = tu->Unit->stored_diag_end();
+         I != E; ++I) {
+      FullSourceLoc FLoc = I->getLocation();
+      SourceRange R;
+      for (const auto &CR : I->getRanges()) {
+        auto RT = Lexer::makeFileCharRange(CR, SM, LangOpts);
+        if (SM.isPointWithin(FLoc, RT.getBegin(), RT.getEnd())) {
+          R = CR.getAsRange();
+          break;
+        }
+      }
+      Range r = R.isValid() ? FromCharRange(SM, LangOpts, R)
+                            : FromTokenRange(SM, LangOpts, {FLoc, FLoc});
+      lsDiagnostic ls_diag;
+      ls_diag.range =
+          lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
+      switch (I->getLevel()) {
+      case DiagnosticsEngine::Ignored:
+        // llvm_unreachable
+        break;
+      case DiagnosticsEngine::Note:
+      case DiagnosticsEngine::Remark:
+        ls_diag.severity = lsDiagnosticSeverity::Information;
+        break;
+      case DiagnosticsEngine::Warning:
+        ls_diag.severity = lsDiagnosticSeverity::Warning;
+        break;
+      case DiagnosticsEngine::Error:
+      case DiagnosticsEngine::Fatal:
+        ls_diag.severity = lsDiagnosticSeverity::Error;
+      }
+      ls_diag.message = I->getMessage().str();
+      for (const FixItHint &FixIt : I->getFixIts()) {
+        lsTextEdit edit;
+        edit.newText = FixIt.CodeToInsert;
+        r = FromCharRange(SM, LangOpts, FixIt.RemoveRange.getAsRange());
+        edit.range =
+            lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
+        ls_diag.fixits_.push_back(edit);
+      }
+      ls_diags.push_back(ls_diag);
     }
-    completion_manager->on_diagnostic_(path, ls_diagnostics);
+    completion_manager->on_diagnostic_(path, ls_diags);
   }
 }
 

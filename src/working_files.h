@@ -84,7 +84,6 @@ struct WorkingFiles {
       std::string content;
     };
 
-    std::vector<CXUnsavedFile> AsUnsavedFiles() const;
     std::vector<File> files;
   };
 

@@ -4,173 +4,113 @@
 #include "log.hh"
 #include "platform.h"
 #include "utils.h"
+#include "working_files.h"
+
+#include <llvm/Support/CrashRecoveryContext.h>
+using namespace clang;
 
 #include <assert.h>
-#include <string.h>
-#include <algorithm>
 #include <mutex>
 
-namespace {
-
-void EmitDiagnostics(std::string path,
-                     std::vector<const char*> args,
-                     CXTranslationUnit tu) {
-  std::string output = "Fatal errors while trying to parse " + path + "\n";
-  output +=
-      "Args: " +
-      StringJoinMap(args, [](const char* arg) { return std::string(arg); }) +
-      "\n";
-
-  size_t num_diagnostics = clang_getNumDiagnostics(tu);
-  for (unsigned i = 0; i < num_diagnostics; ++i) {
-    output += "  - ";
-
-    CXDiagnostic diagnostic = clang_getDiagnostic(tu, i);
-
-    // Location.
-    CXFile file;
-    unsigned int line, column;
-    clang_getSpellingLocation(clang_getDiagnosticLocation(diagnostic), &file,
-                              &line, &column, nullptr);
-    std::string path = FileName(file);
-    output += path + ":" + std::to_string(line - 1) + ":" +
-              std::to_string(column) + " ";
-
-    // Severity
-    switch (clang_getDiagnosticSeverity(diagnostic)) {
-      case CXDiagnostic_Ignored:
-      case CXDiagnostic_Note:
-        output += "[info]";
-        break;
-      case CXDiagnostic_Warning:
-        output += "[warning]";
-        break;
-      case CXDiagnostic_Error:
-        output += "[error]";
-        break;
-      case CXDiagnostic_Fatal:
-        output += "[fatal]";
-        break;
-    }
-
-    // Content.
-    output += " " + ToString(clang_getDiagnosticSpelling(diagnostic));
-
-    clang_disposeDiagnostic(diagnostic);
-
-    output += "\n";
+Range FromSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
+                      SourceRange R, llvm::sys::fs::UniqueID *UniqueID,
+                      bool token) {
+  SourceLocation BLoc = R.getBegin(), ELoc = R.getEnd();
+  std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc);
+  std::pair<FileID, unsigned> EInfo = SM.getDecomposedLoc(ELoc);
+  if (token)
+    EInfo.second += Lexer::MeasureTokenLength(ELoc, SM, LangOpts);
+  unsigned l0 = SM.getLineNumber(BInfo.first, BInfo.second) - 1,
+           c0 = SM.getColumnNumber(BInfo.first, BInfo.second) - 1,
+           l1 = SM.getLineNumber(EInfo.first, EInfo.second) - 1,
+           c1 = SM.getColumnNumber(EInfo.first, EInfo.second) - 1;
+  if (l0 > INT16_MAX)
+    l0 = 0;
+  if (c0 > INT16_MAX)
+    c0 = 0;
+  if (l1 > INT16_MAX)
+    l1 = 0;
+  if (c1 > INT16_MAX)
+    c1 = 0;
+  if (UniqueID) {
+    if (const FileEntry *F = SM.getFileEntryForID(BInfo.first))
+      *UniqueID = F->getUniqueID();
+    else
+      *UniqueID = llvm::sys::fs::UniqueID(0, 0);
   }
-
-  LOG_S(WARNING) << output;
-}
-}  // namespace
-
-ClangIndex::ClangIndex() : ClangIndex(1, 0) {}
-
-ClangIndex::ClangIndex(int exclude_declarations_from_pch,
-                       int display_diagnostics) {
-  // llvm::InitializeAllTargets (and possibly others) called by
-  // clang_createIndex transtively modifies/reads lib/Support/TargetRegistry.cpp
-  // FirstTarget. There will be a race condition if two threads call
-  // clang_createIndex concurrently.
-  static std::mutex mutex_;
-  std::lock_guard<std::mutex> lock(mutex_);
-
-  cx_index =
-      clang_createIndex(exclude_declarations_from_pch, display_diagnostics);
+  return {{int16_t(l0), int16_t(c0)}, {int16_t(l1), int16_t(c1)}};
 }
 
-ClangIndex::~ClangIndex() {
-  clang_disposeIndex(cx_index);
+Range FromCharRange(const SourceManager &SM, const LangOptions &LangOpts,
+                    SourceRange R,
+                    llvm::sys::fs::UniqueID *UniqueID) {
+  return FromSourceRange(SM, LangOpts, R, UniqueID, false);
 }
 
-// static
-std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
-    ClangIndex* index,
-    const std::string& filepath,
-    const std::vector<std::string>& arguments,
-    std::vector<CXUnsavedFile>& unsaved_files,
-    unsigned flags) {
-  std::vector<const char*> args;
-  for (auto& arg : arguments)
-    args.push_back(arg.c_str());
+Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
+                     SourceRange R,
+                     llvm::sys::fs::UniqueID *UniqueID) {
+  return FromSourceRange(SM, LangOpts, R, UniqueID, true);
+}
 
-  CXTranslationUnit cx_tu;
-  CXErrorCode error_code;
-  {
-    error_code = clang_parseTranslationUnit2FullArgv(
-        index->cx_index, nullptr, args.data(), (int)args.size(),
-        unsaved_files.data(), (unsigned)unsaved_files.size(), flags, &cx_tu);
+std::vector<ASTUnit::RemappedFile>
+GetRemapped(const WorkingFiles::Snapshot &snapshot) {
+  std::vector<ASTUnit::RemappedFile> Remapped;
+  for (auto &file : snapshot.files) {
+    std::unique_ptr<llvm::MemoryBuffer> MB =
+        llvm::MemoryBuffer::getMemBufferCopy(file.content, file.filename);
+    Remapped.emplace_back(file.filename, MB.release());
   }
+  return Remapped;
+}
 
-  if (error_code != CXError_Success && cx_tu)
-    EmitDiagnostics(filepath, args, cx_tu);
+std::unique_ptr<ClangTranslationUnit>
+ClangTranslationUnit::Create(const std::string &filepath,
+                             const std::vector<std::string> &args,
+                             const WorkingFiles::Snapshot &snapshot) {
+  std::vector<const char *> Args;
+  for (auto& arg : args)
+    Args.push_back(arg.c_str());
+  Args.push_back("-fno-spell-checking");
 
-  // We sometimes dump the command to logs and ask the user to run it. Include
-  // -fsyntax-only so they don't do a full compile.
-  auto make_msg = [&]() {
-    return "Please try running the following, identify which flag causes the "
-           "issue, and report a bug. ccls will then filter the flag for you "
-           " automatically:\n " +
-           StringJoin(args, " ") + " -fsyntax-only";
+  auto ret = std::make_unique<ClangTranslationUnit>();
+  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
+      CompilerInstance::createDiagnostics(new DiagnosticOptions));
+  std::vector<ASTUnit::RemappedFile> Remapped = GetRemapped(snapshot);
+
+  ret->PCHCO = std::make_shared<PCHContainerOperations>();
+  std::unique_ptr<ASTUnit> ErrUnit, Unit;
+  llvm::CrashRecoveryContext CRC;
+  auto parse = [&]() {
+    Unit.reset(ASTUnit::LoadFromCommandLine(
+        Args.data(), Args.data() + Args.size(),
+        /*PCHContainerOpts=*/ret->PCHCO, Diags,
+        /*ResourceFilePath=*/"", /*OnlyLocalDecls=*/false,
+        /*CaptureDiagnostics=*/true, Remapped,
+        /*RemappedFilesKeepOriginalName=*/true, 1, TU_Prefix,
+        /*CacheCodeCompletionResults=*/true, true,
+        /*AllowPCHWithCompilerErrors=*/true, SkipFunctionBodiesScope::None,
+        /*SingleFileParse=*/false,
+        /*UserFilesAreVolatile=*/true, false,
+        ret->PCHCO->getRawReader().getFormat(), &ErrUnit));
   };
-
-  switch (error_code) {
-    case CXError_Success:
-      return std::make_unique<ClangTranslationUnit>(cx_tu);
-    case CXError_Failure:
-      LOG_S(ERROR) << "libclang generic failure for " << filepath << ". "
-                   << make_msg();
-      return nullptr;
-    case CXError_Crashed:
-      LOG_S(ERROR) << "libclang crashed for " << filepath << ". " << make_msg();
-      return nullptr;
-    case CXError_InvalidArguments:
-      LOG_S(ERROR) << "libclang had invalid arguments for " << filepath << ". "
-                   << make_msg();
-      return nullptr;
-    case CXError_ASTReadError:
-      LOG_S(ERROR) << "libclang had ast read error for " << filepath << ". "
-                   << make_msg();
-      return nullptr;
+  if (!RunSafely(CRC, parse)) {
+    LOG_S(ERROR)
+        << "clang crashed for " << filepath << "\n"
+        << StringJoin(args, " ") + " -fsyntax-only";
+    return {};
   }
+  if (!Unit && !ErrUnit)
+    return {};
 
-  return nullptr;
+  ret->Unit = std::move(Unit);
+  return ret;
 }
 
-// static
-std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Reparse(
-    std::unique_ptr<ClangTranslationUnit> tu,
-    std::vector<CXUnsavedFile>& unsaved) {
-  int error_code = clang_reparseTranslationUnit(
-      tu->cx_tu, (unsigned)unsaved.size(), unsaved.data(),
-      clang_defaultReparseOptions(tu->cx_tu));
-
-  if (error_code != CXError_Success && tu->cx_tu)
-    EmitDiagnostics("<unknown>", {}, tu->cx_tu);
-
-  switch (error_code) {
-    case CXError_Success:
-      return tu;
-    case CXError_Failure:
-      LOG_S(ERROR) << "libclang reparse generic failure";
-      return nullptr;
-    case CXError_Crashed:
-      LOG_S(ERROR) << "libclang reparse crashed";
-      return nullptr;
-    case CXError_InvalidArguments:
-      LOG_S(ERROR) << "libclang reparse had invalid arguments";
-      return nullptr;
-    case CXError_ASTReadError:
-      LOG_S(ERROR) << "libclang reparse had ast read error";
-      return nullptr;
-  }
-
-  return nullptr;
-}
-
-ClangTranslationUnit::ClangTranslationUnit(CXTranslationUnit tu) : cx_tu(tu) {}
-
-ClangTranslationUnit::~ClangTranslationUnit() {
-  clang_disposeTranslationUnit(cx_tu);
+int ClangTranslationUnit::Reparse(llvm::CrashRecoveryContext &CRC,
+                                  const WorkingFiles::Snapshot &snapshot) {
+  int ret = 1;
+  auto parse = [&]() { ret = Unit->Reparse(PCHCO, GetRemapped(snapshot)); };
+  (void)RunSafely(CRC, parse);
+  return ret;
 }
