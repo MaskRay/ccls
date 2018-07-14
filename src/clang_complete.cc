@@ -5,8 +5,10 @@
 #include "log.hh"
 #include "platform.h"
 
+#include <clang/Sema/CodeCompleteConsumer.h>
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
+using namespace clang;
 using namespace llvm;
 
 #include <algorithm>
@@ -30,23 +32,16 @@ std::string StripFileType(const std::string& path) {
   return Ret.str();
 }
 
-unsigned GetCompletionPriority(const CXCompletionString& str,
+unsigned GetCompletionPriority(const CodeCompletionString& CCS,
                                CXCursorKind result_kind,
                                const std::optional<std::string>& typedText) {
-  unsigned priority = clang_getCompletionPriority(str);
-
-  // XXX: What happens if priority overflows?
-  if (result_kind == CXCursor_Destructor) {
-    priority *= 100;
-  }
-  if (result_kind == CXCursor_ConversionFunction ||
+  unsigned priority = CCS.getPriority();
+  if (CCS.getAvailability() != CXAvailability_Available ||
+      result_kind == CXCursor_Destructor ||
+      result_kind == CXCursor_ConversionFunction ||
       (result_kind == CXCursor_CXXMethod && typedText &&
-       StartsWith(*typedText, "operator"))) {
+       StartsWith(*typedText, "operator")))
     priority *= 100;
-  }
-  if (clang_getCompletionAvailability(str) != CXAvailability_Available) {
-    priority *= 100;
-  }
   return priority;
 }
 
@@ -142,85 +137,76 @@ lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   }
 }
 
-void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
-                              CXCompletionString completion_string,
+void BuildCompletionItemTexts(std::vector<lsCompletionItem> &out,
+                              CodeCompletionString &CCS,
                               bool include_snippets) {
   assert(!out.empty());
   auto out_first = out.size() - 1;
 
   std::string result_type;
 
-  int num_chunks = clang_getNumCompletionChunks(completion_string);
-  for (int i = 0; i < num_chunks; ++i) {
-    CXCompletionChunkKind kind =
-        clang_getCompletionChunkKind(completion_string, i);
-
+  for (unsigned i = 0, num_chunks = CCS.size(); i < num_chunks; ++i) {
+    const CodeCompletionString::Chunk &Chunk = CCS[i];
+    CodeCompletionString::ChunkKind Kind = Chunk.Kind;
     std::string text;
-    switch (kind) {
-      // clang-format off
-      case CXCompletionChunk_LeftParen: text = '('; break;
-      case CXCompletionChunk_RightParen: text = ')'; break;
-      case CXCompletionChunk_LeftBracket: text = '['; break;
-      case CXCompletionChunk_RightBracket: text = ']'; break;
-      case CXCompletionChunk_LeftBrace: text = '{'; break;
-      case CXCompletionChunk_RightBrace: text = '}'; break;
-      case CXCompletionChunk_LeftAngle: text = '<'; break;
-      case CXCompletionChunk_RightAngle: text = '>'; break;
-      case CXCompletionChunk_Comma: text = ", "; break;
-      case CXCompletionChunk_Colon: text = ':'; break;
-      case CXCompletionChunk_SemiColon: text = ';'; break;
-      case CXCompletionChunk_Equal: text = '='; break;
-      case CXCompletionChunk_HorizontalSpace: text = ' '; break;
-      case CXCompletionChunk_VerticalSpace: text = ' '; break;
-        // clang-format on
-
-      case CXCompletionChunk_ResultType:
-        result_type =
-            ToString(clang_getCompletionChunkText(completion_string, i));
-        continue;
-
-      case CXCompletionChunk_TypedText:
-      case CXCompletionChunk_Placeholder:
-      case CXCompletionChunk_Text:
-      case CXCompletionChunk_Informative:
-        text = ToString(clang_getCompletionChunkText(completion_string, i));
-
-        for (auto i = out_first; i < out.size(); ++i) {
-          // first typed text is used for filtering
-          if (kind == CXCompletionChunk_TypedText && !out[i].filterText)
+    switch (Kind) {
+      case CodeCompletionString::CK_TypedText:
+      case CodeCompletionString::CK_Text:
+      case CodeCompletionString::CK_Placeholder:
+      case CodeCompletionString::CK_Informative:
+        if (Chunk.Text)
+          text = Chunk.Text;
+        for (auto i = out_first; i < out.size(); i++) {
+          // first TypedText is used for filtering
+          if (Kind == CodeCompletionString::CK_TypedText && !out[i].filterText)
             out[i].filterText = text;
-
-          if (kind == CXCompletionChunk_Placeholder)
+          if (Kind == CodeCompletionString::CK_Placeholder)
             out[i].parameters_.push_back(text);
         }
         break;
-
-      case CXCompletionChunk_CurrentParameter:
+      case CodeCompletionString::CK_ResultType:
+        if (Chunk.Text)
+          result_type = Chunk.Text;
+        continue;
+      case CodeCompletionString::CK_CurrentParameter:
         // We have our own parsing logic for active parameter. This doesn't seem
         // to be very reliable.
         continue;
-
-      case CXCompletionChunk_Optional: {
-        CXCompletionString nested =
-            clang_getCompletionChunkCompletionString(completion_string, i);
+      case CodeCompletionString::CK_Optional: {
         // duplicate last element, the recursive call will complete it
         out.push_back(out.back());
-        BuildCompletionItemTexts(out, nested, include_snippets);
+        BuildCompletionItemTexts(out, *Chunk.Optional, include_snippets);
         continue;
       }
+      // clang-format off
+      case CodeCompletionString::CK_LeftParen: text = '('; break;
+      case CodeCompletionString::CK_RightParen: text = ')'; break;
+      case CodeCompletionString::CK_LeftBracket: text = '['; break;
+      case CodeCompletionString::CK_RightBracket: text = ']'; break;
+      case CodeCompletionString::CK_LeftBrace: text = '{'; break;
+      case CodeCompletionString::CK_RightBrace: text = '}'; break;
+      case CodeCompletionString::CK_LeftAngle: text = '<'; break;
+      case CodeCompletionString::CK_RightAngle: text = '>'; break;
+      case CodeCompletionString::CK_Comma: text = ", "; break;
+      case CodeCompletionString::CK_Colon: text = ':'; break;
+      case CodeCompletionString::CK_SemiColon: text = ';'; break;
+      case CodeCompletionString::CK_Equal: text = '='; break;
+      case CodeCompletionString::CK_HorizontalSpace: text = ' '; break;
+      case CodeCompletionString::CK_VerticalSpace: text = ' '; break;
+      // clang-format on
     }
 
     for (auto i = out_first; i < out.size(); ++i)
       out[i].label += text;
 
-    if (kind == CXCompletionChunk_Informative)
+    if (Kind == CodeCompletionString::CK_Informative)
       continue;
 
     for (auto i = out_first; i < out.size(); ++i) {
       if (!include_snippets && !out[i].parameters_.empty())
         continue;
 
-      if (kind == CXCompletionChunk_Placeholder) {
+      if (Kind == CodeCompletionString::CK_Placeholder) {
         out[i].insertText +=
             "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
         out[i].insertTextFormat = lsInsertTextFormat::Snippet;
@@ -243,106 +229,71 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem>& out,
 
 // |do_insert|: if |!do_insert|, do not append strings to |insert| after
 // a placeholder.
-void BuildDetailString(CXCompletionString completion_string,
-                       std::string& label,
-                       std::string& detail,
-                       std::string& insert,
-                       bool& do_insert,
-                       lsInsertTextFormat& format,
-                       std::vector<std::string>* parameters,
-                       bool include_snippets,
-                       int& angle_stack) {
-  int num_chunks = clang_getNumCompletionChunks(completion_string);
-  auto append = [&](const char* text) {
-    detail += text;
-    if (do_insert && include_snippets)
-      insert += text;
-  };
-  for (int i = 0; i < num_chunks; ++i) {
-    CXCompletionChunkKind kind =
-        clang_getCompletionChunkKind(completion_string, i);
-
-    switch (kind) {
-      case CXCompletionChunk_Optional: {
-        CXCompletionString nested =
-            clang_getCompletionChunkCompletionString(completion_string, i);
-        // Do not add text to insert string if we're in angle brackets.
-        bool should_insert = do_insert && angle_stack == 0;
-        BuildDetailString(nested, label, detail, insert,
-                          should_insert, format, parameters,
-                          include_snippets, angle_stack);
-        break;
-      }
-
-      case CXCompletionChunk_Placeholder: {
-        std::string text =
-            ToString(clang_getCompletionChunkText(completion_string, i));
-        parameters->push_back(text);
-        detail += text;
-        // Add parameter declarations as snippets if enabled
-        if (include_snippets) {
-          insert +=
-              "${" + std::to_string(parameters->size()) + ":" + text + "}";
-          format = lsInsertTextFormat::Snippet;
-        } else
-          do_insert = false;
-        break;
-      }
-
-      case CXCompletionChunk_CurrentParameter:
-        // We have our own parsing logic for active parameter. This doesn't seem
-        // to be very reliable.
-        break;
-
-      case CXCompletionChunk_TypedText: {
-        std::string text =
-            ToString(clang_getCompletionChunkText(completion_string, i));
-        label = text;
-        detail += text;
-        if (do_insert)
-          insert += text;
-        break;
-      }
-
-      case CXCompletionChunk_Text: {
-        std::string text =
-            ToString(clang_getCompletionChunkText(completion_string, i));
-        detail += text;
-        if (do_insert)
-          insert += text;
-        break;
-      }
-
-      case CXCompletionChunk_Informative: {
-        detail += ToString(clang_getCompletionChunkText(completion_string, i));
-        break;
-      }
-
-      case CXCompletionChunk_ResultType: {
-        CXString text = clang_getCompletionChunkText(completion_string, i);
-        std::string new_detail = ToString(text) + detail + " ";
-        detail = new_detail;
-        break;
-      }
-
-      // clang-format off
-      case CXCompletionChunk_LeftParen: append("("); break;
-      case CXCompletionChunk_RightParen: append(")"); break;
-      case CXCompletionChunk_LeftBracket: append("["); break;
-      case CXCompletionChunk_RightBracket: append("]"); break;
-      case CXCompletionChunk_LeftBrace: append("{"); break;
-      case CXCompletionChunk_RightBrace: append("}"); break;
-      case CXCompletionChunk_LeftAngle: append("<"); angle_stack++; break;
-      case CXCompletionChunk_RightAngle: append(">"); angle_stack--; break;
-      case CXCompletionChunk_Comma: append(", "); break;
-      case CXCompletionChunk_Colon: append(":"); break;
-      case CXCompletionChunk_SemiColon: append(";"); break;
-      case CXCompletionChunk_Equal: append("="); break;
-      // clang-format on
-      case CXCompletionChunk_HorizontalSpace:
-      case CXCompletionChunk_VerticalSpace:
-        append(" ");
-        break;
+void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
+                       bool &do_insert, std::vector<std::string> *parameters,
+                       bool include_snippets, int &angle_stack) {
+  for (unsigned i = 0, num_chunks = CCS.size(); i < num_chunks; ++i) {
+    const CodeCompletionString::Chunk &Chunk = CCS[i];
+    CodeCompletionString::ChunkKind Kind = Chunk.Kind;
+    const char* text = nullptr;
+    switch (Kind) {
+    case CodeCompletionString::CK_TypedText:
+      item.label = Chunk.Text;
+      [[fallthrough]];
+    case CodeCompletionString::CK_Text:
+      item.detail += Chunk.Text;
+      if (do_insert)
+        item.insertText += Chunk.Text;
+      break;
+    case CodeCompletionString::CK_Placeholder: {
+      parameters->push_back(Chunk.Text);
+      item.detail += Chunk.Text;
+      // Add parameter declarations as snippets if enabled
+      if (include_snippets) {
+        item.insertText += "${" + std::to_string(parameters->size()) + ":" + Chunk.Text + "}";
+        item.insertTextFormat = lsInsertTextFormat::Snippet;
+      } else
+        do_insert = false;
+      break;
+    }
+    case CodeCompletionString::CK_Informative:
+      item.detail += Chunk.Text;
+      break;
+    case CodeCompletionString::CK_Optional: {
+      // Do not add text to insert string if we're in angle brackets.
+      bool should_insert = do_insert && angle_stack == 0;
+      BuildDetailString(*Chunk.Optional, item, should_insert,
+                        parameters, include_snippets, angle_stack);
+      break;
+    }
+    case CodeCompletionString::CK_ResultType:
+      item.detail = Chunk.Text + item.detail + " ";
+      break;
+    case CodeCompletionString::CK_CurrentParameter:
+      // We have our own parsing logic for active parameter. This doesn't seem
+      // to be very reliable.
+      break;
+    // clang-format off
+    case CodeCompletionString::CK_LeftParen: text = "("; break;
+    case CodeCompletionString::CK_RightParen: text = ")"; break;
+    case CodeCompletionString::CK_LeftBracket: text = "["; break;
+    case CodeCompletionString::CK_RightBracket: text = "]"; break;
+    case CodeCompletionString::CK_LeftBrace: text = "{"; break;
+    case CodeCompletionString::CK_RightBrace: text = "}"; break;
+    case CodeCompletionString::CK_LeftAngle: text = "<"; angle_stack++; break;
+    case CodeCompletionString::CK_RightAngle: text = ">"; angle_stack--; break;
+    case CodeCompletionString::CK_Comma: text = ", "; break;
+    case CodeCompletionString::CK_Colon: text = ":"; break;
+    case CodeCompletionString::CK_SemiColon: text = ";"; break;
+    case CodeCompletionString::CK_Equal: text = "="; break;
+    case CodeCompletionString::CK_HorizontalSpace:
+    case CodeCompletionString::CK_VerticalSpace: text = " "; break;
+    // clang-format on
+    }
+    if (text) {
+      item.detail += text;
+      if (do_insert && include_snippets)
+        item.insertText += text;
     }
   }
 }
@@ -483,35 +434,24 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
 
     for (unsigned i = 0; i < cx_results->NumResults; ++i) {
       CXCompletionResult& result = cx_results->Results[i];
-
-      // TODO: Try to figure out how we can hide base method calls without
-      // also hiding method implementation assistance, ie,
-      //
-      //    void Foo::* {
-      //    }
-      //
-
-      if (clang_getCompletionAvailability(result.CompletionString) ==
-          CXAvailability_NotAvailable)
+      auto CCS = (CodeCompletionString *)result.CompletionString;
+      if (CCS->getAvailability() == CXAvailability_NotAvailable)
         continue;
 
-      // TODO: fill in more data
-      lsCompletionItem ls_completion_item;
-
-      ls_completion_item.kind = GetCompletionKind(result.CursorKind);
-      ls_completion_item.documentation =
-          ToString(clang_getCompletionBriefComment(result.CompletionString));
+      lsCompletionItem ls_item;
+      ls_item.kind = GetCompletionKind(result.CursorKind);
+      if (const char* brief = CCS->getBriefComment())
+        ls_item.documentation = brief;
 
       // label/detail/filterText/insertText/priority
       if (g_config->completion.detailedLabel) {
-        ls_completion_item.detail = ToString(
-            clang_getCompletionParent(result.CompletionString, nullptr));
+        ls_item.detail = CCS->getParentContextName().str();
 
         auto first_idx = ls_result.size();
-        ls_result.push_back(ls_completion_item);
+        ls_result.push_back(ls_item);
 
         // label/filterText/insertText
-        BuildCompletionItemTexts(ls_result, result.CompletionString,
+        BuildCompletionItemTexts(ls_result, *CCS,
                                  g_config->client.snippetSupport);
 
         for (auto i = first_idx; i < ls_result.size(); ++i) {
@@ -520,28 +460,21 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
             ls_result[i].insertText += "$0";
           }
 
-          ls_result[i].priority_ =
-              GetCompletionPriority(result.CompletionString, result.CursorKind,
-                                    ls_result[i].filterText);
+          ls_result[i].priority_ = GetCompletionPriority(
+              *CCS, result.CursorKind, ls_result[i].filterText);
         }
       } else {
         bool do_insert = true;
         int angle_stack = 0;
-        BuildDetailString(result.CompletionString, ls_completion_item.label,
-                          ls_completion_item.detail,
-                          ls_completion_item.insertText, do_insert,
-                          ls_completion_item.insertTextFormat,
-                          &ls_completion_item.parameters_,
+        BuildDetailString(*CCS, ls_item, do_insert,
+                          &ls_item.parameters_,
                           g_config->client.snippetSupport, angle_stack);
         if (g_config->client.snippetSupport &&
-            ls_completion_item.insertTextFormat ==
-                lsInsertTextFormat::Snippet) {
-          ls_completion_item.insertText += "$0";
-        }
-        ls_completion_item.priority_ =
-            GetCompletionPriority(result.CompletionString, result.CursorKind,
-                                  ls_completion_item.label);
-        ls_result.push_back(ls_completion_item);
+            ls_item.insertTextFormat == lsInsertTextFormat::Snippet)
+          ls_item.insertText += "$0";
+        ls_item.priority_ =
+            GetCompletionPriority(*CCS, result.CursorKind, ls_item.label);
+        ls_result.push_back(ls_item);
       }
     }
 

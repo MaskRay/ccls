@@ -19,10 +19,11 @@ enum class lsCompletionTriggerKind {
   // Completion was triggered by typing an identifier (24x7 code
   // complete), manual invocation (e.g Ctrl+Space) or via API.
   Invoked = 1,
-
   // Completion was triggered by a trigger character specified by
   // the `triggerCharacters` properties of the `CompletionRegistrationOptions`.
-  TriggerCharacter = 2
+  TriggerCharacter = 2,
+  // Completion was re-triggered as the current completion list is incomplete.
+  TriggerForIncompleteCompletions = 3,
 };
 MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind);
 
@@ -30,7 +31,7 @@ MAKE_REFLECT_TYPE_PROXY(lsCompletionTriggerKind);
 // request is triggered.
 struct lsCompletionContext {
   // How the completion was triggered.
-  lsCompletionTriggerKind triggerKind;
+  lsCompletionTriggerKind triggerKind = lsCompletionTriggerKind::Invoked;
 
   // The trigger character (a single character) that has trigger code complete.
   // Is undefined if `triggerKind !== CompletionTriggerKind.TriggerCharacter`
@@ -42,7 +43,7 @@ struct lsCompletionParams : lsTextDocumentPositionParams {
   // The completion context. This is only available it the client specifies to
   // send this using
   // `ClientCapabilities.textDocument.completion.contextSupport === true`
-  std::optional<lsCompletionContext> context;
+  lsCompletionContext context;
 };
 MAKE_REFLECT_STRUCT(lsCompletionParams, textDocument, position, context);
 
@@ -254,6 +255,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
   void Run(std::unique_ptr<InMessage> message) override {
     auto request = std::shared_ptr<In_TextDocumentComplete>(
         static_cast<In_TextDocumentComplete*>(message.release()));
+    auto& params = request->params;
 
     auto write_empty_result = [request]() {
       Out_TextDocumentComplete out;
@@ -261,7 +263,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
       pipeline::WriteStdout(kMethodType, out);
     };
 
-    std::string path = request->params.textDocument.uri.GetPath();
+    std::string path = params.textDocument.uri.GetPath();
     WorkingFile* file = working_files->GetFileByFilename(path);
     if (!file) {
       write_empty_result();
@@ -271,21 +273,19 @@ struct Handler_TextDocumentCompletion : MessageHandler {
     // It shouldn't be possible, but sometimes vscode will send queries out
     // of order, ie, we get completion request before buffer content update.
     std::string buffer_line;
-    if (request->params.position.line >= 0 &&
-        request->params.position.line < file->buffer_lines.size()) {
-      buffer_line = file->buffer_lines[request->params.position.line];
-    }
+    if (params.position.line >= 0 &&
+        params.position.line < file->buffer_lines.size())
+      buffer_line = file->buffer_lines[params.position.line];
 
     // Check for - and : before completing -> or ::, since vscode does not
     // support multi-character trigger characters.
-    if (request->params.context &&
-        request->params.context->triggerKind ==
+    if (params.context.triggerKind ==
             lsCompletionTriggerKind::TriggerCharacter &&
-        request->params.context->triggerCharacter) {
+        params.context.triggerCharacter) {
       bool did_fail_check = false;
 
-      std::string character = *request->params.context->triggerCharacter;
-      int preceding_index = request->params.position.character - 2;
+      std::string character = *params.context.triggerCharacter;
+      int preceding_index = params.position.character - 2;
 
       // If the character is '"', '<' or '/', make sure that the line starts
       // with '#'.
@@ -318,11 +318,11 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
     bool is_global_completion = false;
     std::string existing_completion;
-    lsPosition end_pos = request->params.position;
+    lsPosition end_pos = params.position;
     if (file) {
-      request->params.position = file->FindStableCompletionSource(
-          request->params.position, &is_global_completion,
-          &existing_completion, &end_pos);
+      params.position = file->FindStableCompletionSource(
+          request->params.position, &is_global_completion, &existing_completion,
+          &end_pos);
     }
 
     ParseIncludeLineResult result = ParseIncludeLine(buffer_line);
@@ -359,16 +359,16 @@ struct Handler_TextDocumentCompletion : MessageHandler {
       }
 
       for (lsCompletionItem& item : out.result.items) {
-        item.textEdit->range.start.line = request->params.position.line;
+        item.textEdit->range.start.line = params.position.line;
         item.textEdit->range.start.character = 0;
-        item.textEdit->range.end.line = request->params.position.line;
+        item.textEdit->range.end.line = params.position.line;
         item.textEdit->range.end.character = (int)buffer_line.size();
       }
 
       pipeline::WriteStdout(kMethodType, out);
     } else {
       ClangCompleteManager::OnComplete callback = std::bind(
-          [this, request, is_global_completion, existing_completion,
+          [this, request, params, is_global_completion, existing_completion,
            has_open_paren](const std::vector<lsCompletionItem>& results,
                            bool is_cached_result) {
             Out_TextDocumentComplete out;
@@ -381,7 +381,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
             // Cache completion results.
             if (!is_cached_result) {
-              std::string path = request->params.textDocument.uri.GetPath();
+              std::string path = params.textDocument.uri.GetPath();
               if (is_global_completion) {
                 global_code_complete_cache->WithLock([&]() {
                   global_code_complete_cache->cached_path_ = path;
@@ -391,7 +391,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
                 non_global_code_complete_cache->WithLock([&]() {
                   non_global_code_complete_cache->cached_path_ = path;
                   non_global_code_complete_cache->cached_completion_position_ =
-                      request->params.position;
+                      params.position;
                   non_global_code_complete_cache->cached_results_ = results;
                 });
               }
@@ -421,16 +421,14 @@ struct Handler_TextDocumentCompletion : MessageHandler {
           callback(global_code_complete_cache->cached_results_,
                    true /*is_cached_result*/);
         });
-        clang_complete->CodeComplete(request->id, request->params,
-                                     freshen_global);
-      } else if (non_global_code_complete_cache->IsCacheValid(
-                     request->params)) {
+        clang_complete->CodeComplete(request->id, params, freshen_global);
+      } else if (non_global_code_complete_cache->IsCacheValid(params)) {
         non_global_code_complete_cache->WithLock([&]() {
           callback(non_global_code_complete_cache->cached_results_,
                    true /*is_cached_result*/);
         });
       } else {
-        clang_complete->CodeComplete(request->id, request->params, callback);
+        clang_complete->CodeComplete(request->id, params, callback);
       }
     }
   }
