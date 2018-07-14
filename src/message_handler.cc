@@ -336,12 +336,14 @@ void EmitSemanticHighlighting(DB *db,
   Out_CclsPublishSemanticHighlighting out;
   out.params.uri = lsDocumentUri::FromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
-  {
+  if (!g_config->highlight.lsRanges) {
     std::vector<std::pair<lsRange, Out_CclsPublishSemanticHighlighting::Symbol *>>
       scratch;
-    for (auto &entry : grouped_symbols)
+    for (auto &entry : grouped_symbols) {
       for (auto &range : entry.second.lsRanges)
         scratch.emplace_back(range, &entry.second);
+      entry.second.lsRanges.clear();
+    }
     std::sort(scratch.begin(), scratch.end(),
       [](auto &l, auto &r) { return l.first.start < r.first.start; });
     const auto &buf = wfile->buffer_content;
@@ -375,7 +377,7 @@ void EmitSemanticHighlighting(DB *db,
   }
 
   for (auto &entry : grouped_symbols)
-    if (entry.second.ranges.size())
+    if (entry.second.ranges.size() || entry.second.lsRanges.size())
       out.params.symbols.push_back(std::move(entry.second));
   pipeline::WriteStdout(kMethodType_CclsPublishSemanticHighlighting, out);
 }

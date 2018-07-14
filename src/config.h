@@ -144,6 +144,9 @@ struct Config {
 
   // Semantic highlighting
   struct Highlight {
+    // true: LSP line/character; false: position
+    bool lsRanges = false;
+
     // Like index.{whitelist,blacklist}, don't publish semantic highlighting to
     // blacklisted files.
     std::vector<std::string> blacklist;
@@ -230,7 +233,7 @@ MAKE_REFLECT_STRUCT(Config::Diagnostics,
                     onParse,
                     onType,
                     whitelist)
-MAKE_REFLECT_STRUCT(Config::Highlight, blacklist, whitelist)
+MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index,
                     attributeMakeCallsToCtor,
                     blacklist,
