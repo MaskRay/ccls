@@ -1,40 +1,45 @@
 #pragma once
 #include "position.h"
+#include "working_files.h"
 
-#include <clang-c/Index.h>
+#include <clang/Frontend/ASTUnit.h>
+#include <clang/Frontend/CompilerInstance.h>
+#include <llvm/Support/CrashRecoveryContext.h>
 
 #include <memory>
 #include <string>
 #include <vector>
+#include <stdlib.h>
 
-// Simple RAII wrapper about CXIndex.
-// Note: building a ClangIndex instance acquires a global lock, since libclang
-// API does not appear to be thread-safe here.
-class ClangIndex {
- public:
-  ClangIndex();
-  ClangIndex(int exclude_declarations_from_pch, int display_diagnostics);
-  ~ClangIndex();
-  CXIndex cx_index;
-};
+std::vector<clang::ASTUnit::RemappedFile>
+GetRemapped(const WorkingFiles::Snapshot &snapshot);
 
-// RAII wrapper around CXTranslationUnit which also makes it much more
-// challenging to use a CXTranslationUnit instance that is not correctly
-// initialized.
+Range FromCharRange(const clang::SourceManager &SM, const clang::LangOptions &LangOpts,
+                    clang::SourceRange R,
+                    llvm::sys::fs::UniqueID *UniqueID = nullptr);
+
+Range FromTokenRange(const clang::SourceManager &SM, const clang::LangOptions &LangOpts,
+                     clang::SourceRange R,
+                     llvm::sys::fs::UniqueID *UniqueID = nullptr);
+
+template <typename Fn>
+bool RunSafely(llvm::CrashRecoveryContext &CRC, Fn &&fn) {
+  const char *env = getenv("CCLS_CRASH_RECOVERY");
+  if (env && strcmp(env, "0") == 0) {
+    fn();
+    return true;
+  }
+  return CRC.RunSafely(fn);
+}
+
 struct ClangTranslationUnit {
-  static std::unique_ptr<ClangTranslationUnit> Create(
-      ClangIndex* index,
-      const std::string& filepath,
-      const std::vector<std::string>& arguments,
-      std::vector<CXUnsavedFile>& unsaved_files,
-      unsigned flags);
+  static std::unique_ptr<ClangTranslationUnit>
+  Create(const std::string &filepath, const std::vector<std::string> &arguments,
+         const WorkingFiles::Snapshot &snapshot);
 
-  static std::unique_ptr<ClangTranslationUnit> Reparse(
-      std::unique_ptr<ClangTranslationUnit> tu,
-      std::vector<CXUnsavedFile>& unsaved);
+  int Reparse(llvm::CrashRecoveryContext &CRC,
+              const WorkingFiles::Snapshot &snapshot);
 
-  explicit ClangTranslationUnit(CXTranslationUnit tu);
-  ~ClangTranslationUnit();
-
-  CXTranslationUnit cx_tu;
+  std::shared_ptr<clang::PCHContainerOperations> PCHCO;
+  std::unique_ptr<clang::ASTUnit> Unit;
 };

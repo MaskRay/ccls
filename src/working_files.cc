@@ -195,20 +195,6 @@ std::optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
 
 }  // namespace
 
-std::vector<CXUnsavedFile> WorkingFiles::Snapshot::AsUnsavedFiles() const {
-  std::vector<CXUnsavedFile> result;
-  result.reserve(files.size());
-  for (auto& file : files) {
-    CXUnsavedFile unsaved;
-    unsaved.Filename = file.filename.c_str();
-    unsaved.Contents = file.content.c_str();
-    unsaved.Length = (unsigned long)file.content.size();
-
-    result.push_back(unsaved);
-  }
-  return result;
-}
-
 WorkingFile::WorkingFile(const std::string& filename,
                          const std::string& buffer_content)
     : filename(filename), buffer_content(buffer_content) {

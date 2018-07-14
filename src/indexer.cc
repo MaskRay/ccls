@@ -1,5 +1,6 @@
 #include "indexer.h"
 
+#include "clang_tu.h"
 #include "log.hh"
 #include "platform.h"
 #include "serializer.h"
@@ -81,43 +82,6 @@ StringRef GetSourceInRange(const SourceManager &SM, const LangOptions &LangOpts,
   return Buf.substr(BInfo.second, EInfo.second + Lexer::MeasureTokenLength(
                                                      ELoc, SM, LangOpts) -
                                       BInfo.second);
-}
-
-Range FromSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
-                      SourceRange R, llvm::sys::fs::UniqueID *UniqueID,
-                      bool token) {
-  SourceLocation BLoc = R.getBegin(), ELoc = R.getEnd();
-  std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc);
-  std::pair<FileID, unsigned> EInfo = SM.getDecomposedLoc(ELoc);
-  if (token)
-    EInfo.second += Lexer::MeasureTokenLength(ELoc, SM, LangOpts);
-  unsigned l0 = SM.getLineNumber(BInfo.first, BInfo.second) - 1,
-           c0 = SM.getColumnNumber(BInfo.first, BInfo.second) - 1,
-           l1 = SM.getLineNumber(EInfo.first, EInfo.second) - 1,
-           c1 = SM.getColumnNumber(EInfo.first, EInfo.second) - 1;
-  if (l0 > INT16_MAX) l0 = 0;
-  if (c0 > INT16_MAX) c0 = 0;
-  if (l1 > INT16_MAX) l1 = 0;
-  if (c1 > INT16_MAX) c1 = 0;
-  if (UniqueID) {
-    if (const FileEntry *F = SM.getFileEntryForID(BInfo.first))
-      *UniqueID = F->getUniqueID();
-    else
-      *UniqueID = llvm::sys::fs::UniqueID(0, 0);
-  }
-  return {{int16_t(l0), int16_t(c0)}, {int16_t(l1), int16_t(c1)}};
-}
-
-Range FromCharRange(const SourceManager &SM, const LangOptions &LangOpts,
-                    SourceRange R,
-                    llvm::sys::fs::UniqueID *UniqueID = nullptr) {
-  return FromSourceRange(SM, LangOpts, R, UniqueID, false);
-}
-
-Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
-                     SourceRange R,
-                     llvm::sys::fs::UniqueID *UniqueID = nullptr) {
-  return FromSourceRange(SM, LangOpts, R, UniqueID, true);
 }
 
 SymbolKind GetSymbolKind(const Decl* D) {
@@ -1154,29 +1118,20 @@ std::vector<std::unique_ptr<IndexFile>> Index(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
 
   DiagnosticErrorTrap DiagTrap(*Diags);
-  bool success = false;
   llvm::CrashRecoveryContext CRC;
-  {
-    auto compile = [&]() {
-      success = ASTUnit::LoadFromCompilerInvocationAction(
-          std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
-          /*Persistent=*/true, /*ResourceDir=*/"",
-          /*OnlyLocalDecls=*/true,
-          /*CaptureDiagnostics=*/true, 0, false, false, true);
-    };
-    const char *env = getenv("CCLS_CRASH_RECOVERY");
-    if (env && strcmp(env, "0") == 0)
-      compile();
-    else
-      CRC.RunSafely(compile);
-  }
-
-  if (!Unit) {
-    LOG_S(ERROR) << "failed to index " << file;
+  auto compile = [&]() {
+    ASTUnit::LoadFromCompilerInvocationAction(
+        std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
+        /*Persistent=*/true, /*ResourceDir=*/"",
+        /*OnlyLocalDecls=*/true,
+        /*CaptureDiagnostics=*/true, 0, false, false, true);
+  };
+  if (!RunSafely(CRC, compile)) {
+    LOG_S(ERROR) << "clang crashed for " << file;
     return {};
   }
-  if (!success) {
-    LOG_S(ERROR) << "clang crashed for " << file;
+  if (!Unit) {
+    LOG_S(ERROR) << "failed to index " << file;
     return {};
   }
 
