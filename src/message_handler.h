@@ -76,15 +76,9 @@ struct Out_CclsPublishSemanticHighlighting
   std::string method = "$ccls/publishSemanticHighlighting";
   Params params;
 };
-MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Symbol,
-                    stableId,
-                    parentKind,
-                    kind,
-                    storage,
-                    ranges);
-MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Params,
-                    uri,
-                    symbols);
+MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Symbol, stableId,
+                    parentKind, kind, storage, ranges, lsRanges);
+MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Params, uri, symbols);
 MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting,
                     jsonrpc,
                     method,
