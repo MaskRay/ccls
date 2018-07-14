@@ -114,6 +114,8 @@ find_package(Threads REQUIRED)
 target_link_libraries(ccls PRIVATE Threads::Threads)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL FreeBSD)
+  find_package(Backtrace REQUIRED)
+  target_link_libraries(ccls PRIVATE ${Backtrace_LIBRARIES})
   # src/platform_posix.cc uses libthr
   target_link_libraries(ccls PRIVATE thr)
 endif()
