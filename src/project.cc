@@ -14,12 +14,9 @@ using namespace ccls;
 
 #include <clang/Driver/Compilation.h>
 #include <clang/Driver/Driver.h>
-#include <clang/Driver/Options.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/ArrayRef.h>
-#include <llvm/Option/ArgList.h>
-#include <llvm/Option/OptTable.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/LineIterator.h>
 using namespace clang;
@@ -99,22 +96,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
   args.insert(args.end(), config->extra_flags.begin(),
               config->extra_flags.end());
 
-#if 1
-  std::unique_ptr<OptTable> Opts = driver::createDriverOptTable();
-  unsigned MissingArgIndex, MissingArgCount;
-  std::vector<const char*> cargs;
-  for (auto& arg : args)
-    cargs.push_back(arg.c_str());
-  InputArgList Args =
-      Opts->ParseArgs(makeArrayRef(cargs), MissingArgIndex, MissingArgCount,
-                      driver::options::CC1Option);
-  using namespace clang::driver::options;
-  for (const auto* A : Args.filtered(OPT_I, OPT_c_isystem, OPT_cxx_isystem,
-                                     OPT_isystem, OPT_idirafter))
-    config->angle_dirs.insert(entry.ResolveIfRelative(A->getValue()));
-  for (const auto* A : Args.filtered(OPT_I, OPT_iquote))
-    config->quote_dirs.insert(entry.ResolveIfRelative(A->getValue()));
-#else
   // a weird C++ deduction guide heap-use-after-free causes libclang to crash.
   IgnoringDiagConsumer DiagC;
   IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
@@ -164,7 +145,6 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
         break;
     }
   }
-#endif
 
   for (size_t i = 1; i < args.size(); i++)
     // This is most likely the file path we will be passing to clang. The
@@ -176,9 +156,9 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       continue;
     }
 
-  // if (HeaderOpts.ResourceDir.empty() && HeaderOpts.UseBuiltinIncludes)
+  if (HeaderOpts.ResourceDir.empty() && HeaderOpts.UseBuiltinIncludes)
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);
-  // if (CI->getFileSystemOpts().WorkingDir.empty())
+  if (CI->getFileSystemOpts().WorkingDir.empty())
     args.push_back("-working-directory=" + entry.directory);
 
   // There could be a clang version mismatch between what the project uses and

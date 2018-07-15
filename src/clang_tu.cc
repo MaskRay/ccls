@@ -89,7 +89,12 @@ ClangTranslationUnit::Create(const std::string &filepath,
         /*CaptureDiagnostics=*/true, Remapped,
         /*RemappedFilesKeepOriginalName=*/true, 1, TU_Prefix,
         /*CacheCodeCompletionResults=*/true, true,
-        /*AllowPCHWithCompilerErrors=*/true, SkipFunctionBodiesScope::None,
+        /*AllowPCHWithCompilerErrors=*/true,
+#if LLVM_VERSION_MAJOR >= 7
+        SkipFunctionBodiesScope::None,
+#else
+        false,
+#endif
         /*SingleFileParse=*/false,
         /*UserFilesAreVolatile=*/true, false,
         ret->PCHCO->getRawReader().getFormat(), &ErrUnit));

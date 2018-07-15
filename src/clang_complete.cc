@@ -9,6 +9,7 @@
 #include "clang/Frontend/FrontendDiagnostic.h"
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <llvm/ADT/Twine.h>
+#include <llvm/Config/llvm-config.h>
 #include <llvm/Support/Threading.h>
 using namespace clang;
 using namespace llvm;
@@ -444,8 +445,10 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
       CodeCompleteOptions Opts;
       LangOptions LangOpts;
       Opts.IncludeBriefComments = true;
-      Opts.LoadExternal = false;
+#if LLVM_VERSION_MAJOR >= 7
+      Opts.LoadExternal = true;
       Opts.IncludeFixIts = true;
+#endif
       CaptureCompletionResults capture(Opts);
       tu->Unit->CodeComplete(session->file.filename, request->position.line + 1,
                              request->position.character + 1, Remapped,
