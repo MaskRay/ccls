@@ -17,11 +17,9 @@ using namespace ccls;
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/ArrayRef.h>
-#include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/LineIterator.h>
 using namespace clang;
 using namespace llvm;
-using namespace llvm::opt;
 
 #include <rapidjson/writer.h>
 
@@ -156,7 +154,8 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       continue;
     }
 
-  if (HeaderOpts.ResourceDir.empty() && HeaderOpts.UseBuiltinIncludes)
+  if (!sys::path::is_absolute(HeaderOpts.ResourceDir) &&
+      HeaderOpts.UseBuiltinIncludes)
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);
   if (CI->getFileSystemOpts().WorkingDir.empty())
     args.push_back("-working-directory=" + entry.directory);

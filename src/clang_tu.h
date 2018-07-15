@@ -34,8 +34,8 @@ bool RunSafely(llvm::CrashRecoveryContext &CRC, Fn &&fn) {
 
 struct ClangTranslationUnit {
   static std::unique_ptr<ClangTranslationUnit>
-  Create(const std::string &filepath, const std::vector<std::string> &arguments,
-         const WorkingFiles::Snapshot &snapshot);
+  Create(const std::string &filepath, const std::vector<std::string> &args,
+         const WorkingFiles::Snapshot &snapshot, bool diagnostic);
 
   int Reparse(llvm::CrashRecoveryContext &CRC,
               const WorkingFiles::Snapshot &snapshot);

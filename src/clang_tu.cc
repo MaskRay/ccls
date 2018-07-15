@@ -64,14 +64,14 @@ GetRemapped(const WorkingFiles::Snapshot &snapshot) {
   return Remapped;
 }
 
-std::unique_ptr<ClangTranslationUnit>
-ClangTranslationUnit::Create(const std::string &filepath,
-                             const std::vector<std::string> &args,
-                             const WorkingFiles::Snapshot &snapshot) {
+std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
+    const std::string &filepath, const std::vector<std::string> &args,
+    const WorkingFiles::Snapshot &snapshot, bool diagnostic) {
   std::vector<const char *> Args;
   for (auto& arg : args)
     Args.push_back(arg.c_str());
   Args.push_back("-fno-spell-checking");
+  Args.push_back("-fallow-editor-placeholders");
 
   auto ret = std::make_unique<ClangTranslationUnit>();
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
@@ -86,9 +86,10 @@ ClangTranslationUnit::Create(const std::string &filepath,
         Args.data(), Args.data() + Args.size(),
         /*PCHContainerOpts=*/ret->PCHCO, Diags,
         /*ResourceFilePath=*/"", /*OnlyLocalDecls=*/false,
-        /*CaptureDiagnostics=*/true, Remapped,
-        /*RemappedFilesKeepOriginalName=*/true, 1, TU_Prefix,
-        /*CacheCodeCompletionResults=*/true, true,
+        /*CaptureDiagnostics=*/diagnostic, Remapped,
+        /*RemappedFilesKeepOriginalName=*/true, 1,
+        diagnostic ? TU_Complete : TU_Prefix,
+        /*CacheCodeCompletionResults=*/true, g_config->index.comments,
         /*AllowPCHWithCompilerErrors=*/true,
 #if LLVM_VERSION_MAJOR >= 7
         SkipFunctionBodiesScope::None,

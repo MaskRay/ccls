@@ -1138,7 +1138,8 @@ std::vector<std::unique_ptr<IndexFile>> Index(
         std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
         /*Persistent=*/true, /*ResourceDir=*/"",
         /*OnlyLocalDecls=*/true,
-        /*CaptureDiagnostics=*/true, 0, false, false, true);
+        /*CaptureDiagnostics=*/true, 0, false, false,
+        /*UserFilesAreVolatile=*/true);
   };
   if (!RunSafely(CRC, compile)) {
     LOG_S(ERROR) << "clang crashed for " << file;

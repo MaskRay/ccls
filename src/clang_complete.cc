@@ -346,15 +346,19 @@ public:
     }
   }
 
+  void ProcessOverloadCandidates(Sema &S, unsigned CurrentArg,
+                                 OverloadCandidate *Candidates,
+                                 unsigned NumCandidates) override {}
+
   CodeCompletionAllocator &getAllocator() override { return *Alloc; }
 
   CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo;}
 };
 
-void TryEnsureDocumentParsed(ClangCompleteManager* manager,
+void TryEnsureDocumentParsed(ClangCompleteManager *manager,
                              std::shared_ptr<CompletionSession> session,
-                             std::unique_ptr<ClangTranslationUnit>* tu,
-                             bool emit_diag) {
+                             std::unique_ptr<ClangTranslationUnit> *tu,
+                             bool diagnostic) {
   // Nothing to do. We already have a translation unit.
   if (*tu)
     return;
@@ -365,7 +369,8 @@ void TryEnsureDocumentParsed(ClangCompleteManager* manager,
 
   LOG_S(INFO) << "Creating completion session with arguments "
               << StringJoin(args, " ");
-  *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot);
+  *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot,
+                                     diagnostic);
 }
 
 void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
@@ -392,7 +397,7 @@ void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
       continue;
 
     std::unique_ptr<ClangTranslationUnit> parsing;
-    TryEnsureDocumentParsed(completion_manager, session, &parsing, true);
+    TryEnsureDocumentParsed(completion_manager, session, &parsing, false);
 
     // Activate new translation unit.
     std::lock_guard<std::mutex> lock(tu->lock);
@@ -454,33 +459,30 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                              request->position.character + 1, Remapped,
                              /*IncludeMacros=*/true,
                              /*IncludeCodePatterns=*/false,
-                             /*IncludeBriefComments=*/true, capture, tu->PCHCO,
-                             *Diag, LangOpts, *SrcMgr, *FileMgr, Diagnostics,
-                             TemporaryBuffers);
+                             /*IncludeBriefComments=*/g_config->index.comments,
+                             capture, tu->PCHCO, *Diag, LangOpts, *SrcMgr,
+                             *FileMgr, Diagnostics, TemporaryBuffers);
       request->on_complete(capture.ls_items, false /*is_cached_result*/);
       // completion_manager->on_diagnostic_(session->file.filename, Diags.take());
     }
   }
 }
 
-void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
+void DiagnosticQueryMain(ClangCompleteManager *manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     ClangCompleteManager::DiagnosticRequest request =
-        completion_manager->diagnostic_request_.Dequeue();
+        manager->diagnostic_request_.Dequeue();
     if (!g_config->diagnostics.onType)
       continue;
     std::string path = request.document.uri.GetPath();
 
-    std::shared_ptr<CompletionSession> session =
-        completion_manager->TryGetSession(path, true /*mark_as_completion*/,
-                                          true /*create_if_needed*/);
+    std::shared_ptr<CompletionSession> session = manager->TryGetSession(
+        path, true /*mark_as_completion*/, true /*create_if_needed*/);
 
     // At this point, we must have a translation unit. Block until we have one.
     std::lock_guard<std::mutex> lock(session->diagnostics.lock);
-    TryEnsureDocumentParsed(completion_manager, session,
-                            &session->diagnostics.tu,
-                            false /*emit_diagnostics*/);
+    TryEnsureDocumentParsed(manager, session, &session->diagnostics.tu, true);
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
@@ -489,7 +491,7 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
       continue;
 
     WorkingFiles::Snapshot snapshot =
-        completion_manager->working_files_->AsSnapshot({StripFileType(path)});
+        manager->working_files_->AsSnapshot({StripFileType(path)});
     llvm::CrashRecoveryContext CRC;
     if (tu->Reparse(CRC, snapshot)) {
       LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
@@ -497,13 +499,16 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
       continue;
     }
 
-    auto &SM = tu->Unit->getSourceManager();
     auto &LangOpts = tu->Unit->getLangOpts();
     std::vector<lsDiagnostic> ls_diags;
     for (ASTUnit::stored_diag_iterator I = tu->Unit->stored_diag_begin(),
                                        E = tu->Unit->stored_diag_end();
          I != E; ++I) {
       FullSourceLoc FLoc = I->getLocation();
+      const auto &SM = FLoc.getManager();
+
+      const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(FLoc));
+      if (!FE || FileName(*FE) != path) continue;
       SourceRange R;
       for (const auto &CR : I->getRanges()) {
         auto RT = Lexer::makeFileCharRange(CR, SM, LangOpts);
@@ -520,11 +525,10 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
       switch (I->getLevel()) {
       case DiagnosticsEngine::Ignored:
         // llvm_unreachable
-        break;
       case DiagnosticsEngine::Note:
       case DiagnosticsEngine::Remark:
         ls_diag.severity = lsDiagnosticSeverity::Information;
-        break;
+        continue;
       case DiagnosticsEngine::Warning:
         ls_diag.severity = lsDiagnosticSeverity::Warning;
         break;
@@ -543,7 +547,7 @@ void DiagnosticQueryMain(ClangCompleteManager* completion_manager) {
       }
       ls_diags.push_back(ls_diag);
     }
-    completion_manager->on_diagnostic_(path, ls_diags);
+    manager->on_diagnostic_(path, ls_diags);
   }
 }
 
