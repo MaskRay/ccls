@@ -13,7 +13,6 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": ["1:6-1:9|0|1|1"],
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],

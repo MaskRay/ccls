@@ -19,11 +19,10 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": ["3:6-3:12|0|1|1"],
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["6:3-6:33|0|1|16420", "6:14-6:20|0|1|64|0"],
+      "uses": ["6:14-6:20|0|1|16420"],
       "callees": []
     }, {
       "usr": 11404881820527069090,
@@ -35,7 +34,6 @@ OUTPUT:
       "declarations": [],
       "spell": "5:6-5:12|0|1|2",
       "extent": "5:1-7:2|0|1|0",
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],

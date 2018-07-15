@@ -104,8 +104,6 @@ struct FuncDef : NameMixin<FuncDef> {
   // Functions that this function calls.
   std::vector<SymbolRef> callees;
 
-  // Type which declares this one (ie, it is a method)
-  Usr declaring_type = 0;
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
@@ -125,7 +123,6 @@ MAKE_REFLECT_STRUCT(FuncDef,
                     comments,
                     spell,
                     extent,
-                    declaring_type,
                     bases,
                     vars,
                     callees);
@@ -202,7 +199,6 @@ struct VarDef : NameMixin<VarDef> {
   // Type of the variable.
   Usr type = 0;
 
-  // Function/type which declares this one.
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
