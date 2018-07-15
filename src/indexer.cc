@@ -6,6 +6,7 @@
 #include "serializer.h"
 using ccls::Intern;
 
+#include <clang-c/Index.h>
 #include <clang/AST/AST.h>
 #include <clang/Frontend/ASTUnit.h>
 #include <clang/Frontend/CompilerInstance.h>
@@ -774,7 +775,7 @@ public:
     }
       [[fallthrough]];
     case Decl::Record: {
-      auto *RD = cast<RecordDecl>(OrigD);
+      auto *RD = cast<RecordDecl>(D);
       // spec has no Union, use Class
       type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
                                                       : lsSymbolKind::Class;

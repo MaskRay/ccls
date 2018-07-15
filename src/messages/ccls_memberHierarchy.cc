@@ -125,7 +125,7 @@ bool Expand(MessageHandler* m,
             bool qualified,
             int levels) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
-    entry->name = ClangBuiltinTypeName(CXTypeKind(entry->usr));
+    entry->name = ClangBuiltinTypeName(int(entry->usr));
     return true;
   }
   const QueryType& type = m->db->Type(entry->usr);

@@ -4,6 +4,7 @@
 #include "file_consumer.h"
 #include "language.h"
 #include "lsp.h"
+#include "lsp_diagnostic.h"
 #include "maybe.h"
 #include "position.h"
 #include "serializer.h"

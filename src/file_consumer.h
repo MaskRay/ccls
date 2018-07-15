@@ -4,7 +4,6 @@
 #include "serializer.h"
 #include "utils.h"
 
-#include <clang-c/Index.h>
 #include <clang/Basic/FileManager.h>
 
 #include <mutex>
