@@ -8,8 +8,6 @@
 #include "threaded_queue.h"
 #include "working_files.h"
 
-#include <clang-c/Index.h>
-
 #include <functional>
 #include <memory>
 #include <mutex>

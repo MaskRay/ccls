@@ -3,10 +3,8 @@
 #include "lsp_diagnostic.h"
 #include "utils.h"
 
-#include <clang-c/Index.h>
-#include <optional>
-
 #include <mutex>
+#include <optional>
 #include <string>
 
 struct WorkingFile {

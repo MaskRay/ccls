@@ -1,29 +1,13 @@
 #include "clang_utils.h"
 
+#include "config.h"
 #include "filesystem.hh"
 #include "platform.h"
+#include "utils.h"
 
 #include <clang/AST/Type.h>
 using namespace clang;
 using namespace llvm;
-
-std::string FileName(CXFile file) {
-  std::string ret;
-  // clang > 6
-#if CINDEX_VERSION >= 48
-  ret = ToString(clang_File_tryGetRealPathName(file));
-#endif
-  if (ret.empty())
-    // clang_getFileName return values may contain ..
-    ret = NormalizePath(ToString(clang_getFileName(file)));
-  // Resolve /usr/include/c++/7.3.0 symlink.
-  if (!StartsWith(ret, g_config->projectRoot)) {
-    SmallString<256> dest;
-    sys::fs::real_path(ret, dest);
-    ret = dest.str();
-  }
-  return ret;
-}
 
 std::string FileName(const FileEntry& file) {
   StringRef Name = file.tryGetRealPathName();
@@ -37,19 +21,6 @@ std::string FileName(const FileEntry& file) {
     ret = dest.str();
   }
   return ret;
-}
-
-std::string ToString(CXString cx_string) {
-  std::string string;
-  if (cx_string.data != nullptr) {
-    string = clang_getCString(cx_string);
-    clang_disposeString(cx_string);
-  }
-  return string;
-}
-
-std::string ToString(CXCursorKind kind) {
-  return ToString(clang_getCursorKindSpelling(kind));
 }
 
 // clang::BuiltinType::getName without PrintingPolicy
