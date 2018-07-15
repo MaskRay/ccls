@@ -14,7 +14,6 @@ OUTPUT:
       "kind": 12,
       "storage": 0,
       "declarations": ["2:13-2:14|0|1|1"],
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],

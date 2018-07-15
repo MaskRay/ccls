@@ -30,6 +30,8 @@ using llvm::Timer;
 
 namespace {
 
+constexpr int kInitializerMaxLines = 3;
+
 struct IndexParam {
   std::unordered_map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
   std::unordered_map<std::string, FileContents> file_contents;
@@ -327,7 +329,7 @@ public:
       if (pad < 0) {
         // First line, detect the length of comment marker and put into |pad|
         const char *begin = p;
-        while (p < E && (*p == '/' || *p == '*'))
+        while (p < E && (*p == '/' || *p == '*' || *p == '-' || *p == '='))
           p++;
         if (p < E && (*p == '<' || *p == '!'))
           p++;
@@ -488,9 +490,11 @@ public:
       if (!SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
       StringRef Buf = GetSourceInRange(SM, Lang, R);
-      Twine T =
-          def.detailed_name +
-          (Buf.size() && Buf[0] == ':' ? Twine(" ", Buf) : Twine(" = ", Buf));
+      Twine T = Buf.count('\n') <= kInitializerMaxLines - 1
+                    ? def.detailed_name + (Buf.size() && Buf[0] == ':'
+                                               ? Twine(" ", Buf)
+                                               : Twine(" = ", Buf))
+                    : def.detailed_name;
       def.hover =
           def.storage == SC_Static && strncmp(def.detailed_name, "static ", 7)
               ? Intern(("static " + T).str())
@@ -568,7 +572,8 @@ public:
     LocFID = SM.getFileID(P.first);
     FE = SM.getFileEntryForID(LocFID);
 #else
-    auto R = SM.getExpansionRange(Loc);
+    auto R = SM.isMacroArgExpansion(Loc) ? CharSourceRange::getTokenRange(Spell)
+                                         : SM.getExpansionRange(Loc);
     loc = FromTokenRange(SM, Lang, R.getAsRange());
     LocFID = SM.getFileID(R.getBegin());
     FE = SM.getFileEntryForID(LocFID);
@@ -618,6 +623,9 @@ public:
       return true;
     case SymbolKind::Func:
       func = &db->ToFunc(usr);
+      // Span one more column to the left/right if D is CXXConstructor.
+      if (!is_def && !is_decl && D->getKind() == Decl::CXXConstructor)
+        role = Role(role | Role::Implicit);
       do_def_decl(func);
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, SymbolKind::Func, Spell);
@@ -752,45 +760,46 @@ public:
     case Decl::Enum:
       type->def.kind = lsSymbolKind::Enum;
       break;
-    case Decl::CXXRecord: {
-      auto *RD = cast<CXXRecordDecl>(D);
-      if (is_def && RD->hasDefinition()) {
-        for (const CXXBaseSpecifier &Base : RD->bases()) {
-          QualType T = Base.getType();
-          const NamedDecl *BaseD = nullptr;
-          if (auto *TDT = T->getAs<TypedefType>()) {
-            BaseD = TDT->getDecl();
-          } else if (auto *TST = T->getAs<TemplateSpecializationType>()) {
-            BaseD = TST->getTemplateName().getAsTemplateDecl();
-          } else if (auto *RT = T->getAs<RecordType>()) {
-            BaseD = RT->getDecl();
-          }
-          if (BaseD) {
-            Usr usr1 = GetUsr(BaseD);
-            auto it = db->usr2type.find(usr1);
-            if (it != db->usr2type.end()) {
-              type->def.bases.push_back(usr1);
-              it->second.derived.push_back(usr);
+    case Decl::CXXRecord:
+      if (is_def) {
+        auto *RD = dyn_cast<CXXRecordDecl>(OrigD);
+        if (RD && RD->hasDefinition()) {
+          for (const CXXBaseSpecifier &Base : RD->bases()) {
+            QualType T = Base.getType();
+            const NamedDecl *BaseD = nullptr;
+            if (auto *TDT = T->getAs<TypedefType>()) {
+              BaseD = TDT->getDecl();
+            } else if (auto *TST = T->getAs<TemplateSpecializationType>()) {
+              BaseD = TST->getTemplateName().getAsTemplateDecl();
+            } else if (auto *RT = T->getAs<RecordType>()) {
+              BaseD = RT->getDecl();
+            }
+            if (BaseD) {
+              Usr usr1 = GetUsr(BaseD);
+              auto it = db->usr2type.find(usr1);
+              if (it != db->usr2type.end()) {
+                type->def.bases.push_back(usr1);
+                it->second.derived.push_back(usr);
+              }
             }
           }
         }
       }
-    }
       [[fallthrough]];
-    case Decl::Record: {
-      auto *RD = cast<RecordDecl>(D);
-      // spec has no Union, use Class
-      type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
-                                                      : lsSymbolKind::Class;
-      if (is_def) {
-        bool can_get_offset =
-            RD->isCompleteDefinition() && !RD->isDependentType();
-        for (FieldDecl *FD : RD->fields())
-          type->def.vars.emplace_back(
-              GetUsr(FD), can_get_offset ? Ctx->getFieldOffset(FD) : -1);
+    case Decl::Record:
+      if (auto *RD = dyn_cast<RecordDecl>(OrigD)) {
+        // spec has no Union, use Class
+        type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
+                                                        : lsSymbolKind::Class;
+        if (is_def) {
+          bool can_get_offset =
+              RD->isCompleteDefinition() && !RD->isDependentType();
+          for (FieldDecl *FD : RD->fields())
+            type->def.vars.emplace_back(
+                GetUsr(FD), can_get_offset ? Ctx->getFieldOffset(FD) : -1);
+        }
       }
       break;
-    }
     case Decl::ClassTemplateSpecialization:
     case Decl::ClassTemplatePartialSpecialization:
       type->def.kind = lsSymbolKind::Class;
@@ -960,7 +969,11 @@ public:
       if (var.def.detailed_name[0] == '\0') {
         var.def.detailed_name = Intern(Name);
         var.def.short_name_size = Name.size();
-        var.def.hover = Intern(Twine("#define ", GetSourceInRange(SM, Lang, R)).str());
+        StringRef Buf = GetSourceInRange(SM, Lang, R);
+        var.def.hover =
+            Intern(Buf.count('\n') <= kInitializerMaxLines - 1
+                       ? Twine("#define ", GetSourceInRange(SM, Lang, R)).str()
+                       : Twine("#define ", Name).str());
       }
     }
   }
@@ -1009,7 +1022,7 @@ public:
 }
 
 const int IndexFile::kMajorVersion = 17;
-const int IndexFile::kMinorVersion = 0;
+const int IndexFile::kMinorVersion = 1;
 
 IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
                      const std::string &contents)

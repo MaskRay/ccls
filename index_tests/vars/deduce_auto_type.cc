@@ -19,7 +19,6 @@ OUTPUT:
       "declarations": [],
       "spell": "2:6-2:7|0|1|2",
       "extent": "2:1-5:2|0|1|0",
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [10601729374837386290, 18422884837902130475],

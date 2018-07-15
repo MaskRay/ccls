@@ -23,7 +23,6 @@ OUTPUT:
       "declarations": [],
       "spell": "5:5-5:11|0|1|2",
       "extent": "5:1-5:27|0|1|0",
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
@@ -37,11 +36,10 @@ OUTPUT:
       "kind": 9,
       "storage": 0,
       "declarations": ["2:3-2:10|13611487872560323389|2|1025"],
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["8:10-8:16|13611487872560323389|2|16420"],
+      "uses": ["8:10-8:16|13611487872560323389|2|16676"],
       "callees": []
     }, {
       "usr": 11404881820527069090,
@@ -53,7 +51,6 @@ OUTPUT:
       "declarations": [],
       "spell": "7:9-7:15|0|1|2",
       "extent": "7:1-9:2|0|1|0",
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],

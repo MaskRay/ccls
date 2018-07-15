@@ -505,10 +505,11 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
                                        E = tu->Unit->stored_diag_end();
          I != E; ++I) {
       FullSourceLoc FLoc = I->getLocation();
-      const auto &SM = FLoc.getManager();
-
-      const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(FLoc));
+      if (!FLoc.isValid()) // why?
+        continue;
+      const FileEntry *FE = FLoc.getFileEntry();
       if (!FE || FileName(*FE) != path) continue;
+      const auto &SM = FLoc.getManager();
       SourceRange R;
       for (const auto &CR : I->getRanges()) {
         auto RT = Lexer::makeFileCharRange(CR, SM, LangOpts);

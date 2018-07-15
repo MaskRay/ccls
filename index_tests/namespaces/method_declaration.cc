@@ -17,7 +17,6 @@ OUTPUT:
       "kind": 6,
       "storage": 0,
       "declarations": ["3:8-3:11|4508214972876735896|2|1025"],
-      "declaring_type": 0,
       "bases": [],
       "derived": [],
       "vars": [],

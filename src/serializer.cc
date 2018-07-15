@@ -292,7 +292,6 @@ void Reflect(TVisitor& visitor, IndexFunc& value) {
   REFLECT_MEMBER2("declarations", value.declarations);
   REFLECT_MEMBER2("spell", value.def.spell);
   REFLECT_MEMBER2("extent", value.def.extent);
-  REFLECT_MEMBER2("declaring_type", value.def.declaring_type);
   REFLECT_MEMBER2("bases", value.def.bases);
   REFLECT_MEMBER2("derived", value.derived);
   REFLECT_MEMBER2("vars", value.def.vars);
