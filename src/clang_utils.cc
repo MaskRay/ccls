@@ -6,6 +6,7 @@
 #include "utils.h"
 
 #include <clang/AST/Type.h>
+#include <llvm/Config/llvm-config.h>
 using namespace clang;
 using namespace llvm;
 
@@ -66,6 +67,7 @@ const char* ClangBuiltinTypeName(int kind) {
     return "double";
   case BuiltinType::LongDouble:
     return "long double";
+#if LLVM_VERSION_MAJOR >= 7
   case BuiltinType::ShortAccum:
     return "short _Accum";
   case BuiltinType::Accum:
@@ -114,6 +116,7 @@ const char* ClangBuiltinTypeName(int kind) {
     return "_Sat unsigned _Fract";
   case BuiltinType::BuiltinType::SatULongFract:
     return "_Sat unsigned long _Fract";
+#endif
   case BuiltinType::Float16:
     return "_Float16";
   case BuiltinType::Float128:
@@ -121,8 +124,10 @@ const char* ClangBuiltinTypeName(int kind) {
   case BuiltinType::WChar_S:
   case BuiltinType::WChar_U:
     return "wchar_t";
+#if LLVM_VERSION_MAJOR >= 7
   case BuiltinType::Char8:
     return "char8_t";
+#endif
   case BuiltinType::Char16:
     return "char16_t";
   case BuiltinType::Char32:
