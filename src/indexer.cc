@@ -125,6 +125,8 @@ SymbolKind GetSymbolKind(const Decl* D) {
   case Decl::ParmVar:
   case Decl::ImplicitParam:
   case Decl::Decomposition:
+  case Decl::VarTemplateSpecialization:
+  case Decl::VarTemplatePartialSpecialization:
   case Decl::EnumConstant:
   case Decl::UnresolvedUsingValue:
     return SymbolKind::Var;
@@ -457,6 +459,7 @@ public:
                   std::string_view qualified, IndexVar::Def &def) {
     QualType T;
     const Expr* init = nullptr;
+    bool binding = false;
     if (auto *VD = dyn_cast<VarDecl>(D)) {
       T = VD->getType();
       init = VD->getAnyInitializer();
@@ -464,9 +467,12 @@ public:
     } else if (auto *FD = dyn_cast<FieldDecl>(D)) {
       T = FD->getType();
       init = FD->getInClassInitializer();
+    } else if (auto *BD = dyn_cast<BindingDecl>(D)) {
+      T = BD->getType();
+      binding = true;
     }
     auto BT = GetBaseType(T, false);
-    if (!BT.isNull() && BT->getAs<AutoType>()) {
+    if (!BT.isNull() && (binding || BT->getAs<AutoType>())) {
       SmallString<256> Str;
       llvm::raw_svector_ostream OS(Str);
       PrintingPolicy PP = GetDefaultPolicy();
@@ -592,6 +598,8 @@ public:
 
     bool is_decl = Roles & uint32_t(index::SymbolRole::Declaration);
     bool is_def = Roles & uint32_t(index::SymbolRole::Definition);
+    if (is_decl && D->getKind() == Decl::Binding)
+      is_def = true;
     IndexFunc *func = nullptr;
     IndexType *type = nullptr;
     IndexVar *var = nullptr;
@@ -617,7 +625,7 @@ public:
     switch (kind) {
     case SymbolKind::Invalid:
       LOG_S(INFO) << "Unhandled " << int(D->getKind()) << " " << info->qualified
-                  << " in " << db->path << ":" << loc.start.line;
+                  << " in " << db->path << ":" << loc.start.line + 1;
       return true;
     case SymbolKind::File:
       return true;
@@ -885,6 +893,10 @@ public:
     case Decl::ParmVar:
       // ccls extension
       var->def.kind = lsSymbolKind::Parameter;
+      break;
+    case Decl::VarTemplateSpecialization:
+    case Decl::VarTemplatePartialSpecialization:
+      var->def.kind = lsSymbolKind::Variable;
       break;
     case Decl::EnumConstant:
       var->def.kind = lsSymbolKind::EnumMember;
