@@ -572,17 +572,20 @@ public:
     const FileEntry *FE;
     Range loc;
 #if LLVM_VERSION_MAJOR < 7
-    auto P = SM.getExpansionRange(Loc);
-    loc = FromCharRange(SM, Ctx->getLangOpts(), SourceRange(P.first, P.second));
-    LocFID = SM.getFileID(P.first);
-    FE = SM.getFileEntryForID(LocFID);
+    CharSourceRange R;
+    if (SM.isMacroArgExpansion(Loc))
+      R = CharSourceRange::getTokenRange(Spell);
+    else {
+      auto P = SM.getExpansionRange(Loc);
+      R = CharSourceRange::getTokenRange(P.first, P.second);
+    }
 #else
     auto R = SM.isMacroArgExpansion(Loc) ? CharSourceRange::getTokenRange(Spell)
                                          : SM.getExpansionRange(Loc);
+#endif
     loc = FromTokenRange(SM, Lang, R.getAsRange());
     LocFID = SM.getFileID(R.getBegin());
     FE = SM.getFileEntryForID(LocFID);
-#endif
     if (!FE)
       return true;
     IndexFile *db = param.ConsumeFile(*FE);
