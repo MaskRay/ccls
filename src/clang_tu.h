@@ -22,16 +22,6 @@ Range FromTokenRange(const clang::SourceManager &SM, const clang::LangOptions &L
                      clang::SourceRange R,
                      llvm::sys::fs::UniqueID *UniqueID = nullptr);
 
-template <typename Fn>
-bool RunSafely(llvm::CrashRecoveryContext &CRC, Fn &&fn) {
-  const char *env = getenv("CCLS_CRASH_RECOVERY");
-  if (env && strcmp(env, "0") == 0) {
-    fn();
-    return true;
-  }
-  return CRC.RunSafely(fn);
-}
-
 struct ClangTranslationUnit {
   static std::unique_ptr<ClangTranslationUnit>
   Create(const std::string &filepath, const std::vector<std::string> &args,
