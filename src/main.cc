@@ -8,6 +8,7 @@
 using namespace ccls;
 
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Program.h>
 #include <llvm/Support/Signals.h>
@@ -55,7 +56,9 @@ int main(int argc, char** argv) {
   }
 
   pipeline::Init();
-  idx::IndexInit();
+  const char *env = getenv("CCLS_CRASH_RECOVERY");
+  if (!env || strcmp(env, "0") != 0)
+    CrashRecoveryContext::Enable();
 
   bool language_server = true;
 

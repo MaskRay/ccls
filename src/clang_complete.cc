@@ -5,11 +5,12 @@
 #include "log.hh"
 #include "platform.h"
 
-#include "clang/Frontend/CompilerInstance.h"
-#include "clang/Frontend/FrontendDiagnostic.h"
+#include <clang/Frontend/CompilerInstance.h>
+#include <clang/Frontend/FrontendDiagnostic.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <llvm/ADT/Twine.h>
 #include <llvm/Config/llvm-config.h>
+#include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Threading.h>
 using namespace clang;
 using namespace llvm;

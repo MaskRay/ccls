@@ -100,7 +100,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
         /*UserFilesAreVolatile=*/true, false,
         ret->PCHCO->getRawReader().getFormat(), &ErrUnit));
   };
-  if (!RunSafely(CRC, parse)) {
+  if (!CRC.RunSafely(parse)) {
     LOG_S(ERROR)
         << "clang crashed for " << filepath << "\n"
         << StringJoin(args, " ") + " -fsyntax-only";
@@ -116,7 +116,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
 int ClangTranslationUnit::Reparse(llvm::CrashRecoveryContext &CRC,
                                   const WorkingFiles::Snapshot &snapshot) {
   int ret = 1;
-  auto parse = [&]() { ret = Unit->Reparse(PCHCO, GetRemapped(snapshot)); };
-  (void)RunSafely(CRC, parse);
+  (void)CRC.RunSafely(
+      [&]() { ret = Unit->Reparse(PCHCO, GetRemapped(snapshot)); });
   return ret;
 }

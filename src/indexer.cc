@@ -1166,7 +1166,7 @@ std::vector<std::unique_ptr<IndexFile>> Index(
         /*CaptureDiagnostics=*/true, 0, false, false,
         /*UserFilesAreVolatile=*/true);
   };
-  if (!RunSafely(CRC, compile)) {
+  if (!CRC.RunSafely(compile)) {
     LOG_S(ERROR) << "clang crashed for " << file;
     return {};
   }
