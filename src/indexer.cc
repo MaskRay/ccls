@@ -6,7 +6,6 @@
 #include "serializer.h"
 using ccls::Intern;
 
-#include <clang-c/Index.h>
 #include <clang/AST/AST.h>
 #include <clang/Frontend/ASTUnit.h>
 #include <clang/Frontend/CompilerInstance.h>
@@ -1083,13 +1082,6 @@ void Uniquify(std::vector<Use>& uses) {
 
 
 namespace ccls::idx {
-void IndexInit() {
-  // This calls llvm::InitializeAllTargets() ... for us, we would otherwise link
-  // all target libraries.
-  CXIndex CXIdx = clang_createIndex(0, 0);
-  clang_disposeIndex(CXIdx);
-}
-
 std::vector<std::unique_ptr<IndexFile>> Index(
     VFS* vfs,
     const std::string& opt_wdir,

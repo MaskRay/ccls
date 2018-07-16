@@ -154,8 +154,7 @@ Project::Entry GetCompilationEntryFromCompileCommandEntry(
       continue;
     }
 
-  if (!sys::path::is_absolute(HeaderOpts.ResourceDir) &&
-      HeaderOpts.UseBuiltinIncludes)
+  if (!sys::fs::exists(HeaderOpts.ResourceDir) && HeaderOpts.UseBuiltinIncludes)
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);
   if (CI->getFileSystemOpts().WorkingDir.empty())
     args.push_back("-working-directory=" + entry.directory);
