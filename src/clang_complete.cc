@@ -329,7 +329,7 @@ public:
               ls_items[j].insertTextFormat == lsInsertTextFormat::Snippet)
             ls_items[j].insertText += "$0";
           ls_items[j].priority_ = GetCompletionPriority(
-              *CCS, Results[i].CursorKind, ls_items[i].filterText);
+              *CCS, Results[i].CursorKind, ls_items[j].filterText);
         }
       } else {
         bool do_insert = true;
