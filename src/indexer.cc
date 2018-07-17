@@ -489,7 +489,7 @@ public:
       const LangOptions& Lang = Ctx->getLangOpts();
       SourceRange R = init->getSourceRange();
       SourceLocation L = D->getLocation();
-      if (!SM.isBeforeInTranslationUnit(L, R.getBegin()))
+      if (L.isMacroID() || !SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
       StringRef Buf = GetSourceInRange(SM, Lang, R);
       Twine T = Buf.count('\n') <= kInitializerMaxLines - 1
@@ -726,14 +726,23 @@ public:
     switch (D->getKind()) {
     case Decl::Namespace:
       type->def.kind = lsSymbolKind::Namespace;
+      if (OrigD->isFirstDecl()) {
+        auto *ND = cast<NamespaceDecl>(OrigD);
+        auto *ND1 = cast<Decl>(ND->getParent());
+        if (isa<NamespaceDecl>(ND1)) {
+          Usr usr1 = GetUsr(ND1);
+          type->def.bases.push_back(usr1);
+          db->ToType(usr1).derived.push_back(usr);
+        }
+      }
       break;
     case Decl::NamespaceAlias: {
       type->def.kind = lsSymbolKind::TypeAlias;
-      auto* NAD = cast<NamespaceAliasDecl>(D);
-      if (const NamespaceDecl* ND = NAD->getNamespace()) {
+      auto *NAD = cast<NamespaceAliasDecl>(D);
+      if (const NamespaceDecl *ND = NAD->getNamespace()) {
         Usr usr1 = GetUsr(ND);
-        if (db->usr2type.count(usr1))
-          type->def.alias_of = usr1;
+        type->def.alias_of = usr1;
+        (void)db->ToType(usr1);
       }
       break;
     }
@@ -783,11 +792,8 @@ public:
             }
             if (BaseD) {
               Usr usr1 = GetUsr(BaseD);
-              auto it = db->usr2type.find(usr1);
-              if (it != db->usr2type.end()) {
-                type->def.bases.push_back(usr1);
-                it->second.derived.push_back(usr);
-              }
+              type->def.bases.push_back(usr1);
+              db->ToType(usr1).derived.push_back(usr);
             }
           }
         }
@@ -828,11 +834,8 @@ public:
             D1 = RD->getInstantiatedFromMemberClass();
           if (D1) {
             Usr usr1 = GetUsr(D1);
-            auto it = db->usr2type.find(usr1);
-            if (it != db->usr2type.end()) {
-              type->def.bases.push_back(usr1);
-              it->second.derived.push_back(usr);
-            }
+            type->def.bases.push_back(usr1);
+            db->ToType(usr1).derived.push_back(usr);
           }
         }
       }
@@ -868,11 +871,8 @@ public:
           Ctx->getOverriddenMethods(ND, OverDecls);
           for (const auto* ND1 : OverDecls) {
             Usr usr1 = GetUsr(ND1);
-            auto it = db->usr2func.find(usr1);
-            if (it != db->usr2func.end()) {
-              func->def.bases.push_back(usr1);
-              it->second.derived.push_back(usr);
-            }
+            func->def.bases.push_back(usr1);
+            db->ToFunc(usr1).derived.push_back(usr);
           }
         }
       }
@@ -1064,25 +1064,17 @@ std::string IndexFile::ToString() {
   return ccls::Serialize(SerializeFormat::Json, *this);
 }
 
-void Uniquify(std::vector<Usr>& usrs) {
-  std::unordered_set<Usr> seen;
-  size_t n = 0;
-  for (size_t i = 0; i < usrs.size(); i++)
-    if (seen.insert(usrs[i]).second)
-      usrs[n++] = usrs[i];
-  usrs.resize(n);
-}
+MAKE_HASHABLE(Use, t.range, t.file_id)
 
-void Uniquify(std::vector<Use>& uses) {
-  std::unordered_set<Range> seen;
+template <typename T>
+void Uniquify(std::vector<T>& a) {
+  std::unordered_set<T> seen;
   size_t n = 0;
-  for (size_t i = 0; i < uses.size(); i++) {
-    if (seen.insert(uses[i].range).second)
-      uses[n++] = uses[i];
-  }
-  uses.resize(n);
+  for (size_t i = 0; i < a.size(); i++)
+    if (seen.insert(a[i]).second)
+      a[n++] = a[i];
+  a.resize(n);
 }
-
 
 namespace ccls::idx {
 std::vector<std::unique_ptr<IndexFile>> Index(
