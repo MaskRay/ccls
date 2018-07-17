@@ -729,14 +729,23 @@ public:
     switch (D->getKind()) {
     case Decl::Namespace:
       type->def.kind = lsSymbolKind::Namespace;
+      if (OrigD->isFirstDecl()) {
+        auto *ND = cast<NamespaceDecl>(OrigD);
+        auto *ND1 = cast<Decl>(ND->getParent());
+        if (isa<NamespaceDecl>(ND1)) {
+          Usr usr1 = GetUsr(ND1);
+          type->def.bases.push_back(usr1);
+          db->ToType(usr1).derived.push_back(usr);
+        }
+      }
       break;
     case Decl::NamespaceAlias: {
       type->def.kind = lsSymbolKind::TypeAlias;
-      auto* NAD = cast<NamespaceAliasDecl>(D);
-      if (const NamespaceDecl* ND = NAD->getNamespace()) {
+      auto *NAD = cast<NamespaceAliasDecl>(D);
+      if (const NamespaceDecl *ND = NAD->getNamespace()) {
         Usr usr1 = GetUsr(ND);
-        if (db->usr2type.count(usr1))
-          type->def.alias_of = usr1;
+        type->def.alias_of = usr1;
+        (void)db->ToType(usr1);
       }
       break;
     }
@@ -786,11 +795,8 @@ public:
             }
             if (BaseD) {
               Usr usr1 = GetUsr(BaseD);
-              auto it = db->usr2type.find(usr1);
-              if (it != db->usr2type.end()) {
-                type->def.bases.push_back(usr1);
-                it->second.derived.push_back(usr);
-              }
+              type->def.bases.push_back(usr1);
+              db->ToType(usr1).derived.push_back(usr);
             }
           }
         }
@@ -831,11 +837,8 @@ public:
             D1 = RD->getInstantiatedFromMemberClass();
           if (D1) {
             Usr usr1 = GetUsr(D1);
-            auto it = db->usr2type.find(usr1);
-            if (it != db->usr2type.end()) {
-              type->def.bases.push_back(usr1);
-              it->second.derived.push_back(usr);
-            }
+            type->def.bases.push_back(usr1);
+            db->ToType(usr1).derived.push_back(usr);
           }
         }
       }
@@ -871,11 +874,8 @@ public:
           Ctx->getOverriddenMethods(ND, OverDecls);
           for (const auto* ND1 : OverDecls) {
             Usr usr1 = GetUsr(ND1);
-            auto it = db->usr2func.find(usr1);
-            if (it != db->usr2func.end()) {
-              func->def.bases.push_back(usr1);
-              it->second.derived.push_back(usr);
-            }
+            func->def.bases.push_back(usr1);
+            db->ToFunc(usr1).derived.push_back(usr);
           }
         }
       }
