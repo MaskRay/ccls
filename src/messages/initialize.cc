@@ -423,14 +423,6 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     auto& params = request->params;
     if (!params.rootUri)
       return;
-    {
-      rapidjson::StringBuffer output;
-      rapidjson::Writer<rapidjson::StringBuffer> writer(output);
-      JsonWriter json_writer(&writer);
-      Reflect(json_writer, params.initializationOptions);
-      LOG_S(INFO) << "initializationOptions: " << output.GetString();
-    }
-
     std::string project_path = NormalizePath(params.rootUri->GetPath());
     LOG_S(INFO) << "initialize in directory " << project_path << " with uri "
                 << params.rootUri->raw_uri;
@@ -451,6 +443,12 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
           // MessageRegistry::Parse in lsp.cc
         }
       }
+
+      rapidjson::StringBuffer output;
+      rapidjson::Writer<rapidjson::StringBuffer> writer(output);
+      JsonWriter json_writer(&writer);
+      Reflect(json_writer, *g_config);
+      LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
       if (g_config->cacheDirectory.empty()) {
         LOG_S(ERROR) << "cacheDirectory cannot be empty.";
