@@ -1,6 +1,6 @@
 # ccls
 
-ccls is a rewrite of cquery (originally written by Jacob Dufault),
+ccls is a rewrite of [cquery](https://github.com/cquery-project/cquery) (originally written by Jacob Dufault),
 a C/C++/Objective-C language server.
 
   * code completion (with both signature help and snippets)
@@ -14,7 +14,7 @@ a C/C++/Objective-C language server.
   * preprocessor skipped regions
   * semantic highlighting, including support for [rainbow semantic highlighting](https://medium.com/@evnbr/coding-in-color-3a6db2743a1e)
 
-It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strenghened, (see [wiki/FAQ](../../wiki/FAQ). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
+Ccls uses C++17 features, has less third-party dependencies, and slims down code base. Cross reference features are strenghened, (see [wiki/FAQ](../../wiki/FAQ). It currently uses libclang to index C++ code, but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer, and other Clang based tools.
 
 The comparison with cquery as noted on 2018-07-15:
 
