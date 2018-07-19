@@ -1,7 +1,9 @@
 # ccls
 
-ccls is a rewrite of cquery (originally written by Jacob Dufault),
-a C/C++/Objective-C language server.
+[![Telegram](https://img.shields.io/badge/telegram-@cclsp-blue.svg)](https://telegram.me/cclsp)
+[![Gitter](https://img.shields.io/badge/gitter-ccls--project-blue.svg?logo=gitter-white)](https://gitter.im/ccls-project/ccls)
+
+ccls, which originates from [cquery](https://github.com/cquery-project/cquery), is a C/C++/Objective-C language server.
 
   * code completion (with both signature help and snippets)
   * [definition](src/messages/text_document_definition.cc)/[references](src/messages/text_document_references.cc), and other cross references
