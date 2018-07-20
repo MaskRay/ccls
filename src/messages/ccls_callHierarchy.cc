@@ -114,7 +114,7 @@ bool Expand(MessageHandler* m,
         for (SymbolRef ref : def->callees)
           if (ref.kind == SymbolKind::Func)
             handle(Use{{ref.range, ref.usr, ref.kind, ref.role},
-                       def->spell->file_id},
+                       def->file_id},
                    call_type);
     } else {
       for (Use use : func.uses)

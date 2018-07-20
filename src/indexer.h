@@ -71,8 +71,6 @@ void Reflect(Writer& visitor, Reference& value);
 void Reflect(Reader& visitor, Use& value);
 void Reflect(Writer& visitor, Use& value);
 
-MAKE_REFLECT_TYPE_PROXY2(clang::StorageClass, uint8_t);
-
 template <typename D>
 struct NameMixin {
   std::string_view Name(bool qualified) const {
@@ -104,11 +102,12 @@ struct FuncDef : NameMixin<FuncDef> {
   // Functions that this function calls.
   std::vector<SymbolRef> callees;
 
+  int file_id = -1;
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
   lsSymbolKind kind = lsSymbolKind::Unknown;
-  clang::StorageClass storage = clang::SC_None;
+  uint8_t storage = clang::SC_None;
 
   std::vector<Usr> GetBases() const { return bases; }
 };
@@ -155,6 +154,7 @@ struct TypeDef : NameMixin<TypeDef> {
   // type comes from a using or typedef statement).
   Usr alias_of = 0;
 
+  int file_id = -1;
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
@@ -199,6 +199,7 @@ struct VarDef : NameMixin<VarDef> {
   // Type of the variable.
   Usr type = 0;
 
+  int file_id = -1;
   int16_t qual_name_offset = 0;
   int16_t short_name_offset = 0;
   int16_t short_name_size = 0;
@@ -206,7 +207,7 @@ struct VarDef : NameMixin<VarDef> {
   lsSymbolKind kind = lsSymbolKind::Unknown;
   // Note a variable may have instances of both |None| and |Extern|
   // (declaration).
-  clang::StorageClass storage = clang::SC_None;
+  uint8_t storage = clang::SC_None;
 
   bool is_local() const {
     return spell && spell->kind != SymbolKind::File &&
