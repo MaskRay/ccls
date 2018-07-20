@@ -198,7 +198,7 @@ void EmitSemanticHighlighting(DB *db,
     std::string_view detailed_name;
     lsSymbolKind parent_kind = lsSymbolKind::Unknown;
     lsSymbolKind kind = lsSymbolKind::Unknown;
-    StorageClass storage = SC_None;
+    uint8_t storage = SC_None;
     // This switch statement also filters out symbols that are not highlighted.
     switch (sym.kind) {
     case SymbolKind::Func: {

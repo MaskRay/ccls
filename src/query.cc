@@ -158,7 +158,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile& indexed) {
 template <typename Q>
 bool TryReplaceDef(llvm::SmallVectorImpl<Q>& def_list, Q&& def) {
   for (auto& def1 : def_list)
-    if (def1.spell->file_id == def.spell->file_id) {
+    if (def1.file_id == def.file_id) {
       def1 = std::move(def);
       return true;
     }
@@ -182,7 +182,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   r.funcs_hint = current->usr2func.size() - previous->usr2func.size();
   for (auto& it : previous->usr2func) {
     auto& func = it.second;
-    if (func.def.spell)
+    if (func.def.detailed_name[0])
       r.funcs_removed.push_back(func.usr);
     r.funcs_declarations[func.usr].first = std::move(func.declarations);
     r.funcs_uses[func.usr].first = std::move(func.uses);
@@ -190,7 +190,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   }
   for (auto& it : current->usr2func) {
     auto& func = it.second;
-    if (func.def.spell && func.def.detailed_name[0])
+    if (func.def.detailed_name[0])
       r.funcs_def_update.emplace_back(it.first, func.def);
     r.funcs_declarations[func.usr].second = std::move(func.declarations);
     r.funcs_uses[func.usr].second = std::move(func.uses);
@@ -200,7 +200,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   r.types_hint = current->usr2type.size() - previous->usr2type.size();
   for (auto& it : previous->usr2type) {
     auto& type = it.second;
-    if (type.def.spell)
+    if (type.def.detailed_name[0])
       r.types_removed.push_back(type.usr);
     r.types_declarations[type.usr].first = std::move(type.declarations);
     r.types_uses[type.usr].first = std::move(type.uses);
@@ -209,7 +209,7 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   };
   for (auto& it : current->usr2type) {
     auto& type = it.second;
-    if (type.def.spell && type.def.detailed_name[0])
+    if (type.def.detailed_name[0])
       r.types_def_update.emplace_back(it.first, type.def);
     r.types_declarations[type.usr].second = std::move(type.declarations);
     r.types_uses[type.usr].second = std::move(type.uses);
@@ -220,14 +220,14 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile* previous,
   r.vars_hint = current->usr2var.size() - previous->usr2var.size();
   for (auto& it : previous->usr2var) {
     auto& var = it.second;
-    if (var.def.spell)
+    if (var.def.detailed_name[0])
       r.vars_removed.push_back(var.usr);
     r.vars_declarations[var.usr].first = std::move(var.declarations);
     r.vars_uses[var.usr].first = std::move(var.uses);
   }
   for (auto& it : current->usr2var) {
     auto& var = it.second;
-    if (var.def.spell && var.def.detailed_name[0])
+    if (var.def.detailed_name[0])
       r.vars_def_update.emplace_back(it.first, var.def);
     r.vars_declarations[var.usr].second = std::move(var.declarations);
     r.vars_uses[var.usr].second = std::move(var.uses);
@@ -246,7 +246,7 @@ void DB::RemoveUsrs(SymbolKind kind,
         if (!HasFunc(usr)) continue;
         QueryFunc& func = Func(usr);
         auto it = llvm::find_if(func.def, [=](const QueryFunc::Def& def) {
-          return def.spell->file_id == file_id;
+          return def.file_id == file_id;
         });
         if (it != func.def.end())
           func.def.erase(it);
@@ -259,7 +259,7 @@ void DB::RemoveUsrs(SymbolKind kind,
         if (!HasType(usr)) continue;
         QueryType& type = Type(usr);
         auto it = llvm::find_if(type.def, [=](const QueryType::Def& def) {
-          return def.spell->file_id == file_id;
+          return def.file_id == file_id;
         });
         if (it != type.def.end())
           type.def.erase(it);
@@ -272,7 +272,7 @@ void DB::RemoveUsrs(SymbolKind kind,
         if (!HasVar(usr)) continue;
         QueryVar& var = Var(usr);
         auto it = llvm::find_if(var.def, [=](const QueryVar::Def& def) {
-          return def.spell->file_id == file_id;
+          return def.file_id == file_id;
         });
         if (it != var.def.end())
           var.def.erase(it);
@@ -400,6 +400,7 @@ void DB::Update(const Lid2file_id &lid2file_id, int file_id,
   for (auto &u : us) {
     auto& def = u.second;
     assert(def.detailed_name[0]);
+    u.second.file_id = file_id;
     AssignFileId(lid2file_id, file_id, def.spell);
     AssignFileId(lid2file_id, file_id, def.extent);
     AssignFileId(lid2file_id, file_id, def.callees);
@@ -418,6 +419,7 @@ void DB::Update(const Lid2file_id &lid2file_id, int file_id,
   for (auto &u : us) {
     auto& def = u.second;
     assert(def.detailed_name[0]);
+    u.second.file_id = file_id;
     AssignFileId(lid2file_id, file_id, def.spell);
     AssignFileId(lid2file_id, file_id, def.extent);
     auto R = type_usr.try_emplace({u.first}, type_usr.size());
@@ -435,6 +437,7 @@ void DB::Update(const Lid2file_id &lid2file_id, int file_id,
   for (auto &u : us) {
     auto& def = u.second;
     assert(def.detailed_name[0]);
+    u.second.file_id = file_id;
     AssignFileId(lid2file_id, file_id, def.spell);
     AssignFileId(lid2file_id, file_id, def.extent);
     auto R = var_usr.try_emplace({u.first}, var_usr.size());

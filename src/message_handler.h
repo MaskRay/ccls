@@ -63,7 +63,7 @@ struct Out_CclsPublishSemanticHighlighting
     int stableId = 0;
     lsSymbolKind parentKind;
     lsSymbolKind kind;
-    clang::StorageClass storage;
+    uint8_t storage;
     std::vector<std::pair<int, int>> ranges;
 
     // `lsRanges` is used to compute `ranges`.
