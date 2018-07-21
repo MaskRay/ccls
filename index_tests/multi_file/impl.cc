@@ -107,7 +107,7 @@ OUTPUT: header.h
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:26-5:30|0|1|2052"]
+      "uses": ["5:26-5:30|16750616846959666305|2|2052"]
     }, {
       "usr": 16750616846959666305,
       "detailed_name": "struct SameFileDerived : Base {}",
@@ -212,11 +212,11 @@ OUTPUT: impl.cc
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": []
+      "callees": ["4:3-4:7|11650481237659640387|3|16420"]
     }, {
       "usr": 11650481237659640387,
-      "detailed_name": "void Foo1()",
-      "qual_name_offset": 5,
+      "detailed_name": "template<> void Foo1<int>()",
+      "qual_name_offset": 16,
       "short_name": "Foo1",
       "kind": 12,
       "storage": 0,
@@ -224,7 +224,7 @@ OUTPUT: impl.cc
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:7|0|1|16420"],
+      "uses": ["4:3-4:7|5817708529036841195|3|16420"],
       "callees": []
     }],
   "usr2type": [],

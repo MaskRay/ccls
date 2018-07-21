@@ -207,7 +207,7 @@ struct Handler_CclsMemberHierarchy
 
       Out_CclsMemberHierarchy::Entry entry;
       // Not type, |id| is invalid.
-      entry.name = std::string(def->Name(qualified));
+      entry.name = def->Name(qualified);
       if (def->spell) {
         if (std::optional<lsLocation> loc =
           GetLsLocation(db, working_files, *def->spell))

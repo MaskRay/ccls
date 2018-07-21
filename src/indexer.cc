@@ -492,6 +492,7 @@ public:
       if (L.isMacroID() || !SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
       StringRef Buf = GetSourceInRange(SM, Lang, R);
+      Twine Static("static ");
       Twine T = Buf.count('\n') <= kInitializerMaxLines - 1
                     ? def.detailed_name + (Buf.size() && Buf[0] == ':'
                                                ? Twine(" ", Buf)
@@ -499,7 +500,7 @@ public:
                     : def.detailed_name;
       def.hover =
           def.storage == SC_Static && strncmp(def.detailed_name, "static ", 7)
-              ? Intern(("static " + T).str())
+              ? Intern((Static + T).str())
               : Intern(T.str());
     }
   }
@@ -591,7 +592,7 @@ public:
 
     const Decl* OrigD = ASTNode.OrigD;
     const DeclContext *SemDC = OrigD->getDeclContext();
-    const DeclContext *LexDC = OrigD->getLexicalDeclContext();
+    const DeclContext *LexDC = ASTNode.ContainerDC;
     Role role = static_cast<Role>(Roles);
     db->language = std::max(db->language, GetDeclLanguage(OrigD));
 
@@ -639,9 +640,14 @@ public:
       if (func->def.detailed_name[0] == '\0')
         SetName(OrigD, info->short_name, info->qualified, func->def);
       if (is_def || is_decl) {
-        const Decl* DC = cast<Decl>(SemDC);
+        const Decl *DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Type)
           db->ToType(GetUsr(DC)).def.funcs.push_back(usr);
+      } else {
+        const Decl *DC = cast<Decl>(LexDC);
+        if (GetSymbolKind(DC) == SymbolKind::Func)
+          db->ToFunc(GetUsr(DC))
+              .def.callees.push_back({{loc, usr, SymbolKind::Func, role}});
       }
       break;
     case SymbolKind::Type:
@@ -670,7 +676,7 @@ public:
       else if (auto *FD = dyn_cast<FieldDecl>(D))
         T = FD->getType();
       if (is_def || is_decl) {
-        const Decl* DC = cast<Decl>(SemDC);
+        const Decl *DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Func)
           db->ToFunc(GetUsr(DC)).def.vars.push_back(usr);
         else if (auto *ND = dyn_cast<NamespaceDecl>(SemDC))
@@ -863,8 +869,10 @@ public:
     case Decl::Function:
       func->def.kind = lsSymbolKind::Function;
       break;
-    case Decl::CXXMethod:
-      func->def.kind = lsSymbolKind::Method;
+    case Decl::CXXMethod: {
+      const auto *MD = cast<CXXMethodDecl>(D);
+      func->def.kind =
+          MD->isStatic() ? lsSymbolKind::StaticMethod : lsSymbolKind::Method;
       if (is_def || is_decl) {
         if (auto *ND = dyn_cast<NamedDecl>(D)) {
           SmallVector<const NamedDecl *, 8> OverDecls;
@@ -877,6 +885,7 @@ public:
         }
       }
       break;
+    }
     case Decl::CXXConstructor:
     case Decl::CXXConversion:
       func->def.kind = lsSymbolKind::Constructor;

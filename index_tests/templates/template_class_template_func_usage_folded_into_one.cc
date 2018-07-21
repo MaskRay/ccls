@@ -19,7 +19,7 @@ OUTPUT:
       "detailed_name": "static int Foo::foo()",
       "qual_name_offset": 11,
       "short_name": "foo",
-      "kind": 6,
+      "kind": 254,
       "storage": 0,
       "declarations": [],
       "spell": "4:14-4:17|10528472276654770367|2|1026",
@@ -27,7 +27,7 @@ OUTPUT:
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["9:19-9:22|10528472276654770367|2|36", "10:20-10:23|10528472276654770367|2|36"],
+      "uses": ["9:19-9:22|0|1|36", "10:20-10:23|0|1|36"],
       "callees": []
     }],
   "usr2type": [{
