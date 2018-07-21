@@ -47,7 +47,7 @@ OUTPUT: simple_impl.cc
       "derived": [],
       "vars": [],
       "uses": [],
-      "callees": []
+      "callees": ["4:3-4:9|16236105532929924676|3|16420"]
     }, {
       "usr": 16236105532929924676,
       "detailed_name": "void header()",
@@ -59,7 +59,7 @@ OUTPUT: simple_impl.cc
       "bases": [],
       "derived": [],
       "vars": [],
-      "uses": ["4:3-4:9|0|1|16420"],
+      "uses": ["4:3-4:9|3373269392705484958|3|16420"],
       "callees": []
     }],
   "usr2type": [],

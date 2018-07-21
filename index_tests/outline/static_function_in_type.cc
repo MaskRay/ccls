@@ -16,7 +16,7 @@ OUTPUT: static_function_in_type.h
       "detailed_name": "static void ns::Foo::Register(ns::Manager *)",
       "qual_name_offset": 12,
       "short_name": "Register",
-      "kind": 6,
+      "kind": 254,
       "storage": 0,
       "declarations": ["6:15-6:23|17262466801709381811|2|1025"],
       "bases": [],
@@ -39,7 +39,7 @@ OUTPUT: static_function_in_type.h
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["6:24-6:31|11072669167287398027|2|4"]
+      "uses": ["6:24-6:31|17262466801709381811|2|4"]
     }, {
       "usr": 11072669167287398027,
       "detailed_name": "namespace ns {\n}",
@@ -87,12 +87,12 @@ OUTPUT: static_function_in_type.cc
       "detailed_name": "void Foo::Register(ns::Manager *m)",
       "qual_name_offset": 5,
       "short_name": "Register",
-      "kind": 6,
+      "kind": 254,
       "storage": 0,
       "comments": "static",
       "declarations": [],
       "spell": "5:11-5:19|17262466801709381811|2|1026",
-      "extent": "5:1-6:2|11072669167287398027|2|0",
+      "extent": "5:1-6:2|17262466801709381811|2|0",
       "bases": [],
       "derived": [],
       "vars": [13569879755236306838],
