@@ -207,7 +207,7 @@ QualType GetBaseType(QualType T, bool deduce_auto) {
   return BaseType;
 }
 
-const Decl* GetTypeDecl(QualType T) {
+const Decl *GetTypeDecl(QualType T, bool *specialization = nullptr) {
   Decl *D = nullptr;
   T = GetBaseType(T.getUnqualifiedType(), true);
   const Type* TP = T.getTypePtrOrNull();
@@ -233,6 +233,8 @@ try_again:
     D = cast<TemplateTypeParmType>(TP)->getDecl();
     break;
   case Type::TemplateSpecialization:
+    if (specialization)
+      *specialization = true;
     if (const RecordType *Record = TP->getAs<RecordType>())
       D = Record->getDecl();
     else
@@ -492,15 +494,14 @@ public:
       if (L.isMacroID() || !SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
       StringRef Buf = GetSourceInRange(SM, Lang, R);
-      Twine Static("static ");
-      Twine T = Buf.count('\n') <= kInitializerMaxLines - 1
-                    ? def.detailed_name + (Buf.size() && Buf[0] == ':'
-                                               ? Twine(" ", Buf)
-                                               : Twine(" = ", Buf))
-                    : def.detailed_name;
+      Twine Init = Buf.count('\n') <= kInitializerMaxLines - 1
+                       ? Buf.size() && Buf[0] == ':' ? Twine(" ", Buf)
+                                                     : Twine(" = ", Buf)
+                       : Twine();
+      Twine T = def.detailed_name + Init;
       def.hover =
           def.storage == SC_Static && strncmp(def.detailed_name, "static ", 7)
-              ? Intern((Static + T).str())
+              ? Intern(("static " + T).str())
               : Intern(T.str());
     }
   }
@@ -811,11 +812,21 @@ public:
         type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
                                                         : lsSymbolKind::Class;
         if (is_def) {
-          bool can_get_offset =
-              RD->isCompleteDefinition() && !RD->isDependentType();
-          for (FieldDecl *FD : RD->fields())
-            type->def.vars.emplace_back(
-                GetUsr(FD), can_get_offset ? Ctx->getFieldOffset(FD) : -1);
+          SmallVector<std::pair<const RecordDecl *, int>, 2> Stack{{RD, 0}};
+          while (Stack.size()) {
+            int offset;
+            std::tie(RD, offset) = Stack.back();
+            Stack.pop_back();
+            if (!RD->isCompleteDefinition() || RD->isDependentType())
+              offset = -1;
+            for (FieldDecl *FD : RD->fields()) {
+              int offset1 = offset >= 0 ? offset + Ctx->getFieldOffset(FD) : -1;
+              if (FD->getIdentifier())
+                type->def.vars.emplace_back(GetUsr(FD), offset1);
+              else if (const auto *RT1 = FD->getType()->getAs<RecordType>())
+                Stack.push_back({RT1->getDecl(), offset1});
+            }
+          }
         }
       }
       break;
@@ -851,11 +862,19 @@ public:
     case Decl::UnresolvedUsingTypename:
       type->def.kind = lsSymbolKind::TypeAlias;
       if (auto *TD = dyn_cast<TypedefNameDecl>(D)) {
+        bool specialization = false;
         QualType T = TD->getUnderlyingType();
-        if (const Decl* D1 = GetTypeDecl(T)) {
+        if (const Decl *D1 = GetTypeDecl(T, &specialization)) {
           Usr usr1 = GetUsr(D1);
-          if (db->usr2type.count(usr1))
-            type->def.alias_of = usr1;
+          IndexType &type1 = db->ToType(usr1);
+          type->def.alias_of = usr1;
+          // Not visited template<class T> struct B {typedef A<T> t;};
+          if (specialization) {
+            const TypeSourceInfo *TSI = TD->getTypeSourceInfo();
+            SourceLocation L1 = TSI->getTypeLoc().getBeginLoc();
+            Range loc1 = FromTokenRange(SM, Lang, {L1, L1});
+            type1.uses.push_back(GetUse(db, loc1, LexDC, Role::Reference));
+          }
         }
       }
       break;
