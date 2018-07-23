@@ -81,7 +81,7 @@ OUTPUT:
       "declarations": [],
       "spell": "5:19-5:23|0|1|2",
       "extent": "5:1-5:23|0|1|0",
-      "alias_of": 0,
+      "alias_of": 14491685842684954828,
       "bases": [],
       "derived": [],
       "types": [],
