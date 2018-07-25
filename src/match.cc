@@ -25,7 +25,7 @@ std::optional<Matcher> Matcher::Create(const std::string& search) {
         // std::regex_constants::nosubs
     );
     return m;
-  } catch (std::exception e) {
+  } catch (const std::exception& e) {
     Out_ShowLogMessage out;
     out.display_type = Out_ShowLogMessage::DisplayType::Show;
     out.params.type = lsMessageType::Error;
