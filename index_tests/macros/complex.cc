@@ -25,7 +25,7 @@ OUTPUT:
       "storage": 0,
       "declarations": ["12:1-12:20|0|1|1"],
       "spell": "12:1-12:20|0|1|2",
-      "extent": "1:1-1:1|0|1|0",
+      "extent": "12:1-12:20|0|1|0",
       "bases": [],
       "derived": [],
       "vars": [],

@@ -338,7 +338,10 @@ public:
           p++;
         if (p < E && *p == ' ')
           p++;
-        pad = int(p - begin);
+        if (p + 1 == q)
+          p++;
+        else
+          pad = int(p - begin);
       } else {
         // Other lines, skip |pad| bytes
         int prefix = pad;
@@ -614,9 +617,13 @@ public:
     auto do_def_decl = [&](auto *entity) {
       if (is_def) {
         entity->def.spell = GetUse(db, loc, SemDC, role);
+        SourceRange R = OrigD->getSourceRange();
         entity->def.extent =
-            GetUse(db, FromTokenRange(SM, Lang, OrigD->getSourceRange()), LexDC,
-                   Role::None);
+            GetUse(db,
+                   R.getBegin().isFileID()
+                       ? FromTokenRange(SM, Lang, OrigD->getSourceRange())
+                       : loc,
+                   LexDC, Role::None);
       } else if (is_decl) {
         entity->declarations.push_back(GetUse(db, loc, LexDC, role));
       } else {
