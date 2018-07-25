@@ -123,15 +123,12 @@ endif()
 ### Definitions
 
 target_compile_definitions(ccls PRIVATE
-                           LOGURU_WITH_STREAMS=1
-                           LOGURU_FILENAME_WIDTH=18
-                           LOGURU_THREADNAME_WIDTH=13
                            DEFAULT_RESOURCE_DIRECTORY="${Clang_RESOURCE_DIR}")
 
 ### Includes
 
-target_include_directories(ccls PRIVATE
-                           src
+target_include_directories(ccls PRIVATE src)
+target_include_directories(ccls SYSTEM PRIVATE
                            third_party
                            third_party/rapidjson/include)
 
