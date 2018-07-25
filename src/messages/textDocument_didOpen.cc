@@ -50,9 +50,6 @@ struct Handler_TextDocumentDidOpen
     }
 
     include_complete->AddFile(working_file->filename);
-    clang_complete->NotifyView(path);
-    if (g_config->diagnostics.onParse)
-      clang_complete->DiagnosticsUpdate({params.textDocument.uri});
     if (params.args.size())
       project->SetFlagsForFile(params.args, path);
 
@@ -64,6 +61,10 @@ struct Handler_TextDocumentDidOpen
 
       clang_complete->FlushSession(entry.filename);
     }
+
+    clang_complete->NotifyView(path);
+    if (g_config->diagnostics.onParse)
+      clang_complete->DiagnosticsUpdate({params.textDocument.uri});
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);
