@@ -368,8 +368,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager *manager,
   WorkingFiles::Snapshot snapshot = session->working_files->AsSnapshot(
       {StripFileType(session->file.filename)});
 
-  LOG_S(INFO) << "Creating completion session with arguments "
-              << StringJoin(args, " ");
+  LOG_S(INFO) << "Creating completion session for " << session->file.filename;
   *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot,
                                      diagnostic);
 }
