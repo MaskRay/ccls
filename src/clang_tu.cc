@@ -85,7 +85,8 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
     Unit.reset(ASTUnit::LoadFromCommandLine(
         Args.data(), Args.data() + Args.size(),
         /*PCHContainerOpts=*/ret->PCHCO, Diags,
-        /*ResourceFilePath=*/"", /*OnlyLocalDecls=*/false,
+        /*ResourceFilePath=*/g_config->clang.resourceDir,
+        /*OnlyLocalDecls=*/false,
         /*CaptureDiagnostics=*/diagnostic, Remapped,
         /*RemappedFilesKeepOriginalName=*/true, 1,
         diagnostic ? TU_Complete : TU_Prefix,
