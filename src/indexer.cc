@@ -1221,6 +1221,7 @@ std::vector<std::unique_ptr<IndexFile>> Index(
       Uniquify(it.second.derived);
       Uniquify(it.second.uses);
       // e.g. declaration + out-of-line definition
+      Uniquify(it.second.def.bases);
       Uniquify(it.second.def.funcs);
     }
     for (auto& it : entry->usr2var)
