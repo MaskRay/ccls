@@ -28,7 +28,7 @@ OUTPUT:
   "usr2var": [{
       "usr": 1346710425945444872,
       "detailed_name": "extern T t",
-      "qual_name_offset": 0,
+      "qual_name_offset": 9,
       "short_name": "t",
       "declarations": ["3:10-3:11|0|1|1"],
       "type": 5673439900521455039,

@@ -434,6 +434,10 @@ public:
     std::string name = OS.str();
     SimplifyAnonymous(name);
     auto i = name.find(short_name);
+    if (short_name.size())
+      while (i != std::string::npos && ((i && isalnum(name[i - 1])) ||
+                                        isalnum(name[i + short_name.size()])))
+        i = name.find(short_name, i + short_name.size());
     if (i == std::string::npos) {
       // e.g. operator type-parameter-1
       i = 0;
@@ -495,7 +499,11 @@ public:
     if (init) {
       SourceManager &SM = Ctx->getSourceManager();
       const LangOptions& Lang = Ctx->getLangOpts();
-      SourceRange R = init->getSourceRange();
+      SourceRange R = SM.getExpansionRange(init->getSourceRange())
+#if LLVM_VERSION_MAJOR >= 7
+                          .getAsRange()
+#endif
+          ;
       SourceLocation L = D->getLocation();
       if (L.isMacroID() || !SM.isBeforeInTranslationUnit(L, R.getBegin()))
         return;
@@ -882,8 +890,10 @@ public:
           if (specialization) {
             const TypeSourceInfo *TSI = TD->getTypeSourceInfo();
             SourceLocation L1 = TSI->getTypeLoc().getBeginLoc();
-            Range loc1 = FromTokenRange(SM, Lang, {L1, L1});
-            type1.uses.push_back(GetUse(db, loc1, LexDC, Role::Reference));
+            if (SM.getFileID(L1) == LocFID) {
+              Range loc1 = FromTokenRange(SM, Lang, {L1, L1});
+              type1.uses.push_back(GetUse(db, loc1, LexDC, Role::Reference));
+            }
           }
         }
       }

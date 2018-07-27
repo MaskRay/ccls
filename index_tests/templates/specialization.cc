@@ -367,7 +367,7 @@ OUTPUT:
     }, {
       "usr": 2933643612409209903,
       "detailed_name": "function<void (int)> f",
-      "qual_name_offset": 0,
+      "qual_name_offset": 21,
       "short_name": "f",
       "declarations": [],
       "spell": "7:21-7:22|0|1|2",

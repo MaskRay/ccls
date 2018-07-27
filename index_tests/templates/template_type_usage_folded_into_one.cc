@@ -65,7 +65,7 @@ OUTPUT:
   "usr2var": [{
       "usr": 12028309045033782423,
       "detailed_name": "Foo<bool> b",
-      "qual_name_offset": 4,
+      "qual_name_offset": 10,
       "short_name": "b",
       "declarations": [],
       "spell": "5:11-5:12|0|1|2",

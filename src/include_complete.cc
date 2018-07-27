@@ -162,16 +162,16 @@ void IncludeComplete::InsertIncludesFromDirectory(std::string directory,
                                                   bool use_angle_brackets) {
   directory = NormalizePath(directory);
   EnsureEndsInSlash(directory);
-  if (match_ && !match_->IsMatch(directory)) {
-    // Don't even enter the directory if it fails the patterns.
+  if (match_ && !match_->IsMatch(directory))
     return;
-  }
+  bool include_cpp = directory.find("include/c++") != std::string::npos;
 
   std::vector<CompletionCandidate> results;
   GetFilesInFolder(
       directory, true /*recursive*/, false /*add_folder_to_path*/,
-      [&](const std::string& path) {
-        if (!EndsWithAny(path, g_config->completion.includeSuffixWhitelist))
+      [&](const std::string &path) {
+        if (!include_cpp &&
+            !EndsWithAny(path, g_config->completion.includeSuffixWhitelist))
           return;
         if (match_ && !match_->IsMatch(directory + path))
           return;
