@@ -65,8 +65,8 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 8804696910588009104,
-      "detailed_name": "Foo::bool b",
-      "qual_name_offset": 0,
+      "detailed_name": "bool Foo::b",
+      "qual_name_offset": 5,
       "short_name": "b",
       "declarations": [],
       "spell": "3:8-3:9|8501689086387244262|2|1026",

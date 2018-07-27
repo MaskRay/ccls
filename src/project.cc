@@ -17,6 +17,7 @@ using namespace ccls;
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/StringSet.h>
 #include <llvm/Support/LineIterator.h>
 using namespace clang;
 using namespace llvm;
@@ -296,14 +297,16 @@ std::vector<Project::Entry> LoadCompilationEntriesFromDirectory(
 
   LOG_S(INFO) << "loaded " << Path.c_str();
 
+  StringSet<> Seen;
   std::vector<Project::Entry> result;
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     CompileCommandsEntry entry;
     entry.directory = std::move(Cmd.Directory);
     entry.file = entry.ResolveIfRelative(Cmd.Filename);
     entry.args = std::move(Cmd.CommandLine);
-    result.push_back(
-        GetCompilationEntryFromCompileCommandEntry(project, entry));
+    auto entry1 = GetCompilationEntryFromCompileCommandEntry(project, entry);
+    if (Seen.insert(entry1.filename).second)
+      result.push_back(entry1);
   }
   return result;
 }

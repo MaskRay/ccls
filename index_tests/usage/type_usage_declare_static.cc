@@ -27,7 +27,7 @@ OUTPUT:
   "usr2var": [{
       "usr": 6601831367240627080,
       "detailed_name": "static Type t",
-      "qual_name_offset": 0,
+      "qual_name_offset": 12,
       "short_name": "t",
       "declarations": [],
       "spell": "2:13-2:14|0|1|2",

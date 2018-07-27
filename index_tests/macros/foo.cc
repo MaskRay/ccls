@@ -92,7 +92,7 @@ OUTPUT:
       "detailed_name": "int x",
       "qual_name_offset": 4,
       "short_name": "x",
-      "hover": "int x = ",
+      "hover": "int x = A",
       "declarations": [],
       "spell": "8:5-8:6|0|1|2",
       "extent": "8:1-1:1|0|1|0",

@@ -75,7 +75,7 @@ OUTPUT:
     }, {
       "usr": 16374832544037266261,
       "detailed_name": "ForwardType *a",
-      "qual_name_offset": 0,
+      "qual_name_offset": 13,
       "short_name": "a",
       "declarations": [],
       "spell": "5:16-5:17|4654328188330986029|3|2",

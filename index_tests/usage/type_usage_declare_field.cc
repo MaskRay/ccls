@@ -70,8 +70,8 @@ OUTPUT:
     }],
   "usr2var": [{
       "usr": 14314859014962085433,
-      "detailed_name": "ForwFoo::ardType *a",
-      "qual_name_offset": 0,
+      "detailed_name": "ForwardType *Foo::a",
+      "qual_name_offset": 13,
       "short_name": "a",
       "declarations": [],
       "spell": "5:16-5:17|15041163540773201510|2|1026",

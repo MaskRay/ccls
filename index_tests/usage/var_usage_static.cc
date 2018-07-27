@@ -44,7 +44,7 @@ OUTPUT:
   "usr2var": [{
       "usr": 11823161916242867318,
       "detailed_name": "static int a",
-      "qual_name_offset": 0,
+      "qual_name_offset": 11,
       "short_name": "a",
       "declarations": [],
       "spell": "1:12-1:13|0|1|2",
