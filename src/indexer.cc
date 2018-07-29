@@ -596,7 +596,7 @@ public:
     auto R = SM.isMacroArgExpansion(Loc) ? CharSourceRange::getTokenRange(Spell)
                                          : SM.getExpansionRange(Loc);
 #endif
-    loc = FromTokenRange(SM, Lang, R.getAsRange());
+    loc = FromCharSourceRange(SM, Lang, R);
     LocFID = SM.getFileID(R.getBegin());
     FE = SM.getFileEntryForID(LocFID);
     if (!FE)
@@ -995,9 +995,10 @@ public:
     if (!File)
       return;
     llvm::sys::fs::UniqueID UniqueID;
-    SourceRange R = FilenameRange.getAsRange();
-    auto spell = FromCharRange(SM, param.Ctx->getLangOpts(), R, &UniqueID);
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(R.getBegin()));
+    auto spell = FromCharSourceRange(SM, param.Ctx->getLangOpts(),
+                                     FilenameRange, &UniqueID);
+    const FileEntry *FE =
+        SM.getFileEntryForID(SM.getFileID(FilenameRange.getBegin()));
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {

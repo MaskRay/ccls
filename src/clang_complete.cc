@@ -368,7 +368,8 @@ void TryEnsureDocumentParsed(ClangCompleteManager *manager,
   WorkingFiles::Snapshot snapshot = session->working_files->AsSnapshot(
       {StripFileType(session->file.filename)});
 
-  LOG_S(INFO) << "create completion session for " << session->file.filename;
+  LOG_S(INFO) << "create " << (diagnostic ? "diagnostic" : "completion")
+              << " TU for " << session->file.filename;
   *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot,
                                      diagnostic);
 }
@@ -541,7 +542,7 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
       for (const FixItHint &FixIt : I->getFixIts()) {
         lsTextEdit edit;
         edit.newText = FixIt.CodeToInsert;
-        r = FromCharRange(SM, LangOpts, FixIt.RemoveRange.getAsRange());
+        r = FromCharSourceRange(SM, LangOpts, FixIt.RemoveRange);
         edit.range =
             lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
         ls_diag.fixits_.push_back(edit);

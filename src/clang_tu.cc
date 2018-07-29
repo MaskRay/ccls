@@ -12,13 +12,13 @@ using namespace clang;
 #include <assert.h>
 #include <mutex>
 
-Range FromSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
-                      SourceRange R, llvm::sys::fs::UniqueID *UniqueID,
-                      bool token) {
+Range FromCharSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
+                          CharSourceRange R,
+                          llvm::sys::fs::UniqueID *UniqueID) {
   SourceLocation BLoc = R.getBegin(), ELoc = R.getEnd();
   std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(BLoc);
   std::pair<FileID, unsigned> EInfo = SM.getDecomposedLoc(ELoc);
-  if (token)
+  if (R.isTokenRange())
     EInfo.second += Lexer::MeasureTokenLength(ELoc, SM, LangOpts);
   unsigned l0 = SM.getLineNumber(BInfo.first, BInfo.second) - 1,
            c0 = SM.getColumnNumber(BInfo.first, BInfo.second) - 1,
@@ -42,15 +42,15 @@ Range FromSourceRange(const SourceManager &SM, const LangOptions &LangOpts,
 }
 
 Range FromCharRange(const SourceManager &SM, const LangOptions &LangOpts,
-                    SourceRange R,
-                    llvm::sys::fs::UniqueID *UniqueID) {
-  return FromSourceRange(SM, LangOpts, R, UniqueID, false);
+                    SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
+  return FromCharSourceRange(SM, LangOpts, CharSourceRange::getCharRange(R),
+                             UniqueID);
 }
 
 Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
-                     SourceRange R,
-                     llvm::sys::fs::UniqueID *UniqueID) {
-  return FromSourceRange(SM, LangOpts, R, UniqueID, true);
+                     SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
+  return FromCharSourceRange(SM, LangOpts, CharSourceRange::getTokenRange(R),
+                             UniqueID);
 }
 
 std::vector<ASTUnit::RemappedFile>
@@ -70,8 +70,9 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
   std::vector<const char *> Args;
   for (auto& arg : args)
     Args.push_back(arg.c_str());
-  Args.push_back("-fno-spell-checking");
   Args.push_back("-fallow-editor-placeholders");
+  if (!diagnostic)
+    Args.push_back("-fno-spell-checking");
 
   auto ret = std::make_unique<ClangTranslationUnit>();
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
