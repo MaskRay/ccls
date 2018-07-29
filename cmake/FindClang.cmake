@@ -114,8 +114,10 @@ executable. Output:\n ${_Clang_FIND_RESOURCE_DIR_ERROR}")
 
   # Find Clang version
   set(_Clang_VERSION_REGEX "([0-9]+)\\.([0-9]+)\\.([0-9]+)")
-  execute_process(COMMAND ${Clang_EXECUTABLE} --version
-                  OUTPUT_VARIABLE Clang_VERSION)
+  execute_process(
+    COMMAND ${Clang_EXECUTABLE} --version
+    OUTPUT_VARIABLE Clang_VERSION
+  )
   string(REGEX MATCH ${_Clang_VERSION_REGEX} Clang_VERSION ${Clang_VERSION})
 endif()
 

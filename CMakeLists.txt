@@ -5,7 +5,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/)
 include(DefaultCMakeBuildType)
 
 # Required Clang version
-set(CLANG_VERSION 6.0.0 CACHE STRING "Clang version")
 set(CLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
     CACHE STRING "Downloaded Clang location")
 option(SYSTEM_CLANG "Use system installation of Clang instead of \
@@ -42,18 +41,20 @@ target_compile_options(ccls PRIVATE -fno-rtti)
 if(MSVC)
   # Common MSVC/Clang(Windows) options
   target_compile_options(ccls PRIVATE
-                         /nologo
-                         /EHsc
-                         /W3 # roughly -Wall
-                         /wd4996 # disable loguru unsafe warnings
-                         /wd4722 # ignores warning C4722
-                                 # (destructor never returns) in loguru
-                         /wd4267 # ignores warning C4267
-                                 # (conversion from 'size_t' to 'type'),
-                                 # roughly -Wno-sign-compare
-                         /wd4800
-                         $<$<CONFIG:Debug>:/FS>
-                         )
+    /nologo
+    /EHsc
+    /D_CRT_SECURE_NO_WARNINGS # don't try to use MSVC std replacements
+    /W3 # roughly -Wall
+    /wd4996 # disable loguru unsafe warnings
+    /wd4722 # ignores warning C4722
+            # (destructor never returns) in loguru
+    /wd4267 # ignores warning C4267
+            # (conversion from 'size_t' to 'type'),
+            # roughly -Wno-sign-compare
+    /wd4800
+    /wd4068 # Disable unknown pragma warning
+    $<$<CONFIG:Debug>:/FS>
+  )
 else()
   # Common GCC/Clang(Linux) options
   target_compile_options(ccls PRIVATE
@@ -83,7 +84,7 @@ if(NOT SYSTEM_CLANG)
   message(STATUS "Using downloaded Clang")
 
   include(DownloadAndExtractClang)
-  download_and_extract_clang(${CLANG_VERSION} ${CLANG_DOWNLOAD_LOCATION})
+  download_and_extract_clang(${CLANG_DOWNLOAD_LOCATION})
   # Used by FindClang
   set(CLANG_ROOT ${DOWNLOADED_CLANG_DIR})
 
@@ -105,7 +106,7 @@ endif()
 ### Libraries
 
 # See cmake/FindClang.cmake
-find_package(Clang ${CLANG_VERSION} REQUIRED)
+find_package(Clang 6.0.0)
 target_link_libraries(ccls PRIVATE Clang::Clang)
 
 # Enable threading support
@@ -136,7 +137,6 @@ target_include_directories(ccls SYSTEM PRIVATE
 
 install(TARGETS ccls RUNTIME DESTINATION bin)
 
-# TODO: install libclang.dll on Windows as well
 if(NOT SYSTEM_CLANG AND NOT ${CMAKE_SYSTEM_NAME} STREQUAL Windows)
 
   if(${CMAKE_SYSTEM_NAME} MATCHES Linux|FreeBSD)
@@ -174,63 +174,64 @@ file(GLOB SOURCES src/*.cc src/*.h src/serializers/*.cc src/serializers/*.h
 target_sources(ccls PRIVATE third_party/siphash.cc)
 
 target_sources(ccls PRIVATE
-               src/clang_complete.cc
-               src/clang_tu.cc
-               src/clang_utils.cc
-               src/config.cc
-               src/file_consumer.cc
-               src/filesystem.cc
-               src/fuzzy_match.cc
-               src/main.cc
-               src/include_complete.cc
-               src/indexer.cc
-               src/method.cc
-               src/language.cc
-               src/log.cc
-               src/lsp.cc
-               src/match.cc
-               src/message_handler.cc
-               src/pipeline.cc
-               src/platform_posix.cc
-               src/platform_win.cc
-               src/position.cc
-               src/project.cc
-               src/query_utils.cc
-               src/query.cc
-               src/serializer.cc
-               src/test.cc
-               src/utils.cc
-               src/working_files.cc)
+  src/clang_complete.cc
+  src/clang_tu.cc
+  src/clang_utils.cc
+  src/config.cc
+  src/file_consumer.cc
+  src/filesystem.cc
+  src/fuzzy_match.cc
+  src/main.cc
+  src/include_complete.cc
+  src/indexer.cc
+  src/method.cc
+  src/language.cc
+  src/log.cc
+  src/lsp.cc
+  src/match.cc
+  src/message_handler.cc
+  src/pipeline.cc
+  src/platform_posix.cc
+  src/platform_win.cc
+  src/position.cc
+  src/project.cc
+  src/query_utils.cc
+  src/query.cc
+  src/serializer.cc
+  src/test.cc
+  src/utils.cc
+  src/working_files.cc
+)
 
 target_sources(ccls PRIVATE
-               src/messages/ccls_base.cc
-               src/messages/ccls_callHierarchy.cc
-               src/messages/ccls_callers.cc
-               src/messages/ccls_fileInfo.cc
-               src/messages/ccls_freshenIndex.cc
-               src/messages/ccls_inheritanceHierarchy.cc
-               src/messages/ccls_memberHierarchy.cc
-               src/messages/ccls_vars.cc
-               src/messages/exit.cc
-               src/messages/initialize.cc
-               src/messages/shutdown.cc
-               src/messages/textDocument_codeAction.cc
-               src/messages/textDocument_codeLens.cc
-               src/messages/textDocument_completion.cc
-               src/messages/textDocument_definition.cc
-               src/messages/textDocument_didChange.cc
-               src/messages/textDocument_didClose.cc
-               src/messages/textDocument_didOpen.cc
-               src/messages/textDocument_didSave.cc
-               src/messages/textDocument_documentHighlight.cc
-               src/messages/textDocument_documentSymbol.cc
-               src/messages/textDocument_hover.cc
-               src/messages/textDocument_implementation.cc
-               src/messages/textDocument_references.cc
-               src/messages/textDocument_rename.cc
-               src/messages/textDocument_signatureHelp.cc
-               src/messages/textDocument_typeDefinition.cc
-               src/messages/workspace_didChangeConfiguration.cc
-               src/messages/workspace_didChangeWatchedFiles.cc
-               src/messages/workspace_symbol.cc
-               )
+  src/messages/ccls_base.cc
+  src/messages/ccls_callHierarchy.cc
+  src/messages/ccls_callers.cc
+  src/messages/ccls_fileInfo.cc
+  src/messages/ccls_freshenIndex.cc
+  src/messages/ccls_inheritanceHierarchy.cc
+  src/messages/ccls_memberHierarchy.cc
+  src/messages/ccls_vars.cc
+  src/messages/exit.cc
+  src/messages/initialize.cc
+  src/messages/shutdown.cc
+  src/messages/textDocument_codeAction.cc
+  src/messages/textDocument_codeLens.cc
+  src/messages/textDocument_completion.cc
+  src/messages/textDocument_definition.cc
+  src/messages/textDocument_didChange.cc
+  src/messages/textDocument_didClose.cc
+  src/messages/textDocument_didOpen.cc
+  src/messages/textDocument_didSave.cc
+  src/messages/textDocument_documentHighlight.cc
+  src/messages/textDocument_documentSymbol.cc
+  src/messages/textDocument_hover.cc
+  src/messages/textDocument_implementation.cc
+  src/messages/textDocument_references.cc
+  src/messages/textDocument_rename.cc
+  src/messages/textDocument_signatureHelp.cc
+  src/messages/textDocument_typeDefinition.cc
+  src/messages/workspace_didChangeConfiguration.cc
+  src/messages/workspace_didChangeWatchedFiles.cc
+  src/messages/workspace_symbol.cc
+)
