@@ -214,6 +214,7 @@ target_sources(ccls PRIVATE
                src/messages/exit.cc
                src/messages/initialize.cc
                src/messages/shutdown.cc
+               src/messages/textDocument_codeAction.cc
                src/messages/textDocument_codeLens.cc
                src/messages/textDocument_completion.cc
                src/messages/textDocument_definition.cc
