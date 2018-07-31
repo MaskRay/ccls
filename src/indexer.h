@@ -61,10 +61,11 @@ struct Use : Reference {
   // |file| is used in Query* but not in Index*
   int file_id = -1;
   bool operator==(const Use& o) const {
-    return range == o.range && usr == o.usr && kind == o.kind &&
-           role == o.role && file_id == o.file_id;
+    // lexical container info is ignored.
+    return range == o.range && file_id == o.file_id;
   }
 };
+MAKE_HASHABLE(Use, t.range, t.file_id)
 
 void Reflect(Reader& visitor, Reference& value);
 void Reflect(Writer& visitor, Reference& value);

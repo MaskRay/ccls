@@ -1113,8 +1113,6 @@ std::string IndexFile::ToString() {
   return ccls::Serialize(SerializeFormat::Json, *this);
 }
 
-MAKE_HASHABLE(Use, t.range, t.file_id)
-
 template <typename T>
 void Uniquify(std::vector<T>& a) {
   std::unordered_set<T> seen;

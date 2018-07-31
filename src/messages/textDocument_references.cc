@@ -63,6 +63,7 @@ struct Handler_TextDocumentReferences
     Out_TextDocumentReferences out;
     out.id = request->id;
     bool container = g_config->xref.container;
+    std::unordered_set<Use> seen_uses;
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position)) {
       // Found symbol. Return references.
@@ -76,7 +77,8 @@ struct Handler_TextDocumentReferences
         stack.pop_back();
         auto fn = [&](Use use, lsSymbolKind parent_kind) {
           if (Role(use.role & params.context.role) == params.context.role &&
-              !(use.role & params.context.excludeRole))
+              !(use.role & params.context.excludeRole) &&
+              seen_uses.insert(use).second)
             if (std::optional<lsLocationEx> ls_loc =
                     GetLsLocationEx(db, working_files, use, container)) {
               if (container)
