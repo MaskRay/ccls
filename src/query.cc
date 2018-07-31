@@ -12,9 +12,6 @@
 #include <unordered_map>
 #include <unordered_set>
 
-// Used by |REMOVE_ADD| so only |range| is needed.
-MAKE_HASHABLE(Use, t.range, t.file_id);
-
 namespace {
 
 void AssignFileId(const Lid2file_id &, int file_id, SymbolRef &ref) {
