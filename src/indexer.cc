@@ -301,6 +301,19 @@ const Decl* GetSpecialized(const Decl* D) {
   return Template;
 }
 
+bool ValidateRecord(const RecordDecl *RD) {
+  for (const auto *I : RD->fields()){
+    QualType FQT = I->getType();
+    if (FQT->isIncompleteType() || FQT->isDependentType())
+      return false;
+    if (const RecordType *ChildType = I->getType()->getAs<RecordType>())
+      if (const RecordDecl *Child = ChildType->getDecl())
+        if (!ValidateRecord(Child))
+          return false;
+  }
+  return true;
+}
+
 class IndexDataConsumer : public index::IndexDataConsumer {
 public:
   ASTContext *Ctx;
@@ -831,18 +844,24 @@ public:
                                                         : lsSymbolKind::Class;
         if (is_def) {
           SmallVector<std::pair<const RecordDecl *, int>, 2> Stack{{RD, 0}};
+          llvm::DenseSet<const RecordDecl *> Seen;
+          Seen.insert(RD);
           while (Stack.size()) {
             int offset;
             std::tie(RD, offset) = Stack.back();
             Stack.pop_back();
-            if (!RD->isCompleteDefinition() || RD->isDependentType())
+            if (!RD->isCompleteDefinition() || RD->isDependentType() ||
+                !ValidateRecord(RD))
               offset = -1;
             for (FieldDecl *FD : RD->fields()) {
               int offset1 = offset >= 0 ? offset + Ctx->getFieldOffset(FD) : -1;
               if (FD->getIdentifier())
                 type->def.vars.emplace_back(GetUsr(FD), offset1);
-              else if (const auto *RT1 = FD->getType()->getAs<RecordType>())
-                Stack.push_back({RT1->getDecl(), offset1});
+              else if (const auto *RT1 = FD->getType()->getAs<RecordType>()) {
+                if (const RecordDecl *RD1 = RT1->getDecl())
+                  if (Seen.insert(RD1).second)
+                    Stack.push_back({RD1, offset1});
+              }
             }
           }
         }
