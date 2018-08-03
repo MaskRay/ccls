@@ -1,6 +1,8 @@
 #include "message_handler.h"
 #include "query_utils.h"
 #include "pipeline.hh"
+#include "log.hh"
+
 using namespace ccls;
 
 #include <unordered_set>
@@ -24,6 +26,7 @@ struct In_CclsInheritanceHierarchy : public RequestInMessage {
     bool derived = false;
     bool qualified = true;
     int levels = 1;
+    bool flat = false;
   };
   Params params;
 };
@@ -35,7 +38,8 @@ MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy::Params,
                     kind,
                     derived,
                     qualified,
-                    levels);
+                    levels,
+                    flat);
 MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy, id, params);
 REGISTER_IN_MESSAGE(In_CclsInheritanceHierarchy);
 
@@ -158,8 +162,10 @@ struct Handler_CclsInheritanceHierarchy
     auto& params = request->params;
     Out_CclsInheritanceHierarchy out;
     out.id = request->id;
+    bool flat = params.flat;
 
     if (params.id.size()) {
+      if (flat) return;
       try {
         params.usr = std::stoull(params.id);
       } catch (...) {
@@ -188,8 +194,26 @@ struct Handler_CclsInheritanceHierarchy
           break;
         }
     }
-
-    pipeline::WriteStdout(kMethodType, out);
+    if (flat) {
+      Out_LocationList out2;
+      out2.id = request->id;
+      if (out.result) {
+        auto push = [&out2](Out_CclsInheritanceHierarchy::Entry & entry) {
+          auto y = [&out2](Out_CclsInheritanceHierarchy::Entry & entry, auto& z)
+                   -> void {
+            if (entry.location.uri.GetPath().size())
+              out2.result.push_back({entry.location});
+            for (auto & child : entry.children) {
+              z(child, z);
+            }
+          };
+          y(entry, y);
+        };
+        push(*out.result);
+      }
+      pipeline::WriteStdout(kMethodType, out2);
+    } else
+      pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsInheritanceHierarchy);
