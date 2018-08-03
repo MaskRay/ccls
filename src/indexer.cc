@@ -301,6 +301,19 @@ const Decl* GetSpecialized(const Decl* D) {
   return Template;
 }
 
+bool ValidateRecord(const RecordDecl *RD) {
+  for (const auto *I : RD->fields()){
+    QualType FQT = I->getType();
+    if (FQT->isIncompleteType() || FQT->isDependentType())
+      return false;
+    if (const RecordType *ChildType = I->getType()->getAs<RecordType>())
+      if (const RecordDecl *Child = ChildType->getDecl())
+        if (!ValidateRecord(Child))
+          return false;
+  }
+  return true;
+}
+
 class IndexDataConsumer : public index::IndexDataConsumer {
 public:
   ASTContext *Ctx;
@@ -835,7 +848,8 @@ public:
             int offset;
             std::tie(RD, offset) = Stack.back();
             Stack.pop_back();
-            if (!RD->isCompleteDefinition() || RD->isDependentType())
+            if (!RD->isCompleteDefinition() || RD->isDependentType() ||
+                !ValidateRecord(RD))
               offset = -1;
             for (FieldDecl *FD : RD->fields()) {
               int offset1 = offset >= 0 ? offset + Ctx->getFieldOffset(FD) : -1;
