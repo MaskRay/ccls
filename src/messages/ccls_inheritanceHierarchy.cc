@@ -1,8 +1,9 @@
 #include "message_handler.h"
-#include "query_utils.h"
 #include "pipeline.hh"
+#include "query_utils.h"
 using namespace ccls;
 
+#include <queue>
 #include <unordered_set>
 
 namespace {
@@ -24,18 +25,12 @@ struct In_CclsInheritanceHierarchy : public RequestInMessage {
     bool derived = false;
     bool qualified = true;
     int levels = 1;
-  };
-  Params params;
+    bool flat = false;
+  } params;
 };
 
-MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy::Params,
-                    textDocument,
-                    position,
-                    id,
-                    kind,
-                    derived,
-                    qualified,
-                    levels);
+MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy::Params, textDocument, position,
+                    id, kind, derived, qualified, levels, flat);
 MAKE_REFLECT_STRUCT(In_CclsInheritanceHierarchy, id, params);
 REGISTER_IN_MESSAGE(In_CclsInheritanceHierarchy);
 
@@ -159,7 +154,7 @@ struct Handler_CclsInheritanceHierarchy
     Out_CclsInheritanceHierarchy out;
     out.id = request->id;
 
-    if (params.id.size()) {
+    if (!params.flat && params.id.size()) {
       try {
         params.usr = std::stoull(params.id);
       } catch (...) {
@@ -189,7 +184,26 @@ struct Handler_CclsInheritanceHierarchy
         }
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    if (!params.flat) {
+      pipeline::WriteStdout(kMethodType, out);
+      return;
+    }
+    Out_LocationList out1;
+    out1.id = request->id;
+    if (out.result) {
+      std::queue<Out_CclsInheritanceHierarchy::Entry *> q;
+      for (auto &entry1 : out.result->children)
+        q.push(&entry1);
+      while (q.size()) {
+        auto *entry = q.front();
+        q.pop();
+        if (entry->location.uri.raw_uri.size())
+          out1.result.push_back({entry->location});
+        for (auto &entry1 : entry->children)
+          q.push(&entry1);
+      }
+    }
+    pipeline::WriteStdout(kMethodType, out1);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsInheritanceHierarchy);
