@@ -124,7 +124,7 @@ endif()
 ### Definitions
 
 target_compile_definitions(ccls PRIVATE
-                           DEFAULT_RESOURCE_DIRECTORY="${Clang_RESOURCE_DIR}")
+                           DEFAULT_RESOURCE_DIRECTORY=R"\(${Clang_RESOURCE_DIR}\)")
 
 ### Includes
 
