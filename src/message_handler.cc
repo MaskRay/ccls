@@ -337,15 +337,16 @@ void EmitSemanticHighlighting(DB *db,
   out.params.uri = lsDocumentUri::FromPath(wfile->filename);
   // Transform lsRange into pair<int, int> (offset pairs)
   if (!g_config->highlight.lsRanges) {
-    std::vector<std::pair<lsRange, Out_CclsPublishSemanticHighlighting::Symbol *>>
-      scratch;
+    std::vector<
+        std::pair<lsRange, Out_CclsPublishSemanticHighlighting::Symbol *>>
+        scratch;
     for (auto &entry : grouped_symbols) {
       for (auto &range : entry.second.lsRanges)
         scratch.emplace_back(range, &entry.second);
       entry.second.lsRanges.clear();
     }
     std::sort(scratch.begin(), scratch.end(),
-      [](auto &l, auto &r) { return l.first.start < r.first.start; });
+              [](auto &l, auto &r) { return l.first.start < r.first.start; });
     const auto &buf = wfile->buffer_content;
     int l = 0, c = 0, i = 0, p = 0;
     auto mov = [&](int line, int col) {
@@ -357,11 +358,13 @@ void EmitSemanticHighlighting(DB *db,
         if (uint8_t(buf[i]) < 128 || 192 <= uint8_t(buf[i]))
           p++;
       }
-      if (l < line) return true;
+      if (l < line)
+        return true;
       for (; c < col && i < buf.size() && buf[i] != '\n'; c++)
         if (p++, uint8_t(buf[i++]) >= 128)
           // Skip 0b10xxxxxx
-          while (i < buf.size() && uint8_t(buf[i]) >= 128 && uint8_t(buf[i]) < 192)
+          while (i < buf.size() && uint8_t(buf[i]) >= 128 &&
+                 uint8_t(buf[i]) < 192)
             i++;
       return c < col;
     };

@@ -88,7 +88,7 @@ struct Out_TextDocumentPublishDiagnostics
   Params params;
 };
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
+void Reflect(TVisitor &visitor, Out_TextDocumentPublishDiagnostics &value) {
   std::string method = "textDocument/publishDiagnostics";
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
@@ -96,6 +96,5 @@ void Reflect(TVisitor& visitor, Out_TextDocumentPublishDiagnostics& value) {
   REFLECT_MEMBER(params);
   REFLECT_MEMBER_END();
 }
-MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params,
-                    uri,
+MAKE_REFLECT_STRUCT(Out_TextDocumentPublishDiagnostics::Params, uri,
                     diagnostics);

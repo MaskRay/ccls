@@ -1,8 +1,8 @@
 #include "clang_complete.h"
 #include "include_complete.h"
 #include "message_handler.h"
-#include "project.h"
 #include "pipeline.hh"
+#include "project.h"
 #include "working_files.h"
 using namespace ccls;
 
@@ -12,7 +12,7 @@ MethodType kMethodType = "textDocument/didOpen";
 // Open, view, change, close file
 struct In_TextDocumentDidOpen : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
-  
+
   struct Params {
     lsTextDocumentItem textDocument;
 
@@ -31,18 +31,18 @@ struct Handler_TextDocumentDidOpen
     : BaseMessageHandler<In_TextDocumentDidOpen> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_TextDocumentDidOpen* request) override {
+  void Run(In_TextDocumentDidOpen *request) override {
     // NOTE: This function blocks code lens. If it starts taking a long time
     // we will need to find a way to unblock the code lens request.
-    const auto& params = request->params;
+    const auto &params = request->params;
     std::string path = params.textDocument.uri.GetPath();
 
-    WorkingFile* working_file = working_files->OnOpen(params.textDocument);
+    WorkingFile *working_file = working_files->OnOpen(params.textDocument);
     if (std::optional<std::string> cached_file_contents =
             pipeline::LoadCachedFileContents(path))
       working_file->SetIndexContent(*cached_file_contents);
 
-    QueryFile* file = nullptr;
+    QueryFile *file = nullptr;
     FindFileOrFail(db, project, std::nullopt, path, &file);
     if (file && file->def) {
       EmitSkippedRanges(working_file, file->def->skipped_ranges);
@@ -68,4 +68,4 @@ struct Handler_TextDocumentDidOpen
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);
-}  // namespace
+} // namespace

@@ -7,9 +7,9 @@
 #include <llvm/Support/CrashRecoveryContext.h>
 
 #include <memory>
+#include <stdlib.h>
 #include <string>
 #include <vector>
-#include <stdlib.h>
 
 std::vector<clang::ASTUnit::RemappedFile>
 GetRemapped(const WorkingFiles::Snapshot &snapshot);
@@ -19,12 +19,12 @@ Range FromCharSourceRange(const clang::SourceManager &SM,
                           clang::CharSourceRange R,
                           llvm::sys::fs::UniqueID *UniqueID = nullptr);
 
-Range FromCharRange(const clang::SourceManager &SM, const clang::LangOptions &LangOpts,
-                    clang::SourceRange R,
+Range FromCharRange(const clang::SourceManager &SM,
+                    const clang::LangOptions &LangOpts, clang::SourceRange R,
                     llvm::sys::fs::UniqueID *UniqueID = nullptr);
 
-Range FromTokenRange(const clang::SourceManager &SM, const clang::LangOptions &LangOpts,
-                     clang::SourceRange R,
+Range FromTokenRange(const clang::SourceManager &SM,
+                     const clang::LangOptions &LangOpts, clang::SourceRange R,
                      llvm::sys::fs::UniqueID *UniqueID = nullptr);
 
 struct ClangTranslationUnit {

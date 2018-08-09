@@ -8,52 +8,50 @@
 #include <iosfwd>
 #include <unordered_map>
 
-#define REGISTER_IN_MESSAGE(type) \
+#define REGISTER_IN_MESSAGE(type)                                              \
   static MessageRegistryRegister<type> type##message_handler_instance_;
 
 struct MessageRegistry {
-  static MessageRegistry* instance_;
-  static MessageRegistry* instance();
+  static MessageRegistry *instance_;
+  static MessageRegistry *instance();
 
   using Allocator =
-      std::function<void(Reader& visitor, std::unique_ptr<InMessage>*)>;
+      std::function<void(Reader &visitor, std::unique_ptr<InMessage> *)>;
   std::unordered_map<std::string, Allocator> allocators;
 
-  std::optional<std::string> ReadMessageFromStdin(
-      std::unique_ptr<InMessage>* message);
-  std::optional<std::string> Parse(Reader& visitor,
-                              std::unique_ptr<InMessage>* message);
+  std::optional<std::string>
+  ReadMessageFromStdin(std::unique_ptr<InMessage> *message);
+  std::optional<std::string> Parse(Reader &visitor,
+                                   std::unique_ptr<InMessage> *message);
 };
 
-template <typename T>
-struct MessageRegistryRegister {
+template <typename T> struct MessageRegistryRegister {
   MessageRegistryRegister() {
     T dummy;
     std::string method_name = dummy.GetMethodType();
     MessageRegistry::instance()->allocators[method_name] =
-        [](Reader& visitor, std::unique_ptr<InMessage>* message) {
+        [](Reader &visitor, std::unique_ptr<InMessage> *message) {
           *message = std::make_unique<T>();
           // Reflect may throw and *message will be partially deserialized.
-          Reflect(visitor, static_cast<T&>(**message));
+          Reflect(visitor, static_cast<T &>(**message));
         };
   }
 };
 
 struct lsBaseOutMessage {
   virtual ~lsBaseOutMessage();
-  virtual void ReflectWriter(Writer&) = 0;
+  virtual void ReflectWriter(Writer &) = 0;
 
   // Send the message to the language client by writing it to stdout.
-  void Write(std::ostream& out);
+  void Write(std::ostream &out);
 };
 
-template <typename TDerived>
-struct lsOutMessage : lsBaseOutMessage {
+template <typename TDerived> struct lsOutMessage : lsBaseOutMessage {
   // All derived types need to reflect on the |jsonrpc| member.
   std::string jsonrpc = "2.0";
 
-  void ReflectWriter(Writer& writer) override {
-    Reflect(writer, static_cast<TDerived&>(*this));
+  void ReflectWriter(Writer &writer) override {
+    Reflect(writer, static_cast<TDerived &>(*this));
   }
 };
 
@@ -75,7 +73,7 @@ struct lsResponseError {
   // Short description.
   std::string message;
 
-  void Write(Writer& visitor);
+  void Write(Writer &visitor);
 };
 
 /////////////////////////////////////////////////////////////////////////////
@@ -87,28 +85,28 @@ struct lsResponseError {
 /////////////////////////////////////////////////////////////////////////////
 
 struct lsDocumentUri {
-  static lsDocumentUri FromPath(const std::string& path);
+  static lsDocumentUri FromPath(const std::string &path);
 
-  bool operator==(const lsDocumentUri& other) const;
+  bool operator==(const lsDocumentUri &other) const;
 
-  void SetPath(const std::string& path);
+  void SetPath(const std::string &path);
   std::string GetPath() const;
 
   std::string raw_uri;
 };
 
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, lsDocumentUri& value) {
+void Reflect(TVisitor &visitor, lsDocumentUri &value) {
   Reflect(visitor, value.raw_uri);
 }
 
 struct lsPosition {
   int line = 0;
   int character = 0;
-  bool operator==(const lsPosition& o) const {
+  bool operator==(const lsPosition &o) const {
     return line == o.line && character == o.character;
   }
-  bool operator<(const lsPosition& o) const {
+  bool operator<(const lsPosition &o) const {
     return line != o.line ? line < o.line : character < o.character;
   }
   std::string ToString() const;
@@ -118,10 +116,10 @@ MAKE_REFLECT_STRUCT(lsPosition, line, character);
 struct lsRange {
   lsPosition start;
   lsPosition end;
-  bool operator==(const lsRange& o) const {
+  bool operator==(const lsRange &o) const {
     return start == o.start && end == o.end;
   }
-  bool operator<(const lsRange& o) const {
+  bool operator<(const lsRange &o) const {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
 };
@@ -130,10 +128,10 @@ MAKE_REFLECT_STRUCT(lsRange, start, end);
 struct lsLocation {
   lsDocumentUri uri;
   lsRange range;
-  bool operator==(const lsLocation& o) const {
+  bool operator==(const lsLocation &o) const {
     return uri == o.uri && range == o.range;
   }
-  bool operator<(const lsLocation& o) const {
+  bool operator<(const lsLocation &o) const {
     return !(uri.raw_uri == o.uri.raw_uri) ? uri.raw_uri < o.uri.raw_uri
                                            : range < o.range;
   }
@@ -192,8 +190,7 @@ struct lsLocationEx : lsLocation {
 };
 MAKE_REFLECT_STRUCT(lsLocationEx, uri, range, containerName, parentKind, role);
 
-template <typename T>
-struct lsCommand {
+template <typename T> struct lsCommand {
   // Title of the command (ie, 'save')
   std::string title;
   // Actual command identifier.
@@ -204,7 +201,7 @@ struct lsCommand {
   T arguments;
 };
 template <typename TVisitor, typename T>
-void Reflect(TVisitor& visitor, lsCommand<T>& value) {
+void Reflect(TVisitor &visitor, lsCommand<T> &value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(title);
   REFLECT_MEMBER(command);
@@ -212,8 +209,7 @@ void Reflect(TVisitor& visitor, lsCommand<T>& value) {
   REFLECT_MEMBER_END();
 }
 
-template <typename TData, typename TCommandArguments>
-struct lsCodeLens {
+template <typename TData, typename TCommandArguments> struct lsCodeLens {
   // The range in which this code lens is valid. Should only span a single line.
   lsRange range;
   // The command this code lens represents.
@@ -223,7 +219,7 @@ struct lsCodeLens {
   TData data;
 };
 template <typename TVisitor, typename TData, typename TCommandArguments>
-void Reflect(TVisitor& visitor, lsCodeLens<TData, TCommandArguments>& value) {
+void Reflect(TVisitor &visitor, lsCodeLens<TData, TCommandArguments> &value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(range);
   REFLECT_MEMBER(command);
@@ -263,7 +259,7 @@ struct lsTextEdit {
   // empty string.
   std::string newText;
 
-  bool operator==(const lsTextEdit& that);
+  bool operator==(const lsTextEdit &that);
 };
 MAKE_REFLECT_STRUCT(lsTextEdit, range, newText);
 
@@ -321,7 +317,7 @@ struct lsMarkedString {
   std::optional<std::string> language;
   std::string value;
 };
-void Reflect(Writer& visitor, lsMarkedString& value);
+void Reflect(Writer &visitor, lsMarkedString &value);
 
 struct lsTextDocumentContentChangeEvent {
   // The range of the document that changed.
@@ -337,8 +333,7 @@ struct lsTextDocumentDidChangeParams {
   lsVersionedTextDocumentIdentifier textDocument;
   std::vector<lsTextDocumentContentChangeEvent> contentChanges;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentDidChangeParams,
-                    textDocument,
+MAKE_REFLECT_STRUCT(lsTextDocumentDidChangeParams, textDocument,
                     contentChanges);
 
 // Show a message to the user.
@@ -360,7 +355,7 @@ struct Out_ShowLogMessage : public lsOutMessage<Out_ShowLogMessage> {
 };
 
 template <typename TVisitor>
-void Reflect(TVisitor& visitor, Out_ShowLogMessage& value) {
+void Reflect(TVisitor &visitor, Out_ShowLogMessage &value) {
   REFLECT_MEMBER_START();
   REFLECT_MEMBER(jsonrpc);
   std::string method = value.method();

@@ -3,18 +3,18 @@
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Support/Threading.h>
 
+#include <iomanip>
+#include <mutex>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <iomanip>
-#include <mutex>
 
 namespace ccls::log {
 static std::mutex mtx;
-FILE* file;
+FILE *file;
 Verbosity verbosity;
 
-Message::Message(Verbosity verbosity, const char* file, int line)
+Message::Message(Verbosity verbosity, const char *file, int line)
     : verbosity_(verbosity) {
   using namespace llvm;
   time_t tim = time(NULL);
@@ -32,7 +32,7 @@ Message::Message(Verbosity verbosity, const char* file, int line)
     stream_ << std::left << std::setw(13) << Name.c_str();
   }
   {
-    const char* p = strrchr(file, '/');
+    const char *p = strrchr(file, '/');
     if (p)
       file = p + 1;
     stream_ << std::right << std::setw(15) << file << ':' << std::left
@@ -52,11 +52,12 @@ Message::Message(Verbosity verbosity, const char* file, int line)
 }
 
 Message::~Message() {
-  if (!file) return;
+  if (!file)
+    return;
   std::lock_guard<std::mutex> lock(mtx);
   stream_ << '\n';
   fputs(stream_.str().c_str(), file);
   if (verbosity_ == Verbosity_FATAL)
     abort();
 }
-}
+} // namespace ccls::log

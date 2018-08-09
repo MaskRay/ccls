@@ -5,6 +5,6 @@
 #include <string>
 
 // Returns the absolute path to |file|.
-std::string FileName(const clang::FileEntry& file);
+std::string FileName(const clang::FileEntry &file);
 
-const char* ClangBuiltinTypeName(int);
+const char *ClangBuiltinTypeName(int);

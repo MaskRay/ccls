@@ -55,8 +55,7 @@ struct lsDocumentOnTypeFormattingOptions {
   // More trigger characters.
   std::vector<std::string> moreTriggerCharacter;
 };
-MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions,
-                    firstTriggerCharacter,
+MAKE_REFLECT_STRUCT(lsDocumentOnTypeFormattingOptions, firstTriggerCharacter,
                     moreTriggerCharacter);
 
 // Document link options
@@ -119,12 +118,8 @@ struct lsTextDocumentSyncOptions {
   // Save notifications are sent to the server.
   std::optional<lsSaveOptions> save;
 };
-MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions,
-                    openClose,
-                    change,
-                    willSave,
-                    willSaveWaitUntil,
-                    save);
+MAKE_REFLECT_STRUCT(lsTextDocumentSyncOptions, openClose, change, willSave,
+                    willSaveWaitUntil, save);
 
 struct lsServerCapabilities {
   // Defines how text documents are synced. Is either a detailed structure
@@ -161,7 +156,8 @@ struct lsServerCapabilities {
   // The server provides document range formatting.
   bool documentRangeFormattingProvider = false;
   // The server provides document formatting on typing.
-  std::optional<lsDocumentOnTypeFormattingOptions> documentOnTypeFormattingProvider;
+  std::optional<lsDocumentOnTypeFormattingOptions>
+      documentOnTypeFormattingProvider;
   // The server provides rename support.
   bool renameProvider = true;
   // The server provides document link support.
@@ -169,25 +165,15 @@ struct lsServerCapabilities {
   // The server provides execute command support.
   lsExecuteCommandOptions executeCommandProvider;
 };
-MAKE_REFLECT_STRUCT(lsServerCapabilities,
-                    textDocumentSync,
-                    hoverProvider,
-                    completionProvider,
-                    signatureHelpProvider,
-                    definitionProvider,
-                    typeDefinitionProvider,
-                    referencesProvider,
-                    documentHighlightProvider,
-                    documentSymbolProvider,
-                    workspaceSymbolProvider,
-                    codeActionProvider,
-                    codeLensProvider,
-                    documentFormattingProvider,
-                    documentRangeFormattingProvider,
-                    documentOnTypeFormattingProvider,
-                    renameProvider,
-                    documentLinkProvider,
-                    executeCommandProvider);
+MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
+                    completionProvider, signatureHelpProvider,
+                    definitionProvider, typeDefinitionProvider,
+                    referencesProvider, documentHighlightProvider,
+                    documentSymbolProvider, workspaceSymbolProvider,
+                    codeActionProvider, codeLensProvider,
+                    documentFormattingProvider, documentRangeFormattingProvider,
+                    documentOnTypeFormattingProvider, renameProvider,
+                    documentLinkProvider, executeCommandProvider);
 
 // Workspace specific client capabilities.
 struct lsWorkspaceClientCapabilites {
@@ -226,12 +212,8 @@ MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsWorkspaceEdit,
                     documentChanges);
 MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites::lsGenericDynamicReg,
                     dynamicRegistration);
-MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites,
-                    applyEdit,
-                    workspaceEdit,
-                    didChangeConfiguration,
-                    didChangeWatchedFiles,
-                    symbol,
+MAKE_REFLECT_STRUCT(lsWorkspaceClientCapabilites, applyEdit, workspaceEdit,
+                    didChangeConfiguration, didChangeWatchedFiles, symbol,
                     executeCommand);
 
 // Text document specific client capabilities.
@@ -287,13 +269,9 @@ struct lsTextDocumentClientCapabilities {
 };
 
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization,
-                    dynamicRegistration,
-                    willSave,
-                    willSaveWaitUntil,
-                    didSave);
+                    dynamicRegistration, willSave, willSaveWaitUntil, didSave);
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion,
-                    dynamicRegistration,
-                    completionItem);
+                    dynamicRegistration, completionItem);
 MAKE_REFLECT_STRUCT(
     lsTextDocumentClientCapabilities::lsCompletion::lsCompletionItem,
     snippetSupport);
@@ -301,12 +279,9 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg,
                     dynamicRegistration);
 MAKE_REFLECT_STRUCT(
     lsTextDocumentClientCapabilities::CodeLensRegistrationOptions,
-    dynamicRegistration,
-    resolveProvider);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities,
-                    synchronization,
-                    completion,
-                    rename);
+    dynamicRegistration, resolveProvider);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities, synchronization,
+                    completion, rename);
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
@@ -343,16 +318,16 @@ struct lsInitializeParams {
 
   enum class lsTrace {
     // NOTE: serialized as a string, one of 'off' | 'messages' | 'verbose';
-    Off,       // off
-    Messages,  // messages
-    Verbose    // verbose
+    Off,      // off
+    Messages, // messages
+    Verbose   // verbose
   };
 
   // The initial trace setting. If omitted trace is disabled ('off').
   lsTrace trace = lsTrace::Off;
 };
 
-void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
+void Reflect(Reader &reader, lsInitializeParams::lsTrace &value) {
   if (!reader.IsString()) {
     value = lsInitializeParams::lsTrace::Off;
     return;
@@ -366,7 +341,7 @@ void Reflect(Reader& reader, lsInitializeParams::lsTrace& value) {
     value = lsInitializeParams::lsTrace::Verbose;
 }
 
-#if 0  // unused
+#if 0 // unused
 void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
   switch (value) {
     case lsInitializeParams::lsTrace::Off:
@@ -382,13 +357,8 @@ void Reflect(Writer& writer, lsInitializeParams::lsTrace& value) {
 }
 #endif
 
-MAKE_REFLECT_STRUCT(lsInitializeParams,
-                    processId,
-                    rootPath,
-                    rootUri,
-                    initializationOptions,
-                    capabilities,
-                    trace);
+MAKE_REFLECT_STRUCT(lsInitializeParams, processId, rootPath, rootUri,
+                    initializationOptions, capabilities, trace);
 
 struct lsInitializeError {
   // Indicates whether the client should retry to send the
@@ -419,8 +389,8 @@ MAKE_REFLECT_STRUCT(Out_InitializeResponse, jsonrpc, id, result);
 struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_InitializeRequest* request) override {
-    auto& params = request->params;
+  void Run(In_InitializeRequest *request) override {
+    auto &params = request->params;
     if (!params.rootUri)
       return;
     std::string project_path = NormalizePath(params.rootUri->GetPath());
@@ -438,7 +408,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         JsonReader json_reader{&reader};
         try {
           Reflect(json_reader, *g_config);
-        } catch (std::invalid_argument&) {
+        } catch (std::invalid_argument &) {
           // This will not trigger because parse error is handled in
           // MessageRegistry::Parse in lsp.cc
         }
@@ -460,7 +430,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     }
 
     // Client capabilities
-    const auto& capabilities = params.capabilities;
+    const auto &capabilities = params.capabilities;
     g_config->client.snippetSupport =
         capabilities.textDocument.completion.completionItem.snippetSupport;
 
@@ -508,7 +478,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         std::string name = "indexer" + std::to_string(i);
         set_thread_name(name.c_str());
         pipeline::Indexer_Main(diag_pub, vfs, project, working_files);
-      }).detach();
+      })
+          .detach();
     }
 
     // Start scanning include directories before dispatching project
@@ -520,4 +491,4 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_Initialize);
-}  // namespace
+} // namespace

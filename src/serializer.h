@@ -21,7 +21,7 @@ struct JsonNull {};
 struct mandatory_optional_tag {};
 
 class Reader {
- public:
+public:
   virtual ~Reader() {}
   virtual SerializeFormat Format() const = 0;
 
@@ -41,17 +41,17 @@ class Reader {
   virtual int64_t GetInt64() = 0;
   virtual uint64_t GetUInt64() = 0;
   virtual double GetDouble() = 0;
-  virtual const char* GetString() = 0;
+  virtual const char *GetString() = 0;
 
-  virtual bool HasMember(const char* x) = 0;
-  virtual std::unique_ptr<Reader> operator[](const char* x) = 0;
+  virtual bool HasMember(const char *x) = 0;
+  virtual std::unique_ptr<Reader> operator[](const char *x) = 0;
 
-  virtual void IterArray(std::function<void(Reader&)> fn) = 0;
-  virtual void Member(const char* name, std::function<void()> fn) = 0;
+  virtual void IterArray(std::function<void(Reader &)> fn) = 0;
+  virtual void Member(const char *name, std::function<void()> fn) = 0;
 };
 
 class Writer {
- public:
+public:
   virtual ~Writer() {}
   virtual SerializeFormat Format() const = 0;
 
@@ -63,13 +63,13 @@ class Writer {
   virtual void UInt32(uint32_t x) = 0;
   virtual void UInt64(uint64_t x) = 0;
   virtual void Double(double x) = 0;
-  virtual void String(const char* x) = 0;
-  virtual void String(const char* x, size_t len) = 0;
+  virtual void String(const char *x) = 0;
+  virtual void String(const char *x, size_t len) = 0;
   virtual void StartArray(size_t) = 0;
   virtual void EndArray() = 0;
   virtual void StartObject() = 0;
   virtual void EndObject() = 0;
-  virtual void Key(const char* name) = 0;
+  virtual void Key(const char *name) = 0;
 };
 
 struct IndexFile;
@@ -77,48 +77,45 @@ struct IndexFile;
 #define REFLECT_MEMBER_START() ReflectMemberStart(visitor)
 #define REFLECT_MEMBER_END() ReflectMemberEnd(visitor);
 #define REFLECT_MEMBER(name) ReflectMember(visitor, #name, value.name)
-#define REFLECT_MEMBER_MANDATORY_OPTIONAL(name) \
+#define REFLECT_MEMBER_MANDATORY_OPTIONAL(name)                                \
   ReflectMember(visitor, #name, value.name, mandatory_optional_tag{})
 #define REFLECT_MEMBER2(name, value) ReflectMember(visitor, name, value)
 
-#define MAKE_REFLECT_TYPE_PROXY(type_name) \
+#define MAKE_REFLECT_TYPE_PROXY(type_name)                                     \
   MAKE_REFLECT_TYPE_PROXY2(type_name, std::underlying_type_t<type_name>)
-#define MAKE_REFLECT_TYPE_PROXY2(type, as_type)                             \
-  LLVM_ATTRIBUTE_UNUSED inline void Reflect(Reader& visitor, type& value) { \
-    as_type value0;                                                         \
-    ::Reflect(visitor, value0);                                             \
-    value = static_cast<type>(value0);                                      \
-  }                                                                         \
-  LLVM_ATTRIBUTE_UNUSED inline void Reflect(Writer& visitor, type& value) { \
-    auto value0 = static_cast<as_type>(value);                              \
-    ::Reflect(visitor, value0);                                             \
+#define MAKE_REFLECT_TYPE_PROXY2(type, as_type)                                \
+  LLVM_ATTRIBUTE_UNUSED inline void Reflect(Reader &visitor, type &value) {    \
+    as_type value0;                                                            \
+    ::Reflect(visitor, value0);                                                \
+    value = static_cast<type>(value0);                                         \
+  }                                                                            \
+  LLVM_ATTRIBUTE_UNUSED inline void Reflect(Writer &visitor, type &value) {    \
+    auto value0 = static_cast<as_type>(value);                                 \
+    ::Reflect(visitor, value0);                                                \
   }
 
 #define _MAPPABLE_REFLECT_MEMBER(name) REFLECT_MEMBER(name);
-#define _MAPPABLE_REFLECT_MEMBER_MANDATORY_OPTIONAL(name) \
+#define _MAPPABLE_REFLECT_MEMBER_MANDATORY_OPTIONAL(name)                      \
   REFLECT_MEMBER_MANDATORY_OPTIONAL(name);
 
-#define MAKE_REFLECT_EMPTY_STRUCT(type, ...)     \
-  template <typename TVisitor>                   \
-  void Reflect(TVisitor& visitor, type& value) { \
-    REFLECT_MEMBER_START();                      \
-    REFLECT_MEMBER_END();                        \
+#define MAKE_REFLECT_EMPTY_STRUCT(type, ...)                                   \
+  template <typename TVisitor> void Reflect(TVisitor &visitor, type &value) {  \
+    REFLECT_MEMBER_START();                                                    \
+    REFLECT_MEMBER_END();                                                      \
   }
 
-#define MAKE_REFLECT_STRUCT(type, ...)               \
-  template <typename TVisitor>                       \
-  void Reflect(TVisitor& visitor, type& value) {     \
-    REFLECT_MEMBER_START();                          \
-    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__) \
-    REFLECT_MEMBER_END();                            \
+#define MAKE_REFLECT_STRUCT(type, ...)                                         \
+  template <typename TVisitor> void Reflect(TVisitor &visitor, type &value) {  \
+    REFLECT_MEMBER_START();                                                    \
+    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER, __VA_ARGS__)                           \
+    REFLECT_MEMBER_END();                                                      \
   }
 
-#define MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(type, ...)               \
-  template <typename TVisitor>                                          \
-  void Reflect(TVisitor& visitor, type& value) {                        \
-    REFLECT_MEMBER_START();                                             \
-    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER_MANDATORY_OPTIONAL, __VA_ARGS__) \
-    REFLECT_MEMBER_END();                                               \
+#define MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(type, ...)                      \
+  template <typename TVisitor> void Reflect(TVisitor &visitor, type &value) {  \
+    REFLECT_MEMBER_START();                                                    \
+    MACRO_MAP(_MAPPABLE_REFLECT_MEMBER_MANDATORY_OPTIONAL, __VA_ARGS__)        \
+    REFLECT_MEMBER_END();                                                      \
   }
 
 // clang-format off
@@ -131,71 +128,70 @@ struct IndexFile;
 
 // Reflects the struct so it is serialized as an array instead of an object.
 // This currently only supports writers.
-#define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...) \
-  inline void Reflect(Writer& visitor, type& value) {  \
-    visitor.StartArray(NUM_VA_ARGS(__VA_ARGS__));      \
-    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)    \
-    visitor.EndArray();                                \
+#define MAKE_REFLECT_STRUCT_WRITER_AS_ARRAY(type, ...)                         \
+  inline void Reflect(Writer &visitor, type &value) {                          \
+    visitor.StartArray(NUM_VA_ARGS(__VA_ARGS__));                              \
+    MACRO_MAP(_MAPPABLE_REFLECT_ARRAY, __VA_ARGS__)                            \
+    visitor.EndArray();                                                        \
   }
 
 //// Elementary types
 
-void Reflect(Reader& visitor, uint8_t& value);
-void Reflect(Writer& visitor, uint8_t& value);
+void Reflect(Reader &visitor, uint8_t &value);
+void Reflect(Writer &visitor, uint8_t &value);
 
-void Reflect(Reader& visitor, short& value);
-void Reflect(Writer& visitor, short& value);
+void Reflect(Reader &visitor, short &value);
+void Reflect(Writer &visitor, short &value);
 
-void Reflect(Reader& visitor, unsigned short& value);
-void Reflect(Writer& visitor, unsigned short& value);
+void Reflect(Reader &visitor, unsigned short &value);
+void Reflect(Writer &visitor, unsigned short &value);
 
-void Reflect(Reader& visitor, int& value);
-void Reflect(Writer& visitor, int& value);
+void Reflect(Reader &visitor, int &value);
+void Reflect(Writer &visitor, int &value);
 
-void Reflect(Reader& visitor, unsigned& value);
-void Reflect(Writer& visitor, unsigned& value);
+void Reflect(Reader &visitor, unsigned &value);
+void Reflect(Writer &visitor, unsigned &value);
 
-void Reflect(Reader& visitor, long& value);
-void Reflect(Writer& visitor, long& value);
+void Reflect(Reader &visitor, long &value);
+void Reflect(Writer &visitor, long &value);
 
-void Reflect(Reader& visitor, unsigned long& value);
-void Reflect(Writer& visitor, unsigned long& value);
+void Reflect(Reader &visitor, unsigned long &value);
+void Reflect(Writer &visitor, unsigned long &value);
 
-void Reflect(Reader& visitor, long long& value);
-void Reflect(Writer& visitor, long long& value);
+void Reflect(Reader &visitor, long long &value);
+void Reflect(Writer &visitor, long long &value);
 
-void Reflect(Reader& visitor, unsigned long long& value);
-void Reflect(Writer& visitor, unsigned long long& value);
+void Reflect(Reader &visitor, unsigned long long &value);
+void Reflect(Writer &visitor, unsigned long long &value);
 
-void Reflect(Reader& visitor, double& value);
-void Reflect(Writer& visitor, double& value);
+void Reflect(Reader &visitor, double &value);
+void Reflect(Writer &visitor, double &value);
 
-void Reflect(Reader& visitor, bool& value);
-void Reflect(Writer& visitor, bool& value);
+void Reflect(Reader &visitor, bool &value);
+void Reflect(Writer &visitor, bool &value);
 
-void Reflect(Reader& visitor, std::string& value);
-void Reflect(Writer& visitor, std::string& value);
+void Reflect(Reader &visitor, std::string &value);
+void Reflect(Writer &visitor, std::string &value);
 
-void Reflect(Reader& visitor, std::string_view& view);
-void Reflect(Writer& visitor, std::string_view& view);
+void Reflect(Reader &visitor, std::string_view &view);
+void Reflect(Writer &visitor, std::string_view &view);
 
-void Reflect(Reader& vis, const char*& v);
-void Reflect(Writer& vis, const char*& v);
+void Reflect(Reader &vis, const char *&v);
+void Reflect(Writer &vis, const char *&v);
 
-void Reflect(Reader& visitor, JsonNull& value);
-void Reflect(Writer& visitor, JsonNull& value);
+void Reflect(Reader &visitor, JsonNull &value);
+void Reflect(Writer &visitor, JsonNull &value);
 
-void Reflect(Reader& visitor, SerializeFormat& value);
-void Reflect(Writer& visitor, SerializeFormat& value);
+void Reflect(Reader &visitor, SerializeFormat &value);
+void Reflect(Writer &visitor, SerializeFormat &value);
 
 //// Type constructors
 
-// ReflectMember std::optional<T> is used to represent TypeScript optional properties
-// (in `key: value` context).
-// Reflect std::optional<T> is used for a different purpose, whether an object is
-// nullable (possibly in `value` context).
-template <typename T>
-void Reflect(Reader& visitor, std::optional<T>& value) {
+// ReflectMember std::optional<T> is used to represent TypeScript optional
+// properties (in `key: value` context). Reflect std::optional<T> is used for a
+// different purpose, whether an object is nullable (possibly in `value`
+// context).
+template <typename T> void Reflect(Reader &visitor, std::optional<T> &value) {
   if (visitor.IsNull()) {
     visitor.GetNull();
     return;
@@ -204,8 +200,7 @@ void Reflect(Reader& visitor, std::optional<T>& value) {
   Reflect(visitor, real_value);
   value = std::move(real_value);
 }
-template <typename T>
-void Reflect(Writer& visitor, std::optional<T>& value) {
+template <typename T> void Reflect(Writer &visitor, std::optional<T> &value) {
   if (value) {
     if (visitor.Format() != SerializeFormat::Json)
       visitor.UInt8(1);
@@ -215,8 +210,7 @@ void Reflect(Writer& visitor, std::optional<T>& value) {
 }
 
 // The same as std::optional
-template <typename T>
-void Reflect(Reader& visitor, Maybe<T>& value) {
+template <typename T> void Reflect(Reader &visitor, Maybe<T> &value) {
   if (visitor.IsNull()) {
     visitor.GetNull();
     return;
@@ -225,8 +219,7 @@ void Reflect(Reader& visitor, Maybe<T>& value) {
   Reflect(visitor, real_value);
   value = std::move(real_value);
 }
-template <typename T>
-void Reflect(Writer& visitor, Maybe<T>& value) {
+template <typename T> void Reflect(Writer &visitor, Maybe<T> &value) {
   if (value) {
     if (visitor.Format() != SerializeFormat::Json)
       visitor.UInt8(1);
@@ -236,7 +229,7 @@ void Reflect(Writer& visitor, Maybe<T>& value) {
 }
 
 template <typename T>
-void ReflectMember(Writer& visitor, const char* name, std::optional<T>& value) {
+void ReflectMember(Writer &visitor, const char *name, std::optional<T> &value) {
   // For TypeScript std::optional property key?: value in the spec,
   // We omit both key and value if value is std::nullopt (null) for JsonWriter
   // to reduce output. But keep it for other serialization formats.
@@ -248,7 +241,7 @@ void ReflectMember(Writer& visitor, const char* name, std::optional<T>& value) {
 
 // The same as std::optional
 template <typename T>
-void ReflectMember(Writer& visitor, const char* name, Maybe<T>& value) {
+void ReflectMember(Writer &visitor, const char *name, Maybe<T> &value) {
   if (value.Valid() || visitor.Format() != SerializeFormat::Json) {
     visitor.Key(name);
     Reflect(visitor, value);
@@ -256,21 +249,19 @@ void ReflectMember(Writer& visitor, const char* name, Maybe<T>& value) {
 }
 
 template <typename T>
-void ReflectMember(Writer& visitor,
-                   const char* name,
-                   T& value,
+void ReflectMember(Writer &visitor, const char *name, T &value,
                    mandatory_optional_tag) {
   visitor.Key(name);
   Reflect(visitor, value);
 }
 
 template <typename L, typename R>
-void Reflect(Reader& vis, std::pair<L, R>& v) {
+void Reflect(Reader &vis, std::pair<L, R> &v) {
   vis.Member("L", [&]() { Reflect(vis, v.first); });
   vis.Member("R", [&]() { Reflect(vis, v.second); });
 }
 template <typename L, typename R>
-void Reflect(Writer& vis, std::pair<L, R>& v) {
+void Reflect(Writer &vis, std::pair<L, R> &v) {
   vis.StartObject();
   ReflectMember(vis, "L", v.first);
   ReflectMember(vis, "R", v.second);
@@ -278,43 +269,35 @@ void Reflect(Writer& vis, std::pair<L, R>& v) {
 }
 
 // std::vector
-template <typename T>
-void Reflect(Reader& visitor, std::vector<T>& values) {
-  visitor.IterArray([&](Reader& entry) {
+template <typename T> void Reflect(Reader &visitor, std::vector<T> &values) {
+  visitor.IterArray([&](Reader &entry) {
     T entry_value;
     Reflect(entry, entry_value);
     values.push_back(std::move(entry_value));
   });
 }
-template <typename T>
-void Reflect(Writer& visitor, std::vector<T>& values) {
+template <typename T> void Reflect(Writer &visitor, std::vector<T> &values) {
   visitor.StartArray(values.size());
-  for (auto& value : values)
+  for (auto &value : values)
     Reflect(visitor, value);
   visitor.EndArray();
 }
 
 // ReflectMember
 
-inline bool ReflectMemberStart(Reader& vis) {
-  return false;
-}
-inline bool ReflectMemberStart(Writer& vis) {
+inline bool ReflectMemberStart(Reader &vis) { return false; }
+inline bool ReflectMemberStart(Writer &vis) {
   vis.StartObject();
   return true;
 }
 
-inline void ReflectMemberEnd(Reader& vis) {}
-inline void ReflectMemberEnd(Writer& vis) {
-  vis.EndObject();
-}
+inline void ReflectMemberEnd(Reader &vis) {}
+inline void ReflectMemberEnd(Writer &vis) { vis.EndObject(); }
 
-template <typename T>
-void ReflectMember(Reader& vis, const char* name, T& v) {
+template <typename T> void ReflectMember(Reader &vis, const char *name, T &v) {
   vis.Member(name, [&]() { Reflect(vis, v); });
 }
-template <typename T>
-void ReflectMember(Writer& vis, const char* name, T& v) {
+template <typename T> void ReflectMember(Writer &vis, const char *name, T &v) {
   vis.Key(name);
   Reflect(vis, v);
 }
@@ -322,12 +305,11 @@ void ReflectMember(Writer& vis, const char* name, T& v) {
 // API
 
 namespace ccls {
-const char* Intern(const std::string& str);
-std::string Serialize(SerializeFormat format, IndexFile& file);
-std::unique_ptr<IndexFile> Deserialize(
-    SerializeFormat format,
-    const std::string& path,
-    const std::string& serialized_index_content,
-    const std::string& file_content,
-    std::optional<int> expected_version);
-}
+const char *Intern(const std::string &str);
+std::string Serialize(SerializeFormat format, IndexFile &file);
+std::unique_ptr<IndexFile>
+Deserialize(SerializeFormat format, const std::string &path,
+            const std::string &serialized_index_content,
+            const std::string &file_content,
+            std::optional<int> expected_version);
+} // namespace ccls

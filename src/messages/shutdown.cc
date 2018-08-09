@@ -19,11 +19,11 @@ MAKE_REFLECT_STRUCT(Out_Shutdown, jsonrpc, id, result);
 
 struct Handler_Shutdown : BaseMessageHandler<In_Shutdown> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_Shutdown* request) override {
+  void Run(In_Shutdown *request) override {
     Out_Shutdown out;
     out.id = request->id;
     pipeline::WriteStdout(kMethodType, out);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_Shutdown);
-}  // namespace
+} // namespace

@@ -28,21 +28,21 @@ std::string g_init_options;
 namespace {
 opt<bool> opt_help("h", desc("Alias for -help"));
 opt<int> opt_verbose("v", desc("verbosity"), init(0));
-opt<std::string> opt_test_index("test-index", ValueOptional, init("!"), desc("run index tests"));
+opt<std::string> opt_test_index("test-index", ValueOptional, init("!"),
+                                desc("run index tests"));
 
 opt<std::string> opt_init("init", desc("extra initialization options"));
 opt<std::string> opt_log_file("log-file", desc("log"), value_desc("filename"));
-opt<std::string> opt_log_file_append("log-file-append", desc("log"), value_desc("filename"));
+opt<std::string> opt_log_file_append("log-file-append", desc("log"),
+                                     value_desc("filename"));
 
 list<std::string> opt_extra(Positional, ZeroOrMore, desc("extra"));
 
-void CloseLog() {
-  fclose(ccls::log::file);
-}
+void CloseLog() { fclose(ccls::log::file); }
 
-}  // namespace
+} // namespace
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   TraceMe();
   sys::PrintStackTraceOnErrorSignal(argv[0]);
 
@@ -98,9 +98,9 @@ int main(int argc, char** argv) {
       try {
         Config config;
         Reflect(json_reader, config);
-      } catch (std::invalid_argument& e) {
+      } catch (std::invalid_argument &e) {
         fprintf(stderr, "Failed to parse --init %s, expected %s\n",
-                static_cast<JsonReader&>(json_reader).GetPath().c_str(),
+                static_cast<JsonReader &>(json_reader).GetPath().c_str(),
                 e.what());
         return 1;
       }
@@ -108,11 +108,13 @@ int main(int argc, char** argv) {
 
     sys::ChangeStdinToBinary();
     sys::ChangeStdoutToBinary();
-    // The thread that reads from stdin and dispatchs commands to the main thread.
+    // The thread that reads from stdin and dispatchs commands to the main
+    // thread.
     pipeline::LaunchStdin();
     // The thread that writes responses from the main thread to stdout.
     pipeline::LaunchStdout();
-    // Main thread which also spawns indexer threads upon the "initialize" request.
+    // Main thread which also spawns indexer threads upon the "initialize"
+    // request.
     pipeline::MainLoop();
   }
 

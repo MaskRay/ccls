@@ -70,8 +70,8 @@ struct Out_TextDocumentComplete
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentComplete, jsonrpc, id, result);
 
-void DecorateIncludePaths(const std::smatch& match,
-                          std::vector<lsCompletionItem>* items) {
+void DecorateIncludePaths(const std::smatch &match,
+                          std::vector<lsCompletionItem> *items) {
   std::string spaces_after_include = " ";
   if (match[3].compare("include") == 0 && match[5].length())
     spaces_after_include = match[4].str();
@@ -80,7 +80,7 @@ void DecorateIncludePaths(const std::smatch& match,
       match[1].str() + '#' + match[2].str() + "include" + spaces_after_include;
   std::string suffix = match[7].str();
 
-  for (lsCompletionItem& item : *items) {
+  for (lsCompletionItem &item : *items) {
     char quote0, quote1;
     if (match[5].compare("<") == 0 ||
         (match[5].length() == 0 && item.use_angle_brackets_))
@@ -103,17 +103,16 @@ struct ParseIncludeLineResult {
   std::smatch match;
 };
 
-ParseIncludeLineResult ParseIncludeLine(const std::string& line) {
-  static const std::regex pattern(
-      "(\\s*)"        // [1]: spaces before '#'
-      "#"             //
-      "(\\s*)"        // [2]: spaces after '#'
-      "([^\\s\"<]*)"  // [3]: "include"
-      "(\\s*)"        // [4]: spaces before quote
-      "([\"<])?"      // [5]: the first quote char
-      "([^\\s\">]*)"  // [6]: path of file
-      "[\">]?"        //
-      "(.*)");        // [7]: suffix after quote char
+ParseIncludeLineResult ParseIncludeLine(const std::string &line) {
+  static const std::regex pattern("(\\s*)"       // [1]: spaces before '#'
+                                  "#"            //
+                                  "(\\s*)"       // [2]: spaces after '#'
+                                  "([^\\s\"<]*)" // [3]: "include"
+                                  "(\\s*)"       // [4]: spaces before quote
+                                  "([\"<])?"     // [5]: the first quote char
+                                  "([^\\s\">]*)" // [6]: path of file
+                                  "[\">]?"       //
+                                  "(.*)");       // [7]: suffix after quote char
   std::smatch match;
   bool ok = std::regex_match(line, match, pattern);
   return {ok, match[3], match[5], match[6], match};
@@ -123,10 +122,10 @@ static const std::vector<std::string> preprocessorKeywords = {
     "define", "undef", "include", "if",   "ifdef", "ifndef",
     "else",   "elif",  "endif",   "line", "error", "pragma"};
 
-std::vector<lsCompletionItem> PreprocessorKeywordCompletionItems(
-    const std::smatch& match) {
+std::vector<lsCompletionItem>
+PreprocessorKeywordCompletionItems(const std::smatch &match) {
   std::vector<lsCompletionItem> items;
-  for (auto& keyword : preprocessorKeywords) {
+  for (auto &keyword : preprocessorKeywords) {
     lsCompletionItem item;
     item.label = keyword;
     item.priority_ = (keyword == "include" ? 2 : 1);
@@ -140,12 +139,10 @@ std::vector<lsCompletionItem> PreprocessorKeywordCompletionItems(
   return items;
 }
 
-template <typename T>
-char* tofixedbase64(T input, char* out) {
-  const char* digits =
-      "./0123456789"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      "abcdefghijklmnopqrstuvwxyz";
+template <typename T> char *tofixedbase64(T input, char *out) {
+  const char *digits = "./0123456789"
+                       "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                       "abcdefghijklmnopqrstuvwxyz";
   int len = (sizeof(T) * 8 - 1) / 6 + 1;
   for (int i = len - 1; i >= 0; i--) {
     out[i] = digits[input % 64];
@@ -159,16 +156,15 @@ char* tofixedbase64(T input, char* out) {
 // significantly snappier completion experience as vscode is easily overloaded
 // when given 1000+ completion items.
 void FilterAndSortCompletionResponse(
-    Out_TextDocumentComplete* complete_response,
-    const std::string& complete_text,
-    bool has_open_paren) {
+    Out_TextDocumentComplete *complete_response,
+    const std::string &complete_text, bool has_open_paren) {
   if (!g_config->completion.filterAndSort)
     return;
 
   static Timer timer("FilterAndSortCompletionResponse", "");
   TimeRegion region(timer);
 
-  auto& items = complete_response->result.items;
+  auto &items = complete_response->result.items;
 
   auto finalize = [&]() {
     const size_t kMaxResultSize = 100u;
@@ -178,7 +174,7 @@ void FilterAndSortCompletionResponse(
     }
 
     if (has_open_paren)
-      for (auto& item: items)
+      for (auto &item : items)
         item.insertText = item.label;
 
     // Set sortText. Note that this happens after resizing - we could do it
@@ -195,7 +191,7 @@ void FilterAndSortCompletionResponse(
   }
 
   // Make sure all items have |filterText| set, code that follow needs it.
-  for (auto& item : items) {
+  for (auto &item : items) {
     if (!item.filterText)
       item.filterText = item.label;
   }
@@ -203,19 +199,19 @@ void FilterAndSortCompletionResponse(
   // Fuzzy match and remove awful candidates.
   bool sensitive = g_config->completion.caseSensitivity;
   FuzzyMatcher fuzzy(complete_text, sensitive);
-  for (auto& item : items) {
+  for (auto &item : items) {
     item.score_ =
         ReverseSubseqMatch(complete_text, *item.filterText, sensitive) >= 0
             ? fuzzy.Match(*item.filterText)
             : FuzzyMatcher::kMinScore;
   }
   items.erase(std::remove_if(items.begin(), items.end(),
-                             [](const lsCompletionItem& item) {
+                             [](const lsCompletionItem &item) {
                                return item.score_ <= FuzzyMatcher::kMinScore;
                              }),
               items.end());
   std::sort(items.begin(), items.end(),
-            [](const lsCompletionItem& lhs, const lsCompletionItem& rhs) {
+            [](const lsCompletionItem &lhs, const lsCompletionItem &rhs) {
               if (lhs.score_ != rhs.score_)
                 return lhs.score_ > rhs.score_;
               if (lhs.priority_ != rhs.priority_)
@@ -231,16 +227,17 @@ void FilterAndSortCompletionResponse(
 
 // Returns true if position is an points to a '(' character in |lines|. Skips
 // whitespace.
-bool IsOpenParenOrAngle(const std::vector<std::string>& lines,
-  const lsPosition& position) {
+bool IsOpenParenOrAngle(const std::vector<std::string> &lines,
+                        const lsPosition &position) {
   auto [c, l] = position;
   while (l < lines.size()) {
-    const auto& line = lines[l];
+    const auto &line = lines[l];
     if (c >= line.size())
       return false;
     if (line[c] == '(' || line[c] == '<')
       return true;
-    if (!isspace(line[c])) break;
+    if (!isspace(line[c]))
+      break;
     if (++c >= line.size()) {
       c = 0;
       l++;
@@ -254,8 +251,8 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
   void Run(std::unique_ptr<InMessage> message) override {
     auto request = std::shared_ptr<In_TextDocumentComplete>(
-        static_cast<In_TextDocumentComplete*>(message.release()));
-    auto& params = request->params;
+        static_cast<In_TextDocumentComplete *>(message.release()));
+    auto &params = request->params;
 
     auto write_empty_result = [request]() {
       Out_TextDocumentComplete out;
@@ -264,7 +261,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
     };
 
     std::string path = params.textDocument.uri.GetPath();
-    WorkingFile* file = working_files->GetFileByFilename(path);
+    WorkingFile *file = working_files->GetFileByFilename(path);
     if (!file) {
       write_empty_result();
       return;
@@ -350,15 +347,16 @@ struct Handler_TextDocumentCompletion : MessageHandler {
           if (include_complete->is_scanning)
             lock.lock();
           std::string quote = result.match[5];
-          for (auto& item : include_complete->completion_items)
-            if (quote.empty() || quote == (item.use_angle_brackets_ ? "<" : "\""))
-               out.result.items.push_back(item);
+          for (auto &item : include_complete->completion_items)
+            if (quote.empty() ||
+                quote == (item.use_angle_brackets_ ? "<" : "\""))
+              out.result.items.push_back(item);
         }
         FilterAndSortCompletionResponse(&out, result.pattern, has_open_paren);
         DecorateIncludePaths(result.match, &out.result.items);
       }
 
-      for (lsCompletionItem& item : out.result.items) {
+      for (lsCompletionItem &item : out.result.items) {
         item.textEdit->range.start.line = params.position.line;
         item.textEdit->range.start.character = 0;
         item.textEdit->range.end.line = params.position.line;
@@ -369,14 +367,15 @@ struct Handler_TextDocumentCompletion : MessageHandler {
     } else {
       ClangCompleteManager::OnComplete callback = std::bind(
           [this, request, params, is_global_completion, existing_completion,
-           has_open_paren](const std::vector<lsCompletionItem>& results,
+           has_open_paren](const std::vector<lsCompletionItem> &results,
                            bool is_cached_result) {
             Out_TextDocumentComplete out;
             out.id = request->id;
             out.result.items = results;
 
             // Emit completion results.
-            FilterAndSortCompletionResponse(&out, existing_completion, has_open_paren);
+            FilterAndSortCompletionResponse(&out, existing_completion,
+                                            has_open_paren);
             pipeline::WriteStdout(kMethodType, out);
 
             // Cache completion results.
@@ -435,4 +434,4 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCompletion);
 
-}  // namespace
+} // namespace

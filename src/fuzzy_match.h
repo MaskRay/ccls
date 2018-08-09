@@ -5,7 +5,7 @@
 #include <string_view>
 
 class FuzzyMatcher {
- public:
+public:
   constexpr static int kMaxPat = 100;
   constexpr static int kMaxText = 200;
   // Negative but far from INT_MIN so that intermediate results are hard to
@@ -15,7 +15,7 @@ class FuzzyMatcher {
   FuzzyMatcher(std::string_view pattern, int case_sensitivity);
   int Match(std::string_view text);
 
- private:
+private:
   int case_sensitivity;
   std::string pat;
   std::string_view text;

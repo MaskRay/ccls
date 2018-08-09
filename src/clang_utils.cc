@@ -10,7 +10,7 @@
 using namespace clang;
 using namespace llvm;
 
-std::string FileName(const FileEntry& file) {
+std::string FileName(const FileEntry &file) {
   StringRef Name = file.tryGetRealPathName();
   if (Name.empty())
     Name = file.getName();
@@ -25,7 +25,7 @@ std::string FileName(const FileEntry& file) {
 }
 
 // clang::BuiltinType::getName without PrintingPolicy
-const char* ClangBuiltinTypeName(int kind) {
+const char *ClangBuiltinTypeName(int kind) {
   switch (BuiltinType::Kind(kind)) {
   case BuiltinType::Void:
     return "void";

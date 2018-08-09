@@ -5,7 +5,7 @@
 
 #include <string>
 
-using MethodType = const char*;
+using MethodType = const char *;
 extern MethodType kMethodType_Unknown;
 extern MethodType kMethodType_Exit;
 extern MethodType kMethodType_TextDocumentPublishDiagnostics;
@@ -22,8 +22,8 @@ struct lsRequestId {
 
   bool Valid() const { return type != kNone; }
 };
-void Reflect(Reader& visitor, lsRequestId& value);
-void Reflect(Writer& visitor, lsRequestId& value);
+void Reflect(Reader &visitor, lsRequestId &value);
+void Reflect(Writer &visitor, lsRequestId &value);
 
 struct InMessage {
   virtual ~InMessage() = default;
@@ -35,14 +35,10 @@ struct InMessage {
 struct RequestInMessage : public InMessage {
   // number or string, actually no null
   lsRequestId id;
-  lsRequestId GetRequestId() const override {
-    return id;
-  }
+  lsRequestId GetRequestId() const override { return id; }
 };
 
 // NotificationInMessage does not have |id|.
 struct NotificationInMessage : public InMessage {
-  lsRequestId GetRequestId() const override {
-    return lsRequestId();
-  }
+  lsRequestId GetRequestId() const override { return lsRequestId(); }
 };

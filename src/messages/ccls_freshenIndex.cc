@@ -1,8 +1,8 @@
 #include "match.h"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "project.h"
-#include "pipeline.hh"
 #include "working_files.h"
 using namespace ccls;
 
@@ -21,38 +21,36 @@ struct In_CclsFreshenIndex : public NotificationInMessage {
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(In_CclsFreshenIndex::Params,
-                    dependencies,
-                    whitelist,
+MAKE_REFLECT_STRUCT(In_CclsFreshenIndex::Params, dependencies, whitelist,
                     blacklist);
 MAKE_REFLECT_STRUCT(In_CclsFreshenIndex, params);
 REGISTER_IN_MESSAGE(In_CclsFreshenIndex);
 
 struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_CclsFreshenIndex* request) override {
+  void Run(In_CclsFreshenIndex *request) override {
     GroupMatch matcher(request->params.whitelist, request->params.blacklist);
 
-    std::queue<const QueryFile*> q;
+    std::queue<const QueryFile *> q;
     // |need_index| stores every filename ever enqueued.
     std::unordered_set<std::string> need_index;
     // Reverse dependency graph.
     std::unordered_map<std::string, std::vector<std::string>> graph;
     // filename -> QueryFile mapping for files haven't enqueued.
-    std::unordered_map<std::string, const QueryFile*> path_to_file;
+    std::unordered_map<std::string, const QueryFile *> path_to_file;
 
-    for (const auto& file : db->files)
+    for (const auto &file : db->files)
       if (file.def) {
         if (matcher.IsMatch(file.def->path))
           q.push(&file);
         else
           path_to_file[file.def->path] = &file;
-        for (const std::string& dependency : file.def->dependencies)
+        for (const std::string &dependency : file.def->dependencies)
           graph[dependency].push_back(file.def->path);
       }
 
     while (!q.empty()) {
-      const QueryFile* file = q.front();
+      const QueryFile *file = q.front();
       q.pop();
       need_index.insert(file->def->path);
 
@@ -61,13 +59,13 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
         continue;
       {
         std::lock_guard<std::mutex> lock(vfs->mutex);
-        VFS::State& st = vfs->state[file->def->path];
+        VFS::State &st = vfs->state[file->def->path];
         if (st.timestamp < write_time)
           st.stage = 0;
       }
 
       if (request->params.dependencies)
-        for (const std::string& path : graph[file->def->path]) {
+        for (const std::string &path : graph[file->def->path]) {
           auto it = path_to_file.find(path);
           if (it != path_to_file.end()) {
             q.push(it->second);
@@ -81,4 +79,4 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsFreshenIndex);
-}  // namespace
+} // namespace

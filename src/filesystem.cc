@@ -6,10 +6,8 @@ using namespace llvm;
 #include <set>
 #include <vector>
 
-void GetFilesInFolder(std::string folder,
-                      bool recursive,
-                      bool dir_prefix,
-                      const std::function<void(const std::string&)>& handler) {
+void GetFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
+                      const std::function<void(const std::string &)> &handler) {
   EnsureEndsInSlash(folder);
   sys::fs::file_status Status;
   if (sys::fs::status(folder, Status, true))
@@ -20,7 +18,7 @@ void GetFilesInFolder(std::string folder,
   std::set<sys::fs::UniqueID> seen{Status.getUniqueID()};
   while (curr.size() || succ.size()) {
     if (curr.empty()) {
-      for (auto& it : succ)
+      for (auto &it : succ)
         if (!seen.count(it.second.getUniqueID()))
           curr.push_back(std::move(it.first));
       succ.clear();

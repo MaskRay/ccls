@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 
-MessageRegistry* MessageRegistry::instance_ = nullptr;
+MessageRegistry *MessageRegistry::instance_ = nullptr;
 
 lsTextDocumentIdentifier
 lsVersionedTextDocumentIdentifier::AsTextDocumentIdentifier() const {
@@ -17,8 +17,8 @@ lsVersionedTextDocumentIdentifier::AsTextDocumentIdentifier() const {
 }
 
 // Reads a JsonRpc message. |read| returns the next input character.
-std::optional<std::string> ReadJsonRpcContentFrom(
-    std::function<std::optional<char>()> read) {
+std::optional<std::string>
+ReadJsonRpcContentFrom(std::function<std::optional<char>()> read) {
   // Read the content length. It is terminated by the "\r\n" sequence.
   int exit_seq = 0;
   std::string stringified_content_length;
@@ -37,7 +37,7 @@ std::optional<std::string> ReadJsonRpcContentFrom(
 
     stringified_content_length += c;
   }
-  const char* kContentLengthStart = "Content-Length: ";
+  const char *kContentLengthStart = "Content-Length: ";
   assert(StartsWith(stringified_content_length, kContentLengthStart));
   int content_length =
       atoi(stringified_content_length.c_str() + strlen(kContentLengthStart));
@@ -78,8 +78,8 @@ std::optional<char> ReadCharFromStdinBlocking() {
   return std::nullopt;
 }
 
-std::optional<std::string> MessageRegistry::ReadMessageFromStdin(
-    std::unique_ptr<InMessage>* message) {
+std::optional<std::string>
+MessageRegistry::ReadMessageFromStdin(std::unique_ptr<InMessage> *message) {
   std::optional<std::string> content =
       ReadJsonRpcContentFrom(&ReadCharFromStdinBlocking);
   if (!content) {
@@ -95,9 +95,8 @@ std::optional<std::string> MessageRegistry::ReadMessageFromStdin(
   return Parse(json_reader, message);
 }
 
-std::optional<std::string> MessageRegistry::Parse(
-    Reader& visitor,
-    std::unique_ptr<InMessage>* message) {
+std::optional<std::string>
+MessageRegistry::Parse(Reader &visitor, std::unique_ptr<InMessage> *message) {
   if (!visitor.HasMember("jsonrpc") ||
       std::string(visitor["jsonrpc"]->GetString()) != "2.0") {
     LOG_S(FATAL) << "Bad or missing jsonrpc version";
@@ -111,20 +110,20 @@ std::optional<std::string> MessageRegistry::Parse(
     return std::string("Unable to find registered handler for method '") +
            method + "'";
 
-  Allocator& allocator = allocators[method];
+  Allocator &allocator = allocators[method];
   try {
     allocator(visitor, message);
     return std::nullopt;
-  } catch (std::invalid_argument& e) {
+  } catch (std::invalid_argument &e) {
     // *message is partially deserialized but some field (e.g. |id|) are likely
     // available.
     return std::string("Fail to parse '") + method + "' " +
-           static_cast<JsonReader&>(visitor).GetPath() + ", expected " +
+           static_cast<JsonReader &>(visitor).GetPath() + ", expected " +
            e.what();
   }
 }
 
-MessageRegistry* MessageRegistry::instance() {
+MessageRegistry *MessageRegistry::instance() {
   if (!instance_)
     instance_ = new MessageRegistry();
 
@@ -133,7 +132,7 @@ MessageRegistry* MessageRegistry::instance() {
 
 lsBaseOutMessage::~lsBaseOutMessage() = default;
 
-void lsBaseOutMessage::Write(std::ostream& out) {
+void lsBaseOutMessage::Write(std::ostream &out) {
   rapidjson::StringBuffer output;
   rapidjson::Writer<rapidjson::StringBuffer> writer(output);
   JsonWriter json_writer{&writer};
@@ -144,8 +143,8 @@ void lsBaseOutMessage::Write(std::ostream& out) {
   out.flush();
 }
 
-void lsResponseError::Write(Writer& visitor) {
-  auto& value = *this;
+void lsResponseError::Write(Writer &visitor) {
+  auto &value = *this;
   int code2 = static_cast<int>(this->code);
 
   visitor.StartObject();
@@ -154,22 +153,22 @@ void lsResponseError::Write(Writer& visitor) {
   visitor.EndObject();
 }
 
-lsDocumentUri lsDocumentUri::FromPath(const std::string& path) {
+lsDocumentUri lsDocumentUri::FromPath(const std::string &path) {
   lsDocumentUri result;
   result.SetPath(path);
   return result;
 }
 
-bool lsDocumentUri::operator==(const lsDocumentUri& other) const {
+bool lsDocumentUri::operator==(const lsDocumentUri &other) const {
   return raw_uri == other.raw_uri;
 }
 
-void lsDocumentUri::SetPath(const std::string& path) {
+void lsDocumentUri::SetPath(const std::string &path) {
   // file:///c%3A/Users/jacob/Desktop/superindex/indexer/full_tests
   raw_uri = path;
 
   size_t index = raw_uri.find(":");
-  if (index == 1) {  // widows drive letters must always be 1 char
+  if (index == 1) { // widows drive letters must always be 1 char
     raw_uri.replace(raw_uri.begin() + index, raw_uri.begin() + index + 1,
                     "%3A");
   }
@@ -231,11 +230,11 @@ std::string lsPosition::ToString() const {
   return std::to_string(line) + ":" + std::to_string(character);
 }
 
-bool lsTextEdit::operator==(const lsTextEdit& that) {
+bool lsTextEdit::operator==(const lsTextEdit &that) {
   return range == that.range && newText == that.newText;
 }
 
-void Reflect(Writer& visitor, lsMarkedString& value) {
+void Reflect(Writer &visitor, lsMarkedString &value) {
   // If there is a language, emit a `{language:string, value:string}` object. If
   // not, emit a string.
   if (value.language) {

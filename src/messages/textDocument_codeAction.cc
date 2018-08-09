@@ -33,10 +33,8 @@ struct In_TextDocumentCodeAction : public RequestInMessage {
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction::lsCodeActionContext,
                     diagnostics);
-MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction::lsCodeActionParams,
-                    textDocument,
-                    range,
-                    context);
+MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction::lsCodeActionParams, textDocument,
+                    range, context);
 MAKE_REFLECT_STRUCT(In_TextDocumentCodeAction, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentCodeAction);
 
@@ -51,7 +49,7 @@ struct Handler_TextDocumentCodeAction
     : BaseMessageHandler<In_TextDocumentCodeAction> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_TextDocumentCodeAction* request) override {
+  void Run(In_TextDocumentCodeAction *request) override {
     const auto &params = request->params;
     WorkingFile *wfile =
         working_files->GetFileByFilename(params.textDocument.uri.GetPath());
@@ -74,4 +72,4 @@ struct Handler_TextDocumentCodeAction
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentCodeAction);
-}
+} // namespace

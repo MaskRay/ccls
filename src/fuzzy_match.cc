@@ -1,8 +1,8 @@
 #include "fuzzy_match.h"
 
+#include <algorithm>
 #include <ctype.h>
 #include <stdio.h>
-#include <algorithm>
 #include <vector>
 
 enum CharClass { Other, Lower, Upper };
@@ -17,7 +17,7 @@ CharClass GetCharClass(int c) {
   return Other;
 }
 
-void CalculateRoles(std::string_view s, int roles[], int* class_set) {
+void CalculateRoles(std::string_view s, int roles[], int *class_set) {
   if (s.empty()) {
     *class_set = 0;
     return;
@@ -41,7 +41,7 @@ void CalculateRoles(std::string_view s, int roles[], int* class_set) {
   }
   roles[s.size() - 1] = fn();
 }
-}  // namespace
+} // namespace
 
 int FuzzyMatcher::MissScore(int j, bool last) {
   int s = -3;

@@ -6,8 +6,8 @@
 #include "method.h"
 #include "query.h"
 
-#include <optional>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -28,7 +28,7 @@ struct WorkingFiles;
 // relatively stable ids. Only supports xxx files at a time.
 struct SemanticHighlightSymbolCache {
   struct Entry {
-    SemanticHighlightSymbolCache* all_caches_ = nullptr;
+    SemanticHighlightSymbolCache *all_caches_ = nullptr;
 
     // The path this cache belongs to.
     std::string path;
@@ -38,13 +38,13 @@ struct SemanticHighlightSymbolCache {
     TNameToId detailed_func_name_to_stable_id;
     TNameToId detailed_var_name_to_stable_id;
 
-    Entry(SemanticHighlightSymbolCache* all_caches, const std::string& path);
+    Entry(SemanticHighlightSymbolCache *all_caches, const std::string &path);
 
     std::optional<int> TryGetStableId(SymbolKind kind,
-                                 const std::string& detailed_name);
-    int GetStableId(SymbolKind kind, const std::string& detailed_name);
+                                      const std::string &detailed_name);
+    int GetStableId(SymbolKind kind, const std::string &detailed_name);
 
-    TNameToId* GetMapForSymbol_(SymbolKind kind);
+    TNameToId *GetMapForSymbol_(SymbolKind kind);
   };
 
   constexpr static int kCacheSize = 10;
@@ -54,7 +54,7 @@ struct SemanticHighlightSymbolCache {
 
   SemanticHighlightSymbolCache();
   void Init();
-  std::shared_ptr<Entry> GetCacheForFile(const std::string& path);
+  std::shared_ptr<Entry> GetCacheForFile(const std::string &path);
 };
 
 struct Out_CclsPublishSemanticHighlighting
@@ -79,9 +79,7 @@ struct Out_CclsPublishSemanticHighlighting
 MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Symbol, stableId,
                     parentKind, kind, storage, ranges, lsRanges);
 MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting::Params, uri, symbols);
-MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting,
-                    jsonrpc,
-                    method,
+MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting, jsonrpc, method,
                     params);
 
 // Usage:
@@ -94,54 +92,49 @@ MAKE_REFLECT_STRUCT(Out_CclsPublishSemanticHighlighting,
 // Then there will be a global FooHandler instance in
 // |MessageHandler::message_handlers|.
 
-#define REGISTER_MESSAGE_HANDLER(type) \
+#define REGISTER_MESSAGE_HANDLER(type)                                         \
   static type type##message_handler_instance_;
 
 struct MessageHandler {
-  DB* db = nullptr;
-  MultiQueueWaiter* waiter = nullptr;
-  Project* project = nullptr;
-  DiagnosticsPublisher* diag_pub = nullptr;
-  VFS* vfs = nullptr;
-  ImportManager* import_manager = nullptr;
-  SemanticHighlightSymbolCache* semantic_cache = nullptr;
-  WorkingFiles* working_files = nullptr;
-  ClangCompleteManager* clang_complete = nullptr;
-  IncludeComplete* include_complete = nullptr;
-  CodeCompleteCache* global_code_complete_cache = nullptr;
-  CodeCompleteCache* non_global_code_complete_cache = nullptr;
-  CodeCompleteCache* signature_cache = nullptr;
+  DB *db = nullptr;
+  MultiQueueWaiter *waiter = nullptr;
+  Project *project = nullptr;
+  DiagnosticsPublisher *diag_pub = nullptr;
+  VFS *vfs = nullptr;
+  ImportManager *import_manager = nullptr;
+  SemanticHighlightSymbolCache *semantic_cache = nullptr;
+  WorkingFiles *working_files = nullptr;
+  ClangCompleteManager *clang_complete = nullptr;
+  IncludeComplete *include_complete = nullptr;
+  CodeCompleteCache *global_code_complete_cache = nullptr;
+  CodeCompleteCache *non_global_code_complete_cache = nullptr;
+  CodeCompleteCache *signature_cache = nullptr;
 
   virtual MethodType GetMethodType() const = 0;
   virtual void Run(std::unique_ptr<InMessage> message) = 0;
 
-  static std::vector<MessageHandler*>* message_handlers;
+  static std::vector<MessageHandler *> *message_handlers;
 
- protected:
+protected:
   MessageHandler();
 };
 
-template <typename TMessage>
-struct BaseMessageHandler : MessageHandler {
-  virtual void Run(TMessage* message) = 0;
+template <typename TMessage> struct BaseMessageHandler : MessageHandler {
+  virtual void Run(TMessage *message) = 0;
 
   // MessageHandler:
   void Run(std::unique_ptr<InMessage> message) override {
-    Run(static_cast<TMessage*>(message.get()));
+    Run(static_cast<TMessage *>(message.get()));
   }
 };
 
-bool FindFileOrFail(DB* db,
-                    Project* project,
-                    std::optional<lsRequestId> id,
-                    const std::string& absolute_path,
-                    QueryFile** out_query_file,
-                    int* out_file_id = nullptr);
+bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
+                    const std::string &absolute_path,
+                    QueryFile **out_query_file, int *out_file_id = nullptr);
 
 void EmitSkippedRanges(WorkingFile *working_file,
                        const std::vector<Range> &skipped_ranges);
 
-void EmitSemanticHighlighting(DB* db,
-                              SemanticHighlightSymbolCache* semantic_cache,
-                              WorkingFile* working_file,
-                              QueryFile* file);
+void EmitSemanticHighlighting(DB *db,
+                              SemanticHighlightSymbolCache *semantic_cache,
+                              WorkingFile *working_file, QueryFile *file);

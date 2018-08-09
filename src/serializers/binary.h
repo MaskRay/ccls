@@ -5,17 +5,16 @@
 #include <assert.h>
 
 class BinaryReader : public Reader {
-  const char* p_;
+  const char *p_;
 
-  template <typename T>
-  T Get() {
-    auto ret = *reinterpret_cast<const T*>(p_);
+  template <typename T> T Get() {
+    auto ret = *reinterpret_cast<const T *>(p_);
     p_ += sizeof(T);
     return ret;
   }
 
   uint64_t VarUInt() {
-    auto x = *reinterpret_cast<const uint8_t*>(p_++);
+    auto x = *reinterpret_cast<const uint8_t *>(p_++);
     if (x < 253)
       return x;
     if (x == 253)
@@ -29,11 +28,9 @@ class BinaryReader : public Reader {
     return int64_t(x >> 1 ^ -(x & 1));
   }
 
- public:
+public:
   BinaryReader(std::string_view buf) : p_(buf.data()) {}
-  SerializeFormat Format() const override {
-    return SerializeFormat::Binary;
-  }
+  SerializeFormat Format() const override { return SerializeFormat::Binary; }
 
   bool IsBool() override { return true; }
   // Abuse how the function is called in serializer.h
@@ -52,35 +49,32 @@ class BinaryReader : public Reader {
   uint32_t GetUInt32() override { return VarUInt(); }
   uint64_t GetUInt64() override { return VarUInt(); }
   double GetDouble() override { return Get<double>(); }
-  const char* GetString() override {
-    const char* ret = p_;
+  const char *GetString() override {
+    const char *ret = p_;
     while (*p_)
       p_++;
     p_++;
     return ret;
   }
 
-  bool HasMember(const char* x) override { return true; }
-  std::unique_ptr<Reader> operator[](const char* x) override { return {}; }
+  bool HasMember(const char *x) override { return true; }
+  std::unique_ptr<Reader> operator[](const char *x) override { return {}; }
 
-  void IterArray(std::function<void(Reader&)> fn) override {
+  void IterArray(std::function<void(Reader &)> fn) override {
     for (auto n = VarUInt(); n; n--)
       fn(*this);
   }
 
-  void Member(const char*, std::function<void()> fn) override {
-    fn();
-  }
+  void Member(const char *, std::function<void()> fn) override { fn(); }
 };
 
 class BinaryWriter : public Writer {
   std::string buf_;
 
-  template <typename T>
-  void Pack(T x) {
+  template <typename T> void Pack(T x) {
     auto i = buf_.size();
     buf_.resize(i + sizeof(x));
-    *reinterpret_cast<T*>(buf_.data() + i) = x;
+    *reinterpret_cast<T *>(buf_.data() + i) = x;
   }
 
   void VarUInt(uint64_t n) {
@@ -97,14 +91,10 @@ class BinaryWriter : public Writer {
       Pack<uint64_t>(n);
     }
   }
-  void VarInt(int64_t n) {
-    VarUInt(uint64_t(n) << 1 ^ n >> 63);
-  }
+  void VarInt(int64_t n) { VarUInt(uint64_t(n) << 1 ^ n >> 63); }
 
- public:
-  SerializeFormat Format() const override {
-    return SerializeFormat::Binary;
-  }
+public:
+  SerializeFormat Format() const override { return SerializeFormat::Binary; }
   std::string Take() { return std::move(buf_); }
 
   void Null() override { Pack(uint8_t(0)); }
@@ -115,8 +105,8 @@ class BinaryWriter : public Writer {
   void UInt32(uint32_t x) override { VarUInt(x); }
   void UInt64(uint64_t x) override { VarUInt(x); }
   void Double(double x) override { Pack(x); }
-  void String(const char* x) override { String(x, strlen(x)); }
-  void String(const char* x, size_t len) override {
+  void String(const char *x) override { String(x, strlen(x)); }
+  void String(const char *x, size_t len) override {
     auto i = buf_.size();
     buf_.resize(i + len + 1);
     memcpy(buf_.data() + i, x, len);
@@ -125,5 +115,5 @@ class BinaryWriter : public Writer {
   void EndArray() override {}
   void StartObject() override {}
   void EndObject() override {}
-  void Key(const char* name) override {}
+  void Key(const char *name) override {}
 };

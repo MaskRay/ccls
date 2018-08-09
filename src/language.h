@@ -11,4 +11,4 @@ enum class LanguageId { Unknown = 0, C = 1, Cpp = 2, ObjC = 3, ObjCpp = 4 };
 MAKE_REFLECT_TYPE_PROXY(LanguageId);
 
 LanguageId SourceFileLanguage(std::string_view path);
-const char* LanguageIdentifier(LanguageId lang);
+const char *LanguageIdentifier(LanguageId lang);

@@ -1,7 +1,7 @@
 #include "clang_complete.h"
 #include "message_handler.h"
-#include "project.h"
 #include "pipeline.hh"
+#include "project.h"
 #include "working_files.h"
 using namespace ccls;
 
@@ -23,7 +23,7 @@ REGISTER_IN_MESSAGE(In_WorkspaceDidChangeConfiguration);
 struct Handler_WorkspaceDidChangeConfiguration
     : BaseMessageHandler<In_WorkspaceDidChangeConfiguration> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_WorkspaceDidChangeConfiguration* request) override {
+  void Run(In_WorkspaceDidChangeConfiguration *request) override {
     project->Load(g_config->projectRoot);
     project->Index(working_files, lsRequestId());
 
@@ -31,4 +31,4 @@ struct Handler_WorkspaceDidChangeConfiguration
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceDidChangeConfiguration);
-}  // namespace
+} // namespace

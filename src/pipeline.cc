@@ -6,10 +6,10 @@
 #include "log.hh"
 #include "lsp.h"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "project.h"
 #include "query_utils.h"
-#include "pipeline.hh"
 
 #include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
@@ -28,12 +28,12 @@ void DiagnosticsPublisher::Init() {
                                         g_config->diagnostics.blacklist);
 }
 
-void DiagnosticsPublisher::Publish(WorkingFiles* working_files,
+void DiagnosticsPublisher::Publish(WorkingFiles *working_files,
                                    std::string path,
                                    std::vector<lsDiagnostic> diagnostics) {
   bool good = true;
   // Cache diagnostics so we can show fixits.
-  working_files->DoActionOnFile(path, [&](WorkingFile* working_file) {
+  working_files->DoActionOnFile(path, [&](WorkingFile *working_file) {
     if (working_file) {
       good = working_file->diagnostics_.empty();
       working_file->diagnostics_ = diagnostics;
@@ -52,7 +52,8 @@ void DiagnosticsPublisher::Publish(WorkingFiles* working_files,
     Out_TextDocumentPublishDiagnostics out;
     out.params.uri = lsDocumentUri::FromPath(path);
     out.params.diagnostics = diagnostics;
-    ccls::pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics, out);
+    ccls::pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics,
+                                out);
   }
 }
 
@@ -71,13 +72,13 @@ struct Stdout_Request {
   std::string content;
 };
 
-MultiQueueWaiter* main_waiter;
-MultiQueueWaiter* indexer_waiter;
-MultiQueueWaiter* stdout_waiter;
-ThreadedQueue<std::unique_ptr<InMessage>>* on_request;
-ThreadedQueue<Index_Request>* index_request;
-ThreadedQueue<IndexUpdate>* on_indexed;
-ThreadedQueue<Stdout_Request>* for_stdout;
+MultiQueueWaiter *main_waiter;
+MultiQueueWaiter *indexer_waiter;
+MultiQueueWaiter *stdout_waiter;
+ThreadedQueue<std::unique_ptr<InMessage>> *on_request;
+ThreadedQueue<Index_Request> *index_request;
+ThreadedQueue<IndexUpdate> *on_indexed;
+ThreadedQueue<Stdout_Request> *for_stdout;
 
 bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
                   const std::vector<std::string> &args,
@@ -92,23 +93,24 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
   }
 
   if (prev->args != args) {
-    LOG_S(INFO) << "args changed for " << path << (from ? " (via " + *from + ")" : std::string());
+    LOG_S(INFO) << "args changed for " << path
+                << (from ? " (via " + *from + ")" : std::string());
     return true;
   }
 
   return false;
 };
 
-std::string AppendSerializationFormat(const std::string& base) {
+std::string AppendSerializationFormat(const std::string &base) {
   switch (g_config->cacheFormat) {
-    case SerializeFormat::Binary:
-      return base + ".blob";
-    case SerializeFormat::Json:
-      return base + ".json";
+  case SerializeFormat::Binary:
+    return base + ".blob";
+  case SerializeFormat::Json:
+    return base + ".json";
   }
 }
 
-std::string GetCachePath(const std::string& source_file) {
+std::string GetCachePath(const std::string &source_file) {
   std::string cache_file;
   size_t len = g_config->projectRoot.size();
   if (StartsWith(source_file, g_config->projectRoot)) {
@@ -122,8 +124,7 @@ std::string GetCachePath(const std::string& source_file) {
   return g_config->cacheDirectory + cache_file;
 }
 
-std::unique_ptr<IndexFile> RawCacheLoad(
-    const std::string& path) {
+std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
   std::string cache_path = GetCachePath(path);
   std::optional<std::string> file_content = ReadContent(cache_path);
   std::optional<std::string> serialized_indexed_content =
@@ -136,14 +137,12 @@ std::unique_ptr<IndexFile> RawCacheLoad(
                            IndexFile::kMajorVersion);
 }
 
-bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
-                   WorkingFiles* working_files,
-                   Project* project,
-                   VFS* vfs) {
+bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
+                   Project *project, VFS *vfs) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
-  auto& request = *opt_request;
+  auto &request = *opt_request;
 
   // Dummy one to trigger refresh semantic highlight.
   if (request.path.empty()) {
@@ -183,7 +182,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
       reparse = 2;
     int reparseForDep = g_config->index.reparseForDependency;
     if (reparseForDep > 1 || (reparseForDep == 1 && !Project::loaded))
-      for (const auto& dep : prev->dependencies) {
+      for (const auto &dep : prev->dependencies) {
         if (auto write_time1 = LastWriteTime(dep.first().str())) {
           if (dep.second < *write_time1) {
             reparse = 2;
@@ -210,7 +209,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
       }
 
     std::lock_guard<std::mutex> lock(vfs->mutex);
-    VFS::State& state = vfs->state[path_to_index];
+    VFS::State &state = vfs->state[path_to_index];
     if (state.owner == g_thread_id)
       state.stage = 0;
     return true;
@@ -218,7 +217,8 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
 
   LOG_S(INFO) << "parse " << path_to_index;
 
-  auto indexes = idx::Index(vfs, entry.directory, path_to_index, entry.args, {});
+  auto indexes =
+      idx::Index(vfs, entry.directory, path_to_index, entry.args, {});
 
   if (indexes.empty()) {
     if (g_config->index.enabled && request.id.Valid()) {
@@ -232,7 +232,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
     return true;
   }
 
-  for (std::unique_ptr<IndexFile>& curr : indexes) {
+  for (std::unique_ptr<IndexFile> &curr : indexes) {
     // Only emit diagnostics for non-interactive sessions, which makes it easier
     // to identify indexing problems. For interactive sessions, diagnostics are
     // handled by code completion.
@@ -260,7 +260,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
     vfs->Reset(path);
     if (entry.id >= 0) {
       std::lock_guard<std::mutex> lock(project->mutex_);
-      for (auto& dep : curr->dependencies)
+      for (auto &dep : curr->dependencies)
         project->absolute_path_to_entry_index_[dep.first()] = entry.id;
     }
 
@@ -274,7 +274,7 @@ bool Indexer_Parse(DiagnosticsPublisher* diag_pub,
   return true;
 }
 
-}  // namespace
+} // namespace
 
 void Init() {
   main_waiter = new MultiQueueWaiter;
@@ -288,28 +288,25 @@ void Init() {
   for_stdout = new ThreadedQueue<Stdout_Request>(stdout_waiter);
 }
 
-void Indexer_Main(DiagnosticsPublisher* diag_pub,
-                  VFS* vfs,
-                  Project* project,
-                  WorkingFiles* working_files) {
+void Indexer_Main(DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
+                  WorkingFiles *working_files) {
   while (true)
     if (!Indexer_Parse(diag_pub, working_files, project, vfs))
       indexer_waiter->Wait(index_request);
 }
 
-void Main_OnIndexed(DB* db,
-                    SemanticHighlightSymbolCache* semantic_cache,
-                    WorkingFiles* working_files,
-                    IndexUpdate* update) {
+void Main_OnIndexed(DB *db, SemanticHighlightSymbolCache *semantic_cache,
+                    WorkingFiles *working_files, IndexUpdate *update) {
   if (update->refresh) {
     Project::loaded = true;
-    LOG_S(INFO) << "loaded project. Refresh semantic highlight for all working file.";
+    LOG_S(INFO)
+        << "loaded project. Refresh semantic highlight for all working file.";
     std::lock_guard<std::mutex> lock(working_files->files_mutex);
-    for (auto& f : working_files->files) {
+    for (auto &f : working_files->files) {
       std::string filename = LowerPathIfInsensitive(f->filename);
       if (db->name2file_id.find(filename) == db->name2file_id.end())
         continue;
-      QueryFile* file = &db->files[db->name2file_id[filename]];
+      QueryFile *file = &db->files[db->name2file_id[filename]];
       EmitSemanticHighlighting(db, semantic_cache, f.get(), file);
     }
     return;
@@ -322,9 +319,9 @@ void Main_OnIndexed(DB* db,
 
   // Update indexed content, skipped ranges, and semantic highlighting.
   if (update->files_def_update) {
-    auto& def_u = *update->files_def_update;
+    auto &def_u = *update->files_def_update;
     LOG_S(INFO) << "apply index for " << def_u.first.path;
-    if (WorkingFile* working_file =
+    if (WorkingFile *working_file =
             working_files->GetFileByFilename(def_u.first.path)) {
       working_file->SetIndexContent(def_u.second);
       EmitSkippedRanges(working_file, def_u.first.skipped_ranges);
@@ -369,7 +366,8 @@ void LaunchStdin() {
       if (method_type == kMethodType_Exit)
         break;
     }
-  }).detach();
+  })
+      .detach();
 }
 
 void LaunchStdout() {
@@ -383,7 +381,7 @@ void LaunchStdout() {
         continue;
       }
 
-      for (auto& message : messages) {
+      for (auto &message : messages) {
 #ifdef _WIN32
         fwrite(message.content.c_str(), message.content.size(), 1, stdout);
         fflush(stdout);
@@ -392,7 +390,8 @@ void LaunchStdout() {
 #endif
       }
     }
-  }).detach();
+  })
+      .detach();
 }
 
 void MainLoop() {
@@ -412,9 +411,8 @@ void MainLoop() {
           Out_Error out;
           out.id = id;
           out.error.code = lsErrorCodes::InternalError;
-          out.error.message =
-              "Dropping completion request; a newer request "
-              "has come in that will be serviced instead.";
+          out.error.message = "Dropping completion request; a newer request "
+                              "has come in that will be serviced instead.";
           pipeline::WriteStdout(kMethodType_Unknown, out);
         }
       });
@@ -426,7 +424,7 @@ void MainLoop() {
   DB db;
 
   // Setup shared references.
-  for (MessageHandler* handler : *MessageHandler::message_handlers) {
+  for (MessageHandler *handler : *MessageHandler::message_handlers) {
     handler->db = &db;
     handler->waiter = indexer_waiter;
     handler->project = &project;
@@ -445,9 +443,9 @@ void MainLoop() {
   while (true) {
     std::vector<std::unique_ptr<InMessage>> messages = on_request->DequeueAll();
     bool did_work = messages.size();
-    for (auto& message : messages) {
+    for (auto &message : messages) {
       // TODO: Consider using std::unordered_map to lookup the handler
-      for (MessageHandler* handler : *MessageHandler::message_handlers) {
+      for (MessageHandler *handler : *MessageHandler::message_handlers) {
         if (handler->GetMethodType() == message->GetMethodType()) {
           handler->Run(std::move(message));
           break;
@@ -473,18 +471,16 @@ void MainLoop() {
   }
 }
 
-void Index(const std::string& path,
-           const std::vector<std::string>& args,
-           bool interactive,
-           lsRequestId id) {
+void Index(const std::string &path, const std::vector<std::string> &args,
+           bool interactive, lsRequestId id) {
   index_request->PushBack({path, args, interactive, id}, interactive);
 }
 
-std::optional<std::string> LoadCachedFileContents(const std::string& path) {
+std::optional<std::string> LoadCachedFileContents(const std::string &path) {
   return ReadContent(GetCachePath(path));
 }
 
-void WriteStdout(MethodType method, lsBaseOutMessage& response) {
+void WriteStdout(MethodType method, lsBaseOutMessage &response) {
   std::ostringstream sstream;
   response.Write(sstream);
 
@@ -494,4 +490,4 @@ void WriteStdout(MethodType method, lsBaseOutMessage& response) {
   for_stdout->PushBack(std::move(out));
 }
 
-}
+} // namespace ccls::pipeline

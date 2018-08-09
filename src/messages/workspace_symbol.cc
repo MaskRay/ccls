@@ -4,21 +4,18 @@
 #include "query_utils.h"
 using namespace ccls;
 
-#include <ctype.h>
-#include <limits.h>
 #include <algorithm>
+#include <ctype.h>
 #include <functional>
+#include <limits.h>
 
 namespace {
 MethodType kMethodType = "workspace/symbol";
 
 // Lookup |symbol| in |db| and insert the value into |result|.
 bool AddSymbol(
-    DB* db,
-    WorkingFiles* working_files,
-    SymbolIdx sym,
-    bool use_detailed,
-    std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>>* result) {
+    DB *db, WorkingFiles *working_files, SymbolIdx sym, bool use_detailed,
+    std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> *result) {
   std::optional<lsSymbolInformation> info =
       GetSymbolInfo(db, working_files, sym, true);
   if (!info)
@@ -63,7 +60,7 @@ MAKE_REFLECT_STRUCT(Out_WorkspaceSymbol, jsonrpc, id, result);
 
 struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_WorkspaceSymbol* request) override {
+  void Run(In_WorkspaceSymbol *request) override {
     Out_WorkspaceSymbol out;
     out.id = request->id;
 
@@ -83,40 +80,41 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
     auto Add = [&](SymbolIdx sym) {
       std::string_view detailed_name = db->GetSymbolName(sym, true);
       int pos =
-        ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
+          ReverseSubseqMatch(query_without_space, detailed_name, sensitive);
       return pos >= 0 &&
              AddSymbol(db, working_files, sym,
                        detailed_name.find(':', pos) != std::string::npos,
                        &cands) &&
              cands.size() >= g_config->workspaceSymbol.maxNum;
     };
-    for (auto& func : db->funcs)
+    for (auto &func : db->funcs)
       if (Add({func.usr, SymbolKind::Func}))
         goto done_add;
-    for (auto& type : db->types)
+    for (auto &type : db->types)
       if (Add({type.usr, SymbolKind::Type}))
         goto done_add;
-    for (auto& var : db->vars)
+    for (auto &var : db->vars)
       if (var.def.size() && !var.def[0].is_local() &&
           Add({var.usr, SymbolKind::Var}))
         goto done_add;
- done_add:
+  done_add:
 
-    if (g_config->workspaceSymbol.sort && query.size() <= FuzzyMatcher::kMaxPat) {
+    if (g_config->workspaceSymbol.sort &&
+        query.size() <= FuzzyMatcher::kMaxPat) {
       // Sort results with a fuzzy matching algorithm.
       int longest = 0;
-      for (auto& cand : cands)
+      for (auto &cand : cands)
         longest = std::max(
             longest, int(db->GetSymbolName(std::get<2>(cand), true).size()));
       FuzzyMatcher fuzzy(query, g_config->workspaceSymbol.caseSensitivity);
-      for (auto& cand : cands)
+      for (auto &cand : cands)
         std::get<1>(cand) = fuzzy.Match(
             db->GetSymbolName(std::get<2>(cand), std::get<1>(cand)));
-      std::sort(cands.begin(), cands.end(), [](const auto& l, const auto& r) {
+      std::sort(cands.begin(), cands.end(), [](const auto &l, const auto &r) {
         return std::get<1>(l) > std::get<1>(r);
       });
       out.result.reserve(cands.size());
-      for (auto& cand: cands) {
+      for (auto &cand : cands) {
         // Discard awful candidates.
         if (std::get<1>(cand) <= FuzzyMatcher::kMinScore)
           break;
@@ -124,7 +122,7 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
       }
     } else {
       out.result.reserve(cands.size());
-      for (auto& cand : cands)
+      for (auto &cand : cands)
         out.result.push_back(std::get<0>(cand));
     }
 
@@ -132,4 +130,4 @@ struct Handler_WorkspaceSymbol : BaseMessageHandler<In_WorkspaceSymbol> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceSymbol);
-}  // namespace
+} // namespace

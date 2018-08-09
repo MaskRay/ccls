@@ -68,7 +68,7 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
     const std::string &filepath, const std::vector<std::string> &args,
     const WorkingFiles::Snapshot &snapshot, bool diagnostic) {
   std::vector<const char *> Args;
-  for (auto& arg : args)
+  for (auto &arg : args)
     Args.push_back(arg.c_str());
   Args.push_back("-fallow-editor-placeholders");
   if (!diagnostic)
@@ -103,9 +103,8 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
         ret->PCHCO->getRawReader().getFormat(), &ErrUnit));
   };
   if (!CRC.RunSafely(parse)) {
-    LOG_S(ERROR)
-        << "clang crashed for " << filepath << "\n"
-        << StringJoin(args, " ") + " -fsyntax-only";
+    LOG_S(ERROR) << "clang crashed for " << filepath << "\n"
+                 << StringJoin(args, " ") + " -fsyntax-only";
     return {};
   }
   if (!Unit && !ErrUnit)

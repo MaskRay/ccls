@@ -14,10 +14,10 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <unistd.h>
 #include <sys/stat.h>
-#include <sys/types.h>  // required for stat.h
+#include <sys/types.h> // required for stat.h
 #include <sys/wait.h>
+#include <unistd.h>
 #ifdef __GLIBC__
 #include <malloc.h>
 #endif
@@ -89,9 +89,9 @@ std::optional<std::string> RealPathNotExpandSymlink(std::string path) {
   return resolved;
 }
 
-}  // namespace
+} // namespace
 
-std::string NormalizePath(const std::string& path) {
+std::string NormalizePath(const std::string &path) {
   std::optional<std::string> resolved = RealPathNotExpandSymlink(path);
   return resolved ? *resolved : path;
 }
@@ -106,12 +106,12 @@ void TraceMe() {
   // If the environment variable is defined, wait for a debugger.
   // In gdb, you need to invoke `signal SIGCONT` if you want ccls to continue
   // after detaching.
-  const char* traceme = getenv("CCLS_TRACEME");
+  const char *traceme = getenv("CCLS_TRACEME");
   if (traceme)
     raise(traceme[0] == 's' ? SIGSTOP : SIGTSTP);
 }
 
-std::string GetExternalCommandOutput(const std::vector<std::string>& command,
+std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input) {
   int pin[2], pout[2];
   if (pipe(pin) < 0) {
@@ -132,9 +132,9 @@ std::string GetExternalCommandOutput(const std::vector<std::string>& command,
     close(pin[1]);
     close(pout[0]);
     close(pout[1]);
-    auto argv = new char*[command.size() + 1];
+    auto argv = new char *[command.size() + 1];
     for (size_t i = 0; i < command.size(); i++)
-      argv[i] = const_cast<char*>(command[i].c_str());
+      argv[i] = const_cast<char *>(command[i].c_str());
     argv[command.size()] = nullptr;
     execvp(argv[0], argv);
     _Exit(127);

@@ -106,9 +106,9 @@ struct lsCompletionItem {
   // nor with themselves.
   // std::vector<TextEdit> additionalTextEdits;
 
-  // An std::optional command that is executed *after* inserting this completion.
-  // *Note* that additional modifications to the current document should be
-  // described with the additionalTextEdits-property. Command command;
+  // An std::optional command that is executed *after* inserting this
+  // completion. *Note* that additional modifications to the current document
+  // should be described with the additionalTextEdits-property. Command command;
 
   // An data entry field that is preserved on a completion item between
   // a completion and a completion resolve request.
@@ -117,7 +117,7 @@ struct lsCompletionItem {
   // Use this helper to figure out what content the completion item will insert
   // into the document, as it could live in either |textEdit|, |insertText|, or
   // |label|.
-  const std::string& InsertedContent() const {
+  const std::string &InsertedContent() const {
     if (textEdit)
       return textEdit->newText;
     if (!insertText.empty())
@@ -125,13 +125,6 @@ struct lsCompletionItem {
     return label;
   }
 };
-MAKE_REFLECT_STRUCT(lsCompletionItem,
-                    label,
-                    kind,
-                    detail,
-                    documentation,
-                    sortText,
-                    insertText,
-                    filterText,
-                    insertTextFormat,
+MAKE_REFLECT_STRUCT(lsCompletionItem, label, kind, detail, documentation,
+                    sortText, insertText, filterText, insertTextFormat,
                     textEdit);

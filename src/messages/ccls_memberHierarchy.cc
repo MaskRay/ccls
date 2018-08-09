@@ -30,17 +30,12 @@ struct In_CclsMemberHierarchy : public RequestInMessage {
   Params params;
 };
 
-MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy::Params,
-                    textDocument,
-                    position,
-                    id,
-                    qualified,
-                    levels);
+MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy::Params, textDocument, position, id,
+                    qualified, levels);
 MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy, id, params);
 REGISTER_IN_MESSAGE(In_CclsMemberHierarchy);
 
-struct Out_CclsMemberHierarchy
-    : public lsOutMessage<Out_CclsMemberHierarchy> {
+struct Out_CclsMemberHierarchy : public lsOutMessage<Out_CclsMemberHierarchy> {
   struct Entry {
     Usr usr;
     std::string id;
@@ -56,31 +51,18 @@ struct Out_CclsMemberHierarchy
   lsRequestId id;
   std::optional<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CclsMemberHierarchy::Entry,
-                    id,
-                    name,
-                    fieldName,
-                    location,
-                    numChildren,
-                    children);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsMemberHierarchy,
-                                       jsonrpc,
-                                       id,
+MAKE_REFLECT_STRUCT(Out_CclsMemberHierarchy::Entry, id, name, fieldName,
+                    location, numChildren, children);
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsMemberHierarchy, jsonrpc, id,
                                        result);
 
-bool Expand(MessageHandler* m,
-            Out_CclsMemberHierarchy::Entry* entry,
-            bool qualified,
-            int levels);
+bool Expand(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
+            bool qualified, int levels);
 
 // Add a field to |entry| which is a Func/Type.
-void DoField(MessageHandler* m,
-             Out_CclsMemberHierarchy::Entry* entry,
-             const QueryVar& var,
-             int64_t offset,
-             bool qualified,
-             int levels) {
-  const QueryVar::Def* def1 = var.AnyDef();
+void DoField(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
+             const QueryVar &var, int64_t offset, bool qualified, int levels) {
+  const QueryVar::Def *def1 = var.AnyDef();
   if (!def1)
     return;
   Out_CclsMemberHierarchy::Entry entry1;
@@ -120,37 +102,35 @@ void DoField(MessageHandler* m,
 }
 
 // Expand a type node by adding members recursively to it.
-bool Expand(MessageHandler* m,
-            Out_CclsMemberHierarchy::Entry* entry,
-            bool qualified,
-            int levels) {
+bool Expand(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
+            bool qualified, int levels) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = ClangBuiltinTypeName(int(entry->usr));
     return true;
   }
-  const QueryType& type = m->db->Type(entry->usr);
-  const QueryType::Def* def = type.AnyDef();
+  const QueryType &type = m->db->Type(entry->usr);
+  const QueryType::Def *def = type.AnyDef();
   // builtin types have no declaration and empty |qualified|.
   if (!def)
     return false;
   entry->name = def->Name(qualified);
   std::unordered_set<Usr> seen;
   if (levels > 0) {
-    std::vector<const QueryType*> stack;
+    std::vector<const QueryType *> stack;
     seen.insert(type.usr);
     stack.push_back(&type);
     while (stack.size()) {
-      const auto* def = stack.back()->AnyDef();
+      const auto *def = stack.back()->AnyDef();
       stack.pop_back();
       if (def) {
-        EachDefinedType(m->db, def->bases, [&](QueryType& type1) {
+        EachDefinedType(m->db, def->bases, [&](QueryType &type1) {
           if (!seen.count(type1.usr)) {
             seen.insert(type1.usr);
             stack.push_back(&type1);
           }
         });
         if (def->alias_of) {
-          const QueryType::Def* def1 = m->db->Type(def->alias_of).AnyDef();
+          const QueryType::Def *def1 = m->db->Type(def->alias_of).AnyDef();
           Out_CclsMemberHierarchy::Entry entry1;
           entry1.id = std::to_string(def->alias_of);
           entry1.usr = def->alias_of;
@@ -176,7 +156,7 @@ bool Expand(MessageHandler* m,
           }
         } else {
           for (auto it : def->vars) {
-            QueryVar& var = m->db->Var(it.first);
+            QueryVar &var = m->db->Var(it.first);
             if (!var.def.empty())
               DoField(m, entry, var, it.second, qualified, levels - 1);
           }
@@ -193,15 +173,13 @@ struct Handler_CclsMemberHierarchy
     : BaseMessageHandler<In_CclsMemberHierarchy> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsMemberHierarchy::Entry> BuildInitial(SymbolKind kind,
-                                                             Usr root_usr,
-                                                             bool qualified,
-                                                             int levels) {
+  std::optional<Out_CclsMemberHierarchy::Entry>
+  BuildInitial(SymbolKind kind, Usr root_usr, bool qualified, int levels) {
     switch (kind) {
     default:
       return {};
     case SymbolKind::Func: {
-      const auto* def = db->Func(root_usr).AnyDef();
+      const auto *def = db->Func(root_usr).AnyDef();
       if (!def)
         return {};
 
@@ -210,16 +188,16 @@ struct Handler_CclsMemberHierarchy
       entry.name = def->Name(qualified);
       if (def->spell) {
         if (std::optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def->spell))
+                GetLsLocation(db, working_files, *def->spell))
           entry.location = *loc;
       }
-      EachDefinedVar(db, def->vars, [&](QueryVar& var) {
-          DoField(this, &entry, var, -1, qualified, levels - 1);
-        });
+      EachDefinedVar(db, def->vars, [&](QueryVar &var) {
+        DoField(this, &entry, var, -1, qualified, levels - 1);
+      });
       return entry;
     }
     case SymbolKind::Type: {
-      const auto* def = db->Type(root_usr).AnyDef();
+      const auto *def = db->Type(root_usr).AnyDef();
       if (!def)
         return {};
 
@@ -228,7 +206,7 @@ struct Handler_CclsMemberHierarchy
       entry.usr = root_usr;
       if (def->spell) {
         if (std::optional<lsLocation> loc =
-          GetLsLocation(db, working_files, *def->spell))
+                GetLsLocation(db, working_files, *def->spell))
           entry.location = *loc;
       }
       Expand(this, &entry, qualified, levels);
@@ -237,8 +215,8 @@ struct Handler_CclsMemberHierarchy
     }
   }
 
-  void Run(In_CclsMemberHierarchy* request) override {
-    auto& params = request->params;
+  void Run(In_CclsMemberHierarchy *request) override {
+    auto &params = request->params;
     Out_CclsMemberHierarchy out;
     out.id = request->id;
 
@@ -256,29 +234,28 @@ struct Handler_CclsMemberHierarchy
           Expand(this, &entry, params.qualified, params.levels))
         out.result = std::move(entry);
     } else {
-      QueryFile* file;
+      QueryFile *file;
       if (!FindFileOrFail(db, project, request->id,
                           params.textDocument.uri.GetPath(), &file))
         return;
-      WorkingFile* wfile =
-          working_files->GetFileByFilename(file->def->path);
+      WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
       for (SymbolRef sym :
            FindSymbolsAtLocation(wfile, file, params.position)) {
         switch (sym.kind) {
-          case SymbolKind::Func:
-          case SymbolKind::Type:
-            out.result = BuildInitial(sym.kind, sym.usr, params.qualified,
-                                      params.levels);
-            break;
-          case SymbolKind::Var: {
-            const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-            if (def && def->type)
-              out.result = BuildInitial(SymbolKind::Type, def->type,
-                                        params.qualified, params.levels);
-            break;
-          }
-          default:
-            continue;
+        case SymbolKind::Func:
+        case SymbolKind::Type:
+          out.result =
+              BuildInitial(sym.kind, sym.usr, params.qualified, params.levels);
+          break;
+        case SymbolKind::Var: {
+          const QueryVar::Def *def = db->GetVar(sym).AnyDef();
+          if (def && def->type)
+            out.result = BuildInitial(SymbolKind::Type, def->type,
+                                      params.qualified, params.levels);
+          break;
+        }
+        default:
+          continue;
         }
         break;
       }
@@ -289,4 +266,4 @@ struct Handler_CclsMemberHierarchy
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsMemberHierarchy);
 
-}  // namespace
+} // namespace

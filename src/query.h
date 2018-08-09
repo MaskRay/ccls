@@ -31,19 +31,20 @@ struct QueryFile {
   std::unordered_map<SymbolRef, int> symbol2refcnt;
 };
 
-template <typename Q, typename QDef>
-struct QueryEntity {
+template <typename Q, typename QDef> struct QueryEntity {
   using Def = QDef;
-  Def* AnyDef() {
-    Def* ret = nullptr;
-    for (auto& i : static_cast<Q*>(this)->def) {
+  Def *AnyDef() {
+    Def *ret = nullptr;
+    for (auto &i : static_cast<Q *>(this)->def) {
       ret = &i;
       if (i.spell)
         break;
     }
     return ret;
   }
-  const Def* AnyDef() const { return const_cast<QueryEntity*>(this)->AnyDef(); }
+  const Def *AnyDef() const {
+    return const_cast<QueryEntity *>(this)->AnyDef();
+  }
 };
 
 using UseUpdate =
@@ -78,8 +79,7 @@ struct QueryVar : QueryEntity<QueryVar, VarDef> {
 struct IndexUpdate {
   // Creates a new IndexUpdate based on the delta from previous to current. If
   // no delta computation should be done just pass null for previous.
-  static IndexUpdate CreateDelta(IndexFile* previous,
-                                 IndexFile* current);
+  static IndexUpdate CreateDelta(IndexFile *previous, IndexFile *current);
 
   int file_id;
 
@@ -121,8 +121,7 @@ struct IndexUpdate {
 struct WrappedUsr {
   Usr usr;
 };
-template <>
-struct llvm::DenseMapInfo<WrappedUsr> {
+template <> struct llvm::DenseMapInfo<WrappedUsr> {
   static inline WrappedUsr getEmptyKey() { return {0}; }
   static inline WrappedUsr getTombstoneKey() { return {~0ULL}; }
   static unsigned getHashValue(WrappedUsr w) { return w.usr; }
@@ -141,11 +140,12 @@ struct DB {
   std::vector<QueryType> types;
   std::vector<QueryVar> vars;
 
-  void RemoveUsrs(SymbolKind kind, int file_id, const std::vector<Usr>& to_remove);
+  void RemoveUsrs(SymbolKind kind, int file_id,
+                  const std::vector<Usr> &to_remove);
   // Insert the contents of |update| into |db|.
-  void ApplyIndexUpdate(IndexUpdate* update);
-  int GetFileId(const std::string& path);
-  int Update(QueryFile::DefUpdate&& u);
+  void ApplyIndexUpdate(IndexUpdate *update);
+  int GetFileId(const std::string &path);
+  int Update(QueryFile::DefUpdate &&u);
   void Update(const Lid2file_id &, int file_id,
               std::vector<std::pair<Usr, QueryType::Def>> &&us);
   void Update(const Lid2file_id &, int file_id,
@@ -158,12 +158,12 @@ struct DB {
   bool HasType(Usr usr) const { return type_usr.count({usr}); }
   bool HasVar(Usr usr) const { return var_usr.count({usr}); }
 
-  QueryFunc& Func(Usr usr) { return funcs[func_usr[{usr}]]; }
-  QueryType& Type(Usr usr) { return types[type_usr[{usr}]]; }
-  QueryVar& Var(Usr usr) { return vars[var_usr[{usr}]]; }
+  QueryFunc &Func(Usr usr) { return funcs[func_usr[{usr}]]; }
+  QueryType &Type(Usr usr) { return types[type_usr[{usr}]]; }
+  QueryVar &Var(Usr usr) { return vars[var_usr[{usr}]]; }
 
-  QueryFile& GetFile(SymbolIdx ref) { return files[ref.usr]; }
-  QueryFunc& GetFunc(SymbolIdx ref) { return Func(ref.usr); }
-  QueryType& GetType(SymbolIdx ref) { return Type(ref.usr); }
-  QueryVar& GetVar(SymbolIdx ref) { return Var(ref.usr); }
+  QueryFile &GetFile(SymbolIdx ref) { return files[ref.usr]; }
+  QueryFunc &GetFunc(SymbolIdx ref) { return Func(ref.usr); }
+  QueryType &GetType(SymbolIdx ref) { return Type(ref.usr); }
+  QueryVar &GetVar(SymbolIdx ref) { return Var(ref.usr); }
 };

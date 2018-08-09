@@ -1,7 +1,7 @@
 #include "clang_complete.h"
 #include "message_handler.h"
-#include "project.h"
 #include "pipeline.hh"
+#include "project.h"
 using namespace ccls;
 
 namespace {
@@ -28,8 +28,8 @@ struct Handler_TextDocumentDidSave
     : BaseMessageHandler<In_TextDocumentDidSave> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_TextDocumentDidSave* request) override {
-    const auto& params = request->params;
+  void Run(In_TextDocumentDidSave *request) override {
+    const auto &params = request->params;
     std::string path = params.textDocument.uri.GetPath();
 
     // Send out an index request, and copy the current buffer state so we
@@ -55,4 +55,4 @@ struct Handler_TextDocumentDidSave
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidSave);
-}  // namespace
+} // namespace

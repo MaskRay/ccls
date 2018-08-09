@@ -38,10 +38,10 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
 struct Handler_TextDocumentDocumentSymbol
     : BaseMessageHandler<In_TextDocumentDocumentSymbol> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentDocumentSymbol* request) override {
-    auto& params = request->params;
+  void Run(In_TextDocumentDocumentSymbol *request) override {
+    auto &params = request->params;
 
-    QueryFile* file;
+    QueryFile *file;
     int file_id;
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file, &file_id))
@@ -67,8 +67,8 @@ struct Handler_TextDocumentDocumentSymbol
         if (std::optional<lsSymbolInformation> info =
                 GetSymbolInfo(db, working_files, sym, false)) {
           if (sym.kind == SymbolKind::Var) {
-            QueryVar& var = db->GetVar(sym);
-            auto* def = var.AnyDef();
+            QueryVar &var = db->GetVar(sym);
+            auto *def = var.AnyDef();
             if (!def || !def->spell || def->is_local())
               continue;
           }
@@ -84,4 +84,4 @@ struct Handler_TextDocumentDocumentSymbol
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentSymbol);
-}  // namespace
+} // namespace

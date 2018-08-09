@@ -17,7 +17,7 @@ constexpr int kMaxDiff = 20;
 // |kMaxColumnAlignSize|.
 constexpr int kMaxColumnAlignSize = 200;
 
-lsPosition GetPositionForOffset(const std::string& content, int offset) {
+lsPosition GetPositionForOffset(const std::string &content, int offset) {
   if (offset >= content.size())
     offset = (int)content.size() - 1;
 
@@ -32,7 +32,7 @@ lsPosition GetPositionForOffset(const std::string& content, int offset) {
   return {line, col};
 }
 
-std::vector<std::string> ToLines(const std::string& content) {
+std::vector<std::string> ToLines(const std::string &content) {
   std::vector<std::string> result;
   std::istringstream lines(content);
   std::string line;
@@ -45,7 +45,7 @@ std::vector<std::string> ToLines(const std::string& content) {
 // Myers' O(ND) diff algorithm.
 // Costs: insertion=1, deletion=1, no substitution.
 // If the distance is larger than threshold, returns threshould + 1.
-int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
+int MyersDiff(const char *a, int la, const char *b, int lb, int threshold) {
   assert(threshold <= kMaxDiff);
   static int v_static[2 * kMaxColumnAlignSize + 2];
   const char *ea = a + la, *eb = b + lb;
@@ -61,7 +61,7 @@ int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
   if (la + lb > 2 * kMaxColumnAlignSize)
     return std::min(abs(la - lb), threshold + 1);
 
-  int* v = v_static + lb;
+  int *v = v_static + lb;
   v[1] = 0;
   for (int di = 0; di <= threshold; di++) {
     int low = -di + 2 * std::max(0, di - lb),
@@ -80,7 +80,7 @@ int MyersDiff(const char* a, int la, const char* b, int lb, int threshold) {
   return threshold + 1;
 }
 
-int MyersDiff(const std::string& a, const std::string& b, int threshold) {
+int MyersDiff(const std::string &a, const std::string &b, int threshold) {
   return MyersDiff(a.data(), a.size(), b.data(), b.size(), threshold);
 }
 
@@ -107,7 +107,7 @@ std::vector<int> EditDistanceVector(std::string a, std::string b) {
 
 // Find matching position of |a[column]| in |b|.
 // This is actually a single step of Hirschberg's sequence alignment algorithm.
-int AlignColumn(const std::string& a, int column, std::string b, bool is_end) {
+int AlignColumn(const std::string &a, int column, std::string b, bool is_end) {
   int head = 0, tail = 0;
   while (head < (int)a.size() && head < (int)b.size() && a[head] == b[head])
     head++;
@@ -149,12 +149,10 @@ int AlignColumn(const std::string& a, int column, std::string b, bool is_end) {
 // Find matching buffer line of index_lines[line].
 // By symmetry, this can also be used to find matching index line of a buffer
 // line.
-std::optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
-                               const std::vector<int>& index_to_buffer,
-                               int line,
-                               int* column,
-                               const std::vector<std::string>& buffer_lines,
-                               bool is_end) {
+std::optional<int>
+FindMatchingLine(const std::vector<std::string> &index_lines,
+                 const std::vector<int> &index_to_buffer, int line, int *column,
+                 const std::vector<std::string> &buffer_lines, bool is_end) {
   // If this is a confident mapping, returns.
   if (index_to_buffer[line] >= 0) {
     int ret = index_to_buffer[line];
@@ -179,7 +177,7 @@ std::optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
   // Search for lines [up,down] and use Myers's diff algorithm to find the best
   // match (least edit distance).
   int best = up, best_dist = kMaxDiff + 1;
-  const std::string& needle = index_lines[line];
+  const std::string &needle = index_lines[line];
   for (int i = up; i <= down; i++) {
     int dist = MyersDiff(needle, buffer_lines[i], kMaxDiff);
     if (dist < best_dist) {
@@ -193,17 +191,17 @@ std::optional<int> FindMatchingLine(const std::vector<std::string>& index_lines,
   return best;
 }
 
-}  // namespace
+} // namespace
 
-WorkingFile::WorkingFile(const std::string& filename,
-                         const std::string& buffer_content)
+WorkingFile::WorkingFile(const std::string &filename,
+                         const std::string &buffer_content)
     : filename(filename), buffer_content(buffer_content) {
   OnBufferContentUpdated();
 
   // SetIndexContent gets called when the file is opened.
 }
 
-void WorkingFile::SetIndexContent(const std::string& index_content) {
+void WorkingFile::SetIndexContent(const std::string &index_content) {
   index_lines = ToLines(index_content);
 
   index_to_buffer.clear();
@@ -234,7 +232,7 @@ void WorkingFile::ComputeLineMapping() {
 
   // For index line i, set index_to_buffer[i] to -1 if line i is duplicated.
   int i = 0;
-  for (auto& line : index_lines) {
+  for (auto &line : index_lines) {
     uint64_t h = HashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
@@ -251,7 +249,7 @@ void WorkingFile::ComputeLineMapping() {
   // For buffer line i, set buffer_to_index[i] to -1 if line i is duplicated.
   i = 0;
   hash_to_unique.clear();
-  for (auto& line : buffer_lines) {
+  for (auto &line : buffer_lines) {
     uint64_t h = HashUsr(line);
     auto it = hash_to_unique.find(h);
     if (it == hash_to_unique.end()) {
@@ -300,9 +298,8 @@ void WorkingFile::ComputeLineMapping() {
       buffer_to_index[index_to_buffer[i]] = i;
 }
 
-std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
-                                                    int* column,
-                                                    bool is_end) {
+std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line, int *column,
+                                                         bool is_end) {
   if (line < 0 || line >= (int)index_lines.size()) {
     LOG_S(WARNING) << "bad index_line (got " << line << ", expected [0, "
                    << index_lines.size() << ")) in " << filename;
@@ -315,9 +312,8 @@ std::optional<int> WorkingFile::GetBufferPosFromIndexPos(int line,
                           buffer_lines, is_end);
 }
 
-std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line,
-                                                    int* column,
-                                                    bool is_end) {
+std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line, int *column,
+                                                         bool is_end) {
   // See GetBufferLineFromIndexLine for additional comments.
   if (line < 0 || line >= (int)buffer_lines.size())
     return std::nullopt;
@@ -329,9 +325,8 @@ std::optional<int> WorkingFile::GetIndexPosFromBufferPos(int line,
 }
 
 std::string WorkingFile::FindClosestCallNameInBuffer(
-    lsPosition position,
-    int* active_parameter,
-    lsPosition* completion_position) const {
+    lsPosition position, int *active_parameter,
+    lsPosition *completion_position) const {
   *active_parameter = 0;
 
   int offset = GetOffsetForPosition(position, buffer_content);
@@ -378,10 +373,8 @@ std::string WorkingFile::FindClosestCallNameInBuffer(
 }
 
 lsPosition WorkingFile::FindStableCompletionSource(
-    lsPosition position,
-    bool* is_global_completion,
-    std::string* existing_completion,
-    lsPosition* replace_end_pos) const {
+    lsPosition position, bool *is_global_completion,
+    std::string *existing_completion, lsPosition *replace_end_pos) const {
   *is_global_completion = true;
 
   int start_offset = GetOffsetForPosition(position, buffer_content);
@@ -410,7 +403,8 @@ lsPosition WorkingFile::FindStableCompletionSource(
   *replace_end_pos = position;
   for (int i = start_offset; i < buffer_content.size(); i++) {
     char c = buffer_content[i];
-    if (!isalnum(c) && c != '_') break;
+    if (!isalnum(c) && c != '_')
+      break;
     // We know that replace_end_pos and position are on the same line.
     replace_end_pos->character++;
   }
@@ -419,41 +413,41 @@ lsPosition WorkingFile::FindStableCompletionSource(
   return GetPositionForOffset(buffer_content, offset);
 }
 
-WorkingFile* WorkingFiles::GetFileByFilename(const std::string& filename) {
+WorkingFile *WorkingFiles::GetFileByFilename(const std::string &filename) {
   std::lock_guard<std::mutex> lock(files_mutex);
   return GetFileByFilenameNoLock(filename);
 }
 
-WorkingFile* WorkingFiles::GetFileByFilenameNoLock(
-    const std::string& filename) {
-  for (auto& file : files) {
+WorkingFile *
+WorkingFiles::GetFileByFilenameNoLock(const std::string &filename) {
+  for (auto &file : files) {
     if (file->filename == filename)
       return file.get();
   }
   return nullptr;
 }
 
-void WorkingFiles::DoAction(const std::function<void()>& action) {
+void WorkingFiles::DoAction(const std::function<void()> &action) {
   std::lock_guard<std::mutex> lock(files_mutex);
   action();
 }
 
 void WorkingFiles::DoActionOnFile(
-    const std::string& filename,
-    const std::function<void(WorkingFile* file)>& action) {
+    const std::string &filename,
+    const std::function<void(WorkingFile *file)> &action) {
   std::lock_guard<std::mutex> lock(files_mutex);
-  WorkingFile* file = GetFileByFilenameNoLock(filename);
+  WorkingFile *file = GetFileByFilenameNoLock(filename);
   action(file);
 }
 
-WorkingFile* WorkingFiles::OnOpen(const lsTextDocumentItem& open) {
+WorkingFile *WorkingFiles::OnOpen(const lsTextDocumentItem &open) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = open.uri.GetPath();
   std::string content = open.text;
 
   // The file may already be open.
-  if (WorkingFile* file = GetFileByFilenameNoLock(filename)) {
+  if (WorkingFile *file = GetFileByFilenameNoLock(filename)) {
     file->version = open.version;
     file->buffer_content = content;
     file->OnBufferContentUpdated();
@@ -464,11 +458,11 @@ WorkingFile* WorkingFiles::OnOpen(const lsTextDocumentItem& open) {
   return files[files.size() - 1].get();
 }
 
-void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
+void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams &change) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = change.textDocument.uri.GetPath();
-  WorkingFile* file = GetFileByFilenameNoLock(filename);
+  WorkingFile *file = GetFileByFilenameNoLock(filename);
   if (!file) {
     LOG_S(WARNING) << "Could not change " << filename
                    << " because it was not open";
@@ -479,7 +473,7 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
   if (change.textDocument.version)
     file->version = *change.textDocument.version;
 
-  for (const lsTextDocumentContentChangeEvent& diff : change.contentChanges) {
+  for (const lsTextDocumentContentChangeEvent &diff : change.contentChanges) {
     // Per the spec replace everything if the rangeLength and range are not set.
     // See https://github.com/Microsoft/language-server-protocol/issues/9.
     if (!diff.range) {
@@ -500,7 +494,7 @@ void WorkingFiles::OnChange(const lsTextDocumentDidChangeParams& change) {
   }
 }
 
-void WorkingFiles::OnClose(const lsTextDocumentIdentifier& close) {
+void WorkingFiles::OnClose(const lsTextDocumentIdentifier &close) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   std::string filename = close.uri.GetPath();
@@ -516,13 +510,13 @@ void WorkingFiles::OnClose(const lsTextDocumentIdentifier& close) {
                  << " because it was not open";
 }
 
-WorkingFiles::Snapshot WorkingFiles::AsSnapshot(
-    const std::vector<std::string>& filter_paths) {
+WorkingFiles::Snapshot
+WorkingFiles::AsSnapshot(const std::vector<std::string> &filter_paths) {
   std::lock_guard<std::mutex> lock(files_mutex);
 
   Snapshot result;
   result.files.reserve(files.size());
-  for (const auto& file : files) {
+  for (const auto &file : files) {
     if (filter_paths.empty() || FindAnyPartial(file->filename, filter_paths))
       result.files.push_back({file->filename, file->buffer_content});
   }
