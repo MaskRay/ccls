@@ -7,16 +7,16 @@ using namespace llvm;
 
 #include <siphash.h>
 
+#include <algorithm>
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
-#include <string.h>
-#include <algorithm>
 #include <functional>
+#include <string.h>
 #include <unordered_map>
 using namespace std::placeholders;
 
-void TrimInPlace(std::string& s) {
+void TrimInPlace(std::string &s) {
   auto f = [](char c) { return !isspace(c); };
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
   s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
@@ -34,7 +34,8 @@ uint64_t HashUsr(std::string_view s) {
   // k is an arbitrary key. Don't change it.
   const uint8_t k[16] = {0xd0, 0xe5, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x52,
                          0x61, 0x79, 0xea, 0x70, 0xca, 0x70, 0xf0, 0x0d};
-  (void)siphash(reinterpret_cast<const uint8_t*>(s.data()), s.size(), k, out, 8);
+  (void)siphash(reinterpret_cast<const uint8_t *>(s.data()), s.size(), k, out,
+                8);
   return ret;
 }
 
@@ -52,20 +53,20 @@ bool StartsWith(std::string_view s, std::string_view prefix) {
          std::equal(prefix.begin(), prefix.end(), s.begin());
 }
 
-bool EndsWithAny(std::string_view s, const std::vector<std::string>& ss) {
+bool EndsWithAny(std::string_view s, const std::vector<std::string> &ss) {
   return std::any_of(ss.begin(), ss.end(), std::bind(EndsWith, s, _1));
 }
 
-bool FindAnyPartial(const std::string& value,
-                    const std::vector<std::string>& values) {
+bool FindAnyPartial(const std::string &value,
+                    const std::vector<std::string> &values) {
   return std::any_of(std::begin(values), std::end(values),
-                     [&value](const std::string& v) {
+                     [&value](const std::string &v) {
                        return value.find(v) != std::string::npos;
                      });
 }
 
-std::vector<std::string> SplitString(const std::string& str,
-                                     const std::string& delimiter) {
+std::vector<std::string> SplitString(const std::string &str,
+                                     const std::string &delimiter) {
   // http://stackoverflow.com/a/13172514
   std::vector<std::string> strings;
 
@@ -82,10 +83,10 @@ std::vector<std::string> SplitString(const std::string& str,
   return strings;
 }
 
-std::string LowerPathIfInsensitive(const std::string& path) {
+std::string LowerPathIfInsensitive(const std::string &path) {
 #if defined(_WIN32)
   std::string ret = path;
-  for (char& c : ret)
+  for (char &c : ret)
     c = tolower(c);
   return ret;
 #else
@@ -93,14 +94,14 @@ std::string LowerPathIfInsensitive(const std::string& path) {
 #endif
 }
 
-void EnsureEndsInSlash(std::string& path) {
+void EnsureEndsInSlash(std::string &path) {
   if (path.empty() || path[path.size() - 1] != '/')
     path += '/';
 }
 
 std::string EscapeFileName(std::string path) {
   bool slash = path.size() && path.back() == '/';
-  for (char& c : path)
+  for (char &c : path)
     if (c == '\\' || c == '/' || c == ':')
       c = '@';
   if (slash)
@@ -108,11 +109,12 @@ std::string EscapeFileName(std::string path) {
   return path;
 }
 
-std::optional<std::string> ReadContent(const std::string& filename) {
+std::optional<std::string> ReadContent(const std::string &filename) {
   char buf[4096];
   std::string ret;
-  FILE* f = fopen(filename.c_str(), "rb");
-  if (!f) return {};
+  FILE *f = fopen(filename.c_str(), "rb");
+  if (!f)
+    return {};
   size_t n;
   while ((n = fread(buf, 1, sizeof buf, f)) > 0)
     ret.append(buf, n);
@@ -120,8 +122,8 @@ std::optional<std::string> ReadContent(const std::string& filename) {
   return ret;
 }
 
-void WriteToFile(const std::string& filename, const std::string& content) {
-  FILE* f = fopen(filename.c_str(), "wb");
+void WriteToFile(const std::string &filename, const std::string &content) {
+  FILE *f = fopen(filename.c_str(), "wb");
   if (!f ||
       (content.size() && fwrite(content.c_str(), content.size(), 1, f) != 1)) {
     LOG_S(ERROR) << "failed to write to " << filename << ' ' << strerror(errno);
@@ -130,7 +132,7 @@ void WriteToFile(const std::string& filename, const std::string& content) {
   fclose(f);
 }
 
-std::optional<int64_t> LastWriteTime(const std::string& filename) {
+std::optional<int64_t> LastWriteTime(const std::string &filename) {
   sys::fs::file_status Status;
   if (sys::fs::status(filename, Status))
     return {};
@@ -139,8 +141,7 @@ std::optional<int64_t> LastWriteTime(const std::string& filename) {
 
 // Find discontinous |search| in |content|.
 // Return |found| and the count of skipped chars before found.
-int ReverseSubseqMatch(std::string_view pat,
-                       std::string_view text,
+int ReverseSubseqMatch(std::string_view pat, std::string_view text,
                        int case_sensitivity) {
   if (case_sensitivity == 1)
     case_sensitivity = std::any_of(pat.begin(), pat.end(), isupper) ? 2 : 0;
@@ -155,6 +156,4 @@ int ReverseSubseqMatch(std::string_view pat,
   return -1;
 }
 
-std::string GetDefaultResourceDirectory() {
-  return DEFAULT_RESOURCE_DIRECTORY;
-}
+std::string GetDefaultResourceDirectory() { return DEFAULT_RESOURCE_DIRECTORY; }

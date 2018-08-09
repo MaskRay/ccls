@@ -20,7 +20,7 @@ using namespace llvm;
 
 namespace {
 
-std::string StripFileType(const std::string& path) {
+std::string StripFileType(const std::string &path) {
   SmallString<128> Ret;
   sys::path::append(Ret, sys::path::parent_path(path), sys::path::stem(path));
   return Ret.str();
@@ -41,93 +41,93 @@ unsigned GetCompletionPriority(const CodeCompletionString &CCS,
 
 lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
   switch (cursor_kind) {
-    case CXCursor_UnexposedDecl:
-      return lsCompletionItemKind::Text;
+  case CXCursor_UnexposedDecl:
+    return lsCompletionItemKind::Text;
 
-    case CXCursor_StructDecl:
-    case CXCursor_UnionDecl:
-      return lsCompletionItemKind::Struct;
-    case CXCursor_ClassDecl:
-      return lsCompletionItemKind::Class;
-    case CXCursor_EnumDecl:
-      return lsCompletionItemKind::Enum;
-    case CXCursor_FieldDecl:
-      return lsCompletionItemKind::Field;
-    case CXCursor_EnumConstantDecl:
-      return lsCompletionItemKind::EnumMember;
-    case CXCursor_FunctionDecl:
-      return lsCompletionItemKind::Function;
-    case CXCursor_VarDecl:
-    case CXCursor_ParmDecl:
-      return lsCompletionItemKind::Variable;
-    case CXCursor_ObjCInterfaceDecl:
-      return lsCompletionItemKind::Interface;
+  case CXCursor_StructDecl:
+  case CXCursor_UnionDecl:
+    return lsCompletionItemKind::Struct;
+  case CXCursor_ClassDecl:
+    return lsCompletionItemKind::Class;
+  case CXCursor_EnumDecl:
+    return lsCompletionItemKind::Enum;
+  case CXCursor_FieldDecl:
+    return lsCompletionItemKind::Field;
+  case CXCursor_EnumConstantDecl:
+    return lsCompletionItemKind::EnumMember;
+  case CXCursor_FunctionDecl:
+    return lsCompletionItemKind::Function;
+  case CXCursor_VarDecl:
+  case CXCursor_ParmDecl:
+    return lsCompletionItemKind::Variable;
+  case CXCursor_ObjCInterfaceDecl:
+    return lsCompletionItemKind::Interface;
 
-    case CXCursor_ObjCInstanceMethodDecl:
-    case CXCursor_CXXMethod:
-    case CXCursor_ObjCClassMethodDecl:
-      return lsCompletionItemKind::Method;
+  case CXCursor_ObjCInstanceMethodDecl:
+  case CXCursor_CXXMethod:
+  case CXCursor_ObjCClassMethodDecl:
+    return lsCompletionItemKind::Method;
 
-    case CXCursor_FunctionTemplate:
-      return lsCompletionItemKind::Function;
+  case CXCursor_FunctionTemplate:
+    return lsCompletionItemKind::Function;
 
-    case CXCursor_Constructor:
-    case CXCursor_Destructor:
-    case CXCursor_ConversionFunction:
-      return lsCompletionItemKind::Constructor;
+  case CXCursor_Constructor:
+  case CXCursor_Destructor:
+  case CXCursor_ConversionFunction:
+    return lsCompletionItemKind::Constructor;
 
-    case CXCursor_ObjCIvarDecl:
-      return lsCompletionItemKind::Variable;
+  case CXCursor_ObjCIvarDecl:
+    return lsCompletionItemKind::Variable;
 
-    case CXCursor_ClassTemplate:
-    case CXCursor_ClassTemplatePartialSpecialization:
-    case CXCursor_UsingDeclaration:
-    case CXCursor_TypedefDecl:
-    case CXCursor_TypeAliasDecl:
-    case CXCursor_TypeAliasTemplateDecl:
-    case CXCursor_ObjCCategoryDecl:
-    case CXCursor_ObjCProtocolDecl:
-    case CXCursor_ObjCImplementationDecl:
-    case CXCursor_ObjCCategoryImplDecl:
-      return lsCompletionItemKind::Class;
+  case CXCursor_ClassTemplate:
+  case CXCursor_ClassTemplatePartialSpecialization:
+  case CXCursor_UsingDeclaration:
+  case CXCursor_TypedefDecl:
+  case CXCursor_TypeAliasDecl:
+  case CXCursor_TypeAliasTemplateDecl:
+  case CXCursor_ObjCCategoryDecl:
+  case CXCursor_ObjCProtocolDecl:
+  case CXCursor_ObjCImplementationDecl:
+  case CXCursor_ObjCCategoryImplDecl:
+    return lsCompletionItemKind::Class;
 
-    case CXCursor_ObjCPropertyDecl:
-      return lsCompletionItemKind::Property;
+  case CXCursor_ObjCPropertyDecl:
+    return lsCompletionItemKind::Property;
 
-    case CXCursor_MacroInstantiation:
-    case CXCursor_MacroDefinition:
-      return lsCompletionItemKind::Interface;
+  case CXCursor_MacroInstantiation:
+  case CXCursor_MacroDefinition:
+    return lsCompletionItemKind::Interface;
 
-    case CXCursor_Namespace:
-    case CXCursor_NamespaceAlias:
-    case CXCursor_NamespaceRef:
-      return lsCompletionItemKind::Module;
+  case CXCursor_Namespace:
+  case CXCursor_NamespaceAlias:
+  case CXCursor_NamespaceRef:
+    return lsCompletionItemKind::Module;
 
-    case CXCursor_MemberRef:
-    case CXCursor_TypeRef:
-    case CXCursor_ObjCSuperClassRef:
-    case CXCursor_ObjCProtocolRef:
-    case CXCursor_ObjCClassRef:
-      return lsCompletionItemKind::Reference;
+  case CXCursor_MemberRef:
+  case CXCursor_TypeRef:
+  case CXCursor_ObjCSuperClassRef:
+  case CXCursor_ObjCProtocolRef:
+  case CXCursor_ObjCClassRef:
+    return lsCompletionItemKind::Reference;
 
-      // return lsCompletionItemKind::Unit;
-      // return lsCompletionItemKind::Value;
-      // return lsCompletionItemKind::Keyword;
-      // return lsCompletionItemKind::Snippet;
-      // return lsCompletionItemKind::Color;
-      // return lsCompletionItemKind::File;
+    // return lsCompletionItemKind::Unit;
+    // return lsCompletionItemKind::Value;
+    // return lsCompletionItemKind::Keyword;
+    // return lsCompletionItemKind::Snippet;
+    // return lsCompletionItemKind::Color;
+    // return lsCompletionItemKind::File;
 
-    case CXCursor_NotImplemented:
-    case CXCursor_OverloadCandidate:
-      return lsCompletionItemKind::Text;
+  case CXCursor_NotImplemented:
+  case CXCursor_OverloadCandidate:
+    return lsCompletionItemKind::Text;
 
-    case CXCursor_TemplateTypeParameter:
-    case CXCursor_TemplateTemplateParameter:
-      return lsCompletionItemKind::TypeParameter;
+  case CXCursor_TemplateTypeParameter:
+  case CXCursor_TemplateTemplateParameter:
+    return lsCompletionItemKind::TypeParameter;
 
-    default:
-      LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
-      return lsCompletionItemKind::Text;
+  default:
+    LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
+    return lsCompletionItemKind::Text;
   }
 }
 
@@ -144,50 +144,50 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem> &out,
     CodeCompletionString::ChunkKind Kind = Chunk.Kind;
     std::string text;
     switch (Kind) {
-      case CodeCompletionString::CK_TypedText:
-      case CodeCompletionString::CK_Text:
-      case CodeCompletionString::CK_Placeholder:
-      case CodeCompletionString::CK_Informative:
-        if (Chunk.Text)
-          text = Chunk.Text;
-        for (auto i = out_first; i < out.size(); i++) {
-          // first TypedText is used for filtering
-          if (Kind == CodeCompletionString::CK_TypedText && !out[i].filterText)
-            out[i].filterText = text;
-          if (Kind == CodeCompletionString::CK_Placeholder)
-            out[i].parameters_.push_back(text);
-        }
-        break;
-      case CodeCompletionString::CK_ResultType:
-        if (Chunk.Text)
-          result_type = Chunk.Text;
-        continue;
-      case CodeCompletionString::CK_CurrentParameter:
-        // We have our own parsing logic for active parameter. This doesn't seem
-        // to be very reliable.
-        continue;
-      case CodeCompletionString::CK_Optional: {
-        // duplicate last element, the recursive call will complete it
-        out.push_back(out.back());
-        BuildCompletionItemTexts(out, *Chunk.Optional, include_snippets);
-        continue;
+    case CodeCompletionString::CK_TypedText:
+    case CodeCompletionString::CK_Text:
+    case CodeCompletionString::CK_Placeholder:
+    case CodeCompletionString::CK_Informative:
+      if (Chunk.Text)
+        text = Chunk.Text;
+      for (auto i = out_first; i < out.size(); i++) {
+        // first TypedText is used for filtering
+        if (Kind == CodeCompletionString::CK_TypedText && !out[i].filterText)
+          out[i].filterText = text;
+        if (Kind == CodeCompletionString::CK_Placeholder)
+          out[i].parameters_.push_back(text);
       }
-      // clang-format off
-      case CodeCompletionString::CK_LeftParen: text = '('; break;
-      case CodeCompletionString::CK_RightParen: text = ')'; break;
-      case CodeCompletionString::CK_LeftBracket: text = '['; break;
-      case CodeCompletionString::CK_RightBracket: text = ']'; break;
-      case CodeCompletionString::CK_LeftBrace: text = '{'; break;
-      case CodeCompletionString::CK_RightBrace: text = '}'; break;
-      case CodeCompletionString::CK_LeftAngle: text = '<'; break;
-      case CodeCompletionString::CK_RightAngle: text = '>'; break;
-      case CodeCompletionString::CK_Comma: text = ", "; break;
-      case CodeCompletionString::CK_Colon: text = ':'; break;
-      case CodeCompletionString::CK_SemiColon: text = ';'; break;
-      case CodeCompletionString::CK_Equal: text = '='; break;
-      case CodeCompletionString::CK_HorizontalSpace: text = ' '; break;
-      case CodeCompletionString::CK_VerticalSpace: text = ' '; break;
-      // clang-format on
+      break;
+    case CodeCompletionString::CK_ResultType:
+      if (Chunk.Text)
+        result_type = Chunk.Text;
+      continue;
+    case CodeCompletionString::CK_CurrentParameter:
+      // We have our own parsing logic for active parameter. This doesn't seem
+      // to be very reliable.
+      continue;
+    case CodeCompletionString::CK_Optional: {
+      // duplicate last element, the recursive call will complete it
+      out.push_back(out.back());
+      BuildCompletionItemTexts(out, *Chunk.Optional, include_snippets);
+      continue;
+    }
+    // clang-format off
+    case CodeCompletionString::CK_LeftParen: text = '('; break;
+    case CodeCompletionString::CK_RightParen: text = ')'; break;
+    case CodeCompletionString::CK_LeftBracket: text = '['; break;
+    case CodeCompletionString::CK_RightBracket: text = ']'; break;
+    case CodeCompletionString::CK_LeftBrace: text = '{'; break;
+    case CodeCompletionString::CK_RightBrace: text = '}'; break;
+    case CodeCompletionString::CK_LeftAngle: text = '<'; break;
+    case CodeCompletionString::CK_RightAngle: text = '>'; break;
+    case CodeCompletionString::CK_Comma: text = ", "; break;
+    case CodeCompletionString::CK_Colon: text = ':'; break;
+    case CodeCompletionString::CK_SemiColon: text = ';'; break;
+    case CodeCompletionString::CK_Equal: text = '='; break;
+    case CodeCompletionString::CK_HorizontalSpace: text = ' '; break;
+    case CodeCompletionString::CK_VerticalSpace: text = ' '; break;
+    // clang-format on
     }
 
     if (Kind != CodeCompletionString::CK_Informative)
@@ -197,8 +197,9 @@ void BuildCompletionItemTexts(std::vector<lsCompletionItem> &out,
           continue;
 
         if (Kind == CodeCompletionString::CK_Placeholder) {
-          out[i].insertText +=
-            "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
+          out[i].insertText += "${" +
+                               std::to_string(out[i].parameters_.size()) + ":" +
+                               text + "}";
           out[i].insertTextFormat = lsInsertTextFormat::Snippet;
         } else {
           out[i].insertText += text;
@@ -223,7 +224,7 @@ void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
   for (unsigned i = 0, num_chunks = CCS.size(); i < num_chunks; ++i) {
     const CodeCompletionString::Chunk &Chunk = CCS[i];
     CodeCompletionString::ChunkKind Kind = Chunk.Kind;
-    const char* text = nullptr;
+    const char *text = nullptr;
     switch (Kind) {
     case CodeCompletionString::CK_TypedText:
       item.label = Chunk.Text;
@@ -238,7 +239,8 @@ void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
       item.detail += Chunk.Text;
       // Add parameter declarations as snippets if enabled
       if (include_snippets) {
-        item.insertText += "${" + std::to_string(parameters->size()) + ":" + Chunk.Text + "}";
+        item.insertText +=
+            "${" + std::to_string(parameters->size()) + ":" + Chunk.Text + "}";
         item.insertTextFormat = lsInsertTextFormat::Snippet;
       } else
         do_insert = false;
@@ -250,8 +252,8 @@ void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
     case CodeCompletionString::CK_Optional: {
       // Do not add text to insert string if we're in angle brackets.
       bool should_insert = do_insert && angle_stack == 0;
-      BuildDetailString(*Chunk.Optional, item, should_insert,
-                        parameters, include_snippets, angle_stack);
+      BuildDetailString(*Chunk.Optional, item, should_insert, parameters,
+                        include_snippets, angle_stack);
       break;
     }
     case CodeCompletionString::CK_ResultType:
@@ -298,10 +300,9 @@ public:
         Alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()),
         CCTUInfo(Alloc) {}
 
-  void ProcessCodeCompleteResults(Sema &S, 
-    CodeCompletionContext Context,
-    CodeCompletionResult *Results,
-    unsigned NumResults) override {
+  void ProcessCodeCompleteResults(Sema &S, CodeCompletionContext Context,
+                                  CodeCompletionResult *Results,
+                                  unsigned NumResults) override {
     ls_items.reserve(NumResults);
     for (unsigned i = 0; i != NumResults; i++) {
       CodeCompletionString *CCS = Results[i].CreateCodeCompletionString(
@@ -312,7 +313,7 @@ public:
 
       lsCompletionItem ls_item;
       ls_item.kind = GetCompletionKind(Results[i].CursorKind);
-      if (const char* brief = CCS->getBriefComment())
+      if (const char *brief = CCS->getBriefComment())
         ls_item.documentation = brief;
 
       // label/detail/filterText/insertText/priority
@@ -334,8 +335,7 @@ public:
       } else {
         bool do_insert = true;
         int angle_stack = 0;
-        BuildDetailString(*CCS, ls_item, do_insert,
-                          &ls_item.parameters_,
+        BuildDetailString(*CCS, ls_item, do_insert, &ls_item.parameters_,
                           g_config->client.snippetSupport, angle_stack);
         if (g_config->client.snippetSupport &&
             ls_item.insertTextFormat == lsInsertTextFormat::Snippet)
@@ -353,7 +353,7 @@ public:
 
   CodeCompletionAllocator &getAllocator() override { return *Alloc; }
 
-  CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo;}
+  CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo; }
 };
 
 void TryEnsureDocumentParsed(ClangCompleteManager *manager,
@@ -374,7 +374,7 @@ void TryEnsureDocumentParsed(ClangCompleteManager *manager,
                                      diagnostic);
 }
 
-void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
+void CompletionPreloadMain(ClangCompleteManager *completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     auto request = completion_manager->preload_requests_.Dequeue();
@@ -390,7 +390,7 @@ void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
 
     // Note: we only preload completion. We emit diagnostics for the
     // completion preload though.
-    CompletionSession::Tu* tu = &session->completion;
+    CompletionSession::Tu *tu = &session->completion;
 
     // If we've parsed it more recently than the request time, don't bother
     // reparsing.
@@ -407,7 +407,7 @@ void CompletionPreloadMain(ClangCompleteManager* completion_manager) {
   }
 }
 
-void CompletionQueryMain(ClangCompleteManager* completion_manager) {
+void CompletionQueryMain(ClangCompleteManager *completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<ClangCompleteManager::CompletionRequest> request =
@@ -427,11 +427,12 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                                           true /*create_if_needed*/);
 
     std::lock_guard<std::mutex> lock(session->completion.lock);
-    TryEnsureDocumentParsed(completion_manager, session, &session->completion.tu, false);
+    TryEnsureDocumentParsed(completion_manager, session,
+                            &session->completion.tu, false);
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
-    if (ClangTranslationUnit* tu = session->completion.tu.get()) {
+    if (ClangTranslationUnit *tu = session->completion.tu.get()) {
       WorkingFiles::Snapshot snapshot =
           completion_manager->working_files_->AsSnapshot({StripFileType(path)});
       IntrusiveRefCntPtr<FileManager> FileMgr(&tu->Unit->getFileManager());
@@ -464,7 +465,8 @@ void CompletionQueryMain(ClangCompleteManager* completion_manager) {
                              capture, tu->PCHCO, *Diag, LangOpts, *SrcMgr,
                              *FileMgr, Diagnostics, TemporaryBuffers);
       request->on_complete(capture.ls_items, false /*is_cached_result*/);
-      // completion_manager->on_diagnostic_(session->file.filename, Diags.take());
+      // completion_manager->on_diagnostic_(session->file.filename,
+      // Diags.take());
     }
   }
 }
@@ -487,7 +489,7 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
 
     // It is possible we failed to create the document despite
     // |TryEnsureDocumentParsed|.
-    ClangTranslationUnit* tu = session->diagnostics.tu.get();
+    ClangTranslationUnit *tu = session->diagnostics.tu.get();
     if (!tu)
       continue;
 
@@ -509,7 +511,8 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
       if (!FLoc.isValid()) // why?
         continue;
       const FileEntry *FE = FLoc.getFileEntry();
-      if (!FE || FileName(*FE) != path) continue;
+      if (!FE || FileName(*FE) != path)
+        continue;
       const auto &SM = FLoc.getManager();
       SourceRange R;
       for (const auto &CR : I->getRanges()) {
@@ -553,45 +556,46 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
   }
 }
 
-}  // namespace
+} // namespace
 
-ClangCompleteManager::ClangCompleteManager(Project* project,
-                                           WorkingFiles* working_files,
+ClangCompleteManager::ClangCompleteManager(Project *project,
+                                           WorkingFiles *working_files,
                                            OnDiagnostic on_diagnostic,
                                            OnDropped on_dropped)
-    : project_(project),
-      working_files_(working_files),
-      on_diagnostic_(on_diagnostic),
-      on_dropped_(on_dropped),
+    : project_(project), working_files_(working_files),
+      on_diagnostic_(on_diagnostic), on_dropped_(on_dropped),
       preloaded_sessions_(kMaxPreloadedSessions),
       completion_sessions_(kMaxCompletionSessions) {
   std::thread([&]() {
     set_thread_name("comp-query");
     CompletionQueryMain(this);
-  }).detach();
+  })
+      .detach();
   std::thread([&]() {
     set_thread_name("comp-preload");
     CompletionPreloadMain(this);
-  }).detach();
+  })
+      .detach();
   std::thread([&]() {
     set_thread_name("diag-query");
     DiagnosticQueryMain(this);
-  }).detach();
+  })
+      .detach();
 }
 
 void ClangCompleteManager::CodeComplete(
-    const lsRequestId& id,
-    const lsTextDocumentPositionParams& completion_location,
-    const OnComplete& on_complete) {
+    const lsRequestId &id,
+    const lsTextDocumentPositionParams &completion_location,
+    const OnComplete &on_complete) {
   completion_request_.PushBack(std::make_unique<CompletionRequest>(
       id, completion_location.textDocument, completion_location.position,
       on_complete));
 }
 
 void ClangCompleteManager::DiagnosticsUpdate(
-    const lsTextDocumentIdentifier& document) {
+    const lsTextDocumentIdentifier &document) {
   bool has = false;
-  diagnostic_request_.Iterate([&](const DiagnosticRequest& request) {
+  diagnostic_request_.Iterate([&](const DiagnosticRequest &request) {
     if (request.document.uri == document.uri)
       has = true;
   });
@@ -600,7 +604,7 @@ void ClangCompleteManager::DiagnosticsUpdate(
                                  true /*priority*/);
 }
 
-void ClangCompleteManager::NotifyView(const std::string& filename) {
+void ClangCompleteManager::NotifyView(const std::string &filename) {
   //
   // On view, we reparse only if the file has not been parsed. The existence of
   // a CompletionSession instance implies the file is already parsed or will be
@@ -612,7 +616,7 @@ void ClangCompleteManager::NotifyView(const std::string& filename) {
     preload_requests_.PushBack(PreloadRequest(filename), true);
 }
 
-void ClangCompleteManager::NotifyEdit(const std::string& filename) {
+void ClangCompleteManager::NotifyEdit(const std::string &filename) {
   //
   // We treat an edit like a view, because the completion logic will handle
   // moving the CompletionSession instance from preloaded to completion
@@ -622,7 +626,7 @@ void ClangCompleteManager::NotifyEdit(const std::string& filename) {
   NotifyView(filename);
 }
 
-void ClangCompleteManager::NotifySave(const std::string& filename) {
+void ClangCompleteManager::NotifySave(const std::string &filename) {
   //
   // On save, always reparse.
   //
@@ -631,7 +635,7 @@ void ClangCompleteManager::NotifySave(const std::string& filename) {
   preload_requests_.PushBack(PreloadRequest(filename), true);
 }
 
-void ClangCompleteManager::NotifyClose(const std::string& filename) {
+void ClangCompleteManager::NotifyClose(const std::string &filename) {
   //
   // On close, we clear any existing CompletionSession instance.
   //
@@ -652,7 +656,7 @@ void ClangCompleteManager::NotifyClose(const std::string& filename) {
 }
 
 bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
-    const std::string& filename) {
+    const std::string &filename) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
   // Check for an existing CompletionSession.
@@ -668,10 +672,10 @@ bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
   return true;
 }
 
-std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(
-    const std::string& filename,
-    bool mark_as_completion,
-    bool create_if_needed) {
+std::shared_ptr<CompletionSession>
+ClangCompleteManager::TryGetSession(const std::string &filename,
+                                    bool mark_as_completion,
+                                    bool create_if_needed) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
   // Try to find a preloaded session.
@@ -701,11 +705,11 @@ std::shared_ptr<CompletionSession> ClangCompleteManager::TryGetSession(
   return completion_session;
 }
 
-void ClangCompleteManager::FlushSession(const std::string& filename) {
-	std::lock_guard<std::mutex> lock(sessions_lock_);
+void ClangCompleteManager::FlushSession(const std::string &filename) {
+  std::lock_guard<std::mutex> lock(sessions_lock_);
 
-	preloaded_sessions_.TryTake(filename);
-	completion_sessions_.TryTake(filename);
+  preloaded_sessions_.TryTake(filename);
+  completion_sessions_.TryTake(filename);
 }
 
 void ClangCompleteManager::FlushAllSessions() {

@@ -21,9 +21,9 @@ using ccls::Intern;
 using namespace clang;
 using llvm::Timer;
 
+#include <algorithm>
 #include <inttypes.h>
 #include <limits.h>
-#include <algorithm>
 #include <map>
 #include <unordered_set>
 
@@ -40,14 +40,14 @@ struct IndexParam {
     std::string short_name;
     std::string qualified;
   };
-  std::unordered_map<const Decl*, DeclInfo> Decl2Info;
+  std::unordered_map<const Decl *, DeclInfo> Decl2Info;
 
-  ASTUnit& Unit;
-  ASTContext* Ctx;
+  ASTUnit &Unit;
+  ASTContext *Ctx;
 
-  FileConsumer* file_consumer = nullptr;
+  FileConsumer *file_consumer = nullptr;
 
-  IndexParam(ASTUnit& Unit, FileConsumer* file_consumer)
+  IndexParam(ASTUnit &Unit, FileConsumer *file_consumer)
       : Unit(Unit), file_consumer(file_consumer) {}
 
   IndexFile *ConsumeFile(const FileEntry &File) {
@@ -63,7 +63,7 @@ struct IndexParam {
       // Set modification time.
       std::optional<int64_t> write_time = LastWriteTime(file_name);
       LOG_IF_S(ERROR, !write_time)
-        << "failed to fetch write time for " << file_name;
+          << "failed to fetch write time for " << file_name;
       if (write_time)
         file2write_time[file_name] = *write_time;
     }
@@ -81,12 +81,13 @@ StringRef GetSourceInRange(const SourceManager &SM, const LangOptions &LangOpts,
   StringRef Buf = SM.getBufferData(BInfo.first, &invalid);
   if (invalid)
     return "";
-  return Buf.substr(BInfo.second, EInfo.second + Lexer::MeasureTokenLength(
-                                                     ELoc, SM, LangOpts) -
-                                      BInfo.second);
+  return Buf.substr(BInfo.second,
+                    EInfo.second +
+                        Lexer::MeasureTokenLength(ELoc, SM, LangOpts) -
+                        BInfo.second);
 }
 
-SymbolKind GetSymbolKind(const Decl* D) {
+SymbolKind GetSymbolKind(const Decl *D) {
   switch (D->getKind()) {
   case Decl::TranslationUnit:
     return SymbolKind::File;
@@ -136,46 +137,46 @@ SymbolKind GetSymbolKind(const Decl* D) {
 
 LanguageId GetDeclLanguage(const Decl *D) {
   switch (D->getKind()) {
-    default:
-      return LanguageId::C;
-    case Decl::ImplicitParam:
-    case Decl::ObjCAtDefsField:
-    case Decl::ObjCCategory:
-    case Decl::ObjCCategoryImpl:
-    case Decl::ObjCCompatibleAlias:
-    case Decl::ObjCImplementation:
-    case Decl::ObjCInterface:
-    case Decl::ObjCIvar:
-    case Decl::ObjCMethod:
-    case Decl::ObjCProperty:
-    case Decl::ObjCPropertyImpl:
-    case Decl::ObjCProtocol:
-    case Decl::ObjCTypeParam:
-      return LanguageId::ObjC;
-    case Decl::CXXConstructor:
-    case Decl::CXXConversion:
-    case Decl::CXXDestructor:
-    case Decl::CXXMethod:
-    case Decl::CXXRecord:
-    case Decl::ClassTemplate:
-    case Decl::ClassTemplatePartialSpecialization:
-    case Decl::ClassTemplateSpecialization:
-    case Decl::Friend:
-    case Decl::FriendTemplate:
-    case Decl::FunctionTemplate:
-    case Decl::LinkageSpec:
-    case Decl::Namespace:
-    case Decl::NamespaceAlias:
-    case Decl::NonTypeTemplateParm:
-    case Decl::StaticAssert:
-    case Decl::TemplateTemplateParm:
-    case Decl::TemplateTypeParm:
-    case Decl::UnresolvedUsingTypename:
-    case Decl::UnresolvedUsingValue:
-    case Decl::Using:
-    case Decl::UsingDirective:
-    case Decl::UsingShadow:
-      return LanguageId::Cpp;
+  default:
+    return LanguageId::C;
+  case Decl::ImplicitParam:
+  case Decl::ObjCAtDefsField:
+  case Decl::ObjCCategory:
+  case Decl::ObjCCategoryImpl:
+  case Decl::ObjCCompatibleAlias:
+  case Decl::ObjCImplementation:
+  case Decl::ObjCInterface:
+  case Decl::ObjCIvar:
+  case Decl::ObjCMethod:
+  case Decl::ObjCProperty:
+  case Decl::ObjCPropertyImpl:
+  case Decl::ObjCProtocol:
+  case Decl::ObjCTypeParam:
+    return LanguageId::ObjC;
+  case Decl::CXXConstructor:
+  case Decl::CXXConversion:
+  case Decl::CXXDestructor:
+  case Decl::CXXMethod:
+  case Decl::CXXRecord:
+  case Decl::ClassTemplate:
+  case Decl::ClassTemplatePartialSpecialization:
+  case Decl::ClassTemplateSpecialization:
+  case Decl::Friend:
+  case Decl::FriendTemplate:
+  case Decl::FunctionTemplate:
+  case Decl::LinkageSpec:
+  case Decl::Namespace:
+  case Decl::NamespaceAlias:
+  case Decl::NonTypeTemplateParm:
+  case Decl::StaticAssert:
+  case Decl::TemplateTemplateParm:
+  case Decl::TemplateTypeParm:
+  case Decl::UnresolvedUsingTypename:
+  case Decl::UnresolvedUsingValue:
+  case Decl::Using:
+  case Decl::UsingDirective:
+  case Decl::UsingShadow:
+    return LanguageId::Cpp;
   }
 }
 
@@ -187,7 +188,7 @@ QualType GetBaseType(QualType T, bool deduce_auto) {
       BaseType = PTy->getPointeeType();
     else if (const BlockPointerType *BPy = BaseType->getAs<BlockPointerType>())
       BaseType = BPy->getPointeeType();
-    else if (const ArrayType* ATy = dyn_cast<ArrayType>(BaseType))
+    else if (const ArrayType *ATy = dyn_cast<ArrayType>(BaseType))
       BaseType = ATy->getElementType();
     else if (const VectorType *VTy = BaseType->getAs<VectorType>())
       BaseType = VTy->getElementType();
@@ -200,8 +201,7 @@ QualType GetBaseType(QualType T, bool deduce_auto) {
         BaseType = ATy->getDeducedType();
       else
         break;
-    }
-    else
+    } else
       break;
   }
   return BaseType;
@@ -210,7 +210,7 @@ QualType GetBaseType(QualType T, bool deduce_auto) {
 const Decl *GetTypeDecl(QualType T, bool *specialization = nullptr) {
   Decl *D = nullptr;
   T = GetBaseType(T.getUnqualifiedType(), true);
-  const Type* TP = T.getTypePtrOrNull();
+  const Type *TP = T.getTypePtrOrNull();
   if (!TP)
     return nullptr;
 
@@ -254,7 +254,7 @@ try_again:
     D = cast<InjectedClassNameType>(TP)->getDecl();
     break;
 
-  // FIXME: Template type parameters!
+    // FIXME: Template type parameters!
 
   case Type::Elaborated:
     TP = cast<ElaboratedType>(TP)->getNamedType().getTypePtrOrNull();
@@ -266,19 +266,19 @@ try_again:
   return D;
 }
 
-const Decl* GetSpecialized(const Decl* D) {
+const Decl *GetSpecialized(const Decl *D) {
   if (!D)
     return D;
   Decl *Template = nullptr;
   if (const CXXRecordDecl *CXXRecord = dyn_cast<CXXRecordDecl>(D)) {
-    if (const ClassTemplatePartialSpecializationDecl *PartialSpec
-          = dyn_cast<ClassTemplatePartialSpecializationDecl>(CXXRecord))
+    if (const ClassTemplatePartialSpecializationDecl *PartialSpec =
+            dyn_cast<ClassTemplatePartialSpecializationDecl>(CXXRecord))
       Template = PartialSpec->getSpecializedTemplate();
-    else if (const ClassTemplateSpecializationDecl *ClassSpec
-               = dyn_cast<ClassTemplateSpecializationDecl>(CXXRecord)) {
+    else if (const ClassTemplateSpecializationDecl *ClassSpec =
+                 dyn_cast<ClassTemplateSpecializationDecl>(CXXRecord)) {
       llvm::PointerUnion<ClassTemplateDecl *,
-                         ClassTemplatePartialSpecializationDecl *> Result
-        = ClassSpec->getSpecializedTemplateOrPartial();
+                         ClassTemplatePartialSpecializationDecl *>
+          Result = ClassSpec->getSpecializedTemplateOrPartial();
       if (Result.is<ClassTemplateDecl *>())
         Template = Result.get<ClassTemplateDecl *>();
       else
@@ -293,8 +293,8 @@ const Decl* GetSpecialized(const Decl* D) {
   } else if (const VarDecl *Var = dyn_cast<VarDecl>(D)) {
     if (Var->isStaticDataMember())
       Template = Var->getInstantiatedFromStaticDataMember();
-  } else if (const RedeclarableTemplateDecl *Tmpl
-                                        = dyn_cast<RedeclarableTemplateDecl>(D))
+  } else if (const RedeclarableTemplateDecl *Tmpl =
+                 dyn_cast<RedeclarableTemplateDecl>(D))
     Template = Tmpl->getInstantiatedFromMemberTemplate();
   else
     return nullptr;
@@ -302,7 +302,7 @@ const Decl* GetSpecialized(const Decl* D) {
 }
 
 bool ValidateRecord(const RecordDecl *RD) {
-  for (const auto *I : RD->fields()){
+  for (const auto *I : RD->fields()) {
     QualType FQT = I->getType();
     if (FQT->isIncompleteType() || FQT->isDependentType())
       return false;
@@ -317,12 +317,13 @@ bool ValidateRecord(const RecordDecl *RD) {
 class IndexDataConsumer : public index::IndexDataConsumer {
 public:
   ASTContext *Ctx;
-  IndexParam& param;
+  IndexParam &param;
 
-  std::string GetComment(const Decl* D) {
+  std::string GetComment(const Decl *D) {
     SourceManager &SM = Ctx->getSourceManager();
     const RawComment *RC = Ctx->getRawCommentForAnyRedecl(D);
-    if (!RC) return "";
+    if (!RC)
+      return "";
     StringRef Raw = RC->getRawText(Ctx->getSourceManager());
     SourceRange R = RC->getSourceRange();
     std::pair<FileID, unsigned> BInfo = SM.getDecomposedLoc(R.getBegin());
@@ -425,7 +426,7 @@ public:
     return PP;
   }
 
-  static void SimplifyAnonymous(std::string& name) {
+  static void SimplifyAnonymous(std::string &name) {
     for (std::string::size_type i = 0;;) {
       if ((i = name.find("(anonymous ", i)) == std::string::npos)
         break;
@@ -479,7 +480,7 @@ public:
   void SetVarName(const Decl *D, std::string_view short_name,
                   std::string_view qualified, IndexVar::Def &def) {
     QualType T;
-    const Expr* init = nullptr;
+    const Expr *init = nullptr;
     bool binding = false;
     if (auto *VD = dyn_cast<VarDecl>(D)) {
       T = VD->getType();
@@ -499,7 +500,7 @@ public:
       PrintingPolicy PP = GetDefaultPolicy();
       T.print(OS, PP);
       if (Str.size() &&
-        (Str.back() != ' ' && Str.back() != '*' && Str.back() != '&'))
+          (Str.back() != ' ' && Str.back() != '*' && Str.back() != '&'))
         Str += ' ';
       def.qual_name_offset = Str.size();
       def.short_name_offset = Str.size() + qualified.size() - short_name.size();
@@ -511,7 +512,7 @@ public:
     }
     if (init) {
       SourceManager &SM = Ctx->getSourceManager();
-      const LangOptions& Lang = Ctx->getLangOpts();
+      const LangOptions &Lang = Ctx->getLangOpts();
       SourceRange R = SM.getExpansionRange(init->getSourceRange())
 #if LLVM_VERSION_MAJOR >= 7
                           .getAsRange()
@@ -536,7 +537,8 @@ public:
   void AddMacroUse(IndexFile *db, SourceManager &SM, Usr usr, SymbolKind kind,
                    SourceLocation Spell) const {
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Spell));
-    if (!FE) return;
+    if (!FE)
+      return;
     auto UID = FE->getUniqueID();
     auto [it, inserted] = db->uid2lid_and_path.try_emplace(UID);
     if (inserted) {
@@ -568,10 +570,8 @@ public:
   }
 
 public:
-  IndexDataConsumer(IndexParam& param) : param(param) {}
-  void initialize(ASTContext &Ctx) override {
-    this->Ctx = param.Ctx = &Ctx;
-  }
+  IndexDataConsumer(IndexParam &param) : param(param) {}
+  void initialize(ASTContext &Ctx) override { this->Ctx = param.Ctx = &Ctx; }
   bool handleDeclOccurence(const Decl *D, index::SymbolRoleSet Roles,
                            ArrayRef<index::SymbolRelation> Relations,
 #if LLVM_VERSION_MAJOR >= 7
@@ -618,7 +618,7 @@ public:
     if (!db)
       return true;
 
-    const Decl* OrigD = ASTNode.OrigD;
+    const Decl *OrigD = ASTNode.OrigD;
     const DeclContext *SemDC = OrigD->getDeclContext();
     const DeclContext *LexDC = ASTNode.ContainerDC;
     Role role = static_cast<Role>(Roles);
@@ -632,7 +632,7 @@ public:
     IndexType *type = nullptr;
     IndexVar *var = nullptr;
     SymbolKind kind = GetSymbolKind(D);
-    IndexParam::DeclInfo* info;
+    IndexParam::DeclInfo *info;
     Usr usr = GetUsr(D, &info);
 
     auto do_def_decl = [&](auto *entity) {
@@ -690,7 +690,7 @@ public:
       if (type->def.detailed_name[0] == '\0')
         SetName(OrigD, info->short_name, info->qualified, type->def);
       if (is_def || is_decl) {
-        const Decl* DC = cast<Decl>(SemDC);
+        const Decl *DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Type)
           db->ToType(GetUsr(DC)).def.types.push_back(usr);
       }
@@ -720,7 +720,7 @@ public:
             db->ToType(usr1).instances.push_back(usr);
           } else {
             for (const Decl *D1 = GetTypeDecl(T); D1; D1 = GetSpecialized(D1)) {
-              IndexParam::DeclInfo* info1;
+              IndexParam::DeclInfo *info1;
               Usr usr1 = GetUsr(D1, &info1);
               auto it = db->usr2type.find(usr1);
               if (it != db->usr2type.end()) {
@@ -728,10 +728,11 @@ public:
                 it->second.instances.push_back(usr);
                 break;
               }
-              // e.g. TemplateTypeParmDecl is not handled by handleDeclOccurence.
+              // e.g. TemplateTypeParmDecl is not handled by
+              // handleDeclOccurence.
               SourceRange R1 = D1->getSourceRange();
               if (SM.getFileID(R1.getBegin()) == LocFID) {
-                IndexType& type1 = db->ToType(usr1);
+                IndexType &type1 = db->ToType(usr1);
                 SourceLocation L1 = D1->getLocation();
                 type1.def.spell = GetUse(db, FromTokenRange(SM, Lang, {L1, L1}),
                                          SemDC, Role::Definition);
@@ -935,7 +936,7 @@ public:
         if (auto *ND = dyn_cast<NamedDecl>(D)) {
           SmallVector<const NamedDecl *, 8> OverDecls;
           Ctx->getOverriddenMethods(ND, OverDecls);
-          for (const auto* ND1 : OverDecls) {
+          for (const auto *ND1 : OverDecls) {
             Usr usr1 = GetUsr(ND1);
             func->def.bases.push_back(usr1);
             db->ToFunc(usr1).derived.push_back(usr);
@@ -988,10 +989,10 @@ public:
 };
 
 class IndexPPCallbacks : public PPCallbacks {
-  SourceManager& SM;
-  IndexParam& param;
+  SourceManager &SM;
+  IndexParam &param;
 
-  std::pair<StringRef, Usr> GetMacro(const Token& Tok) const {
+  std::pair<StringRef, Usr> GetMacro(const Token &Tok) const {
     StringRef Name = Tok.getIdentifierInfo()->getName();
     SmallString<256> USR("@macro@");
     USR += Name;
@@ -1028,13 +1029,13 @@ public:
   }
   void MacroDefined(const Token &Tok, const MacroDirective *MD) override {
     llvm::sys::fs::UniqueID UniqueID;
-    const LangOptions& Lang = param.Ctx->getLangOpts();
+    const LangOptions &Lang = param.Ctx->getLangOpts();
     SourceLocation L = MD->getLocation();
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(L));
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {
-      auto[Name, usr] = GetMacro(Tok);
+      auto [Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
       auto range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
       var.def.kind = lsSymbolKind::Macro;
@@ -1056,15 +1057,15 @@ public:
       }
     }
   }
-  void MacroExpands(const Token &Tok, const MacroDefinition &MD,
-                    SourceRange R, const MacroArgs *Args) override {
+  void MacroExpands(const Token &Tok, const MacroDefinition &MD, SourceRange R,
+                    const MacroArgs *Args) override {
     llvm::sys::fs::UniqueID UniqueID;
     SourceLocation L = SM.getSpellingLoc(R.getBegin());
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(L));
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {
-      auto[Name, usr] = GetMacro(Tok);
+      auto [Name, usr] = GetMacro(Tok);
       IndexVar &var = db->ToVar(usr);
       var.uses.push_back(
           {{FromTokenRange(SM, param.Ctx->getLangOpts(), {L, L}, &UniqueID), 0,
@@ -1088,17 +1089,19 @@ public:
 };
 
 class IndexFrontendAction : public ASTFrontendAction {
-  IndexParam& param;
+  IndexParam &param;
+
 public:
-  IndexFrontendAction(IndexParam& param) : param(param) {}
+  IndexFrontendAction(IndexParam &param) : param(param) {}
   std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI,
                                                  StringRef InFile) override {
     Preprocessor &PP = CI.getPreprocessor();
-    PP.addPPCallbacks(std::make_unique<IndexPPCallbacks>(PP.getSourceManager(), param));
+    PP.addPPCallbacks(
+        std::make_unique<IndexPPCallbacks>(PP.getSourceManager(), param));
     return std::make_unique<ASTConsumer>();
   }
 };
-}
+} // namespace
 
 const int IndexFile::kMajorVersion = 17;
 const int IndexFile::kMinorVersion = 1;
@@ -1107,21 +1110,21 @@ IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
                      const std::string &contents)
     : UniqueID(UniqueID), path(path), file_contents(contents) {}
 
-IndexFunc& IndexFile::ToFunc(Usr usr) {
+IndexFunc &IndexFile::ToFunc(Usr usr) {
   auto [it, inserted] = usr2func.try_emplace(usr);
   if (inserted)
     it->second.usr = usr;
   return it->second;
 }
 
-IndexType& IndexFile::ToType(Usr usr) {
+IndexType &IndexFile::ToType(Usr usr) {
   auto [it, inserted] = usr2type.try_emplace(usr);
   if (inserted)
     it->second.usr = usr;
   return it->second;
 }
 
-IndexVar& IndexFile::ToVar(Usr usr) {
+IndexVar &IndexFile::ToVar(Usr usr) {
   auto [it, inserted] = usr2var.try_emplace(usr);
   if (inserted)
     it->second.usr = usr;
@@ -1132,8 +1135,7 @@ std::string IndexFile::ToString() {
   return ccls::Serialize(SerializeFormat::Json, *this);
 }
 
-template <typename T>
-void Uniquify(std::vector<T>& a) {
+template <typename T> void Uniquify(std::vector<T> &a) {
   std::unordered_set<T> seen;
   size_t n = 0;
   for (size_t i = 0; i < a.size(); i++)
@@ -1143,21 +1145,19 @@ void Uniquify(std::vector<T>& a) {
 }
 
 namespace ccls::idx {
-std::vector<std::unique_ptr<IndexFile>> Index(
-    VFS* vfs,
-    const std::string& opt_wdir,
-    const std::string& file,
-    const std::vector<std::string>& args,
-    const std::vector<FileContents>& file_contents) {
+std::vector<std::unique_ptr<IndexFile>>
+Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
+      const std::vector<std::string> &args,
+      const std::vector<FileContents> &file_contents) {
   if (!g_config->index.enabled)
     return {};
 
   std::vector<const char *> Args;
-  for (auto& arg: args)
+  for (auto &arg : args)
     Args.push_back(arg.c_str());
   auto PCHCO = std::make_shared<PCHContainerOperations>();
-  IntrusiveRefCntPtr<DiagnosticsEngine>
-    Diags(CompilerInstance::createDiagnostics(new DiagnosticOptions));
+  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
+      CompilerInstance::createDiagnostics(new DiagnosticOptions));
   std::shared_ptr<CompilerInvocation> CI =
       createInvocationFromCommandLine(Args, Diags);
   if (!CI)
@@ -1225,34 +1225,34 @@ std::vector<std::unique_ptr<IndexFile>> Index(
     return {};
   }
 
-  const SourceManager& SM = Unit->getSourceManager();
-  const FileEntry* FE = SM.getFileEntryForID(SM.getMainFileID());
-  IndexFile* main_file = param.ConsumeFile(*FE);
+  const SourceManager &SM = Unit->getSourceManager();
+  const FileEntry *FE = SM.getFileEntryForID(SM.getMainFileID());
+  IndexFile *main_file = param.ConsumeFile(*FE);
   std::unordered_map<std::string, int> inc_to_line;
   if (main_file)
-    for (auto& inc : main_file->includes)
+    for (auto &inc : main_file->includes)
       inc_to_line[inc.resolved_path] = inc.line;
 
   auto result = param.file_consumer->TakeLocalState();
-  for (std::unique_ptr<IndexFile>& entry : result) {
+  for (std::unique_ptr<IndexFile> &entry : result) {
     entry->import_file = file;
     entry->args = args;
     for (auto &[_, it] : entry->uid2lid_and_path)
       entry->lid2path.emplace_back(it.first, std::move(it.second));
     entry->uid2lid_and_path.clear();
-    for (auto& it : entry->usr2func) {
+    for (auto &it : entry->usr2func) {
       // e.g. declaration + out-of-line definition
       Uniquify(it.second.derived);
       Uniquify(it.second.uses);
     }
-    for (auto& it : entry->usr2type) {
+    for (auto &it : entry->usr2type) {
       Uniquify(it.second.derived);
       Uniquify(it.second.uses);
       // e.g. declaration + out-of-line definition
       Uniquify(it.second.def.bases);
       Uniquify(it.second.def.funcs);
     }
-    for (auto& it : entry->usr2var)
+    for (auto &it : entry->usr2var)
       Uniquify(it.second.uses);
 
     if (main_file) {
@@ -1283,7 +1283,7 @@ std::vector<std::unique_ptr<IndexFile>> Index(
 
   return result;
 }
-}
+} // namespace ccls::idx
 
 // |SymbolRef| is serialized this way.
 // |Use| also uses this though it has an extra field |file|,
@@ -1319,10 +1319,10 @@ void Reflect(Writer &vis, Reference &v) {
   }
 }
 
-void Reflect(Reader& vis, Use& v) {
+void Reflect(Reader &vis, Use &v) {
   if (vis.Format() == SerializeFormat::Json) {
     std::string t = vis.GetString();
-    char* s = const_cast<char*>(t.c_str());
+    char *s = const_cast<char *>(t.c_str());
     v.range = Range::FromString(s);
     s = strchr(s, '|');
     v.usr = strtoull(s + 1, &s, 10);
@@ -1331,11 +1331,11 @@ void Reflect(Reader& vis, Use& v) {
     if (*s == '|')
       v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
   } else {
-    Reflect(vis, static_cast<Reference&>(v));
+    Reflect(vis, static_cast<Reference &>(v));
     Reflect(vis, v.file_id);
   }
 }
-void Reflect(Writer& vis, Use& v) {
+void Reflect(Writer &vis, Use &v) {
   if (vis.Format() == SerializeFormat::Json) {
     char buf[99];
     if (v.file_id == -1)
@@ -1348,7 +1348,7 @@ void Reflect(Writer& vis, Use& v) {
     std::string s(buf);
     Reflect(vis, s);
   } else {
-    Reflect(vis, static_cast<Reference&>(v));
+    Reflect(vis, static_cast<Reference &>(v));
     Reflect(vis, v.file_id);
   }
 }

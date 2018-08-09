@@ -4,12 +4,11 @@ MethodType kMethodType_Unknown = "$unknown";
 MethodType kMethodType_Exit = "exit";
 MethodType kMethodType_TextDocumentPublishDiagnostics =
     "textDocument/publishDiagnostics";
-MethodType kMethodType_CclsPublishSkippedRanges =
-    "$ccls/publishSkippedRanges";
+MethodType kMethodType_CclsPublishSkippedRanges = "$ccls/publishSkippedRanges";
 MethodType kMethodType_CclsPublishSemanticHighlighting =
     "$ccls/publishSemanticHighlighting";
 
-void Reflect(Reader& visitor, lsRequestId& value) {
+void Reflect(Reader &visitor, lsRequestId &value) {
   if (visitor.IsInt64()) {
     value.type = lsRequestId::kInt;
     value.value = int(visitor.GetInt64());
@@ -25,7 +24,7 @@ void Reflect(Reader& visitor, lsRequestId& value) {
   }
 }
 
-void Reflect(Writer& visitor, lsRequestId& value) {
+void Reflect(Writer &visitor, lsRequestId &value) {
   switch (value.type) {
   case lsRequestId::kNone:
     visitor.Null();

@@ -26,39 +26,34 @@ struct CompletionSession
   };
 
   Project::Entry file;
-  WorkingFiles* working_files;
+  WorkingFiles *working_files;
 
   Tu completion;
   Tu diagnostics;
 
-  CompletionSession(const Project::Entry& file, WorkingFiles* wfiles)
+  CompletionSession(const Project::Entry &file, WorkingFiles *wfiles)
       : file(file), working_files(wfiles) {}
 };
 
 struct ClangCompleteManager {
-  using OnDiagnostic =
-      std::function<void(std::string path,
-                         std::vector<lsDiagnostic> diagnostics)>;
-  using OnComplete =
-      std::function<void(const std::vector<lsCompletionItem>& results,
-                         bool is_cached_result)>;
+  using OnDiagnostic = std::function<void(
+      std::string path, std::vector<lsDiagnostic> diagnostics)>;
+  using OnComplete = std::function<void(
+      const std::vector<lsCompletionItem> &results, bool is_cached_result)>;
   using OnDropped = std::function<void(lsRequestId request_id)>;
 
   struct PreloadRequest {
-    PreloadRequest(const std::string& path)
+    PreloadRequest(const std::string &path)
         : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
 
     std::chrono::time_point<std::chrono::high_resolution_clock> request_time;
     std::string path;
   };
   struct CompletionRequest {
-    CompletionRequest(const lsRequestId& id,
-                      const lsTextDocumentIdentifier& document,
-                      const lsPosition& position,
-                      const OnComplete& on_complete)
-        : id(id),
-          document(document),
-          position(position),
+    CompletionRequest(const lsRequestId &id,
+                      const lsTextDocumentIdentifier &document,
+                      const lsPosition &position, const OnComplete &on_complete)
+        : id(id), document(document), position(position),
           on_complete(on_complete) {}
 
     lsRequestId id;
@@ -70,42 +65,40 @@ struct ClangCompleteManager {
     lsTextDocumentIdentifier document;
   };
 
-  ClangCompleteManager(Project* project,
-                       WorkingFiles* working_files,
-                       OnDiagnostic on_diagnostic,
-                       OnDropped on_dropped);
+  ClangCompleteManager(Project *project, WorkingFiles *working_files,
+                       OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.
-  void CodeComplete(const lsRequestId& request_id,
-                    const lsTextDocumentPositionParams& completion_location,
-                    const OnComplete& on_complete);
+  void CodeComplete(const lsRequestId &request_id,
+                    const lsTextDocumentPositionParams &completion_location,
+                    const OnComplete &on_complete);
   // Request a diagnostics update.
-  void DiagnosticsUpdate(const lsTextDocumentIdentifier& document);
+  void DiagnosticsUpdate(const lsTextDocumentIdentifier &document);
 
   // Notify the completion manager that |filename| has been viewed and we
   // should begin preloading completion data.
-  void NotifyView(const std::string& filename);
+  void NotifyView(const std::string &filename);
   // Notify the completion manager that |filename| has been edited.
-  void NotifyEdit(const std::string& filename);
+  void NotifyEdit(const std::string &filename);
   // Notify the completion manager that |filename| has been saved. This
   // triggers a reparse.
-  void NotifySave(const std::string& filename);
+  void NotifySave(const std::string &filename);
   // Notify the completion manager that |filename| has been closed. Any existing
   // completion session will be dropped.
-  void NotifyClose(const std::string& filename);
+  void NotifyClose(const std::string &filename);
 
   // Ensures there is a completion or preloaded session. Returns true if a new
   // session was created.
-  bool EnsureCompletionOrCreatePreloadSession(const std::string& filename);
+  bool EnsureCompletionOrCreatePreloadSession(const std::string &filename);
   // Tries to find an edit session for |filename|. This will move the session
   // from view to edit.
-  std::shared_ptr<CompletionSession> TryGetSession(const std::string& filename,
+  std::shared_ptr<CompletionSession> TryGetSession(const std::string &filename,
                                                    bool mark_as_completion,
                                                    bool create_if_needed);
 
   // Flushes all saved sessions with the supplied filename
-  void FlushSession(const std::string& filename);
+  void FlushSession(const std::string &filename);
   // Flushes all saved sessions
   void FlushAllSessions(void);
 
@@ -114,8 +107,8 @@ struct ClangCompleteManager {
   const int kMaxCompletionSessions = 5;
 
   // Global state.
-  Project* project_;
-  WorkingFiles* working_files_;
+  Project *project_;
+  WorkingFiles *working_files_;
   OnDiagnostic on_diagnostic_;
   OnDropped on_dropped_;
 

@@ -14,9 +14,9 @@
 #include <clang/Basic/Specifiers.h>
 #include <llvm/ADT/StringMap.h>
 
-#include <stdint.h>
 #include <algorithm>
 #include <optional>
+#include <stdint.h>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -27,10 +27,10 @@ struct SymbolIdx {
   Usr usr;
   SymbolKind kind;
 
-  bool operator==(const SymbolIdx& o) const {
+  bool operator==(const SymbolIdx &o) const {
     return usr == o.usr && kind == o.kind;
   }
-  bool operator<(const SymbolIdx& o) const {
+  bool operator<(const SymbolIdx &o) const {
     return usr != o.usr ? usr < o.usr : kind < o.kind;
   }
 };
@@ -47,8 +47,8 @@ struct Reference {
   std::tuple<Range, Usr, SymbolKind, Role> ToTuple() const {
     return std::make_tuple(range, usr, kind, role);
   }
-  bool operator==(const Reference& o) const { return ToTuple() == o.ToTuple(); }
-  bool operator<(const Reference& o) const { return ToTuple() < o.ToTuple(); }
+  bool operator==(const Reference &o) const { return ToTuple() == o.ToTuple(); }
+  bool operator<(const Reference &o) const { return ToTuple() < o.ToTuple(); }
 };
 
 // |id,kind| refer to the referenced entity.
@@ -60,22 +60,21 @@ MAKE_HASHABLE(SymbolRef, t.range, t.usr, t.kind, t.role);
 struct Use : Reference {
   // |file| is used in Query* but not in Index*
   int file_id = -1;
-  bool operator==(const Use& o) const {
+  bool operator==(const Use &o) const {
     // lexical container info is ignored.
     return range == o.range && file_id == o.file_id;
   }
 };
 MAKE_HASHABLE(Use, t.range, t.file_id)
 
-void Reflect(Reader& visitor, Reference& value);
-void Reflect(Writer& visitor, Reference& value);
-void Reflect(Reader& visitor, Use& value);
-void Reflect(Writer& visitor, Use& value);
+void Reflect(Reader &visitor, Reference &value);
+void Reflect(Writer &visitor, Reference &value);
+void Reflect(Reader &visitor, Use &value);
+void Reflect(Writer &visitor, Use &value);
 
-template <typename D>
-struct NameMixin {
+template <typename D> struct NameMixin {
   std::string_view Name(bool qualified) const {
-    auto self = static_cast<const D*>(this);
+    auto self = static_cast<const D *>(this);
     return qualified
                ? std::string_view(self->detailed_name + self->qual_name_offset,
                                   self->short_name_offset -
@@ -88,9 +87,9 @@ struct NameMixin {
 
 struct FuncDef : NameMixin<FuncDef> {
   // General metadata.
-  const char* detailed_name = "";
-  const char* hover = "";
-  const char* comments = "";
+  const char *detailed_name = "";
+  const char *hover = "";
+  const char *comments = "";
   Maybe<Use> spell;
   Maybe<Use> extent;
 
@@ -112,20 +111,9 @@ struct FuncDef : NameMixin<FuncDef> {
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(FuncDef,
-                    detailed_name,
-                    qual_name_offset,
-                    short_name_offset,
-                    short_name_size,
-                    kind,
-                    storage,
-                    hover,
-                    comments,
-                    spell,
-                    extent,
-                    bases,
-                    vars,
-                    callees);
+MAKE_REFLECT_STRUCT(FuncDef, detailed_name, qual_name_offset, short_name_offset,
+                    short_name_size, kind, storage, hover, comments, spell,
+                    extent, bases, vars, callees);
 
 struct IndexFunc : NameMixin<IndexFunc> {
   using Def = FuncDef;
@@ -137,9 +125,9 @@ struct IndexFunc : NameMixin<IndexFunc> {
 };
 
 struct TypeDef : NameMixin<TypeDef> {
-  const char* detailed_name = "";
-  const char* hover = "";
-  const char* comments = "";
+  const char *detailed_name = "";
+  const char *hover = "";
+  const char *comments = "";
 
   Maybe<Use> spell;
   Maybe<Use> extent;
@@ -163,21 +151,9 @@ struct TypeDef : NameMixin<TypeDef> {
 
   std::vector<Usr> GetBases() const { return bases; }
 };
-MAKE_REFLECT_STRUCT(TypeDef,
-                    detailed_name,
-                    qual_name_offset,
-                    short_name_offset,
-                    short_name_size,
-                    kind,
-                    hover,
-                    comments,
-                    spell,
-                    extent,
-                    alias_of,
-                    bases,
-                    types,
-                    funcs,
-                    vars);
+MAKE_REFLECT_STRUCT(TypeDef, detailed_name, qual_name_offset, short_name_offset,
+                    short_name_size, kind, hover, comments, spell, extent,
+                    alias_of, bases, types, funcs, vars);
 
 struct IndexType {
   using Def = TypeDef;
@@ -191,9 +167,9 @@ struct IndexType {
 
 struct VarDef : NameMixin<VarDef> {
   // General metadata.
-  const char* detailed_name = "";
-  const char* hover = "";
-  const char* comments = "";
+  const char *detailed_name = "";
+  const char *hover = "";
+  const char *comments = "";
   Maybe<Use> spell;
   Maybe<Use> extent;
 
@@ -217,17 +193,8 @@ struct VarDef : NameMixin<VarDef> {
 
   std::vector<Usr> GetBases() const { return {}; }
 };
-MAKE_REFLECT_STRUCT(VarDef,
-                    detailed_name,
-                    qual_name_offset,
-                    short_name_offset,
-                    short_name_size,
-                    hover,
-                    comments,
-                    spell,
-                    extent,
-                    type,
-                    kind,
+MAKE_REFLECT_STRUCT(VarDef, detailed_name, qual_name_offset, short_name_offset,
+                    short_name_size, hover, comments, spell, extent, type, kind,
                     storage);
 
 struct IndexVar {
@@ -289,9 +256,9 @@ struct IndexFile {
   IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
             const std::string &contents);
 
-  IndexFunc& ToFunc(Usr usr);
-  IndexType& ToType(Usr usr);
-  IndexVar& ToVar(Usr usr);
+  IndexFunc &ToFunc(Usr usr);
+  IndexType &ToType(Usr usr);
+  IndexVar &ToVar(Usr usr);
 
   std::string ToString();
 };
@@ -299,6 +266,6 @@ struct IndexFile {
 namespace ccls::idx {
 std::vector<std::unique_ptr<IndexFile>>
 Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
-  const std::vector<std::string> &args,
-  const std::vector<FileContents> &file_contents);
+      const std::vector<std::string> &args,
+      const std::vector<FileContents> &file_contents);
 }

@@ -6,8 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-Position Position::FromString(const std::string& encoded) {
-  char* p = const_cast<char*>(encoded.c_str());
+Position Position::FromString(const std::string &encoded) {
+  char *p = const_cast<char *>(encoded.c_str());
   int16_t line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
   p++;
@@ -21,9 +21,9 @@ std::string Position::ToString() {
   return buf;
 }
 
-Range Range::FromString(const std::string& encoded) {
+Range Range::FromString(const std::string &encoded) {
   Position start, end;
-  char* p = const_cast<char*>(encoded.c_str());
+  char *p = const_cast<char *>(encoded.c_str());
   start.line = int16_t(strtol(p, &p, 10)) - 1;
   assert(*p == ':');
   p++;
@@ -57,7 +57,7 @@ std::string Range::ToString() {
 }
 
 // Position
-void Reflect(Reader& visitor, Position& value) {
+void Reflect(Reader &visitor, Position &value) {
   if (visitor.Format() == SerializeFormat::Json) {
     value = Position::FromString(visitor.GetString());
   } else {
@@ -65,7 +65,7 @@ void Reflect(Reader& visitor, Position& value) {
     Reflect(visitor, value.column);
   }
 }
-void Reflect(Writer& visitor, Position& value) {
+void Reflect(Writer &visitor, Position &value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string output = value.ToString();
     visitor.String(output.c_str(), output.size());
@@ -76,7 +76,7 @@ void Reflect(Writer& visitor, Position& value) {
 }
 
 // Range
-void Reflect(Reader& visitor, Range& value) {
+void Reflect(Reader &visitor, Range &value) {
   if (visitor.Format() == SerializeFormat::Json) {
     value = Range::FromString(visitor.GetString());
   } else {
@@ -86,7 +86,7 @@ void Reflect(Reader& visitor, Range& value) {
     Reflect(visitor, value.end.column);
   }
 }
-void Reflect(Writer& visitor, Range& value) {
+void Reflect(Writer &visitor, Range &value) {
   if (visitor.Format() == SerializeFormat::Json) {
     std::string output = value.ToString();
     visitor.String(output.c_str(), output.size());

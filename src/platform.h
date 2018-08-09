@@ -4,7 +4,7 @@
 #include <string_view>
 #include <vector>
 
-std::string NormalizePath(const std::string& path);
+std::string NormalizePath(const std::string &path);
 
 // Free any unused memory and return it to the system.
 void FreeUnusedMemory();
@@ -12,5 +12,5 @@ void FreeUnusedMemory();
 // Stop self and wait for SIGCONT.
 void TraceMe();
 
-std::string GetExternalCommandOutput(const std::vector<std::string>& command,
+std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input);

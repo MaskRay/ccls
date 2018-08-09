@@ -18,27 +18,21 @@ struct BaseThreadQueue {
 // std::lock accepts two or more arguments. We define an overload for one
 // argument.
 namespace std {
-template <typename Lockable>
-void lock(Lockable& l) {
-  l.lock();
-}
-}  // namespace std
+template <typename Lockable> void lock(Lockable &l) { l.lock(); }
+} // namespace std
 
-template <typename... Queue>
-struct MultiQueueLock {
+template <typename... Queue> struct MultiQueueLock {
   MultiQueueLock(Queue... lockable) : tuple_{lockable...} { lock(); }
   ~MultiQueueLock() { unlock(); }
   void lock() { lock_impl(typename std::index_sequence_for<Queue...>{}); }
   void unlock() { unlock_impl(typename std::index_sequence_for<Queue...>{}); }
 
- private:
-  template <size_t... Is>
-  void lock_impl(std::index_sequence<Is...>) {
+private:
+  template <size_t... Is> void lock_impl(std::index_sequence<Is...>) {
     std::lock(std::get<Is>(tuple_)->mutex_...);
   }
 
-  template <size_t... Is>
-  void unlock_impl(std::index_sequence<Is...>) {
+  template <size_t... Is> void unlock_impl(std::index_sequence<Is...>) {
     (void)std::initializer_list<int>{
         (std::get<Is>(tuple_)->mutex_.unlock(), 0)...};
   }
@@ -49,16 +43,15 @@ struct MultiQueueLock {
 struct MultiQueueWaiter {
   std::condition_variable_any cv;
 
-  static bool HasState(std::initializer_list<BaseThreadQueue*> queues) {
-    for (BaseThreadQueue* queue : queues) {
+  static bool HasState(std::initializer_list<BaseThreadQueue *> queues) {
+    for (BaseThreadQueue *queue : queues) {
       if (!queue->IsEmpty())
         return true;
     }
     return false;
   }
 
-  template <typename... BaseThreadQueue>
-  void Wait(BaseThreadQueue... queues) {
+  template <typename... BaseThreadQueue> void Wait(BaseThreadQueue... queues) {
     MultiQueueLock<BaseThreadQueue...> l(queues...);
     while (!HasState({queues...}))
       cv.wait(l);
@@ -66,21 +59,19 @@ struct MultiQueueWaiter {
 };
 
 // A threadsafe-queue. http://stackoverflow.com/a/16075550
-template <class T>
-struct ThreadedQueue : public BaseThreadQueue {
- public:
+template <class T> struct ThreadedQueue : public BaseThreadQueue {
+public:
   ThreadedQueue() {
     owned_waiter_ = std::make_unique<MultiQueueWaiter>();
     waiter_ = owned_waiter_.get();
   }
-  explicit ThreadedQueue(MultiQueueWaiter* waiter) : waiter_(waiter) {}
+  explicit ThreadedQueue(MultiQueueWaiter *waiter) : waiter_(waiter) {}
 
   // Returns the number of elements in the queue. This is lock-free.
   size_t Size() const { return total_count_; }
 
   // Add an element to the queue.
-  template <void (std::deque<T>::*push)(T&&)>
-  void Push(T&& t, bool priority) {
+  template <void (std::deque<T>::*push)(T &&)> void Push(T &&t, bool priority) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (priority)
       (priority_.*push)(std::move(t));
@@ -90,7 +81,7 @@ struct ThreadedQueue : public BaseThreadQueue {
     waiter_->cv.notify_one();
   }
 
-  void PushBack(T&& t, bool priority = false) {
+  void PushBack(T &&t, bool priority = false) {
     Push<&std::deque<T>::push_back>(std::move(t), priority);
   }
 
@@ -123,7 +114,7 @@ struct ThreadedQueue : public BaseThreadQueue {
     waiter_->cv.wait(lock,
                      [&]() { return !priority_.empty() || !queue_.empty(); });
 
-    auto execute = [&](std::deque<T>* q) {
+    auto execute = [&](std::deque<T> *q) {
       auto val = std::move(q->front());
       q->pop_front();
       --total_count_;
@@ -138,7 +129,7 @@ struct ThreadedQueue : public BaseThreadQueue {
   // value if the queue is empty.
   std::optional<T> TryPopFront() {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto execute = [&](std::deque<T>* q) {
+    auto execute = [&](std::deque<T> *q) {
       auto val = std::move(q->front());
       q->pop_front();
       --total_count_;
@@ -151,21 +142,20 @@ struct ThreadedQueue : public BaseThreadQueue {
     return std::nullopt;
   }
 
-  template <typename Fn>
-  void Iterate(Fn fn) {
+  template <typename Fn> void Iterate(Fn fn) {
     std::lock_guard<std::mutex> lock(mutex_);
-    for (auto& entry : priority_)
+    for (auto &entry : priority_)
       fn(entry);
-    for (auto& entry : queue_)
+    for (auto &entry : queue_)
       fn(entry);
   }
 
   mutable std::mutex mutex_;
 
- private:
+private:
   std::atomic<int> total_count_{0};
   std::deque<T> priority_;
   std::deque<T> queue_;
-  MultiQueueWaiter* waiter_;
+  MultiQueueWaiter *waiter_;
   std::unique_ptr<MultiQueueWaiter> owned_waiter_;
 };

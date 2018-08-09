@@ -1,7 +1,7 @@
 #include "lsp_code_action.h"
 #include "message_handler.h"
-#include "query_utils.h"
 #include "pipeline.hh"
+#include "query_utils.h"
 using namespace ccls;
 
 namespace {
@@ -24,8 +24,8 @@ MAKE_REFLECT_STRUCT(Out_WorkspaceExecuteCommand, jsonrpc, id, result);
 struct Handler_WorkspaceExecuteCommand
     : BaseMessageHandler<In_WorkspaceExecuteCommand> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_WorkspaceExecuteCommand* request) override {
-    const auto& params = request->params;
+  void Run(In_WorkspaceExecuteCommand *request) override {
+    const auto &params = request->params;
     Out_WorkspaceExecuteCommand out;
     out.id = request->id;
     if (params.command == "ccls._applyFixIt") {
@@ -40,4 +40,4 @@ struct Handler_WorkspaceExecuteCommand
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceExecuteCommand);
 
-}  // namespace
+} // namespace

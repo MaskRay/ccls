@@ -23,14 +23,14 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentTypeDefinition, jsonrpc, id, result);
 struct Handler_TextDocumentTypeDefinition
     : BaseMessageHandler<In_TextDocumentTypeDefinition> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentTypeDefinition* request) override {
-    QueryFile* file;
+  void Run(In_TextDocumentTypeDefinition *request) override {
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
                         nullptr)) {
       return;
     }
-    WorkingFile* working_file =
+    WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentTypeDefinition out;
@@ -39,25 +39,25 @@ struct Handler_TextDocumentTypeDefinition
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       Usr usr = sym.usr;
       switch (sym.kind) {
-        case SymbolKind::Var: {
-          const QueryVar::Def* def = db->GetVar(sym).AnyDef();
-          if (!def || !def->type)
-            continue;
-          usr = def->type;
-          [[fallthrough]];
-        }
-        case SymbolKind::Type: {
-          QueryType& type = db->Type(usr);
-          for (const auto& def : type.def)
-            if (def.spell) {
-              if (auto ls_loc = GetLsLocationEx(db, working_files, *def.spell,
-                                                g_config->xref.container))
-                out.result.push_back(*ls_loc);
-            }
-          break;
-        }
-        default:
-          break;
+      case SymbolKind::Var: {
+        const QueryVar::Def *def = db->GetVar(sym).AnyDef();
+        if (!def || !def->type)
+          continue;
+        usr = def->type;
+        [[fallthrough]];
+      }
+      case SymbolKind::Type: {
+        QueryType &type = db->Type(usr);
+        for (const auto &def : type.def)
+          if (def.spell) {
+            if (auto ls_loc = GetLsLocationEx(db, working_files, *def.spell,
+                                              g_config->xref.container))
+              out.result.push_back(*ls_loc);
+          }
+        break;
+      }
+      default:
+        break;
       }
     }
 
@@ -66,4 +66,4 @@ struct Handler_TextDocumentTypeDefinition
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentTypeDefinition);
 
-}  // namespace
+} // namespace

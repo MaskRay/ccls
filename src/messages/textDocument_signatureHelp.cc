@@ -70,9 +70,7 @@ struct lsSignatureHelp {
   // active signature does have any.
   std::optional<int> activeParameter;
 };
-MAKE_REFLECT_STRUCT(lsSignatureHelp,
-                    signatures,
-                    activeSignature,
+MAKE_REFLECT_STRUCT(lsSignatureHelp, signatures, activeSignature,
                     activeParameter);
 
 struct Out_TextDocumentSignatureHelp
@@ -86,9 +84,9 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
   MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(std::unique_ptr<InMessage> message) override {
-    auto request = static_cast<In_TextDocumentSignatureHelp*>(message.get());
-    lsTextDocumentPositionParams& params = request->params;
-    WorkingFile* file =
+    auto request = static_cast<In_TextDocumentSignatureHelp *>(message.get());
+    lsTextDocumentPositionParams &params = request->params;
+    WorkingFile *file =
         working_files->GetFileByFilename(params.textDocument.uri.GetPath());
     std::string search;
     int active_param = 0;
@@ -102,21 +100,21 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
       return;
 
     ClangCompleteManager::OnComplete callback = std::bind(
-        [this](InMessage* message, std::string search, int active_param,
-               const std::vector<lsCompletionItem>& results,
+        [this](InMessage *message, std::string search, int active_param,
+               const std::vector<lsCompletionItem> &results,
                bool is_cached_result) {
-          auto msg = static_cast<In_TextDocumentSignatureHelp*>(message);
+          auto msg = static_cast<In_TextDocumentSignatureHelp *>(message);
 
           Out_TextDocumentSignatureHelp out;
           out.id = msg->id;
 
-          for (auto& result : results) {
+          for (auto &result : results) {
             if (result.label != search)
               continue;
 
             lsSignatureInformation signature;
             signature.label = result.detail;
-            for (auto& parameter : result.parameters_) {
+            for (auto &parameter : result.parameters_) {
               lsParameterInformation ls_param;
               ls_param.label = parameter;
               signature.parameters.push_back(ls_param);
@@ -168,4 +166,4 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentSignatureHelp);
-}  // namespace
+} // namespace

@@ -1,19 +1,18 @@
 #include "message_handler.h"
-#include "query_utils.h"
 #include "pipeline.hh"
+#include "query_utils.h"
 using namespace ccls;
 
 namespace {
 MethodType kMethodType = "textDocument/rename";
 
-lsWorkspaceEdit BuildWorkspaceEdit(DB* db,
-                                   WorkingFiles* working_files,
-                                   SymbolRef sym,
-                                   const std::string& new_text) {
+lsWorkspaceEdit BuildWorkspaceEdit(DB *db, WorkingFiles *working_files,
+                                   SymbolRef sym, const std::string &new_text) {
   std::unordered_map<int, lsTextDocumentEdit> path_to_edit;
 
   EachOccurrence(db, sym, true, [&](Use use) {
-    std::optional<lsLocation> ls_location = GetLsLocation(db, working_files, use);
+    std::optional<lsLocation> ls_location =
+        GetLsLocation(db, working_files, use);
     if (!ls_location)
       return;
 
@@ -21,14 +20,14 @@ lsWorkspaceEdit BuildWorkspaceEdit(DB* db,
     if (path_to_edit.find(file_id) == path_to_edit.end()) {
       path_to_edit[file_id] = lsTextDocumentEdit();
 
-      QueryFile& file = db->files[file_id];
+      QueryFile &file = db->files[file_id];
       if (!file.def)
         return;
 
-      const std::string& path = file.def->path;
+      const std::string &path = file.def->path;
       path_to_edit[file_id].textDocument.uri = lsDocumentUri::FromPath(path);
 
-      WorkingFile* working_file = working_files->GetFileByFilename(path);
+      WorkingFile *working_file = working_files->GetFileByFilename(path);
       if (working_file)
         path_to_edit[file_id].textDocument.version = working_file->version;
     }
@@ -38,13 +37,13 @@ lsWorkspaceEdit BuildWorkspaceEdit(DB* db,
     edit.newText = new_text;
 
     // vscode complains if we submit overlapping text edits.
-    auto& edits = path_to_edit[file_id].edits;
+    auto &edits = path_to_edit[file_id].edits;
     if (std::find(edits.begin(), edits.end(), edit) == edits.end())
       edits.push_back(edit);
   });
 
   lsWorkspaceEdit edit;
-  for (const auto& changes : path_to_edit)
+  for (const auto &changes : path_to_edit)
     edit.documentChanges.push_back(changes.second);
   return edit;
 }
@@ -65,9 +64,7 @@ struct In_TextDocumentRename : public RequestInMessage {
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(In_TextDocumentRename::Params,
-                    textDocument,
-                    position,
+MAKE_REFLECT_STRUCT(In_TextDocumentRename::Params, textDocument, position,
                     newName);
 MAKE_REFLECT_STRUCT(In_TextDocumentRename, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentRename);
@@ -80,16 +77,16 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentRename, jsonrpc, id, result);
 
 struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentRename* request) override {
+  void Run(In_TextDocumentRename *request) override {
     int file_id;
-    QueryFile* file;
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
                         &file_id)) {
       return;
     }
 
-    WorkingFile* working_file =
+    WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentRename out;
@@ -107,4 +104,4 @@ struct Handler_TextDocumentRename : BaseMessageHandler<In_TextDocumentRename> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentRename);
-}  // namespace
+} // namespace

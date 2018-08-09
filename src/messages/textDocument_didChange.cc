@@ -1,8 +1,8 @@
 #include "clang_complete.h"
 #include "message_handler.h"
+#include "pipeline.hh"
 #include "project.h"
 #include "working_files.h"
-#include "pipeline.hh"
 using namespace ccls;
 
 namespace {
@@ -20,7 +20,7 @@ struct Handler_TextDocumentDidChange
     : BaseMessageHandler<In_TextDocumentDidChange> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_TextDocumentDidChange* request) override {
+  void Run(In_TextDocumentDidChange *request) override {
     std::string path = request->params.textDocument.uri.GetPath();
     working_files->OnChange(request->params);
     if (g_config->index.onDidChange) {
@@ -33,4 +33,4 @@ struct Handler_TextDocumentDidChange
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidChange);
-}  // namespace
+} // namespace

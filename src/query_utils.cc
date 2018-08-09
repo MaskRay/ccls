@@ -8,22 +8,22 @@
 namespace {
 
 // Computes roughly how long |range| is.
-int ComputeRangeSize(const Range& range) {
+int ComputeRangeSize(const Range &range) {
   if (range.start.line != range.end.line)
     return INT_MAX;
   return range.end.column - range.start.column;
 }
 
 template <typename Q>
-std::vector<Use> GetDeclarations(llvm::DenseMap<WrappedUsr, int>& entity_usr,
-                                 std::vector<Q>& entities,
-                                 const std::vector<Usr>& usrs) {
+std::vector<Use> GetDeclarations(llvm::DenseMap<WrappedUsr, int> &entity_usr,
+                                 std::vector<Q> &entities,
+                                 const std::vector<Usr> &usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
-    Q& entity = entities[entity_usr[{usr}]];
+    Q &entity = entities[entity_usr[{usr}]];
     bool has_def = false;
-    for (auto& def : entity.def)
+    for (auto &def : entity.def)
       if (def.spell) {
         ret.push_back(*def.spell);
         has_def = true;
@@ -35,39 +35,38 @@ std::vector<Use> GetDeclarations(llvm::DenseMap<WrappedUsr, int>& entity_usr,
   return ret;
 }
 
-}  // namespace
+} // namespace
 
-Maybe<Use> GetDefinitionSpell(DB* db, SymbolIdx sym) {
+Maybe<Use> GetDefinitionSpell(DB *db, SymbolIdx sym) {
   Maybe<Use> ret;
-  EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.spell); });
+  EachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.spell); });
   return ret;
 }
 
-Maybe<Use> GetDefinitionExtent(DB* db, SymbolIdx sym) {
+Maybe<Use> GetDefinitionExtent(DB *db, SymbolIdx sym) {
   // Used to jump to file.
   if (sym.kind == SymbolKind::File)
     return Use{{Range{{0, 0}, {0, 0}}, sym.usr, sym.kind, Role::None},
                int(sym.usr)};
   Maybe<Use> ret;
-  EachEntityDef(db, sym, [&](const auto& def) { return !(ret = def.extent); });
+  EachEntityDef(db, sym, [&](const auto &def) { return !(ret = def.extent); });
   return ret;
 }
 
-std::vector<Use> GetFuncDeclarations(DB* db, const std::vector<Usr>& usrs) {
+std::vector<Use> GetFuncDeclarations(DB *db, const std::vector<Usr> &usrs) {
   return GetDeclarations(db->func_usr, db->funcs, usrs);
 }
-std::vector<Use> GetTypeDeclarations(DB* db, const std::vector<Usr>& usrs) {
+std::vector<Use> GetTypeDeclarations(DB *db, const std::vector<Usr> &usrs) {
   return GetDeclarations(db->type_usr, db->types, usrs);
 }
-std::vector<Use> GetVarDeclarations(DB* db,
-                                    const std::vector<Usr>& usrs,
+std::vector<Use> GetVarDeclarations(DB *db, const std::vector<Usr> &usrs,
                                     unsigned kind) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
-    QueryVar& var = db->Var(usr);
+    QueryVar &var = db->Var(usr);
     bool has_def = false;
-    for (auto& def : var.def)
+    for (auto &def : var.def)
       if (def.spell) {
         has_def = true;
         // See messages/ccls_vars.cc
@@ -90,29 +89,29 @@ std::vector<Use> GetVarDeclarations(DB* db,
   return ret;
 }
 
-std::vector<Use> GetNonDefDeclarations(DB* db, SymbolIdx sym) {
+std::vector<Use> GetNonDefDeclarations(DB *db, SymbolIdx sym) {
   switch (sym.kind) {
-    case SymbolKind::Func:
-      return db->GetFunc(sym).declarations;
-    case SymbolKind::Type:
-      return db->GetType(sym).declarations;
-    case SymbolKind::Var:
-      return db->GetVar(sym).declarations;
-    default:
-      return {};
+  case SymbolKind::Func:
+    return db->GetFunc(sym).declarations;
+  case SymbolKind::Type:
+    return db->GetType(sym).declarations;
+  case SymbolKind::Var:
+    return db->GetVar(sym).declarations;
+  default:
+    return {};
   }
 }
 
-std::vector<Use> GetUsesForAllBases(DB* db, QueryFunc& root) {
+std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root) {
   std::vector<Use> ret;
-  std::vector<QueryFunc*> stack{&root};
+  std::vector<QueryFunc *> stack{&root};
   std::unordered_set<Usr> seen;
   seen.insert(root.usr);
   while (!stack.empty()) {
-    QueryFunc& func = *stack.back();
+    QueryFunc &func = *stack.back();
     stack.pop_back();
-    if (auto* def = func.AnyDef()) {
-      EachDefinedFunc(db, def->bases, [&](QueryFunc& func1) {
+    if (auto *def = func.AnyDef()) {
+      EachDefinedFunc(db, def->bases, [&](QueryFunc &func1) {
         if (!seen.count(func1.usr)) {
           seen.insert(func1.usr);
           stack.push_back(&func1);
@@ -125,15 +124,15 @@ std::vector<Use> GetUsesForAllBases(DB* db, QueryFunc& root) {
   return ret;
 }
 
-std::vector<Use> GetUsesForAllDerived(DB* db, QueryFunc& root) {
+std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
   std::vector<Use> ret;
-  std::vector<QueryFunc*> stack{&root};
+  std::vector<QueryFunc *> stack{&root};
   std::unordered_set<Usr> seen;
   seen.insert(root.usr);
   while (!stack.empty()) {
-    QueryFunc& func = *stack.back();
+    QueryFunc &func = *stack.back();
     stack.pop_back();
-    EachDefinedFunc(db, func.derived, [&](QueryFunc& func1) {
+    EachDefinedFunc(db, func.derived, [&](QueryFunc &func1) {
       if (!seen.count(func1.usr)) {
         seen.insert(func1.usr);
         stack.push_back(&func1);
@@ -145,8 +144,8 @@ std::vector<Use> GetUsesForAllDerived(DB* db, QueryFunc& root) {
   return ret;
 }
 
-std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
-                                        const Position& position) {
+std::optional<lsPosition> GetLsPosition(WorkingFile *working_file,
+                                        const Position &position) {
   if (!working_file)
     return lsPosition{position.line, position.column};
 
@@ -157,8 +156,8 @@ std::optional<lsPosition> GetLsPosition(WorkingFile* working_file,
   return std::nullopt;
 }
 
-std::optional<lsRange> GetLsRange(WorkingFile* working_file,
-                                  const Range& location) {
+std::optional<lsRange> GetLsRange(WorkingFile *working_file,
+                                  const Range &location) {
   if (!working_file) {
     return lsRange{lsPosition{location.start.line, location.start.column},
                    lsPosition{location.end.line, location.end.column}};
@@ -187,8 +186,8 @@ std::optional<lsRange> GetLsRange(WorkingFile* working_file,
                  lsPosition{*end, end_column}};
 }
 
-lsDocumentUri GetLsDocumentUri(DB* db, int file_id, std::string* path) {
-  QueryFile& file = db->files[file_id];
+lsDocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path) {
+  QueryFile &file = db->files[file_id];
   if (file.def) {
     *path = file.def->path;
     return lsDocumentUri::FromPath(*path);
@@ -198,8 +197,8 @@ lsDocumentUri GetLsDocumentUri(DB* db, int file_id, std::string* path) {
   }
 }
 
-lsDocumentUri GetLsDocumentUri(DB* db, int file_id) {
-  QueryFile& file = db->files[file_id];
+lsDocumentUri GetLsDocumentUri(DB *db, int file_id) {
+  QueryFile &file = db->files[file_id];
   if (file.def) {
     return lsDocumentUri::FromPath(file.def->path);
   } else {
@@ -207,8 +206,7 @@ lsDocumentUri GetLsDocumentUri(DB* db, int file_id) {
   }
 }
 
-std::optional<lsLocation> GetLsLocation(DB* db,
-                                        WorkingFiles* working_files,
+std::optional<lsLocation> GetLsLocation(DB *db, WorkingFiles *working_files,
                                         Use use) {
   std::string path;
   lsDocumentUri uri = GetLsDocumentUri(db, use.file_id, &path);
@@ -219,10 +217,8 @@ std::optional<lsLocation> GetLsLocation(DB* db,
   return lsLocation{uri, *range};
 }
 
-std::optional<lsLocationEx> GetLsLocationEx(DB* db,
-                                            WorkingFiles* working_files,
-                                            Use use,
-                                            bool container) {
+std::optional<lsLocationEx> GetLsLocationEx(DB *db, WorkingFiles *working_files,
+                                            Use use, bool container) {
   std::optional<lsLocation> ls_loc = GetLsLocation(db, working_files, use);
   if (!ls_loc)
     return std::nullopt;
@@ -230,7 +226,7 @@ std::optional<lsLocationEx> GetLsLocationEx(DB* db,
   ret.lsLocation::operator=(*ls_loc);
   if (container) {
     ret.role = uint16_t(use.role);
-    EachEntityDef(db, use, [&](const auto& def) {
+    EachEntityDef(db, use, [&](const auto &def) {
       ret.containerName = std::string_view(def.detailed_name);
       return false;
     });
@@ -238,9 +234,8 @@ std::optional<lsLocationEx> GetLsLocationEx(DB* db,
   return ret;
 }
 
-std::vector<lsLocationEx> GetLsLocationExs(DB* db,
-                                           WorkingFiles* working_files,
-                                           const std::vector<Use>& uses) {
+std::vector<lsLocationEx> GetLsLocationExs(DB *db, WorkingFiles *working_files,
+                                           const std::vector<Use> &uses) {
   std::vector<lsLocationEx> ret;
   for (Use use : uses)
     if (auto loc =
@@ -253,14 +248,14 @@ std::vector<lsLocationEx> GetLsLocationExs(DB* db,
   return ret;
 }
 
-lsSymbolKind GetSymbolKind(DB* db, SymbolIdx sym) {
+lsSymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
   lsSymbolKind ret;
   if (sym.kind == SymbolKind::File)
     ret = lsSymbolKind::File;
   else {
     ret = lsSymbolKind::Unknown;
-    WithEntity(db, sym, [&](const auto& entity) {
-      for (auto& def : entity.def) {
+    WithEntity(db, sym, [&](const auto &entity) {
+      for (auto &def : entity.def) {
         ret = def.kind;
         break;
       }
@@ -270,44 +265,44 @@ lsSymbolKind GetSymbolKind(DB* db, SymbolIdx sym) {
 }
 
 // Returns a symbol. The symbol will have *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(DB* db,
-                                                 WorkingFiles* working_files,
+std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
+                                                 WorkingFiles *working_files,
                                                  SymbolIdx sym,
                                                  bool detailed_name) {
   switch (sym.kind) {
-    case SymbolKind::Invalid:
+  case SymbolKind::Invalid:
+    break;
+  case SymbolKind::File: {
+    QueryFile &file = db->GetFile(sym);
+    if (!file.def)
       break;
-    case SymbolKind::File: {
-      QueryFile& file = db->GetFile(sym);
-      if (!file.def)
-        break;
 
-      lsSymbolInformation info;
-      info.name = file.def->path;
-      info.kind = lsSymbolKind::File;
-      return info;
-    }
-    default: {
-      lsSymbolInformation info;
-      EachEntityDef(db, sym, [&](const auto& def) {
-        if (detailed_name)
-          info.name = def.detailed_name;
-        else
-          info.name = def.Name(true);
-        info.kind = def.kind;
-        info.containerName = def.detailed_name;
-        return false;
-      });
-      return info;
-    }
+    lsSymbolInformation info;
+    info.name = file.def->path;
+    info.kind = lsSymbolKind::File;
+    return info;
+  }
+  default: {
+    lsSymbolInformation info;
+    EachEntityDef(db, sym, [&](const auto &def) {
+      if (detailed_name)
+        info.name = def.detailed_name;
+      else
+        info.name = def.Name(true);
+      info.kind = def.kind;
+      info.containerName = def.detailed_name;
+      return false;
+    });
+    return info;
+  }
   }
 
   return std::nullopt;
 }
 
-std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
-                                             QueryFile* file,
-                                             lsPosition& ls_pos) {
+std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
+                                             QueryFile *file,
+                                             lsPosition &ls_pos) {
   std::vector<SymbolRef> symbols;
   if (working_file) {
     if (auto line = working_file->GetIndexPosFromBufferPos(
@@ -322,7 +317,7 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   for (SymbolRef sym : file->def->all_symbols)
     if (sym.range.Contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
-  for (auto[sym, refcnt] : file->symbol2refcnt)
+  for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.range.Contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);
 
@@ -337,22 +332,23 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile* working_file,
   //
   // Then order functions before other types, which makes goto definition work
   // better on constructors.
-  std::sort(symbols.begin(), symbols.end(),
-            [](const SymbolRef& a, const SymbolRef& b) {
-              int t = ComputeRangeSize(a.range) - ComputeRangeSize(b.range);
-              if (t)
-                return t < 0;
-              // MacroExpansion
-              if ((t = (a.role & Role::Dynamic) - (b.role & Role::Dynamic)))
-                return t > 0;
-              if ((t = (a.role & Role::Definition) - (b.role & Role::Definition)))
-                return t > 0;
-              // operator> orders Var/Func before Type.
-              t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
-              if (t)
-                return t > 0;
-              return a.usr < b.usr;
-            });
+  std::sort(
+      symbols.begin(), symbols.end(),
+      [](const SymbolRef &a, const SymbolRef &b) {
+        int t = ComputeRangeSize(a.range) - ComputeRangeSize(b.range);
+        if (t)
+          return t < 0;
+        // MacroExpansion
+        if ((t = (a.role & Role::Dynamic) - (b.role & Role::Dynamic)))
+          return t > 0;
+        if ((t = (a.role & Role::Definition) - (b.role & Role::Definition)))
+          return t > 0;
+        // operator> orders Var/Func before Type.
+        t = static_cast<int>(a.kind) - static_cast<int>(b.kind);
+        if (t)
+          return t > 0;
+        return a.usr < b.usr;
+      });
 
   return symbols;
 }

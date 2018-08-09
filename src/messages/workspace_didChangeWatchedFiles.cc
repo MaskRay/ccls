@@ -1,7 +1,7 @@
 #include "clang_complete.h"
 #include "message_handler.h"
-#include "project.h"
 #include "pipeline.hh"
+#include "project.h"
 #include "working_files.h"
 using namespace ccls;
 
@@ -36,8 +36,8 @@ REGISTER_IN_MESSAGE(In_WorkspaceDidChangeWatchedFiles);
 struct Handler_WorkspaceDidChangeWatchedFiles
     : BaseMessageHandler<In_WorkspaceDidChangeWatchedFiles> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_WorkspaceDidChangeWatchedFiles* request) override {
-    for (lsFileEvent& event : request->params.changes) {
+  void Run(In_WorkspaceDidChangeWatchedFiles *request) override {
+    for (lsFileEvent &event : request->params.changes) {
       std::string path = event.uri.GetPath();
       Project::Entry entry;
       {
@@ -50,19 +50,19 @@ struct Handler_WorkspaceDidChangeWatchedFiles
       bool is_interactive =
           working_files->GetFileByFilename(entry.filename) != nullptr;
       switch (event.type) {
-        case lsFileChangeType::Created:
-        case lsFileChangeType::Changed: {
-          pipeline::Index(path, entry.args, is_interactive);
-          if (is_interactive)
-            clang_complete->NotifySave(path);
-          break;
-        }
-        case lsFileChangeType::Deleted:
-          pipeline::Index(path, entry.args, is_interactive);
-          break;
+      case lsFileChangeType::Created:
+      case lsFileChangeType::Changed: {
+        pipeline::Index(path, entry.args, is_interactive);
+        if (is_interactive)
+          clang_complete->NotifySave(path);
+        break;
+      }
+      case lsFileChangeType::Deleted:
+        pipeline::Index(path, entry.args, is_interactive);
+        break;
       }
     }
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_WorkspaceDidChangeWatchedFiles);
-}  // namespace
+} // namespace

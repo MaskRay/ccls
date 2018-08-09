@@ -3,14 +3,8 @@
 #include "query_utils.h"
 using namespace ccls;
 
-MAKE_REFLECT_STRUCT(QueryFile::Def,
-                    path,
-                    args,
-                    language,
-                    outline,
-                    all_symbols,
-                    skipped_ranges,
-                    dependencies);
+MAKE_REFLECT_STRUCT(QueryFile::Def, path, args, language, outline, all_symbols,
+                    skipped_ranges, dependencies);
 
 namespace {
 MethodType kMethodType = "$ccls/fileInfo";
@@ -35,8 +29,8 @@ MAKE_REFLECT_STRUCT(Out_CclsFileInfo, jsonrpc, id, result);
 
 struct Handler_CclsFileInfo : BaseMessageHandler<In_CclsFileInfo> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_CclsFileInfo* request) override {
-    QueryFile* file;
+  void Run(In_CclsFileInfo *request) override {
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
       return;
@@ -54,4 +48,4 @@ struct Handler_CclsFileInfo : BaseMessageHandler<In_CclsFileInfo> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsFileInfo);
-}  // namespace
+} // namespace

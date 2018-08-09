@@ -14,7 +14,7 @@ LanguageId SourceFileLanguage(std::string_view path) {
   return LanguageId::Unknown;
 }
 
-const char* LanguageIdentifier(LanguageId lang) {
+const char *LanguageIdentifier(LanguageId lang) {
   switch (lang) {
   case LanguageId::C:
     return "c";

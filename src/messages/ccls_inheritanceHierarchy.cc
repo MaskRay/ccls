@@ -51,32 +51,18 @@ struct Out_CclsInheritanceHierarchy
   lsRequestId id;
   std::optional<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CclsInheritanceHierarchy::Entry,
-                    id,
-                    kind,
-                    name,
-                    location,
-                    numChildren,
-                    children);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsInheritanceHierarchy,
-                                       jsonrpc,
-                                       id,
-                                       result);
+MAKE_REFLECT_STRUCT(Out_CclsInheritanceHierarchy::Entry, id, kind, name,
+                    location, numChildren, children);
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsInheritanceHierarchy, jsonrpc,
+                                       id, result);
 
-bool Expand(MessageHandler* m,
-            Out_CclsInheritanceHierarchy::Entry* entry,
-            bool derived,
-            bool qualified,
-            int levels);
+bool Expand(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
+            bool derived, bool qualified, int levels);
 
 template <typename Q>
-bool ExpandHelper(MessageHandler* m,
-                  Out_CclsInheritanceHierarchy::Entry* entry,
-                  bool derived,
-                  bool qualified,
-                  int levels,
-                  Q& entity) {
-  const auto* def = entity.AnyDef();
+bool ExpandHelper(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
+                  bool derived, bool qualified, int levels, Q &entity) {
+  const auto *def = entity.AnyDef();
   if (def) {
     entry->name = def->Name(qualified);
     if (def->spell) {
@@ -122,11 +108,8 @@ bool ExpandHelper(MessageHandler* m,
   return true;
 }
 
-bool Expand(MessageHandler* m,
-            Out_CclsInheritanceHierarchy::Entry* entry,
-            bool derived,
-            bool qualified,
-            int levels) {
+bool Expand(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
+            bool derived, bool qualified, int levels) {
   if (entry->kind == SymbolKind::Func)
     return ExpandHelper(m, entry, derived, qualified, levels,
                         m->db->Func(entry->usr));
@@ -149,8 +132,8 @@ struct Handler_CclsInheritanceHierarchy
     return entry;
   }
 
-  void Run(In_CclsInheritanceHierarchy* request) override {
-    auto& params = request->params;
+  void Run(In_CclsInheritanceHierarchy *request) override {
+    auto &params = request->params;
     Out_CclsInheritanceHierarchy out;
     out.id = request->id;
 
@@ -169,12 +152,11 @@ struct Handler_CclsInheritanceHierarchy
           Expand(this, &entry, params.derived, params.qualified, params.levels))
         out.result = std::move(entry);
     } else {
-      QueryFile* file;
+      QueryFile *file;
       if (!FindFileOrFail(db, project, request->id,
                           params.textDocument.uri.GetPath(), &file))
         return;
-      WorkingFile* wfile =
-          working_files->GetFileByFilename(file->def->path);
+      WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
 
       for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, params.position))
         if (sym.kind == SymbolKind::Func || sym.kind == SymbolKind::Type) {
@@ -208,4 +190,4 @@ struct Handler_CclsInheritanceHierarchy
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsInheritanceHierarchy);
 
-}  // namespace
+} // namespace

@@ -18,14 +18,14 @@ REGISTER_IN_MESSAGE(In_CclsBase);
 struct Handler_CclsBase : BaseMessageHandler<In_CclsBase> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_CclsBase* request) override {
-    QueryFile* file;
+  void Run(In_CclsBase *request) override {
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file)) {
       return;
     }
 
-    WorkingFile* working_file =
+    WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_LocationList out;
@@ -33,12 +33,12 @@ struct Handler_CclsBase : BaseMessageHandler<In_CclsBase> {
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
       if (sym.kind == SymbolKind::Type) {
-        if (const auto* def = db->GetType(sym).AnyDef())
+        if (const auto *def = db->GetType(sym).AnyDef())
           out.result = GetLsLocationExs(db, working_files,
                                         GetTypeDeclarations(db, def->bases));
         break;
       } else if (sym.kind == SymbolKind::Func) {
-        if (const auto* def = db->GetFunc(sym).AnyDef())
+        if (const auto *def = db->GetFunc(sym).AnyDef())
           out.result = GetLsLocationExs(db, working_files,
                                         GetFuncDeclarations(db, def->bases));
         break;
@@ -48,4 +48,4 @@ struct Handler_CclsBase : BaseMessageHandler<In_CclsBase> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsBase);
-}  // namespace
+} // namespace

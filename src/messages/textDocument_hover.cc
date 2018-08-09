@@ -7,10 +7,10 @@ namespace {
 MethodType kMethodType = "textDocument/hover";
 
 // Find the comments for |sym|, if any.
-std::optional<lsMarkedString> GetComments(DB* db, SymbolRef sym) {
+std::optional<lsMarkedString> GetComments(DB *db, SymbolRef sym) {
   std::optional<lsMarkedString> ret;
-  WithEntity(db, sym, [&](const auto& entity) {
-    if (const auto* def = entity.AnyDef())
+  WithEntity(db, sym, [&](const auto &entity) {
+    if (const auto *def = entity.AnyDef())
       if (def->comments[0]) {
         lsMarkedString m;
         m.value = def->comments;
@@ -21,12 +21,11 @@ std::optional<lsMarkedString> GetComments(DB* db, SymbolRef sym) {
 }
 
 // Returns the hover or detailed name for `sym`, if any.
-std::optional<lsMarkedString> GetHoverOrName(DB* db,
-                                             LanguageId lang,
+std::optional<lsMarkedString> GetHoverOrName(DB *db, LanguageId lang,
                                              SymbolRef sym) {
   std::optional<lsMarkedString> ret;
-  WithEntity(db, sym, [&](const auto& entity) {
-    if (const auto* def = entity.AnyDef()) {
+  WithEntity(db, sym, [&](const auto &entity) {
+    if (const auto *def = entity.AnyDef()) {
       lsMarkedString m;
       m.language = LanguageIdentifier(lang);
       if (def->hover[0]) {
@@ -58,21 +57,19 @@ struct Out_TextDocumentHover : public lsOutMessage<Out_TextDocumentHover> {
   std::optional<Result> result;
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentHover::Result, contents, range);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_TextDocumentHover,
-                                       jsonrpc,
-                                       id,
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_TextDocumentHover, jsonrpc, id,
                                        result);
 
 struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentHover* request) override {
-    auto& params = request->params;
-    QueryFile* file;
+  void Run(In_TextDocumentHover *request) override {
+    auto &params = request->params;
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file))
       return;
 
-    WorkingFile* working_file =
+    WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentHover out;
@@ -104,4 +101,4 @@ struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentHover);
-}  // namespace
+} // namespace

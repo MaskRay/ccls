@@ -27,14 +27,9 @@ struct In_TextDocumentReferences : public RequestInMessage {
 
   Params params;
 };
-MAKE_REFLECT_STRUCT(In_TextDocumentReferences::lsReferenceContext,
-                    base,
-                    excludeRole,
-                    includeDeclaration,
-                    role);
-MAKE_REFLECT_STRUCT(In_TextDocumentReferences::Params,
-                    textDocument,
-                    position,
+MAKE_REFLECT_STRUCT(In_TextDocumentReferences::lsReferenceContext, base,
+                    excludeRole, includeDeclaration, role);
+MAKE_REFLECT_STRUCT(In_TextDocumentReferences::Params, textDocument, position,
                     context);
 MAKE_REFLECT_STRUCT(In_TextDocumentReferences, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentReferences);
@@ -50,15 +45,14 @@ struct Handler_TextDocumentReferences
     : BaseMessageHandler<In_TextDocumentReferences> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_TextDocumentReferences* request) override {
-    auto& params = request->params;
-    QueryFile* file;
+  void Run(In_TextDocumentReferences *request) override {
+    auto &params = request->params;
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file))
       return;
 
-    WorkingFile* wfile =
-        working_files->GetFileByFilename(file->def->path);
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentReferences out;
     out.id = request->id;
@@ -86,9 +80,9 @@ struct Handler_TextDocumentReferences
               out.result.push_back(*ls_loc);
             }
         };
-        WithEntity(db, sym, [&](const auto& entity) {
+        WithEntity(db, sym, [&](const auto &entity) {
           lsSymbolKind parent_kind = lsSymbolKind::Unknown;
-          for (auto& def : entity.def)
+          for (auto &def : entity.def)
             if (def.spell) {
               parent_kind = GetSymbolKind(db, sym);
               if (params.context.base)
@@ -102,7 +96,7 @@ struct Handler_TextDocumentReferences
           for (Use use : entity.uses)
             fn(use, parent_kind);
           if (params.context.includeDeclaration) {
-            for (auto& def : entity.def)
+            for (auto &def : entity.def)
               if (def.spell)
                 fn(*def.spell, parent_kind);
             for (Use use : entity.declarations)
@@ -120,21 +114,20 @@ struct Handler_TextDocumentReferences
       std::string path;
       if (params.position.line == 0)
         path = file->def->path;
-      for (const IndexInclude& include : file->def->includes)
+      for (const IndexInclude &include : file->def->includes)
         if (include.line == params.position.line) {
           path = include.resolved_path;
           break;
         }
       if (path.size())
-        for (QueryFile& file1 : db->files)
+        for (QueryFile &file1 : db->files)
           if (file1.def)
-            for (const IndexInclude& include : file1.def->includes)
+            for (const IndexInclude &include : file1.def->includes)
               if (include.resolved_path == path) {
                 // Another file |file1| has the same include line.
                 lsLocationEx result;
                 result.uri = lsDocumentUri::FromPath(file1.def->path);
-                result.range.start.line = result.range.end.line =
-                  include.line;
+                result.range.start.line = result.range.end.line = include.line;
                 out.result.push_back(std::move(result));
                 break;
               }
@@ -146,4 +139,4 @@ struct Handler_TextDocumentReferences
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentReferences);
-}  // namespace
+} // namespace

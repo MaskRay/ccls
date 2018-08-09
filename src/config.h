@@ -218,49 +218,23 @@ struct Config {
 MAKE_REFLECT_STRUCT(Config::Clang, extraArgs, resourceDir);
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
-MAKE_REFLECT_STRUCT(Config::Completion,
-                    caseSensitivity,
-                    dropOldRequests,
-                    detailedLabel,
-                    filterAndSort,
-                    includeBlacklist,
-                    includeMaxPathSize,
-                    includeSuffixWhitelist,
+MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, dropOldRequests,
+                    detailedLabel, filterAndSort, includeBlacklist,
+                    includeMaxPathSize, includeSuffixWhitelist,
                     includeWhitelist);
-MAKE_REFLECT_STRUCT(Config::Diagnostics,
-                    blacklist,
-                    frequencyMs,
-                    onParse,
-                    onType,
-                    whitelist)
+MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onParse,
+                    onType, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
-MAKE_REFLECT_STRUCT(Config::Index,
-                    attributeMakeCallsToCtor,
-                    blacklist,
-                    comments,
-                    enabled,
-                    onDidChange,
-                    reparseForDependency,
-                    threads,
-                    whitelist);
+MAKE_REFLECT_STRUCT(Config::Index, attributeMakeCallsToCtor, blacklist,
+                    comments, enabled, onDidChange, reparseForDependency,
+                    threads, whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
-MAKE_REFLECT_STRUCT(Config,
-                    compilationDatabaseCommand,
-                    compilationDatabaseDirectory,
-                    cacheDirectory,
-                    cacheFormat,
+MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
+                    compilationDatabaseDirectory, cacheDirectory, cacheFormat,
 
-                    clang,
-                    client,
-                    codeLens,
-                    completion,
-                    diagnostics,
-                    highlight,
-                    index,
-                    largeFileSize,
-                    workspaceSymbol,
-                    xref);
+                    clang, client, codeLens, completion, diagnostics, highlight,
+                    index, largeFileSize, workspaceSymbol, xref);
 
-extern Config* g_config;
+extern Config *g_config;
 thread_local extern int g_thread_id;

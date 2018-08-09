@@ -10,17 +10,17 @@ struct Position {
   int16_t line = -1;
   int16_t column = -1;
 
-  static Position FromString(const std::string& encoded);
+  static Position FromString(const std::string &encoded);
 
   bool Valid() const { return line >= 0; }
   std::string ToString();
 
   // Compare two Positions and check if they are equal. Ignores the value of
   // |interesting|.
-  bool operator==(const Position& o) const {
+  bool operator==(const Position &o) const {
     return line == o.line && column == o.column;
   }
-  bool operator<(const Position& o) const {
+  bool operator<(const Position &o) const {
     if (line != o.line)
       return line < o.line;
     return column < o.column;
@@ -32,7 +32,7 @@ struct Range {
   Position start;
   Position end;
 
-  static Range FromString(const std::string& encoded);
+  static Range FromString(const std::string &encoded);
 
   bool Valid() const { return start.Valid(); }
   bool Contains(int line, int column) const;
@@ -40,17 +40,16 @@ struct Range {
 
   std::string ToString();
 
-  bool operator==(const Range& o) const {
+  bool operator==(const Range &o) const {
     return start == o.start && end == o.end;
   }
-  bool operator<(const Range& o) const {
+  bool operator<(const Range &o) const {
     return !(start == o.start) ? start < o.start : end < o.end;
   }
 };
 
 namespace std {
-template <>
-struct hash<Range> {
+template <> struct hash<Range> {
   std::size_t operator()(Range x) const {
     union U {
       Range range = {};
@@ -61,12 +60,12 @@ struct hash<Range> {
     return hash<uint64_t>()(u.u64);
   }
 };
-}
+} // namespace std
 
 // Reflection
 class Reader;
 class Writer;
-void Reflect(Reader& visitor, Position& value);
-void Reflect(Writer& visitor, Position& value);
-void Reflect(Reader& visitor, Range& value);
-void Reflect(Writer& visitor, Range& value);
+void Reflect(Reader &visitor, Position &value);
+void Reflect(Writer &visitor, Position &value);
+void Reflect(Reader &visitor, Range &value);
+void Reflect(Writer &visitor, Range &value);

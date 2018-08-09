@@ -24,16 +24,16 @@ MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentHighlight, jsonrpc, id, result);
 struct Handler_TextDocumentDocumentHighlight
     : BaseMessageHandler<In_TextDocumentDocumentHighlight> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentDocumentHighlight* request) override {
+  void Run(In_TextDocumentDocumentHighlight *request) override {
     int file_id;
-    QueryFile* file;
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
                         &file_id)) {
       return;
     }
 
-    WorkingFile* working_file =
+    WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentDocumentHighlight out;
@@ -66,4 +66,4 @@ struct Handler_TextDocumentDocumentHighlight
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDocumentHighlight);
-}  // namespace
+} // namespace

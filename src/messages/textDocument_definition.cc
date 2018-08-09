@@ -3,9 +3,9 @@
 #include "query_utils.h"
 using namespace ccls;
 
+#include <cstdlib>
 #include <ctype.h>
 #include <limits.h>
-#include <cstdlib>
 
 namespace {
 MethodType kMethodType = "textDocument/definition";
@@ -24,35 +24,35 @@ struct Out_TextDocumentDefinition
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDefinition, jsonrpc, id, result);
 
-std::vector<Use> GetNonDefDeclarationTargets(DB* db, SymbolRef sym) {
+std::vector<Use> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
   switch (sym.kind) {
-    case SymbolKind::Var: {
-      std::vector<Use> ret = GetNonDefDeclarations(db, sym);
-      // If there is no declaration, jump the its type.
-      if (ret.empty()) {
-        for (auto& def : db->GetVar(sym).def)
-          if (def.type) {
-            if (Maybe<Use> use = GetDefinitionSpell(
-                    db, SymbolIdx{def.type, SymbolKind::Type})) {
-              ret.push_back(*use);
-              break;
-            }
+  case SymbolKind::Var: {
+    std::vector<Use> ret = GetNonDefDeclarations(db, sym);
+    // If there is no declaration, jump the its type.
+    if (ret.empty()) {
+      for (auto &def : db->GetVar(sym).def)
+        if (def.type) {
+          if (Maybe<Use> use = GetDefinitionSpell(
+                  db, SymbolIdx{def.type, SymbolKind::Type})) {
+            ret.push_back(*use);
+            break;
           }
-      }
-      return ret;
+        }
     }
-    default:
-      return GetNonDefDeclarations(db, sym);
+    return ret;
+  }
+  default:
+    return GetNonDefDeclarations(db, sym);
   }
 }
 
 struct Handler_TextDocumentDefinition
     : BaseMessageHandler<In_TextDocumentDefinition> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_TextDocumentDefinition* request) override {
-    auto& params = request->params;
+  void Run(In_TextDocumentDefinition *request) override {
+    auto &params = request->params;
     int file_id;
-    QueryFile* file;
+    QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file, &file_id))
       return;
@@ -62,9 +62,8 @@ struct Handler_TextDocumentDefinition
 
     Maybe<Use> on_def;
     bool has_symbol = false;
-    WorkingFile* wfile =
-        working_files->GetFileByFilename(file->def->path);
-    lsPosition& ls_pos = params.position;
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    lsPosition &ls_pos = params.position;
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos)) {
       // Found symbol. Return definition.
@@ -75,7 +74,7 @@ struct Handler_TextDocumentDefinition
       //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
       std::vector<Use> uses;
-      EachEntityDef(db, sym, [&](const auto& def) {
+      EachEntityDef(db, sym, [&](const auto &def) {
         if (def.spell && def.extent) {
           Use spell = *def.spell;
           // If on a definition, clear |uses| to find declarations below.
@@ -109,7 +108,7 @@ struct Handler_TextDocumentDefinition
 
     // No symbols - check for includes.
     if (out.result.empty()) {
-      for (const IndexInclude& include : file->def->includes) {
+      for (const IndexInclude &include : file->def->includes) {
         if (include.line == ls_pos.line) {
           lsLocationEx result;
           result.uri = lsDocumentUri::FromPath(include.resolved_path);
@@ -121,7 +120,7 @@ struct Handler_TextDocumentDefinition
       // Find the best match of the identifier at point.
       if (!has_symbol) {
         lsPosition position = request->params.position;
-        const std::string& buffer = wfile->buffer_content;
+        const std::string &buffer = wfile->buffer_content;
         std::string_view query = LexIdentifierAroundPos(position, buffer);
         std::string_view short_query = query;
         {
@@ -161,11 +160,11 @@ struct Handler_TextDocumentDefinition
             }
           }
         };
-        for (auto& func : db->funcs)
+        for (auto &func : db->funcs)
           fn({func.usr, SymbolKind::Func});
-        for (auto& type : db->types)
+        for (auto &type : db->types)
           fn({type.usr, SymbolKind::Type});
-        for (auto& var : db->vars)
+        for (auto &var : db->vars)
           if (var.def.size() && !var.def[0].is_local())
             fn({var.usr, SymbolKind::Var});
 
@@ -183,4 +182,4 @@ struct Handler_TextDocumentDefinition
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDefinition);
-}  // namespace
+} // namespace

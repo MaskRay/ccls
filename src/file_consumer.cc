@@ -8,9 +8,9 @@
 
 namespace {
 
-std::optional<std::string> GetFileContents(
-    const std::string& path,
-    std::unordered_map<std::string, FileContents>* file_contents) {
+std::optional<std::string>
+GetFileContents(const std::string &path,
+                std::unordered_map<std::string, FileContents> *file_contents) {
   auto it = file_contents->find(path);
   if (it == file_contents->end()) {
     std::optional<std::string> content = ReadContent(path);
@@ -21,9 +21,9 @@ std::optional<std::string> GetFileContents(
   return it->second.content;
 }
 
-}  // namespace
+} // namespace
 
-FileContents::FileContents(const std::string& path, const std::string& content)
+FileContents::FileContents(const std::string &path, const std::string &content)
     : path(path), content(content) {
   line_offsets_.push_back(0);
   for (size_t i = 0; i < content.size(); i++) {
@@ -43,13 +43,13 @@ std::optional<int> FileContents::ToOffset(Position p) const {
 
 std::optional<std::string> FileContents::ContentsInRange(Range range) const {
   std::optional<int> start_offset = ToOffset(range.start),
-                end_offset = ToOffset(range.end);
+                     end_offset = ToOffset(range.end);
   if (start_offset && end_offset && *start_offset < *end_offset)
     return content.substr(*start_offset, *end_offset - *start_offset);
   return std::nullopt;
 }
 
-VFS::State VFS::Get(const std::string& file) {
+VFS::State VFS::Get(const std::string &file) {
   std::lock_guard<std::mutex> lock(mutex);
   auto it = state.find(file);
   if (it != state.end())
@@ -57,9 +57,9 @@ VFS::State VFS::Get(const std::string& file) {
   return {0, 0, 0};
 }
 
-bool VFS::Mark(const std::string& file, int owner, int stage) {
+bool VFS::Mark(const std::string &file, int owner, int stage) {
   std::lock_guard<std::mutex> lock(mutex);
-  State& st = state[file];
+  State &st = state[file];
   if (st.stage < stage) {
     st.owner = owner;
     st.stage = stage;
@@ -68,9 +68,9 @@ bool VFS::Mark(const std::string& file, int owner, int stage) {
     return false;
 }
 
-bool VFS::Stamp(const std::string& file, int64_t ts) {
+bool VFS::Stamp(const std::string &file, int64_t ts) {
   std::lock_guard<std::mutex> lock(mutex);
-  State& st = state[file];
+  State &st = state[file];
   if (st.timestamp < ts) {
     st.timestamp = ts;
     return true;
@@ -78,23 +78,23 @@ bool VFS::Stamp(const std::string& file, int64_t ts) {
     return false;
 }
 
-void VFS::ResetLocked(const std::string& file) {
-  State& st = state[file];
+void VFS::ResetLocked(const std::string &file) {
+  State &st = state[file];
   if (st.owner == 0 || st.owner == g_thread_id)
     st.stage = 0;
 }
 
-void VFS::Reset(const std::string& file) {
+void VFS::Reset(const std::string &file) {
   std::lock_guard<std::mutex> lock(mutex);
   ResetLocked(file);
 }
 
-FileConsumer::FileConsumer(VFS* vfs, const std::string& parse_file)
+FileConsumer::FileConsumer(VFS *vfs, const std::string &parse_file)
     : vfs_(vfs), parse_file_(parse_file), thread_id_(g_thread_id) {}
 
-IndexFile* FileConsumer::TryConsumeFile(
-    const clang::FileEntry& File,
-    std::unordered_map<std::string, FileContents>* file_contents_map) {
+IndexFile *FileConsumer::TryConsumeFile(
+    const clang::FileEntry &File,
+    std::unordered_map<std::string, FileContents> *file_contents_map) {
   auto UniqueID = File.getUniqueID();
   auto it = local_.find(UniqueID);
   if (it != local_.end())
@@ -115,13 +115,14 @@ IndexFile* FileConsumer::TryConsumeFile(
     return nullptr;
 
   // Build IndexFile instance.
-  local_[UniqueID] = std::make_unique<IndexFile>(UniqueID, file_name, *contents);
+  local_[UniqueID] =
+      std::make_unique<IndexFile>(UniqueID, file_name, *contents);
   return local_[UniqueID].get();
 }
 
 std::vector<std::unique_ptr<IndexFile>> FileConsumer::TakeLocalState() {
   std::vector<std::unique_ptr<IndexFile>> result;
-  for (auto& entry : local_) {
+  for (auto &entry : local_) {
     if (entry.second)
       result.push_back(std::move(entry.second));
   }

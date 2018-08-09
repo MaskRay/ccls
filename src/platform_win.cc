@@ -15,10 +15,10 @@
 #include <cassert>
 #include <string>
 
-std::string NormalizePath(const std::string& path) {
+std::string NormalizePath(const std::string &path) {
   DWORD retval = 0;
   TCHAR buffer[MAX_PATH] = TEXT("");
-  TCHAR** lpp_part = {NULL};
+  TCHAR **lpp_part = {NULL};
 
   retval = GetFullPathName(path.c_str(), MAX_PATH, buffer, lpp_part);
   // fail, return original
@@ -36,7 +36,7 @@ void FreeUnusedMemory() {}
 // TODO Wait for debugger to attach
 void TraceMe() {}
 
-std::string GetExternalCommandOutput(const std::vector<std::string>& command,
+std::string GetExternalCommandOutput(const std::vector<std::string> &command,
                                      std::string_view input) {
   return "";
 }

@@ -13,9 +13,9 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <fstream>
 
 // The 'diff' utility is available and we can use dprintf(3).
 #if _POSIX_C_SOURCE >= 200809L
@@ -25,7 +25,7 @@
 
 extern bool gTestOutputMode;
 
-std::string ToString(const rapidjson::Document& document) {
+std::string ToString(const rapidjson::Document &document) {
   rapidjson::StringBuffer buffer;
   rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
   writer.SetFormatOptions(
@@ -45,18 +45,18 @@ struct TextReplacer {
 
   std::vector<Replacement> replacements;
 
-  std::string Apply(const std::string& content) {
+  std::string Apply(const std::string &content) {
     std::string result = content;
 
-    for (const Replacement& replacement : replacements) {
+    for (const Replacement &replacement : replacements) {
       while (true) {
         size_t idx = result.find(replacement.from);
         if (idx == std::string::npos)
           break;
 
         result.replace(result.begin() + idx,
-          result.begin() + idx + replacement.from.size(),
-          replacement.to);
+                       result.begin() + idx + replacement.from.size(),
+                       replacement.to);
       }
     }
 
@@ -65,11 +65,10 @@ struct TextReplacer {
 };
 
 void ParseTestExpectation(
-    const std::string& filename,
-    const std::vector<std::string>& lines_with_endings,
-    TextReplacer* replacer,
-    std::vector<std::string>* flags,
-    std::unordered_map<std::string, std::string>* output_sections) {
+    const std::string &filename,
+    const std::vector<std::string> &lines_with_endings, TextReplacer *replacer,
+    std::vector<std::string> *flags,
+    std::unordered_map<std::string, std::string> *output_sections) {
   // Scan for EXTRA_FLAGS:
   {
     bool in_output = false;
@@ -129,9 +128,9 @@ void ParseTestExpectation(
   }
 }
 
-void UpdateTestExpectation(const std::string& filename,
-                           const std::string& expectation,
-                           const std::string& actual) {
+void UpdateTestExpectation(const std::string &filename,
+                           const std::string &expectation,
+                           const std::string &actual) {
   // Read the entire file into a string.
   std::ifstream in(filename);
   std::string str;
@@ -148,10 +147,8 @@ void UpdateTestExpectation(const std::string& filename,
   WriteToFile(filename, str);
 }
 
-void DiffDocuments(std::string path,
-                   std::string path_section,
-                   rapidjson::Document& expected,
-                   rapidjson::Document& actual) {
+void DiffDocuments(std::string path, std::string path_section,
+                   rapidjson::Document &expected, rapidjson::Document &actual) {
   std::string joined_actual_output = ToString(actual);
   std::string joined_expected_output = ToString(expected);
   printf("[FAILED] %s (section %s)\n", path.c_str(), path_section.c_str());
@@ -190,7 +187,7 @@ void DiffDocuments(std::string path,
          path_section.c_str(), joined_actual_output.c_str());
 }
 
-void VerifySerializeToFrom(IndexFile* file) {
+void VerifySerializeToFrom(IndexFile *file) {
   std::string expected = file->ToString();
   std::string serialized = ccls::Serialize(SerializeFormat::Json, *file);
   std::unique_ptr<IndexFile> result =
@@ -199,14 +196,14 @@ void VerifySerializeToFrom(IndexFile* file) {
   std::string actual = result->ToString();
   if (expected != actual) {
     fprintf(stderr, "Serialization failure\n");
-    //assert(false);
+    // assert(false);
   }
 }
 
 std::string FindExpectedOutputForFilename(
     std::string filename,
-    const std::unordered_map<std::string, std::string>& expected) {
-  for (const auto& entry : expected) {
+    const std::unordered_map<std::string, std::string> &expected) {
+  for (const auto &entry : expected) {
     if (EndsWith(entry.first, filename))
       return entry.second;
   }
@@ -217,17 +214,17 @@ std::string FindExpectedOutputForFilename(
   return "{}";
 }
 
-IndexFile* FindDbForPathEnding(
-    const std::string& path,
-    const std::vector<std::unique_ptr<IndexFile>>& dbs) {
-  for (auto& db : dbs) {
+IndexFile *
+FindDbForPathEnding(const std::string &path,
+                    const std::vector<std::unique_ptr<IndexFile>> &dbs) {
+  for (auto &db : dbs) {
     if (EndsWith(db->path, path))
       return db.get();
   }
   return nullptr;
 }
 
-bool RunIndexTests(const std::string& filter_path, bool enable_update) {
+bool RunIndexTests(const std::string &filter_path, bool enable_update) {
   gTestOutputMode = true;
   std::string version = LLVM_VERSION_STRING;
 
@@ -248,7 +245,7 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
   // this can be done by constructing ClangIndex index(1, 1);
   GetFilesInFolder(
       "index_tests", true /*recursive*/, true /*add_folder_to_path*/,
-      [&](const std::string& path) {
+      [&](const std::string &path) {
         bool is_fail_allowed = false;
 
         if (EndsWithAny(path, {".m", ".mm"})) {
@@ -291,13 +288,13 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
         VFS vfs;
         auto dbs = ccls::idx::Index(&vfs, "", path, flags, {});
 
-        for (const auto& entry : all_expected_output) {
-          const std::string& expected_path = entry.first;
+        for (const auto &entry : all_expected_output) {
+          const std::string &expected_path = entry.first;
           std::string expected_output = text_replacer.Apply(entry.second);
 
           // FIXME: promote to utils, find and remove duplicates (ie,
           // ccls_call_tree.cc, maybe something in project.cc).
-          auto basename = [](const std::string& path) -> std::string {
+          auto basename = [](const std::string &path) -> std::string {
             size_t last_index = path.find_last_of('/');
             if (last_index == std::string::npos)
               return path;
@@ -305,10 +302,10 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
           };
 
           // Get output from index operation.
-          IndexFile* db = FindDbForPathEnding(expected_path, dbs);
+          IndexFile *db = FindDbForPathEnding(expected_path, dbs);
           if (db && !db->diagnostics_.empty()) {
             printf("For %s\n", path.c_str());
-            for (const lsDiagnostic& diagnostic : db->diagnostics_) {
+            for (const lsDiagnostic &diagnostic : db->diagnostics_) {
               printf("  ");
               if (diagnostic.severity)
                 switch (*diagnostic.severity) {
@@ -353,9 +350,8 @@ bool RunIndexTests(const std::string& filter_path, bool enable_update) {
             DiffDocuments(path, expected_path, expected, actual);
             puts("\n");
             if (enable_update) {
-              printf(
-                  "[Enter to continue - type u to update test, a to update "
-                  "all]");
+              printf("[Enter to continue - type u to update test, a to update "
+                     "all]");
               char c = 'u';
               if (!update_all) {
                 c = getchar();

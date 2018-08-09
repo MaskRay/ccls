@@ -22,7 +22,7 @@ struct Handler_TextDocumentDidClose
     : BaseMessageHandler<In_TextDocumentDidClose> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(In_TextDocumentDidClose* request) override {
+  void Run(In_TextDocumentDidClose *request) override {
     std::string path = request->params.textDocument.uri.GetPath();
 
     // Clear any diagnostics for the file.
@@ -36,4 +36,4 @@ struct Handler_TextDocumentDidClose
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidClose);
-}  // namespace
+} // namespace
