@@ -16,7 +16,7 @@ ccls, which originates from [cquery](https://github.com/cquery-project/cquery), 
   * preprocessor skipped regions
   * semantic highlighting, including support for [rainbow semantic highlighting](https://medium.com/@evnbr/coding-in-color-3a6db2743a1e)
 
-It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strenghened, (see [wiki/FAQ](../../wiki/FAQ). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
+It makes use of C++17 features, has less third-party dependencies and slimmed-down code base. Cross reference features are strengthened, (see [wiki/FAQ](../../wiki/FAQ)). It currently uses libclang to index C++ code but will switch to Clang C++ API. Refactoring and formatting are non-goals as they can be provided by clang-format, clang-include-fixer and other Clang based tools.
 
 The comparison with cquery as noted on 2018-07-15:
 
