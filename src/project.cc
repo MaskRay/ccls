@@ -32,22 +32,6 @@ using namespace llvm;
 #include <unordered_set>
 #include <vector>
 
-struct CompileCommandsEntry {
-  std::string directory;
-  std::string file;
-  std::string command;
-  std::vector<std::string> args;
-
-  std::string ResolveIfRelative(std::string path) const {
-    if (sys::path::is_absolute(path))
-      return path;
-    SmallString<256> Ret;
-    sys::path::append(Ret, directory, path);
-    return NormalizePath(Ret.str());
-  }
-};
-MAKE_REFLECT_STRUCT(CompileCommandsEntry, directory, file, command, args);
-
 namespace {
 
 enum class ProjectMode { CompileCommandsJson, DotCcls, ExternalCommand };
@@ -67,108 +51,131 @@ enum OptionClass {
   Separate,
 };
 
-Project::Entry
-GetCompilationEntryFromCompileCommandEntry(ProjectConfig *config,
-                                           const CompileCommandsEntry &entry) {
-  Project::Entry result;
-  result.filename = entry.file;
-  const std::string base_name = sys::path::filename(entry.file);
+std::string ResolveIfRelative(const std::string &directory,
+                              const std::string &path) {
+  if (sys::path::is_absolute(path))
+    return path;
+  SmallString<256> Ret;
+  sys::path::append(Ret, directory, path);
+  return NormalizePath(Ret.str());
+}
 
-  // Expand %c %cpp %clang
-  std::vector<std::string> args;
-  const LanguageId lang = SourceFileLanguage(entry.file);
-  for (const std::string &arg : entry.args) {
-    if (arg.compare(0, 3, "%c ") == 0) {
-      if (lang == LanguageId::C)
-        args.push_back(arg.substr(3));
-    } else if (arg.compare(0, 5, "%cpp ") == 0) {
-      if (lang == LanguageId::Cpp)
-        args.push_back(arg.substr(5));
-    } else if (arg == "%clang") {
-      args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
-    } else {
-      args.push_back(arg);
+struct ProjectProcessor {
+  ProjectConfig *config;
+  std::unordered_set<size_t> command_set;
+  ProjectProcessor(ProjectConfig *config) : config(config) {}
+
+  void Process(Project::Entry &entry) {
+    const std::string base_name = sys::path::filename(entry.filename);
+
+    // Expand %c %cpp %clang
+    std::vector<std::string> args;
+    args.reserve(entry.args.size() + config->extra_flags.size() + 3);
+    const LanguageId lang = SourceFileLanguage(entry.filename);
+    for (const std::string &arg : entry.args) {
+      if (arg.compare(0, 3, "%c ") == 0) {
+        if (lang == LanguageId::C)
+          args.push_back(arg.substr(3));
+      } else if (arg.compare(0, 5, "%cpp ") == 0) {
+        if (lang == LanguageId::Cpp)
+          args.push_back(arg.substr(5));
+      } else if (arg == "%clang") {
+        args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
+      } else {
+        args.push_back(arg);
+      }
     }
-  }
-  if (args.empty())
-    return result;
-  args.insert(args.end(), config->extra_flags.begin(),
-              config->extra_flags.end());
+    if (args.empty())
+      return;
+    args.insert(args.end(), config->extra_flags.begin(),
+      config->extra_flags.end());
 
-  // a weird C++ deduction guide heap-use-after-free causes libclang to crash.
-  IgnoringDiagConsumer DiagC;
-  IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
-  DiagnosticsEngine Diags(
+    size_t hash = std::hash<std::string>{}(entry.directory);
+    for (auto &arg : args) {
+      if (arg[0] != '-' && EndsWith(arg, base_name)) {
+        const LanguageId lang = SourceFileLanguage(arg);
+        if (lang != LanguageId::Unknown) {
+          hash_combine(hash, size_t(lang));
+          continue;
+        }
+      }
+      hash_combine(hash, std::hash<std::string>{}(arg));
+    }
+    for (size_t i = 1; i < args.size(); i++)
+      // This is most likely the file path we will be passing to clang. The
+      // path needs to be absolute, otherwise clang_codeCompleteAt is extremely
+      // slow. See
+      // https://github.com/cquery-project/cquery/commit/af63df09d57d765ce12d40007bf56302a0446678.
+      if (args[i][0] != '-' && EndsWith(args[i], base_name)) {
+        args[i] = ResolveIfRelative(entry.directory, args[i]);
+        continue;
+      }
+
+    args.push_back("-resource-dir=" + g_config->clang.resourceDir);
+    args.push_back("-working-directory=" + entry.directory);
+    // There could be a clang version mismatch between what the project uses and
+    // what ccls uses. Make sure we do not emit warnings for mismatched options.
+    args.push_back("-Wno-unknown-warning-option");
+
+    if (!command_set.insert(hash).second) {
+      entry.args = std::move(args);
+      return;
+    }
+
+    // a weird C++ deduction guide heap-use-after-free causes libclang to crash.
+    IgnoringDiagConsumer DiagC;
+    IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
+    DiagnosticsEngine Diags(
       IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs()), &*DiagOpts,
       &DiagC, false);
 
-  driver::Driver Driver(args[0], llvm::sys::getDefaultTargetTriple(), Diags);
-  auto TargetAndMode =
+    driver::Driver Driver(args[0], llvm::sys::getDefaultTargetTriple(), Diags);
+    auto TargetAndMode =
       driver::ToolChain::getTargetAndModeFromProgramName(args[0]);
-  if (!TargetAndMode.TargetPrefix.empty()) {
-    const char *arr[] = {"-target", TargetAndMode.TargetPrefix.c_str()};
-    args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
-    Driver.setTargetAndMode(TargetAndMode);
-  }
-  Driver.setCheckInputsExist(false);
-
-  std::vector<const char *> cargs;
-  for (auto &arg : args)
-    cargs.push_back(arg.c_str());
-  cargs.push_back("-fsyntax-only");
-  std::unique_ptr<driver::Compilation> C(Driver.BuildCompilation(cargs));
-  const driver::JobList &Jobs = C->getJobs();
-  if (Jobs.size() != 1)
-    return result;
-  const driver::ArgStringList &CCArgs = Jobs.begin()->getArguments();
-
-  auto CI = std::make_unique<CompilerInvocation>();
-  CompilerInvocation::CreateFromArgs(*CI, CCArgs.data(),
-                                     CCArgs.data() + CCArgs.size(), Diags);
-  CI->getFrontendOpts().DisableFree = false;
-  CI->getCodeGenOpts().DisableFree = false;
-
-  HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
-  for (auto &E : HeaderOpts.UserEntries) {
-    std::string path = entry.ResolveIfRelative(E.Path);
-    switch (E.Group) {
-    default:
-      config->angle_dirs.insert(path);
-      break;
-    case frontend::Quoted:
-      config->quote_dirs.insert(path);
-      break;
-    case frontend::Angled:
-      config->angle_dirs.insert(path);
-      config->quote_dirs.insert(path);
-      break;
+    if (!TargetAndMode.TargetPrefix.empty()) {
+      const char *arr[] = {"-target", TargetAndMode.TargetPrefix.c_str()};
+      args.insert(args.begin() + 1, std::begin(arr), std::end(arr));
+      Driver.setTargetAndMode(TargetAndMode);
     }
-  }
+    Driver.setCheckInputsExist(false);
 
-  for (size_t i = 1; i < args.size(); i++)
-    // This is most likely the file path we will be passing to clang. The
-    // path needs to be absolute, otherwise clang_codeCompleteAt is extremely
-    // slow. See
-    // https://github.com/cquery-project/cquery/commit/af63df09d57d765ce12d40007bf56302a0446678.
-    if (args[i][0] != '-' && EndsWith(args[i], base_name)) {
-      args[i] = entry.ResolveIfRelative(args[i]);
-      continue;
+    std::vector<const char *> cargs;
+    cargs.reserve(args.size() + 1);
+    for (auto &arg : args)
+      cargs.push_back(arg.c_str());
+    cargs.push_back("-fsyntax-only");
+
+    std::unique_ptr<driver::Compilation> C(Driver.BuildCompilation(cargs));
+    const driver::JobList &Jobs = C->getJobs();
+    if (Jobs.size() != 1)
+      return;
+    const driver::ArgStringList &CCArgs = Jobs.begin()->getArguments();
+
+    auto CI = std::make_unique<CompilerInvocation>();
+    CompilerInvocation::CreateFromArgs(*CI, CCArgs.data(),
+      CCArgs.data() + CCArgs.size(), Diags);
+    CI->getFrontendOpts().DisableFree = false;
+    CI->getCodeGenOpts().DisableFree = false;
+
+    HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
+    for (auto &E : HeaderOpts.UserEntries) {
+      std::string path = ResolveIfRelative(entry.directory, E.Path);
+      switch (E.Group) {
+      default:
+        config->angle_dirs.insert(path);
+        break;
+      case frontend::Quoted:
+        config->quote_dirs.insert(path);
+        break;
+      case frontend::Angled:
+        config->angle_dirs.insert(path);
+        config->quote_dirs.insert(path);
+        break;
+      }
     }
-
-  // if (!sys::fs::exists(HeaderOpts.ResourceDir) &&
-  // HeaderOpts.UseBuiltinIncludes)
-  args.push_back("-resource-dir=" + g_config->clang.resourceDir);
-  if (CI->getFileSystemOpts().WorkingDir.empty())
-    args.push_back("-working-directory=" + entry.directory);
-
-  // There could be a clang version mismatch between what the project uses and
-  // what ccls uses. Make sure we do not emit warnings for mismatched options.
-  args.push_back("-Wno-unknown-warning-option");
-
-  result.directory = entry.directory;
-  result.args = std::move(args);
-  return result;
-}
+    entry.args = std::move(args);
+  }
+};
 
 std::vector<std::string>
 ReadCompilerArgumentsFromFile(const std::string &path) {
@@ -226,23 +233,25 @@ std::vector<Project::Entry> LoadFromDirectoryListing(ProjectConfig *config) {
     return folder_args[project_dir];
   };
 
+  ProjectProcessor proc(config);
   for (const std::string &file : files) {
-    CompileCommandsEntry e;
+    Project::Entry e;
     e.directory = config->project_dir;
-    e.file = file;
+    e.filename = file;
     e.args = GetCompilerArgumentForFile(file);
     if (e.args.empty())
       e.args.push_back("%clang"); // Add a Dummy.
-    e.args.push_back(e.file);
-    result.push_back(GetCompilationEntryFromCompileCommandEntry(config, e));
+    e.args.push_back(e.filename);
+    proc.Process(e);
+    result.push_back(e);
   }
 
   return result;
 }
 
 std::vector<Project::Entry>
-LoadCompilationEntriesFromDirectory(ProjectConfig *project,
-                                    const std::string &opt_compilation_db_dir) {
+LoadEntriesFromDirectory(ProjectConfig *project,
+                         const std::string &opt_compdb_dir) {
   // If there is a .ccls file always load using directory listing.
   SmallString<256> Path;
   sys::path::append(Path, project->project_dir, ".ccls");
@@ -255,8 +264,8 @@ LoadCompilationEntriesFromDirectory(ProjectConfig *project,
   if (g_config->compilationDatabaseCommand.empty()) {
     project->mode = ProjectMode::CompileCommandsJson;
     // Try to load compile_commands.json, but fallback to a project listing.
-    comp_db_dir = opt_compilation_db_dir.empty() ? project->project_dir
-                                                 : opt_compilation_db_dir;
+    comp_db_dir =
+        opt_compdb_dir.empty() ? project->project_dir : opt_compdb_dir;
     sys::path::append(Path, comp_db_dir, "compile_commands.json");
   } else {
     project->mode = ProjectMode::ExternalCommand;
@@ -302,14 +311,15 @@ LoadCompilationEntriesFromDirectory(ProjectConfig *project,
 
   StringSet<> Seen;
   std::vector<Project::Entry> result;
+  ProjectProcessor proc(project);
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
-    CompileCommandsEntry entry;
+    Project::Entry entry;
     entry.directory = std::move(Cmd.Directory);
-    entry.file = entry.ResolveIfRelative(Cmd.Filename);
+    entry.filename = ResolveIfRelative(entry.directory, Cmd.Filename);
     entry.args = std::move(Cmd.CommandLine);
-    auto entry1 = GetCompilationEntryFromCompileCommandEntry(project, entry);
-    if (Seen.insert(entry1.filename).second)
-      result.push_back(entry1);
+    proc.Process(entry);
+    if (Seen.insert(entry.filename).second)
+      result.push_back(entry);
   }
   return result;
 }
@@ -335,12 +345,11 @@ bool Project::loaded = false;
 
 void Project::Load(const std::string &root_directory) {
   Project::loaded = false;
-  // Load data.
   ProjectConfig project;
   project.extra_flags = g_config->clang.extraArgs;
   project.project_dir = root_directory;
-  entries = LoadCompilationEntriesFromDirectory(
-      &project, g_config->compilationDatabaseDirectory);
+  entries = LoadEntriesFromDirectory(&project,
+                                     g_config->compilationDatabaseDirectory);
 
   // Cleanup / postprocess include directories.
   quote_include_directories.assign(project.quote_dirs.begin(),
@@ -354,14 +363,6 @@ void Project::Load(const std::string &root_directory) {
   for (std::string &path : angle_include_directories) {
     EnsureEndsInSlash(path);
     LOG_S(INFO) << "angle_include_dir: " << path;
-  }
-
-  // Setup project entries.
-  std::lock_guard<std::mutex> lock(mutex_);
-  absolute_path_to_entry_index_.reserve(entries.size());
-  for (size_t i = 0; i < entries.size(); ++i) {
-    entries[i].id = i;
-    absolute_path_to_entry_index_[entries[i].filename] = i;
   }
 }
 
