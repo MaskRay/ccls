@@ -6,38 +6,36 @@ using namespace ccls;
 namespace {
 MethodType kMethodType = "textDocument/hover";
 
-// Find the comments for |sym|, if any.
-std::optional<lsMarkedString> GetComments(DB *db, SymbolRef sym) {
-  std::optional<lsMarkedString> ret;
-  WithEntity(db, sym, [&](const auto &entity) {
-    if (const auto *def = entity.AnyDef())
-      if (def->comments[0]) {
-        lsMarkedString m;
-        m.value = def->comments;
-        ret = m;
-      }
-  });
-  return ret;
-}
-
 // Returns the hover or detailed name for `sym`, if any.
-std::optional<lsMarkedString> GetHoverOrName(DB *db, LanguageId lang,
-                                             SymbolRef sym) {
-  std::optional<lsMarkedString> ret;
+std::pair<std::optional<lsMarkedString>, std::optional<lsMarkedString>>
+GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
+  const char *comments = nullptr;
+  std::optional<lsMarkedString> ls_comments, hover;
   WithEntity(db, sym, [&](const auto &entity) {
-    if (const auto *def = entity.AnyDef()) {
+    std::remove_reference_t<decltype(entity.def[0])> *def = nullptr;
+    for (auto &d : entity.def) {
+      if (d.spell) {
+        comments = d.comments[0] ? d.comments : nullptr;
+        def = &d;
+        if (d.spell->file_id == file_id)
+          break;
+      }
+    }
+    if (def) {
       lsMarkedString m;
       m.language = LanguageIdentifier(lang);
       if (def->hover[0]) {
         m.value = def->hover;
-        ret = m;
+        hover = m;
       } else if (def->detailed_name[0]) {
         m.value = def->detailed_name;
-        ret = m;
+        hover = m;
       }
+      if (comments)
+        ls_comments = lsMarkedString{std::nullopt, comments};
     }
   });
-  return ret;
+  return {hover, ls_comments};
 }
 
 struct In_TextDocumentHover : public RequestInMessage {
@@ -83,9 +81,7 @@ struct Handler_TextDocumentHover : BaseMessageHandler<In_TextDocumentHover> {
       if (!ls_range)
         continue;
 
-      std::optional<lsMarkedString> comments = GetComments(db, sym);
-      std::optional<lsMarkedString> hover =
-          GetHoverOrName(db, file->def->language, sym);
+      auto[hover, comments] = GetHover(db, file->def->language, sym, file->id);
       if (comments || hover) {
         out.result = Out_TextDocumentHover::Result();
         out.result->range = *ls_range;
