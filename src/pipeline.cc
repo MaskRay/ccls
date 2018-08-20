@@ -194,6 +194,13 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
       }
   }
 
+  // Grab the ownership
+  if (reparse) {
+    std::lock_guard<std::mutex> lock(vfs->mutex);
+    vfs->state[path_to_index].owner = g_thread_id;
+    vfs->state[path_to_index].stage = 0;
+  }
+
   if (reparse < 2) {
     LOG_S(INFO) << "load cache for " << path_to_index;
     auto dependencies = prev->dependencies;
@@ -207,11 +214,6 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update), request.is_interactive);
       }
-
-    std::lock_guard<std::mutex> lock(vfs->mutex);
-    VFS::State &state = vfs->state[path_to_index];
-    if (state.owner == g_thread_id)
-      state.stage = 0;
     return true;
   }
 
