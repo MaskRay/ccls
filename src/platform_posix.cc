@@ -1,3 +1,6 @@
+// Copyright 2017-2018 ccls Authors
+// SPDX-License-Identifier: Apache-2.0
+
 #if defined(__unix__) || defined(__APPLE__)
 #include "platform.h"
 

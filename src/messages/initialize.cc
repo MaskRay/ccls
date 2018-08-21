@@ -1,3 +1,6 @@
+// Copyright 2017-2018 ccls Authors
+// SPDX-License-Identifier: Apache-2.0
+
 #include "filesystem.hh"
 #include "include_complete.h"
 #include "log.hh"
