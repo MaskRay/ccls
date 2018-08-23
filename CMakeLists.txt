@@ -10,6 +10,7 @@ set(CLANG_DOWNLOAD_LOCATION ${CMAKE_BINARY_DIR}
 option(SYSTEM_CLANG "Use system installation of Clang instead of \
        downloading Clang" OFF)
 option(ASAN "Compile with address sanitizers" OFF)
+option(LLVM_ENABLE_RTTI "-fno-rtti if OFF. This should match LLVM libraries" OFF)
 option(CLANG_USE_BUNDLED_LIBC++ "Let Clang use bundled libc++" OFF)
 option(USE_SHARED_LLVM "Link against libLLVM.so instead separate LLVM{Option,Support,...}" OFF)
 
@@ -34,8 +35,12 @@ if(NOT CYGWIN)
   set_property(TARGET ccls PROPERTY CXX_EXTENSIONS OFF)
 endif()
 
-# To link against LLVM libraries (usually compiled with -fno-rtti)
-target_compile_options(ccls PRIVATE -fno-rtti)
+if(NOT LLVM_ENABLE_RTTI)
+  # releases.llvm.org libraries are compiled with -fno-rtti
+  # The mismatch between lib{clang,LLVM}* and ccls can make libstdc++ std::make_shared return nullptr
+  # _Sp_counted_ptr_inplace::_M_get_deleter
+  target_compile_options(ccls PRIVATE -fno-rtti)
+endif()
 
 # CMake sets MSVC for both MSVC and Clang(Windows)
 if(MSVC)
