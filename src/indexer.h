@@ -202,7 +202,7 @@ struct VarDef : NameMixin<VarDef> {
   uint8_t storage = clang::SC_None;
 
   bool is_local() const {
-    return spell && spell->kind != SymbolKind::File &&
+    return spell && spell->kind == SymbolKind::Func &&
            storage == clang::SC_None;
   }
 

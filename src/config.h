@@ -45,8 +45,9 @@ struct Config {
   std::string compilationDatabaseCommand;
   // Directory containing compile_commands.json.
   std::string compilationDatabaseDirectory;
-  // Cache directory for indexed files.
-  std::string cacheDirectory;
+  // Cache directory for indexed files, either absolute or relative to the
+  // project root.
+  std::string cacheDirectory = ".ccls-cache";
   // Cache serialization format.
   //
   // "json" generates `cacheDirectory/.../xxx.json` files which can be pretty
