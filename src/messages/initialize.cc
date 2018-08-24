@@ -154,6 +154,8 @@ struct lsServerCapabilities {
   bool definitionProvider = true;
   // The server provides Goto Type Definition support.
   bool typeDefinitionProvider = true;
+  // The server provides Goto Implementation support.
+  bool implementationProvider = true;
   // The server provides find references support.
   bool referencesProvider = true;
   // The server provides document highlight support.
@@ -182,11 +184,12 @@ struct lsServerCapabilities {
 };
 MAKE_REFLECT_STRUCT(lsServerCapabilities, textDocumentSync, hoverProvider,
                     completionProvider, signatureHelpProvider,
-                    definitionProvider, typeDefinitionProvider,
-                    referencesProvider, documentHighlightProvider,
-                    documentSymbolProvider, workspaceSymbolProvider,
-                    codeActionProvider, codeLensProvider,
-                    documentFormattingProvider, documentRangeFormattingProvider,
+                    definitionProvider, implementationProvider,
+                    typeDefinitionProvider, referencesProvider,
+                    documentHighlightProvider, documentSymbolProvider,
+                    workspaceSymbolProvider, codeActionProvider,
+                    codeLensProvider, documentFormattingProvider,
+                    documentRangeFormattingProvider,
                     documentOnTypeFormattingProvider, renameProvider,
                     documentLinkProvider, executeCommandProvider);
 
