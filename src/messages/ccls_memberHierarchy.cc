@@ -9,6 +9,7 @@ using namespace ccls;
 #include <clang/AST/Type.h>
 using namespace clang;
 
+#include <queue>
 #include <unordered_set>
 
 namespace {
@@ -29,12 +30,12 @@ struct In_CclsMemberHierarchy : public RequestInMessage {
 
     bool qualified = false;
     int levels = 1;
-  };
-  Params params;
+    bool flat = false;
+  } params;
 };
 
 MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy::Params, textDocument, position, id,
-                    qualified, levels);
+                    qualified, levels, flat);
 MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy, id, params);
 REGISTER_IN_MESSAGE(In_CclsMemberHierarchy);
 
@@ -264,7 +265,29 @@ struct Handler_CclsMemberHierarchy
       }
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    if (!params.flat) {
+      pipeline::WriteStdout(kMethodType, out);
+      return;
+    }
+    Out_LocationList out1;
+    out1.id = request->id;
+    if (out.result) {
+      std::queue<Out_CclsMemberHierarchy::Entry *> q;
+      for (auto &entry1 : out.result->children)
+        q.push(&entry1);
+      while (q.size()) {
+        auto *entry = q.front();
+        q.pop();
+        if (entry->location.uri.raw_uri.size())
+          out1.result.push_back({entry->location});
+        for (auto &entry1 : entry->children)
+          q.push(&entry1);
+      }
+      std::sort(out1.result.begin(), out1.result.end());
+      out1.result.erase(std::unique(out1.result.begin(), out1.result.end()),
+                        out1.result.end());
+    }
+    pipeline::WriteStdout(kMethodType, out1);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_CclsMemberHierarchy);

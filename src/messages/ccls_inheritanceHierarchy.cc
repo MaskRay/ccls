@@ -187,6 +187,9 @@ struct Handler_CclsInheritanceHierarchy
         for (auto &entry1 : entry->children)
           q.push(&entry1);
       }
+      std::sort(out1.result.begin(), out1.result.end());
+      out1.result.erase(std::unique(out1.result.begin(), out1.result.end()),
+                        out1.result.end());
     }
     pipeline::WriteStdout(kMethodType, out1);
   }
