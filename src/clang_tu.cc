@@ -109,9 +109,10 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
         /*CacheCodeCompletionResults=*/true, g_config->index.comments,
         /*AllowPCHWithCompilerErrors=*/true,
 #if LLVM_VERSION_MAJOR >= 7
-        SkipFunctionBodiesScope::None,
+        diagnostic ? SkipFunctionBodiesScope::None
+                   : SkipFunctionBodiesScope::PreambleAndMainFile,
 #else
-        false,
+        !diagnostic,
 #endif
         /*SingleFileParse=*/false,
         /*UserFilesAreVolatile=*/true, false,
