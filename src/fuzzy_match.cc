@@ -31,7 +31,7 @@ void CalculateRoles(std::string_view s, int roles[], int *class_set) {
     if (cur == Other)
       return None;
     // U(U)L is Head while U(U)U is Tail
-    return pre == Other || (cur == Upper && (pre == Lower || suc != Upper))
+    return pre == Other || (cur == Upper && (pre == Lower || suc == Lower))
                ? Head
                : Tail;
   };
