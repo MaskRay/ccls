@@ -92,13 +92,12 @@ std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
         /*ResourceFilePath=*/g_config->clang.resourceDir,
         /*OnlyLocalDecls=*/false,
         /*CaptureDiagnostics=*/diagnostic, Remapped,
-        /*RemappedFilesKeepOriginalName=*/true, 1,
+        /*RemappedFilesKeepOriginalName=*/true, 0,
         diagnostic ? TU_Complete : TU_Prefix,
         /*CacheCodeCompletionResults=*/true, g_config->index.comments,
         /*AllowPCHWithCompilerErrors=*/true,
 #if LLVM_VERSION_MAJOR >= 7
-        diagnostic ? SkipFunctionBodiesScope::None
-                   : SkipFunctionBodiesScope::PreambleAndMainFile,
+        SkipFunctionBodiesScope::None,
 #else
         !diagnostic,
 #endif

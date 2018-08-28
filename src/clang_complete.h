@@ -11,10 +11,18 @@
 #include "threaded_queue.h"
 #include "working_files.h"
 
+#include <clang/Frontend/CompilerInstance.h>
+#include <clang/Frontend/FrontendActions.h>
+
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
+
+struct PreambleData {
+  PreambleData(clang::PrecompiledPreamble P) : Preamble(std::move(P)) {}
+  clang::PrecompiledPreamble Preamble;
+};
 
 struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
@@ -28,14 +36,28 @@ struct CompletionSession
     std::unique_ptr<ClangTranslationUnit> tu;
   };
 
-  Project::Entry file;
-  WorkingFiles *working_files;
+  struct CU {
+    std::mutex lock;
+    std::shared_ptr<PreambleData> preamble;
+  };
 
-  Tu completion;
+  Project::Entry file;
+  WorkingFiles *wfiles;
+
+  // TODO share
+  llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> FS =
+      clang::vfs::getRealFileSystem();
+  std::shared_ptr<clang::PCHContainerOperations> PCH;
+
+  CU completion;
   Tu diagnostics;
 
-  CompletionSession(const Project::Entry &file, WorkingFiles *wfiles)
-      : file(file), working_files(wfiles) {}
+  CompletionSession(const Project::Entry &file, WorkingFiles *wfiles,
+                    std::shared_ptr<clang::PCHContainerOperations> PCH)
+      : file(file), wfiles(wfiles), PCH(PCH) {}
+
+  std::shared_ptr<PreambleData> GetPreamble();
+  void BuildPreamble(clang::CompilerInvocation &CI);
 };
 
 struct ClangCompleteManager {
@@ -133,6 +155,8 @@ struct ClangCompleteManager {
   // Parse requests. The path may already be parsed, in which case it should be
   // reparsed.
   ThreadedQueue<PreloadRequest> preload_requests_;
+
+  std::shared_ptr<clang::PCHContainerOperations> PCH;
 };
 
 // Cached completion information, so we can give fast completion results when

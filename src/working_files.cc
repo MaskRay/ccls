@@ -430,6 +430,14 @@ WorkingFiles::GetFileByFilenameNoLock(const std::string &filename) {
   return nullptr;
 }
 
+std::string WorkingFiles::GetContent(const std::string &filename) {
+  std::lock_guard<std::mutex> lock(files_mutex);
+  for (auto &file : files)
+    if (file->filename == filename)
+      return file->buffer_content;
+  return "";
+}
+
 void WorkingFiles::DoAction(const std::function<void()> &action) {
   std::lock_guard<std::mutex> lock(files_mutex);
   action();

@@ -96,6 +96,7 @@ struct WorkingFiles {
   // Find the file with the given filename.
   WorkingFile *GetFileByFilename(const std::string &filename);
   WorkingFile *GetFileByFilenameNoLock(const std::string &filename);
+  std::string GetContent(const std::string &filename);
 
   // Run |action| under the lock.
   void DoAction(const std::function<void()> &action);
