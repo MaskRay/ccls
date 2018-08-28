@@ -22,6 +22,7 @@ limitations under the License.
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendDiagnostic.h>
+#include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <llvm/ADT/Twine.h>
 #include <llvm/Config/llvm-config.h>
@@ -320,12 +321,12 @@ public:
                                   unsigned NumResults) override {
     ls_items.reserve(NumResults);
     for (unsigned i = 0; i != NumResults; i++) {
+      if (Results[i].Availability == CXAvailability_NotAccessible ||
+          Results[i].Availability == CXAvailability_NotAvailable)
+        continue;
       CodeCompletionString *CCS = Results[i].CreateCodeCompletionString(
           S, Context, getAllocator(), getCodeCompletionTUInfo(),
           includeBriefComments());
-      if (CCS->getAvailability() == CXAvailability_NotAvailable)
-        continue;
-
       lsCompletionItem ls_item;
       ls_item.kind = GetCompletionKind(Results[i].CursorKind);
       if (const char *brief = CCS->getBriefComment())
@@ -380,13 +381,30 @@ void TryEnsureDocumentParsed(ClangCompleteManager *manager,
     return;
 
   const auto &args = session->file.args;
-  WorkingFiles::Snapshot snapshot = session->working_files->AsSnapshot(
+  WorkingFiles::Snapshot snapshot = session->wfiles->AsSnapshot(
       {StripFileType(session->file.filename)});
 
   LOG_S(INFO) << "create " << (diagnostic ? "diagnostic" : "completion")
               << " TU for " << session->file.filename;
   *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot,
                                      diagnostic);
+}
+
+std::unique_ptr<CompilerInvocation>
+buildCompilerInvocation(const std::vector<std::string> &args,
+                        IntrusiveRefCntPtr<vfs::FileSystem> VFS) {
+  std::vector<const char *> cargs;
+  for (auto &arg : args)
+    cargs.push_back(arg.c_str());
+  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
+      CompilerInstance::createDiagnostics(new DiagnosticOptions));
+  std::unique_ptr<CompilerInvocation> CI =
+      createInvocationFromCommandLine(cargs, Diags, VFS);
+  if (CI) {
+    CI->getLangOpts()->CommentOpts.ParseAllComments = true;
+    CI->getLangOpts()->SpellChecking = false;
+  }
+  return CI;
 }
 
 void CompletionPreloadMain(ClangCompleteManager *completion_manager) {
@@ -403,22 +421,14 @@ void CompletionPreloadMain(ClangCompleteManager *completion_manager) {
     if (!session)
       continue;
 
-    // Note: we only preload completion. We emit diagnostics for the
-    // completion preload though.
-    CompletionSession::Tu *tu = &session->completion;
+    const auto &args = session->file.args;
+    WorkingFiles::Snapshot snapshot = session->wfiles->AsSnapshot(
+      {StripFileType(session->file.filename)});
 
-    // If we've parsed it more recently than the request time, don't bother
-    // reparsing.
-    if (tu->last_parsed_at && *tu->last_parsed_at > request.request_time)
-      continue;
-
-    std::unique_ptr<ClangTranslationUnit> parsing;
-    TryEnsureDocumentParsed(completion_manager, session, &parsing, false);
-
-    // Activate new translation unit.
-    std::lock_guard<std::mutex> lock(tu->lock);
-    tu->last_parsed_at = std::chrono::high_resolution_clock::now();
-    tu->tu = std::move(parsing);
+    LOG_S(INFO) << "create completion session for " << session->file.filename;
+    if (std::unique_ptr<CompilerInvocation> CI =
+            buildCompilerInvocation(args, session->FS))
+      session->BuildPreamble(*CI);
   }
 }
 
@@ -441,48 +451,70 @@ void CompletionQueryMain(ClangCompleteManager *completion_manager) {
         completion_manager->TryGetSession(path, true /*mark_as_completion*/,
                                           true /*create_if_needed*/);
 
-    std::lock_guard<std::mutex> lock(session->completion.lock);
-    TryEnsureDocumentParsed(completion_manager, session,
-                            &session->completion.tu, false);
-
-    // It is possible we failed to create the document despite
-    // |TryEnsureDocumentParsed|.
-    if (ClangTranslationUnit *tu = session->completion.tu.get()) {
-      WorkingFiles::Snapshot snapshot =
-          completion_manager->working_files_->AsSnapshot({StripFileType(path)});
-      IntrusiveRefCntPtr<FileManager> FileMgr(&tu->Unit->getFileManager());
-      IntrusiveRefCntPtr<DiagnosticOptions> DiagOpts(new DiagnosticOptions());
-      IntrusiveRefCntPtr<DiagnosticsEngine> Diag(new DiagnosticsEngine(
-          IntrusiveRefCntPtr<DiagnosticIDs>(new DiagnosticIDs), &*DiagOpts));
-      // StoreDiags Diags;
-      // IntrusiveRefCntPtr<DiagnosticsEngine> DiagE =
-      //     CompilerInstance::createDiagnostics(DiagOpts.get(), &Diags, false);
-
-      IntrusiveRefCntPtr<SourceManager> SrcMgr(
-          new SourceManager(*Diag, *FileMgr));
-      std::vector<ASTUnit::RemappedFile> Remapped = GetRemapped(snapshot);
-      SmallVector<StoredDiagnostic, 8> Diagnostics;
-      SmallVector<const llvm::MemoryBuffer *, 1> TemporaryBuffers;
-
-      CodeCompleteOptions Opts;
-      LangOptions LangOpts;
-      Opts.IncludeBriefComments = true;
+    std::unique_ptr<CompilerInvocation> CI =
+        buildCompilerInvocation(session->file.args, session->FS);
+    if (!CI)
+      continue;
+    clang::CodeCompleteOptions CCOpts;
 #if LLVM_VERSION_MAJOR >= 7
-      Opts.LoadExternal = true;
-      Opts.IncludeFixIts = true;
+    CCOpts.IncludeFixIts = true;
 #endif
-      CaptureCompletionResults capture(Opts);
-      tu->Unit->CodeComplete(session->file.filename, request->position.line + 1,
-                             request->position.character + 1, Remapped,
-                             /*IncludeMacros=*/true,
-                             /*IncludeCodePatterns=*/false,
-                             /*IncludeBriefComments=*/g_config->index.comments,
-                             capture, tu->PCHCO, *Diag, LangOpts, *SrcMgr,
-                             *FileMgr, Diagnostics, TemporaryBuffers);
-      request->on_complete(capture.ls_items, false /*is_cached_result*/);
-      // completion_manager->on_diagnostic_(session->file.filename,
-      // Diags.take());
+    CCOpts.IncludeCodePatterns = true;
+    auto &FOpts = CI->getFrontendOpts();
+    FOpts.DisableFree = false;
+    FOpts.CodeCompleteOpts = CCOpts;
+    FOpts.CodeCompletionAt.FileName = session->file.filename;
+    FOpts.CodeCompletionAt.Line = request->position.line + 1;
+    FOpts.CodeCompletionAt.Column = request->position.character + 1;
+
+    WorkingFiles::Snapshot snapshot =
+      completion_manager->working_files_->AsSnapshot({StripFileType(path)});
+
+    std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
+    for (auto &file : snapshot.files) {
+      Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
+      if (file.filename == session->file.filename) {
+        if (auto Preamble = session->GetPreamble()) {
+#if LLVM_VERSION_MAJOR >= 7
+          Preamble->Preamble.OverridePreamble(*CI, session->FS,
+                                              Bufs.back().get());
+#else
+          Preamble->Preamble.AddImplicitPreamble(*CI, session->FS,
+                                                 Bufs.back().get());
+#endif
+        }
+        else {
+          CI->getPreprocessorOpts().addRemappedFile(
+            CI->getFrontendOpts().Inputs[0].getFile(), Bufs.back().get());
+        }
+      } else {
+        CI->getPreprocessorOpts().addRemappedFile(file.filename,
+                                                  Bufs.back().get());
+      }
     }
+
+    IgnoringDiagConsumer DC;
+    auto Clang = std::make_unique<CompilerInstance>(session->PCH);
+    Clang->setInvocation(std::move(CI));
+    Clang->createDiagnostics(&DC, false);
+    auto Consumer = new CaptureCompletionResults(CCOpts);
+    Clang->setCodeCompletionConsumer(Consumer);
+    Clang->setVirtualFileSystem(session->FS);
+    Clang->setTarget(TargetInfo::CreateTargetInfo(
+        Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
+    if (!Clang->hasTarget())
+      continue;
+
+    SyntaxOnlyAction Action;
+    if (!Action.BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
+      continue;
+    if (!Action.Execute())
+      continue;
+    Action.EndSourceFile();
+    for (auto &Buf : Bufs)
+      Buf.release();
+
+    request->on_complete(Consumer->ls_items, false /*is_cached_result*/);
   }
 }
 
@@ -573,6 +605,37 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
 
 } // namespace
 
+std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
+  std::lock_guard<std::mutex> lock(completion.lock);
+  return completion.preamble;
+}
+
+void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
+  std::shared_ptr<PreambleData> OldP = GetPreamble();
+  std::string contents = wfiles->GetContent(file.filename);
+  std::unique_ptr<llvm::MemoryBuffer> Buf =
+      llvm::MemoryBuffer::getMemBuffer(contents);
+  auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
+  if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
+    return;
+  CI.getFrontendOpts().SkipFunctionBodies = true;
+#if LLVM_VERSION_MAJOR >= 7
+  CI.getPreprocessorOpts().WriteCommentListToPCH = false;
+#endif
+
+  DiagnosticConsumer DC;
+  IntrusiveRefCntPtr<DiagnosticsEngine> PreambleDE =
+      CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(),
+                                          &DC, false);
+  PreambleCallbacks PP;
+  if (auto NewPreamble = PrecompiledPreamble::Build(
+          CI, Buf.get(), Bounds, *PreambleDE, FS, PCH, true, PP)) {
+    std::lock_guard<std::mutex> lock(completion.lock);
+    completion.preamble =
+        std::make_shared<PreambleData>(std::move(*NewPreamble));
+  }
+}
+
 ClangCompleteManager::ClangCompleteManager(Project *project,
                                            WorkingFiles *working_files,
                                            OnDiagnostic on_diagnostic,
@@ -580,7 +643,8 @@ ClangCompleteManager::ClangCompleteManager(Project *project,
     : project_(project), working_files_(working_files),
       on_diagnostic_(on_diagnostic), on_dropped_(on_dropped),
       preloaded_sessions_(kMaxPreloadedSessions),
-      completion_sessions_(kMaxCompletionSessions) {
+      completion_sessions_(kMaxCompletionSessions),
+      PCH(std::make_shared<PCHContainerOperations>()) {
   std::thread([&]() {
     set_thread_name("comp-query");
     CompletionQueryMain(this);
@@ -682,7 +746,7 @@ bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
 
   // No CompletionSession, create new one.
   auto session = std::make_shared<CompletionSession>(
-      project_->FindCompilationEntryForFile(filename), working_files_);
+      project_->FindCompilationEntryForFile(filename), working_files_, PCH);
   preloaded_sessions_.Insert(session->file.filename, session);
   return true;
 }
@@ -713,7 +777,7 @@ ClangCompleteManager::TryGetSession(const std::string &filename,
       completion_sessions_.TryGet(filename);
   if (!completion_session && create_if_needed) {
     completion_session = std::make_shared<CompletionSession>(
-        project_->FindCompilationEntryForFile(filename), working_files_);
+        project_->FindCompilationEntryForFile(filename), working_files_, PCH);
     completion_sessions_.Insert(filename, completion_session);
   }
 
