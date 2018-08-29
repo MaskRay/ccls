@@ -17,6 +17,7 @@ limitations under the License.
 #include "position.h"
 
 #include <clang/Basic/SourceManager.h>
+#include <clang/Basic/LangOptions.h>
 
 #include <stdlib.h>
 
