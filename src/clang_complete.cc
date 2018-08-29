@@ -22,6 +22,7 @@ using namespace llvm;
 #include <algorithm>
 #include <thread>
 
+namespace ccls {
 namespace {
 
 std::string StripFileType(const std::string &path) {
@@ -292,6 +293,38 @@ void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
   }
 }
 
+bool LocationInRange(SourceLocation L, CharSourceRange R,
+                     const SourceManager &M) {
+  assert(R.isCharRange());
+  if (!R.isValid() || M.getFileID(R.getBegin()) != M.getFileID(R.getEnd()) ||
+      M.getFileID(R.getBegin()) != M.getFileID(L))
+    return false;
+  return L != R.getEnd() && M.isPointWithin(L, R.getBegin(), R.getEnd());
+}
+
+CharSourceRange DiagnosticRange(const clang::Diagnostic &D, const LangOptions &L) {
+  auto &M = D.getSourceManager();
+  auto Loc = M.getFileLoc(D.getLocation());
+  // Accept the first range that contains the location.
+  for (const auto &CR : D.getRanges()) {
+    auto R = Lexer::makeFileCharRange(CR, M, L);
+    if (LocationInRange(Loc, R, M))
+      return R;
+  }
+  // The range may be given as a fixit hint instead.
+  for (const auto &F : D.getFixItHints()) {
+    auto R = Lexer::makeFileCharRange(F.RemoveRange, M, L);
+    if (LocationInRange(Loc, R, M))
+      return R;
+  }
+  // If no suitable range is found, just use the token at the location.
+  auto R = Lexer::makeFileCharRange(CharSourceRange::getTokenRange(Loc), M, L);
+  if (!R.isValid()) // Fall back to location only, let the editor deal with it.
+    R = CharSourceRange::getCharRange(Loc);
+  return R;
+}
+
+
 class CaptureCompletionResults : public CodeCompleteConsumer {
   std::shared_ptr<clang::GlobalCodeCompletionAllocator> Alloc;
   CodeCompletionTUInfo CCTUInfo;
@@ -360,23 +393,83 @@ public:
   CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo; }
 };
 
-void TryEnsureDocumentParsed(ClangCompleteManager *manager,
-                             std::shared_ptr<CompletionSession> session,
-                             std::unique_ptr<ClangTranslationUnit> *tu,
-                             bool diagnostic) {
-  // Nothing to do. We already have a translation unit.
-  if (*tu)
-    return;
+class StoreDiags : public DiagnosticConsumer {
+  const LangOptions *LangOpts;
+  std::optional<Diag> last;
+  std::vector<Diag> output;
+  void Flush() {
+    if (!last)
+      return;
+    bool mentions = last->inside_main || last->edits.size();
+    if (!mentions)
+      for (auto &N : last->notes)
+        if (N.inside_main)
+          mentions = true;
+    if (mentions)
+      output.push_back(std::move(*last));
+    last.reset();
+  }
+public:
+  std::vector<Diag> Take() {
+    return std::move(output);
+  }
+  void BeginSourceFile(const LangOptions &Opts, const Preprocessor *) override {
+    LangOpts = &Opts;
+  }
+  void EndSourceFile() override {
+    Flush();
+  }
+  void HandleDiagnostic(DiagnosticsEngine::Level Level,
+                        const Diagnostic &Info) override {
+    DiagnosticConsumer::HandleDiagnostic(Level, Info);
+    SourceLocation L = Info.getLocation();
+    if (!L.isValid()) return;
+    const SourceManager &SM = Info.getSourceManager();
+    bool inside_main = SM.isInMainFile(L);
+    auto fillDiagBase = [&](DiagBase &d) {
+      llvm::SmallString<64> Message;
+      Info.FormatDiagnostic(Message);
+      d.range =
+          FromCharSourceRange(SM, *LangOpts, DiagnosticRange(Info, *LangOpts));
+      d.message = Message.str();
+      d.inside_main = inside_main;
+      d.file = SM.getFilename(Info.getLocation());
+      d.level = Level;
+      d.category = DiagnosticIDs::getCategoryNumberForDiag(Info.getID());
+    };
 
-  const auto &args = session->file.args;
-  WorkingFiles::Snapshot snapshot = session->wfiles->AsSnapshot(
-      {StripFileType(session->file.filename)});
+    auto addFix = [&](bool SyntheticMessage) -> bool {
+      if (!inside_main)
+        return false;
+      for (const FixItHint &FixIt : Info.getFixItHints()) {
+        if (!SM.isInMainFile(FixIt.RemoveRange.getBegin()))
+          return false;
+        lsTextEdit edit;
+        edit.newText = FixIt.CodeToInsert;
+        auto r = FromCharSourceRange(SM, *LangOpts, FixIt.RemoveRange);
+        edit.range =
+            lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
+        last->edits.push_back(std::move(edit));
+      }
+      return true;
+    };
 
-  LOG_S(INFO) << "create " << (diagnostic ? "diagnostic" : "completion")
-              << " TU for " << session->file.filename;
-  *tu = ClangTranslationUnit::Create(session->file.filename, args, snapshot,
-                                     diagnostic);
-}
+    if (Level == DiagnosticsEngine::Note || Level == DiagnosticsEngine::Remark) {
+      if (Info.getFixItHints().size()) {
+        addFix(false);
+      } else {
+        Note &n = last->notes.emplace_back();
+        fillDiagBase(n);
+      }
+    } else {
+      Flush();
+      last = Diag();
+      fillDiagBase(*last);
+      if (!Info.getFixItHints().empty())
+        addFix(true);
+    }
+  }
+};
 
 std::unique_ptr<CompilerInvocation>
 buildCompilerInvocation(const std::vector<std::string> &args,
@@ -389,10 +482,59 @@ buildCompilerInvocation(const std::vector<std::string> &args,
   std::unique_ptr<CompilerInvocation> CI =
       createInvocationFromCommandLine(cargs, Diags, VFS);
   if (CI) {
+    CI->getFrontendOpts().DisableFree = false;
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
     CI->getLangOpts()->SpellChecking = false;
   }
   return CI;
+}
+
+std::unique_ptr<CompilerInstance>
+BuildCompilerInstance(CompletionSession &session,
+                      std::unique_ptr<CompilerInvocation> CI,
+  DiagnosticConsumer &DC,
+                      const WorkingFiles::Snapshot &snapshot,
+                      std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
+  for (auto &file : snapshot.files) {
+    Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
+    if (file.filename == session.file.filename) {
+      if (auto Preamble = session.GetPreamble()) {
+#if LLVM_VERSION_MAJOR >= 7
+        Preamble->Preamble.OverridePreamble(*CI, session.FS,
+                                            Bufs.back().get());
+#else
+        Preamble->Preamble.AddImplicitPreamble(*CI, session->FS,
+                                               Bufs.back().get());
+#endif
+      } else {
+        CI->getPreprocessorOpts().addRemappedFile(
+            CI->getFrontendOpts().Inputs[0].getFile(), Bufs.back().get());
+      }
+    } else {
+      CI->getPreprocessorOpts().addRemappedFile(file.filename,
+                                                Bufs.back().get());
+    }
+  }
+
+  auto Clang = std::make_unique<CompilerInstance>(session.PCH);
+  Clang->setInvocation(std::move(CI));
+  Clang->setVirtualFileSystem(session.FS);
+  Clang->createDiagnostics(&DC, false);
+  Clang->setTarget(TargetInfo::CreateTargetInfo(
+      Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
+  if (!Clang->hasTarget())
+    return nullptr;
+  return Clang;
+}
+
+bool Parse(CompilerInstance &Clang) {
+  SyntaxOnlyAction Action;
+  if (!Action.BeginSourceFile(Clang, Clang.getFrontendOpts().Inputs[0]))
+    return false;
+  if (!Action.Execute())
+    return false;
+  Action.EndSourceFile();
+  return true;
 }
 
 void CompletionPreloadMain(ClangCompleteManager *completion_manager) {
@@ -449,56 +591,23 @@ void CompletionQueryMain(ClangCompleteManager *completion_manager) {
 #endif
     CCOpts.IncludeCodePatterns = true;
     auto &FOpts = CI->getFrontendOpts();
-    FOpts.DisableFree = false;
     FOpts.CodeCompleteOpts = CCOpts;
     FOpts.CodeCompletionAt.FileName = session->file.filename;
     FOpts.CodeCompletionAt.Line = request->position.line + 1;
     FOpts.CodeCompletionAt.Column = request->position.character + 1;
 
+    StoreDiags DC;
     WorkingFiles::Snapshot snapshot =
       completion_manager->working_files_->AsSnapshot({StripFileType(path)});
-
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-    for (auto &file : snapshot.files) {
-      Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
-      if (file.filename == session->file.filename) {
-        if (auto Preamble = session->GetPreamble()) {
-#if LLVM_VERSION_MAJOR >= 7
-          Preamble->Preamble.OverridePreamble(*CI, session->FS,
-                                              Bufs.back().get());
-#else
-          Preamble->Preamble.AddImplicitPreamble(*CI, session->FS,
-                                                 Bufs.back().get());
-#endif
-        }
-        else {
-          CI->getPreprocessorOpts().addRemappedFile(
-            CI->getFrontendOpts().Inputs[0].getFile(), Bufs.back().get());
-        }
-      } else {
-        CI->getPreprocessorOpts().addRemappedFile(file.filename,
-                                                  Bufs.back().get());
-      }
-    }
+    auto Clang = BuildCompilerInstance(*session, std::move(CI), DC, snapshot, Bufs);
+    if (!Clang)
+      continue;
 
-    IgnoringDiagConsumer DC;
-    auto Clang = std::make_unique<CompilerInstance>(session->PCH);
-    Clang->setInvocation(std::move(CI));
-    Clang->createDiagnostics(&DC, false);
     auto Consumer = new CaptureCompletionResults(CCOpts);
     Clang->setCodeCompletionConsumer(Consumer);
-    Clang->setVirtualFileSystem(session->FS);
-    Clang->setTarget(TargetInfo::CreateTargetInfo(
-        Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
-    if (!Clang->hasTarget())
+    if (!Parse(*Clang))
       continue;
-
-    SyntaxOnlyAction Action;
-    if (!Action.BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
-      continue;
-    if (!Action.Execute())
-      continue;
-    Action.EndSourceFile();
     for (auto &Buf : Bufs)
       Buf.release();
 
@@ -518,51 +627,31 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
     std::shared_ptr<CompletionSession> session = manager->TryGetSession(
         path, true /*mark_as_completion*/, true /*create_if_needed*/);
 
-    // At this point, we must have a translation unit. Block until we have one.
-    std::lock_guard<std::mutex> lock(session->diagnostics.lock);
-    TryEnsureDocumentParsed(manager, session, &session->diagnostics.tu, true);
-
-    // It is possible we failed to create the document despite
-    // |TryEnsureDocumentParsed|.
-    ClangTranslationUnit *tu = session->diagnostics.tu.get();
-    if (!tu)
+    std::unique_ptr<CompilerInvocation> CI =
+        buildCompilerInvocation(session->file.args, session->FS);
+    if (!CI)
       continue;
-
+    StoreDiags DC;
     WorkingFiles::Snapshot snapshot =
         manager->working_files_->AsSnapshot({StripFileType(path)});
-    llvm::CrashRecoveryContext CRC;
-    if (tu->Reparse(CRC, snapshot)) {
-      LOG_S(ERROR) << "Reparsing translation unit for diagnostics failed for "
-                   << path;
+    std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
+    auto Clang = BuildCompilerInstance(*session, std::move(CI), DC, snapshot, Bufs);
+    if (!Clang)
       continue;
-    }
+    if (!Parse(*Clang))
+      continue;
+    for (auto &Buf : Bufs)
+      Buf.release();
 
-    auto &LangOpts = tu->Unit->getLangOpts();
     std::vector<lsDiagnostic> ls_diags;
-    for (ASTUnit::stored_diag_iterator I = tu->Unit->stored_diag_begin(),
-                                       E = tu->Unit->stored_diag_end();
-         I != E; ++I) {
-      FullSourceLoc FLoc = I->getLocation();
-      if (!FLoc.isValid()) // why?
+    for (auto &d : DC.Take()) {
+      if (!d.inside_main)
         continue;
-      const FileEntry *FE = FLoc.getFileEntry();
-      if (!FE || FileName(*FE) != path)
-        continue;
-      const auto &SM = FLoc.getManager();
-      SourceRange R;
-      for (const auto &CR : I->getRanges()) {
-        auto RT = Lexer::makeFileCharRange(CR, SM, LangOpts);
-        if (SM.isPointWithin(FLoc, RT.getBegin(), RT.getEnd())) {
-          R = CR.getAsRange();
-          break;
-        }
-      }
-      Range r = R.isValid() ? FromCharRange(SM, LangOpts, R)
-                            : FromTokenRange(SM, LangOpts, {FLoc, FLoc});
-      lsDiagnostic ls_diag;
-      ls_diag.range =
-          lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
-      switch (I->getLevel()) {
+      lsDiagnostic &ls_diag = ls_diags.emplace_back();
+      ls_diag.range = lsRange{{d.range.start.line, d.range.start.column},
+                              {d.range.end.line, d.range.end.column}};
+      ls_diag.message = d.message;
+      switch (d.level) {
       case DiagnosticsEngine::Ignored:
         // llvm_unreachable
       case DiagnosticsEngine::Note:
@@ -576,16 +665,8 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
       case DiagnosticsEngine::Fatal:
         ls_diag.severity = lsDiagnosticSeverity::Error;
       }
-      ls_diag.message = I->getMessage().str();
-      for (const FixItHint &FixIt : I->getFixIts()) {
-        lsTextEdit edit;
-        edit.newText = FixIt.CodeToInsert;
-        r = FromCharSourceRange(SM, LangOpts, FixIt.RemoveRange);
-        edit.range =
-            lsRange{{r.start.line, r.start.column}, {r.end.line, r.end.column}};
-        ls_diag.fixits_.push_back(edit);
-      }
-      ls_diags.push_back(ls_diag);
+      ls_diag.code = d.category;
+      ls_diag.fixits_ = d.edits;
     }
     manager->on_diagnostic_(path, ls_diags);
   }
@@ -594,15 +675,15 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
 } // namespace
 
 std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
-  std::lock_guard<std::mutex> lock(completion.lock);
-  return completion.preamble;
+  std::lock_guard<std::mutex> lock(mutex);
+  return preamble;
 }
 
 void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
   std::shared_ptr<PreambleData> OldP = GetPreamble();
-  std::string contents = wfiles->GetContent(file.filename);
+  std::string content = wfiles->GetContent(file.filename);
   std::unique_ptr<llvm::MemoryBuffer> Buf =
-      llvm::MemoryBuffer::getMemBuffer(contents);
+      llvm::MemoryBuffer::getMemBuffer(content);
   auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
   if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
     return;
@@ -612,18 +693,19 @@ void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
   CI.getPreprocessorOpts().WriteCommentListToPCH = false;
 #endif
 
-  DiagnosticConsumer DC;
-  IntrusiveRefCntPtr<DiagnosticsEngine> PreambleDE =
-      CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(),
-                                          &DC, false);
+  StoreDiags DC;
+  IntrusiveRefCntPtr<DiagnosticsEngine> DE =
+      CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(), &DC, false);
   PreambleCallbacks PP;
-  if (auto NewPreamble = PrecompiledPreamble::Build(
-          CI, Buf.get(), Bounds, *PreambleDE, FS, PCH, true, PP)) {
-    std::lock_guard<std::mutex> lock(completion.lock);
-    completion.preamble =
-        std::make_shared<PreambleData>(std::move(*NewPreamble));
+  if (auto NewPreamble = PrecompiledPreamble::Build(CI, Buf.get(), Bounds,
+      *DE, FS, PCH, true, PP)) {
+    std::lock_guard<std::mutex> lock(mutex);
+    preamble =
+        std::make_shared<PreambleData>(std::move(*NewPreamble), DC.Take());
   }
 }
+
+} // namespace ccls
 
 ClangCompleteManager::ClangCompleteManager(Project *project,
                                            WorkingFiles *working_files,
@@ -636,17 +718,17 @@ ClangCompleteManager::ClangCompleteManager(Project *project,
       PCH(std::make_shared<PCHContainerOperations>()) {
   std::thread([&]() {
     set_thread_name("comp-query");
-    CompletionQueryMain(this);
+    ccls::CompletionQueryMain(this);
   })
       .detach();
   std::thread([&]() {
     set_thread_name("comp-preload");
-    CompletionPreloadMain(this);
+    ccls::CompletionPreloadMain(this);
   })
       .detach();
   std::thread([&]() {
     set_thread_name("diag-query");
-    DiagnosticQueryMain(this);
+    ccls::DiagnosticQueryMain(this);
   })
       .detach();
 }
@@ -734,43 +816,42 @@ bool ClangCompleteManager::EnsureCompletionOrCreatePreloadSession(
   }
 
   // No CompletionSession, create new one.
-  auto session = std::make_shared<CompletionSession>(
+  auto session = std::make_shared<ccls::CompletionSession>(
       project_->FindCompilationEntryForFile(filename), working_files_, PCH);
   preloaded_sessions_.Insert(session->file.filename, session);
   return true;
 }
 
-std::shared_ptr<CompletionSession>
+std::shared_ptr<ccls::CompletionSession>
 ClangCompleteManager::TryGetSession(const std::string &filename,
                                     bool mark_as_completion,
                                     bool create_if_needed) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
   // Try to find a preloaded session.
-  std::shared_ptr<CompletionSession> preloaded_session =
+  std::shared_ptr<ccls::CompletionSession> preloaded =
       preloaded_sessions_.TryGet(filename);
 
-  if (preloaded_session) {
+  if (preloaded) {
     // If this request is for a completion, we should move it to
     // |completion_sessions|.
     if (mark_as_completion) {
       preloaded_sessions_.TryTake(filename);
-      completion_sessions_.Insert(filename, preloaded_session);
+      completion_sessions_.Insert(filename, preloaded);
     }
-
-    return preloaded_session;
+    return preloaded;
   }
 
   // Try to find a completion session. If none create one.
-  std::shared_ptr<CompletionSession> completion_session =
+  std::shared_ptr<ccls::CompletionSession> session =
       completion_sessions_.TryGet(filename);
-  if (!completion_session && create_if_needed) {
-    completion_session = std::make_shared<CompletionSession>(
+  if (!session && create_if_needed) {
+    session = std::make_shared<ccls::CompletionSession>(
         project_->FindCompilationEntryForFile(filename), working_files_, PCH);
-    completion_sessions_.Insert(filename, completion_session);
+    completion_sessions_.Insert(filename, session);
   }
 
-  return completion_session;
+  return session;
 }
 
 void ClangCompleteManager::FlushSession(const std::string &filename) {
