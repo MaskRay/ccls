@@ -16,8 +16,8 @@ limitations under the License.
 #pragma once
 #include "position.h"
 
-#include <clang/Basic/SourceManager.h>
 #include <clang/Basic/LangOptions.h>
+#include <clang/Basic/SourceManager.h>
 
 #include <stdlib.h>
 
