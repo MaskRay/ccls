@@ -503,7 +503,7 @@ BuildCompilerInstance(CompletionSession &session,
         Preamble->Preamble.OverridePreamble(*CI, session.FS,
                                             Bufs.back().get());
 #else
-        Preamble->Preamble.AddImplicitPreamble(*CI, session->FS,
+        Preamble->Preamble.AddImplicitPreamble(*CI, session.FS,
                                                Bufs.back().get());
 #endif
       } else {
