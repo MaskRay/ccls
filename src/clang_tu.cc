@@ -16,12 +16,8 @@ limitations under the License.
 #include "clang_tu.h"
 
 #include "clang_utils.h"
-#include "log.hh"
-#include "platform.h"
-#include "utils.h"
-#include "working_files.h"
 
-#include <llvm/Support/CrashRecoveryContext.h>
+#include <clang/Lex/Lexer.h>
 using namespace clang;
 
 #include <assert.h>
@@ -66,73 +62,4 @@ Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
                      SourceRange R, llvm::sys::fs::UniqueID *UniqueID) {
   return FromCharSourceRange(SM, LangOpts, CharSourceRange::getTokenRange(R),
                              UniqueID);
-}
-
-std::vector<ASTUnit::RemappedFile>
-GetRemapped(const WorkingFiles::Snapshot &snapshot) {
-  std::vector<ASTUnit::RemappedFile> Remapped;
-  for (auto &file : snapshot.files) {
-    std::unique_ptr<llvm::MemoryBuffer> MB =
-        llvm::MemoryBuffer::getMemBufferCopy(file.content, file.filename);
-    Remapped.emplace_back(file.filename, MB.release());
-  }
-  return Remapped;
-}
-
-std::unique_ptr<ClangTranslationUnit> ClangTranslationUnit::Create(
-    const std::string &filepath, const std::vector<std::string> &args,
-    const WorkingFiles::Snapshot &snapshot, bool diagnostic) {
-  std::vector<const char *> Args;
-  for (auto &arg : args)
-    Args.push_back(arg.c_str());
-  Args.push_back("-fallow-editor-placeholders");
-  if (!diagnostic)
-    Args.push_back("-fno-spell-checking");
-
-  auto ret = std::make_unique<ClangTranslationUnit>();
-  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
-      CompilerInstance::createDiagnostics(new DiagnosticOptions));
-  std::vector<ASTUnit::RemappedFile> Remapped = GetRemapped(snapshot);
-
-  ret->PCHCO = std::make_shared<PCHContainerOperations>();
-  std::unique_ptr<ASTUnit> ErrUnit, Unit;
-  llvm::CrashRecoveryContext CRC;
-  auto parse = [&]() {
-    Unit.reset(ASTUnit::LoadFromCommandLine(
-        Args.data(), Args.data() + Args.size(),
-        /*PCHContainerOpts=*/ret->PCHCO, Diags,
-        /*ResourceFilePath=*/g_config->clang.resourceDir,
-        /*OnlyLocalDecls=*/false,
-        /*CaptureDiagnostics=*/diagnostic, Remapped,
-        /*RemappedFilesKeepOriginalName=*/true, 0,
-        diagnostic ? TU_Complete : TU_Prefix,
-        /*CacheCodeCompletionResults=*/true, g_config->index.comments,
-        /*AllowPCHWithCompilerErrors=*/true,
-#if LLVM_VERSION_MAJOR >= 7
-        SkipFunctionBodiesScope::None,
-#else
-        !diagnostic,
-#endif
-        /*SingleFileParse=*/false,
-        /*UserFilesAreVolatile=*/true, false,
-        ret->PCHCO->getRawReader().getFormat(), &ErrUnit));
-  };
-  if (!CRC.RunSafely(parse)) {
-    LOG_S(ERROR) << "clang crashed for " << filepath << "\n"
-                 << StringJoin(args, " ") + " -fsyntax-only";
-    return {};
-  }
-  if (!Unit && !ErrUnit)
-    return {};
-
-  ret->Unit = std::move(Unit);
-  return ret;
-}
-
-int ClangTranslationUnit::Reparse(llvm::CrashRecoveryContext &CRC,
-                                  const WorkingFiles::Snapshot &snapshot) {
-  int ret = 1;
-  (void)CRC.RunSafely(
-      [&]() { ret = Unit->Reparse(PCHCO, GetRemapped(snapshot)); });
-  return ret;
 }

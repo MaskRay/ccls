@@ -31,27 +31,33 @@ limitations under the License.
 #include <mutex>
 #include <string>
 
+namespace ccls {
+struct DiagBase {
+  Range range;
+  std::string message;
+  std::string file;
+  clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Note;
+  unsigned category;
+  bool inside_main = false;
+};
+struct Note : DiagBase {};
+struct Diag : DiagBase {
+  std::vector<Note> notes;
+  std::vector<lsTextEdit> edits;
+};
+
 struct PreambleData {
-  PreambleData(clang::PrecompiledPreamble P) : Preamble(std::move(P)) {}
+  PreambleData(clang::PrecompiledPreamble P, std::vector<Diag> diags)
+      : Preamble(std::move(P)), diags(std::move(diags)) {}
   clang::PrecompiledPreamble Preamble;
+  std::vector<Diag> diags;
 };
 
 struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
-  // Translation unit for clang.
-  struct Tu {
-    // When |tu| was last parsed.
-    std::optional<std::chrono::time_point<std::chrono::high_resolution_clock>>
-        last_parsed_at;
-    // Acquired when |tu| is being used.
-    std::mutex lock;
-    std::unique_ptr<ClangTranslationUnit> tu;
-  };
-
-  struct CU {
-    std::mutex lock;
-    std::shared_ptr<PreambleData> preamble;
-  };
+  std::mutex mutex;
+  std::shared_ptr<PreambleData> preamble;
+  std::vector<Diag> diags;
 
   Project::Entry file;
   WorkingFiles *wfiles;
@@ -61,9 +67,6 @@ struct CompletionSession
       clang::vfs::getRealFileSystem();
   std::shared_ptr<clang::PCHContainerOperations> PCH;
 
-  CU completion;
-  Tu diagnostics;
-
   CompletionSession(const Project::Entry &file, WorkingFiles *wfiles,
                     std::shared_ptr<clang::PCHContainerOperations> PCH)
       : file(file), wfiles(wfiles), PCH(PCH) {}
@@ -71,6 +74,7 @@ struct CompletionSession
   std::shared_ptr<PreambleData> GetPreamble();
   void BuildPreamble(clang::CompilerInvocation &CI);
 };
+}
 
 struct ClangCompleteManager {
   using OnDiagnostic = std::function<void(
@@ -130,9 +134,9 @@ struct ClangCompleteManager {
   bool EnsureCompletionOrCreatePreloadSession(const std::string &filename);
   // Tries to find an edit session for |filename|. This will move the session
   // from view to edit.
-  std::shared_ptr<CompletionSession> TryGetSession(const std::string &filename,
-                                                   bool mark_as_completion,
-                                                   bool create_if_needed);
+  std::shared_ptr<ccls::CompletionSession>
+  TryGetSession(const std::string &filename, bool mark_as_completion,
+                bool create_if_needed);
 
   // Flushes all saved sessions with the supplied filename
   void FlushSession(const std::string &filename);
@@ -149,7 +153,7 @@ struct ClangCompleteManager {
   OnDiagnostic on_diagnostic_;
   OnDropped on_dropped_;
 
-  using LruSessionCache = LruCache<std::string, CompletionSession>;
+  using LruSessionCache = LruCache<std::string, ccls::CompletionSession>;
 
   // CompletionSession instances which are preloaded, ie, files which the user
   // has viewed but not requested code completion for.
