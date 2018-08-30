@@ -76,7 +76,7 @@ OUTPUT: header.h
       "uses": []
     }, {
       "usr": 4481210672785600703,
-      "detailed_name": "enum Foo3 {\n}",
+      "detailed_name": "enum Foo3 {}",
       "qual_name_offset": 5,
       "short_name": "Foo3",
       "kind": 10,

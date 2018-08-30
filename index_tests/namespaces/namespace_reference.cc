@@ -62,7 +62,7 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 11072669167287398027,
-      "detailed_name": "namespace ns {\n}",
+      "detailed_name": "namespace ns {}",
       "qual_name_offset": 10,
       "short_name": "ns",
       "kind": 3,

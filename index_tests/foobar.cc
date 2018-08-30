@@ -16,7 +16,7 @@ OUTPUT:
   "usr2func": [],
   "usr2type": [{
       "usr": 6697181287623958829,
-      "detailed_name": "enum A {\n}",
+      "detailed_name": "enum A {}",
       "qual_name_offset": 5,
       "short_name": "A",
       "kind": 10,
@@ -84,7 +84,7 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 13892793056005362145,
-      "detailed_name": "enum B {\n}",
+      "detailed_name": "enum B {}",
       "qual_name_offset": 5,
       "short_name": "B",
       "kind": 10,

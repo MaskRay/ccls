@@ -342,14 +342,15 @@ public:
                                   unsigned NumResults) override {
     ls_items.reserve(NumResults);
     for (unsigned i = 0; i != NumResults; i++) {
-      if (Results[i].Availability == CXAvailability_NotAccessible ||
-          Results[i].Availability == CXAvailability_NotAvailable)
+      auto &R = Results[i];
+      if (R.Availability == CXAvailability_NotAccessible ||
+          R.Availability == CXAvailability_NotAvailable)
         continue;
-      CodeCompletionString *CCS = Results[i].CreateCodeCompletionString(
+      CodeCompletionString *CCS = R.CreateCodeCompletionString(
           S, Context, getAllocator(), getCodeCompletionTUInfo(),
           includeBriefComments());
       lsCompletionItem ls_item;
-      ls_item.kind = GetCompletionKind(Results[i].CursorKind);
+      ls_item.kind = GetCompletionKind(R.CursorKind);
       if (const char *brief = CCS->getBriefComment())
         ls_item.documentation = brief;
 

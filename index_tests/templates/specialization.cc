@@ -204,7 +204,7 @@ OUTPUT:
       "uses": ["21:16-21:22|0|1|4", "30:1-30:7|0|1|4", "32:1-32:7|0|1|4"]
     }, {
       "usr": 9201299975592934124,
-      "detailed_name": "enum Enum {\n}",
+      "detailed_name": "enum Enum {}",
       "qual_name_offset": 5,
       "short_name": "Enum",
       "kind": 10,
