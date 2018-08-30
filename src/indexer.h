@@ -263,8 +263,6 @@ struct IndexFile {
   std::unordered_map<Usr, IndexType> usr2type;
   std::unordered_map<Usr, IndexVar> usr2var;
 
-  // Diagnostics found when indexing this file. Not serialized.
-  std::vector<lsDiagnostic> diagnostics_;
   // File contents at the time of index. Not serialized.
   std::string file_contents;
 

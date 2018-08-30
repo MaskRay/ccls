@@ -22,8 +22,6 @@ limitations under the License.
 using ccls::Intern;
 
 #include <clang/AST/AST.h>
-#include <clang/Frontend/ASTUnit.h>
-#include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendAction.h>
 #include <clang/Index/IndexDataConsumer.h>
 #include <clang/Index/IndexingAction.h>
@@ -57,13 +55,10 @@ struct IndexParam {
   };
   std::unordered_map<const Decl *, DeclInfo> Decl2Info;
 
-  ASTUnit &Unit;
   ASTContext *Ctx;
-
   FileConsumer *file_consumer = nullptr;
 
-  IndexParam(ASTUnit &Unit, FileConsumer *file_consumer)
-      : Unit(Unit), file_consumer(file_consumer) {}
+  IndexParam(FileConsumer *file_consumer) : file_consumer(file_consumer) {}
 
   IndexFile *ConsumeFile(const FileEntry &File) {
     IndexFile *db = file_consumer->TryConsumeFile(File, &file_contents);
@@ -1173,21 +1168,15 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
   if (!g_config->index.enabled)
     return {};
 
-  std::vector<const char *> Args;
-  for (auto &arg : args)
-    Args.push_back(arg.c_str());
-  auto PCHCO = std::make_shared<PCHContainerOperations>();
-  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
-      CompilerInstance::createDiagnostics(new DiagnosticOptions));
-  std::shared_ptr<CompilerInvocation> CI =
-      createInvocationFromCommandLine(Args, Diags);
+  auto PCH = std::make_shared<PCHContainerOperations>();
+  llvm::IntrusiveRefCntPtr<vfs::FileSystem> FS = vfs::getRealFileSystem();
+  std::shared_ptr<CompilerInvocation> CI = BuildCompilerInvocation(args, FS);
   if (!CI)
     return {};
   // -fparse-all-comments enables documentation in the indexer and in
   // code completion.
   if (g_config->index.comments > 1)
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
-  CI->getLangOpts()->SpellChecking = false;
   {
     // FileSystemOptions& FSOpts = CI->getFileSystemOpts();
     // if (FSOpts.WorkingDir.empty())
@@ -1200,20 +1189,18 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     //   HSOpts.ResourceDir = g_config->clang.resourceDir;
   }
 
-  std::vector<std::unique_ptr<llvm::MemoryBuffer>> BufOwner;
-  for (auto &c : file_contents) {
-    std::unique_ptr<llvm::MemoryBuffer> MB =
-        llvm::MemoryBuffer::getMemBufferCopy(c.content, c.path);
-    CI->getPreprocessorOpts().addRemappedFile(c.path, MB.get());
-    BufOwner.push_back(std::move(MB));
-  }
-
-  auto Unit = ASTUnit::create(CI, Diags, true, true);
-  if (!Unit)
+  DiagnosticConsumer DC;
+  auto Clang = std::make_unique<CompilerInstance>(PCH);
+  Clang->setInvocation(std::move(CI));
+  Clang->setVirtualFileSystem(FS);
+  Clang->createDiagnostics(&DC, false);
+  Clang->setTarget(TargetInfo::CreateTargetInfo(
+      Clang->getDiagnostics(), Clang->getInvocation().TargetOpts));
+  if (!Clang->hasTarget())
     return {};
 
   FileConsumer file_consumer(vfs, file);
-  IndexParam param(*Unit, &file_consumer);
+  IndexParam param(&file_consumer);
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
 
   index::IndexingOptions IndexOpts;
@@ -1224,35 +1211,29 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
   IndexOpts.IndexImplicitInstantiation = true;
 #endif
 
-  std::unique_ptr<FrontendAction> IndexAction = createIndexingAction(
+  std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
 
-  DiagnosticErrorTrap DiagTrap(*Diags);
-  llvm::CrashRecoveryContext CRC;
-  auto compile = [&]() {
-    ASTUnit::LoadFromCompilerInvocationAction(
-        std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
-        /*Persistent=*/true, /*ResourceDir=*/"",
-        /*OnlyLocalDecls=*/true,
-        /*CaptureDiagnostics=*/true, 0, false, false,
-        /*UserFilesAreVolatile=*/true);
-  };
-  if (!CRC.RunSafely(compile)) {
-    LOG_S(ERROR) << "clang crashed for " << file;
-    return {};
+  bool ok = false;
+  {
+    llvm::CrashRecoveryContext CRC;
+    auto parse = [&]() {
+                   if (!Action->BeginSourceFile(*Clang, Clang->getFrontendOpts().Inputs[0]))
+                     return;
+                   if (!Action->Execute())
+                     return;
+                   Action->EndSourceFile();
+                   ok = true;
+                 };
+    if (!CRC.RunSafely(parse)) {
+      LOG_S(ERROR) << "clang crashed for " << file;
+      return {};
+    }
   }
-  if (!Unit) {
+  if (!ok) {
     LOG_S(ERROR) << "failed to index " << file;
     return {};
   }
-
-  const SourceManager &SM = Unit->getSourceManager();
-  const FileEntry *FE = SM.getFileEntryForID(SM.getMainFileID());
-  IndexFile *main_file = param.ConsumeFile(*FE);
-  std::unordered_map<std::string, int> inc_to_line;
-  if (main_file)
-    for (auto &inc : main_file->includes)
-      inc_to_line[inc.resolved_path] = inc.line;
 
   auto result = param.file_consumer->TakeLocalState();
   for (std::unique_ptr<IndexFile> &entry : result) {
@@ -1275,22 +1256,6 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     }
     for (auto &it : entry->usr2var)
       Uniquify(it.second.uses);
-
-    if (main_file) {
-      // If there are errors, show at least one at the include position.
-      auto it = inc_to_line.find(entry->path);
-      if (it != inc_to_line.end()) {
-        int line = it->second;
-        for (auto ls_diagnostic : entry->diagnostics_) {
-          if (ls_diagnostic.severity != lsDiagnosticSeverity::Error)
-            continue;
-          ls_diagnostic.range =
-              lsRange{lsPosition{line, 10}, lsPosition{line, 10}};
-          main_file->diagnostics_.push_back(ls_diagnostic);
-          break;
-        }
-      }
-    }
 
     // Update file contents and modification time.
     entry->last_write_time = param.file2write_time[entry->path];

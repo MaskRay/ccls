@@ -128,9 +128,6 @@ struct ProjectProcessor {
 
     args.push_back("-resource-dir=" + g_config->clang.resourceDir);
     args.push_back("-working-directory=" + entry.directory);
-    // There could be a clang version mismatch between what the project uses and
-    // what ccls uses. Make sure we do not emit warnings for mismatched options.
-    args.push_back("-Wno-unknown-warning-option");
 
     if (!command_set.insert(hash).second) {
       entry.args = std::move(args);
