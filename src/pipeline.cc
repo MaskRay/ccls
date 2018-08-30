@@ -250,12 +250,6 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
   }
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {
-    // Only emit diagnostics for non-interactive sessions, which makes it easier
-    // to identify indexing problems. For interactive sessions, diagnostics are
-    // handled by code completion.
-    if (!request.is_interactive)
-      diag_pub->Publish(working_files, curr->path, curr->diagnostics_);
-
     std::string path = curr->path;
     if (!(vfs->Stamp(path, curr->last_write_time) || path == path_to_index))
       continue;

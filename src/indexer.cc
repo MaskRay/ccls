@@ -1173,21 +1173,17 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
   if (!g_config->index.enabled)
     return {};
 
-  std::vector<const char *> Args;
-  for (auto &arg : args)
-    Args.push_back(arg.c_str());
   auto PCHCO = std::make_shared<PCHContainerOperations>();
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions));
-  std::shared_ptr<CompilerInvocation> CI =
-      createInvocationFromCommandLine(Args, Diags);
+  llvm::IntrusiveRefCntPtr<vfs::FileSystem> FS = vfs::getRealFileSystem();
+  std::shared_ptr<CompilerInvocation> CI = BuildCompilerInvocation(args, FS);
   if (!CI)
     return {};
   // -fparse-all-comments enables documentation in the indexer and in
   // code completion.
   if (g_config->index.comments > 1)
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
-  CI->getLangOpts()->SpellChecking = false;
   {
     // FileSystemOptions& FSOpts = CI->getFileSystemOpts();
     // if (FSOpts.WorkingDir.empty())
@@ -1232,9 +1228,9 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
   auto compile = [&]() {
     ASTUnit::LoadFromCompilerInvocationAction(
         std::move(CI), PCHCO, Diags, IndexAction.get(), Unit.get(),
-        /*Persistent=*/true, /*ResourceDir=*/"",
+        /*Persistent=*/false, /*ResourceDir=*/"",
         /*OnlyLocalDecls=*/true,
-        /*CaptureDiagnostics=*/true, 0, false, false,
+        /*CaptureDiagnostics=*/false, 0, false, false,
         /*UserFilesAreVolatile=*/true);
   };
   if (!CRC.RunSafely(compile)) {
@@ -1245,14 +1241,6 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     LOG_S(ERROR) << "failed to index " << file;
     return {};
   }
-
-  const SourceManager &SM = Unit->getSourceManager();
-  const FileEntry *FE = SM.getFileEntryForID(SM.getMainFileID());
-  IndexFile *main_file = param.ConsumeFile(*FE);
-  std::unordered_map<std::string, int> inc_to_line;
-  if (main_file)
-    for (auto &inc : main_file->includes)
-      inc_to_line[inc.resolved_path] = inc.line;
 
   auto result = param.file_consumer->TakeLocalState();
   for (std::unique_ptr<IndexFile> &entry : result) {
@@ -1275,22 +1263,6 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     }
     for (auto &it : entry->usr2var)
       Uniquify(it.second.uses);
-
-    if (main_file) {
-      // If there are errors, show at least one at the include position.
-      auto it = inc_to_line.find(entry->path);
-      if (it != inc_to_line.end()) {
-        int line = it->second;
-        for (auto ls_diagnostic : entry->diagnostics_) {
-          if (ls_diagnostic.severity != lsDiagnosticSeverity::Error)
-            continue;
-          ls_diagnostic.range =
-              lsRange{lsPosition{line, 10}, lsPosition{line, 10}};
-          main_file->diagnostics_.push_back(ls_diagnostic);
-          break;
-        }
-      }
-    }
 
     // Update file contents and modification time.
     entry->last_write_time = param.file2write_time[entry->path];
