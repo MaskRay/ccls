@@ -295,42 +295,8 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
           const std::string &expected_path = entry.first;
           std::string expected_output = text_replacer.Apply(entry.second);
 
-          // FIXME: promote to utils, find and remove duplicates (ie,
-          // ccls_call_tree.cc, maybe something in project.cc).
-          auto basename = [](const std::string &path) -> std::string {
-            size_t last_index = path.find_last_of('/');
-            if (last_index == std::string::npos)
-              return path;
-            return path.substr(last_index + 1);
-          };
-
           // Get output from index operation.
           IndexFile *db = FindDbForPathEnding(expected_path, dbs);
-          if (db && !db->diagnostics_.empty()) {
-            printf("For %s\n", path.c_str());
-            for (const lsDiagnostic &diagnostic : db->diagnostics_) {
-              printf("  ");
-              if (diagnostic.severity)
-                switch (*diagnostic.severity) {
-                case lsDiagnosticSeverity::Error:
-                  printf("error ");
-                  break;
-                case lsDiagnosticSeverity::Warning:
-                  printf("warning ");
-                  break;
-                case lsDiagnosticSeverity::Information:
-                  printf("information ");
-                  break;
-                case lsDiagnosticSeverity::Hint:
-                  printf("hint ");
-                  break;
-                }
-              printf("%s:%s-%s:%s\n", basename(db->path).c_str(),
-                     diagnostic.range.start.ToString().c_str(),
-                     diagnostic.range.end.ToString().c_str(),
-                     diagnostic.message.c_str());
-            }
-          }
           std::string actual_output = "{}";
           if (db) {
             VerifySerializeToFrom(db);

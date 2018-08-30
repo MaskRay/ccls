@@ -51,3 +51,20 @@ Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
   return FromCharSourceRange(SM, LangOpts, CharSourceRange::getTokenRange(R),
                              UniqueID);
 }
+
+std::unique_ptr<CompilerInvocation>
+BuildCompilerInvocation(const std::vector<std::string> &args,
+                        IntrusiveRefCntPtr<vfs::FileSystem> VFS) {
+  std::vector<const char *> cargs;
+  for (auto &arg : args)
+    cargs.push_back(arg.c_str());
+  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
+      CompilerInstance::createDiagnostics(new DiagnosticOptions));
+  std::unique_ptr<CompilerInvocation> CI =
+      createInvocationFromCommandLine(cargs, Diags, VFS);
+  if (CI) {
+    CI->getFrontendOpts().DisableFree = false;
+    CI->getLangOpts()->SpellChecking = false;
+  }
+  return CI;
+}

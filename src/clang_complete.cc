@@ -9,7 +9,6 @@
 #include "platform.h"
 
 #include <clang/Frontend/CompilerInstance.h>
-#include <clang/Frontend/FrontendDiagnostic.h>
 #include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <llvm/ADT/Twine.h>
@@ -385,10 +384,6 @@ public:
     }
   }
 
-  void ProcessOverloadCandidates(Sema &S, unsigned CurrentArg,
-                                 OverloadCandidate *Candidates,
-                                 unsigned NumCandidates) override {}
-
   CodeCompletionAllocator &getAllocator() override { return *Alloc; }
 
   CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo; }
@@ -472,30 +467,10 @@ public:
   }
 };
 
-std::unique_ptr<CompilerInvocation>
-buildCompilerInvocation(const std::vector<std::string> &args,
-                        IntrusiveRefCntPtr<vfs::FileSystem> VFS) {
-  std::vector<const char *> cargs;
-  for (auto &arg : args)
-    cargs.push_back(arg.c_str());
-  IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
-      CompilerInstance::createDiagnostics(new DiagnosticOptions));
-  std::unique_ptr<CompilerInvocation> CI =
-      createInvocationFromCommandLine(cargs, Diags, VFS);
-  if (CI) {
-    CI->getFrontendOpts().DisableFree = false;
-    CI->getLangOpts()->CommentOpts.ParseAllComments = true;
-    CI->getLangOpts()->SpellChecking = false;
-  }
-  return CI;
-}
-
-std::unique_ptr<CompilerInstance>
-BuildCompilerInstance(CompletionSession &session,
-                      std::unique_ptr<CompilerInvocation> CI,
-  DiagnosticConsumer &DC,
-                      const WorkingFiles::Snapshot &snapshot,
-                      std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
+std::unique_ptr<CompilerInstance> BuildCompilerInstance(
+    CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
+    DiagnosticConsumer &DC, const WorkingFiles::Snapshot &snapshot,
+    std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
   for (auto &file : snapshot.files) {
     Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
     if (file.filename == session.file.filename) {
@@ -558,7 +533,7 @@ void CompletionPreloadMain(ClangCompleteManager *completion_manager) {
 
     LOG_S(INFO) << "create completion session for " << session->file.filename;
     if (std::unique_ptr<CompilerInvocation> CI =
-            buildCompilerInvocation(args, session->FS))
+            BuildCompilerInvocation(args, session->FS))
       session->BuildPreamble(*CI);
   }
 }
@@ -583,10 +558,12 @@ void CompletionQueryMain(ClangCompleteManager *completion_manager) {
                                           true /*create_if_needed*/);
 
     std::unique_ptr<CompilerInvocation> CI =
-        buildCompilerInvocation(session->file.args, session->FS);
+        BuildCompilerInvocation(session->file.args, session->FS);
     if (!CI)
       continue;
+    CI->getDiagnosticOpts().IgnoreWarnings = true;
     clang::CodeCompleteOptions CCOpts;
+    CCOpts.IncludeBriefComments = true;
 #if LLVM_VERSION_MAJOR >= 7
     CCOpts.IncludeFixIts = true;
 #endif
@@ -596,6 +573,8 @@ void CompletionQueryMain(ClangCompleteManager *completion_manager) {
     FOpts.CodeCompletionAt.FileName = session->file.filename;
     FOpts.CodeCompletionAt.Line = request->position.line + 1;
     FOpts.CodeCompletionAt.Column = request->position.character + 1;
+    FOpts.SkipFunctionBodies = true;
+    CI->getLangOpts()->CommentOpts.ParseAllComments = true;
 
     StoreDiags DC;
     WorkingFiles::Snapshot snapshot =
@@ -629,7 +608,7 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
         path, true /*mark_as_completion*/, true /*create_if_needed*/);
 
     std::unique_ptr<CompilerInvocation> CI =
-        buildCompilerInvocation(session->file.args, session->FS);
+        BuildCompilerInvocation(session->file.args, session->FS);
     if (!CI)
       continue;
     StoreDiags DC;
@@ -690,6 +669,7 @@ void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
     return;
   CI.getFrontendOpts().SkipFunctionBodies = true;
   CI.getLangOpts()->RetainCommentsFromSystemHeaders = true;
+  CI.getLangOpts()->CommentOpts.ParseAllComments = true;
 #if LLVM_VERSION_MAJOR >= 7
   CI.getPreprocessorOpts().WriteCommentListToPCH = false;
 #endif
