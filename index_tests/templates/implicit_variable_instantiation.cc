@@ -37,7 +37,7 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 1532099849728741556,
-      "detailed_name": "enum ns::VarType {\n}",
+      "detailed_name": "enum ns::VarType {}",
       "qual_name_offset": 5,
       "short_name": "VarType",
       "kind": 10,
@@ -54,7 +54,7 @@ OUTPUT:
       "uses": ["6:22-6:29|12688716854043726585|2|4", "6:44-6:51|12688716854043726585|2|4", "10:18-10:25|11072669167287398027|2|4"]
     }, {
       "usr": 11072669167287398027,
-      "detailed_name": "namespace ns {\n}",
+      "detailed_name": "namespace ns {}",
       "qual_name_offset": 10,
       "short_name": "ns",
       "kind": 3,

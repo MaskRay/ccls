@@ -51,7 +51,7 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 926793467007732869,
-      "detailed_name": "namespace foo {\n}",
+      "detailed_name": "namespace foo {}",
       "qual_name_offset": 10,
       "short_name": "foo",
       "kind": 3,
@@ -81,7 +81,7 @@ OUTPUT:
       "uses": ["13:11-13:14|10818727483146447186|3|4"]
     }, {
       "usr": 14450849931009540802,
-      "detailed_name": "namespace foo::bar::baz {\n}",
+      "detailed_name": "namespace foo::bar::baz {}",
       "qual_name_offset": 10,
       "short_name": "baz",
       "kind": 3,
@@ -99,7 +99,7 @@ OUTPUT:
       "uses": ["9:27-9:30|0|1|4", "12:21-12:24|10818727483146447186|3|4"]
     }, {
       "usr": 17805385787823406700,
-      "detailed_name": "namespace foo::bar {\n}",
+      "detailed_name": "namespace foo::bar {}",
       "qual_name_offset": 10,
       "short_name": "bar",
       "kind": 3,

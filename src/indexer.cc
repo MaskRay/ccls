@@ -462,6 +462,12 @@ public:
 
     std::string name = OS.str();
     SimplifyAnonymous(name);
+    // Remove \n in DeclPrinter.cpp "{\n" + if(!TerseOutput)something + "}"
+    for (std::string::size_type i = 0;;) {
+      if ((i = name.find("{\n}", i)) == std::string::npos)
+        break;
+      name.replace(i, 3, "{}");
+    }
     auto i = name.find(short_name);
     if (short_name.size())
       while (i != std::string::npos && ((i && isalnum(name[i - 1])) ||

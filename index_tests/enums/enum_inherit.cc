@@ -18,7 +18,7 @@ OUTPUT:
   "usr2func": [],
   "usr2type": [{
       "usr": 2986879766914123941,
-      "detailed_name": "enum class E : int32_t {\n}",
+      "detailed_name": "enum class E : int32_t {}",
       "qual_name_offset": 11,
       "short_name": "E",
       "kind": 10,
@@ -52,7 +52,7 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 16985894625255407295,
-      "detailed_name": "enum Foo : int {\n}",
+      "detailed_name": "enum Foo : int {}",
       "qual_name_offset": 5,
       "short_name": "Foo",
       "kind": 10,

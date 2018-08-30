@@ -15,7 +15,7 @@ OUTPUT:
   "usr2func": [],
   "usr2type": [{
       "usr": 5792006888140599735,
-      "detailed_name": "enum VarType {\n}",
+      "detailed_name": "enum VarType {}",
       "qual_name_offset": 5,
       "short_name": "VarType",
       "kind": 10,

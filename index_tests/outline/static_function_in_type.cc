@@ -42,7 +42,7 @@ OUTPUT: static_function_in_type.h
       "uses": ["6:24-6:31|17262466801709381811|2|4"]
     }, {
       "usr": 11072669167287398027,
-      "detailed_name": "namespace ns {\n}",
+      "detailed_name": "namespace ns {}",
       "qual_name_offset": 10,
       "short_name": "ns",
       "kind": 3,
@@ -116,7 +116,7 @@ OUTPUT: static_function_in_type.cc
       "uses": ["5:20-5:27|11072669167287398027|2|4"]
     }, {
       "usr": 11072669167287398027,
-      "detailed_name": "namespace ns {\n}",
+      "detailed_name": "namespace ns {}",
       "qual_name_offset": 10,
       "short_name": "ns",
       "kind": 3,

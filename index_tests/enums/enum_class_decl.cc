@@ -29,7 +29,7 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 16985894625255407295,
-      "detailed_name": "enum class Foo : uint8_t {\n}",
+      "detailed_name": "enum class Foo : uint8_t {}",
       "qual_name_offset": 11,
       "short_name": "Foo",
       "kind": 10,

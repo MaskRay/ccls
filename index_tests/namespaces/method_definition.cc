@@ -29,7 +29,7 @@ OUTPUT:
     }],
   "usr2type": [{
       "usr": 2029211996748007610,
-      "detailed_name": "namespace hello {\n}",
+      "detailed_name": "namespace hello {}",
       "qual_name_offset": 10,
       "short_name": "hello",
       "kind": 3,
