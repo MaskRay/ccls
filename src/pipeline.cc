@@ -141,7 +141,7 @@ std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
 }
 
 bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
-                   Project *project, VFS *vfs) {
+                   Project *project, VFS *vfs, const GroupMatch &matcher) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
@@ -152,6 +152,11 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
     IndexUpdate dummy;
     dummy.refresh = true;
     on_indexed->PushBack(std::move(dummy), false);
+    return false;
+  }
+
+  if (std::string reason; !matcher.IsMatch(request.path, &reason)) {
+    LOG_S(INFO) << "skip " << request.path << " for " << reason;
     return false;
   }
 
@@ -247,6 +252,12 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
     std::string path = curr->path;
     if (!(vfs->Stamp(path, curr->last_write_time) || path == path_to_index))
       continue;
+    if (std::string reason; !matcher.IsMatch(path, &reason)) {
+      LOG_S(INFO) << "skip emitting and storing index of " << path << " for "
+                  << reason;
+      continue;
+    }
+
     LOG_S(INFO) << "emit index for " << path;
     prev = RawCacheLoad(path);
 
@@ -295,8 +306,9 @@ void Init() {
 
 void Indexer_Main(DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
                   WorkingFiles *working_files) {
+  GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
   while (true)
-    if (!Indexer_Parse(diag_pub, working_files, project, vfs))
+    if (!Indexer_Parse(diag_pub, working_files, project, vfs, matcher))
       indexer_waiter->Wait(index_request);
 }
 
