@@ -270,13 +270,10 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
     // Write current index to disk if requested.
     LOG_S(INFO) << "store index for " << path;
     {
-      static Timer timer("write", "store index");
-      timer.startTimer();
       std::string cache_path = GetCachePath(path);
       WriteToFile(cache_path, curr->file_contents);
       WriteToFile(AppendSerializationFormat(cache_path),
                   Serialize(g_config->cacheFormat, *curr));
-      timer.stopTimer();
     }
 
     vfs->Reset(path);
