@@ -312,9 +312,9 @@ template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFile &value) {
   REFLECT_MEMBER_END();
 }
 
-void Reflect(Reader &visitor, SerializeFormat &value) {
-  std::string fmt = visitor.GetString();
-  value = fmt[0] == 'b' ? SerializeFormat::Binary : SerializeFormat::Json;
+void Reflect(Reader &vis, SerializeFormat &v) {
+  v = vis.GetString()[0] == 'j' ? SerializeFormat::Json
+                                : SerializeFormat::Binary;
 }
 
 void Reflect(Writer &visitor, SerializeFormat &value) {
