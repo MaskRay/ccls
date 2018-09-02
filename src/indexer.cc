@@ -60,9 +60,7 @@ struct IndexParam {
 
   IndexParam(FileConsumer *file_consumer) : file_consumer(file_consumer) {}
 
-  IndexFile *ConsumeFile(const FileEntry &File) {
-    IndexFile *db = file_consumer->TryConsumeFile(File, &file_contents);
-
+  void SeenFile(const FileEntry &File) {
     // If this is the first time we have seen the file (ignoring if we are
     // generating an index for it):
     auto [it, inserted] = SeenUniqueID.try_emplace(File.getUniqueID());
@@ -77,8 +75,11 @@ struct IndexParam {
       if (write_time)
         file2write_time[file_name] = *write_time;
     }
+  }
 
-    return db;
+  IndexFile *ConsumeFile(const FileEntry &File) {
+    SeenFile(File);
+    return file_consumer->TryConsumeFile(File, &file_contents);
   }
 };
 
@@ -407,20 +408,20 @@ public:
     return it->second.usr;
   }
 
-  Use GetUse(IndexFile *db, Range range, const DeclContext *DC,
+  Use GetUse(IndexFile *db, int lid, Range range, const DeclContext *DC,
              Role role) const {
     if (!DC)
-      return Use{{range, 0, SymbolKind::File, role}};
+      return {{range, 0, SymbolKind::File, role}, lid};
     const Decl *D = cast<Decl>(DC);
     switch (GetSymbolKind(D)) {
     case SymbolKind::Func:
-      return Use{{range, db->ToFunc(GetUsr(D)).usr, SymbolKind::Func, role}};
+      return {{range, db->ToFunc(GetUsr(D)).usr, SymbolKind::Func, role}, lid};
     case SymbolKind::Type:
-      return Use{{range, db->ToType(GetUsr(D)).usr, SymbolKind::Type, role}};
+      return {{range, db->ToType(GetUsr(D)).usr, SymbolKind::Type, role}, lid};
     case SymbolKind::Var:
-      return Use{{range, db->ToVar(GetUsr(D)).usr, SymbolKind::Var, role}};
+      return {{range, db->ToVar(GetUsr(D)).usr, SymbolKind::Var, role}, lid};
     default:
-      return Use{{range, 0, SymbolKind::File, role}};
+      return {{range, 0, SymbolKind::File, role}, lid};
     }
   }
 
@@ -550,26 +551,32 @@ public:
     }
   }
 
+  static int GetFileLID(IndexFile *db, SourceManager &SM, const FileEntry &FE) {
+    auto [it, inserted] = db->uid2lid_and_path.try_emplace(FE.getUniqueID());
+    if (inserted) {
+      it->second.first = db->uid2lid_and_path.size() - 1;
+      SmallString<256> Path = FE.tryGetRealPathName();
+      if (Path.empty())
+        Path = FE.getName();
+      if (!llvm::sys::path::is_absolute(Path) &&
+          !SM.getFileManager().makeAbsolutePath(Path))
+        return -1;
+      it->second.second = Path.str();
+    }
+    return it->second.first;
+  }
+
   void AddMacroUse(IndexFile *db, SourceManager &SM, Usr usr, SymbolKind kind,
                    SourceLocation Spell) const {
     const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Spell));
     if (!FE)
       return;
-    auto UID = FE->getUniqueID();
-    auto [it, inserted] = db->uid2lid_and_path.try_emplace(UID);
-    if (inserted) {
-      it->second.first = db->uid2lid_and_path.size() - 1;
-      SmallString<256> Path = FE->tryGetRealPathName();
-      if (Path.empty())
-        Path = FE->getName();
-      if (!llvm::sys::path::is_absolute(Path) &&
-          !SM.getFileManager().makeAbsolutePath(Path))
-        return;
-      it->second.second = Path.str();
-    }
+    int lid = GetFileLID(db, SM, *FE);
+    if (lid < 0)
+      return;
     Range spell =
         FromTokenRange(SM, Ctx->getLangOpts(), SourceRange(Spell, Spell));
-    Use use{{spell, 0, SymbolKind::File, Role::Dynamic}, it->second.first};
+    Use use{{spell, 0, SymbolKind::File, Role::Dynamic}, lid};
     switch (kind) {
     case SymbolKind::Func:
       db->ToFunc(usr).uses.push_back(use);
@@ -630,15 +637,26 @@ public:
     FE = SM.getFileEntryForID(LocFID);
     if (!FE)
       return true;
-    IndexFile *db = param.ConsumeFile(*FE);
-    if (!db)
-      return true;
+    int lid = -1;
+    IndexFile *db;
+    if (g_config->index.multiVersion) {
+      db = param.ConsumeFile(*SM.getFileEntryForID(SM.getMainFileID()));
+      if (!db)
+        return true;
+      param.SeenFile(*FE);
+      if (!SM.isInMainFile(R.getBegin()))
+        lid = GetFileLID(db, SM, *FE);
+    } else {
+      db = param.ConsumeFile(*FE);
+      if (!db)
+        return true;
+    }
 
     const Decl *OrigD = ASTNode.OrigD;
     const DeclContext *SemDC = OrigD->getDeclContext();
     const DeclContext *LexDC = ASTNode.ContainerDC;
     Role role = static_cast<Role>(Roles);
-    db->language = std::max(db->language, GetDeclLanguage(OrigD));
+    db->language = LanguageId((int)db->language | (int)GetDeclLanguage(OrigD));
 
     bool is_decl = Roles & uint32_t(index::SymbolRole::Declaration);
     bool is_def = Roles & uint32_t(index::SymbolRole::Definition);
@@ -653,18 +671,18 @@ public:
 
     auto do_def_decl = [&](auto *entity) {
       if (is_def) {
-        entity->def.spell = GetUse(db, loc, SemDC, role);
+        entity->def.spell = GetUse(db, lid, loc, SemDC, role);
         SourceRange R = OrigD->getSourceRange();
         entity->def.extent =
-            GetUse(db,
+            GetUse(db, lid,
                    R.getBegin().isFileID()
                        ? FromTokenRange(SM, Lang, OrigD->getSourceRange())
                        : loc,
                    LexDC, Role::None);
       } else if (is_decl) {
-        entity->declarations.push_back(GetUse(db, loc, LexDC, role));
+        entity->declarations.push_back(GetUse(db, lid, loc, LexDC, role));
       } else {
-        entity->uses.push_back(GetUse(db, loc, LexDC, role));
+        entity->uses.push_back(GetUse(db, lid, loc, LexDC, role));
         return;
       }
       if (entity->def.comments[0] == '\0' && g_config->index.comments)
@@ -750,10 +768,11 @@ public:
               if (SM.getFileID(R1.getBegin()) == LocFID) {
                 IndexType &type1 = db->ToType(usr1);
                 SourceLocation L1 = D1->getLocation();
-                type1.def.spell = GetUse(db, FromTokenRange(SM, Lang, {L1, L1}),
-                                         SemDC, Role::Definition);
-                type1.def.extent =
-                    GetUse(db, FromTokenRange(SM, Lang, R1), LexDC, Role::None);
+                type1.def.spell =
+                    GetUse(db, lid, FromTokenRange(SM, Lang, {L1, L1}), SemDC,
+                           Role::Definition);
+                type1.def.extent = GetUse(db, lid, FromTokenRange(SM, Lang, R1),
+                                          LexDC, Role::None);
                 type1.def.detailed_name = Intern(info1->short_name);
                 type1.def.short_name_size = int16_t(info1->short_name.size());
                 type1.def.kind = lsSymbolKind::TypeParameter;
@@ -768,10 +787,10 @@ public:
         // e.g. lambda parameter
         SourceLocation L = OrigD->getLocation();
         if (SM.getFileID(L) == LocFID) {
-          var->def.spell = GetUse(db, FromTokenRange(SM, Lang, {L, L}), SemDC,
-                                  Role::Definition);
+          var->def.spell = GetUse(db, lid, FromTokenRange(SM, Lang, {L, L}),
+                                  SemDC, Role::Definition);
           var->def.extent =
-              GetUse(db, FromTokenRange(SM, Lang, OrigD->getSourceRange()),
+              GetUse(db, lid, FromTokenRange(SM, Lang, OrigD->getSourceRange()),
                      LexDC, Role::None);
         }
       }
@@ -868,10 +887,10 @@ public:
             std::tie(RD, offset) = Stack.back();
             Stack.pop_back();
             if (!RD->isCompleteDefinition() || RD->isDependentType() ||
-                !ValidateRecord(RD))
+                RD->isInvalidDecl() || !ValidateRecord(RD))
               offset = -1;
             for (FieldDecl *FD : RD->fields()) {
-              int offset1 = offset >= 0 ? offset + Ctx->getFieldOffset(FD) : -1;
+              int offset1 = offset < 0 ? -1 : offset + Ctx->getFieldOffset(FD);
               if (FD->getIdentifier())
                 type->def.vars.emplace_back(GetUsr(FD), offset1);
               else if (const auto *RT1 = FD->getType()->getAs<RecordType>()) {
@@ -928,7 +947,8 @@ public:
             SourceLocation L1 = TSI->getTypeLoc().getBeginLoc();
             if (SM.getFileID(L1) == LocFID) {
               Range loc1 = FromTokenRange(SM, Lang, {L1, L1});
-              type1.uses.push_back(GetUse(db, loc1, LexDC, Role::Reference));
+              type1.uses.push_back(
+                  GetUse(db, lid, loc1, LexDC, Role::Reference));
             }
           }
         }
@@ -1081,8 +1101,7 @@ public:
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {
-      auto [Name, usr] = GetMacro(Tok);
-      IndexVar &var = db->ToVar(usr);
+      IndexVar &var = db->ToVar(GetMacro(Tok).second);
       var.uses.push_back(
           {{FromTokenRange(SM, param.Ctx->getLangOpts(), {L, L}, &UniqueID), 0,
             SymbolKind::File, Role::Dynamic}});

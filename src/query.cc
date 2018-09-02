@@ -29,7 +29,7 @@ limitations under the License.
 
 namespace {
 
-void AssignFileId(const Lid2file_id &, int file_id, SymbolRef &ref) {
+void AssignFileId(const Lid2file_id &lid2file_id, int file_id, SymbolRef &ref) {
   if (ref.kind == SymbolKind::File)
     ref.usr = file_id;
 }
