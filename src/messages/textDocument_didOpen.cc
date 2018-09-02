@@ -66,7 +66,7 @@ struct Handler_TextDocumentDidOpen
     }
 
     clang_complete->NotifyView(path);
-    if (g_config->diagnostics.onParse)
+    if (g_config->diagnostics.onOpen)
       clang_complete->DiagnosticsUpdate({params.textDocument.uri});
   }
 };

@@ -5,13 +5,14 @@
 
 #include "serializer.h"
 
-#include <assert.h>
+#include <string.h>
 
 class BinaryReader : public Reader {
   const char *p_;
 
   template <typename T> T Get() {
-    auto ret = *reinterpret_cast<const T *>(p_);
+    T ret;
+    memcpy(&ret, p_, sizeof(T));
     p_ += sizeof(T);
     return ret;
   }
@@ -77,7 +78,7 @@ class BinaryWriter : public Writer {
   template <typename T> void Pack(T x) {
     auto i = buf_.size();
     buf_.resize(i + sizeof(x));
-    *reinterpret_cast<T *>(buf_.data() + i) = x;
+    memcpy(buf_.data() + i, &x, sizeof(x));
   }
 
   void VarUInt(uint64_t n) {

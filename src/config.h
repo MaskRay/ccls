@@ -137,8 +137,8 @@ struct Config {
     //   xxx: at most every xxx milliseconds
     int frequencyMs = 0;
 
-    // If true, diagnostics from a full document parse will be reported.
-    bool onParse = true;
+    // If true, diagnostics will be reported in textDocument/didOpen.
+    bool onOpen = true;
 
     // If true, diagnostics from typing will be reported.
     bool onType = true;
@@ -159,14 +159,6 @@ struct Config {
   } highlight;
 
   struct Index {
-    // Attempt to convert calls of make* functions to constructors based on
-    // hueristics.
-    //
-    // For example, this will show constructor calls for std::make_unique
-    // invocations. Specifically, ccls will try to attribute a ctor call
-    // whenever the function name starts with make (ignoring case).
-    bool attributeMakeCallsToCtor = true;
-
     // If a translation unit's absolute path matches any EMCAScript regex in the
     // whitelist, or does not match any regex in the blacklist, it will be
     // indexed. To only index files in the whitelist, add ".*" to the blacklist.
@@ -183,6 +175,9 @@ struct Config {
 
     // If false, the indexer will be disabled.
     bool enabled = true;
+
+    // If not 0, a file will be indexed in each tranlation unit that includes it.
+    int multiVersion = 0;
 
     // Allow indexing on textDocument/didChange.
     // May be too slow for big projects, so it is off by default.
@@ -226,12 +221,11 @@ MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, dropOldRequests,
                     detailedLabel, filterAndSort, includeBlacklist,
                     includeMaxPathSize, includeSuffixWhitelist,
                     includeWhitelist);
-MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onParse,
+MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onOpen,
                     onType, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
-MAKE_REFLECT_STRUCT(Config::Index, attributeMakeCallsToCtor, blacklist,
-                    comments, enabled, onDidChange, reparseForDependency,
-                    threads, whitelist);
+MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
+                    onDidChange, reparseForDependency, threads, whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,

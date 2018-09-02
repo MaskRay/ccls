@@ -229,7 +229,7 @@ struct IndexFile {
   std::string path;
   std::vector<std::string> args;
   int64_t last_write_time = 0;
-  LanguageId language = LanguageId::Unknown;
+  LanguageId language = LanguageId::C;
 
   // uid2lid_and_path is used to generate lid2path, but not serialized.
   std::unordered_map<llvm::sys::fs::UniqueID, std::pair<int, std::string>>
