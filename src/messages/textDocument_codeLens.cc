@@ -116,7 +116,8 @@ struct Handler_TextDocumentCodeLens
     common.working_files = working_files;
     common.working_file = working_files->GetFileByFilename(file->def->path);
 
-    for (SymbolRef sym : file->def->outline) {
+    for (auto [sym, refcnt] : file->outline2refcnt) {
+      if (refcnt <= 0) continue;
       // NOTE: We OffsetColumn so that the code lens always show up in a
       // predictable order. Otherwise, the client may randomize it.
       Use use{{sym.range, sym.usr, sym.kind, sym.role}, file->id};

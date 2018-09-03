@@ -117,12 +117,14 @@ struct Handler_TextDocumentDefinition
       }
       auto locs = GetLsLocationExs(db, working_files, uses);
       out.result.insert(out.result.end(), locs.begin(), locs.end());
-      if (!out.result.empty())
-        break;
     }
 
-    // No symbols - check for includes.
-    if (out.result.empty()) {
+    if (out.result.size()) {
+      std::sort(out.result.begin(), out.result.end());
+      out.result.erase(std::unique(out.result.begin(), out.result.end()),
+                       out.result.end());
+    } else {
+      // Check #include
       for (const IndexInclude &include : file->def->includes) {
         if (include.line == ls_pos.line) {
           lsLocationEx result;

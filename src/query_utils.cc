@@ -159,29 +159,28 @@ std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
   return ret;
 }
 
-std::optional<lsPosition> GetLsPosition(WorkingFile *working_file,
+std::optional<lsPosition> GetLsPosition(WorkingFile *wfile,
                                         const Position &position) {
-  if (!working_file)
+  if (!wfile || wfile->index_lines.empty())
     return lsPosition{position.line, position.column};
 
   int column = position.column;
   if (std::optional<int> start =
-          working_file->GetBufferPosFromIndexPos(position.line, &column, false))
+          wfile->GetBufferPosFromIndexPos(position.line, &column, false))
     return lsPosition{*start, column};
   return std::nullopt;
 }
 
-std::optional<lsRange> GetLsRange(WorkingFile *working_file,
+std::optional<lsRange> GetLsRange(WorkingFile *wfile,
                                   const Range &location) {
-  if (!working_file) {
+  if (!wfile || wfile->index_lines.empty())
     return lsRange{lsPosition{location.start.line, location.start.column},
                    lsPosition{location.end.line, location.end.column}};
-  }
 
   int start_column = location.start.column, end_column = location.end.column;
-  std::optional<int> start = working_file->GetBufferPosFromIndexPos(
+  std::optional<int> start = wfile->GetBufferPosFromIndexPos(
       location.start.line, &start_column, false);
-  std::optional<int> end = working_file->GetBufferPosFromIndexPos(
+  std::optional<int> end = wfile->GetBufferPosFromIndexPos(
       location.end.line, &end_column, true);
   if (!start || !end)
     return std::nullopt;
@@ -315,12 +314,13 @@ std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
   return std::nullopt;
 }
 
-std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
+std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *wfile,
                                              QueryFile *file,
                                              lsPosition &ls_pos) {
   std::vector<SymbolRef> symbols;
-  if (working_file) {
-    if (auto line = working_file->GetIndexPosFromBufferPos(
+  // If multiVersion > 0, index may not exist and thus index_lines is empty.
+  if (wfile && wfile->index_lines.size()) {
+    if (auto line = wfile->GetIndexPosFromBufferPos(
             ls_pos.line, &ls_pos.character, false)) {
       ls_pos.line = *line;
     } else {
@@ -329,9 +329,6 @@ std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
     }
   }
 
-  for (SymbolRef sym : file->def->all_symbols)
-    if (sym.range.Contains(ls_pos.line, ls_pos.character))
-      symbols.push_back(sym);
   for (auto [sym, refcnt] : file->symbol2refcnt)
     if (refcnt > 0 && sym.range.Contains(ls_pos.line, ls_pos.character))
       symbols.push_back(sym);

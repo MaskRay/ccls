@@ -18,8 +18,8 @@ limitations under the License.
 #include "query_utils.h"
 using namespace ccls;
 
-MAKE_REFLECT_STRUCT(QueryFile::Def, path, args, language, outline, all_symbols,
-                    skipped_ranges, dependencies);
+MAKE_REFLECT_STRUCT(QueryFile::Def, path, args, language, skipped_ranges,
+                    dependencies);
 
 namespace {
 MethodType kMethodType = "$ccls/fileInfo";

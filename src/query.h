@@ -21,6 +21,21 @@ limitations under the License.
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 
+namespace llvm {
+template <> struct DenseMapInfo<SymbolRef> {
+  static inline SymbolRef getEmptyKey() { return {}; }
+  static inline SymbolRef getTombstoneKey() {
+    SymbolRef ret{};
+    ret.usr = -1;
+    return ret;
+  }
+  static unsigned getHashValue(SymbolRef sym) {
+    return std::hash<SymbolRef>()(sym);
+  }
+  static bool isEqual(SymbolRef l, SymbolRef r) { return l == r; }
+};
+}
+
 struct QueryFile {
   struct Def {
     std::string path;
@@ -28,10 +43,6 @@ struct QueryFile {
     LanguageId language;
     // Includes in the file.
     std::vector<IndexInclude> includes;
-    // Outline of the file (ie, for code lens).
-    std::vector<SymbolRef> outline;
-    // Every symbol found in the file (ie, for goto definition)
-    std::vector<SymbolRef> all_symbols;
     // Parts of the file which are disabled.
     std::vector<Range> skipped_ranges;
     // Used by |$ccls/freshenIndex|.
@@ -42,7 +53,8 @@ struct QueryFile {
 
   int id = -1;
   std::optional<Def> def;
-  std::unordered_map<SymbolRef, int> symbol2refcnt;
+  llvm::DenseMap<SymbolRef, int> symbol2refcnt;
+  llvm::DenseMap<SymbolRef, int> outline2refcnt;
 };
 
 template <typename Q, typename QDef> struct QueryEntity {
@@ -109,7 +121,7 @@ struct IndexUpdate {
 
   // Function updates.
   int funcs_hint;
-  std::vector<Usr> funcs_removed;
+  std::vector<std::pair<Usr, QueryFunc::Def>> funcs_removed;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_def_update;
   UseUpdate funcs_declarations;
   UseUpdate funcs_uses;
@@ -117,7 +129,7 @@ struct IndexUpdate {
 
   // Type updates.
   int types_hint;
-  std::vector<Usr> types_removed;
+  std::vector<std::pair<Usr, QueryType::Def>> types_removed;
   std::vector<std::pair<Usr, QueryType::Def>> types_def_update;
   UseUpdate types_declarations;
   UseUpdate types_uses;
@@ -126,7 +138,7 @@ struct IndexUpdate {
 
   // Variable updates.
   int vars_hint;
-  std::vector<Usr> vars_removed;
+  std::vector<std::pair<Usr, QueryVar::Def>> vars_removed;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
   UseUpdate vars_declarations;
   UseUpdate vars_uses;
@@ -154,8 +166,9 @@ struct DB {
   std::vector<QueryType> types;
   std::vector<QueryVar> vars;
 
+  template <typename Def>
   void RemoveUsrs(SymbolKind kind, int file_id,
-                  const std::vector<Usr> &to_remove);
+                  const std::vector<std::pair<Usr, Def>> &to_remove);
   // Insert the contents of |update| into |db|.
   void ApplyIndexUpdate(IndexUpdate *update);
   int GetFileId(const std::string &path);

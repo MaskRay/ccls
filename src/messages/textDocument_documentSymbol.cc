@@ -65,20 +65,20 @@ struct Handler_TextDocumentDocumentSymbol
     if (params.startLine >= 0) {
       Out_SimpleDocumentSymbol out;
       out.id = request->id;
-      for (SymbolRef sym : file->def->all_symbols)
-        if (std::optional<lsLocation> location = GetLsLocation(
-                db, working_files,
-                Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
-          if (params.startLine <= sym.range.start.line &&
-              sym.range.start.line <= params.endLine)
-            out.result.push_back(location->range);
-        }
+      for (auto [sym, refcnt] : file->symbol2refcnt)
+        if (refcnt > 0 && params.startLine <= sym.range.start.line &&
+            sym.range.start.line <= params.endLine)
+          if (auto ls_loc = GetLsLocation(
+                  db, working_files,
+                  Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id}))
+            out.result.push_back(ls_loc->range);
       std::sort(out.result.begin(), out.result.end());
       pipeline::WriteStdout(kMethodType, out);
     } else {
       Out_TextDocumentDocumentSymbol out;
       out.id = request->id;
-      for (SymbolRef sym : file->def->outline)
+      for (auto [sym, refcnt] : file->outline2refcnt) {
+        if (refcnt <= 0) continue;
         if (std::optional<lsSymbolInformation> info =
                 GetSymbolInfo(db, working_files, sym, false)) {
           if (sym.kind == SymbolKind::Var) {
@@ -94,6 +94,7 @@ struct Handler_TextDocumentDocumentSymbol
             out.result.push_back(*info);
           }
         }
+      }
       pipeline::WriteStdout(kMethodType, out);
     }
   }
