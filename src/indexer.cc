@@ -5,6 +5,7 @@
 
 #include "clang_tu.h"
 #include "log.hh"
+#include "match.h"
 #include "platform.h"
 #include "serializer.h"
 using ccls::Intern;
@@ -32,8 +33,11 @@ namespace {
 
 constexpr int kInitializerMaxLines = 3;
 
+GroupMatch *multiVersionMatcher;
+
 struct IndexParam {
   std::unordered_map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
+  std::unordered_map<llvm::sys::fs::UniqueID, bool> UID2multi;
   std::unordered_map<std::string, FileContents> file_contents;
   std::unordered_map<std::string, int64_t> file2write_time;
   struct DeclInfo {
@@ -68,6 +72,13 @@ struct IndexParam {
   IndexFile *ConsumeFile(const FileEntry &FE) {
     SeenFile(FE);
     return file_consumer->TryConsumeFile(FE, &file_contents);
+  }
+
+  bool UseMultiVersion(const FileEntry &FE) {
+    auto it = UID2multi.try_emplace(FE.getUniqueID());
+    if (it.second)
+      it.first->second = multiVersionMatcher->IsMatch(FileName(FE));
+    return it.first->second;
   }
 };
 
@@ -624,7 +635,7 @@ public:
       return true;
     int lid = -1;
     IndexFile *db;
-    if (g_config->index.multiVersion) {
+    if (g_config->index.multiVersion && param.UseMultiVersion(*FE)) {
       db = param.ConsumeFile(*SM.getFileEntryForID(SM.getMainFileID()));
       if (!db)
         return true;
@@ -1165,6 +1176,11 @@ template <typename T> void Uniquify(std::vector<T> &a) {
 }
 
 namespace ccls::idx {
+void Init() {
+  multiVersionMatcher = new GroupMatch(g_config->index.multiVersionWhitelist,
+                                       g_config->index.multiVersionBlacklist);
+}
+
 std::vector<std::unique_ptr<IndexFile>>
 Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
       const std::vector<std::string> &args,

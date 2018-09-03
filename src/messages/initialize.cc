@@ -466,6 +466,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
                                 EscapeFileName(g_config->projectRoot));
 
     diag_pub->Init();
+    idx::Init();
     semantic_cache->Init();
 
     // Open up / load the project.
