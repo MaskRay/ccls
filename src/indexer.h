@@ -277,6 +277,7 @@ struct IndexFile {
 };
 
 namespace ccls::idx {
+void Init();
 std::vector<std::unique_ptr<IndexFile>>
 Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
       const std::vector<std::string> &args,

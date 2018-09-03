@@ -191,6 +191,11 @@ struct Config {
     // If not 0, a file will be indexed in each tranlation unit that includes it.
     int multiVersion = 0;
 
+    // If multiVersion != 0, files that match blacklist but not whitelist will
+    // still only be indexed for one version.
+    std::vector<std::string> multiVersionBlacklist;
+    std::vector<std::string> multiVersionWhitelist;
+
     // Allow indexing on textDocument/didChange.
     // May be too slow for big projects, so it is off by default.
     bool onDidChange = false;
@@ -237,7 +242,8 @@ MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onOpen,
                     onType, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
-                    onDidChange, reparseForDependency, threads, whitelist);
+                    multiVersionBlacklist, multiVersionWhitelist, onDidChange,
+                    reparseForDependency, threads, whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);
 MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
