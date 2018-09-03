@@ -75,14 +75,17 @@ struct Handler_TextDocumentDefinition
     Out_TextDocumentDefinition out;
     out.id = request->id;
 
+    Maybe<Range> range;
     Maybe<Use> on_def;
-    bool has_symbol = false;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
     lsPosition &ls_pos = params.position;
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos)) {
+      if (!range)
+        range = sym.range;
+      else if (!(*range == sym.range))
+        break;
       // Found symbol. Return definition.
-      has_symbol = true;
 
       // Special cases which are handled:
       //  - symbol has declaration but no definition (ie, pure virtual)
@@ -130,12 +133,12 @@ struct Handler_TextDocumentDefinition
           lsLocationEx result;
           result.uri = lsDocumentUri::FromPath(include.resolved_path);
           out.result.push_back(result);
-          has_symbol = true;
+          range = {{0, 0}, {0, 0}};
           break;
         }
       }
       // Find the best match of the identifier at point.
-      if (!has_symbol) {
+      if (!range) {
         lsPosition position = request->params.position;
         const std::string &buffer = wfile->buffer_content;
         std::string_view query = LexIdentifierAroundPos(position, buffer);

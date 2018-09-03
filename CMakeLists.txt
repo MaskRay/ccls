@@ -216,6 +216,7 @@ target_sources(ccls PRIVATE
   src/messages/ccls_freshenIndex.cc
   src/messages/ccls_inheritanceHierarchy.cc
   src/messages/ccls_memberHierarchy.cc
+  src/messages/ccls_navigate.cc
   src/messages/ccls_vars.cc
   src/messages/exit.cc
   src/messages/initialize.cc
