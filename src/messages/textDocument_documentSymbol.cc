@@ -10,17 +10,19 @@ using namespace clang;
 namespace {
 MethodType kMethodType = "textDocument/documentSymbol";
 
-struct lsDocumentSymbolParams {
-  lsTextDocumentIdentifier textDocument;
-  int startLine = -1;
-  int endLine = -1;
-};
-MAKE_REFLECT_STRUCT(lsDocumentSymbolParams, textDocument, startLine, endLine);
-
 struct In_TextDocumentDocumentSymbol : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
-  lsDocumentSymbolParams params;
+  struct Params {
+    lsTextDocumentIdentifier textDocument;
+    // false: outline; true: all symbols
+    bool all = false;
+    // If >= 0, return Range[] instead of SymbolInformation[] to reduce output.
+    int startLine = -1;
+    int endLine = -1;
+  } params;
 };
+MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol::Params, textDocument, all,
+                    startLine, endLine);
 MAKE_REFLECT_STRUCT(In_TextDocumentDocumentSymbol, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentDocumentSymbol);
 
@@ -50,10 +52,12 @@ struct Handler_TextDocumentDocumentSymbol
                         params.textDocument.uri.GetPath(), &file, &file_id))
       return;
 
+    const auto &symbol2refcnt =
+        params.all ? file->symbol2refcnt : file->outline2refcnt;
     if (params.startLine >= 0) {
       Out_SimpleDocumentSymbol out;
       out.id = request->id;
-      for (auto [sym, refcnt] : file->symbol2refcnt)
+      for (auto [sym, refcnt] : symbol2refcnt)
         if (refcnt > 0 && params.startLine <= sym.range.start.line &&
             sym.range.start.line <= params.endLine)
           if (auto ls_loc = GetLsLocation(
@@ -65,7 +69,7 @@ struct Handler_TextDocumentDocumentSymbol
     } else {
       Out_TextDocumentDocumentSymbol out;
       out.id = request->id;
-      for (auto [sym, refcnt] : file->outline2refcnt) {
+      for (auto [sym, refcnt] : symbol2refcnt) {
         if (refcnt <= 0) continue;
         if (std::optional<lsSymbolInformation> info =
                 GetSymbolInfo(db, working_files, sym, false)) {
