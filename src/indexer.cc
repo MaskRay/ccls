@@ -65,9 +65,9 @@ struct IndexParam {
     }
   }
 
-  IndexFile *ConsumeFile(const FileEntry &File) {
-    SeenFile(File);
-    return file_consumer->TryConsumeFile(File, &file_contents);
+  IndexFile *ConsumeFile(const FileEntry &FE) {
+    SeenFile(FE);
+    return file_consumer->TryConsumeFile(FE, &file_contents);
   }
 };
 
