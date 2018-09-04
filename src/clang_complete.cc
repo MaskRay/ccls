@@ -600,7 +600,7 @@ void DiagnosticQueryMain(ClangCompleteManager *manager) {
     // Fetching the completion request blocks until we have a request.
     ClangCompleteManager::DiagnosticRequest request =
         manager->diagnostic_request_.Dequeue();
-    if (!g_config->diagnostics.onType)
+    if (!g_config->diagnostics.onChange)
       continue;
     std::string path = request.document.uri.GetPath();
 
