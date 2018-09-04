@@ -20,6 +20,7 @@ using namespace ccls;
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Tooling/CompilationDatabase.h>
 #include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringSet.h>
 #include <llvm/Support/LineIterator.h>
 using namespace clang;
@@ -84,7 +85,7 @@ struct ProjectProcessor {
           args.push_back(arg.substr(5));
       } else if (arg == "%clang") {
         args.push_back(lang == LanguageId::Cpp ? "clang++" : "clang");
-      } else {
+      } else if (!llvm::is_contained(g_config->clang.excludeArgs, arg)) {
         args.push_back(arg);
       }
     }
