@@ -59,6 +59,9 @@ struct Config {
   SerializeFormat cacheFormat = SerializeFormat::Binary;
 
   struct Clang {
+    // Arguments that should be excluded, e.g. ["-fopenmp", "-Wall"]
+    std::vector<std::string> excludeArgs;
+
     // Additional arguments to pass to clang.
     std::vector<std::string> extraArgs;
 
@@ -149,11 +152,11 @@ struct Config {
     //   xxx: at most every xxx milliseconds
     int frequencyMs = 0;
 
-    // If true, diagnostics will be reported in textDocument/didOpen.
-    bool onOpen = true;
+    // If true, diagnostics will be reported for textDocument/didChange.
+    bool onChange = true;
 
-    // If true, diagnostics from typing will be reported.
-    bool onType = true;
+    // If true, diagnostics will be reported for textDocument/didOpen.
+    bool onOpen = true;
 
     std::vector<std::string> whitelist;
   } diagnostics;
@@ -231,15 +234,15 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
-MAKE_REFLECT_STRUCT(Config::Clang, extraArgs, resourceDir);
+MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, resourceDir);
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, dropOldRequests,
                     detailedLabel, filterAndSort, includeBlacklist,
                     includeMaxPathSize, includeSuffixWhitelist,
                     includeWhitelist);
-MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onOpen,
-                    onType, whitelist)
+MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onChange,
+                    onOpen, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
                     multiVersionBlacklist, multiVersionWhitelist, onDidChange,
