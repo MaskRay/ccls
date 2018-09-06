@@ -229,21 +229,19 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
 
   // References (Use &use) in this function are important to update file_id.
   auto Ref = [&](std::unordered_map<int, int> &lid2fid, Usr usr,
-                 SymbolKind kind, Use &use, int delta) {
+                 SymbolKind kind, Use &use, int delta, int k = 1) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
-    int &v =
-    files[use.file_id]
+    if (k & 1) {
+      int &v =
+        files[use.file_id]
         .symbol2refcnt[SymbolRef{{use.range, usr, kind, use.role}}];
-    v += delta;
-    assert(v >= 0);
-  };
-  auto RefO = [&](std::unordered_map<int, int> &lid2fid, Usr usr,
-                 SymbolKind kind, Use &use, int delta) {
-    use.file_id =
-        use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
-    files[use.file_id]
-        .outline2refcnt[SymbolRef{{use.range, usr, kind, use.role}}] += delta;
+      v += delta;
+      assert(v >= 0);
+    }
+    if (k & 2)
+      files[use.file_id]
+          .outline2refcnt[SymbolRef{{use.range, usr, kind, use.role}}] += delta;
   };
 
   auto UpdateUses = [&](Usr usr, SymbolKind kind,
@@ -295,15 +293,15 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
     if (def.spell)
       Ref(prev_lid2file_id, usr, SymbolKind::Func, *def.spell, -1);
     if (def.extent)
-      RefO(prev_lid2file_id, usr, SymbolKind::Func, *def.extent, -1);
+      Ref(prev_lid2file_id, usr, SymbolKind::Func, *def.extent, -1, 2);
   }
   RemoveUsrs(SymbolKind::Func, u->file_id, u->funcs_removed);
   Update(lid2file_id, u->file_id, std::move(u->funcs_def_update));
   for (auto &[usr, del_add]: u->funcs_declarations) {
     for (Use &use : del_add.first)
-      Ref(prev_lid2file_id, usr, SymbolKind::Func, use, -1);
+      Ref(prev_lid2file_id, usr, SymbolKind::Func, use, -1, 3);
     for (Use &use : del_add.second)
-      Ref(lid2file_id, usr, SymbolKind::Func, use, 1);
+      Ref(lid2file_id, usr, SymbolKind::Func, use, 1, 3);
   }
   REMOVE_ADD(func, declarations);
   REMOVE_ADD(func, derived);
@@ -319,15 +317,15 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
     if (def.spell)
       Ref(prev_lid2file_id, usr, SymbolKind::Type, *def.spell, -1);
     if (def.extent)
-      RefO(prev_lid2file_id, usr, SymbolKind::Type, *def.extent, -1);
+      Ref(prev_lid2file_id, usr, SymbolKind::Type, *def.extent, -1, 2);
   }
   RemoveUsrs(SymbolKind::Type, u->file_id, u->types_removed);
   Update(lid2file_id, u->file_id, std::move(u->types_def_update));
   for (auto &[usr, del_add]: u->types_declarations) {
     for (Use &use : del_add.first)
-      Ref(prev_lid2file_id, usr, SymbolKind::Type, use, -1);
+      Ref(prev_lid2file_id, usr, SymbolKind::Type, use, -1, 3);
     for (Use &use : del_add.second)
-      Ref(lid2file_id, usr, SymbolKind::Type, use, 1);
+      Ref(lid2file_id, usr, SymbolKind::Type, use, 1, 3);
   }
   REMOVE_ADD(type, declarations);
   REMOVE_ADD(type, derived);
@@ -344,15 +342,15 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
     if (def.spell)
       Ref(prev_lid2file_id, usr, SymbolKind::Var, *def.spell, -1);
     if (def.extent)
-      RefO(prev_lid2file_id, usr, SymbolKind::Var, *def.extent, -1);
+      Ref(prev_lid2file_id, usr, SymbolKind::Var, *def.extent, -1, 2);
   }
   RemoveUsrs(SymbolKind::Var, u->file_id, u->vars_removed);
   Update(lid2file_id, u->file_id, std::move(u->vars_def_update));
   for (auto &[usr, del_add]: u->vars_declarations) {
     for (Use &use : del_add.first)
-      Ref(prev_lid2file_id, usr, SymbolKind::Var, use, -1);
+      Ref(prev_lid2file_id, usr, SymbolKind::Var, use, -1, 3);
     for (Use &use : del_add.second)
-      Ref(lid2file_id, usr, SymbolKind::Var, use, 1);
+      Ref(lid2file_id, usr, SymbolKind::Var, use, 1, 3);
   }
   REMOVE_ADD(var, declarations);
   for (auto &[usr, p] : u->vars_uses)
