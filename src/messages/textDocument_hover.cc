@@ -24,6 +24,11 @@ GetHover(DB *db, LanguageId lang, SymbolRef sym, int file_id) {
           break;
       }
     }
+    if (!def && entity.def.size()) {
+      def = &entity.def[0];
+      if (def->comments[0])
+        comments = def->comments;
+    }
     if (def) {
       lsMarkedString m;
       m.language = LanguageIdentifier(lang);
