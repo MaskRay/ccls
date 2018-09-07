@@ -209,7 +209,6 @@ target_sources(ccls PRIVATE
 )
 
 target_sources(ccls PRIVATE
-  src/messages/ccls_base.cc
   src/messages/ccls_callHierarchy.cc
   src/messages/ccls_callers.cc
   src/messages/ccls_fileInfo.cc

@@ -3,7 +3,6 @@
 
 #include "message_handler.h"
 #include "pipeline.hh"
-using namespace ccls;
 #include "query_utils.h"
 using namespace ccls;
 
