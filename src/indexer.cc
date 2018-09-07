@@ -999,7 +999,6 @@ public:
       break;
     case Decl::EnumConstant:
       var->def.kind = lsSymbolKind::EnumMember;
-      // TODO Pretty printer may print =
       if (is_def && strchr(var->def.detailed_name, '=') == nullptr) {
         auto *ECD = cast<EnumConstantDecl>(D);
         const auto &Val = ECD->getInitVal();

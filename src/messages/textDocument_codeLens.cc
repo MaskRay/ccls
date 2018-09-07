@@ -8,19 +8,19 @@
 #include "query_utils.h"
 using namespace ccls;
 
+#include <unordered_set>
+
 namespace {
 MethodType kMethodType = "textDocument/codeLens";
-
-struct lsDocumentCodeLensParams {
-  lsTextDocumentIdentifier textDocument;
-};
-MAKE_REFLECT_STRUCT(lsDocumentCodeLensParams, textDocument);
 
 using TCodeLens = lsCodeLens<lsCodeLensUserData, lsCodeLensCommandArguments>;
 struct In_TextDocumentCodeLens : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
-  lsDocumentCodeLensParams params;
+  struct Params {
+    lsTextDocumentIdentifier textDocument;
+  } params;
 };
+MAKE_REFLECT_STRUCT(In_TextDocumentCodeLens::Params, textDocument);
 MAKE_REFLECT_STRUCT(In_TextDocumentCodeLens, id, params);
 REGISTER_IN_MESSAGE(In_TextDocumentCodeLens);
 
@@ -84,19 +84,17 @@ struct Handler_TextDocumentCodeLens
     : BaseMessageHandler<In_TextDocumentCodeLens> {
   MethodType GetMethodType() const override { return kMethodType; }
   void Run(In_TextDocumentCodeLens *request) override {
+    auto &params = request->params;
     Out_TextDocumentCodeLens out;
     out.id = request->id;
 
-    lsDocumentUri file_as_uri = request->params.textDocument.uri;
-    std::string path = file_as_uri.GetPath();
-
+    std::string path = params.textDocument.uri.GetPath();
     clang_complete->NotifyView(path);
 
     QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
-                        request->params.textDocument.uri.GetPath(), &file)) {
+                        params.textDocument.uri.GetPath(), &file))
       return;
-    }
 
     CommonCodeLensParams common;
     common.result = &out.result;
@@ -104,8 +102,10 @@ struct Handler_TextDocumentCodeLens
     common.working_files = working_files;
     common.working_file = working_files->GetFileByFilename(file->def->path);
 
+    std::unordered_set<Range> seen;
     for (auto [sym, refcnt] : file->outline2refcnt) {
-      if (refcnt <= 0) continue;
+      if (refcnt <= 0 || !seen.insert(sym.range).second)
+        continue;
       // NOTE: We OffsetColumn so that the code lens always show up in a
       // predictable order. Otherwise, the client may randomize it.
       Use use{{sym.range, sym.usr, sym.kind, sym.role}, file->id};
