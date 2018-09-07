@@ -550,7 +550,7 @@ void CompletionPreloadMain(ClangCompleteManager *completion_manager) {
   }
 }
 
-void CompletionQueryMain(ClangCompleteManager *completion_manager) {
+void CompletionMain(ClangCompleteManager *completion_manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<ClangCompleteManager::CompletionRequest> request =
@@ -588,7 +588,7 @@ void CompletionQueryMain(ClangCompleteManager *completion_manager) {
     FOpts.SkipFunctionBodies = true;
     CI->getLangOpts()->CommentOpts.ParseAllComments = true;
 
-    StoreDiags DC;
+    DiagnosticConsumer DC;
     WorkingFiles::Snapshot snapshot =
       completion_manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
@@ -607,7 +607,7 @@ void CompletionQueryMain(ClangCompleteManager *completion_manager) {
   }
 }
 
-void DiagnosticQueryMain(ClangCompleteManager *manager) {
+void DiagnosticMain(ClangCompleteManager *manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     ClangCompleteManager::DiagnosticRequest request =
@@ -709,8 +709,8 @@ ClangCompleteManager::ClangCompleteManager(Project *project,
       completion_sessions_(kMaxCompletionSessions),
       PCH(std::make_shared<PCHContainerOperations>()) {
   std::thread([&]() {
-    set_thread_name("comp-query");
-    ccls::CompletionQueryMain(this);
+    set_thread_name("comp");
+    ccls::CompletionMain(this);
   })
       .detach();
   std::thread([&]() {
@@ -719,8 +719,8 @@ ClangCompleteManager::ClangCompleteManager(Project *project,
   })
       .detach();
   std::thread([&]() {
-    set_thread_name("diag-query");
-    ccls::DiagnosticQueryMain(this);
+    set_thread_name("diag");
+    ccls::DiagnosticMain(this);
   })
       .detach();
 }
