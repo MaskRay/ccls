@@ -41,9 +41,8 @@ namespace pipeline {
 void Init();
 void LaunchStdin();
 void LaunchStdout();
-void Indexer_Main(CompletionManager *complete,
-                  DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
-                  WorkingFiles *working_files);
+void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
+                  WorkingFiles *wfiles);
 void MainLoop();
 
 void Index(const std::string &path, const std::vector<std::string> &args,
