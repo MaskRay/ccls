@@ -3,7 +3,7 @@
 
 #include "pipeline.hh"
 
-#include "clang_complete.h"
+#include "clang_complete.hh"
 #include "config.h"
 #include "include_complete.h"
 #include "log.hh"
@@ -153,7 +153,8 @@ std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
                            IndexFile::kMajorVersion);
 }
 
-bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
+bool Indexer_Parse(CompletionManager *completion,
+                   DiagnosticsPublisher *diag_pub, WorkingFiles *wfiles,
                    Project *project, VFS *vfs, const GroupMatch &matcher) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
@@ -247,12 +248,12 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
 
   std::vector<std::pair<std::string, std::string>> remapped;
   if (g_config->index.onChange) {
-    std::string content = working_files->GetContent(request.path);
+    std::string content = wfiles->GetContent(request.path);
     if (content.size())
       remapped.emplace_back(request.path, content);
   }
-  auto indexes =
-      idx::Index(vfs, entry.directory, path_to_index, entry.args, remapped);
+  auto indexes = idx::Index(completion, wfiles, vfs, entry.directory,
+                            path_to_index, entry.args, remapped);
 
   if (indexes.empty()) {
     if (g_config->index.enabled && request.id.Valid()) {
@@ -336,11 +337,13 @@ void Init() {
   for_stdout = new ThreadedQueue<Stdout_Request>(stdout_waiter);
 }
 
-void Indexer_Main(DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
+void Indexer_Main(CompletionManager *completion,
+                  DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
                   WorkingFiles *working_files) {
   GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
   while (true)
-    if (!Indexer_Parse(diag_pub, working_files, project, vfs, matcher))
+    if (!Indexer_Parse(completion, diag_pub, working_files, project, vfs,
+                       matcher))
       indexer_waiter->Wait(index_request);
 }
 
@@ -452,7 +455,7 @@ void MainLoop() {
   VFS vfs;
   DiagnosticsPublisher diag_pub;
 
-  ClangCompleteManager clang_complete(
+  CompletionManager clang_complete(
       &project, &working_files,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
         diag_pub.Publish(&working_files, path, diagnostics);

@@ -14,7 +14,7 @@
 #include <unordered_map>
 #include <vector>
 
-struct ClangCompleteManager;
+struct CompletionManager;
 struct CodeCompleteCache;
 struct Config;
 class DiagnosticsPublisher;
@@ -107,7 +107,7 @@ struct MessageHandler {
   ImportManager *import_manager = nullptr;
   SemanticHighlightSymbolCache *semantic_cache = nullptr;
   WorkingFiles *working_files = nullptr;
-  ClangCompleteManager *clang_complete = nullptr;
+  CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
   CodeCompleteCache *global_code_complete_cache = nullptr;
   CodeCompleteCache *non_global_code_complete_cache = nullptr;
