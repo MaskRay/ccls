@@ -26,13 +26,8 @@ void AssignFileId(const Lid2file_id &lid2file_id, int file_id, Use &use) {
     use.usr = use.file_id;
 }
 
-void AddRange(std::vector<Use> &into, const std::vector<Use> &from) {
-  into.reserve(into.size() + from.size());
-  for (Use use : from)
-    into.push_back(use);
-}
-
-void AddRange(std::vector<Usr> &into, const std::vector<Usr> &from) {
+template <typename T>
+void AddRange(std::vector<T> &into, const std::vector<T> &from) {
   into.insert(into.end(), from.begin(), from.end());
 }
 
@@ -231,6 +226,12 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
       files[use.file_id]
           .outline2refcnt[SymbolRef{{use.range, usr, kind, use.role}}] += delta;
   };
+  auto RefDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr,
+                     SymbolKind kind, DeclRef &dr, int delta) {
+    Ref(lid2fid, usr, kind, dr, delta, 1);
+    files[dr.file_id]
+        .outline2refcnt[SymbolRef{{dr.extent, usr, kind, dr.role}}] += delta;
+  };
 
   auto UpdateUses = [&](Usr usr, SymbolKind kind,
                         llvm::DenseMap<WrappedUsr, int> &entity_usr,
@@ -286,10 +287,10 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   RemoveUsrs(SymbolKind::Func, u->file_id, u->funcs_removed);
   Update(lid2file_id, u->file_id, std::move(u->funcs_def_update));
   for (auto &[usr, del_add]: u->funcs_declarations) {
-    for (Use &use : del_add.first)
-      Ref(prev_lid2file_id, usr, SymbolKind::Func, use, -1, 3);
-    for (Use &use : del_add.second)
-      Ref(lid2file_id, usr, SymbolKind::Func, use, 1, 3);
+    for (DeclRef &dr : del_add.first)
+      RefDecl(prev_lid2file_id, usr, SymbolKind::Func, dr, -1);
+    for (DeclRef &dr : del_add.second)
+      RefDecl(lid2file_id, usr, SymbolKind::Func, dr, 1);
   }
   REMOVE_ADD(func, declarations);
   REMOVE_ADD(func, derived);
@@ -310,10 +311,10 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   RemoveUsrs(SymbolKind::Type, u->file_id, u->types_removed);
   Update(lid2file_id, u->file_id, std::move(u->types_def_update));
   for (auto &[usr, del_add]: u->types_declarations) {
-    for (Use &use : del_add.first)
-      Ref(prev_lid2file_id, usr, SymbolKind::Type, use, -1, 3);
-    for (Use &use : del_add.second)
-      Ref(lid2file_id, usr, SymbolKind::Type, use, 1, 3);
+    for (DeclRef &dr : del_add.first)
+      RefDecl(prev_lid2file_id, usr, SymbolKind::Type, dr, -1);
+    for (DeclRef &dr : del_add.second)
+      RefDecl(lid2file_id, usr, SymbolKind::Type, dr, 1);
   }
   REMOVE_ADD(type, declarations);
   REMOVE_ADD(type, derived);
@@ -335,10 +336,10 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
   RemoveUsrs(SymbolKind::Var, u->file_id, u->vars_removed);
   Update(lid2file_id, u->file_id, std::move(u->vars_def_update));
   for (auto &[usr, del_add]: u->vars_declarations) {
-    for (Use &use : del_add.first)
-      Ref(prev_lid2file_id, usr, SymbolKind::Var, use, -1, 3);
-    for (Use &use : del_add.second)
-      Ref(lid2file_id, usr, SymbolKind::Var, use, 1, 3);
+    for (DeclRef &dr : del_add.first)
+      RefDecl(prev_lid2file_id, usr, SymbolKind::Var, dr, -1);
+    for (DeclRef &dr : del_add.second)
+      RefDecl(lid2file_id, usr, SymbolKind::Var, dr, 1);
   }
   REMOVE_ADD(var, declarations);
   for (auto &[usr, p] : u->vars_uses)
