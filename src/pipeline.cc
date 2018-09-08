@@ -83,12 +83,18 @@ ThreadedQueue<Index_Request> *index_request;
 ThreadedQueue<IndexUpdate> *on_indexed;
 ThreadedQueue<Stdout_Request> *for_stdout;
 
+struct InMemoryIndexFile {
+  std::string content;
+  IndexFile index;
+};
+std::unordered_map<std::string, InMemoryIndexFile> g_index;
+
 bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
                   const std::vector<std::string> &args,
                   const std::optional<std::string> &from) {
   {
     std::lock_guard<std::mutex> lock(vfs->mutex);
-    if (prev->last_write_time < vfs->state[path].timestamp) {
+    if (prev->mtime < vfs->state[path].timestamp) {
       LOG_S(INFO) << "timestamp changed for " << path
                   << (from ? " (via " + *from + ")" : std::string());
       return true;
@@ -128,6 +134,13 @@ std::string GetCachePath(const std::string &source_file) {
 }
 
 std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
+  if (g_config->cacheDirectory.empty()) {
+    auto it = g_index.find(path);
+    if (it == g_index.end())
+      return nullptr;
+    return std::make_unique<IndexFile>(it->second.index);
+  }
+
   std::string cache_path = GetCachePath(path);
   std::optional<std::string> file_content = ReadContent(cache_path);
   std::optional<std::string> serialized_indexed_content =
@@ -255,7 +268,18 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {
     std::string path = curr->path;
-    if (!(vfs->Stamp(path, curr->last_write_time) || path == path_to_index))
+    bool do_update = path == path_to_index, loaded;
+    {
+      std::lock_guard<std::mutex> lock(vfs->mutex);
+      VFS::State &st = vfs->state[path];
+      if (st.timestamp < curr->mtime) {
+        st.timestamp = curr->mtime;
+        do_update = true;
+      }
+      loaded = st.loaded;
+      st.loaded = true;
+    }
+    if (!do_update)
       continue;
     if (std::string reason; !matcher.IsMatch(path, &reason)) {
       LOG_IF_S(INFO, loud) << "skip emitting and storing index of " << path << " for "
@@ -263,15 +287,22 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
       continue;
     }
 
-    LOG_IF_S(INFO, loud) << "emit index for " << path;
-    prev = RawCacheLoad(path);
+    prev.reset();
+    if (loaded)
+      prev = RawCacheLoad(path);
 
-    // Write current index to disk if requested.
-    {
+    // Store current index.
+    LOG_IF_S(INFO, loud) << "store index for " << path << " (delta: " << !!prev
+                         << ")";
+    if (g_config->cacheDirectory.empty()) {
+      auto it = g_index.insert_or_assign(
+        path, InMemoryIndexFile{curr->file_contents, *curr});
+      std::string().swap(it.first->second.index.file_contents);
+    } else {
       std::string cache_path = GetCachePath(path);
       WriteToFile(cache_path, curr->file_contents);
       WriteToFile(AppendSerializationFormat(cache_path),
-                  Serialize(g_config->cacheFormat, *curr));
+        Serialize(g_config->cacheFormat, *curr));
     }
 
     vfs->Reset(path);
@@ -283,8 +314,6 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
 
     // Build delta update.
     IndexUpdate update = IndexUpdate::CreateDelta(prev.get(), curr.get());
-    LOG_IF_S(INFO, loud) << "store index for " << path << " (delta: " << !!prev
-                         << ")";
 
     on_indexed->PushBack(std::move(update),
                          request.mode != IndexMode::NonInteractive);
@@ -498,7 +527,20 @@ void Index(const std::string &path, const std::vector<std::string> &args,
   index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
 }
 
-std::optional<std::string> LoadCachedFileContents(const std::string &path) {
+std::optional<int64_t> LastWriteTime(const std::string &path) {
+  sys::fs::file_status Status;
+  if (sys::fs::status(path, Status))
+    return {};
+  return sys::toTimeT(Status.getLastModificationTime());
+}
+
+std::optional<std::string> LoadIndexedContent(const std::string &path) {
+  if (g_config->cacheDirectory.empty()) {
+    auto it = g_index.find(path);
+    if (it == g_index.end())
+      return {};
+    return it->second.content;
+  }
   return ReadContent(GetCachePath(path));
 }
 

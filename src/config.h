@@ -9,14 +9,7 @@
 
 /*
 The language client plugin needs to send initialization options in the
-`initialize` request to the ccls language server. The only required option is
-`cacheDirectory`, which is where index files will be stored.
-
-  {
-    "initializationOptions": {
-      "cacheDirectory": "/tmp/ccls"
-    }
-  }
+`initialize` request to the ccls language server.
 
 If necessary, the command line option --init can be used to override
 initialization options specified by the client. For example, in shell syntax:
@@ -35,6 +28,7 @@ struct Config {
   std::string compilationDatabaseDirectory;
   // Cache directory for indexed files, either absolute or relative to the
   // project root.
+  // If empty, cache will be stored in memory.
   std::string cacheDirectory = ".ccls-cache";
   // Cache serialization format.
   //
@@ -42,12 +36,14 @@ struct Config {
   // printed with jq.
   //
   // "binary" uses a compact binary serialization format.
-  // It is not schema-aware and you need to re-index whenever a struct
+  // It is not schema-aware and you need to re-index whenever an internal struct
   // member has changed.
   SerializeFormat cacheFormat = SerializeFormat::Binary;
 
   struct Clang {
     // Arguments that should be excluded, e.g. ["-fopenmp", "-Wall"]
+    //
+    // e.g. If your project is built by GCC and has an option thag clang does not understand.
     std::vector<std::string> excludeArgs;
 
     // Additional arguments to pass to clang.
