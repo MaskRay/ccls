@@ -153,8 +153,7 @@ std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
                            IndexFile::kMajorVersion);
 }
 
-bool Indexer_Parse(CompletionManager *completion,
-                   DiagnosticsPublisher *diag_pub, WorkingFiles *wfiles,
+bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
                    Project *project, VFS *vfs, const GroupMatch &matcher) {
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
@@ -337,13 +336,11 @@ void Init() {
   for_stdout = new ThreadedQueue<Stdout_Request>(stdout_waiter);
 }
 
-void Indexer_Main(CompletionManager *completion,
-                  DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
-                  WorkingFiles *working_files) {
+void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
+                  WorkingFiles *wfiles) {
   GroupMatch matcher(g_config->index.whitelist, g_config->index.blacklist);
   while (true)
-    if (!Indexer_Parse(completion, diag_pub, working_files, project, vfs,
-                       matcher))
+    if (!Indexer_Parse(completion, wfiles, project, vfs, matcher))
       indexer_waiter->Wait(index_request);
 }
 
