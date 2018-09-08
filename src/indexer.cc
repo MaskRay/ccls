@@ -1131,9 +1131,10 @@ public:
   void SourceRangeSkipped(SourceRange Range, SourceLocation EndifLoc) override {
     llvm::sys::fs::UniqueID UniqueID;
     auto range = FromCharRange(SM, param.Ctx->getLangOpts(), Range, &UniqueID);
-    const FileEntry *FE = SM.getFileEntryForID(SM.getFileID(Range.getBegin()));
-    if (IndexFile *db = param.ConsumeFile(*FE))
-      db->skipped_ranges.push_back(range);
+    if (const FileEntry *FE =
+            SM.getFileEntryForID(SM.getFileID(Range.getBegin())))
+      if (IndexFile *db = param.ConsumeFile(*FE))
+        db->skipped_ranges.push_back(range);
   }
 };
 
@@ -1202,7 +1203,7 @@ void Init() {
 std::vector<std::unique_ptr<IndexFile>>
 Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
       const std::vector<std::string> &args,
-      const std::vector<FileContents> &file_contents) {
+      const std::vector<std::pair<std::string, std::string>> &remapped) {
   if (!g_config->index.enabled)
     return {};
 
@@ -1225,6 +1226,14 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     // if (HSOpts.ResourceDir.compare(0, 3, "lib") == 0 &&
     //     HSOpts.UseBuiltinIncludes)
     //   HSOpts.ResourceDir = g_config->clang.resourceDir;
+  }
+  std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
+  for (auto &[filename, content] : remapped) {
+    Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(content));
+    CI->getPreprocessorOpts().addRemappedFile(
+        filename == file ? CI->getFrontendOpts().Inputs[0].getFile()
+                         : StringRef(filename),
+        Bufs.back().get());
   }
 
   DiagnosticConsumer DC;
@@ -1272,6 +1281,8 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     LOG_S(ERROR) << "failed to index " << file;
     return {};
   }
+  for (auto &Buf : Bufs)
+    Buf.release();
 
   auto result = param.file_consumer->TakeLocalState();
   for (std::unique_ptr<IndexFile> &entry : result) {

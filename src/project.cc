@@ -460,10 +460,12 @@ void Project::ForAllFilteredFiles(
 
 void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
   ForAllFilteredFiles([&](int i, const Project::Entry &entry) {
-    bool is_interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
-    pipeline::Index(entry.filename, entry.args, is_interactive, id);
+    bool interactive = wfiles->GetFileByFilename(entry.filename) != nullptr;
+    pipeline::Index(entry.filename, entry.args,
+                    interactive ? IndexMode::Normal : IndexMode::NonInteractive,
+                    id);
   });
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
-  pipeline::Index("", {}, false);
+  pipeline::Index("", {}, IndexMode::NonInteractive);
 }
