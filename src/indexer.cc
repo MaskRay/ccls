@@ -686,12 +686,13 @@ public:
         SourceRange R = OrigD->getSourceRange();
         entity->def.extent =
             GetUse(db, lid,
-                   R.getBegin().isFileID()
-                       ? FromTokenRange(SM, Lang, OrigD->getSourceRange())
-                       : loc,
+                   R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc,
                    LexDC, Role::None);
       } else if (is_decl) {
-        entity->declarations.push_back(GetUse(db, lid, loc, LexDC, role));
+        DeclRef &dr = entity->declarations.emplace_back();
+        static_cast<Use&>(dr) = GetUse(db, lid, loc, LexDC, role);
+        SourceRange R = OrigD->getSourceRange();
+        dr.extent = R.getBegin().isFileID() ? FromTokenRange(SM, Lang, R) : loc;
       } else {
         entity->uses.push_back(GetUse(db, lid, loc, LexDC, role));
         return;
@@ -1085,8 +1086,11 @@ public:
       IndexVar &var = db->ToVar(usr);
       auto range = FromTokenRange(SM, Lang, {L, L}, &UniqueID);
       var.def.kind = lsSymbolKind::Macro;
-      if (var.def.spell)
-        var.declarations.push_back(*var.def.spell);
+      if (var.def.spell) {
+        DeclRef &d = var.declarations.emplace_back();
+        static_cast<Use&>(d) = *var.def.spell;
+        d.extent = var.def.spell->range;
+      }
       var.def.spell = Use{{range, 0, SymbolKind::File, Role::Definition}};
       const MacroInfo *MI = MD->getMacroInfo();
       SourceRange R(MI->getDefinitionLoc(), MI->getDefinitionEndLoc());
@@ -1148,8 +1152,8 @@ public:
 };
 } // namespace
 
-const int IndexFile::kMajorVersion = 17;
-const int IndexFile::kMinorVersion = 1;
+const int IndexFile::kMajorVersion = 18;
+const int IndexFile::kMinorVersion = 0;
 
 IndexFile::IndexFile(llvm::sys::fs::UniqueID UniqueID, const std::string &path,
                      const std::string &contents)
@@ -1348,8 +1352,7 @@ void Reflect(Reader &vis, Use &v) {
     v.usr = strtoull(s + 1, &s, 10);
     v.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
     v.role = static_cast<Role>(strtol(s + 1, &s, 10));
-    if (*s == '|')
-      v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
+    v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
   } else {
     Reflect(vis, static_cast<Reference &>(v));
     Reflect(vis, v.file_id);
@@ -1358,17 +1361,44 @@ void Reflect(Reader &vis, Use &v) {
 void Reflect(Writer &vis, Use &v) {
   if (vis.Format() == SerializeFormat::Json) {
     char buf[99];
-    if (v.file_id == -1)
-      snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d",
-               v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role));
-    else
-      snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d|%d",
-               v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role),
-               v.file_id);
+    snprintf(buf, sizeof buf, "%s|%" PRIu64 "|%d|%d|%d",
+             v.range.ToString().c_str(), v.usr, int(v.kind), int(v.role),
+             v.file_id);
     std::string s(buf);
     Reflect(vis, s);
   } else {
     Reflect(vis, static_cast<Reference &>(v));
     Reflect(vis, v.file_id);
+  }
+}
+
+void Reflect(Reader &vis, DeclRef &v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    std::string t = vis.GetString();
+    char *s = const_cast<char *>(t.c_str());
+    v.range = Range::FromString(s);
+    s = strchr(s, '|') + 1;
+    v.extent = Range::FromString(s);
+    s = strchr(s, '|') + 1;
+    v.usr = strtoull(s, &s, 10);
+    v.kind = static_cast<SymbolKind>(strtol(s + 1, &s, 10));
+    v.role = static_cast<Role>(strtol(s + 1, &s, 10));
+    v.file_id = static_cast<int>(strtol(s + 1, &s, 10));
+  } else {
+    Reflect(vis, static_cast<Use &>(v));
+    Reflect(vis, v.extent);
+  }
+}
+void Reflect(Writer &vis, DeclRef &v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    char buf[99];
+    snprintf(buf, sizeof buf, "%s|%s|%" PRIu64 "|%d|%d|%d",
+             v.range.ToString().c_str(), v.extent.ToString().c_str(), v.usr,
+             int(v.kind), int(v.role), v.file_id);
+    std::string s(buf);
+    Reflect(vis, s);
+  } else {
+    Reflect(vis, static_cast<Use &>(v));
+    Reflect(vis, v.extent);
   }
 }

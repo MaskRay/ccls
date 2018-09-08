@@ -82,10 +82,17 @@ struct Use : Reference {
 };
 MAKE_HASHABLE(Use, t.range, t.file_id)
 
+struct DeclRef : Use {
+  Range extent;
+};
+MAKE_HASHABLE(DeclRef, t.range, t.file_id)
+
 void Reflect(Reader &visitor, Reference &value);
 void Reflect(Writer &visitor, Reference &value);
 void Reflect(Reader &visitor, Use &value);
 void Reflect(Writer &visitor, Use &value);
+void Reflect(Reader &visitor, DeclRef &value);
+void Reflect(Writer &visitor, DeclRef &value);
 
 template <typename D> struct NameMixin {
   std::string_view Name(bool qualified) const {
@@ -134,7 +141,7 @@ struct IndexFunc : NameMixin<IndexFunc> {
   using Def = FuncDef;
   Usr usr;
   Def def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
 };
@@ -174,7 +181,7 @@ struct IndexType {
   using Def = TypeDef;
   Usr usr;
   Def def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
@@ -216,7 +223,7 @@ struct IndexVar {
   using Def = VarDef;
   Usr usr;
   Def def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
 };
 

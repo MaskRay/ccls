@@ -73,6 +73,9 @@ template <typename Q, typename QDef> struct QueryEntity {
   }
 };
 
+using DeclRefUpdate =
+    std::unordered_map<Usr,
+                       std::pair<std::vector<DeclRef>, std::vector<DeclRef>>>;
 using UseUpdate =
     std::unordered_map<Usr, std::pair<std::vector<Use>, std::vector<Use>>>;
 using UsrUpdate =
@@ -81,7 +84,7 @@ using UsrUpdate =
 struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
 };
@@ -89,7 +92,7 @@ struct QueryFunc : QueryEntity<QueryFunc, FuncDef> {
 struct QueryType : QueryEntity<QueryType, TypeDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
   std::vector<Usr> derived;
   std::vector<Usr> instances;
@@ -98,7 +101,7 @@ struct QueryType : QueryEntity<QueryType, TypeDef> {
 struct QueryVar : QueryEntity<QueryVar, VarDef> {
   Usr usr;
   llvm::SmallVector<Def, 1> def;
-  std::vector<Use> declarations;
+  std::vector<DeclRef> declarations;
   std::vector<Use> uses;
 };
 
@@ -123,7 +126,7 @@ struct IndexUpdate {
   int funcs_hint;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_removed;
   std::vector<std::pair<Usr, QueryFunc::Def>> funcs_def_update;
-  UseUpdate funcs_declarations;
+  DeclRefUpdate funcs_declarations;
   UseUpdate funcs_uses;
   UsrUpdate funcs_derived;
 
@@ -131,7 +134,7 @@ struct IndexUpdate {
   int types_hint;
   std::vector<std::pair<Usr, QueryType::Def>> types_removed;
   std::vector<std::pair<Usr, QueryType::Def>> types_def_update;
-  UseUpdate types_declarations;
+  DeclRefUpdate types_declarations;
   UseUpdate types_uses;
   UsrUpdate types_derived;
   UsrUpdate types_instances;
@@ -140,7 +143,7 @@ struct IndexUpdate {
   int vars_hint;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_removed;
   std::vector<std::pair<Usr, QueryVar::Def>> vars_def_update;
-  UseUpdate vars_declarations;
+  DeclRefUpdate vars_declarations;
   UseUpdate vars_uses;
 };
 
