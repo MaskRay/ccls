@@ -154,6 +154,9 @@ struct Config {
     // If true, diagnostics will be reported for textDocument/didOpen.
     bool onOpen = true;
 
+    // If true, diagnostics will be reported for textDocument/didSave.
+    bool onSave = false;
+
     bool spellChecking = true;
 
     std::vector<std::string> whitelist;
@@ -240,7 +243,7 @@ MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, dropOldRequests,
                     includeMaxPathSize, includeSuffixWhitelist,
                     includeWhitelist);
 MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onChange,
-                    onOpen, spellChecking, whitelist)
+                    onOpen, onSave, spellChecking, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
                     multiVersionBlacklist, multiVersionWhitelist, onChange,
