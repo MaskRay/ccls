@@ -51,7 +51,7 @@ struct IndexParam {
   std::unordered_map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
   std::unordered_map<llvm::sys::fs::UniqueID, bool> UID2multi;
   std::unordered_map<std::string, FileContents> file_contents;
-  std::unordered_map<std::string, int64_t> file2write_time;
+  std::unordered_map<std::string, int64_t> file2mtime;
   struct DeclInfo {
     Usr usr;
     std::string short_name;
@@ -71,13 +71,7 @@ struct IndexParam {
     if (inserted) {
       std::string file_name = FileName(File);
       it->second = file_name;
-
-      // Set modification time.
-      std::optional<int64_t> write_time = LastWriteTime(file_name);
-      LOG_IF_S(ERROR, !write_time)
-          << "failed to fetch write time for " << file_name;
-      if (write_time)
-        file2write_time[file_name] = *write_time;
+      file2mtime[file_name] = File.getModificationTime();
     }
   }
 
@@ -1307,13 +1301,13 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
       Uniquify(it.second.uses);
 
     // Update file contents and modification time.
-    entry->last_write_time = param.file2write_time[entry->path];
+    entry->mtime = param.file2mtime[entry->path];
 
     // Update dependencies for the file. Do not include the file in its own
     // dependency set.
     for (auto &[_, path] : param.SeenUniqueID)
       if (path != entry->path && path != entry->import_file)
-        entry->dependencies[path] = param.file2write_time[path];
+        entry->dependencies[path] = param.file2mtime[path];
   }
 
   return result;

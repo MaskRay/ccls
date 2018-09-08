@@ -69,7 +69,8 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
       q.pop();
       need_index.insert(file->def->path);
 
-      std::optional<int64_t> write_time = LastWriteTime(file->def->path);
+      std::optional<int64_t> write_time =
+          pipeline::LastWriteTime(file->def->path);
       if (!write_time)
         continue;
       {

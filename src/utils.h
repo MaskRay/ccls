@@ -75,7 +75,6 @@ std::string EscapeFileName(std::string path);
 
 std::optional<std::string> ReadContent(const std::string &filename);
 void WriteToFile(const std::string &filename, const std::string &content);
-std::optional<int64_t> LastWriteTime(const std::string &filename);
 
 int ReverseSubseqMatch(std::string_view pat, std::string_view text,
                        int case_sensitivity);

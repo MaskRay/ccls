@@ -15,12 +15,12 @@ limitations under the License.
 
 #include "utils.h"
 
-#include "filesystem.hh"
-using namespace llvm;
 #include "log.hh"
 #include "platform.h"
 
 #include <siphash.h>
+
+#include "llvm/ADT/StringRef.h"
 
 #include <algorithm>
 #include <assert.h>
@@ -29,7 +29,6 @@ using namespace llvm;
 #include <functional>
 #include <string.h>
 #include <unordered_map>
-using namespace std::placeholders;
 
 void TrimInPlace(std::string &s) {
   auto f = [](char c) { return !isspace(c); };
@@ -69,7 +68,8 @@ bool StartsWith(std::string_view s, std::string_view prefix) {
 }
 
 bool EndsWithAny(std::string_view s, const std::vector<std::string> &ss) {
-  return std::any_of(ss.begin(), ss.end(), std::bind(EndsWith, s, _1));
+  return std::any_of(ss.begin(), ss.end(),
+                     std::bind(EndsWith, s, std::placeholders::_1));
 }
 
 bool FindAnyPartial(const std::string &value,
@@ -145,13 +145,6 @@ void WriteToFile(const std::string &filename, const std::string &content) {
     return;
   }
   fclose(f);
-}
-
-std::optional<int64_t> LastWriteTime(const std::string &filename) {
-  sys::fs::file_status Status;
-  if (sys::fs::status(filename, Status))
-    return {};
-  return Status.getLastModificationTime().time_since_epoch().count();
 }
 
 // Find discontinous |search| in |content|.

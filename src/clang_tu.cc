@@ -75,6 +75,7 @@ BuildCompilerInvocation(const std::vector<std::string> &args,
   std::unique_ptr<CompilerInvocation> CI =
       createInvocationFromCommandLine(cargs, Diags, VFS);
   if (CI) {
+    CI->getDiagnosticOpts().IgnoreWarnings = true;
     CI->getFrontendOpts().DisableFree = false;
     CI->getLangOpts()->SpellChecking = false;
   }

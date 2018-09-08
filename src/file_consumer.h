@@ -45,6 +45,7 @@ struct VFS {
     int64_t timestamp;
     int owner;
     int stage;
+    bool loaded = false;
   };
   mutable std::unordered_map<std::string, State> state;
   mutable std::mutex mutex;

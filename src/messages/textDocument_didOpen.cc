@@ -53,7 +53,7 @@ struct Handler_TextDocumentDidOpen
 
     WorkingFile *working_file = working_files->OnOpen(params.textDocument);
     if (std::optional<std::string> cached_file_contents =
-            pipeline::LoadCachedFileContents(path))
+            pipeline::LoadIndexedContent(path))
       working_file->SetIndexContent(*cached_file_contents);
 
     QueryFile *file = nullptr;

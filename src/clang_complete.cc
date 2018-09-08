@@ -573,7 +573,6 @@ void CompletionMain(ClangCompleteManager *completion_manager) {
         BuildCompilerInvocation(session->file.args, session->FS);
     if (!CI)
       continue;
-    CI->getDiagnosticOpts().IgnoreWarnings = true;
     clang::CodeCompleteOptions CCOpts;
     CCOpts.IncludeBriefComments = true;
 #if LLVM_VERSION_MAJOR >= 7
@@ -612,8 +611,6 @@ void DiagnosticMain(ClangCompleteManager *manager) {
     // Fetching the completion request blocks until we have a request.
     ClangCompleteManager::DiagnosticRequest request =
         manager->diagnostic_request_.Dequeue();
-    if (!g_config->diagnostics.onChange)
-      continue;
     std::string path = request.document.uri.GetPath();
 
     std::shared_ptr<CompletionSession> session = manager->TryGetSession(
@@ -623,7 +620,8 @@ void DiagnosticMain(ClangCompleteManager *manager) {
         BuildCompilerInvocation(session->file.args, session->FS);
     if (!CI)
       continue;
-    CI->getLangOpts()->SpellChecking = true;
+    CI->getDiagnosticOpts().IgnoreWarnings = false;
+    CI->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
     StoreDiags DC;
     WorkingFiles::Snapshot snapshot =
         manager->working_files_->AsSnapshot({StripFileType(path)});
@@ -680,6 +678,7 @@ void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
   auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
   if (OldP && OldP->Preamble.CanReuse(CI, Buf.get(), Bounds, FS.get()))
     return;
+  CI.getDiagnosticOpts().IgnoreWarnings = false;
   CI.getFrontendOpts().SkipFunctionBodies = true;
   CI.getLangOpts()->CommentOpts.ParseAllComments = true;
 #if LLVM_VERSION_MAJOR >= 7

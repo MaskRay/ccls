@@ -438,10 +438,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       Reflect(json_writer, *g_config);
       LOG_S(INFO) << "initializationOptions: " << output.GetString();
 
-      if (g_config->cacheDirectory.empty()) {
-        LOG_S(ERROR) << "cacheDirectory cannot be empty.";
-        exit(1);
-      } else {
+      if (g_config->cacheDirectory.size()) {
         g_config->cacheDirectory = NormalizePath(g_config->cacheDirectory);
         EnsureEndsInSlash(g_config->cacheDirectory);
       }
@@ -470,12 +467,14 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     // Set project root.
     EnsureEndsInSlash(project_path);
     g_config->projectRoot = project_path;
-    // Create two cache directories for files inside and outside of the
-    // project.
-    sys::fs::create_directories(g_config->cacheDirectory +
-                                EscapeFileName(g_config->projectRoot));
-    sys::fs::create_directories(g_config->cacheDirectory + '@' +
-                                EscapeFileName(g_config->projectRoot));
+    if (g_config->cacheDirectory.size()) {
+      // Create two cache directories for files inside and outside of the
+      // project.
+      sys::fs::create_directories(g_config->cacheDirectory +
+        EscapeFileName(g_config->projectRoot));
+      sys::fs::create_directories(g_config->cacheDirectory + '@' +
+                                  EscapeFileName(g_config->projectRoot));
+    }
 
     diag_pub->Init();
     idx::Init();
