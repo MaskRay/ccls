@@ -26,7 +26,7 @@ OUTPUT:
       "detailed_name": "extern int global",
       "qual_name_offset": 11,
       "short_name": "global",
-      "declarations": ["1:12-1:18|0|1|1"],
+      "declarations": ["1:12-1:18|1:1-1:18|0|1|1|-1"],
       "type": 53,
       "uses": [],
       "kind": 13,

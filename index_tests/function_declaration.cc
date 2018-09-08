@@ -12,7 +12,7 @@ OUTPUT:
       "short_name": "foo",
       "kind": 12,
       "storage": 0,
-      "declarations": ["1:6-1:9|0|1|1"],
+      "declarations": ["1:6-1:9|1:1-1:23|0|1|1|-1"],
       "bases": [],
       "derived": [],
       "vars": [],

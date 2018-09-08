@@ -17,8 +17,8 @@ OUTPUT:
       "short_name": "Foo1",
       "kind": 252,
       "declarations": [],
-      "spell": "4:7-4:11|0|1|2",
-      "extent": "4:1-4:22|0|1|0",
+      "spell": "4:7-4:11|0|1|2|-1",
+      "extent": "4:1-4:22|0|1|0|-1",
       "alias_of": 5123806965838456033,
       "bases": [],
       "derived": [],
@@ -26,7 +26,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:13-5:17|0|1|4"]
+      "uses": ["5:13-5:17|0|1|4|-1"]
     }, {
       "usr": 5123806965838456033,
       "detailed_name": "template<> struct Foo<int>",
@@ -41,14 +41,14 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["4:14-4:17|0|1|4"]
+      "uses": ["4:14-4:17|0|1|4|-1"]
     }, {
       "usr": 10528472276654770367,
       "detailed_name": "struct Foo",
       "qual_name_offset": 7,
       "short_name": "Foo",
       "kind": 23,
-      "declarations": ["2:8-2:11|0|1|1"],
+      "declarations": ["2:8-2:11|2:1-2:11|0|1|1|-1"],
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -71,7 +71,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["5:9-5:12|0|1|4"]
+      "uses": ["5:9-5:12|0|1|4|-1"]
     }, {
       "usr": 15933698173231330933,
       "detailed_name": "typedef Foo<Foo1> Foo2",
@@ -79,8 +79,8 @@ OUTPUT:
       "short_name": "Foo2",
       "kind": 252,
       "declarations": [],
-      "spell": "5:19-5:23|0|1|2",
-      "extent": "5:1-5:23|0|1|0",
+      "spell": "5:19-5:23|0|1|2|-1",
+      "extent": "5:1-5:23|0|1|0|-1",
       "alias_of": 14491685842684954828,
       "bases": [],
       "derived": [],

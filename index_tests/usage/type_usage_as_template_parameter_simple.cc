@@ -18,8 +18,8 @@ OUTPUT:
       "short_name": "unique_ptr",
       "kind": 5,
       "declarations": [],
-      "spell": "2:7-2:17|0|1|2",
-      "extent": "2:1-2:20|0|1|0",
+      "spell": "2:7-2:17|0|1|2|-1",
+      "extent": "2:1-2:20|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -27,7 +27,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["6:8-6:18|0|1|4"]
+      "uses": ["6:8-6:18|0|1|4|-1"]
     }, {
       "usr": 4186953406371619898,
       "detailed_name": "unique_ptr",
@@ -35,8 +35,8 @@ OUTPUT:
       "short_name": "unique_ptr",
       "kind": 26,
       "declarations": [],
-      "spell": "2:7-2:17|0|1|2",
-      "extent": "1:1-2:20|0|1|0",
+      "spell": "2:7-2:17|0|1|2|-1",
+      "extent": "1:1-2:20|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -51,7 +51,7 @@ OUTPUT:
       "qual_name_offset": 7,
       "short_name": "S",
       "kind": 23,
-      "declarations": ["4:8-4:9|0|1|1"],
+      "declarations": ["4:8-4:9|4:1-4:9|0|1|1|-1"],
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -59,7 +59,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["6:19-6:20|0|1|4"]
+      "uses": ["6:19-6:20|0|1|4|-1"]
     }],
   "usr2var": [{
       "usr": 3398408600781120939,
@@ -67,8 +67,8 @@ OUTPUT:
       "qual_name_offset": 21,
       "short_name": "foo",
       "declarations": [],
-      "spell": "6:22-6:25|0|1|2",
-      "extent": "6:1-6:25|0|1|0",
+      "spell": "6:22-6:25|0|1|2|-1",
+      "extent": "6:1-6:25|0|1|0|-1",
       "type": 4186953406371619898,
       "uses": [],
       "kind": 13,

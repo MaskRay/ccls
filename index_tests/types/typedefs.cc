@@ -13,7 +13,7 @@ OUTPUT:
       "short_name": "g",
       "kind": 12,
       "storage": 0,
-      "declarations": ["2:13-2:14|0|1|1"],
+      "declarations": ["2:13-2:14|2:1-2:14|0|1|1|-1"],
       "bases": [],
       "derived": [],
       "vars": [],
@@ -27,8 +27,8 @@ OUTPUT:
       "short_name": "func",
       "kind": 252,
       "declarations": [],
-      "spell": "1:14-1:18|0|1|2",
-      "extent": "1:1-1:47|0|1|0",
+      "spell": "1:14-1:18|0|1|2|-1",
+      "extent": "1:1-1:47|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -36,7 +36,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": ["2:8-2:12|0|1|4"]
+      "uses": ["2:8-2:12|0|1|4|-1"]
     }],
   "usr2var": []
 }

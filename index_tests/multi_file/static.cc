@@ -14,7 +14,7 @@ OUTPUT: static.h
       "short_name": "CreateSharedBuffer",
       "kind": 254,
       "storage": 0,
-      "declarations": ["4:15-4:33|9411323049603567600|2|1025"],
+      "declarations": ["4:15-4:33|4:3-4:35|9411323049603567600|2|1025|-1"],
       "bases": [],
       "derived": [],
       "vars": [],
@@ -28,8 +28,8 @@ OUTPUT: static.h
       "short_name": "Buffer",
       "kind": 23,
       "declarations": [],
-      "spell": "3:8-3:14|0|1|2",
-      "extent": "3:1-5:2|0|1|0",
+      "spell": "3:8-3:14|0|1|2|-1",
+      "extent": "3:1-5:2|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -56,8 +56,8 @@ OUTPUT: static.cc
       "kind": 254,
       "storage": 0,
       "declarations": [],
-      "spell": "3:14-3:32|9411323049603567600|2|1026",
-      "extent": "3:1-3:37|9411323049603567600|2|0",
+      "spell": "3:14-3:32|9411323049603567600|2|1026|-1",
+      "extent": "3:1-3:37|9411323049603567600|2|0|-1",
       "bases": [],
       "derived": [],
       "vars": [],
@@ -78,7 +78,7 @@ OUTPUT: static.cc
       "funcs": [14576076421851654759],
       "vars": [],
       "instances": [],
-      "uses": ["3:6-3:12|0|1|4"]
+      "uses": ["3:6-3:12|0|1|4|-1"]
     }],
   "usr2var": []
 }
