@@ -297,7 +297,7 @@ bool ReflectMemberStart(Writer &visitor, IndexFile &value) {
 template <typename TVisitor> void Reflect(TVisitor &visitor, IndexFile &value) {
   REFLECT_MEMBER_START();
   if (!gTestOutputMode) {
-    REFLECT_MEMBER(last_write_time);
+    REFLECT_MEMBER(mtime);
     REFLECT_MEMBER(language);
     REFLECT_MEMBER(lid2path);
     REFLECT_MEMBER(import_file);

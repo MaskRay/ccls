@@ -24,15 +24,17 @@ struct Handler_TextDocumentDidChange
   MethodType GetMethodType() const override { return kMethodType; }
 
   void Run(In_TextDocumentDidChange *request) override {
-    std::string path = request->params.textDocument.uri.GetPath();
-    working_files->OnChange(request->params);
+    const auto &params = request->params;
+    std::string path = params.textDocument.uri.GetPath();
+    working_files->OnChange(params);
     if (g_config->index.onChange) {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
       pipeline::Index(entry.filename, entry.args, IndexMode::OnChange);
     }
-    clang_complete->NotifyEdit(path);
-    clang_complete->DiagnosticsUpdate(
-        request->params.textDocument.AsTextDocumentIdentifier());
+    clang_complete->NotifyView(path);
+    if (g_config->diagnostics.onChange)
+      clang_complete->DiagnosticsUpdate(
+          params.textDocument.AsTextDocumentIdentifier());
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidChange);

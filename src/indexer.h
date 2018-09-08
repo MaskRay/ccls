@@ -235,7 +235,8 @@ struct IndexFile {
   llvm::sys::fs::UniqueID UniqueID;
   std::string path;
   std::vector<std::string> args;
-  int64_t last_write_time = 0;
+  // This is unfortunately time_t as used by clang::FileEntry
+  int64_t mtime = 0;
   LanguageId language = LanguageId::C;
 
   // uid2lid_and_path is used to generate lid2path, but not serialized.
