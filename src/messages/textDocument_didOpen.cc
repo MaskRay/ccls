@@ -23,8 +23,7 @@ struct In_TextDocumentDidOpen : public NotificationInMessage {
     // If specified (e.g. ["clang++", "-DM", "a.cc"]), it overrides the project
     // entry (e.g. loaded from compile_commands.json or .ccls).
     std::vector<std::string> args;
-  };
-  Params params;
+  } params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentDidOpen::Params, textDocument, args);
 MAKE_REFLECT_STRUCT(In_TextDocumentDidOpen, params);
@@ -60,7 +59,8 @@ struct Handler_TextDocumentDidOpen
     if (SourceFileLanguage(path) != LanguageId::Unknown) {
       Project::Entry entry = project->FindCompilationEntryForFile(path);
       pipeline::Index(entry.filename,
-                      params.args.size() ? params.args : entry.args, true);
+                      params.args.size() ? params.args : entry.args,
+                      IndexMode::Normal);
 
       clang_complete->FlushSession(entry.filename);
     }

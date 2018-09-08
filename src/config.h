@@ -189,7 +189,7 @@ struct Config {
 
     // Allow indexing on textDocument/didChange.
     // May be too slow for big projects, so it is off by default.
-    bool onDidChange = false;
+    bool onChange = false;
 
     // Whether to reparse a file if write times of its dependencies have
     // changed. The file will always be reparsed if its own write time changes.
@@ -233,7 +233,7 @@ MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onChange,
                     onOpen, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
-                    multiVersionBlacklist, multiVersionWhitelist, onDidChange,
+                    multiVersionBlacklist, multiVersionWhitelist, onChange,
                     reparseForDependency, threads, whitelist);
 MAKE_REFLECT_STRUCT(Config::WorkspaceSymbol, caseSensitivity, maxNum, sort);
 MAKE_REFLECT_STRUCT(Config::Xref, container, maxNum);

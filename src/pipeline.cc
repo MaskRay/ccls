@@ -66,7 +66,7 @@ namespace {
 struct Index_Request {
   std::string path;
   std::vector<std::string> args;
-  bool is_interactive;
+  IndexMode mode;
   lsRequestId id;
 };
 
@@ -146,6 +146,7 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
   if (!opt_request)
     return false;
   auto &request = *opt_request;
+  bool loud = request.mode != IndexMode::OnChange;
 
   // Dummy one to trigger refresh semantic highlight.
   if (request.path.empty()) {
@@ -156,7 +157,7 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
   }
 
   if (std::string reason; !matcher.IsMatch(request.path, &reason)) {
-    LOG_S(INFO) << "skip " << request.path << " for " << reason;
+    LOG_IF_S(INFO, loud) << "skip " << request.path << " for " << reason;
     return false;
   }
 
@@ -179,6 +180,8 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
   if (!write_time)
     return true;
   int reparse = vfs->Stamp(path_to_index, *write_time);
+  if (g_config->index.onChange)
+    reparse = 2;
   if (!vfs->Mark(path_to_index, g_thread_id, 1) && !reparse)
     return true;
 
@@ -214,21 +217,29 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
     auto dependencies = prev->dependencies;
     if (reparse) {
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-      on_indexed->PushBack(std::move(update), request.is_interactive);
+      on_indexed->PushBack(std::move(update),
+                           request.mode != IndexMode::NonInteractive);
     }
     for (const auto &dep : dependencies)
       if (vfs->Mark(dep.first().str(), 0, 2) &&
           (prev = RawCacheLoad(dep.first().str()))) {
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-        on_indexed->PushBack(std::move(update), request.is_interactive);
+        on_indexed->PushBack(std::move(update),
+                             request.mode != IndexMode::NonInteractive);
       }
     return true;
   }
 
-  LOG_S(INFO) << "parse " << path_to_index;
+  LOG_IF_S(INFO, loud) << "parse " << path_to_index;
 
+  std::vector<std::pair<std::string, std::string>> remapped;
+  if (g_config->index.onChange) {
+    std::string content = working_files->GetContent(request.path);
+    if (content.size())
+      remapped.emplace_back(request.path, content);
+  }
   auto indexes =
-      idx::Index(vfs, entry.directory, path_to_index, entry.args, {});
+      idx::Index(vfs, entry.directory, path_to_index, entry.args, remapped);
 
   if (indexes.empty()) {
     if (g_config->index.enabled && request.id.Valid()) {
@@ -247,16 +258,15 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
     if (!(vfs->Stamp(path, curr->last_write_time) || path == path_to_index))
       continue;
     if (std::string reason; !matcher.IsMatch(path, &reason)) {
-      LOG_S(INFO) << "skip emitting and storing index of " << path << " for "
-                  << reason;
+      LOG_IF_S(INFO, loud) << "skip emitting and storing index of " << path << " for "
+                           << reason;
       continue;
     }
 
-    LOG_S(INFO) << "emit index for " << path;
+    LOG_IF_S(INFO, loud) << "emit index for " << path;
     prev = RawCacheLoad(path);
 
     // Write current index to disk if requested.
-    LOG_S(INFO) << "store index for " << path;
     {
       std::string cache_path = GetCachePath(path);
       WriteToFile(cache_path, curr->file_contents);
@@ -273,9 +283,11 @@ bool Indexer_Parse(DiagnosticsPublisher *diag_pub, WorkingFiles *working_files,
 
     // Build delta update.
     IndexUpdate update = IndexUpdate::CreateDelta(prev.get(), curr.get());
-    LOG_S(INFO) << "built index for " << path << " (is_delta=" << !!prev << ")";
+    LOG_IF_S(INFO, loud) << "store index for " << path << " (delta: " << !!prev
+                         << ")";
 
-    on_indexed->PushBack(std::move(update), request.is_interactive);
+    on_indexed->PushBack(std::move(update),
+                         request.mode != IndexMode::NonInteractive);
   }
 
   return true;
@@ -328,12 +340,14 @@ void Main_OnIndexed(DB *db, SemanticHighlightSymbolCache *semantic_cache,
   // Update indexed content, skipped ranges, and semantic highlighting.
   if (update->files_def_update) {
     auto &def_u = *update->files_def_update;
-    LOG_S(INFO) << "apply index for " << def_u.first.path;
-    if (WorkingFile *working_file =
+    if (WorkingFile *wfile =
             working_files->GetFileByFilename(def_u.first.path)) {
-      working_file->SetIndexContent(def_u.second);
-      EmitSkippedRanges(working_file, def_u.first.skipped_ranges);
-      EmitSemanticHighlighting(db, semantic_cache, working_file,
+      // FIXME With index.onChange: true, use buffer_content only for
+      // request.path
+      wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content
+                                                      : def_u.second);
+      EmitSkippedRanges(wfile, def_u.first.skipped_ranges);
+      EmitSemanticHighlighting(db, semantic_cache, wfile,
                                &db->files[update->file_id]);
     }
   }
@@ -480,8 +494,8 @@ void MainLoop() {
 }
 
 void Index(const std::string &path, const std::vector<std::string> &args,
-           bool interactive, lsRequestId id) {
-  index_request->PushBack({path, args, interactive, id}, interactive);
+           IndexMode mode, lsRequestId id) {
+  index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
 }
 
 std::optional<std::string> LoadCachedFileContents(const std::string &path) {

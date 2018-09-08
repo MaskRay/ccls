@@ -611,6 +611,7 @@ void DiagnosticMain(ClangCompleteManager *manager) {
         BuildCompilerInvocation(session->file.args, session->FS);
     if (!CI)
       continue;
+    CI->getLangOpts()->SpellChecking = true;
     StoreDiags DC;
     WorkingFiles::Snapshot snapshot =
         manager->working_files_->AsSnapshot({StripFileType(path)});

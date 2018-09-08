@@ -50,18 +50,20 @@ struct Handler_WorkspaceDidChangeWatchedFiles
           continue;
         entry = project->entries[it->second];
       }
-      bool is_interactive =
-          working_files->GetFileByFilename(entry.filename) != nullptr;
+      IndexMode mode =
+          working_files->GetFileByFilename(entry.filename) != nullptr
+              ? IndexMode::Normal
+              : IndexMode::NonInteractive;
       switch (event.type) {
       case lsFileChangeType::Created:
       case lsFileChangeType::Changed: {
-        pipeline::Index(path, entry.args, is_interactive);
-        if (is_interactive)
+        pipeline::Index(path, entry.args, mode);
+        if (mode == IndexMode::Normal)
           clang_complete->NotifySave(path);
         break;
       }
       case lsFileChangeType::Deleted:
-        pipeline::Index(path, entry.args, is_interactive);
+        pipeline::Index(path, entry.args, mode);
         break;
       }
     }

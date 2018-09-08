@@ -20,8 +20,7 @@ struct In_TextDocumentDidSave : public NotificationInMessage {
     // Optional the content when saved. Depends on the includeText value
     // when the save notifcation was requested.
     // std::string text;
-  };
-  Params params;
+  } params;
 };
 MAKE_REFLECT_STRUCT(In_TextDocumentDidSave::Params, textDocument);
 MAKE_REFLECT_STRUCT(In_TextDocumentDidSave, params);
@@ -35,25 +34,8 @@ struct Handler_TextDocumentDidSave
     const auto &params = request->params;
     std::string path = params.textDocument.uri.GetPath();
 
-    // Send out an index request, and copy the current buffer state so we
-    // can update the cached index contents when the index is done.
-    //
-    // We also do not index if there is already an index request or if
-    // the client requested indexing on didChange instead.
-    //
-    // TODO: Cancel outgoing index request. Might be tricky to make
-    //       efficient since we have to cancel.
-    //    - we could have an |atomic<int> active_cancellations| variable
-    //      that all of the indexers check before accepting an index. if
-    //      zero we don't slow down fast-path. if non-zero we acquire
-    //      mutex and check to see if we should skip the current request.
-    //      if so, ignore that index response.
-    // TODO: send as priority request
-    if (!g_config->index.onDidChange) {
-      Project::Entry entry = project->FindCompilationEntryForFile(path);
-      pipeline::Index(entry.filename, entry.args, true);
-    }
-
+    Project::Entry entry = project->FindCompilationEntryForFile(path);
+    pipeline::Index(entry.filename, entry.args, IndexMode::Normal);
     clang_complete->NotifySave(path);
   }
 };

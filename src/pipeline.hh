@@ -29,8 +29,14 @@ class DiagnosticsPublisher {
                std::vector<lsDiagnostic> diagnostics);
 };
 
-namespace ccls::pipeline {
+namespace ccls {
+enum class IndexMode {
+  NonInteractive,
+  OnChange,
+  Normal,
+};
 
+namespace pipeline {
 void Init();
 void LaunchStdin();
 void LaunchStdout();
@@ -40,11 +46,10 @@ void Indexer_Main(DiagnosticsPublisher* diag_pub,
                   WorkingFiles* working_files);
 void MainLoop();
 
-void Index(const std::string& path,
-           const std::vector<std::string>& args,
-           bool is_interactive,
-           lsRequestId id = {});
+void Index(const std::string &path, const std::vector<std::string> &args,
+           IndexMode mode, lsRequestId id = {});
 
 std::optional<std::string> LoadCachedFileContents(const std::string& path);
 void WriteStdout(MethodType method, lsBaseOutMessage& response);
+}
 }
