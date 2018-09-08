@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.h"
+#include "clang_complete.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "project.h"

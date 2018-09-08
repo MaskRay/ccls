@@ -284,10 +284,14 @@ struct IndexFile {
   std::string ToString();
 };
 
+struct CompletionManager;
+struct WorkingFiles;
+
 namespace ccls::idx {
 void Init();
 std::vector<std::unique_ptr<IndexFile>>
-Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
+Index(CompletionManager *complete, WorkingFiles *wfiles, VFS *vfs,
+      const std::string &opt_wdir, const std::string &file,
       const std::vector<std::string> &args,
-      const std::vector<std::pair<std::string, std::string>>& remapped);
-} // namespace ccls::idx
+      const std::vector<std::pair<std::string, std::string>> &remapped);
+}

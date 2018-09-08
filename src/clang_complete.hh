@@ -76,7 +76,7 @@ struct CompletionSession
 };
 }
 
-struct ClangCompleteManager {
+struct CompletionManager {
   using OnDiagnostic = std::function<void(
       std::string path, std::vector<lsDiagnostic> diagnostics)>;
   using OnComplete = std::function<void(
@@ -106,8 +106,8 @@ struct ClangCompleteManager {
     lsTextDocumentIdentifier document;
   };
 
-  ClangCompleteManager(Project *project, WorkingFiles *working_files,
-                       OnDiagnostic on_diagnostic, OnDropped on_dropped);
+  CompletionManager(Project *project, WorkingFiles *working_files,
+                    OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
   // Start a code completion at the given location. |on_complete| will run when
   // completion results are available. |on_complete| may run on any thread.
@@ -119,27 +119,25 @@ struct ClangCompleteManager {
 
   // Notify the completion manager that |filename| has been viewed and we
   // should begin preloading completion data.
-  void NotifyView(const std::string &filename);
-  // Notify the completion manager that |filename| has been edited.
-  void NotifyEdit(const std::string &filename);
+  void NotifyView(const std::string &path);
   // Notify the completion manager that |filename| has been saved. This
   // triggers a reparse.
-  void NotifySave(const std::string &filename);
+  void NotifySave(const std::string &path);
   // Notify the completion manager that |filename| has been closed. Any existing
   // completion session will be dropped.
-  void NotifyClose(const std::string &filename);
+  void NotifyClose(const std::string &path);
 
   // Ensures there is a completion or preloaded session. Returns true if a new
   // session was created.
-  bool EnsureCompletionOrCreatePreloadSession(const std::string &filename);
+  bool EnsureCompletionOrCreatePreloadSession(const std::string &path);
   // Tries to find an edit session for |filename|. This will move the session
   // from view to edit.
   std::shared_ptr<ccls::CompletionSession>
-  TryGetSession(const std::string &filename, bool mark_as_completion,
+  TryGetSession(const std::string &path, bool mark_as_completion,
                 bool create_if_needed);
 
   // Flushes all saved sessions with the supplied filename
-  void FlushSession(const std::string &filename);
+  void FlushSession(const std::string &path);
   // Flushes all saved sessions
   void FlushAllSessions(void);
 

@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.h"
+#include "clang_complete.hh"
 #include "fuzzy_match.h"
 #include "include_complete.h"
 #include "message_handler.h"
@@ -380,7 +380,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
       pipeline::WriteStdout(kMethodType, out);
     } else {
-      ClangCompleteManager::OnComplete callback = std::bind(
+      CompletionManager::OnComplete callback = std::bind(
           [this, request, params, is_global_completion, existing_completion,
            has_open_paren](const std::vector<lsCompletionItem> &results,
                            bool is_cached_result) {
@@ -420,7 +420,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
                          !global_code_complete_cache->cached_results_.empty();
       });
       if (is_cache_match) {
-        ClangCompleteManager::OnComplete freshen_global =
+        CompletionManager::OnComplete freshen_global =
             [this](std::vector<lsCompletionItem> results,
                    bool is_cached_result) {
               assert(!is_cached_result);

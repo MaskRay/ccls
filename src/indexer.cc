@@ -15,12 +15,13 @@ limitations under the License.
 
 #include "indexer.h"
 
+#include "clang_complete.hh"
 #include "clang_tu.h"
 #include "log.hh"
 #include "match.h"
 #include "platform.h"
 #include "serializer.h"
-using ccls::Intern;
+using namespace ccls;
 
 #include <clang/AST/AST.h>
 #include <clang/Frontend/FrontendAction.h>
@@ -1195,7 +1196,8 @@ void Init() {
 }
 
 std::vector<std::unique_ptr<IndexFile>>
-Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
+Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
+      const std::string &opt_wdir, const std::string &file,
       const std::vector<std::string> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped) {
   if (!g_config->index.enabled)
@@ -1221,13 +1223,32 @@ Index(VFS *vfs, const std::string &opt_wdir, const std::string &file,
     //     HSOpts.UseBuiltinIncludes)
     //   HSOpts.ResourceDir = g_config->clang.resourceDir;
   }
+  std::string buf = wfiles->GetContent(file);
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-  for (auto &[filename, content] : remapped) {
-    Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(content));
-    CI->getPreprocessorOpts().addRemappedFile(
-        filename == file ? CI->getFrontendOpts().Inputs[0].getFile()
-                         : StringRef(filename),
-        Bufs.back().get());
+  if (buf.size()) {
+    // If there is a completion session, reuse its preamble if exists.
+    bool done_remap = false;
+    std::shared_ptr<CompletionSession> session =
+      completion->TryGetSession(file, false, false);
+    if (session)
+      if (auto preamble = session->GetPreamble()) {
+        Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(buf));
+        auto Bounds = ComputePreambleBounds(*CI->getLangOpts(), Bufs.back().get(), 0);
+        if (preamble->Preamble.CanReuse(*CI, Bufs.back().get(), Bounds,
+                                        FS.get())) {
+          preamble->Preamble.AddImplicitPreamble(*CI, FS, Bufs.back().get());
+          done_remap = true;
+        }
+      }
+    for (auto &[filename, content] : remapped) {
+      if (filename == file && done_remap)
+        continue;
+      Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(content));
+      CI->getPreprocessorOpts().addRemappedFile(
+          filename == file ? CI->getFrontendOpts().Inputs[0].getFile()
+                           : StringRef(filename),
+          Bufs.back().get());
+    }
   }
 
   DiagnosticConsumer DC;

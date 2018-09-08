@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "clang_complete.hh"
 #include "filesystem.hh"
 #include "include_complete.h"
 #include "log.hh"
@@ -495,7 +496,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
         g_thread_id = i + 1;
         std::string name = "indexer" + std::to_string(i);
         set_thread_name(name.c_str());
-        pipeline::Indexer_Main(diag_pub, vfs, project, working_files);
+        pipeline::Indexer_Main(clang_complete, diag_pub, vfs, project,
+                               working_files);
       })
           .detach();
     }

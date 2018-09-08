@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "clang_complete.h"
+#include "clang_complete.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 using namespace ccls;
@@ -114,7 +114,7 @@ struct Handler_TextDocumentSignatureHelp : MessageHandler {
     if (search.empty())
       return;
 
-    ClangCompleteManager::OnComplete callback = std::bind(
+    CompletionManager::OnComplete callback = std::bind(
         [this](InMessage *message, std::string search, int active_param,
                const std::vector<lsCompletionItem> &results,
                bool is_cached_result) {

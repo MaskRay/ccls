@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "test.h"
 
+#include "clang_complete.hh"
 #include "filesystem.hh"
 #include "indexer.h"
 #include "platform.h"
@@ -301,7 +302,11 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
         // Run test.
         g_config = new Config;
         VFS vfs;
-        auto dbs = ccls::idx::Index(&vfs, "", path, flags, {});
+        CompletionManager completion(
+            nullptr, nullptr, [&](std::string, std::vector<lsDiagnostic>) {},
+            [](lsRequestId id) {});
+        WorkingFiles wfiles;
+        auto dbs = ccls::idx::Index(&completion, &wfiles, &vfs, "", path, flags, {});
 
         for (const auto &entry : all_expected_output) {
           const std::string &expected_path = entry.first;

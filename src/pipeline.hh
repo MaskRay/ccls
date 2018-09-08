@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
+struct CompletionManager;
 struct GroupMatch;
 struct VFS;
 struct Project;
@@ -37,10 +38,9 @@ namespace pipeline {
 void Init();
 void LaunchStdin();
 void LaunchStdout();
-void Indexer_Main(DiagnosticsPublisher* diag_pub,
-                  VFS* vfs,
-                  Project* project,
-                  WorkingFiles* working_files);
+void Indexer_Main(CompletionManager *complete,
+                  DiagnosticsPublisher *diag_pub, VFS *vfs, Project *project,
+                  WorkingFiles *working_files);
 void MainLoop();
 
 void Index(const std::string &path, const std::vector<std::string> &args,
