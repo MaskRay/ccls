@@ -660,6 +660,21 @@ public:
     IndexParam::DeclInfo *info;
     Usr usr = GetUsr(D, &info);
 
+    if (is_def)
+      switch (OrigD->getKind()) {
+      case Decl::CXXConversion: // *operator* int => *operator int*
+      case Decl::CXXDestructor: // *~*A => *~A*
+        if (Loc.isFileID()) {
+          SourceRange R =
+              cast<FunctionDecl>(OrigD)->getNameInfo().getSourceRange();
+          if (R.getEnd().isFileID())
+            loc = FromTokenRange(SM, Lang, R);
+        }
+        break;
+      default:
+        break;
+      }
+
     auto do_def_decl = [&](auto *entity) {
       if (is_def) {
         entity->def.spell = GetUse(db, lid, loc, SemDC, role);
@@ -689,8 +704,10 @@ public:
       return true;
     case SymbolKind::Func:
       func = &db->ToFunc(usr);
-      // Span one more column to the left/right if D is CXXConstructor.
-      if (!is_def && !is_decl && D->getKind() == Decl::CXXConstructor)
+      // Mark as Role::Implicit to span one more column to the left/right.
+      if (!is_def && !is_decl &&
+          (D->getKind() == Decl::CXXConstructor ||
+           D->getKind() == Decl::CXXConversion))
         role = Role(role | Role::Implicit);
       do_def_decl(func);
       if (Spell != Loc)
@@ -713,7 +730,7 @@ public:
       do_def_decl(type);
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, SymbolKind::Type, Spell);
-      if (type->def.detailed_name[0] == '\0')
+      if (type->def.detailed_name[0] == '\0' && info->short_name.size())
         SetName(OrigD, info->short_name, info->qualified, type->def);
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
@@ -870,6 +887,25 @@ public:
         // spec has no Union, use Class
         type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
                                                         : lsSymbolKind::Class;
+        if (type->def.detailed_name[0] == '\0' && info->short_name.empty()) {
+          if (TypedefNameDecl *TD = RD->getTypedefNameForAnonDecl()) {
+            StringRef Name = TD->getName();
+            StringRef Tag;
+            switch (RD->getTagKind()) {
+            case TTK_Struct: Tag = "struct "; break;
+            case TTK_Interface: Tag = "__interface "; break;
+            case TTK_Union: Tag = "union "; break;
+            case TTK_Class: Tag = "class "; break;
+            case TTK_Enum: Tag = "enum "; break;
+            }
+            std::string name = ("anon " + Tag + Name).str();
+            type->def.detailed_name = Intern(name);
+            type->def.short_name_size = name.size();
+          } else {
+            // e.g. "struct {}"
+            SetName(OrigD, "", "", type->def);
+          }
+        }
         if (is_def) {
           SmallVector<std::pair<const RecordDecl *, int>, 2> Stack{{RD, 0}};
           llvm::DenseSet<const RecordDecl *> Seen;
