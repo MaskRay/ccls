@@ -377,13 +377,21 @@ void Project::Load(const std::string &root_directory) {
     EnsureEndsInSlash(path);
     LOG_S(INFO) << "angle_include_dir: " << path;
   }
+
+  // Setup project entries.
+  std::lock_guard lock(mutex_);
+  path_to_entry_index.reserve(entries.size());
+  for (size_t i = 0; i < entries.size(); ++i) {
+    entries[i].id = i;
+    path_to_entry_index[entries[i].filename] = i;
+  }
 }
 
 void Project::SetFlagsForFile(const std::vector<std::string> &flags,
                               const std::string &path) {
   std::lock_guard<std::mutex> lock(mutex_);
-  auto it = absolute_path_to_entry_index_.find(path);
-  if (it != absolute_path_to_entry_index_.end()) {
+  auto it = path_to_entry_index.find(path);
+  if (it != path_to_entry_index.end()) {
     // The entry already exists in the project, just set the flags.
     this->entries[it->second].args = flags;
   } else {
@@ -400,8 +408,8 @@ Project::Entry
 Project::FindCompilationEntryForFile(const std::string &filename) {
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto it = absolute_path_to_entry_index_.find(filename);
-    if (it != absolute_path_to_entry_index_.end())
+    auto it = path_to_entry_index.find(filename);
+    if (it != path_to_entry_index.end())
       return entries[it->second];
   }
 
