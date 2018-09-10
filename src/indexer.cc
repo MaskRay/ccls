@@ -1236,7 +1236,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
   CI->getLangOpts()->RetainCommentsFromSystemHeaders = true;
   std::string buf = wfiles->GetContent(file);
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-  if (buf.size()) {
+  if (g_config->index.onChange && buf.size()) {
     // If there is a completion session, reuse its preamble if exists.
     bool done_remap = false;
     std::shared_ptr<CompletionSession> session =

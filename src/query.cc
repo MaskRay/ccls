@@ -215,16 +215,21 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
                  SymbolKind kind, Use &use, int delta, int k = 1) {
     use.file_id =
         use.file_id == -1 ? u->file_id : lid2fid.find(use.file_id)->second;
+    SymbolRef sym{{use.range, usr, kind, use.role}};
     if (k & 1) {
-      int &v =
-        files[use.file_id]
-        .symbol2refcnt[SymbolRef{{use.range, usr, kind, use.role}}];
+      int &v = files[use.file_id].symbol2refcnt[sym];
       v += delta;
       assert(v >= 0);
+      if (!v)
+        files[use.file_id].symbol2refcnt.erase(sym);
     }
-    if (k & 2)
-      files[use.file_id]
-          .outline2refcnt[SymbolRef{{use.range, usr, kind, use.role}}] += delta;
+    if (k & 2) {
+      int &v = files[use.file_id].outline2refcnt[sym];
+      v += delta;
+      assert(v >= 0);
+      if (!v)
+        files[use.file_id].outline2refcnt.erase(sym);
+    }
   };
   auto RefDecl = [&](std::unordered_map<int, int> &lid2fid, Usr usr,
                      SymbolKind kind, DeclRef &dr, int delta) {
