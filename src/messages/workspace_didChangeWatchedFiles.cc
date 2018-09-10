@@ -57,8 +57,8 @@ struct Handler_WorkspaceDidChangeWatchedFiles
       Project::Entry entry;
       {
         std::lock_guard<std::mutex> lock(project->mutex_);
-        auto it = project->absolute_path_to_entry_index_.find(path);
-        if (it == project->absolute_path_to_entry_index_.end())
+        auto it = project->path_to_entry_index.find(path);
+        if (it == project->path_to_entry_index.end())
           continue;
         entry = project->entries[it->second];
       }

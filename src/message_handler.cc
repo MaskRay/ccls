@@ -160,8 +160,8 @@ bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
   bool indexing;
   {
     std::lock_guard<std::mutex> lock(project->mutex_);
-    indexing = project->absolute_path_to_entry_index_.find(absolute_path) !=
-               project->absolute_path_to_entry_index_.end();
+    indexing = project->path_to_entry_index.find(absolute_path) !=
+               project->path_to_entry_index.end();
   }
   if (indexing)
     LOG_S(INFO) << "\"" << absolute_path << "\" is being indexed.";

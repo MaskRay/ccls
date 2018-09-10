@@ -32,6 +32,8 @@ limitations under the License.
 using namespace llvm;
 
 #include <chrono>
+#include <mutex>
+#include <shared_mutex>
 #include <thread>
 #ifndef _WIN32
 #include <unistd.h>
@@ -99,6 +101,7 @@ struct InMemoryIndexFile {
   std::string content;
   IndexFile index;
 };
+std::shared_mutex g_index_mutex;
 std::unordered_map<std::string, InMemoryIndexFile> g_index;
 
 bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
@@ -147,6 +150,7 @@ std::string GetCachePath(const std::string &source_file) {
 
 std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
   if (g_config->cacheDirectory.empty()) {
+    std::shared_lock lock(g_index_mutex);
     auto it = g_index.find(path);
     if (it == g_index.end())
       return nullptr;
@@ -189,8 +193,8 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
   Project::Entry entry;
   {
     std::lock_guard<std::mutex> lock(project->mutex_);
-    auto it = project->absolute_path_to_entry_index_.find(request.path);
-    if (it != project->absolute_path_to_entry_index_.end())
+    auto it = project->path_to_entry_index.find(request.path);
+    if (it != project->path_to_entry_index.end())
       entry = project->entries[it->second];
     else {
       entry.filename = request.path;
@@ -307,6 +311,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     LOG_IF_S(INFO, loud) << "store index for " << path << " (delta: " << !!prev
                          << ")";
     if (g_config->cacheDirectory.empty()) {
+      std::lock_guard lock(g_index_mutex);
       auto it = g_index.insert_or_assign(
         path, InMemoryIndexFile{curr->file_contents, *curr});
       std::string().swap(it.first->second.index.file_contents);
@@ -321,7 +326,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     if (entry.id >= 0) {
       std::lock_guard<std::mutex> lock(project->mutex_);
       for (auto &dep : curr->dependencies)
-        project->absolute_path_to_entry_index_[dep.first()] = entry.id;
+        project->path_to_entry_index[dep.first()] = entry.id;
     }
 
     // Build delta update.
@@ -548,6 +553,7 @@ std::optional<int64_t> LastWriteTime(const std::string &path) {
 
 std::optional<std::string> LoadIndexedContent(const std::string &path) {
   if (g_config->cacheDirectory.empty()) {
+    std::shared_lock lock(g_index_mutex);
     auto it = g_index.find(path);
     if (it == g_index.end())
       return {};

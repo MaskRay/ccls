@@ -43,7 +43,7 @@ struct Project {
 
   std::vector<Entry> entries;
   std::mutex mutex_;
-  std::unordered_map<std::string, int> absolute_path_to_entry_index_;
+  std::unordered_map<std::string, int> path_to_entry_index;
 
   // Loads a project for the given |directory|.
   //
