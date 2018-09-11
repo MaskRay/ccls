@@ -74,10 +74,6 @@ struct CompletionManager {
   using OnDropped = std::function<void(lsRequestId request_id)>;
 
   struct PreloadRequest {
-    PreloadRequest(const std::string &path)
-        : request_time(std::chrono::high_resolution_clock::now()), path(path) {}
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> request_time;
     std::string path;
   };
   struct CompletionRequest {
