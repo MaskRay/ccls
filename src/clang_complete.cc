@@ -188,17 +188,15 @@ bool Parse(CompilerInstance &Clang) {
   return true;
 }
 
-void CompletionPreloadMain(CompletionManager *completion_manager) {
+void CompletionPreloadMain(CompletionManager *manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
-    auto request = completion_manager->preload_requests_.Dequeue();
+    auto request = manager->preload_requests_.Dequeue();
 
     // If we don't get a session then that means we don't care about the file
     // anymore - abandon the request.
-    std::shared_ptr<CompletionSession> session =
-        completion_manager->TryGetSession(request.path,
-                                          false /*mark_as_completion*/,
-                                          false /*create_if_needed*/);
+    std::shared_ptr<CompletionSession> session = manager->TryGetSession(
+        request.path, false /*mark_as_completion*/, false /*create_if_needed*/);
     if (!session)
       continue;
 
@@ -210,6 +208,11 @@ void CompletionPreloadMain(CompletionManager *completion_manager) {
     if (std::unique_ptr<CompilerInvocation> CI =
             BuildCompilerInvocation(args, session->FS))
       session->BuildPreamble(*CI);
+    if (g_config->diagnostics.onSave) {
+      lsTextDocumentIdentifier document;
+      document.uri = lsDocumentUri::FromPath(request.path);
+      manager->diagnostic_request_.PushBack({document}, true);
+    }
   }
 }
 
@@ -405,7 +408,7 @@ void CompletionManager::DiagnosticsUpdate(
 void CompletionManager::NotifyView(const std::string &path) {
   // Only reparse the file if we create a new CompletionSession.
   if (EnsureCompletionOrCreatePreloadSession(path))
-    preload_requests_.PushBack(PreloadRequest(path), true);
+    preload_requests_.PushBack(PreloadRequest{path}, true);
 }
 
 void CompletionManager::NotifySave(const std::string &filename) {
@@ -414,7 +417,7 @@ void CompletionManager::NotifySave(const std::string &filename) {
   //
 
   EnsureCompletionOrCreatePreloadSession(filename);
-  preload_requests_.PushBack(PreloadRequest(filename), true);
+  preload_requests_.PushBack(PreloadRequest{filename}, true);
 }
 
 void CompletionManager::NotifyClose(const std::string &filename) {
