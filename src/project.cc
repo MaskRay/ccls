@@ -172,7 +172,8 @@ struct ProjectProcessor {
 
     HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
     for (auto &E : HeaderOpts.UserEntries) {
-      std::string path = ResolveIfRelative(entry.directory, E.Path);
+      std::string path =
+          NormalizePath(ResolveIfRelative(entry.directory, E.Path));
       switch (E.Group) {
       default:
         config->angle_dirs.insert(path);
@@ -327,8 +328,9 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   ProjectProcessor proc(project);
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     Project::Entry entry;
-    entry.directory = std::move(Cmd.Directory);
-    entry.filename = ResolveIfRelative(entry.directory, Cmd.Filename);
+    entry.directory = NormalizePath(Cmd.Directory);
+    entry.filename =
+        NormalizePath(ResolveIfRelative(entry.directory, Cmd.Filename));
     entry.args = std::move(Cmd.CommandLine);
     proc.Process(entry);
     if (Seen.insert(entry.filename).second)
@@ -378,12 +380,14 @@ void Project::Load(const std::string &root_directory) {
     LOG_S(INFO) << "angle_include_dir: " << path;
   }
 
-  // Setup project entries.
-  std::lock_guard lock(mutex_);
-  path_to_entry_index.reserve(entries.size());
-  for (size_t i = 0; i < entries.size(); ++i) {
-    entries[i].id = i;
-    path_to_entry_index[entries[i].filename] = i;
+  {
+    // Setup project entries.
+    std::lock_guard lock(mutex_);
+    path_to_entry_index.reserve(entries.size());
+    for (size_t i = 0; i < entries.size(); ++i) {
+      entries[i].id = i;
+      path_to_entry_index[entries[i].filename] = i;
+    }
   }
 }
 

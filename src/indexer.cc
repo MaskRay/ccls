@@ -567,7 +567,7 @@ public:
       if (!llvm::sys::path::is_absolute(Path) &&
           !SM.getFileManager().makeAbsolutePath(Path))
         return -1;
-      it->second.second = Path.str();
+      it->second.second = llvm::sys::path::convert_to_slash(Path.str());
     }
     return it->second.first;
   }
