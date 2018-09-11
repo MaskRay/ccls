@@ -27,11 +27,9 @@ limitations under the License.
 #include <vector>
 
 struct CompletionManager;
-struct CodeCompleteCache;
 struct Config;
 class DiagnosticsPublisher;
 struct VFS;
-struct ImportManager;
 struct IncludeComplete;
 struct MultiQueueWaiter;
 struct Project;
@@ -116,14 +114,10 @@ struct MessageHandler {
   Project *project = nullptr;
   DiagnosticsPublisher *diag_pub = nullptr;
   VFS *vfs = nullptr;
-  ImportManager *import_manager = nullptr;
   SemanticHighlightSymbolCache *semantic_cache = nullptr;
   WorkingFiles *working_files = nullptr;
   CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
-  CodeCompleteCache *global_code_complete_cache = nullptr;
-  CodeCompleteCache *non_global_code_complete_cache = nullptr;
-  CodeCompleteCache *signature_cache = nullptr;
 
   virtual MethodType GetMethodType() const = 0;
   virtual void Run(std::unique_ptr<InMessage> message) = 0;

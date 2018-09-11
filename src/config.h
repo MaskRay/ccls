@@ -92,22 +92,22 @@ struct Config {
     // When this option is enabled, the completion item label is very detailed,
     // it shows the full signature of the candidate.
     // The detail just contains the completion item parent context.
-    // Also, in this mode, functions with default arguments,
-    // generates one more item per default argument
-    // so that the right function call can be selected.
-    // That is, you get something like:
-    //     "int foo()" "Foo"
-    //     "void bar()" "Foo"
-    //     "void bar(int i = 0)" "Foo"
-    // Be wary, this is quickly quite verbose,
-    // items can end up truncated by the UIs.
-    bool detailedLabel = false;
+    bool detailedLabel = true;
 
     // On large projects, completion can take a long time. By default if ccls
     // receives multiple completion requests while completion is still running
     // it will only service the newest request. If this is set to false then all
     // completion requests will be serviced.
     bool dropOldRequests = true;
+
+    // Functions with default arguments, generate one more item per default
+    // argument. That is, you get something like:
+    //     "int foo()" "Foo"
+    //     "void bar()" "Foo"
+    //     "void bar(int i = 0)" "Foo"
+    // Be wary, this is quickly quite verbose,
+    // items can end up truncated by the UIs.
+    bool duplicateOptional = true;
 
     // If true, filter and sort completion response. ccls filters and sorts
     // completions to try to be nicer to clients that can't handle big numbers
@@ -238,10 +238,10 @@ struct Config {
 MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, resourceDir);
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
-MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, dropOldRequests,
-                    detailedLabel, filterAndSort, includeBlacklist,
-                    includeMaxPathSize, includeSuffixWhitelist,
-                    includeWhitelist);
+MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
+                    dropOldRequests, duplicateOptional, filterAndSort,
+                    includeBlacklist, includeMaxPathSize,
+                    includeSuffixWhitelist, includeWhitelist);
 MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onChange,
                     onOpen, onSave, spellChecking, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)

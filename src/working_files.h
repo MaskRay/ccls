@@ -82,7 +82,6 @@ struct WorkingFile {
   // The out param |existing_completion| is set to any existing completion
   // content the user has entered.
   lsPosition FindStableCompletionSource(lsPosition position,
-                                        bool *is_global_completion,
                                         std::string *existing_completion,
                                         lsPosition *replace_end_pos) const;
 
