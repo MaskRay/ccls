@@ -8,6 +8,7 @@
 
 #include <rapidjson/writer.h>
 
+#include <algorithm>
 #include <stdio.h>
 
 MessageRegistry *MessageRegistry::instance_ = nullptr;
@@ -208,10 +209,15 @@ void lsDocumentUri::SetPath(const std::string &path) {
 }
 
 std::string lsDocumentUri::GetPath() const {
-  if (raw_uri.compare(0, 8, "file:///"))
+  if (raw_uri.compare(0, 7, "file://")) {
+    LOG_S(WARNING)
+        << "Received potentially bad URI (not starting with file://): "
+        << raw_uri;
     return raw_uri;
+  }
   std::string ret;
 #ifdef _WIN32
+  // Skipping the initial "/" on Windows
   size_t i = 8;
 #else
   size_t i = 7;
@@ -224,8 +230,14 @@ std::string lsDocumentUri::GetPath() const {
       ret.push_back(from_hex(raw_uri[i + 1]) * 16 + from_hex(raw_uri[i + 2]));
       i += 2;
     } else
-      ret.push_back(raw_uri[i] == '\\' ? '/' : raw_uri[i]);
+      ret.push_back(raw_uri[i]);
   }
+#ifdef _WIN32
+  std::replace(ret.begin(), ret.end(), '\\', '/');
+  if (ret.size() > 1 && ret[0] >= 'a' && ret[0] <= 'z' && ret[1] == ':') {
+    ret[0] = toupper(ret[0]);
+  }
+#endif
   return ret;
 }
 

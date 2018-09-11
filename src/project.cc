@@ -160,7 +160,8 @@ struct ProjectProcessor {
 
     HeaderSearchOptions &HeaderOpts = CI->getHeaderSearchOpts();
     for (auto &E : HeaderOpts.UserEntries) {
-      std::string path = ResolveIfRelative(entry.directory, E.Path);
+      std::string path =
+          NormalizePath(ResolveIfRelative(entry.directory, E.Path));
       switch (E.Group) {
       default:
         config->angle_dirs.insert(path);
@@ -315,8 +316,9 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   ProjectProcessor proc(project);
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     Project::Entry entry;
-    entry.directory = std::move(Cmd.Directory);
-    entry.filename = ResolveIfRelative(entry.directory, Cmd.Filename);
+    entry.directory = NormalizePath(Cmd.Directory);
+    entry.filename =
+        NormalizePath(ResolveIfRelative(entry.directory, Cmd.Filename));
     entry.args = std::move(Cmd.CommandLine);
     proc.Process(entry);
     if (Seen.insert(entry.filename).second)
