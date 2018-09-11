@@ -28,7 +28,7 @@ namespace {
 std::string StripFileType(const std::string &path) {
   SmallString<128> Ret;
   sys::path::append(Ret, sys::path::parent_path(path), sys::path::stem(path));
-  return Ret.str();
+  return sys::path::convert_to_slash(Ret);
 }
 
 bool LocationInRange(SourceLocation L, CharSourceRange R,

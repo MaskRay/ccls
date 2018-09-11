@@ -22,7 +22,7 @@ std::string FileName(const FileEntry &file) {
   if (!StartsWith(ret, g_config->projectRoot)) {
     SmallString<256> dest;
     sys::fs::real_path(ret, dest);
-    ret = dest.str();
+    ret = sys::path::convert_to_slash(dest.str());
   }
   return ret;
 }
