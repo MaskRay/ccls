@@ -13,6 +13,7 @@
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendActions.h>
+#include <clang/Sema/CodeCompleteOptions.h>
 
 #include <functional>
 #include <memory>
@@ -67,8 +68,9 @@ struct CompletionSession
 struct CompletionManager {
   using OnDiagnostic = std::function<void(
       std::string path, std::vector<lsDiagnostic> diagnostics)>;
-  using OnComplete = std::function<void(
-      const std::vector<lsCompletionItem> &results, bool is_cached_result)>;
+  // If OptConsumer is nullptr, the request has been cancelled.
+  using OnComplete =
+      std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
   using OnDropped = std::function<void(lsRequestId request_id)>;
 
   struct PreloadRequest {
@@ -81,13 +83,19 @@ struct CompletionManager {
   struct CompletionRequest {
     CompletionRequest(const lsRequestId &id,
                       const lsTextDocumentIdentifier &document,
-                      const lsPosition &position, const OnComplete &on_complete)
+                      const lsPosition &position,
+                      std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
+                      clang::CodeCompleteOptions CCOpts,
+                      const OnComplete &on_complete)
         : id(id), document(document), position(position),
+          Consumer(std::move(Consumer)), CCOpts(CCOpts),
           on_complete(on_complete) {}
 
     lsRequestId id;
     lsTextDocumentIdentifier document;
     lsPosition position;
+    std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
+    clang::CodeCompleteOptions CCOpts;
     OnComplete on_complete;
   };
   struct DiagnosticRequest {
@@ -164,14 +172,22 @@ struct CompletionManager {
 // Cached completion information, so we can give fast completion results when
 // the user erases a character. vscode will resend the completion request if
 // that happens.
-struct CodeCompleteCache {
+template <typename T>
+struct CompleteConsumerCache {
   // NOTE: Make sure to access these variables under |WithLock|.
-  std::optional<std::string> cached_path_;
-  std::optional<lsPosition> cached_completion_position_;
-  std::vector<lsCompletionItem> cached_results_;
+  std::optional<std::string> path;
+  std::optional<lsPosition> position;
+  T result;
 
-  std::mutex mutex_;
+  std::mutex mutex;
 
-  void WithLock(std::function<void()> action);
-  bool IsCacheValid(lsTextDocumentPositionParams position);
+  void WithLock(std::function<void()> action) {
+    std::lock_guard lock(mutex);
+    action();
+  }
+  bool IsCacheValid(const lsTextDocumentPositionParams &params) {
+    std::lock_guard lock(mutex);
+    return path == params.textDocument.uri.GetPath() &&
+           position == params.position;
+  }
 };
