@@ -121,8 +121,7 @@ struct MessageHandler {
   WorkingFiles *working_files = nullptr;
   CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
-  CodeCompleteCache *global_code_complete_cache = nullptr;
-  CodeCompleteCache *non_global_code_complete_cache = nullptr;
+  CodeCompleteCache *completion_cache = nullptr;
   CodeCompleteCache *signature_cache = nullptr;
 
   virtual MethodType GetMethodType() const = 0;

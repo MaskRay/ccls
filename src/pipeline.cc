@@ -486,9 +486,7 @@ void MainLoop() {
       });
 
   IncludeComplete include_complete(&project);
-  auto global_code_complete_cache = std::make_unique<CodeCompleteCache>();
-  auto non_global_code_complete_cache = std::make_unique<CodeCompleteCache>();
-  auto signature_cache = std::make_unique<CodeCompleteCache>();
+  CodeCompleteCache completion_cache, signature_cache;
   DB db;
 
   // Setup shared references.
@@ -502,10 +500,8 @@ void MainLoop() {
     handler->working_files = &working_files;
     handler->clang_complete = &clang_complete;
     handler->include_complete = &include_complete;
-    handler->global_code_complete_cache = global_code_complete_cache.get();
-    handler->non_global_code_complete_cache =
-        non_global_code_complete_cache.get();
-    handler->signature_cache = signature_cache.get();
+    handler->completion_cache = &completion_cache;
+    handler->signature_cache = &signature_cache;
   }
 
   while (true) {

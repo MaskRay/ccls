@@ -25,6 +25,7 @@ limitations under the License.
 
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendActions.h>
+#include <clang/Sema/CodeCompleteOptions.h>
 
 #include <functional>
 #include <memory>
@@ -79,8 +80,9 @@ struct CompletionSession
 struct CompletionManager {
   using OnDiagnostic = std::function<void(
       std::string path, std::vector<lsDiagnostic> diagnostics)>;
-  using OnComplete = std::function<void(
-      const std::vector<lsCompletionItem> &results, bool is_cached_result)>;
+  // If OptConsumer is nullptr, the request has been cancelled.
+  using OnComplete =
+      std::function<void(clang::CodeCompleteConsumer *OptConsumer)>;
   using OnDropped = std::function<void(lsRequestId request_id)>;
 
   struct PreloadRequest {
@@ -93,13 +95,19 @@ struct CompletionManager {
   struct CompletionRequest {
     CompletionRequest(const lsRequestId &id,
                       const lsTextDocumentIdentifier &document,
-                      const lsPosition &position, const OnComplete &on_complete)
+                      const lsPosition &position,
+                      std::unique_ptr<clang::CodeCompleteConsumer> Consumer,
+                      clang::CodeCompleteOptions CCOpts,
+                      const OnComplete &on_complete)
         : id(id), document(document), position(position),
+          Consumer(std::move(Consumer)), CCOpts(CCOpts),
           on_complete(on_complete) {}
 
     lsRequestId id;
     lsTextDocumentIdentifier document;
     lsPosition position;
+    std::unique_ptr<clang::CodeCompleteConsumer> Consumer;
+    clang::CodeCompleteOptions CCOpts;
     OnComplete on_complete;
   };
   struct DiagnosticRequest {

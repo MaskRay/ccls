@@ -16,12 +16,16 @@ limitations under the License.
 #include "clang_complete.hh"
 #include "fuzzy_match.h"
 #include "include_complete.h"
+#include "log.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "working_files.h"
 using namespace ccls;
 
+#include <clang/Sema/CodeCompleteConsumer.h>
+#include <clang/Sema/Sema.h>
 #include <llvm/Support/Timer.h>
+using namespace clang;
 using namespace llvm;
 
 #include <regex>
@@ -261,24 +265,320 @@ bool IsOpenParenOrAngle(const std::vector<std::string> &lines,
   return false;
 }
 
-struct Handler_TextDocumentCompletion : MessageHandler {
+unsigned GetCompletionPriority(const CodeCompletionString &CCS,
+                               CXCursorKind result_kind,
+                               const std::optional<std::string> &typedText) {
+  unsigned priority = CCS.getPriority();
+  if (CCS.getAvailability() != CXAvailability_Available ||
+      result_kind == CXCursor_Destructor ||
+      result_kind == CXCursor_ConversionFunction ||
+      (result_kind == CXCursor_CXXMethod && typedText &&
+       StartsWith(*typedText, "operator")))
+    priority *= 100;
+  return priority;
+}
+
+lsCompletionItemKind GetCompletionKind(CXCursorKind cursor_kind) {
+  switch (cursor_kind) {
+  case CXCursor_UnexposedDecl:
+    return lsCompletionItemKind::Text;
+
+  case CXCursor_StructDecl:
+  case CXCursor_UnionDecl:
+    return lsCompletionItemKind::Struct;
+  case CXCursor_ClassDecl:
+    return lsCompletionItemKind::Class;
+  case CXCursor_EnumDecl:
+    return lsCompletionItemKind::Enum;
+  case CXCursor_FieldDecl:
+    return lsCompletionItemKind::Field;
+  case CXCursor_EnumConstantDecl:
+    return lsCompletionItemKind::EnumMember;
+  case CXCursor_FunctionDecl:
+    return lsCompletionItemKind::Function;
+  case CXCursor_VarDecl:
+  case CXCursor_ParmDecl:
+    return lsCompletionItemKind::Variable;
+  case CXCursor_ObjCInterfaceDecl:
+    return lsCompletionItemKind::Interface;
+
+  case CXCursor_ObjCInstanceMethodDecl:
+  case CXCursor_CXXMethod:
+  case CXCursor_ObjCClassMethodDecl:
+    return lsCompletionItemKind::Method;
+
+  case CXCursor_FunctionTemplate:
+    return lsCompletionItemKind::Function;
+
+  case CXCursor_Constructor:
+  case CXCursor_Destructor:
+  case CXCursor_ConversionFunction:
+    return lsCompletionItemKind::Constructor;
+
+  case CXCursor_ObjCIvarDecl:
+    return lsCompletionItemKind::Variable;
+
+  case CXCursor_ClassTemplate:
+  case CXCursor_ClassTemplatePartialSpecialization:
+  case CXCursor_UsingDeclaration:
+  case CXCursor_TypedefDecl:
+  case CXCursor_TypeAliasDecl:
+  case CXCursor_TypeAliasTemplateDecl:
+  case CXCursor_ObjCCategoryDecl:
+  case CXCursor_ObjCProtocolDecl:
+  case CXCursor_ObjCImplementationDecl:
+  case CXCursor_ObjCCategoryImplDecl:
+    return lsCompletionItemKind::Class;
+
+  case CXCursor_ObjCPropertyDecl:
+    return lsCompletionItemKind::Property;
+
+  case CXCursor_MacroInstantiation:
+  case CXCursor_MacroDefinition:
+    return lsCompletionItemKind::Interface;
+
+  case CXCursor_Namespace:
+  case CXCursor_NamespaceAlias:
+  case CXCursor_NamespaceRef:
+    return lsCompletionItemKind::Module;
+
+  case CXCursor_MemberRef:
+  case CXCursor_TypeRef:
+  case CXCursor_ObjCSuperClassRef:
+  case CXCursor_ObjCProtocolRef:
+  case CXCursor_ObjCClassRef:
+    return lsCompletionItemKind::Reference;
+
+    // return lsCompletionItemKind::Unit;
+    // return lsCompletionItemKind::Value;
+    // return lsCompletionItemKind::Keyword;
+    // return lsCompletionItemKind::Snippet;
+    // return lsCompletionItemKind::Color;
+    // return lsCompletionItemKind::File;
+
+  case CXCursor_NotImplemented:
+  case CXCursor_OverloadCandidate:
+    return lsCompletionItemKind::Text;
+
+  case CXCursor_TemplateTypeParameter:
+  case CXCursor_TemplateTemplateParameter:
+    return lsCompletionItemKind::TypeParameter;
+
+  default:
+    LOG_S(WARNING) << "Unhandled completion kind " << cursor_kind;
+    return lsCompletionItemKind::Text;
+  }
+}
+
+void BuildCompletionItemTexts(std::vector<lsCompletionItem> &out,
+                              CodeCompletionString &CCS,
+                              bool include_snippets) {
+  assert(!out.empty());
+  auto out_first = out.size() - 1;
+
+  std::string result_type;
+
+  for (unsigned i = 0, num_chunks = CCS.size(); i < num_chunks; ++i) {
+    const CodeCompletionString::Chunk &Chunk = CCS[i];
+    CodeCompletionString::ChunkKind Kind = Chunk.Kind;
+    std::string text;
+    switch (Kind) {
+    case CodeCompletionString::CK_TypedText:
+    case CodeCompletionString::CK_Text:
+    case CodeCompletionString::CK_Placeholder:
+    case CodeCompletionString::CK_Informative:
+      if (Chunk.Text)
+        text = Chunk.Text;
+      for (auto i = out_first; i < out.size(); i++) {
+        // first TypedText is used for filtering
+        if (Kind == CodeCompletionString::CK_TypedText && !out[i].filterText)
+          out[i].filterText = text;
+        if (Kind == CodeCompletionString::CK_Placeholder)
+          out[i].parameters_.push_back(text);
+      }
+      break;
+    case CodeCompletionString::CK_ResultType:
+      if (Chunk.Text)
+        result_type = Chunk.Text;
+      continue;
+    case CodeCompletionString::CK_CurrentParameter:
+      // We have our own parsing logic for active parameter. This doesn't seem
+      // to be very reliable.
+      continue;
+    case CodeCompletionString::CK_Optional: {
+      // duplicate last element, the recursive call will complete it
+      out.push_back(out.back());
+      BuildCompletionItemTexts(out, *Chunk.Optional, include_snippets);
+      continue;
+    }
+    default:
+      text = Chunk.Text;
+      break;
+    }
+
+    if (Kind != CodeCompletionString::CK_Informative)
+      for (auto i = out_first; i < out.size(); ++i) {
+        out[i].label += text;
+        if (!include_snippets && !out[i].parameters_.empty())
+          continue;
+
+        if (Kind == CodeCompletionString::CK_Placeholder) {
+          out[i].insertText += "${" +
+                               std::to_string(out[i].parameters_.size()) + ":" +
+                               text + "}";
+          out[i].insertTextFormat = lsInsertTextFormat::Snippet;
+        } else {
+          out[i].insertText += text;
+        }
+      }
+  }
+
+  if (result_type.size())
+    for (auto i = out_first; i < out.size(); ++i) {
+      // ' : ' for variables,
+      // ' -> ' (trailing return type-like) for functions
+      out[i].label += (out[i].label == out[i].filterText ? " : " : " -> ");
+      out[i].label += result_type;
+    }
+}
+
+// |do_insert|: if |!do_insert|, do not append strings to |insert| after
+// a placeholder.
+void BuildDetailString(const CodeCompletionString &CCS, lsCompletionItem &item,
+                       bool &do_insert, std::vector<std::string> *parameters,
+                       bool include_snippets, int &angle_stack) {
+  for (unsigned i = 0, num_chunks = CCS.size(); i < num_chunks; ++i) {
+    const CodeCompletionString::Chunk &Chunk = CCS[i];
+    CodeCompletionString::ChunkKind Kind = Chunk.Kind;
+    const char *text = nullptr;
+    switch (Kind) {
+    case CodeCompletionString::CK_TypedText:
+      item.label = Chunk.Text;
+      [[fallthrough]];
+    case CodeCompletionString::CK_Text:
+      item.detail += Chunk.Text;
+      if (do_insert)
+        item.insertText += Chunk.Text;
+      break;
+    case CodeCompletionString::CK_Placeholder: {
+      parameters->push_back(Chunk.Text);
+      item.detail += Chunk.Text;
+      // Add parameter declarations as snippets if enabled
+      if (include_snippets) {
+        item.insertText +=
+            "${" + std::to_string(parameters->size()) + ":" + Chunk.Text + "}";
+        item.insertTextFormat = lsInsertTextFormat::Snippet;
+      } else
+        do_insert = false;
+      break;
+    }
+    case CodeCompletionString::CK_Informative:
+      item.detail += Chunk.Text;
+      break;
+    case CodeCompletionString::CK_Optional: {
+      // Do not add text to insert string if we're in angle brackets.
+      bool should_insert = do_insert && angle_stack == 0;
+      BuildDetailString(*Chunk.Optional, item, should_insert, parameters,
+                        include_snippets, angle_stack);
+      break;
+    }
+    case CodeCompletionString::CK_ResultType:
+      item.detail = Chunk.Text + item.detail + " ";
+      break;
+    case CodeCompletionString::CK_CurrentParameter:
+      // We have our own parsing logic for active parameter. This doesn't seem
+      // to be very reliable.
+      break;
+    default:
+      text = Chunk.Text;
+      break;
+    }
+    if (text) {
+      item.detail += text;
+      if (do_insert && include_snippets)
+        item.insertText += text;
+    }
+  }
+}
+
+class CompletionConsumer : public CodeCompleteConsumer {
+  std::shared_ptr<clang::GlobalCodeCompletionAllocator> Alloc;
+  CodeCompletionTUInfo CCTUInfo;
+
+public:
+  bool from_cache;
+  std::vector<lsCompletionItem> ls_items;
+
+  CompletionConsumer(const CodeCompleteOptions &Opts, bool from_cache)
+      : CodeCompleteConsumer(Opts, false),
+        Alloc(std::make_shared<clang::GlobalCodeCompletionAllocator>()),
+        CCTUInfo(Alloc), from_cache(from_cache) {}
+
+  void ProcessCodeCompleteResults(Sema &S, CodeCompletionContext Context,
+                                  CodeCompletionResult *Results,
+                                  unsigned NumResults) override {
+    ls_items.reserve(NumResults);
+    for (unsigned i = 0; i != NumResults; i++) {
+      auto &R = Results[i];
+      if (R.Availability == CXAvailability_NotAccessible ||
+          R.Availability == CXAvailability_NotAvailable)
+        continue;
+      CodeCompletionString *CCS = R.CreateCodeCompletionString(
+          S, Context, getAllocator(), getCodeCompletionTUInfo(),
+          includeBriefComments());
+      lsCompletionItem ls_item;
+      ls_item.kind = GetCompletionKind(R.CursorKind);
+      if (const char *brief = CCS->getBriefComment())
+        ls_item.documentation = brief;
+
+      // label/detail/filterText/insertText/priority
+      if (g_config->completion.detailedLabel) {
+        ls_item.detail = CCS->getParentContextName().str();
+
+        size_t first_idx = ls_items.size();
+        ls_items.push_back(ls_item);
+        BuildCompletionItemTexts(ls_items, *CCS,
+                                 g_config->client.snippetSupport);
+
+        for (size_t j = first_idx; j < ls_items.size(); j++) {
+          if (g_config->client.snippetSupport &&
+              ls_items[j].insertTextFormat == lsInsertTextFormat::Snippet)
+            ls_items[j].insertText += "$0";
+          ls_items[j].priority_ = GetCompletionPriority(
+              *CCS, Results[i].CursorKind, ls_items[j].filterText);
+        }
+      } else {
+        bool do_insert = true;
+        int angle_stack = 0;
+        BuildDetailString(*CCS, ls_item, do_insert, &ls_item.parameters_,
+                          g_config->client.snippetSupport, angle_stack);
+        if (g_config->client.snippetSupport &&
+            ls_item.insertTextFormat == lsInsertTextFormat::Snippet)
+          ls_item.insertText += "$0";
+        ls_item.priority_ =
+            GetCompletionPriority(*CCS, Results[i].CursorKind, ls_item.label);
+        ls_items.push_back(ls_item);
+      }
+    }
+  }
+
+  CodeCompletionAllocator &getAllocator() override { return *Alloc; }
+  CodeCompletionTUInfo &getCodeCompletionTUInfo() override { return CCTUInfo; }
+};
+
+struct Handler_TextDocumentCompletion
+    : BaseMessageHandler<In_TextDocumentComplete> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  void Run(std::unique_ptr<InMessage> message) override {
-    auto request = std::shared_ptr<In_TextDocumentComplete>(
-        static_cast<In_TextDocumentComplete *>(message.release()));
+  void Run(In_TextDocumentComplete *request) override {
     auto &params = request->params;
-
-    auto write_empty_result = [request]() {
-      Out_TextDocumentComplete out;
-      out.id = request->id;
-      pipeline::WriteStdout(kMethodType, out);
-    };
+    Out_TextDocumentComplete out;
+    out.id = request->id;
 
     std::string path = params.textDocument.uri.GetPath();
     WorkingFile *file = working_files->GetFileByFilename(path);
     if (!file) {
-      write_empty_result();
+      pipeline::WriteStdout(kMethodType, out);
       return;
     }
 
@@ -323,7 +623,7 @@ struct Handler_TextDocumentCompletion : MessageHandler {
       }
 
       if (did_fail_check) {
-        write_empty_result();
+        pipeline::WriteStdout(kMethodType, out);
         return;
       }
     }
@@ -380,69 +680,46 @@ struct Handler_TextDocumentCompletion : MessageHandler {
 
       pipeline::WriteStdout(kMethodType, out);
     } else {
-      CompletionManager::OnComplete callback = std::bind(
-          [this, request, params, is_global_completion, existing_completion,
-           has_open_paren](const std::vector<lsCompletionItem> &results,
-                           bool is_cached_result) {
+      CompletionManager::OnComplete callback =
+          [this, existing_completion, has_open_paren, id = request->id,
+           params = request->params](CodeCompleteConsumer *OptConsumer) {
+            if (!OptConsumer)
+              return;
+            auto *Consumer = static_cast<CompletionConsumer *>(OptConsumer);
             Out_TextDocumentComplete out;
-            out.id = request->id;
-            out.result.items = results;
+            out.id = id;
+            out.result.items = Consumer->ls_items;
 
-            // Emit completion results.
             FilterAndSortCompletionResponse(&out, existing_completion,
                                             has_open_paren);
             pipeline::WriteStdout(kMethodType, out);
-
-            // Cache completion results.
-            if (!is_cached_result) {
+            if (!Consumer->from_cache) {
               std::string path = params.textDocument.uri.GetPath();
-              if (is_global_completion) {
-                global_code_complete_cache->WithLock([&]() {
-                  global_code_complete_cache->cached_path_ = path;
-                  global_code_complete_cache->cached_results_ = results;
-                });
-              } else {
-                non_global_code_complete_cache->WithLock([&]() {
-                  non_global_code_complete_cache->cached_path_ = path;
-                  non_global_code_complete_cache->cached_completion_position_ =
-                      params.position;
-                  non_global_code_complete_cache->cached_results_ = results;
-                });
-              }
-            }
-          },
-          std::placeholders::_1, std::placeholders::_2);
-
-      bool is_cache_match = false;
-      global_code_complete_cache->WithLock([&]() {
-        is_cache_match = is_global_completion &&
-                         global_code_complete_cache->cached_path_ == path &&
-                         !global_code_complete_cache->cached_results_.empty();
-      });
-      if (is_cache_match) {
-        CompletionManager::OnComplete freshen_global =
-            [this](std::vector<lsCompletionItem> results,
-                   bool is_cached_result) {
-              assert(!is_cached_result);
-
-              // note: path is updated in the normal completion handler.
-              global_code_complete_cache->WithLock([&]() {
-                global_code_complete_cache->cached_results_ = results;
+              completion_cache->WithLock([&]() {
+                completion_cache->cached_path_ = path;
+                completion_cache->cached_completion_position_ = params.position;
+                completion_cache->cached_results_ = Consumer->ls_items;
               });
-            };
+            }
+          };
 
-        global_code_complete_cache->WithLock([&]() {
-          callback(global_code_complete_cache->cached_results_,
-                   true /*is_cached_result*/);
+      clang::CodeCompleteOptions CCOpts;
+      CCOpts.IncludeBriefComments = true;
+#if LLVM_VERSION_MAJOR >= 7
+      CCOpts.IncludeFixIts = true;
+#endif
+      if (completion_cache->IsCacheValid(params)) {
+        CompletionConsumer Consumer(CCOpts, true);
+        completion_cache->WithLock([&]() {
+          Consumer.ls_items = completion_cache->cached_results_;
         });
-        clang_complete->CodeComplete(request->id, params, freshen_global);
-      } else if (non_global_code_complete_cache->IsCacheValid(params)) {
-        non_global_code_complete_cache->WithLock([&]() {
-          callback(non_global_code_complete_cache->cached_results_,
-                   true /*is_cached_result*/);
-        });
+        callback(&Consumer);
       } else {
-        clang_complete->CodeComplete(request->id, params, callback);
+        clang_complete->completion_request_.PushBack(
+          std::make_unique<CompletionManager::CompletionRequest>(
+            request->id, params.textDocument, params.position,
+            std::make_unique<CompletionConsumer>(CCOpts, false), CCOpts,
+            callback));
       }
     }
   }
