@@ -147,14 +147,11 @@ struct IndexUpdate {
   UseUpdate vars_uses;
 };
 
-struct WrappedUsr {
-  Usr usr;
-};
-template <> struct llvm::DenseMapInfo<WrappedUsr> {
-  static inline WrappedUsr getEmptyKey() { return {0}; }
-  static inline WrappedUsr getTombstoneKey() { return {~0ULL}; }
-  static unsigned getHashValue(WrappedUsr w) { return w.usr; }
-  static bool isEqual(WrappedUsr l, WrappedUsr r) { return l.usr == r.usr; }
+struct DenseMapInfoForUsr {
+  static inline Usr getEmptyKey() { return 0; }
+  static inline Usr getTombstoneKey() { return ~0ULL; }
+  static unsigned getHashValue(Usr w) { return w; }
+  static bool isEqual(Usr l, Usr r) { return l == r; }
 };
 
 using Lid2file_id = std::unordered_map<int, int>;
@@ -164,7 +161,7 @@ using Lid2file_id = std::unordered_map<int, int>;
 struct DB {
   std::vector<QueryFile> files;
   llvm::StringMap<int> name2file_id;
-  llvm::DenseMap<WrappedUsr, int> func_usr, type_usr, var_usr;
+  llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func_usr, type_usr, var_usr;
   std::vector<QueryFunc> funcs;
   std::vector<QueryType> types;
   std::vector<QueryVar> vars;
@@ -184,13 +181,13 @@ struct DB {
               std::vector<std::pair<Usr, QueryVar::Def>> &&us);
   std::string_view GetSymbolName(SymbolIdx sym, bool qualified);
 
-  bool HasFunc(Usr usr) const { return func_usr.count({usr}); }
-  bool HasType(Usr usr) const { return type_usr.count({usr}); }
-  bool HasVar(Usr usr) const { return var_usr.count({usr}); }
+  bool HasFunc(Usr usr) const { return func_usr.count(usr); }
+  bool HasType(Usr usr) const { return type_usr.count(usr); }
+  bool HasVar(Usr usr) const { return var_usr.count(usr); }
 
-  QueryFunc &Func(Usr usr) { return funcs[func_usr[{usr}]]; }
-  QueryType &Type(Usr usr) { return types[type_usr[{usr}]]; }
-  QueryVar &Var(Usr usr) { return vars[var_usr[{usr}]]; }
+  QueryFunc &Func(Usr usr) { return funcs[func_usr[usr]]; }
+  QueryType &Type(Usr usr) { return types[type_usr[usr]]; }
+  QueryVar &Var(Usr usr) { return vars[var_usr[usr]]; }
 
   QueryFile &GetFile(SymbolIdx ref) { return files[ref.usr]; }
   QueryFunc &GetFunc(SymbolIdx ref) { return Func(ref.usr); }

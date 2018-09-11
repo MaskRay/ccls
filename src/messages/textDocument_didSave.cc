@@ -49,8 +49,6 @@ struct Handler_TextDocumentDidSave
     Project::Entry entry = project->FindCompilationEntryForFile(path);
     pipeline::Index(entry.filename, entry.args, IndexMode::Normal);
     clang_complete->NotifySave(path);
-    if (g_config->diagnostics.onSave)
-      clang_complete->DiagnosticsUpdate(params.textDocument);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidSave);

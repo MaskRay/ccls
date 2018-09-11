@@ -250,36 +250,37 @@ void DB::ApplyIndexUpdate(IndexUpdate *u) {
         .outline2refcnt[SymbolRef{{dr.extent, usr, kind, dr.role}}] += delta;
   };
 
-  auto UpdateUses = [&](Usr usr, SymbolKind kind,
-                        llvm::DenseMap<WrappedUsr, int> &entity_usr,
-                        auto &entities, auto &p, bool hint_implicit) {
-    auto R = entity_usr.try_emplace({usr}, entity_usr.size());
-    if (R.second)
-      vars.emplace_back().usr = usr;
-    auto &entity = entities[R.first->second];
-    for (Use &use : p.first) {
-      if (hint_implicit && use.role & Role::Implicit) {
-        // Make ranges of implicit function calls larger (spanning one more
-        // column to the left/right). This is hacky but useful. e.g.
-        // textDocument/definition on the space/semicolon in `A a;` or ` 42;`
-        // will take you to the constructor.
-        if (use.range.start.column > 0)
-          use.range.start.column--;
-        use.range.end.column++;
-      }
-      Ref(prev_lid2file_id, usr, kind, use, -1);
-    }
-    RemoveRange(entity.uses, p.first);
-    for (Use &use : p.second) {
-      if (hint_implicit && use.role & Role::Implicit) {
-        if (use.range.start.column > 0)
-          use.range.start.column--;
-        use.range.end.column++;
-      }
-      Ref(lid2file_id, usr, kind, use, 1);
-    }
-    AddRange(entity.uses, p.second);
-  };
+  auto UpdateUses =
+      [&](Usr usr, SymbolKind kind,
+          llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
+          auto &entities, auto &p, bool hint_implicit) {
+        auto R = entity_usr.try_emplace(usr, entity_usr.size());
+        if (R.second)
+          vars.emplace_back().usr = usr;
+        auto &entity = entities[R.first->second];
+        for (Use &use : p.first) {
+          if (hint_implicit && use.role & Role::Implicit) {
+            // Make ranges of implicit function calls larger (spanning one more
+            // column to the left/right). This is hacky but useful. e.g.
+            // textDocument/definition on the space/semicolon in `A a;` or `
+            // 42;` will take you to the constructor.
+            if (use.range.start.column > 0)
+              use.range.start.column--;
+            use.range.end.column++;
+          }
+          Ref(prev_lid2file_id, usr, kind, use, -1);
+        }
+        RemoveRange(entity.uses, p.first);
+        for (Use &use : p.second) {
+          if (hint_implicit && use.role & Role::Implicit) {
+            if (use.range.start.column > 0)
+              use.range.start.column--;
+            use.range.end.column++;
+          }
+          Ref(lid2file_id, usr, kind, use, 1);
+        }
+        AddRange(entity.uses, p.second);
+      };
 
   if (u->files_removed)
     files[name2file_id[LowerPathIfInsensitive(*u->files_removed)]].def =

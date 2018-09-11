@@ -30,9 +30,9 @@ int ComputeRangeSize(const Range &range) {
 }
 
 template <typename Q>
-std::vector<Use> GetDeclarations(llvm::DenseMap<WrappedUsr, int> &entity_usr,
-                                 std::vector<Q> &entities,
-                                 const std::vector<Usr> &usrs) {
+std::vector<Use>
+GetDeclarations(llvm::DenseMap<Usr, int, DenseMapInfoForUsr> &entity_usr,
+                std::vector<Q> &entities, const std::vector<Usr> &usrs) {
   std::vector<Use> ret;
   ret.reserve(usrs.size());
   for (Usr usr : usrs) {
