@@ -59,7 +59,7 @@ void GetFilesInFolder(std::string folder, bool recursive, bool dir_prefix,
         if (sys::fs::is_regular_file(Status)) {
           if (!dir_prefix)
             path = path.substr(folder.size());
-          handler(path);
+          handler(sys::path::convert_to_slash(path));
         } else if (recursive && sys::fs::is_directory(Status) &&
                    !seen.count(ID = Status.getUniqueID())) {
           curr.push_back(path);

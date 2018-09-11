@@ -35,14 +35,20 @@ std::string NormalizePath(const std::string &path) {
   TCHAR buffer[MAX_PATH] = TEXT("");
   TCHAR **lpp_part = {NULL};
 
+  std::string result;
   retval = GetFullPathName(path.c_str(), MAX_PATH, buffer, lpp_part);
   // fail, return original
   if (retval == 0)
-    return path;
+    result = path;
+  else
+    result = buffer;
 
-  std::string result = buffer;
   std::replace(result.begin(), result.end(), '\\', '/');
-  // std::transform(result.begin(), result.end(), result.begin(), ::tolower);
+  // Normalize drive letter.
+  if (result.size() > 1 && result[0] >= 'a' && result[0] <= 'z' &&
+      result[1] == ':') {
+    result[0] = toupper(result[0]);
+  }
   return result;
 }
 
