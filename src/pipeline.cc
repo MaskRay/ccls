@@ -248,14 +248,19 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
       IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
       on_indexed->PushBack(std::move(update),
                            request.mode != IndexMode::NonInteractive);
+      std::lock_guard lock(vfs->mutex);
+      vfs->state[path_to_index].loaded = true;
     }
-    for (const auto &dep : dependencies)
-      if (vfs->Mark(dep.first().str(), 0, 2) &&
-          (prev = RawCacheLoad(dep.first().str()))) {
+    for (const auto &dep : dependencies) {
+      std::string path = dep.first().str();
+      if (vfs->Mark(path, 0, 2) && (prev = RawCacheLoad(path))) {
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
                              request.mode != IndexMode::NonInteractive);
+        std::lock_guard lock(vfs->mutex);
+        vfs->state[path].loaded = true;
       }
+    }
     return true;
   }
 

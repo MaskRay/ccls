@@ -148,6 +148,17 @@ IndexUpdate IndexUpdate::CreateDelta(IndexFile *previous, IndexFile *current) {
   return r;
 }
 
+void DB::clear() {
+  files.clear();
+  name2file_id.clear();
+  func_usr.clear();
+  type_usr.clear();
+  var_usr.clear();
+  funcs.clear();
+  types.clear();
+  vars.clear();
+}
+
 template <typename Def>
 void DB::RemoveUsrs(SymbolKind kind, int file_id,
                     const std::vector<std::pair<Usr, Def>> &to_remove) {
