@@ -83,6 +83,9 @@ bool ExpandHelper(MessageHandler *m, Out_CclsInheritanceHierarchy::Entry *entry,
     if (def->spell) {
       if (auto loc = GetLsLocation(m->db, m->working_files, *def->spell))
         entry->location = *loc;
+    } else if (entity.declarations.size()) {
+      if (auto loc = GetLsLocation(m->db, m->working_files, entity.declarations[0]))
+        entry->location = *loc;
     }
   } else if (!derived) {
     entry->numChildren = 0;

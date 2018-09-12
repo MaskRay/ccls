@@ -679,6 +679,7 @@ public:
       switch (OrigD->getKind()) {
       case Decl::CXXConversion: // *operator* int => *operator int*
       case Decl::CXXDestructor: // *~*A => *~A*
+      case Decl::CXXMethod: // *operator*= => *operator=*
         if (Loc.isFileID()) {
           SourceRange R =
               cast<FunctionDecl>(OrigD)->getNameInfo().getSourceRange();
