@@ -13,9 +13,9 @@ using namespace ccls;
 #include <unordered_set>
 
 namespace {
-MethodType kMethodType = "$ccls/freshenIndex";
+MethodType kMethodType = "$ccls/reload";
 
-struct In_CclsFreshenIndex : public NotificationInMessage {
+struct In_CclsReload : public NotificationInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
   struct Params {
     bool dependencies = true;
@@ -24,15 +24,28 @@ struct In_CclsFreshenIndex : public NotificationInMessage {
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(In_CclsFreshenIndex::Params, dependencies, whitelist,
+MAKE_REFLECT_STRUCT(In_CclsReload::Params, dependencies, whitelist,
                     blacklist);
-MAKE_REFLECT_STRUCT(In_CclsFreshenIndex, params);
-REGISTER_IN_MESSAGE(In_CclsFreshenIndex);
+MAKE_REFLECT_STRUCT(In_CclsReload, params);
+REGISTER_IN_MESSAGE(In_CclsReload);
 
-struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
+struct Handler_CclsReload : BaseMessageHandler<In_CclsReload> {
   MethodType GetMethodType() const override { return kMethodType; }
-  void Run(In_CclsFreshenIndex *request) override {
-    GroupMatch matcher(request->params.whitelist, request->params.blacklist);
+  void Run(In_CclsReload *request) override {
+    const auto &params = request->params;
+    // Send index requests for every file.
+    if (params.whitelist.empty() && params.blacklist.empty()) {
+      {
+        std::lock_guard lock(vfs->mutex);
+        vfs->state.clear();
+      }
+      db->clear();
+      project->Index(working_files, lsRequestId());
+      return;
+    }
+
+    // TODO
+    GroupMatch matcher(params.whitelist, params.blacklist);
 
     std::queue<const QueryFile *> q;
     // |need_index| stores every filename ever enqueued.
@@ -77,10 +90,7 @@ struct Handler_CclsFreshenIndex : BaseMessageHandler<In_CclsFreshenIndex> {
           }
         }
     }
-
-    // Send index requests for every file.
-    project->Index(working_files, lsRequestId());
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsFreshenIndex);
+REGISTER_MESSAGE_HANDLER(Handler_CclsReload);
 } // namespace

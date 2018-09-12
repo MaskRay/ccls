@@ -34,7 +34,7 @@ struct QueryFile {
     std::vector<IndexInclude> includes;
     // Parts of the file which are disabled.
     std::vector<Range> skipped_ranges;
-    // Used by |$ccls/freshenIndex|.
+    // Used by |$ccls/reload|.
     std::vector<std::string> dependencies;
   };
 
@@ -154,6 +154,8 @@ struct DB {
   std::vector<QueryFunc> funcs;
   std::vector<QueryType> types;
   std::vector<QueryVar> vars;
+
+  void clear();
 
   template <typename Def>
   void RemoveUsrs(SymbolKind kind, int file_id,
