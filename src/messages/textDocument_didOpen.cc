@@ -69,12 +69,10 @@ struct Handler_TextDocumentDidOpen
 
     // Submit new index request if it is not a header file.
     if (SourceFileLanguage(path) != LanguageId::Unknown) {
-      Project::Entry entry = project->FindCompilationEntryForFile(path);
-      pipeline::Index(entry.filename,
-                      params.args.size() ? params.args : entry.args,
-                      IndexMode::Normal);
-
-      clang_complete->FlushSession(entry.filename);
+      pipeline::Index(
+          path, params.args.size() ? params.args : std::vector<std::string>{},
+          IndexMode::Normal);
+      clang_complete->FlushSession(path);
     }
 
     clang_complete->NotifyView(path);

@@ -45,9 +45,7 @@ struct Handler_TextDocumentDidSave
   void Run(In_TextDocumentDidSave *request) override {
     const auto &params = request->params;
     std::string path = params.textDocument.uri.GetPath();
-
-    Project::Entry entry = project->FindCompilationEntryForFile(path);
-    pipeline::Index(entry.filename, entry.args, IndexMode::Normal);
+    pipeline::Index(path, {}, IndexMode::Normal);
     clang_complete->NotifySave(path);
   }
 };

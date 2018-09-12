@@ -190,25 +190,23 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
-  Project::Entry entry;
-  {
-    std::lock_guard<std::mutex> lock(project->mutex_);
-    auto it = project->path_to_entry_index.find(request.path);
-    if (it != project->path_to_entry_index.end())
-      entry = project->entries[it->second];
-    else {
-      entry.filename = request.path;
-      entry.args = request.args;
-    }
-  }
+  Project::Entry entry = project->FindCompilationEntryForFile(request.path);
+  if (request.args.size())
+    entry.args = request.args;
   std::string path_to_index = entry.filename;
   std::unique_ptr<IndexFile> prev;
 
-  // Try to load the file from cache.
   std::optional<int64_t> write_time = LastWriteTime(path_to_index);
   if (!write_time)
     return true;
   int reparse = vfs->Stamp(path_to_index, *write_time);
+  if (request.path != path_to_index) {
+    std::optional<int64_t> mtime1 = LastWriteTime(request.path);
+    if (!mtime1)
+      return true;
+    if (vfs->Stamp(request.path, *mtime1))
+      reparse = 2;
+  }
   if (g_config->index.onChange)
     reparse = 2;
   if (!vfs->Mark(path_to_index, g_thread_id, 1) && !reparse)
@@ -257,8 +255,14 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
                              request.mode != IndexMode::NonInteractive);
-        std::lock_guard lock(vfs->mutex);
-        vfs->state[path].loaded = true;
+        {
+          std::lock_guard lock(vfs->mutex);
+          vfs->state[path].loaded = true;
+        }
+        if (entry.id >= 0) {
+          std::lock_guard lock(project->mutex_);
+          project->path_to_entry_index[path] = entry.id;
+        }
       }
     }
     return true;
@@ -268,9 +272,9 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
   std::vector<std::pair<std::string, std::string>> remapped;
   if (g_config->index.onChange) {
-    std::string content = wfiles->GetContent(request.path);
+    std::string content = wfiles->GetContent(path_to_index);
     if (content.size())
-      remapped.emplace_back(request.path, content);
+      remapped.emplace_back(path_to_index, content);
   }
   auto indexes = idx::Index(completion, wfiles, vfs, entry.directory,
                             path_to_index, entry.args, remapped);
@@ -289,7 +293,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {
     std::string path = curr->path;
-    bool do_update = path == path_to_index, loaded;
+    bool do_update = path == path_to_index || path == request.path, loaded;
     {
       std::lock_guard<std::mutex> lock(vfs->mutex);
       VFS::State &st = vfs->state[path];
@@ -300,11 +304,13 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
       loaded = st.loaded;
       st.loaded = true;
     }
-    if (!do_update)
-      continue;
     if (std::string reason; !matcher.IsMatch(path, &reason)) {
       LOG_IF_S(INFO, loud) << "skip emitting and storing index of " << path << " for "
                            << reason;
+      do_update = false;
+    }
+    if (!do_update) {
+      vfs->Reset(path);
       continue;
     }
 
