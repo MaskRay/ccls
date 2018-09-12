@@ -30,32 +30,40 @@ struct Handler_TextDocumentTypeDefinition
     QueryFile *file;
     if (!FindFileOrFail(db, project, request->id,
                         request->params.textDocument.uri.GetPath(), &file,
-                        nullptr)) {
+                        nullptr))
       return;
-    }
     WorkingFile *working_file =
         working_files->GetFileByFilename(file->def->path);
 
     Out_TextDocumentTypeDefinition out;
     out.id = request->id;
+    auto Add = [&](const QueryType &type) {
+      for (const auto &def : type.def)
+        if (def.spell) {
+          if (auto ls_loc = GetLsLocationEx(db, working_files, *def.spell,
+                                            g_config->xref.container))
+            out.result.push_back(*ls_loc);
+        }
+      if (out.result.empty())
+        for (const DeclRef &dr : type.declarations)
+          if (auto ls_loc = GetLsLocationEx(db, working_files, dr,
+                                            g_config->xref.container))
+            out.result.push_back(*ls_loc);
+    };
     for (SymbolRef sym :
          FindSymbolsAtLocation(working_file, file, request->params.position)) {
-      Usr usr = sym.usr;
       switch (sym.kind) {
       case SymbolKind::Var: {
         const QueryVar::Def *def = db->GetVar(sym).AnyDef();
-        if (!def || !def->type)
-          continue;
-        usr = def->type;
-        [[fallthrough]];
+        if (def && def->type)
+          Add(db->Type(def->type));
+        break;
       }
       case SymbolKind::Type: {
-        QueryType &type = db->Type(usr);
-        for (const auto &def : type.def)
-          if (def.spell) {
-            if (auto ls_loc = GetLsLocationEx(db, working_files, *def.spell,
-                                              g_config->xref.container))
-              out.result.push_back(*ls_loc);
+        for (auto &def : db->GetType(sym).def)
+          if (def.alias_of) {
+            Add(db->Type(def.alias_of));
+            break;
           }
         break;
       }
