@@ -27,10 +27,8 @@ struct Handler_TextDocumentDidChange
     const auto &params = request->params;
     std::string path = params.textDocument.uri.GetPath();
     working_files->OnChange(params);
-    if (g_config->index.onChange) {
-      Project::Entry entry = project->FindCompilationEntryForFile(path);
-      pipeline::Index(entry.filename, entry.args, IndexMode::OnChange);
-    }
+    if (g_config->index.onChange)
+      pipeline::Index(path, {}, IndexMode::OnChange);
     clang_complete->NotifyView(path);
     if (g_config->diagnostics.onChange)
       clang_complete->DiagnosticsUpdate(
