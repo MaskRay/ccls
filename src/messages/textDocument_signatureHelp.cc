@@ -51,7 +51,7 @@ MAKE_REFLECT_STRUCT(lsSignatureInformation, label, documentation, parameters);
 struct lsSignatureHelp {
   std::vector<lsSignatureInformation> signatures;
   int activeSignature = 0;
-  int activeParameter;
+  int activeParameter = 0;
 };
 MAKE_REFLECT_STRUCT(lsSignatureHelp, signatures, activeSignature,
                     activeParameter);
