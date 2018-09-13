@@ -267,6 +267,34 @@ void CompletionMain(CompletionManager *completion_manager) {
   }
 }
 
+llvm::StringRef diagLeveltoString(DiagnosticsEngine::Level Lvl) {
+  switch (Lvl) {
+  case DiagnosticsEngine::Ignored:
+    return "ignored";
+  case DiagnosticsEngine::Note:
+    return "note";
+  case DiagnosticsEngine::Remark:
+    return "remark";
+  case DiagnosticsEngine::Warning:
+    return "warning";
+  case DiagnosticsEngine::Error:
+    return "error";
+  case DiagnosticsEngine::Fatal:
+    return "fatal error";
+  }
+}
+
+void printDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
+  if (d.inside_main)
+    OS << llvm::sys::path::filename(d.file);
+  else
+    OS << d.file;
+  auto pos = d.range.start;
+  OS << ":" << (pos.line + 1) << ":" << (pos.column + 1) << ":"
+     << (d.inside_main ? " " : "\n");
+  OS << diagLeveltoString(d.level) << ": " << d.message;
+}
+
 void DiagnosticMain(CompletionManager *manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
@@ -295,30 +323,56 @@ void DiagnosticMain(CompletionManager *manager) {
     for (auto &Buf : Bufs)
       Buf.release();
 
+    auto Fill = [](const DiagBase &d, lsDiagnostic &ret) {
+      ret.range = lsRange{{d.range.start.line, d.range.start.column},
+                          {d.range.end.line, d.range.end.column}};
+      switch (d.level) {
+      case DiagnosticsEngine::Ignored:
+        // llvm_unreachable
+      case DiagnosticsEngine::Remark:
+        ret.severity = lsDiagnosticSeverity::Hint;
+        break;
+      case DiagnosticsEngine::Note:
+        ret.severity = lsDiagnosticSeverity::Information;
+        break;
+      case DiagnosticsEngine::Warning:
+        ret.severity = lsDiagnosticSeverity::Warning;
+        break;
+      case DiagnosticsEngine::Error:
+      case DiagnosticsEngine::Fatal:
+        ret.severity = lsDiagnosticSeverity::Error;
+        break;
+      }
+      ret.code = d.category;
+      return ret;
+    };
+
     std::vector<lsDiagnostic> ls_diags;
     for (auto &d : DC.Take()) {
       if (!d.inside_main)
         continue;
+      std::string buf;
+      llvm::raw_string_ostream OS(buf);
       lsDiagnostic &ls_diag = ls_diags.emplace_back();
-      ls_diag.range = lsRange{{d.range.start.line, d.range.start.column},
-                              {d.range.end.line, d.range.end.column}};
-      ls_diag.message = d.message;
-      switch (d.level) {
-      case DiagnosticsEngine::Ignored:
-        // llvm_unreachable
-      case DiagnosticsEngine::Note:
-      case DiagnosticsEngine::Remark:
-        ls_diag.severity = lsDiagnosticSeverity::Information;
-        continue;
-      case DiagnosticsEngine::Warning:
-        ls_diag.severity = lsDiagnosticSeverity::Warning;
-        break;
-      case DiagnosticsEngine::Error:
-      case DiagnosticsEngine::Fatal:
-        ls_diag.severity = lsDiagnosticSeverity::Error;
-      }
-      ls_diag.code = d.category;
+      Fill(d, ls_diag);
       ls_diag.fixits_ = d.edits;
+      OS << d.message;
+      for (auto &n : d.notes) {
+        OS << "\n\n";
+        printDiag(OS, n);
+      }
+      OS.flush();
+      ls_diag.message = std::move(buf);
+      for (auto &n : d.notes) {
+        if (!n.inside_main)
+          continue;
+        lsDiagnostic &ls_diag1 = ls_diags.emplace_back();
+        Fill(n, ls_diag1);
+        OS << n.message << "\n\n";
+        printDiag(OS, d);
+        OS.flush();
+        ls_diag1.message = std::move(buf);
+      }
     }
     manager->on_diagnostic_(path, ls_diags);
   }
