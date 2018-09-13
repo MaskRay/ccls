@@ -82,9 +82,9 @@ struct Config {
 
   struct ClientCapability {
     // TextDocumentClientCapabilities.documentSymbol.hierarchicalDocumentSymbolSupport
-    bool hierarchicalDocumentSymbolSupport = false;
+    bool hierarchicalDocumentSymbolSupport = true;
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
-    bool snippetSupport = false;
+    bool snippetSupport = true;
   } client;
 
   struct CodeLens {
