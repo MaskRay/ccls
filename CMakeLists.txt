@@ -209,11 +209,10 @@ target_sources(ccls PRIVATE
 )
 
 target_sources(ccls PRIVATE
-  src/messages/ccls_callHierarchy.cc
-  src/messages/ccls_callers.cc
+  src/messages/ccls_call.cc
   src/messages/ccls_fileInfo.cc
-  src/messages/ccls_inheritanceHierarchy.cc
-  src/messages/ccls_memberHierarchy.cc
+  src/messages/ccls_inheritance.cc
+  src/messages/ccls_member.cc
   src/messages/ccls_navigate.cc
   src/messages/ccls_reload.cc
   src/messages/ccls_vars.cc
