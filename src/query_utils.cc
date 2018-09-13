@@ -155,18 +155,6 @@ std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root) {
   return ret;
 }
 
-std::optional<lsPosition> GetLsPosition(WorkingFile *wfile,
-                                        const Position &position) {
-  if (!wfile || wfile->index_lines.empty())
-    return lsPosition{position.line, position.column};
-
-  int column = position.column;
-  if (std::optional<int> start =
-          wfile->GetBufferPosFromIndexPos(position.line, &column, false))
-    return lsPosition{*start, column};
-  return std::nullopt;
-}
-
 std::optional<lsRange> GetLsRange(WorkingFile *wfile,
                                   const Range &location) {
   if (!wfile || wfile->index_lines.empty())

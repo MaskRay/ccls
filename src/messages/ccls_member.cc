@@ -1,6 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
+#include "hierarchy.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
@@ -9,13 +10,12 @@ using namespace ccls;
 #include <clang/AST/Type.h>
 using namespace clang;
 
-#include <queue>
 #include <unordered_set>
 
 namespace {
-MethodType kMethodType = "$ccls/memberHierarchy";
+MethodType kMethodType = "$ccls/member";
 
-struct In_CclsMemberHierarchy : public RequestInMessage {
+struct In_CclsMember : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   struct Params {
@@ -30,16 +30,16 @@ struct In_CclsMemberHierarchy : public RequestInMessage {
 
     bool qualified = false;
     int levels = 1;
-    bool flat = false;
+    bool hierarchy = false;
   } params;
 };
 
-MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy::Params, textDocument, position, id,
-                    qualified, levels, flat);
-MAKE_REFLECT_STRUCT(In_CclsMemberHierarchy, id, params);
-REGISTER_IN_MESSAGE(In_CclsMemberHierarchy);
+MAKE_REFLECT_STRUCT(In_CclsMember::Params, textDocument, position, id,
+                    qualified, levels, hierarchy);
+MAKE_REFLECT_STRUCT(In_CclsMember, id, params);
+REGISTER_IN_MESSAGE(In_CclsMember);
 
-struct Out_CclsMemberHierarchy : public lsOutMessage<Out_CclsMemberHierarchy> {
+struct Out_CclsMember : public lsOutMessage<Out_CclsMember> {
   struct Entry {
     Usr usr;
     std::string id;
@@ -55,21 +55,21 @@ struct Out_CclsMemberHierarchy : public lsOutMessage<Out_CclsMemberHierarchy> {
   lsRequestId id;
   std::optional<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CclsMemberHierarchy::Entry, id, name, fieldName,
+MAKE_REFLECT_STRUCT(Out_CclsMember::Entry, id, name, fieldName,
                     location, numChildren, children);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsMemberHierarchy, jsonrpc, id,
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsMember, jsonrpc, id,
                                        result);
 
-bool Expand(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
+bool Expand(MessageHandler *m, Out_CclsMember::Entry *entry,
             bool qualified, int levels);
 
 // Add a field to |entry| which is a Func/Type.
-void DoField(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
+void DoField(MessageHandler *m, Out_CclsMember::Entry *entry,
              const QueryVar &var, int64_t offset, bool qualified, int levels) {
   const QueryVar::Def *def1 = var.AnyDef();
   if (!def1)
     return;
-  Out_CclsMemberHierarchy::Entry entry1;
+  Out_CclsMember::Entry entry1;
   // With multiple inheritance, the offset is incorrect.
   if (offset >= 0) {
     if (offset / 8 < 10)
@@ -106,7 +106,7 @@ void DoField(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
 }
 
 // Expand a type node by adding members recursively to it.
-bool Expand(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
+bool Expand(MessageHandler *m, Out_CclsMember::Entry *entry,
             bool qualified, int levels) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = ClangBuiltinTypeName(int(entry->usr));
@@ -127,15 +127,16 @@ bool Expand(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
       const auto *def = stack.back()->AnyDef();
       stack.pop_back();
       if (def) {
-        EachDefinedType(m->db, def->bases, [&](QueryType &type1) {
-          if (!seen.count(type1.usr)) {
+        for (Usr usr : def->bases) {
+          auto &type1 = m->db->Type(usr);
+          if (type1.def.size()) {
             seen.insert(type1.usr);
             stack.push_back(&type1);
           }
-        });
+        }
         if (def->alias_of) {
           const QueryType::Def *def1 = m->db->Type(def->alias_of).AnyDef();
-          Out_CclsMemberHierarchy::Entry entry1;
+          Out_CclsMember::Entry entry1;
           entry1.id = std::to_string(def->alias_of);
           entry1.usr = def->alias_of;
           if (def1 && def1->spell) {
@@ -173,11 +174,11 @@ bool Expand(MessageHandler *m, Out_CclsMemberHierarchy::Entry *entry,
   return true;
 }
 
-struct Handler_CclsMemberHierarchy
-    : BaseMessageHandler<In_CclsMemberHierarchy> {
+struct Handler_CclsMember
+    : BaseMessageHandler<In_CclsMember> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsMemberHierarchy::Entry>
+  std::optional<Out_CclsMember::Entry>
   BuildInitial(SymbolKind kind, Usr root_usr, bool qualified, int levels) {
     switch (kind) {
     default:
@@ -187,7 +188,7 @@ struct Handler_CclsMemberHierarchy
       if (!def)
         return {};
 
-      Out_CclsMemberHierarchy::Entry entry;
+      Out_CclsMember::Entry entry;
       // Not type, |id| is invalid.
       entry.name = def->Name(qualified);
       if (def->spell) {
@@ -195,9 +196,11 @@ struct Handler_CclsMemberHierarchy
                 GetLsLocation(db, working_files, *def->spell))
           entry.location = *loc;
       }
-      EachDefinedVar(db, def->vars, [&](QueryVar &var) {
-        DoField(this, &entry, var, -1, qualified, levels - 1);
-      });
+      for (Usr usr : def->vars) {
+        auto &var = db->Var(usr);
+        if (var.def.size())
+          DoField(this, &entry, var, -1, qualified, levels - 1);
+      }
       return entry;
     }
     case SymbolKind::Type: {
@@ -205,7 +208,7 @@ struct Handler_CclsMemberHierarchy
       if (!def)
         return {};
 
-      Out_CclsMemberHierarchy::Entry entry;
+      Out_CclsMember::Entry entry;
       entry.id = std::to_string(root_usr);
       entry.usr = root_usr;
       if (def->spell) {
@@ -219,9 +222,9 @@ struct Handler_CclsMemberHierarchy
     }
   }
 
-  void Run(In_CclsMemberHierarchy *request) override {
+  void Run(In_CclsMember *request) override {
     auto &params = request->params;
-    Out_CclsMemberHierarchy out;
+    Out_CclsMember out;
     out.id = request->id;
 
     if (params.id.size()) {
@@ -230,7 +233,7 @@ struct Handler_CclsMemberHierarchy
       } catch (...) {
         return;
       }
-      Out_CclsMemberHierarchy::Entry entry;
+      Out_CclsMember::Entry entry;
       entry.id = std::to_string(params.usr);
       entry.usr = params.usr;
       // entry.name is empty as it is known by the client.
@@ -265,31 +268,17 @@ struct Handler_CclsMemberHierarchy
       }
     }
 
-    if (!params.flat) {
+    if (params.hierarchy) {
       pipeline::WriteStdout(kMethodType, out);
       return;
     }
     Out_LocationList out1;
     out1.id = request->id;
-    if (out.result) {
-      std::queue<Out_CclsMemberHierarchy::Entry *> q;
-      for (auto &entry1 : out.result->children)
-        q.push(&entry1);
-      while (q.size()) {
-        auto *entry = q.front();
-        q.pop();
-        if (entry->location.uri.raw_uri.size())
-          out1.result.push_back({entry->location});
-        for (auto &entry1 : entry->children)
-          q.push(&entry1);
-      }
-      std::sort(out1.result.begin(), out1.result.end());
-      out1.result.erase(std::unique(out1.result.begin(), out1.result.end()),
-                        out1.result.end());
-    }
+    if (out.result)
+      FlattenHierarchy<Out_CclsMember::Entry>(*out.result, out1);
     pipeline::WriteStdout(kMethodType, out1);
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsMemberHierarchy);
+REGISTER_MESSAGE_HANDLER(Handler_CclsMember);
 
 } // namespace
