@@ -19,8 +19,7 @@ MethodType kMethodType = "workspace/symbol";
 bool AddSymbol(
     DB *db, WorkingFiles *working_files, SymbolIdx sym, bool use_detailed,
     std::vector<std::tuple<lsSymbolInformation, int, SymbolIdx>> *result) {
-  std::optional<lsSymbolInformation> info =
-      GetSymbolInfo(db, working_files, sym, true);
+  std::optional<lsSymbolInformation> info = GetSymbolInfo(db, sym, true);
   if (!info)
     return false;
 
