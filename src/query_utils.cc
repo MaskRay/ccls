@@ -286,11 +286,8 @@ lsSymbolKind GetSymbolKind(DB *db, SymbolIdx sym) {
   return ret;
 }
 
-// Returns a symbol. The symbol will have *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
-                                                 WorkingFiles *working_files,
-                                                 SymbolIdx sym,
-                                                 bool detailed_name) {
+std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+                                                 bool detailed) {
   switch (sym.kind) {
   case SymbolKind::Invalid:
     break;
@@ -307,12 +304,11 @@ std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
   default: {
     lsSymbolInformation info;
     EachEntityDef(db, sym, [&](const auto &def) {
-      if (detailed_name)
+      if (detailed)
         info.name = def.detailed_name;
       else
         info.name = def.Name(true);
       info.kind = def.kind;
-      info.containerName = def.detailed_name;
       return false;
     });
     return info;

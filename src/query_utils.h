@@ -47,11 +47,9 @@ std::optional<lsLocationEx> GetLsLocationEx(DB *db, WorkingFiles *working_files,
                                             Use use, bool container);
 std::vector<lsLocationEx> GetLsLocationExs(DB *db, WorkingFiles *working_files,
                                            const std::vector<Use> &refs);
-// Returns a symbol. The symbol will have *NOT* have a location assigned.
-std::optional<lsSymbolInformation> GetSymbolInfo(DB *db,
-                                                 WorkingFiles *working_files,
-                                                 SymbolIdx sym,
-                                                 bool detailed_name);
+// Returns a symbol. The symbol will *NOT* have a location assigned.
+std::optional<lsSymbolInformation> GetSymbolInfo(DB *db, SymbolIdx sym,
+                                                 bool detailed);
 
 std::vector<SymbolRef> FindSymbolsAtLocation(WorkingFile *working_file,
                                              QueryFile *file,

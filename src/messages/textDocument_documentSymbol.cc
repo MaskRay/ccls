@@ -84,7 +84,7 @@ struct Handler_TextDocumentDocumentSymbol
       for (auto [sym, refcnt] : symbol2refcnt) {
         if (refcnt <= 0) continue;
         if (std::optional<lsSymbolInformation> info =
-                GetSymbolInfo(db, working_files, sym, false)) {
+                GetSymbolInfo(db, sym, false)) {
           if (sym.kind == SymbolKind::Var) {
             QueryVar &var = db->GetVar(sym);
             auto *def = var.AnyDef();
