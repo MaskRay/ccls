@@ -441,9 +441,9 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
 
     // Client capabilities
     const auto &capabilities = params.capabilities;
-    g_config->client.snippetSupport =
+    g_config->client.snippetSupport &=
         capabilities.textDocument.completion.completionItem.snippetSupport;
-    g_config->client.hierarchicalDocumentSymbolSupport =
+    g_config->client.hierarchicalDocumentSymbolSupport &=
         capabilities.textDocument.documentSymbol.hierarchicalDocumentSymbolSupport;
 
     // Ensure there is a resource directory.
