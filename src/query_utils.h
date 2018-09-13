@@ -34,8 +34,6 @@ std::vector<Use> GetNonDefDeclarations(DB *db, SymbolIdx sym);
 
 std::vector<Use> GetUsesForAllBases(DB *db, QueryFunc &root);
 std::vector<Use> GetUsesForAllDerived(DB *db, QueryFunc &root);
-std::optional<lsPosition> GetLsPosition(WorkingFile *working_file,
-                                        const Position &position);
 std::optional<lsRange> GetLsRange(WorkingFile *working_file,
                                   const Range &location);
 lsDocumentUri GetLsDocumentUri(DB *db, int file_id, std::string *path);
@@ -101,24 +99,6 @@ template <typename Fn>
 void EachDefinedFunc(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
   for (Usr usr : usrs) {
     auto &obj = db->Func(usr);
-    if (!obj.def.empty())
-      fn(obj);
-  }
-}
-
-template <typename Fn>
-void EachDefinedType(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
-  for (Usr usr : usrs) {
-    auto &obj = db->Type(usr);
-    if (!obj.def.empty())
-      fn(obj);
-  }
-}
-
-template <typename Fn>
-void EachDefinedVar(DB *db, const std::vector<Usr> &usrs, Fn &&fn) {
-  for (Usr usr : usrs) {
-    auto &obj = db->Var(usr);
     if (!obj.def.empty())
       fn(obj);
   }

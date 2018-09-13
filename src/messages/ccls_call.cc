@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "hierarchy.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
@@ -22,7 +23,7 @@ using namespace ccls;
 
 namespace {
 
-MethodType kMethodType = "$ccls/callHierarchy";
+MethodType kMethodType = "$ccls/call";
 
 enum class CallType : uint8_t {
   Direct = 0,
@@ -36,7 +37,7 @@ bool operator&(CallType lhs, CallType rhs) {
   return uint8_t(lhs) & uint8_t(rhs);
 }
 
-struct In_CclsCallHierarchy : public RequestInMessage {
+struct In_CclsCall : public RequestInMessage {
   MethodType GetMethodType() const override { return kMethodType; }
 
   struct Params {
@@ -56,15 +57,16 @@ struct In_CclsCallHierarchy : public RequestInMessage {
     CallType callType = CallType::All;
     bool qualified = true;
     int levels = 1;
+    bool hierarchy = false;
   };
   Params params;
 };
-MAKE_REFLECT_STRUCT(In_CclsCallHierarchy::Params, textDocument, position, id,
-                    callee, callType, qualified, levels);
-MAKE_REFLECT_STRUCT(In_CclsCallHierarchy, id, params);
-REGISTER_IN_MESSAGE(In_CclsCallHierarchy);
+MAKE_REFLECT_STRUCT(In_CclsCall::Params, textDocument, position, id,
+                    callee, callType, qualified, levels, hierarchy);
+MAKE_REFLECT_STRUCT(In_CclsCall, id, params);
+REGISTER_IN_MESSAGE(In_CclsCall);
 
-struct Out_CclsCallHierarchy : public lsOutMessage<Out_CclsCallHierarchy> {
+struct Out_CclsCall : public lsOutMessage<Out_CclsCall> {
   struct Entry {
     Usr usr;
     std::string id;
@@ -79,12 +81,12 @@ struct Out_CclsCallHierarchy : public lsOutMessage<Out_CclsCallHierarchy> {
   lsRequestId id;
   std::optional<Entry> result;
 };
-MAKE_REFLECT_STRUCT(Out_CclsCallHierarchy::Entry, id, name, location, callType,
+MAKE_REFLECT_STRUCT(Out_CclsCall::Entry, id, name, location, callType,
                     numChildren, children);
-MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsCallHierarchy, jsonrpc, id,
+MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsCall, jsonrpc, id,
                                        result);
 
-bool Expand(MessageHandler *m, Out_CclsCallHierarchy::Entry *entry, bool callee,
+bool Expand(MessageHandler *m, Out_CclsCall::Entry *entry, bool callee,
             CallType call_type, bool qualified, int levels) {
   const QueryFunc &func = m->db->Func(entry->usr);
   const QueryFunc::Def *def = func.AnyDef();
@@ -94,7 +96,7 @@ bool Expand(MessageHandler *m, Out_CclsCallHierarchy::Entry *entry, bool callee,
   auto handle = [&](Use use, CallType call_type1) {
     entry->numChildren++;
     if (levels > 0) {
-      Out_CclsCallHierarchy::Entry entry1;
+      Out_CclsCall::Entry entry1;
       entry1.id = std::to_string(use.usr);
       entry1.usr = use.usr;
       if (auto loc = GetLsLocation(m->db, m->working_files, use))
@@ -160,17 +162,17 @@ bool Expand(MessageHandler *m, Out_CclsCallHierarchy::Entry *entry, bool callee,
   return true;
 }
 
-struct Handler_CclsCallHierarchy : BaseMessageHandler<In_CclsCallHierarchy> {
+struct Handler_CclsCall : BaseMessageHandler<In_CclsCall> {
   MethodType GetMethodType() const override { return kMethodType; }
 
-  std::optional<Out_CclsCallHierarchy::Entry>
+  std::optional<Out_CclsCall::Entry>
   BuildInitial(Usr root_usr, bool callee, CallType call_type, bool qualified,
                int levels) {
     const auto *def = db->Func(root_usr).AnyDef();
     if (!def)
       return {};
 
-    Out_CclsCallHierarchy::Entry entry;
+    Out_CclsCall::Entry entry;
     entry.id = std::to_string(root_usr);
     entry.usr = root_usr;
     entry.callType = CallType::Direct;
@@ -183,9 +185,9 @@ struct Handler_CclsCallHierarchy : BaseMessageHandler<In_CclsCallHierarchy> {
     return entry;
   }
 
-  void Run(In_CclsCallHierarchy *request) override {
+  void Run(In_CclsCall *request) override {
     auto &params = request->params;
-    Out_CclsCallHierarchy out;
+    Out_CclsCall out;
     out.id = request->id;
 
     if (params.id.size()) {
@@ -194,7 +196,7 @@ struct Handler_CclsCallHierarchy : BaseMessageHandler<In_CclsCallHierarchy> {
       } catch (...) {
         return;
       }
-      Out_CclsCallHierarchy::Entry entry;
+      Out_CclsCall::Entry entry;
       entry.id = std::to_string(params.usr);
       entry.usr = params.usr;
       entry.callType = CallType::Direct;
@@ -219,9 +221,17 @@ struct Handler_CclsCallHierarchy : BaseMessageHandler<In_CclsCallHierarchy> {
       }
     }
 
-    pipeline::WriteStdout(kMethodType, out);
+    if (params.hierarchy) {
+      pipeline::WriteStdout(kMethodType, out);
+      return;
+    }
+    Out_LocationList out1;
+    out1.id = request->id;
+    if (out.result)
+      FlattenHierarchy<Out_CclsCall::Entry>(*out.result, out1);
+    pipeline::WriteStdout(kMethodType, out1);
   }
 };
-REGISTER_MESSAGE_HANDLER(Handler_CclsCallHierarchy);
+REGISTER_MESSAGE_HANDLER(Handler_CclsCall);
 
 } // namespace
