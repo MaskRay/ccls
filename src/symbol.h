@@ -64,6 +64,6 @@ struct lsSymbolInformation {
   std::string_view name;
   lsSymbolKind kind;
   lsLocation location;
-  std::string_view containerName;
+  std::optional<std::string_view> containerName;
 };
 MAKE_REFLECT_STRUCT(lsSymbolInformation, name, kind, location, containerName);
