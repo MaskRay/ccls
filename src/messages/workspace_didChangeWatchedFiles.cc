@@ -54,28 +54,22 @@ struct Handler_WorkspaceDidChangeWatchedFiles
   void Run(In_WorkspaceDidChangeWatchedFiles *request) override {
     for (lsFileEvent &event : request->params.changes) {
       std::string path = event.uri.GetPath();
-      Project::Entry entry;
-      {
-        std::lock_guard<std::mutex> lock(project->mutex_);
-        auto it = project->path_to_entry_index.find(path);
-        if (it == project->path_to_entry_index.end())
-          continue;
-        entry = project->entries[it->second];
-      }
-      IndexMode mode =
-          working_files->GetFileByFilename(entry.filename) != nullptr
-              ? IndexMode::Normal
-              : IndexMode::NonInteractive;
+      IndexMode mode = working_files->GetFileByFilename(path)
+                           ? IndexMode::Normal
+                           : IndexMode::NonInteractive;
       switch (event.type) {
       case lsFileChangeType::Created:
       case lsFileChangeType::Changed: {
-        pipeline::Index(path, entry.args, mode);
+        pipeline::Index(path, {}, mode);
         if (mode == IndexMode::Normal)
           clang_complete->NotifySave(path);
+        else
+          clang_complete->FlushSession(path);
         break;
       }
       case lsFileChangeType::Deleted:
-        pipeline::Index(path, entry.args, mode);
+        pipeline::Index(path, {}, mode);
+        clang_complete->FlushSession(path);
         break;
       }
     }

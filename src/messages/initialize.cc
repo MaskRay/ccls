@@ -270,6 +270,10 @@ struct lsTextDocumentClientCapabilities {
     } completionItem;
   } completion;
 
+  struct lsDocumentSymbol {
+    bool hierarchicalDocumentSymbolSupport = false;
+  } documentSymbol;
+
   struct lsGenericDynamicReg {
     // Whether foo supports dynamic registration.
     std::optional<bool> dynamicRegistration;
@@ -291,6 +295,8 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsSynchronization,
                     dynamicRegistration, willSave, willSaveWaitUntil, didSave);
 MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsCompletion,
                     dynamicRegistration, completionItem);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsDocumentSymbol,
+                    hierarchicalDocumentSymbolSupport);
 MAKE_REFLECT_STRUCT(
     lsTextDocumentClientCapabilities::lsCompletion::lsCompletionItem,
     snippetSupport);
@@ -299,8 +305,8 @@ MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities::lsGenericDynamicReg,
 MAKE_REFLECT_STRUCT(
     lsTextDocumentClientCapabilities::CodeLensRegistrationOptions,
     dynamicRegistration, resolveProvider);
-MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities, synchronization,
-                    completion, rename);
+MAKE_REFLECT_STRUCT(lsTextDocumentClientCapabilities, completion,
+                    documentSymbol, rename, synchronization);
 
 struct lsClientCapabilities {
   // Workspace specific client capabilities.
@@ -449,6 +455,8 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     const auto &capabilities = params.capabilities;
     g_config->client.snippetSupport =
         capabilities.textDocument.completion.completionItem.snippetSupport;
+    g_config->client.hierarchicalDocumentSymbolSupport =
+        capabilities.textDocument.documentSymbol.hierarchicalDocumentSymbolSupport;
 
     // Ensure there is a resource directory.
     if (g_config->clang.resourceDir.empty())
