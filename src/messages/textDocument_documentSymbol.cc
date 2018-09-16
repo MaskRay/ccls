@@ -7,6 +7,8 @@
 using namespace ccls;
 using namespace clang;
 
+MAKE_HASHABLE(SymbolIdx, t.usr, t.kind);
+
 namespace {
 MethodType kMethodType = "textDocument/documentSymbol";
 
@@ -40,6 +42,28 @@ struct Out_TextDocumentDocumentSymbol
 };
 MAKE_REFLECT_STRUCT(Out_TextDocumentDocumentSymbol, jsonrpc, id, result);
 
+struct lsDocumentSymbol {
+  std::string name;
+  std::string detail;
+  lsSymbolKind kind;
+  lsRange range;
+  lsRange selectionRange;
+  std::vector<std::unique_ptr<lsDocumentSymbol>> children;
+};
+void Reflect(Writer &vis, std::unique_ptr<lsDocumentSymbol> &v);
+MAKE_REFLECT_STRUCT(lsDocumentSymbol, name, detail, kind, range, selectionRange,
+                    children);
+void Reflect(Writer &vis, std::unique_ptr<lsDocumentSymbol> &v) {
+  Reflect(vis, *v);
+}
+
+struct Out_HierarchicalDocumentSymbol
+    : public lsOutMessage<Out_HierarchicalDocumentSymbol> {
+  lsRequestId id;
+  std::vector<std::unique_ptr<lsDocumentSymbol>> result;
+};
+MAKE_REFLECT_STRUCT(Out_HierarchicalDocumentSymbol, jsonrpc, id, result);
+
 struct Handler_TextDocumentDocumentSymbol
     : BaseMessageHandler<In_TextDocumentDocumentSymbol> {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -50,6 +74,9 @@ struct Handler_TextDocumentDocumentSymbol
     int file_id;
     if (!FindFileOrFail(db, project, request->id,
                         params.textDocument.uri.GetPath(), &file, &file_id))
+      return;
+    WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
+    if (!wfile)
       return;
 
     const auto &symbol2refcnt =
@@ -65,6 +92,92 @@ struct Handler_TextDocumentDocumentSymbol
                   Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id}))
             out.result.push_back(ls_loc->range);
       std::sort(out.result.begin(), out.result.end());
+      pipeline::WriteStdout(kMethodType, out);
+    } else if (g_config->client.hierarchicalDocumentSymbolSupport) {
+      std::unordered_map<
+          SymbolIdx, std::pair<const void *, std::unique_ptr<lsDocumentSymbol>>>
+          sym2ds;
+      for (auto [sym, refcnt] : symbol2refcnt) {
+        if (refcnt <= 0)
+          continue;
+        auto r = sym2ds.try_emplace(SymbolIdx{sym.usr, sym.kind});
+        if (!r.second)
+          continue;
+        auto &kv = r.first->second;
+        kv.second = std::make_unique<lsDocumentSymbol>();
+        lsDocumentSymbol &ds = *kv.second;
+        WithEntity(db, sym, [&](const auto &entity) {
+          auto *def = entity.AnyDef();
+          if (!def)
+            return;
+          ds.name = def->Name(false);
+          ds.detail = def->Name(true);
+          for (auto &def : entity.def)
+            if (def.file_id == file_id) {
+              if (!def.spell || !def.extent)
+                break;
+              ds.kind = def.kind;
+              if (auto ls_range = GetLsRange(wfile, def.extent->range))
+                ds.range = *ls_range;
+              else
+                break;
+              if (auto ls_range = GetLsRange(wfile, def.spell->range))
+                ds.selectionRange = *ls_range;
+              else
+                break;
+              kv.first = static_cast<const void *>(&def);
+            }
+        });
+        if (kv.first && sym.kind == SymbolKind::Var)
+          if (static_cast<const QueryVar::Def *>(kv.first)->is_local())
+            kv.first = nullptr;
+        if (!kv.first) {
+          kv.second.reset();
+          continue;
+        }
+      }
+      for (auto &[sym, def_ds] : sym2ds) {
+        if (!def_ds.second)
+          continue;
+        lsDocumentSymbol &ds = *def_ds.second;
+        switch (sym.kind) {
+        case SymbolKind::Func: {
+          auto &def = *static_cast<const QueryFunc::Def *>(def_ds.first);
+          for (Usr usr1 : def.vars) {
+            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
+            if (it != sym2ds.end() && it->second.second)
+              ds.children.push_back(std::move(it->second.second));
+          }
+          break;
+        }
+        case SymbolKind::Type: {
+          auto &def = *static_cast<const QueryType::Def *>(def_ds.first);
+          for (Usr usr1 : def.funcs) {
+            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Func});
+            if (it != sym2ds.end() && it->second.second)
+              ds.children.push_back(std::move(it->second.second));
+          }
+          for (Usr usr1 : def.types) {
+            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Type});
+            if (it != sym2ds.end() && it->second.second)
+              ds.children.push_back(std::move(it->second.second));
+          }
+          for (auto [usr1, _] : def.vars) {
+            auto it = sym2ds.find(SymbolIdx{usr1, SymbolKind::Var});
+            if (it != sym2ds.end() && it->second.second)
+              ds.children.push_back(std::move(it->second.second));
+          }
+          break;
+        }
+        default:
+          break;
+        }
+      }
+      Out_HierarchicalDocumentSymbol out;
+      out.id = request->id;
+      for (auto &[sym, def_ds] : sym2ds)
+        if (def_ds.second)
+          out.result.push_back(std::move(def_ds.second));
       pipeline::WriteStdout(kMethodType, out);
     } else {
       Out_TextDocumentDocumentSymbol out;
