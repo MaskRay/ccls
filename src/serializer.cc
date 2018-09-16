@@ -147,26 +147,39 @@ void Reflect(Writer &visitor, std::unordered_map<Usr, V> &map) {
   visitor.EndArray();
 }
 
-// Used by IndexFile::dependencies. Timestamps are emitted for Binary.
-void Reflect(Reader &visitor, StringMap<int64_t> &map) {
-  visitor.IterArray([&](Reader &entry) {
-    std::string name;
-    Reflect(entry, name);
-    if (visitor.Format() == SerializeFormat::Binary)
-      Reflect(entry, map[name]);
-    else
-      map[name] = 0;
-  });
-}
-void Reflect(Writer &visitor, StringMap<int64_t> &map) {
-  visitor.StartArray(map.size());
-  for (auto &it : map) {
-    std::string key = it.first();
-    Reflect(visitor, key);
-    if (visitor.Format() == SerializeFormat::Binary)
-      Reflect(visitor, it.second);
+// Used by IndexFile::dependencies.
+void Reflect(Reader &vis, StringMap<int64_t> &v) {
+  std::string name;
+  if (vis.Format() == SerializeFormat::Json) {
+    auto &vis1 = static_cast<JsonReader&>(vis);
+    for (auto it = vis1.m().MemberBegin(); it != vis1.m().MemberEnd(); ++it)
+      v[it->name.GetString()] = it->value.GetInt64();
+  } else {
+    vis.IterArray([&](Reader &entry) {
+      Reflect(entry, name);
+      Reflect(entry, v[name]);
+    });
   }
-  visitor.EndArray();
+}
+void Reflect(Writer &vis, StringMap<int64_t> &v) {
+  if (vis.Format() == SerializeFormat::Json) {
+    auto &vis1 = static_cast<JsonWriter&>(vis);
+    vis.StartObject();
+    for (auto &it : v) {
+      std::string key = it.first();
+      vis1.m().Key(key.c_str());
+      vis1.m().Int64(it.second);
+    }
+    vis.EndObject();
+  } else {
+    vis.StartArray(v.size());
+    for (auto &it : v) {
+      std::string key = it.first();
+      Reflect(vis, key);
+      Reflect(vis, it.second);
+    }
+    vis.EndArray();
+  }
 }
 
 // TODO: Move this to indexer.cc
@@ -436,6 +449,22 @@ Deserialize(SerializeFormat format, const std::string &path,
 
   // Restore non-serialized state.
   file->path = path;
+  if (g_config->clang.pathMappings.size()) {
+    DoPathMapping(file->import_file);
+    for (std::string &arg : file->args)
+      DoPathMapping(arg);
+    for (auto &[_, path] : file->lid2path)
+      DoPathMapping(path);
+    for (auto &include : file->includes)
+      DoPathMapping(include.resolved_path);
+    StringMap<int64_t> dependencies;
+    for (auto &it : file->dependencies) {
+      std::string path = it.first().str();
+      DoPathMapping(path);
+      dependencies[path] = it.second;
+    }
+    file->dependencies = std::move(dependencies);
+  }
   return file;
 }
 } // namespace ccls

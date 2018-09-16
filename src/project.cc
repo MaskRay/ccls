@@ -105,17 +105,6 @@ struct ProjectProcessor {
       }
       hash_combine(hash, std::hash<std::string>{}(arg));
     }
-    for (size_t i = 1; i < args.size(); i++)
-      // This is most likely the file path we will be passing to clang. The
-      // path needs to be absolute, otherwise clang_codeCompleteAt is extremely
-      // slow. See
-      // https://github.com/cquery-project/cquery/commit/af63df09d57d765ce12d40007bf56302a0446678.
-      if (args[i][0] != '-' && EndsWith(args[i], base_name)) {
-        args[i] = ResolveIfRelative(entry.directory, args[i]);
-        continue;
-      }
-
-    args.push_back("-resource-dir=" + g_config->clang.resourceDir);
     args.push_back("-working-directory=" + entry.directory);
 
     if (!command_set.insert(hash).second) {
@@ -185,8 +174,10 @@ ReadCompilerArgumentsFromFile(const std::string &path) {
   if (!MBOrErr)
     return {};
   std::vector<std::string> args;
-  for (line_iterator I(*MBOrErr.get(), true, '#'), E; I != E; ++I)
+  for (line_iterator I(*MBOrErr.get(), true, '#'), E; I != E; ++I) {
     args.push_back(*I);
+    DoPathMapping(args.back());
+  }
   return args;
 }
 
@@ -317,9 +308,13 @@ LoadEntriesFromDirectory(ProjectConfig *project,
   for (tooling::CompileCommand &Cmd : CDB->getAllCompileCommands()) {
     Project::Entry entry;
     entry.directory = NormalizePath(Cmd.Directory);
+    DoPathMapping(entry.directory);
     entry.filename =
         NormalizePath(ResolveIfRelative(entry.directory, Cmd.Filename));
+    DoPathMapping(entry.filename);
     entry.args = std::move(Cmd.CommandLine);
+    for (std::string &arg : entry.args)
+      DoPathMapping(arg);
     proc.Process(entry);
     if (Seen.insert(entry.filename).second)
       result.push_back(entry);

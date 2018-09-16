@@ -4,6 +4,7 @@
 #include "clang_tu.h"
 
 #include "clang_utils.h"
+#include "config.h"
 
 #include <clang/Lex/Lexer.h>
 using namespace clang;
@@ -55,9 +56,11 @@ Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
 std::unique_ptr<CompilerInvocation>
 BuildCompilerInvocation(const std::vector<std::string> &args,
                         IntrusiveRefCntPtr<vfs::FileSystem> VFS) {
+  std::string save = "-resource-dir=" + g_config->clang.resourceDir;
   std::vector<const char *> cargs;
   for (auto &arg : args)
     cargs.push_back(arg.c_str());
+  cargs.push_back(save.c_str());
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions));
   std::unique_ptr<CompilerInvocation> CI =
