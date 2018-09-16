@@ -31,7 +31,7 @@ std::vector<Use> GetNonDefDeclarationTargets(DB *db, SymbolRef sym) {
   switch (sym.kind) {
   case SymbolKind::Var: {
     std::vector<Use> ret = GetNonDefDeclarations(db, sym);
-    // If there is no declaration, jump the its type.
+    // If there is no declaration, jump to its type.
     if (ret.empty()) {
       for (auto &def : db->GetVar(sym).def)
         if (def.type) {
@@ -64,44 +64,45 @@ struct Handler_TextDocumentDefinition
     out.id = request->id;
 
     Maybe<Range> range;
+    SymbolKind kind;
     Maybe<Use> on_def;
     WorkingFile *wfile = working_files->GetFileByFilename(file->def->path);
     lsPosition &ls_pos = params.position;
 
     for (SymbolRef sym : FindSymbolsAtLocation(wfile, file, ls_pos)) {
-      if (!range)
+      if (!range) {
         range = sym.range;
-      else if (!(*range == sym.range))
+        kind = sym.kind;
+      } else if (!(sym.range == *range && sym.kind == kind)) {
         break;
+      }
       // Found symbol. Return definition.
 
       // Special cases which are handled:
       //  - symbol has declaration but no definition (ie, pure virtual)
-      //  - start at spelling but end at extent for better mouse tooltip
       //  - goto declaration while in definition of recursive type
       std::vector<Use> uses;
       EachEntityDef(db, sym, [&](const auto &def) {
-        if (def.spell && def.extent) {
+        if (def.spell) {
           Use spell = *def.spell;
-          // If on a definition, clear |uses| to find declarations below.
           if (spell.file_id == file_id &&
               spell.range.Contains(ls_pos.line, ls_pos.character)) {
             on_def = spell;
             uses.clear();
             return false;
           }
-          // We use spelling start and extent end because this causes vscode
-          // to highlight the entire definition when previewing / hoving with
-          // the mouse.
-          spell.range.end = def.extent->range.end;
           uses.push_back(spell);
         }
         return true;
       });
 
+      // |uses| is empty if on a declaration/definition, otherwise it includes
+      // all declarations/definitions.
       if (uses.empty()) {
-        // The symbol has no definition or the cursor is on a definition.
-        uses = GetNonDefDeclarationTargets(db, sym);
+        for (Use use : GetNonDefDeclarationTargets(db, sym))
+          if (!(use.file_id == file_id &&
+                use.range.Contains(ls_pos.line, ls_pos.character)))
+            uses.push_back(use);
         // There is no declaration but the cursor is on a definition.
         if (uses.empty() && on_def)
           uses.push_back(*on_def);
