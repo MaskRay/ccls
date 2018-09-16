@@ -27,6 +27,7 @@ class JsonReader : public Reader {
 public:
   JsonReader(rapidjson::GenericValue<rapidjson::UTF8<>> *m) : m_(m) {}
   SerializeFormat Format() const override { return SerializeFormat::Json; }
+  rapidjson::GenericValue<rapidjson::UTF8<>> &m() { return *m_; }
 
   bool IsBool() override { return m_->IsBool(); }
   bool IsNull() override { return m_->IsNull(); }
@@ -95,6 +96,7 @@ class JsonWriter : public Writer {
 public:
   JsonWriter(rapidjson::Writer<rapidjson::StringBuffer> *m) : m_(m) {}
   SerializeFormat Format() const override { return SerializeFormat::Json; }
+  rapidjson::Writer<rapidjson::StringBuffer> &m() { return *m_; }
 
   void Null() override { m_->Null(); }
   void Bool(bool x) override { m_->Bool(x); }

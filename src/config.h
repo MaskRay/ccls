@@ -61,6 +61,18 @@ struct Config {
     // Additional arguments to pass to clang.
     std::vector<std::string> extraArgs;
 
+    // Translate absolute paths in compile_commands.json entries, .ccls options
+    // and cache files. This allows to reuse cache files built otherwhere if the
+    // source paths are different.
+    //
+    // This is a list of colon-separated strings, e.g. ["/container:/host"]
+    //
+    // An entry of "clang -I /container/include /container/a.cc" will be
+    // translated to "clang -I /host/include /host/a.cc". This is simple string
+    // replacement, so "clang /prefix/container/a.cc" will become "clang
+    // /prefix/host/a.cc".
+    std::vector<std::string> pathMappings;
+
     // Value to use for clang -resource-dir if not specified.
     //
     // This option defaults to clang -print-resource-dir and should not be
@@ -235,7 +247,8 @@ struct Config {
     int maxNum = 2000;
   } xref;
 };
-MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, resourceDir);
+MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
+                    resourceDir);
 MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
@@ -258,3 +271,7 @@ MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
 
 extern Config *g_config;
 thread_local extern int g_thread_id;
+
+namespace ccls {
+void DoPathMapping(std::string &arg);
+}

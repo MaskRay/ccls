@@ -453,6 +453,7 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     // Ensure there is a resource directory.
     if (g_config->clang.resourceDir.empty())
       g_config->clang.resourceDir = GetDefaultResourceDirectory();
+    DoPathMapping(g_config->clang.resourceDir);
     LOG_S(INFO) << "Using -resource-dir=" << g_config->clang.resourceDir;
 
     // Send initialization before starting indexers, so we don't send a
@@ -471,10 +472,10 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     if (g_config->cacheDirectory.size()) {
       // Create two cache directories for files inside and outside of the
       // project.
-      sys::fs::create_directories(g_config->cacheDirectory +
-        EscapeFileName(g_config->projectRoot));
-      sys::fs::create_directories(g_config->cacheDirectory + '@' +
-                                  EscapeFileName(g_config->projectRoot));
+      auto len = g_config->projectRoot.size();
+      std::string escaped = EscapeFileName(g_config->projectRoot.substr(0, len - 1));
+      sys::fs::create_directories(g_config->cacheDirectory + escaped);
+      sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
     }
 
     diag_pub->Init();

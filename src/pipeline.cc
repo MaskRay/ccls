@@ -136,12 +136,13 @@ std::string AppendSerializationFormat(const std::string &base) {
 
 std::string GetCachePath(const std::string &source_file) {
   std::string cache_file;
-  size_t len = g_config->projectRoot.size();
+  auto len = g_config->projectRoot.size();
   if (StartsWith(source_file, g_config->projectRoot)) {
-    cache_file = EscapeFileName(g_config->projectRoot) +
+    cache_file = EscapeFileName(g_config->projectRoot.substr(0, len - 1)) + '/' +
                  EscapeFileName(source_file.substr(len));
   } else {
-    cache_file = '@' + EscapeFileName(g_config->projectRoot) +
+    cache_file = '@' +
+                 EscapeFileName(g_config->projectRoot.substr(0, len - 1)) + '/' +
                  EscapeFileName(source_file);
   }
 
