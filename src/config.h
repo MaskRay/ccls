@@ -69,6 +69,8 @@ struct Config {
   } clang;
 
   struct ClientCapability {
+    // TextDocumentClientCapabilities.documentSymbol.hierarchicalDocumentSymbolSupport
+    bool hierarchicalDocumentSymbolSupport = false;
     // TextDocumentClientCapabilities.completion.completionItem.snippetSupport
     bool snippetSupport = false;
   } client;
@@ -237,7 +239,8 @@ struct Config {
 };
 MAKE_REFLECT_STRUCT(Config::Clang, excludeArgs, extraArgs, pathMappings,
                     resourceDir);
-MAKE_REFLECT_STRUCT(Config::ClientCapability, snippetSupport);
+MAKE_REFLECT_STRUCT(Config::ClientCapability, hierarchicalDocumentSymbolSupport,
+                    snippetSupport);
 MAKE_REFLECT_STRUCT(Config::CodeLens, localVariables);
 MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
                     dropOldRequests, duplicateOptional, filterAndSort,

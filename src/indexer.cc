@@ -889,22 +889,23 @@ public:
         type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
                                                         : lsSymbolKind::Class;
         if (type->def.detailed_name[0] == '\0' && info->short_name.empty()) {
+          StringRef Tag;
+          switch (RD->getTagKind()) {
+          case TTK_Struct: Tag = "struct"; break;
+          case TTK_Interface: Tag = "__interface"; break;
+          case TTK_Union: Tag = "union"; break;
+          case TTK_Class: Tag = "class"; break;
+          case TTK_Enum: Tag = "enum"; break;
+          }
           if (TypedefNameDecl *TD = RD->getTypedefNameForAnonDecl()) {
             StringRef Name = TD->getName();
-            StringRef Tag;
-            switch (RD->getTagKind()) {
-            case TTK_Struct: Tag = "struct "; break;
-            case TTK_Interface: Tag = "__interface "; break;
-            case TTK_Union: Tag = "union "; break;
-            case TTK_Class: Tag = "class "; break;
-            case TTK_Enum: Tag = "enum "; break;
-            }
-            std::string name = ("anon " + Tag + Name).str();
+            std::string name = ("anon " + Tag + " " + Name).str();
             type->def.detailed_name = Intern(name);
             type->def.short_name_size = name.size();
           } else {
-            // e.g. "struct {}"
-            SetName(OrigD, "", "", type->def);
+            std::string name = ("anon " + Tag).str();
+            type->def.detailed_name = Intern(name);
+            type->def.short_name_size = name.size();
           }
         }
         if (is_def) {
