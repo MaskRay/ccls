@@ -380,6 +380,11 @@ void BuildItem(std::vector<lsCompletionItem> &out,
       for (auto i = first; i < out.size(); i++)
         out[i].parameters_.push_back(text);
       break;
+    case CodeCompletionString::CK_Informative:
+      if (StringRef(Chunk.Text).endswith("::"))
+        continue;
+      text = Chunk.Text;
+      break;
     case CodeCompletionString::CK_ResultType:
       result_type = Chunk.Text;
       continue;
