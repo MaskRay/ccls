@@ -16,7 +16,6 @@ limitations under the License.
 #include "config.h"
 
 Config *g_config;
-thread_local int g_thread_id;
 
 namespace ccls {
 void DoPathMapping(std::string &arg) {

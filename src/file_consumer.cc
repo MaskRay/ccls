@@ -69,43 +69,21 @@ VFS::State VFS::Get(const std::string &file) {
   auto it = state.find(file);
   if (it != state.end())
     return it->second;
-  return {0, 0, 0};
+  return {0, 0};
 }
 
-bool VFS::Mark(const std::string &file, int owner, int stage) {
-  std::lock_guard<std::mutex> lock(mutex);
-  State &st = state[file];
-  if (st.stage < stage) {
-    st.owner = owner;
-    st.stage = stage;
-    return true;
-  } else
-    return false;
-}
-
-bool VFS::Stamp(const std::string &file, int64_t ts) {
+bool VFS::Stamp(const std::string &file, int64_t ts, int64_t offset) {
   std::lock_guard<std::mutex> lock(mutex);
   State &st = state[file];
   if (st.timestamp < ts) {
-    st.timestamp = ts;
+    st.timestamp = ts + offset;
     return true;
   } else
     return false;
 }
 
-void VFS::ResetLocked(const std::string &file) {
-  State &st = state[file];
-  if (st.owner == 0 || st.owner == g_thread_id)
-    st.stage = 0;
-}
-
-void VFS::Reset(const std::string &file) {
-  std::lock_guard<std::mutex> lock(mutex);
-  ResetLocked(file);
-}
-
 FileConsumer::FileConsumer(VFS *vfs, const std::string &parse_file)
-    : vfs_(vfs), parse_file_(parse_file), thread_id_(g_thread_id) {}
+    : vfs_(vfs), parse_file_(parse_file) {}
 
 IndexFile *FileConsumer::TryConsumeFile(
     const clang::FileEntry &File,
@@ -116,9 +94,9 @@ IndexFile *FileConsumer::TryConsumeFile(
     return it->second.get();
 
   std::string file_name = FileName(File);
-  // We did not take the file from global. Cache that we failed so we don't try
-  // again and return nullptr.
-  if (!vfs_->Mark(file_name, thread_id_, 2)) {
+  int64_t tim = File.getModificationTime();
+  assert(tim);
+  if (!vfs_->Stamp(file_name, tim, 0)) {
     local_[UniqueID] = nullptr;
     return nullptr;
   }

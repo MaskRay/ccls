@@ -35,6 +35,7 @@ enum class IndexMode {
 };
 
 namespace pipeline {
+extern int64_t loaded_ts, tick;
 void Init();
 void LaunchStdin();
 void LaunchStdout();
