@@ -70,17 +70,6 @@ struct Handler_CclsReload : BaseMessageHandler<In_CclsReload> {
       q.pop();
       need_index.insert(file->def->path);
 
-      std::optional<int64_t> write_time =
-          pipeline::LastWriteTime(file->def->path);
-      if (!write_time)
-        continue;
-      {
-        std::lock_guard<std::mutex> lock(vfs->mutex);
-        VFS::State &st = vfs->state[file->def->path];
-        if (st.timestamp < write_time)
-          st.stage = 0;
-      }
-
       if (request->params.dependencies)
         for (const std::string &path : graph[file->def->path]) {
           auto it = path_to_file.find(path);

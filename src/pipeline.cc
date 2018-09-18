@@ -14,7 +14,6 @@
 #include "project.h"
 #include "query_utils.h"
 
-#include <llvm/ADT/Twine.h>
 #include <llvm/Support/Threading.h>
 #include <llvm/Support/Timer.h>
 using namespace llvm;
@@ -63,6 +62,9 @@ void DiagnosticsPublisher::Publish(WorkingFiles *working_files,
 }
 
 namespace ccls::pipeline {
+
+int64_t loaded_ts = 0, tick = 0;
+
 namespace {
 
 struct Index_Request {
@@ -70,6 +72,7 @@ struct Index_Request {
   std::vector<std::string> args;
   IndexMode mode;
   lsRequestId id;
+  int64_t ts = tick++;
 };
 
 struct Stdout_Request {
@@ -160,6 +163,8 @@ std::unique_ptr<IndexFile> RawCacheLoad(const std::string &path) {
 
 bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
                    Project *project, VFS *vfs, const GroupMatch &matcher) {
+  const int N_MUTEXES = 256;
+  static std::mutex mutexes[N_MUTEXES];
   std::optional<Index_Request> opt_request = index_request->TryPopFront();
   if (!opt_request)
     return false;
@@ -174,8 +179,8 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     return false;
   }
 
-  if (std::string reason; !matcher.IsMatch(request.path, &reason)) {
-    LOG_IF_S(INFO, loud) << "skip " << request.path << " for " << reason;
+  if (!matcher.IsMatch(request.path)) {
+    LOG_IF_S(INFO, loud) << "skip " << request.path;
     return false;
   }
 
@@ -188,74 +193,75 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
   std::optional<int64_t> write_time = LastWriteTime(path_to_index);
   if (!write_time)
     return true;
-  int reparse = vfs->Stamp(path_to_index, *write_time);
+  int reparse = vfs->Stamp(path_to_index, *write_time, -1);
   if (request.path != path_to_index) {
     std::optional<int64_t> mtime1 = LastWriteTime(request.path);
     if (!mtime1)
       return true;
-    if (vfs->Stamp(request.path, *mtime1))
-      reparse = 2;
+    if (vfs->Stamp(request.path, *mtime1, -1))
+      reparse = 1;
   }
   if (g_config->index.onChange)
     reparse = 2;
-  if (!vfs->Mark(path_to_index, g_thread_id, 1) && !reparse)
+  if (!reparse)
     return true;
 
-  prev = RawCacheLoad(path_to_index);
-  if (!prev)
-    reparse = 2;
-  else {
-    if (CacheInvalid(vfs, prev.get(), path_to_index, entry.args, std::nullopt))
-      reparse = 2;
-    int reparseForDep = g_config->index.reparseForDependency;
-    if (reparseForDep > 1 || (reparseForDep == 1 && !Project::loaded))
-      for (const auto &dep : prev->dependencies) {
-        if (auto write_time1 = LastWriteTime(dep.first().str())) {
-          if (dep.second < *write_time1) {
-            reparse = 2;
-            std::lock_guard<std::mutex> lock(vfs->mutex);
-            vfs->state[dep.first().str()].stage = 0;
-          }
-        } else
-          reparse = 2;
+  if (reparse < 2) do {
+    std::unique_lock lock(
+        mutexes[std::hash<std::string>()(path_to_index) % N_MUTEXES]);
+    prev = RawCacheLoad(path_to_index);
+    if (!prev || CacheInvalid(vfs, prev.get(), path_to_index, entry.args,
+                      std::nullopt))
+      break;
+    bool update = false;
+    for (const auto &dep : prev->dependencies)
+      if (auto mtime1 = LastWriteTime(dep.first.val().str())) {
+        if (dep.second < *mtime1)
+          update = true;
+      } else {
+        update = true;
       }
-  }
+    int forDep = g_config->index.reparseForDependency;
+    if (update && (forDep > 1 || (forDep == 1 && request.ts < loaded_ts)))
+      break;
 
-  // Grab the ownership
-  if (reparse) {
-    std::lock_guard<std::mutex> lock(vfs->mutex);
-    vfs->state[path_to_index].owner = g_thread_id;
-    vfs->state[path_to_index].stage = 0;
-  }
-
-  if (reparse < 2) {
-    LOG_S(INFO) << "load cache for " << path_to_index;
-    auto dependencies = prev->dependencies;
-    if (reparse) {
-      IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
-      on_indexed->PushBack(std::move(update),
-                           request.mode != IndexMode::NonInteractive);
-      std::lock_guard lock(vfs->mutex);
-      vfs->state[path_to_index].loaded = true;
-    }
-    for (const auto &dep : dependencies) {
-      std::string path = dep.first().str();
-      if (vfs->Mark(path, 0, 2) && (prev = RawCacheLoad(path))) {
+    if (reparse < 2) {
+      LOG_S(INFO) << "load cache for " << path_to_index;
+      auto dependencies = prev->dependencies;
+      if (reparse) {
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
                              request.mode != IndexMode::NonInteractive);
+        std::lock_guard lock1(vfs->mutex);
+        vfs->state[path_to_index].loaded = true;
+      }
+      lock.unlock();
+      for (const auto &dep : dependencies) {
+        std::string path = dep.first.val().str();
+        std::lock_guard lock1(
+            mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
+        prev = RawCacheLoad(path);
+        if (!prev)
+          continue;
         {
-          std::lock_guard lock(vfs->mutex);
-          vfs->state[path].loaded = true;
+          std::lock_guard lock2(vfs->mutex);
+          VFS::State &st = vfs->state[path];
+          if (st.loaded)
+            continue;
+          st.loaded = true;
+          st.timestamp = prev->mtime;
         }
+        IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
+        on_indexed->PushBack(std::move(update),
+                             request.mode != IndexMode::NonInteractive);
         if (entry.id >= 0) {
-          std::lock_guard lock(project->mutex_);
+          std::lock_guard lock2(project->mutex_);
           project->path_to_entry_index[path] = entry.id;
         }
       }
+      return true;
     }
-    return true;
-  }
+  } while (0);
 
   LOG_IF_S(INFO, loud) << "parse " << path_to_index;
 
@@ -276,64 +282,52 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
       out.error.message = "Failed to index " + path_to_index;
       pipeline::WriteStdout(kMethodType_Unknown, out);
     }
-    vfs->Reset(path_to_index);
     return true;
   }
 
   for (std::unique_ptr<IndexFile> &curr : indexes) {
     std::string path = curr->path;
-    bool do_update = path == path_to_index || path == request.path, loaded;
-    {
-      std::lock_guard<std::mutex> lock(vfs->mutex);
-      VFS::State &st = vfs->state[path];
-      if (st.timestamp < curr->mtime) {
-        st.timestamp = curr->mtime;
-        do_update = true;
-      }
-      loaded = st.loaded;
-      st.loaded = true;
-    }
-    if (std::string reason; !matcher.IsMatch(path, &reason)) {
-      LOG_IF_S(INFO, loud) << "skip emitting and storing index of " << path << " for "
-                           << reason;
-      do_update = false;
-    }
-    if (!do_update) {
-      vfs->Reset(path);
+    if (!matcher.IsMatch(path)) {
+      LOG_IF_S(INFO, loud) << "skip index for " << path;
       continue;
     }
 
-    prev.reset();
-    if (loaded)
-      prev = RawCacheLoad(path);
-
-    // Store current index.
     LOG_IF_S(INFO, loud) << "store index for " << path << " (delta: " << !!prev
                          << ")";
-    if (g_config->cacheDirectory.empty()) {
-      std::lock_guard lock(g_index_mutex);
-      auto it = g_index.insert_or_assign(
-        path, InMemoryIndexFile{curr->file_contents, *curr});
-      std::string().swap(it.first->second.index.file_contents);
-    } else {
-      std::string cache_path = GetCachePath(path);
-      WriteToFile(cache_path, curr->file_contents);
-      WriteToFile(AppendSerializationFormat(cache_path),
-        Serialize(g_config->cacheFormat, *curr));
+    {
+      std::lock_guard lock(mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
+      bool loaded;
+      {
+        std::lock_guard lock1(vfs->mutex);
+        loaded = vfs->state[path].loaded;
+      }
+      if (loaded)
+        prev = RawCacheLoad(path);
+      else
+        prev.reset();
+      if (g_config->cacheDirectory.empty()) {
+        std::lock_guard lock(g_index_mutex);
+        auto it = g_index.insert_or_assign(
+          path, InMemoryIndexFile{curr->file_contents, *curr});
+        std::string().swap(it.first->second.index.file_contents);
+      } else {
+        std::string cache_path = GetCachePath(path);
+        WriteToFile(cache_path, curr->file_contents);
+        WriteToFile(AppendSerializationFormat(cache_path),
+          Serialize(g_config->cacheFormat, *curr));
+      }
+      on_indexed->PushBack(IndexUpdate::CreateDelta(prev.get(), curr.get()),
+                           request.mode != IndexMode::NonInteractive);
+      {
+        std::lock_guard lock1(vfs->mutex);
+        vfs->state[path].loaded = true;
+      }
+      if (entry.id >= 0) {
+        std::lock_guard<std::mutex> lock(project->mutex_);
+        for (auto &dep : curr->dependencies)
+          project->path_to_entry_index[dep.first()] = entry.id;
+      }
     }
-
-    vfs->Reset(path);
-    if (entry.id >= 0) {
-      std::lock_guard<std::mutex> lock(project->mutex_);
-      for (auto &dep : curr->dependencies)
-        project->path_to_entry_index[dep.first()] = entry.id;
-    }
-
-    // Build delta update.
-    IndexUpdate update = IndexUpdate::CreateDelta(prev.get(), curr.get());
-
-    on_indexed->PushBack(std::move(update),
-                         request.mode != IndexMode::NonInteractive);
   }
 
   return true;
@@ -364,7 +358,6 @@ void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
 void Main_OnIndexed(DB *db, SemanticHighlightSymbolCache *semantic_cache,
                     WorkingFiles *working_files, IndexUpdate *update) {
   if (update->refresh) {
-    Project::loaded = true;
     LOG_S(INFO)
         << "loaded project. Refresh semantic highlight for all working file.";
     std::lock_guard<std::mutex> lock(working_files->files_mutex);

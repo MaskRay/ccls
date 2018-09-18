@@ -261,7 +261,6 @@ MAKE_REFLECT_STRUCT(Config, compilationDatabaseCommand,
                     index, largeFileSize, workspaceSymbol, xref);
 
 extern Config *g_config;
-thread_local extern int g_thread_id;
 
 namespace ccls {
 void DoPathMapping(std::string &arg);

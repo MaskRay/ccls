@@ -1238,9 +1238,10 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
   CI->getLangOpts()->RetainCommentsFromSystemHeaders = true;
   std::string buf = wfiles->GetContent(file);
   std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
-  if (g_config->index.onChange && buf.size()) {
+  if (buf.size()) {
     // If there is a completion session, reuse its preamble if exists.
     bool done_remap = false;
+#if 0
     std::shared_ptr<CompletionSession> session =
       completion->TryGetSession(file, false, false);
     if (session)
@@ -1253,6 +1254,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
           done_remap = true;
         }
       }
+#endif
     for (auto &[filename, content] : remapped) {
       if (filename == file && done_remap)
         continue;
