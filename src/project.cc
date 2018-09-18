@@ -339,10 +339,7 @@ int ComputeGuessScore(std::string_view a, std::string_view b) {
 
 } // namespace
 
-bool Project::loaded = false;
-
 void Project::Load(const std::string &root_directory) {
-  Project::loaded = false;
   ProjectConfig project;
   project.extra_flags = g_config->clang.extraArgs;
   project.project_dir = root_directory;
@@ -458,6 +455,7 @@ void Project::Index(WorkingFiles *wfiles, lsRequestId id) {
                     interactive ? IndexMode::Normal : IndexMode::NonInteractive,
                     id);
   });
+  pipeline::loaded_ts = pipeline::tick;
   // Dummy request to indicate that project is loaded and
   // trigger refreshing semantic highlight for all working files.
   pipeline::Index("", {}, IndexMode::NonInteractive);

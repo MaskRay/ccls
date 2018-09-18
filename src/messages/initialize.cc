@@ -490,7 +490,6 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
     LOG_S(INFO) << "start " << g_config->index.threads << " indexers";
     for (int i = 0; i < g_config->index.threads; i++) {
       std::thread([=]() {
-        g_thread_id = i + 1;
         std::string name = "indexer" + std::to_string(i);
         set_thread_name(name.c_str());
         pipeline::Indexer_Main(clang_complete, vfs, project, working_files);

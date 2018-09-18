@@ -31,18 +31,13 @@ struct FileContents {
 struct VFS {
   struct State {
     int64_t timestamp;
-    int owner;
-    int stage;
     bool loaded = false;
   };
   mutable std::unordered_map<std::string, State> state;
   mutable std::mutex mutex;
 
   State Get(const std::string &file);
-  bool Mark(const std::string &file, int owner, int stage);
-  bool Stamp(const std::string &file, int64_t ts);
-  void ResetLocked(const std::string &file);
-  void Reset(const std::string &file);
+  bool Stamp(const std::string &file, int64_t ts, int64_t offset);
 };
 
 namespace std {
@@ -83,5 +78,4 @@ private:
       local_;
   VFS *vfs_;
   std::string parse_file_;
-  int thread_id_;
 };
