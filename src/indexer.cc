@@ -1104,7 +1104,7 @@ public:
     if (IndexFile *db = param.ConsumeFile(*FE)) {
       std::string file_name = FileName(*File);
       if (file_name.size())
-        db->includes.push_back({spell.start.line, std::move(file_name)});
+        db->includes.push_back({spell.start.line, Intern(file_name)});
     }
   }
   void MacroDefined(const Token &Tok, const MacroDirective *MD) override {
@@ -1368,7 +1368,8 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
     // dependency set.
     for (auto &[_, path] : param.SeenUniqueID)
       if (path != entry->path && path != entry->import_file)
-        entry->dependencies[path] = param.file2mtime[path];
+        entry->dependencies[llvm::CachedHashStringRef(Intern(path))] =
+            param.file2mtime[path];
   }
 
   return result;

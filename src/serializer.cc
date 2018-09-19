@@ -27,6 +27,7 @@ limitations under the License.
 #include <mutex>
 #include <stdexcept>
 
+using namespace ccls;
 using namespace llvm;
 
 bool gTestOutputMode = false;
@@ -127,7 +128,7 @@ void Reflect(Writer &visitor, std::string_view &data) {
 
 void Reflect(Reader &vis, const char *&v) {
   const char *str = vis.GetString();
-  v = ccls::Intern(str);
+  v = Intern(str);
 }
 void Reflect(Writer &vis, const char *&v) { vis.String(v); }
 
@@ -160,33 +161,33 @@ void Reflect(Writer &visitor, std::unordered_map<Usr, V> &map) {
 }
 
 // Used by IndexFile::dependencies.
-void Reflect(Reader &vis, StringMap<int64_t> &v) {
+void Reflect(Reader &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
   std::string name;
   if (vis.Format() == SerializeFormat::Json) {
     auto &vis1 = static_cast<JsonReader&>(vis);
     for (auto it = vis1.m().MemberBegin(); it != vis1.m().MemberEnd(); ++it)
-      v[it->name.GetString()] = it->value.GetInt64();
+      v[CachedHashStringRef(Intern(it->name.GetString()))] =
+          it->value.GetInt64();
   } else {
     vis.IterArray([&](Reader &entry) {
       Reflect(entry, name);
-      Reflect(entry, v[name]);
+      Reflect(entry, v[CachedHashStringRef(Intern(name))]);
     });
   }
 }
-void Reflect(Writer &vis, StringMap<int64_t> &v) {
+void Reflect(Writer &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
   if (vis.Format() == SerializeFormat::Json) {
     auto &vis1 = static_cast<JsonWriter&>(vis);
     vis.StartObject();
     for (auto &it : v) {
-      std::string key = it.first();
-      vis1.m().Key(key.c_str());
+      vis1.m().Key(it.first.val().data()); // llvm 8 -> data()
       vis1.m().Int64(it.second);
     }
     vis.EndObject();
   } else {
     vis.StartArray(v.size());
     for (auto &it : v) {
-      std::string key = it.first();
+      std::string key = it.first.val().str();
       Reflect(vis, key);
       Reflect(vis, it.second);
     }
@@ -467,13 +468,16 @@ Deserialize(SerializeFormat format, const std::string &path,
       DoPathMapping(arg);
     for (auto &[_, path] : file->lid2path)
       DoPathMapping(path);
-    for (auto &include : file->includes)
-      DoPathMapping(include.resolved_path);
-    StringMap<int64_t> dependencies;
+    for (auto &include : file->includes) {
+      std::string p(include.resolved_path);
+      DoPathMapping(p);
+      include.resolved_path = Intern(p);
+    }
+    decltype(file->dependencies) dependencies;
     for (auto &it : file->dependencies) {
-      std::string path = it.first().str();
+      std::string path = it.first.val().str();
       DoPathMapping(path);
-      dependencies[path] = it.second;
+      dependencies[CachedHashStringRef(Intern(path))] = it.second;
     }
     file->dependencies = std::move(dependencies);
   }
