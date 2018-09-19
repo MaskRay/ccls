@@ -28,7 +28,7 @@ template <> struct DenseMapInfo<SymbolRef> {
 struct QueryFile {
   struct Def {
     std::string path;
-    std::vector<std::string> args;
+    std::vector<const char *> args;
     LanguageId language;
     // Includes in the file.
     std::vector<IndexInclude> includes;

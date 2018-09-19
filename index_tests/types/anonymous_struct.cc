@@ -26,9 +26,9 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 1428566502523368801,
-      "detailed_name": "struct {}",
+      "detailed_name": "anon struct",
       "qual_name_offset": 0,
-      "short_name": "",
+      "short_name": "anon struct",
       "kind": 23,
       "declarations": [],
       "spell": "2:3-2:9|17937907487590875128|2|1026|-1",

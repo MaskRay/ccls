@@ -54,17 +54,14 @@ Range FromTokenRange(const SourceManager &SM, const LangOptions &LangOpts,
 }
 
 std::unique_ptr<CompilerInvocation>
-BuildCompilerInvocation(const std::vector<std::string> &args,
+BuildCompilerInvocation(std::vector<const char *> args,
                         IntrusiveRefCntPtr<vfs::FileSystem> VFS) {
   std::string save = "-resource-dir=" + g_config->clang.resourceDir;
-  std::vector<const char *> cargs;
-  for (auto &arg : args)
-    cargs.push_back(arg.c_str());
-  cargs.push_back(save.c_str());
+  args.push_back(save.c_str());
   IntrusiveRefCntPtr<DiagnosticsEngine> Diags(
       CompilerInstance::createDiagnostics(new DiagnosticOptions));
   std::unique_ptr<CompilerInvocation> CI =
-      createInvocationFromCommandLine(cargs, Diags, VFS);
+      createInvocationFromCommandLine(args, Diags, VFS);
   if (CI) {
     CI->getDiagnosticOpts().IgnoreWarnings = true;
     CI->getFrontendOpts().DisableFree = false;

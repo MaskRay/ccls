@@ -18,7 +18,7 @@ struct Project {
   struct Entry {
     std::string directory;
     std::string filename;
-    std::vector<std::string> args;
+    std::vector<const char *> args;
     // If true, this entry is inferred and was not read from disk.
     bool is_inferred = false;
     int id = -1;
@@ -52,8 +52,8 @@ struct Project {
   // If the client has overridden the flags, or specified them for a file
   // that is not in the compilation_database.json make sure those changes
   // are permanent.
-  void SetFlagsForFile(const std::vector<std::string> &flags,
-                       const std::string &path);
+  void SetArgsForFile(const std::vector<const char *> &args,
+                      const std::string &path);
 
   // Run |action| on every file in the project.
   void

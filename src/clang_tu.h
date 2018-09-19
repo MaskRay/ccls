@@ -24,5 +24,5 @@ Range FromTokenRange(const clang::SourceManager &SM,
                      llvm::sys::fs::UniqueID *UniqueID = nullptr);
 
 std::unique_ptr<clang::CompilerInvocation>
-BuildCompilerInvocation(const std::vector<std::string> &args,
+BuildCompilerInvocation(std::vector<const char *> args,
                         llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> VFS);

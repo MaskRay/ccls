@@ -52,14 +52,15 @@ struct Handler_TextDocumentDidOpen
     }
 
     include_complete->AddFile(working_file->filename);
-    if (params.args.size())
-      project->SetFlagsForFile(params.args, path);
+    std::vector<const char *> args;
+    for (const std::string &arg : params.args)
+      args.push_back(Intern(arg));
+    if (args.size())
+      project->SetArgsForFile(args, path);
 
     // Submit new index request if it is not a header file.
     if (SourceFileLanguage(path) != LanguageId::Unknown) {
-      pipeline::Index(
-          path, params.args.size() ? params.args : std::vector<std::string>{},
-          IndexMode::Normal);
+      pipeline::Index(path, args, IndexMode::Normal);
       clang_complete->FlushSession(path);
     }
 
