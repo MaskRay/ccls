@@ -464,8 +464,13 @@ Deserialize(SerializeFormat format, const std::string &path,
   file->path = path;
   if (g_config->clang.pathMappings.size()) {
     DoPathMapping(file->import_file);
-    for (std::string &arg : file->args)
-      DoPathMapping(arg);
+    std::vector<const char *> args;
+    for (const char *arg : file->args) {
+      std::string s(arg);
+      DoPathMapping(s);
+      args.push_back(Intern(s));
+    }
+    file->args = std::move(args);
     for (auto &[_, path] : file->lid2path)
       DoPathMapping(path);
     for (auto &include : file->includes) {

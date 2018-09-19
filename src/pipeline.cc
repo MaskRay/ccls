@@ -81,7 +81,7 @@ namespace {
 
 struct Index_Request {
   std::string path;
-  std::vector<std::string> args;
+  std::vector<const char *> args;
   IndexMode mode;
   lsRequestId id;
   int64_t ts = tick++;
@@ -108,7 +108,7 @@ std::shared_mutex g_index_mutex;
 std::unordered_map<std::string, InMemoryIndexFile> g_index;
 
 bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
-                  const std::vector<std::string> &args,
+                  const std::vector<const char *> &args,
                   const std::optional<std::string> &from) {
   {
     std::lock_guard<std::mutex> lock(vfs->mutex);
@@ -119,13 +119,14 @@ bool CacheInvalid(VFS *vfs, IndexFile *prev, const std::string &path,
     }
   }
 
-  if (prev->args != args) {
+  bool changed = prev->args.size() != args.size();
+  for (size_t i = 0; !changed && i < args.size(); i++)
+    if (strcmp(prev->args[i], args[i]))
+      changed = true;
+  if (changed)
     LOG_S(INFO) << "args changed for " << path
                 << (from ? " (via " + *from + ")" : std::string());
-    return true;
-  }
-
-  return false;
+  return changed;
 };
 
 std::string AppendSerializationFormat(const std::string &base) {
@@ -537,7 +538,7 @@ void MainLoop() {
   }
 }
 
-void Index(const std::string &path, const std::vector<std::string> &args,
+void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id) {
   index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
 }

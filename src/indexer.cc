@@ -1236,7 +1236,7 @@ void Init() {
 std::vector<std::unique_ptr<IndexFile>>
 Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
-      const std::vector<std::string> &args,
+      const std::vector<const char *> &args,
       const std::vector<std::pair<std::string, std::string>> &remapped) {
   if (!g_config->index.enabled)
     return {};

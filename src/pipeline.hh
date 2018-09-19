@@ -43,7 +43,7 @@ void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
                   WorkingFiles *wfiles);
 void MainLoop();
 
-void Index(const std::string &path, const std::vector<std::string> &args,
+void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id = {});
 
 std::optional<int64_t> LastWriteTime(const std::string &path);
