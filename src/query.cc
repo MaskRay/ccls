@@ -50,7 +50,7 @@ QueryFile::DefUpdate BuildFileDefUpdate(const IndexFile &indexed) {
   def.skipped_ranges = std::move(indexed.skipped_ranges);
   def.dependencies.reserve(indexed.dependencies.size());
   for (auto &dep : indexed.dependencies)
-    def.dependencies.push_back(dep.first());
+    def.dependencies.push_back(dep.first.val().data()); // llvm 8 -> data()
   def.language = indexed.language;
   return {std::move(def), std::move(indexed.file_contents)};
 }

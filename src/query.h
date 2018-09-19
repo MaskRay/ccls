@@ -35,7 +35,7 @@ struct QueryFile {
     // Parts of the file which are disabled.
     std::vector<Range> skipped_ranges;
     // Used by |$ccls/reload|.
-    std::vector<std::string> dependencies;
+    std::vector<const char *> dependencies;
   };
 
   using DefUpdate = std::pair<Def, std::string>;
