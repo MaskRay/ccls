@@ -32,23 +32,6 @@ OUTPUT:
       "instances": [],
       "uses": ["9:5-9:6|0|1|4|-1"]
     }, {
-      "usr": 7074603899792463171,
-      "detailed_name": "Inner",
-      "qual_name_offset": 0,
-      "short_name": "Inner",
-      "kind": 26,
-      "declarations": [],
-      "spell": "6:10-6:15|0|1|2|-1",
-      "extent": "6:3-6:18|0|1|0|-1",
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [16721564935990383768],
-      "uses": []
-    }, {
       "usr": 10528472276654770367,
       "detailed_name": "struct Foo {}",
       "qual_name_offset": 7,
@@ -63,25 +46,8 @@ OUTPUT:
       "types": [13938528237873543349],
       "funcs": [],
       "vars": [],
-      "instances": [],
-      "uses": ["9:1-9:4|0|1|4|-1", "10:1-10:4|0|1|4|-1"]
-    }, {
-      "usr": 11976530632376795217,
-      "detailed_name": "Foo",
-      "qual_name_offset": 0,
-      "short_name": "Foo",
-      "kind": 26,
-      "declarations": [],
-      "spell": "5:8-5:11|0|1|2|-1",
-      "extent": "4:1-7:2|0|1|0|-1",
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
       "instances": [12028309045033782423],
-      "uses": []
+      "uses": ["9:1-9:4|0|1|4|-1", "10:1-10:4|0|1|4|-1"]
     }, {
       "usr": 13892793056005362145,
       "detailed_name": "enum B {}",
@@ -114,7 +80,7 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [],
+      "instances": [16721564935990383768],
       "uses": ["9:9-9:14|0|1|4|-1"]
     }],
   "usr2var": [{
@@ -125,7 +91,7 @@ OUTPUT:
       "declarations": [],
       "spell": "10:8-10:9|0|1|2|-1",
       "extent": "10:1-10:9|0|1|0|-1",
-      "type": 11976530632376795217,
+      "type": 10528472276654770367,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -137,7 +103,7 @@ OUTPUT:
       "declarations": [],
       "spell": "9:15-9:16|0|1|2|-1",
       "extent": "9:1-9:16|0|1|0|-1",
-      "type": 7074603899792463171,
+      "type": 13938528237873543349,
       "uses": [],
       "kind": 13,
       "storage": 0
