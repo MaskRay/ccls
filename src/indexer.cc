@@ -283,41 +283,6 @@ try_again:
   return D;
 }
 
-const Decl *GetSpecialized(const Decl *D) {
-  if (!D)
-    return D;
-  Decl *Template = nullptr;
-  if (const CXXRecordDecl *CXXRecord = dyn_cast<CXXRecordDecl>(D)) {
-    if (const ClassTemplatePartialSpecializationDecl *PartialSpec =
-            dyn_cast<ClassTemplatePartialSpecializationDecl>(CXXRecord))
-      Template = PartialSpec->getSpecializedTemplate();
-    else if (const ClassTemplateSpecializationDecl *ClassSpec =
-                 dyn_cast<ClassTemplateSpecializationDecl>(CXXRecord)) {
-      llvm::PointerUnion<ClassTemplateDecl *,
-                         ClassTemplatePartialSpecializationDecl *>
-          Result = ClassSpec->getSpecializedTemplateOrPartial();
-      if (Result.is<ClassTemplateDecl *>())
-        Template = Result.get<ClassTemplateDecl *>();
-      else
-        Template = Result.get<ClassTemplatePartialSpecializationDecl *>();
-
-    } else
-      Template = CXXRecord->getInstantiatedFromMemberClass();
-  } else if (const FunctionDecl *Function = dyn_cast<FunctionDecl>(D)) {
-    Template = Function->getPrimaryTemplate();
-    if (!Template)
-      Template = Function->getInstantiatedFromMemberFunction();
-  } else if (const VarDecl *Var = dyn_cast<VarDecl>(D)) {
-    if (Var->isStaticDataMember())
-      Template = Var->getInstantiatedFromStaticDataMember();
-  } else if (const RedeclarableTemplateDecl *Tmpl =
-                 dyn_cast<RedeclarableTemplateDecl>(D))
-    Template = Tmpl->getInstantiatedFromMemberTemplate();
-  else
-    return nullptr;
-  return Template;
-}
-
 bool ValidateRecord(const RecordDecl *RD) {
   for (const auto *I : RD->fields()) {
     QualType FQT = I->getType();
@@ -778,33 +743,51 @@ public:
             var->def.type = usr1;
             db->ToType(usr1).instances.push_back(usr);
           } else {
-            for (const Decl *D1 = GetTypeDecl(T); D1; D1 = GetSpecialized(D1)) {
+            for (const Decl *D1 = GetTypeDecl(T); D1; ) {
+              if (auto *R1 = dyn_cast<CXXRecordDecl>(D1)) {
+                if (auto *S1 = dyn_cast<ClassTemplateSpecializationDecl>(D1)) {
+                  if (!S1->getTypeAsWritten()) {
+                    llvm::PointerUnion<ClassTemplateDecl *,
+                                       ClassTemplatePartialSpecializationDecl *>
+                        Result = S1->getSpecializedTemplateOrPartial();
+                    if (Result.is<ClassTemplateDecl *>())
+                      D1 = Result.get<ClassTemplateDecl *>();
+                    else
+                      D1 = Result.get<ClassTemplatePartialSpecializationDecl *>();
+                    continue;
+                  }
+                } else if (auto *D2 = R1->getInstantiatedFromMemberClass()) {
+                  D1 = D2;
+                  continue;
+                }
+              } else if (auto *TP1 = dyn_cast<TemplateTypeParmDecl>(D1)) {
+                // e.g. TemplateTypeParmDecl is not handled by
+                // handleDeclOccurence.
+                SourceRange R1 = D1->getSourceRange();
+                if (SM.getFileID(R1.getBegin()) == LocFID) {
+                  IndexParam::DeclInfo *info1;
+                  Usr usr1 = GetUsr(D1, &info1);
+                  IndexType &type1 = db->ToType(usr1);
+                  SourceLocation L1 = D1->getLocation();
+                  type1.def.spell =
+                      GetUse(db, lid, FromTokenRange(SM, Lang, {L1, L1}), SemDC,
+                             Role::Definition);
+                  type1.def.extent = GetUse(db, lid, FromTokenRange(SM, Lang, R1),
+                                            LexDC, Role::None);
+                  type1.def.detailed_name = Intern(info1->short_name);
+                  type1.def.short_name_size = int16_t(info1->short_name.size());
+                  type1.def.kind = lsSymbolKind::TypeParameter;
+                  var->def.type = usr1;
+                  type1.instances.push_back(usr);
+                  break;
+                }
+              }
+
               IndexParam::DeclInfo *info1;
               Usr usr1 = GetUsr(D1, &info1);
-              auto it = db->usr2type.find(usr1);
-              if (it != db->usr2type.end()) {
-                var->def.type = usr1;
-                it->second.instances.push_back(usr);
-                break;
-              }
-              // e.g. TemplateTypeParmDecl is not handled by
-              // handleDeclOccurence.
-              SourceRange R1 = D1->getSourceRange();
-              if (SM.getFileID(R1.getBegin()) == LocFID) {
-                IndexType &type1 = db->ToType(usr1);
-                SourceLocation L1 = D1->getLocation();
-                type1.def.spell =
-                    GetUse(db, lid, FromTokenRange(SM, Lang, {L1, L1}), SemDC,
-                           Role::Definition);
-                type1.def.extent = GetUse(db, lid, FromTokenRange(SM, Lang, R1),
-                                          LexDC, Role::None);
-                type1.def.detailed_name = Intern(info1->short_name);
-                type1.def.short_name_size = int16_t(info1->short_name.size());
-                type1.def.kind = lsSymbolKind::TypeParameter;
-                var->def.type = usr1;
-                type1.instances.push_back(usr);
-                break;
-              }
+              var->def.type = usr1;
+              db->ToType(usr1).instances.push_back(usr);
+              break;
             }
           }
         }
