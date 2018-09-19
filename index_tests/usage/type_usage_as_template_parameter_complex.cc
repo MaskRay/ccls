@@ -202,7 +202,7 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [],
+      "instances": [2933643612409209903, 500112618220246],
       "uses": []
     }, {
       "usr": 15041163540773201510,
@@ -223,20 +223,18 @@ OUTPUT:
       "uses": ["79:21-79:24|0|1|4|-1"]
     }, {
       "usr": 18153735331422331128,
-      "detailed_name": "unique_ptr",
-      "qual_name_offset": 0,
+      "detailed_name": "template<> class unique_ptr<unique_ptr<S1, S2>, S2>",
+      "qual_name_offset": 17,
       "short_name": "unique_ptr",
       "kind": 5,
       "declarations": [],
-      "spell": "2:7-2:17|0|1|2|-1",
-      "extent": "1:1-2:17|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [2933643612409209903, 500112618220246],
+      "instances": [],
       "uses": ["15:8-15:18|0|1|4|-1", "33:1-33:11|0|1|4|-1", "54:3-54:13|18320186404467436976|3|4|-1"]
     }],
   "usr2var": [{
@@ -247,7 +245,7 @@ OUTPUT:
       "declarations": [],
       "spell": "54:39-54:44|18320186404467436976|3|2|-1",
       "extent": "54:3-54:44|18320186404467436976|3|0|-1",
-      "type": 18153735331422331128,
+      "type": 14209198335088845323,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -257,7 +255,7 @@ OUTPUT:
       "qual_name_offset": 42,
       "short_name": "f",
       "declarations": ["15:43-15:44|15:1-15:44|0|1|1|-1"],
-      "type": 18153735331422331128,
+      "type": 14209198335088845323,
       "uses": [],
       "kind": 13,
       "storage": 1

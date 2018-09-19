@@ -132,7 +132,7 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [],
+      "instances": [2933643612409209903],
       "uses": ["7:1-7:9|0|1|4|-1"]
     }, {
       "usr": 1663022413889915338,
@@ -151,23 +151,6 @@ OUTPUT:
       "vars": [],
       "instances": [15931696253641284761],
       "uses": ["26:7-26:13|0|1|4|-1", "33:1-33:7|0|1|4|-1"]
-    }, {
-      "usr": 3231449734830406187,
-      "detailed_name": "function",
-      "qual_name_offset": 0,
-      "short_name": "function",
-      "kind": 26,
-      "declarations": [],
-      "spell": "5:7-5:15|0|1|2|-1",
-      "extent": "4:1-5:30|0|1|0|-1",
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [2933643612409209903],
-      "uses": []
     }, {
       "usr": 5760043510674081814,
       "detailed_name": "struct Z1 {}",
@@ -200,7 +183,7 @@ OUTPUT:
       "types": [],
       "funcs": [18107614608385228556],
       "vars": [],
-      "instances": [],
+      "instances": [5792869548777559988],
       "uses": ["21:16-21:22|0|1|4|-1", "30:1-30:7|0|1|4|-1", "32:1-32:7|0|1|4|-1"]
     }, {
       "usr": 9201299975592934124,
@@ -237,40 +220,6 @@ OUTPUT:
       "instances": [],
       "uses": ["26:14-26:16|0|1|4|-1", "33:8-33:10|0|1|4|-1"]
     }, {
-      "usr": 11153492883079050853,
-      "detailed_name": "vector",
-      "qual_name_offset": 0,
-      "short_name": "vector",
-      "kind": 26,
-      "declarations": [],
-      "spell": "17:7-17:13|0|1|2|-1",
-      "extent": "16:1-17:20|0|1|0|-1",
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [86949563628772958],
-      "uses": []
-    }, {
-      "usr": 13322943937025195708,
-      "detailed_name": "vector",
-      "qual_name_offset": 0,
-      "short_name": "vector",
-      "kind": 26,
-      "declarations": [],
-      "spell": "12:7-12:13|0|1|2|-1",
-      "extent": "11:1-14:2|0|1|0|-1",
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [5792869548777559988],
-      "uses": []
-    }, {
       "usr": 14111105212951082474,
       "detailed_name": "T",
       "qual_name_offset": 0,
@@ -304,13 +253,11 @@ OUTPUT:
       "uses": []
     }, {
       "usr": 15440970074034693939,
-      "detailed_name": "vector",
+      "detailed_name": "",
       "qual_name_offset": 0,
-      "short_name": "vector",
-      "kind": 26,
+      "short_name": "",
+      "kind": 0,
       "declarations": [],
-      "spell": "21:16-21:22|0|1|2|-1",
-      "extent": "21:1-21:26|0|1|0|-1",
       "alias_of": 0,
       "bases": [],
       "derived": [],
@@ -349,7 +296,7 @@ OUTPUT:
       "types": [],
       "funcs": [],
       "vars": [],
-      "instances": [],
+      "instances": [86949563628772958],
       "uses": ["31:1-31:7|0|1|4|-1"]
     }],
   "usr2var": [{
@@ -360,7 +307,7 @@ OUTPUT:
       "declarations": [],
       "spell": "31:14-31:17|0|1|2|-1",
       "extent": "31:1-31:17|0|1|0|-1",
-      "type": 11153492883079050853,
+      "type": 16155717907537731864,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -372,7 +319,7 @@ OUTPUT:
       "declarations": [],
       "spell": "7:21-7:22|0|1|2|-1",
       "extent": "7:1-7:22|0|1|0|-1",
-      "type": 3231449734830406187,
+      "type": 218068462278884837,
       "uses": [],
       "kind": 13,
       "storage": 0
@@ -409,7 +356,7 @@ OUTPUT:
       "declarations": [],
       "spell": "30:14-30:16|0|1|2|-1",
       "extent": "30:1-30:16|0|1|0|-1",
-      "type": 13322943937025195708,
+      "type": 7440942986741176606,
       "uses": [],
       "kind": 13,
       "storage": 0
