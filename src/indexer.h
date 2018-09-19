@@ -15,7 +15,8 @@
 #include "utils.h"
 
 #include <clang/Basic/Specifiers.h>
-#include <llvm/ADT/StringMap.h>
+#include <llvm/ADT/CachedHashString.h>
+#include <llvm/ADT/DenseMap.h>
 
 #include <algorithm>
 #include <optional>
@@ -220,7 +221,7 @@ struct IndexInclude {
   // information - a line is good enough for clicking.
   int line = 0;
   // Absolute path to the index.
-  std::string resolved_path;
+  const char *resolved_path;
 };
 
 struct IndexFile {
@@ -254,7 +255,7 @@ struct IndexFile {
   std::vector<Range> skipped_ranges;
 
   std::vector<IndexInclude> includes;
-  llvm::StringMap<int64_t> dependencies;
+  llvm::DenseMap<llvm::CachedHashStringRef, int64_t> dependencies;
   std::unordered_map<Usr, IndexFunc> usr2func;
   std::unordered_map<Usr, IndexType> usr2type;
   std::unordered_map<Usr, IndexVar> usr2var;

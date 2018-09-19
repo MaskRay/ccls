@@ -325,7 +325,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
       if (entry.id >= 0) {
         std::lock_guard<std::mutex> lock(project->mutex_);
         for (auto &dep : curr->dependencies)
-          project->path_to_entry_index[dep.first()] = entry.id;
+          project->path_to_entry_index[dep.first.val().str()] = entry.id;
       }
     }
   }
