@@ -21,62 +21,17 @@ limitations under the License.
 #include "platform.h"
 #include "utils.h"
 
-namespace {
-
-std::optional<std::string>
-GetFileContents(const std::string &path,
-                std::unordered_map<std::string, FileContents> *file_contents) {
-  auto it = file_contents->find(path);
-  if (it == file_contents->end()) {
-    std::optional<std::string> content = ReadContent(path);
-    if (content)
-      (*file_contents)[path] = FileContents(path, *content);
-    return content;
-  }
-  return it->second.content;
+bool VFS::Loaded(const std::string &path) {
+  std::lock_guard lock(mutex);
+  return state[path].loaded;
 }
 
-} // namespace
-
-FileContents::FileContents(const std::string &path, const std::string &content)
-    : path(path), content(content) {
-  line_offsets_.push_back(0);
-  for (size_t i = 0; i < content.size(); i++) {
-    if (content[i] == '\n')
-      line_offsets_.push_back(i + 1);
-  }
-}
-
-std::optional<int> FileContents::ToOffset(Position p) const {
-  if (0 <= p.line && size_t(p.line) < line_offsets_.size()) {
-    int ret = line_offsets_[p.line] + p.column;
-    if (size_t(ret) < content.size())
-      return ret;
-  }
-  return std::nullopt;
-}
-
-std::optional<std::string> FileContents::ContentsInRange(Range range) const {
-  std::optional<int> start_offset = ToOffset(range.start),
-                     end_offset = ToOffset(range.end);
-  if (start_offset && end_offset && *start_offset < *end_offset)
-    return content.substr(*start_offset, *end_offset - *start_offset);
-  return std::nullopt;
-}
-
-VFS::State VFS::Get(const std::string &file) {
+bool VFS::Stamp(const std::string &path, int64_t ts, int step) {
   std::lock_guard<std::mutex> lock(mutex);
-  auto it = state.find(file);
-  if (it != state.end())
-    return it->second;
-  return {0, 0};
-}
-
-bool VFS::Stamp(const std::string &file, int64_t ts, int64_t offset) {
-  std::lock_guard<std::mutex> lock(mutex);
-  State &st = state[file];
-  if (st.timestamp < ts) {
-    st.timestamp = ts + offset;
+  State &st = state[path];
+  if (st.timestamp < ts || (st.timestamp == ts && st.step < step)) {
+    st.timestamp = ts;
+    st.step = step;
     return true;
   } else
     return false;
@@ -87,29 +42,26 @@ FileConsumer::FileConsumer(VFS *vfs, const std::string &parse_file)
 
 IndexFile *FileConsumer::TryConsumeFile(
     const clang::FileEntry &File,
-    std::unordered_map<std::string, FileContents> *file_contents_map) {
+    const std::unordered_map<llvm::sys::fs::UniqueID, FileConsumer::File>
+        &UID2File) {
   auto UniqueID = File.getUniqueID();
-  auto it = local_.find(UniqueID);
-  if (it != local_.end())
-    return it->second.get();
+  {
+    auto it = local_.find(UniqueID);
+    if (it != local_.end())
+      return it->second.get();
+  }
 
-  std::string file_name = FileName(File);
-  int64_t tim = File.getModificationTime();
-  assert(tim);
-  if (!vfs_->Stamp(file_name, tim, 0)) {
+  auto it = UID2File.find(UniqueID);
+  assert(it != UID2File.end());
+  assert(it->second.mtime);
+  if (!vfs_->Stamp(it->second.path, it->second.mtime, 1)) {
     local_[UniqueID] = nullptr;
     return nullptr;
   }
 
-  // Read the file contents, if we fail then we cannot index the file.
-  std::optional<std::string> contents =
-      GetFileContents(file_name, file_contents_map);
-  if (!contents)
-    return nullptr;
-
   // Build IndexFile instance.
   local_[UniqueID] =
-      std::make_unique<IndexFile>(UniqueID, file_name, *contents);
+      std::make_unique<IndexFile>(UniqueID, it->second.path, it->second.content);
   return local_[UniqueID].get();
 }
 

@@ -206,16 +206,21 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
   std::optional<int64_t> write_time = LastWriteTime(path_to_index);
   if (!write_time)
     return true;
-  int reparse = vfs->Stamp(path_to_index, *write_time, -1);
+  int reparse = vfs->Stamp(path_to_index, *write_time, 0);
   if (request.path != path_to_index) {
     std::optional<int64_t> mtime1 = LastWriteTime(request.path);
     if (!mtime1)
       return true;
-    if (vfs->Stamp(request.path, *mtime1, -1))
+    if (vfs->Stamp(request.path, *mtime1, 0))
       reparse = 1;
   }
-  if (g_config->index.onChange)
+  if (g_config->index.onChange) {
     reparse = 2;
+    std::lock_guard lock(vfs->mutex);
+    vfs->state[path_to_index].step = 0;
+    if (request.path != path_to_index)
+      vfs->state[request.path].step = 0;
+  }
   if (!reparse)
     return true;
 
@@ -242,6 +247,8 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
       LOG_S(INFO) << "load cache for " << path_to_index;
       auto dependencies = prev->dependencies;
       if (reparse) {
+        if (vfs->Loaded(path_to_index))
+          return true;
         IndexUpdate update = IndexUpdate::CreateDelta(nullptr, prev.get());
         on_indexed->PushBack(std::move(update),
                              request.mode != IndexMode::NonInteractive);
@@ -309,12 +316,7 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
                          << ")";
     {
       std::lock_guard lock(mutexes[std::hash<std::string>()(path) % N_MUTEXES]);
-      bool loaded;
-      {
-        std::lock_guard lock1(vfs->mutex);
-        loaded = vfs->state[path].loaded;
-      }
-      if (loaded)
+      if (vfs->Loaded(path))
         prev = RawCacheLoad(path);
       else
         prev.reset();
@@ -541,13 +543,6 @@ void MainLoop() {
 void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id) {
   index_request->PushBack({path, args, mode, id}, mode != IndexMode::NonInteractive);
-}
-
-std::optional<int64_t> LastWriteTime(const std::string &path) {
-  sys::fs::file_status Status;
-  if (sys::fs::status(path, Status))
-    return {};
-  return sys::toTimeT(Status.getLastModificationTime());
 }
 
 std::optional<std::string> LoadIndexedContent(const std::string &path) {

@@ -27,29 +27,17 @@ limitations under the License.
 
 struct IndexFile;
 
-struct FileContents {
-  FileContents() = default;
-  FileContents(const std::string &path, const std::string &content);
-
-  std::optional<int> ToOffset(Position p) const;
-  std::optional<std::string> ContentsInRange(Range range) const;
-
-  std::string path;
-  std::string content;
-  // {0, 1 + position of first newline, 1 + position of second newline, ...}
-  std::vector<int> line_offsets_;
-};
-
 struct VFS {
   struct State {
     int64_t timestamp;
-    bool loaded = false;
+    int step;
+    bool loaded;
   };
   mutable std::unordered_map<std::string, State> state;
   mutable std::mutex mutex;
 
-  State Get(const std::string &file);
-  bool Stamp(const std::string &file, int64_t ts, int64_t offset);
+  bool Loaded(const std::string &path);
+  bool Stamp(const std::string &path, int64_t ts, int step);
 };
 
 namespace std {
@@ -70,17 +58,18 @@ template <> struct hash<llvm::sys::fs::UniqueID> {
 // The indexer does this because header files do not have their own translation
 // units but we still want to index them.
 struct FileConsumer {
+  struct File {
+    std::string path;
+    int64_t mtime;
+    std::string content;
+  };
+
   FileConsumer(VFS *vfs, const std::string &parse_file);
 
-  // Returns IndexFile for the file or nullptr. |is_first_ownership| is set
-  // to true iff the function just took ownership over the file. Otherwise it
-  // is set to false.
-  //
-  // note: file_contents is passed as a parameter instead of as a member
-  // variable since it is large and we do not want to copy it.
-  IndexFile *
-  TryConsumeFile(const clang::FileEntry &file,
-                 std::unordered_map<std::string, FileContents> *file_contents);
+  // Returns IndexFile or nullptr for the file or nullptr.
+  IndexFile *TryConsumeFile(
+      const clang::FileEntry &file,
+      const std::unordered_map<llvm::sys::fs::UniqueID, File> &);
 
   // Returns and passes ownership of all local state.
   std::vector<std::unique_ptr<IndexFile>> TakeLocalState();
