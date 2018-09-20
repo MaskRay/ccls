@@ -49,7 +49,6 @@ void MainLoop();
 void Index(const std::string &path, const std::vector<const char *> &args,
            IndexMode mode, lsRequestId id = {});
 
-std::optional<int64_t> LastWriteTime(const std::string &path);
 std::optional<std::string> LoadIndexedContent(const std::string& path);
 void WriteStdout(MethodType method, lsBaseOutMessage &response);
 } // namespace pipeline

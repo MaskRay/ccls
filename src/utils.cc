@@ -8,7 +8,10 @@
 
 #include <siphash.h>
 
-#include "llvm/ADT/StringRef.h"
+#include <llvm/ADT/StringRef.h>
+#include <llvm/Support/FileSystem.h>
+#include <llvm/Support/Path.h>
+using namespace llvm;
 
 #include <algorithm>
 #include <assert.h>
@@ -110,6 +113,13 @@ std::string EscapeFileName(std::string path) {
   if (slash)
     path += '/';
   return path;
+}
+
+std::optional<int64_t> LastWriteTime(const std::string &path) {
+  sys::fs::file_status Status;
+  if (sys::fs::status(path, Status))
+    return {};
+  return sys::toTimeT(Status.getLastModificationTime());
 }
 
 std::optional<std::string> ReadContent(const std::string &filename) {

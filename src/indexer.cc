@@ -37,10 +37,8 @@ constexpr int kInitializerMaxLines = 3;
 GroupMatch *multiVersionMatcher;
 
 struct IndexParam {
-  std::unordered_map<llvm::sys::fs::UniqueID, std::string> SeenUniqueID;
+  std::unordered_map<llvm::sys::fs::UniqueID, FileConsumer::File> UID2File;
   std::unordered_map<llvm::sys::fs::UniqueID, bool> UID2multi;
-  std::unordered_map<std::string, FileContents> file_contents;
-  std::unordered_map<std::string, int64_t> file2mtime;
   struct DeclInfo {
     Usr usr;
     std::string short_name;
@@ -56,17 +54,22 @@ struct IndexParam {
   void SeenFile(const FileEntry &File) {
     // If this is the first time we have seen the file (ignoring if we are
     // generating an index for it):
-    auto [it, inserted] = SeenUniqueID.try_emplace(File.getUniqueID());
+    auto [it, inserted] = UID2File.try_emplace(File.getUniqueID());
     if (inserted) {
-      std::string file_name = FileName(File);
-      it->second = file_name;
-      file2mtime[file_name] = File.getModificationTime();
+      std::string path = FileName(File);
+      it->second.path = path;
+      it->second.mtime = File.getModificationTime();
+      if (!it->second.mtime)
+        if (auto tim = LastWriteTime(path))
+          it->second.mtime = *tim;
+      if (std::optional<std::string> content = ReadContent(path))
+        it->second.content = *content;
     }
   }
 
   IndexFile *ConsumeFile(const FileEntry &FE) {
     SeenFile(FE);
-    return file_consumer->TryConsumeFile(FE, &file_contents);
+    return file_consumer->TryConsumeFile(FE, UID2File);
   }
 
   bool UseMultiVersion(const FileEntry &FE) {
@@ -1319,15 +1322,15 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
     for (auto &it : entry->usr2var)
       Uniquify(it.second.uses);
 
-    // Update file contents and modification time.
-    entry->mtime = param.file2mtime[entry->path];
-
-    // Update dependencies for the file. Do not include the file in its own
-    // dependency set.
-    for (auto &[_, path] : param.SeenUniqueID)
-      if (path != entry->path && path != entry->import_file)
+    // Update dependencies for the file.
+    for (auto &[_, file] : param.UID2File) {
+      const std::string &path = file.path;
+      if (path == entry->path)
+        entry->mtime = file.mtime;
+      else if (path != entry->import_file)
         entry->dependencies[llvm::CachedHashStringRef(Intern(path))] =
-            param.file2mtime[path];
+            file.mtime;
+    }
   }
 
   return result;
