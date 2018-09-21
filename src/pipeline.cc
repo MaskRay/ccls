@@ -62,6 +62,27 @@ void DiagnosticsPublisher::Publish(WorkingFiles *working_files,
   }
 }
 
+void VFS::Clear() {
+  std::lock_guard lock(mutex);
+  state.clear();
+}
+
+bool VFS::Loaded(const std::string &path) {
+  std::lock_guard lock(mutex);
+  return state[path].loaded;
+}
+
+bool VFS::Stamp(const std::string &path, int64_t ts, int step) {
+  std::lock_guard<std::mutex> lock(mutex);
+  State &st = state[path];
+  if (st.timestamp < ts || (st.timestamp == ts && st.step < step)) {
+    st.timestamp = ts;
+    st.step = step;
+    return true;
+  } else
+    return false;
+}
+
 namespace ccls::pipeline {
 
 int64_t loaded_ts = 0, tick = 0;

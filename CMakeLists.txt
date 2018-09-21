@@ -183,7 +183,6 @@ target_sources(ccls PRIVATE
   src/clang_tu.cc
   src/clang_utils.cc
   src/config.cc
-  src/file_consumer.cc
   src/filesystem.cc
   src/fuzzy_match.cc
   src/main.cc
