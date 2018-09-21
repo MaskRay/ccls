@@ -4,6 +4,7 @@
 #include "message_handler.h"
 
 #include "log.hh"
+#include "match.h"
 #include "pipeline.hh"
 #include "project.h"
 #include "query_utils.h"
@@ -47,72 +48,32 @@ struct ScanLineEvent {
 };
 } // namespace
 
-SemanticHighlightSymbolCache::Entry::Entry(
-    SemanticHighlightSymbolCache *all_caches, const std::string &path)
-    : all_caches_(all_caches), path(path) {}
-
-std::optional<int> SemanticHighlightSymbolCache::Entry::TryGetStableId(
-    SymbolKind kind, const std::string &detailed_name) {
-  TNameToId *map = GetMapForSymbol_(kind);
-  auto it = map->find(detailed_name);
-  if (it != map->end())
-    return it->second;
-
-  return std::nullopt;
-}
-
-int SemanticHighlightSymbolCache::Entry::GetStableId(
-    SymbolKind kind, const std::string &detailed_name) {
-  std::optional<int> id = TryGetStableId(kind, detailed_name);
-  if (id)
-    return *id;
-
-  // Create a new id. First try to find a key in another map.
-  all_caches_->cache_.IterateValues([&](const std::shared_ptr<Entry> &entry) {
-    std::optional<int> other_id = entry->TryGetStableId(kind, detailed_name);
-    if (other_id) {
-      id = other_id;
-      return false;
-    }
-    return true;
-  });
-
-  // Create a new id.
-  TNameToId *map = GetMapForSymbol_(kind);
-  if (!id)
-    id = all_caches_->next_stable_id_++;
-  return (*map)[detailed_name] = *id;
-}
-
-SemanticHighlightSymbolCache::Entry::TNameToId *
-SemanticHighlightSymbolCache::Entry::GetMapForSymbol_(SymbolKind kind) {
+int SemanticHighlight::GetStableId(SymbolKind kind, Usr usr) {
+  decltype(func2id) *map;
   switch (kind) {
-  case SymbolKind::Type:
-    return &detailed_type_name_to_stable_id;
   case SymbolKind::Func:
-    return &detailed_func_name_to_stable_id;
+    map = &func2id;
+    break;
+  case SymbolKind::Type:
+    map = &type2id;
+    break;
   case SymbolKind::Var:
-    return &detailed_var_name_to_stable_id;
+    map = &var2id;
+    break;
   case SymbolKind::File:
   case SymbolKind::Invalid:
-    break;
+    llvm_unreachable("");
   }
-  assert(false);
-  return nullptr;
+
+  auto it = map->try_emplace(usr, next_id);
+  if (it.second)
+    next_id++;
+  return it.first->second;
 }
 
-SemanticHighlightSymbolCache::SemanticHighlightSymbolCache()
-    : cache_(kCacheSize) {}
-
-void SemanticHighlightSymbolCache::Init() {
+void SemanticHighlight::Init() {
   match_ = std::make_unique<GroupMatch>(g_config->highlight.whitelist,
                                         g_config->highlight.blacklist);
-}
-
-std::shared_ptr<SemanticHighlightSymbolCache::Entry>
-SemanticHighlightSymbolCache::GetCacheForFile(const std::string &path) {
-  return cache_.Get(
-      path, [&, this]() { return std::make_shared<Entry>(this, path); });
 }
 
 MessageHandler::MessageHandler() {
@@ -184,15 +145,12 @@ void EmitSkippedRanges(WorkingFile *working_file,
   pipeline::WriteStdout(kMethodType_CclsPublishSkippedRanges, out);
 }
 
-void EmitSemanticHighlighting(DB *db,
-                              SemanticHighlightSymbolCache *semantic_cache,
+void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
                               WorkingFile *wfile, QueryFile *file) {
   assert(file->def);
   if (wfile->buffer_content.size() > g_config->largeFileSize ||
-      !semantic_cache->match_->IsMatch(file->def->path))
+      !highlight->match_->IsMatch(file->def->path))
     return;
-  auto semantic_cache_for_file =
-      semantic_cache->GetCacheForFile(file->def->path);
 
   // Group symbols together.
   std::unordered_map<SymbolIdx, Out_CclsPublishSemanticHighlighting::Symbol>
@@ -288,8 +246,7 @@ void EmitSemanticHighlighting(DB *db,
         it->second.lsRanges.push_back(*loc);
       } else {
         Out_CclsPublishSemanticHighlighting::Symbol symbol;
-        symbol.stableId = semantic_cache_for_file->GetStableId(
-            sym.kind, std::string(detailed_name));
+        symbol.stableId = highlight->GetStableId(sym.kind, sym.usr);
         symbol.parentKind = parent_kind;
         symbol.kind = kind;
         symbol.storage = storage;
