@@ -11,6 +11,8 @@
 #include "utils.h"
 
 #include <llvm/Config/llvm-config.h>
+#include <llvm/ADT/StringRef.h>
+using namespace llvm;
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -68,6 +70,12 @@ struct TextReplacer {
   }
 };
 
+void TrimInPlace(std::string &s) {
+  auto f = [](char c) { return !isspace(c); };
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
+  s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
+}
+
 void ParseTestExpectation(
     const std::string &filename,
     const std::vector<std::string> &lines_with_endings, TextReplacer *replacer,
@@ -77,7 +85,7 @@ void ParseTestExpectation(
   {
     bool in_output = false;
     for (std::string line : lines_with_endings) {
-      TrimInPlace(line);
+      line = StringRef(line).trim().str();
 
       if (StartsWith(line, "EXTRA_FLAGS:")) {
         assert(!in_output && "multiple EXTRA_FLAGS sections");
@@ -113,8 +121,7 @@ void ParseTestExpectation(
         // one token assume it is a filename.
         std::vector<std::string> tokens = SplitString(line_with_ending, " ");
         if (tokens.size() > 1) {
-          active_output_filename = tokens[1];
-          TrimInPlace(active_output_filename);
+          active_output_filename = StringRef(tokens[1]).trim().str();
         } else {
           active_output_filename = filename;
         }

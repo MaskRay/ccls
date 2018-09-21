@@ -5,7 +5,6 @@
 
 #include "lru_cache.h"
 #include "lsp.h"
-#include "match.h"
 #include "method.h"
 #include "query.h"
 
@@ -17,6 +16,7 @@
 struct CompletionManager;
 struct Config;
 class DiagnosticsPublisher;
+struct GroupMatch;
 struct VFS;
 struct IncludeComplete;
 struct MultiQueueWaiter;
@@ -27,35 +27,13 @@ struct WorkingFiles;
 
 // Caches symbols for a single file for semantic highlighting to provide
 // relatively stable ids. Only supports xxx files at a time.
-struct SemanticHighlightSymbolCache {
-  struct Entry {
-    SemanticHighlightSymbolCache *all_caches_ = nullptr;
-
-    // The path this cache belongs to.
-    std::string path;
-    // Detailed symbol name to stable id.
-    using TNameToId = std::unordered_map<std::string, int>;
-    TNameToId detailed_type_name_to_stable_id;
-    TNameToId detailed_func_name_to_stable_id;
-    TNameToId detailed_var_name_to_stable_id;
-
-    Entry(SemanticHighlightSymbolCache *all_caches, const std::string &path);
-
-    std::optional<int> TryGetStableId(SymbolKind kind,
-                                      const std::string &detailed_name);
-    int GetStableId(SymbolKind kind, const std::string &detailed_name);
-
-    TNameToId *GetMapForSymbol_(SymbolKind kind);
-  };
-
-  constexpr static int kCacheSize = 10;
-  LruCache<std::string, Entry> cache_;
-  uint32_t next_stable_id_ = 0;
+struct SemanticHighlight {
+  llvm::DenseMap<Usr, int, DenseMapInfoForUsr> func2id, type2id, var2id;
+  uint32_t next_id = 0;
   std::unique_ptr<GroupMatch> match_;
 
-  SemanticHighlightSymbolCache();
   void Init();
-  std::shared_ptr<Entry> GetCacheForFile(const std::string &path);
+  int GetStableId(SymbolKind kind, Usr usr);
 };
 
 struct Out_CclsPublishSemanticHighlighting
@@ -102,7 +80,7 @@ struct MessageHandler {
   Project *project = nullptr;
   DiagnosticsPublisher *diag_pub = nullptr;
   VFS *vfs = nullptr;
-  SemanticHighlightSymbolCache *semantic_cache = nullptr;
+  SemanticHighlight *highlight = nullptr;
   WorkingFiles *working_files = nullptr;
   CompletionManager *clang_complete = nullptr;
   IncludeComplete *include_complete = nullptr;
@@ -132,6 +110,5 @@ bool FindFileOrFail(DB *db, Project *project, std::optional<lsRequestId> id,
 void EmitSkippedRanges(WorkingFile *working_file,
                        const std::vector<Range> &skipped_ranges);
 
-void EmitSemanticHighlighting(DB *db,
-                              SemanticHighlightSymbolCache *semantic_cache,
+void EmitSemanticHighlighting(DB *db, SemanticHighlight *highlight,
                               WorkingFile *working_file, QueryFile *file);
