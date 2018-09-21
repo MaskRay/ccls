@@ -6,6 +6,7 @@
 #include "clang_complete.hh"
 #include "filesystem.hh"
 #include "indexer.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "serializer.h"
 #include "utils.h"

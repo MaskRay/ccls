@@ -7,6 +7,7 @@
 #include "method.h"
 #include "query.h"
 
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -28,6 +29,20 @@ class DiagnosticsPublisher {
   void Publish(WorkingFiles* working_files,
                std::string path,
                std::vector<lsDiagnostic> diagnostics);
+};
+
+struct VFS {
+  struct State {
+    int64_t timestamp;
+    int step;
+    bool loaded;
+  };
+  std::unordered_map<std::string, State> state;
+  std::mutex mutex;
+
+  void Clear();
+  bool Loaded(const std::string &path);
+  bool Stamp(const std::string &path, int64_t ts, int step);
 };
 
 namespace ccls {
