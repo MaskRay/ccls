@@ -28,9 +28,6 @@ namespace llvm {
 class StringRef;
 }
 
-void TrimInPlace(std::string &s);
-std::string Trim(std::string s);
-
 uint64_t HashUsr(std::string_view s);
 uint64_t HashUsr(llvm::StringRef s);
 

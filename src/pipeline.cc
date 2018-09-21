@@ -20,6 +20,7 @@ limitations under the License.
 #include "include_complete.h"
 #include "log.hh"
 #include "lsp.h"
+#include "match.h"
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "platform.h"
@@ -370,7 +371,7 @@ void Indexer_Main(CompletionManager *completion, VFS *vfs, Project *project,
       indexer_waiter->Wait(index_request);
 }
 
-void Main_OnIndexed(DB *db, SemanticHighlightSymbolCache *semantic_cache,
+void Main_OnIndexed(DB *db, SemanticHighlight *highlight,
                     WorkingFiles *working_files, IndexUpdate *update) {
   if (update->refresh) {
     LOG_S(INFO)
@@ -381,7 +382,7 @@ void Main_OnIndexed(DB *db, SemanticHighlightSymbolCache *semantic_cache,
       if (db->name2file_id.find(filename) == db->name2file_id.end())
         continue;
       QueryFile *file = &db->files[db->name2file_id[filename]];
-      EmitSemanticHighlighting(db, semantic_cache, f.get(), file);
+      EmitSemanticHighlighting(db, highlight, f.get(), file);
     }
     return;
   }
@@ -401,7 +402,7 @@ void Main_OnIndexed(DB *db, SemanticHighlightSymbolCache *semantic_cache,
       wfile->SetIndexContent(g_config->index.onChange ? wfile->buffer_content
                                                       : def_u.second);
       EmitSkippedRanges(wfile, def_u.first.skipped_ranges);
-      EmitSemanticHighlighting(db, semantic_cache, wfile,
+      EmitSemanticHighlighting(db, highlight, wfile,
                                &db->files[update->file_id]);
     }
   }
@@ -472,7 +473,7 @@ void LaunchStdout() {
 
 void MainLoop() {
   Project project;
-  SemanticHighlightSymbolCache semantic_cache;
+  SemanticHighlight highlight;
   WorkingFiles working_files;
   VFS vfs;
   DiagnosticsPublisher diag_pub;
@@ -503,7 +504,7 @@ void MainLoop() {
     handler->project = &project;
     handler->diag_pub = &diag_pub;
     handler->vfs = &vfs;
-    handler->semantic_cache = &semantic_cache;
+    handler->highlight = &highlight;
     handler->working_files = &working_files;
     handler->clang_complete = &clang_complete;
     handler->include_complete = &include_complete;
@@ -530,7 +531,7 @@ void MainLoop() {
       if (!update)
         break;
       did_work = true;
-      Main_OnIndexed(&db, &semantic_cache, &working_files, &*update);
+      Main_OnIndexed(&db, &highlight, &working_files, &*update);
     }
 
     if (!did_work) {

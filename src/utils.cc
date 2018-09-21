@@ -33,16 +33,6 @@ using namespace llvm;
 #include <string.h>
 #include <unordered_map>
 
-void TrimInPlace(std::string &s) {
-  auto f = [](char c) { return !isspace(c); };
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), f));
-  s.erase(std::find_if(s.rbegin(), s.rend(), f).base(), s.end());
-}
-std::string Trim(std::string s) {
-  TrimInPlace(s);
-  return s;
-}
-
 uint64_t HashUsr(std::string_view s) {
   union {
     uint64_t ret;
