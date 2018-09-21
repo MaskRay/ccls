@@ -47,10 +47,7 @@ struct Handler_CclsReload : BaseMessageHandler<In_CclsReload> {
     const auto &params = request->params;
     // Send index requests for every file.
     if (params.whitelist.empty() && params.blacklist.empty()) {
-      {
-        std::lock_guard lock(vfs->mutex);
-        vfs->state.clear();
-      }
+      vfs->Clear();
       db->clear();
       project->Index(working_files, lsRequestId());
       return;

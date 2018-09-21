@@ -19,6 +19,7 @@ limitations under the License.
 #include "clang_tu.h"
 #include "log.hh"
 #include "match.h"
+#include "pipeline.hh"
 #include "platform.h"
 #include "serializer.h"
 using namespace ccls;
@@ -48,8 +49,15 @@ constexpr int kInitializerMaxLines = 3;
 
 GroupMatch *multiVersionMatcher;
 
+struct File {
+  std::string path;
+  int64_t mtime;
+  std::string content;
+  std::unique_ptr<IndexFile> db;
+};
+
 struct IndexParam {
-  std::unordered_map<llvm::sys::fs::UniqueID, FileConsumer::File> UID2File;
+  std::unordered_map<llvm::sys::fs::UniqueID, File> UID2File;
   std::unordered_map<llvm::sys::fs::UniqueID, bool> UID2multi;
   struct DeclInfo {
     Usr usr;
@@ -58,10 +66,9 @@ struct IndexParam {
   };
   std::unordered_map<const Decl *, DeclInfo> Decl2Info;
 
+  VFS &vfs;
   ASTContext *Ctx;
-  FileConsumer *file_consumer = nullptr;
-
-  IndexParam(FileConsumer *file_consumer) : file_consumer(file_consumer) {}
+  IndexParam(VFS &vfs) : vfs(vfs) {}
 
   void SeenFile(const FileEntry &File) {
     // If this is the first time we have seen the file (ignoring if we are
@@ -76,12 +83,17 @@ struct IndexParam {
           it->second.mtime = *tim;
       if (std::optional<std::string> content = ReadContent(path))
         it->second.content = *content;
+
+      if (!vfs.Stamp(path, it->second.mtime, 1))
+        return;
+      it->second.db = std::make_unique<IndexFile>(File.getUniqueID(), path,
+                                                  it->second.content);
     }
   }
 
   IndexFile *ConsumeFile(const FileEntry &FE) {
     SeenFile(FE);
-    return file_consumer->TryConsumeFile(FE, UID2File);
+    return UID2File[FE.getUniqueID()].db.get();
   }
 
   bool UseMultiVersion(const FileEntry &FE) {
@@ -1287,8 +1299,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
   if (!Clang->hasTarget())
     return {};
 
-  FileConsumer file_consumer(vfs, file);
-  IndexParam param(&file_consumer);
+  IndexParam param(*vfs);
   auto DataConsumer = std::make_shared<IndexDataConsumer>(param);
 
   index::IndexingOptions IndexOpts;
@@ -1325,8 +1336,11 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
   for (auto &Buf : Bufs)
     Buf.release();
 
-  auto result = param.file_consumer->TakeLocalState();
-  for (std::unique_ptr<IndexFile> &entry : result) {
+  std::vector<std::unique_ptr<IndexFile>> result;
+  for (auto &it : param.UID2File) {
+    if (!it.second.db)
+      continue;
+    std::unique_ptr<IndexFile> &entry = it.second.db;
     entry->import_file = file;
     entry->args = args;
     for (auto &[_, it] : entry->uid2lid_and_path)
@@ -1356,6 +1370,7 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
         entry->dependencies[llvm::CachedHashStringRef(Intern(path))] =
             file.mtime;
     }
+    result.push_back(std::move(entry));
   }
 
   return result;

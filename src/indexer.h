@@ -16,7 +16,6 @@ limitations under the License.
 #pragma once
 
 #include "clang_utils.h"
-#include "file_consumer.h"
 #include "language.h"
 #include "lsp.h"
 #include "lsp_diagnostic.h"
@@ -236,6 +235,16 @@ struct IndexInclude {
   const char *resolved_path;
 };
 
+namespace std {
+template <> struct hash<llvm::sys::fs::UniqueID> {
+  std::size_t operator()(llvm::sys::fs::UniqueID ID) const {
+    size_t ret = ID.getDevice();
+    hash_combine(ret, ID.getFile());
+    return ret;
+  }
+};
+} // namespace std
+
 struct IndexFile {
   // For both JSON and MessagePack cache files.
   static const int kMajorVersion;
@@ -287,6 +296,7 @@ struct IndexFile {
 
 struct CompletionManager;
 struct WorkingFiles;
+struct VFS;
 
 namespace ccls::idx {
 void Init();
