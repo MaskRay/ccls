@@ -52,12 +52,12 @@ struct Handler_WorkspaceDidChangeWatchedFiles
         if (mode == IndexMode::Normal)
           clang_complete->NotifySave(path);
         else
-          clang_complete->FlushSession(path);
+          clang_complete->OnClose(path);
         break;
       }
       case lsFileChangeType::Deleted:
         pipeline::Index(path, {}, mode);
-        clang_complete->FlushSession(path);
+        clang_complete->OnClose(path);
         break;
       }
     }

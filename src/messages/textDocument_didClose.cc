@@ -35,7 +35,7 @@ struct Handler_TextDocumentDidClose
 
     // Remove internal state.
     working_files->OnClose(request->params.textDocument);
-    clang_complete->NotifyClose(path);
+    clang_complete->OnClose(path);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidClose);

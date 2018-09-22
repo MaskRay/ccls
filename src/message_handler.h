@@ -15,7 +15,6 @@
 
 struct CompletionManager;
 struct Config;
-class DiagnosticsPublisher;
 struct GroupMatch;
 struct VFS;
 struct IncludeComplete;
@@ -78,7 +77,6 @@ struct MessageHandler {
   DB *db = nullptr;
   MultiQueueWaiter *waiter = nullptr;
   Project *project = nullptr;
-  DiagnosticsPublisher *diag_pub = nullptr;
   VFS *vfs = nullptr;
   SemanticHighlight *highlight = nullptr;
   WorkingFiles *working_files = nullptr;

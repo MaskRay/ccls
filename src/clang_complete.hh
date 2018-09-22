@@ -27,7 +27,7 @@ struct DiagBase {
   std::string file;
   clang::DiagnosticsEngine::Level level = clang::DiagnosticsEngine::Note;
   unsigned category;
-  bool inside_main = false;
+  bool concerned = false;
 };
 struct Note : DiagBase {};
 struct Diag : DiagBase {
@@ -46,10 +46,10 @@ struct CompletionSession
     : public std::enable_shared_from_this<CompletionSession> {
   std::mutex mutex;
   std::shared_ptr<PreambleData> preamble;
-  std::vector<Diag> diags;
 
   Project::Entry file;
   WorkingFiles *wfiles;
+  bool inferred = false;
 
   // TODO share
   llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> FS =
@@ -61,7 +61,7 @@ struct CompletionSession
       : file(file), wfiles(wfiles), PCH(PCH) {}
 
   std::shared_ptr<PreambleData> GetPreamble();
-  void BuildPreamble(clang::CompilerInvocation &CI);
+  void BuildPreamble(clang::CompilerInvocation &CI, const std::string &main);
 };
 }
 
@@ -95,19 +95,16 @@ struct CompletionManager {
     OnComplete on_complete;
   };
   struct DiagnosticRequest {
-    lsTextDocumentIdentifier document;
+    std::string path;
+    int64_t wait_until;
+    int64_t debounce;
   };
 
   CompletionManager(Project *project, WorkingFiles *working_files,
                     OnDiagnostic on_diagnostic, OnDropped on_dropped);
 
-  // Start a code completion at the given location. |on_complete| will run when
-  // completion results are available. |on_complete| may run on any thread.
-  void CodeComplete(const lsRequestId &request_id,
-                    const lsTextDocumentPositionParams &completion_location,
-                    const OnComplete &on_complete);
   // Request a diagnostics update.
-  void DiagnosticsUpdate(const lsTextDocumentIdentifier &document);
+  void DiagnosticsUpdate(const std::string &path, int debounce);
 
   // Notify the completion manager that |filename| has been viewed and we
   // should begin preloading completion data.
@@ -117,7 +114,7 @@ struct CompletionManager {
   void NotifySave(const std::string &path);
   // Notify the completion manager that |filename| has been closed. Any existing
   // completion session will be dropped.
-  void NotifyClose(const std::string &path);
+  void OnClose(const std::string &path);
 
   // Ensures there is a completion or preloaded session. Returns true if a new
   // session was created.
@@ -125,11 +122,8 @@ struct CompletionManager {
   // Tries to find an edit session for |filename|. This will move the session
   // from view to edit.
   std::shared_ptr<ccls::CompletionSession>
-  TryGetSession(const std::string &path, bool mark_as_completion,
-                bool create_if_needed);
+  TryGetSession(const std::string &path, bool preload, bool *is_open = nullptr);
 
-  // Flushes all saved sessions with the supplied filename
-  void FlushSession(const std::string &path);
   // Flushes all saved sessions
   void FlushAllSessions(void);
 
@@ -147,13 +141,16 @@ struct CompletionManager {
 
   // CompletionSession instances which are preloaded, ie, files which the user
   // has viewed but not requested code completion for.
-  LruSessionCache preloaded_sessions_;
+  LruSessionCache preloads;
   // CompletionSession instances which the user has actually performed
   // completion on. This is more rare so these instances tend to stay alive
   // much longer than the ones in |preloaded_sessions_|.
-  LruSessionCache completion_sessions_;
+  LruSessionCache sessions;
   // Mutex which protects |view_sessions_| and |edit_sessions_|.
   std::mutex sessions_lock_;
+
+  std::mutex diag_mutex;
+  std::unordered_map<std::string, int64_t> next_diag;
 
   // Request a code completion at the given location.
   ThreadedQueue<std::unique_ptr<CompletionRequest>> completion_request_;

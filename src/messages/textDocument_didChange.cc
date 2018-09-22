@@ -30,9 +30,8 @@ struct Handler_TextDocumentDidChange
     if (g_config->index.onChange)
       pipeline::Index(path, {}, IndexMode::OnChange);
     clang_complete->NotifyView(path);
-    if (g_config->diagnostics.onChange)
-      clang_complete->DiagnosticsUpdate(
-          params.textDocument.AsTextDocumentIdentifier());
+    if (g_config->diagnostics.onChange >= 0)
+      clang_complete->DiagnosticsUpdate(path, g_config->diagnostics.onChange);
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidChange);

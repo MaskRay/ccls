@@ -6,6 +6,7 @@
 #include "clang_utils.h"
 #include "filesystem.hh"
 #include "log.hh"
+#include "match.h"
 #include "platform.h"
 
 #include <clang/Frontend/CompilerInstance.h>
@@ -20,7 +21,10 @@ using namespace clang;
 using namespace llvm;
 
 #include <algorithm>
+#include <chrono>
+#include <ratio>
 #include <thread>
+namespace chrono = std::chrono;
 
 namespace ccls {
 namespace {
@@ -68,21 +72,33 @@ class StoreDiags : public DiagnosticConsumer {
   const LangOptions *LangOpts;
   std::optional<Diag> last;
   std::vector<Diag> output;
+  std::string path;
+  std::unordered_map<unsigned, bool> FID2concerned;
   void Flush() {
     if (!last)
       return;
-    bool mentions = last->inside_main || last->edits.size();
+    bool mentions = last->concerned || last->edits.size();
     if (!mentions)
       for (auto &N : last->notes)
-        if (N.inside_main)
+        if (N.concerned)
           mentions = true;
     if (mentions)
       output.push_back(std::move(*last));
     last.reset();
   }
 public:
+  StoreDiags(std::string path) : path(std::move(path)) {}
   std::vector<Diag> Take() {
     return std::move(output);
+  }
+  bool IsConcerned(const SourceManager &SM, SourceLocation L) {
+    FileID FID = SM.getFileID(L);
+    auto it = FID2concerned.try_emplace(FID.getHashValue());
+    if (it.second) {
+      const FileEntry *FE = SM.getFileEntryForID(FID);
+      it.first->second = FE && FileName(*FE) == path;
+    }
+    return it.first->second;
   }
   void BeginSourceFile(const LangOptions &Opts, const Preprocessor *) override {
     LangOpts = &Opts;
@@ -96,24 +112,25 @@ public:
     SourceLocation L = Info.getLocation();
     if (!L.isValid()) return;
     const SourceManager &SM = Info.getSourceManager();
-    bool inside_main = SM.isInMainFile(L);
+    StringRef Filename = SM.getFilename(Info.getLocation());
+    bool concerned = IsConcerned(SM, Info.getLocation());
     auto fillDiagBase = [&](DiagBase &d) {
       llvm::SmallString<64> Message;
       Info.FormatDiagnostic(Message);
       d.range =
           FromCharSourceRange(SM, *LangOpts, DiagnosticRange(Info, *LangOpts));
       d.message = Message.str();
-      d.inside_main = inside_main;
-      d.file = SM.getFilename(Info.getLocation());
+      d.concerned = concerned;
+      d.file = Filename;
       d.level = Level;
       d.category = DiagnosticIDs::getCategoryNumberForDiag(Info.getID());
     };
 
     auto addFix = [&](bool SyntheticMessage) -> bool {
-      if (!inside_main)
+      if (!concerned)
         return false;
       for (const FixItHint &FixIt : Info.getFixItHints()) {
-        if (!SM.isInMainFile(FixIt.RemoveRange.getBegin()))
+        if (!IsConcerned(SM, FixIt.RemoveRange.getBegin()))
           return false;
         lsTextEdit edit;
         edit.newText = FixIt.CodeToInsert;
@@ -146,9 +163,10 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
     DiagnosticConsumer &DC, const WorkingFiles::Snapshot &snapshot,
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
+  std::string main = ResolveIfRelative(session.file.directory, CI->getFrontendOpts().Inputs[0].getFile());
   for (auto &file : snapshot.files) {
     Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
-    if (file.filename == session.file.filename) {
+    if (file.filename == main)
       if (auto Preamble = session.GetPreamble()) {
 #if LLVM_VERSION_MAJOR >= 7
         Preamble->Preamble.OverridePreamble(*CI, session.FS,
@@ -157,14 +175,10 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
         Preamble->Preamble.AddImplicitPreamble(*CI, session.FS,
                                                Bufs.back().get());
 #endif
-      } else {
-        CI->getPreprocessorOpts().addRemappedFile(
-            CI->getFrontendOpts().Inputs[0].getFile(), Bufs.back().get());
+        continue;
       }
-    } else {
-      CI->getPreprocessorOpts().addRemappedFile(file.filename,
-                                                Bufs.back().get());
-    }
+    CI->getPreprocessorOpts().addRemappedFile(file.filename,
+      Bufs.back().get());
   }
 
   auto Clang = std::make_unique<CompilerInstance>(session.PCH);
@@ -190,52 +204,53 @@ bool Parse(CompilerInstance &Clang) {
 
 void CompletionPreloadMain(CompletionManager *manager) {
   while (true) {
-    // Fetching the completion request blocks until we have a request.
     auto request = manager->preload_requests_.Dequeue();
 
-    // If we don't get a session then that means we don't care about the file
-    // anymore - abandon the request.
-    std::shared_ptr<CompletionSession> session = manager->TryGetSession(
-        request.path, false /*mark_as_completion*/, false /*create_if_needed*/);
+    bool is_open = false;
+    std::shared_ptr<CompletionSession> session =
+        manager->TryGetSession(request.path, true, &is_open);
     if (!session)
       continue;
 
-    const auto &args = session->file.args;
-    WorkingFiles::Snapshot snapshot = session->wfiles->AsSnapshot(
-      {StripFileType(session->file.filename)});
-
-    LOG_S(INFO) << "create completion session for " << session->file.filename;
-    if (std::unique_ptr<CompilerInvocation> CI =
-            BuildCompilerInvocation(args, session->FS))
-      session->BuildPreamble(*CI);
-    if (g_config->diagnostics.onSave) {
+    // For inferred session, don't build preamble because changes in a.h will
+    // invalidate it.
+    if (!session->inferred) {
+      const auto &args = session->file.args;
+      WorkingFiles::Snapshot snapshot = session->wfiles->AsSnapshot(
+        {StripFileType(session->file.filename)});
+      if (std::unique_ptr<CompilerInvocation> CI =
+              BuildCompilerInvocation(args, session->FS))
+        session->BuildPreamble(*CI, request.path);
+    }
+    int debounce =
+        is_open ? g_config->diagnostics.onOpen : g_config->diagnostics.onSave;
+    if (debounce >= 0) {
       lsTextDocumentIdentifier document;
       document.uri = lsDocumentUri::FromPath(request.path);
-      manager->diagnostic_request_.PushBack({document}, true);
+      manager->DiagnosticsUpdate(request.path, debounce);
     }
   }
 }
 
-void CompletionMain(CompletionManager *completion_manager) {
+void CompletionMain(CompletionManager *manager) {
   while (true) {
     // Fetching the completion request blocks until we have a request.
     std::unique_ptr<CompletionManager::CompletionRequest> request =
-        completion_manager->completion_request_.Dequeue();
+        manager->completion_request_.Dequeue();
 
     // Drop older requests if we're not buffering.
     while (g_config->completion.dropOldRequests &&
-           !completion_manager->completion_request_.IsEmpty()) {
-      completion_manager->on_dropped_(request->id);
+           !manager->completion_request_.IsEmpty()) {
+      manager->on_dropped_(request->id);
       request->Consumer.reset();
       request->on_complete(nullptr);
-      request = completion_manager->completion_request_.Dequeue();
+      request = manager->completion_request_.Dequeue();
     }
 
     std::string path = request->document.uri.GetPath();
 
     std::shared_ptr<CompletionSession> session =
-        completion_manager->TryGetSession(path, true /*mark_as_completion*/,
-                                          true /*create_if_needed*/);
+        manager->TryGetSession(path, false);
 
     std::unique_ptr<CompilerInvocation> CI =
         BuildCompilerInvocation(session->file.args, session->FS);
@@ -251,7 +266,7 @@ void CompletionMain(CompletionManager *completion_manager) {
 
     DiagnosticConsumer DC;
     WorkingFiles::Snapshot snapshot =
-      completion_manager->working_files_->AsSnapshot({StripFileType(path)});
+      manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
     auto Clang = BuildCompilerInstance(*session, std::move(CI), DC, snapshot, Bufs);
     if (!Clang)
@@ -285,25 +300,31 @@ llvm::StringRef diagLeveltoString(DiagnosticsEngine::Level Lvl) {
 }
 
 void printDiag(llvm::raw_string_ostream &OS, const DiagBase &d) {
-  if (d.inside_main)
+  if (d.concerned)
     OS << llvm::sys::path::filename(d.file);
   else
     OS << d.file;
   auto pos = d.range.start;
   OS << ":" << (pos.line + 1) << ":" << (pos.column + 1) << ":"
-     << (d.inside_main ? " " : "\n");
+     << (d.concerned ? " " : "\n");
   OS << diagLeveltoString(d.level) << ": " << d.message;
 }
 
 void DiagnosticMain(CompletionManager *manager) {
   while (true) {
-    // Fetching the completion request blocks until we have a request.
     CompletionManager::DiagnosticRequest request =
         manager->diagnostic_request_.Dequeue();
-    std::string path = request.document.uri.GetPath();
+    const std::string &path = request.path;
+    int64_t wait = request.wait_until -
+                   chrono::duration_cast<chrono::milliseconds>(
+                       chrono::high_resolution_clock::now().time_since_epoch())
+                       .count();
+    if (wait > 0)
+      std::this_thread::sleep_for(chrono::duration<int64_t, std::milli>(
+          std::min(wait, request.debounce)));
 
-    std::shared_ptr<CompletionSession> session = manager->TryGetSession(
-        path, true /*mark_as_completion*/, true /*create_if_needed*/);
+    std::shared_ptr<CompletionSession> session =
+        manager->TryGetSession(path, false);
 
     std::unique_ptr<CompilerInvocation> CI =
         BuildCompilerInvocation(session->file.args, session->FS);
@@ -311,7 +332,7 @@ void DiagnosticMain(CompletionManager *manager) {
       continue;
     CI->getDiagnosticOpts().IgnoreWarnings = false;
     CI->getLangOpts()->SpellChecking = g_config->diagnostics.spellChecking;
-    StoreDiags DC;
+    StoreDiags DC(path);
     WorkingFiles::Snapshot snapshot =
         manager->working_files_->AsSnapshot({StripFileType(path)});
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> Bufs;
@@ -347,9 +368,12 @@ void DiagnosticMain(CompletionManager *manager) {
       return ret;
     };
 
+    std::vector<Diag> diags = DC.Take();
+    if (std::shared_ptr<PreambleData> preamble = session->GetPreamble())
+      diags.insert(diags.end(), preamble->diags.begin(), preamble->diags.end());
     std::vector<lsDiagnostic> ls_diags;
-    for (auto &d : DC.Take()) {
-      if (!d.inside_main)
+    for (auto &d : diags) {
+      if (!d.concerned)
         continue;
       std::string buf;
       llvm::raw_string_ostream OS(buf);
@@ -364,7 +388,7 @@ void DiagnosticMain(CompletionManager *manager) {
       OS.flush();
       ls_diag.message = std::move(buf);
       for (auto &n : d.notes) {
-        if (!n.inside_main)
+        if (!n.concerned)
           continue;
         lsDiagnostic &ls_diag1 = ls_diags.emplace_back();
         Fill(n, ls_diag1);
@@ -373,6 +397,12 @@ void DiagnosticMain(CompletionManager *manager) {
         OS.flush();
         ls_diag1.message = std::move(buf);
       }
+    }
+
+    {
+      std::lock_guard lock(session->wfiles->files_mutex);
+      if (WorkingFile *wfile = session->wfiles->GetFileByFilenameNoLock(path))
+        wfile->diagnostics_ = ls_diags;
     }
     manager->on_diagnostic_(path, ls_diags);
   }
@@ -385,9 +415,10 @@ std::shared_ptr<PreambleData> CompletionSession::GetPreamble() {
   return preamble;
 }
 
-void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
+void CompletionSession::BuildPreamble(CompilerInvocation &CI,
+                                      const std::string &main) {
   std::shared_ptr<PreambleData> OldP = GetPreamble();
-  std::string content = wfiles->GetContent(file.filename);
+  std::string content = wfiles->GetContent(main);
   std::unique_ptr<llvm::MemoryBuffer> Buf =
       llvm::MemoryBuffer::getMemBuffer(content);
   auto Bounds = ComputePreambleBounds(*CI.getLangOpts(), Buf.get(), 0);
@@ -401,7 +432,7 @@ void CompletionSession::BuildPreamble(CompilerInvocation &CI) {
   CI.getPreprocessorOpts().WriteCommentListToPCH = false;
 #endif
 
-  StoreDiags DC;
+  StoreDiags DC(main);
   IntrusiveRefCntPtr<DiagnosticsEngine> DE =
       CompilerInstance::createDiagnostics(&CI.getDiagnosticOpts(), &DC, false);
   PreambleCallbacks PP;
@@ -421,8 +452,8 @@ CompletionManager::CompletionManager(Project *project,
                                      OnDropped on_dropped)
     : project_(project), working_files_(working_files),
       on_diagnostic_(on_diagnostic), on_dropped_(on_dropped),
-      preloaded_sessions_(kMaxPreloadedSessions),
-      completion_sessions_(kMaxCompletionSessions),
+      preloads(kMaxPreloadedSessions),
+      sessions(kMaxCompletionSessions),
       PCH(std::make_shared<PCHContainerOperations>()) {
   std::thread([&]() {
     set_thread_name("comp");
@@ -441,22 +472,28 @@ CompletionManager::CompletionManager(Project *project,
       .detach();
 }
 
-void CompletionManager::CodeComplete(
-    const lsRequestId &id,
-    const lsTextDocumentPositionParams &completion_location,
-    const OnComplete &on_complete) {
-}
-
-void CompletionManager::DiagnosticsUpdate(
-    const lsTextDocumentIdentifier &document) {
-  bool has = false;
-  diagnostic_request_.Iterate([&](const DiagnosticRequest &request) {
-    if (request.document.uri == document.uri)
-      has = true;
-  });
-  if (!has)
-    diagnostic_request_.PushBack(DiagnosticRequest{document},
-                                 true /*priority*/);
+void CompletionManager::DiagnosticsUpdate(const std::string &path,
+                                          int debounce) {
+  static GroupMatch match(g_config->diagnostics.whitelist,
+                          g_config->diagnostics.blacklist);
+  if (!match.IsMatch(path))
+    return;
+  int64_t now = chrono::duration_cast<chrono::milliseconds>(
+    chrono::high_resolution_clock::now().time_since_epoch())
+    .count();
+  bool flag = false;
+  {
+    std::lock_guard lock(diag_mutex);
+    int64_t &next = next_diag[path];
+    auto &d = g_config->diagnostics;
+    if (next <= now ||
+      now - next > std::max(d.onChange, std::max(d.onChange, d.onSave))) {
+      next = now + debounce;
+      flag = true;
+    }
+  }
+  if (flag)
+    diagnostic_request_.PushBack({path, now + debounce, debounce}, false);
 }
 
 void CompletionManager::NotifyView(const std::string &path) {
@@ -466,94 +503,67 @@ void CompletionManager::NotifyView(const std::string &path) {
 }
 
 void CompletionManager::NotifySave(const std::string &filename) {
-  //
-  // On save, always reparse.
-  //
-
   EnsureCompletionOrCreatePreloadSession(filename);
   preload_requests_.PushBack(PreloadRequest{filename}, true);
 }
 
-void CompletionManager::NotifyClose(const std::string &filename) {
-  //
-  // On close, we clear any existing CompletionSession instance.
-  //
-
+void CompletionManager::OnClose(const std::string &filename) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  // Take and drop. It's okay if we don't actually drop the file, it'll
-  // eventually get pushed out of the caches as the user opens other files.
-  auto preloaded_ptr = preloaded_sessions_.TryTake(filename);
-  LOG_IF_S(INFO, !!preloaded_ptr)
-      << "Dropped preloaded-based code completion session for " << filename;
-  auto completion_ptr = completion_sessions_.TryTake(filename);
-  LOG_IF_S(INFO, !!completion_ptr)
-      << "Dropped completion-based code completion session for " << filename;
-
-  // We should never have both a preloaded and completion session.
-  assert((preloaded_ptr && completion_ptr) == false);
+  preloads.TryTake(filename);
+  sessions.TryTake(filename);
 }
 
 bool CompletionManager::EnsureCompletionOrCreatePreloadSession(
     const std::string &path) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  // Check for an existing CompletionSession.
-  if (preloaded_sessions_.TryGet(path) ||
-      completion_sessions_.TryGet(path)) {
+  if (preloads.TryGet(path) || sessions.TryGet(path))
     return false;
-  }
 
   // No CompletionSession, create new one.
   auto session = std::make_shared<ccls::CompletionSession>(
       project_->FindCompilationEntryForFile(path), working_files_, PCH);
-  preloaded_sessions_.Insert(session->file.filename, session);
+  if (session->file.filename != path) {
+    session->inferred = true;
+    session->file.filename = path;
+  }
+  preloads.Insert(path, session);
+  LOG_S(INFO) << "create preload session for " << path;
   return true;
 }
 
 std::shared_ptr<ccls::CompletionSession>
-CompletionManager::TryGetSession(const std::string &path,
-                                 bool mark_as_completion,
-                                 bool create_if_needed) {
+CompletionManager::TryGetSession(const std::string &path, bool preload,
+                                 bool *is_open) {
   std::lock_guard<std::mutex> lock(sessions_lock_);
+  std::shared_ptr<ccls::CompletionSession> session = preloads.TryGet(path);
 
-  // Try to find a preloaded session.
-  std::shared_ptr<ccls::CompletionSession> preloaded =
-      preloaded_sessions_.TryGet(path);
-
-  if (preloaded) {
-    // If this request is for a completion, we should move it to
-    // |completion_sessions|.
-    if (mark_as_completion) {
-      preloaded_sessions_.TryTake(path);
-      completion_sessions_.Insert(path, preloaded);
+  if (session) {
+    if (!preload) {
+      preloads.TryTake(path);
+      sessions.Insert(path, session);
+      if (is_open)
+        *is_open = true;
     }
-    return preloaded;
+    return session;
   }
 
-  // Try to find a completion session. If none create one.
-  std::shared_ptr<ccls::CompletionSession> session =
-      completion_sessions_.TryGet(path);
-  if (!session && create_if_needed) {
+  session = sessions.TryGet(path);
+  if (!session && !preload) {
     session = std::make_shared<ccls::CompletionSession>(
         project_->FindCompilationEntryForFile(path), working_files_, PCH);
-    completion_sessions_.Insert(path, session);
+    sessions.Insert(path, session);
+    LOG_S(INFO) << "create session for " << path;
+    if (is_open)
+      *is_open = true;
   }
 
   return session;
-}
-
-void CompletionManager::FlushSession(const std::string &path) {
-  std::lock_guard<std::mutex> lock(sessions_lock_);
-
-  preloaded_sessions_.TryTake(path);
-  completion_sessions_.TryTake(path);
 }
 
 void CompletionManager::FlushAllSessions() {
   LOG_S(INFO) << "flush all clang complete sessions";
   std::lock_guard<std::mutex> lock(sessions_lock_);
 
-  preloaded_sessions_.Clear();
-  completion_sessions_.Clear();
+  preloads.Clear();
+  sessions.Clear();
 }
