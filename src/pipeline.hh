@@ -16,18 +16,6 @@ struct Project;
 struct WorkingFiles;
 struct lsBaseOutMessage;
 
-class DiagnosticsPublisher {
-  std::unique_ptr<GroupMatch> match_;
-  int64_t nextPublish_ = 0;
-  int frequencyMs_;
-
- public:
-  void Init();
-  void Publish(WorkingFiles* working_files,
-               std::string path,
-               std::vector<lsDiagnostic> diagnostics);
-};
-
 struct VFS {
   struct State {
     int64_t timestamp;

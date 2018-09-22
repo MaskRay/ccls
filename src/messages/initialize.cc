@@ -486,7 +486,6 @@ struct Handler_Initialize : BaseMessageHandler<In_InitializeRequest> {
       sys::fs::create_directories(g_config->cacheDirectory + '@' + escaped);
     }
 
-    diag_pub->Init();
     idx::Init();
     highlight->Init();
 

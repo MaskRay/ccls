@@ -71,14 +71,10 @@ struct Handler_TextDocumentDidOpen
       project->SetArgsForFile(args, path);
 
     // Submit new index request if it is not a header file.
-    if (SourceFileLanguage(path) != LanguageId::Unknown) {
+    if (SourceFileLanguage(path) != LanguageId::Unknown)
       pipeline::Index(path, args, IndexMode::Normal);
-      clang_complete->FlushSession(path);
-    }
 
     clang_complete->NotifyView(path);
-    if (g_config->diagnostics.onOpen)
-      clang_complete->DiagnosticsUpdate({params.textDocument.uri});
   }
 };
 REGISTER_MESSAGE_HANDLER(Handler_TextDocumentDidOpen);

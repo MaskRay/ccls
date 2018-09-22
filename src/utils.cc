@@ -117,6 +117,15 @@ std::string EscapeFileName(std::string path) {
   return path;
 }
 
+std::string ResolveIfRelative(const std::string &directory,
+                              const std::string &path) {
+  if (sys::path::is_absolute(path))
+    return path;
+  SmallString<256> Ret;
+  sys::path::append(Ret, directory, path);
+  return NormalizePath(Ret.str());
+}
+
 std::optional<int64_t> LastWriteTime(const std::string &path) {
   sys::fs::file_status Status;
   if (sys::fs::status(path, Status))

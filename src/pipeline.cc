@@ -39,41 +39,6 @@ using namespace llvm;
 #include <unistd.h>
 #endif
 
-void DiagnosticsPublisher::Init() {
-  frequencyMs_ = g_config->diagnostics.frequencyMs;
-  match_ = std::make_unique<GroupMatch>(g_config->diagnostics.whitelist,
-                                        g_config->diagnostics.blacklist);
-}
-
-void DiagnosticsPublisher::Publish(WorkingFiles *working_files,
-                                   std::string path,
-                                   std::vector<lsDiagnostic> diagnostics) {
-  bool good = true;
-  // Cache diagnostics so we can show fixits.
-  working_files->DoActionOnFile(path, [&](WorkingFile *working_file) {
-    if (working_file) {
-      good = working_file->diagnostics_.empty();
-      working_file->diagnostics_ = diagnostics;
-    }
-  });
-
-  int64_t now =
-      std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::high_resolution_clock::now().time_since_epoch())
-          .count();
-  if (frequencyMs_ >= 0 &&
-      (nextPublish_ <= now || (!good && diagnostics.empty())) &&
-      match_->IsMatch(path)) {
-    nextPublish_ = now + frequencyMs_;
-
-    Out_TextDocumentPublishDiagnostics out;
-    out.params.uri = lsDocumentUri::FromPath(path);
-    out.params.diagnostics = diagnostics;
-    ccls::pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics,
-                                out);
-  }
-}
-
 void VFS::Clear() {
   std::lock_guard lock(mutex);
   state.clear();
@@ -497,12 +462,15 @@ void MainLoop() {
   SemanticHighlight highlight;
   WorkingFiles working_files;
   VFS vfs;
-  DiagnosticsPublisher diag_pub;
 
   CompletionManager clang_complete(
       &project, &working_files,
       [&](std::string path, std::vector<lsDiagnostic> diagnostics) {
-        diag_pub.Publish(&working_files, path, diagnostics);
+        Out_TextDocumentPublishDiagnostics out;
+        out.params.uri = lsDocumentUri::FromPath(path);
+        out.params.diagnostics = diagnostics;
+        ccls::pipeline::WriteStdout(kMethodType_TextDocumentPublishDiagnostics,
+          out);
       },
       [](lsRequestId id) {
         if (id.Valid()) {
@@ -523,7 +491,6 @@ void MainLoop() {
     handler->db = &db;
     handler->waiter = indexer_waiter;
     handler->project = &project;
-    handler->diag_pub = &diag_pub;
     handler->vfs = &vfs;
     handler->highlight = &highlight;
     handler->working_files = &working_files;
