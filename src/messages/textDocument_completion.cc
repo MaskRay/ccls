@@ -622,6 +622,7 @@ struct Handler_TextDocumentCompletion
 #if LLVM_VERSION_MAJOR >= 7
       CCOpts.IncludeFixIts = true;
 #endif
+      CCOpts.IncludeMacros = true;
       if (cache.IsCacheValid(params)) {
         CompletionConsumer Consumer(CCOpts, true);
         cache.WithLock([&]() { Consumer.ls_items = cache.result; });
