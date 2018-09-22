@@ -414,7 +414,7 @@ void BuildItem(std::vector<lsCompletionItem> &out,
         out[i].insertText +=
             "${" + std::to_string(out[i].parameters_.size()) + ":" + text + "}";
         out[i].insertTextFormat = lsInsertTextFormat::Snippet;
-      } else {
+      } else if (Kind != CodeCompletionString::CK_Informative) {
         out[i].insertText += text;
       }
     }
