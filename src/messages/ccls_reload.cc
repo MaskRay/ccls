@@ -1,6 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
+#include "clang_complete.hh"
 #include "match.h"
 #include "message_handler.h"
 #include "pipeline.hh"
@@ -38,6 +39,7 @@ struct Handler_CclsReload : BaseMessageHandler<In_CclsReload> {
       vfs->Clear();
       db->clear();
       project->Index(working_files, lsRequestId());
+      clang_complete->FlushAllSessions();
       return;
     }
 

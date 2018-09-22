@@ -54,15 +54,6 @@ enum OptionClass {
   Separate,
 };
 
-std::string ResolveIfRelative(const std::string &directory,
-                              const std::string &path) {
-  if (sys::path::is_absolute(path))
-    return path;
-  SmallString<256> Ret;
-  sys::path::append(Ret, directory, path);
-  return NormalizePath(Ret.str());
-}
-
 struct ProjectProcessor {
   ProjectConfig *config;
   std::unordered_set<size_t> command_set;

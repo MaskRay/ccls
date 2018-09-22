@@ -144,20 +144,18 @@ struct Config {
     // blacklisted files.
     std::vector<std::string> blacklist;
 
-    // How often should ccls publish diagnostics in completion?
-    //  -1: never
-    //   0: as often as possible
-    //   xxx: at most every xxx milliseconds
-    int frequencyMs = 0;
+    // Time to wait before computing diagnostics for textDocument/didChange.
+    //   -1: disable diagnostics on change
+    //   0: immediately
+    //   positive (e.g. 500): wait for 500 milliseconds. didChange requests in
+    //     this period of time will only cause one computation.
+    int onChange = 1000;
 
-    // If true, diagnostics will be reported for textDocument/didChange.
-    bool onChange = true;
+    // Time to wait before computing diagnostics for textDocument/didOpen.
+    int onOpen = 0;
 
-    // If true, diagnostics will be reported for textDocument/didOpen.
-    bool onOpen = true;
-
-    // If true, diagnostics will be reported for textDocument/didSave.
-    bool onSave = true;
+    // Time to wait before computing diagnostics for textDocument/didSave.
+    int onSave = 0;
 
     bool spellChecking = true;
 
@@ -246,8 +244,8 @@ MAKE_REFLECT_STRUCT(Config::Completion, caseSensitivity, detailedLabel,
                     dropOldRequests, duplicateOptional, filterAndSort,
                     includeBlacklist, includeMaxPathSize,
                     includeSuffixWhitelist, includeWhitelist);
-MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, frequencyMs, onChange,
-                    onOpen, onSave, spellChecking, whitelist)
+MAKE_REFLECT_STRUCT(Config::Diagnostics, blacklist, onChange, onOpen, onSave,
+                    spellChecking, whitelist)
 MAKE_REFLECT_STRUCT(Config::Highlight, lsRanges, blacklist, whitelist)
 MAKE_REFLECT_STRUCT(Config::Index, blacklist, comments, enabled, multiVersion,
                     multiVersionBlacklist, multiVersionWhitelist, onChange,
