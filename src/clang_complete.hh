@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "clang_tu.h"
+#include "clang_tu.hh"
 #include "lru_cache.h"
 #include "lsp_completion.h"
 #include "lsp_diagnostic.h"

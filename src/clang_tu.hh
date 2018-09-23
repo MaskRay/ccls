@@ -2,13 +2,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
+
 #include "position.h"
 
 #include <clang/Basic/LangOptions.h>
+#include <clang/Basic/FileManager.h>
 #include <clang/Basic/SourceManager.h>
 #include <clang/Frontend/CompilerInstance.h>
 
-#include <stdlib.h>
+std::string PathFromFileEntry(const clang::FileEntry &file);
 
 Range FromCharSourceRange(const clang::SourceManager &SM,
                           const clang::LangOptions &LangOpts,
@@ -26,3 +28,5 @@ Range FromTokenRange(const clang::SourceManager &SM,
 std::unique_ptr<clang::CompilerInvocation>
 BuildCompilerInvocation(std::vector<const char *> args,
                         llvm::IntrusiveRefCntPtr<clang::vfs::FileSystem> VFS);
+
+const char *ClangBuiltinTypeName(int);

@@ -3,13 +3,12 @@
 
 #include "clang_complete.hh"
 
-#include "clang_utils.h"
+#include "clang_tu.hh"
 #include "filesystem.hh"
 #include "log.hh"
 #include "match.h"
 #include "platform.h"
 
-#include <clang/Frontend/CompilerInstance.h>
 #include <clang/Lex/PreprocessorOptions.h>
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
@@ -96,7 +95,7 @@ public:
     auto it = FID2concerned.try_emplace(FID.getHashValue());
     if (it.second) {
       const FileEntry *FE = SM.getFileEntryForID(FID);
-      it.first->second = FE && FileName(*FE) == path;
+      it.first->second = FE && PathFromFileEntry(*FE) == path;
     }
     return it.first->second;
   }

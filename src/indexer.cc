@@ -4,7 +4,7 @@
 #include "indexer.h"
 
 #include "clang_complete.hh"
-#include "clang_tu.h"
+#include "clang_tu.hh"
 #include "log.hh"
 #include "match.h"
 #include "pipeline.hh"
@@ -61,7 +61,7 @@ struct IndexParam {
     // generating an index for it):
     auto [it, inserted] = UID2File.try_emplace(File.getUniqueID());
     if (inserted) {
-      std::string path = FileName(File);
+      std::string path = PathFromFileEntry(File);
       it->second.path = path;
       it->second.mtime = File.getModificationTime();
       if (!it->second.mtime)
@@ -85,7 +85,7 @@ struct IndexParam {
   bool UseMultiVersion(const FileEntry &FE) {
     auto it = UID2multi.try_emplace(FE.getUniqueID());
     if (it.second)
-      it.first->second = multiVersionMatcher->IsMatch(FileName(FE));
+      it.first->second = multiVersionMatcher->IsMatch(PathFromFileEntry(FE));
     return it.first->second;
   }
 };
@@ -1084,9 +1084,9 @@ public:
     if (!FE)
       return;
     if (IndexFile *db = param.ConsumeFile(*FE)) {
-      std::string file_name = FileName(*File);
-      if (file_name.size())
-        db->includes.push_back({spell.start.line, Intern(file_name)});
+      std::string path = PathFromFileEntry(*File);
+      if (path.size())
+        db->includes.push_back({spell.start.line, Intern(path)});
     }
   }
   void MacroDefined(const Token &Tok, const MacroDirective *MD) override {

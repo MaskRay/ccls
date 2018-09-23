@@ -1,6 +1,7 @@
 // Copyright 2017-2018 ccls Authors
 // SPDX-License-Identifier: Apache-2.0
 
+#include "clang_tu.hh"
 #include "hierarchy.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
