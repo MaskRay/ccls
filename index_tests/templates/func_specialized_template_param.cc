@@ -29,21 +29,6 @@ OUTPUT:
       "callees": []
     }],
   "usr2type": [{
-      "usr": 2100211316767379401,
-      "detailed_name": "template<> class Template<double>",
-      "qual_name_offset": 17,
-      "short_name": "Template",
-      "kind": 5,
-      "declarations": [],
-      "alias_of": 0,
-      "bases": [],
-      "derived": [],
-      "types": [],
-      "funcs": [],
-      "vars": [],
-      "instances": [],
-      "uses": ["5:12-5:20|15041163540773201510|2|4|-1", "8:15-8:23|0|1|4|-1"]
-    }, {
       "usr": 15041163540773201510,
       "detailed_name": "struct Foo {}",
       "qual_name_offset": 7,
@@ -76,7 +61,7 @@ OUTPUT:
       "funcs": [],
       "vars": [],
       "instances": [],
-      "uses": []
+      "uses": ["5:12-5:20|15041163540773201510|2|4|-1", "8:15-8:23|0|1|4|-1"]
     }],
   "usr2var": []
 }
