@@ -20,6 +20,7 @@ limitations under the License.
 using namespace ccls;
 
 #include <clang/AST/Type.h>
+#include <llvm/ADT/DenseSet.h>
 using namespace clang;
 
 #include <unordered_set>
@@ -42,12 +43,15 @@ struct In_CclsMember : public RequestInMessage {
 
     bool qualified = false;
     int levels = 1;
+    // If SymbolKind::Func and the point is at a type, list member functions
+    // instead of member variables.
+    SymbolKind kind = SymbolKind::Var;
     bool hierarchy = false;
   } params;
 };
 
 MAKE_REFLECT_STRUCT(In_CclsMember::Params, textDocument, position, id,
-                    qualified, levels, hierarchy);
+                    qualified, levels, kind, hierarchy);
 MAKE_REFLECT_STRUCT(In_CclsMember, id, params);
 REGISTER_IN_MESSAGE(In_CclsMember);
 
@@ -73,7 +77,7 @@ MAKE_REFLECT_STRUCT_MANDATORY_OPTIONAL(Out_CclsMember, jsonrpc, id,
                                        result);
 
 bool Expand(MessageHandler *m, Out_CclsMember::Entry *entry,
-            bool qualified, int levels);
+            bool qualified, int levels, SymbolKind memberKind);
 
 // Add a field to |entry| which is a Func/Type.
 void DoField(MessageHandler *m, Out_CclsMember::Entry *entry,
@@ -108,7 +112,7 @@ void DoField(MessageHandler *m, Out_CclsMember::Entry *entry,
   if (def1->type) {
     entry1.id = std::to_string(def1->type);
     entry1.usr = def1->type;
-    if (Expand(m, &entry1, qualified, levels))
+    if (Expand(m, &entry1, qualified, levels, SymbolKind::Var))
       entry->children.push_back(std::move(entry1));
   } else {
     entry1.id = "0";
@@ -119,13 +123,13 @@ void DoField(MessageHandler *m, Out_CclsMember::Entry *entry,
 
 // Expand a type node by adding members recursively to it.
 bool Expand(MessageHandler *m, Out_CclsMember::Entry *entry,
-            bool qualified, int levels) {
+            bool qualified, int levels, SymbolKind memberKind) {
   if (0 < entry->usr && entry->usr <= BuiltinType::LastKind) {
     entry->name = ClangBuiltinTypeName(int(entry->usr));
     return true;
   }
-  const QueryType &type = m->db->Type(entry->usr);
-  const QueryType::Def *def = type.AnyDef();
+  const QueryType *type = &m->db->Type(entry->usr);
+  const QueryType::Def *def = type->AnyDef();
   // builtin types have no declaration and empty |qualified|.
   if (!def)
     return false;
@@ -133,51 +137,96 @@ bool Expand(MessageHandler *m, Out_CclsMember::Entry *entry,
   std::unordered_set<Usr> seen;
   if (levels > 0) {
     std::vector<const QueryType *> stack;
-    seen.insert(type.usr);
-    stack.push_back(&type);
+    seen.insert(type->usr);
+    stack.push_back(type);
     while (stack.size()) {
-      const auto *def = stack.back()->AnyDef();
+      type = stack.back();
       stack.pop_back();
-      if (def) {
-        for (Usr usr : def->bases) {
-          auto &type1 = m->db->Type(usr);
-          if (type1.def.size()) {
-            seen.insert(type1.usr);
-            stack.push_back(&type1);
-          }
+      const auto *def = type->AnyDef();
+      if (!def) continue;
+      for (Usr usr : def->bases) {
+        auto &type1 = m->db->Type(usr);
+        if (type1.def.size()) {
+          seen.insert(type1.usr);
+          stack.push_back(&type1);
         }
-        if (def->alias_of) {
-          const QueryType::Def *def1 = m->db->Type(def->alias_of).AnyDef();
-          Out_CclsMember::Entry entry1;
-          entry1.id = std::to_string(def->alias_of);
-          entry1.usr = def->alias_of;
-          if (def1 && def1->spell) {
-            // The declaration of target type.
-            if (std::optional<lsLocation> loc =
+      }
+      if (def->alias_of) {
+        const QueryType::Def *def1 = m->db->Type(def->alias_of).AnyDef();
+        Out_CclsMember::Entry entry1;
+        entry1.id = std::to_string(def->alias_of);
+        entry1.usr = def->alias_of;
+        if (def1 && def1->spell) {
+          // The declaration of target type.
+          if (std::optional<lsLocation> loc =
+            GetLsLocation(m->db, m->working_files, *def1->spell))
+            entry1.location = *loc;
+        } else if (def->spell) {
+          // Builtin types have no declaration but the typedef declaration
+          // itself is useful.
+          if (std::optional<lsLocation> loc =
+            GetLsLocation(m->db, m->working_files, *def->spell))
+            entry1.location = *loc;
+        }
+        if (def1 && qualified)
+          entry1.fieldName = def1->detailed_name;
+        if (Expand(m, &entry1, qualified, levels - 1, memberKind)) {
+          // For builtin types |name| is set.
+          if (entry1.fieldName.empty())
+            entry1.fieldName = std::string(entry1.name);
+          entry->children.push_back(std::move(entry1));
+        }
+      } else if (memberKind == SymbolKind::Func) {
+        llvm::DenseSet<Usr, DenseMapInfoForUsr> seen1;
+        for (auto &def : type->def)
+          for (Usr usr : def.funcs)
+            if (seen1.insert(usr).second) {
+              QueryFunc &func1 = m->db->Func(usr);
+              if (const QueryFunc::Def *def1 = func1.AnyDef()) {
+                Out_CclsMember::Entry entry1;
+                entry1.fieldName = def1->Name(false);
+                if (def1->spell) {
+                  if (auto loc =
+                          GetLsLocation(m->db, m->working_files, *def1->spell))
+                    entry1.location = *loc;
+                } else if (func1.declarations.size()) {
+                  if (auto loc = GetLsLocation(m->db, m->working_files,
+                                               func1.declarations[0]))
+                    entry1.location = *loc;
+                }
+                entry->children.push_back(std::move(entry1));
+              }
+            }
+      } else if (memberKind == SymbolKind::Type) {
+        llvm::DenseSet<Usr, DenseMapInfoForUsr> seen1;
+        for (auto &def : type->def)
+          for (Usr usr : def.types)
+            if (seen1.insert(usr).second) {
+              QueryType &type1 = m->db->Type(usr);
+              if (const QueryType::Def *def1 = type1.AnyDef()) {
+                Out_CclsMember::Entry entry1;
+                entry1.fieldName = def1->Name(false);
+                if (def1->spell) {
+                  if (auto loc =
                     GetLsLocation(m->db, m->working_files, *def1->spell))
-              entry1.location = *loc;
-          } else if (def->spell) {
-            // Builtin types have no declaration but the typedef declaration
-            // itself is useful.
-            if (std::optional<lsLocation> loc =
-                    GetLsLocation(m->db, m->working_files, *def->spell))
-              entry1.location = *loc;
-          }
-          if (def1 && qualified)
-            entry1.fieldName = def1->detailed_name;
-          if (Expand(m, &entry1, qualified, levels - 1)) {
-            // For builtin types |name| is set.
-            if (entry1.fieldName.empty())
-              entry1.fieldName = std::string(entry1.name);
-            entry->children.push_back(std::move(entry1));
-          }
-        } else {
-          for (auto it : def->vars) {
-            QueryVar &var = m->db->Var(it.first);
-            if (!var.def.empty())
-              DoField(m, entry, var, it.second, qualified, levels - 1);
-          }
-        }
+                    entry1.location = *loc;
+                } else if (type1.declarations.size()) {
+                  if (auto loc = GetLsLocation(m->db, m->working_files,
+                      type1.declarations[0]))
+                    entry1.location = *loc;
+                }
+                entry->children.push_back(std::move(entry1));
+              }
+            }
+      } else {
+        llvm::DenseSet<Usr, DenseMapInfoForUsr> seen1;
+        for (auto &def : type->def)
+          for (auto it : def.vars)
+            if (seen1.insert(it.first).second) {
+              QueryVar &var = m->db->Var(it.first);
+              if (!var.def.empty())
+                DoField(m, entry, var, it.second, qualified, levels - 1);
+            }
       }
     }
     entry->numChildren = int(entry->children.size());
@@ -191,7 +240,7 @@ struct Handler_CclsMember
   MethodType GetMethodType() const override { return kMethodType; }
 
   std::optional<Out_CclsMember::Entry>
-  BuildInitial(SymbolKind kind, Usr root_usr, bool qualified, int levels) {
+  BuildInitial(SymbolKind kind, Usr root_usr, bool qualified, int levels, SymbolKind memberKind) {
     switch (kind) {
     default:
       return {};
@@ -228,7 +277,7 @@ struct Handler_CclsMember
                 GetLsLocation(db, working_files, *def->spell))
           entry.location = *loc;
       }
-      Expand(this, &entry, qualified, levels);
+      Expand(this, &entry, qualified, levels, memberKind);
       return entry;
     }
     }
@@ -250,7 +299,7 @@ struct Handler_CclsMember
       entry.usr = params.usr;
       // entry.name is empty as it is known by the client.
       if (db->HasType(entry.usr) &&
-          Expand(this, &entry, params.qualified, params.levels))
+          Expand(this, &entry, params.qualified, params.levels, params.kind))
         out.result = std::move(entry);
     } else {
       QueryFile *file;
@@ -263,14 +312,14 @@ struct Handler_CclsMember
         switch (sym.kind) {
         case SymbolKind::Func:
         case SymbolKind::Type:
-          out.result =
-              BuildInitial(sym.kind, sym.usr, params.qualified, params.levels);
+          out.result = BuildInitial(sym.kind, sym.usr, params.qualified,
+                                    params.levels, params.kind);
           break;
         case SymbolKind::Var: {
           const QueryVar::Def *def = db->GetVar(sym).AnyDef();
           if (def && def->type)
             out.result = BuildInitial(SymbolKind::Type, def->type,
-                                      params.qualified, params.levels);
+                                      params.qualified, params.levels, params.kind);
           break;
         }
         default:

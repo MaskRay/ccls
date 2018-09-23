@@ -7,12 +7,14 @@ ccls, which originates from [cquery](https://github.com/cquery-project/cquery), 
 
   * code completion (with both signature help and snippets)
   * [definition](src/messages/textDocument_definition.cc)/[references](src/messages/textDcument_references.cc), and other cross references
-  * hierarchies: [call (caller/callee) hierarchy](src/messages/ccls_callHierarchy.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritanceHierarchy.cc), [member hierarchy](src/messages/ccls_memberHierarchy.cc)
-  * [symbol rename](src/messages/text_documentRename.cc)
+  * cross reference extensions: `$ccls/call` `$ccls/inheritance` `$ccls/member` `$ccls/vars` ...
+  * hierarchies: [call (caller/callee) hierarchy](src/messages/ccls_call.cc), [inheritance (base/derived) hierarchy](src/messages/ccls_inheritance.cc), [member hierarchy](src/messages/ccls_member.cc)
+  * [symbol rename](src/messages/textDocument_rename.cc)
   * [document symbols](src/messages/textDocument_documentSymbol.cc) and approximate search of [workspace symbol](src/messages/workspace_symbol.cc)
   * [hover information](src/messages/textDocument_hover.cc)
   * diagnostics and code actions (clang FixIts)
   * semantic highlighting and preprocessor skipped regions
+  * semantic navigation: `$ccls/navigate`
 
 It has a global view of the code base and support a lot of cross reference features, see [wiki/FAQ](../../wiki/FAQ).
 It starts indexing the whole project (including subprojects if exist) parallelly when you open the first file, while the main thread can serve requests before the indexing is complete.
