@@ -1235,15 +1235,18 @@ std::vector<std::unique_ptr<IndexFile>>
 Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
       const std::string &opt_wdir, const std::string &file,
       const std::vector<const char *> &args,
-      const std::vector<std::pair<std::string, std::string>> &remapped) {
+      const std::vector<std::pair<std::string, std::string>> &remapped, bool &ok) {
+  ok = true;
   if (!g_config->index.enabled)
     return {};
 
   auto PCH = std::make_shared<PCHContainerOperations>();
   llvm::IntrusiveRefCntPtr<vfs::FileSystem> FS = vfs::getRealFileSystem();
   std::shared_ptr<CompilerInvocation> CI = BuildCompilerInvocation(args, FS);
+  // e.g. .s
   if (!CI)
     return {};
+  ok = false;
   // -fparse-all-comments enables documentation in the indexer and in
   // code completion.
   if (g_config->index.comments > 1)
@@ -1313,7 +1316,6 @@ Index(CompletionManager *completion, WorkingFiles *wfiles, VFS *vfs,
   std::unique_ptr<FrontendAction> Action = createIndexingAction(
       DataConsumer, IndexOpts, std::make_unique<IndexFrontendAction>(param));
 
-  bool ok = false;
   {
     llvm::CrashRecoveryContext CRC;
     auto parse = [&]() {

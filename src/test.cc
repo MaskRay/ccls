@@ -317,7 +317,8 @@ bool RunIndexTests(const std::string &filter_path, bool enable_update) {
         std::vector<const char *> cargs;
         for (auto &arg : flags)
           cargs.push_back(arg.c_str());
-        auto dbs = ccls::idx::Index(&completion, &wfiles, &vfs, "", path, cargs, {});
+        bool ok;
+        auto dbs = ccls::idx::Index(&completion, &wfiles, &vfs, "", path, cargs, {}, ok);
 
         for (const auto &entry : all_expected_output) {
           const std::string &expected_path = entry.first;

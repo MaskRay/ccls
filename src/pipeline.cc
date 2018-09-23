@@ -278,10 +278,11 @@ bool Indexer_Parse(CompletionManager *completion, WorkingFiles *wfiles,
     if (content.size())
       remapped.emplace_back(path_to_index, content);
   }
+  bool ok;
   auto indexes = idx::Index(completion, wfiles, vfs, entry.directory,
-                            path_to_index, entry.args, remapped);
+                            path_to_index, entry.args, remapped, ok);
 
-  if (indexes.empty()) {
+  if (!ok) {
     if (g_config->index.enabled && request.id.Valid()) {
       Out_Error out;
       out.id = request.id;
