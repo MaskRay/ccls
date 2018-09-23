@@ -284,6 +284,35 @@ try_again:
   return D;
 }
 
+const Decl *GetAdjustedDecl(const Decl *D) {
+  while (D) {
+    if (auto *R = dyn_cast<CXXRecordDecl>(D)) {
+      if (auto *S = dyn_cast<ClassTemplateSpecializationDecl>(R)) {
+        if (!S->getTypeAsWritten()) {
+          llvm::PointerUnion<ClassTemplateDecl *,
+                             ClassTemplatePartialSpecializationDecl *>
+              Result = S->getSpecializedTemplateOrPartial();
+          if (Result.is<ClassTemplateDecl *>())
+            D = Result.get<ClassTemplateDecl *>();
+          else
+            D = Result.get<ClassTemplatePartialSpecializationDecl *>();
+          continue;
+        }
+      } else if (auto *D1 = R->getInstantiatedFromMemberClass()) {
+        D = D1;
+        continue;
+      }
+    } else if (auto *ED = dyn_cast<EnumDecl>(D)) {
+      if (auto *D1 = ED->getInstantiatedFromMemberEnum()) {
+        D = D1;
+        continue;
+      }
+    }
+    break;
+  }
+  return D;
+}
+
 bool ValidateRecord(const RecordDecl *RD) {
   for (const auto *I : RD->fields()) {
     QualType FQT = I->getType();
@@ -621,11 +650,12 @@ public:
         return true;
     }
 
+    // spell, extent, comments use OrigD while most others use adjusted |D|.
     const Decl *OrigD = ASTNode.OrigD;
     const DeclContext *SemDC = OrigD->getDeclContext();
     const DeclContext *LexDC = ASTNode.ContainerDC;
     Role role = static_cast<Role>(Roles);
-    db->language = LanguageId((int)db->language | (int)GetDeclLanguage(OrigD));
+    db->language = LanguageId((int)db->language | (int)GetDeclLanguage(D));
 
     bool is_decl = Roles & uint32_t(index::SymbolRole::Declaration);
     bool is_def = Roles & uint32_t(index::SymbolRole::Definition);
@@ -635,11 +665,9 @@ public:
     IndexType *type = nullptr;
     IndexVar *var = nullptr;
     SymbolKind kind = GetSymbolKind(D);
-    IndexParam::DeclInfo *info;
-    Usr usr = GetUsr(D, &info);
 
     if (is_def)
-      switch (OrigD->getKind()) {
+      switch (D->getKind()) {
       case Decl::CXXConversion: // *operator* int => *operator int*
       case Decl::CXXDestructor: // *~*A => *~A*
       case Decl::CXXMethod: // *operator*= => *operator=*
@@ -654,6 +682,15 @@ public:
       default:
         break;
       }
+    else {
+      // e.g. typedef Foo<int> gg; => Foo has an unadjusted `D`
+      const Decl *D1 = GetAdjustedDecl(D);
+      if (D1 && D1 != D)
+        D = D1;
+    }
+
+    IndexParam::DeclInfo *info;
+    Usr usr = GetUsr(D, &info);
 
     auto do_def_decl = [&](auto *entity) {
       if (is_def) {
@@ -693,7 +730,7 @@ public:
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, SymbolKind::Func, Spell);
       if (func->def.detailed_name[0] == '\0')
-        SetName(OrigD, info->short_name, info->qualified, func->def);
+        SetName(D, info->short_name, info->qualified, func->def);
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Type)
@@ -711,7 +748,7 @@ public:
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, SymbolKind::Type, Spell);
       if (type->def.detailed_name[0] == '\0' && info->short_name.size())
-        SetName(OrigD, info->short_name, info->qualified, type->def);
+        SetName(D, info->short_name, info->qualified, type->def);
       if (is_def || is_decl) {
         const Decl *DC = cast<Decl>(SemDC);
         if (GetSymbolKind(DC) == SymbolKind::Type)
@@ -724,7 +761,7 @@ public:
       if (Spell != Loc)
         AddMacroUse(db, SM, usr, SymbolKind::Var, Spell);
       if (var->def.detailed_name[0] == '\0')
-        SetVarName(OrigD, info->short_name, info->qualified, var->def);
+        SetVarName(D, info->short_name, info->qualified, var->def);
       QualType T;
       if (auto *VD = dyn_cast<VarDecl>(D))
         T = VD->getType();
@@ -741,63 +778,44 @@ public:
             Usr usr1 = static_cast<Usr>(BT->getKind());
             var->def.type = usr1;
             db->ToType(usr1).instances.push_back(usr);
-          } else {
-            for (const Decl *D1 = GetTypeDecl(T); D1; ) {
-              if (auto *R1 = dyn_cast<CXXRecordDecl>(D1)) {
-                if (auto *S1 = dyn_cast<ClassTemplateSpecializationDecl>(D1)) {
-                  if (!S1->getTypeAsWritten()) {
-                    llvm::PointerUnion<ClassTemplateDecl *,
-                                       ClassTemplatePartialSpecializationDecl *>
-                        Result = S1->getSpecializedTemplateOrPartial();
-                    if (Result.is<ClassTemplateDecl *>())
-                      D1 = Result.get<ClassTemplateDecl *>();
-                    else
-                      D1 = Result.get<ClassTemplatePartialSpecializationDecl *>();
-                    continue;
-                  }
-                } else if (auto *D2 = R1->getInstantiatedFromMemberClass()) {
-                  D1 = D2;
-                  continue;
-                }
-              } else if (auto *TP1 = dyn_cast<TemplateTypeParmDecl>(D1)) {
-                // e.g. TemplateTypeParmDecl is not handled by
-                // handleDeclOccurence.
-                SourceRange R1 = D1->getSourceRange();
-                if (SM.getFileID(R1.getBegin()) == LocFID) {
-                  IndexParam::DeclInfo *info1;
-                  Usr usr1 = GetUsr(D1, &info1);
-                  IndexType &type1 = db->ToType(usr1);
-                  SourceLocation L1 = D1->getLocation();
-                  type1.def.spell =
-                      GetUse(db, lid, FromTokenRange(SM, Lang, {L1, L1}), SemDC,
-                             Role::Definition);
-                  type1.def.extent = GetUse(db, lid, FromTokenRange(SM, Lang, R1),
-                                            LexDC, Role::None);
-                  type1.def.detailed_name = Intern(info1->short_name);
-                  type1.def.short_name_size = int16_t(info1->short_name.size());
-                  type1.def.kind = lsSymbolKind::TypeParameter;
-                  var->def.type = usr1;
-                  type1.instances.push_back(usr);
-                  break;
-                }
+          } else if (const Decl *D1 = GetAdjustedDecl(GetTypeDecl(T))) {
+            if (isa<TemplateTypeParmDecl>(D1)) {
+              // e.g. TemplateTypeParmDecl is not handled by
+              // handleDeclOccurence.
+              SourceRange R1 = D1->getSourceRange();
+              if (SM.getFileID(R1.getBegin()) == LocFID) {
+                IndexParam::DeclInfo *info1;
+                Usr usr1 = GetUsr(D1, &info1);
+                IndexType &type1 = db->ToType(usr1);
+                SourceLocation L1 = D1->getLocation();
+                type1.def.spell =
+                    GetUse(db, lid, FromTokenRange(SM, Lang, {L1, L1}), SemDC,
+                           Role::Definition);
+                type1.def.extent = GetUse(db, lid, FromTokenRange(SM, Lang, R1),
+                                          LexDC, Role::None);
+                type1.def.detailed_name = Intern(info1->short_name);
+                type1.def.short_name_size = int16_t(info1->short_name.size());
+                type1.def.kind = lsSymbolKind::TypeParameter;
+                var->def.type = usr1;
+                type1.instances.push_back(usr);
+                break;
               }
-
-              IndexParam::DeclInfo *info1;
-              Usr usr1 = GetUsr(D1, &info1);
-              var->def.type = usr1;
-              db->ToType(usr1).instances.push_back(usr);
-              break;
             }
+
+            IndexParam::DeclInfo *info1;
+            Usr usr1 = GetUsr(D1, &info1);
+            var->def.type = usr1;
+            db->ToType(usr1).instances.push_back(usr);
           }
         }
       } else if (!var->def.spell && var->declarations.empty()) {
         // e.g. lambda parameter
-        SourceLocation L = OrigD->getLocation();
+        SourceLocation L = D->getLocation();
         if (SM.getFileID(L) == LocFID) {
           var->def.spell = GetUse(db, lid, FromTokenRange(SM, Lang, {L, L}),
                                   SemDC, Role::Definition);
           var->def.extent =
-              GetUse(db, lid, FromTokenRange(SM, Lang, OrigD->getSourceRange()),
+              GetUse(db, lid, FromTokenRange(SM, Lang, D->getSourceRange()),
                      LexDC, Role::None);
         }
       }
@@ -807,8 +825,8 @@ public:
     switch (D->getKind()) {
     case Decl::Namespace:
       type->def.kind = lsSymbolKind::Namespace;
-      if (OrigD->isFirstDecl()) {
-        auto *ND = cast<NamespaceDecl>(OrigD);
+      if (D->isFirstDecl()) {
+        auto *ND = cast<NamespaceDecl>(D);
         auto *ND1 = cast<Decl>(ND->getParent());
         if (isa<NamespaceDecl>(ND1)) {
           Usr usr1 = GetUsr(ND1);
@@ -859,29 +877,19 @@ public:
       break;
     case Decl::CXXRecord:
       if (is_def) {
-        auto *RD = dyn_cast<CXXRecordDecl>(OrigD);
-        if (RD && RD->hasDefinition()) {
-          for (const CXXBaseSpecifier &Base : RD->bases()) {
-            QualType T = Base.getType();
-            const NamedDecl *BaseD = nullptr;
-            if (auto *TDT = T->getAs<TypedefType>()) {
-              BaseD = TDT->getDecl();
-            } else if (auto *TST = T->getAs<TemplateSpecializationType>()) {
-              BaseD = TST->getTemplateName().getAsTemplateDecl();
-            } else if (auto *RT = T->getAs<RecordType>()) {
-              BaseD = RT->getDecl();
-            }
-            if (BaseD) {
+        auto *RD = dyn_cast<CXXRecordDecl>(D);
+        if (RD && RD->hasDefinition())
+          for (const CXXBaseSpecifier &Base : RD->bases())
+            if (const Decl *BaseD =
+                    GetAdjustedDecl(GetTypeDecl(Base.getType()))) {
               Usr usr1 = GetUsr(BaseD);
               type->def.bases.push_back(usr1);
               db->ToType(usr1).derived.push_back(usr);
             }
-          }
-        }
       }
       [[fallthrough]];
     case Decl::Record:
-      if (auto *RD = dyn_cast<RecordDecl>(OrigD)) {
+      if (auto *RD = dyn_cast<RecordDecl>(D)) {
         // spec has no Union, use Class
         type->def.kind = RD->getTagKind() == TTK_Struct ? lsSymbolKind::Struct
                                                         : lsSymbolKind::Class;
@@ -964,7 +972,7 @@ public:
       if (auto *TD = dyn_cast<TypedefNameDecl>(D)) {
         bool specialization = false;
         QualType T = TD->getUnderlyingType();
-        if (const Decl *D1 = GetTypeDecl(T, &specialization)) {
+        if (const Decl *D1 = GetAdjustedDecl(GetTypeDecl(T, &specialization))) {
           Usr usr1 = GetUsr(D1);
           IndexType &type1 = db->ToType(usr1);
           type->def.alias_of = usr1;

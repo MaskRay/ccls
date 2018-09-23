@@ -84,8 +84,8 @@ OUTPUT: static_function_in_type.cc
   "skipped_ranges": [],
   "usr2func": [{
       "usr": 17019747379608639279,
-      "detailed_name": "void Foo::Register(ns::Manager *m)",
-      "qual_name_offset": 5,
+      "detailed_name": "static void ns::Foo::Register(ns::Manager *)",
+      "qual_name_offset": 12,
       "short_name": "Register",
       "kind": 254,
       "storage": 0,

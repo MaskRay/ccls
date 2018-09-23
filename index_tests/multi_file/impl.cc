@@ -215,8 +215,8 @@ OUTPUT: impl.cc
       "callees": ["4:3-4:7|11650481237659640387|3|16420"]
     }, {
       "usr": 11650481237659640387,
-      "detailed_name": "template<> void Foo1<int>()",
-      "qual_name_offset": 16,
+      "detailed_name": "void Foo1()",
+      "qual_name_offset": 5,
       "short_name": "Foo1",
       "kind": 12,
       "storage": 0,
