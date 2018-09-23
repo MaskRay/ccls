@@ -3,7 +3,6 @@
 
 #include "project.h"
 
-#include "clang_utils.h"
 #include "filesystem.hh"
 #include "language.h"
 #include "log.hh"
