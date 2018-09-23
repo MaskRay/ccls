@@ -64,6 +64,14 @@ struct Out_HierarchicalDocumentSymbol
 };
 MAKE_REFLECT_STRUCT(Out_HierarchicalDocumentSymbol, jsonrpc, id, result);
 
+bool IgnoreType(const QueryType::Def *def) {
+  return !def || def->kind == lsSymbolKind::TypeParameter;
+}
+
+bool IgnoreVar(const QueryVar::Def *def) {
+  return !def || def->is_local();
+}
+
 struct Handler_TextDocumentDocumentSymbol
     : BaseMessageHandler<In_TextDocumentDocumentSymbol> {
   MethodType GetMethodType() const override { return kMethodType; }
@@ -128,9 +136,11 @@ struct Handler_TextDocumentDocumentSymbol
               kv.first = static_cast<const void *>(&def);
             }
         });
-        if (kv.first && sym.kind == SymbolKind::Var)
-          if (static_cast<const QueryVar::Def *>(kv.first)->is_local())
-            kv.first = nullptr;
+        if (kv.first && ((sym.kind == SymbolKind::Type &&
+                          IgnoreType((const QueryType::Def *)kv.first)) ||
+                         (sym.kind == SymbolKind::Var &&
+                          IgnoreVar((const QueryVar::Def *)kv.first))))
+          kv.first = nullptr;
         if (!kv.first) {
           kv.second.reset();
           continue;
@@ -186,12 +196,11 @@ struct Handler_TextDocumentDocumentSymbol
         if (refcnt <= 0) continue;
         if (std::optional<lsSymbolInformation> info =
                 GetSymbolInfo(db, sym, false)) {
-          if (sym.kind == SymbolKind::Var) {
-            QueryVar &var = db->GetVar(sym);
-            auto *def = var.AnyDef();
-            if (!def || !def->spell || def->is_local())
-              continue;
-          }
+          if ((sym.kind == SymbolKind::Type &&
+               IgnoreType(db->GetType(sym).AnyDef())) ||
+              (sym.kind == SymbolKind::Var &&
+               IgnoreVar(db->GetVar(sym).AnyDef())))
+            continue;
           if (std::optional<lsLocation> location = GetLsLocation(
                   db, working_files,
                   Use{{sym.range, sym.usr, sym.kind, sym.role}, file_id})) {
