@@ -15,7 +15,6 @@ limitations under the License.
 
 #pragma once
 
-#include "clang_utils.h"
 #include "language.h"
 #include "lsp.h"
 #include "lsp_diagnostic.h"
@@ -25,6 +24,7 @@ limitations under the License.
 #include "symbol.h"
 #include "utils.h"
 
+#include <clang/Basic/FileManager.h>
 #include <clang/Basic/Specifiers.h>
 #include <llvm/ADT/CachedHashString.h>
 #include <llvm/ADT/DenseMap.h>

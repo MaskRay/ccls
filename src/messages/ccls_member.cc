@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include "clang_tu.hh"
 #include "hierarchy.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
