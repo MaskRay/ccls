@@ -22,7 +22,6 @@ limitations under the License.
 #include "pipeline.hh"
 #include "platform.h"
 #include "serializer.h"
-using namespace ccls;
 
 #include <clang/AST/AST.h>
 #include <clang/Frontend/FrontendAction.h>
@@ -33,15 +32,14 @@ using namespace ccls;
 #include <llvm/ADT/DenseSet.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Path.h>
-#include <llvm/Support/Timer.h>
-using namespace clang;
-using llvm::Timer;
 
 #include <algorithm>
 #include <inttypes.h>
-#include <limits.h>
 #include <map>
 #include <unordered_set>
+
+using namespace ccls;
+using namespace clang;
 
 namespace {
 
@@ -509,7 +507,7 @@ public:
       def.short_name_offset = Str.size() + qualified.size() - short_name.size();
       def.short_name_size = short_name.size();
       Str += StringRef(qualified.data(), qualified.size());
-      def.detailed_name = Intern(Str.str());
+      def.detailed_name = Intern(Str);
     } else {
       SetName(D, short_name, qualified, def);
     }

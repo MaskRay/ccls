@@ -16,7 +16,6 @@ limitations under the License.
 #include "clang_complete.hh"
 #include "message_handler.h"
 #include "pipeline.hh"
-#include "project.h"
 using namespace ccls;
 
 namespace {
@@ -44,7 +43,7 @@ struct Handler_TextDocumentDidSave
 
   void Run(In_TextDocumentDidSave *request) override {
     const auto &params = request->params;
-    std::string path = params.textDocument.uri.GetPath();
+    const std::string &path = params.textDocument.uri.GetPath();
     pipeline::Index(path, {}, IndexMode::Normal);
     clang_complete->NotifySave(path);
   }

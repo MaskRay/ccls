@@ -175,7 +175,9 @@ std::unique_ptr<CompilerInstance> BuildCompilerInstance(
     CompletionSession &session, std::unique_ptr<CompilerInvocation> CI,
     DiagnosticConsumer &DC, const WorkingFiles::Snapshot &snapshot,
     std::vector<std::unique_ptr<llvm::MemoryBuffer>> &Bufs) {
-  std::string main = ResolveIfRelative(session.file.directory, CI->getFrontendOpts().Inputs[0].getFile());
+  std::string main = ResolveIfRelative(
+      session.file.directory,
+      sys::path::convert_to_slash(CI->getFrontendOpts().Inputs[0].getFile()));
   for (auto &file : snapshot.files) {
     Bufs.push_back(llvm::MemoryBuffer::getMemBuffer(file.content));
     if (file.filename == main)

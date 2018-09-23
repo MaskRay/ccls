@@ -30,6 +30,11 @@ limitations under the License.
 #include <type_traits>
 #include <vector>
 
+namespace llvm {
+class CachedHashStringRef;
+class StringRef;
+}
+
 enum class SerializeFormat { Binary, Json };
 
 struct JsonNull {};
@@ -320,7 +325,8 @@ template <typename T> void ReflectMember(Writer &vis, const char *name, T &v) {
 // API
 
 namespace ccls {
-const char *Intern(const std::string &str);
+const char *Intern(llvm::StringRef str);
+llvm::CachedHashStringRef InternH(llvm::StringRef str);
 std::string Serialize(SerializeFormat format, IndexFile &file);
 std::unique_ptr<IndexFile>
 Deserialize(SerializeFormat format, const std::string &path,

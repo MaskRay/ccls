@@ -166,12 +166,11 @@ void Reflect(Reader &vis, DenseMap<CachedHashStringRef, int64_t> &v) {
   if (vis.Format() == SerializeFormat::Json) {
     auto &vis1 = static_cast<JsonReader&>(vis);
     for (auto it = vis1.m().MemberBegin(); it != vis1.m().MemberEnd(); ++it)
-      v[CachedHashStringRef(Intern(it->name.GetString()))] =
-          it->value.GetInt64();
+      v[InternH(it->name.GetString())] = it->value.GetInt64();
   } else {
     vis.IterArray([&](Reader &entry) {
       Reflect(entry, name);
-      Reflect(entry, v[CachedHashStringRef(Intern(name))]);
+      Reflect(entry, v[InternH(name)]);
     });
   }
 }
@@ -356,18 +355,26 @@ void Reflect(Writer &visitor, SerializeFormat &value) {
 
 namespace ccls {
 static BumpPtrAllocator Alloc;
-static DenseSet<StringRef> Strings;
+static DenseSet<CachedHashStringRef> Strings;
 static std::mutex AllocMutex;
 
-const char *Intern(const std::string &str) {
-  if (str.empty())
-    return "";
-  StringRef Str(str.data(), str.size() + 1);
+CachedHashStringRef InternH(StringRef S) {
+  if (S.empty())
+    S = "";
+  CachedHashString HS(S);
   std::lock_guard lock(AllocMutex);
-  auto R = Strings.insert(Str);
-  if (R.second)
-    *R.first = Str.copy(Alloc);
-  return R.first->data();
+  auto R = Strings.insert(HS);
+  if (R.second) {
+    char *P = Alloc.Allocate<char>(S.size() + 1);
+    memcpy(P, S.data(), S.size());
+    P[S.size()] = '\0';
+    *R.first = CachedHashStringRef(StringRef(P, S.size()), HS.hash());
+  }
+  return *R.first;
+}
+
+const char *Intern(StringRef S) {
+  return InternH(S).val().data();
 }
 
 std::string Serialize(SerializeFormat format, IndexFile &file) {
@@ -482,7 +489,7 @@ Deserialize(SerializeFormat format, const std::string &path,
     for (auto &it : file->dependencies) {
       std::string path = it.first.val().str();
       DoPathMapping(path);
-      dependencies[CachedHashStringRef(Intern(path))] = it.second;
+      dependencies[InternH(path)] = it.second;
     }
     file->dependencies = std::move(dependencies);
   }

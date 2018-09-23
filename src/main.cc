@@ -20,15 +20,12 @@ limitations under the License.
 #include "serializers/json.h"
 #include "test.h"
 #include "working_files.h"
-using namespace ccls;
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/CrashRecoveryContext.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/Program.h>
 #include <llvm/Support/Signals.h>
-using namespace llvm;
-using namespace llvm::cl;
 
 #include <rapidjson/error/en.h>
 
@@ -37,6 +34,10 @@ using namespace llvm::cl;
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+using namespace ccls;
+using namespace llvm;
+using namespace llvm::cl;
 
 std::string g_init_options;
 

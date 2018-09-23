@@ -17,13 +17,14 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
 #include <clang/AST/Type.h>
 #include <llvm/ADT/DenseSet.h>
-using namespace clang;
 
 #include <unordered_set>
+
+using namespace ccls;
+using namespace clang;
 
 namespace {
 MethodType kMethodType = "$ccls/member";

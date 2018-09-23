@@ -20,15 +20,15 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "working_files.h"
-using namespace ccls;
 
 #include <clang/Sema/CodeCompleteConsumer.h>
 #include <clang/Sema/Sema.h>
-#include <llvm/Support/Timer.h>
-using namespace clang;
-using namespace llvm;
 
 #include <regex>
+
+using namespace ccls;
+using namespace clang;
+using namespace llvm;
 
 namespace {
 MethodType kMethodType = "textDocument/completion";
@@ -179,10 +179,6 @@ void FilterAndSortCompletionResponse(
     const std::string &complete_text, bool has_open_paren) {
   if (!g_config->completion.filterAndSort)
     return;
-
-  static Timer timer("FilterAndSortCompletionResponse", "");
-  TimeRegion region(timer);
-
   auto &items = complete_response->result.items;
 
   auto finalize = [&]() {

@@ -17,9 +17,10 @@ limitations under the License.
 #include "message_handler.h"
 #include "pipeline.hh"
 #include "query_utils.h"
-using namespace ccls;
 
 #include <unordered_set>
+
+using namespace ccls;
 
 namespace {
 
