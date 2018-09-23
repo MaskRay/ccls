@@ -645,6 +645,7 @@ public:
       case Decl::CXXConversion: // *operator* int => *operator int*
       case Decl::CXXDestructor: // *~*A => *~A*
       case Decl::CXXMethod: // *operator*= => *operator=*
+      case Decl::Function: // operator delete
         if (Loc.isFileID()) {
           SourceRange R =
               cast<FunctionDecl>(OrigD)->getNameInfo().getSourceRange();
